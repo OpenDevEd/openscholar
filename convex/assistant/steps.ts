@@ -1,75 +1,66 @@
 /**
- * The steps a reply takes (#327): one row for each action the assistant runs. The model reads
- * a short form of an action's result; the row keeps the whole of it, and the command that
- * reverses it when there is one (#342), for the chat's page and for Undo.
+ * The steps a reply takes (#327): one row for each action the assistant runs, and the
+ * command that reverses it when there is one (#342), for the chat's page and for Undo. The
+ * model reads a short form of an action's result; the whole of it is kept beside the step.
  */
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import type { Doc, Id } from "../_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 
-/** Characters of an action's arguments a step keeps. An action's arguments are small; this bounds a careless one. */
-export const STEP_INPUT_MAX = 16_000;
-/** Characters of an action's result a step keeps, well inside one document. */
+/** Characters of an action's arguments, of what reverses it, and of why it failed, that a step keeps. */
+export const STEP_TEXT_MAX = 16_000;
+/** Characters of an action's result that are kept, well inside one document. */
 export const STEP_RESULT_MAX = 200_000;
-/** Steps one batch deletes of a chat being deleted. */
-const FORGET_BATCH = 100;
+/** Steps of one exchange a page of the chat shows. A reply takes few; this bounds a runaway one. */
+export const STEPS_SHOWN = 60;
+/** Rows one batch deletes of a chat being deleted: results are large, so few at a time. */
+const FORGET_RESULTS = 20;
+const FORGET_STEPS = 100;
 
-const stepOf = (ctx: Pick<QueryCtx, "db">, threadId: Id<"assistantThreads">, toolCallId: string) =>
-  ctx.db.query("assistantSteps").withIndex("by_thread_and_toolCallId", (q) => q.eq("threadId", threadId).eq("toolCallId", toolCallId)).unique();
-
-/** The steps of these calls, by call ID: one indexed read a call. */
-export async function stepsOf(ctx: Pick<QueryCtx, "db">, threadId: Id<"assistantThreads">, toolCallIds: string[]) {
-  const rows = await Promise.all(toolCallIds.map((toolCallId) => stepOf(ctx, threadId, toolCallId)));
-  return new Map(rows.flatMap((row) => (row ? [[row.toolCallId, row] as const] : [])));
+/** An exchange's steps, in the order they ran. */
+export function stepsOfExchange(ctx: Pick<QueryCtx, "db">, threadId: Id<"assistantThreads">, order: number) {
+  return ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).eq("order", order)).take(STEPS_SHOWN);
 }
 
-/** A step starts. A call that is tried again keeps its first row. */
+/** A step starts. */
 export const begin = internalMutation({
-  args: { threadId: v.id("assistantThreads"), order: v.number(), toolCallId: v.string(), path: v.string(), input: v.string() },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    if (!(await stepOf(ctx, args.threadId, args.toolCallId))) await ctx.db.insert("assistantSteps", { ...args, status: "running", startedAt: Date.now() });
-    return null;
-  },
+  args: { threadId: v.id("assistantThreads"), order: v.number(), userId: v.id("users"), toolCallId: v.string(), path: v.string(), input: v.string() },
+  returns: v.id("assistantSteps"),
+  handler: async (ctx, args) => ctx.db.insert("assistantSteps", { ...args, status: "running", startedAt: Date.now() }),
 });
 
 /** A step ends, with its result or with why it failed. */
 export const end = internalMutation({
   args: {
-    threadId: v.id("assistantThreads"),
-    toolCallId: v.string(),
+    stepId: v.id("assistantSteps"),
     result: v.optional(v.string()),
     error: v.optional(v.string()),
     undo: v.optional(v.object({ path: v.string(), args: v.string() })),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, toolCallId, result, error, undo }) => {
-    const step = await stepOf(ctx, threadId, toolCallId);
-    if (step) {
-      await ctx.db.patch("assistantSteps", step._id, {
-        status: error === undefined ? "done" : "failed",
-        ...(result === undefined ? {} : { result }),
-        ...(error === undefined ? {} : { error }),
-        ...(undo ? { undo } : {}),
-        endedAt: Date.now(),
-      });
-    }
+  handler: async (ctx, { stepId, result, error, undo }) => {
+    const step = await ctx.db.get("assistantSteps", stepId);
+    // Its chat was deleted while it ran.
+    if (!step) return null;
+    await ctx.db.patch("assistantSteps", stepId, { status: error === undefined ? "done" : "failed", ...(error === undefined ? {} : { error }), ...(undo ? { undo } : {}), endedAt: Date.now() });
+    if (result !== undefined) await ctx.db.insert("assistantStepResults", { threadId: step.threadId, stepId, result });
     return null;
   },
 });
 
-/** Deletes a deleted chat's steps, a batch at a time, until none are left. */
+/** Deletes a deleted chat's steps and their results, a batch at a time, until none are left. */
 export const forget = internalMutation({
   args: { threadId: v.id("assistantThreads") },
   returns: v.null(),
   handler: async (ctx, { threadId }) => {
-    const steps = await ctx.db.query("assistantSteps").withIndex("by_thread_and_toolCallId", (q) => q.eq("threadId", threadId)).take(FORGET_BATCH);
+    const results = await ctx.db.query("assistantStepResults").withIndex("by_thread", (q) => q.eq("threadId", threadId)).take(FORGET_RESULTS);
+    for (const row of results) await ctx.db.delete("assistantStepResults", row._id);
+    // Steps go once their results are gone, so a batch never reads large rows and small ones together.
+    const steps = results.length === FORGET_RESULTS ? [] : await ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId)).take(FORGET_STEPS);
     for (const step of steps) await ctx.db.delete("assistantSteps", step._id);
-    if (steps.length === FORGET_BATCH) await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId });
+    if (results.length === FORGET_RESULTS || steps.length === FORGET_STEPS) await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId });
     return null;
   },
 });
-
-export type Step = Doc<"assistantSteps">;

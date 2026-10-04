@@ -50,15 +50,24 @@ export const reversedBy = <Path extends string, Args extends PropertyValidators>
 export const reversal = <Path extends string, Args extends PropertyValidators>(path: Path, args: Args) =>
   v.object({ path: v.literal(path), args: v.object(args) });
 
+/**
+ * Whether one call asks the person first although its action as a whole doesn't: the call
+ * would show outside the account, such as a change to a collection a library follows
+ * (decision 12). The assistant reads it before it runs the call.
+ */
+type AsksFirst<Args extends PropertyValidators> = { asksFirst?(ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>): Promise<boolean> };
+
 export type UserMutation<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
-  Labels<keyof Args & string> & {
+  Labels<keyof Args & string> &
+  AsksFirst<Args> & {
     kind: "mutation";
     run: (ctx: MutationCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author) => Promise<Infer<Returns>>;
   };
 
 /** A user action that calls an outside service (OpenAlex, an AI provider, Autumn), reading and writing through queries and mutations. */
 export type UserActionEntry<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
-  Labels<keyof Args & string> & {
+  Labels<keyof Args & string> &
+  AsksFirst<Args> & {
     kind: "action";
     run: (ctx: ActionCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author) => Promise<Infer<Returns>>;
   };
@@ -66,7 +75,7 @@ export type UserActionEntry<Args extends PropertyValidators, Returns extends Gen
 /** What the registry list and the assistant's tools read from an entry. */
 export type UserAction =
   | { kind: "query"; path: string; description: string; args: PropertyValidators }
-  | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators } & Labels);
+  | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators } & Labels & AsksFirst<PropertyValidators>);
 
 /** Entries are written with these so their argument and result types are inferred. */
 export const defineUserQuery = <Args extends PropertyValidators, Returns extends GenericValidator>(

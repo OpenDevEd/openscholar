@@ -75,7 +75,7 @@ export const reply = internalAction({
       attemptId,
       credits: ESTIMATED_CREDITS_PER_CHAT_MESSAGE,
       // Each action it runs is kept as a step of the exchange it's answering.
-      tools: toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0 }),
+      tools: toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId }),
       maxSteps: MAX_STEPS,
       log: { assistantThreadId: threadId },
       shouldStop,

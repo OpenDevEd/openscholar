@@ -8,6 +8,7 @@ import { createError } from "../lib/errors";
 import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
+import { followed } from "./followed";
 import { collectionSortName } from "./sortName";
 
 /** Most collections one page holds. */
@@ -180,6 +181,7 @@ export const addToCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  asksFirst: (ctx, _userId, { collectionId }) => followed(ctx, collectionId),
   run: async (ctx, userId, args) => {
     const collection = await ownCollection(ctx, userId, args.collectionId);
     const item = await ctx.db.get("libraryItems", args.libraryItemId);
@@ -201,6 +203,7 @@ export const removeFromCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  asksFirst: (ctx, _userId, { collectionId }) => followed(ctx, collectionId),
   run: async (ctx, userId, args) => {
     await ownCollection(ctx, userId, args.collectionId);
     const existing = await ctx.db

@@ -10,6 +10,7 @@ import { applyCommand } from "../research/records";
 import { undoCommandValidator } from "../../lib/research/records";
 import { libraryCountRow, resolveLibraryCount } from "./counter";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
+import { followed, inFollowedCollection } from "./followed";
 
 /** What the library keeps about a paper, apart from its rating. */
 const libraryPaper = v.object({
@@ -255,6 +256,11 @@ export const removeFromLibraryAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  // The paper leaves its collections too, and a library may follow one of them.
+  asksFirst: async (ctx, userId, args) => {
+    const item = await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", args.openalexId)).unique();
+    return item !== null && (await inFollowedCollection(ctx, item._id));
+  },
   run: async (ctx, userId, args, author) => {
     const item = await findItem(ctx, userId, args.openalexId);
     if (!item) return {};
@@ -311,6 +317,11 @@ export const restoreLibraryItemAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  // The paper goes back into its collections, and a library may follow one of them.
+  asksFirst: async (ctx, _userId, { removalId }) => {
+    const removal = await ctx.db.get("libraryRemovals", removalId);
+    return removal !== null && (await Promise.all(removal.collectionIds.map((collectionId) => followed(ctx, collectionId)))).some(Boolean);
+  },
   run: async (ctx, userId, { removalId }, author) => {
     const removal = await ctx.db.get("libraryRemovals", removalId);
     // Its day is over even if the cleanup hasn't reached it yet.
@@ -358,6 +369,7 @@ export const setPaperInCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  asksFirst: (ctx, _userId, { collectionId }) => followed(ctx, collectionId),
   run: async (ctx, userId, { paper, collectionId, inCollection, assignedAt }) => {
     const collection = await ownedCollection(ctx, userId, collectionId);
     const whole = "title" in paper;

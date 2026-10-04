@@ -29,7 +29,7 @@ import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extract
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { compactionDue } from "./context";
-import { stepsOf } from "./steps";
+import { stepsOfExchange } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 
 const FLAG = "assistant.enabled";
@@ -237,8 +237,9 @@ const stepValidator = v.object({
   status: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
   /** Why it failed, as the assistant was told. */
   error: v.optional(v.string()),
-  /** Whether it returned what reverses it (#342). */
+  /** Whether the person reading can undo it (./undo.ts): it returned what reverses it (#342), it was done for them, and it isn't undone yet. */
   canUndo: v.boolean(),
+  undone: v.boolean(),
   at: v.number(),
 });
 
@@ -266,12 +267,6 @@ const messageValidator = v.object({
   model: v.optional(v.string()),
   at: v.number(),
 });
-
-/** The model's IDs for the actions a reply's message called. */
-function toolCalls(row: MessageDoc) {
-  const content = row.message?.role === "assistant" ? row.message.content : undefined;
-  return Array.isArray(content) ? content.flatMap((part) => (part.type === "tool-call" ? [part.toolCallId] : [])) : [];
-}
 
 /** Who sent a message, for the people a page of messages names. */
 async function senders(ctx: QueryCtx, rows: MessageDoc[]) {
@@ -305,31 +300,38 @@ export const messagesAction = defineUserQuery({
       },
     });
     const sentBy = await senders(ctx, read.page);
-    // The actions each reply ran: its calls name them, and their steps say how they went.
-    const calls = new Map(read.page.map((row) => [row._id, toolCalls(row)] as const));
-    const steps = await stepsOf(ctx, threadId, [...calls.values()].flat());
+    // Each exchange's steps come with the message it answers, which a page holds once.
+    const asked = read.page.filter((row) => row.message?.role === "user");
+    const ran = new Map(await Promise.all(asked.map(async (row) => [row._id, await stepsOfExchange(ctx, threadId, row.order)] as const)));
     // The exchange being answered now. A lock whose action died isn't one.
     const answering = (await writing(ctx, thread.reply)) ? thread.reply?.order : undefined;
     const page = read.page.flatMap((row) => {
       const role = row.message?.role;
       if (role !== "user" && role !== "assistant") return [];
-      // Newest first, like the page: a reply's steps come after its text, so they're listed before it.
-      const ran = (calls.get(row._id) ?? []).flatMap((toolCallId) => {
-        const step = steps.get(toolCallId);
-        // A call with no step ran nothing: a search for an action, or a run that was refused.
-        if (!step) return [];
-        const died = step.status === "running" && answering !== row.order;
-        return [{ id: `${row._id}:${toolCallId}`, role: "step" as const, order: row.order, action: step.path, status: died ? ("failed" as const) : step.status, ...(step.error ? { error: step.error } : {}), canUndo: step.undo !== undefined, at: step.startedAt }];
-      }).reverse();
-      // A reply that only ran actions has no text of its own to show.
-      if (role === "assistant" && !row.text && row.status === "success" && calls.get(row._id)?.length) return ran;
+      // Newest first, like the page: the steps come after the message they answer, so they're listed before it.
+      const steps = (ran.get(row._id) ?? [])
+        .map((step) => ({
+          id: step._id,
+          role: "step" as const,
+          order: step.order,
+          action: step.path,
+          // A step still running when its exchange isn't being answered died with its reply.
+          status: step.status === "running" && answering !== step.order ? ("failed" as const) : step.status,
+          ...(step.error ? { error: step.error } : {}),
+          canUndo: step.undo !== undefined && step.userId === userId && step.undone !== true,
+          undone: step.undone === true,
+          at: step.startedAt,
+        }))
+        .reverse();
+      // A message of the reply that only called actions has no text of its own to show.
+      if (role === "assistant" && !row.text && row.status === "success") return [];
       const error = row.status === "failed" ? parseChatError(row.error) : null;
       const stopped = error?.class === "aborted";
       // A reply still pending that the chat isn't writing died with its action.
       const pending = row.status === "pending" && answering === row.order;
       const sender = role === "user" && row.userId ? sentBy.get(row.userId) : undefined;
       return [
-        ...ran,
+        ...steps,
         {
           id: row._id,
           role,
@@ -366,7 +368,12 @@ async function textSoFar(ctx: QueryCtx, agentThreadId: string, streamId: string)
   for (let reads = 0; reads < LIVE_READS; reads++) {
     const deltas = await ctx.runQuery(components.agent.streams.listDeltas, { threadId: agentThreadId, cursors: [{ streamId, cursor }] });
     for (const delta of deltas) {
-      for (const part of delta.parts) if (part?.type === "text-delta" && typeof part.delta === "string") text += part.delta;
+      for (const part of delta.parts) {
+        // One stream runs through every step of a reply. Each step's text becomes a message of
+        // its own once the step ends, so only the step being written is still live.
+        if (part?.type === "start-step") text = "";
+        else if (part?.type === "text-delta" && typeof part.delta === "string") text += part.delta;
+      }
       cursor = delta.end;
     }
     if (deltas.length < DELTAS_PER_READ) break;
@@ -406,8 +413,7 @@ export const live = query({
       startOrder: current.order,
       includeStatuses: ["streaming", "finished", "aborted"],
     });
-    // A reply that runs actions writes a stream for each step: the newest is the one being written.
-    const stream = streams.filter((candidate) => candidate.order === current.order).sort((a, b) => b.stepOrder - a.stepOrder)[0];
+    const stream = streams.find((candidate) => candidate.order === current.order);
     return {
       attemptId: current.attemptId,
       senderId: current.senderId,

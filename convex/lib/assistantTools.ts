@@ -50,10 +50,10 @@ export function inputSchema(entry: UserAction) {
   return z.object(convexToZodFields(fieldsWithStringIds(fields)));
 }
 
-/** Runs an action as `userId`. Its retry key is the tool call's ID, so a retried call applies once. */
-export function runAction(ctx: ActionCtx, userId: Id<"users">, entry: UserAction, input: Record<string, unknown>, toolCallId: string): Promise<unknown> {
+/** Runs an action as `userId`. `callKey` names this call and fills the action's retry key, so the same call tried again applies once. */
+export function runAction(ctx: ActionCtx, userId: Id<"users">, entry: UserAction, input: Record<string, unknown>, callKey: string): Promise<unknown> {
   const retryKey = retryKeyOf(entry);
-  const args = { ...input, ...(retryKey ? { [retryKey]: toolCallId } : {}), userId };
+  const args = { ...input, ...(retryKey ? { [retryKey]: callKey } : {}), userId };
   const ref = assistantPath(entry.path);
   if (entry.kind === "query") return ctx.runQuery(makeFunctionReference<"query">(ref), args);
   if (entry.kind === "mutation") return ctx.runMutation(makeFunctionReference<"mutation">(ref), args);
@@ -62,21 +62,26 @@ export function runAction(ctx: ActionCtx, userId: Id<"users">, entry: UserAction
 
 /** One call of an action by the model. */
 export type ToolCall = { entry: UserAction; input: Record<string, unknown>; toolCallId: string };
-/** What happens around a call: `run` makes it, and what this returns is what the model reads. */
-export type Around = (call: ToolCall, run: () => Promise<unknown>) => Promise<unknown>;
+/** Makes a call in the caller's own way; what it returns is what the model reads. */
+export type Around = (call: ToolCall) => Promise<unknown>;
 
 /**
  * The assistant's tools for these actions, acting as `userId`. Each tool's input is its
  * action's arguments, minus the retry key, which the tool fills from its call's ID.
  */
-export function assistantTools(ctx: ActionCtx, userId: Id<"users">, entries: readonly UserAction[], around: Around = (_call, run) => run()): Record<string, Tool> {
+export function assistantTools(
+  ctx: ActionCtx,
+  userId: Id<"users">,
+  entries: readonly UserAction[],
+  around: Around = ({ entry, input, toolCallId }) => runAction(ctx, userId, entry, input, toolCallId),
+): Record<string, Tool> {
   return Object.fromEntries(
     entries.map((entry) => [
       toolName(entry.path),
       tool({
         description: entry.description,
         inputSchema: inputSchema(entry),
-        execute: async (input: Record<string, unknown>, { toolCallId }) => around({ entry, input, toolCallId }, () => runAction(ctx, userId, entry, input, toolCallId)),
+        execute: async (input: Record<string, unknown>, { toolCallId }) => around({ entry, input, toolCallId }),
       }),
     ]),
   );
