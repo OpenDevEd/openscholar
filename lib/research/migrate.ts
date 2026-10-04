@@ -1,5 +1,4 @@
 import type { ConvexReactClient } from "convex/react";
-import { withoutAuthors } from "./mock-author-filter";
 import { api } from "../../convex/_generated/api";
 import { localKeywordExpansionStore, localRatingsStore, localSearchHistoryStore } from "../store";
 import { importSearchRecord, serializeSearch } from "./records";
@@ -102,5 +101,5 @@ export async function importLocalResearch(
 }
 
 export function migrateLocalResearch(client: ConvexReactClient, accountId: string, active: () => boolean) {
-  return importLocalResearch(accountId, batch => client.mutation(api.research.records.importBatch, withoutAuthors(batch)), active);
+  return importLocalResearch(accountId, batch => client.mutation(api.research.records.importBatch, batch), active);
 }

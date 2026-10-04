@@ -1,5 +1,4 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
-import { withAuthors, withoutAuthors } from "./mock-author-filter";
 import type { ConvexReactClient } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { shortcutExpansions, type SearchHistoryState, type KeywordExpansionState, type RatingsState } from "../store";
@@ -362,7 +361,7 @@ export class ResearchSession {
       while (this.pending.length && this.epoch === epoch) {
         const next = this.pending[0];
         try {
-          await this.client.mutation(api.research.records.change, { accountId: this.accountId, ...withoutAuthors(next) });
+          await this.client.mutation(api.research.records.change, { accountId: this.accountId, ...next });
           // Mutation completion includes live-query updates, but a page that just opened a
           // search, ratings or shortcuts may still be reading them. Keep optimism until
           // they arrive.
@@ -407,7 +406,7 @@ export class ResearchSession {
         case "rating": if (command.rating === null) delete ratings[command.paperId]; else ratings[command.paperId] = command.rating;
       }
     }
-    this.stores.history.setState({ searchHistory: searches.map(restoreSearch).map(withAuthors) });
+    this.stores.history.setState({ searchHistory: searches.map(restoreSearch) });
     this.stores.shortcuts.setState({ keywords });
     this.stores.ratings.setState({ ratings });
   }
