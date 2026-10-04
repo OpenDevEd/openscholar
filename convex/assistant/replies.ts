@@ -25,6 +25,7 @@ import { internalMutation, internalQuery, mutation, query } from "../lib/functio
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
+import { viewOf, viewPart } from "../../lib/assistant/view";
 import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
@@ -73,9 +74,10 @@ async function admit(ctx: MutationCtx, userId: Id<"users">) {
 }
 
 export const send = mutation({
-  args: { threadId: v.id("assistantThreads"), text: v.string() },
+  // `view`: the address of the page the message is sent from, its path and parameters.
+  args: { threadId: v.id("assistantThreads"), text: v.string(), view: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx, { threadId, text }) => {
+  handler: async (ctx, { threadId, text, view: address }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     if (!text.trim()) throw createError("VALIDATION_ERROR", "Write a message first.");
@@ -99,7 +101,20 @@ export const send = mutation({
 
     // The message, the lock and the scheduled reply commit together, so a second send
     // can't slip in between them.
-    const { messageId, message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId, prompt: text, skipEmbeddings: true });
+    // Where it's sent from goes with the message, for the model alone, and stays there, so
+    // nothing already sent changes. It's left out when this person's last message said the
+    // same place and the model still reads that message: it isn't summarized, and no summary
+    // is owed that would take its place before this one is answered. In a shared chat each
+    // person's messages say their own place.
+    const view = address === undefined ? null : viewOf(address);
+    const said = thread.view && thread.view.userId === userId && thread.view.order > (thread.compactedThrough ?? -1) && thread.compactionOwed !== true ? thread.view.address : undefined;
+    const moved = view !== null && view !== said;
+    const { messageId, message } = await assistant.saveMessage(ctx, {
+      threadId: thread.agentThreadId,
+      userId,
+      ...(moved ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: viewPart(view) }] } } : { prompt: text }),
+      skipEmbeddings: true,
+    });
     const now = Date.now();
     const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
     await touchThread(ctx, threadId, now);
@@ -114,7 +129,7 @@ export const send = mutation({
       // An effort the catalog has since dropped runs at the model's default.
       effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
     });
-    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
+    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), ...(moved ? { view: { address: view, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
     return null;
   },
 });
@@ -383,6 +398,14 @@ function shownStatus(status: Doc<"assistantSteps">["status"], answering: boolean
   return status;
 }
 
+/** What a person typed: their message's first part. Where they sent it from can follow it (`send`), which only the model reads. */
+function typed(row: MessageDoc) {
+  const content = row.message?.content;
+  if (!Array.isArray(content)) return row.text ?? "";
+  const first = content[0];
+  return first?.type === "text" ? first.text : "";
+}
+
 /** Who sent a message, for the people a page of messages names. */
 async function senders(ctx: QueryCtx, rows: MessageDoc[]) {
   const ids = [...new Set(rows.flatMap((row) => (row.message?.role === "user" && row.userId ? [row.userId] : [])))];
@@ -458,7 +481,7 @@ export const messagesAction = defineUserQuery({
           id: row._id,
           role,
           order: row.order,
-          text: row.text ?? "",
+          text: role === "user" ? typed(row) : (row.text ?? ""),
           status: pending ? ("pending" as const) : stopped ? ("stopped" as const) : row.status === "success" ? ("done" as const) : ("failed" as const),
           ...(error && !stopped
             ? {
