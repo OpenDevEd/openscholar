@@ -44,6 +44,7 @@ const CORE_PATHS = [
   "research/searches:create",
   "research/searches:update",
   "research/searches:results",
+  "research/lookup:find",
   "research/records:searchHistory",
   "research/records:listedShortcuts",
   "research/records:ratingsOf",

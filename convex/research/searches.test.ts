@@ -14,6 +14,10 @@ const reads = () => requests.filter((request) => request.url.searchParams.get("p
 const openAlex = vi.fn(async (input: string | URL) => {
   const url = new URL(String(input));
   requests.push({ url });
+  if (url.pathname.includes("/autocomplete/")) {
+    const author = url.pathname.endsWith("/authors");
+    return new Response(JSON.stringify({ results: [{ id: `https://openalex.org/${author ? "A5023888391" : "F4320332161"}`, display_name: author ? "Jane Smith" : "Wellcome Trust", hint: author ? "University of Nairobi, Kenya" : "United Kingdom" }] }), { status: 200 });
+  }
   const [page, size] = [url.searchParams.has("cursor") ? 1 : Number(url.searchParams.get("page")), Number(url.searchParams.get("per-page"))];
   const start = (page - 1) * size;
   // A search for "verbose" finds papers whose every text runs long.
@@ -24,7 +28,8 @@ const openAlex = vi.fn(async (input: string | URL) => {
     publication_year: 2020,
     cited_by_count: 12,
     abstract_inverted_index: Object.fromEntries(Array.from({ length: 120 }, (_, word) => [`word${word}`, [word]])),
-    authorships: ["Ada Lovelace", "Alan Turing", "Grace Hopper", "Edsger Dijkstra"].map((name) => ({ author: { display_name: name + long } })),
+    // OpenAlex has no record for the third author: a paper names them, and that's all.
+    authorships: ["Ada Lovelace", "Alan Turing", "Grace Hopper", "Edsger Dijkstra"].map((name, at) => ({ author: { ...(at === 2 ? {} : { id: `https://openalex.org/A${at + 1}` }), display_name: name + long } })),
     primary_location: { source: { display_name: `A journal${long}` } },
   }));
   return new Response(JSON.stringify({ meta: { count: 57 }, results }), { status: 200 });
@@ -137,9 +142,10 @@ describe("the assistant's search tools", () => {
     const page = await alice.action(results, { id, page: 6 });
     expect(page).toMatchObject({ total: 57, page: 6, pages: 6 });
     expect(page.papers.map((paper) => paper.id)).toEqual(Array.from({ length: 7 }, (_, i) => `https://openalex.org/W${51 + i}`));
-    expect(page.papers[0]).toMatchObject({ title: "Paper 51", authors: "Ada Lovelace, Alan Turing, Grace Hopper and others", year: 2020, venue: "A journal", citations: 12 });
+    // Its first authors come with their IDs, which the `authors` filter takes.
+    expect(page.papers[0]).toMatchObject({ title: "Paper 51", authors: [{ name: "Ada Lovelace", id: "A1" }, { name: "Alan Turing", id: "A2" }, { name: "Grace Hopper" }], moreAuthors: 1, year: 2020, venue: "A journal", citations: 12 });
     // An abstract is cut, so ten papers stay short enough for the model to read at once.
-    expect(page.papers[0].abstract!.length).toBeLessThanOrEqual(251);
+    expect(page.papers[0].abstract!.length).toBeLessThanOrEqual(181);
     expect(JSON.stringify(await alice.action(results, { id })).length).toBeLessThan(8_000);
     // By relevance, a page is one request for only its papers.
     expect(reads()).toHaveLength(2);
@@ -166,6 +172,8 @@ describe("the assistant's search tools", () => {
     const wordy = await alice.action(results, { id: verbose.id });
     expect(wordy.papers).toHaveLength(10);
     expect(JSON.stringify(wordy).length).toBeLessThan(8_000);
+    // An author with an ID is filtered by it, so their name is cut. One without is filtered by name: a long one comes as its leading whole words, which still find them.
+    expect(wordy.papers[0].authors!.map((author) => author.name)).toEqual([expect.stringMatching(/^Ada Lovelacex+…$/), expect.stringMatching(/^Alan Turingx+…$/), "Grace"]);
 
     // A search that keeps only rated papers returns those, as its page shows them.
     await change({ kind: "editSearch", id, edit: { kind: "patch", fields: { onlyRatedPapers: true, ratingRange: [4, 5] }, clear: [] } });
@@ -194,13 +202,55 @@ describe("the assistant's search tools", () => {
     await expect(alice.mutation(update, { id, sdgs: [18] })).rejects.toThrow(/1 to 17/);
     await expect(alice.mutation(update, { id, fromYear: 2020, fromDate: "2025-01-01" })).rejects.toThrow(/not both/);
     await expect(alice.mutation(update, { id, fromDate: "last year" })).rejects.toThrow(/YYYY-MM-DD/);
+    // A day the calendar doesn't have would leave a search its page can't open.
+    await expect(alice.mutation(update, { id, fromDate: "2025-02-30" })).rejects.toThrow(/the calendar has/);
+    await expect(alice.mutation(update, { id, fromDate: "2025-13-01" })).rejects.toThrow(/the calendar has/);
+    // Taking a filter off that's already off changes nothing: no revision, no undo.
+    expect(await alice.mutation(update, { id, funders: null, cites: null, openAccessOnly: false })).toEqual({});
+    // Years in place of days, in one call.
+    await edit({ id, fromDate: null, toDate: null, fromYear: 2020, toYear: 2024 });
+    expect(await search(id)).toMatchObject({ filterType: "year", yearRange: [2020, 2024] });
+    expect((await search(id))!.dateRange).toBeUndefined();
+    // And days in place of years, with one year's end left out: the years go whole, not half.
+    await edit({ id, fromYear: null, fromDate: "2025-10-04" });
+    expect(await search(id)).toMatchObject({ filterType: "date", dateRange: { from: "2025-10-04" }, isYearRangeEnabled: false });
+    expect((await search(id))!.yearRange).toBeUndefined();
 
-    // null takes a filter off, and the change is undone like any other.
-    const changed = await edit({ id, about: null, sdgs: null, minRating: 4, ratedOnly: true });
+    // null takes a filter off, and the change is undone like any other. A rating to keep papers by keeps
+    // rated papers alone, without being told to: the page reads the range only then.
+    const changed = await edit({ id, about: null, sdgs: null, minRating: 4 });
     expect(await search(id)).toMatchObject({ selectedCountryFocus: [], sdgs: [], ratingRange: [4, 5], onlyRatedPapers: true });
     await alice.mutation(restore, changed.undo!.args);
     expect(await search(id)).toMatchObject({ selectedCountryFocus: ["africa"], sdgs: ["4"] });
     expect((await search(id))!.onlyRatedPapers).toBeUndefined();
+  });
+
+  it("filter by an author, a funder, a research area or a paper, by the IDs a result or a lookup gives", async () => {
+    const { alice, make, update, results, search } = await setup();
+    const find = api.research.lookup.find;
+    // An author, by name: who they are and where they work, with the ID to filter by.
+    requests = [];
+    expect(await alice.action(find, { kind: "author", text: "Jane Smith" })).toEqual({ matches: [{ id: "A5023888391", name: "Jane Smith", detail: "University of Nairobi, Kenya" }] });
+    expect((await alice.action(find, { kind: "funder", text: "Wellcome" })).matches[0]).toMatchObject({ id: "F4320332161", name: "Wellcome Trust" });
+    expect(requests.map((request) => request.url.pathname.split("/").slice(-2).join("/"))).toEqual(["autocomplete/authors", "autocomplete/funders"]);
+    // A research area comes from the app's own catalog, with what it sits under, and asks OpenAlex nothing.
+    const areas = await alice.action(find, { kind: "researchArea", text: "education" });
+    expect(areas.matches.length).toBeGreaterThan(0);
+    for (const area of areas.matches) expect(area).toMatchObject({ id: expect.stringMatching(/^(?:(?:domains|fields|subfields)\/\d+|T\d+)$/), name: expect.stringMatching(/education/i), detail: expect.any(String) });
+    expect(requests).toHaveLength(2);
+
+    const { id } = await make({ query: "tutoring", authors: ["A5023888391", "https://openalex.org/authors/A1", "UNESCO"], funders: ["https://openalex.org/F4320332161"], researchAreas: [areas.matches[0].id], cites: "https://openalex.org/W2741809807" });
+    expect(await search(id)).toMatchObject({ authors: ["A5023888391", "A1", "UNESCO"], funders: ["F4320332161"], researchAreas: [areas.matches[0].id], citesItemId: "W2741809807" });
+    requests = [];
+    await alice.action(results, { id });
+    const asked = decodeURIComponent(reads()[0].url.search);
+    for (const part of ["authorships.author.id:A5023888391|A1", 'raw_author_name.search:"UNESCO"', "funders.id:F4320332161", "cites:https://openalex.org/W2741809807", "topics."]) expect(asked).toContain(part);
+
+    // What isn't an ID says where to find one.
+    await expect(alice.mutation(update, { id, funders: ["Wellcome Trust"] })).rejects.toThrow(/research\/lookup:find/);
+    await expect(alice.mutation(update, { id, researchAreas: ["Education"] })).rejects.toThrow(/research\/lookup:find/);
+    await expect(alice.mutation(update, { id, relatedTo: "that paper" })).rejects.toThrow(/one paper's ID/);
+    await expect(alice.action(find, { kind: "author", text: " " })).rejects.toThrow(/name to look for/);
   });
 
   it("count a search again when its query or filters change, and record a count as whoever's read made it", async () => {
