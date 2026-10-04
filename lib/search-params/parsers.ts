@@ -53,6 +53,7 @@ export const parseAsRegions = createParser({
  * - wlang: languages the works are written in
  * - itype: types of the authors' institutions
  * - funder: OpenAlex funder ids
+ * - author: OpenAlex author ids
  * - mincite: minimum number of citations
  * - abs: only works with an abstract
  * - retracted: include retracted works, which are left out by default
@@ -99,6 +100,7 @@ export const searchParamsParsers = {
   wlang: parseAsArrayOf(parseAsString).withDefault([]),
   itype: parseAsArrayOf(parseAsString).withDefault([]),
   funder: parseAsArrayOf(parseAsString).withDefault([]),
+  author: parseAsArrayOf(parseAsString).withDefault([]),
   mincite: parseAsInteger,
   abs: parseAsBoolean.withDefault(false),
   retracted: parseAsBoolean.withDefault(false),
@@ -136,6 +138,7 @@ export type ParsedSearchParams = {
   wlang: string[];
   itype: string[];
   funder: string[];
+  author: string[];
   mincite: number | null;
   abs: boolean;
   retracted: boolean;
@@ -204,6 +207,7 @@ export function parseSearchParamsFromUrl(
     wlang: parseListParam(searchParams, 'wlang'),
     itype: parseListParam(searchParams, 'itype'),
     funder: parseListParam(searchParams, 'funder'),
+    author: parseListParam(searchParams, 'author'),
     mincite: parseIntegerParam(searchParams, 'mincite', null),
     abs: searchParams.get('abs') === 'true',
     retracted: searchParams.get('retracted') === 'true',
@@ -255,6 +259,7 @@ export const DEFAULT_SEARCH_PARAMS: ParsedSearchParams = {
   wlang: [],
   itype: [],
   funder: [],
+  author: [],
   mincite: null,
   abs: false,
   retracted: false,

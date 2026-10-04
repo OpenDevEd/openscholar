@@ -10,7 +10,7 @@ const params = {
   ...DEFAULT_SEARCH_PARAMS, q: "education", ft: "date", df: "2020-03-15", dt: "2025-06-30", reg: ["GB"], focus: ["KE"],
   review: true, cites: "W123", citedBy: "W456", rel: "W789",
   area: ["subfields/3304", "T10001"], sdg: ["4"], oa: true, type: ["article"],
-  wlang: ["en"], itype: ["government"], funder: ["F4320311904"], mincite: 5, abs: true,
+  wlang: ["en"], itype: ["government"], funder: ["F4320311904"], author: ["A5023888391"], mincite: 5, abs: true,
 };
 
 describe("saved source search", () => {
@@ -27,6 +27,7 @@ describe("saved source search", () => {
     expect(query?.filter).toContain("language:en");
     expect(query?.filter).toContain("authorships.institutions.type:government");
     expect(query?.filter).toContain("funders.id:F4320311904");
+    expect(query?.filter).toContain("authorships.author.id:A5023888391");
     expect(query?.filter).toContain("cited_by_count:>4");
     expect(query?.filter).toContain("has_abstract:true");
     expect(query?.filter).toContain("is_retracted:false");

@@ -26,6 +26,7 @@ import {
   AlignLeft,
   FileX,
   LucideIcon,
+  UserRound,
 } from "lucide-react";
 import { FilterSectionType, FilterType } from "./filter-types";
 
@@ -59,6 +60,7 @@ export const FILTER_ICONS: Record<FilterType, LucideIcon> = {
   workLanguage: Languages,
   institutionType: Building2,
   funder: HandCoins,
+  author: UserRound,
   minCitations: Award,
   hasAbstract: AlignLeft,
   includeRetracted: FileX,

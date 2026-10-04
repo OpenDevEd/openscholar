@@ -59,24 +59,25 @@ export interface TranslationToggleProps {
 
 // ==================== Utility Functions ====================
 
+/** How many of the authors fit in `maxLength` characters, before "et al.". */
+function authorsShown(authorships: { author: { display_name: string } }[], maxLength: number): number {
+  let length = authorships[0].author.display_name.length;
+  let count = 1;
+  for (; count < authorships.length; count++) {
+    length += 2 + authorships[count].author.display_name.length;
+    if (length > maxLength) break;
+  }
+  return count;
+}
+
 export function truncateAuthors(
   authorships: { author: { display_name: string } }[],
   maxLength: number = 100
 ): string {
   if (!authorships || authorships.length === 0) return "";
-  
-  const names = authorships.map((a) => a.author.display_name);
-  let result = names[0];
-  
-  for (let i = 1; i < names.length; i++) {
-    const next = `${result}, ${names[i]}`;
-    if (next.length > maxLength) {
-      return `${result} et al.`;
-    }
-    result = next;
-  }
-  
-  return result;
+  const count = authorsShown(authorships, maxLength);
+  const names = authorships.slice(0, count).map((a) => a.author.display_name).join(", ");
+  return count < authorships.length ? `${names} et al.` : names;
 }
 
 export function getFirstAuthor(
@@ -639,17 +640,53 @@ export function AuthorsLine({
   authorships,
   maxLength = 200,
   className,
+  selected,
+  onToggleAuthor,
 }: {
-  authorships?: { author: { display_name: string } }[];
+  authorships?: { author: { id?: string; display_name: string } }[];
   maxLength?: number;
   className?: string;
+  /** The authors the search is filtered by, as OpenAlex ids. */
+  selected?: readonly string[];
+  /** Makes each name a control that filters the search by that author, or stops filtering by them. */
+  onToggleAuthor?: (author: { id: string; name: string }) => void;
 }) {
+  const tf = useTranslations("searchFilters");
   if (!authorships || authorships.length === 0) return null;
 
+  // The same authors the plain line names before "et al.".
+  const shown = authorsShown(authorships, maxLength);
   return (
     <div className={cn("flex gap-2 text-sm text-muted-foreground", className)}>
       <Users className="h-4 w-4 flex-shrink-0 mt-0.5" />
-      <span className="line-clamp-1">{truncateAuthors(authorships, maxLength)}</span>
+      {onToggleAuthor ? (
+        <span className="line-clamp-1">
+          {authorships.slice(0, shown).map(({ author }, index) => {
+            const id = author.id?.split("/").at(-1);
+            return (
+              <React.Fragment key={`${id}-${index}`}>
+                {index > 0 && ", "}
+                {id ? (
+                  <button
+                    type="button"
+                    aria-pressed={selected?.includes(id) ?? false}
+                    aria-label={tf("filterByAuthor", { name: author.display_name })}
+                    onClick={() => onToggleAuthor({ id, name: author.display_name })}
+                    className="rounded-sm underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring aria-pressed:font-medium aria-pressed:text-primary"
+                  >
+                    {author.display_name}
+                  </button>
+                ) : (
+                  author.display_name
+                )}
+              </React.Fragment>
+            );
+          })}
+          {shown < authorships.length && " et al."}
+        </span>
+      ) : (
+        <span className="line-clamp-1">{truncateAuthors(authorships, maxLength)}</span>
+      )}
     </div>
   );
 }

@@ -8,9 +8,10 @@ import { useRouter, usePathname } from "next/navigation";
 import { workToCoins } from "@/lib/utils";
 import { useResultsStore, useUIStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
-import { useIsTablet } from "@/lib/hooks";
+import { useCurrentSearchFormState, useIsTablet, useUpdateSearchFilter } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
-import { createCitationSearch } from "@/lib/search";
+import { createCitationSearch, useSearchOptional } from "@/lib/search";
+import { rememberAuthorNames } from "@/lib/openalex/use-author-names";
 import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { DownloadMenu } from "@/components/download-menu";
@@ -63,6 +64,17 @@ export function PaperCardListDetail({
   const isMobile = useIsTablet();
 
   const searchId = getEffectiveSearchId(pathname, undefined);
+
+  // On a page that has a search, an author's name narrows it to their works, or stops doing so.
+  const canFilter = Boolean(useSearchOptional()) || pathname.startsWith("/results");
+  const { authors: searchAuthors } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const toggleAuthor = (author: { id: string; name: string }) => {
+    if (searchAuthors.includes(author.id)) return updateFilter({ authors: searchAuthors.filter((id) => id !== author.id) });
+    // Saved as it is picked, so the filter's chip never has to look the name up.
+    rememberAuthorNames({ [author.id]: author.name });
+    updateFilter({ authors: [...searchAuthors, author.id] });
+  };
 
   const handleFilteredSearch = (
     filterType: "cites" | "citedBy" | "related",
@@ -163,7 +175,12 @@ export function PaperCardListDetail({
         </div>
 
         {/* Authors */}
-        <AuthorsLine authorships={result.authorships} className="mb-3" />
+        <AuthorsLine
+          authorships={result.authorships}
+          className="mb-3"
+          selected={searchAuthors}
+          onToggleAuthor={canFilter ? toggleAuthor : undefined}
+        />
 
         {/* Journal/Source */}
         <JournalLine
