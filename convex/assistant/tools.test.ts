@@ -653,15 +653,16 @@ describe("the assistant's tools", () => {
     // Its reply is over without ending it: the step shows as failed, not as running for ever.
     expect((await shown())[1]).toBe("step: library/mutations:saveToLibrary failed");
 
-    // A reply whose every action fails, request after request, is made to answer after so many of them.
+    // A reply whose every action fails, request after request, is told so after so many of them: its actions are
+    // refused with the reason. One that calls an action again gets a request that is its answer.
     requests.length = 0;
     toolChoices.length = 0;
     mockDoStream.mockReset();
     const missing = () => calling({ id: `c${requests.length}`, name: "run_action", input: { name: `no/such:action${requests.length}`, arguments: {} } })();
     mockDoStream.mockImplementation(async (options: { toolChoice?: { type: string } }) => (options.toolChoice?.type === "none" ? finishingDoStream(["I couldn't find a way to do that."])() : missing()));
     await say("Keep going");
-    expect(requests).toHaveLength(MAX_FAILED_ROUNDS + 1);
-    expect(toolChoices).toEqual([...Array.from({ length: MAX_FAILED_ROUNDS }, () => "auto"), "none"]);
+    expect(toolChoices).toEqual([...Array.from({ length: MAX_FAILED_ROUNDS + 1 }, () => "auto"), "none"]);
+    expect(told(MAX_FAILED_ROUNDS + 1, `c${MAX_FAILED_ROUNDS + 1}`)).toMatchObject({ error: expect.stringMatching(/Every action in your last/) });
     expect((await shown()).at(-1)).toBe("assistant: I couldn't find a way to do that.");
 
     // A model that calls an action in that request all the same gets it refused, and the reply ends there.
@@ -669,18 +670,18 @@ describe("the assistant's tools", () => {
     mockDoStream.mockReset();
     mockDoStream.mockImplementation(async () => missing());
     await say("And again");
-    expect(requests).toHaveLength(MAX_FAILED_ROUNDS + 1);
-    expect(told(MAX_FAILED_ROUNDS, `c${MAX_FAILED_ROUNDS}`)).toMatchObject({ error: expect.stringMatching(/No action is named/) });
+    expect(requests).toHaveLength(MAX_FAILED_ROUNDS + 2);
 
     // Three requests running that make the same call and get the same result: the reply is going round in
-    // circles, and its next request is its answer. A fourth identical call would have told it nothing new.
+    // circles. A fourth identical call isn't run, and the model is told why. The request after is its answer.
     requests.length = 0;
     toolChoices.length = 0;
     mockDoStream.mockReset();
-    const same = () => calling({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } })();
+    const same = () => calling({ id: `same${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } })();
     mockDoStream.mockImplementation(async (options: { toolChoice?: { type: string } }) => (options.toolChoice?.type === "none" ? finishingDoStream(["You have no collections."])() : same()));
     await say("Look, and look again");
-    expect(toolChoices).toEqual(["auto", "auto", "auto", "none"]);
+    expect(toolChoices).toEqual(["auto", "auto", "auto", "auto", "none"]);
+    expect(told(4, "same4")).toMatchObject({ error: expect.stringMatching(/same thing over again/) });
     expect((await shown()).at(-1)).toBe("assistant: You have no collections.");
     // A step that lists things says how many it found.
     expect((await t.run(async (ctx) => ctx.db.query("assistantSteps").collect())).at(-1)).toMatchObject({ path: "library/collections:listCollections", status: "done", count: 0 });

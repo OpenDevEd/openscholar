@@ -36,20 +36,24 @@ const FOUND_MAX = 12;
  * to answer with what it has, where a model simply kept from calling tools can say nothing.
  */
 /**
- * Whether a reply is going round in circles: its last three requests made the same calls
- * and got the same results, or two requests have taken turns three times over. Each request
- * is told apart by a digest of what it called and what came back (./turn.ts), so a read
- * whose result changes, such as a job's progress, is never one. The OpenHands stuck
- * detector reads both patterns, and opencode stops at three identical calls.
+ * Whether a reply is going round in circles: its last three requests did the same thing,
+ * or two requests have taken turns three times over. Each request is told apart by a
+ * digest of its calls (`toolsFor`). The OpenHands stuck detector reads both patterns, and
+ * opencode stops at three identical calls.
  */
 export function circling(recent: readonly string[]) {
   const [a, b, c, d, e, f] = recent.slice(-6).reverse();
   if (a !== undefined && a === b && b === c) return true;
   return recent.length >= 6 && a === c && c === e && b === d && d === f;
 }
-/** Requests whose digests a reply carries along to tell. */
-export const RECENT_REQUESTS = 6;
-export const CIRCLING = "Your last requests made the same calls and got the same results. Don't call another action. Tell the person what you found, and what you couldn't get past, so they can decide what to do.";
+export const CIRCLING = "Your last requests did the same thing over again. Don't call another action. Tell the person what you found, and what you couldn't get past, so they can decide what to do.";
+
+/** A short digest of a text (FNV-1a), to tell two alike without keeping either. */
+function fnv(text: string) {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193);
+  return (hash >>> 0).toString(36);
+}
 export const TOO_MANY_FAILED = `Every action in your last ${MAX_FAILED_ROUNDS} requests failed. Don't call another action. Tell the person what you tried, what went wrong, and what's left, so they can decide what to do.`;
 
 /**
@@ -226,6 +230,12 @@ export function toolsFor(
 ) {
   let calls = made;
   let asked = 0;
+  // What this request's calls came to, an entry a call, for telling whether the reply is going round in
+  // circles. A read is told apart by what it returned, so one whose result changes, such as a job's
+  // progress, is never a repeat. A change is told apart by what it was asked to do, whatever came back:
+  // each one makes its own revision and undo, and doing the same one over is a repeat all the same.
+  const did: string[] = [];
+  const note = (name: string, input: unknown, outcome: unknown) => did.push(JSON.stringify([name, input, outcome ?? null]));
   /**
    * Runs one call, kept as a step from when it starts to how it ended. The model reads the
    * short form of the result, and an action's failure as its message, so it can say what
@@ -234,10 +244,12 @@ export function toolsFor(
    */
   const call = async (entry: UserAction, input: Record<string, unknown>, toolCallId: string, allowed?: Id<"assistantSteps">) => {
     if (!allowed) {
-      const why = stopped();
-      if (why) return { error: why };
       // One that asks first only gets here allowed. The rest is refused: an action that spends credits, or a call nothing asked about.
-      if (!runsWithoutAsking(entry)) return { error: ASKS_FIRST };
+      const why = stopped() ?? (runsWithoutAsking(entry) ? null : ASKS_FIRST);
+      if (why) {
+        note(entry.path, input, { error: why });
+        return { error: why };
+      }
     }
     // A call the person allowed was counted when it was asked about.
     const key = allowed ? `${attemptId}:${allowed}` : `${attemptId}:${calls++}`;
@@ -248,11 +260,13 @@ export function toolsFor(
       const change = entry.kind === "mutation" || (entry.kind === "action" && entry.changes === true);
       const result = await written(() => runAction(ctx, userId, entry, input, key, change ? stepId : undefined, allowed !== undefined));
       if (!change) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
+      note(entry.path, input, change ? "made" : result);
       // A change that returns nothing says it was made. A read that returns nothing found nothing.
       return forModel(change ? (result ?? DONE) : result);
     } catch (error) {
       const message = messageOf(error);
       await ctx.runMutation(internal.assistant.steps.failed, { stepId, error: message });
+      note(entry.path, input, { error: message });
       return { error: message };
     }
   };
@@ -290,22 +304,29 @@ export function toolsFor(
         "Returns each match's name, what it does and the arguments it takes. Run one with run_action.",
       inputSchema: z.object({ keywords: z.string() }),
       // Looking for more to do is refused with the rest once the reply's actions have stopped, or it could go on asking.
-      execute: async ({ keywords }) => (stopped() ? { error: stopped() } : forModel(found(keywords))),
+      execute: async ({ keywords }) => {
+        const result = stopped() ? { error: stopped() } : found(keywords);
+        note("find_action", keywords, result);
+        return forModel(result);
+      },
     }),
     run_action: tool({
       description: "Runs an action find_action returned, by its name, with its arguments. An undo in a result is run the same way: the action it names, with its arguments.",
       inputSchema: z.object({ name: z.string(), arguments: z.record(z.string(), z.unknown()) }),
       execute: async ({ name, arguments: given }, { toolCallId }) => {
-        const why = stopped();
-        if (why) return { error: why };
         const entry = entryAt(name);
-        if (!entry) return { error: `No action is named ${cut(name, 200)}. Look one up with find_action.` };
-        const parsed = inputSchema(entry).safeParse(given);
+        const parsed = entry && inputSchema(entry).safeParse(given);
         // The arguments it takes come back with the refusal, for one more try.
-        if (!parsed.success) return forModel({ error: `These arguments don't fit: ${cut(z.prettifyError(parsed.error), 1_000)}`, arguments: definition(entry).arguments });
-        return call(entry, parsed.data as Record<string, unknown>, toolCallId);
+        const refused =
+          stopped() ??
+          (!entry ? `No action is named ${cut(name, 200)}. Look one up with find_action.` : !parsed!.success ? `These arguments don't fit: ${cut(z.prettifyError(parsed!.error), 1_000)}` : null);
+        if (refused) {
+          note("run_action", [name, given], { error: refused });
+          return entry && parsed && !parsed.success && !stopped() ? forModel({ error: refused, arguments: definition(entry).arguments }) : { error: refused };
+        }
+        return call(entry!, parsed!.data as Record<string, unknown>, toolCallId);
       },
     }),
   };
-  return { tools, approval, resume, made: () => calls };
+  return { tools, approval, resume, made: () => calls, digest: () => (did.length ? fnv(did.slice().sort().join("\n")) : undefined) };
 }

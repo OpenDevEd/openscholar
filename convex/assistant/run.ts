@@ -18,7 +18,8 @@ import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 import { COMPACT_AT_TOKENS, compactedOf, contextSince, summarize } from "./context";
 import { lockArgs, turnArgs, usedValidator } from "./replies";
-import { CIRCLING, MAX_FAILED_ROUNDS, RECENT_REQUESTS, TOO_MANY_FAILED, askedSteps, circling, toolsFor } from "./tools";
+import { CIRCLING, MAX_FAILED_ROUNDS, TOO_MANY_FAILED, askedSteps, circling, toolsFor } from "./tools";
+import { RECENT_REQUESTS } from "./validators";
 import { runTurn } from "./turn";
 
 export const reply = internalAction({
@@ -65,7 +66,7 @@ export const reply = internalAction({
         const through = read.answering - 1;
         const summary = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:before:${used.rounds}:summary`, shouldStop });
         await ctx.runMutation(internal.assistant.replies.summarized, { ...lock, summary, through });
-        read = { ...read, summary, compactedThrough: through, compactedStep: undefined, compactedPrompt: undefined, owed: false };
+        read = { ...read, summary, compactedThrough: through, owed: false };
       } catch (error) {
         // Still owed. The reply goes ahead if the conversation can be read whole, and fails saying so if it can't.
         console.error("[assistant] owed compaction failed", { threadId, error: errorToLogString(error) });
@@ -84,11 +85,13 @@ export const reply = internalAction({
     // A reply makes as many requests as its work takes. One whose actions have all failed, request
     // after request, or whose requests keep doing the same thing to the same end, is going round in
     // circles: this request is its answer, and its actions are refused with the reason, so it says so.
-    const why = (used.failed ?? 0) >= MAX_FAILED_ROUNDS ? TOO_MANY_FAILED : circling(used.recent ?? []) ? CIRCLING : null;
-    const answer = why !== null;
+    // The model is told first: its actions are refused with the reason, and most answer there. One that
+    // calls an action again gets a request that is its answer, which ends the reply whatever it calls.
+    const why = used.told ?? ((used.failed ?? 0) >= MAX_FAILED_ROUNDS ? TOO_MANY_FAILED : circling(used.recent ?? []) ? CIRCLING : null);
+    const answer = used.told !== undefined;
     const stopped = () => why;
     // Each action it runs is kept as a step of the exchange it's answering.
-    const { tools, approval, resume, made } = toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped, made: used.calls });
+    const { tools, approval, resume, made, digest } = toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped, made: used.calls });
     // A reply that waited for an answer carries on here: what the person allowed runs first,
     // and each result is written where the model's call left off. A Stop ends it between two.
     const allowed = await ctx.runQuery(internal.assistant.steps.allowed, { threadId });
@@ -122,24 +125,29 @@ export const reply = internalAction({
       contextHandler: contextSince({
         summary: read.summary,
         compactedThrough: read.compactedThrough,
-        compactedStep: read.compactedStep,
-        compactedPrompt: read.compactedPrompt,
         agentThreadId,
         promptMessageId,
         onHistory: (read) => {
           history = read;
         },
       }),
-      release: ({ lastInputTokens, asked, credits, requests, more, failed, digest }) => {
+      release: ({ lastInputTokens, asked, credits, requests, more, failed }) => {
         const calls = askedSteps(asked);
-        const now = { spent: used.credits + credits, rounds: used.rounds + requests, made: made(), failed: failed ? (used.failed ?? 0) + 1 : 0 };
+        const now = { spent: used.credits + credits, rounds: used.rounds + requests, made: made() };
+        const did = digest();
+        const recent = [...(used.recent ?? []), ...(did ? [did] : [])].slice(-RECENT_REQUESTS);
         return ctx.runMutation(internal.assistant.replies.release, {
           ...lock,
           // A request that failed before the model answered read nothing: what the one before it read still says how long the conversation is.
           ended: { ...turn, ...history, lastInputTokens: lastInputTokens || (used.tokens ?? 0) },
           // It waits for the person's answer, or goes on to its next request, or has ended.
           // A request that was the reply's answer ends it, whatever the model called in it.
-          ...(calls.length ? { asking: { promptMessageId, calls, ...now } } : more && !answer ? { next: { promptMessageId, ...now, tokens: lastInputTokens, recent: [...(used.recent ?? []), ...(digest ? [digest] : [])].slice(-RECENT_REQUESTS) } } : {}),
+          ...(calls.length
+            ? // A request that asks ran nothing, so the streak of failed ones stands as it was.
+              { asking: { promptMessageId, calls, ...now, failed: used.failed ?? 0, recent } }
+            : more && !answer
+              ? { next: { promptMessageId, ...now, tokens: lastInputTokens, failed: failed ? (used.failed ?? 0) + 1 : 0, recent, ...(why ? { told: why } : {}) } }
+              : {}),
         });
       },
     });
@@ -152,32 +160,31 @@ export const reply = internalAction({
  * chat takes no message until its next request can start from the summary. A failed or
  * stopped compaction leaves the chat as it was; the next reply that reads a lot tries again.
  *
- * With `resume`, the reply hasn't ended: it is summarized through `step` of its exchange,
- * and goes on from there once the summary is written, or as it was if it isn't.
+ * With `resume`, the reply hasn't ended: once the summary is written it goes on from it in
+ * an exchange of its own (./replies.ts), or as it was if the summary isn't written.
  */
 export const compact = internalAction({
   args: {
     ...lockArgs,
     ...turnArgs,
     through: v.number(),
-    step: v.optional(v.number()),
     lastInputTokens: v.number(),
     resume: v.optional(v.object({ ...turnArgs, promptMessageId: v.string(), used: usedValidator })),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, through, step, resume, ...turn }) => {
+  handler: async (ctx, { threadId, attemptId, through, resume, ...turn }) => {
     const lock = { threadId, attemptId };
     let summary: string | undefined;
     const shouldStop = async () => (await ctx.runQuery(internal.assistant.replies.lockState, lock)) !== "writing";
     try {
       if (!(await shouldStop())) {
-        // A reply can be summarized more than once as it goes: each summary is a charge of its own.
-        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, step, chargeId: `chat:${attemptId}:through:${step ?? "end"}:summary`, shouldStop });
+        // A reply can be summarized more than once as it goes, each time through a later exchange: each summary is a charge of its own.
+        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, chargeId: `chat:${attemptId}:through:${through}:summary`, shouldStop });
       }
     } catch (error) {
       console.error("[assistant] compaction failed", { threadId, error: errorToLogString(error) });
     }
-    await ctx.runMutation(internal.assistant.replies.release, { ...lock, ...(summary ? { summarized: { summary, through, ...(step === undefined ? {} : { step }) } } : {}), ...(resume ? { resume } : {}) });
+    await ctx.runMutation(internal.assistant.replies.release, { ...lock, ...(summary ? { summarized: { summary, through } } : {}), ...(resume ? { resume } : {}) });
     return null;
   },
 });

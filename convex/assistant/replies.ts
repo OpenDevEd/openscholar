@@ -30,7 +30,7 @@ import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
-import { compactionDue } from "./context";
+import { CARRY_ON, compactionDue } from "./context";
 import { detailsOf } from "./details";
 import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
@@ -172,7 +172,7 @@ export const answer = mutation({
       senderId: waiting.senderId,
       modelId: waiting.modelId,
       effort: waiting.effort,
-      used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made, ...(waiting.failed ? { failed: waiting.failed } : {}) },
+      used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made, ...(waiting.failed ? { failed: waiting.failed } : {}), ...(waiting.recent ? { recent: waiting.recent } : {}) },
     });
     await ctx.db.patch("assistantThreads", threadId, { asking: undefined, reply: { attemptId, senderId: waiting.senderId, order: waiting.order, startedAt: now, scheduledId } });
     return null;
@@ -186,9 +186,10 @@ export const turnArgs = { agentThreadId: v.string(), senderId: v.id("users"), mo
 /**
  * Where a reply stands after its requests so far: the credits they cost, how many they were,
  * the actions they called, the input tokens the last of them read, how many of them in a
- * row had every action fail, and the digests of what the last few did (./tools.ts).
+ * row had every action fail, the digests of what the last few did (./tools.ts), and why its
+ * actions were refused in the last one, when they were.
  */
-export const usedValidator = v.object({ credits: v.number(), rounds: v.number(), calls: v.number(), tokens: v.optional(v.number()), failed: v.optional(v.number()), recent: v.optional(v.array(v.string())) });
+export const usedValidator = v.object({ credits: v.number(), rounds: v.number(), calls: v.number(), tokens: v.optional(v.number()), failed: v.optional(v.number()), recent: v.optional(v.array(v.string())), told: v.optional(v.string()) });
 /** What a reply's next request starts from: whose it is, the message it answers, and what the reply has used. */
 const resumeValidator = v.object({ ...turnArgs, promptMessageId: v.string(), used: usedValidator });
 
@@ -198,14 +199,12 @@ const resumeValidator = v.object({ ...turnArgs, promptMessageId: v.string(), use
  */
 export const compacted = internalQuery({
   args: { threadId: v.id("assistantThreads") },
-  returns: v.object({ summary: v.optional(v.string()), compactedThrough: v.optional(v.number()), compactedStep: v.optional(v.number()), compactedPrompt: v.optional(v.string()), owed: v.boolean(), answering: v.optional(v.number()) }),
+  returns: v.object({ summary: v.optional(v.string()), compactedThrough: v.optional(v.number()), owed: v.boolean(), answering: v.optional(v.number()) }),
   handler: async (ctx, { threadId }) => {
     const thread = await ctx.db.get("assistantThreads", threadId);
     return {
       ...(thread?.summary ? { summary: thread.summary } : {}),
       ...(thread?.compactedThrough !== undefined ? { compactedThrough: thread.compactedThrough } : {}),
-      ...(thread?.compactedStep !== undefined ? { compactedStep: thread.compactedStep } : {}),
-      ...(thread?.compactedPrompt !== undefined ? { compactedPrompt: thread.compactedPrompt } : {}),
       owed: thread?.compactionOwed === true,
       ...(thread?.reply ? { answering: thread.reply.order } : {}),
     };
@@ -219,7 +218,7 @@ export const summarized = internalMutation({
   handler: async (ctx, { threadId, attemptId, summary, through }) => {
     const thread = await ctx.db.get("assistantThreads", threadId);
     // One handed in after Stop isn't kept: the reply it was written for won't run, and it stays owed.
-    if (thread?.reply?.attemptId === attemptId && !thread.reply.stop) await ctx.db.patch("assistantThreads", threadId, { summary, compactedThrough: through, compactedStep: undefined, compactedPrompt: undefined, compactionOwed: undefined });
+    if (thread?.reply?.attemptId === attemptId && !thread.reply.stop) await ctx.db.patch("assistantThreads", threadId, { summary, compactedThrough: through, compactionOwed: undefined });
     return null;
   },
 });
@@ -262,8 +261,7 @@ export const release = internalMutation({
   args: {
     ...lockArgs,
     ended: v.optional(v.object({ ...turnArgs, lastInputTokens: v.number(), messages: v.number(), bytes: v.number() })),
-    // The summary a compaction wrote: through an exchange, or through a step of the exchange whose reply is still being written.
-    summarized: v.optional(v.object({ summary: v.string(), through: v.number(), step: v.optional(v.number()) })),
+    summarized: v.optional(v.object({ summary: v.string(), through: v.number() })),
     // The compaction ran while a reply was under way: the reply goes on from here.
     resume: v.optional(resumeValidator),
     // The reply ended on calls it asks the person about (./steps.ts): the message it answers, each call as the step
@@ -276,11 +274,12 @@ export const release = internalMutation({
         rounds: v.number(),
         made: v.number(),
         failed: v.number(),
+        recent: v.array(v.string()),
       }),
     ),
     // The reply's request ended on actions that ran (./turn.ts): their results go back to the model in
     // its next request, with what the reply has used so far.
-    next: v.optional(v.object({ promptMessageId: v.string(), spent: v.number(), rounds: v.number(), made: v.number(), tokens: v.number(), failed: v.number(), recent: v.array(v.string()) })),
+    next: v.optional(v.object({ promptMessageId: v.string(), spent: v.number(), rounds: v.number(), made: v.number(), tokens: v.number(), failed: v.number(), recent: v.array(v.string()), told: v.optional(v.string()) })),
   },
   returns: v.null(),
   handler: async (ctx, { threadId, attemptId, ended, summarized, asking, next, resume }) => {
@@ -294,25 +293,23 @@ export const release = internalMutation({
       return { ...lock, scheduledId };
     };
     if (current.compacting) {
-      const kept = summarized && !current.stop;
-      const position = kept
-        ? {
-            summary: summarized.summary,
-            // Through an exchange, or partway into the one after the last it covers whole.
-            ...(summarized.step === undefined || !resume
-              ? { compactedThrough: summarized.through, compactedStep: undefined, compactedPrompt: undefined }
-              : { compactedThrough: summarized.through - 1, compactedStep: summarized.step, compactedPrompt: resume.promptMessageId }),
-          }
-        : null;
+      const kept = summarized && !current.stop ? { summary: summarized.summary, compactedThrough: summarized.through, compactionOwed: undefined } : null;
+      if (resume && kept) {
+        // Written while the reply was under way. It goes on from the summary in an exchange of its own, which begins
+        // with a message telling it to: the summary runs through the exchange it was in, message and all. Its next
+        // request reads the summary, not what the last one read.
+        const { messageId, message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: resume.senderId, prompt: CARRY_ON, skipEmbeddings: true });
+        const lock = await goOn({ ...resume, promptMessageId: messageId, used: { ...resume.used, tokens: 0 } });
+        await ctx.db.patch("assistantThreads", threadId, { ...kept, reply: { ...lock, order: message.order } });
+        return null;
+      }
       if (resume) {
-        // The reply goes on, from the summary if one was written: its next request then reads the summary, not
-        // what the last one read, and nothing is owed any more, since the summary runs through everything before
-        // it. One that wasn't written stays owed, and is tried again after the reply's next request.
-        await ctx.db.patch("assistantThreads", threadId, { ...(position ? { ...position, compactionOwed: undefined } : {}), reply: await goOn(position ? { ...resume, used: { ...resume.used, tokens: 0 } } : resume) });
+        // The summary wasn't written, and stays owed. The reply goes on as it was, and is summarized after its next request.
+        await ctx.db.patch("assistantThreads", threadId, { reply: await goOn(resume) });
         return null;
       }
       // A summary that was stopped, or never written, stays owed: the next reply writes it first.
-      await ctx.db.patch("assistantThreads", threadId, { reply: undefined, ...(position ? { ...position, compactionOwed: undefined } : { compactionOwed: true }) });
+      await ctx.db.patch("assistantThreads", threadId, { reply: undefined, ...(kept ?? { compactionOwed: true }) });
       return null;
     }
     const newest = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null }, excludeToolMessages: true })).page[0];
@@ -334,6 +331,7 @@ export const release = internalMutation({
         rounds: asking.rounds,
         made: asking.made,
         ...(asking.failed ? { failed: asking.failed } : {}),
+        ...(asking.recent.length ? { recent: asking.recent } : {}),
         askedAt: now,
       };
       await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: undefined, asking: waiting });
@@ -345,20 +343,11 @@ export const release = internalMutation({
     if (ended && next) {
       // The reply goes on, in an action of its own.
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
-      const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens, failed: next.failed, recent: next.recent } };
+      const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens, failed: next.failed, recent: next.recent, ...(next.told ? { told: next.told } : {}) } };
       // A conversation as long as a request should read is summarized first, through what the reply
       // has written, and the reply goes on from the summary (./context.ts).
-      const last = !current.stop && compactionDue({ ...ended, window }) ? (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null }, statuses: ["success"] })).page[0] : undefined;
-      if (last?.order === current.order && last.stepOrder > 0) {
-        const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, {
-          threadId,
-          attemptId,
-          ...turn,
-          through: current.order,
-          step: last.stepOrder,
-          lastInputTokens,
-          resume: from,
-        });
+      if (!current.stop && compactionDue({ ...ended, window })) {
+        const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, through: current.order, lastInputTokens, resume: from });
         // Owed from here until a summary is kept, so one that is stopped, or whose action dies, is written by the next reply.
         await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true } });
         return null;
@@ -519,6 +508,8 @@ export const messagesAction = defineUserQuery({
       if (role !== "user" && role !== "assistant") return [];
       // Newest first, like the page: the steps come after the message they answer, so they're listed before it.
       const steps = (ran.get(row._id) ?? []).map((step) => shownStep(step, { userId, answering, details: details.get(step._id) })).reverse();
+      // The message a reply summarized partway goes on from is the app's own (./context.ts). What the reply did in answer to it is the reply's.
+      if (role === "user" && row.text === CARRY_ON) return steps;
       // A message of the reply that only called actions has no text of its own to show.
       if (role === "assistant" && !row.text && row.status === "success" && Array.isArray(row.message?.content) && row.message.content.some((part) => part.type === "tool-call")) return [];
       const error = row.status === "failed" ? parseChatError(row.error) : null;
