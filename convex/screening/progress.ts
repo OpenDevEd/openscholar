@@ -1,5 +1,13 @@
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { progressOf } from "./bookkeeping";
 import { isTerminalScreeningJobStatus } from "./lifecycle";
+
+/** A job's counts of finished papers, from its progress row, which the bookkeeping worker keeps (./bookkeeping.ts). */
+export async function readScreeningProgressCounts(ctx: QueryCtx | MutationCtx, job: { _id: Id<"screeningJobs"> }) {
+  const progress = await progressOf(ctx, job._id);
+  return { completedCount: progress.completed, skippedCount: progress.skipped, failedCount: progress.failed, qualifiedCount: progress.qualified };
+}
 
 export type ScreeningProgressSnapshot = {
   status: Doc<"screeningJobs">["status"];

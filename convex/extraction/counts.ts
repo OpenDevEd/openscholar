@@ -16,7 +16,6 @@ import { components, internal } from "../_generated/api";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { isResultRetryableFailure } from "../../lib/extraction/retry-summary";
-import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { isTerminalPaperStatus } from "./paperLifecycle";
 
 export type Counts = Record<string, number>;
@@ -42,7 +41,7 @@ export function resultBuckets(result: Pick<Doc<"extractionResults">, "status" | 
   return buckets;
 }
 
-const errorBuckets = (error: Pick<Doc<"extractionPaperErrors">, "code">) => [`error:${error.code}`];
+export const errorBuckets = (error: Pick<Doc<"extractionPaperErrors">, "code">) => [`error:${error.code}`];
 
 // ─── Appending changes (the triggers) ──────────────────────────────────
 
@@ -104,25 +103,6 @@ async function readAll<T>(rows: { take(n: number): Promise<T[]> }, limit: number
 }
 
 /**
- * Every count a job should hold, recounted from its rows; null when the job has more rows
- * than one transaction can read.
- */
-export async function recountJob(ctx: QueryCtx | MutationCtx, jobId: Id<"extractionJobs">): Promise<Counts | null> {
-  const [papers, results, errors] = await Promise.all([
-    readAll(ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)), PAPER_LIMIT),
-    readAll(ctx.db.query("extractionResults").withIndex("by_job", (q) => q.eq("jobId", jobId)), RECOUNT_MAX_ROWS),
-    readAll(ctx.db.query("extractionPaperErrors").withIndex("by_job", (q) => q.eq("jobId", jobId)), RECOUNT_MAX_ROWS),
-  ]);
-  if (!papers || !results || !errors) return null;
-  const counts: Counts = {};
-  const tally = (buckets: string[]) => addInto(counts, Object.fromEntries(buckets.map((bucket) => [bucket, 1])));
-  for (const paper of papers) tally(paperBuckets(paper));
-  for (const result of results) tally(resultBuckets(result));
-  for (const error of errors) tally(errorBuckets(error));
-  return counts;
-}
-
-/**
  * The changes appended for a job that the worker hasn't folded yet, or null when there are
  * more than one transaction should read.
  */
@@ -140,14 +120,12 @@ export async function hasWaitingChanges(ctx: QueryCtx | MutationCtx, jobId: Id<"
 }
 
 /**
- * A job's counts as of now, for showing them: its row, or before it has one the counts the
- * old counters held (`legacy`), plus the changes not folded yet while there are a readable
- * number of them. Finishing a job doesn't rely on this: it waits until nothing is left to
- * fold (mutations/internal/lifecycle.ts).
+ * A job's counts as of now, for showing them: its row, plus the changes not folded yet
+ * while there are a readable number of them. Finishing a job doesn't rely on this: it waits
+ * until nothing is left to fold (mutations/internal/lifecycle.ts).
  */
-export async function readCounts(ctx: QueryCtx | MutationCtx, jobId: Id<"extractionJobs">, legacy: () => Promise<Counts>): Promise<Counts> {
-  const row = await countsRow(ctx, jobId);
-  const counts = row ? { ...row.counts } : await legacy();
+export async function readCounts(ctx: QueryCtx | MutationCtx, jobId: Id<"extractionJobs">): Promise<Counts> {
+  const counts = { ...(await countsRow(ctx, jobId))?.counts };
   addInto(counts, (await waitingDeltas(ctx, jobId)) ?? {});
   return counts;
 }

@@ -26,7 +26,7 @@ type Counted = NonNullable<Doc<"screeningResults">["counted"]>;
  * person's or the assistant's there, as they will once moved.
  */
 export async function answersNow(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">): Promise<PaperAnswer[]> {
-  const screening = job.screeningId ? await ctx.db.get("screenings", job.screeningId) : null;
+  const screening = await ctx.db.get("screenings", job.screeningId);
   const given = screening ? await paperAnswers(ctx, screening, result.openalexId) : [];
   const held = result.answers;
   return job.questions.map(({ key, question }) => {
@@ -69,7 +69,7 @@ export async function shown(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">
  */
 export async function jobAnswers(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">) {
   const screeningId = job.screeningId;
-  if (result.answers || !screeningId || result.answersVersion === undefined) return result.answers;
+  if (result.answers || result.answersVersion === undefined) return result.answers;
   const version = result.answersVersion;
   const row = await ctx.db
     .query("screeningAnswerHistory")

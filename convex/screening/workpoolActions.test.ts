@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
+import { insertJob } from "./createJob.test-support";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 
 vi.mock("../../lib/ai/core/batch", () => ({
@@ -19,8 +20,8 @@ async function seed(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { clerkId: "clerk_bulk", email: "bulk@test.local", state: "active", createdAt: 1, updatedAt: 1 });
     await seedCreditsForTest(ctx, { userId, free: 100 });
-    const jobId = await ctx.db.insert("screeningJobs", {
-      userId, status: "processing", totalPapers: 2, resultCounts: "sharded",
+    const jobId = await insertJob(ctx, {
+      userId, status: "processing", totalPapers: 2,
       questions: [{ key: "q1", question: "Is this relevant?" }],
       scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] },
       createdAt: 1, updatedAt: 1,

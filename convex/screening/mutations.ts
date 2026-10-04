@@ -9,7 +9,6 @@ import {
   screeningPaperInputValidator,
   screeningQuestionValidator,
   screeningScoringConfigValidator,
-  screeningJobStatusValidator,
 } from "./validators";
 import { requireActiveUser, requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -20,7 +19,6 @@ import {
   getCancelableScreeningWorkIds,
   isTerminalScreeningJobStatus,
 } from "./lifecycle";
-import { upsertLibraryItem } from "../library/mutations";
 import { addCollectionMembership } from "../library/collectionMembership";
 import { deriveCompletionTransition } from "./completion";
 import { outcomeOf, scorePaper } from "./scoring";
@@ -28,7 +26,7 @@ import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec"
 import { answeredFully, ensureScreening } from "../research/answers";
 import { newCollection } from "../library/collections";
 import { searchSnapshotValidator } from "../paperSets/openalex";
-import { bookkeepLater, ensureProgress, saveQualified } from "./bookkeeping";
+import { bookkeepLater } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
 import { estimateScreening } from "./estimate";
 import { applyCommand } from "../research/records";
@@ -155,7 +153,7 @@ type PaperInput = Infer<typeof screeningPaperInputValidator>;
  */
 async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers: PaperInput[], createdAt: number) {
   const batch = papers.slice(0, CREATE_BATCH);
-  const screening = (await ctx.db.get("screenings", job.screeningId!))!;
+  const screening = (await ctx.db.get("screenings", job.screeningId))!;
   const reused = job.set?.kind === "search" ? await answeredFully(ctx, screening, job.questions.map((q) => q.question), batch.map((paper) => paper.openalexId)) : new Set<string>();
   for (const paper of batch) {
     const done = reused.has(paper.openalexId);
@@ -203,7 +201,8 @@ export const stopRequest = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const now = Date.now();
-    const jobId = await ctx.db.insert("screeningJobs", { ...args, status: "failed", totalPapers: args.last - args.first + 1, createdAt: now, updatedAt: now });
+    const screeningId = await ctx.db.insert("screenings", { userId: args.userId, version: 0, createdAt: now });
+    const jobId = await ctx.db.insert("screeningJobs", { ...args, screeningId, status: "failed", totalPapers: args.last - args.first + 1, createdAt: now, updatedAt: now });
     await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0 });
     return null;
   },
@@ -344,35 +343,6 @@ export const addToCollectionInternal = internalMutation({
         libraryItemId: args.libraryItemId,
       });
     }
-    return null;
-  },
-});
-
-/**
- * Saves a qualified paper scheduled before its job's bookkeeping moved to the worker
- * (./bookkeeping.ts). Remove once no deployment has such a call pending.
- */
-export const persistQualifiedScreeningResult = internalMutation({
-  args: { resultId: v.id("screeningResults") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const result = await ctx.db.get("screeningResults", args.resultId);
-    if (!result || result.status !== "completed" || result.qualified !== true || result.libraryItemId) return null;
-    const job = await ctx.db.get("screeningJobs", result.jobId);
-    if (job) await saveQualified(ctx, job, result);
-    return null;
-  },
-});
-
-/**
- * Finishes a job, scheduled before its bookkeeping moved to the worker (./bookkeeping.ts),
- * which finishes jobs now. Remove once no deployment has such a call pending.
- */
-export const finalizeScreeningJobFromAggregates = internalMutation({
-  args: { jobId: v.id("screeningJobs") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ensureProgress(ctx, args.jobId);
     return null;
   },
 });
