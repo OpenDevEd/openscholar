@@ -62,15 +62,17 @@ const row = async (ctx: QueryCtx, connection: Doc<"evidenceLibraryCollectionSour
  * The library's connections to these collections, as one page; a collection it never
  * connected is left out. A configuration holds at most MAX_LIBRARY_SOURCES sources, so a page
  * asks for no more. Connections are kept when a source leaves a draft, so they are read by the
- * sources shown and never listed whole.
+ * sources shown and never listed whole. The IDs come from saved configuration, so one that
+ * isn't a collection's is passed over like a collection that was never connected.
  */
 export const listCollectionSources = query({
-  args: { libraryId: v.id("evidenceLibraries"), collectionIds: v.array(v.id("collections")) },
+  args: { libraryId: v.id("evidenceLibraries"), collectionIds: v.array(v.string()) },
   returns: paginationResultValidator(collectionSourceValidator),
   handler: async (ctx, args) => {
     await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
     if (args.collectionIds.length > MAX_LIBRARY_SOURCES) throw createError("VALIDATION_ERROR", `Collections are read ${MAX_LIBRARY_SOURCES} at a time.`);
-    const connections = await Promise.all([...new Set(args.collectionIds)].map((collectionId) => findConnection(ctx, args.libraryId, collectionId)));
+    const collectionIds = [...new Set(args.collectionIds)].flatMap((id) => ctx.db.normalizeId("collections", id) ?? []);
+    const connections = await Promise.all(collectionIds.map((collectionId) => findConnection(ctx, args.libraryId, collectionId)));
     const page = await Promise.all(connections.flatMap((connection) => (connection ? [row(ctx, connection)] : [])));
     return { page, isDone: true, continueCursor: "" };
   },
