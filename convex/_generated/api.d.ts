@@ -260,6 +260,7 @@ import type * as library_mutations from "../library/mutations.js";
 import type * as library_queries from "../library/queries.js";
 import type * as library_validators from "../library/validators.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
+import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
 import type * as migrations_backfillLibraryCounters from "../migrations/backfillLibraryCounters.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
@@ -605,6 +606,7 @@ declare const fullApi: ApiFromModules<{
   "library/queries": typeof library_queries;
   "library/validators": typeof library_validators;
   "maintenance/mutations": typeof maintenance_mutations;
+  "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
   "migrations/backfillLibraryCounters": typeof migrations_backfillLibraryCounters;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
