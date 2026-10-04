@@ -463,7 +463,7 @@ describe("at the largest sizes the product allows", () => {
     expect(page.page[0].answers).toHaveLength(MAX_SIZE.questionsPerJob);
     const found = await as.query(api.screening.papers.list, { jobId, outcome: "included", text: "NEEDLE", paginationOpts: { cursor: null, numItems: 10 } });
     expect(found.page).toHaveLength(1);
-    expect(await as.mutation(api.screening.papers.answer, { jobId, paperId: ids[0], questionKey: "q0", answer: false })).toEqual({ outcome: "included" });
+    expect(await as.mutation(api.screening.papers.answer, { jobId, paperId: ids[0], questionKey: "q0", answer: false })).toMatchObject({ outcome: "included" });
     expect((await as.query(api.screening.queries.getScreeningJob, { jobId }))?.tallies?.[0]).toEqual({ key: "q0", yes: 119, no: 1, unclear: 0 });
   }, 300_000);
 

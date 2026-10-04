@@ -194,13 +194,40 @@ export async function paperAnswers(ctx: Read, screening: Doc<"screenings">, pape
   return row ? owed(screening.removals, row.version ?? 0).reduce(without, row.answers) : [];
 }
 
-/** Puts back the model's own answer to `question` where someone changed it; nothing changes where the model gave none. */
+/** Puts back the model's own answer to `question` where someone changed it; nothing changes where the model gave none, or where its answer already stands. */
 export async function restoreModelAnswer(ctx: Write, screeningId: Id<"screenings">, paperId: string, question: string, at: number) {
   const screening = (await ctx.db.get("screenings", screeningId))!;
   const existing = await settledRow(ctx, screening, paperId);
   const answers = (existing.get(paperId)?.answers ?? []).map((value) =>
-    value.question === question && value.model ? { question, answer: value.model.answer, setBy: "model" as const, updatedAt: at, model: value.model } : value);
+    value.question === question && value.model && !(value.setBy === "model" && value.answer === value.model.answer)
+      ? { question, answer: value.model.answer, setBy: "model" as const, updatedAt: at, model: value.model }
+      : value);
   return apply(ctx, screening, [{ paperId, answers }], existing, at);
+}
+
+/** One answer of a paper as it was at `version` of its screening's answers, removals up to then taken; none where it had none. */
+export async function answerAt(ctx: Read, screening: Doc<"screenings">, paperId: string, question: string, version: number) {
+  const row = await paperAt(ctx, screening._id, paperId, version);
+  return row && owed(screening.removals, row.version, version).reduce(without, row.answers).find((value) => value.question === question);
+}
+
+/**
+ * Puts one answer of a paper back as it was at `version`: its value, who set it and when.
+ * The model's own answer kept beside it stays the newest one. Returns false when there's
+ * nothing to put it back onto: the history has no such answer, or the paper's answer to the
+ * question has been removed since.
+ */
+export async function restoreAnswer(ctx: Write, screeningId: Id<"screenings">, paperId: string, question: string, version: number, at: number) {
+  const screening = (await ctx.db.get("screenings", screeningId))!;
+  const then = await answerAt(ctx, screening, paperId, question, version);
+  const existing = await settledRow(ctx, screening, paperId);
+  const answers = [...(existing.get(paperId)?.answers ?? [])];
+  const index = answers.findIndex((value) => value.question === question);
+  if (!then || index < 0) return false;
+  const model = answers[index].model ?? then.model;
+  answers[index] = { ...then, ...(model ? { model } : {}) };
+  await apply(ctx, screening, [{ paperId, answers }], existing, at);
+  return true;
 }
 
 /** Removes one paper's answers, reading only that paper's row. */

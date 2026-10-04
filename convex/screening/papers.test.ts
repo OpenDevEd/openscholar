@@ -124,26 +124,26 @@ describe("a screening job's papers", () => {
     expect(await saved()).toBe(0);
 
     // W3 was excluded: answering that it's randomized takes it to 3 points.
-    expect(await answer("W3", "q1", true)).toEqual({ outcome: "included" });
+    expect(await answer("W3", "q1", true)).toMatchObject({ outcome: "included" });
     expect(await job()).toMatchObject(W3_INCLUDED);
     const moved = (await list("included")).find((row) => row.openalexId === "https://openalex.org/W3");
     expect(moved).toMatchObject({ score: 3, stars: 5, answers: [{ key: "q1", answer: true, changed: true, confidence: 0.9 }, { key: "q2", answer: true, changed: false }] });
     expect(await list("excluded")).toEqual([]);
     expect(await saved()).toBe(1);
 
-    expect(await answer("W3", "q1", "model")).toEqual({ outcome: "excluded" });
+    expect(await answer("W3", "q1", "model")).toMatchObject({ outcome: "excluded" });
     expect(await job()).toMatchObject(COUNTED);
     expect((await list("excluded"))[0]).toMatchObject({ score: 1, answers: [{ key: "q1", answer: false, changed: false }, { key: "q2", answer: true, changed: false }] });
 
     // Removed from the library since: becoming included again saves it again.
     await as.mutation(api.library.mutations.removeFromLibrary, { openalexId: "https://openalex.org/W3" });
     expect(await saved()).toBe(0);
-    expect(await answer("W3", "q1", true)).toEqual({ outcome: "included" });
+    expect(await answer("W3", "q1", true)).toMatchObject({ outcome: "included" });
     expect(await saved()).toBe(1);
     await answer("W3", "q1", "model");
 
     // Unclear to yes on the unclear paper's deciding question includes it.
-    expect(await answer("W2", "q1", true)).toEqual({ outcome: "included" });
+    expect(await answer("W2", "q1", true)).toMatchObject({ outcome: "included" });
     expect((await job())!.outcomes).toEqual({ included: 3, unclear: 0, excluded: 1, failed: 1 });
 
     await expect(answer("W4", "q1", true)).rejects.toThrow(/Only a screened paper/);
@@ -151,16 +151,81 @@ describe("a screening job's papers", () => {
     await expect(answer("W1", "q1", false, t.withIdentity({ subject: "someone_else" }))).rejects.toThrow(/not found/i);
   });
 
+  it("returns what puts a changed answer back (#342), with who set it, and refuses it once the answer has changed again", async () => {
+    const { t, as, jobId, job, answer } = await screened();
+    // W1 is included on its first answer alone, so changing its second moves it nowhere.
+    const W1 = "https://openalex.org/W1";
+    const run = (undo: NonNullable<Awaited<ReturnType<typeof answer>>["undo"]>) => as.mutation(api.screening.papers.answer, undo.args);
+    const { userId, screeningId } = await t.run(async (ctx) => ({
+      userId: (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "owner")).unique())!._id,
+      screeningId: (await ctx.db.get("screeningJobs", jobId))!.screeningId,
+    }));
+    const asAssistant = (value: boolean | null) => t.mutation(internal.screening.papers.answerForAssistant, { userId, jobId, paperId: W1, questionKey: "q2", answer: value });
+    /** W1's second answer as its job shows it, and as the screening stores it. */
+    const shown = async () => (await as.query(api.screening.papers.get, { jobId, paperId: W1 }))!.answers[1];
+    const stored = () =>
+      t.run(async (ctx) => (await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId).eq("paperId", W1)).unique())!.answers.find((value) => value.question === "Primary schools?")!);
+
+    // The model said yes. A change to that goes back to the model's answer, as the model's.
+    const changed = await answer("W1", "q2", false);
+    expect(changed.undo).toMatchObject({ path: "screening/papers:answer", args: { jobId, paperId: W1, questionKey: "q2", answer: { asOf: expect.any(Number) }, expect: { answer: false } } });
+    const back = await run(changed.undo!);
+    expect(back.outcome).toBe("included");
+    expect(await job()).toMatchObject(COUNTED);
+    expect(await shown()).toMatchObject({ answer: true, changed: false });
+    expect(await stored()).toMatchObject({ answer: true, setBy: "model" });
+    // Putting the model's answer back when it already stands changes nothing, so the undo of that undo still goes through.
+    expect((await answer("W1", "q2", "model")).undo).toBeUndefined();
+    await run(back.undo!);
+    expect(await stored()).toMatchObject({ answer: false, setBy: "person" });
+
+    // The assistant changes the person's answer twice. Undone newest first, each step comes back as it was,
+    // the person's answer as the person's, whoever runs the undo.
+    const first = await asAssistant(null);
+    const second = await asAssistant(true);
+    await expect(run(first.undo!)).rejects.toThrow(/changed since/);
+    expect(await stored()).toMatchObject({ answer: true, setBy: "assistant" });
+    await run(second.undo!);
+    expect(await stored()).toMatchObject({ answer: null, setBy: "assistant" });
+    await t.mutation(internal.screening.papers.answerForAssistant, { userId, ...first.undo!.args });
+    expect(await stored()).toMatchObject({ answer: false, setBy: "person" });
+    expect(await shown()).toMatchObject({ answer: false, changed: true });
+    // Answering what it already is has nothing to undo.
+    expect((await answer("W1", "q2", false)).undo).toBeUndefined();
+  });
+
+  it("returns no undo for an answer whose undo wouldn't put everything back", async () => {
+    const { t, jobId, answer, saved } = await screened();
+    // W3 becomes included, and the job saves it: putting the answer back wouldn't unsave it.
+    expect((await answer("W3", "q1", true)).undo).toBeUndefined();
+    expect(await saved()).toBe(1);
+    // Taking it out of the included papers has none either: its undo would save it again, over what its rating is by then.
+    expect((await answer("W3", "q1", false)).undo).toBeUndefined();
+
+    // W1 stays included without its second answer, so that change has an undo. Once its first answer is
+    // unclear it's out, and putting the second back would bring it in and save it again: refused.
+    const second = await answer("W1", "q2", false);
+    expect(second.undo).toBeDefined();
+    expect(await answer("W1", "q1", null)).toEqual({ outcome: "unclear" });
+    await expect(t.withIdentity({ subject: "owner" }).mutation(api.screening.papers.answer, second.undo!.args)).rejects.toThrow(/would move the paper/);
+
+    // W5's second answer is changed on the screening after the job counted it, so the job's record and
+    // the screening's differ. One step can't put both back.
+    const screeningId = (await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))!.screeningId;
+    await t.run((ctx) => answerPaper(ctx, screeningId, "https://openalex.org/W5", [{ question: "Primary schools?", response: true }], "person", Date.now()));
+    expect(await answer("W5", "q2", null)).toEqual({ outcome: "included" });
+  });
+
   it("counts a paper once when its answer changes before the worker reaches it", async () => {
     const { job, list, answer, saved, settle } = await screened({ bookkept: false });
-    expect(await answer("W3", "q1", true)).toEqual({ outcome: "included" });
+    expect(await answer("W3", "q1", true)).toMatchObject({ outcome: "included" });
     expect((await list("included")).map((row) => row.openalexId)).toContain("https://openalex.org/W3");
 
     await settle();
     expect(await job()).toMatchObject(W3_INCLUDED);
     expect(await saved()).toBe(1);
     // Counted on the changed answer, so putting the model's back takes away exactly that.
-    expect(await answer("W3", "q1", "model")).toEqual({ outcome: "excluded" });
+    expect(await answer("W3", "q1", "model")).toMatchObject({ outcome: "excluded" });
     expect(await job()).toMatchObject(COUNTED);
   });
 
@@ -178,7 +243,7 @@ describe("a screening job's papers", () => {
     await settle();
     expect(await job()).toMatchObject(W3_INCLUDED);
     expect((await list("included")).find((row) => row.openalexId === "https://openalex.org/W3")).toMatchObject({ score: 3, stars: 5 });
-    expect(await answer("W3", "q1", "model")).toEqual({ outcome: "excluded" });
+    expect(await answer("W3", "q1", "model")).toMatchObject({ outcome: "excluded" });
     expect(await job()).toMatchObject(COUNTED);
   });
 
@@ -197,9 +262,9 @@ describe("a screening job's papers", () => {
     // The page clears the paper's answers. The job still has its own, takes a change, and
     // puts back the answer its own run of the model gave.
     await t.run(async (ctx) => ctx.db.delete("screeningAnswers", (await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId).eq("paperId", W3)).unique())!._id));
-    expect(await answer("W3", "q1", true)).toEqual({ outcome: "included" });
+    expect(await answer("W3", "q1", true)).toMatchObject({ outcome: "included" });
     expect(await job()).toMatchObject(W3_INCLUDED);
-    expect(await answer("W3", "q1", "model")).toEqual({ outcome: "excluded" });
+    expect(await answer("W3", "q1", "model")).toMatchObject({ outcome: "excluded" });
     expect(await job()).toMatchObject(COUNTED);
     expect((await list("excluded"))[0].answers).toMatchObject(asScored);
     // The change was written through: the shared answer is the model's again.
@@ -217,7 +282,7 @@ describe("a screening job's papers", () => {
     expect(await list("included")).toEqual([]);
     expect(await t.action(internal.migrations.screeningOutcomes.verify, {})).toBe(5);
     // A paper answered before the migration reaches it records its counts then, and the migration leaves it.
-    expect(await answer("W3", "q1", true)).toEqual({ outcome: "included" });
+    expect(await answer("W3", "q1", true)).toMatchObject({ outcome: "included" });
     expect(await t.action(internal.migrations.screeningOutcomes.verify, {})).toBe(4);
 
     vi.useFakeTimers();
