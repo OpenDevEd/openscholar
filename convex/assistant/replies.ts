@@ -442,6 +442,8 @@ const messageValidator = v.object({
   mine: v.boolean(),
   /** The model that wrote it, on a reply. */
   model: v.optional(v.string()),
+  /** A reply's message that also ran actions: the reply goes on after it. */
+  acted: v.optional(v.boolean()),
   at: v.number(),
 });
 
@@ -476,6 +478,22 @@ async function senders(ctx: QueryCtx, rows: MessageDoc[]) {
   return new Map(people.flat());
 }
 
+/**
+ * A chat's newest page, read as two halves so it can say where to split. The agent component
+ * pages without recording where a page ended, so a page with no `endCursor` is the newest
+ * rows whatever they are: as a reply adds rows, the ones before them drop out of it, and the
+ * message it answers takes its steps along. The page that subscribes splits at the cursor
+ * this names, and both halves then end at a fixed row, the newer one growing with the chat.
+ */
+async function newestPage<Opts extends { numItems: number; cursor: string | null }>(list: (opts: Opts) => ReturnType<typeof listMessages>, opts: Opts) {
+  const half = Math.ceil(opts.numItems / 2);
+  const newer = await list({ ...opts, numItems: half });
+  // A short chat has nothing to split yet, and a half that stopped at a cap says where to split itself.
+  if (newer.isDone || newer.pageStatus) return newer;
+  const older = await list({ ...opts, cursor: newer.continueCursor, numItems: opts.numItems - half });
+  return { ...older, page: [...newer.page, ...older.page], splitCursor: newer.continueCursor, pageStatus: "SplitRecommended" as const };
+}
+
 export const messagesAction = defineUserQuery({
   path: "assistant/replies:messages",
   description: "Reads an assistant chat's messages, newest first, a page at a time: what each person wrote, what the assistant replied, and each action it ran on the way.",
@@ -484,16 +502,10 @@ export const messagesAction = defineUserQuery({
   run: async (ctx, userId, { threadId, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
-    const read = await listMessages(ctx, components.agent, {
-      threadId: thread.agentThreadId,
-      // The caps bound a page whatever the caller asks for: with an `endCursor`, `numItems` alone doesn't.
-      paginationOpts: {
-        ...paginationOpts,
-        numItems: Math.min(paginationOpts.numItems, MESSAGES_PAGE_MAX),
-        maximumRowsRead: MESSAGES_PAGE_MAX,
-        maximumBytesRead: MESSAGES_PAGE_BYTES,
-      },
-    });
+    // The caps bound a page whatever the caller asks for: with an `endCursor`, `numItems` alone doesn't.
+    const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, MESSAGES_PAGE_MAX), maximumRowsRead: MESSAGES_PAGE_MAX, maximumBytesRead: MESSAGES_PAGE_BYTES };
+    const list = (pageOpts: typeof opts) => listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: pageOpts });
+    const read = paginationOpts.cursor === null && !paginationOpts.endCursor ? await newestPage(list, opts) : await list(opts);
     const sentBy = await senders(ctx, read.page);
     // Each exchange's steps come with the message it answers, which a page holds once.
     const asked = read.page.filter((row) => row.message?.role === "user");
@@ -539,6 +551,7 @@ export const messagesAction = defineUserQuery({
           ...(sender ? { sender } : {}),
           mine: role === "user" && row.userId === userId,
           ...(role === "assistant" && row.model ? { model: row.model } : {}),
+          ...(role === "assistant" && row.tool ? { acted: true } : {}),
           at: row._creationTime,
         },
       ];
@@ -570,15 +583,15 @@ function shownStep(step: Doc<"assistantSteps">, { userId, answering, details }: 
 export const stepsAction = defineUserQuery({
   path: "assistant/replies:steps",
   description:
-    "Reads the actions the assistant ran in answer to one message of a chat, newest first, a page at a time. A chat's messages come with the newest of each exchange's steps; this reads the ones before them, when a reply ran more.",
-  args: { threadId: v.id("assistantThreads"), order: v.number(), paginationOpts: paginationOptsValidator },
+    "Reads the actions the assistant ran in answer to one message of a chat, newest first, a page at a time. A chat's messages come with the newest of each exchange's steps; this reads the ones before them, when a reply ran more. A reply that was summarized partway carries on in the exchanges after its own: `through` names the last of them to read.",
+  args: { threadId: v.id("assistantThreads"), order: v.number(), through: v.optional(v.number()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(stepValidator),
-  run: async (ctx, userId, { threadId, order, paginationOpts }) => {
+  run: async (ctx, userId, { threadId, order, through, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
     const read = await ctx.db
       .query("assistantSteps")
-      .withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).eq("order", order))
+      .withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).gte("order", order).lte("order", through ?? order))
       .order("desc")
       .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, STEPS_SHOWN) });
     const answering = (await writing(ctx, thread.reply)) ? thread.reply?.order : thread.asking?.order;

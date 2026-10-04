@@ -339,6 +339,32 @@ describe("assistant replies", () => {
     expect(isDone).toBe(false);
   });
 
+  it("keep the end of their chat's newest page where it was, so messages that arrive later push none out of it", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await sharedChat(t);
+    const add = (from: number, to: number) =>
+      t.run(async (ctx) => {
+        const thread = (await ctx.db.get("assistantThreads", threadId))!;
+        for (let i = from; i < to; i++) await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: `Message ${i}`, skipEmbeddings: true });
+      });
+    const read = async (paginationOpts: { cursor: string | null; numItems: number; endCursor?: string }) => {
+      const { page, ...rest } = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts });
+      return { ...rest, texts: page.map((item) => ("text" in item ? item.text : "")) };
+    };
+    const newestFirst = (from: number, count: number) => Array.from({ length: count }, (_, i) => `Message ${from - i}`);
+    await add(0, 40);
+    // The newest page says where to split, and the page that subscribes then reads each half to a fixed end.
+    const newest = await read(firstPage);
+    expect(newest).toMatchObject({ pageStatus: "SplitRecommended", isDone: false, texts: newestFirst(39, 20) });
+    await add(40, 50);
+    const newer = await read({ ...firstPage, endCursor: newest.splitCursor! });
+    const older = await read({ cursor: newest.splitCursor!, numItems: 20, endCursor: newest.continueCursor });
+    // The ten that arrived are in the newer half, and both halves still end where they did.
+    expect([...newer.texts, ...older.texts]).toEqual(newestFirst(49, 30));
+    // The same read with no end is the newest twenty, whatever they are: the ten before them have dropped out.
+    expect((await read(firstPage)).texts).toEqual(newestFirst(49, 20));
+  });
+
   it("are refused while the assistant is switched off", async () => {
     const t = convexTest(schema);
     const { asAda, threadId } = await sharedChat(t);
