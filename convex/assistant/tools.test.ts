@@ -7,11 +7,12 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
+import { inputSchema } from "../lib/assistantTools";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
 import { MAX_ASKS, MODEL_READS, forModel } from "./steps";
-import { DEFINITION_MAX, MAX_CALLS, MAX_STEPS, core, definition, found } from "./tools";
+import { DEFINITION_MAX, MAX_CALLS, MAX_STEPS, core, definition, found, written } from "./tools";
 import { finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
@@ -109,7 +110,7 @@ describe("the assistant's tools", () => {
   it("run an action as the person who sent the message, keep it as a step, and tell the model what came of it", async () => {
     const t = convexTest(schema);
     const { ada, threadId, say, steps, results, shown } = await chatOf(t);
-    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "library_mutations_saveToLibrary", input: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
 
     // The paper is in the sender's library, not anyone else's.
@@ -120,6 +121,27 @@ describe("the assistant's tools", () => {
     expect(await results()).toMatchObject([{ id: saved._id }]);
     expect(told(1, "save")).toMatchObject({ id: saved._id, undo: { path: "library/mutations:removeFromLibrary" } });
     expect(await shown()).toEqual(["user: Save that paper", "step: library/mutations:saveToLibrary done, can be undone", "assistant: Saved it."]);
+  });
+
+  it("run a change that an action makes after reading from outside, with its write ending the step once, undo and all", async () => {
+    const t = convexTest(schema);
+    const { ada, say, steps, results, shown } = await chatOf(t);
+    vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
+    const autumn = fakeAutumnFetch();
+    // OpenAlex answers for the paper; everything else is the billing service.
+    fetchMock.mockImplementation(async (input: string | URL, init?: RequestInit) =>
+      String(input).includes("openalex.org") ? new Response(JSON.stringify({ id: "https://openalex.org/W7", display_name: "Tutoring at scale", publication_year: 2021 }), { status: 200 }) : autumn(input as never, init as never),
+    );
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "library_papers_save", input: { id: "W7", rating: null } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    await say("Save that paper");
+    vi.unstubAllEnvs();
+
+    const [saved] = await t.run(async (ctx) => ctx.db.query("libraryItems").collect());
+    expect(saved).toMatchObject({ userId: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale" });
+    expect(await steps()).toMatchObject([{ path: "library/papers:save", status: "done", undo: { path: "library/mutations:removeFromLibrary" } }]);
+    // One result beside the step: the write ended it, and nothing ended it again.
+    expect(await results()).toEqual([expect.objectContaining({ libraryItemId: saved._id, title: "Tutoring at scale" })]);
+    expect(await shown()).toEqual(["user: Save that paper", "step: library/papers:save done, can be undone", "assistant: Saved it."]);
   });
 
   it("reach every other action through a search and a run, and run the undo a change returned the same way", async () => {
@@ -249,6 +271,33 @@ describe("the assistant's tools", () => {
     await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking._id, allow: true })).rejects.toThrow(/already been answered/);
   });
 
+  it("tell the model a change that returns nothing was made, make again a write that collided, and keep a reply going past arguments the asking check can't read", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, threadId, sayUntilAsked, settled, steps, shown } = await chatOf(t);
+    // Deleting a collection asks first and returns nothing. Told nothing, a weaker model said the deletion was still waiting for the person.
+    const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Empty" });
+    mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "library/collections:deleteCollection", arguments: { collectionId } } }));
+    await sayUntilAsked("Delete it");
+    const [asking] = await steps();
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Deleted."]));
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking._id, allow: true });
+    await settled();
+    expect(told(1, "delete")).toEqual({ done: true });
+    expect(await shown()).toEqual(["user: Delete it", "step: library/collections:deleteCollection done", "assistant: Deleted."]);
+
+    // Whether a call asks first is read before it runs. Arguments that check can't read aren't a reason to ask: the call goes on to run, and fails there with a message the model reads.
+    expect(await t.query(internal.assistant.asking.first, { userId: ada, path: "library/mutations:removeFromLibrary", input: "{}" })).toBe(false);
+
+    // Calls made in one step run together. A write that lost a race for a row changed nothing, and is made again.
+    const collision = new Error('Documents read from or written to the "libraryCounts" table changed while this mutation was being run and on every subsequent retry.');
+    const write = vi.fn().mockRejectedValueOnce(collision).mockRejectedValueOnce(collision).mockResolvedValueOnce("saved");
+    expect(await written(write)).toBe("saved");
+    expect(write).toHaveBeenCalledTimes(3);
+    const refused = vi.fn().mockRejectedValue(new Error("Not your collection"));
+    await expect(written(refused)).rejects.toThrow(/Not your collection/);
+    expect(refused).toHaveBeenCalledTimes(1);
+  });
+
   it("ask about each change that would have no undo, tell the model which the person didn't allow, and carry on once all are answered", async () => {
     const t = convexTest(schema);
     const { ada, asAda, threadId, sayUntilAsked, settled, thread, steps, shown } = await chatOf(t);
@@ -262,7 +311,7 @@ describe("the assistant's tools", () => {
     });
     mockDoStream.mockImplementationOnce(
       calling(
-        { id: "save", name: "library_mutations_saveToLibrary", input: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } },
+        { id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } },
         // A library that follows the collection shows its name.
         { id: "rename", name: "run_action", input: { name: "library/collections:renameCollection", arguments: { collectionId: followed, name: "Public reading" } } },
       ),
@@ -270,7 +319,7 @@ describe("the assistant's tools", () => {
     await sayUntilAsked("Save it and rename the collection");
     const [save, rename] = await steps();
     expect([save, rename]).toMatchObject([
-      { path: "library/mutations:saveToLibrary", status: "asking", tool: "library_mutations_saveToLibrary", subject: "Tutoring at scale" },
+      { path: "library/mutations:saveToLibrary", status: "asking", tool: "run_action", subject: "Tutoring at scale" },
       { path: "library/collections:renameCollection", status: "asking", tool: "run_action", subject: "Public reading" },
     ]);
 
@@ -584,7 +633,7 @@ describe("the assistant's tools", () => {
     const t = convexTest(schema);
     const { asAda, asBen, threadId, say, steps, shown } = await chatOf(t);
     await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: (await t.run(async (ctx) => (await ctx.db.query("users").collect()).find((user) => user.clerkId === "ben")))!._id }, role: "write" });
-    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "library_mutations_saveToLibrary", input: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
     const [step] = await steps();
     const benSees = (await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step");
@@ -642,6 +691,14 @@ describe("the assistant's tools", () => {
     expect(forModel({ page: [{ id: "W1", authors: [{ name: "Ada" }] }] })).toEqual({ page: [{ id: "W1", authors: [{ name: "Ada" }] }] });
   });
 
+  it("ask for a page by how many and where from, and drop the read limits a model fills in with it", () => {
+    const listed = USER_ACTIONS.find((entry) => entry.path === "library/collections:listCollections")!;
+    // Convex's page options also take limits on what one page reads. Set to 0, as a model that fills in every argument sets them, the read failed.
+    const filled = { paginationOpts: { numItems: 50, cursor: null, endCursor: null, id: 0, maximumRowsRead: 0, maximumBytesRead: 0 } };
+    expect(inputSchema(listed).parse(filled)).toEqual({ paginationOpts: { numItems: 50, cursor: null } });
+    expect(Object.keys((definition(listed).arguments as unknown as { properties: { paginationOpts: { properties: object } } }).properties.paginationOpts.properties)).toEqual(["numItems", "cursor"]);
+  });
+
   it("find actions by what they do, with the arguments they take and whether they ask first", () => {
     const { actions } = found("delete an assistant chat");
     const remove = actions.find((action) => action.name === "assistant/threads:remove");
@@ -658,7 +715,7 @@ describe("the assistant's tools", () => {
   it("go with their chat when it's deleted", async () => {
     const t = convexTest(schema);
     const { asAda, threadId, say, steps, results } = await chatOf(t);
-    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "library_mutations_saveToLibrary", input: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
     expect(await steps()).toHaveLength(1);
     await asAda.mutation(api.assistant.threads.remove, { threadId: threadId as Id<"assistantThreads"> });

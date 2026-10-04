@@ -13,7 +13,7 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireActiveUser, requireAuth } from "./auth";
 import { createError } from "./errors";
-import { endStep } from "../assistant/steps";
+import { DONE, endStep } from "../assistant/steps";
 
 /** Who made a change: the person themselves, or the assistant acting for them. */
 export type Author = "user" | "assistant";
@@ -66,18 +66,28 @@ export type UserMutation<Args extends PropertyValidators, Returns extends Generi
     run: (ctx: MutationCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author) => Promise<Infer<Returns>>;
   };
 
+/**
+ * What the assistant's side passes a change an action makes (`changes`): the step of the
+ * reply the call is, and whether the person was asked about it and said yes. The action
+ * hands both to the mutation that writes, which checks `asksFirst` again unless approved and
+ * ends the step, in the write's own transaction, as a change that is a mutation does.
+ */
+export type ChangeCall = { stepId?: Id<"assistantSteps">; approved: boolean };
+
 /** A user action that calls an outside service (OpenAlex, an AI provider, Autumn), reading and writing through queries and mutations. */
 export type UserActionEntry<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
   Labels<keyof Args & string> &
   AsksFirst<Args> & {
     kind: "action";
-    run: (ctx: ActionCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author) => Promise<Infer<Returns>>;
+    /** It writes, after reading from outside: its write ends the step and rechecks approval (see ChangeCall). One without this only reads. */
+    changes?: true;
+    run: (ctx: ActionCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author, call?: ChangeCall) => Promise<Infer<Returns>>;
   };
 
 /** What the registry list and the assistant's tools read from an entry. */
 export type UserAction =
   | { kind: "query"; path: string; description: string; args: PropertyValidators }
-  | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators } & Labels & AsksFirst<PropertyValidators>);
+  | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators; changes?: true } & Labels & AsksFirst<PropertyValidators>);
 
 /** Entries are written with these so their argument and result types are inferred. */
 export const defineUserQuery = <Args extends PropertyValidators, Returns extends GenericValidator>(
@@ -214,7 +224,8 @@ export function assistantMutation<Args extends PropertyValidators, Returns exten
         // Read here, in the change's own transaction: what was true before the call may not be now.
         if (!approved && entry.asksFirst && (await entry.asksFirst(ctx, actingAs, rest))) throw createError("FORBIDDEN", ASKS_FIRST);
         const result = await entry.run(ctx, actingAs, rest, "assistant");
-        if (stepId) await endStep(ctx, stepId, result);
+        // The step, and through it the model, is told a change that returns nothing was made.
+        if (stepId) await endStep(ctx, stepId, result ?? DONE);
         return result;
       },
     }),
@@ -241,14 +252,14 @@ export function userAction<Args extends PropertyValidators, Returns extends Gene
 /** The same action for the assistant: it runs as the sender and records the assistant as the author. */
 export function assistantAction<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserActionEntry<Args, Returns>) {
   return tagged(
-    internalAction<Args & typeof userArg, Returns, Promise<Infer<Returns>>>({
-      args: { ...entry.args, ...userArg },
+    internalAction<Args & typeof changeArgs, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...changeArgs },
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const { userId, rest } = asUser<Args>(args);
+        const { userId, stepId, approved, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
         // The sender may have been suspended or deleted since the turn began.
         const user: Doc<"users"> = await ctx.runQuery(internal.users.internal.getActiveUser, { userId });
-        return entry.run(ctx, user._id, rest, "assistant");
+        return entry.run(ctx, user._id, own as ObjectType<Args>, "assistant", { ...(stepId ? { stepId } : {}), approved: approved === true });
       },
     }),
     entry.path,
