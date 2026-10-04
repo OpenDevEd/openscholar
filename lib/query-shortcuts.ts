@@ -3,7 +3,8 @@
  * text. Pure, so the browser expands from its store and the server from the account's
  * Convex records, to the same query.
  */
-const SHORTCUT = /(\w[\w-]*)\.\.\./g;
+// A name starts where a word does. Saying so changes no match, and keeps a long word from being tried from each of its letters.
+const SHORTCUT = /(?<!\w)(\w[\w-]*)\.\.\./g;
 
 /** A name as it is typed: a space becomes a dash, and what a name can't hold is dropped. */
 export function typedShortcutName(value: string) {
@@ -18,6 +19,19 @@ export function savedShortcutName(typed: string) {
 /** Each shortcut name a query uses, once. */
 export function shortcutNames(query: string): string[] {
   return [...new Set(Array.from(query.matchAll(SHORTCUT), (match) => match[1]))];
+}
+
+/** The query in order: the text between its shortcuts, and each shortcut with its name. */
+export function shortcutPieces(query: string): Array<{ text: string; shortcut?: string }> {
+  const pieces: Array<{ text: string; shortcut?: string }> = [];
+  let at = 0;
+  for (const match of query.matchAll(SHORTCUT)) {
+    if (match.index > at) pieces.push({ text: query.slice(at, match.index) });
+    pieces.push({ text: match[0], shortcut: match[1] });
+    at = match.index + match[0].length;
+  }
+  if (at < query.length) pieces.push({ text: query.slice(at) });
+  return pieces;
 }
 
 /** A shortcut's expansion by name. */

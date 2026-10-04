@@ -5,18 +5,17 @@ import { useTranslations } from "next-intl";
 import { BookmarkPlus, CircleAlert, Plus, TriangleAlert } from "@/components/icons";
 import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { getIdColor } from "@/lib/format";
-import { savedShortcutName, typedShortcutName } from "@/lib/query-shortcuts";
+import { savedShortcutName, shortcutPieces, typedShortcutName } from "@/lib/query-shortcuts";
 import { useQueryShortcuts } from "@/lib/research/reads";
 import { useKeywordExpansionDialogStore, useKeywordExpansionStore } from "@/lib/store";
 import { useShortcutCount } from "@/lib/research/shortcut-list";
 import { cn } from "@/lib/utils";
 
-// The parts of a query that read differently: a quoted phrase, a bookmark (a
-// name, then three periods), an operator, a bracket.
-const PARTS = /("[^"]*"?)|(\w[\w-]*)\.\.\.|\b(AND|OR|NOT)\b|([()])/gi;
+// The parts of a query's own text that read differently: a quoted phrase, an operator, a bracket.
+const SYNTAX = /("[^"]*"?)|\b(AND|OR|NOT)\b|([()])/gi;
 // The text and its coloured copy share these, so every character lines up.
 const QUERY_TEXT = "whitespace-pre-wrap px-3 pb-3 pt-7 font-mono text-sm leading-6 [overflow-wrap:anywhere] [scrollbar-gutter:stable]";
 
@@ -28,6 +27,21 @@ function Tinted({ name, outlined = false, children }: { name: string; outlined?:
       {children}
     </span>
   );
+}
+
+/** Query text between bookmarks, with its phrases, operators and brackets told apart. */
+function Syntax({ text }: { text: string }) {
+  const out: ReactNode[] = [];
+  let at = 0;
+  for (const part of text.matchAll(SYNTAX)) {
+    out.push(
+      text.slice(at, part.index),
+      <span key={part.index} className={part[1] ? "text-foreground" : part[2] ? "text-primary dark:text-muted-foreground" : "text-subtle-foreground"}>{part[0]}</span>,
+    );
+    at = part.index + part[0].length;
+  }
+  out.push(text.slice(at));
+  return out;
 }
 
 /** A bookmark the query names that doesn't exist. */
@@ -67,8 +81,9 @@ export function NewBookmarkDialog() {
   const saved = (shortcut: string) => (Object.prototype.hasOwnProperty.call(keywords, shortcut) ? keywords[shortcut]?.expansion : undefined);
   const taken = Boolean(name && nameKnown && saved(name) !== undefined);
   const color = name ? getIdColor(name) : null;
-  const parts = Array.from(expansion.matchAll(PARTS));
-  const reuses = parts.some((part) => part[2] && saved(part[2]));
+  // The query split where a search will: at the bookmarks it names, also inside a phrase.
+  const pieces = shortcutPieces(expansion);
+  const reuses = pieces.some((piece) => piece.shortcut);
 
   const openDialog = () => {
     setTyped("");
@@ -96,25 +111,14 @@ export function NewBookmarkDialog() {
     setOpen(false);
   };
 
-  // The query in pieces, each drawn by `draw`; the text between them is kept as it is.
-  const pieces = (draw: (part: RegExpMatchArray, key: number) => ReactNode) => {
-    const out: ReactNode[] = [];
-    let at = 0;
-    parts.forEach((part, index) => {
-      out.push(expansion.slice(at, part.index), draw(part, index));
-      at = (part.index ?? 0) + part[0].length;
-    });
-    out.push(expansion.slice(at));
-    return out;
-  };
-
   return (
-    <>
-      <Button size="sm" className={BAR_ACTION} onClick={openDialog}>
-        <Plus />
-        <span className={BAR_LABEL}>{tb("addBookmark")}</span>
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(next) => (next ? openDialog() : setOpen(false))}>
+      <DialogTrigger asChild>
+        <Button size="sm" className={BAR_ACTION}>
+          <Plus />
+          <span className={BAR_LABEL}>{tb("addBookmark")}</span>
+        </Button>
+      </DialogTrigger>
         {/* Held at the top, so it grows downwards as the query does and nothing above the caret moves. */}
         <DialogContent className="top-[10dvh] max-h-[calc(90dvh-1rem)] translate-y-0 gap-0 p-0 sm:max-w-2xl" aria-describedby={undefined}>
           {/* min-w-0: a long name must not widen the dialog. */}
@@ -158,11 +162,13 @@ export function NewBookmarkDialog() {
                 {/* The query. Its coloured copy lies under the text being typed, which is itself see-through. */}
                 <div className="relative overflow-hidden rounded-xl border border-input bg-field transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
                   <div ref={colored} aria-hidden className={cn(QUERY_TEXT, "pointer-events-none absolute inset-0 overflow-hidden")}>
-                    {pieces((part, key) =>
-                      part[2] ? (
-                        known && !saved(part[2]) ? <Missing key={key} label={tv("bookmarkNotFound", { keyword: part[2] })}>{part[0]}</Missing> : <Tinted key={key} name={part[2]} outlined>{part[0]}</Tinted>
+                    {pieces.map((piece, key) =>
+                      !piece.shortcut ? (
+                        <Syntax key={key} text={piece.text} />
+                      ) : known && saved(piece.shortcut) === undefined ? (
+                        <Missing key={key} label={tv("bookmarkNotFound", { keyword: piece.shortcut })}>{piece.text}</Missing>
                       ) : (
-                        <span key={key} className={part[1] ? "text-foreground" : part[3] ? "text-primary dark:text-muted-foreground" : "text-subtle-foreground"}>{part[0]}</span>
+                        <Tinted key={key} name={piece.shortcut} outlined>{piece.text}</Tinted>
                       ),
                     )}
                     {"\n"}
@@ -178,29 +184,30 @@ export function NewBookmarkDialog() {
                     spellCheck={false}
                     className={cn(
                       QUERY_TEXT,
-                      "relative block max-h-[36dvh] min-h-36 w-full resize-none overflow-y-auto bg-transparent text-transparent caret-foreground outline-none field-sizing-content placeholder:text-subtle-foreground",
+                      // Selected text is drawn by the field itself, as the selection covers the coloured copy.
+                      "relative block max-h-[36dvh] min-h-36 w-full resize-none overflow-y-auto bg-transparent text-transparent caret-foreground outline-none field-sizing-content placeholder:text-subtle-foreground selection:bg-primary/25 selection:text-foreground",
                     )}
                   />
                 </div>
               </div>
 
-              {/* The query as a search runs it: each bookmark it reuses, replaced by what it stands for. */}
+              {/* The query as a search runs it: each bookmark it names, replaced by what it stands for. It
+                  keeps one height from the moment a bookmark is named, so a lookup that returns moves nothing. */}
               {reuses && (
                 <div className="fade-enter space-y-1.5">
                   <p className="pl-1 text-xs font-medium text-muted-foreground">{tb("expandsTo")}</p>
-                  <p className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-inset p-3 font-mono text-xs leading-6 [overflow-wrap:anywhere]">
-                    {pieces((part, key) => {
-                      const stands = part[2] ? saved(part[2]) : undefined;
-                      if (stands) return <Tinted key={key} name={part[2]}>{stands}</Tinted>;
-                      if (part[2] && known) {
-                        return (
-                          <Missing key={key} label={tv("bookmarkNotFound", { keyword: part[2] })}>
-                            <TriangleAlert aria-hidden className="mr-1 inline size-3.5 align-[-0.2em]" />
-                            {part[0]}
-                          </Missing>
-                        );
-                      }
-                      return part[0];
+                  <p className="h-36 overflow-y-auto whitespace-pre-wrap rounded-xl bg-inset p-3 font-mono text-xs leading-6 [overflow-wrap:anywhere]">
+                    {pieces.map((piece, key) => {
+                      if (!piece.shortcut) return piece.text;
+                      const stands = saved(piece.shortcut);
+                      if (stands) return <Tinted key={key} name={piece.shortcut}>{stands}</Tinted>;
+                      if (!known) return piece.text;
+                      return (
+                        <Missing key={key} label={tv("bookmarkNotFound", { keyword: piece.shortcut })}>
+                          <TriangleAlert aria-hidden className="mr-1 inline size-3.5 align-[-0.2em]" />
+                          {piece.text}
+                        </Missing>
+                      );
                     })}
                   </p>
                 </div>
@@ -216,7 +223,6 @@ export function NewBookmarkDialog() {
             </div>
           </form>
         </DialogContent>
-      </Dialog>
-    </>
+    </Dialog>
   );
 }
