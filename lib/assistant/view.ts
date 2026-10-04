@@ -1,7 +1,8 @@
 /**
  * Where a person is in the app when they send the assistant a message (#327): the page's
  * path, and the parameters of its address that say what it shows. The assistant reads it
- * with the message, and reads the page's records through its tools.
+ * with the message, in a note that also says the date, and reads the page's records
+ * through its tools.
  */
 
 /**
@@ -34,7 +35,7 @@ const VALUE_MAX = 80;
 function shown(value: string) {
   const characters = [...value];
   const kept = characters.length > VALUE_MAX ? `${characters.slice(0, VALUE_MAX).join("")}…` : value;
-  return kept.replace(/[<>&%\n\r\t]/g, encodeURIComponent);
+  return kept.replace(/[<>&%;\n\r\t]/g, encodeURIComponent);
 }
 
 /** A page's address as a view: its path and the parameters kept for that page. Null for one that isn't a page of the app. */
@@ -54,8 +55,12 @@ export function viewOf(address: string): string | null {
     const value = url.searchParams.get(key);
     return value ? [`${key}=${shown(value)}`] : [];
   });
-  return `${path}${parameters.length ? `?${parameters.join("&")}` : ""}`;
+  return `${path.replace(/;/g, "%3B")}${parameters.length ? `?${parameters.join("&")}` : ""}`;
 }
 
-/** A view as the model reads it, after what the person typed. */
-export const viewPart = (view: string) => `<view>${view}</view>`;
+/**
+ * The app's note to the model, after what the person typed: the page they're on, when it's
+ * a page of the app, and the date. Without the date a model takes "the past year" from when
+ * it was trained.
+ */
+export const notePart = ({ page, today }: { page?: string; today: string }) => `<app_context>${page === undefined ? "" : `page: ${page}; `}today: ${today}</app_context>`;

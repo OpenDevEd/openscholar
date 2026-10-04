@@ -7,32 +7,65 @@
 import { v, type GenericValidator, type Infer, type ObjectType } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
-import { internalAction, internalMutation } from "../lib/functions";
 import { assistantAction, assistantMutation, defineUserAction, defineUserMutation, reversedBy, userAction, userMutation } from "../lib/userActions";
+import { internalAction, internalMutation, internalQuery, type ActionCtx } from "../lib/functions";
 import { countSearch, PAGE_ORDERED_SORT, readSearchPage } from "../paperSets/openalex";
-import { keptByRating, SCREENING_FIELDS, toPaper, type SavedSearchRequest, type Work } from "../paperSets/search";
+import { ASSISTANT_FIELDS, keptByRating, requestOf, savedSearchValidator, spender, toPaper, type SavedSearchRequest, type SearchPaper, type Work } from "../paperSets/search";
 import { COUNTRY_HIERARCHY, getCountryCodesForRegions, MIN_YEAR } from "../../lib/constants";
 import { authorFilterValue } from "../../lib/openalex/author-filter";
 import { INSTITUTION_TYPES, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { currentSearch, type SavedSearch, type UndoCommand } from "../../lib/research/records";
 import { applyCommand, findSearch, revisionRow } from "./records";
-import { AUTHORS_SHOWN, changesValidator, LAST_PAGE, LAST_PAGE_FROM_START, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
+import { AUTHORS_SHOWN, changesValidator, COUNTRIES_SHOWN, LAST_PAGE, LAST_PAGE_FROM_START, pageValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
+import type { Id } from "../_generated/dataModel";
 
 const CREATE = "research/searches:create" as const;
 const UPDATE = "research/searches:update" as const;
 const RESTORE = "research/searches:restore" as const;
 const REMOVE = "research/searches:remove" as const;
+const DELETE = "research/searches:deleteSearch" as const;
 
 const SORTS = { relevance: "relevance_score:desc", most_cited: "cited_by_count:desc", newest: "publication_date:desc", oldest: "publication_date:asc" } as const;
-/** Characters of each text a results page carries, so ten whole papers stay within what the model reads at once. */
-const SHOWN = { title: 160, author: 30, name: 60, venue: 60, abstract: 180 };
-const short = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)}…` : text);
+/**
+ * Characters of each text a results page carries, so ten whole papers stay within what the
+ * model reads at once. The abstract is long enough to tell what a paper studied and how:
+ * from its first 180 characters, the model couldn't say a paper's method or setting.
+ */
+export const SHOWN = { title: 160, author: 30, name: 60, venue: 60, abstract: 600 };
+export const short = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)}…` : text);
 /** A name the `authors` filter can search by: whole when it's short, its leading whole words when it isn't. */
-const leading = (name: string, max: number) => (name.length > max ? name.slice(0, max).replace(/\s+\S*$/, "") : name);
+export const leading = (name: string, max: number) => (name.length > max ? name.slice(0, max).replace(/\s+\S*$/, "") : name);
 
 type Settings = ObjectType<typeof searchSettings>;
 
-const needsQuery = () => createError("VALIDATION_ERROR", "A search needs a query.");
+const needsQuery = () => createError("VALIDATION_ERROR", "A search needs a query, or a filter to search by.");
+/** The fields that narrow a search by themselves, so it can do without a query: its page searches by a filter alone too. */
+const NARROWS = ["authors", "funders", "researchAreas", "selectedRegions", "selectedCountryFocus", "workTypes", "workLanguages", "institutionTypes", "sdgs", "citesItemId", "citedByItemId", "relatedToItemId", "dateRange", "yearRange", "minCitations", "openAccessOnly", "hasAbstract", "reviewFilter", "onlyRatedPapers"] as const;
+// A citation minimum of none is no filter: the request leaves it out.
+const off = (value: unknown) => value === undefined || value === false || value === 0 || value === "" || (Array.isArray(value) && !value.length);
+const narrowed = (search: Partial<SavedSearch>) => Boolean(search.query?.trim()) || NARROWS.some((field) => !off(search[field]));
+
+/** A search from a query and settings, as one is first saved. */
+function newSearch(id: string, query: string | undefined, settings: Settings): SavedSearch {
+  const now = new Date().toISOString();
+  const search: SavedSearch = {
+    id,
+    query: query?.trim() ?? "",
+    field: "title_and_abstract",
+    // Counted right after it's made (`recount`).
+    count: 0,
+    queryHistoryCount: 0,
+    questionCount: 0,
+    questionText: "",
+    screeningQuestions: [],
+    screeningResponses: [],
+    ...savedFields(settings).fields,
+    createdAt: now,
+    updatedAt: now,
+  };
+  if (!narrowed(search)) throw needsQuery();
+  return search;
+}
 const authorValidator = v.union(v.literal("user"), v.literal("assistant"));
 
 // A declared function, so a call to it ends the branch for the type checker as a `throw` does.
@@ -130,7 +163,7 @@ function savedFields(settings: Settings, current?: SavedSearch) {
     if (goals.some((goal) => !Number.isInteger(goal) || goal < 1 || goal > 17)) invalid("An SDG is its goal's number, 1 to 17.");
     fields.sdgs = [...new Set(goals)].map(String);
   }
-  for (const [setting, field] of [["cites", "citesItemId"], ["citedBy", "citedByItemId"], ["relatedTo", "relatedToItemId"]] as const) {
+  for (const [setting, field] of [["citationsOf", "citesItemId"], ["referencesOf", "citedByItemId"], ["relatedTo", "relatedToItemId"]] as const) {
     const given = settings[setting];
     if (given === undefined) continue;
     // The page keeps an empty ID for one that's off.
@@ -183,33 +216,17 @@ const madeHere = v.object({ created: v.number(), revision: v.number() });
 export const createAction = defineUserMutation({
   path: CREATE,
   description:
-    "Makes a saved search in the person's account from a query and filters, which shows in their search history at once. It doesn't run the search: read its results with research/searches:results. " +
-    "The query is keywords, with AND, OR, NOT and quoted phrases. " +
+    "Makes a saved search in the person's account from a query, filters, or both, which shows in their search history at once. For when they ask for a search to keep: to look papers up, use research/papers:search, which saves nothing. " +
+    "It doesn't run the search: read its results with research/searches:results. The query is keywords, with AND, OR, NOT and quoted phrases. " +
     SETTINGS +
     " Returns the search's ID, and `undo`, which deletes it while nothing has been done with it.",
-  args: { query: v.string(), ...searchSettings },
+  args: { query: v.optional(v.string()), ...searchSettings },
   returns: v.object({ id: v.string(), undo: reversedBy(REMOVE, { id: v.string(), expect: madeHere }) }),
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
   run: async (ctx, userId, { query, ...settings }, author) => {
-    if (!query.trim()) throw needsQuery();
-    const now = new Date().toISOString();
-    const search: SavedSearch = {
-      id: crypto.randomUUID(),
-      query: query.trim(),
-      field: "title_and_abstract",
-      // Counted right after it's made (`recount`).
-      count: 0,
-      queryHistoryCount: 0,
-      questionCount: 0,
-      questionText: "",
-      screeningQuestions: [],
-      screeningResponses: [],
-      ...savedFields(settings).fields,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const search = newSearch(crypto.randomUUID(), query, settings);
     const undo = await applyCommand(ctx, userId, { kind: "createSearch", search }, author);
     await ctx.scheduler.runAfter(0, internal.research.searches.recount, { userId, id: search.id, author });
     return { id: search.id, ...(undo?.kind === "deleteSearch" ? { undo: { path: REMOVE, args: { id: undo.id, expect: { created: undo.expect.created, revision: undo.expect.revision } } } } : {}) };
@@ -269,8 +286,8 @@ function settingsOf(changes: Infer<typeof changesValidator>) {
   let query: string | undefined;
   for (const { setting, value } of changes) {
     if (setting === "query") {
-      if (typeof value !== "string" || !value.trim()) throw needsQuery();
-      query = value;
+      // No query at all leaves a search by its filters alone.
+      query = typeof value === "string" ? value : value === null ? "" : invalid("`query` takes text.");
       continue;
     }
     const validator = searchSettings[setting];
@@ -284,7 +301,7 @@ export const updateAction = defineUserMutation({
   path: UPDATE,
   description:
     "Changes a saved search: its query, its filters, or both. Give only what changes, as a list: each change names one setting and its new value, and a value of null takes a filter off. Every setting left out of the list stays as it is. " +
-    "The person's open page follows, from its first page of results. `query` is the search's words. " +
+    "The person's open page follows, from its first page of results. `query` is the search's words, which a search with a filter can do without. " +
     SETTINGS +
     " " +
     "Returns `undo`, which puts the search back as it was before this change. It is refused if the search changed again in between.",
@@ -305,6 +322,7 @@ export const updateAction = defineUserMutation({
     const current = currentSearch(found.data);
     const { fields: { field = current.field, ...filters }, clear } = savedFields(settings, current);
     const asked = query?.trim() ?? current.query;
+    if (!narrowed({ ...current, ...filters, ...Object.fromEntries(clear.map((key) => [key, undefined])), query: asked })) throw needsQuery();
     // A new query, or the same one read in another field, is one more query the search has had, so it's its own edit.
     const requeried = asked !== current.query || field !== current.field;
     // A filter that's off is kept as nothing, false, an empty list or an empty ID: taking one off that's already off changes nothing.
@@ -349,7 +367,7 @@ export const restoreForAssistant = assistantMutation(restoreAction);
 export const removeAction = defineUserMutation({
   path: REMOVE,
   description:
-    "Deletes a saved search that was just made, as the undo of making it: `expect` is the search as its creation left it, and the search stays if anything has been done with it since. It deletes no other search.",
+    "Takes back a saved search that research/searches:create just made, as its undo: `expect` is the search as its creation left it, and the search stays if anything has been done with it since. Only for that undo: any other search goes with research/searches:deleteSearch.",
   args: { id: v.string(), expect: madeHere },
   returns: v.null(),
   spendsCredits: false,
@@ -364,6 +382,68 @@ export const removeAction = defineUserMutation({
 });
 export const remove = userMutation(removeAction);
 export const removeForAssistant = assistantMutation(removeAction);
+
+export const deleteAction = defineUserMutation({
+  path: DELETE,
+  description: "Deletes one of the person's saved searches: it leaves their search history, and they can't get it back. So the person is asked first.",
+  args: { id: v.string() },
+  returns: v.null(),
+  spendsCredits: false,
+  outsideEffect: false,
+  // The app has no way to bring a deleted search back, so the person is asked.
+  undoable: false,
+  run: async (ctx, userId, { id }, author) => {
+    if (!(await findSearch(ctx, userId, id))) throw createError("NOT_FOUND", "Search not found.");
+    await applyCommand(ctx, userId, { kind: "deleteSearch", id }, author);
+    return null;
+  },
+});
+export const deleteSearch = userMutation(deleteAction);
+export const deleteSearchForAssistant = assistantMutation(deleteAction);
+
+/** The request a search with this query and these settings would make, saved nowhere: for trying one (./papers.ts). */
+export const requestFor = internalQuery({
+  args: { userId: v.id("users"), query: v.optional(v.string()), settings: v.object(searchSettings) },
+  returns: savedSearchValidator,
+  handler: async (ctx, { userId, query, settings }) => requestOf(ctx, userId, newSearch("unsaved", query, settings), 0),
+});
+
+/** A paper as a page of results gives it. */
+function shownPaper(work: Work, paper: SearchPaper) {
+  // An author OpenAlex has a record for comes with their ID, which the `authors` filter takes. One it has none for is filtered by name, so that name comes as words to search by.
+  const authors = (work.authorships ?? []).flatMap(({ author }) => (author?.display_name ? [author.id ? { name: short(author.display_name, SHOWN.author), id: author.id.split("/").at(-1)! } : { name: leading(author.display_name, SHOWN.name) }] : []));
+  const countries = [...new Set((work.authorships ?? []).flatMap(({ institutions }) => (institutions ?? []).flatMap(({ country_code: country }) => (country ? [country] : []))))];
+  return {
+    id: paper.openalexId,
+    title: short(paper.title, SHOWN.title),
+    ...(authors.length ? { authors: authors.slice(0, AUTHORS_SHOWN) } : {}),
+    ...(authors.length > AUTHORS_SHOWN ? { moreAuthors: authors.length - AUTHORS_SHOWN } : {}),
+    ...(countries.length ? { countries: countries.slice(0, COUNTRIES_SHOWN) } : {}),
+    ...(paper.publicationYear === undefined ? {} : { year: paper.publicationYear }),
+    ...(paper.venue ? { venue: short(paper.venue, SHOWN.venue) } : {}),
+    ...(work.type ? { type: work.type } : {}),
+    ...(paper.doi ? { doi: paper.doi.replace(/^https?:\/\/doi\.org\//, "") } : {}),
+    ...(typeof work.open_access?.is_oa === "boolean" ? { openAccess: work.open_access.is_oa } : {}),
+    ...(paper.citedByCount === undefined ? {} : { citations: paper.citedByCount }),
+    ...(paper.abstract ? { abstract: short(paper.abstract, SHOWN.abstract) } : {}),
+  };
+}
+
+/**
+ * A page of the papers a request finds, as the model reads them, in the order its results
+ * page lists them. Each request counts against the person's OpenAlex allowance.
+ */
+export async function readPage(ctx: ActionCtx, userId: Id<"users">, found: SavedSearchRequest, page: number, notValid: string): Promise<Infer<typeof resultsValidator>> {
+  if (!Number.isInteger(page) || page < 1) throw createError("VALIDATION_ERROR", "Pages count from 1.");
+  if (!found.request) throw createError("VALIDATION_ERROR", notValid);
+  // Checked before anything is spent. OpenAlex answers no numbered page past the last, and a sort read from the start costs a request for every 200 works.
+  const lastPage = found.request.sort === PAGE_ORDERED_SORT ? LAST_PAGE : LAST_PAGE_FROM_START;
+  if (page > lastPage) throw createError("VALIDATION_ERROR", `These results can be read up to page ${lastPage.toLocaleString("en")}. Narrow the search to reach the rest.`);
+  const { works, total } = await readSearchPage<Work>(found.request, { page, size: RESULTS_PAGE, select: ASSISTANT_FIELDS }, spender(ctx, found.clerkId));
+  const papers = await keptByRating(ctx, userId, works.map(toPaper), found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined);
+  const read = new Map(works.map((work) => [work.id, work]));
+  return { total, page, pages: Math.min(Math.ceil(total / RESULTS_PAGE), lastPage), papers: papers.map((paper) => shownPaper(read.get(paper.openalexId)!, paper)) };
+}
 
 /**
  * Keeps how many results a search has, as its results page does when it reads them, so the
@@ -392,7 +472,7 @@ export const recount = internalAction({
     try {
       const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: id });
       if (!found.request) return null;
-      const count = await countSearch(found.request, (pages) => ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId: found.clerkId, count: pages }));
+      const count = await countSearch(found.request, spender(ctx, found.clerkId));
       await ctx.runMutation(internal.research.searches.counted, { userId, id, revision: found.revision, count, author });
     } catch (error) {
       console.error("[research] couldn't count a search after it changed", { id, error: error instanceof Error ? error.message : String(error) });
@@ -404,46 +484,20 @@ export const recount = internalAction({
 export const resultsAction = defineUserAction({
   path: "research/searches:results",
   description:
-    `Reads a page of a saved search's results from OpenAlex, ${RESULTS_PAGE} papers a page: each paper's ID, title, first authors with their IDs, year, venue, citations and the start of its abstract, with how many results the search has in all. ` +
+    `Reads a page of a saved search's results from OpenAlex, ${RESULTS_PAGE} papers a page: each paper's ID, title, first authors with their IDs, the countries they work in, year, venue, type, DOI, whether it's open access, citations and the start of its abstract, with how many results the search has in all. ` +
     "The papers come in the order the search's own page lists them. A search that keeps only papers the person rated returns those of each page's papers, and its total counts the papers before that filter. " +
     "Reading counts against the person's OpenAlex allowance: one request a page by relevance, and under any other sort one for every 200 results up to the page.",
-  args: { id: v.string(), page: v.optional(v.number()) },
+  args: { id: v.string(), page: pageValidator },
   returns: resultsValidator,
   spendsCredits: false,
   outsideEffect: false,
   // It only keeps the search's result count, as reading the results page does: nothing to undo.
   undoable: true,
-  run: async (ctx, userId, { id, page = 1 }, author): Promise<Infer<typeof resultsValidator>> => {
-    if (!Number.isInteger(page) || page < 1) throw createError("VALIDATION_ERROR", "Pages count from 1.");
+  run: async (ctx, userId, { id, page }, author): Promise<Infer<typeof resultsValidator>> => {
     const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: id });
-    if (!found.request) throw createError("VALIDATION_ERROR", "This search's query isn't valid. Fix it on the results page first.");
-    // Checked before anything is spent. OpenAlex answers no numbered page past the last, and a sort read from the start costs a request for every 200 works.
-    const lastPage = found.request.sort === PAGE_ORDERED_SORT ? LAST_PAGE : LAST_PAGE_FROM_START;
-    if (page > lastPage) throw createError("VALIDATION_ERROR", `This search's results can be read up to page ${lastPage.toLocaleString("en")}. Narrow the search to reach the rest.`);
-    const { works, total } = await readSearchPage<Work>(found.request, { page, size: RESULTS_PAGE, select: SCREENING_FIELDS }, (count) =>
-      ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId: found.clerkId, count }),
-    );
-    await ctx.runMutation(internal.research.searches.counted, { userId, id, revision: found.revision, count: total, author });
-    const papers = await keptByRating(ctx, userId, works.map(toPaper), found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined);
-    // An author OpenAlex has a record for comes with their ID, which the `authors` filter takes. One it has none for is filtered by name, so that name comes as words to search by.
-    const authorsOf = new Map(
-      works.map((work) => [work.id, (work.authorships ?? []).flatMap(({ author }) => (author?.display_name ? [author.id ? { name: short(author.display_name, SHOWN.author), id: author.id.split("/").at(-1)! } : { name: leading(author.display_name, SHOWN.name) }] : []))]),
-    );
-    return {
-      total,
-      page,
-      pages: Math.min(Math.ceil(total / RESULTS_PAGE), lastPage),
-      papers: papers.map((paper) => ({
-        id: paper.openalexId,
-        title: short(paper.title, SHOWN.title),
-        ...(authorsOf.get(paper.openalexId)?.length ? { authors: authorsOf.get(paper.openalexId)!.slice(0, AUTHORS_SHOWN) } : {}),
-        ...((authorsOf.get(paper.openalexId)?.length ?? 0) > AUTHORS_SHOWN ? { moreAuthors: authorsOf.get(paper.openalexId)!.length - AUTHORS_SHOWN } : {}),
-        ...(paper.publicationYear === undefined ? {} : { year: paper.publicationYear }),
-        ...(paper.venue ? { venue: short(paper.venue, SHOWN.venue) } : {}),
-        ...(paper.citedByCount === undefined ? {} : { citations: paper.citedByCount }),
-        ...(paper.abstract ? { abstract: short(paper.abstract, SHOWN.abstract) } : {}),
-      })),
-    };
+    const read = await readPage(ctx, userId, found, page ?? 1, "This search's query isn't valid. Fix it on the results page first.");
+    await ctx.runMutation(internal.research.searches.counted, { userId, id, revision: found.revision, count: read.total, author });
+    return read;
   },
 });
 export const results = userAction(resultsAction);

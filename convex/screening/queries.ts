@@ -2,7 +2,7 @@ import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import { effortValidator } from "../aiModelConfig/validators";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import {
   paperSetValidator,
   saveToValidator,
@@ -295,10 +295,8 @@ export const getActiveScreeningJobProgress = query({
   },
 });
 
-/** The person's screening jobs, newest first, a page at a time; with `status`, only the jobs in it. */
-export const listUserScreeningJobs = query({
-  args: { paginationOpts: paginationOptsValidator, status: v.optional(screeningJobStatusValidator) },
-  returns: paginationResultValidator(
+const jobListArgs = { paginationOpts: paginationOptsValidator, status: v.optional(screeningJobStatusValidator) };
+const jobListValidator = paginationResultValidator(
     v.object({
       _id: v.id("screeningJobs"),
       _creationTime: v.number(),
@@ -313,15 +311,14 @@ export const listUserScreeningJobs = query({
       targetCollectionName: v.optional(v.string()),
       ...jobFacts,
     }),
-  ),
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return { page: [], isDone: true, continueCursor: "" };
+  );
 
+/** A page of someone's screening jobs, newest first, each with what it has done so far; with `status`, only the jobs in it. */
+async function jobsOf(ctx: QueryCtx, userId: Id<"users">, args: { paginationOpts: PaginationOptions; status?: Doc<"screeningJobs">["status"] }) {
     const { status } = args;
     const jobs = await (status
-      ? ctx.db.query("screeningJobs").withIndex("by_user_status", (q) => q.eq("userId", user._id).eq("status", status))
-      : ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", user._id))
+      ? ctx.db.query("screeningJobs").withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", status))
+      : ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", userId))
     )
       .order("desc")
       .paginate({ ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, MAX_LISTED_SCREENING_JOBS) });
@@ -353,8 +350,30 @@ export const listUserScreeningJobs = query({
       }),
     );
     return { ...jobs, page };
+}
+
+/** The person's screening jobs, newest first, a page at a time; with `status`, only the jobs in it. */
+export const listUserScreeningJobs = query({
+  args: jobListArgs,
+  returns: jobListValidator,
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return { page: [], isDone: true, continueCursor: "" };
+    return await jobsOf(ctx, user._id, args);
   },
 });
+
+export const listJobsAction = defineUserQuery({
+  path: "screening/queries:listJobs",
+  description:
+    "Lists the person's screening jobs, newest first, a page at a time: each job's ID and status, how many papers it has, how many are screened, kept (qualified), failed, skipped and being read now, when it started and finished, the questions it asks, where its papers came from, and the collection its kept papers go to. " +
+    "With `status`, only the jobs in it. A job's papers are read with screening/papers:list.",
+  args: jobListArgs,
+  returns: jobListValidator,
+  run: async (ctx, userId, args) => jobsOf(ctx, userId, args),
+});
+export const listJobs = userQuery(listJobsAction);
+export const listJobsForAssistant = assistantQuery(listJobsAction);
 
 /** How many screening jobs the person has, from the kept count (research/recordCounts.ts). */
 export const countUserScreeningJobs = query({

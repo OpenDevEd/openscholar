@@ -169,6 +169,25 @@ export async function autocomplete(entity: "authors" | "funders", text: string, 
   );
 }
 
+/** One work by its ID, or null when OpenAlex has none by it. One request, counted against the acting person's allowance. */
+export async function readWork<Work>(id: string, select: string, spend: (pages: number) => Promise<boolean>): Promise<Work | null> {
+  contact();
+  if (!(await spend(1))) throw limited();
+  let response: Response;
+  try {
+    response = await fetch(openAlexUrl(`works/${id}`, { select }), { signal: AbortSignal.timeout(PAGE_TIMEOUT_MS) });
+  } catch (error) {
+    console.error(`[paperSets] OpenAlex work ${id} didn't answer`, error);
+    throw createError("VALIDATION_ERROR", "OpenAlex didn't return this paper in time. Try again in a moment.");
+  }
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    console.error(`[paperSets] OpenAlex work ${id} failed: ${response.status} ${(await response.text().catch(() => "")).slice(0, 500)}`);
+    throw createError("VALIDATION_ERROR", `OpenAlex couldn't return this paper (${response.status}). Try again in a moment.`);
+  }
+  return (await response.json()) as Work;
+}
+
 /** How many works the search has: one request for one work, counted against the acting person's allowance. */
 export async function countSearch(request: SearchRequest, spend: (pages: number) => Promise<boolean>): Promise<number> {
   contact();

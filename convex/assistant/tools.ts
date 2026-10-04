@@ -13,12 +13,10 @@ import { assistantTools, inputSchema, runAction, toolName } from "../lib/assista
 import { readConvexErrorData } from "../lib/errors";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { ASKS_FIRST, type UserAction } from "../lib/userActions";
-import { MAX_ASKS, STEP_TEXT_MAX, forModel } from "./steps";
+import { MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, forModel } from "./steps";
 
 /** Requests to the model one reply may make. The last is kept for its answer (./turn.ts). */
 export const MAX_STEPS = 12;
-/** Characters of an error or of a list of found actions the model reads (#326). */
-const MODEL_READS = 8_000;
 /** Characters of an action's description and arguments, about 1,000 tokens (#326). A longer one has no tool. */
 export const DEFINITION_MAX = 4_000;
 /** Actions one search returns. */
@@ -39,21 +37,25 @@ export const OUT_OF_CREDITS = `This reply has spent the credits one reply may. $
  * chat's cache once, so it changes on purpose, in a pull request of its own.
  */
 const CORE_PATHS = [
+  "research/papers:search",
+  "research/papers:get",
+  "research/lookup:find",
   "research/records:listedSearches",
   "research/records:getSearch",
   "research/searches:create",
   "research/searches:update",
   "research/searches:results",
-  "research/lookup:find",
   "research/records:searchHistory",
   "research/records:listedShortcuts",
   "research/records:ratingsOf",
+  "library/queries:papers",
   "library/queries:savedPaper",
   "library/mutations:saveToLibrary",
   "library/mutations:setLibraryRating",
   "library/mutations:setPaperInCollection",
   "library/collections:listCollections",
   "library/collections:createCollection",
+  "screening/queries:listJobs",
   "screening/papers:list",
   "screening/papers:get",
   "extraction/queries:listJobs",

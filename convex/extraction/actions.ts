@@ -17,6 +17,7 @@ import {
   type PaperDataOut,
 } from "../../lib/openalex/work-mapper";
 import { readSearchWorks } from "../paperSets/openalex";
+import { spender } from "../paperSets/search";
 import { dedupeExpandedSources, expandJobSources, readLibraryInBatches } from "./expandSources";
 import { LIBRARY_READ_BATCH } from "./queries/internal";
 import { OLD_SEARCH_MESSAGE } from "./jobSources";
@@ -215,9 +216,7 @@ export async function runFetchPapersFromHistory(
   // Typed here: the generated API's types depend on this module, so inference would loop.
   const user: Doc<"users"> | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
   if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
-  const works = await readSearchWorks<unknown>(searchFilters.openAlexQuery, { first: 1, last, select: OPENALEX_WORK_SELECT_FIELDS.join(",") }, (count) =>
-    ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId: user.clerkId, count }),
-  );
+  const works = await readSearchWorks<unknown>(searchFilters.openAlexQuery, { first: 1, last, select: OPENALEX_WORK_SELECT_FIELDS.join(",") }, spender(ctx, user.clerkId));
   return works.map((work) => mapOpenAlexWorkToPaperData(toOpenAlexWork(work)));
 }
 

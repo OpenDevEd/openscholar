@@ -8,6 +8,7 @@ import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { autocomplete } from "../paperSets/openalex";
+import { spender } from "../paperSets/search";
 import { LOOKUP_MAX, lookupKindValidator, lookupValidator } from "./searchValidators";
 
 export const findAction = defineUserAction({
@@ -27,7 +28,7 @@ export const findAction = defineUserAction({
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const { clerkId } = person;
-    const matches = await autocomplete(kind === "author" ? "authors" : "funders", text.trim(), (count) => ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId, count }));
+    const matches = await autocomplete(kind === "author" ? "authors" : "funders", text.trim(), spender(ctx, clerkId));
     return { matches: matches.slice(0, LOOKUP_MAX) };
   },
 });

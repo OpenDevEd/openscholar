@@ -72,7 +72,7 @@ export const assistantThreadFields = {
    * sent it, and which exchange it was. The same person's next message from the same page
    * doesn't say it again while the model still reads that one.
    */
-  view: v.optional(v.object({ address: v.string(), userId: v.id("users"), order: v.number() })),
+  view: v.optional(v.object({ address: v.optional(v.string()), day: v.optional(v.string()), userId: v.id("users"), order: v.number() })),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
