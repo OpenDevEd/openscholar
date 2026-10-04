@@ -5,7 +5,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
-import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Author } from "../lib/userActions";
+import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, type Author } from "../lib/userActions";
 import { answersAmong, clearPaperAnswers, removeAnswers, screeningFor, seedAnswers, setPaperAnswers, sweepAnswers, type AnswerSource } from "./answers";
 import {
   ANSWERED_PAPERS_MAX, applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, paperResponsesValidator, RATED_PAPERS_MAX, ratingValidator, restoredSearch, restoreReverses, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator, UNDO_SHORTCUT_MAX, undoCommandValidator,
@@ -542,9 +542,9 @@ export const changeAction = defineUserMutation({
   path: "research/records:change",
   description:
     "Changes the person's research records: create, edit or delete a saved search, set or remove a query shortcut, rate a paper, or clear every saved search or every shortcut they have (a batch at a time; searches keep their revisions). Edits to a search show live on the person's open page and are kept as revisions. " +
-    "A change that can be reversed returns `undo`: run this action with that command to put things back. It is refused if the record changed again in between. Making a search, changing its query or filters, a shortcut and a rating can be reversed; deleting, clearing, and changes to questions and answers can't.",
+    "A change that can be reversed returns `undo`: the action to run and the arguments to run it with to put things back. It is refused if the record changed again in between. Making a search, changing its query or filters, a shortcut and a rating can be reversed; deleting, clearing, and changes to questions and answers can't.",
   args: { requestId: v.string(), command: commandValidator },
-  returns: v.object({ undo: v.optional(v.object({ command: undoCommandValidator })) }),
+  returns: v.object({ undo: reversedBy("research/records:change", { command: undoCommandValidator }) }),
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
@@ -556,7 +556,7 @@ export const changeAction = defineUserMutation({
     const receipt = await received(ctx, userId, key);
     const undo = receipt ? receipt.undo : await applyCommand(ctx, userId, args.command, author);
     if (!receipt) await ctx.db.insert("researchReceipts", { userId, key, ...(undo ? { undo } : {}) });
-    return undo ? { undo: { command: undo } } : {};
+    return undo ? { undo: { path: "research/records:change" as const, args: { command: undo } } } : {};
   },
 });
 export const change = accountMutation(changeAction);

@@ -477,15 +477,15 @@ describe("undoing a change to research records (#342)", () => {
     const before = await search();
 
     const requeried = await edit({ kind: "query", query: "tutoring africa", field: "title" });
-    expect(requeried.undo?.command).toEqual({ kind: "editSearch", id: record.id, edit: { kind: "restore", revision: 1, expect: 2 } });
+    expect(requeried.undo?.args.command).toEqual({ kind: "editSearch", id: record.id, edit: { kind: "restore", revision: 1, expect: 2 } });
     const filtered = await edit({ kind: "patch", fields: { minCitations: 10 }, clear: ["language"] });
-    expect(filtered.undo?.command).toEqual({ kind: "editSearch", id: record.id, edit: { kind: "restore", revision: 2, expect: 3 } });
+    expect(filtered.undo?.args.command).toEqual({ kind: "editSearch", id: record.id, edit: { kind: "restore", revision: 2, expect: 3 } });
 
     // Undo the filter change: the query stays, since it wasn't part of that change.
-    const unfiltered = await change(filtered.undo!.command);
+    const unfiltered = await change(filtered.undo!.args.command);
     expect(await search()).toMatchObject({ query: "tutoring africa", minCitations: before.minCitations, language: before.language });
     // Undoing that undo is restoring what it replaced.
-    expect(unfiltered.undo?.command).toEqual({ kind: "editSearch", id: record.id, edit: { kind: "restore", revision: 3, expect: 4 } });
+    expect(unfiltered.undo?.args.command).toEqual({ kind: "editSearch", id: record.id, edit: { kind: "restore", revision: 3, expect: 4 } });
 
     // Going back to the first revision brings the old query back and counts it as one more query.
     await edit({ kind: "restore", revision: 1 });
@@ -504,7 +504,7 @@ describe("undoing a change to research records (#342)", () => {
     const { change, search, edit } = await changing();
     const filtered = await edit({ kind: "patch", fields: { minCitations: 10 }, clear: [] });
     await edit({ kind: "patch", fields: { sortBy: "publication_date:desc" }, clear: [] });
-    await expect(change(filtered.undo!.command)).rejects.toThrow(/changed since/);
+    await expect(change(filtered.undo!.args.command)).rejects.toThrow(/changed since/);
     expect(await search()).toMatchObject({ minCitations: 10, sortBy: "publication_date:desc" });
     await expect(edit({ kind: "restore", revision: 99 })).rejects.toThrow(/wasn't kept/);
   });
@@ -535,20 +535,20 @@ describe("undoing a change to research records (#342)", () => {
     const { alice } = await changing();
     const args = { accountId: "alice", requestId: "twice", command: { kind: "rating" as const, paperId: "W78", rating: 2 } };
     const first = await alice.mutation(api.research.records.change, args);
-    expect(first.undo?.command).toEqual({ kind: "rating", paperId: "W78", rating: null, expect: 2 });
+    expect(first.undo?.args.command).toEqual({ kind: "rating", paperId: "W78", rating: null, expect: 2 });
     expect(await alice.mutation(api.research.records.change, args)).toEqual(first);
   });
 
   it("reverses making a search, a shortcut and a rating, unless they changed again", async () => {
     const { t, alice, change } = await changing();
     const made = await change({ kind: "createSearch", search: { ...record, id: "made", screeningResponses: [] } });
-    expect(made.undo?.command).toEqual({ kind: "deleteSearch", id: "made", expect: { created: expect.any(Number), revision: 1, updatedAt: record.updatedAt } });
-    await change(made.undo!.command);
+    expect(made.undo?.args.command).toEqual({ kind: "deleteSearch", id: "made", expect: { created: expect.any(Number), revision: 1, updatedAt: record.updatedAt } });
+    await change(made.undo!.args.command);
     expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: "made" })).toBeNull();
     // A search worked on since it was made isn't deleted by undoing its creation.
     const kept = await change({ kind: "createSearch", search: { ...record, id: "kept", screeningResponses: [] } });
     await change({ kind: "editSearch", id: "kept", edit: { kind: "query", query: "worked on", field: "title" } });
-    await expect(change(kept.undo!.command)).rejects.toThrow(/changed since/);
+    await expect(change(kept.undo!.args.command)).rejects.toThrow(/changed since/);
     expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: "kept" })).toMatchObject({ query: "worked on" });
     // Nor is one a screening job has answered into, which leaves the search itself untouched.
     const screened = await change({ kind: "createSearch", search: { ...record, id: "screened", screeningResponses: [] } });
@@ -556,41 +556,41 @@ describe("undoing a change to research records (#342)", () => {
       const search = (await ctx.db.query("searches").collect()).find(row => row.localId === "screened")!;
       await answerPaper(ctx, (await ensureScreening(ctx, search.userId, search._id))._id, "W5", [{ question: "Randomized?", response: true }], "model", 1);
     });
-    await expect(change(screened.undo!.command)).rejects.toThrow(/changed since/);
+    await expect(change(screened.undo!.args.command)).rejects.toThrow(/changed since/);
     // Nor a search made again under the same ID after the first was deleted.
     const first = await change({ kind: "createSearch", search: { ...record, id: "again", screeningResponses: [] } });
     await change({ kind: "deleteSearch", id: "again" });
     await change({ kind: "createSearch", search: { ...record, id: "again", screeningResponses: [] } });
-    await expect(change(first.undo!.command)).rejects.toThrow(/changed since/);
+    await expect(change(first.undo!.args.command)).rejects.toThrow(/changed since/);
 
     const shortcut = async (shorthand: string) => (await alice.query(api.research.records.shortcutsOf, { accountId: "alice", names: [shorthand] })).page;
     const added = await change({ kind: "shortcut", shorthand: "qe", value: { expansion: "quasi-experimental", createdAt: 1 } });
-    expect(added.undo?.command).toEqual({ kind: "shortcut", shorthand: "qe", value: null, expect: { expansion: "quasi-experimental", createdAt: 1 } });
+    expect(added.undo?.args.command).toEqual({ kind: "shortcut", shorthand: "qe", value: null, expect: { expansion: "quasi-experimental", createdAt: 1 } });
     const reworded = await change({ kind: "shortcut", shorthand: "qe", value: { expansion: "quasi experiment", createdAt: 1 } });
-    await expect(change(added.undo!.command)).rejects.toThrow(/changed since/);
-    await change(reworded.undo!.command);
+    await expect(change(added.undo!.args.command)).rejects.toThrow(/changed since/);
+    await change(reworded.undo!.args.command);
     expect((await shortcut("qe")).map(row => row.expansion)).toEqual(["quasi-experimental"]);
     // Setting it to what it already is has nothing to undo.
     expect((await change({ kind: "shortcut", shorthand: "qe", value: { expansion: "quasi-experimental", createdAt: 1 } })).undo).toBeUndefined();
     // Saved again with the same words at a later time, it's a later shortcut: the first undo leaves it.
     const resaved = await change({ kind: "shortcut", shorthand: "qe", value: { expansion: "quasi-experimental", createdAt: 2 } });
-    await expect(change(added.undo!.command)).rejects.toThrow(/changed since/);
-    await change(resaved.undo!.command);
-    await change(added.undo!.command);
+    await expect(change(added.undo!.args.command)).rejects.toThrow(/changed since/);
+    await change(resaved.undo!.args.command);
+    await change(added.undo!.args.command);
     expect(await shortcut("qe")).toEqual([]);
     // One too long to keep with the request has no undo.
     expect((await change({ kind: "shortcut", shorthand: "long", value: { expansion: "x".repeat(UNDO_SHORTCUT_MAX + 1), createdAt: 1 } })).undo).toBeUndefined();
 
     const rating = async () => (await alice.query(api.research.records.ratingsOf, { accountId: "alice", paperIds: ["W77"] })).page.map(row => row.rating);
     const rated = await change({ kind: "rating", paperId: "W77", rating: 3 });
-    expect(rated.undo?.command).toEqual({ kind: "rating", paperId: "W77", rating: null, expect: 3 });
+    expect(rated.undo?.args.command).toEqual({ kind: "rating", paperId: "W77", rating: null, expect: 3 });
     const rerated = await change({ kind: "rating", paperId: "W77", rating: 5 });
-    await expect(change(rated.undo!.command)).rejects.toThrow(/changed since/);
-    await change(rerated.undo!.command);
+    await expect(change(rated.undo!.args.command)).rejects.toThrow(/changed since/);
+    await change(rerated.undo!.args.command);
     expect(await rating()).toEqual([3]);
     // Setting it to what it already is has nothing to undo.
     expect((await change({ kind: "rating", paperId: "W77", rating: 3 })).undo).toBeUndefined();
-    await change(rated.undo!.command);
+    await change(rated.undo!.args.command);
     expect(await rating()).toEqual([]);
   });
 });
