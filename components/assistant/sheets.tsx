@@ -108,7 +108,7 @@ function Avatar({ member }: { member: Member }) {
         />
       ) : null}
       <span
-        className="relative flex size-6 items-center justify-center rounded-full text-[11px] font-semibold ring-2 ring-card"
+        className="relative flex size-6 items-center justify-center rounded-full text-2xs font-semibold ring-2 ring-card"
         style={{
           backgroundColor: `color-mix(in oklab, ${tint} 24%, var(--card))`,
           color: tint,
@@ -128,7 +128,7 @@ function Members({ members, organization }: { members: Member[]; organization?: 
     <span className="flex shrink-0 items-center -space-x-1.5">
       {organization ? (
         <TooltipHint label={t("everyoneIn", { organization })}>
-          <span className="relative flex size-6 items-center justify-center rounded-full bg-[color-mix(in_oklab,#60a5fa_22%,var(--card))] text-[#60a5fa] ring-2 ring-card">
+          <span className="relative flex size-6 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--info)_22%,var(--card))] text-info ring-2 ring-card">
             <Building2 className="size-3" />
           </span>
         </TooltipHint>
@@ -310,7 +310,7 @@ export function HistorySheet({
 function LiveIcon() {
   const reduceMotion = useReducedMotion();
   return (
-    <motion.span className="flex text-emerald-500" animate={reduceMotion ? undefined : { opacity: [1, 0.35, 1] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}>
+    <motion.span className="flex text-success" animate={reduceMotion ? undefined : { opacity: [1, 0.35, 1] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}>
       <Radio className="size-3.5" />
     </motion.span>
   );
@@ -327,7 +327,7 @@ const keyOf = (principal: Principal) => (principal.kind === "user" ? principal.u
 
 /** The round tile beside a person or an organization. */
 function Tile({ principal, name }: { principal: Principal; name: string }) {
-  const tint = principal.kind === "organization" ? "#60a5fa" : tintOf(principal.userId);
+  const tint = principal.kind === "organization" ? "var(--info)" : tintOf(principal.userId);
   return (
     <span className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold" style={{ backgroundColor: `color-mix(in oklab, ${tint} 20%, transparent)`, color: tint }}>
       {principal.kind === "organization" ? <Building2 className="size-4" /> : name ? name.slice(0, 1).toUpperCase() : <UserRound className="size-4" />}
@@ -518,7 +518,7 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
               transition={{ duration: 0.2, ease: EASE }}
               className="flex items-center gap-2"
             >
-              {copied ? <Check className="size-4 text-emerald-500" /> : <Link2 className="size-4" />}
+              {copied ? <Check className="size-4 text-success" /> : <Link2 className="size-4" />}
               {copied ? t("linkCopied") : t("copyLink")}
             </motion.span>
           </AnimatePresence>

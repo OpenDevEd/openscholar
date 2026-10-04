@@ -515,7 +515,7 @@ function UserBubble({ message }: { message: Message }) {
       transition={{ duration: 0.3, ease: EASE }}
       className="ml-10 self-end"
     >
-      {!message.mine && message.sender?.name ? <p className="mb-1 pr-1 text-right text-[11px] text-muted-foreground">{message.sender.name}</p> : null}
+      {!message.mine && message.sender?.name ? <p className="mb-1 pr-1 text-right text-2xs text-muted-foreground">{message.sender.name}</p> : null}
       <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-primary/10 px-4 py-2.5 text-sm leading-6">{message.text}</div>
     </motion.div>
   );
@@ -712,7 +712,7 @@ function Footer({
   );
 }
 
-/** A slow, drifting glow on the screen's right edge while the assistant is open. */
+/** A slow, drifting glow in the brand's colours on the screen's right edge while the assistant is open. */
 function EdgeGlow({ open, working }: { open: boolean; working: boolean }) {
   return (
     <AnimatePresence>
@@ -727,17 +727,17 @@ function EdgeGlow({ open, working }: { open: boolean; working: boolean }) {
           transition={{ duration: 0.8, ease: EASE }}
         >
           <motion.div
-            className="absolute -right-40 top-[-10%] h-[70%] w-[420px] rounded-full bg-[radial-gradient(closest-side,rgb(255_120_40/0.32),transparent)] blur-3xl"
+            className="absolute -right-40 top-[-10%] h-[70%] w-[420px] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-bright)_32%,transparent),transparent)] blur-3xl"
             animate={{ y: ["0%", "45%", "0%"], x: [0, -40, 0] }}
             transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
           />
           <motion.div
-            className="absolute -right-48 bottom-[-15%] h-[70%] w-[440px] rounded-full bg-[radial-gradient(closest-side,rgb(150_110_255/0.28),transparent)] blur-3xl"
+            className="absolute -right-48 bottom-[-15%] h-[70%] w-[440px] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-deep)_28%,transparent),transparent)] blur-3xl"
             animate={{ y: ["0%", "-40%", "0%"], x: [0, -30, 0] }}
             transition={{ duration: 17, repeat: Infinity, ease: "easeInOut" }}
           />
           <motion.div
-            className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-orange-400/70 to-transparent"
+            className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-primary/70 to-transparent"
             animate={{ opacity: working ? [0.4, 1, 0.4] : 0.5 }}
             transition={working ? { duration: 1.8, repeat: Infinity, ease: "easeInOut" } : { duration: 0.6 }}
           />
