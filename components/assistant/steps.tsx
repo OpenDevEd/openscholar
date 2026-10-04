@@ -135,9 +135,10 @@ export function Steps({
   steps: StepItem[];
 }) {
   // An exchange that ran more than the page holds has the ones before them a page away. Reading them here also
-  // keeps the ones the page lets go of as the reply runs on, so no card leaves the map. The read is from the
-  // reply's first exchange through its last, which only changes when a reply still running carries on in a new one.
-  const cut = [...Map.groupBy(newest, (step) => step.order).values()].some((ran) => ran.length >= STEPS_SHOWN);
+  // keeps the ones the page lets go of as the reply runs on, so no card leaves the map: the read starts at half
+  // a page, well before the page lets any go. It runs from the reply's first exchange through its last, which
+  // only changes when a reply still running carries on in a new one.
+  const cut = [...Map.groupBy(newest, (step) => step.order).values()].some((ran) => ran.length >= STEPS_SHOWN / 2);
   const range = { order: newest[0]!.order, through: newest.at(-1)!.order };
   const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.steps, cut ? { threadId, ...range } : "skip", { initialNumItems: STEPS_SHOWN });
   // In the order they ran. The page's copy of a step is the one kept: it says what a step that waits for the person would do.

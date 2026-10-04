@@ -406,7 +406,8 @@ function Chat({
         messages={[...messages, ...sent]}
         live={live}
         fresh={threadId === null && sent.length === 0}
-        older={status === "CanLoadMore" ? () => loadMore(FIRST_MESSAGES) : status === "LoadingMore" ? "loading" : null}
+        // An open chat's first page is still on its way, unless it's the chat this message just started.
+        older={threadId && status === "LoadingFirstPage" && !sent.length ? "first" : status === "CanLoadMore" ? () => loadMore(FIRST_MESSAGES) : status === "LoadingMore" ? "loading" : null}
       />
       <Footer composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} model={model} onModel={pickModel} presetModel={presetModel} />
     </>
@@ -449,8 +450,8 @@ function Thread({
   live: Live | null;
   /** No chat yet: the empty state shows. */
   fresh: boolean;
-  /** Loads the messages before these, when there are any. */
-  older: (() => void) | "loading" | null;
+  /** Loads the messages before these, when there are any. `first`: the chat's first page hasn't arrived, so nothing of it shows yet. */
+  older: (() => void) | "loading" | "first" | null;
 }) {
   // An open chat's first pages arrive one after another. The thread shows once they fill it, not a part at a time.
   const [filled, setFilled] = useState(false);
@@ -459,7 +460,7 @@ function Thread({
   // A reply at work with no message being written: its action is starting, or it is between two of its requests.
   // It gets its row now, and each message takes that same row as it arrives, so "Thinking" is one row throughout and never starts over.
   const waiting = live !== null && !live.asking && said.every((m) => m.status === "done" && m.acted);
-  const all: Item[] = waiting ? [...messages, { id: `${SENDING}reply`, role: "assistant", order: live.order, text: "", status: "pending", mine: false, at: 0 }] : messages;
+  const all: Item[] = waiting && older !== "first" ? [...messages, { id: `${SENDING}reply`, role: "assistant", order: live.order, text: "", status: "pending", mine: false, at: 0 }] : messages;
   // While earlier messages remain, the thread starts at a person's message: a reply shows whole, never from partway in,
   // so nothing of it is rebuilt when the page before it loads.
   const start = older ? all.findIndex((m) => m.role === "user") : 0;
@@ -495,7 +496,7 @@ function Thread({
         style={{ paddingBottom: CHIP_HANG + EDGE_FADE + 8 }}
       >
         {fresh ? <Empty /> : null}
-        {older ? <Earlier older={older} onFilled={() => setFilled(true)} /> : null}
+        {older && older !== "first" ? <Earlier older={older} onFilled={() => setFilled(true)} /> : null}
         {rows.map((m) => {
           if (m.role === "user") return <UserBubble key={m.id} message={m} />;
           const { reply, place } = replies.get(m)!;
