@@ -1,0 +1,155 @@
+// Assistant chats (#324): who can open, change and share one, and how a person's chats list.
+import { register as registerAgentComponent } from "@convex-dev/agent/test";
+import { convexTest } from "convex-test";
+import { describe, expect, it } from "vitest";
+import { api } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
+import { seedFeatureUser, seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import schema from "../schema";
+import { touchThread } from "./access";
+
+type Test = ReturnType<typeof convexTest>;
+
+/**
+ * Ada and Ben share an organization; Cy is in another. Each acts through their own session.
+ */
+async function people(t: Test) {
+  registerAgentComponent(t);
+  const ids = await t.run(async (ctx) => {
+    await ctx.db.insert("featureFlags", { key: "assistant.enabled", enabled: true, updatedAt: 1 });
+    const [ada, ben, cy] = await Promise.all(["ada", "ben", "cy"].map((clerkId) => seedFeatureUser(ctx, clerkId)));
+    const team = await seedOrganizationFeatures(ctx, ["ada", "ben"], {});
+    const elsewhere = await seedOrganizationFeatures(ctx, ["cy"], {});
+    return { ada, ben, cy, team, elsewhere };
+  });
+  const as = (clerkId: string) => t.withIdentity({ subject: clerkId, tokenIdentifier: `${clerkId}|test` });
+  return { ...ids, asAda: as("ada"), asBen: as("ben"), asCy: as("cy") };
+}
+
+const firstPage = { cursor: null, numItems: 10 };
+const titles = (page: { page: Array<{ title: string }> }) => page.page.map((chat) => chat.title);
+
+describe("assistant chats", () => {
+  it("belong to the person who starts them, and a stranger can't open, rename or delete one", async () => {
+    const t = convexTest(schema);
+    const { asAda, asCy } = await people(t);
+    const threadId = await asAda.mutation(api.assistant.threads.create, { title: "  Reading   trials " });
+
+    expect(await asAda.query(api.assistant.threads.get, { threadId })).toMatchObject({ title: "Reading trials", role: "owner" });
+    await expect(asCy.query(api.assistant.threads.get, { threadId })).rejects.toThrow(/Chat not found/);
+    await expect(asCy.mutation(api.assistant.threads.rename, { threadId, title: "Mine now" })).rejects.toThrow(/Chat not found/);
+    await expect(asCy.mutation(api.assistant.threads.remove, { threadId })).rejects.toThrow(/Chat not found/);
+    expect(titles(await asCy.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage }))).toEqual([]);
+  });
+
+  it("are shared to read or to write, and only the owner renames, shares or deletes", async () => {
+    const t = convexTest(schema);
+    const { asAda, asBen, ben } = await people(t);
+    const threadId = await asAda.mutation(api.assistant.threads.create, { title: "Reading trials" });
+    const withBen = { threadId, principal: { kind: "user" as const, userId: ben } };
+
+    await asAda.mutation(api.assistant.sharing.grant, { ...withBen, role: "read" });
+    expect(await asBen.query(api.assistant.threads.get, { threadId })).toMatchObject({ role: "read" });
+    await asAda.mutation(api.assistant.sharing.grant, { ...withBen, role: "write" });
+    expect(await asBen.query(api.assistant.threads.get, { threadId })).toMatchObject({ role: "write" });
+
+    await expect(asBen.mutation(api.assistant.threads.rename, { threadId, title: "Ben's" })).rejects.toThrow(/Only the chat's owner/);
+    await expect(asBen.mutation(api.assistant.threads.remove, { threadId })).rejects.toThrow(/Only the chat's owner/);
+    await expect(asBen.mutation(api.assistant.sharing.grant, { ...withBen, role: "write" })).rejects.toThrow(/Only the chat's owner/);
+
+    await asAda.mutation(api.assistant.sharing.revoke, withBen);
+    await expect(asBen.query(api.assistant.threads.get, { threadId })).rejects.toThrow(/Chat not found/);
+  });
+
+  it("can be shared with an organization the owner is in, and with its people, but with no one else", async () => {
+    const t = convexTest(schema);
+    const { asAda, asBen, cy, team, elsewhere } = await people(t);
+    const threadId = await asAda.mutation(api.assistant.threads.create, { title: "Reading trials" });
+
+    await expect(asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: cy }, role: "read" })).rejects.toThrow(/people in your organizations/);
+    await expect(asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "organization", organizationId: elsewhere }, role: "read" })).rejects.toThrow(/organization you belong to/);
+
+    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "organization", organizationId: team }, role: "write" });
+    expect(await asBen.query(api.assistant.threads.get, { threadId })).toMatchObject({ role: "write" });
+
+    const access = await asBen.query(api.assistant.sharing.listAccess, { threadId, paginationOpts: firstPage });
+    expect(access.page.map((row) => [row.principal.kind, row.role, row.name])).toEqual([
+      ["organization", "write", "Feature test"],
+      ["user", "owner", "ada@example.org"],
+    ]);
+    // A person's email is for the owner alone.
+    expect(access.page.every((row) => row.email === undefined)).toBe(true);
+    const own = await asAda.query(api.assistant.sharing.listAccess, { threadId, paginationOpts: firstPage });
+    expect(own.page.find((row) => row.role === "owner")?.email).toBe("ada@example.org");
+  });
+
+  it("list newest first, once each however they reach the person, by scope and by title", async () => {
+    const t = convexTest(schema);
+    const { asAda, asBen, ben, team } = await people(t);
+    const make = async (as: typeof asAda, title: string) => as.mutation(api.assistant.threads.create, { title });
+    const coaching = await make(asAda, "Teacher coaching");
+    const reading = await make(asAda, "Reading trials");
+    const own = await make(asBen, "Ben's own notes");
+    // Reading reaches Ben twice, as himself and through the team; coaching once.
+    await asAda.mutation(api.assistant.sharing.grant, { threadId: reading, principal: { kind: "user", userId: ben }, role: "read" });
+    await asAda.mutation(api.assistant.sharing.grant, { threadId: reading, principal: { kind: "organization", organizationId: team }, role: "write" });
+    await asAda.mutation(api.assistant.sharing.grant, { threadId: coaching, principal: { kind: "organization", organizationId: team }, role: "read" });
+    // Messages arrive in this order, so the lists run the other way.
+    await t.run(async (ctx) => {
+      for (const [at, threadId] of [[10, coaching], [20, own], [30, reading]] as Array<[number, Id<"assistantThreads">]>) await touchThread(ctx, threadId, at);
+    });
+
+    const list = (scope: "all" | "mine" | "shared", text?: string) => asBen.query(api.assistant.threads.list, { scope, ...(text ? { text } : {}), paginationOpts: firstPage });
+    const all = await list("all");
+    expect(titles(all)).toEqual(["Reading trials", "Ben's own notes", "Teacher coaching"]);
+    // The most he may do, through any way the chat reaches him.
+    expect(all.page.map((chat) => chat.role)).toEqual(["write", "owner", "read"]);
+    expect(titles(await list("mine"))).toEqual(["Ben's own notes"]);
+    expect(titles(await list("shared"))).toEqual(["Reading trials", "Teacher coaching"]);
+    expect(titles(await list("all", "TRIALS"))).toEqual(["Reading trials"]);
+
+    // Stepping a page at a time neither repeats nor drops a chat.
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    for (let reads = 0; reads < 6; reads++) {
+      const page: { page: Array<{ title: string }>; isDone: boolean; continueCursor: string } = await asBen.query(api.assistant.threads.list, { scope: "all", paginationOpts: { cursor, numItems: 1 } });
+      seen.push(...titles(page));
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+    expect(seen).toEqual(["Reading trials", "Ben's own notes", "Teacher coaching"]);
+  });
+
+  it("can be shared with 50 people and organizations, and no more", async () => {
+    const t = convexTest(schema);
+    const { asAda, team } = await people(t);
+    const threadId = await asAda.mutation(api.assistant.threads.create, {});
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 50; i++) await ctx.db.insert("assistantThreadAccess", { threadId, principal: `user:filler${i}`, role: "read", lastMessageAt: 1, createdAt: 1 });
+    });
+    await expect(asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "organization", organizationId: team }, role: "read" })).rejects.toThrow(/up to 50/);
+  });
+
+  it("are gone for everyone once the owner deletes one", async () => {
+    const t = convexTest(schema);
+    const { asAda, asBen, ben } = await people(t);
+    const threadId = await asAda.mutation(api.assistant.threads.create, {});
+    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: ben }, role: "write" });
+
+    await asAda.mutation(api.assistant.threads.remove, { threadId });
+
+    await expect(asBen.query(api.assistant.threads.get, { threadId })).rejects.toThrow(/Chat not found/);
+    expect(titles(await asAda.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage }))).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.query("assistantThreadAccess").take(5))).toEqual([]);
+  });
+
+  it("are refused while the assistant is switched off", async () => {
+    const t = convexTest(schema);
+    const { asAda } = await people(t);
+    await t.run(async (ctx) => {
+      const flag = await ctx.db.query("featureFlags").withIndex("by_key", (q) => q.eq("key", "assistant.enabled")).unique();
+      await ctx.db.patch(flag!._id, { enabled: false });
+    });
+    await expect(asAda.mutation(api.assistant.threads.create, {})).rejects.toThrow(/disabled/);
+  });
+});

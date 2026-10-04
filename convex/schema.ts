@@ -56,6 +56,7 @@ import { authorContentFields } from "./authors/validators";
 
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
+import { assistantThreadAccessFields, assistantThreadFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
 
@@ -196,6 +197,15 @@ export default defineSchema({
     ])
     .index("by_organizationId_and_state", ["organizationId", "state"])
     .index("by_clerkUserId_and_state", ["clerkUserId", "state"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // ASSISTANT CHATS (#324) - a chat, and who it is shared with
+  // ═══════════════════════════════════════════════════════════════
+  assistantThreads: defineTable(assistantThreadFields).index("by_agentThreadId", ["agentThreadId"]),
+  assistantThreadAccess: defineTable(assistantThreadAccessFields)
+    // A person's chats, newest first, through each of their principals.
+    .index("by_principal_and_lastMessageAt", ["principal", "lastMessageAt"])
+    .index("by_thread_and_principal", ["threadId", "principal"]),
 
   // Each approved OpenAlex query version a library has published, with its query's
   // fingerprint, so a sources save checks versions without reading every revision (#357).
