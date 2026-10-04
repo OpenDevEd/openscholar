@@ -192,18 +192,27 @@ everything a user can, calling the same actions as the UI:
   migration guides; Codex appends context changes as new items and OpenCode
   stores per-message context as parts of that message; a cost model over
   shared dev's prices, where a 50,000-token budget is about eight times
-  cheaper per turn over 300 turns than no compaction. How actions outside the
-  core set load is still open: the user chose a per-thread tool list that only
-  grows, and the review of this change the same day showed that a changed tool
-  list also invalidates stored reasoning on current Claude models. #326
-  carries that decision.
+  cheaper per turn over 300 turns than no compaction.
+- **2026-10-04, a fixed tool list (#326).** Was: a small core of tools, the
+  rest deferred and found with `toolSearch()`, and the current page's tools
+  pre-loaded with `activeTools`. Now: the tool list is the same for every
+  thread and never changes inside one: a core set of typed tools, plus one
+  tool that finds any other action by keyword and one that runs it by name.
+  Reason: a changed tool list voids the whole cache, invalidates stored
+  reasoning on current Claude models, and leaves no cached prefix shared
+  between threads; `toolSearch()` changes the list on every discovery and
+  forgets it when the reply ends. The user first chose a per-thread list that
+  only grows, then switched to the fixed list the same day. Proof: Anthropic's
+  prompt caching and model migration guides; the AI SDK 7.0.122 tool search
+  docs; `toolApproval` and `toModelOutput` both receive the call's input, so
+  approval and the model-facing summary are still decided per action.
 
 ## Tools considered (2026-09-30)
 
 | Option | Decision | Reason |
 |---|---|---|
 | `@convex-dev/agent` (Apache-2.0) | Keep, upgrade to 0.7 | Threads, messages and streaming live in our Convex, under our auth, updating live for every viewer |
-| AI SDK 7 (Apache-2.0) | Keep | Agent loop, `needsApproval`, `toolSearch()` with `deferLoading`, `activeTools`, `prepareStep`, `toModelOutput` |
+| AI SDK 7 (Apache-2.0) | Keep | Agent loop, `toolApproval`, `prepareStep`, `toModelOutput`. `toolSearch()` and `activeTools` are not used: see the 2026-10-04 decision on a fixed tool list |
 | CopilotKit + AG-UI (MIT) | Borrow the ideas only | Persistent threads, replay and memory are in its cloud-hosted "Intelligence"; self-hosting adds a runtime and a SQLite-style store beside Convex |
 | Mastra (Apache-2.0 except `ee/`) | Not the runtime | `@mastra/convex` runs Mastra on its own Node server against Convex with the admin key and its own tables, bypassing per-user auth |
 | LangGraph JS (MIT), Letta (Apache-2.0) | No | Another service with its own state |
@@ -308,9 +317,9 @@ Results are never stored. They're fetched on the server through
 A request holds, most stable first, because providers cache a prefix and any
 change inside it voids everything after it:
 
-1. Tools: a core set that is always loaded. How the actions outside it are
-   reached is open in #326: any change to this list voids the whole cache, and
-   on current Claude models it also invalidates the reasoning kept so far.
+1. Tools: a fixed list, the same for every thread and person, that never
+   changes inside a thread: a core set of typed tools, plus one tool that
+   finds any other action and one that runs it.
 2. Instructions. Fixed text, with no time, page, person or record state.
 3. The summary, once the thread has been compacted.
 4. The conversation since the last compaction, exactly as it was sent:
@@ -341,8 +350,11 @@ checks.
 
 Everything else arrives through tools:
 
-- Actions outside the core set are found on demand. #326 decides whether that
-  is `toolSearch()` over a per-thread list or two fixed find-and-run tools.
+- Actions outside the core set are reached through the two fixed tools. One
+  finds actions by keyword and returns their argument schemas. The other runs
+  an action by name: the registry's validators check its arguments, and its
+  approval and model-facing summary come from that action's registry entry.
+  A message's context names the actions of the page the sender is on.
 - Results are paged and filterable, and go to the model as a summary plus IDs
   (`toModelOutput`), built only from the registry entry's validated result.
 - Past chats are searched through a tool, never pre-loaded.
