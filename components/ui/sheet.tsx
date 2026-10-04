@@ -5,10 +5,11 @@ import { XIcon } from "@/components/icons"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
+import { HoldWhileClosing, TrackOpen } from "@/components/ui/hold-while-closing"
 import { withToastsInside } from "@/components/ui/sonner"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />
+  return <TrackOpen {...props}>{(onOpenChange) => <SheetPrimitive.Root data-slot="sheet" {...props} onOpenChange={onOpenChange} />}</TrackOpen>
 }
 
 function SheetTrigger({
@@ -76,7 +77,7 @@ function SheetContent({
         onInteractOutside={withToastsInside(onInteractOutside)}
         {...props}
       >
-        {children}
+        <HoldWhileClosing>{children}</HoldWhileClosing>
         {showCloseButton && (
           <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
             <XIcon className="size-4" />

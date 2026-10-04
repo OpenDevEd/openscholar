@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { FileSearch } from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
@@ -27,6 +28,12 @@ export function ExtractionCitationSidebar({
   const { expandedWidth, collapsedWidth } =
     getExtractionCitationPanelDimensions(isCollapsed);
 
+  // The answer stays on the panel while it slides shut, then is let go, so the
+  // closing panel never shows its empty state and a hidden one holds no PDF.
+  const [closing, setClosing] = useState<OpenAnswer | null>(null);
+  if (answer && closing !== answer) setClosing(answer);
+  const shown = answer ?? closing;
+
   if (!_hasHydrated) return null;
 
   const hasPayload = answer !== null;
@@ -41,6 +48,9 @@ export function ExtractionCitationSidebar({
         width,
         // Quick, so an opened answer shows at once.
         transition: "width 180ms ease-out",
+      }}
+      onTransitionEnd={(event) => {
+        if (event.target === event.currentTarget && event.propertyName === "width" && !answer) setClosing(null);
       }}
     >
       {/* The same line across the collapsed strip, where the panel itself has slid away. */}
@@ -94,7 +104,7 @@ export function ExtractionCitationSidebar({
 
         {/* Scrollable content, above the line */}
         <div className="relative flex-1 min-h-0 overflow-hidden p-2">
-          <AnswerPanel key={openAnswerKey(answer) ?? ""} answer={answer} />
+          <AnswerPanel key={openAnswerKey(shown) ?? ""} answer={shown} />
         </div>
       </motion.aside>
 

@@ -5,13 +5,14 @@ import { XIcon } from "@/components/icons"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
+import { HoldWhileClosing, TrackOpen } from "@/components/ui/hold-while-closing"
 import { withToastsInside } from "@/components/ui/sonner"
 import { Button } from "@/components/ui/button"
 
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+  return <TrackOpen {...props}>{(onOpenChange) => <DialogPrimitive.Root data-slot="dialog" {...props} onOpenChange={onOpenChange} />}</TrackOpen>
 }
 
 function DialogTrigger({
@@ -71,7 +72,7 @@ function DialogContent({
         onInteractOutside={withToastsInside(onInteractOutside)}
         {...props}
       >
-        {children}
+        <HoldWhileClosing>{children}</HoldWhileClosing>
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
