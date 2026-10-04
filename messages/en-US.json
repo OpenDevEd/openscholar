@@ -3458,6 +3458,7 @@
     "shareNote": "They see this conversation. Searches, collections and libraries in it keep their own access. People who can chat send messages as themselves, and the assistant acts for them with their own access and credits.",
     "copyLink": "Copy link for people with access",
     "linkCopied": "Link copied",
-    "shareFailed": "Couldn't change who this chat is shared with"
+    "shareFailed": "Couldn't change who this chat is shared with",
+    "morePeople": "More people"
   }
 }

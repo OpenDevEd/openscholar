@@ -3468,6 +3468,7 @@
     "shareNote": "Ces personnes voient cette conversation. Les recherches, collections et bibliothèques qu'elle contient gardent leurs propres accès. Les personnes qui peuvent discuter envoient des messages en leur nom, et l'assistant agit pour elles avec leurs propres accès et crédits.",
     "copyLink": "Copier le lien pour les personnes ayant accès",
     "linkCopied": "Lien copié",
-    "shareFailed": "Impossible de modifier le partage de cette discussion"
+    "shareFailed": "Impossible de modifier le partage de cette discussion",
+    "morePeople": "Plus de personnes"
   }
 }

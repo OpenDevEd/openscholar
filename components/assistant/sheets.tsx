@@ -5,7 +5,7 @@
 // edge peeks out, and dims. Each layer is its own card; nothing sits behind them.
 
 import { useDeferredValue, useState, type ReactNode } from "react";
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Building2, Check, ChevronLeft, Eye, Link2, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, UserRound, X } from "lucide-react";
@@ -22,7 +22,8 @@ import { LogoMark } from "./logo-mark";
 import { IconButton, WorkingText } from "./parts";
 
 /** A sheet open over the panel. */
-export type OpenSheet = { kind: "history" } | { kind: "share"; threadId: Id<"assistantThreads">; title: string };
+export type OpenSheet = { kind: "history" } | { kind: "share"; threadId: Id<"assistantThreads">; title: string; role: Role };
+type Role = "owner" | "write" | "read";
 
 export const SHEET_SPRING = { type: "spring" as const, stiffness: 300, damping: 32, mass: 0.9 };
 
@@ -74,7 +75,8 @@ function SheetHeader({ title, detail, onBack }: { title: string; detail?: string
       </TooltipHint>
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold">{title}</p>
-        {detail ? <p className="truncate text-xs text-muted-foreground">{detail}</p> : null}
+        {/* The line keeps its height while empty, so the header doesn't grow when its text arrives. */}
+        <p className="h-4 truncate text-xs text-muted-foreground">{detail}</p>
       </div>
     </div>
   );
@@ -206,7 +208,7 @@ export function HistorySheet({
   onBack: () => void;
   onOpen: (id: ThreadId) => void;
   onNew: () => void;
-  onShare: (id: ThreadId, title: string) => void;
+  onShare: (id: ThreadId, title: string, role: Role) => void;
 }) {
   const t = useTranslations("assistant");
   const format = useFormatter();
@@ -280,7 +282,7 @@ export function HistorySheet({
                     current={chat._id === current}
                     when={when(chat.lastMessageAt)}
                     onOpen={() => onOpen(chat._id)}
-                    onShare={() => onShare(chat._id, chat.title)}
+                    onShare={() => onShare(chat._id, chat.title, chat.role)}
                   />
                 ))}
               </section>
@@ -318,6 +320,7 @@ type Access = FunctionReturnType<typeof api.assistant.sharing.listAccess>["page"
 type Principal = Access["principal"];
 /** A chat is shared with at most 50 people and organizations, so one page holds them all with its owner. */
 const ACCESS_ROWS = 51;
+const CANDIDATES_PER_PAGE = 8;
 /** An organization's members are counted to here; past it the sheet says "100+". */
 const MEMBERS_COUNTED = 100;
 const keyOf = (principal: Principal) => (principal.kind === "user" ? principal.userId : principal.organizationId);
@@ -332,30 +335,34 @@ function Tile({ principal, name }: { principal: Principal; name: string }) {
   );
 }
 
-export function ShareSheet({ threadId, title, onBack }: { threadId: ThreadId; title: string; onBack: () => void }) {
+export function ShareSheet({ threadId, title, role, onBack }: { threadId: ThreadId; title: string; role: Role; onBack: () => void }) {
   const t = useTranslations("assistant");
   const toast = useAppToast();
-  const thread = useQuery(api.assistant.threads.get, { threadId });
   const { results } = usePaginatedQuery(api.assistant.sharing.listAccess, { threadId }, { initialNumItems: ACCESS_ROWS });
   // The owner first, then organizations, then people.
   const rank = (person: Access) => (person.role === "owner" ? 0 : person.principal.kind === "organization" ? 1 : 2);
   const people = [...results].sort((a, b) => rank(a) - rank(b));
-  const owner = thread?.role === "owner";
+  // The chat's owner shares it. The role came with the chat, so the sheet has its final layout from its first frame.
+  const owner = role === "owner";
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
+  const [active, setActive] = useState(0);
   const [copied, setCopied] = useState(false);
   const text = useDeferredValue(query.trim());
-  const found = useQuery(api.assistant.sharing.candidates, owner && adding ? (text ? { text } : {}) : "skip");
+  const found = usePaginatedQuery(api.assistant.sharing.candidates, owner && adding ? (text ? { text } : {}) : "skip", { initialNumItems: CANDIDATES_PER_PAGE });
   const grant = useMutation(api.assistant.sharing.grant);
   const revoke = useMutation(api.assistant.sharing.revoke);
   const failed = (error: unknown) => toast.error(t("shareFailed"), getErrorMessage(error, ""));
 
+  // Whoever is in the chat already is left out, and someone in several organizations shows once.
   const has = new Set(people.map((person) => keyOf(person.principal)));
-  const suggestions = found?.filter((candidate) => !has.has(keyOf(candidate.principal)));
+  const suggestions = found.results.filter((candidate) => !has.has(keyOf(candidate.principal)) && has.add(keyOf(candidate.principal)));
+  const loaded = found.status !== "LoadingFirstPage";
   const shownName = (person: { principal: Principal; name: string; email?: string }) =>
     person.principal.kind === "organization" ? t("everyoneIn", { organization: person.name }) : person.name || person.email || t("someone");
   const add = (principal: Principal) => {
     setQuery("");
+    setActive(0);
     grant({ threadId, principal, role: "read" }).catch(failed);
   };
   const copy = () => {
@@ -371,29 +378,56 @@ export function ShareSheet({ threadId, title, onBack }: { threadId: ThreadId; ti
         <div className="space-y-4 px-3 py-3">
           {owner ? (
             // The suggestions open over the list below, at the box's width, so nothing under them moves.
-            <div className="relative">
+            // They stay open while focus is anywhere in here, so Tab reaches them too.
+            <div
+              className="relative"
+              onFocus={() => setAdding(true)}
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget)) setAdding(false);
+              }}
+            >
               <label className="flex h-10 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
                 <UserPlus className="size-4 text-muted-foreground" />
                 <input
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onFocus={() => setAdding(true)}
-                  onBlur={() => setAdding(false)}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setActive(0);
+                  }}
+                  onKeyDown={(e) => {
+                    if (!suggestions.length) return;
+                    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setActive((i) => (i + (e.key === "ArrowDown" ? 1 : suggestions.length - 1)) % suggestions.length);
+                    }
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      add(suggestions[Math.min(active, suggestions.length - 1)]!.principal);
+                    }
+                  }}
+                  role="combobox"
+                  aria-expanded={adding && loaded}
+                  aria-controls="assistant-share-suggestions"
                   placeholder={t("addPeople")}
                   aria-label={t("addPeople")}
                   className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
                 />
               </label>
-              {adding && suggestions ? (
-                <ul className="absolute inset-x-0 top-full z-20 mt-1 rounded-2xl border border-border/60 bg-popover p-1.5 shadow-[0_18px_50px_-18px_rgb(0_0_0/0.45)]">
-                  {suggestions.map((candidate) => (
-                    <li key={keyOf(candidate.principal)}>
+              {adding && loaded ? (
+                <ul
+                  id="assistant-share-suggestions"
+                  role="listbox"
+                  className="absolute inset-x-0 top-full z-20 mt-1 rounded-2xl border border-border/60 bg-popover p-1.5 shadow-[0_18px_50px_-18px_rgb(0_0_0/0.45)]"
+                >
+                  {suggestions.map((candidate, i) => (
+                    <li key={keyOf(candidate.principal)} role="option" aria-selected={i === active}>
                       <button
                         type="button"
                         // Keeps focus in the box, so the list stays open for the next pick.
                         onMouseDown={(e) => e.preventDefault()}
+                        onMouseEnter={() => setActive(i)}
                         onClick={() => add(candidate.principal)}
-                        className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-muted"
+                        className={cn("flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left", i === active && "bg-muted")}
                       >
                         <Tile principal={candidate.principal} name={candidate.name} />
                         <span className="min-w-0 flex-1">
@@ -403,7 +437,21 @@ export function ShareSheet({ threadId, title, onBack }: { threadId: ThreadId; ti
                       </button>
                     </li>
                   ))}
-                  {suggestions.length === 0 ? <li className="px-2.5 py-2 text-sm text-muted-foreground">{t("noCandidates")}</li> : null}
+                  {suggestions.length === 0 && found.status === "Exhausted" ? <li className="px-2.5 py-2 text-sm text-muted-foreground">{t("noCandidates")}</li> : null}
+                  {/* A page looks through only so many members, so more may follow even after an empty one. */}
+                  {found.status === "CanLoadMore" || found.status === "LoadingMore" ? (
+                    <li>
+                      <button
+                        type="button"
+                        disabled={found.status === "LoadingMore"}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => found.loadMore(CANDIDATES_PER_PAGE)}
+                        className="flex h-8 w-full items-center rounded-xl px-2.5 text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground disabled:opacity-50"
+                      >
+                        {t("morePeople")}
+                      </button>
+                    </li>
+                  ) : null}
                 </ul>
               ) : null}
             </div>

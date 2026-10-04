@@ -7,7 +7,6 @@
 
 import { Component, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
-import usePresence from "@convex-dev/presence/react";
 import { insertAtTop, useConvexAuth, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
@@ -27,6 +26,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { PRESET_KEYS } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
+import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
@@ -46,6 +46,13 @@ const FIRST_MESSAGES = 30;
 const TITLE_MAX = 60;
 /** The ID of a message shown ahead of the server's copy of it. */
 const SENDING = "sending:";
+/** The key a chat that hasn't started keeps its draft under. */
+const NEW = "new";
+/** Two failures closer together than this are a loop, not a lost chat. */
+const LOOP_MS = 2_000;
+
+/** What is typed and not yet sent, a draft per chat, so one chat's never lands in another. */
+type Drafts = { of: (id: ThreadId | null) => string; set: (id: ThreadId | null, text: string | ((now: string) => string)) => void };
 
 /** A new chat is named after its first message. */
 function titleFrom(text: string) {
@@ -60,26 +67,36 @@ export function AssistantPanel() {
   const [linked] = useState(() => (typeof window === "undefined" ? null : (new URLSearchParams(window.location.search).get("chat") as ThreadId | null)));
   const [open, setOpen] = useState(linked !== null);
   const [threadId, setThreadId] = useState<ThreadId | null>(linked);
+  // Kept here, above the panel, so folding it away keeps what was typed.
+  const [typed, setTyped] = useState<Record<string, string>>({});
   if (!enabled || !isAuthenticated) return null;
+  const drafts: Drafts = {
+    of: (id) => typed[id ?? NEW] ?? "",
+    set: (id, text) => setTyped((all) => ({ ...all, [id ?? NEW]: typeof text === "function" ? text(all[id ?? NEW] ?? "") : text })),
+  };
   return (
-    <Lost fresh={threadId === null} onLost={() => setThreadId(null)}>
-      <Overlay open={open} setOpen={setOpen} threadId={threadId} setThreadId={setThreadId} />
+    <Lost onLost={() => setThreadId(null)}>
+      <Overlay open={open} setOpen={setOpen} threadId={threadId} setThreadId={setThreadId} drafts={drafts} />
     </Lost>
   );
 }
 
 /**
- * A chat that was deleted, or is no longer shared with you, fails its reads. The panel
- * then goes back to a new chat instead of taking the page down with it.
+ * A chat that was deleted, or is no longer shared with you, fails its reads, in the panel
+ * or in a sheet open on it. The panel then starts over on a new chat, with its sheets
+ * closed, instead of taking the page down with it.
  */
-class Lost extends Component<{ fresh: boolean; onLost: () => void; children: ReactNode }, { failed: boolean }> {
+class Lost extends Component<{ onLost: () => void; children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
+  private failedAt = 0;
   static getDerivedStateFromError() {
     return { failed: true };
   }
   componentDidCatch() {
-    // With no chat open there's nothing left to drop, so the panel stays away rather than fail again.
-    if (this.props.fresh) return;
+    // Failing again straight after starting over isn't a lost chat, so the panel stays away rather than loop.
+    const again = Date.now() - this.failedAt < LOOP_MS;
+    this.failedAt = Date.now();
+    if (again) return;
     this.props.onLost();
     this.setState({ failed: false });
   }
@@ -93,11 +110,13 @@ function Overlay({
   setOpen,
   threadId,
   setThreadId,
+  drafts,
 }: {
   open: boolean;
   setOpen: (update: (open: boolean) => boolean) => void;
   threadId: ThreadId | null;
   setThreadId: (id: ThreadId | null) => void;
+  drafts: Drafts;
 }) {
   const t = useTranslations("assistant");
   // Read here, not in the chat, so the launcher shows a reply being written while the panel is folded.
@@ -169,7 +188,15 @@ function Overlay({
                 animate={{ opacity: 1, transition: { delay: 0.16, duration: 0.25 } }}
                 exit={{ opacity: 0, transition: { duration: 0.08 } }}
               >
-                <Chat threadId={threadId} setThreadId={setThreadId} live={live} onFold={fold} onHistory={() => push({ kind: "history" })} onShare={(id, title) => push({ kind: "share", threadId: id, title })} />
+                <Chat
+                  threadId={threadId}
+                  setThreadId={setThreadId}
+                  drafts={drafts}
+                  live={live}
+                  onFold={fold}
+                  onHistory={() => push({ kind: "history" })}
+                  onShare={(id, title, role) => push({ kind: "share", threadId: id, title, role })}
+                />
               </motion.div>
               <Dim on={depth > 0} />
             </motion.div>
@@ -188,10 +215,10 @@ function Overlay({
                         setThreadId(null);
                         pop();
                       }}
-                      onShare={(id, title) => push({ kind: "share", threadId: id, title })}
+                      onShare={(id, title, role) => push({ kind: "share", threadId: id, title, role })}
                     />
                   ) : (
-                    <ShareSheet threadId={sheet.threadId} title={sheet.title} onBack={pop} />
+                    <ShareSheet threadId={sheet.threadId} title={sheet.title} role={sheet.role} onBack={pop} />
                   )}
                 </Sheet>
               ))}
@@ -207,14 +234,38 @@ function Overlay({
 
 /** Keeps the person in the chat's room while the panel has it open, so the others in it see they're there. */
 function Here({ threadId }: { threadId: ThreadId }) {
-  // The room takes the session's own user, whatever is sent here.
-  usePresence(api.assistant.presence, threadId, "");
+  const heartbeat = useMutation(api.assistant.presence.heartbeat);
+  const leave = useMutation(api.assistant.presence.leave);
+  // A timer is an outside system: a beat now, one every PRESENCE_HEARTBEAT_MS, and leaving when the chat closes.
+  // A tab that closes just stops beating, and the room drops it after 2.5 beats.
+  useEffect(() => {
+    const sessionId = crypto.randomUUID();
+    let token: string | null = null;
+    let left = false;
+    const beat = () =>
+      heartbeat({ threadId, sessionId }).then(
+        (sessionToken) => {
+          token = sessionToken;
+          // The chat closed while this beat was on its way.
+          if (left) leave({ sessionToken }).catch(() => {});
+        },
+        () => {},
+      );
+    void beat();
+    const timer = setInterval(beat, PRESENCE_HEARTBEAT_MS);
+    return () => {
+      left = true;
+      clearInterval(timer);
+      if (token) leave({ sessionToken: token }).catch(() => {});
+    };
+  }, [threadId, heartbeat, leave]);
   return null;
 }
 
 function Chat({
   threadId,
   setThreadId,
+  drafts,
   live,
   onFold,
   onHistory,
@@ -222,10 +273,11 @@ function Chat({
 }: {
   threadId: ThreadId | null;
   setThreadId: (id: ThreadId | null) => void;
+  drafts: Drafts;
   live: Live | null;
   onFold: () => void;
   onHistory: () => void;
-  onShare: (id: ThreadId, title: string) => void;
+  onShare: (id: ThreadId, title: string, role: "owner" | "write" | "read") => void;
 }) {
   const t = useTranslations("assistant");
   const toast = useAppToast();
@@ -234,8 +286,12 @@ function Chat({
   const presetModel = usePresetModels();
   // The model picked before the chat exists; once it does, the chat keeps its own.
   const [picked, setPicked] = useState<PickedModel | null>(null);
-  const [draft, setDraft] = useState("");
+  const draft = drafts.of(threadId);
   const [sending, setSending] = useState(false);
+  // A new chat's first message, shown from the moment it's sent until the server's copy of it loads.
+  const [first, setFirst] = useState<{ threadId: ThreadId | null; text: string } | null>(null);
+  // The chat being made, so sending and sharing a chat that hasn't started both end up in the same one.
+  const making = useRef<Promise<ThreadId> | null>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
 
   const create = useMutation(api.assistant.threads.create);
@@ -259,19 +315,34 @@ function Chat({
 
   const busy = sending || live !== null;
   const canWrite = thread?.role !== "read";
+  /** The open chat, made on the model the composer shows if it hasn't started. */
+  const started = (title?: string) => {
+    if (threadId) return Promise.resolve(threadId);
+    making.current ??= create({ ...(title ? { title } : {}), ...(model ? { modelId: model._id, ...(model.effort ? { effort: model.effort } : {}) } : {}) })
+      .then((id) => {
+        setThreadId(id);
+        return id;
+      })
+      .finally(() => {
+        making.current = null;
+      });
+    return making.current;
+  };
   const send = async () => {
     const text = draft.trim();
     if (!text || busy || !canWrite) return;
-    setDraft("");
+    const from = threadId;
+    drafts.set(from, "");
     setSending(true);
+    if (!from) setFirst({ threadId: null, text });
     try {
-      const effort = model?.effort;
-      const id = threadId ?? (await create({ title: titleFrom(text), ...(model ? { modelId: model._id, ...(effort ? { effort } : {}) } : {}) }));
-      if (!threadId) setThreadId(id);
+      const id = await started(titleFrom(text));
+      if (!from) setFirst({ threadId: id, text });
       await sendMessage({ threadId: id, text });
     } catch (error) {
-      // The message goes back in the box, unless something new was typed meanwhile.
-      setDraft((now) => now || text);
+      // The message goes back in the box it came from, unless something new was typed there meanwhile.
+      drafts.set(from, (now) => now || text);
+      setFirst(null);
       toast.error(t("sendFailed"), getErrorMessage(error, ""));
     } finally {
       setSending(false);
@@ -282,32 +353,32 @@ function Chat({
   };
   const restart = () => {
     setThreadId(null);
-    setDraft("");
     composer.current?.focus();
   };
   // Sharing a chat that hasn't started makes it first, so there's something to share.
-  const share = async () => {
-    try {
-      const id = threadId ?? (await create(model ? { modelId: model._id, ...(model.effort ? { effort: model.effort } : {}) } : {}));
-      if (!threadId) setThreadId(id);
-      onShare(id, thread?.title ?? t("newChat"));
-    } catch (error) {
-      toast.error(t("shareFailed"), getErrorMessage(error, ""));
-    }
-  };
+  const share = () =>
+    started().then(
+      (id) => onShare(id, thread?.title ?? t("newChat"), thread?.role ?? "owner"),
+      (error) => toast.error(t("shareFailed"), getErrorMessage(error, "")),
+    );
+  const messages = [...results].reverse();
+  const sent: Message[] =
+    first && first.threadId === threadId && results.length === 0
+      ? [{ id: `${SENDING}first`, role: "user", order: Number.MAX_SAFE_INTEGER, text: first.text, status: "done", mine: true, at: 0 }]
+      : [];
 
   return (
     <>
       <Header title={threadId ? (thread?.title ?? "") : t("newChat")} onHistory={onHistory} onShare={share} onRestart={restart} onFold={onFold} />
       <Thread
         // A different chat starts at its own newest message.
-        key={threadId ?? "new"}
-        messages={[...results].reverse()}
+        key={threadId ?? NEW}
+        messages={[...messages, ...sent]}
         live={live}
-        fresh={threadId === null}
+        fresh={threadId === null && sent.length === 0}
         older={status === "CanLoadMore" ? () => loadMore(FIRST_MESSAGES) : status === "LoadingMore" ? "loading" : null}
       />
-      <Footer composer={composer} draft={draft} setDraft={setDraft} busy={busy} canWrite={canWrite} onSend={send} onStop={stop} model={model} onModel={pickModel} presetModel={presetModel} />
+      <Footer composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} busy={busy} canWrite={canWrite} onSend={send} onStop={stop} model={model} onModel={pickModel} presetModel={presetModel} />
     </>
   );
 }
