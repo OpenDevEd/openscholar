@@ -49,10 +49,6 @@ export function SmartPagination({
   const endIdx = offset + displayedCount;
   const pageCount = Math.max(currentPage, Math.ceil(filteredCount / pageSize));
 
-  if (filteredCount === 0) {
-    return null;
-  }
-
   return (
     <div className={cn("flex flex-col items-center justify-between gap-3 border-t border-border/50 px-4 py-3 sm:flex-row md:px-6", stale && "pointer-events-none opacity-60")}>
       {/* Left: Results info */}

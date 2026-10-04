@@ -62,6 +62,16 @@ describe("useCursorPage", () => {
     expect(result.current).toMatchObject({ items: ["x"], page: 1, canPrevious: false, hasPages: false });
   });
 
+  it("starts over from the first page when the page size changes", () => {
+    const { result, rerender } = renderHook(({ size }) => useCursorPage(query, {}, size), { initialProps: { size: 2 } });
+    act(() => result.current.next());
+    expect(result.current).toMatchObject({ items: ["c", "d"], page: 2 });
+    server.pages.set("|null", page(["a"], "c0"));
+    rerender({ size: 1 });
+    expect(result.current).toMatchObject({ items: ["a"], page: 1, canPrevious: false, offset: 0 });
+    expect(server.reads.at(-1)?.paginationOpts).toMatchObject({ cursor: null, numItems: 1 });
+  });
+
   it("steps back from a page its rows were all deleted from", () => {
     const { result, rerender } = renderHook(() => useCursorPage(query, {}, 2));
     act(() => result.current.next());

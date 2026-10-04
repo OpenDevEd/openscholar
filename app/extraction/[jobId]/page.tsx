@@ -842,7 +842,7 @@ export default function JobDetailPage() {
                   )}
                 </div>
 
-                {authoritativeFilteredPapers > 0 && (
+                {displayedPapers.length > 0 && (
                   <SmartPagination
                     currentPage={results.page}
                     pageSize={pageSize}
