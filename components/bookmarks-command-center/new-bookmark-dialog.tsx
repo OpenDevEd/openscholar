@@ -10,6 +10,8 @@ import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configura
 import { getIdColor } from "@/lib/format";
 import { savedShortcutName, shortcutPieces, typedShortcutName } from "@/lib/query-shortcuts";
 import { useQueryShortcuts } from "@/lib/research/reads";
+import { useResearchStatus } from "@/lib/research/provider";
+import { useAppToast } from "@/lib/toast";
 import { useKeywordExpansionDialogStore, useKeywordExpansionStore } from "@/lib/store";
 import { useShortcutCount } from "@/lib/research/shortcut-list";
 import { cn } from "@/lib/utils";
@@ -59,11 +61,14 @@ function Missing({ label, children }: { label: string; children: ReactNode }) {
  * needs only a name.
  */
 export function NewBookmarkDialog() {
+  const toast = useAppToast();
+  const tToast = useTranslations("toast");
   const tb = useTranslations("bookmarksPage");
   const th = useTranslations("historyPage");
   const tv = useTranslations("validation");
   const tc = useTranslations("common");
   const addKeyword = useKeywordExpansionStore((state) => state.addKeyword);
+  const { ready } = useResearchStatus();
   const keywords = useKeywordExpansionStore((state) => state.keywords);
   const count = useShortcutCount();
   const { suggestedQuery } = useKeywordExpansionDialogStore();
@@ -93,11 +98,15 @@ export function NewBookmarkDialog() {
 
   const add = async (event: FormEvent) => {
     event.preventDefault();
-    if (!name || !query || taken) return;
+    if (!ready || !name || !query || taken) return;
     // An account looks the name up once more, in case it was taken since it was typed.
     try {
       await useKeywordExpansionStore.getState().ensureShortcuts([name]);
     } catch {
+      return;
+    }
+    if (useKeywordExpansionStore.getState().addKeyword !== addKeyword) {
+      toast.validation.failed(tToast("accountChanged"));
       return;
     }
     if (Object.prototype.hasOwnProperty.call(useKeywordExpansionStore.getState().keywords, name)) return;
@@ -114,7 +123,7 @@ export function NewBookmarkDialog() {
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? openDialog() : setOpen(false))}>
       <DialogTrigger asChild>
-        <Button size="sm" className={BAR_ACTION}>
+        <Button size="sm" disabled={!ready} className={BAR_ACTION}>
           <Plus />
           <span className={BAR_LABEL}>{tb("addBookmark")}</span>
         </Button>
@@ -217,7 +226,7 @@ export function NewBookmarkDialog() {
 
             <div className="flex justify-end gap-2 border-t border-border-subtle p-4">
               <Button type="button" variant="ghost" onClick={() => setOpen(false)}>{tc("cancel")}</Button>
-              <Button type="submit" disabled={!name || !query || taken}>
+              <Button type="submit" disabled={!ready || !name || !query || taken}>
                 <Plus />
                 {tb("addBookmark")}
               </Button>

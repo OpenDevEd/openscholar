@@ -76,6 +76,49 @@ test("an imported search keeps its identity, filters and questions after reopen,
   }
 });
 
+for (const kind of ["history", "bookmarks"] as const) {
+  test(`${kind} import refuses a file selected before the account changed`, async ({ page }) => {
+    await page.goto(`/${kind}`);
+    await clerk.loaded({ page });
+    const marker = `account-change-${crypto.randomUUID()}`;
+    const id = `import:${marker}`;
+    const data = kind === "history"
+      ? [{ format_version: 1, export_id: marker, search_query: marker, spec: { query: marker } }]
+      : [{ name: marker, expansion: "education", createdAt: 1 }];
+    await page.getByRole("button", { name: "Download as JSON", exact: true }).click();
+    const chooser = page.waitForEvent("filechooser");
+    await page.getByRole("menuitem", { name: "Upload JSON", exact: true }).click();
+    const filePicker = await chooser;
+    await clerk.signIn({ page, emailAddress: getTestUserEmail() });
+    await expect(page.getByRole("button", { name: "Download as JSON", exact: true })).toBeEnabled();
+    const { token, accountId } = await page.evaluate(async () => ({
+      token: (await window.Clerk.session!.getToken({ template: "convex" }))!,
+      accountId: window.Clerk.session!.user.id,
+    }));
+    const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    client.setAuth(token);
+    try {
+      await filePicker.setFiles({ name: "research.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(data)) });
+      await expect(page.getByText("Upload failed", { exact: true })).toBeVisible();
+      expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain(marker);
+      expect(await client.query(api.research.records.getSearch, { accountId, id })).toBeNull();
+      expect((await client.query(api.research.records.shortcutsOf, { accountId, names: [marker] })).page).toEqual([]);
+      await page.getByRole("button", { name: "Download as JSON", exact: true }).click();
+      const retryPicker = page.waitForEvent("filechooser");
+      await page.getByRole("menuitem", { name: "Upload JSON", exact: true }).click();
+      await (await retryPicker).setFiles({ name: "research.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(data)) });
+      if (kind === "history") {
+        await expect.poll(() => client.query(api.research.records.getSearch, { accountId, id })).toMatchObject({ id, query: marker });
+      } else {
+        await expect.poll(async () => (await client.query(api.research.records.shortcutsOf, { accountId, names: [marker] })).page).toEqual([expect.objectContaining({ shorthand: marker, expansion: "education" })]);
+      }
+    } finally {
+      await client.mutation(api.research.records.change, { accountId, requestId: crypto.randomUUID(), command: { kind: "deleteSearch", id } });
+      await client.mutation(api.research.records.change, { accountId, requestId: crypto.randomUUID(), command: { kind: "shortcut", shorthand: marker, value: null } });
+    }
+  });
+}
+
 test("sidebar links keep their names and a single keyboard stop when collapsed or expanded", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/");

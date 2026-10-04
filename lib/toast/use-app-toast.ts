@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { ResearchAccountChangedError } from "@/lib/research/binding";
 import { showStyledToast } from "@/components/ui/sonner";
 import { resolveToastActionRoute } from "./action-routing";
 import {
@@ -179,7 +180,7 @@ export function useAppToast(): AppToastApi {
           t("uploadFailedDescription", { format: formatLabel })
         );
         showStyledToast("error", t("uploadFailed"), {
-          description: message,
+          description: error instanceof ResearchAccountChangedError ? t("accountChanged") : message,
         });
       },
     },
