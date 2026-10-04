@@ -52,7 +52,10 @@ async function setup() {
     for (const clerkId of ["alice", "bob"]) await ctx.db.insert("users", { libraryItemCount: 0, clerkId, email: `${clerkId}@example.com`, state: "active", createdAt: 1, updatedAt: 1 });
   });
   const alice = t.withIdentity({ subject: "alice" });
-  const { create, update, restore, remove, results } = api.research.searches;
+  const { create, restore, remove, results } = api.research.searches;
+  /** An edit as the tool takes it: the settings that change, each by name. */
+  const update = ({ id, ...settings }: { id: string } & Record<string, unknown>) =>
+    alice.mutation(api.research.searches.update, { id, changes: Object.entries(settings).map(([setting, value]) => ({ setting, value })) as FunctionArgs<typeof api.research.searches.update>["changes"] });
   const search = (id: string) => alice.query(api.research.records.getSearch, { accountId: "alice", id });
   /** What the results page writes as a search is read: its result count and the page last opened. */
   const change = (command: FunctionArgs<typeof api.research.records.change>["command"]) => alice.mutation(api.research.records.change, { accountId: "alice", requestId: `change-${Math.random()}`, command });
@@ -67,8 +70,8 @@ async function setup() {
     await counted();
     return made;
   };
-  const edit = async (args: FunctionArgs<typeof update>) => {
-    const changed = await alice.mutation(update, args);
+  const edit = async (args: Parameters<typeof update>[0]) => {
+    const changed = await update(args);
     await counted();
     return changed;
   };
@@ -126,13 +129,13 @@ describe("the assistant's search tools", () => {
     // Changed again since, an older undo leaves it. Giving what it already has changes nothing.
     await edit({ id, reviewsOnly: true });
     await expect(alice.mutation(restore, changed.undo!.args)).rejects.toThrow(/changed since/);
-    expect((await alice.mutation(update, { id, reviewsOnly: true })).undo).toBeUndefined();
+    expect((await update({ id, reviewsOnly: true })).undo).toBeUndefined();
     // Both years taken off: the year filter goes.
     await edit({ id, fromYear: null, toYear: null });
     expect(await search(id)).toMatchObject({ isYearRangeEnabled: false });
-    await expect(alice.mutation(update, { id, fromYear: 2021, toYear: 2020 })).rejects.toThrow(/first year is after/);
+    await expect(update({ id, fromYear: 2021, toYear: 2020 })).rejects.toThrow(/first year is after/);
     // A blank query changes nothing, the filters given with it included.
-    await expect(alice.mutation(update, { id, query: "   ", openAccessOnly: true })).rejects.toThrow(/needs a query/);
+    await expect(update({ id, query: "   ", openAccessOnly: true })).rejects.toThrow(/needs a query/);
     expect((await search(id))!.openAccessOnly).toBeUndefined();
   });
 
@@ -196,17 +199,17 @@ describe("the assistant's search tools", () => {
     for (const part of ['"Kenya"', '"Nigeria"', "from_publication_date:2025-10-04", "authorships.countries:KE|BJ|", "authorships.institutions.type:education", "sustainable_development_goals.id:https://metadata.un.org/sdg/4", "type:article", "language:en|fr"]) expect(asked).toContain(part);
 
     // A value a filter doesn't take is refused with the ones it does.
-    await expect(alice.mutation(update, { id, about: ["Atlantis"] })).rejects.toThrow(/western_africa/);
-    await expect(alice.mutation(update, { id, types: ["poem"] })).rejects.toThrow(/book-chapter/);
-    await expect(alice.mutation(update, { id, authorsIn: ["world"] })).rejects.toThrow(/at most 100 countries/);
-    await expect(alice.mutation(update, { id, sdgs: [18] })).rejects.toThrow(/1 to 17/);
-    await expect(alice.mutation(update, { id, fromYear: 2020, fromDate: "2025-01-01" })).rejects.toThrow(/not both/);
-    await expect(alice.mutation(update, { id, fromDate: "last year" })).rejects.toThrow(/YYYY-MM-DD/);
+    await expect(update({ id, about: ["Atlantis"] })).rejects.toThrow(/western_africa/);
+    await expect(update({ id, types: ["poem"] })).rejects.toThrow(/book-chapter/);
+    await expect(update({ id, authorsIn: ["world"] })).rejects.toThrow(/at most 100 countries/);
+    await expect(update({ id, sdgs: [18] })).rejects.toThrow(/1 to 17/);
+    await expect(update({ id, fromYear: 2020, fromDate: "2025-01-01" })).rejects.toThrow(/not both/);
+    await expect(update({ id, fromDate: "last year" })).rejects.toThrow(/YYYY-MM-DD/);
     // A day the calendar doesn't have would leave a search its page can't open.
-    await expect(alice.mutation(update, { id, fromDate: "2025-02-30" })).rejects.toThrow(/the calendar has/);
-    await expect(alice.mutation(update, { id, fromDate: "2025-13-01" })).rejects.toThrow(/the calendar has/);
+    await expect(update({ id, fromDate: "2025-02-30" })).rejects.toThrow(/the calendar has/);
+    await expect(update({ id, fromDate: "2025-13-01" })).rejects.toThrow(/the calendar has/);
     // Taking a filter off that's already off changes nothing: no revision, no undo.
-    expect(await alice.mutation(update, { id, funders: null, cites: null, openAccessOnly: false })).toEqual({});
+    expect(await update({ id, funders: null, cites: null, openAccessOnly: false })).toEqual({});
     // Years in place of days, in one call.
     await edit({ id, fromDate: null, toDate: null, fromYear: 2020, toYear: 2024 });
     expect(await search(id)).toMatchObject({ filterType: "year", yearRange: [2020, 2024] });
@@ -223,6 +226,21 @@ describe("the assistant's search tools", () => {
     await alice.mutation(restore, changed.undo!.args);
     expect(await search(id)).toMatchObject({ selectedCountryFocus: ["africa"], sdgs: ["4"] });
     expect((await search(id))!.onlyRatedPapers).toBeUndefined();
+  });
+
+  it("edit a search by naming what changes, so a model that fills in every argument takes no filter off", async () => {
+    const { make, edit, update, search } = await setup();
+    const { id } = await make({ query: "tutoring", about: ["africa"], fromDate: "2025-10-04", toDate: "2026-10-04", reviewsOnly: true, sort: "most_cited" });
+    // One change, by name: everything else the search had stays.
+    await edit({ id, openAccessOnly: true });
+    expect(await search(id)).toMatchObject({ query: "tutoring", openAccessOnly: true, selectedCountryFocus: ["africa"], dateRange: { from: "2025-10-04", to: "2026-10-04" }, reviewFilter: true, sortBy: "cited_by_count:desc" });
+    // Two slips are read as what they mean: one value where a list goes, and null for a switch.
+    await edit({ id, about: "southern_asia", reviewsOnly: null });
+    expect(await search(id)).toMatchObject({ selectedCountryFocus: ["southern_asia"], reviewFilter: false, openAccessOnly: true });
+    // A value a setting doesn't take is refused with what it does.
+    await expect(update({ id, sort: "best" })).rejects.toThrow(/`sort` takes .*relevance.* or .*most_cited.* or .*newest.* or .*oldest/);
+    await expect(update({ id, minCitations: "many" })).rejects.toThrow(/`minCitations` takes a number or null/);
+    await expect(update({ id, query: null })).rejects.toThrow(/needs a query/);
   });
 
   it("filter by an author, a funder, a research area or a paper, by the IDs a result or a lookup gives", async () => {
@@ -247,9 +265,9 @@ describe("the assistant's search tools", () => {
     for (const part of ["authorships.author.id:A5023888391|A1", 'raw_author_name.search:"UNESCO"', "funders.id:F4320332161", "cites:https://openalex.org/W2741809807", "topics."]) expect(asked).toContain(part);
 
     // What isn't an ID says where to find one.
-    await expect(alice.mutation(update, { id, funders: ["Wellcome Trust"] })).rejects.toThrow(/research\/lookup:find/);
-    await expect(alice.mutation(update, { id, researchAreas: ["Education"] })).rejects.toThrow(/research\/lookup:find/);
-    await expect(alice.mutation(update, { id, relatedTo: "that paper" })).rejects.toThrow(/one paper's ID/);
+    await expect(update({ id, funders: ["Wellcome Trust"] })).rejects.toThrow(/research\/lookup:find/);
+    await expect(update({ id, researchAreas: ["Education"] })).rejects.toThrow(/research\/lookup:find/);
+    await expect(update({ id, relatedTo: "that paper" })).rejects.toThrow(/one paper's ID/);
     await expect(alice.action(find, { kind: "author", text: " " })).rejects.toThrow(/name to look for/);
   });
 

@@ -25,8 +25,8 @@ const listValidator = v.optional(v.union(v.array(v.string()), v.null()));
 
 /**
  * A search's settings, as the assistant gives them: the filters its page has that take
- * plain values. Left out, a setting stays as it is; null takes it off. What they mean is
- * said once, in SETTINGS, for the tools that take them.
+ * plain values. null takes a setting off. What they mean is said once, in SETTINGS, for the
+ * tools that take them.
  */
 export const searchSettings = {
   /** Where the query's words are looked for. */
@@ -57,6 +57,19 @@ export const searchSettings = {
   maxRating: numberValidator,
   sort: v.optional(sortValidator),
 };
+
+/**
+ * A change to a saved search, as its edit takes them: one setting by name, with its new
+ * value. A list of these, and not the settings side by side, because a model that fills in
+ * every argument it's offered then names only what it means to change. Side by side, such a
+ * model sent null for each setting it wasn't asked about, which took every filter off.
+ */
+export const changesValidator = v.array(
+  v.object({
+    setting: v.union(v.literal("query"), ...Object.keys(searchSettings).map((name) => v.literal(name as keyof typeof searchSettings))),
+    value: v.union(v.string(), v.number(), v.boolean(), v.null(), v.array(v.union(v.string(), v.number()))),
+  }),
+);
 
 /** What the settings mean, for the description of each tool that takes them. A value one doesn't take is refused with the ones it does. */
 export const SETTINGS =

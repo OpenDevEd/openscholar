@@ -4,7 +4,7 @@
  * them onto the saved search's own fields, then go through `applyCommand` like every other
  * change, so the person's open page follows and each change has its undo (#342).
  */
-import { v, type Infer, type ObjectType } from "convex/values";
+import { v, type GenericValidator, type Infer, type ObjectType } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import { internalAction, internalMutation } from "../lib/functions";
@@ -16,7 +16,7 @@ import { authorFilterValue } from "../../lib/openalex/author-filter";
 import { INSTITUTION_TYPES, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { currentSearch, type SavedSearch, type UndoCommand } from "../../lib/research/records";
 import { applyCommand, findSearch, revisionRow } from "./records";
-import { AUTHORS_SHOWN, LAST_PAGE, LAST_PAGE_FROM_START, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
+import { AUTHORS_SHOWN, changesValidator, LAST_PAGE, LAST_PAGE_FROM_START, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 
 const CREATE = "research/searches:create" as const;
 const UPDATE = "research/searches:update" as const;
@@ -218,14 +218,77 @@ export const createAction = defineUserMutation({
 export const create = userMutation(createAction);
 export const createForAssistant = assistantMutation(createAction);
 
+/** Whether a value is one a setting's validator takes. */
+function fits(validator: GenericValidator, value: unknown): boolean {
+  switch (validator.kind) {
+    case "union":
+      return validator.members.some((member) => fits(member, value));
+    case "literal":
+      return value === validator.value;
+    case "null":
+      return value === null;
+    case "string":
+      return typeof value === "string";
+    case "float64":
+      return typeof value === "number";
+    case "boolean":
+      return typeof value === "boolean";
+    case "array":
+      return Array.isArray(value) && value.every((inner) => fits(validator.element, inner));
+    default:
+      return false;
+  }
+}
+/** What a setting takes, in words, for the refusal of a value it doesn't. */
+function takes(validator: GenericValidator): string {
+  switch (validator.kind) {
+    case "union":
+      return [...new Set(validator.members.map(takes))].join(" or ");
+    case "literal":
+      return JSON.stringify(validator.value);
+    case "array":
+      return `a list of ${takes(validator.element)}`;
+    case "float64":
+      return "a number";
+    case "boolean":
+      return "true or false";
+    case "string":
+      return "text";
+    default:
+      return validator.kind;
+  }
+}
+
+/**
+ * The settings a list of changes gives, checked as the settings' own validators would have.
+ * Two slips are read as what they mean: one value where a list goes is a list of one, and
+ * null for a switch turns it off.
+ */
+function settingsOf(changes: Infer<typeof changesValidator>) {
+  const settings: Record<string, unknown> = {};
+  let query: string | undefined;
+  for (const { setting, value } of changes) {
+    if (setting === "query") {
+      if (typeof value !== "string" || !value.trim()) throw needsQuery();
+      query = value;
+      continue;
+    }
+    const validator = searchSettings[setting];
+    const given = fits(validator, value) ? value : value !== null && fits(validator, [value]) ? [value] : value === null && fits(validator, false) ? false : invalid(`\`${setting}\` takes ${takes(validator)}.`);
+    settings[setting] = given;
+  }
+  return { query, settings: settings as Settings };
+}
+
 export const updateAction = defineUserMutation({
   path: UPDATE,
   description:
-    "Changes a saved search's query, its filters, or both. Only what's given changes; null takes a filter off. The person's open page follows, from its first page of results. " +
+    "Changes a saved search: its query, its filters, or both. Give only what changes, as a list: each change names one setting and its new value, and a value of null takes a filter off. Every setting left out of the list stays as it is. " +
+    "The person's open page follows, from its first page of results. `query` is the search's words. " +
     SETTINGS +
     " " +
     "Returns `undo`, which puts the search back as it was before this change. It is refused if the search changed again in between.",
-  args: { id: v.string(), query: v.optional(v.string()), ...searchSettings },
+  args: { id: v.string(), changes: changesValidator },
   returns: v.object({ undo: reversedBy(RESTORE, restoreArgs) }),
   spendsCredits: false,
   outsideEffect: false,
@@ -235,8 +298,8 @@ export const updateAction = defineUserMutation({
     const found = await findSearch(ctx, userId, id);
     return found !== null && (await revisionRow(ctx, found._id, found.revision)) === null;
   },
-  run: async (ctx, userId, { id, query, ...settings }, author) => {
-    if (query !== undefined && !query.trim()) throw needsQuery();
+  run: async (ctx, userId, { id, changes }, author) => {
+    const { query, settings } = settingsOf(changes);
     const found = await findSearch(ctx, userId, id);
     if (!found) throw createError("NOT_FOUND", "Search not found.");
     const current = currentSearch(found.data);

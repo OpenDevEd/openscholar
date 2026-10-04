@@ -94,5 +94,5 @@ export function searchCatalogTopics(search: string, ancestor?: string): TopicNod
   const matches = topics
     .filter((entry) => (!ancestor || entry.ancestors.has(ancestor)) && words.every((word) => entry.text.includes(word)))
     .map(({ topic }) => topic);
-  return words.length ? matches.toSorted((left, right) => rank(left.name) - rank(right.name)) : matches;
+  return words.length ? matches.sort((left, right) => rank(left.name) - rank(right.name)) : matches;
 }
