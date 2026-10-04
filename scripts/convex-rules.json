@@ -49,8 +49,6 @@
       "convex/models/queries.ts:list:[]": "#424",
       "convex/models/queries.ts:listCatalogOptions:[]": "#424",
       "convex/organizationFeatures.ts:libraryOrganizations:[]": "#423",
-      "convex/topics/details.ts:get:.keywords[]": "#424",
-      "convex/topics/details.ts:get:.path[]": "#424",
       "convex/topics/publications.ts:list:.groups[]": "#424",
       "convex/topics/publications.ts:locations:.locations[]": "#424",
       "convex/wallet/queries.ts:listMyKeys:[]": "#424",
@@ -75,7 +73,6 @@
   },
   "everyPage": {
     "pending": {
-      "app/actions/topic-publications.ts:rows": "#424",
       "convex/chat/messages.ts:listRecentThreadArtifacts": "#325",
       "convex/chat/messages.ts:readThreadMessagesWithVisiblePageIntegrity": "#325",
       "convex/evidenceLibraries/uploadsClient.ts:listObjectNames": "#425",
@@ -88,8 +85,6 @@
     "pending": {}
   },
   "argumentSizedTakes": {
-    "bounded": {
-      "convex/topics/publications.ts:list": "The handler refuses a limit outside 1 to 50 before it reads."
-    }
+    "bounded": {}
   }
 }

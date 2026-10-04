@@ -9,6 +9,7 @@ import { CATALOG_REVISION } from "../../lib/topics/catalog";
 import type { Doc } from "../_generated/dataModel";
 import { openAlexUrl } from "../../lib/openalex/request-url";
 import { MAX_TOPIC_KEYWORDS } from "../lib/listCaps";
+import { topicKeywordsValidator, topicPathValidator } from "./validators";
 
 const provider = z.object({id: z.string(), description: z.string().max(100000), keywords: z.array(z.string().max(1000)).max(1000), works_count: z.number().int().nonnegative()});
 const DAY = 86_400_000;
@@ -94,8 +95,8 @@ export async function readTopicDetail(ctx: ActionCtx, args: {id: string; library
 export const get = action({
   args: {id: v.string()},
   returns: v.object({
-    contractVersion: v.literal(1), id: v.string(), name: v.string(), description: v.string(), keywords: v.array(v.string()),
-    path: v.array(v.object({id: v.string(), name: v.string()})), worksCount: v.number(), fetchedAt: v.string(), revision: v.string(),
+    contractVersion: v.literal(1), id: v.string(), name: v.string(), description: v.string(), keywords: topicKeywordsValidator,
+    path: topicPathValidator, worksCount: v.number(), fetchedAt: v.string(), revision: v.string(),
     publicBaseUrl: v.string(), topicUrl: v.string(),
   }),
   handler: (ctx, args) => readTopicDetail(ctx, args),

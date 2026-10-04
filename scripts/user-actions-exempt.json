@@ -192,6 +192,8 @@
     "screening/queries:listUserScreeningJobs": "#328",
     "topics/details:get": "#327",
     "topics/publications:list": "#327",
+    "topics/publications:listGroups": "#327",
+    "topics/publications:listLocations": "#327",
     "topics/publications:locations": "#327",
     "userAiConfig/mutations:choose": "#323",
     "userAiConfig/mutations:setCustom": "#323",
