@@ -168,7 +168,7 @@ function Overlay({
           >
             {threadId ? <Here threadId={threadId} /> : null}
             <motion.div
-              className="absolute inset-0 flex flex-col overflow-hidden rounded-[18px] border border-border/70 bg-card/[0.97] shadow-[0_24px_80px_-24px_rgb(0_0_0/0.55),0_0_0_1px_rgb(255_255_255/0.03)] backdrop-blur-xl"
+              className="absolute inset-0 flex flex-col overflow-hidden rounded-[18px] border border-border/70 bg-card shadow-[0_24px_80px_-24px_rgb(0_0_0/0.55),0_0_0_1px_rgb(255_255_255/0.03)]"
               style={{ transformOrigin: "0% 50%" }}
               initial={false}
               animate={stackedUnder(depth)}
