@@ -5,7 +5,7 @@
  * all import it.
  */
 import type { Infer } from "convex/values";
-import { components } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
@@ -96,7 +96,7 @@ export async function touchThread(ctx: MutationCtx, threadId: Id<"assistantThrea
 export async function deleteThread(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
   for (const row of await accessRows(ctx, thread._id)) await ctx.db.delete("assistantThreadAccess", row._id);
   await ctx.db.delete("assistantThreads", thread._id);
-  await ctx.runMutation(components.presence.public.removeRoom, { roomId: thread._id });
+  await ctx.scheduler.runAfter(0, internal.assistant.presence.forgetRoom, { threadId: thread._id });
   await ctx.runMutation(components.agent.threads.deleteAllForThreadIdAsync, { threadId: thread.agentThreadId });
 }
 

@@ -33,10 +33,10 @@ const LIST_FILTER_ROWS = 500;
 const LIST_PAGE_BYTES = 2 * 1024 * 1024;
 const PREVIEW_MAX = 120;
 
-/** The start of a message, on one line, for the list of chats. */
+/** The start of a message, on one line, for the list of chats. Cut between characters, never inside one. */
 export function previewOf(text: string) {
-  const line = text.trim().replace(/\s+/g, " ");
-  return line.length > PREVIEW_MAX ? `${line.slice(0, PREVIEW_MAX - 1).trimEnd()}…` : line;
+  const characters = [...text.trim().replace(/\s+/g, " ")];
+  return characters.length > PREVIEW_MAX ? `${characters.slice(0, PREVIEW_MAX - 1).join("").trimEnd()}…` : characters.join("");
 }
 
 type Reply = NonNullable<Doc<"assistantThreads">["reply"]>;
@@ -108,6 +108,7 @@ export const createAction = defineUserMutation({
     await requireFeature(ctx, FLAG, userId);
     const title = titled(args.title) || "New chat";
     if (args.modelId) await pickable(ctx, args.modelId, args.effort);
+    else if (args.effort) throw createError("VALIDATION_ERROR", "Pick a model to set its reasoning effort.");
     const now = Date.now();
     const agentThreadId = await createThread(ctx, components.agent, { userId, title });
     const threadId = await ctx.db.insert("assistantThreads", {
@@ -130,7 +131,7 @@ export const listAction = defineUserQuery({
   path: "assistant/threads:list",
   description:
     "Lists the assistant chats the person can open, newest first, a page at a time: all of them, only their own, or only the ones shared with them. " +
-    "Given `text`, only chats whose title or newest message contains it. Each comes with the start of its newest message, whether a reply is being written in it, " +
+    "Given `text`, only chats whose title, or the start of whose newest message, contains it. Each comes with the start of its newest message, whether a reply is being written in it, " +
     "the first few people in it and who of them has it open now.",
   args: { scope: v.union(v.literal("all"), v.literal("mine"), v.literal("shared")), text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(listedValidator),

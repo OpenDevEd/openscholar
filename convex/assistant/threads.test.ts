@@ -1,12 +1,14 @@
 // Assistant chats (#324): who can open, change and share one, and how a person's chats list.
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
-import { api, internal } from "../_generated/api";
+import { api, components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { seedFeatureUser, seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import schema from "../schema";
 import { touchThread } from "./access";
 import { people } from "./assistant.test-support";
+import { previewOf } from "./threads";
+import { waitFor } from "./turn.test-support";
 
 const firstPage = { cursor: null, numItems: 10 };
 const titles = (page: { page: Array<{ title: string }> }) => page.page.map((chat) => chat.title);
@@ -25,6 +27,9 @@ describe("assistant chats", () => {
     expect(await suggested(asAda, "cy")).toEqual([]);
     // Cy is alone in the other organization.
     expect((await suggested(asCy)).map((one) => one.principal)).toEqual([{ kind: "organization", organizationId: elsewhere }]);
+    // Someone in no organization gets no suggestions.
+    await t.run(async (ctx) => seedFeatureUser(ctx, "dee"));
+    expect(await suggested(t.withIdentity({ subject: "dee", tokenIdentifier: "dee|test" }) as typeof asAda)).toEqual([]);
 
     // The access list says how big an organization is.
     const threadId = await asAda.mutation(api.assistant.threads.create, {});
@@ -58,6 +63,17 @@ describe("assistant chats", () => {
     // Shared with him by name, he is on the row whether he's there or not.
     await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: ben }, role: "read" });
     expect((await row(asAda)).members).toEqual([{ userId: ben, name: "", here: false }]);
+
+    // Deleting the chat empties its room afterwards, on its own.
+    await asBen.mutation(api.assistant.presence.heartbeat, { threadId, sessionId: "tab-3" });
+    await asAda.mutation(api.assistant.threads.remove, { threadId });
+    await waitFor(async () => (await t.run(async (ctx) => ctx.runQuery(components.presence.public.listRoom, { roomId: threadId }))).length === 0);
+  });
+
+  it("shows the start of a chat's newest message, cut between characters", () => {
+    expect(previewOf("  Compare   the\ndesigns ")).toBe("Compare the designs");
+    // The cut lands on an emoji, which is two code units: it stays whole.
+    expect(previewOf(`${"a".repeat(118)}😀😀😀`)).toBe(`${"a".repeat(118)}😀…`);
   });
 
   it("belong to the person who starts them, and a stranger can't open, rename or delete one", async () => {
