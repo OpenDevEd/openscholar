@@ -493,6 +493,8 @@ export default defineSchema({
   users: defineTable(userFields)
     .index("by_clerk_id", ["clerkId"])
     .index("by_email", ["email"])
+    // Active users by email, for the picker that adds an admin (admins/queries.ts).
+    .index("by_state_and_email", ["state", "email"])
     .index("by_state", ["state"]),
 
   // ═══════════════════════════════════════════════════════════════
