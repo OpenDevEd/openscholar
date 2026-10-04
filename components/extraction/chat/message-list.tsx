@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { LogoMark } from "@/components/logo";
 import {
   Children,
   Fragment,
@@ -408,7 +408,7 @@ function SourceUpdateDivider({
       role="status"
       className="flex justify-center"
     >
-      <div className="max-w-[90%] rounded-md border border-border/70 bg-muted/45 px-3 py-1.5 text-center text-xs text-muted-foreground">
+      <div className="max-w-[90%] rounded-md border border-border bg-inset px-3 py-1.5 text-center text-xs text-muted-foreground">
         <span className="font-medium text-foreground">{title}</span>
         <span className="ml-1">{description}</span>
       </div>
@@ -580,7 +580,7 @@ export const MessageRow = memo(function MessageRow({
     >
       {!isUser && isFirstInGroup ? (
         <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <Image src="/icon.svg" alt="" width={20} height={20} className="size-5" />
+          <LogoMark className="size-5" />
           <span>Assistant</span>
         </div>
       ) : null}

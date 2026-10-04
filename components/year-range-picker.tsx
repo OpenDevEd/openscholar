@@ -8,7 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, RotateCcw } from "lucide-react";
+import { CalendarIcon, RotateCcw } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { MIN_YEAR, getYearRangePresets } from "@/lib/constants";
 import { Slider } from "@/components/ui/slider";
@@ -148,15 +148,14 @@ export function YearRangePicker({
               : "border-dashed border-muted-foreground/30",
           )}
         >
-          <CalendarIcon className="mr-3 h-4 w-4 text-muted-foreground" />
           <span className="truncate">
             {isFilterActive
               ? `${yearRange[0]} → ${yearRange[1]}`
-              : tf("filterByYearRange")}
+              : tf("chooseYearRange")}
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-4" align="start">
+      <PopoverContent className="w-(--radix-popover-trigger-width) p-4" align="start">
         <div className="space-y-4">
           {/* Toggle (search-only) */}
           {showToggle && onToggleEnabled && (

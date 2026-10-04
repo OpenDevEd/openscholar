@@ -32,6 +32,7 @@ function filters(overrides: Partial<SearchFilters> = {}): SearchFilters {
     workLanguages: [],
     institutionTypes: [],
     funders: [],
+    authors: [],
     minCitations: null,
     hasAbstract: false,
     includeRetracted: false,

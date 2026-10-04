@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import { FilterCountControl } from "./filter-count-control";
 import { motion, AnimatePresence } from "motion/react";
-import { Filter, X } from "lucide-react";
+import { Filter, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -100,8 +100,8 @@ export function FilterSidebar({
       <motion.aside
         className={cn(
           "h-full flex flex-col overflow-hidden absolute right-0 top-0 bottom-0",
-          "bg-background/95 dark:bg-background/90",
-          "border-l border-border/50"
+          "bg-background",
+          "border-l border-border-subtle"
         )}
         initial={false}
         animate={{ x: translateX }}
@@ -112,7 +112,7 @@ export function FilterSidebar({
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
 
         {/* Floating controls in top-right corner */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border/30 bg-background/95 p-1">
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border-subtle bg-card p-1">
           <AnimatePresence>
             {activeFilterCount > 0 && (
               <FilterCountControl
@@ -133,7 +133,7 @@ export function FilterSidebar({
                   variant="ghost"
                   size="icon"
                   onClick={toggle}
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-200"
                 >
                   <motion.div
                     animate={{ rotate: 0 }}
@@ -178,7 +178,7 @@ export function FilterSidebar({
                     variant="ghost"
                     size="icon"
                     onClick={toggle}
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-200"
                   >
                     <motion.div
                       animate={{ rotate: 0 }}

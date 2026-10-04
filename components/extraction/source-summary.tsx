@@ -8,7 +8,7 @@ import {
   Folder,
   Layers,
   Search,
-} from "lucide-react";
+} from "@/components/icons";
 import { useTranslations } from "next-intl";
 
 import { useBucketStore } from "@/lib/store/bucket";

@@ -1,6 +1,6 @@
 "use client";
 
-import { StopCircleIcon } from "lucide-react";
+import { StopCircleIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 
 /**

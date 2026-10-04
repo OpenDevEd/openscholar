@@ -43,9 +43,7 @@
       "convex/zotero/libraryGroups.ts:listLibraryZoteroGroups:[]": "#423",
       "convex/zotero/runtimeReadActions.ts:listLibraryCollections:.items[]": "#425",
       "convex/zotero/runtimeReadActions.ts:listRecordInstitutions:.items[]": "#425",
-      "convex/zotero/runtimeReadActions.ts:listReviewedPublications:.items[]": "#425",
-      "convex/zotero/runtimeReadActions.ts:readHomeQuestions:.questions[]": "#425",
-      "convex/zotero/runtimeReadActions.ts:resolveLibraryCollections:.items[]": "#425"
+      "convex/zotero/runtimeReadActions.ts:listReviewedPublications:.items[]": "#425"
     }
   },
   "untypedReturns": {

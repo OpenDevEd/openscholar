@@ -13,10 +13,8 @@ export function CountryRegionPicker() {
     <CountrySelector
       selectedRegions={selectedValues}
       onSelectionChange={handleSelectionChange}
+      label={tf("institutionLocation")}
       placeholder={tf("filterByInstitution")}
-      description={tf("chooseRegionsToFilter")}
-      showCountryNames={false}
-      bypassLimit={false}
     />
   );
 } 

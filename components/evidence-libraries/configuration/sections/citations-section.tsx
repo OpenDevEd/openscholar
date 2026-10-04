@@ -1,17 +1,17 @@
 "use client";
 
-import { Quote } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { EXPORT_FORMATS, settleFeatures } from "@/lib/evidence-libraries/configuration/rules";
 import { FieldGroup, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
+import { QuoteIcon } from "@/components/icons";
 
 export function CitationsSection({ draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.citations");
   return (
     <SectionShell
       sectionKey="citations"
-      icon={Quote}
+      icon={QuoteIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

@@ -1,6 +1,5 @@
 "use client";
 
-import { Menu } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type LinkDraft, newLink } from "@/lib/evidence-libraries/configuration/links";
 import { collectionOptions, newId, SCHEMA_LIMITS } from "@/lib/evidence-libraries/configuration/rules";
@@ -16,6 +15,7 @@ import {
 } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { LinkEditor } from "./link-editor";
+import { MenuIcon } from "@/components/icons";
 
 const LIMITS = SCHEMA_LIMITS.navigation;
 
@@ -35,7 +35,7 @@ export function NavigationSection({ draft, saved, patch, reset }: SectionProps) 
   return (
     <SectionShell
       sectionKey="navigation"
-      icon={Menu}
+      icon={MenuIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

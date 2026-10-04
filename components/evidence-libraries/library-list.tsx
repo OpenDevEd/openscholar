@@ -27,7 +27,8 @@ import {
   ShieldCheck,
   RotateCcw,
   SearchX,
-} from "lucide-react";
+  EvidenceLibrariesIcon,
+} from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -87,7 +88,7 @@ const roleIcons = { Owner: Crown, Editor: ShieldCheck, Creator: PenLine };
 function LibraryTile() {
   return (
     <div className={LIST_TILE}>
-      <Layers className="size-5" />
+      <EvidenceLibrariesIcon className="size-5" />
     </div>
   );
 }
@@ -188,7 +189,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
       {notice && (
         <p
           role="status"
-          className="flex items-center gap-2 border-b border-border/50 bg-muted/20 px-4 py-3 text-xs text-muted-foreground"
+          className="flex items-center gap-2 border-b border-border-subtle bg-inset px-4 py-3 text-xs text-muted-foreground"
         >
           <Check className="size-3.5" />
           {notice}
@@ -197,7 +198,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
       {/* Keyed by tab, so switching fades the new list in instead of jumping. */}
       <div key={view} className="fade-enter">
         {view === "invitations" && (
-          <p className="border-b border-border/50 px-4 py-3 text-xs text-muted-foreground">
+          <p className="border-b border-border-subtle px-4 py-3 text-xs text-muted-foreground">
             Accept access to a library without joining its organization.
           </p>
         )}
@@ -215,7 +216,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
           // The page shown stays up, dimmed and inert, while the one it steps or filters to loads.
           <ul
             // A paged list keeps a full page of rows with their addresses, so a short last page, or a page of shorter rows, doesn't move the pager: 75px a row with its divider where it sits on one line, 119px on a phone, where its actions take a second.
-            className={cn("divide-y divide-border/50", view === "libraries" && overviews.hasPages && "min-h-[1427px] sm:min-h-[899px]", view === "libraries" && overviews.isStale && "opacity-60")}
+            className={cn("divide-y divide-border-subtle", view === "libraries" && overviews.hasPages && "min-h-[1427px] sm:min-h-[899px]", view === "libraries" && overviews.isStale && "opacity-60")}
             inert={(view === "libraries" && overviews.isStale) || undefined}
             data-library-list
           >
@@ -226,7 +227,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                   key={library.id}
                   data-library-row={library.id}
                   data-status={library.status}
-                  className="fade-enter flex flex-wrap items-center gap-3 p-4 hover:bg-muted/15 sm:flex-nowrap"
+                  className="fade-enter flex flex-wrap items-center gap-3 p-4 hover:bg-muted sm:flex-nowrap"
                 >
                   <div className="relative mr-1 shrink-0">
                     {library.faviconUrl ? (
@@ -393,7 +394,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
           </ul>
         )}
         {view === "libraries" && !loading && overviews.hasPages && (
-          <div className="border-t border-border/50 px-4 pb-4">
+          <div className="border-t border-border-subtle px-4 pb-4">
             <CommandCenterPagination
               currentPage={overviews.page}
               itemLabel="libraries"

@@ -1,6 +1,5 @@
 "use client";
 
-import { Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +23,7 @@ import { Field, FieldError } from "../section-card";
 import { ChoiceChips, FieldGroup, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { FeaturedInstitutionPicker } from "./institution-pickers";
+import { SearchIcon } from "@/components/icons";
 
 export function SearchSection({
   libraryId,
@@ -54,7 +54,7 @@ export function SearchSection({
   return (
     <SectionShell
       sectionKey="search"
-      icon={Search}
+      icon={SearchIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
-import { ArrowUpRight, BookOpen, ChevronRight, Copy, Network } from "lucide-react";
+import { ArrowUpRight, BookOpen, ChevronRight, Copy, Network, TopicsIcon } from "@/components/icons";
 import { toast } from "sonner";
 import { readTopic, readTopicWorks } from "@/app/actions/topics";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -46,7 +46,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
   const total = works.data?.[0]?.meta.count ?? 0;
   const isFocusModeOpen = useUIStore(state => state.isFocusModeOpen);
 
-  return <LibraryPageShell icon={Network} title={topic.name} backHref="/topics" backLabel={t("back")} actions={<>
+  return <LibraryPageShell icon={TopicsIcon} title={topic.name} backHref="/topics" backLabel={t("back")} actions={<>
     <Button variant="outline" size="sm" className={BAR_ACTION} onClick={async () => {
       try { await navigator.clipboard.writeText(location.href); toast.success(t("linkCopied")); }
       catch { toast.error(t("copyFailed")); }
@@ -66,10 +66,10 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
       {detail.data?.description && <p className="max-w-4xl text-sm leading-relaxed">{detail.data.description}</p>}
       {!detail.data && !detail.error && <Spinner aria-label={t("loadingDescription")} className="size-4 text-muted-foreground" />}
       {detail.error && <div role="alert" className="flex items-center gap-2 text-sm text-muted-foreground">{t("descriptionFailed")}<Button size="sm" variant="ghost" onClick={() => void detail.mutate()}>{t("tryAgain")}</Button></div>}
-      {!!detail.data?.keywords.length && <div className="flex flex-wrap gap-2" aria-label={t("keywords")}>{detail.data.keywords.map(keyword => <Link key={keyword} href={buildShareableUrl("", { q: keyword })} className="rounded-md bg-muted/60 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring">{keyword}</Link>)}</div>}
+      {!!detail.data?.keywords.length && <div className="flex flex-wrap gap-2" aria-label={t("keywords")}>{detail.data.keywords.map(keyword => <Link key={keyword} href={buildShareableUrl("", { q: keyword })} className="rounded-md bg-inset px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring">{keyword}</Link>)}</div>}
       {!!related.length && <div>
         <Button variant="ghost" size="sm" className="-ml-3" aria-expanded={showRelated} onClick={() => setShowRelated(value => !value)}><Network aria-hidden />{showRelated ? t("hideRelated") : t("related")}<span className="text-muted-foreground">{related.length}</span></Button>
-        {showRelated && <div className="mt-2 grid gap-1 sm:grid-cols-2">{related.map(node => <Link className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted/30 hover:text-primary" key={node.id} href={`/topics/${node.id}`}>{node.name}<ArrowUpRight aria-hidden className="size-3.5 shrink-0" /></Link>)}</div>}
+        {showRelated && <div className="mt-2 grid gap-1 sm:grid-cols-2">{related.map(node => <Link className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted hover:text-primary" key={node.id} href={`/topics/${node.id}`}>{node.name}<ArrowUpRight aria-hidden className="size-3.5 shrink-0" /></Link>)}</div>}
       </div>}
     </div>
   }>
@@ -83,7 +83,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
           {papers.map((paper, index) => <PaperCard key={paper.id} result={paper} resultIndex={index} viewMode="list-simple" onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />)}
         </div>}
         {!loadingPapers && !works.error && !papers.length && <ListEmpty icon={OpenAlexIcon}>{t("noOpenAlex")}</ListEmpty>}
-        {works.data?.at(-1)?.meta.next_cursor && <div className="flex items-center justify-between gap-3 border-t border-border/50 px-6 py-3">
+        {works.data?.at(-1)?.meta.next_cursor && <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-6 py-3">
           <span className="text-sm text-muted-foreground">{t("progress", { loaded: papers.length, total })}</span>
           <Button variant="ghost" size="sm" disabled={works.isValidating} onClick={() => void works.setSize(works.size + 1)}>{works.isValidating && <Spinner />}{t("showMore")}</Button>
         </div>}

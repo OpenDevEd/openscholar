@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { CircleAlert, X } from "lucide-react";
+import { CircleAlert, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 
 // Known body keys; must stay in lockstep with the `extraction.retry
@@ -71,11 +71,11 @@ export function PermanentFailuresCallout({
     <div
       role="note"
       data-permanent-total={total}
-      className="flex items-start justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs"
+      className="flex items-start justify-between gap-3 rounded-md border border-warning/30 bg-warning/5 px-3 py-2 text-xs"
     >
       <div className="flex items-start gap-2">
         <CircleAlert
-          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600"
+          className="mt-0.5 h-3.5 w-3.5 shrink-0 ink-warning"
           aria-hidden="true"
         />
         <div className="space-y-1">

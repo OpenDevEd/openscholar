@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
-import { Loader2, Wand2 } from "lucide-react";
+import { Loader2, Wand2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { QueryHistoryNav } from "./components/query-history-nav";
@@ -23,10 +23,9 @@ interface AdjustModeProps {
   searchId: string;
   isLoading?: boolean;
   isValidating?: boolean;
-  allowEmpty?: boolean;
 }
 
-export function AdjustMode({ searchId, isLoading, isValidating, allowEmpty = false }: AdjustModeProps) {
+export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProps) {
   const toast = useAppToast();
   const t = useTranslations();
   const tv = useTranslations("validation");
@@ -61,10 +60,8 @@ export function AdjustMode({ searchId, isLoading, isValidating, allowEmpty = fal
 
   // Handle manual query submission
   const submitQuery = useCallback(() => {
-    if (allowEmpty || editableQuery.trim()) {
-      search.setQuery(editableQuery);
-    }
-  }, [search, editableQuery, allowEmpty]);
+    search.setQuery(editableQuery);
+  }, [search, editableQuery]);
 
   // Handle AI enhancement
   const handleAiEnhancement = async (e: React.FormEvent) => {
@@ -170,7 +167,6 @@ Please enhance this academic search query according to the user's specific instr
         placeholder={t("searchCommand.noQuerySet")}
         disabled={isFormDisabled}
         busy={isLoading || isValidating}
-        allowEmpty={allowEmpty}
         flash={queryFlash}
       />
       {isOql && <OqlQueryStatus error={search.error} />}

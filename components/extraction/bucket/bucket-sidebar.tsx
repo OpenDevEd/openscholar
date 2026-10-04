@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { Package, PanelRightClose } from "lucide-react";
+import { Package, PanelRightClose } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -33,7 +33,7 @@ function capacityState(readyCount: number, limit: number): CapacityState {
 
 const CAPACITY_TINT: Record<CapacityState, string> = {
   normal: "text-foreground",
-  near: "text-amber-600 dark:text-amber-400",
+  near: "ink-warning",
   at: "text-destructive",
 };
 
@@ -68,7 +68,7 @@ function BucketHeader({
   return (
     <header className="flex flex-col">
       {/* As tall as the page bar, with the same line, so the two top edges meet. */}
-      <div className="flex h-[65px] items-center justify-between gap-3 border-b border-sidebar-border/50 px-4">
+      <div className="flex h-[65px] items-center justify-between gap-3 border-b border-sidebar-border px-4">
         <div className="min-w-0 flex-1">
           <h2
             id="bucket-sidebar-title"
@@ -122,7 +122,7 @@ function BucketHeader({
             "mx-4 mt-3 rounded-md p-2 text-xs",
             atCap
               ? "bg-destructive/10 text-destructive"
-              : "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+              : "bg-warning/10 ink-warning",
           )}
         >
           {atCap

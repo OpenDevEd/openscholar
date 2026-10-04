@@ -90,6 +90,7 @@ export const createSearchMetadata = (
     workLanguages: [],
     institutionTypes: [],
     funders: [],
+    authors: [],
     minCitations: null,
     hasAbstract: false,
     includeRetracted: false,

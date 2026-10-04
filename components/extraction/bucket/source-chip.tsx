@@ -18,7 +18,7 @@ export function SourceChip({
     <span
       data-source={source}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground shrink-0",
+        "inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-background px-2 py-0.5 text-2xs font-medium text-muted-foreground shrink-0",
         className,
       )}
     >

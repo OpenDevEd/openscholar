@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Info } from "lucide-react";
+import { Info } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-panel";
@@ -38,6 +38,90 @@ interface TableViewProps {
   /** Plan-04: opt-in per-paper Credits column, toggled via toolbar. */
   showCredits?: boolean;
 }
+
+/** One paper's row. Memoised, so a change to another row, or a resize, leaves it alone. */
+const PaperRow = memo(function PaperRow({
+  paper,
+  questions,
+  isSelected,
+  onToggleSelect,
+  searchQuery,
+  pdfEnabled,
+  showCredits,
+  pinnedShadow,
+  openAnswer,
+  onOpenAnswer,
+}: {
+  paper: PaperWithResults;
+  questions: Question[];
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
+  searchQuery: string;
+  pdfEnabled: boolean;
+  showCredits: boolean;
+  pinnedShadow: string;
+  openAnswer: string | null;
+  onOpenAnswer: (answer: OpenAnswer) => void;
+}) {
+  const completedCount = paper.results.filter((r) => r.status === "completed").length;
+  const questionProgress = `${completedCount}/${Math.max(questions.length, paper.results.length)}`;
+  return (
+    <TableRow
+      data-paper-id={paper._id}
+      data-paper-status={paper.status}
+      data-question-progress={questionProgress}
+      data-state={isSelected ? "selected" : undefined}
+      className="group cursor-pointer"
+      onClick={() => onToggleSelect(paper._id)}
+    >
+      {/* The paper stays in view while the answers scroll sideways; its hover colour is opaque so they never show through. */}
+      <TableCell className={cn(pinnedShadow, "sticky left-0 z-10 bg-card py-4 pl-4 pr-4 align-top whitespace-normal group-hover:bg-inset group-data-[state=selected]:bg-muted md:pl-6")}>
+        <div className="flex max-w-[188px] gap-3 sm:max-w-[288px]">
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => onToggleSelect(paper._id)}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={paper.title}
+            className="mt-0.5"
+          />
+          <div className="min-w-0 space-y-1.5">
+            <TooltipHint label={paper.title} onlyWhenClipped>
+              <p className="line-clamp-4 text-sm font-medium leading-snug">
+                <HighlightedText text={paper.title} query={searchQuery} />
+              </p>
+            </TooltipHint>
+            <PaperDetails paper={paper} pdfEnabled={pdfEnabled} />
+            <div onClick={(e) => e.stopPropagation()}>
+              <PaperQuestionProgress paperStatus={paper.status} results={paper.results} totalQuestions={questions.length} />
+            </div>
+          </div>
+        </div>
+      </TableCell>
+
+      {showCredits && (
+        <TableCell className="py-4 text-right align-top tabular-nums" data-column="credits" data-credits={String(paper.creditsUsed ?? 0)}>
+          {(paper.creditsUsed ?? 0).toLocaleString()}
+        </TableCell>
+      )}
+
+      {questions.map((q) => {
+        const result = paper.results.find((r) => r.questionKey === q.key);
+        return (
+          <TableCell key={q.key} className="relative isolate max-w-[320px] py-4 pl-4 pr-9 align-top whitespace-normal" onClick={(e) => e.stopPropagation()}>
+            <ResultCell
+              result={result}
+              type={q.type}
+              searchQuery={searchQuery}
+              fill
+              selected={openAnswer === openAnswerKey({ paper, question: q, result })}
+              onOpen={() => onOpenAnswer({ paper, question: q, result })}
+            />
+          </TableCell>
+        );
+      })}
+    </TableRow>
+  );
+});
 
 export const TableView = memo(function TableView({
   papers,
@@ -80,10 +164,13 @@ export const TableView = memo(function TableView({
   useEffect(() => {
     const box = scrollRef.current?.querySelector<HTMLElement>('[data-slot="table-container"]');
     if (!box) return;
-    const update = () => setEdges({
-      start: box.scrollLeft <= 1,
-      end: box.scrollLeft + box.clientWidth >= box.scrollWidth - 1,
-    });
+    // Only a change counts: the box resizes on every frame while a side panel
+    // slides, and a fresh object each time would redraw the whole table each frame.
+    const update = () => {
+      const start = box.scrollLeft <= 1;
+      const end = box.scrollLeft + box.clientWidth >= box.scrollWidth - 1;
+      setEdges((current) => (current.start === start && current.end === end ? current : { start, end }));
+    };
     update();
     box.addEventListener("scroll", update, { passive: true });
     const observer = new ResizeObserver(update);
@@ -140,68 +227,22 @@ export const TableView = memo(function TableView({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {papers.map((paper) => {
-            const isSelected = selectedIds.has(paper._id);
-            const completedCount = paper.results.filter((r) => r.status === "completed").length;
-            const questionProgress = `${completedCount}/${Math.max(questions.length, paper.results.length)}`;
-            return (
-              <TableRow
-                key={paper._id}
-                data-paper-id={paper._id}
-                data-paper-status={paper.status}
-                data-question-progress={questionProgress}
-                data-state={isSelected ? "selected" : undefined}
-                className="group cursor-pointer"
-                onClick={() => toggleSelect(paper._id)}
-              >
-                {/* The paper stays in view while the answers scroll sideways; its hover colour is opaque so they never show through. */}
-                <TableCell className={cn(pinnedShadow, "sticky left-0 z-10 bg-card py-4 pl-4 pr-4 align-top whitespace-normal group-hover:bg-[color-mix(in_oklab,var(--card),var(--muted)_50%)] group-data-[state=selected]:bg-muted md:pl-6")}>
-                  <div className="flex max-w-[188px] gap-3 sm:max-w-[288px]">
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => toggleSelect(paper._id)}
-                      onClick={(e) => e.stopPropagation()}
-                      aria-label={paper.title}
-                      className="mt-0.5"
-                    />
-                    <div className="min-w-0 space-y-1.5">
-                      <TooltipHint label={paper.title} onlyWhenClipped>
-                        <p className="line-clamp-4 text-sm font-medium leading-snug">
-                          <HighlightedText text={paper.title} query={searchQuery} />
-                        </p>
-                      </TooltipHint>
-                      <PaperDetails paper={paper} pdfEnabled={pdfEnabled} />
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <PaperQuestionProgress paperStatus={paper.status} results={paper.results} totalQuestions={questions.length} />
-                      </div>
-                    </div>
-                  </div>
-                </TableCell>
-
-                {showCredits && (
-                  <TableCell className="py-4 text-right align-top tabular-nums" data-column="credits" data-credits={String(paper.creditsUsed ?? 0)}>
-                    {(paper.creditsUsed ?? 0).toLocaleString()}
-                  </TableCell>
-                )}
-
-                {questions.map((q) => {
-                  const result = paper.results.find((r) => r.questionKey === q.key);
-                  return (
-                    <TableCell key={q.key} className="relative isolate max-w-[320px] py-4 pl-4 pr-9 align-top whitespace-normal" onClick={(e) => e.stopPropagation()}>
-                      <ResultCell
-                        result={result}
-                        type={q.type}
-                        searchQuery={searchQuery}
-                        fill
-                        selected={openAnswer === openAnswerKey({ paper, question: q, result })}
-                        onOpen={() => onOpenAnswer({ paper, question: q, result })}
-                      />
-                    </TableCell>
-                  );
-                })}
-              </TableRow>
-            );
-          })}
+          {papers.map((paper) => (
+            <PaperRow
+              key={paper._id}
+              paper={paper}
+              questions={questions}
+              isSelected={selectedIds.has(paper._id)}
+              onToggleSelect={toggleSelect}
+              searchQuery={searchQuery}
+              pdfEnabled={pdfEnabled}
+              showCredits={showCredits}
+              pinnedShadow={pinnedShadow}
+              // Only the row that holds the open answer hears about it, so opening one redraws two rows, not all.
+              openAnswer={openAnswer?.startsWith(`${paper._id}:`) ? openAnswer : null}
+              onOpenAnswer={onOpenAnswer}
+            />
+          ))}
         </TableBody>
       </Table>
       {/* More columns off to the right. */}

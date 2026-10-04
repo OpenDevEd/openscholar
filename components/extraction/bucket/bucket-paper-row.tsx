@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { authorsPreview, type AuthorsPreviewInput } from "@/lib/bucket/authors-preview";
 import type { BucketItemStatus, BucketSource } from "@/lib/bucket/bucketItem";
@@ -47,7 +47,7 @@ export function BucketPaperRow({
       exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
       className={cn(
-        "group flex min-w-0 max-w-full flex-col gap-2 rounded-lg border border-border/60 bg-card p-3 transition-colors hover:bg-accent/40",
+        "group flex min-w-0 max-w-full flex-col gap-2 rounded-lg border border-border-subtle bg-card p-3 transition-colors hover:bg-card-hover",
         className,
       )}
     >
@@ -60,14 +60,13 @@ export function BucketPaperRow({
           {authorsPreview(paper)}
           {status !== "ready" && (
             <>
-              {" · "}
               {status === "uploading" && (
-                <span className="inline-flex items-center gap-1 align-middle">
+                <span className="ml-2 inline-flex items-center gap-1 align-middle">
                   <Loader2 className="h-3 w-3 animate-spin" />
                   uploading
                 </span>
               )}
-              {status === "failed" && <span>upload failed</span>}
+              {status === "failed" && <span className="ml-2">upload failed</span>}
             </>
           )}
         </span>

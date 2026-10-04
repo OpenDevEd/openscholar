@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, FileText, Library } from "lucide-react";
+import { ArrowUpRight, FileText, Library } from "@/components/icons";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { AuthorPublication } from "@/components/authors/types";
@@ -23,20 +23,20 @@ export function PublicationListItem({ publication: p, locations }: {
 }) {
   return (
     <article
-      className="fade-enter group grid grid-cols-[64px_minmax(0,1fr)] items-center gap-4 border-b border-border/50 px-4 py-4 transition-colors hover:bg-muted/20 last:border-b-0 sm:grid-cols-[80px_minmax(0,1fr)_auto] sm:gap-6"
+      className="fade-enter group grid grid-cols-[64px_minmax(0,1fr)] items-center gap-4 border-b border-border-subtle px-4 py-4 transition-colors hover:bg-muted last:border-b-0 sm:grid-cols-[80px_minmax(0,1fr)_auto] sm:gap-6"
     >
       <button
         className="rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
         aria-label={`Preview ${p.title} cover`}
         onClick={() => window.open(p.url, "_blank", "noopener,noreferrer")}
       >
-        <Avatar className="h-[92px] w-16 rounded-sm border border-border/50 shadow-sm transition-transform group-hover:-translate-y-0.5 sm:h-28 sm:w-20">
+        <Avatar className="h-[92px] w-16 rounded-sm border border-border-subtle shadow-sm transition-transform group-hover:-translate-y-0.5 sm:h-28 sm:w-20">
           <AvatarImage
             src={p.cover}
             alt=""
             className="object-cover"
           />
-          <AvatarFallback className="rounded-none bg-muted/30">
+          <AvatarFallback className="rounded-none bg-inset">
             <FileText className="size-6 text-muted-foreground/50" />
           </AvatarFallback>
         </Avatar>

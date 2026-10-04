@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useAction } from "convex/react";
-import { CalendarDays, Check, ChevronDown, Clock3, Repeat2, Globe2, Mail, Send, TimerReset } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, Clock3, Repeat2, Globe2, Mail, Send, TimerReset } from "@/components/icons";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -104,7 +104,7 @@ function TimezonePicker({id, invalid, value, onChange}: {id: string; invalid: bo
         <ChevronDown className="size-4 shrink-0 opacity-50" />
       </Button>
     </PopoverTrigger>
-    <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-72 p-0">
+    <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-0">
       <Command defaultValue={current.replaceAll("_", " ")}>
         <CommandInput placeholder="Search city or region" />
         <CommandList>

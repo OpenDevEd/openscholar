@@ -1,6 +1,6 @@
 "use client";
 
-import { Users } from "lucide-react";
+import { Users } from "@/components/icons";
 import { Spinner } from "@/components/ui/spinner";
 import { SectionCard } from "../section-card";
 import { useAction, useMutation } from "convex/react";

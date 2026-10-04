@@ -13,7 +13,7 @@ import { createError } from "../lib/errors";
 import { MAX_ASSISTANT_THREAD_GRANTS } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { readMemberOrganizations } from "../organizationFeatures";
-import { accessRow, accessRows, principalKey, principalOf, requireThread, type AssistantPrincipal } from "./access";
+import { accessRow, accessRows, personName, principalKey, principalOf, requireThread, type AssistantPrincipal } from "./access";
 import { assistantGrantRoleValidator, assistantPrincipalValidator, assistantRoleValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
@@ -128,8 +128,7 @@ export const listAccessAction = defineUserQuery({
         }
         const person = await ctx.db.get("users", principal.userId);
         if (!person) return [];
-        const name = [person.firstName, person.lastName].filter(Boolean).join(" ");
-        return [{ principal, role: row.role, name, ...(role === "owner" ? { email: person.email } : {}) }];
+        return [{ principal, role: row.role, name: personName(person), ...(role === "owner" ? { email: person.email } : {}) }];
       }),
     );
     return { ...read, page: page.flat() };

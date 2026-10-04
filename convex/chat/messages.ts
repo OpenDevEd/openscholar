@@ -9,16 +9,14 @@
  *     ↓ bumps messageCount + lastMessageAt
  *     ↓ schedules generateResponse
  *   generateResponse (internal action)
- *     ↓ pre-flight credit check (throws AI_INSUFFICIENT_CREDITS)
- *     ↓ resolves per-job model via resolveOpenRouterModel
- *     ↓ paperChat.streamText with saveStreamDeltas
- *     ↓ try/finally releases the lock
+ *     ↓ runs the reply through runTurn (convex/assistant/turn.ts), which
+ *       holds the credits, streams, settles and releases the lock
  *   listThreadMessages (query)
  *     ← reactive subscription on client; drives useUIMessages
  *   regenerateLastAssistant / clearThread / swapModel: affordances.
  */
 
-import type { ActionCtx, MutationCtx } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
 import {
   internalAction,
   internalMutation,
@@ -35,6 +33,7 @@ import {
   toUIMessages,
   vStreamArgs,
 } from "@convex-dev/agent";
+import { runTurn } from "../assistant/turn";
 import type { ToolSet } from "ai";
 import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -43,41 +42,25 @@ import { requireAvailableModel, requireEffort, requireTaskModel } from "../model
 import { effortValidator } from "../aiModelConfig/validators";
 import { paperChat } from "./agent";
 import { authorizeThreadAccess } from "./auth";
-import { resolveOpenRouterModel } from "./provider";
 import { buildOpenRouterWebSearchTool } from "./tools/openrouterWebSearch";
 import { chatSearchesWeb } from "../../lib/chat/web-search-capability";
 import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
 import {
   classifyChatError,
   errorCodeValidator,
-  serializeChatError,
   type ErrorCode,
 } from "../../lib/errors/taxonomy";
-import { startAbortPoller } from "../../lib/chat/abort-poller";
-import {
-  ABORT_ERROR_STRING,
-} from "../../lib/chat/abort-signal";
 import {
   normalizeChatUIMessage,
   selectChatMessageError,
 } from "../../lib/chat/message-state";
 import { resolveLatestAssistantTurn } from "../../lib/chat/latest-assistant-turn";
-import { pickProviderCostUsd } from "../../lib/chat/pick-provider-cost";
-import { errorToLogString } from "../lib/errors";
-import { assertChatConcurrencyAvailable, LEASE_RENEW_MS } from "./concurrency";
-import { reserveCredits, releaseCredits, settleCredits, tokenCounts, tokenDetails } from "../billing/charge";
-import { callOptions } from "../../lib/ai/core/call-options";
-import { aggregateUsage, usageOf } from "../../lib/ai/core/cost";
-import type { Usage } from "../../lib/ai/core/types";
+import { assertChatConcurrencyAvailable } from "./concurrency";
 import {
   CHAT_WEB_SEARCHES_PER_REPLY,
-  convertUsdToCredits,
   WEB_SEARCH_CREDITS,
 } from "../../lib/pricing";
-import { calculateCostInDollars } from "../../lib/ai/core/cost";
 import { CHAT_PROMPT_MAX_CHARS } from "@/lib/extraction/limits";
-
-export const STOP_ABORT_POLL_INTERVAL_MS = 500;
 
 const chatGenerationJobErrorValidator = v.object({
   code: errorCodeValidator,
@@ -193,23 +176,6 @@ export const clearGenerationError = internalMutation({
   },
 });
 
-async function recordGenerationErrorFromAction(
-  ctx: ActionCtx,
-  args: {
-    jobId: Id<"extractionJobs">;
-    generationAttemptId?: string;
-    error: unknown;
-  },
-) {
-  const error = toChatGenerationJobError(args.error);
-  if (error.code === "aborted") return;
-  await ctx.runMutation(internal.chat.messages.recordGenerationError, {
-    jobId: args.jobId,
-    generationAttemptId: args.generationAttemptId,
-    error,
-  });
-}
-
 /* ────────────────────────────────────────────────────────────────── */
 /*                      User → Assistant turn                         */
 /* ────────────────────────────────────────────────────────────────── */
@@ -318,546 +284,38 @@ export const generateResponse = internalAction({
       throw createError("NOT_FOUND", "Thread not found");
     }
     const { jobId, userId } = meta;
-    const requestedChatModelId =
-      chatModelId !== undefined ? chatModelId : meta.chatModelId;
-
-    // Abort wiring (plans/chat-stop-streaming/01-action-abort-wiring.md).
-    // Poll job.shouldAbort every 500ms; when flipped, abort the signal
-    // we pass into paperChat.streamText, which cascades through the
-    // library's DeltaStreamer → AI SDK streamText → OpenRouter fetch.
-    const abortController = new AbortController();
-    // The poller also renews this generation's lock, so a long reply isn't
-    // taken for one that died (convex/chat/concurrency.ts).
-    let leaseRenewedAt = Date.now();
-    const stopAbortPoller = startAbortPoller({
-      readFlag: async () => {
-        if (Date.now() - leaseRenewedAt >= LEASE_RENEW_MS) {
-          leaseRenewedAt = Date.now();
-          await ctx.runMutation(internal.chat.concurrency.renewGenerationLease, { jobId, generationAttemptId });
-        }
-        const flag: boolean = await ctx.runQuery(
-          internal.chat.messages.shouldAbortInternal,
-          { jobId, generationAttemptId },
-        );
-        return flag;
-      },
-      onAbort: () => {
-        if (!abortController.signal.aborted) {
-          // Pass the wire string directly as the abort reason. The agent
-          // library serializes via `abortSignal.reason?.toString()` at
-          // start.ts:175, and String#toString returns the string itself,
-          // so the persisted MessageDoc.error becomes ABORT_ERROR_STRING
-          // verbatim — same value our defensive persistAssistantAbort
-          // Sentinel writes. Avoids the prior dependency on
-          // `new DOMException(reason, name).toString()` happening to
-          // format as "AbortError: user_stopped" at runtime.
-          abortController.abort(ABORT_ERROR_STRING);
-        }
-      },
-      intervalMs: STOP_ABORT_POLL_INTERVAL_MS,
-    });
-
-    // True once `onError` has patched the pending message with a
-    // structured envelope *from the original provider error* (which has
-    // statusCode, headers, body — everything we need for a precise
-    // classification). If it ran, the inner catch skips re-patching,
-    // because the error reaching the catch is the agent's stringified
-    // wrapper ("Provider returned error") and would downgrade our
-    // envelope from `rate_limit` to `provider_5xx` / `unknown`.
-    let envelopePatchedFromOnError = false;
-    let generationErrorRecordedFromOnError = false;
-
-    // Captured from OpenRouter's X-Generation-Id response header via
-    // the provider's fetch wrapper (see convex/chat/openrouterFetch.ts).
-    // The header lands on the initial HTTP response frame, so this ref
-    // is populated even when the client aborts the stream mid-flight.
-    // That is what lets stopped turns bill from OpenRouter's
-    // /api/v1/generation record via chat/billing.ts settleFromOpenRouter.
-    let capturedGenerationId: string | undefined;
-    let capturedModelSlug: string | undefined;
-    let streamErrored = false;
-    let streamAbortedByUser = false;
-    let streamReturned = false;
-    // Credits for this turn are held under chargeId until the turn settles.
-    const chargeId = `chat:${generationAttemptId ?? crypto.randomUUID()}`;
-    let reserved = false;
-    let settledOrScheduled = false;
-    // A turn can take several model steps (tool calls). Each completed step
-    // adds its cost; a step still running at a stop or error is billed from
-    // its OpenRouter generation record.
-    let completedUsd = 0;
-    let completedTokens = 0;
-    const stepUsages: Usage[] = [];
-    const completedGenerations = new Set<string>();
-    let finished = false;
-
-    try {
-      const webSearch = chatSearchesWeb(meta);
+    const webSearch = chatSearchesWeb(meta);
+    await runTurn(ctx, {
+      agent: paperChat,
+      threadId,
+      promptMessageId,
+      userId,
+      modelId: chatModelId !== undefined ? chatModelId : meta.chatModelId,
+      effort: chatEffort,
+      attemptId: generationAttemptId,
       // A web-search reply can run every search it's allowed.
-      const requiredCredits =
+      credits:
         ESTIMATED_CREDITS_PER_CHAT_MESSAGE +
-        (webSearch ? WEB_SEARCH_CREDITS * CHAT_WEB_SEARCHES_PER_REPLY : 0);
-      if (!(await reserveCredits(ctx, { userId, chargeId, credits: requiredCredits }))) {
-        const account = await ctx.runQuery(internal.billing.accounts.forUser, { userId });
-        const availableCredits = account?.balance ?? 0;
-        throw createError(
-          "AI_INSUFFICIENT_CREDITS",
-          "Not enough credits for this chat message.",
-          {
-            requiredCredits,
-            availableCredits,
-            deficitCredits: Math.max(0, requiredCredits - availableCredits),
-          },
-        );
-      }
-      reserved = true;
-
-      const { model, modelSlug, pricing } = await resolveOpenRouterModel(
-        ctx,
-        requestedChatModelId,
-        {
-          generationIdSink: (id) => {
-            capturedGenerationId = id;
-          },
-        },
-      );
-      capturedModelSlug = modelSlug;
-
-      const tools = webSearch
+        (webSearch ? WEB_SEARCH_CREDITS * CHAT_WEB_SEARCHES_PER_REPLY : 0),
+      tools: webSearch
         ? ({ web_search: buildOpenRouterWebSearchTool() } as ToolSet)
-        : undefined;
-
-      try {
-        await paperChat.streamText(
-          ctx,
-          { threadId, userId },
-          {
-            promptMessageId,
-            model,
-            // Paper context is assembled from trusted server-owned system messages.
-            allowSystemInMessages: true,
-            abortSignal: abortController.signal,
-            ...(tools ? { tools } : {}),
-            // Retries serve no user when the stream is live — the user
-            // is watching and would prefer a fast failure or a clean
-            // abort over a ~2s wait for a retry that mid-stream can't
-            // salvage anyway.
-            maxRetries: 0,
-            // Claude caches the corpus and earlier turns; the thread id keeps
-            // every turn on the same upstream host so that cache stays warm.
-            providerOptions: callOptions(model, { cache: true, sessionId: threadId, effort: chatEffort }),
-            onStepEnd: async ({ usage, providerMetadata }) => {
-              stepUsages.push(usageOf({ usage, providerMetadata }));
-              const inputTokens = usage?.inputTokens ?? 0;
-              const outputTokens = usage?.outputTokens ?? 0;
-              completedTokens += inputTokens + outputTokens;
-              // OpenRouter's reported cost includes its web searches; tokens ×
-              // price is the fallback.
-              completedUsd +=
-                pickProviderCostUsd(providerMetadata) ??
-                calculateCostInDollars({ inputTokens, outputTokens }, pricing);
-              if (capturedGenerationId) completedGenerations.add(capturedGenerationId);
-            },
-            onEnd: async () => {
-              finished = true;
-            },
-            onAbort: ({ steps }) => {
-              // The SDK awaits this callback. Leave billing and finalization
-              // to the action body after the stream has been consumed.
-              streamAbortedByUser = true;
-              console.info("[chat] stream aborted by user", {
-                jobId,
-                threadId,
-                stepCount: steps.length,
-              });
-            },
-            onError: async ({ error }) => {
-              streamErrored = true;
-              // This runs with the ORIGINAL provider error (429 w/
-              // retry-after, etc.) but only if the agent's own
-              // `call.fail` → `finalizeMessage` path did not throw.
-              // When finalizeMessage DOES throw (stream-had-error-
-              // chunks case), this never runs and we fall back to the
-              // inner catch below.
-              await recordGenerationErrorFromAction(ctx, {
-                jobId,
-                generationAttemptId,
-                error,
-              })
-                .then(() => {
-                  generationErrorRecordedFromOnError = true;
-                })
-                .catch((err) => {
-                  console.error("[chat] failed to record generation error", {
-                    jobId,
-                    threadId,
-                    err: errorToLogString(err),
-                  });
-                });
-              const patched = await patchLastAssistantAsFailed(
-                ctx,
-                threadId,
-                promptMessageId,
-                error,
-                { model: capturedModelSlug, provider: "openrouter" },
-              ).catch(() => false);
-              if (patched) envelopePatchedFromOnError = true;
-            },
-          },
-          { saveStreamDeltas: { chunking: "word", throttleMs: 250 } },
-        );
-        streamReturned = true;
-      } catch (err) {
-        streamErrored = true;
-        // The agent's `streamText` wrapper re-throws stream errors
-        // (node_modules/@convex-dev/agent/src/vercel/client/streamText.ts).
-        // We land here for every stream-time failure — and sometimes
-        // before onError got a chance, when the agent's call.fail
-        // itself threw inside finalizeMessage. Force-transition the
-        // stuck pending assistant to `failed` so the UI can render an
-        // alert instead of an empty bubble.
-        // NOTE: abort is NOT an error path. AI SDK swallows AbortError
-        // and converts it to an {type:"abort"} stream chunk; paperChat
-        // .streamText returns normally on abort and this catch never
-        // fires for user-stop.
-        if (!envelopePatchedFromOnError) {
-          if (!generationErrorRecordedFromOnError) {
-            await recordGenerationErrorFromAction(ctx, {
-              jobId,
-              generationAttemptId,
-              error: err,
-            }).catch((recordErr) => {
-              console.error("[chat] failed to record generation error", {
-                jobId,
-                threadId,
-                err: errorToLogString(recordErr),
-              });
-            });
-          }
-          const patched = await patchLastAssistantAsFailed(
-            ctx,
-            threadId,
-            promptMessageId,
-            err,
-            { model: capturedModelSlug, provider: "openrouter" },
-          ).catch((patchErr) => {
-            console.error("[chat] failed to patch assistant error", {
-              jobId,
-              threadId,
-              err: errorToLogString(patchErr),
-            });
-            return false;
-          });
-          // startGeneration failed before a pending assistant could be
-          // saved — persist a standalone one so the thread still shows
-          // the error.
-          if (!patched) {
-            await saveStandaloneErrorMessage(
-              ctx,
-              threadId,
-              promptMessageId,
-              err,
-              { model: capturedModelSlug, provider: "openrouter" },
-            ).catch((saveErr) => {
-              console.error("[chat] failed to save standalone chat error", {
-                jobId,
-                threadId,
-                err: errorToLogString(saveErr),
-              });
-            });
-          }
-        }
-      }
-
-      if (streamReturned && !streamErrored && !streamAbortedByUser) {
-        await ctx
-          .runMutation(internal.chat.messages.clearGenerationError, {
-            jobId,
-            generationAttemptId,
-          })
-          .catch((err) => {
-            console.error("[chat] failed to clear generation error", {
-              jobId,
-              threadId,
-              err: errorToLogString(err),
-            });
-          });
-      }
-
-      // A user stop is handled here, awaited: AI SDK calls onAbort
-      // fire-and-forget (stream-text.ts:1206), so onAbort only sets
-      // streamAbortedByUser. The stop is billed below like any other
-      // unfinished generation.
-      if (streamAbortedByUser) {
-        // (1) Persist the wire abort sentinel on the pending
-        // assistant row so listThreadMessages's isAbortErrorString
-        // detection enriches aborted:true and drops the error from
-        // the UI page. Idempotent vs. the agent library's own
-        // start.ts:170-178 listener — both paths write identical
-        // values (same DOMException toString result).
-        await persistAssistantAbortSentinel(
-          ctx,
-          threadId,
-          promptMessageId,
-        ).catch((err) => {
-          console.error("[chat] failed to persist abort sentinel", {
-            jobId,
-            threadId,
-            err: errorToLogString(err),
-          });
-        });
-      }
-
-      const unfinishedGeneration =
-        capturedGenerationId && !completedGenerations.has(capturedGenerationId)
-          ? capturedGenerationId
-          : undefined;
-      const cleanFinish = finished && !streamErrored && !streamAbortedByUser;
-      if (unfinishedGeneration && !cleanFinish) {
-        // Stopped or failed mid-step. The step's generation record says what
-        // OpenRouter billed, including a response the provider finished
-        // after the stop.
-        await ctx.scheduler.runAfter(0, internal.chat.billing.settleFromOpenRouter, {
-          userId,
+        : undefined,
+      jobId,
+      log: { jobId },
+      shouldStop: () => ctx.runQuery(internal.chat.messages.shouldAbortInternal, { jobId, generationAttemptId }),
+      renewLease: () => ctx.runMutation(internal.chat.concurrency.renewGenerationLease, { jobId, generationAttemptId }),
+      release: () => ctx.runMutation(internal.chat.concurrency.releaseThreadLock, { jobId, generationAttemptId }),
+      recordError: (error) =>
+        ctx.runMutation(internal.chat.messages.recordGenerationError, {
           jobId,
-          chargeId,
-          generationId: unfinishedGeneration,
-          extraUsd: completedUsd,
-          earlierTokens: tokenCounts(aggregateUsage(stepUsages)),
-          attempt: 0,
-        });
-        settledOrScheduled = true;
-      } else if (completedTokens > 0) {
-        const usd = completedUsd;
-        await settleCredits(ctx, {
-          userId,
-          chargeId,
-          credits: convertUsdToCredits({ usd }) || 1,
-          usage: {
-            kind: "chat",
-            description: "Chat message",
-            jobId,
-            model: modelSlug,
-            ...tokenDetails(aggregateUsage(stepUsages)),
-            costUsd: usd,
-          },
-        });
-        settledOrScheduled = true;
-      }
-    } catch (err) {
-      // Genuine pre-stream failures only: credit guard, thread/model
-      // lookup, provider construction. No pending assistant message
-      // exists yet, so persist a standalone one inline.
-      await recordGenerationErrorFromAction(ctx, {
-        jobId,
-        generationAttemptId,
-        error: err,
-      }).catch((recordErr) => {
-        console.error("[chat] failed to record generation error", {
-          jobId,
-          threadId,
-          err: errorToLogString(recordErr),
-        });
-      });
-      await saveStandaloneErrorMessage(
-        ctx,
-        threadId,
-        promptMessageId,
-        err,
-        capturedModelSlug
-          ? { model: capturedModelSlug, provider: "openrouter" }
-          : undefined,
-      ).catch((saveErr) => {
-        console.error("[chat] failed to save standalone chat error", {
-          jobId,
-          threadId,
-          err: errorToLogString(saveErr),
-        });
-      });
-      throw err;
-    } finally {
-      if (reserved && !settledOrScheduled) {
-        await releaseCredits(ctx, { userId, chargeId }).catch((err) => {
-          console.error("[chat] failed to release reserved credits", {
-            chargeId,
-            err: errorToLogString(err),
-          });
-        });
-      }
-      // Stop the poller BEFORE releasing the lock. releaseThreadLock
-      // clears shouldAbort=undefined; if a poll tick raced past that
-      // clear we could — in theory — spuriously abort the very next
-      // turn (impossible under the current per-thread lock, but
-      // defence in depth). See plan § 3 placement notes.
-      await stopAbortPoller();
-      await ctx.runMutation(internal.chat.concurrency.releaseThreadLock, {
-        jobId,
-        generationAttemptId,
-      });
-    }
+          generationAttemptId,
+          error: toChatGenerationJobError(error),
+        }),
+      clearError: () => ctx.runMutation(internal.chat.messages.clearGenerationError, { jobId, generationAttemptId }),
+    });
     return null;
   },
 });
-
-/**
- * Force-transition the newest pending/failed assistant message to
- * `status:"failed"` with a serialized {@link ChatErrorEnvelope} as its
- * `error` field.
- *
- * We accept `pending` here because the agent's own `call.fail` may have
- * thrown inside `finalizeMessage` (it re-processes saved stream chunks,
- * and that processor throws on error chunks — see
- * node_modules/@convex-dev/agent/src/deltas.ts). In that case the
- * pending row is stuck in `status:"pending"` and the UI sees an empty
- * bubble. Patching it here is what lets the failure alert render.
- *
- * Returns true if a patch was made (so callers can know whether they
- * still need to save a standalone error message).
- */
-/**
- * Locate the pending-or-failed assistant message row for a given user
- * prompt. Shared lookup used by `patchLastAssistantAsFailed` (error
- * paths) and `persistAssistantAbortSentinel` (abort path); both want
- * the same row but write different patch payloads, so the lookup is
- * extracted while the two outer functions stay separate.
- *
- * Returns `null` if the prompt has no associated pending/failed
- * assistant row (e.g. pre-stream credit failure where the agent never
- * created one — callers fall back to `saveStandaloneErrorMessage`).
- */
-async function findPendingAssistantForPrompt(
-  ctx: ActionCtx,
-  threadId: string,
-  promptMessageId: string,
-): Promise<{ _id: string } | null> {
-  const promptMessages = await ctx.runQuery(
-    components.agent.messages.getMessagesByIds,
-    { messageIds: [promptMessageId as never] },
-  );
-  const promptOrder = promptMessages[0]?.order;
-  const { page } = await listMessages(ctx, components.agent, {
-    threadId,
-    paginationOpts: { numItems: 20, cursor: null },
-    statuses: ["pending", "failed"],
-  });
-  return (
-    page.find(
-      (message) =>
-        message.message?.role === "assistant" &&
-        (promptOrder === undefined || message.order === promptOrder),
-    ) ?? null
-  );
-}
-
-async function patchLastAssistantAsFailed(
-  ctx: ActionCtx,
-  threadId: string,
-  promptMessageId: string,
-  rawError: unknown,
-  metadata?: { model?: string; provider?: string },
-): Promise<boolean> {
-  const target = await findPendingAssistantForPrompt(
-    ctx,
-    threadId,
-    promptMessageId,
-  );
-  if (!target) return false;
-  const envelope = classifyChatError(rawError);
-  const serialized = serializeChatError(envelope);
-  await ctx.runMutation(components.agent.messages.updateMessage, {
-    messageId: target._id,
-    patch: {
-      status: "failed",
-      error: serialized,
-      ...(metadata?.model ? { model: metadata.model } : {}),
-      ...(metadata?.provider ? { provider: metadata.provider } : {}),
-    },
-  });
-  return true;
-}
-
-/**
- * Force-transition the newest pending/failed assistant message to
- * `status:"failed"` with the agent's wire abort sentinel as `error`.
- *
- * Why we need this: the agent library registers a fire-and-forget
- * abort listener in start.ts:170-178 that's supposed to call
- * `finalizeMessage` when our AbortController signals. But that
- * listener's `await fail()` is a dangling promise from the action's
- * perspective — Convex warns ("N unawaited operations") and may not
- * run it. Observed live (jobId k576p992sf7kq812yta72kqh2x85jamf):
- * pending assistant stuck at status="pending" with empty content
- * five minutes after abort, accumulated 2221 chars in stream deltas
- * but the message row never finalized. UI then renders an error
- * alert instead of the stopped pill because listThreadMessages's
- * isAbortErrorString detection has nothing to fire on.
- *
- * Writes the literal `ABORT_ERROR_STRING` (not a serialized envelope)
- * because that's what listThreadMessages's `isAbortErrorString(error)`
- * detection looks for to set `aborted: true` and drop the error from
- * the UI page. Idempotent under the agent listener winning the race —
- * we call `abortController.abort(ABORT_ERROR_STRING)` so
- * `abortSignal.reason` is already the wire string, and the agent's
- * `reason?.toString()` returns the string itself. Duplicate patches
- * write identical values.
- */
-async function persistAssistantAbortSentinel(
-  ctx: ActionCtx,
-  threadId: string,
-  promptMessageId: string,
-): Promise<boolean> {
-  const target = await findPendingAssistantForPrompt(
-    ctx,
-    threadId,
-    promptMessageId,
-  );
-  if (!target) return false;
-  // Use finalizeMessage, NOT updateMessage. finalizeMessage detects
-  // empty message content and consolidates the stream deltas into it
-  // BEFORE marking failed (component/messages.ts:388-405 →
-  // getStreamingMessagesWithMetadata → addMessagesHandler with
-  // pendingMessageId, which db.replace's the pending row with the
-  // delta-derived content + our { status: failed, error } metadata).
-  // updateMessage would flip status to failed first and lock in the
-  // empty content because finalizeMessage early-returns when status
-  // is no longer "pending" (component/messages.ts:380-385). Idempotent
-  // vs. the agent library's own listener: whichever fires second
-  // sees status !== pending and no-ops.
-  await ctx.runMutation(components.agent.messages.finalizeMessage, {
-    messageId: target._id as never,
-    result: { status: "failed", error: ABORT_ERROR_STRING },
-  });
-  return true;
-}
-
-/**
- * For failures that occur before `streamText` gets a chance to create a
- * pending assistant message (e.g. insufficient credits, thread lookup
- * failure), persist a standalone assistant message with the envelope so
- * the chat UI can still render the error inline.
- */
-async function saveStandaloneErrorMessage(
-  ctx: ActionCtx,
-  threadId: string,
-  promptMessageId: string,
-  rawError: unknown,
-  metadata?: { model?: string; provider?: string },
-) {
-  const envelope = classifyChatError(rawError);
-  const serialized = serializeChatError(envelope);
-  await paperChat.saveMessage(ctx, {
-    threadId,
-    promptMessageId,
-    message: { role: "assistant", content: "" },
-    metadata: {
-      status: "failed",
-      error: serialized,
-      ...(metadata?.model ? { model: metadata.model } : {}),
-      ...(metadata?.provider ? { provider: metadata.provider } : {}),
-    },
-    skipEmbeddings: true,
-  });
-}
 
 /* ────────────────────────────────────────────────────────────────── */
 /*                        Reactive message list                       */
