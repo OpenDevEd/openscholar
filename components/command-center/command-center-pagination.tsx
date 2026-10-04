@@ -40,7 +40,8 @@ export function CommandCenterPagination(props: NumberedPages | SteppedPages) {
   const atLeast = (shown: number) => (steps?.canNext ? `${shown}+` : shown);
   const startItem = steps ? steps.offset + 1 : (currentPage - 1) * itemsPerPage + 1;
   const endItem = steps ? steps.offset + steps.shown : Math.min(currentPage * itemsPerPage, counted);
-  const totalItems = steps ? (steps.total ?? atLeast(endItem)) : counted;
+  // A kept count can lag the rows it counts by a moment; it never reads lower than the rows shown.
+  const totalItems = steps ? (steps.total === undefined ? atLeast(endItem) : Math.max(steps.total, endItem)) : counted;
 
   // Generate page numbers to display
   const getPageNumbers = () => {

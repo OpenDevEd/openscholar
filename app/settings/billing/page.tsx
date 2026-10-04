@@ -21,7 +21,8 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { defaultPlanId, findPlan, planCreditCap, topUpBundles } from "@/lib/billing/catalog";
-import { Enter, LIST, Paged, pagerOf, Tile, Zone } from "@/components/settings/parts";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 
 type Kind = "chat" | "extraction" | "screening" | "search" | "translation" | "wallet_api" | "refund";
 const KINDS: Record<Kind, { icon: AppIcon; tint: string }> = {
@@ -61,24 +62,21 @@ export default function BillingPage() {
   const [openingPortal, setOpeningPortal] = useState(false);
   const [hover, setHover] = useState<Kind | null>(null);
   const [day, setDay] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
 
   // The chart's window starts at midnight 29 days ago, so its query only changes once a day.
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
   const start = today.getTime() - (DAYS - 1) * DAY;
-  const { data: spending } = useProtectedQuery(api.billing.usage.spendingMine, { since: start, days: DAYS });
-  const { data: chargesPage } = useProtectedQuery(api.billing.usage.pageMine, {
-    page,
-    pageSize: CHARGES_PER_PAGE,
-    ...(jobId ? { jobId: jobId as Id<"extractionJobs"> } : {}),
-  });
-  // The last page stays on screen, dimmed, while the next one loads.
-  const [charges, setCharges] = useState(chargesPage);
-  if (chargesPage !== undefined && chargesPage !== charges) setCharges(chargesPage);
-  const chargesLoading = chargesPage === undefined;
+  const { data: spending } = useProtectedQuery(api.billing.usage.spending, { since: start, days: DAYS });
+  // Charges are read a page at a time, newest first; the count totals the pages.
+  const ofJob = jobId ? { jobId: jobId as Id<"extractionJobs"> } : {};
+  const charges = useCursorPage(api.billing.usage.listCharges, ofJob, CHARGES_PER_PAGE);
+  const { data: counted } = useProtectedQuery(api.billing.usage.countCharges, ofJob);
+  // The last count stays up while another job's charges are counted.
+  const [chargeCount, setChargeCount] = useState(counted);
+  if (counted !== undefined && counted !== chargeCount) setChargeCount(counted);
 
-  const ready = Boolean(account && catalog) && spending !== undefined && charges !== undefined;
+  const ready = Boolean(account && catalog) && spending !== undefined && !charges.isLoading && chargeCount !== undefined;
   if (!account || !catalog) return <Enter ready={false}>{null}</Enter>;
 
   const plan = state.resolvedPlan ?? "";
@@ -104,7 +102,7 @@ export default function BillingPage() {
   // Spending per day, stacked by kind.
   const days = Array.from({ length: DAYS }, (_, i) => ({ at: start + i * DAY, byKind: {} as Partial<Record<Kind, number>>, total: 0 }));
   const totals: Partial<Record<Kind, number>> = {};
-  for (const s of spending ?? []) {
+  for (const s of spending?.page ?? []) {
     const d = days[s.day];
     if (!d) continue;
     d.byKind[s.kind] = (d.byKind[s.kind] ?? 0) + s.credits;
@@ -114,8 +112,6 @@ export default function BillingPage() {
   const peak = Math.max(1, ...days.map((d) => d.total));
   const kinds = (Object.keys(totals) as Kind[]).sort((a, b) => (totals[b] ?? 0) - (totals[a] ?? 0));
   const spent = kinds.reduce((sum, k) => sum + (totals[k] ?? 0), 0);
-
-  const pager = pagerOf(charges?.total ?? 0, CHARGES_PER_PAGE, page, setPage);
 
   const keep = async () => {
     setKeeping(true);
@@ -387,7 +383,7 @@ export default function BillingPage() {
           </Zone>
         ) : null}
 
-        {creditsEnabled && (charges?.total ?? 0) > 0 ? (
+        {creditsEnabled && charges.items.length > 0 ? (
           <Zone
             label={jobId ? t("jobCharges") : t("charges")}
             aside={
@@ -396,19 +392,16 @@ export default function BillingPage() {
                   variant="ghost"
                   size="sm"
                   className="h-7"
-                  onClick={() => {
-                    setPage(1);
-                    void setJobId(null);
-                  }}
+                  onClick={() => void setJobId(null)}
                 >
                   {tu("showAll")}
                 </Button>
               ) : null
             }
           >
-            <Paged pager={pager} rowHeight={61} label={t("chargesLabel")}>
-              <ul className={cn(LIST, chargesLoading && "pointer-events-none opacity-60")} aria-busy={chargesLoading}>
-                {charges!.rows.map((c) => {
+            <Paged pager={{ list: charges, size: CHARGES_PER_PAGE, total: chargeCount }} rowHeight={61} label={t("chargesLabel")}>
+              <ul className={LIST}>
+                {charges.items.map((c) => {
                   const kind = KINDS[c.kind];
                   return (
                     <li

@@ -12,11 +12,14 @@
  */
 
 export {
-  getMyJobs,
+  listJobs,
+  listJobsForAssistant,
+  countJobs,
+  countJobsForAssistant,
   getJobShell,
   getJobDetails,
   subscribeToJobProgress,
-  getJobSources,
 } from "./queries/jobs";
 
-export { getJobResultsPage } from "./queries/results";
+export { countJobFailures, countJobFailuresForAssistant } from "./queries/failures";
+export { listJobResults, listJobResultsForAssistant, countJobResults, countJobResultsForAssistant } from "./queries/results";

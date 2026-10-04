@@ -3,14 +3,10 @@ import { describe, it, expect, vi } from "vitest";
 import type { Id } from "../_generated/dataModel";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import {
-  readScreeningProgressCounts,
-  recordQualifiedResult,
-  recordTerminalResult,
-} from "./aggregates";
+import { readScreeningProgressCounts } from "./progress";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
-import { createJob } from "./createJob.test-support";
+import { createJob, insertJob } from "./createJob.test-support";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { SCREENING_POOL_SIZE } from "../workpool";
 
@@ -63,12 +59,11 @@ async function seedScreeningJob(
   status: "processing" | "completed" | "cancelled" | "failed" | "creditsExhausted"
 ) {
   return await t.run(async (ctx) => {
-    const id = await ctx.db.insert("screeningJobs", {
+    const id = await insertJob(ctx, {
       userId,
       status,
       totalPapers: 10,
       questions: [{ key: "q1", question: "Is this relevant?" }],
-      resultCounts: "sharded",
       scoringConfig: {
         rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }],
         starThresholds: [{ minScore: 0, stars: 1 }],
@@ -409,62 +404,6 @@ describe("createScreeningJob", () => {
   });
 });
 
-describe("persistQualifiedScreeningResult", () => {
-  it("is idempotent across retries and only creates one collection link", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_persist");
-    const collection = await seedCollection(t, user._id);
-    const job = await seedScreeningJob(t, user._id, "processing");
-
-    await t.run(async (ctx) => {
-      await ctx.db.patch("screeningJobs", job._id, {
-        targetCollectionId: collection._id,
-      });
-    });
-
-    const result = await seedScreeningResult(t, job._id, {
-      status: "completed",
-      openalexId: "https://openalex.org/Wpersist",
-      title: "Persisted Paper",
-      score: 4,
-      stars: 3,
-      qualified: true,
-    });
-
-    await t.mutation(
-      internal.screening.mutations.persistQualifiedScreeningResult,
-      { resultId: result._id },
-    );
-    await t.mutation(
-      internal.screening.mutations.persistQualifiedScreeningResult,
-      { resultId: result._id },
-    );
-
-    await t.run(async (ctx) => {
-      const updatedResult = await ctx.db.get("screeningResults", result._id);
-      const libraryItems = await ctx.db
-        .query("libraryItems")
-        .withIndex("by_user_openalexId", (q) =>
-          q.eq("userId", user._id).eq("openalexId", "https://openalex.org/Wpersist"),
-        )
-        .collect();
-      const links = await ctx.db
-        .query("libraryItemCollections")
-        .withIndex("by_collection_item", (q) =>
-          q
-            .eq("collectionId", collection._id)
-            .eq("libraryItemId", libraryItems[0]!._id),
-        )
-        .collect();
-
-      expect(updatedResult?.savedToLibrary).toBe(true);
-      expect(updatedResult?.libraryItemId).toBeDefined();
-      expect(libraryItems).toHaveLength(1);
-      expect(links).toHaveLength(1);
-    });
-  });
-});
-
 describe("Screen all on a saved search", () => {
   it("answers into the search's screening, so its page shows them next to its own answers (#334)", async () => {
     const t = convexTest(schema);
@@ -480,7 +419,7 @@ describe("Screen all on a saved search", () => {
     await asUser.mutation(api.research.records.importBatch, { accountId: "clerk_test", searches: [{ search, history: { queryHistory: [], questionHistory: [] } }], shortcuts: [], ratings: [] });
 
     const { jobId } = await createJob(asUser, {
-      papers: makePapers(1), questions: [...defaultQuestions, { key: "q2", question: "Adults?" }], scoringConfig: defaultScoringConfig, searchId: search.id,
+      papers: makePapers(1), questions: [...defaultQuestions, { key: "q2", question: "Adults?" }], scoringConfig: defaultScoringConfig, set: { kind: "search", searchId: search.id },
     });
     const result = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique());
     vi.useFakeTimers();
@@ -511,7 +450,7 @@ describe("Screen all on a saved search", () => {
     await seedCredits(t, user._id, 100, 0);
     const asUser = t.withIdentity({ subject: "clerk_test" });
     await expect(createJob(asUser, {
-      papers: makePapers(1), questions: defaultQuestions, scoringConfig: defaultScoringConfig, searchId: "someone-elses",
+      papers: makePapers(1), questions: defaultQuestions, scoringConfig: defaultScoringConfig, set: { kind: "search", searchId: "someone-elses" },
     })).rejects.toThrow("Search not found");
   });
 });

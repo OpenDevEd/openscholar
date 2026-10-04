@@ -15,7 +15,6 @@
       "convex/ai/actions.ts:generateBatchTranslations:.errors[]": "#425",
       "convex/ai/actions.ts:generateBatchTranslations:.results{}": "#425",
       "convex/aiModelConfig/queries.ts:presets:[]": "#424",
-      "convex/apiKeys/queries.ts:getMy:[]": "#424",
       "convex/authors/invitations.ts:listMine:[]": "#424",
       "convex/authors/members.ts:list:.invitations[]": "#424",
       "convex/authors/members.ts:list:.members[]": "#424",
@@ -23,9 +22,9 @@
       "convex/billing/actions.ts:previewPlan:.lineItems[]": "#425",
       "convex/billing/usage.ts:pageMine:.rows[]": "#424",
       "convex/billing/usage.ts:spendingMine:[]": "#424",
-      "convex/chat/chatPapers.ts:listChatSourcesWithInclusion:.rows[]": "#422",
-      "convex/chat/model.ts:listChatModels:[]": "#422",
-      "convex/chat/sourceEvents.ts:listForThread:[]": "#422",
+      "convex/chat/chatPapers.ts:listChatSourcesWithInclusion:.rows[]": "#325",
+      "convex/chat/model.ts:listChatModels:[]": "#325",
+      "convex/chat/sourceEvents.ts:listForThread:[]": "#325",
       "convex/evidenceLibraries/collectionSources.ts:listLibraryCollectionSources:[]": "#423",
       "convex/evidenceLibraries/credentials.ts:listCredentialMetadata:[]": "#423",
       "convex/evidenceLibraries/domainActions.ts:checkDomains:.results[]": "#425",
@@ -44,19 +43,12 @@
       "convex/evidenceLibraries/updates.ts:check:.releases[]": "#425",
       "convex/evidenceLibraries/updates.ts:listAddressNotices:[]": "#423",
       "convex/evidenceLibraries/versions.ts:listVersions:[]": "#423",
-      "convex/extraction/queries/jobs.ts:getJobSources:.sources[]": "#422",
-      "convex/extraction/queries/jobs.ts:getMyJobs:[]": "#422",
-      "convex/extraction/queries/mixedSuccessSummary.ts:getMixedSuccessSummary:.byCode[]": "#422",
-      "convex/extraction/queries/results.ts:getJobResultsPage:.items[]": "#422",
-      "convex/extraction/queries/retry.ts:getRetryableSummary:.permanentBreakdown{}": "#422",
       "convex/featureFlags/queries.ts:getAll:[]": "#424",
       "convex/models/admin.ts:list:.providers[]": "#424",
       "convex/models/admin.ts:list:.rows[]": "#424",
       "convex/models/queries.ts:list:[]": "#424",
       "convex/models/queries.ts:listCatalogOptions:[]": "#424",
       "convex/organizationFeatures.ts:libraryOrganizations:[]": "#423",
-      "convex/topics/details.ts:get:.keywords[]": "#424",
-      "convex/topics/details.ts:get:.path[]": "#424",
       "convex/topics/publications.ts:list:.groups[]": "#424",
       "convex/topics/publications.ts:locations:.locations[]": "#424",
       "convex/wallet/queries.ts:listMyKeys:[]": "#424",
@@ -75,15 +67,14 @@
   },
   "untypedReturns": {
     "pending": {
-      "convex/chat/messages.ts:listThreadMessages:.streams*": "#422: the agent component's stream deltas",
-      "convex/chat/messages.ts:listThreadMessages:[]*": "#422: the agent component's UI messages"
+      "convex/chat/messages.ts:listThreadMessages:.streams*": "#325: the agent component's stream deltas",
+      "convex/chat/messages.ts:listThreadMessages:[]*": "#325: the agent component's UI messages"
     }
   },
   "everyPage": {
     "pending": {
-      "app/actions/topic-publications.ts:rows": "#424",
-      "convex/chat/messages.ts:listRecentThreadArtifacts": "#422",
-      "convex/chat/messages.ts:readThreadMessagesWithVisiblePageIntegrity": "#422",
+      "convex/chat/messages.ts:listRecentThreadArtifacts": "#325",
+      "convex/chat/messages.ts:readThreadMessagesWithVisiblePageIntegrity": "#325",
       "convex/evidenceLibraries/uploadsClient.ts:listObjectNames": "#425",
       "convex/zotero/actions.ts:fetchAllCollectionsForParent": "#425",
       "convex/zotero/actions.ts:fetchAllTopItemsForCollection": "#425",
@@ -94,8 +85,6 @@
     "pending": {}
   },
   "argumentSizedTakes": {
-    "bounded": {
-      "convex/topics/publications.ts:list": "The handler refuses a limit outside 1 to 50 before it reads."
-    }
+    "bounded": {}
   }
 }

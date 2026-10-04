@@ -3,10 +3,7 @@ import { describe, it, expect } from "vitest";
 import type { Id } from "../_generated/dataModel";
 import { api } from "../_generated/api";
 import schema from "../schema";
-import {
-  recordQualifiedResult,
-  recordTerminalResult,
-} from "./aggregates";
+import { countResult, insertJob } from "./createJob.test-support";
 
 function createScreeningTest() {
   const t = convexTest(schema);
@@ -46,7 +43,7 @@ async function seedScreeningJob(
 ) {
   return await t.run(async (ctx) => {
     const now = Date.now();
-    const jobId = await ctx.db.insert("screeningJobs", {
+    const jobId = await insertJob(ctx, {
       userId,
       status: overrides.status ?? "processing",
       totalPapers: overrides.totalPapers ?? 10,
@@ -102,10 +99,7 @@ async function seedScreeningResult(
       createdAt: Date.now(),
     });
     const result = (await ctx.db.get("screeningResults", resultId))!;
-    if (overrides.recordAggregate ?? true) {
-      await recordTerminalResult(ctx, result);
-      await recordQualifiedResult(ctx, result);
-    }
+    if (overrides.recordAggregate ?? true) await countResult(ctx, result);
     return result;
   });
 }

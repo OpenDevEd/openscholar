@@ -147,6 +147,8 @@ export const MAX_LIBRARY_DOMAINS = 5;
 export const MAX_MODEL_MODALITIES = 20;
 export const MAX_MODEL_PARAMETERS = 100;
 export const MAX_EFFORT_LEVELS = 10;
+/** Providers with their own filter chip on the admin model list; the rest are "other". */
+export const MAX_TOP_PROVIDERS = 4;
 /** Plans, features, highlights and bundles in Autumn's catalog or one account's plan. */
 export const MAX_BILLING_PLANS = 50;
 export const MAX_BILLING_FEATURES = 200;

@@ -155,8 +155,21 @@ export function pagerOf(total: number, size: number, page: number, setPage: (pag
 }
 
 /**
+ * A list read a cursor page at a time: what `useCursorPage` returns, its page size, and the
+ * list's kept count. Without `total` (a search, whose matches aren't counted) the pager shows the page alone.
+ */
+export type StepPager = {
+  list: { page: number; offset: number; items: unknown[]; hasPages: boolean; isStale: boolean; canPrevious: boolean; canNext: boolean; previous: () => void; next: () => void };
+  size: number;
+  total?: number;
+  /** The total shown is an earlier view's, still waiting for this one's. */
+  counting?: boolean;
+};
+
+/**
  * The app's shared pager under a list. `rowHeight` reserves a full page of rows,
- * so a short last page doesn't move the pager.
+ * so a short last page doesn't move the pager. A cursor-paged list steps previous and
+ * next, and stays up, dimmed, while the page it steps to loads.
  */
 export function Paged({
   pager,
@@ -164,16 +177,34 @@ export function Paged({
   label,
   children,
 }: {
-  pager: Pager;
+  pager: Pager | StepPager;
   rowHeight: number;
   label: string;
   children: ReactNode;
 }) {
-  const multi = pager.pages > 1;
+  const multi = "list" in pager ? pager.list.hasPages : pager.pages > 1;
+  // The rows or the total are an earlier view's: both stay up, dimmed and inert, until this view's arrive.
+  const stale = "list" in pager && (pager.list.isStale || pager.counting === true);
   return (
-    <div>
-      <div style={multi ? { minHeight: pager.size * rowHeight } : undefined}>{children}</div>
-      {multi ? (
+    <div className={cn(stale && "opacity-60")} aria-busy={stale || undefined} inert={stale || undefined}>
+      {/* `rowHeight` counts a row with its divider: a page has one divider fewer, inside the box's two borders. */}
+      <div style={multi ? { minHeight: pager.size * rowHeight + 1 } : undefined}>{children}</div>
+      {!multi ? null : "list" in pager ? (
+        <CommandCenterPagination
+          currentPage={pager.list.page}
+          itemLabel={label}
+          steps={{
+            canPrevious: pager.list.canPrevious,
+            canNext: pager.list.canNext,
+            onPrevious: pager.list.previous,
+            onNext: pager.list.next,
+            offset: pager.list.offset,
+            shown: pager.list.items.length,
+            total: pager.total,
+            pageCount: pager.total === undefined ? undefined : Math.max(1, Math.ceil(pager.total / pager.size)),
+          }}
+        />
+      ) : (
         <CommandCenterPagination
           currentPage={pager.page}
           totalPages={pager.pages}
@@ -182,7 +213,7 @@ export function Paged({
           itemsPerPage={pager.size}
           itemLabel={label}
         />
-      ) : null}
+      )}
     </div>
   );
 }

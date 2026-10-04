@@ -7,7 +7,7 @@
  */
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { planConcurrency } from "../billing/accounts";
 import { SCREENING_POOL_SIZE, screeningPool } from "../workpool";
 
@@ -18,7 +18,7 @@ import { SCREENING_POOL_SIZE, screeningPool } from "../workpool";
 const DEFAULT_PAPER_CONCURRENCY = SCREENING_POOL_SIZE;
 
 /** How many papers the person may have running at once, never more than the pool. */
-async function paperLimit(ctx: MutationCtx, userId: Id<"users">) {
+export async function paperLimit(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
   const concurrency = (await planConcurrency(ctx, userId)) ?? DEFAULT_PAPER_CONCURRENCY;
   return Math.max(1, Math.min(SCREENING_POOL_SIZE, concurrency));
 }

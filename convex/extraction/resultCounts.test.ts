@@ -1,14 +1,15 @@
 // A job's counts stay equal to a recount of its rows through every kind of write, folded by
-// the counts worker (./counts.ts), and the migration gives jobs saved before it their row.
+// the counts worker (./counts.ts).
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api, internal } from "../_generated/api";
+import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { seedAccount } from "../lib/maxSize.test-support";
+import { countMismatches } from "./counts.test-support";
 
 type Test = ReturnType<typeof convexTest>;
-const verify = async (t: Test) => ({ mismatches: (await t.action(internal.migrations.moveExtractionCounts.verify, {})).sample });
+const verify = async (t: Test) => ({ mismatches: await countMismatches(t) });
 /** The counts worker folds the changes a moment after they're written. */
 const folded = (t: Test) => t.finishAllScheduledFunctions(vi.runAllTimers);
 
@@ -47,8 +48,7 @@ describe("extraction job counters", () => {
     const { jobId, papers, results } = await seedJob(t, userId);
     expect(await verify(t)).toMatchObject({ mismatches: [] });
     await folded(t);
-    expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toEqual({ retryableCount: 2, permanentCount: 2, permanentBreakdown: { moderation: 1, pdf_invalid: 1 } });
-    expect(await as.query(api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary, { jobId })).toMatchObject({ total: 2, answeredTotal: 1, totalQuestions: 5 });
+    expect(await as.query(api.extraction.queries.countJobFailures, { jobId })).toEqual({ asked: 5, answered: 1, retryable: 2, permanent: { moderation: 1, pdf_invalid: 1 }, paperErrors: { pdf_invalid: 2 } });
 
     await t.run(async (ctx) => {
       await ctx.db.patch("extractionResults", results[1], { ...completed, lastError: undefined });
@@ -59,26 +59,20 @@ describe("extraction job counters", () => {
     });
     expect(await verify(t)).toMatchObject({ mismatches: [] });
     await folded(t);
-    expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toEqual({ retryableCount: 0, permanentCount: 2, permanentBreakdown: { auth: 1, pdf_invalid: 1 } });
-    expect(await as.query(api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary, { jobId })).toMatchObject({ answeredTotal: 2, totalQuestions: 4 });
+    expect(await as.query(api.extraction.queries.countJobFailures, { jobId })).toMatchObject({ asked: 4, answered: 2, retryable: 0, permanent: { auth: 1, pdf_invalid: 1 } });
   });
 
-  it("are given to jobs saved before the counts row by the migration, with writes waiting for the worker counted once", async () => {
+  it("show someone else's job, and a job with nothing counted, as zeros", async () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
-    const { jobId, papers } = await seedJob(t, userId);
-    // As a job saved before: no counts row and no changes, then one write after the deploy.
-    await t.run(async (ctx) => {
-      for (const row of await ctx.db.query("extractionJobCounts").collect()) await ctx.db.delete("extractionJobCounts", row._id);
-      for (const change of await ctx.db.query("extractionCountChanges").collect()) await ctx.db.delete("extractionCountChanges", change._id);
-      await ctx.db.patch("extractionPapers", papers[2], { status: "completed" });
-    });
-    expect((await verify(t)).mismatches).toHaveLength(1);
-
-    await t.mutation(internal.migrations.moveExtractionCounts.run, {});
+    const { jobId } = await seedJob(t, userId);
     await folded(t);
+    const zeros = { asked: 0, answered: 0, retryable: 0, permanent: {}, paperErrors: {} };
+    await t.run((ctx) => ctx.db.insert("users", { clerkId: "clerk_someone_else", email: "else@example.org", state: "active", createdAt: 1, updatedAt: 1 }));
+    const other = t.withIdentity({ tokenIdentifier: "https://test.clerk.local|clerk_someone_else", subject: "clerk_someone_else", issuer: "https://test.clerk.local" });
+    expect(await other.query(api.extraction.queries.countJobFailures, { jobId })).toEqual(zeros);
 
-    expect(await verify(t)).toMatchObject({ mismatches: [] });
-    expect(await as.query(api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary, { jobId })).toMatchObject({ total: 2, totalQuestions: 5 });
+    const empty = await t.run((ctx) => ctx.db.insert("extractionJobs", { userId, mode: "extraction", name: "Nothing yet", totalPapers: 0, createdAt: 1, updatedAt: 1 }));
+    expect(await as.query(api.extraction.queries.countJobFailures, { jobId: empty })).toEqual(zeros);
   });
 });

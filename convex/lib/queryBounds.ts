@@ -102,3 +102,6 @@ export const MAX_LOCATIONS_READ_PER_GROUP = 100;
  * one deployment run at a time, so a library past this is refused as busy, by name.
  */
 export const MAX_ACTIVE_OPERATIONS_READ = 50;
+
+/** People and organizations one assistant chat can be shared with (`assistant/sharing:grant`); reads of a chat's access rows take this many and its owner's. */
+export const MAX_ASSISTANT_THREAD_GRANTS = 50;

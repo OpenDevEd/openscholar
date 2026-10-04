@@ -21,12 +21,12 @@ type FlagRows = FlagRow[];
 const FeatureFlagContext = createContext<FlagRows | undefined>(undefined);
 
 type Props = {
-  preloadedFlags: Preloaded<typeof api.featureFlags.queries.getAll>;
+  preloadedFlags: Preloaded<typeof api.featureFlags.queries.list>;
   children: ReactNode;
 };
 
 export function FeatureFlagProvider({ preloadedFlags, children }: Props) {
-  const flags = usePreloadedQuery(preloadedFlags) as FlagRows;
+  const flags: FlagRows = usePreloadedQuery(preloadedFlags).page;
   return (
     <FeatureFlagContext.Provider value={flags}>
       {children}

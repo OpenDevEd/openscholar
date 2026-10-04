@@ -4,7 +4,7 @@
 
 import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSidebarStore, getSidebarDimensions } from "@/lib/store";
@@ -55,7 +55,6 @@ import {
 } from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
-import { ScreeningJobsDialog } from "@/components/screening/screening-jobs-dialog";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
@@ -345,7 +344,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { phase } = useAuthReadiness();
   const hasEvidenceLibrariesAccess = organizationFeatures?.evidenceLibraries;
   const goToSignIn = useSignInRedirect();
-  const [isScreeningJobsOpen, setIsScreeningJobsOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
@@ -696,7 +694,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           >
             <div className="flex items-center gap-1">
               <ScreeningFooterButton
-                onClick={() => phase === "authenticated" ? setIsScreeningJobsOpen(true) : goToSignIn()}
+                onClick={() => phase === "authenticated" ? router.push("/screening") : goToSignIn()}
                 isCollapsed={false}
                 progressPercent={progressPercent}
                 label={tc("screening")}
@@ -709,7 +707,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         ) : (
           <>
             <ScreeningFooterButton
-              onClick={() => phase === "authenticated" ? setIsScreeningJobsOpen(true) : goToSignIn()}
+              onClick={() => phase === "authenticated" ? router.push("/screening") : goToSignIn()}
               isCollapsed={true}
               progressPercent={progressPercent}
               label={tc("screening")}
@@ -720,11 +718,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           </>
         )}
       </motion.div>
-
-      <ScreeningJobsDialog
-        open={isScreeningJobsOpen}
-        onOpenChange={setIsScreeningJobsOpen}
-      />
     </div>
   );
 }

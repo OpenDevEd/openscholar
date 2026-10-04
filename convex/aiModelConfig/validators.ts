@@ -1,7 +1,7 @@
 import { v } from "convex/values";
-import { AI_TASKS, PRESET_KEYS, SEARCH_TASKS, type AiTask } from "../../lib/ai/tasks";
+import { AI_TASKS, PRESET_KEYS, SEARCH_TASKS, type AiTask, type PresetKey } from "../../lib/ai/tasks";
 import { EFFORTS } from "../../lib/ai/core/call-options";
-import { MAX_AI_TASKS, MAX_EFFORT_LEVELS, MAX_MODEL_MODALITIES, MAX_MODEL_PARAMETERS, capped } from "../lib/listCaps";
+import { MAX_AI_TASKS, MAX_EFFORT_LEVELS, MAX_MODEL_MODALITIES, MAX_MODEL_PARAMETERS, MAX_TOP_PROVIDERS, capped } from "../lib/listCaps";
 
 export const aiTaskValidator = v.union(...AI_TASKS.map((task) => v.literal(task)));
 export const searchTaskValidator = v.union(...SEARCH_TASKS.map((task) => v.literal(task)));
@@ -50,3 +50,7 @@ export const taskPickSummaryValidator = v.object({
 });
 /** One pick per AI task: at most MAX_AI_TASKS. */
 export const taskPicksValidator = capped(v.array(taskPickSummaryValidator), MAX_AI_TASKS);
+/** Each preset's picks, a field per preset. */
+export const presetPicksValidator = v.object({ cheap: taskPicksValidator, fast: taskPicksValidator, balanced: taskPicksValidator, intelligent: taskPicksValidator } satisfies Record<PresetKey, typeof taskPicksValidator>);
+/** The providers with the most models, most first, each with one of its models for its icon. */
+export const topProvidersValidator = capped(v.array(v.object({ provider: v.string(), sampleModelId: v.string() })), MAX_TOP_PROVIDERS);

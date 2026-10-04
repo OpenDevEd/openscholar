@@ -57,6 +57,7 @@ import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
 import { ExportDialog } from "@/components/extraction/export-dialog";
 import { readEveryResultsPage } from "@/lib/extraction/export";
 import { RESULTS_PAGE_SIZE_MAX } from "@/lib/extraction/limits";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
 import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
 import { ChatJobView } from "@/components/extraction/chat/chat-job-view";
@@ -137,7 +138,6 @@ export default function JobDetailPage() {
   const [searchQueryResetKey, setSearchQueryResetKey] = useState(0);
   const debouncedFilters = useDebouncedValue(filters, 150);
 
-  const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(200);
 
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>('default');
@@ -197,45 +197,43 @@ export default function JobDetailPage() {
     [debouncedFilters],
   );
 
-  const resultsPageArgs = useMemo(
-    () =>
-      isExtractionJob
-        ? {
-            jobId,
-            page: currentPage,
-            pageSize,
-            filters: serializedResultsFilters,
-            sortBy: resultsSortBy,
-          }
-        : "skip",
-    [
-      currentPage,
-      isExtractionJob,
-      jobId,
-      pageSize,
-      serializedResultsFilters,
-      resultsSortBy,
-    ],
+  const hasActiveResultFilters =
+    debouncedFilters.searchQuery.trim().length > 0 ||
+    debouncedFilters.confidenceRange[0] > 0 ||
+    debouncedFilters.confidenceRange[1] < 100 ||
+    debouncedFilters.statusFilters.size > 0 ||
+    debouncedFilters.questionFilters.size > 0;
+
+  // The results are read a page at a time, sorted and filtered on the server; the hook starts
+  // over from the first page whenever the filters, the order or the page size change.
+  const resultsView = useMemo(() => ({ jobId, filters: serializedResultsFilters }), [jobId, serializedResultsFilters]);
+  const results = useCursorPage(
+    api.extraction.queries.listJobResults,
+    isExtractionJob ? { ...resultsView, sortBy: resultsSortBy } : "skip",
+    pageSize,
   );
-  const resultsPageQuery = useProtectedQuery(
-    api.extraction.queries.getJobResultsPage,
-    resultsPageArgs,
+  // Only a filtered view is counted: without filters every paper of the job matches.
+  const { data: resultCounts } = useProtectedQuery(
+    api.extraction.queries.countJobResults,
+    isExtractionJob && hasActiveResultFilters ? resultsView : "skip",
   );
-  const resultsPage = resultsPageQuery.data;
+  // The last count stays up, dimmed, while the filters now set are counted.
+  const [lastMatching, setLastMatching] = useState(resultCounts?.matching);
+  if (resultCounts && resultCounts.matching !== lastMatching) setLastMatching(resultCounts.matching);
 
   const convex = useConvex();
   const loadAllPapers = useCallback(
     () =>
-      readEveryResultsPage((page) =>
-        convex.query(api.extraction.queries.getJobResultsPage, {
-          jobId,
-          page,
-          pageSize: RESULTS_PAGE_SIZE_MAX,
-          filters: serializedResultsFilters,
-          sortBy: resultsSortBy,
-        }),
+      readEveryResultsPage(
+        (cursor) =>
+          convex.query(api.extraction.queries.listJobResults, {
+            ...resultsView,
+            sortBy: resultsSortBy,
+            paginationOpts: { cursor, numItems: RESULTS_PAGE_SIZE_MAX },
+          }),
+        async () => (await convex.query(api.extraction.queries.countJobResults, resultsView)).matching,
       ) as Promise<PaperWithResults[]>,
-    [convex, jobId, serializedResultsFilters, resultsSortBy],
+    [convex, resultsView, resultsSortBy],
   );
 
   const questions: Question[] = useMemo(() => {
@@ -248,31 +246,10 @@ export default function JobDetailPage() {
     }));
   }, [jobDetails]);
 
-  const papersWithResults = useMemo(
-    () =>
-      resultsPage?.status === "ok"
-        ? (resultsPage.items as PaperWithResults[])
-        : [],
-    [resultsPage]
-  );
-
-  const hasActiveResultFilters = useMemo(
-    () =>
-      debouncedFilters.searchQuery.trim().length > 0 ||
-      debouncedFilters.confidenceRange[0] > 0 ||
-      debouncedFilters.confidenceRange[1] < 100 ||
-      debouncedFilters.statusFilters.size > 0 ||
-      debouncedFilters.questionFilters.size > 0,
-    [
-      debouncedFilters.confidenceRange,
-      debouncedFilters.questionFilters,
-      debouncedFilters.searchQuery,
-      debouncedFilters.statusFilters,
-    ],
-  );
+  const papersWithResults = results.items as PaperWithResults[];
   const resultsRenderState = getAuthSensitiveListRenderState({
-    settlement: resultsPageQuery.settlement,
-    hasLoadedFirstPage: resultsPageQuery.isReady,
+    settlement: "ready",
+    hasLoadedFirstPage: !results.isLoading,
     visibleCount: papersWithResults.length,
     hasActiveFilter: hasActiveResultFilters,
   });
@@ -392,8 +369,7 @@ export default function JobDetailPage() {
     (isExtractionJob &&
       (jobDetailsQuery.isDeferred ||
         jobDetails === undefined ||
-        !hasCurrentJobDetails ||
-        resultsPageQuery.isDeferred))
+        !hasCurrentJobDetails))
   ) {
     const showChatPreparingHint = modeHint === "chat" && jobShell === undefined;
     // A chat has its own full-height layout; everything else loads inside the
@@ -531,17 +507,12 @@ export default function JobDetailPage() {
         failed: 0,
         percentage: 0,
       };
-  const authoritativeTotalPapers =
-    resultsPage?.status === "ok"
-      ? resultsPage.totalAll
-      : resolvedProgress.total;
-  const authoritativeFilteredPapers =
-    resultsPage?.status === "ok"
-      ? resultsPage.totalFiltered
-      : resolvedProgress.total;
+  const authoritativeTotalPapers = resolvedProgress.total;
+  const countsAreStale = hasActiveResultFilters && resultCounts === undefined;
+  const authoritativeFilteredPapers = hasActiveResultFilters
+    ? (resultCounts?.matching ?? lastMatching ?? resolvedProgress.total)
+    : resolvedProgress.total;
   const resultsScope = "full";
-  const totalPages =
-    resultsPage?.status === "ok" ? resultsPage.totalPages : 0;
 
   const isProcessing =
     job.status === "pending" ||
@@ -579,10 +550,7 @@ export default function JobDetailPage() {
                 <ResultsFilters
                   filters={filters}
                   searchQueryResetKey={searchQueryResetKey}
-                  onFiltersChange={(f) => {
-                    setFilters(f);
-                    setCurrentPage(1);
-                  }}
+                  onFiltersChange={setFilters}
                   sortBy={resultsSortBy}
                   onSortChange={setResultsSortBy}
                 />
@@ -590,10 +558,7 @@ export default function JobDetailPage() {
               actions={<>
                 <ResultsFilterMenu
                   filters={filters}
-                  onFiltersChange={(f) => {
-                    setFilters(f);
-                    setCurrentPage(1);
-                  }}
+                  onFiltersChange={setFilters}
                 />
                 {viewMode === "table" && <ResultsColumnsMenu showCredits={showCreditsColumn} onShowCreditsChange={setShowCreditsColumn} />}
                 <Tooltip>
@@ -753,7 +718,6 @@ export default function JobDetailPage() {
                 papersRead={resolvedProgress.processed}
                 onShowFailures={() => {
                   setFilters((prev) => ({ ...prev, statusFilters: new Set([...prev.statusFilters, "has-errors"]) }));
-                  setCurrentPage(1);
                 }}
               />
             )}
@@ -805,7 +769,7 @@ export default function JobDetailPage() {
               >
 
                 <div
-                  className="min-h-[500px] min-w-0"
+                  className={cn("min-h-[500px] min-w-0", results.isStale && "pointer-events-none opacity-60")}
                   data-results-scope={resultsScope}
                   data-total-papers={authoritativeTotalPapers}
                   data-filtered-papers={authoritativeFilteredPapers}
@@ -824,7 +788,6 @@ export default function JobDetailPage() {
                             size="sm"
                             onClick={() => {
                               setFilters(defaultFilters);
-                              setCurrentPage(1);
                               setSearchQueryResetKey((k) => k + 1);
                             }}
                           >
@@ -878,18 +841,20 @@ export default function JobDetailPage() {
                   )}
                 </div>
 
-                {authoritativeFilteredPapers > 0 && (
+                {(displayedPapers.length > 0 || results.hasPages) && (
                   <SmartPagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
+                    currentPage={results.page}
                     pageSize={pageSize}
-                    onPageChange={setCurrentPage}
-                    onPageSizeChange={(nextPageSize) => {
-                      setPageSize(nextPageSize);
-                      setCurrentPage(1);
-                    }}
+                    hasPages={results.hasPages}
+                    canPrevious={results.canPrevious}
+                    canNext={results.canNext}
+                    onPrevious={results.previous}
+                    onNext={results.next}
+                    onPageSizeChange={setPageSize}
                     totalCount={authoritativeTotalPapers}
                     filteredCount={authoritativeFilteredPapers}
+                    stale={countsAreStale || results.isStale}
+                    offset={results.offset}
                     displayedCount={displayedPapers.length}
                   />
                 )}

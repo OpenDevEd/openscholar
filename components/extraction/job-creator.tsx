@@ -144,8 +144,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
     [bucketOrder, bucketItemsMap],
   );
 
-  // Plan-03: live preflight estimate + balance check. Mirrors the
-  // screening-dialog balance row (components/screening/screening-dialog.tsx:210-215).
+  // Plan-03: live preflight estimate + balance check.
   const preflightEstimate = useMemo(
     () => {
       const paperCount = readyBucketPaperCount(readyBucketItems);

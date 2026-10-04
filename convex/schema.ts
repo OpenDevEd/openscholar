@@ -8,7 +8,8 @@ import {
   MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_METADATA_FIELDS, MAX_QUESTIONS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
-import { screeningAnswersValidator, screeningAuthorsValidator, screeningQuestionsValidator, screeningScoringConfigValidator } from "./screening/validators";
+import { screeningAnswersValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
+import { searchSnapshotValidator } from "./paperSets/openalex";
 import {
   errorCodeValidator,
   extractionEvidenceUnitFields,
@@ -55,6 +56,7 @@ import { authorContentFields } from "./authors/validators";
 
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
+import { assistantThreadAccessFields, assistantThreadFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
 
@@ -67,7 +69,7 @@ export default defineSchema({
   // How many saved searches, shortcuts and screening jobs a person has, kept by the triggers on those tables
   // (research/recordCounts.ts), for page totals. While a first count is being taken,
   // `countedTo` is the creation time it has reached.
-  recordCounts: defineTable({ userId: v.id("users"), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs")), count: v.number(), countedTo: v.optional(v.number()) })
+  recordCounts: defineTable({ userId: v.id("users"), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), count: v.number(), countedTo: v.optional(v.number()) })
     .index("by_user_and_table", ["userId", "table"]),
   searchRevisions: defineTable({
     userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
@@ -195,6 +197,18 @@ export default defineSchema({
     ])
     .index("by_organizationId_and_state", ["organizationId", "state"])
     .index("by_clerkUserId_and_state", ["clerkUserId", "state"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // ASSISTANT CHATS (#324) - a chat, and who it is shared with
+  // ═══════════════════════════════════════════════════════════════
+  assistantThreads: defineTable(assistantThreadFields)
+    .index("by_agentThreadId", ["agentThreadId"])
+    // An account's chats, for deleting them with it.
+    .index("by_owner", ["ownerId"]),
+  assistantThreadAccess: defineTable(assistantThreadAccessFields)
+    // A person's chats, newest first, through each of their principals.
+    .index("by_principal_and_lastMessageAt", ["principal", "lastMessageAt"])
+    .index("by_thread_and_principal", ["threadId", "principal"]),
 
   // Each approved OpenAlex query version a library has published, with its query's
   // fingerprint, so a sources save checks versions without reading every revision (#357).
@@ -492,6 +506,8 @@ export default defineSchema({
   users: defineTable(userFields)
     .index("by_clerk_id", ["clerkId"])
     .index("by_email", ["email"])
+    // Active users by email, for the picker that adds an admin (admins/queries.ts).
+    .index("by_state_and_email", ["state", "email"])
     .index("by_state", ["state"]),
 
   // ═══════════════════════════════════════════════════════════════
@@ -514,7 +530,9 @@ export default defineSchema({
     .index("by_charge", ["chargeId"])
     .index("by_queuedAt", ["queuedAt"])
     .index("by_user_and_createdAt", ["userId", "createdAt"])
+    // `by_job` stays for the chat's tests, which go with chat mode (#325); the charge list reads `by_job_and_createdAt`.
     .index("by_job", ["jobId"])
+    .index("by_job_and_createdAt", ["jobId", "createdAt"])
     .index("by_stripe_charge", ["stripeChargeId"]),
   billingHolds: defineTable({
     userId: v.id("users"),
@@ -709,6 +727,8 @@ export default defineSchema({
   extractionJobs: defineTable(extractionJobFields)
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
+    // The job list ordered by name.
+    .index("by_user_and_sortName", ["userId", "sortName"])
     // Unified history list + single-mode scoping (count user's chats).
     .index("by_user_mode_updated", ["userId", "mode", "updatedAt"])
     // Cross-user iteration by mode (admin backfills, ops tooling).
@@ -819,6 +839,9 @@ export default defineSchema({
   extractionPapers: defineTable(extractionPaperFields)
     .index("by_job", ["jobId"])
     .index("by_job_processable", ["jobId", "processable"])
+    // A job's processable papers in the orders its results list in.
+    .index("by_job_processable_and_sortTitle", ["jobId", "processable", "sortTitle"])
+    .index("by_job_processable_and_avgConfidence", ["jobId", "processable", "avgConfidence"])
     .index("by_job_status", ["jobId", "status"])
     // A job's papers of one status from the earliest started; `by_job_status` reads them as they were added.
     .index("by_job_status_and_startedAt", ["jobId", "status", "startedAt"])
@@ -916,12 +939,29 @@ export default defineSchema({
     questions: screeningQuestionsValidator,
     scoringConfig: screeningScoringConfigValidator,
     targetCollectionId: v.optional(v.id("collections")),
-    // "sharded" when its progress is counted by convex/screening/resultCounts.ts; a job from
-    // before #383 reads the aggregates until migrations/recountScreeningJobs recounts it.
-    resultCounts: v.optional(v.literal("sharded")),
-    // The screening its answers go to. Required once migrations/moveScreeningJobAnswers has
-    // run on every deployment.
-    screeningId: v.optional(v.id("screenings")),
+    // Where its papers came from (#341), as the screening page shows it: the set, the set's
+    // name when it started (a search's query, a collection's or a job's name), and which of
+    // its papers, counting from 1. Jobs from before the page have none.
+    set: v.optional(paperSetValidator),
+    label: v.optional(v.string()),
+    first: v.optional(v.number()),
+    last: v.optional(v.number()),
+    // The last paper of the whole request when one job can't hold it: the job for the next
+    // papers starts when this one completes.
+    through: v.optional(v.number()),
+    // Where a collection, the saved papers or a job's papers go on after this job's (./paperSets/held.ts).
+    resume: v.optional(v.string()),
+    // The search as it was when the request began, which its later jobs read their papers from.
+    snapshot: v.optional(searchSnapshotValidator),
+    // Its included papers aren't saved anywhere.
+    unsaved: v.optional(v.literal(true)),
+    // Papers that end excluded or failed leave the collection it read (`set`).
+    prune: v.optional(v.literal(true)),
+    // Papers its search's page had already answered every question for: done on those
+    // answers, without asking the model.
+    reused: v.optional(v.number()),
+    // The screening its answers go to.
+    screeningId: v.id("screenings"),
     // Resolved per-user server model for this bulk screening run (credits path).
     serverModelId: v.optional(v.id("models")),
     serverEffort: v.optional(effortValidator),
@@ -950,8 +990,7 @@ export default defineSchema({
       v.literal("skipped"),
     ),
     // A finished paper's answers by question key, with the model's confidence in each, waiting
-    // (`pendingAnswers`) to move to the job's screening (convex/screening/drain.ts). Results
-    // saved before #334 hold answers without the mark until migrations/moveScreeningJobAnswers.
+    // (`pendingAnswers`) to move to the job's screening (convex/screening/drain.ts).
     answers: screeningAnswersValidator,
     confidences: capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS),
     pendingAnswers: v.optional(v.literal(true)),
@@ -961,6 +1000,24 @@ export default defineSchema({
     score: v.optional(v.number()),
     stars: v.optional(v.number()),
     qualified: v.optional(v.boolean()),
+    // Where the paper landed (./screening/scoring.ts), set as it settles and again when an
+    // answer of its is changed; a job's list reads its papers by it. Results from before it
+    // was kept get theirs from migrations/screeningOutcomes.
+    outcome: v.optional(screeningOutcomeValidator),
+    // What the paper has added to its job's kept counts (./screening/accounting.ts), so a
+    // later change adds only the difference. Missing while it waits for the bookkeeping
+    // worker, and on a paper counted before outcomes were kept.
+    counted: v.optional(
+      v.object({
+        qualified: v.boolean(),
+        outcome: screeningOutcomeValidator,
+        // The answers it was scored on, by question key, and the keys of those a person or the assistant set.
+        answers: screeningAnswersValidator,
+        changed: capped(v.optional(v.array(v.string())), MAX_QUESTIONS),
+      }),
+    ),
+    venue: v.optional(v.string()),
+    citedByCount: v.optional(v.number()),
     aiMetadata: v.optional(
       v.object({
         reasoning: v.optional(v.string()),
@@ -971,6 +1028,8 @@ export default defineSchema({
     ),
     creditsUsed: v.optional(v.number()),
     savedToLibrary: v.optional(v.boolean()),
+    // Taken from the collection its pruning job read, and not put back since.
+    pruned: v.optional(v.literal(true)),
     libraryItemId: v.optional(v.id("libraryItems")),
     workId: v.optional(v.string()),
     // Set while the paper waits for one of its person's paper slots (#335), whose papers
@@ -985,9 +1044,11 @@ export default defineSchema({
     errorMessage: v.optional(v.string()),
   })
     .index("by_job", ["jobId"])
-    .index("by_job_status", ["jobId", "status"])
     .index("by_job_openalexId", ["jobId", "openalexId"])
-    .index("by_job_and_pendingAnswers", ["jobId", "pendingAnswers"])
+    // A job's papers of one outcome, in the order the job took them.
+    .index("by_job_and_outcome", ["jobId", "outcome"])
+    // A job's papers the model is reading: processing, and no longer waiting for a slot.
+    .index("by_job_and_status_and_waitingUser", ["jobId", "status", "waitingUser"])
     .index("by_waitingUser_and_waitingSince", ["waitingUser", "waitingSince"])
     .index("by_doneAt", ["doneAt"]),
   // How many of a person's Screen all papers are running (#335). Written by job creation and
@@ -1001,6 +1062,16 @@ export default defineSchema({
     skipped: v.number(),
     failed: v.number(),
     qualified: v.number(),
+    // Completed papers that aren't included but could be, and each question's answers.
+    // Missing on a job counted before they were kept, until migrations/screeningOutcomes.
+    unclear: v.optional(v.number()),
+    tallies: screeningTalliesValidator,
+    // Credits its counted papers cost.
+    credits: v.optional(v.number()),
+    // Papers it saved for the first time, and papers it took from the collection it read
+    // that are still out of it.
+    saved: v.optional(v.number()),
+    removed: v.optional(v.number()),
   }).index("by_job", ["jobId"]),
 
   // How many papers a person has saved. It has its own row, not a field on `users`, because

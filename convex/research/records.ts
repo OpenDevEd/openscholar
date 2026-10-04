@@ -76,7 +76,7 @@ export const countSearchesForAssistant = assistantQuery(countSearchesAction);
 
 /** One step of a person's first count of their searches, shortcuts or screening jobs (./recordCounts.ts). */
 export const countRecordsPage = internalMutation({
-  args: { table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs")), userId: v.id("users") },
+  args: { table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), userId: v.id("users") },
   returns: v.null(),
   handler: async (ctx, { table, userId }) => {
     await countRecordPage(ctx, table, userId);

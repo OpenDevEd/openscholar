@@ -4,27 +4,35 @@ import { paginationOptsValidator, paginationResultValidator, type PaginationOpti
 import { effortValidator } from "../aiModelConfig/validators";
 import type { Doc } from "../_generated/dataModel";
 import {
+  paperSetValidator,
+  saveToValidator,
   screeningAnswersValidator,
   screeningAuthorsValidator,
   screeningJobStatusValidator,
   screeningQuestionsValidator,
   screeningResultStatusValidator,
   screeningScoringConfigValidator,
+  screeningTalliesValidator,
 } from "./validators";
+import { progressRow } from "./bookkeeping";
+import { paperLimit } from "./slots";
+import { searchSnapshotValidator } from "../paperSets/openalex";
+import { answeredFully, screeningFor } from "../research/answers";
+import { SCREENING_POOL_SIZE } from "../workpool";
+import { jobAnswers } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { availableCredits } from "../billing/accounts";
 import { estimateScreening } from "./estimate";
 import { countRow } from "../research/recordCounts";
-import { readScreeningProgressCounts } from "./aggregates";
-import { buildScreeningProgressSnapshot } from "./progress";
+import { buildScreeningProgressSnapshot, readScreeningProgressCounts } from "./progress";
 
 /** Most screening jobs one page lists; each one also reads its progress. */
 const MAX_LISTED_SCREENING_JOBS = 50;
 
 async function readJobProgressSnapshot(
   ctx: QueryCtx,
-  job: Pick<Doc<"screeningJobs">, "_id" | "status" | "totalPapers" | "resultCounts">,
+  job: Pick<Doc<"screeningJobs">, "_id" | "status" | "totalPapers">,
 ) {
   const counts = await readScreeningProgressCounts(ctx, job);
   return buildScreeningProgressSnapshot({
@@ -33,6 +41,102 @@ async function readJobProgressSnapshot(
     ...counts,
   });
 }
+
+/** What the screening page shows of a job beside its progress, in its list and on its own view. */
+const jobFacts = {
+  // Where its papers came from, the set's name when it started, and which of its papers.
+  set: v.optional(paperSetValidator),
+  label: v.optional(v.string()),
+  first: v.optional(v.number()),
+  last: v.optional(v.number()),
+  through: v.optional(v.number()),
+  // Papers that failed, papers skipped because the job ended first, and papers the model is reading now.
+  failedPapers: v.number(),
+  skippedPapers: v.number(),
+  running: v.number(),
+};
+
+async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
+  const [counts, reading] = await Promise.all([
+    readScreeningProgressCounts(ctx, job),
+    // Only a running job has papers being read, and never more than the pool holds.
+    job.status === "processing"
+      ? ctx.db
+          .query("screeningResults")
+          .withIndex("by_job_and_status_and_waitingUser", (q) => q.eq("jobId", job._id).eq("status", "processing").eq("waitingUser", undefined))
+          .take(SCREENING_POOL_SIZE)
+      : [],
+  ]);
+  return { set: job.set, label: job.label, first: job.first, last: job.last, through: job.through, failedPapers: counts.failedCount, skippedPapers: counts.skippedCount, running: reading.length };
+}
+
+/**
+ * The person's paper slots (#335): how many papers they may have running at once across
+ * their jobs, and how many are running.
+ */
+export const slotsAction = defineUserQuery({
+  path: "screening/queries:slots",
+  description: "The person's paper slots for screening: how many papers they may have running at once across their screening jobs, and how many are running now.",
+  args: {},
+  returns: v.object({ limit: v.number(), running: v.number() }),
+  run: async (ctx, userId) => {
+    const row = await ctx.db.query("screeningSlots").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+    return { limit: await paperLimit(ctx, userId), running: row?.running ?? 0 };
+  },
+});
+export const slots = userQuery(slotsAction);
+export const slotsForAssistant = assistantQuery(slotsAction);
+
+/** Papers one read checks for answers: each is an indexed read of a row of up to 50 answers. */
+const ANSWERED_PAPERS_MAX = 250;
+
+/** How many of these papers the person's search already answers every one of `questions` for, on its page. */
+export const answeredCount = internalQuery({
+  args: { userId: v.id("users"), searchId: v.string(), questions: v.array(v.string()), paperIds: v.array(v.string()) },
+  returns: v.number(),
+  handler: async (ctx, { userId, searchId, questions, paperIds }) => {
+    if (paperIds.length > ANSWERED_PAPERS_MAX) throw new Error(`Answered papers are counted ${ANSWERED_PAPERS_MAX} at a time`);
+    const search = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", searchId)).unique();
+    const screening = search && (await screeningFor(ctx, search._id));
+    return screening ? (await answeredFully(ctx, screening, questions, paperIds)).size : 0;
+  },
+});
+
+/**
+ * A completed job of a request that goes on past it, as the request's next job takes it
+ * over: its papers' set, where the request ends, and the questions, rules and destination.
+ */
+export const requestJob = internalQuery({
+  args: { jobId: v.id("screeningJobs") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      userId: v.id("users"),
+      set: paperSetValidator,
+      through: v.number(),
+      label: v.optional(v.string()),
+      resume: v.optional(v.string()),
+      snapshot: v.optional(searchSnapshotValidator),
+      questions: screeningQuestionsValidator,
+      scoringConfig: screeningScoringConfigValidator,
+      saveTo: v.optional(saveToValidator),
+      prune: v.optional(v.boolean()),
+    }),
+  ),
+  handler: async (ctx, { jobId }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    if (!job || job.status !== "completed" || !job.set || job.through === undefined) return null;
+    const saveTo = job.unsaved ? { kind: "none" as const } : job.targetCollectionId ? { kind: "collection" as const, collectionId: job.targetCollectionId } : undefined;
+    return {
+      userId: job.userId, set: job.set, through: job.through, questions: job.questions, scoringConfig: job.scoringConfig,
+      ...(job.label ? { label: job.label } : {}),
+      ...(job.resume ? { resume: job.resume } : {}),
+      ...(job.snapshot ? { snapshot: job.snapshot } : {}),
+      ...(saveTo ? { saveTo } : {}),
+      ...(job.prune ? { prune: true } : {}),
+    };
+  },
+});
 
 /**
  * Get real-time progress of a screening job.
@@ -83,7 +187,6 @@ export const getScreeningJob = query({
       status: screeningJobStatusValidator,
       totalPapers: v.number(),
       processedPapers: v.number(),
-      failedPapers: v.number(),
       qualifiedPapers: v.number(),
       questions: screeningQuestionsValidator,
       scoringConfig: screeningScoringConfigValidator,
@@ -91,6 +194,20 @@ export const getScreeningJob = query({
       createdAt: v.number(),
       updatedAt: v.number(),
       completedAt: v.optional(v.number()),
+      // Its papers by where they landed, and how each question was answered; kept as papers settle.
+      outcomes: v.object({ included: v.number(), unclear: v.number(), excluded: v.number(), failed: v.number() }),
+      tallies: screeningTalliesValidator,
+      ...jobFacts,
+      // The collection its included papers go to, while it exists; `unsaved` when they go nowhere.
+      targetCollectionName: v.optional(v.string()),
+      unsaved: v.optional(v.literal(true)),
+      prune: v.optional(v.literal(true)),
+      // Papers it saved, and papers it took from the collection it read. Missing for a job from before these were kept.
+      saved: v.optional(v.number()),
+      removed: v.optional(v.number()),
+      // Credits its counted papers cost, of the most they were expected to when it started.
+      // No `spent` for a job from before jobs kept what they cost.
+      credits: v.object({ spent: v.optional(v.number()), estimate: v.number() }),
     })
   ),
   handler: async (ctx, args) => {
@@ -100,15 +217,26 @@ export const getScreeningJob = query({
     const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job || job.userId !== user._id) return null;
     const progress = await readJobProgressSnapshot(ctx, job);
+    const kept = await progressRow(ctx, job._id);
+    const counts = await readScreeningProgressCounts(ctx, job);
+    const unclear = kept?.unclear ?? 0;
+    const target = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
 
     return {
+      ...(await factsOf(ctx, job)),
+      ...(target ? { targetCollectionName: target.name } : {}),
+      unsaved: job.unsaved,
+      prune: job.prune,
+      ...(job.set ? { saved: kept?.saved ?? 0, removed: kept?.removed ?? 0 } : {}),
+      credits: { spent: kept?.credits ?? (job.set ? 0 : undefined), estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0).credits },
+      outcomes: { included: counts.qualifiedCount, unclear, excluded: Math.max(0, counts.completedCount - counts.qualifiedCount - unclear), failed: counts.failedCount },
+      tallies: kept?.tallies,
       _id: job._id,
       _creationTime: job._creationTime,
       userId: job.userId,
       status: job.status,
       totalPapers: job.totalPapers,
       processedPapers: progress.processedPapers,
-      failedPapers: progress.failedPapers,
       qualifiedPapers: progress.qualifiedPapers,
       questions: job.questions,
       scoringConfig: job.scoringConfig,
@@ -167,9 +295,9 @@ export const getActiveScreeningJobProgress = query({
   },
 });
 
-/** The person's screening jobs, newest first, a page at a time. */
+/** The person's screening jobs, newest first, a page at a time; with `status`, only the jobs in it. */
 export const listUserScreeningJobs = query({
-  args: { paginationOpts: paginationOptsValidator },
+  args: { paginationOpts: paginationOptsValidator, status: v.optional(screeningJobStatusValidator) },
   returns: paginationResultValidator(
     v.object({
       _id: v.id("screeningJobs"),
@@ -183,28 +311,33 @@ export const listUserScreeningJobs = query({
       questions: screeningQuestionsValidator,
       targetCollectionId: v.optional(v.id("collections")),
       targetCollectionName: v.optional(v.string()),
+      ...jobFacts,
     }),
   ),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) return { page: [], isDone: true, continueCursor: "" };
 
-    const jobs = await ctx.db
-      .query("screeningJobs")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+    const { status } = args;
+    const jobs = await (status
+      ? ctx.db.query("screeningJobs").withIndex("by_user_status", (q) => q.eq("userId", user._id).eq("status", status))
+      : ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", user._id))
+    )
       .order("desc")
       .paginate({ ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, MAX_LISTED_SCREENING_JOBS) });
 
     const page = await Promise.all(
       jobs.page.map(async (job) => {
-        const [progress, targetCollection] = await Promise.all([
+        const [progress, targetCollection, facts] = await Promise.all([
           readJobProgressSnapshot(ctx, job),
           job.targetCollectionId
             ? ctx.db.get("collections", job.targetCollectionId)
             : Promise.resolve(null),
+          factsOf(ctx, job),
         ]);
 
         return {
+          ...facts,
           _id: job._id,
           _creationTime: job._creationTime,
           status: job.status,
@@ -259,25 +392,7 @@ export async function readScreeningResultsPage(ctx: QueryCtx, job: Doc<"screenin
     .query("screeningResults")
     .withIndex("by_job", (q) => q.eq("jobId", job._id))
     .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, RESULTS_PAGE_MAX) });
-  // What the job answered, by question key: a result whose answers haven't moved yet, waiting
-  // or from before #334, still holds them; a moved one reads the model's answers from its
-  // screening's history as of the move, whatever a person or a later run changed since.
-  const screeningId = job.screeningId;
-  const answersOf = async (result: Doc<"screeningResults">) => {
-    if (result.answers || !screeningId || result.answersVersion === undefined) return result.answers;
-    const version = result.answersVersion;
-    const row = await ctx.db
-      .query("screeningAnswerHistory")
-      .withIndex("by_screening_and_paper_and_version", (q) => q.eq("screeningId", screeningId).eq("paperId", result.openalexId).lte("version", version))
-      .order("desc")
-      .first();
-    if (!row) return undefined;
-    return Object.fromEntries(job.questions.map((q) => {
-      const entry = row.answers.find((value) => value.question === q.question);
-      return [q.key, entry?.model ? entry.model.answer : (entry?.answer ?? null)];
-    }));
-  };
-  const answers = await Promise.all(results.page.map(answersOf));
+  const answers = await Promise.all(results.page.map((result) => jobAnswers(ctx, job, result)));
   return {
     ...results,
     page: results.page.map((r, i) => ({

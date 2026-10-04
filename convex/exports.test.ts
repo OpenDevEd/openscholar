@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
+import { insertJob } from "./screening/createJob.test-support";
 import { digestOpaqueToken } from "./lib/opaqueTokenDigest";
 import { EXPORT_LINK_MS } from "../lib/export";
 import { exportLibrary, exportParts } from "./exports.test-support";
@@ -133,7 +134,7 @@ describe("screening export", () => {
       const user = (clerkId: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 });
       const userId = await user("owner");
       await user("someone_else");
-      const jobId = await ctx.db.insert("screeningJobs", {
+      const jobId = await insertJob(ctx, {
         userId, status: "completed", totalPapers: 120, questions: [{ key: "q1", question: "Randomized, or quasi-experimental?" }],
         scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }] },
         createdAt: Date.UTC(2026, 8, 1), updatedAt: 1,

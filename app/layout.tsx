@@ -72,7 +72,7 @@ export default async function RootLayout({
   const [locale, messages, preloadedFlags, preloadedCatalog] = await Promise.all([
     getLocale(),
     getMessages(),
-    preloadQuery(api.featureFlags.queries.getAll),
+    preloadQuery(api.featureFlags.queries.list),
     preloadQuery(api.billing.catalog.get),
   ]);
 

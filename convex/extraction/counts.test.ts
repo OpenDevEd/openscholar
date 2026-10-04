@@ -5,11 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { readJobCounters } from "./jobCounters";
 import { readResultCounts } from "./resultCounts";
-import { ShardedCounter } from "@convex-dev/sharded-counter";
-import { components } from "../_generated/api";
 
 // The worker schedules its runs on whichever timers are active when counts change.
 beforeEach(() => vi.useFakeTimers());
@@ -60,50 +57,6 @@ describe("extraction counts", () => {
     });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await t.run(async (ctx) => [...(await ctx.db.query("extractionJobCounts").collect()), ...(await ctx.db.query("extractionCountChanges").collect())])).toEqual([]);
-  });
-
-  it(`start a ${PAPER_LIMIT}-paper job saved before them from a recount within Convex's limits`, async () => {
-    const t = convexTest({ schema, transactionLimits: true });
-    const jobId = await seedJob(t, PAPER_LIMIT);
-    for (let from = 0; from < PAPER_LIMIT; from += 100) {
-      await t.run(async (ctx) => {
-        for (let i = from; i < from + 100; i++) {
-          const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:${i}`, title: `Paper ${i}`, status: "completed", processable: true });
-          for (const questionKey of ["q1", "q2", "q3"]) {
-            await ctx.db.insert("extractionResults", { jobId, paperId, questionKey, answer: "An answer of ordinary length. ".repeat(10), citations: [], citationStatus: "grounded", status: "completed", billed: true, attemptCount: 1, processedAt: 1 });
-          }
-        }
-      });
-    }
-    // As a job saved before: no counts row and no changes.
-    await t.run(async (ctx) => {
-      for (const row of await ctx.db.query("extractionJobCounts").collect()) await ctx.db.delete("extractionJobCounts", row._id);
-      for (const change of await ctx.db.query("extractionCountChanges").collect()) await ctx.db.delete("extractionCountChanges", change._id);
-    });
-
-    await t.mutation(internal.migrations.moveExtractionCounts.run, {});
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-
-    expect(await counts(t, jobId)).toEqual({ papers: { processed: PAPER_LIMIT, failed: 0 }, results: { total: 3 * PAPER_LIMIT, completed: 3 * PAPER_LIMIT, retryable: 0, permanent: {} } });
-    expect(await t.action(internal.migrations.moveExtractionCounts.verify, {})).toEqual({ wrong: 0, sample: [] });
-  }, 600_000);
-
-  it("start a job saved before them from the old counters, without recounting its rows", async () => {
-    const t = convexTest(schema);
-    const jobId = await seedJob(t, 5);
-    await t.run(async (ctx) => {
-      // As a job saved before: no counts row or changes, and its counts in the old counters.
-      for (const row of await ctx.db.query("extractionJobCounts").collect()) await ctx.db.delete("extractionJobCounts", row._id);
-      const processed = new ShardedCounter<Id<"extractionJobs">>(components.extractionProcessedCounter, { defaultShards: 64 });
-      await processed.add(ctx, jobId, 3);
-    });
-    await t.run(async (ctx) => {
-      await ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:new", title: "new", status: "completed", processable: true });
-    });
-
-    expect((await counts(t, jobId)).papers).toEqual({ processed: 4, failed: 0 });
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-    expect((await counts(t, jobId)).papers).toEqual({ processed: 4, failed: 0 });
   });
 
   it("don't let a job finish while changes wait to be folded, such as a retry putting a paper back", async () => {

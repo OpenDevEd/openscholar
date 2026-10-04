@@ -25,6 +25,7 @@ export function RailLink({
   active,
   danger,
   onClick,
+  className,
   children,
 }: {
   href: string;
@@ -32,6 +33,7 @@ export function RailLink({
   active: boolean;
   danger?: boolean;
   onClick: () => void;
+  className?: string;
   children: ReactNode;
 }) {
   return (
@@ -49,6 +51,7 @@ export function RailLink({
           ? "bg-sidebar-accent font-medium text-sidebar-primary shadow-sm hover:bg-sidebar-accent"
           : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
         danger && "text-destructive hover:text-destructive",
+        className,
       )}
     >
       {active ? (

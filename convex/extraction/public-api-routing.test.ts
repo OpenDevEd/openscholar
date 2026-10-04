@@ -51,12 +51,15 @@ const PUBLIC_MUTATIONS: ReadonlyArray<string> = [
 // barrel pending its split). Post T5.3 the papers queries moved under
 // `queries.papers.<fn>`.
 const PUBLIC_QUERIES: ReadonlyArray<readonly [string, string]> = [
-  ["", "getMyJobs"],
+  ["", "listJobs"],
+  ["", "countJobs"],
   ["", "getJobShell"],
   ["", "getJobDetails"],
   ["papers", "results"],
   ["papers", "pdfUrl"],
-  ["", "getJobResultsPage"],
+  ["", "listJobResults"],
+  ["", "countJobResults"],
+  ["", "countJobFailures"],
   ["", "subscribeToJobProgress"],
 ];
 

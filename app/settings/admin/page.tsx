@@ -36,12 +36,12 @@ export default function SwitchesPage() {
   const t = useTranslations("settingsAdmin.switches");
   const tc = useTranslations("common");
   const toast = useAppToast();
-  const { data: rows } = useProtectedQuery(api.featureFlags.queries.getAll, {});
+  const { data: rows } = useProtectedQuery(api.featureFlags.queries.list, {});
   const setEnabled = useMutation(api.featureFlags.admin.setEnabled).withOptimisticUpdate((store, { key, enabled }) => {
-    const current = store.getQuery(api.featureFlags.queries.getAll, {});
-    if (current) store.setQuery(api.featureFlags.queries.getAll, {}, current.map((r) => (r.key === key ? { ...r, enabled } : r)));
+    const current = store.getQuery(api.featureFlags.queries.list, {});
+    if (current) store.setQuery(api.featureFlags.queries.list, {}, { ...current, page: current.page.map((r) => (r.key === key ? { ...r, enabled } : r)) });
   });
-  const on = (key: FlagName) => rows?.find((r) => r.key === key)?.enabled ?? FLAG_REGISTRY[key].enabled;
+  const on = (key: FlagName) => rows?.page.find((r) => r.key === key)?.enabled ?? FLAG_REGISTRY[key].enabled;
 
   return (
     <Enter ready={rows !== undefined}>

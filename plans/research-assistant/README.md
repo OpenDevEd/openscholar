@@ -171,13 +171,48 @@ everything a user can, calling the same actions as the UI:
     shared dev is the live deployment. Migrations run there, and its data is
     user data, so #325 moves existing chat threads into assistant threads
     instead of deleting them.
+- **2026-10-04, the old chats.** Was: #325 moves shared dev's chat jobs into
+  assistant threads before deleting chat mode. Now: #325 deletes them. Reason:
+  the user said the chat data can go; the chat is a system that leaves once
+  the assistant exists, and nothing more is built on it. For the same reason
+  the chat's lists were not paged under #422: its seven pending entries in
+  `scripts/convex-rules.json` name #325 and leave with that code (#467). "Start
+  chat" still puts an @ mention of the search in the composer; the user kept
+  that the same day. Everything else on shared dev stays user data.
+- **2026-10-04, context and cache (#326).** Was: a snapshot rebuilt from
+  Convex every turn, a running summary, and recent turns with old tool results
+  cut to one line. Now: between compactions the history only grows; each
+  message's context is stored with it and holds IDs and labels only; a
+  compaction replaces the history with one summary message. Reason:
+  providers cache a request's prefix, so
+  rebuilding a snapshot or trimming old tool results each turn voids the cache
+  from that point, and on current Claude models it also invalidates every
+  later reasoning block. Keeping recent turns after a summary breaks their
+  reasoning blocks the same way. Proof: Anthropic's prompt caching and model
+  migration guides; Codex appends context changes as new items and OpenCode
+  stores per-message context as parts of that message; a cost model over
+  shared dev's prices, where a 50,000-token budget is about eight times
+  cheaper per turn over 300 turns than no compaction.
+- **2026-10-04, a fixed tool list (#326).** Was: a small core of tools, the
+  rest deferred and found with `toolSearch()`, and the current page's tools
+  pre-loaded with `activeTools`. Now: the tool list is the same for every
+  thread and never changes inside one: a core set of typed tools, plus one
+  tool that finds any other action by keyword and one that runs it by name.
+  Reason: a changed tool list voids the whole cache, invalidates stored
+  reasoning on current Claude models, and leaves no cached prefix shared
+  between threads; `toolSearch()` changes the list on every discovery and
+  forgets it when the reply ends. The user first chose a per-thread list that
+  only grows, then switched to the fixed list the same day. Proof: Anthropic's
+  prompt caching and model migration guides; the AI SDK 7.0.122 tool search
+  docs; `toolApproval` and `toModelOutput` both receive the call's input, so
+  approval and the model-facing summary are still decided per action.
 
 ## Tools considered (2026-09-30)
 
 | Option | Decision | Reason |
 |---|---|---|
 | `@convex-dev/agent` (Apache-2.0) | Keep, upgrade to 0.7 | Threads, messages and streaming live in our Convex, under our auth, updating live for every viewer |
-| AI SDK 7 (Apache-2.0) | Keep | Agent loop, `needsApproval`, `toolSearch()` with `deferLoading`, `activeTools`, `prepareStep`, `toModelOutput` |
+| AI SDK 7 (Apache-2.0) | Keep | Agent loop, `toolApproval`, `prepareStep`, `toModelOutput`. `toolSearch()` and `activeTools` are not used: see the 2026-10-04 decision on a fixed tool list |
 | CopilotKit + AG-UI (MIT) | Borrow the ideas only | Persistent threads, replay and memory are in its cloud-hosted "Intelligence"; self-hosting adds a runtime and a SQLite-style store beside Convex |
 | Mastra (Apache-2.0 except `ee/`) | Not the runtime | `@mastra/convex` runs Mastra on its own Node server against Convex with the admin key and its own tables, bypassing per-user auth |
 | LangGraph JS (MIT), Letta (Apache-2.0) | No | Another service with its own state |
@@ -279,22 +314,47 @@ Results are never stored. They're fetched on the server through
 
 ### Context per turn (#326)
 
-1. Instructions and the core tools. These never change, so they stay cached.
-2. A snapshot rebuilt from Convex for the person sending the message: the
-   records the current message and the recent turns point at with @, open
-   jobs, and the sender's current view. Each record is checked against the
-   sender's access first, so one they can't open never reaches the model,
-   including after access is revoked. The thread keeps the IDs of every
-   record it has worked on, and tools load any of them on demand, so the
-   snapshot stays bounded however long the chat runs.
-3. A running summary of older turns, compacted in large chunks under a
-   per-model budget.
-4. Recent turns, with old tool results cut to one line.
+A request holds, most stable first, because providers cache a prefix and any
+change inside it voids everything after it:
+
+1. Tools: a fixed list, the same for every thread and person, that never
+   changes inside a thread: a core set of typed tools, plus one tool that
+   finds any other action and one that runs it.
+2. Instructions. Fixed text, with no time, page, person or record state.
+3. The summary, once the thread has been compacted.
+4. The conversation since the last compaction, exactly as it was sent:
+   messages, tool calls and results, and reasoning.
+5. The new message with its context: the sender's view, the records it points
+   at with @ (ID and label) and what changed in open jobs. The context is
+   stored with the message and stays; a later message adds only what changed.
+
+Between compactions nothing already sent is rewritten. Context holds IDs and
+labels, never a record's contents: contents reach the model only through
+tools, which check the sender's access on every call, so a record they can't
+open never reaches the model through them, including after access is revoked.
+The thread keeps the IDs of every record it has worked on.
+
+The agent component's own defaults (the last 100 messages, tool messages left
+out) are overridden: a request reads the whole history since the last
+compaction, and that read stays inside Convex's limits because a compaction
+also runs past a set number of stored messages and bytes.
+
+A compaction is the only rewrite. It runs when a reply ends past the budget,
+before the thread takes its next message, as one more call on the thread's
+own model over the cached history. That call can't run a tool. It is charged
+on its own to the person whose reply triggered it, outside that reply's cap.
+It leaves one message: a summary under fixed headings and the last few
+exchanges as plain text, with no tool calls, tool results or reasoning. The
+thread still stores and shows every message. #326 holds the numbers and the
+checks.
 
 Everything else arrives through tools:
 
-- Deferred tools are found with `toolSearch()`, and the current page's tools
-  are pre-loaded with `activeTools`.
+- Actions outside the core set are reached through the two fixed tools. One
+  finds actions by keyword and returns their argument schemas. The other runs
+  an action by name: the registry's validators check its arguments, and its
+  approval and model-facing summary come from that action's registry entry.
+  A message's context names the actions of the page the sender is on.
 - Results are paged and filterable, and go to the model as a summary plus IDs
   (`toModelOutput`), built only from the registry entry's validated result.
 - Past chats are searched through a tool, never pre-loaded.
@@ -485,10 +545,17 @@ Later, without issues yet:
 - Browser search history, shortcuts and ratings are user data. They're
   imported on sign-in, never wiped. The import is idempotent by local ID, and
   the local copy stays until the server confirms.
-- Shared dev is the live deployment, so its data is user data. Its chat jobs
-  (6 on 2026-09-30), with their `chatPapers` and `chatSourceEvents`, move into
-  assistant threads with #325, which then removes the chat-mode fields from
-  extraction. Decided on 2026-10-02, see "Decision changes".
+- Shared dev is the live deployment, so its data is user data. The one
+  exception is its chat jobs (9 on 2026-10-04): #325 deletes them, with their
+  `chatPapers`, `chatSourceEvents` and threads, when it removes chat mode from
+  extraction. Decided on 2026-10-04, see "Decision changes". Before it deletes
+  anything there, chat is switched off, so no reply or thread setup is in
+  flight, and a dry run lists what would go and is checked: only jobs with
+  `mode: "chat"`, the rows that point at them, and the agent threads their
+  `chatThreadId` names. Credit transactions keep their job ID, as they do when
+  a job is deleted today. Afterwards a verifier reads 0 chat-mode jobs, 0 chat
+  rows left pointing at one, none of the listed agent threads, and every
+  extraction-mode job ID that existed before.
 - Each migration runs on shared dev, and on e2e when its tests need it, and is
   verified there before a schema is narrowed. #384 and #403 narrow after
   theirs.

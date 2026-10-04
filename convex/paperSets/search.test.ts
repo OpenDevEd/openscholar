@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
@@ -21,25 +21,28 @@ const job = {
 
 type Request = { url: URL; init?: RequestInit };
 let requests: Request[] = [];
-/** OpenAlex, answering every page with 200 works numbered from the page's start; a cursor is the next page's number. */
+/** How many works the search has. */
+let total = 900;
+/** OpenAlex, answering each page with up to 200 works numbered from the page's start, until the search runs out; a cursor is the next page's number. */
 const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
   const url = new URL(String(input));
   requests.push({ url, init });
   const cursor = url.searchParams.get("cursor");
   const page = cursor === null ? Number(url.searchParams.get("page")) : cursor === "*" ? 1 : Number(cursor);
   const start = (page - 1) * 200;
-  const results = Array.from({ length: 200 }, (_, i) => ({
+  const results = Array.from({ length: Math.max(0, Math.min(200, total - start)) }, (_, i) => ({
     id: `https://openalex.org/W${start + i + 1}`,
     display_name: `Paper ${start + i + 1}`,
     publication_year: 2020,
     abstract_inverted_index: { Tutoring: [0], works: [1] },
     authorships: [{ author: { display_name: "Ada Lovelace" } }],
   }));
-  return new Response(JSON.stringify({ meta: { count: 900, next_cursor: String(page + 1) }, results }), { status: 200 });
+  return new Response(JSON.stringify({ meta: { count: total, next_cursor: results.length === 200 ? String(page + 1) : null }, results }), { status: 200 });
 });
 
 beforeEach(() => {
   requests = [];
+  total = 900;
   vi.stubEnv("OPENALEX_API_KEY", "platform-key");
   vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
   vi.stubGlobal("fetch", openAlex);
@@ -66,7 +69,7 @@ describe("Screen all on a saved search, read on the server", () => {
   it("reads the range from the results page's request, one parallel page each, with the key and only the fields it keeps", async () => {
     const { t, alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
 
-    const { jobId } = await alice.action(api.screening.start.screenSearch, { searchId: search.id, first: 150, last: 450, ...job });
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 150, last: 450, ...job, saveTo: { kind: "none" } });
 
     expect(requests.map(({ url }) => Number(url.searchParams.get("page"))).sort()).toEqual([1, 2, 3]);
     for (const { url } of requests) {
@@ -93,7 +96,7 @@ describe("Screen all on a saved search, read on the server", () => {
   it("reads an explicit sort's cursor pages in order from the start, as the results page lists them", async () => {
     const { t, alice } = await setup();
 
-    const { jobId } = await alice.action(api.screening.start.screenSearch, { searchId: search.id, first: 250, last: 260, ...job });
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 250, last: 260, ...job, saveTo: { kind: "none" } });
 
     expect(requests.map(({ url }) => url.searchParams.get("cursor"))).toEqual(["*", "2"]);
     expect(requests.every(({ url }) => url.searchParams.get("sort") === "cited_by_count:desc" && url.searchParams.get("page") === null)).toBe(true);
@@ -104,7 +107,7 @@ describe("Screen all on a saved search, read on the server", () => {
   it("keeps exactly the range asked for when it runs across cursor pages", async () => {
     const { t, alice } = await setup();
 
-    const { jobId } = await alice.action(api.screening.start.screenSearch, { searchId: search.id, first: 190, last: 410, ...job });
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 190, last: 410, ...job, saveTo: { kind: "none" } });
 
     expect(requests.map(({ url }) => url.searchParams.get("cursor"))).toEqual(["*", "2", "3"]);
     const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(300));
@@ -114,7 +117,7 @@ describe("Screen all on a saved search, read on the server", () => {
   it("filters by the days picked, whatever the server's timezone", async () => {
     const { alice } = await setup({ ...search, sortBy: "relevance_score:desc", filterType: "date", isYearRangeEnabled: false, yearRange: undefined, dateRange: { from: "2024-12-31T23:00:00.000Z", to: "2025-01-30T23:00:00.000Z" } });
 
-    await alice.action(api.screening.start.screenSearch, { searchId: search.id, first: 1, last: 5, ...job });
+    await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 5, ...job, saveTo: { kind: "none" } });
 
     expect(requests[0]!.url.searchParams.get("filter")).toContain("from_publication_date:2025-01-01,to_publication_date:2025-01-31");
   });
@@ -126,7 +129,7 @@ describe("Screen all on a saved search, read on the server", () => {
       { paperId: "https://openalex.org/W5", rating: 1 },
     ]);
 
-    const { jobId } = await alice.action(api.screening.start.screenSearch, { searchId: oql.id, first: 1, last: 10, ...job });
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: oql.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } });
 
     expect(requests).toHaveLength(1);
     expect(requests[0]!.url.pathname).toBe("/");
@@ -140,15 +143,49 @@ describe("Screen all on a saved search, read on the server", () => {
     const { alice } = await setup();
     await alice.mutation(api.openalex.limits.spend, { count: 300 });
 
-    await expect(alice.action(api.screening.start.screenSearch, { searchId: search.id, first: 1, last: 10, ...job })).rejects.toThrow();
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toThrow();
     expect(requests).toHaveLength(0);
+  });
+
+  it("ends a request where the search's results end, however far it was asked to go", async () => {
+    const { t, alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
+
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 801, last: 1_000_000, ...job, saveTo: { kind: "none" } });
+
+    const made = await t.run((ctx) => ctx.db.get("screeningJobs", jobId));
+    expect(made).toMatchObject({ totalPapers: 100, first: 801, last: 1_800 });
+    // Nothing follows this job: no end of the request to reach, and no papers past the search's last.
+    expect(made?.through).toBeUndefined();
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1_001, last: 1_000_000, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/None of these papers/);
+    expect(requests.length).toBeLessThan(15);
+  });
+
+  it("reads a request's later papers from the search as it was when the request began", async () => {
+    total = 2_500;
+    const { t, alice } = await setup();
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 2_500, ...job, saveTo: { kind: "none" } });
+    expect(await t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ first: 1, last: 1_000, through: 2_500, snapshot: { request: { sort: "cited_by_count:desc" } } });
+
+    // The search is edited while its first job runs; the job after it reads the search as it was.
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "edit", command: { kind: "editSearch", id: search.id, edit: { kind: "patch", fields: { sortBy: "publication_date:desc", query: "something else" }, clear: [] } } });
+    await t.run((ctx) => ctx.db.patch("screeningJobs", jobId, { status: "completed" }));
+    requests = [];
+    await t.action(internal.screening.start.next, { jobId, first: 1_001 });
+
+    expect(requests.length).toBeGreaterThan(0);
+    for (const { url } of requests) {
+      expect(url.searchParams.get("sort")).toBe("cited_by_count:desc");
+      expect(url.searchParams.get("filter")).toContain("randomized controlled trial");
+    }
+    const jobs = await t.run((ctx) => ctx.db.query("screeningJobs").order("asc").take(5));
+    expect(jobs[1]).toMatchObject({ first: 1_001, last: 2_000, through: 2_500, totalPapers: 1_000, snapshot: { request: { sort: "cited_by_count:desc" } } });
   });
 
   it("refuses another account's search", async () => {
     const { t } = await setup();
     await t.run((ctx) => ctx.db.insert("users", { libraryItemCount: 0, clerkId: "bob", email: "bob@example.com", state: "active", createdAt: 1, updatedAt: 1 }));
 
-    await expect(t.withIdentity({ subject: "bob" }).action(api.screening.start.screenSearch, { searchId: search.id, first: 1, last: 10, ...job })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+    await expect(t.withIdentity({ subject: "bob" }).action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
     expect(requests).toHaveLength(0);
   });
 });

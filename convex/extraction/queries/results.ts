@@ -1,13 +1,17 @@
 /**
- * Job-results queries. The page query reads the projection-backed filtered
- * corpus, so counts and sorting stay full-corpus correct; an export reads it
- * page by page.
+ * Job-results queries. A page is read by cursor through the index of its order, with the
+ * filters applied from each paper's projection as it reads; a search reads its matches and
+ * sorts them. A filtered view is counted apart, and an export reads the pages one by one.
  */
 
-import { query, type QueryCtx } from "../../_generated/server";
+import type { QueryCtx } from "../../_generated/server";
 import { v, type Infer } from "convex/values";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import { stream } from "convex-helpers/server/stream";
+import schema from "../../schema";
+import { assistantQuery, defineUserQuery, userQuery } from "../../lib/userActions";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { resolveOwnedJob } from "../access";
+import { ownJob } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
 import { PAPER_LIMIT, RESULTS_PAGE_SIZE_MAX } from "@/lib/extraction/limits";
 import {
@@ -21,31 +25,6 @@ import {
 import {
   buildQuestionAnswerToken,
 } from "../listProjection";
-
-const jobResultsPageOkValidator = v.object({
-  status: v.literal("ok"),
-  totalAll: v.number(),
-  totalFiltered: v.number(),
-  totalPages: v.number(),
-  page: v.number(),
-  pageSize: v.number(),
-  items: v.array(paginatedPaperWithResultsValidator),
-});
-
-const jobResultsPageEmptyValidator = v.object({
-  status: v.union(v.literal("unauthenticated"), v.literal("no_access")),
-  totalAll: v.number(),
-  totalFiltered: v.number(),
-  totalPages: v.number(),
-  page: v.number(),
-  pageSize: v.number(),
-  items: v.array(paginatedPaperWithResultsValidator),
-});
-
-function normalizePageNumber(value: number) {
-  if (!Number.isFinite(value)) return 1;
-  return Math.max(1, Math.floor(value));
-}
 
 function normalizePageSize(value: number) {
   if (!Number.isFinite(value)) return 1;
@@ -258,58 +237,73 @@ function sortFilteredPapers(
   );
 }
 
-export const getJobResultsPage = query({
-  args: {
-    jobId: v.id("extractionJobs"),
-    page: v.number(),
-    pageSize: v.number(),
-    filters: resultsPageFiltersValidator,
-    sortBy: resultsSortByValidator,
-  },
-  returns: v.union(jobResultsPageOkValidator, jobResultsPageEmptyValidator),
-  handler: async (ctx, args) => {
-    const requestedPage = normalizePageNumber(args.page);
-    const pageSize = normalizePageSize(args.pageSize);
-    const filters = normalizeResultsFilters(args.filters);
-    const access = await resolveOwnedJob(ctx, args.jobId);
-    if (access.status !== "ok") {
-      return {
-        status: access.status,
-        totalAll: 0,
-        totalFiltered: 0,
-        totalPages: 0,
-        page: requestedPage,
-        pageSize,
-        items: [],
-      };
-    }
-    const { user } = access;
-    await requireFeature(ctx, "extraction.enabled");
-    const limit = PAPER_LIMIT;
-    const { totalAll, totalFiltered, filteredPapers } = await readFilteredJobPapers(
-      ctx,
-      {
-        job: access.job,
-        filters,
-        sortBy: args.sortBy,
-        limit,
-      },
-    );
-    const totalPages = totalFiltered === 0 ? 0 : Math.ceil(totalFiltered / pageSize);
-    const page =
-      totalPages === 0 ? 1 : Math.min(requestedPage, totalPages);
-    const sliceStart = (page - 1) * pageSize;
-    const pagePapers = filteredPapers.slice(sliceStart, sliceStart + pageSize);
-    const items = await loadPaginatedPaperResults(ctx, pagePapers);
+/** Bytes of papers one page of results may read while it looks for matches. */
+const RESULTS_PAGE_BYTES = 4 * 1024 * 1024;
 
-    return {
-      status: "ok" as const,
-      totalAll,
-      totalFiltered,
-      totalPages,
-      page,
-      pageSize,
-      items,
-    };
+/** The index and direction each order of the results reads a job's processable papers in. */
+const RESULTS_ORDER = {
+  default: ["by_job_processable", "asc"],
+  "title-asc": ["by_job_processable_and_sortTitle", "asc"],
+  "title-desc": ["by_job_processable_and_sortTitle", "desc"],
+  "confidence-high": ["by_job_processable_and_avgConfidence", "desc"],
+  "confidence-low": ["by_job_processable_and_avgConfidence", "asc"],
+} as const;
+
+const resultsViewArgs = { jobId: v.id("extractionJobs"), filters: resultsPageFiltersValidator };
+
+export const listJobResultsAction = defineUserQuery({
+  path: "extraction/queries:listJobResults",
+  description:
+    "Lists an extraction job's papers with their answers, a page at a time: in the order they were added, by title, or by confidence. " +
+    "Filters keep papers by search text, confidence range, status and the answer to a question.",
+  args: { ...resultsViewArgs, sortBy: resultsSortByValidator, paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(paginatedPaperWithResultsValidator),
+  run: async (ctx, userId, args) => {
+    const job = await ownJob(ctx, userId, args.jobId);
+    if (!job) return { page: [], isDone: true, continueCursor: "" };
+    await requireFeature(ctx, "extraction.enabled", userId);
+    const filters = normalizeResultsFilters(args.filters);
+    const numItems = normalizePageSize(args.paginationOpts.numItems);
+    const { cursor } = args.paginationOpts;
+
+    if (filters.searchQuery) {
+      // A search reads its matches by relevance, at most PAPER_LIMIT of them, so they are
+      // sorted here and the cursor is how many came before.
+      const { filteredPapers } = await readFilteredJobPapers(ctx, { job, filters, sortBy: args.sortBy, limit: PAPER_LIMIT });
+      const start = Math.max(0, Math.floor(Number(cursor ?? 0)) || 0);
+      const papers = filteredPapers.slice(start, start + numItems);
+      return { page: await loadPaginatedPaperResults(ctx, papers), isDone: start + papers.length >= filteredPapers.length, continueCursor: String(start + papers.length) };
+    }
+
+    const [index, order] = RESULTS_ORDER[args.sortBy];
+    const read = await stream(ctx.db, schema)
+      .query("extractionPapers")
+      .withIndex(index, (q) => q.eq("jobId", job._id).eq("processable", true))
+      .order(order)
+      .filterWith(async (paper) => {
+        assertProjectionReady(job._id, [paper]);
+        return matchesProjectionFilters(paper, filters);
+      })
+      // A job holds at most PAPER_LIMIT papers, so a filter reads each once at most.
+      .paginate({ ...args.paginationOpts, numItems, maximumRowsRead: PAPER_LIMIT, maximumBytesRead: RESULTS_PAGE_BYTES });
+    return { page: await loadPaginatedPaperResults(ctx, read.page), isDone: read.isDone, continueCursor: read.continueCursor };
   },
 });
+export const listJobResults = userQuery(listJobResultsAction);
+export const listJobResultsForAssistant = assistantQuery(listJobResultsAction);
+
+export const countJobResultsAction = defineUserQuery({
+  path: "extraction/queries:countJobResults",
+  description: "Counts an extraction job's papers, and how many of them a set of filters keeps.",
+  args: resultsViewArgs,
+  returns: v.object({ all: v.number(), matching: v.number() }),
+  run: async (ctx, userId, args) => {
+    const job = await ownJob(ctx, userId, args.jobId);
+    if (!job) return { all: 0, matching: 0 };
+    await requireFeature(ctx, "extraction.enabled", userId);
+    const { totalAll, totalFiltered } = await readFilteredJobPapers(ctx, { job, filters: normalizeResultsFilters(args.filters), sortBy: "default", limit: PAPER_LIMIT });
+    return { all: totalAll, matching: totalFiltered };
+  },
+});
+export const countJobResults = userQuery(countJobResultsAction);
+export const countJobResultsForAssistant = assistantQuery(countJobResultsAction);

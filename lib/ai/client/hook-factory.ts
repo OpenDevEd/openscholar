@@ -60,12 +60,12 @@ function mapExecutionError(reason: AIExecutionErrorReason): Error {
 function useKeyConfigs(isAuthenticated: boolean, creditsEnabled: boolean) {
   const { provider, apiKey, providerApiKeys } = useAIConfigStore()
   const settings = useOptionalAuthQuery(api.userAiConfig.queries.get, {})
-  const presets = useQuery(api.aiModelConfig.queries.presets, {})
+  const presets = useQuery(api.aiModelConfig.queries.presetPicks, {})
   return useMemo(() => {
     const keys: Record<string, string> = { ...providerApiKeys, [provider]: apiKey }
     const saved = settings.data?.choice
     const choice = effectiveChoice(creditsEnabled, saved)
-    const presetPicks = presets?.find((p) => p.preset === (choice === 'custom' ? fallbackPreset(saved) : choice))?.tasks
+    const presetPicks = presets?.[choice === 'custom' ? fallbackPreset(saved) : choice]
     const configFor = (task: AiTask): AIConfig => {
       const custom = choice === 'custom' ? settings.data?.custom.find((p) => p.task === task) : undefined
       const pick = custom?.model ? custom : presetPicks?.find((p) => p.task === task)

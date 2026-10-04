@@ -29,13 +29,6 @@ export const screeningPool = new Workpool(components.screeningWorkpool, {
   },
 });
 
-// Moves finished Screen all papers' answers into their screening, one batch at a time. A
-// screening counts every change to its answers, so writers to one take turns: papers finish
-// into their own result rows, and this one writer moves them (convex/screening/drain.ts).
-export const screeningAnswersPool = new Workpool(components.screeningAnswersWorkpool, {
-  maxParallelism: 1,
-});
-
 // Extraction paper pool — one item owns one paper queue row. Question
 // parallelism stays inside that action via the extraction queue runtime.
 export const extractionPaperPool = new Workpool(

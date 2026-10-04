@@ -21,6 +21,7 @@ import {
   type CoolifyConfigurationUpdateResult,
   type CoolifyDeployment,
 } from "./coolifyClient";
+import { DomainEgressRefused } from "./domainEgress";
 import { openOwnProxyClient, openPinnedDomainClient } from "./domainEgressNode";
 import {
   activateLibraryRuntimeConfiguration,
@@ -121,6 +122,27 @@ type ConfigurationDeploymentActionResult =
 type ConfigurationDeploymentTarget = NonNullable<
   Doc<"evidenceLibraryConfigOperations">["configurationDeploymentTarget"]
 >;
+
+/**
+ * The client that reads a running library at its own address, or nothing for
+ * a platform address, which is ours.
+ *
+ * The address may be a customer's domain, whose records they can repoint at
+ * any moment, so every request to one goes through our own proxy under that
+ * name: it reaches this library whatever the records say. A domain behind
+ * another proxy, or one whose records were deleted, must not fail a
+ * deployment that has already happened.
+ */
+async function openLibraryAddressClient(readiness: {
+  targetBaseUrl: string;
+  platformBaseUrl: string;
+}): Promise<typeof fetch | undefined> {
+  return readiness.targetBaseUrl === readiness.platformBaseUrl
+    ? undefined
+    : await openOwnProxyClient({
+        host: new URL(readiness.targetBaseUrl).hostname,
+      });
+}
 
 export const runConfigurationDeployment = internalAction({
   args: {
@@ -249,6 +271,53 @@ export const runConfigurationDeployment = internalAction({
       if (prepared.state === "saved") {
         target = prepared.target;
       } else {
+        // A software update that failed late leaves the application on the
+        // release it staged, which only the next update finishes. A deployment
+        // without one would be refused as a hosting conflict the owner cannot
+        // act on, so say what to do, before anything changes.
+        if (prepared.requiresDeployment && !runtimeUpdate && coolify) {
+          const staged = await coolify
+            .readBoundApplication({
+              applicationUuid: prepared.applicationId,
+              libraryId: args.libraryId,
+              publicDomain:
+                prepared.addressMove && !prepared.addressMove.applied
+                  ? prepared.addressMove.from
+                  : prepared.targetBaseUrl,
+              customDomains: prepared.customDomains,
+            })
+            // A conflict here is the strict read's to report. Anything else,
+            // such as Coolify not answering, must stop the deployment before
+            // it changes an address it could not check.
+            .catch((error: unknown) => {
+              if (
+                error instanceof CoolifyClientError &&
+                error.code === "COOLIFY_APPLICATION_CONFLICT"
+              ) {
+                return null;
+              }
+              throw error;
+            });
+          if (
+            staged &&
+            staged.runtimeCommit !== prepared.runtimeCommit &&
+            (await ctx.runQuery(
+              internal.evidenceLibraries.configurationDeployment
+                .isFailedRuntimeTarget,
+              {
+                libraryId: args.libraryId,
+                runtimeCommit: staged.runtimeCommit,
+                runtimeImage: staged.runtimeImage,
+                updateOnly: true,
+              },
+            ))
+          ) {
+            throw new ReadinessClientError(
+              "SOFTWARE_UPDATE_UNFINISHED",
+              "A software update did not finish. Update the software, then activate again.",
+            );
+          }
+        }
         // A move changes Coolify's domain first. Only when the application
         // answers on the new address do the records take it, so a failure
         // here leaves the library on the address it has.
@@ -528,12 +597,7 @@ export const runConfigurationDeployment = internalAction({
             .prepareConfigurationActivation,
           args,
         );
-        const targetFetchImpl =
-          readiness.targetBaseUrl === readiness.platformBaseUrl
-            ? undefined
-            : await openPinnedDomainClient({
-                host: new URL(readiness.targetBaseUrl).hostname,
-              });
+        const targetFetchImpl = await openLibraryAddressClient(readiness);
         const readinessInput = {
           ...(targetFetchImpl ? { targetFetchImpl } : {}),
           applicationUuid: readiness.applicationId,
@@ -586,6 +650,19 @@ export const runConfigurationDeployment = internalAction({
           coolifyConfigHash: current.coolifyConfigHash,
         };
       } else {
+        // A deployment that moves the library onto a custom address needs
+        // that address to point at us before anything changes: afterwards it
+        // is read through our own proxy, which answers whatever its records say.
+        const nextOrigin = new URL(
+          (JSON.parse(runtimeConfigJson) as { identity: { baseUrl: string } })
+            .identity.baseUrl,
+        ).origin;
+        if (
+          nextOrigin !== new URL(prepared.continuity.liveOrigin).origin &&
+          nextOrigin !== new URL(target.targetBaseUrl).origin
+        ) {
+          await openPinnedDomainClient({ host: new URL(nextOrigin).hostname });
+        }
         // A runtime update points the app at the new commit first, so the
         // configuration write and the deployment both see that commit.
         if (runtimeUpdate) {
@@ -746,16 +823,7 @@ export const runConfigurationDeployment = internalAction({
         coolifyConfigHash: readiness.coolifyConfigHash,
         allowMissingConfigurationHash: true,
       });
-      // The address the runtime is read at may be a customer's domain, whose
-      // records they can repoint at any moment. Every readiness request to
-      // one goes through a client that can only reach the addresses that
-      // passed the check; a platform address is ours and needs no pinning.
-      const targetFetchImpl =
-        readiness.targetBaseUrl === readiness.platformBaseUrl
-          ? undefined
-          : await openPinnedDomainClient({
-              host: new URL(readiness.targetBaseUrl).hostname,
-            });
+      const targetFetchImpl = await openLibraryAddressClient(readiness);
       const readinessInput = {
         // Only the requests to the library's own address are pinned. The
         // verifier and the platform address are ours, so they use the
@@ -847,6 +915,9 @@ export const runConfigurationDeployment = internalAction({
                 code: "OAUTH_CLIENT_SYNC_FAILED",
                 message: "OpenScholar sign-in could not be prepared for this library",
               }
+          : error instanceof DomainEgressRefused
+            ? // Written for the owner: it says what is wrong with their domain.
+              { code: "DOMAIN_REFUSED", message: error.message }
           : error instanceof ConfigurationAssemblyError
             ? {
                 code: "CONFIGURATION_ASSEMBLY_FAILED",

@@ -1,14 +1,18 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { parseAsInteger, useQueryState } from "nuqs";
 import { Database, Plus, ExtractionIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { ExtractionSortBy } from "@/lib/types";
+import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import Link from "next/link";
 import {
   CommandCenterList,
@@ -30,21 +34,7 @@ function createExtractionJobListItem(viewMode: ViewMode) {
 
 type ExtractionJob = Doc<"extractionJobs">;
 
-interface ExtractionCommandCenterProps {
-  /** Undefined while the jobs load: the page and its bar show at once and only the list waits. */
-  jobs: ExtractionJob[] | undefined;
-}
-
-const STATUS_ORDER: Record<string, number> = {
-  pending: 0,
-  downloading_pdfs: 1,
-  extracting: 2,
-  completed: 3,
-  failed: 4,
-  cancelled: 5,
-};
-
-export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) {
+export function ExtractionCommandCenter() {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
 
@@ -55,10 +45,7 @@ export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) 
     { value: "status", label: tc("status") },
   ];
   const [searchFilter, setSearchFilter] = useState("");
-  const [currentPage, setCurrentPage] = useQueryState(
-    "page",
-    parseAsInteger.withDefault(1).withOptions({ scroll: true }),
-  );
+  const text = useDebouncedValue(searchFilter.trim(), 300);
 
   const {
     extractionViewMode,
@@ -67,48 +54,15 @@ export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) 
     setExtractionSortBy,
   } = useUIStore();
 
-  // Filter jobs
-  const filteredJobs = useMemo(() => {
-    if (!jobs || !searchFilter.trim()) return jobs ?? [];
-    const query = searchFilter.toLowerCase();
-    return jobs.filter(
-      (job) =>
-        job.name.toLowerCase().includes(query) ||
-        (job.description?.toLowerCase().includes(query) ?? false)
-    );
-  }, [jobs, searchFilter]);
-
-  // Sort jobs
-  const sortedJobs = useMemo(() => {
-    const sorted = [...filteredJobs];
-    switch (extractionSortBy) {
-      case "oldest":
-        return sorted.sort((a, b) => a.createdAt - b.createdAt);
-      case "name":
-        return sorted.sort((a, b) => a.name.localeCompare(b.name));
-      case "status":
-        return sorted.sort(
-          (a, b) => (STATUS_ORDER[a.status ?? "pending"] ?? 99) - (STATUS_ORDER[b.status ?? "pending"] ?? 99)
-        );
-      case "recent":
-      default:
-        return sorted.sort((a, b) => b.createdAt - a.createdAt);
-    }
-  }, [filteredJobs, extractionSortBy]);
-
-  // Pagination
-  const totalPages = Math.ceil(sortedJobs.length / COMMAND_CENTER_ITEMS_PER_PAGE);
-  const paginatedJobs = useMemo(() => {
-    const start = (currentPage - 1) * COMMAND_CENTER_ITEMS_PER_PAGE;
-    return sortedJobs.slice(start, start + COMMAND_CENTER_ITEMS_PER_PAGE);
-  }, [sortedJobs, currentPage]);
-
-  // Reset to page 1 when filter changes
-  React.useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
-    }
-  }, [currentPage, totalPages, setCurrentPage]);
+  // Read a page at a time, sorted and filtered on the server: the page number can't be jumped to, so it stays out of the URL.
+  const jobs = useCursorPage(api.extraction.queries.listJobs, { sort: extractionSortBy, ...(text ? { text } : {}) }, COMMAND_CENTER_ITEMS_PER_PAGE);
+  // A search's matches aren't counted, so its pager shows the page alone.
+  const { data: count } = useProtectedQuery(api.extraction.queries.countJobs, {});
+  const total = text ? undefined : count;
+  const step = (to: () => void) => () => {
+    to();
+    window.scrollTo({ top: 0 });
+  };
 
   return (
     <LibraryPageShell
@@ -132,9 +86,9 @@ export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) 
         </Button>
       }
     >
-      <div>
-        {!jobs ? <ListLoading label={tc("loading")} /> : <CommandCenterList
-          items={paginatedJobs}
+      <div className={cn(jobs.isStale && "pointer-events-none opacity-60")}>
+        {jobs.isLoading ? <ListLoading label={tc("loading")} /> : <CommandCenterList
+          items={jobs.items}
           viewMode={extractionViewMode}
           keyExtractor={(job) => job._id}
           emptyIcon={Database}
@@ -146,15 +100,21 @@ export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) 
         />}
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {!jobs.isLoading && jobs.hasPages && (
           <CommandCenterPagination
             className="border-t border-border-subtle p-4"
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            totalItems={sortedJobs.length}
-            itemsPerPage={COMMAND_CENTER_ITEMS_PER_PAGE}
+            currentPage={jobs.page}
             itemLabel={t("jobs")}
+            steps={{
+              canPrevious: jobs.canPrevious,
+              canNext: jobs.canNext,
+              onPrevious: step(jobs.previous),
+              onNext: step(jobs.next),
+              offset: jobs.offset,
+              shown: jobs.items.length,
+              total,
+              pageCount: total === undefined ? undefined : Math.max(1, Math.ceil(total / COMMAND_CENTER_ITEMS_PER_PAGE)),
+            }}
           />
         )}
       </div>

@@ -4,10 +4,11 @@ import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import {
+  paperSetValidator,
+  saveToValidator,
   screeningPaperInputValidator,
   screeningQuestionValidator,
   screeningScoringConfigValidator,
-  screeningJobStatusValidator,
 } from "./validators";
 import { requireActiveUser, requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -18,13 +19,14 @@ import {
   getCancelableScreeningWorkIds,
   isTerminalScreeningJobStatus,
 } from "./lifecycle";
-import { upsertLibraryItem } from "../library/mutations";
 import { addCollectionMembership } from "../library/collectionMembership";
 import { deriveCompletionTransition } from "./completion";
-import { scorePaper } from "./scoring";
+import { outcomeOf, scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
-import { ensureScreening } from "../research/answers";
-import { bookkeepLater, ensureProgress, saveQualified } from "./bookkeeping";
+import { answeredFully, ensureScreening } from "../research/answers";
+import { newCollection } from "../library/collections";
+import { searchSnapshotValidator } from "../paperSets/openalex";
+import { bookkeepLater } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
 import { estimateScreening } from "./estimate";
 import { applyCommand } from "../research/records";
@@ -32,17 +34,21 @@ import { applyCommand } from "../research/records";
 import { availableCredits } from "../billing/accounts";
 import { MAX_AUTHORS } from "../lib/listCaps";
 
-/**
- * Create a bulk screening job.
- *
- * Validates paper count, checks credits, guards against concurrent active jobs,
- * creates the job record with embedded questions/scoring config, inserts
- * processing result records for each paper, and enqueues each paper directly
- * into the screening workpool.
- */
+/** Where the job's included papers go, as its fields: a collection, or nowhere. */
+async function destination(ctx: MutationCtx, userId: Id<"users">, saveTo: Infer<typeof saveToValidator> | undefined) {
+  if (!saveTo) return {};
+  if (saveTo.kind === "none") return { unsaved: true as const };
+  if (saveTo.kind === "new") return { targetCollectionId: await newCollection(ctx, userId, saveTo.name) };
+  if ((await ctx.db.get("collections", saveTo.collectionId))?.userId !== userId) throw createError("NOT_FOUND", "Collection not found");
+  return { targetCollectionId: saveTo.collectionId };
+}
+
 /**
  * Creates a Screen all job for `userId` from papers the server has already resolved
- * (`screening/start:screenSearch`); the browser never sends papers.
+ * (`screening/start:screen`); the browser never sends papers. Checks the person's credits,
+ * stamps the job with the model Screen all runs on, creates a result for each paper a batch
+ * a transaction, and starts as many as the person has slots free. A person may run any
+ * number of jobs: their papers take turns under their plan's limit (./slots.ts).
  */
 export const createScreeningJobForUser = internalMutation({
   args: {
@@ -52,48 +58,40 @@ export const createScreeningJobForUser = internalMutation({
     papers: v.array(screeningPaperInputValidator),
     questions: v.array(screeningQuestionValidator),
     scoringConfig: screeningScoringConfigValidator,
-    targetCollectionId: v.optional(v.id("collections")),
-    // The saved search screened, by its ID in the browser; its page shows the answers.
-    searchId: v.optional(v.string()),
+    // Where the papers came from, which of them these are (from 1), and the last paper of
+    // the whole request when it's more than this job holds. A search's page shows the answers.
+    set: v.optional(paperSetValidator),
+    first: v.optional(v.number()),
+    last: v.optional(v.number()),
+    through: v.optional(v.number()),
+    resume: v.optional(v.string()),
+    snapshot: v.optional(searchSnapshotValidator),
+    // How many of the papers the search's page already answers every question for
+    // (`screening/queries:answeredCount`); the credit check leaves them out.
+    answered: v.optional(v.number()),
+    // Missing: included papers are saved to the library alone, as jobs from before the screening page were.
+    saveTo: v.optional(saveToValidator),
+    prune: v.optional(v.boolean()),
+    // The job that follows another in one request: it takes that job's place in the request
+    // even when the person can no longer pay for it, so the page shows where the request stopped.
+    chained: v.optional(v.boolean()),
   },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, { userId, author, ...args }) => {
-    // 1. The acting user, who may have been suspended since the action began
+  handler: async (ctx, { userId, author, papers, set, saveTo, prune, chained, answered = 0, ...args }) => {
+    // The acting user, who may have been suspended since the action began.
     const user = await requireActiveUser(ctx, userId);
-
-    // 2. Validate paper count
-    if (args.papers.length === 0) {
-      throw createError(
-        "VALIDATION_ERROR",
-        "At least one paper is required"
-      );
+    if (papers.length === 0) throw createError("VALIDATION_ERROR", "At least one paper is required");
+    if (papers.length > MAX_SCREENING_PAPERS_PER_JOB) {
+      throw createError("VALIDATION_ERROR", `Cannot screen more than ${MAX_SCREENING_PAPERS_PER_JOB} papers per job`);
     }
-    if (args.papers.length > MAX_SCREENING_PAPERS_PER_JOB) {
-      throw createError(
-        "VALIDATION_ERROR",
-        `Cannot screen more than ${MAX_SCREENING_PAPERS_PER_JOB} papers per job`
-      );
-    }
+    if (prune && set?.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
 
-    // 3. Credit pre-flight check. A person may run any number of jobs: their papers take
-    // turns under their plan's limit (./slots.ts).
-    const totalAvailable = await availableCredits(ctx, user._id);
-
-    const estimatedCost = estimateScreening(args.papers.length, totalAvailable).credits;
-    if (totalAvailable < estimatedCost) {
-      throw createError(
-        "INSUFFICIENT_CREDITS",
-        `Need ~${estimatedCost} credits for ${args.papers.length} papers but only have ${totalAvailable}`
-      );
-    }
-
-    // 5. Create screening job record, stamped with what Screen All runs on (read
-    // back at run by screenPaperAction).
-    const serverPick = await resolveTaskPick(ctx, user._id, "screenAll");
+    // The screening its answers go to, and the set's name as the page shows it.
     const now = Date.now();
     let screeningId: Id<"screenings">;
-    if (args.searchId) {
-      const localId = args.searchId;
+    let label: string | undefined;
+    if (set?.kind === "search") {
+      const localId = set.searchId;
       const search = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", user._id).eq("localId", localId)).unique();
       if (!search) throw createError("NOT_FOUND", "Search not found");
       // The search's page shows answers to its own questions, so it takes on the job's it
@@ -105,28 +103,40 @@ export const createScreeningJobForUser = internalMutation({
         await applyCommand(ctx, user._id, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, author);
       }
       screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
+      label = search.data.query;
     } else {
       screeningId = await ctx.db.insert("screenings", { userId: user._id, version: 0, createdAt: now });
+      const source = set?.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
+      if (set && set.kind !== "saved" && source?.userId !== user._id) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");
+      label = source ? ("name" in source ? source.name : source.label) : undefined;
     }
+
+    // Papers the search's page already answered keep their answers and cost nothing.
+    const available = await availableCredits(ctx, user._id);
+    const estimate = estimateScreening(papers.length - answered, available).credits;
+    const affordable = available >= estimate;
+    if (!affordable && !chained) {
+      throw createError("INSUFFICIENT_CREDITS", `Need ~${estimate} credits for ${papers.length} papers but only have ${available}`);
+    }
+
+    // Stamped with what Screen All runs on (read back at run by screenPaperAction).
+    const serverPick = await resolveTaskPick(ctx, user._id, "screenAll");
     const jobId = await ctx.db.insert("screeningJobs", {
       userId: user._id,
-      status: "processing",
-      totalPapers: args.papers.length,
-      questions: args.questions,
-      scoringConfig: args.scoringConfig,
-      targetCollectionId: args.targetCollectionId,
+      status: affordable ? "processing" : "creditsExhausted",
+      totalPapers: papers.length,
       screeningId,
+      ...args,
+      ...(set ? { set } : {}),
+      ...(label ? { label } : {}),
+      ...(await destination(ctx, user._id, saveTo)),
+      ...(prune ? { prune: true as const } : {}),
       ...serverStamp(serverPick),
       createdAt: now,
       updatedAt: now,
     });
     await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0 });
-
-    // 6. Insert processing result records and enqueue their work items: the first batch here,
-    // the rest a batch per transaction after.
-    await createResults(ctx, user._id, jobId, args.papers, now);
-
-    // 7. Return job ID
+    if (affordable) await createResults(ctx, (await ctx.db.get("screeningJobs", jobId))!, papers, now);
     return { jobId };
   },
 });
@@ -137,29 +147,66 @@ type PaperInput = Infer<typeof screeningPaperInputValidator>;
 
 /**
  * Creates a batch of a job's results, waiting for their person's paper slots, starts as many
- * as the person has free, then schedules the next batch.
+ * as the person has free, then schedules the next batch. A paper of a search's that its page
+ * already answered every question for is done at once on those answers, takes no slot and
+ * costs nothing: the bookkeeping worker scores and counts it.
  */
-async function createResults(ctx: MutationCtx, userId: Id<"users">, jobId: Id<"screeningJobs">, papers: PaperInput[], createdAt: number) {
-  for (const paper of papers.slice(0, CREATE_BATCH)) {
+async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers: PaperInput[], createdAt: number) {
+  const batch = papers.slice(0, CREATE_BATCH);
+  const screening = (await ctx.db.get("screenings", job.screeningId))!;
+  const reused = job.set?.kind === "search" ? await answeredFully(ctx, screening, job.questions.map((q) => q.question), batch.map((paper) => paper.openalexId)) : new Set<string>();
+  for (const paper of batch) {
+    const done = reused.has(paper.openalexId);
     await ctx.db.insert("screeningResults", {
-      jobId,
+      jobId: job._id,
       openalexId: paper.openalexId,
       title: paper.title,
       abstract: paper.abstract,
       authors: paper.authors?.slice(0, MAX_AUTHORS),
       publicationYear: paper.publicationYear,
       doi: paper.doi,
-      status: "processing",
-      waitingUser: userId,
-      waitingSince: createdAt,
+      venue: paper.venue,
+      citedByCount: paper.citedByCount,
       createdAt,
+      ...(done
+        ? { status: "completed" as const, completedAt: createdAt, answersVersion: screening.version, doneAt: ctx.db.vars.commitTs }
+        : { status: "processing" as const, waitingUser: job.userId, waitingSince: createdAt }),
     });
   }
-  await startWaitingPapers(ctx, userId);
+  if (reused.size) {
+    await ctx.db.patch("screeningJobs", job._id, { reused: (job.reused ?? 0) + reused.size });
+    await bookkeepLater(ctx);
+  }
+  await startWaitingPapers(ctx, job.userId);
   if (papers.length > CREATE_BATCH) {
-    await ctx.scheduler.runAfter(0, internal.screening.mutations.createScreeningResults, { jobId, papers: papers.slice(CREATE_BATCH), createdAt });
+    await ctx.scheduler.runAfter(0, internal.screening.mutations.createScreeningResults, { jobId: job._id, papers: papers.slice(CREATE_BATCH), createdAt });
   }
 }
+
+/**
+ * Records where a request stopped when its next job couldn't start: a failed job in its
+ * place, with no papers.
+ */
+export const stopRequest = internalMutation({
+  args: {
+    userId: v.id("users"),
+    set: paperSetValidator,
+    first: v.number(),
+    last: v.number(),
+    through: v.optional(v.number()),
+    label: v.optional(v.string()),
+    questions: v.array(screeningQuestionValidator),
+    scoringConfig: screeningScoringConfigValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const screeningId = await ctx.db.insert("screenings", { userId: args.userId, version: 0, createdAt: now });
+    const jobId = await ctx.db.insert("screeningJobs", { ...args, screeningId, status: "failed", totalPapers: args.last - args.first + 1, createdAt: now, updatedAt: now });
+    await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0 });
+    return null;
+  },
+});
 
 /** The next batch of a job's results, unless the job was cancelled or ended meanwhile. */
 export const createScreeningResults = internalMutation({
@@ -168,7 +215,7 @@ export const createScreeningResults = internalMutation({
   handler: async (ctx, { jobId, papers, createdAt }) => {
     const job = await ctx.db.get("screeningJobs", jobId);
     if (job?.status !== "processing") return null;
-    await createResults(ctx, job.userId, jobId, papers, createdAt);
+    await createResults(ctx, job, papers, createdAt);
     return null;
   },
 });
@@ -301,35 +348,6 @@ export const addToCollectionInternal = internalMutation({
 });
 
 /**
- * Saves a qualified paper scheduled before its job's bookkeeping moved to the worker
- * (./bookkeeping.ts). Remove once no deployment has such a call pending.
- */
-export const persistQualifiedScreeningResult = internalMutation({
-  args: { resultId: v.id("screeningResults") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const result = await ctx.db.get("screeningResults", args.resultId);
-    if (!result || result.status !== "completed" || result.qualified !== true || result.libraryItemId) return null;
-    const job = await ctx.db.get("screeningJobs", result.jobId);
-    if (job) await saveQualified(ctx, job, result);
-    return null;
-  },
-});
-
-/**
- * Finishes a job, scheduled before its bookkeeping moved to the worker (./bookkeeping.ts),
- * which finishes jobs now. Remove once no deployment has such a call pending.
- */
-export const finalizeScreeningJobFromAggregates = internalMutation({
-  args: { jobId: v.id("screeningJobs") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ensureProgress(ctx, args.jobId);
-    return null;
-  },
-});
-
-/**
  * Workpool onComplete handler for individual paper screening.
  *
  * Patches only the target screening result row, records aggregate state, and
@@ -360,6 +378,8 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
         // Missing from results returned before #334.
         confidences?: Record<string, number>;
         confidence: number;
+        // What the paper cost; missing from results returned before a job kept its spending.
+        credits?: number;
       };
       const decodedResponses = decodeQuestionResponseMap(data.responses);
       const decodedConfidences = decodeQuestionResponseMap(data.confidences ?? {});
@@ -374,6 +394,7 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
       };
 
       const { score, stars, qualified } = scorePaper(answers, job.scoringConfig);
+      const outcome = outcomeOf(answers, job.scoringConfig);
       transition = deriveCompletionTransition({
         currentRowStatus: screeningResult.status,
         jobStatus: job.status,
@@ -382,16 +403,20 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
           score,
           stars,
           qualified,
+          outcome,
           aiMetadata: { confidence: data.confidence },
+          ...(data.credits === undefined ? {} : { creditsUsed: data.credits }),
         },
       });
     } else {
       transition = deriveCompletionTransition({
         currentRowStatus: screeningResult.status,
         jobStatus: job.status,
-        resultKind: result.kind === "success" ? "success" : "failure",
+        resultKind: result.kind === "success" ? "success" : result.kind === "canceled" ? "canceled" : "failure",
       });
     }
+    // A paper the model answered after its job ended still cost what it cost.
+    const spent = result.kind === "success" ? (result.returnValue as { credits?: number }).credits : undefined;
 
     if (transition.kind === "noop") {
       return;
@@ -414,11 +439,8 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
         ...transition.rowPatch,
         completedAt,
         doneAt,
-        ...(result.kind === "failed"
-          ? { errorMessage: result.error }
-          : result.kind === "canceled"
-            ? { errorMessage: "workpool_canceled" }
-            : {}),
+        ...(spent === undefined ? {} : { creditsUsed: spent }),
+        ...(result.kind === "failed" ? { errorMessage: result.error } : {}),
       });
     }
     await bookkeepLater(ctx);

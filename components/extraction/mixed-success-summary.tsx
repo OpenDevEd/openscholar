@@ -32,6 +32,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { ERROR_CODES, type ErrorCode } from "@/lib/errors/taxonomy";
+import { summarizeFailures } from "@/lib/extraction/failures-summary";
 
 const KNOWN_CODES: ReadonlySet<string> = new Set(ERROR_CODES);
 
@@ -55,10 +56,8 @@ export function MixedSuccessSummary({ jobId, onShowFailures, papersRead }: Mixed
   const titleForCode = (code: string): string =>
     KNOWN_CODES.has(code) ? tTitle(code as ErrorCode) : code.replace(/_/g, " ");
 
-  const { data: summary, settlement } = useProtectedQuery(
-    api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary,
-    { jobId },
-  );
+  const { data: failures, settlement } = useProtectedQuery(api.extraction.queries.countJobFailures, { jobId });
+  const summary = failures && { ...summarizeFailures(failures.paperErrors), answeredTotal: failures.answered, totalQuestions: failures.asked };
 
   // Only render on the happy-path: query ready and there's at least
   // one classified failure. On a clean completed job nothing renders.

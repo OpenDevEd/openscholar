@@ -74,6 +74,12 @@ export async function answersAmong(ctx: Read, screening: Doc<"screenings">, pape
   }));
 }
 
+/** Which of these papers the screening answers every one of `questions` for. */
+export async function answeredFully(ctx: Read, screening: Doc<"screenings">, questions: string[], paperIds: string[]) {
+  const answers = await answersAmong(ctx, screening, paperIds);
+  return new Set(answers.flatMap(({ paperId, responses }) => (questions.every((question) => responses.some((response) => response.question === question)) ? [paperId] : [])));
+}
+
 /**
  * Takes from a paper's row the removals it owes, recording each that takes something in the
  * paper's history at the removal's version. Returns the row as that leaves it: the same row
@@ -179,6 +185,21 @@ export async function answerPaper(ctx: Write, screeningId: Id<"screenings">, pap
     if (index >= 0) answers[index] = value;
     else answers.push(value);
   }
+  return apply(ctx, screening, [{ paperId, answers }], existing, at);
+}
+
+/** One paper's answers as they stand, each with who set it and the model's own answer, the removals it owes left out. */
+export async function paperAnswers(ctx: Read, screening: Doc<"screenings">, paperId: string): Promise<PaperAnswers> {
+  const row = await paperRow(ctx, screening._id, paperId);
+  return row ? owed(screening.removals, row.version ?? 0).reduce(without, row.answers) : [];
+}
+
+/** Puts back the model's own answer to `question` where someone changed it; nothing changes where the model gave none. */
+export async function restoreModelAnswer(ctx: Write, screeningId: Id<"screenings">, paperId: string, question: string, at: number) {
+  const screening = (await ctx.db.get("screenings", screeningId))!;
+  const existing = await settledRow(ctx, screening, paperId);
+  const answers = (existing.get(paperId)?.answers ?? []).map((value) =>
+    value.question === question && value.model ? { question, answer: value.model.answer, setBy: "model" as const, updatedAt: at, model: value.model } : value);
   return apply(ctx, screening, [{ paperId, answers }], existing, at);
 }
 

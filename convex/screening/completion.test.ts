@@ -8,6 +8,7 @@ const completedRowDetails: CompletedScreeningRowDetails = {
   score: 3,
   stars: 2,
   qualified: true,
+  outcome: "included",
   aiMetadata: { confidence: 0.87 },
 };
 
@@ -27,6 +28,7 @@ describe("deriveCompletionTransition", () => {
         score: 3,
         stars: 2,
         qualified: true,
+        outcome: "included",
         aiMetadata: { confidence: 0.87 },
       },
     });
@@ -54,8 +56,12 @@ describe("deriveCompletionTransition", () => {
       }),
     ).toEqual({
       kind: "patch",
-      rowPatch: { status: "failed" },
+      rowPatch: { status: "failed", outcome: "failed" },
     });
+  });
+
+  it("skips a paper whose queued work was dropped, since it was never screened", () => {
+    expect(deriveCompletionTransition({ currentRowStatus: "processing", jobStatus: "cancelled", resultKind: "canceled" })).toEqual({ kind: "patch", rowPatch: { status: "skipped" } });
   });
 
   it("does not schedule library persistence for completed but non-qualified rows", () => {

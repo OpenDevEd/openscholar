@@ -10,12 +10,15 @@ import { PAPER_LIMIT, RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits"
 import { replaceJobSources, writeJobSources } from "../extraction/jobSources";
 import { collectionSortName } from "../library/collections";
 import { MAX_COLLECTIONS_PER_USER, MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
+import { MAX_CATALOG_MODELS } from "../models/catalog";
 import { MAX_SIZE, insertMany, seedAccount, seedExtractionJob, seedLibrary, text } from "../lib/maxSize.test-support";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 import { assertApprovedQueriesUnchanged } from "../evidenceLibraries/approvedQueries";
 import { isAcceptableSavedConfigurationTarget } from "../evidenceLibraries/operations";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "../extraction/queue/workpool.test-support";
+import { insertJob } from "../screening/createJob.test-support";
+import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 
 const filters = { searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [] };
 
@@ -24,9 +27,9 @@ describe("at the largest sizes the product allows", () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
     const { jobId } = await seedExtractionJob(t, userId);
-    const page = await as.query(api.extraction.queries.getJobResultsPage, { jobId, page: 1, pageSize: 25, filters, sortBy: "default" });
-    expect(page).toMatchObject({ status: "ok", totalAll: MAX_SIZE.papersPerJob });
-    expect(page.items).toHaveLength(25);
+    const page = await as.query(api.extraction.queries.listJobResults, { jobId, filters, sortBy: "default", paginationOpts: { cursor: null, numItems: 25 } });
+    expect(page.page).toHaveLength(25);
+    expect(page.isDone).toBe(false);
     const details = await as.query(api.extraction.queries.getJobDetails, { jobId });
     expect(details).toMatchObject({ status: "ok" });
   }, 300_000);
@@ -38,13 +41,13 @@ describe("at the largest sizes the product allows", () => {
     const { userId, as } = await seedAccount(t);
     const { jobId } = await seedExtractionJob(t, userId);
     const page = (searchQuery: string, pageSize: number) =>
-      as.query(api.extraction.queries.getJobResultsPage, { jobId, page: 1, pageSize, filters: { ...filters, searchQuery }, sortBy: "default" });
+      as.query(api.extraction.queries.listJobResults, { jobId, filters: { ...filters, searchQuery }, sortBy: "default", paginationOpts: { cursor: null, numItems: pageSize } });
     // Asking for more than the largest page gets the largest page.
     const whole = await page("", MAX_SIZE.papersPerJob);
-    expect(whole.items).toHaveLength(RESULTS_PAGE_SIZE_MAX);
-    expect(whole.items.every((paper) => paper.results.length === MAX_SIZE.questionsPerJob)).toBe(true);
+    expect(whole.page).toHaveLength(RESULTS_PAGE_SIZE_MAX);
+    expect(whole.page.every((paper) => paper.results.length === MAX_SIZE.questionsPerJob)).toBe(true);
     // A search reads only its matches, so its largest page fits too.
-    expect((await page("tutoring", RESULTS_PAGE_SIZE_MAX)).items).toHaveLength(RESULTS_PAGE_SIZE_MAX);
+    expect((await page("tutoring", RESULTS_PAGE_SIZE_MAX)).page).toHaveLength(RESULTS_PAGE_SIZE_MAX);
   }, 300_000);
 
   it("a 1,000-paper, 50-question extraction job shows its progress and retry summaries", async () => {
@@ -52,8 +55,9 @@ describe("at the largest sizes the product allows", () => {
     const { userId, as } = await seedAccount(t);
     const { jobId } = await seedExtractionJob(t, userId);
     const results = MAX_SIZE.papersPerJob * MAX_SIZE.questionsPerJob;
-    expect(await as.query(api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary, { jobId })).toMatchObject({ answeredTotal: results, totalQuestions: results });
-    expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toEqual({ retryableCount: 0, permanentCount: 0, permanentBreakdown: {} });
+    expect(await as.query(api.extraction.queries.countJobFailures, { jobId })).toEqual({ asked: results, answered: results, retryable: 0, permanent: {}, paperErrors: {} });
+    // Counting a filtered view reads every paper of the job once.
+    expect(await as.query(api.extraction.queries.countJobResults, { jobId, filters: { ...filters, confidenceRange: [0, 50] } })).toMatchObject({ all: MAX_SIZE.papersPerJob });
   }, 300_000);
 
   // A retry batch's work is 25 papers × their questions whatever the job's size, so 100
@@ -76,7 +80,7 @@ describe("at the largest sizes the product allows", () => {
         done.add(next._id);
         await t.mutation(internal.extraction.mutations.retry.resetRetryBatch, next.args[0] as never);
       }
-      expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toMatchObject({ retryableCount: 0 });
+      expect(await as.query(api.extraction.queries.countJobFailures, { jobId })).toMatchObject({ retryable: 0 });
       const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
       expect(job).toMatchObject({ status: "extracting", runEpoch: 1 });
       expect(job?.retryReset).toBeUndefined();
@@ -338,7 +342,7 @@ describe("at the largest sizes the product allows", () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
     const questions = Array.from({ length: MAX_SIZE.questionsPerJob }, (_, i) => ({ key: `q${i}`, question: `${text(180, i)}?` }));
-    const jobId = await t.run((ctx) => ctx.db.insert("screeningJobs", {
+    const jobId = await t.run((ctx) => insertJob(ctx, {
       userId, status: "completed", totalPapers: MAX_SCREENING_PAPERS_PER_JOB, questions,
       scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }] },
       createdAt: 1, updatedAt: 1,
@@ -398,5 +402,140 @@ describe("at the largest sizes the product allows", () => {
     } finally {
       vi.useRealTimers();
     }
+  }, 300_000);
+
+  it("a screening job's list reads its largest page, at 50 questions a paper, and a changed answer rescoring it (#421)", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t, "max_outcomes_user");
+    const questions = Array.from({ length: MAX_SIZE.questionsPerJob }, (_, i) => ({ key: `q${i}`, question: `${text(180, i)}?` }));
+    const { jobId, screeningId } = await t.run(async (ctx) => {
+      const screeningId = await ctx.db.insert("screenings", { userId, version: 1, createdAt: 1 });
+      const jobId = await ctx.db.insert("screeningJobs", {
+        userId, status: "completed", totalPapers: 120, questions, screeningId,
+        scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 },
+        createdAt: 1, updatedAt: 1,
+      });
+      await ctx.db.insert("screeningJobProgress", { jobId, completed: 120, skipped: 0, failed: 0, qualified: 120, unclear: 0, tallies: questions.map(({ key }) => ({ key, yes: 120, no: 0, unclear: 0 })) });
+      return { jobId, screeningId };
+    });
+    const answers = questions.map(({ question }) => ({ question, answer: true, setBy: "model" as const, updatedAt: 1, model: { answer: true, confidence: 0.9, at: 1 } }));
+    const ids = Array.from({ length: 120 }, (_, i) => `https://openalex.org/W${i}`);
+    await insertMany(t, "screeningResults", ids.map((openalexId, i) => ({ jobId, openalexId, title: i === 119 ? `needle ${text(150, i)}` : text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)), status: "completed", score: 50, stars: 5, qualified: true, outcome: "included", counted: { qualified: true, outcome: "included", answers: Object.fromEntries(questions.map(({ key }) => [key, true])) }, answersVersion: 1, createdAt: 1 })), 60);
+    await insertMany(t, "screeningAnswers", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1 })), 60);
+    await insertMany(t, "screeningAnswerHistory", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1, at: 1 })), 60);
+
+    const page = await as.query(api.screening.papers.list, { jobId, outcome: "included", paginationOpts: { cursor: null, numItems: 1_000 } });
+    expect(page.page).toHaveLength(50);
+    expect(page.page[0].answers).toHaveLength(MAX_SIZE.questionsPerJob);
+    const found = await as.query(api.screening.papers.list, { jobId, outcome: "included", text: "NEEDLE", paginationOpts: { cursor: null, numItems: 10 } });
+    expect(found.page).toHaveLength(1);
+    expect(await as.mutation(api.screening.papers.answer, { jobId, paperId: ids[0], questionKey: "q0", answer: false })).toEqual({ outcome: "included" });
+    expect((await as.query(api.screening.queries.getScreeningJob, { jobId }))?.tallies?.[0]).toEqual({ key: "q0", yes: 119, no: 1, unclear: 0 });
+  }, 300_000);
+
+  it("a job reads the last 1,000 papers of a 10,000-paper collection of long abstracts (#341)", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      setupScreeningWorkpool(t);
+      const { userId, as } = await seedAccount(t, "max_sets_user");
+      await t.run((ctx) => seedCreditsForTest(ctx, { userId, paid: 10_000_000 }));
+      const { collectionId } = await seedLibrary(t, userId, { abstractChars: 2_000 });
+
+      const { jobId } = await as.action(api.screening.start.screen, {
+        set: { kind: "collection", collectionId }, first: MAX_SIZE.libraryItems - MAX_SCREENING_PAPERS_PER_JOB + 1, last: MAX_SIZE.libraryItems,
+        questions: [{ key: "q0", question: "Randomized?" }],
+        scoringConfig: { rules: [{ questionKey: "q0", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 },
+        saveTo: { kind: "none" },
+      });
+
+      // Newest saved first, so the last 1,000 are the first 1,000 saved, from W999 down.
+      const job = await t.run((ctx) => ctx.db.get("screeningJobs", jobId));
+      expect(job).toMatchObject({ totalPapers: MAX_SCREENING_PAPERS_PER_JOB, first: 9_001, last: 10_000 });
+      const [first] = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1));
+      expect(first.openalexId).toBe("https://openalex.org/W999");
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 600_000);
+
+  it("a job on a search reuses its page's answers for 1,000 papers at 50 questions, and counts them (#341)", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      setupScreeningWorkpool(t);
+      const clerkId = "max_reuse_user";
+      const { userId, as } = await seedAccount(t, clerkId);
+      await t.run((ctx) => seedCreditsForTest(ctx, { userId, paid: 10_000_000 }));
+      const asked = Array.from({ length: MAX_SIZE.questionsPerJob }, (_, i) => `${text(180, i)}?`);
+      const ids = Array.from({ length: MAX_SCREENING_PAPERS_PER_JOB }, (_, i) => `https://openalex.org/W${i}`);
+      const at = new Date(Date.UTC(2026, 8, 1)).toISOString();
+      const search = { id: "reused", query: "tutoring", field: "title" as const, count: ids.length, queryHistoryCount: 0, questionCount: 0, questionText: "", screeningQuestions: asked.map((question) => ({ question })), screeningResponses: [], createdAt: at, updatedAt: at };
+      await as.mutation(api.research.records.change, { accountId: clerkId, requestId: "create", command: { kind: "createSearch", search } });
+      const screeningId = await t.run(async (ctx) => {
+        const row = (await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", "reused")).unique())!;
+        return ctx.db.insert("screenings", { userId, searchId: row._id, version: 1, createdAt: 1 });
+      });
+      const answers = asked.map((question) => ({ question, answer: true, setBy: "model" as const, updatedAt: 1, model: { answer: true, confidence: 0.9, at: 1 } }));
+      await insertMany(t, "screeningAnswers", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1 })), 100);
+      await insertMany(t, "screeningAnswerHistory", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1, at: 1 })), 100);
+      const questions = asked.map((question, i) => ({ key: `q${i}`, question }));
+
+      const { jobId } = await t.mutation(internal.screening.mutations.createScreeningJobForUser, {
+        userId, author: "user", set: { kind: "search", searchId: "reused" }, first: 1, last: ids.length, saveTo: { kind: "none" },
+        papers: ids.map((openalexId, i) => ({ openalexId, title: text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)) })),
+        questions,
+        scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 },
+      });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+      expect(await as.query(api.screening.queries.getScreeningJob, { jobId })).toMatchObject({
+        status: "completed", processedPapers: ids.length, outcomes: { included: ids.length }, credits: { spent: 0, estimate: 0 },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 600_000);
+
+  // A filtered page reads on until it has a page or its allowance of rows runs out; the next read carries on.
+  it("an admin search that matches none of 1,200 admins, and a user picker where all 1,200 users are admins, each read in steps (#424)", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    const people = Array.from({ length: 1_200 }, (_, i) => `max_admin_${i}`);
+    const users = await insertMany(t, "users", people.map((clerkId) => ({ clerkId, email: `${clerkId}@example.org`, firstName: text(12), lastName: text(12, 3), state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 })));
+    await insertMany(t, "admins", [{ email: "max_size_user@example.org", userId, createdAt: 1 }, ...users.map((id, i) => ({ email: `${people[i]}@example.org`, userId: id, createdAt: 1 }))], 200);
+    expect(await as.query(api.admins.queries.countAdmins, {})).toBe(1_201);
+
+    const steps = async (read: (cursor: string | null) => Promise<{ page: unknown[]; isDone: boolean; continueCursor: string }>) => {
+      let cursor: string | null = null;
+      for (let reads = 1; reads <= 5; reads++) {
+        const page = await read(cursor);
+        expect(page.page).toEqual([]);
+        if (page.isDone) return reads;
+        cursor = page.continueCursor;
+      }
+      throw new Error("The list didn't end.");
+    };
+    expect(await steps((cursor) => as.query(api.admins.queries.listAdmins, { search: "no such person", paginationOpts: { cursor, numItems: 8 } }))).toBe(2);
+    expect(await steps((cursor) => as.query(api.admins.queries.listCandidates, { search: "", paginationOpts: { cursor, numItems: 20 } }))).toBe(2);
+  }, 300_000);
+
+  it("the admin model list reads, filters and counts a catalog of 2,000 models (#424)", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    await insertMany(t, "admins", [{ email: "max_size_user@example.org", userId, createdAt: 1 }]);
+    const providers = ["openai", "anthropic", "google", "qwen", "acme", "zeta"];
+    await insertMany(t, "models", Array.from({ length: MAX_CATALOG_MODELS }, (_, i) => ({
+      modelId: `${providers[i % providers.length]}/model-${i}`, name: `Model ${i}`, provider: providers[i % providers.length], description: text(2_000, i),
+      supportedParameters: Array.from({ length: 20 }, (_, p) => `parameter_${p}`), inputPricePerMillion: 1, outputPricePerMillion: 2,
+      isServed: false, costMarkup: 1, sortOrder: i, syncedAt: 1, createdAt: 1, updatedAt: 1,
+    })), 500);
+    const read = (view: { provider?: string; search: string }) => as.query(api.models.admin.listModels, { ...view, show: "all", paginationOpts: { cursor: null, numItems: 100 } });
+    expect((await read({ search: "" })).page).toHaveLength(100);
+    // A search with no match reads the whole catalog once.
+    expect(await read({ search: "no such model" })).toMatchObject({ page: [], isDone: true });
+    // "Other" names the largest providers from the whole catalog, then reads past their models.
+    expect((await read({ provider: "other", search: "" })).page.every((m) => /^(acme|zeta)\//.test(m.modelId))).toBe(true);
+    expect(await as.query(api.models.admin.summary, { provider: "other", search: "", show: "all" })).toMatchObject({ total: Math.floor(MAX_CATALOG_MODELS / 6) * 2 + (MAX_CATALOG_MODELS % 6 > 4 ? MAX_CATALOG_MODELS % 6 - 4 : 0) });
   }, 300_000);
 });
