@@ -19,7 +19,7 @@ import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
 import { useAppToast } from '@/lib/toast';
 
-import { searchParamsParsers, DEFAULT_SEARCH_PARAMS } from '../search-params/parsers';
+import { searchParamsParsers, DEFAULT_SEARCH_PARAMS, parseSearchParamsFromUrl } from '../search-params/parsers';
 import { buildShareableUrl, effectiveSort } from '../search-params';
 import { sanitizeSelection } from '../search-params/sanitize';
 import type { SearchWithFiltersParams } from '../search-utils';
@@ -29,7 +29,7 @@ import { OQL_FIELD } from '../openalex/oql';
 import { buildOpenAlexWorksQuery } from '../openalex/works-query';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
 import { ResearchContext } from '../research/binding';
-import { searchResultToParams } from '../search-params/converters';
+import { paramsToSearchResult, searchResultToParams } from '../search-params/converters';
 import { browserExpand, validateAndExpandKeywordsSilently } from '../keyword-validation-browser';
 import { useQueryShortcuts } from '../research/reads';
 import type { SearchFilters, SearchField, PaperResult } from '../types';
@@ -177,6 +177,24 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     }
   }, [searchId, updateSearchResult]);
   
+  // For an account the page shows the saved search, and the address only mirrors it. Back and
+  // Forward change the address alone, so the browser's history event is what takes it into the
+  // saved search. Going to another search or page changes the route, which loads its own.
+  useEffect(() => {
+    if (!account || local || !searchId) return;
+    const takeAddress = () => {
+      if (!window.location.pathname.endsWith(`/${searchId}`)) return;
+      const saved = getSearchResult(searchId);
+      if (!saved) return;
+      const params = parseSearchParamsFromUrl(new URLSearchParams(window.location.search));
+      const { count: _count, query, ...fields } = paramsToSearchResult(params);
+      // An OQL query is kept out of the address, so the saved one stays.
+      updateSearchResult(searchId, { ...fields, query: params.field === OQL_FIELD ? saved.query : query });
+    };
+    window.addEventListener('popstate', takeAddress);
+    return () => window.removeEventListener('popstate', takeAddress);
+  }, [account, local, searchId, getSearchResult, updateSearchResult]);
+
   // Create stable params object for debouncing
   // We serialize to string first to get stable reference
   const paramsKey = useMemo(() => {
