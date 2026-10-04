@@ -26,6 +26,7 @@ import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { notePart, viewOf } from "../../lib/assistant/view";
+import { viewOf as actionView } from "../../lib/assistant/actions";
 import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
@@ -510,9 +511,10 @@ export const messagesAction = defineUserQuery({
 export const messages = userQuery(messagesAction);
 export const messagesForAssistant = assistantQuery(messagesAction);
 
-/** The text a reply's stream holds so far. */
+/** The text and visible activity of the current model step. */
 async function textSoFar(ctx: QueryCtx, agentThreadId: string, streamId: string) {
   let text = "";
+  let writing = false;
   let cursor = 0;
   for (let reads = 0; reads < LIVE_READS; reads++) {
     const deltas = await ctx.runQuery(components.agent.streams.listDeltas, { threadId: agentThreadId, cursors: [{ streamId, cursor }] });
@@ -520,21 +522,25 @@ async function textSoFar(ctx: QueryCtx, agentThreadId: string, streamId: string)
       for (const part of delta.parts) {
         // One stream runs through every step of a reply. Each step's text becomes a message of
         // its own once the step ends, so only the step being written is still live.
-        if (part?.type === "start-step") text = "";
-        else if (part?.type === "text-delta" && typeof part.delta === "string") text += part.delta;
+        if (part?.type === "start-step") { text = ""; writing = false; }
+        else if (part?.type === "text-delta" && typeof part.delta === "string") { text += part.delta; writing = true; }
+        else if (part?.type === "tool-call" || part?.type === "finish-step" || part?.type === "reasoning-start") writing = false;
       }
       cursor = delta.end;
     }
     if (deltas.length < DELTAS_PER_READ) break;
   }
-  return text;
+  return { text, writing };
 }
 
 export const live = query({
   args: { threadId: v.id("assistantThreads") },
-  returns: v.union(
-    v.null(),
-    v.object({
+  returns: v.object({
+    activity: v.object({
+      phase: v.union(v.literal("idle"), v.literal("thinking"), v.literal("searching"), v.literal("writing"), v.literal("waiting"), v.literal("stopping"), v.literal("complete"), v.literal("failed"), v.literal("stopped")),
+      order: v.union(v.number(), v.null()),
+    }),
+    reply: v.union(v.null(), v.object({
       /** What `stop` takes. */
       attemptId: v.string(),
       /** Whose message it answers. */
@@ -549,18 +555,25 @@ export const live = query({
       /** The reply waits for the person to answer what it asked. Stop ends it. */
       asking: v.boolean(),
       text: v.string(),
-    }),
-  ),
+    })),
+  }),
   handler: async (ctx, { threadId }) => {
     const userId: Id<"users"> = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
     // A reply that waits for an answer isn't being written, and Stop ends it.
     if (thread.asking) {
-      return { attemptId: waitingAttempt(thread.asking), senderId: thread.asking.senderId, order: thread.asking.order, startedAt: thread.asking.askedAt, stopping: false, compacting: false, asking: true, text: "" };
+      return { activity: { phase: "waiting" as const, order: thread.asking.order }, reply: { attemptId: waitingAttempt(thread.asking), senderId: thread.asking.senderId, order: thread.asking.order, startedAt: thread.asking.askedAt, stopping: false, compacting: false, asking: true, text: "" } };
     }
     const current = thread.reply;
-    if (!current || !(await writing(ctx, current))) return null;
+    if (!current || !(await writing(ctx, current))) {
+      // One terminal message gives the launcher an outcome without loading the conversation.
+      const newest = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null, maximumRowsRead: 1, maximumBytesRead: MESSAGES_PAGE_BYTES }, excludeToolMessages: true })).page[0];
+      if (newest?.message?.role !== "assistant") return { reply: null, activity: { phase: "idle" as const, order: null } };
+      const stopped = newest.status === "failed" && parseChatError(newest.error)?.class === "aborted";
+      const phase = stopped ? "stopped" as const : newest.status === "success" && newest.text?.trim() ? "complete" as const : "failed" as const;
+      return { reply: null, activity: { phase, order: newest.order } };
+    }
     // Newest first. A stream that has just ended still counts: its text stays up until the
     // reply's message holds it and the lock is released, so the page never shows it vanish.
     const streams = await listStreams(ctx, components.agent, {
@@ -569,15 +582,21 @@ export const live = query({
       includeStatuses: ["streaming", "finished", "aborted"],
     });
     const stream = streams.find((candidate) => candidate.order === current.order);
+    const output = stream ? await textSoFar(ctx, thread.agentThreadId, stream.streamId) : { text: "", writing: false };
+    const step = await ctx.db.query("assistantSteps").withIndex("by_thread_order_status", (q) => q.eq("threadId", threadId).eq("order", current.order).eq("status", "running")).order("desc").first();
+    const phase = current.stop ? "stopping" as const : current.compacting ? "thinking" as const : step ? actionView(step.path).searching ? "searching" as const : "thinking" as const : output.writing ? "writing" as const : "thinking" as const;
     return {
-      attemptId: current.attemptId,
-      senderId: current.senderId,
-      order: current.order,
-      startedAt: current.startedAt,
-      stopping: current.stop === true,
-      compacting: current.compacting === true,
-      asking: false,
-      text: stream ? await textSoFar(ctx, thread.agentThreadId, stream.streamId) : "",
+      activity: { phase, order: current.order },
+      reply: {
+        attemptId: current.attemptId,
+        senderId: current.senderId,
+        order: current.order,
+        startedAt: current.startedAt,
+        stopping: current.stop === true,
+        compacting: current.compacting === true,
+        asking: false,
+        text: output.text,
+      },
     };
   },
 });

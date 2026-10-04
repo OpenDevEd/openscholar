@@ -70,7 +70,7 @@ describe("assistant replies", () => {
     ]);
     expect((await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[1]).toMatchObject({ mine: true });
     expect(page[0].order).toBe(page[1].order);
-    expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
+    expect(await asAda.query(api.assistant.replies.live, { threadId })).toMatchObject({ reply: null, activity: { phase: "complete", order: page[0].order } });
     // The list shows the chat by what was said last.
     expect((await asAda.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage })).page[0]).toMatchObject({ preview: "Hello Ben", writing: false });
     expect((await asAda.query(api.assistant.threads.list, { scope: "all", text: "hello b", paginationOpts: firstPage })).page).toHaveLength(1);
@@ -95,8 +95,10 @@ describe("assistant replies", () => {
     await expect(asCy.query(api.assistant.replies.live, { threadId })).rejects.toThrow(/Chat not found/);
 
     // Ben watches it arrive.
-    await waitFor(async () => (await asBen.query(api.assistant.replies.live, { threadId }))?.text.includes("three") === true, { timeoutMs: 5_000 });
-    const live = await asBen.query(api.assistant.replies.live, { threadId });
+    await waitFor(async () => (await asBen.query(api.assistant.replies.live, { threadId })).reply?.text.includes("three") === true, { timeoutMs: 5_000 });
+    const snapshot = await asBen.query(api.assistant.replies.live, { threadId });
+    const live = snapshot.reply;
+    expect(snapshot.activity).toEqual({ phase: "writing", order: live!.order });
     expect(live).toMatchObject({ senderId: ada, stopping: false, text: "One two three " });
     const writing = await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
     expect(writing.page[0]).toMatchObject({ role: "assistant", status: "pending", order: live!.order });
@@ -109,6 +111,7 @@ describe("assistant replies", () => {
 
     const { page } = await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
     expect(page[0]).toMatchObject({ role: "assistant", status: "stopped" });
+    expect(await asAda.query(api.assistant.replies.live, { threadId })).toMatchObject({ reply: null, activity: { phase: "stopped", order: live!.order } });
     expect("text" in page[0] && page[0].text.trim()).toBe("One two three");
     expect(page[0].error).toBeUndefined();
 
@@ -140,7 +143,7 @@ describe("assistant replies", () => {
     // Stopped mid-reply: the stream fails, and what was written is kept.
     mockDoStream.mockImplementation(erroringOnAbortDoStream(["One ", "two "], 300));
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Count" });
-    await waitFor(async () => (await asAda.query(api.assistant.replies.live, { threadId }))?.text.includes("two") === true, { timeoutMs: 5_000 });
+    await waitFor(async () => (await asAda.query(api.assistant.replies.live, { threadId })).reply?.text.includes("two") === true, { timeoutMs: 5_000 });
     const late = await stopping();
     expect(late).toMatchObject({ role: "assistant", status: "stopped" });
     expect("text" in late && late.text.trim()).toBe("One two");
@@ -278,12 +281,23 @@ describe("assistant replies", () => {
     await expect(asBen.mutation(api.assistant.replies.send, { threadId, text: "Me too" })).rejects.toThrow(/still replying/);
     await t.mutation(internal.assistant.replies.sweep, {});
     expect((await chat(t, threadId))?.reply?.attemptId).toBe("waiting");
-    expect(await asAda.query(api.assistant.replies.live, { threadId })).toMatchObject({ attemptId: "waiting", text: "" });
+    expect(await asAda.query(api.assistant.replies.live, { threadId })).toMatchObject({ reply: { attemptId: "waiting", text: "" }, activity: { phase: "thinking" } });
     expect(await newest()).toMatchObject({ role: "assistant", status: "pending" });
+
+    // Only a running search in this exchange changes the gesture. A stale tool from an older exchange does not.
+    const order = (await chat(t, threadId))!.reply!.order;
+    const step = await t.run(async (ctx) => {
+      const fields = { threadId, userId: ada, toolCallId: "search", path: "research/papers:search", input: "{}", status: "running" as const, startedAt: 1 };
+      await ctx.db.insert("assistantSteps", { ...fields, order: order - 1 });
+      return ctx.db.insert("assistantSteps", { ...fields, order });
+    });
+    expect((await asAda.query(api.assistant.replies.live, { threadId })).activity).toEqual({ phase: "searching", order });
+    await t.run(async (ctx) => ctx.db.patch("assistantSteps", step, { status: "done" }));
+    expect((await asAda.query(api.assistant.replies.live, { threadId })).activity).toEqual({ phase: "thinking", order });
 
     // Its action is gone without releasing the lock: the reply shows as failed at once, and the sweep clears the lock.
     await t.run(async (ctx) => ctx.scheduler.cancel(scheduledId));
-    expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
+    expect(await asAda.query(api.assistant.replies.live, { threadId })).toMatchObject({ reply: null, activity: { phase: "failed", order } });
     expect(await newest()).toMatchObject({ role: "assistant", status: "failed" });
     await t.mutation(internal.assistant.replies.sweep, {});
     expect((await chat(t, threadId))?.reply).toBeUndefined();

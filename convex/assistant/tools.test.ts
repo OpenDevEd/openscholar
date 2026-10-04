@@ -95,7 +95,7 @@ async function chatOf(t: Test) {
   /** Waits until the chat is free again. */
   const settled = () => waitFor(async () => !(await thread())?.reply && !(await thread())?.asking, { timeoutMs: 5_000 });
   /** Stops the reply being written, or waiting, as the panel does. */
-  const stop = async () => who.asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: (await who.asAda.query(api.assistant.replies.live, { threadId }))!.attemptId });
+  const stop = async () => who.asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: (await who.asAda.query(api.assistant.replies.live, { threadId })).reply!.attemptId });
   const steps = () => t.run(async (ctx) => ctx.db.query("assistantSteps").collect());
   const results = () => t.run(async (ctx) => (await ctx.db.query("assistantStepResults").collect()).map((row) => JSON.parse(row.result)));
   /** The chat as its page lists it, oldest first, a line per item. */
@@ -378,7 +378,9 @@ describe("the assistant's tools", () => {
     await sayUntilAsked("Delete my old chats");
     const [one, two] = await steps();
     // What Stop takes while the reply waits, as another tab of hers holds it.
-    const waiting = (await asAda.query(api.assistant.replies.live, { threadId }))!.attemptId;
+    const live = await asAda.query(api.assistant.replies.live, { threadId });
+    expect(live.activity.phase).toBe("waiting");
+    const waiting = live.reply!.attemptId;
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: one._id, allow: true });
     // The last answer starts the reply again. Stop, pressed on the waiting reply, arrives just after it: it stops the reply all the same.
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: two._id, allow: true });

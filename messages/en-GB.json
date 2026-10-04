@@ -3389,6 +3389,17 @@
     "default": "Default"
   },
   "assistant": {
+    "activity": {
+      "idle": "Ready",
+      "thinking": "Thinking",
+      "searching": "Searching",
+      "writing": "Writing a reply",
+      "waiting": "Waiting for your answer",
+      "stopping": "Stopping",
+      "complete": "Answer ready",
+      "failed": "Reply failed",
+      "stopped": "Reply stopped"
+    },
     "label": "OpenScholar assistant",
     "open": "Open the assistant",
     "fold": "Fold the assistant away",
