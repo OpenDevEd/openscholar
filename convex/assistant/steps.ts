@@ -196,9 +196,16 @@ const partsOf = (content: unknown): Part[] => (Array.isArray(content) ? (content
  */
 export async function healCalls(ctx: MutationCtx, agentThreadId: string) {
   const { page } = await listMessages(ctx, components.agent, { threadId: agentThreadId, paginationOpts: { numItems: HEAL_MESSAGES, cursor: null }, statuses: ["success"] });
-  const exchange = page.filter((doc) => doc.order === page[0]?.order);
-  const answered = new Set(exchange.flatMap((doc) => partsOf(doc.message?.content).flatMap((part) => (part.type === "tool-result" && part.toolCallId ? [part.toolCallId] : []))));
-  const open = exchange.flatMap((doc) => (doc.message?.role === "assistant" ? partsOf(doc.message.content).filter((part) => part.type === "tool-call" && part.toolCallId && !answered.has(part.toolCallId)) : []));
+  // Oldest first. A result answers the earliest call with its ID that has none: models reuse their call IDs from one round to the next.
+  const exchange = page.filter((doc) => doc.order === page[0]?.order).reverse();
+  const open: Part[] = [];
+  for (const doc of exchange) {
+    for (const part of partsOf(doc.message?.content)) {
+      if (part.type === "tool-call" && part.toolCallId && doc.message?.role === "assistant") open.push(part);
+      const answers = part.type === "tool-result" ? open.findIndex((call) => call.toolCallId === part.toolCallId) : -1;
+      if (answers !== -1) open.splice(answers, 1);
+    }
+  }
   const prompt = exchange.find((doc) => doc.message?.role === "user");
   if (!open.length || !prompt) return;
   await assistant.saveMessage(ctx, {

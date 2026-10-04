@@ -348,8 +348,11 @@ const stepValidator = v.object({
   subject: v.optional(v.string()),
   /** How many things it found, when its result lists any. */
   count: v.optional(v.number()),
-  /** `failed` also covers a step whose reply died while it ran. `asking`: the person is asked before it runs. `declined`: they said no, or stopped the reply. */
-  status: v.union(v.literal("running"), v.literal("done"), v.literal("failed"), v.literal("asking"), v.literal("declined")),
+  /**
+   * `failed` also covers a step whose reply died while it ran. `asking`: the person is asked before it runs.
+   * `allowed`: they said yes, and it runs once the reply carries on. `declined`: they said no, or stopped the reply.
+   */
+  status: v.union(v.literal("running"), v.literal("done"), v.literal("failed"), v.literal("asking"), v.literal("allowed"), v.literal("declined")),
   /** Whether the person reading can answer it (`answer`): it asks, and it would run for them. */
   canAnswer: v.boolean(),
   /** What it would do, for the person who can answer it: its arguments, with the records they name by name (./details.ts). */
@@ -388,13 +391,12 @@ const messageValidator = v.object({
 });
 
 /**
- * A step's status as the chat shows it. One the person allowed is running. One still running,
- * or still asking, when its exchange isn't being answered ended with its reply.
+ * A step's status as the chat shows it. One still running when its exchange isn't being
+ * answered ended with its reply. One still asking then, or allowed and never run, wasn't run.
  */
 function shownStatus(status: Doc<"assistantSteps">["status"], answering: boolean) {
-  if (status === "allowed") return answering ? ("running" as const) : ("failed" as const);
   if (status === "running" && !answering) return "failed" as const;
-  if (status === "asking" && !answering) return "declined" as const;
+  if ((status === "asking" || status === "allowed") && !answering) return "declined" as const;
   return status;
 }
 

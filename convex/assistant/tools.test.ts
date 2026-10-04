@@ -13,7 +13,7 @@ import { MAX_ASKS } from "./steps";
 import { DEFINITION_MAX, MAX_CALLS, MAX_STEPS, core, definition, found } from "./tools";
 import { finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
-type Part = { type: string; text?: string; toolCallId?: string; output?: { value?: unknown } };
+type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
 type Sent = Array<{ role: string; content: string | Part[] }>;
 
 const { mockDoStream, requests, toolsSent, toolChoices, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), requests: [] as unknown[], toolsSent: [] as string[][], toolChoices: [] as string[], fetchMock: vi.fn() }));
@@ -275,6 +275,8 @@ describe("the assistant's tools", () => {
     // The first answer isn't the last, so the reply still waits.
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: rename._id, allow: false });
     expect((await thread())?.asking).toBeDefined();
+    // What she declined shows so at once. What she allows doesn't show as running before anything runs.
+    expect((await shown()).slice(1)).toEqual(["step: library/mutations:saveToLibrary asking, can be answered", "step: library/collections:renameCollection declined"]);
     mockDoStream.mockImplementationOnce(finishingDoStream(["Saved. The collection keeps its name."]));
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: save._id, allow: true });
     await settled();
@@ -378,7 +380,10 @@ describe("the assistant's tools", () => {
     const t = convexTest(schema);
     const { asAda, threadId, say, sayUntilAsked, steps } = await chatOf(t);
     const other = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
-    mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } }));
+    // The model names both rounds' calls alike, as some do: the first has its result, the second doesn't.
+    mockDoStream
+      .mockImplementationOnce(calling({ id: "delete", name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } }))
+      .mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } }));
     await sayUntilAsked("Delete my old chat");
     // The call is saved with the reply's message. A reply that dies right then leaves no step for it and holds nothing.
     await t.run(async (ctx) => {
@@ -388,7 +393,9 @@ describe("the assistant's tools", () => {
     requests.length = 0;
     mockDoStream.mockImplementationOnce(finishingDoStream(["It wasn't deleted."]));
     await say("Did that work?");
-    expect(outcome(0, "delete")).toMatchObject({ type: "execution-denied" });
+    // Both calls have a result now: the list it read, and that the deletion was never run.
+    const outcomes = (requests[0] as Sent).flatMap((message) => (message.role === "tool" && Array.isArray(message.content) ? message.content : [])).filter((part) => part.toolCallId === "delete").map((part) => part.output?.type);
+    expect(outcomes).toEqual(["json", "execution-denied"]);
     expect(await steps()).toEqual([]);
     expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).not.toBeNull();
   });
