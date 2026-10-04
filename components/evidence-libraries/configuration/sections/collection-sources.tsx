@@ -57,7 +57,7 @@ export function useCollectionSources({
   // The connections of the collections shown: a library keeps every connection it ever made.
   const connected = useProtectedQuery(
     api.evidenceLibraries.collectionSources.listCollectionSources,
-    { libraryId, collectionIds: sources.map((source) => source.collectionId as Id<"collections">) },
+    { libraryId, collectionIds: sources.map((source) => source.collectionId) },
   );
   const byId = new Map((connected.data?.page ?? []).map((row) => [row.collectionId as string, row]));
 
