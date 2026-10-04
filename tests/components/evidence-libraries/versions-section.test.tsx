@@ -27,7 +27,8 @@ vi.mock("@/convex/_generated/api", () => ({
         listAddressNotices: "listAddressNotices",
       },
       versions: {
-        listVersions: "listVersions",
+        listVersionRows: "listVersionRows",
+        countVersions: "countVersions",
         startRuntimeUpdate: "startRuntimeUpdate",
         restoreRevision: "restoreRevision",
         setDomainPrimary: "setDomainPrimary",
@@ -58,9 +59,11 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
         ? mocks.addressNotices()
         : reference === "listDomains"
           ? mocks.listDomains()
-          : mocks.listVersions(),
+          : mocks.listVersions().length,
     isReady: true,
   }),
+  // The history's rows arrive as one loaded page.
+  useProtectedStreamPaginatedQuery: () => ({ results: mocks.listVersions(), status: "Exhausted", isInitialLoading: false, loadMore: vi.fn() }),
 }));
 
 vi.mock("next-intl", () => ({

@@ -135,6 +135,8 @@
     "evidenceLibraries/updates:publishRuntime": "#329",
     "evidenceLibraries/uploadActions:remove": "#329",
     "evidenceLibraries/uploadActions:upload": "#329",
+    "evidenceLibraries/versions:countVersions": "#329",
+    "evidenceLibraries/versions:listVersionRows": "#329",
     "evidenceLibraries/versions:listVersions": "#329",
     "evidenceLibraries/versions:restoreRevision": "#329",
     "evidenceLibraries/versions:setDomainPrimary": "#329",

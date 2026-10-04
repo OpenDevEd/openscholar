@@ -112,6 +112,7 @@ import type * as evidenceLibraries_oauthClientSync from "../evidenceLibraries/oa
 import type * as evidenceLibraries_oauthClients from "../evidenceLibraries/oauthClients.js";
 import type * as evidenceLibraries_openAlexSourceKey from "../evidenceLibraries/openAlexSourceKey.js";
 import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
+import type * as evidenceLibraries_operationKinds from "../evidenceLibraries/operationKinds.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
 import type * as evidenceLibraries_platformMail from "../evidenceLibraries/platformMail.js";
 import type * as evidenceLibraries_provisioning from "../evidenceLibraries/provisioning.js";
@@ -273,6 +274,7 @@ import type * as migrations_moveSearchHistory from "../migrations/moveSearchHist
 import type * as migrations_pagedAccountLists from "../migrations/pagedAccountLists.js";
 import type * as migrations_pagedCollections from "../migrations/pagedCollections.js";
 import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
+import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
 import type * as migrations_pagedRecords from "../migrations/pagedRecords.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_removeOrphanLibraryAccess from "../migrations/removeOrphanLibraryAccess.js";
@@ -460,6 +462,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/oauthClients": typeof evidenceLibraries_oauthClients;
   "evidenceLibraries/openAlexSourceKey": typeof evidenceLibraries_openAlexSourceKey;
   "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;
+  "evidenceLibraries/operationKinds": typeof evidenceLibraries_operationKinds;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
   "evidenceLibraries/platformMail": typeof evidenceLibraries_platformMail;
   "evidenceLibraries/provisioning": typeof evidenceLibraries_provisioning;
@@ -621,6 +624,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedAccountLists": typeof migrations_pagedAccountLists;
   "migrations/pagedCollections": typeof migrations_pagedCollections;
   "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
+  "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
   "migrations/pagedRecords": typeof migrations_pagedRecords;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/removeOrphanLibraryAccess": typeof migrations_removeOrphanLibraryAccess;

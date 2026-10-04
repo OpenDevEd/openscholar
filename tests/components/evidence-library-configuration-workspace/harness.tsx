@@ -105,7 +105,8 @@ vi.mock("@/convex/_generated/api", () => ({
         removeDomain: "removeDomain",
       },
       versions: {
-        listVersions: "listVersions",
+        listVersionRows: "listVersionRows",
+        countVersions: "countVersions",
         startRuntimeUpdate: "startRuntimeUpdate",
         restoreRevision: "restoreRevision",
         setDomainPrimary: "setDomainPrimary",
@@ -182,12 +183,15 @@ vi.mock("convex/react", () => ({
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
+  useProtectedStreamPaginatedQuery: () => ({ results: [], status: "Exhausted", isInitialLoading: false, loadMore: vi.fn() }),
   useProtectedQuery: (query: unknown, args: unknown) =>
     query === "manualDigestAvailable" ? {data: harness.manualDigestAvailable, isReady: harness.manualDigestAvailable !== undefined} : query === "getPublicationProviders" ? {data: undefined, isReady: false} : query === "getConnectionStatus"
       ? { data: { connected: false }, isReady: true }
       : query === "listZoteroGroups" || query === "listCollectionSources"
         ? { data: { page: [], isDone: true, continueCursor: "" }, isReady: true }
-        : query === "listVersions" || query === "listAddressNotices"
+        : query === "countVersions"
+        ? { data: 0, isReady: true }
+        : query === "listAddressNotices"
         ? { data: [], isReady: true }
         : query === "listCredentials"
           ? { data: { page: harness.storedCredentials, isDone: true, continueCursor: "" }, isReady: true }

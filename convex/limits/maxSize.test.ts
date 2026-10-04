@@ -324,6 +324,20 @@ describe("at the largest sizes the product allows", () => {
     }
   }, 300_000);
 
+  it("an Evidence Library with 1,000 versions reads its history a page at a time and totals it (#423)", async () => {
+    const fixture = await createReadySetupFixture("max_size_versions");
+    const libraryId = fixture.created.libraryId;
+    const operation = await fixture.t.run(async (ctx) => (await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_createdAt", (q) => q.eq("libraryId", libraryId)).first())!);
+    const { _id, _creationTime, ...fields } = operation;
+    await insertMany(fixture.t, "evidenceLibraryConfigOperations", Array.from({ length: 1_000 }, (_, i) => ({ ...fields, kind: "publish", status: "succeeded", activationEditVersion: i + 1, idempotencyKey: `max-version-${i}`, createdAt: i + 10, updatedAt: i + 10 })), 200);
+    const first = await fixture.admin.query(api.evidenceLibraries.versions.listVersionRows, { libraryId, paginationOpts: { cursor: null, numItems: 50 } });
+    expect(first.page).toHaveLength(50);
+    expect(first.isDone).toBe(false);
+    const second = await fixture.admin.query(api.evidenceLibraries.versions.listVersionRows, { libraryId, paginationOpts: { cursor: first.continueCursor, numItems: 50 } });
+    expect(second.page).toHaveLength(50);
+    expect(await fixture.admin.query(api.evidenceLibraries.versions.countVersions, { libraryId })).toBeGreaterThanOrEqual(1_000);
+  }, 300_000);
+
   it("generates rows at the measured sizes", async () => {
     const t = convexTest(schema);
     const { userId } = await seedAccount(t);

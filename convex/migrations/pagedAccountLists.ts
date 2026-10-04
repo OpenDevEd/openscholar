@@ -4,7 +4,7 @@ import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
-import { ADMIN_LIST, listCounts, walletKeyList } from "../lib/listCounts";
+import { ADMIN_LIST, listCounts, uncounted, walletKeyList } from "../lib/listCounts";
 
 /**
  * Counts the wallet keys and admins saved before their lists paged (#424), so each list
@@ -41,13 +41,13 @@ export const verifyPage = internalQuery({
   args: { table: tableValidator, cursor: v.union(v.string(), v.null()) },
   returns: v.object({ wrong: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
   handler: async (ctx, { table, cursor }) => {
-    const page = table === "walletKeys" ? await ctx.db.query("walletKeys").paginate({ cursor, numItems: 100 }) : await ctx.db.query("admins").paginate({ cursor, numItems: 100 });
-    const listed = page.page.flatMap((row) => {
-      const list = "hashedKey" in row ? walletKeyList(row) : ADMIN_LIST;
-      return list === null ? [] : [{ namespace: list, bounds: { lower: { key: null, id: row._id, inclusive: true }, upper: { key: null, id: row._id, inclusive: true } } }];
-    });
-    const counted = await listCounts.countBatch(ctx, listed);
-    return { wrong: counted.filter((count) => count !== 1).length, isDone: page.isDone, continueCursor: page.continueCursor };
+    const opts = { cursor, numItems: 100 };
+    if (table === "walletKeys") {
+      const page = await ctx.db.query("walletKeys").paginate(opts);
+      return { wrong: await uncounted(ctx, page.page, walletKeyList), isDone: page.isDone, continueCursor: page.continueCursor };
+    }
+    const page = await ctx.db.query("admins").paginate(opts);
+    return { wrong: await uncounted(ctx, page.page, () => ADMIN_LIST), isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });
 

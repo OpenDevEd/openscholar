@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useProtectedQuery, useProtectedStreamPaginatedQuery } from "@/lib/auth/use-auth-query";
 import {
   runtimeUpdateState,
   shortCommit,
@@ -29,12 +29,12 @@ import {
 import { FieldGroup, Panel } from "../fields";
 import { InlineNotice, SectionCard } from "../section-card";
 import { StatusChip } from "../status-chip";
-import { ReleaseNotes, VersionHistory } from "./versions-views";
+import { ReleaseNotes, VERSIONS_PAGE_SIZE, VersionHistory } from "./versions-views";
 
 type RuntimeState = FunctionReturnType<typeof api.evidenceLibraries.updates.check>;
 type VersionRow = FunctionReturnType<
-  typeof api.evidenceLibraries.versions.listVersions
->[number];
+  typeof api.evidenceLibraries.versions.listVersionRows
+>["page"][number];
 
 /** The check never throws into render; a failure becomes a message in the panel. */
 type RuntimeCheck =
@@ -133,8 +133,14 @@ export function VersionsSection({
   const restoreRevision = useMutation(
     api.evidenceLibraries.versions.restoreRevision,
   );
-  const versions = useProtectedQuery(
-    api.evidenceLibraries.versions.listVersions,
+  // The history is read a page at a time, newest first; the count totals it.
+  const versions = useProtectedStreamPaginatedQuery(
+    api.evidenceLibraries.versions.listVersionRows,
+    { libraryId },
+    { initialNumItems: VERSIONS_PAGE_SIZE },
+  );
+  const versionCount = useProtectedQuery(
+    api.evidenceLibraries.versions.countVersions,
     { libraryId },
   );
   // The address answer the last check stored. It stays right even when the
@@ -317,7 +323,7 @@ export function VersionsSection({
       </div>
 
       <FieldGroup title={t("versions.historyHeading")}>
-        {versions.data === undefined ? (
+        {versions.isInitialLoading || versionCount.data === undefined ? (
           <Panel
             tone="muted"
             role="status"
@@ -328,7 +334,9 @@ export function VersionsSection({
           </Panel>
         ) : (
           <VersionHistory
-            rows={versions.data}
+            rows={versions.results}
+            total={versionCount.data}
+            more={versions.status === "CanLoadMore" ? () => versions.loadMore(VERSIONS_PAGE_SIZE) : undefined}
             blocked={blocked}
             onRestore={setRestoring}
           />
