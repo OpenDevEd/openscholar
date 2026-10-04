@@ -3522,6 +3522,11 @@
         "did": "Résultats d'une recherche lus",
         "where": "Recherches enregistrées"
       },
+      "lookup": {
+        "doing": "Recherche d'un nom",
+        "did": "Nom recherché",
+        "where": "Filtres de recherche"
+      },
       "bookmarks": {
         "doing": "Parcours de vos favoris",
         "did": "Favoris parcourus",

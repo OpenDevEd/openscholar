@@ -36,7 +36,7 @@ const KIND = {
 type Kind = keyof typeof KIND;
 
 /** The words for a kind of step: `assistant.steps.<words>` in the messages. */
-type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "other";
+type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "other";
 
 /** Each action's kind of work and the words for it; one that isn't here shows as work in the account. */
 const ACTIONS: Record<string, { kind: Kind; words: Words }> = {
@@ -49,6 +49,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words }> = {
   "research/searches:restore": { kind: "search", words: "restoreSearch" },
   "research/searches:remove": { kind: "search", words: "removeSearch" },
   "research/searches:results": { kind: "search", words: "results" },
+  "research/lookup:find": { kind: "search", words: "lookup" },
   "research/records:listedShortcuts": { kind: "search", words: "bookmarks" },
   "research/records:ratingsOf": { kind: "paper", words: "ratings" },
   "library/queries:savedPaper": { kind: "paper", words: "saved" },

@@ -3512,6 +3512,11 @@
         "did": "Read a search's results",
         "where": "Saved searches"
       },
+      "lookup": {
+        "doing": "Looking up a name",
+        "did": "Looked up a name",
+        "where": "Search filters"
+      },
       "bookmarks": {
         "doing": "Looking through your bookmarks",
         "did": "Looked through your bookmarks",
