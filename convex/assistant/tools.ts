@@ -13,7 +13,7 @@ import { assistantTools, inputSchema, runAction, toolName } from "../lib/assista
 import { readConvexErrorData } from "../lib/errors";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { ASKS_FIRST, type UserAction } from "../lib/userActions";
-import { MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, forModel } from "./steps";
+import { DONE, MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, forModel } from "./steps";
 
 /** Requests to the model one reply may make. The last is kept for its answer (./turn.ts). */
 export const MAX_STEPS = 12;
@@ -127,6 +127,25 @@ export function askedSteps(requests: Asked[]) {
   });
 }
 
+/** Times a call whose write lost a race is tried. */
+const WRITE_TRIES = 5;
+/**
+ * Runs a call, again when its write collided with another's. A model makes several calls in
+ * one step, and they run together: ten saves write the same count of the library, and the
+ * ones that kept losing the race failed. A write that failed this way changed nothing, so
+ * it's safe to make again, a moment later.
+ */
+export async function written<T>(run: () => Promise<T>): Promise<T> {
+  for (let tries = 1; ; tries += 1) {
+    try {
+      return await run();
+    } catch (error) {
+      if (tries >= WRITE_TRIES || !/changed while this mutation was being run/.test(String(error))) throw error;
+      await new Promise((resolve) => setTimeout(resolve, Math.random() * 300 * tries));
+    }
+  }
+}
+
 /** What a call is about, for its step's card: a title, a name or a query among its arguments, or the query a change gives a search. */
 function subjectOf(input: Record<string, unknown>) {
   const paper = input.paper && typeof input.paper === "object" ? (input.paper as Record<string, unknown>) : {};
@@ -215,9 +234,10 @@ export function toolsFor(
     try {
       // A change ends its step in its own transaction, so the two are saved together: a mutation, or an action whose write does. A read's step is ended here.
       const change = entry.kind === "mutation" || (entry.kind === "action" && entry.changes === true);
-      const result = await runAction(ctx, userId, entry, input, key, change ? stepId : undefined, allowed !== undefined);
+      const result = await written(() => runAction(ctx, userId, entry, input, key, change ? stepId : undefined, allowed !== undefined));
       if (!change) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
-      return forModel(result);
+      // A change that returns nothing says it was made. A read that returns nothing found nothing.
+      return forModel(change ? (result ?? DONE) : result);
     } catch (error) {
       const message = messageOf(error);
       await ctx.runMutation(internal.assistant.steps.failed, { stepId, error: message });

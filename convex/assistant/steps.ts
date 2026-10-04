@@ -68,6 +68,13 @@ const shallow = (value: unknown, levels: number): unknown =>
         : Object.fromEntries(Object.entries(value).map(([key, inner]) => [key, shallow(inner, levels - 1)]));
 
 /**
+ * What a change that returns nothing tells the model. Nothing at all read, to a weaker model,
+ * as not done yet: after the person allowed a deletion and it ran, the reply said it was
+ * still waiting for them.
+ */
+export const DONE = { done: true } as const;
+
+/**
  * What the model reads of anything a tool returns, and what's saved with the reply: all of
  * it when it's short, its start and how much was left out when it isn't.
  */
