@@ -60,6 +60,8 @@ export type Turn = {
   /** What the model is sent, in place of the agent's own choice of recent messages. */
   contextHandler?: ContextHandler;
   contextOptions?: ContextOptions;
+  /** How long Claude keeps the conversation cached: five minutes, or an hour (`"1h"`) at a dearer write. */
+  cache?: "1h";
   /** Keeps a failure where the caller shows it, besides the failed message. A stop isn't one. */
   recordError?: (error: unknown) => Promise<unknown>;
   clearError?: () => Promise<unknown>;
@@ -190,7 +192,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           maxRetries: 0,
           // Claude caches the context and earlier turns; the thread id keeps
           // every turn on the same upstream host so that cache stays warm.
-          providerOptions: callOptions(model, { cache: true, sessionId: threadId, effort: turn.effort }),
+          providerOptions: callOptions(model, { cache: turn.cache ?? true, sessionId: threadId, effort: turn.effort }),
           onStepEnd: async ({ usage, providerMetadata }) => {
             stepUsages.push(usageOf({ usage, providerMetadata }));
             const inputTokens = usage?.inputTokens ?? 0;

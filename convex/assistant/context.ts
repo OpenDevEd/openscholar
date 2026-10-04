@@ -49,7 +49,7 @@ export type Compacted = { summary?: string; compactedThrough?: number };
 
 /** The chat's messages the model still reads in full, oldest first: the ones after the last compaction, up to an exchange. */
 export async function historySince(
-  ctx: ActionCtx,
+  ctx: Pick<ActionCtx, "runQuery">,
   args: { agentThreadId: string; compactedThrough?: number; before?: string },
 ): Promise<MessageDoc[]> {
   const { page } = await ctx.runQuery(components.agent.messages.listMessagesByThreadId, {
@@ -107,7 +107,7 @@ export async function summarize(
       messages: [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), { role: "user", content: SUMMARIZE }],
       maxOutputTokens: SUMMARY_MAX_TOKENS,
       maxRetries: 1,
-      providerOptions: callOptions(model, { cache: true, sessionId: args.agentThreadId, effort: args.effort }),
+      providerOptions: callOptions(model, { cache: "1h", sessionId: args.agentThreadId, effort: args.effort }),
     });
     const usage = usageOf({ usage: result.usage, providerMetadata: result.providerMetadata });
     const usd = pickProviderCostUsd(result.providerMetadata) ?? calculateCostInDollars({ inputTokens: usage.inputTokens, outputTokens: usage.outputTokens }, pricing);

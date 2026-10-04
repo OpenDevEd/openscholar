@@ -1,0 +1,162 @@
+/// <reference types="vite/client" />
+// What the model is sent (#326): every request begins with the one before it, so the
+// provider's cache holds, and a chat that has grown long carries on from a summary.
+import { convexTest } from "convex-test";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { api } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
+import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
+import schema from "../schema";
+import { INSTRUCTIONS } from "./agent";
+import { people } from "./assistant.test-support";
+import { COMPACT_AT_TOKENS, MAX_CONTEXT_BYTES, MAX_CONTEXT_MESSAGES, compactionDue } from "./context";
+import { finishingDoStream, waitFor } from "./turn.test-support";
+
+type Part = { type: string; text?: string };
+type Sent = Array<{ role: string; content: string | Part[] }>;
+
+const { mockDoStream, mockDoGenerate, requests, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), mockDoGenerate: vi.fn(), requests: [] as unknown[], fetchMock: vi.fn() }));
+vi.stubGlobal("fetch", fetchMock);
+
+// The model every reply runs on, in place of OpenRouter. It keeps each request it is sent.
+vi.mock("../chat/provider", async () => {
+  const { MockLanguageModelV3 } = await import("ai/test");
+  const keeping =
+    (run: (options: unknown) => unknown) =>
+    async (options: { prompt: unknown }) => {
+      requests.push(structuredClone(options.prompt));
+      return run(options);
+    };
+  return {
+    resolveOpenRouterModel: async () => ({
+      model: new MockLanguageModelV3({ modelId: "mock/model", doStream: keeping(mockDoStream) as never, doGenerate: keeping(mockDoGenerate) as never }),
+      modelSlug: "mock/model",
+      // Per million tokens, so a request of 50,000 costs a few cents.
+      pricing: { input: 1, output: 2 },
+    }),
+  };
+});
+
+beforeEach(() => {
+  mockDoStream.mockReset();
+  mockDoGenerate.mockReset();
+  requests.length = 0;
+  fetchMock.mockReset();
+  fakeAutumn.reset();
+  fetchMock.mockImplementation(fakeAutumnFetch());
+});
+
+type Test = ReturnType<typeof convexTest>;
+const firstPage = { cursor: null, numItems: 20 };
+const sent = (index: number) => requests[index] as Sent;
+/** A request's messages as plain text, a line per message. */
+const said = (request: Sent) => request.map((message) => `${message.role}: ${typeof message.content === "string" ? message.content : message.content.map((part) => part.text ?? "").join("")}`);
+
+async function chatOf(t: Test) {
+  const who = await people(t);
+  await t.run(async (ctx) => seedCreditsForTest(ctx, { userId: who.ada, free: 100_000 }));
+  const threadId = await who.asAda.mutation(api.assistant.threads.create, { title: "Reading trials" });
+  const thread = (id: Id<"assistantThreads">) => t.run(async (ctx) => ctx.db.get("assistantThreads", id));
+  /** Sends a message and waits until the chat is free again: its reply written, and any compaction after it done. */
+  const say = async (text: string) => {
+    await who.asAda.mutation(api.assistant.replies.send, { threadId, text });
+    await waitFor(async () => !(await thread(threadId))?.reply, { timeoutMs: 5_000 });
+  };
+  return { ...who, threadId, say, thread: () => thread(threadId) };
+}
+
+/** A summary, as the model would return it. */
+const summaryOf = (text: string, inputTokens = 60_000) => async () => ({
+  content: [{ type: "text", text }],
+  finishReason: "stop",
+  usage: { inputTokens: { total: inputTokens, noCache: 0, cacheRead: inputTokens, cacheWrite: 0 }, outputTokens: { total: 40, text: 40, reasoning: 0 } },
+  warnings: [],
+});
+
+describe("what the assistant's model is sent", () => {
+  it("begins every request with the one before it, unchanged", async () => {
+    const t = convexTest(schema);
+    const { say, thread } = await chatOf(t);
+    for (const turn of [1, 2, 3, 4, 5]) {
+      mockDoStream.mockImplementation(finishingDoStream([`Answer ${turn}`]));
+      await say(`Question ${turn}`);
+    }
+
+    expect(requests).toHaveLength(5);
+    expect(said(sent(0))).toEqual([`system: ${INSTRUCTIONS}`, "user: Question 1"]);
+    for (let i = 1; i < requests.length; i++) {
+      // The earlier request, byte for byte, then its answer and the new question.
+      expect(JSON.stringify(sent(i).slice(0, sent(i - 1).length))).toBe(JSON.stringify(sent(i - 1)));
+      expect(said(sent(i)).slice(sent(i - 1).length)).toEqual([`assistant: Answer ${i}`, `user: Question ${i + 1}`]);
+    }
+    expect((await thread())?.summary).toBeUndefined();
+  });
+
+  it("is a summary and what came after it, once a reply has read a lot", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId, say, thread } = await chatOf(t);
+    mockDoStream.mockImplementation(finishingDoStream(["Answer 1"]));
+    await say("Question 1");
+
+    // This reply's request is past the budget, so a summary follows it under the same lock.
+    mockDoStream.mockImplementation(finishingDoStream(["Answer 2"], COMPACT_AT_TOKENS + 1));
+    mockDoGenerate.mockImplementation(summaryOf("Decisions\nKeep trials only."));
+    await say("Question 2");
+
+    expect(await thread()).toMatchObject({ summary: "Decisions\nKeep trials only.", compactedThrough: 1 });
+    // The summary call read the same conversation, and was told to summarize it.
+    expect(said(sent(2)).slice(0, -1)).toEqual([`system: ${INSTRUCTIONS}`, "user: Question 1", "assistant: Answer 1", "user: Question 2", "assistant: Answer 2"]);
+    expect(said(sent(2)).at(-1)).toMatch(/^user: Write a summary/);
+
+    // The next request starts from the summary, and the ones after it grow from there.
+    mockDoStream.mockImplementation(finishingDoStream(["Answer 3"]));
+    await say("Question 3");
+    expect(said(sent(3))).toEqual([`system: ${INSTRUCTIONS}`, expect.stringMatching(/^system: .*summary:\n\nDecisions\nKeep trials only\.$/s), "user: Question 3"]);
+    mockDoStream.mockImplementation(finishingDoStream(["Answer 4"]));
+    await say("Question 4");
+    expect(JSON.stringify(sent(4).slice(0, sent(3).length))).toBe(JSON.stringify(sent(3)));
+
+    // The chat itself keeps every message.
+    const { page } = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
+    expect(page.map((message) => message.text).reverse()).toEqual(["Question 1", "Answer 1", "Question 2", "Answer 2", "Question 3", "Answer 3", "Question 4", "Answer 4"]);
+
+    // The summary is its own charge, to the person whose reply made it due.
+    const charged = await t.run(async (ctx) => ctx.db.query("billingUsage").collect());
+    expect(charged.filter((charge) => charge.description === "Conversation summary")).toMatchObject([{ userId: ada, kind: "chat", model: "mock/model", cacheReadTokens: 60_000 }]);
+    expect(charged).toHaveLength(5);
+  });
+
+  it("stays as it was when the summary can't be written", async () => {
+    const t = convexTest(schema);
+    const { say, thread } = await chatOf(t);
+    mockDoStream.mockImplementation(finishingDoStream(["Answer 1"], COMPACT_AT_TOKENS + 1));
+    mockDoGenerate.mockImplementation(async () => {
+      throw new Error("The provider is down");
+    });
+    await say("Question 1");
+    expect(await thread()).toMatchObject({ preview: "Answer 1" });
+    expect((await thread())?.summary).toBeUndefined();
+
+    // The chat takes the next message, which reads the whole conversation again.
+    mockDoStream.mockImplementation(finishingDoStream(["Answer 2"]));
+    await say("Question 2");
+    expect(said(sent(2))).toEqual([`system: ${INSTRUCTIONS}`, "user: Question 1", "assistant: Answer 1", "user: Question 2"]);
+    // Only the two replies were charged.
+    expect(await t.run(async (ctx) => ctx.db.query("billingUsage").collect())).toHaveLength(2);
+  });
+
+  it("is compacted past 50,000 tokens, 60% of a small model's window, 400 messages or 4 MB", () => {
+    const small = { lastInputTokens: 100, messages: 10, bytes: 1_000 };
+    expect(compactionDue(small)).toBe(false);
+    expect(compactionDue({ ...small, lastInputTokens: COMPACT_AT_TOKENS })).toBe(false);
+    expect(compactionDue({ ...small, lastInputTokens: COMPACT_AT_TOKENS + 1 })).toBe(true);
+    // A 64,000-token window compacts at 38,400.
+    expect(compactionDue({ ...small, lastInputTokens: 38_400, window: 64_000 })).toBe(false);
+    expect(compactionDue({ ...small, lastInputTokens: 38_401, window: 64_000 })).toBe(true);
+    expect(compactionDue({ ...small, lastInputTokens: 38_401, window: 200_000 })).toBe(false);
+    // The reply adds its message and its answer to what its request read.
+    expect(compactionDue({ ...small, messages: MAX_CONTEXT_MESSAGES - 3 })).toBe(false);
+    expect(compactionDue({ ...small, messages: MAX_CONTEXT_MESSAGES - 2 })).toBe(true);
+    expect(compactionDue({ ...small, bytes: MAX_CONTEXT_BYTES })).toBe(true);
+  });
+});

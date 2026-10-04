@@ -7,6 +7,7 @@
  *
  *   send (mutation)    saves the message, takes the lock, schedules `reply`
  *   reply (action)     runs the reply through runTurn (./turn.ts), which releases the lock
+ *   compact (action)   after a reply that read a lot, summarizes the chat so far under the same lock (./context.ts)
  *   stop (mutation)    asks the running reply to stop
  *   messages (query)   the chat's messages, a page at a time
  *   live (query)       the reply being written: who it answers, and its text so far
@@ -21,7 +22,7 @@ import { effortValidator } from "../aiModelConfig/validators";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
-import { createError } from "../lib/errors";
+import { createError, errorToLogString } from "../lib/errors";
 import { internalAction, internalMutation, internalQuery, mutation, query } from "../lib/functions";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
@@ -30,6 +31,7 @@ import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
+import { compactedOf, compactionDue, contextSince, summarize } from "./context";
 import { chatModel, previewOf, writing } from "./threads";
 import { runTurn } from "./turn";
 
@@ -131,6 +133,9 @@ export const reply = internalAction({
       await ctx.runMutation(internal.assistant.replies.release, lock);
       return null;
     }
+    // How much history the reply's request read, which decides whether a compaction follows it.
+    let history = { messages: 0, bytes: 0 };
+    const turn = { agentThreadId, senderId, modelId, effort };
     await runTurn(ctx, {
       agent: assistant,
       threadId: agentThreadId,
@@ -142,8 +147,53 @@ export const reply = internalAction({
       credits: ESTIMATED_CREDITS_PER_CHAT_MESSAGE,
       log: { assistantThreadId: threadId },
       shouldStop: async () => (await state()) !== "writing",
-      release: () => ctx.runMutation(internal.assistant.replies.release, lock),
+      // People come back to a chat after a pause, so its cache is kept for an hour.
+      cache: "1h",
+      contextHandler: contextSince({
+        ...(await compactedOf(ctx, threadId)),
+        agentThreadId,
+        promptMessageId,
+        onHistory: (read) => {
+          history = read;
+        },
+      }),
+      release: ({ lastInputTokens }) => ctx.runMutation(internal.assistant.replies.release, { ...lock, ended: { ...turn, ...history, lastInputTokens } }),
     });
+    return null;
+  },
+});
+
+const turnArgs = { agentThreadId: v.string(), senderId: v.id("users"), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator) };
+
+/** What a chat's replies read from its record: its summary and the exchange the summary runs through. */
+export const compacted = internalQuery({
+  args: { threadId: v.id("assistantThreads") },
+  returns: v.object({ summary: v.optional(v.string()), compactedThrough: v.optional(v.number()) }),
+  handler: async (ctx, { threadId }) => {
+    const thread = await ctx.db.get("assistantThreads", threadId);
+    return { ...(thread?.summary ? { summary: thread.summary } : {}), ...(thread?.compactedThrough !== undefined ? { compactedThrough: thread.compactedThrough } : {}) };
+  },
+});
+
+/**
+ * Summarizes the chat through the reply that just ended, under that reply's lock, so the
+ * chat takes no message until its next request can start from the summary. A failed or
+ * stopped compaction leaves the chat as it was; the next reply that reads a lot tries again.
+ */
+export const compact = internalAction({
+  args: { ...lockArgs, ...turnArgs, through: v.number(), lastInputTokens: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { threadId, attemptId, through, ...turn }) => {
+    const lock = { threadId, attemptId };
+    let summary: string | undefined;
+    try {
+      if ((await ctx.runQuery(internal.assistant.replies.lockState, lock)) === "writing") {
+        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, chargeId: `chat:${attemptId}:summary` });
+      }
+    } catch (error) {
+      console.error("[assistant] compaction failed", { threadId, error: errorToLogString(error) });
+    }
+    await ctx.runMutation(internal.assistant.replies.release, { ...lock, ...(summary ? { summarized: { summary, through } } : {}) });
     return null;
   },
 });
@@ -172,16 +222,38 @@ export const lockState = internalQuery({
   },
 });
 
-/** Releases a reply's lock when it ends, however it ends. What it wrote becomes the chat's preview. */
+/**
+ * Releases a reply's lock when it ends, however it ends. What it wrote becomes the chat's
+ * preview. A reply that read a lot (`ended`) hands its lock to a compaction instead, and
+ * the compaction releases it, with the summary it wrote (`summarized`) if it wrote one.
+ */
 export const release = internalMutation({
-  args: lockArgs,
+  args: {
+    ...lockArgs,
+    ended: v.optional(v.object({ ...turnArgs, lastInputTokens: v.number(), messages: v.number(), bytes: v.number() })),
+    summarized: v.optional(v.object({ summary: v.string(), through: v.number() })),
+  },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId }) => {
+  handler: async (ctx, { threadId, attemptId, ended, summarized }) => {
     const thread = await ctx.db.get("assistantThreads", threadId);
     if (thread?.reply?.attemptId !== attemptId) return null;
+    const current = thread.reply;
+    if (current.compacting) {
+      await ctx.db.patch("assistantThreads", threadId, { reply: undefined, ...(summarized ? { summary: summarized.summary, compactedThrough: summarized.through } : {}) });
+      return null;
+    }
     const newest = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null }, excludeToolMessages: true })).page[0];
-    const written = newest?.message?.role === "assistant" && newest.order === thread.reply.order ? previewOf(newest.text ?? "") : "";
-    await ctx.db.patch("assistantThreads", threadId, { reply: undefined, ...(written ? { preview: written } : {}) });
+    const written = newest?.message?.role === "assistant" && newest.order === current.order ? previewOf(newest.text ?? "") : "";
+    const preview = written ? { preview: written } : {};
+    const window = ended?.modelId ? (await ctx.db.get("models", ended.modelId))?.contextLength : undefined;
+    // A stopped reply is left alone: whoever stopped it is waiting to write.
+    if (ended && !current.stop && compactionDue({ ...ended, window })) {
+      const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
+      const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.replies.compact, { threadId, attemptId, ...turn, through: current.order, lastInputTokens });
+      await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: { ...current, scheduledId, compacting: true } });
+      return null;
+    }
+    await ctx.db.patch("assistantThreads", threadId, { reply: undefined, ...preview });
     return null;
   },
 });
@@ -333,6 +405,8 @@ export const live = query({
       startedAt: v.number(),
       /** Someone stopped it, and it hasn't ended yet. */
       stopping: v.boolean(),
+      /** The reply is written, and the chat is summarizing the conversation so far before it takes the next message. */
+      compacting: v.boolean(),
       text: v.string(),
     }),
   ),
@@ -356,6 +430,7 @@ export const live = query({
       order: current.order,
       startedAt: current.startedAt,
       stopping: current.stop === true,
+      compacting: current.compacting === true,
       text: stream ? await textSoFar(ctx, thread.agentThreadId, stream.streamId) : "",
     };
   },

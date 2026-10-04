@@ -83,11 +83,18 @@ export async function chatModel(ctx: QueryCtx | MutationCtx, thread: Doc<"assist
   return { modelId: pick?.modelId ?? null, effort: pick?.effort };
 }
 
-/** A model a chat can run on, with an effort it takes. */
+/** The smallest window a model needs: the context budget and a reply fit in it (./context.ts). */
+const MIN_CONTEXT_WINDOW = 64_000;
+
+/** A model a chat can run on, with an effort it takes: one that calls tools and has room for the conversation. */
 async function pickable(ctx: MutationCtx, modelId: Id<"models">, effort: Effort | undefined) {
   const model = await requireAvailableModel(ctx, modelId);
   requireEffort(model, effort);
   requireTaskModel(model, "chat");
+  if (!model.supportedParameters?.includes("tools")) throw createError("VALIDATION_ERROR", `${model.name} can't use the tools the assistant works with.`);
+  if ((model.contextLength ?? 0) < MIN_CONTEXT_WINDOW) {
+    throw createError("VALIDATION_ERROR", `${model.name} can't hold a long enough conversation for the assistant.`);
+  }
 }
 
 function titled(title: string | undefined) {
