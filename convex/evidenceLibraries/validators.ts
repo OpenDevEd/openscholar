@@ -538,11 +538,15 @@ export const evidenceLibraryDigestJobFields = {
   result: v.optional(evidenceLibraryDigestResultValidator),
 };
 
+/** The commits and the release notes one software check holds, capped as the release row stores them. */
+export const runtimeReleaseChangesValidator = capped(v.array(runtimeReleaseChangeValidator), MAX_RELEASE_CHANGES);
+export const runtimeReleasesValidator = capped(v.array(runtimeReleaseNotesValidator), MAX_RELEASES);
+
 export const evidenceLibraryRuntimeReleaseFields = {
   running: v.string(),
   latest: v.string(),
   latestImage: v.string(),
-  changes: capped(v.array(runtimeReleaseChangeValidator), MAX_RELEASE_CHANGES),
+  changes: runtimeReleaseChangesValidator,
   // Rows written before release notes existed have no list; the check treats
   // them as stale and asks GitHub again.
   releases: capped(v.optional(v.array(runtimeReleaseNotesValidator)), MAX_RELEASES),
@@ -1013,6 +1017,18 @@ export const dnsRecordsValidator = capped(
     }),
   ),
   MAX_DNS_RECORDS,
+);
+
+/** What a check found for each of a library's domains still waiting: at most the MAX_LIBRARY_DOMAINS a library has. */
+export const checkedDomainResultsValidator = capped(
+  v.array(
+    v.object({
+      domainId: v.id("evidenceLibraryDomains"),
+      state: evidenceLibraryDomainStateValidator,
+      failure: v.optional(evidenceLibraryDomainFailureValidator),
+    }),
+  ),
+  MAX_LIBRARY_DOMAINS,
 );
 
 /** A custom domain as the Domain section shows it. A library has at most MAX_LIBRARY_DOMAINS (./domains.ts refuses more). */

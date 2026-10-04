@@ -4,23 +4,13 @@
   },
   "listReturns": {
     "pending": {
-      "convex/ai/actions.ts:generateBatchScreeningResponses:.errors[]": "#425",
-      "convex/ai/actions.ts:generateBatchScreeningResponses:.results{}": "#425",
-      "convex/ai/actions.ts:generateBatchScreeningResponses:.results{}.confidences{}": "#425",
-      "convex/ai/actions.ts:generateBatchScreeningResponses:.results{}.responses{}": "#425",
-      "convex/ai/actions.ts:generateBatchTranslations:.errors[]": "#425",
-      "convex/ai/actions.ts:generateBatchTranslations:.results{}": "#425",
       "convex/authors/invitations.ts:listMine:[]": "#424",
       "convex/authors/publications.ts:list:[]": "#424",
-      "convex/billing/actions.ts:previewPlan:.lineItems[]": "#425",
       "convex/chat/chatPapers.ts:listChatSourcesWithInclusion:.rows[]": "#325",
       "convex/chat/model.ts:listChatModels:[]": "#325",
       "convex/chat/sourceEvents.ts:listForThread:[]": "#325",
-      "convex/evidenceLibraries/domainActions.ts:checkDomains:.results[]": "#425",
       "convex/evidenceLibraries/invitations.ts:listMine:[]": "#423",
       "convex/evidenceLibraries/queries.ts:listLibraryOverviews:[]": "#423",
-      "convex/evidenceLibraries/updates.ts:check:.changes[]": "#425",
-      "convex/evidenceLibraries/updates.ts:check:.releases[]": "#425",
       "convex/evidenceLibraries/updates.ts:listAddressNotices:[]": "#423",
       "convex/evidenceLibraries/versions.ts:listVersions:[]": "#423",
       "convex/models/queries.ts:list:[]": "#424",
@@ -46,7 +36,6 @@
     "pending": {
       "convex/chat/messages.ts:listRecentThreadArtifacts": "#325",
       "convex/chat/messages.ts:readThreadMessagesWithVisiblePageIntegrity": "#325",
-      "convex/evidenceLibraries/uploadsClient.ts:listObjectNames": "#425",
       "convex/zotero/actions.ts:fetchAllCollectionsForParent": "#425",
       "convex/zotero/actions.ts:fetchAllTopItemsForCollection": "#425",
       "convex/zotero/libraryGroupActions.ts:listAllUserGroups": "#425"

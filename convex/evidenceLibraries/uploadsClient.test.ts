@@ -302,9 +302,50 @@ describe("ensureUploadBucket", () => {
         holds.push(Date.now());
       },
     });
-    // Once before each page it asked for, and once more before the deletes.
-    expect(holds.length).toBe(listed + 1);
+    // Once before each page it asked for, and once before deleting it.
+    expect(holds.length).toBe(listed * 2);
     expect(holds.length).toBeGreaterThan(2);
+  });
+
+  it("steps over a folder and a nameless entry, and still deletes every file", async () => {
+    // What a delete leaves in place sorts first, as a folder does in the file store.
+    const kept: unknown[] = [{ name: "folder", id: null }, {}];
+    const files = new Set(Array.from({ length: 250 }, (_, index) => `file-${String(index).padStart(3, "0")}`));
+    const fetchImpl = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      if (new URL(String(url)).pathname.includes("/list/")) {
+        return Response.json([...kept, ...[...files].sort().map((name) => ({ name, id: name }))].slice(body.offset, body.offset + body.limit));
+      }
+      for (const key of body.prefixes as string[]) files.delete(key.slice(key.lastIndexOf("/") + 1));
+      return Response.json([]);
+    }) as unknown as typeof fetch;
+
+    const result = await deleteLibraryUploads({
+      storageUrl: "https://storage.example.test",
+      serviceRoleKey: "service-key",
+      libraryId: "library_1",
+      fetchImpl,
+    });
+    expect(result).toEqual({ deleted: 250 });
+    expect(files.size).toBe(0);
+  });
+
+  it("stops when the file store keeps the files it was asked to delete", async () => {
+    // The same full page every time: without a stop, the walk would never end.
+    const page = Array.from({ length: 100 }, (_, index) => ({ name: `file-${index}` }));
+    const fetchImpl = (async (url: RequestInfo | URL) =>
+      new URL(String(url)).pathname.includes("/list/")
+        ? Response.json(page)
+        : Response.json([])) as unknown as typeof fetch;
+
+    await expect(
+      deleteLibraryUploads({
+        storageUrl: "https://storage.example.test",
+        serviceRoleKey: "service-key",
+        libraryId: "library_1",
+        fetchImpl,
+      }),
+    ).rejects.toThrow(/kept files/);
   });
 
 });
