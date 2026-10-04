@@ -291,6 +291,10 @@ export function restoredSearch(search: SavedSearch, then: SavedSearch, now: stri
   return { ...(next as SavedSearch), queryHistoryCount: search.queryHistoryCount + (requeried ? 1 : 0), updatedAt: now };
 }
 
+/** Whether restoring `then` would leave the search as it is: it already holds that revision's query and filters. */
+export const restoresNothing = (search: SavedSearch, then: SavedSearch) =>
+  JSON.stringify({ ...restoredSearch(search, then, search.updatedAt), queryHistoryCount: search.queryHistoryCount }) === JSON.stringify(search);
+
 /**
  * Shared by the transaction and the optimistic browser view. The transaction passes a search
  * with no answers, since they live in their own rows; the browser, the answers it has read.
@@ -336,17 +340,18 @@ export const paperResponsesValidator = v.object({ paperId: v.string(), responses
 /** Papers one read of screening answers takes: as many as a results page shows. */
 export const ANSWERED_PAPERS_MAX = 200;
 /**
- * A search as its creation left it: the row itself (`created`), its revision and time of last
- * change, and the version of its answers, which a screening job moves without touching the search.
+ * A search as its creation left it: the row itself (`created`), the revision whose contents
+ * it should still hold, and the version of its answers, which a screening job moves without
+ * touching the search.
  */
-const searchAsMade = v.object({ created: v.number(), revision: v.number(), updatedAt: v.string(), answers: v.optional(v.number()) });
+const searchAsMade = v.object({ created: v.number(), revision: v.number(), answers: v.optional(v.number()) });
 const shortcutValue = v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null());
 export const commandValidator = v.union(
   // `history`: the earlier queries and questions of a search brought from this browser or a file.
   v.object({ kind: v.literal("createSearch"), search: searchValidator, history: v.optional(v.object(historyArrays)) }),
   v.object({ kind: v.literal("editSearch"), id: v.string(), edit: editValidator }),
-  // `expect` is the search as it should be now: anything done to it since refuses the
-  // deletion, so undoing a search's creation never deletes later work.
+  // `expect` is the search as it should be now: anything done to it since, and not undone,
+  // refuses the deletion, so undoing a search's creation never deletes later work.
   v.object({ kind: v.literal("deleteSearch"), id: v.string(), expect: v.optional(searchAsMade) }),
   // `expect`, on a shortcut or a rating, is what it should be now (null for none): a change
   // since then refuses this one, so undoing one change never overwrites a later one.

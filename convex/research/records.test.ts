@@ -500,12 +500,17 @@ describe("undoing a change to research records (#342)", () => {
     expect(history.page.slice(0, 2).map(entry => entry.text)).toEqual([before.query, "tutoring africa"]);
   });
 
-  it("refuses to undo a change once the search has changed again, and leaves it as it is", async () => {
+  it("refuses to undo a change once the search has changed again, and undoes it once that later change is undone", async () => {
     const { change, search, edit } = await changing();
-    const filtered = await edit({ kind: "patch", fields: { minCitations: 10 }, clear: [] });
-    await edit({ kind: "patch", fields: { sortBy: "publication_date:desc" }, clear: [] });
+    const before = await search();
+    const filtered = await edit({ kind: "patch", fields: { minCitations: 10 }, clear: ["language"] });
+    const sorted = await edit({ kind: "patch", fields: { sortBy: "publication_date:desc" }, clear: [] });
     await expect(change(filtered.undo!.args.command)).rejects.toThrow(/changed since/);
     expect(await search()).toMatchObject({ minCitations: 10, sortBy: "publication_date:desc" });
+    // Newest first: with the sort undone, the search holds what the filter change left, so that can be undone too.
+    await change(sorted.undo!.args.command);
+    await change(filtered.undo!.args.command);
+    expect(await search()).toMatchObject({ minCitations: before.minCitations, language: before.language, sortBy: before.sortBy });
     await expect(edit({ kind: "restore", revision: 99 })).rejects.toThrow(/wasn't kept/);
   });
 
@@ -542,7 +547,7 @@ describe("undoing a change to research records (#342)", () => {
   it("reverses making a search, a shortcut and a rating, unless they changed again", async () => {
     const { t, alice, change } = await changing();
     const made = await change({ kind: "createSearch", search: { ...record, id: "made", screeningResponses: [] } });
-    expect(made.undo?.args.command).toEqual({ kind: "deleteSearch", id: "made", expect: { created: expect.any(Number), revision: 1, updatedAt: record.updatedAt } });
+    expect(made.undo?.args.command).toEqual({ kind: "deleteSearch", id: "made", expect: { created: expect.any(Number), revision: 1 } });
     await change(made.undo!.args.command);
     expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: "made" })).toBeNull();
     // A search worked on since it was made isn't deleted by undoing its creation.
@@ -550,6 +555,16 @@ describe("undoing a change to research records (#342)", () => {
     await change({ kind: "editSearch", id: "kept", edit: { kind: "query", query: "worked on", field: "title" } });
     await expect(change(kept.undo!.args.command)).rejects.toThrow(/changed since/);
     expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: "kept" })).toMatchObject({ query: "worked on" });
+    // With that work undone, it's the search that was made again, and its creation can be undone.
+    const tried = await change({ kind: "createSearch", search: { ...record, id: "tried", screeningResponses: [] } });
+    const requeried = await change({ kind: "editSearch", id: "tried", edit: { kind: "query", query: "another try", field: "title" } });
+    await change(requeried.undo!.args.command);
+    await change(tried.undo!.args.command);
+    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: "tried" })).toBeNull();
+    // A question asked of it since isn't something an undo puts back, so the search stays.
+    const asked = await change({ kind: "createSearch", search: { ...record, id: "asked", screeningResponses: [] } });
+    await change({ kind: "editSearch", id: "asked", edit: { kind: "question", question: "For whom?" } });
+    await expect(change(asked.undo!.args.command)).rejects.toThrow(/changed since/);
     // Nor is one a screening job has answered into, which leaves the search itself untouched.
     const screened = await change({ kind: "createSearch", search: { ...record, id: "screened", screeningResponses: [] } });
     await t.run(async ctx => {

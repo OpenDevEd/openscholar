@@ -8,7 +8,7 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, type Author } from "../lib/userActions";
 import { answersAmong, clearPaperAnswers, removeAnswers, screeningFor, seedAnswers, setPaperAnswers, sweepAnswers, type AnswerSource } from "./answers";
 import {
-  ANSWERED_PAPERS_MAX, applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, paperResponsesValidator, RATED_PAPERS_MAX, ratingValidator, restoredSearch, restoreReverses, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator, UNDO_SHORTCUT_MAX, undoCommandValidator,
+  ANSWERED_PAPERS_MAX, applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, paperResponsesValidator, RATED_PAPERS_MAX, ratingValidator, restoredSearch, restoresNothing, restoreReverses, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator, UNDO_SHORTCUT_MAX, undoCommandValidator,
   type ResearchCommand, type SavedSearch, type StoredSearch, type UndoCommand,
 } from "../../lib/research/records";
 import { stream } from "convex-helpers/server/stream";
@@ -382,14 +382,17 @@ function revisionRow(ctx: Pick<QueryCtx, "db">, searchId: Id<"searches">, number
 }
 
 /**
- * A search as it stands, for the undo of its creation to check against: the row itself, its
- * revision and time of last change, and the version of its answers. A screening job answers
- * into the search's screening without touching the search, so only that version shows it.
+ * A search as it stands, for the undo of its creation to check against: the row itself, the
+ * revision it's at, and the version of its answers. A screening job answers into the
+ * search's screening without touching the search, so only that version shows it.
  */
 async function asMade(ctx: Pick<QueryCtx, "db">, search: Doc<"searches">) {
   const answers = (await screeningFor(ctx, search._id))?.version;
-  return { created: search._creationTime, revision: search.revision, updatedAt: search.data.updatedAt, ...(answers === undefined ? {} : { answers }) };
+  return { created: search._creationTime, revision: search.revision, ...(answers === undefined ? {} : { answers }) };
 }
+
+/** What a search holds, apart from when it last changed and how many queries it has tried: an edit since undone leaves this as it was. */
+const contents = ({ updatedAt: _at, queryHistoryCount: _tried, ...rest }: StoredSearch) => JSON.stringify(Object.entries(rest).sort(([a], [b]) => a.localeCompare(b)));
 
 /**
  * Applies one change, in the caller's transaction, for the person it's made for. Returns the
@@ -432,7 +435,12 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       const previous: SavedSearch = { ...currentSearch(search.data), screeningResponses: [] };
       let data: SavedSearch;
       if (edit.kind === "restore") {
-        if (edit.expect !== undefined && search.revision !== edit.expect) throw createError("CONFLICT", "This search has changed since then, so it was left as it is.");
+        // `expect` names the revision whose query and filters the search should hold now. It
+        // holds them at that revision, and again once every change after it has been undone.
+        if (edit.expect !== undefined && search.revision !== edit.expect) {
+          const left = await revisionRow(ctx, search._id, edit.expect);
+          if (!left || left.deleted || !restoresNothing(previous, currentSearch(left.data))) throw createError("CONFLICT", "This search has changed since then, so it was left as it is.");
+        }
         const then = await revisionRow(ctx, search._id, edit.revision);
         if (!then || then.deleted) throw createError("NOT_FOUND", "That version of the search wasn't kept.");
         data = restoredSearch(previous, currentSearch(then.data), now.toISOString());
@@ -470,16 +478,19 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       // when that revision was kept and restoring it would bring something back.
       const reversible = (edit.kind === "patch" || edit.kind === "query" || edit.kind === "restore") && restoreReverses(previous, data);
       if (!reversible || !(await revisionRow(ctx, search._id, search.revision))) return;
-      const back = restoredSearch(data, previous, data.updatedAt);
-      if (JSON.stringify({ ...back, queryHistoryCount: data.queryHistoryCount }) === JSON.stringify(data)) return;
+      if (restoresNothing(data, previous)) return;
       return { kind: "editSearch", id: command.id, edit: { kind: "restore", revision: search.revision, expect: next.revision } };
     }
     case "deleteSearch": {
       const found = await findSearch(ctx, userId, command.id);
       if (!found) return;
-      const [then, now] = [command.expect, command.expect && (await asMade(ctx, found))];
-      if (then && now && (now.created !== then.created || now.revision !== then.revision || now.updatedAt !== then.updatedAt || now.answers !== then.answers)) {
-        throw createError("CONFLICT", "This search has changed since then, so it was left as it is.");
+      if (command.expect) {
+        // Still the search that was made: the same row, holding what it held then, its answers
+        // untouched. A change since undone leaves it so. Anything else done to it keeps it.
+        const [then, now, made] = [command.expect, await asMade(ctx, found), await revisionRow(ctx, found._id, command.expect.revision)];
+        if (now.created !== then.created || now.answers !== then.answers || !made || contents(found.data) !== contents(made.data)) {
+          throw createError("CONFLICT", "This search has changed since then, so it was left as it is.");
+        }
       }
       // Its history stays in its rows, with the revisions, after the search is gone.
       const search = (await moveSearchHistory(ctx, found._id)) ? (await ctx.db.get("searches", found._id))! : found;
