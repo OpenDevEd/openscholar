@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { ConvexError } from "convex/values";
 import { api } from "../_generated/api";
 import schema from "../schema";
@@ -130,10 +130,7 @@ describe("createCollection", () => {
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
-    const collectionId = await asUser.mutation(
-      api.library.collections.createCollection,
-      { name: "My Papers" }
-    );
+    const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "My Papers" })).id;
 
     expect(collectionId).toBeDefined();
 
@@ -344,7 +341,7 @@ describe("listCollections", () => {
     const t = convexTest(schema);
     await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
-    for (const name of ["zebra", "Alpha", "Éclair", "middle"]) await asUser.mutation(api.library.collections.createCollection, { name });
+    for (const name of ["zebra", "Alpha", "Éclair", "middle"]) (await asUser.mutation(api.library.collections.createCollection, { name })).id;
 
     const first = await asUser.query(api.library.collections.listCollections, firstPage(2));
     expect(first.page.map((c) => c.name)).toEqual(["Alpha", "Éclair"]);
@@ -357,8 +354,8 @@ describe("listCollections", () => {
     const t = convexTest(schema);
     await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
-    const first = await asUser.mutation(api.library.collections.createCollection, { name: "Alpha" });
-    await asUser.mutation(api.library.collections.createCollection, { name: "Beta" });
+    const first = (await asUser.mutation(api.library.collections.createCollection, { name: "Alpha" })).id;
+    (await asUser.mutation(api.library.collections.createCollection, { name: "Beta" })).id;
     await asUser.mutation(api.library.collections.renameCollection, { collectionId: first, name: "gamma" });
 
     const page = await asUser.query(api.library.collections.listCollections, firstPage(10));
@@ -429,7 +426,7 @@ describe("countCollections and getCollection", () => {
     await seedUser(t, "clerk_user1", "user1@test.com");
     const user2 = await seedUser(t, "clerk_user2", "user2@test.com");
     const asUser1 = t.withIdentity({ subject: "clerk_user1" });
-    const mine = await asUser1.mutation(api.library.collections.createCollection, { name: "Mine" });
+    const mine = (await asUser1.mutation(api.library.collections.createCollection, { name: "Mine" })).id;
     const theirs = await seedCollection(t, user2!._id, "Theirs");
 
     expect(await asUser1.query(api.library.collections.countCollections, {})).toBe(1);
@@ -444,7 +441,7 @@ describe("countCollections and getCollection", () => {
     // Saved before counts existed: no count row.
     await seedCollection(t, user!._id, "Old one");
     await seedCollection(t, user!._id, "Old two");
-    const made = await asUser.mutation(api.library.collections.createCollection, { name: "New" });
+    const made = (await asUser.mutation(api.library.collections.createCollection, { name: "New" })).id;
     expect(await asUser.query(api.library.collections.countCollections, {})).toBe(3);
     await asUser.mutation(api.library.collections.deleteCollection, { collectionId: made });
     expect(await asUser.query(api.library.collections.countCollections, {})).toBe(2);
@@ -716,7 +713,91 @@ describe("removeFromCollection", () => {
         libraryItemId: item!._id,
       }
     );
-    expect(result).toBeNull();
+    // Nothing was taken out, so there's nothing to put back.
+    expect(result.undo).toBeUndefined();
+  });
+});
+
+describe("undoing a collection change (#342)", () => {
+  const { createCollection, renameCollection, deleteCollection, addToCollection, removeFromCollection } = api.library.collections;
+  // A paper's place in a collection is told apart by when it was put in, so each step here takes a second.
+  beforeEach(() => void vi.useFakeTimers({ toFake: ["Date"], now: 1_800_000_000_000 }));
+  afterEach(() => void vi.useRealTimers());
+  async function owner() {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const signedIn = t.withIdentity({ subject: "clerk_user1" });
+    const asUser = {
+      mutation: ((...args: unknown[]) => {
+        vi.advanceTimersByTime(1_000);
+        return (signedIn.mutation as (...args: unknown[]) => unknown)(...args);
+      }) as unknown as typeof signedIn.mutation,
+    };
+    const collection = (collectionId: Id<"collections">) => t.run((ctx) => ctx.db.get("collections", collectionId));
+    return { t, user: user!, asUser, collection };
+  }
+
+  it("deletes a collection it made while that's empty and still has its name", async () => {
+    const { t, user, asUser, collection } = await owner();
+    const made = await asUser.mutation(createCollection, { name: " Reading " });
+    expect(made.undo).toEqual({ path: "library/collections:deleteCollection", args: { collectionId: made.id, expect: { name: "Reading" } } });
+    await asUser.mutation(deleteCollection, made.undo!.args);
+    expect(await collection(made.id)).toBeNull();
+
+    // Renamed since: it stays.
+    const renamed = await asUser.mutation(createCollection, { name: "Drafts" });
+    await asUser.mutation(renameCollection, { collectionId: renamed.id, name: "Final" });
+    await expect(asUser.mutation(deleteCollection, renamed.undo!.args)).rejects.toThrow(/renamed or holds papers/);
+    // A paper put in it since: it stays. Once that's undone, so can the collection be.
+    const used = await asUser.mutation(createCollection, { name: "Used" });
+    const item = await seedLibraryItem(t, user._id, { openalexId: "https://openalex.org/W1" });
+    const added = await asUser.mutation(addToCollection, { collectionId: used.id, libraryItemId: item!._id });
+    await expect(asUser.mutation(deleteCollection, used.undo!.args)).rejects.toThrow(/renamed or holds papers/);
+    expect(await collection(used.id)).not.toBeNull();
+    await asUser.mutation(removeFromCollection, added.undo!.args);
+    await asUser.mutation(deleteCollection, used.undo!.args);
+    expect(await collection(used.id)).toBeNull();
+  });
+
+  it("gives a collection its name back, unless it was renamed again", async () => {
+    const { asUser, collection } = await owner();
+    const { id: collectionId } = await asUser.mutation(createCollection, { name: "Reading" });
+    const first = await asUser.mutation(renameCollection, { collectionId, name: "To read" });
+    expect(first.undo).toEqual({ path: "library/collections:renameCollection", args: { collectionId, name: "Reading", expect: "To read" } });
+    // The same name again changes nothing: no undo.
+    expect((await asUser.mutation(renameCollection, { collectionId, name: "To read" })).undo).toBeUndefined();
+    const second = await asUser.mutation(renameCollection, { collectionId, name: "Read later" });
+    await expect(asUser.mutation(renameCollection, first.undo!.args)).rejects.toThrow(/renamed since/);
+    await asUser.mutation(renameCollection, second.undo!.args);
+    await asUser.mutation(renameCollection, first.undo!.args);
+    expect((await collection(collectionId))?.name).toBe("Reading");
+  });
+
+  it("takes out only a paper it put in, and puts back only one it took out", async () => {
+    const { t, user, asUser, collection } = await owner();
+    const { id: collectionId } = await asUser.mutation(createCollection, { name: "Reading" });
+    const item = await seedLibraryItem(t, user._id, { openalexId: "https://openalex.org/W1" });
+    const membership = { collectionId, libraryItemId: item!._id };
+
+    const added = await asUser.mutation(addToCollection, membership);
+    expect(added.undo).toMatchObject({ path: "library/collections:removeFromCollection", args: membership });
+    // Already there: no undo, so undoing never takes out a paper this call didn't put in.
+    expect((await asUser.mutation(addToCollection, membership)).undo).toBeUndefined();
+    const removed = await asUser.mutation(removeFromCollection, added.undo!.args);
+    expect((await collection(collectionId))?.itemCount).toBe(0);
+    expect(removed.undo).toMatchObject({ path: "library/collections:addToCollection", args: membership });
+    // Put back by that undo, it has its place again: the add can be undone once more.
+    await asUser.mutation(addToCollection, removed.undo!.args);
+    await asUser.mutation(removeFromCollection, added.undo!.args);
+    expect((await collection(collectionId))?.itemCount).toBe(0);
+    // Put in again by hand, it's a new place, which the first add's undo leaves.
+    await asUser.mutation(addToCollection, membership);
+    await expect(asUser.mutation(removeFromCollection, added.undo!.args)).rejects.toThrow(/put in the collection again/);
+    expect((await collection(collectionId))?.itemCount).toBe(1);
+    // A paper that has left the library since has nothing to take out, and the undo says so.
+    await t.run((ctx) => ctx.db.delete("libraryItems", item!._id));
+    await t.run(async (ctx) => { for (const row of await ctx.db.query("libraryItemCollections").collect()) await ctx.db.delete("libraryItemCollections", row._id); });
+    await expect(asUser.mutation(removeFromCollection, added.undo!.args)).rejects.toThrow(/left the library/);
   });
 });
 
