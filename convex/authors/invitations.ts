@@ -1,8 +1,12 @@
+import { paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery, mutation, query } from "../lib/functions";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
+import { MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import { rateLimit } from "../lib/rateLimit";
 import { requireProfileAccess } from "./access";
 
@@ -16,6 +20,12 @@ export const prepare = internalMutation({
     if (email === user.email.toLowerCase()) throw createError("CONFLICT", "You already own this profile");
     const pending = await ctx.db.query("authorProfileInvitations")
       .withIndex("by_profileId_and_email", q => q.eq("profileId", args.profileId).eq("email", email)).unique();
+    // Sending one again changes nothing about how many wait; only a new one, or one answered or expired, counts.
+    if (pending?.state !== "pending") {
+      const theirs = await ctx.db.query("authorProfileInvitations")
+        .withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).take(MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL);
+      if (theirs.length >= MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL) throw createError("VALIDATION_ERROR", "This person has too many invitations waiting. Ask them to answer some first.");
+    }
     const values = {profileId: args.profileId, email, invitedBy: user._id, expiresAt: Date.now() + 7 * 86400000, state: "pending" as const, delivery: "queued" as const};
     const invitationId = pending?._id ?? await ctx.db.insert("authorProfileInvitations", values);
     if (pending) await ctx.db.replace("authorProfileInvitations", pending._id, values);
@@ -68,21 +78,35 @@ export const cancel = mutation({
   },
 });
 
+const waitingInvitationValidator = v.object({invitationId: v.id("authorProfileInvitations"), profileId: v.id("authorProfiles"), name: v.string()});
+const waitingArgs = {profileId: v.optional(v.id("authorProfiles"))};
+
+/** The profile invitations waiting for the person: the one to `profileId`, or all of them, which inviting keeps to MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL. */
+async function waitingInvitations(ctx: QueryCtx, {profileId}: {profileId?: Id<"authorProfiles">}) {
+  const user = await requireAuth(ctx);
+  const email = user.email.toLowerCase();
+  const invitation = profileId ? await ctx.db.query("authorProfileInvitations")
+    .withIndex("by_profileId_and_email", q => q.eq("profileId", profileId).eq("email", email)).unique() : null;
+  const invitations = profileId ? invitation ? [invitation] : [] : await ctx.db.query("authorProfileInvitations")
+    .withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).take(MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL);
+  return (await Promise.all(invitations.filter(i => i.state === "pending").map(async invitation => {
+    const profile = await ctx.db.get("authorProfiles", invitation.profileId);
+    return profile ? {invitationId: invitation._id, profileId: profile._id, name: profile.name} : null;
+  }))).filter(row => row !== null);
+}
+
+/** The profile invitations waiting for the person, as one page: an address has no more waiting than a page holds. */
+export const listInvitations = query({
+  args: waitingArgs,
+  returns: paginationResultValidator(waitingInvitationValidator),
+  handler: async (ctx, args) => ({page: await waitingInvitations(ctx, args), isDone: true, continueCursor: ""}),
+});
+
+/** Kept for one release, while the deployed site still calls it; `listInvitations` replaces it. */
 export const listMine = query({
-  args: {profileId: v.optional(v.id("authorProfiles"))},
-  returns: v.array(v.object({invitationId: v.id("authorProfileInvitations"), profileId: v.id("authorProfiles"), name: v.string()})),
-  handler: async (ctx, {profileId}) => {
-    const user = await requireAuth(ctx);
-    const email = user.email.toLowerCase();
-    const invitation = profileId ? await ctx.db.query("authorProfileInvitations")
-      .withIndex("by_profileId_and_email", q => q.eq("profileId", profileId).eq("email", email)).unique() : null;
-    const invitations = profileId ? invitation ? [invitation] : [] : await ctx.db.query("authorProfileInvitations")
-      .withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).take(100);
-    return (await Promise.all(invitations.filter(i => i.state === "pending").map(async invitation => {
-      const profile = await ctx.db.get("authorProfiles", invitation.profileId);
-      return profile ? {invitationId: invitation._id, profileId: profile._id, name: profile.name} : null;
-    }))).filter(row => row !== null);
-  },
+  args: waitingArgs,
+  returns: v.array(waitingInvitationValidator),
+  handler: waitingInvitations,
 });
 
 export const respondVerified = internalMutation({

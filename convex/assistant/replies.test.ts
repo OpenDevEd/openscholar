@@ -8,9 +8,10 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
+import { SERVER_MODEL_SLUG } from "../ai/config";
 import { assistant } from "./agent";
 import { people } from "./assistant.test-support";
-import { finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, waitFor } from "./turn.test-support";
+import { erroringOnAbortDoStream, finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, waitFor } from "./turn.test-support";
 
 const { mockDoStream, modelIdsSeen, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), modelIdsSeen: [] as unknown[], fetchMock: vi.fn() }));
 vi.stubGlobal("fetch", fetchMock);
@@ -64,11 +65,15 @@ describe("assistant replies", () => {
 
     const { page } = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
     expect(page).toMatchObject([
-      { role: "assistant", text: "Hello Ben", status: "done", model: "mock/model" },
-      { role: "user", text: "Hi there", status: "done", sender: { userId: ben } },
+      { role: "assistant", text: "Hello Ben", status: "done", model: "mock/model", mine: false },
+      { role: "user", text: "Hi there", status: "done", sender: { userId: ben }, mine: false },
     ]);
+    expect((await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[1].mine).toBe(true);
     expect(page[0].order).toBe(page[1].order);
     expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
+    // The list shows the chat by what was said last.
+    expect((await asAda.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage })).page[0]).toMatchObject({ preview: "Hello Ben", writing: false });
+    expect((await asAda.query(api.assistant.threads.list, { scope: "all", text: "hello b", paginationOpts: firstPage })).page).toHaveLength(1);
 
     // Ben sent it, so Ben pays, though the chat is Ada's.
     const paid = await charges(t);
@@ -112,6 +117,34 @@ describe("assistant replies", () => {
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Thanks" });
     await ended(t, threadId);
     expect((await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[0]).toMatchObject({ text: "Done", status: "done" });
+  });
+
+  it("show as stopped when the runtime reports the stop as an error, before the first word or after", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await sharedChat(t);
+    const stopping = async () => {
+      const running = await waitFor(async () => (await chat(t, threadId))?.reply !== undefined).then(async () => (await chat(t, threadId))!.reply!);
+      await asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: running.attemptId });
+      await ended(t, threadId);
+      return (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[0];
+    };
+
+    // Stopped while the model was still thinking: the request itself fails.
+    mockDoStream.mockImplementation(erroringOnAbortDoStream([], 0));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Think hard" });
+    await waitFor(() => mockDoStream.mock.calls.length === 1);
+    const early = await stopping();
+    expect(early).toMatchObject({ role: "assistant", status: "stopped", text: "" });
+    expect(early.error).toBeUndefined();
+
+    // Stopped mid-reply: the stream fails, and what was written is kept.
+    mockDoStream.mockImplementation(erroringOnAbortDoStream(["One ", "two "], 300));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Count" });
+    await waitFor(async () => (await asAda.query(api.assistant.replies.live, { threadId }))?.text.includes("two") === true, { timeoutMs: 5_000 });
+    const late = await stopping();
+    expect(late).toMatchObject({ role: "assistant", status: "stopped" });
+    expect(late.text.trim()).toBe("One two");
+    expect(late.error).toBeUndefined();
   });
 
   it("can't be asked for by someone who only reads the chat", async () => {
@@ -175,20 +208,56 @@ describe("assistant replies", () => {
     expect(mockDoStream).not.toHaveBeenCalled();
   });
 
-  it("run on the chat's model, once someone who writes in it picks one", async () => {
+  it("run on the Balanced preset's chat model until someone who writes in the chat picks one", async () => {
     const t = convexTest(schema);
     const { asAda, asBen, threadId } = await sharedChat(t);
-    const modelId = await mockModel(t);
+    const [balanced, picked] = [await mockModel(t, "mock/balanced"), await mockModel(t, "mock/picked")];
+    await t.run(async (ctx) => ctx.db.insert("aiModelConfig", { key: "preset.balanced.chat", modelId: "mock/balanced", updatedAt: 1 }));
     mockDoStream.mockImplementation(finishingDoStream(["Ok"]));
 
+    expect(await asAda.query(api.assistant.threads.get, { threadId })).toMatchObject({ model: { _id: balanced } });
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "First" });
     await ended(t, threadId);
-    await asBen.mutation(api.assistant.threads.setModel, { threadId, modelId });
-    expect(await asAda.query(api.assistant.threads.get, { threadId })).toMatchObject({ modelId });
+    await asBen.mutation(api.assistant.threads.setModel, { threadId, modelId: picked });
+    expect(await asAda.query(api.assistant.threads.get, { threadId })).toMatchObject({ model: { _id: picked } });
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Second" });
     await ended(t, threadId);
+    expect(modelIdsSeen).toEqual([balanced, picked]);
 
-    expect(modelIdsSeen).toEqual([null, modelId]);
+    // An effort with no model to take it is refused, not dropped.
+    await expect(asAda.mutation(api.assistant.threads.create, { effort: "low" })).rejects.toThrow(/Pick a model/);
+
+    // A model that can't call tools, or is too small for a long conversation, can't be picked.
+    const [toolless, small] = await t.run(async (ctx) => {
+      const row = (await ctx.db.get("models", picked))!;
+      const { _id, _creationTime, ...fields } = row;
+      return [
+        await ctx.db.insert("models", { ...fields, modelId: "mock/toolless", supportedParameters: [] }),
+        await ctx.db.insert("models", { ...fields, modelId: "mock/small", contextLength: 32_000 }),
+      ];
+    });
+    await expect(asAda.mutation(api.assistant.threads.setModel, { threadId, modelId: toolless })).rejects.toThrow(/tools/);
+    await expect(asAda.mutation(api.assistant.threads.create, { modelId: small })).rejects.toThrow(/long enough/);
+
+    // A chat that fell back on a model like that, or had one picked before the rule, doesn't send on it either.
+    await t.run(async (ctx) => ctx.db.patch("assistantThreads", threadId, { modelId: small }));
+    await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "Third" })).rejects.toThrow(/long enough/);
+    await asAda.mutation(api.assistant.threads.setModel, { threadId, modelId: picked });
+
+    // With nothing picking a model, the server's own default runs, and it's held to the rule where the catalog has it.
+    const bare = await asAda.mutation(api.assistant.threads.create, {});
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query("aiModelConfig").collect()) await ctx.db.delete("aiModelConfig", row._id);
+      const { _id, _creationTime, ...fields } = (await ctx.db.get("models", picked))!;
+      await ctx.db.insert("models", { ...fields, modelId: SERVER_MODEL_SLUG, supportedParameters: [] });
+    });
+    await expect(asAda.mutation(api.assistant.replies.send, { threadId: bare, text: "First" })).rejects.toThrow(/tools/);
+
+    // A chat started on a model runs on it from its first message.
+    const own = await asAda.mutation(api.assistant.threads.create, { modelId: picked });
+    await asAda.mutation(api.assistant.replies.send, { threadId: own, text: "First" });
+    await ended(t, own);
+    expect(modelIdsSeen.at(-1)).toBe(picked);
   });
 
   it("hold their chat while their action waits or runs, and no longer once it has ended", async () => {
@@ -271,15 +340,17 @@ describe("assistant replies", () => {
   });
 });
 
-function mockModel(t: Test) {
+function mockModel(t: Test, slug = "mock/model") {
   return t.run(async (ctx) =>
     ctx.db.insert("models", {
-      modelId: "mock/model",
+      modelId: slug,
       name: "Mock Model",
       provider: "openrouter",
       inputPricePerMillion: 1_000,
       outputPricePerMillion: 2_000,
       costMarkup: 1,
+      contextLength: 200_000,
+      supportedParameters: ["tools"],
       isServed: true,
       sortOrder: 0,
       syncedAt: 1,

@@ -58,7 +58,7 @@ import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./t
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { assistantThreadAccessFields, assistantThreadFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
-import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
+import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
 export default defineSchema({
   searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator })
@@ -108,7 +108,8 @@ export default defineSchema({
   paperRatings: defineTable({ userId: v.id("users"), data: ratingValidator })
     .index("by_user", ["userId"])
     .index("by_user_and_paperId", ["userId", "data.paperId"]),
-  researchReceipts: defineTable({ userId: v.id("users"), key: v.string(), fingerprint: v.optional(v.string()) })
+  // `undo` is what reverses the change a request made, kept so a retry of it answers the same (#342).
+  researchReceipts: defineTable({ userId: v.id("users"), key: v.string(), fingerprint: v.optional(v.string()), undo: v.optional(undoCommandValidator) })
     .index("by_user_and_key", ["userId", "key"]),
   topicCatalog: defineTable(topicNodeFields)
     .index("by_external_id", ["id"]).index("by_parent_and_name", ["parent", "name"])
@@ -1106,6 +1107,8 @@ export default defineSchema({
     userId: v.id("users"),
     item: removedItemValidator,
     collectionIds: capped(v.array(v.id("collections")), MAX_COLLECTIONS_PER_USER),
+    // When the paper was put in each of `collectionIds`, in the same order. A removal from before these were kept has none.
+    assignedAts: capped(v.optional(v.array(v.number())), MAX_COLLECTIONS_PER_USER),
     expiresAt: v.number(),
   }),
 

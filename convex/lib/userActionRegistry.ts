@@ -4,14 +4,15 @@
  * function built from a registry entry is missing here.
  */
 import { answersOfAction, changeAction, countSearchesAction, getSearchAction, listedSearchesAction, ratingsAction, ratingsOfAction, revisionsAction, searchHistoryAction, searchHistoryEntryAction, countShortcutsAction, listedShortcutsAction, shortcutsOfAction } from "../research/records";
-import { clearLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAction, saveToLibraryAction, setPaperInCollectionAction } from "../library/mutations";
+import { setLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAction, saveToLibraryAction, setPaperInCollectionAction } from "../library/mutations";
 import { countJobsAction as extractionJobCountAction, listJobsAction as extractionJobsAction } from "../extraction/queries/jobs";
 import { countJobFailuresAction as extractionFailureCountAction } from "../extraction/queries/failures";
 import { countJobResultsAction as extractionResultCountAction, listJobResultsAction as extractionResultsAction } from "../extraction/queries/results";
-import { grantAction as chatGrantAction, listAccessAction as chatAccessAction, revokeAction as chatRevokeAction } from "../assistant/sharing";
+import { candidatesAction as chatCandidatesAction, grantAction as chatGrantAction, listAccessAction as chatAccessAction, revokeAction as chatRevokeAction } from "../assistant/sharing";
 import { messagesAction as chatMessagesAction } from "../assistant/replies";
 import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, removeAction as chatRemoveAction, renameAction as chatRenameAction, setModelAction as chatModelAction } from "../assistant/threads";
 import { savedPaperAction } from "../library/queries";
+import { addToCollectionAction, countCollectionsAction, createCollectionAction, deleteCollectionAction, getCollectionAction, listCollectionsAction, removeFromCollectionAction, renameCollectionAction } from "../library/collections";
 import { estimateAction as screeningEstimateAction } from "../screening/queries";
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
 import { slotsAction as screeningSlotsAction } from "../screening/queries";
@@ -31,6 +32,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   chatRemoveAction,
   chatMessagesAction,
   chatAccessAction,
+  chatCandidatesAction,
   chatGrantAction,
   chatRevokeAction,
   extractionJobsAction,
@@ -59,10 +61,18 @@ export const USER_ACTIONS: readonly UserAction[] = [
   screeningPapersAction,
   screeningAnswerAction,
   saveToLibraryAction,
-  clearLibraryRatingAction,
+  setLibraryRatingAction,
   removeFromLibraryAction,
   restoreLibraryItemAction,
   setPaperInCollectionAction,
+  listCollectionsAction,
+  countCollectionsAction,
+  getCollectionAction,
+  createCollectionAction,
+  renameCollectionAction,
+  deleteCollectionAction,
+  addToCollectionAction,
+  removeFromCollectionAction,
   listChargesAction,
   countChargesAction,
   spendingAction,

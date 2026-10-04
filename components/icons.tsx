@@ -18,7 +18,7 @@ export type AppIcon = ComponentType<ComponentPropsWithoutRef<"svg"> & { size?: s
 // Sections of the app. The sidebar, page headers and settings rails share these.
 export { Home2Icon as HomeIcon, Home2Icon as Home } from "@solar-icons/react/bold-duotone/home-2";
 export { LibraryIcon, LibraryIcon as Library, LibraryIcon as LibraryBig } from "@solar-icons/react/bold-duotone/library";
-export { BookBookmarkIcon as BookmarksIcon } from "@solar-icons/react/bold-duotone/book-bookmark";
+export { BookBookmarkIcon as BookmarksIcon, BookBookmarkIcon as BookMarked } from "@solar-icons/react/bold-duotone/book-bookmark";
 export { HistoryIcon, HistoryIcon as History, HistoryIcon as TimerReset } from "@solar-icons/react/bold-duotone/history";
 export { DatabaseIcon as ExtractionIcon, DatabaseIcon as SourcesIcon, DatabaseIcon as Database } from "@solar-icons/react/bold-duotone/database";
 export { StructureIcon as TopicsIcon, StructureIcon as Network } from "@solar-icons/react/bold-duotone/structure";
@@ -130,6 +130,10 @@ export { GalleryIcon as ImageIcon } from "@solar-icons/react/bold-duotone/galler
 export { HandMoneyIcon as HandCoins } from "@solar-icons/react/bold-duotone/hand-money";
 export { GripVerticalIcon as GripVertical } from "@solar-icons/react/bold-duotone/grip-vertical";
 export { AddFolderIcon as FolderPlus } from "@solar-icons/react/bold-duotone/add-folder";
+export { RemoveFolderIcon as FolderMinus } from "@solar-icons/react/bold-duotone/remove-folder";
+export { SpeedometerMiddleIcon as Gauge } from "@solar-icons/react/bold-duotone/speedometer-middle";
+export { HourglassIcon as Hourglass } from "@solar-icons/react/bold-duotone/hourglass";
+export { StopIcon as Square } from "@solar-icons/react/bold-duotone/stop";
 export { FileSendIcon as FileUp } from "@solar-icons/react/bold-duotone/file-send";
 export { CameraIcon as Camera } from "@solar-icons/react/bold-duotone/camera";
 export { BrainIcon as Brain, BrainIcon } from "@solar-icons/react/bold-duotone/brain";

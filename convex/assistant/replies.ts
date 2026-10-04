@@ -7,6 +7,7 @@
  *
  *   send (mutation)    saves the message, takes the lock, schedules `reply`
  *   reply (action)     runs the reply through runTurn (./turn.ts), which releases the lock
+ *   compact (action)   after a reply that read a lot, summarizes the chat so far under the same lock (./context.ts)
  *   stop (mutation)    asks the running reply to stop
  *   messages (query)   the chat's messages, a page at a time
  *   live (query)       the reply being written: who it answers, and its text so far
@@ -15,13 +16,14 @@ import { listMessages, listStreams, type MessageDoc } from "@convex-dev/agent";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
-import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server";
+import { SERVER_MODEL_SLUG } from "../ai/config";
 import { effortValidator } from "../aiModelConfig/validators";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
-import { createError } from "../lib/errors";
+import { createError, errorToLogString } from "../lib/errors";
 import { internalAction, internalMutation, internalQuery, mutation, query } from "../lib/functions";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
@@ -30,6 +32,8 @@ import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
+import { COMPACT_AT_TOKENS, compactedOf, compactionDue, contextSince, summarize } from "./context";
+import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 import { runTurn } from "./turn";
 
 const FLAG = "assistant.enabled";
@@ -48,17 +52,6 @@ const LIVE_READS = 30;
 /** Chats writing a reply that one sweep checks, oldest first. */
 const SWEEP_BATCH = 200;
 
-type Reply = NonNullable<Doc<"assistantThreads">["reply"]>;
-
-/**
- * Whether a reply is still being written: its action is waiting to run or running. An
- * action that ended, or died, without releasing its lock no longer holds the chat.
- */
-async function writing(ctx: QueryCtx | MutationCtx, reply: Reply | undefined): Promise<boolean> {
-  if (!reply) return false;
-  const state = (await ctx.db.system.get(reply.scheduledId))?.state.kind;
-  return state === "pending" || state === "inProgress";
-}
 
 export const send = mutation({
   args: { threadId: v.id("assistantThreads"), text: v.string() },
@@ -86,7 +79,13 @@ export const send = mutation({
     if (stillWriting >= CHAT_CONCURRENCY_LIMIT) {
       throw createError("CONFLICT", `The assistant is already writing ${CHAT_CONCURRENCY_LIMIT} replies for you. Wait for one to finish.`);
     }
-    const model = thread.modelId ? await requireAvailableModel(ctx, thread.modelId) : null;
+    const { modelId, effort } = await chatModel(ctx, thread);
+    // The model the chat falls back on, or one picked before the rule, is held to it too. So is
+    // the server's own default, which runs when nothing picks a model, where the catalog has it.
+    const model = modelId
+      ? await requireAvailableModel(ctx, modelId)
+      : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
+    if (model) requireAssistantModel(model);
 
     // The message, the lock and the scheduled reply commit together, so a second send
     // can't slip in between them.
@@ -101,11 +100,11 @@ export const send = mutation({
       attemptId,
       senderId: userId,
       // Taken when the message is sent, so a later change only affects the next reply.
-      modelId: thread.modelId ?? null,
+      modelId,
       // An effort the catalog has since dropped runs at the model's default.
-      effort: thread.effort && model?.reasoningEfforts?.includes(thread.effort) ? thread.effort : undefined,
+      effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
     });
-    await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
+    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
     return null;
   },
 });
@@ -140,6 +139,23 @@ export const reply = internalAction({
       await ctx.runMutation(internal.assistant.replies.release, lock);
       return null;
     }
+    // How much history the reply's request read, which decides whether a compaction follows it.
+    let history = { messages: 0, bytes: 0 };
+    const turn = { agentThreadId, senderId, modelId, effort };
+    const shouldStop = async () => (await state()) !== "writing";
+    let read = await compactedOf(ctx, threadId);
+    // A compaction that was due and didn't finish is written now, before the reply reads the conversation.
+    if (read.owed && read.answering) {
+      try {
+        const through = read.answering - 1;
+        const summary = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:summary`, shouldStop });
+        await ctx.runMutation(internal.assistant.replies.summarized, { ...lock, summary, through });
+        read = { ...read, summary, compactedThrough: through, owed: false };
+      } catch (error) {
+        // Still owed. The reply goes ahead if the conversation can be read whole, and fails saying so if it can't.
+        console.error("[assistant] owed compaction failed", { threadId, error: errorToLogString(error) });
+      }
+    }
     await runTurn(ctx, {
       agent: assistant,
       threadId: agentThreadId,
@@ -150,9 +166,76 @@ export const reply = internalAction({
       attemptId,
       credits: ESTIMATED_CREDITS_PER_CHAT_MESSAGE,
       log: { assistantThreadId: threadId },
-      shouldStop: async () => (await state()) !== "writing",
-      release: () => ctx.runMutation(internal.assistant.replies.release, lock),
+      shouldStop,
+      // People come back to a chat after a pause, so its cache is kept for an hour.
+      cache: "1h",
+      contextHandler: contextSince({
+        summary: read.summary,
+        compactedThrough: read.compactedThrough,
+        agentThreadId,
+        promptMessageId,
+        onHistory: (read) => {
+          history = read;
+        },
+      }),
+      release: ({ lastInputTokens }) => ctx.runMutation(internal.assistant.replies.release, { ...lock, ended: { ...turn, ...history, lastInputTokens } }),
     });
+    return null;
+  },
+});
+
+const turnArgs = { agentThreadId: v.string(), senderId: v.id("users"), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator) };
+
+/**
+ * What a chat's replies read from its record: its summary, the exchange the summary runs
+ * through, whether a compaction is owed, and the exchange being answered now.
+ */
+export const compacted = internalQuery({
+  args: { threadId: v.id("assistantThreads") },
+  returns: v.object({ summary: v.optional(v.string()), compactedThrough: v.optional(v.number()), owed: v.boolean(), answering: v.optional(v.number()) }),
+  handler: async (ctx, { threadId }) => {
+    const thread = await ctx.db.get("assistantThreads", threadId);
+    return {
+      ...(thread?.summary ? { summary: thread.summary } : {}),
+      ...(thread?.compactedThrough !== undefined ? { compactedThrough: thread.compactedThrough } : {}),
+      owed: thread?.compactionOwed === true,
+      ...(thread?.reply ? { answering: thread.reply.order } : {}),
+    };
+  },
+});
+
+/** Keeps the summary a reply wrote before it answered, while the reply still holds the chat. */
+export const summarized = internalMutation({
+  args: { ...lockArgs, summary: v.string(), through: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { threadId, attemptId, summary, through }) => {
+    const thread = await ctx.db.get("assistantThreads", threadId);
+    // One handed in after Stop isn't kept: the reply it was written for won't run, and it stays owed.
+    if (thread?.reply?.attemptId === attemptId && !thread.reply.stop) await ctx.db.patch("assistantThreads", threadId, { summary, compactedThrough: through, compactionOwed: undefined });
+    return null;
+  },
+});
+
+/**
+ * Summarizes the chat through the reply that just ended, under that reply's lock, so the
+ * chat takes no message until its next request can start from the summary. A failed or
+ * stopped compaction leaves the chat as it was; the next reply that reads a lot tries again.
+ */
+export const compact = internalAction({
+  args: { ...lockArgs, ...turnArgs, through: v.number(), lastInputTokens: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { threadId, attemptId, through, ...turn }) => {
+    const lock = { threadId, attemptId };
+    let summary: string | undefined;
+    const shouldStop = async () => (await ctx.runQuery(internal.assistant.replies.lockState, lock)) !== "writing";
+    try {
+      if (!(await shouldStop())) {
+        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, chargeId: `chat:${attemptId}:summary`, shouldStop });
+      }
+    } catch (error) {
+      console.error("[assistant] compaction failed", { threadId, error: errorToLogString(error) });
+    }
+    await ctx.runMutation(internal.assistant.replies.release, { ...lock, ...(summary ? { summarized: { summary, through } } : {}) });
     return null;
   },
 });
@@ -181,13 +264,44 @@ export const lockState = internalQuery({
   },
 });
 
-/** Releases a reply's lock when it ends, however it ends. */
+/**
+ * Releases a reply's lock when it ends, however it ends. What it wrote becomes the chat's
+ * preview. A reply that read a lot (`ended`) hands its lock to a compaction instead, and
+ * the compaction releases it, with the summary it wrote (`summarized`) if it wrote one.
+ */
 export const release = internalMutation({
-  args: lockArgs,
+  args: {
+    ...lockArgs,
+    ended: v.optional(v.object({ ...turnArgs, lastInputTokens: v.number(), messages: v.number(), bytes: v.number() })),
+    summarized: v.optional(v.object({ summary: v.string(), through: v.number() })),
+  },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId }) => {
-    const current = (await ctx.db.get("assistantThreads", threadId))?.reply;
-    if (current?.attemptId === attemptId) await ctx.db.patch("assistantThreads", threadId, { reply: undefined });
+  handler: async (ctx, { threadId, attemptId, ended, summarized }) => {
+    const thread = await ctx.db.get("assistantThreads", threadId);
+    if (thread?.reply?.attemptId !== attemptId) return null;
+    const current = thread.reply;
+    if (current.compacting) {
+      // A summary that was stopped, or never written, stays owed: the next reply writes it first.
+      const kept = summarized && !current.stop;
+      await ctx.db.patch("assistantThreads", threadId, {
+        reply: undefined,
+        ...(kept ? { summary: summarized.summary, compactedThrough: summarized.through, compactionOwed: undefined } : { compactionOwed: true }),
+      });
+      return null;
+    }
+    const newest = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null }, excludeToolMessages: true })).page[0];
+    const written = newest?.message?.role === "assistant" && newest.order === current.order ? previewOf(newest.text ?? "") : "";
+    const preview = written ? { preview: written } : {};
+    const window = ended?.modelId ? (await ctx.db.get("models", ended.modelId))?.contextLength : undefined;
+    // A stopped reply is left alone: whoever stopped it is waiting to write.
+    if (ended && !current.stop && compactionDue({ ...ended, window })) {
+      const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
+      const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.replies.compact, { threadId, attemptId, ...turn, through: current.order, lastInputTokens });
+      // Owed from here until a summary is kept, so one whose action dies is written by the next reply.
+      await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true } });
+      return null;
+    }
+    await ctx.db.patch("assistantThreads", threadId, { reply: undefined, ...preview });
     return null;
   },
 });
@@ -230,6 +344,8 @@ const messageValidator = v.object({
   ),
   /** Who sent it, on a person's message. Their name is empty when they gave none. */
   sender: v.optional(v.object({ userId: v.id("users"), name: v.string() })),
+  /** Whether the person reading sent it. */
+  mine: v.boolean(),
   /** The model that wrote it, on a reply. */
   model: v.optional(v.string()),
   at: v.number(),
@@ -296,6 +412,7 @@ export const messagesAction = defineUserQuery({
               }
             : {}),
           ...(sender ? { sender } : {}),
+          mine: role === "user" && row.userId === userId,
           ...(role === "assistant" && row.model ? { model: row.model } : {}),
           at: row._creationTime,
         },
@@ -336,6 +453,8 @@ export const live = query({
       startedAt: v.number(),
       /** Someone stopped it, and it hasn't ended yet. */
       stopping: v.boolean(),
+      /** The reply is written, and the chat is summarizing the conversation so far before it takes the next message. */
+      compacting: v.boolean(),
       text: v.string(),
     }),
   ),
@@ -359,6 +478,7 @@ export const live = query({
       order: current.order,
       startedAt: current.startedAt,
       stopping: current.stop === true,
+      compacting: current.compacting === true,
       text: stream ? await textSoFar(ctx, thread.agentThreadId, stream.streamId) : "",
     };
   },

@@ -123,3 +123,6 @@ export const billingCatalogValidator = v.object({
   features: capped(v.array(catalogFeatureValidator), MAX_BILLING_FEATURES),
 });
 export type BillingCatalog = Infer<typeof billingCatalogValidator>;
+
+/** The lines of a plan change's first charge, as Autumn previews it: at most MAX_PLAN_DETAILS are shown. */
+export const previewLineItemsValidator = capped(v.array(v.object({ description: v.string(), amount: v.number() })), MAX_PLAN_DETAILS);

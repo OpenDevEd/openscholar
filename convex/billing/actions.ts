@@ -6,7 +6,8 @@ import { createError } from "../lib/errors";
 import { requireAppUrl } from "../lib/env";
 import { autumn } from "./autumn";
 import { refreshAccount } from "./accounts";
-import type { BillingCatalog } from "./validators";
+import { previewLineItemsValidator, type BillingCatalog } from "./validators";
+import { MAX_PLAN_DETAILS } from "../lib/listCaps";
 import { TOPUP_PLAN } from "../../lib/billing/plans";
 import { findPlan, topUpBundles } from "../../lib/billing/catalog";
 
@@ -93,7 +94,7 @@ export const previewPlan = action({
   returns: v.object({
     dueNow: v.number(),
     currency: v.string(),
-    lineItems: v.array(v.object({ description: v.string(), amount: v.number() })),
+    lineItems: previewLineItemsValidator,
     card: v.optional(v.object({ brand: v.string(), last4: v.string() })),
   }),
   handler: async (ctx, { plan }): Promise<{
@@ -112,7 +113,8 @@ export const previewPlan = action({
     return {
       dueNow: preview.total,
       currency: preview.currency,
-      lineItems: preview.line_items.map((item) => ({
+      // Autumn sends a line per charge and credit of the change, a handful; the cap is what the dialog lists.
+      lineItems: preview.line_items.slice(0, MAX_PLAN_DETAILS).map((item) => ({
         description: item.description,
         amount: item.total,
       })),

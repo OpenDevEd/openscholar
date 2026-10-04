@@ -328,8 +328,9 @@ describe("at the largest sizes the product allows", () => {
   it("an Evidence Library with 1,000 versions reads its history a page at a time and totals it (#423)", async () => {
     const fixture = await createReadySetupFixture("max_size_versions");
     const libraryId = fixture.created.libraryId;
-    // Thirteen revisions, each built on the one before as activations make them, so a page names what ten different ones changed.
-    const { operation, revisionIds } = await fixture.t.run(async (ctx) => {
+    // Thirteen revisions, each built on the one before as activations make them, so a page lists ten different ones.
+    const { operation, revisionIds, runtimeBindingId } = await fixture.t.run(async (ctx) => {
+      const runtimeBindingId = (await ctx.db.query("evidenceLibraryRuntimeBindings").withIndex("by_libraryId", (q) => q.eq("libraryId", libraryId)).first())!._id;
       const operation = (await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_createdAt", (q) => q.eq("libraryId", libraryId)).first())!;
       const revision = (await ctx.db.get(operation.revisionId!))!;
       const sections = await ctx.db.query("evidenceLibraryConfigSections").withIndex("by_revisionId_and_sectionKey", (q) => q.eq("revisionId", revision._id)).take(50);
@@ -340,10 +341,14 @@ describe("at the largest sizes the product allows", () => {
         for (const { _id: _sectionId, _creationTime: _made, ...section } of sections) await ctx.db.insert("evidenceLibraryConfigSections", { ...section, revisionId: id } as never);
         revisionIds.push(id);
       }
-      return { operation, revisionIds };
+      return { operation, revisionIds, runtimeBindingId };
     });
     const { _id, _creationTime, ...fields } = operation;
-    await insertMany(fixture.t, "evidenceLibraryConfigOperations", Array.from({ length: 1_000 }, (_, i) => ({ ...fields, kind: "publish", status: "succeeded", activationEditVersion: i + 1, revisionId: revisionIds[i % revisionIds.length], idempotencyKey: `max-version-${i}`, createdAt: i + 10, updatedAt: i + 10 })), 200);
+    const versions = Array.from({ length: 1_000 }, (_, i) => ({ ...fields, kind: "publish", status: "succeeded", activationEditVersion: i + 1, revisionId: revisionIds[i % revisionIds.length], idempotencyKey: `max-version-${i}`, createdAt: i + 10, updatedAt: i + 10 }));
+    // The newest keep their deployment's encrypted configuration at close to the largest a row may hold, as a finished deployment does.
+    const target = { applicationId: "application", aiProviderKey: { present: false }, openAlexApiKey: { present: false }, runtimeBindingId, targetBaseUrl: "https://library.example.test", customDomains: [], revisionKey: "r1", defaultLocale: "en-GB", runtimeCommit: "a".repeat(40), runtimeImage: "runtime:test", encryptedRuntimeConfig: "x".repeat(900_000), runtimeConfigSha256: "b".repeat(64), savedAt: 1 };
+    await insertMany(fixture.t, "evidenceLibraryConfigOperations", versions.slice(0, 976), 200);
+    await insertMany(fixture.t, "evidenceLibraryConfigOperations", versions.slice(976).map((version) => ({ ...version, configurationDeploymentTarget: target })), 8);
     // Asking for more than the largest page gets the largest page.
     const first = await fixture.admin.query(api.evidenceLibraries.versions.listVersionRows, { libraryId, paginationOpts: { cursor: null, numItems: 50 } });
     expect(first.page).toHaveLength(10);

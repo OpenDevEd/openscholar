@@ -7,6 +7,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
+import { readChangedSections } from "./configurationSnapshot";
 import { isConfigurationDeploymentOperation } from "./operationKinds";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import { requireEvidenceLibraryAccess } from "./access";
@@ -437,14 +438,11 @@ async function queueOperationRecord(
       "Publish and rollback operations require a revision",
     );
   }
-  if (args.revisionId) {
-    const revision = await ctx.db.get(
-      "evidenceLibraryConfigRevisions",
-      args.revisionId,
-    );
-    if (!revision || revision.libraryId !== args.libraryId) {
-      throw createError("NOT_FOUND", "Evidence Library revision not found");
-    }
+  const revision = args.revisionId
+    ? await ctx.db.get("evidenceLibraryConfigRevisions", args.revisionId)
+    : null;
+  if (args.revisionId && (!revision || revision.libraryId !== args.libraryId)) {
+    throw createError("NOT_FOUND", "Evidence Library revision not found");
   }
   const existing = await ctx.db
     .query("evidenceLibraryConfigOperations")
@@ -484,6 +482,10 @@ async function queueOperationRecord(
     activationEditVersion: args.activationEditVersion,
     runtimeUpdate: args.runtimeUpdate,
     revisionId: args.revisionId,
+    // A software update lists as one, with no sections named.
+    ...(revision && !args.runtimeUpdate && (args.kind === "publish" || args.kind === "setup")
+      ? { changedSections: await readChangedSections(ctx, revision) }
+      : {}),
     status: "queued",
     stage: "queued",
     attemptCount: 0,
@@ -692,6 +694,7 @@ export async function attachRevisionToSetupOperation(
     await ctx.db.patch("evidenceLibraryConfigOperations", operation._id, {
       activationEditVersion: args.activationEditVersion,
       revisionId: args.revisionId,
+      changedSections: await readChangedSections(ctx, revision),
       updatedAt: Date.now(),
     });
   }

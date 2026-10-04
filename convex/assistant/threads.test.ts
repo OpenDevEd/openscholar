@@ -1,17 +1,87 @@
 // Assistant chats (#324): who can open, change and share one, and how a person's chats list.
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
-import { api, internal } from "../_generated/api";
+import { api, components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { seedFeatureUser, seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import schema from "../schema";
 import { touchThread } from "./access";
 import { people } from "./assistant.test-support";
+import { previewOf } from "./threads";
+import { waitFor } from "./turn.test-support";
 
 const firstPage = { cursor: null, numItems: 10 };
 const titles = (page: { page: Array<{ title: string }> }) => page.page.map((chat) => chat.title);
 
 describe("assistant chats", () => {
+  it("suggest sharing with the person's own organizations and the people in them", async () => {
+    const t = convexTest(schema);
+    const { asAda, asCy, ben, team, elsewhere } = await people(t);
+    const suggested = async (as: typeof asAda, text?: string) => (await as.query(api.assistant.sharing.candidates, { ...(text ? { text } : {}), paginationOpts: firstPage })).page;
+
+    expect((await suggested(asAda)).map((one) => one.principal)).toEqual([
+      { kind: "organization", organizationId: team },
+      { kind: "user", userId: ben },
+    ]);
+    expect(await suggested(asAda, "BEN@")).toMatchObject([{ principal: { kind: "user", userId: ben }, email: "ben@example.org" }]);
+    expect(await suggested(asAda, "cy")).toEqual([]);
+    // Cy is alone in the other organization.
+    expect((await suggested(asCy)).map((one) => one.principal)).toEqual([{ kind: "organization", organizationId: elsewhere }]);
+    // Someone in no organization gets no suggestions.
+    await t.run(async (ctx) => seedFeatureUser(ctx, "dee"));
+    expect(await suggested(t.withIdentity({ subject: "dee", tokenIdentifier: "dee|test" }) as typeof asAda)).toEqual([]);
+
+    // The access list says how big an organization is.
+    const threadId = await asAda.mutation(api.assistant.threads.create, {});
+    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "organization", organizationId: team }, role: "read" });
+    const access = await asAda.query(api.assistant.sharing.listAccess, { threadId, paginationOpts: firstPage });
+    expect(access.page.find((row) => row.principal.kind === "organization")).toMatchObject({ members: 2, role: "read" });
+  });
+
+  it("list with who each is shared with and who has it open now", async () => {
+    const t = convexTest(schema);
+    const { asAda, asBen, asCy, ada, ben, team } = await people(t);
+    const threadId = await asAda.mutation(api.assistant.threads.create, { title: "Reading trials" });
+    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "organization", organizationId: team }, role: "read" });
+    const row = async (as: typeof asAda) => (await as.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage })).page[0];
+    const organization = (await t.run(async (ctx) => ctx.db.get("organizations", team)))!.name;
+
+    // Shared with the whole organization, nobody by name. Ben sees Ada, its owner.
+    expect(await row(asAda)).toMatchObject({ preview: "", writing: false, members: [], organization });
+    expect(await row(asBen)).toMatchObject({ members: [{ userId: ada, here: false }], organization });
+
+    // Ben opens it through the organization. The row names him while he's there, and the reader never sees themselves.
+    const session = await asBen.mutation(api.assistant.presence.heartbeat, { threadId, sessionId: "tab-1" });
+    expect((await row(asAda)).members).toEqual([{ userId: ben, name: "", here: true }]);
+    expect((await row(asBen)).members).toEqual([{ userId: ada, name: "", here: false }]);
+    await expect(asCy.mutation(api.assistant.presence.heartbeat, { threadId, sessionId: "tab-2" })).rejects.toThrow(/Chat not found/);
+
+    // His panel closes the chat.
+    await asBen.mutation(api.assistant.presence.leave, { sessionToken: session });
+    expect((await row(asAda)).members).toEqual([]);
+
+    // Shared with him by name, he is on the row whether he's there or not.
+    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: ben }, role: "read" });
+    expect((await row(asAda)).members).toEqual([{ userId: ben, name: "", here: false }]);
+
+    // Deleting the chat empties its room afterwards, on its own.
+    await asBen.mutation(api.assistant.presence.heartbeat, { threadId, sessionId: "tab-3" });
+    await asAda.mutation(api.assistant.threads.remove, { threadId });
+    await waitFor(async () => (await t.run(async (ctx) => ctx.runQuery(components.presence.public.listRoom, { roomId: threadId }))).length === 0);
+  });
+
+  it("shows the start of a chat's newest message as plain text, cut between characters", () => {
+    expect(previewOf("  Compare   the\ndesigns ")).toBe("Compare the designs");
+    expect(previewOf("## Plan\n**1. Define** the `scope`\n- *then* read [the guide](https://example.com)")).toBe("Plan 1. Define the scope then read the guide");
+    expect(previewOf("_Note_ the [function](https://en.wikipedia.org/wiki/Function_(mathematics)) next")).toBe("Note the function next");
+    // Marks that aren't markdown stay: a product, a name with underscores, what's inside code.
+    expect(previewOf("2 * 3 * 4 in snake_case_name, use `obj.__dict__`")).toBe("2 * 3 * 4 in snake_case_name, use obj.__dict__");
+    // The start that's read ends inside an emoji: no half of it is left.
+    expect(previewOf(`${" ".repeat(2399)}😀`)).toBe("");
+    // The cut lands on an emoji, which is two code units: it stays whole.
+    expect(previewOf(`${"a".repeat(118)}😀😀😀`)).toBe(`${"a".repeat(118)}😀…`);
+  });
+
   it("belong to the person who starts them, and a stranger can't open, rename or delete one", async () => {
     const t = convexTest(schema);
     const { asAda, asCy } = await people(t);

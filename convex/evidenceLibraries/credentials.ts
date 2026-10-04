@@ -310,25 +310,3 @@ export const listCredentials = query({
   returns: paginationResultValidator(credentialMetadataValidator),
   handler: async (ctx, args) => ({ page: await readCredentialMetadata(ctx, args), isDone: true, continueCursor: "" }),
 });
-
-/** Kept for one release, while the deployed site still calls it; `listCredentials` replaces it. */
-export const listCredentialMetadata = query({
-  args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.array(
-    v.object({
-      _id: v.id("evidenceLibraryCredentials"),
-      credentialKey: v.string(),
-      instanceKey: v.optional(v.string()),
-      pathPattern: v.optional(v.string()),
-      maskedHint: v.optional(v.string()),
-      validationState: v.union(
-        v.literal("untested"),
-        v.literal("valid"),
-        v.literal("invalid"),
-      ),
-      lastValidatedAt: v.optional(v.number()),
-      updatedAt: v.number(),
-    }),
-  ),
-  handler: readCredentialMetadata,
-});
