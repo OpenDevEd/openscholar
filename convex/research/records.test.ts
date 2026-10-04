@@ -667,10 +667,18 @@ describe("research actions as assistant tools", () => {
     expect(await asks({ kind: "clearSearches" })).toBe(true);
     expect(await asks({ kind: "clearShortcuts" })).toBe(true);
     expect(await asks({ kind: "deleteSearch", id: record.id })).toBe(true);
+    // Naming what the delete expects to find says the search hasn't changed, not that the person agreed.
+    expect(await asks({ kind: "deleteSearch", id: record.id, expect: { created: 1, revision: 1, answers: 0 } })).toBe(true);
     expect(await edit({ kind: "clearScreeningQuestions" })).toBe(true);
+    // A patch to what a restore leaves as it is: the screening questions.
+    expect(await edit({ kind: "patch", fields: { screeningQuestions: [{ question: "Set in primary schools?" }] }, clear: [] })).toBe(true);
     // A shortcut too long to keep has no undo: deleting it, or setting one that long.
     expect(await asks({ kind: "shortcut", shorthand: "long", value: null })).toBe(true);
     expect(await asks({ kind: "shortcut", shorthand: "new", value: { expansion: long, createdAt: 1 } })).toBe(true);
+    // Two that each fit, whose undo holds both and is more than a step keeps.
+    const nearly = "b".repeat(UNDO_SHORTCUT_MAX - 1);
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "nearly", command: { kind: "shortcut", shorthand: "nearly", value: { expansion: nearly, createdAt: 1 } } });
+    expect(await asks({ kind: "shortcut", shorthand: "nearly", value: { expansion: nearly.replace(/b/g, "c"), createdAt: 1 } })).toBe(true);
 
     // These return an undo, or add something.
     expect(await asks({ kind: "createSearch", search: { ...record, id: "another" } })).toBe(false);

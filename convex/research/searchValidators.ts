@@ -8,13 +8,13 @@ import { capped } from "../lib/listCaps";
 
 /** Papers one page of results holds. */
 export const RESULTS_PAGE = 10;
-/**
- * The last page that can be read: OpenAlex lists a search's first 10,000 works by page
- * number. A sort that is read from the start (convex/paperSets/openalex.ts) reaches as far:
- * each 200 works on the way is a request of the person's OpenAlex allowance, which is what
- * holds a deep read back.
- */
+/** The last page that can be read: OpenAlex lists a search's first 10,000 works by page number. */
 export const LAST_PAGE = 10_000 / RESULTS_PAGE;
+/**
+ * The last page under a sort that is read from the start (convex/paperSets/openalex.ts):
+ * its first 2,000 works, which is ten requests of the person's allowance.
+ */
+export const LAST_PAGE_FROM_START = 2_000 / RESULTS_PAGE;
 
 const fieldValidator = v.union(v.literal("title_and_abstract"), v.literal("title"), v.literal("abstract"), v.literal("fulltext"));
 const sortValidator = v.union(v.literal("relevance"), v.literal("most_cited"), v.literal("newest"), v.literal("oldest"));

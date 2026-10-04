@@ -200,10 +200,10 @@ describe("the assistant's search tools", () => {
     // Someone else's search isn't read.
     await expect(bob.action(results, { id })).rejects.toThrow(/not found/i);
     await expect(alice.action(results, { id, page: 0 })).rejects.toThrow(/count from 1/);
-    // A page OpenAlex wouldn't answer isn't asked for, under any sort.
+    // A page OpenAlex wouldn't answer, or one that would take many requests to reach, isn't asked for.
     requests = [];
     await expect(alice.action(results, { id, page: 1_001 })).rejects.toThrow(/up to page 1,000/);
-    await expect(alice.action(results, { id: byDate.id, page: 1_001 })).rejects.toThrow(/up to page 1,000/);
+    await expect(alice.action(results, { id: byDate.id, page: 201 })).rejects.toThrow(/up to page 200/);
     expect(requests).toHaveLength(0);
 
     // Ten papers whose every text runs long are still read whole.
