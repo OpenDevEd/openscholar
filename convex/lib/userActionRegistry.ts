@@ -16,6 +16,7 @@ import { answerAction as screeningAnswerAction, getAction as screeningPaperActio
 import { slotsAction as screeningSlotsAction } from "../screening/queries";
 import { screenAction } from "../screening/start";
 import { countAdminsAction, listAdminsAction, listCandidatesAction } from "../admins/queries";
+import { listModelsAction as adminModelsAction, summaryAction as adminModelSummaryAction } from "../models/admin";
 import { countChargesAction, listChargesAction, spendingAction } from "../billing/usage";
 import { countKeysAction as walletKeyCountAction, listKeysAction as walletKeysAction } from "../wallet/queries";
 import type { UserAction } from "./userActions";
@@ -67,4 +68,6 @@ export const USER_ACTIONS: readonly UserAction[] = [
   listAdminsAction,
   countAdminsAction,
   listCandidatesAction,
+  adminModelsAction,
+  adminModelSummaryAction,
 ];

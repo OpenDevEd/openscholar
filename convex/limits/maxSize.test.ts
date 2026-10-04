@@ -10,6 +10,7 @@ import { PAPER_LIMIT, RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits"
 import { replaceJobSources, writeJobSources } from "../extraction/jobSources";
 import { collectionSortName } from "../library/collections";
 import { MAX_COLLECTIONS_PER_USER, MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
+import { MAX_CATALOG_MODELS } from "../models/catalog";
 import { MAX_SIZE, insertMany, seedAccount, seedExtractionJob, seedLibrary, text } from "../lib/maxSize.test-support";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 import { assertApprovedQueriesUnchanged } from "../evidenceLibraries/approvedQueries";
@@ -517,5 +518,24 @@ describe("at the largest sizes the product allows", () => {
     };
     expect(await steps((cursor) => as.query(api.admins.queries.listAdmins, { search: "no such person", paginationOpts: { cursor, numItems: 8 } }))).toBe(2);
     expect(await steps((cursor) => as.query(api.admins.queries.listCandidates, { search: "", paginationOpts: { cursor, numItems: 20 } }))).toBe(2);
+  }, 300_000);
+
+  it("the admin model list reads, filters and counts a catalog of 2,000 models (#424)", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    await insertMany(t, "admins", [{ email: "max_size_user@example.org", userId, createdAt: 1 }]);
+    const providers = ["openai", "anthropic", "google", "qwen", "acme", "zeta"];
+    await insertMany(t, "models", Array.from({ length: MAX_CATALOG_MODELS }, (_, i) => ({
+      modelId: `${providers[i % providers.length]}/model-${i}`, name: `Model ${i}`, provider: providers[i % providers.length], description: text(2_000, i),
+      supportedParameters: Array.from({ length: 20 }, (_, p) => `parameter_${p}`), inputPricePerMillion: 1, outputPricePerMillion: 2,
+      isServed: false, costMarkup: 1, sortOrder: i, syncedAt: 1, createdAt: 1, updatedAt: 1,
+    })), 500);
+    const read = (view: { provider?: string; search: string }) => as.query(api.models.admin.listModels, { ...view, show: "all", paginationOpts: { cursor: null, numItems: 100 } });
+    expect((await read({ search: "" })).page).toHaveLength(100);
+    // A search with no match reads the whole catalog once.
+    expect(await read({ search: "no such model" })).toMatchObject({ page: [], isDone: true });
+    // "Other" names the largest providers from the whole catalog, then reads past their models.
+    expect((await read({ provider: "other", search: "" })).page.every((m) => /^(acme|zeta)\//.test(m.modelId))).toBe(true);
+    expect(await as.query(api.models.admin.summary, { provider: "other", search: "", show: "all" })).toMatchObject({ total: Math.floor(MAX_CATALOG_MODELS / 6) * 2 + (MAX_CATALOG_MODELS % 6 > 4 ? MAX_CATALOG_MODELS % 6 - 4 : 0) });
   }, 300_000);
 });
