@@ -48,7 +48,8 @@ const CORE_PATHS = [
 export const runsWithoutAsking = (entry: UserAction) => entry.kind === "query" || (!entry.spendsCredits && !entry.outsideEffect && entry.undoable);
 
 const entryAt = (path: string) => USER_ACTIONS.find((entry) => entry.path === path);
-const CORE = CORE_PATHS.map((path) => {
+/** The core actions, as registered. */
+export const CORE = CORE_PATHS.map((path) => {
   const entry = entryAt(path);
   if (!entry || !runsWithoutAsking(entry)) throw new Error(`${path} can't be a tool of its own: it isn't registered, or it asks first.`);
   return entry;
@@ -100,24 +101,33 @@ const described = (entry: UserAction) => ({
   ...(runsWithoutAsking(entry) ? {} : { asksFirst: true }),
 });
 
-/** The actions whose name or description hold the most of these words, best first, as many as the model can read at once. */
+/**
+ * The actions whose name or description hold the most of these words, best first; an action
+ * named outright comes first. The best match is returned whole. One after it whose arguments
+ * would run past what the model reads is named without them, to be searched for by name.
+ */
 export function found(keywords: string) {
-  const words = keywords.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 1);
+  const asked = keywords.toLowerCase();
+  const words = asked.split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 1);
   const matches = USER_ACTIONS.map((entry) => {
     const text = `${entry.path} ${entry.description}`.toLowerCase();
-    return { entry, score: words.filter((word) => text.includes(word)).length };
+    return { entry, score: words.filter((word) => text.includes(word)).length + (asked.includes(entry.path.toLowerCase()) ? words.length : 0) };
   })
     .filter((match) => match.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, FOUND_MAX);
-  const actions: ReturnType<typeof described>[] = [];
+  const actions: Array<Omit<ReturnType<typeof described>, "arguments"> & { arguments: unknown }> = [];
   let size = 0;
   for (const { entry } of matches) {
     const action = described(entry);
-    size += JSON.stringify(action).length;
-    // The best match is always returned whole, however long its arguments are.
-    if (actions.length && size > MODEL_READS) break;
-    actions.push(action);
+    const whole = JSON.stringify(action).length;
+    if (actions.length && size + whole > MODEL_READS) {
+      actions.push({ ...action, arguments: "Too long to list with the others. Search for this action by its name to get them." });
+      size += whole - JSON.stringify(action.arguments).length;
+    } else {
+      actions.push(action);
+      size += whole;
+    }
   }
   return { actions };
 }
