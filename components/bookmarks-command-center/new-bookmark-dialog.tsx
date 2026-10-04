@@ -1,21 +1,43 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { BookmarkPlus, BookmarksIcon, Plus, TriangleAlert } from "@/components/icons";
+import { BookmarkPlus, CircleAlert, Plus, TriangleAlert } from "@/components/icons";
 import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { EntryTile } from "@/components/command-center/entry";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
-import { FieldError } from "@/components/evidence-libraries/configuration/section-card";
 import { getIdColor } from "@/lib/format";
-import { savedShortcutName, shortcutNames, typedShortcutName } from "@/lib/query-shortcuts";
+import { savedShortcutName, typedShortcutName } from "@/lib/query-shortcuts";
 import { useQueryShortcuts } from "@/lib/research/reads";
 import { useKeywordExpansionDialogStore, useKeywordExpansionStore } from "@/lib/store";
 import { useShortcutCount } from "@/lib/research/shortcut-list";
 import { cn } from "@/lib/utils";
+
+// The parts of a query that read differently: a quoted phrase, a bookmark (a
+// name, then three periods), an operator, a bracket.
+const PARTS = /("[^"]*"?)|(\w[\w-]*)\.\.\.|\b(AND|OR|NOT)\b|([()])/gi;
+// The text and its coloured copy share these, so every character lines up.
+const QUERY_TEXT = "whitespace-pre-wrap px-3 pb-3 pt-7 font-mono text-sm leading-6 [overflow-wrap:anywhere] [scrollbar-gutter:stable]";
+
+/** A bookmark's part of a query, in the colour its name gives it. `outlined` suits a short name, not lines of text. */
+function Tinted({ name, outlined = false, children }: { name: string; outlined?: boolean; children: ReactNode }) {
+  const color = getIdColor(name);
+  return (
+    <span className="rounded-[3px] box-decoration-clone" style={{ backgroundColor: color.bg, color: color.text, boxShadow: outlined ? `0 0 0 1px ${color.border}` : undefined }}>
+      {children}
+    </span>
+  );
+}
+
+/** A bookmark the query names that doesn't exist. */
+function Missing({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span role="img" aria-label={label} className="tint-warning rounded-[3px] box-decoration-clone underline decoration-wavy decoration-1 underline-offset-4">
+      {children}
+    </span>
+  );
+}
 
 /**
  * The one way to add a bookmark: a bar button and a dialog. With a search in
@@ -34,14 +56,19 @@ export function NewBookmarkDialog() {
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
   const [expansion, setExpansion] = useState("");
+  const colored = useRef<HTMLDivElement>(null);
 
   const name = savedShortcutName(typed);
   const query = expansion.trim();
-  // The bookmarks the query reuses, and this name: an account looks them up as they are typed.
-  const used = shortcutNames(expansion);
-  const known = useQueryShortcuts(expansion, name ? `${name}...` : null);
-  const taken = Boolean(name && known && keywords[name]);
+  // An account looks up this name, and the bookmarks the query reuses, as they are typed.
+  const nameKnown = useQueryShortcuts(name ? `${name}...` : null);
+  const known = useQueryShortcuts(expansion);
+  // What a saved bookmark stands for. Only one the person saved: not `constructor` and the like.
+  const saved = (shortcut: string) => (Object.prototype.hasOwnProperty.call(keywords, shortcut) ? keywords[shortcut]?.expansion : undefined);
+  const taken = Boolean(name && nameKnown && saved(name) !== undefined);
   const color = name ? getIdColor(name) : null;
+  const parts = Array.from(expansion.matchAll(PARTS));
+  const reuses = parts.some((part) => part[2] && saved(part[2]));
 
   const openDialog = () => {
     setTyped("");
@@ -58,7 +85,7 @@ export function NewBookmarkDialog() {
     } catch {
       return;
     }
-    if (useKeywordExpansionStore.getState().keywords[name]) return;
+    if (Object.prototype.hasOwnProperty.call(useKeywordExpansionStore.getState().keywords, name)) return;
     addKeyword(name, query);
     posthog.capture("bookmark_created", {
       bookmark_name: name,
@@ -69,6 +96,18 @@ export function NewBookmarkDialog() {
     setOpen(false);
   };
 
+  // The query in pieces, each drawn by `draw`; the text between them is kept as it is.
+  const pieces = (draw: (part: RegExpMatchArray, key: number) => ReactNode) => {
+    const out: ReactNode[] = [];
+    let at = 0;
+    parts.forEach((part, index) => {
+      out.push(expansion.slice(at, part.index), draw(part, index));
+      at = (part.index ?? 0) + part[0].length;
+    });
+    out.push(expansion.slice(at));
+    return out;
+  };
+
   return (
     <>
       <Button size="sm" className={BAR_ACTION} onClick={openDialog}>
@@ -76,70 +115,95 @@ export function NewBookmarkDialog() {
         <span className={BAR_LABEL}>{tb("addBookmark")}</span>
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="gap-0 p-0 sm:max-w-xl" aria-describedby={undefined}>
-          <form onSubmit={add}>
-            {/* The bookmark as it is typed in a search, in the colour its name gives it everywhere. */}
-            <div className="space-y-4 border-b border-border-subtle bg-inset p-6">
+        {/* Held at the top, so it grows downwards as the query does and nothing above the caret moves. */}
+        <DialogContent className="top-[10dvh] max-h-[calc(90dvh-1rem)] translate-y-0 gap-0 p-0 sm:max-w-2xl" aria-describedby={undefined}>
+          {/* min-w-0: a long name must not widen the dialog. */}
+          <form onSubmit={add} className="min-w-0">
+            <div className="space-y-4 p-6">
               <DialogTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <BookmarkPlus aria-hidden className="size-4" />
                 {tb("addBookmark")}
               </DialogTitle>
-              <div className="flex items-center font-mono text-2xl font-semibold">
-                <input
-                  aria-label={tb("bookmarkName")}
-                  aria-invalid={taken}
-                  placeholder={th("bookmarkNamePlaceholder")}
-                  value={typed}
-                  onChange={(event) => setTyped(typedShortcutName(event.target.value))}
-                  // As wide as the name; a monospace font makes that exact.
-                  size={typed.length || th("bookmarkNamePlaceholder").length}
-                  autoFocus
-                  spellCheck={false}
-                  autoComplete="off"
-                  className={cn(
-                    "h-12 min-w-0 max-w-full rounded-xl border px-3 outline-none transition-colors placeholder:font-medium placeholder:text-subtle-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:ring-[3px] aria-invalid:ring-destructive/40",
-                    !color && "border-dashed border-input bg-field",
-                  )}
-                  style={color ? { backgroundColor: color.bg, color: color.text, borderColor: color.border } : undefined}
-                />
-                <span aria-hidden className="shrink-0 pl-1.5 text-subtle-foreground">...</span>
-              </div>
-              {taken && <FieldError>{tv("bookmarkNameExists", { name })}</FieldError>}
-            </div>
 
-            <div className="space-y-3 p-6">
-              <Textarea
-                aria-label={tb("expandsTo")}
-                value={expansion}
-                onChange={(event) => setExpansion(event.target.value)}
-                placeholder={tb("expandsToPlaceholder")}
-                spellCheck={false}
-                className="max-h-[40dvh] min-h-32 font-mono text-sm"
-              />
-              {/* The bookmarks the query reuses; one that doesn't exist is marked. */}
-              {used.length > 0 && (
-                <ul className="flex flex-wrap items-center gap-1.5">
-                  <BookmarksIcon aria-hidden className="size-3.5 text-muted-foreground" />
-                  {used.map((shortcut) => {
-                    const missing = known && !keywords[shortcut];
-                    return (
-                      <li key={shortcut}>
-                        {missing ? (
-                          <span
-                            role="img"
-                            aria-label={tv("bookmarkNotFound", { keyword: shortcut })}
-                            className="tint-warning flex h-6 items-center gap-1.5 rounded-md border border-dashed px-2 font-mono text-xs font-medium"
-                          >
-                            <TriangleAlert aria-hidden className="size-3.5" />
-                            {shortcut}
-                          </span>
-                        ) : (
-                          <EntryTile id={shortcut} className="h-6 rounded-md font-mono font-medium">{shortcut}</EntryTile>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
+              <div>
+                {/* The bookmark as it is typed in a search, in the colour its name gives it everywhere. It
+                    sits on the edge of the query it stands for. */}
+                <div className="relative z-10 -mb-5 ml-3 flex w-fit max-w-[calc(100%-1.5rem)] items-center bg-background pr-2 font-mono text-xl font-semibold">
+                  <input
+                    aria-label={tb("bookmarkName")}
+                    aria-invalid={taken}
+                    placeholder={th("bookmarkNamePlaceholder")}
+                    value={typed}
+                    onChange={(event) => setTyped(typedShortcutName(event.target.value))}
+                    // As wide as the name; a monospace font makes that exact.
+                    size={typed.length || th("bookmarkNamePlaceholder").length}
+                    autoFocus
+                    spellCheck={false}
+                    autoComplete="off"
+                    className={cn(
+                      "h-10 min-w-0 rounded-lg border px-2.5 outline-none transition-colors placeholder:font-medium placeholder:text-subtle-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:ring-[3px] aria-invalid:ring-destructive/40",
+                      !color && "border-dashed border-input bg-field",
+                    )}
+                    style={color ? { backgroundColor: color.bg, color: color.text, borderColor: color.border } : undefined}
+                  />
+                  <span aria-hidden className="shrink-0 pl-1.5 text-subtle-foreground">...</span>
+                  {taken && (
+                    <span role="alert" className="ml-3 flex shrink-0 items-center gap-1.5 font-sans text-xs font-medium ink-destructive">
+                      <CircleAlert aria-hidden className="size-3.5" />
+                      {tv("bookmarkNameExists", { name })}
+                    </span>
+                  )}
+                </div>
+
+                {/* The query. Its coloured copy lies under the text being typed, which is itself see-through. */}
+                <div className="relative overflow-hidden rounded-xl border border-input bg-field transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+                  <div ref={colored} aria-hidden className={cn(QUERY_TEXT, "pointer-events-none absolute inset-0 overflow-hidden")}>
+                    {pieces((part, key) =>
+                      part[2] ? (
+                        known && !saved(part[2]) ? <Missing key={key} label={tv("bookmarkNotFound", { keyword: part[2] })}>{part[0]}</Missing> : <Tinted key={key} name={part[2]} outlined>{part[0]}</Tinted>
+                      ) : (
+                        <span key={key} className={part[1] ? "text-foreground" : part[3] ? "text-primary dark:text-muted-foreground" : "text-subtle-foreground"}>{part[0]}</span>
+                      ),
+                    )}
+                    {"\n"}
+                  </div>
+                  <textarea
+                    aria-label={tb("expandsTo")}
+                    value={expansion}
+                    onChange={(event) => setExpansion(event.target.value)}
+                    onScroll={(event) => {
+                      if (colored.current) colored.current.scrollTop = event.currentTarget.scrollTop;
+                    }}
+                    placeholder={tb("expandsToPlaceholder")}
+                    spellCheck={false}
+                    className={cn(
+                      QUERY_TEXT,
+                      "relative block max-h-[36dvh] min-h-36 w-full resize-none overflow-y-auto bg-transparent text-transparent caret-foreground outline-none field-sizing-content placeholder:text-subtle-foreground",
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* The query as a search runs it: each bookmark it reuses, replaced by what it stands for. */}
+              {reuses && (
+                <div className="fade-enter space-y-1.5">
+                  <p className="pl-1 text-xs font-medium text-muted-foreground">{tb("expandsTo")}</p>
+                  <p className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-inset p-3 font-mono text-xs leading-6 [overflow-wrap:anywhere]">
+                    {pieces((part, key) => {
+                      const stands = part[2] ? saved(part[2]) : undefined;
+                      if (stands) return <Tinted key={key} name={part[2]}>{stands}</Tinted>;
+                      if (part[2] && known) {
+                        return (
+                          <Missing key={key} label={tv("bookmarkNotFound", { keyword: part[2] })}>
+                            <TriangleAlert aria-hidden className="mr-1 inline size-3.5 align-[-0.2em]" />
+                            {part[0]}
+                          </Missing>
+                        );
+                      }
+                      return part[0];
+                    })}
+                  </p>
+                </div>
               )}
             </div>
 
