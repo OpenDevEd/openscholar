@@ -13,7 +13,7 @@ import { exportFormatValidator, exportSourceValidator } from "./exportValidators
 import { readLibraryPage } from "./library/queries";
 import { shortcutExpansions } from "./research/records";
 import { screeningExportFiles, screeningItems } from "../lib/screening/export";
-import { readScreeningProgressCounts } from "./screening/aggregates";
+import { readScreeningProgressCounts } from "./screening/progress";
 import { readScreeningResultsPage } from "./screening/queries";
 import { screeningJobStatusValidator, screeningQuestionsValidator, screeningScoringConfigValidator } from "./screening/validators";
 

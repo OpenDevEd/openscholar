@@ -8,9 +8,8 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { addInto, countsRow } from "./counts";
-import { legacyCounts } from "./legacyCounts";
 
-/** Changes per batch; a batch starts at most one job's counts row. */
+/** Changes per batch. */
 const BATCH = 200;
 
 const { vQueryArgs, vQueryReturns, vMutationArgs, vMutationReturns } = defineBatchWorkerValidators({
@@ -45,24 +44,11 @@ export const fold = internalMutation({
     const changes = (await Promise.all(ids.map((id) => ctx.db.get(id)))).filter((change): change is Doc<"extractionCountChanges"> => change !== null);
     const byJob = new Map<Id<"extractionJobs">, Doc<"extractionCountChanges">[]>();
     for (const change of changes) byJob.set(change.jobId, [...(byJob.get(change.jobId) ?? []), change]);
-    let started = false;
-    const waiting: bigint[] = [];
     for (const [jobId, jobChanges] of byJob) {
       const job = await ctx.db.get(jobId);
       if (job) {
-        let row = await countsRow(ctx, jobId);
-        if (!row) {
-          // A job saved before its counts row starts from the old counters, which stopped at
-          // the deploy; every change since is in the log. Reading them touches every shard, so
-          // a batch starts one job's row and the others' changes wait for the next batch.
-          if (started) {
-            waiting.push(...jobChanges.map(queuedAtOf));
-            continue;
-          }
-          started = true;
-          const id = await ctx.db.insert("extractionJobCounts", { jobId, counts: await legacyCounts(ctx, jobId) });
-          row = (await ctx.db.get(id))!;
-        }
+        // Every job gets its row when it's made; one whose row is missing starts from nothing.
+        const row = (await countsRow(ctx, jobId)) ?? (await ctx.db.get(await ctx.db.insert("extractionJobCounts", { jobId, counts: {} })))!;
         const counts = { ...row.counts };
         for (const change of jobChanges) addInto(counts, change.deltas);
         await ctx.db.patch(row._id, { counts });
@@ -76,7 +62,6 @@ export const fold = internalMutation({
       // Its job is gone: out of the queue.
       for (const change of jobChanges) await ctx.db.delete(change._id);
     }
-    if (waiting.length) return { cursor: waiting.reduce((min, ts) => (ts < min ? ts : min)) };
     return null;
   },
 });

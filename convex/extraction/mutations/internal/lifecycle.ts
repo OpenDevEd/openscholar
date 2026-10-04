@@ -81,11 +81,9 @@ export const maybeFinalizeJob = internalMutation({
     if (await hasWaitingChanges(ctx, args.jobId)) return null;
     const { processed, failed } = await readJobCounters(ctx, args.jobId);
 
-    // Tier B: when the job is still mid-flight, do not patch the row.
-    // Bumping `updatedAt` here would re-introduce per-paper OCC contention
-    // on the same singleton row that the sharded counter just eliminated.
-    // `updatedAt` is owned by genuine state transitions only — for "last
-    // activity" the sharded counter values themselves are reactive.
+    // While the job is still mid-flight, don't patch its row: bumping `updatedAt` here would
+    // bring back the per-paper contention on that one row that its counts row took away.
+    // `updatedAt` belongs to real state changes; the counts row is what moves as papers finish.
     if (processed + failed < total) {
       return null;
     }
