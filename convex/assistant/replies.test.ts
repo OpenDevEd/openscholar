@@ -184,22 +184,52 @@ describe("assistant replies", () => {
     expect(modelIdsSeen).toEqual([null, modelId]);
   });
 
-  it("that died with their action show as failed, and the chat is released", async () => {
+  it("hold their chat while their action waits or runs, and no longer once it has ended", async () => {
     const t = convexTest(schema);
-    const { asAda, ada, threadId } = await sharedChat(t);
-    const longAgo = Date.now() - 6 * 60 * 1000;
-    await t.run(async (ctx) => {
+    const { asAda, asBen, ada, threadId } = await sharedChat(t);
+    // A reply whose action hasn't started: its message is saved, pending, and its lock names the waiting action.
+    const scheduledId = await t.run(async (ctx) => {
       const thread = (await ctx.db.get("assistantThreads", threadId))!;
       const { messageId, message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: "Hi", skipEmbeddings: true });
       await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, promptMessageId: messageId, message: { role: "assistant", content: "" }, metadata: { status: "pending" }, skipEmbeddings: true });
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "dead", senderId: ada, order: message.order, startedAt: longAgo, renewedAt: longAgo } });
+      const waiting = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "waiting", senderId: ada, order: message.order, startedAt: Date.now() - 6 * 60 * 1000, scheduledId: waiting } });
+      return waiting;
     });
+    const newest = async () => (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[0];
 
+    // However long it has waited, nobody takes its place and the sweep leaves it.
+    await expect(asBen.mutation(api.assistant.replies.send, { threadId, text: "Me too" })).rejects.toThrow(/still replying/);
     await t.mutation(internal.assistant.replies.sweep, {});
+    expect((await chat(t, threadId))?.reply?.attemptId).toBe("waiting");
+    expect(await asAda.query(api.assistant.replies.live, { threadId })).toMatchObject({ attemptId: "waiting", text: "" });
+    expect(await newest()).toMatchObject({ role: "assistant", status: "pending" });
 
-    expect((await chat(t, threadId))?.reply).toBeUndefined();
+    // Its action is gone without releasing the lock: the reply shows as failed at once, and the sweep clears the lock.
+    await t.run(async (ctx) => ctx.scheduler.cancel(scheduledId));
     expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
-    expect((await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[0]).toMatchObject({ role: "assistant", status: "failed" });
+    expect(await newest()).toMatchObject({ role: "assistant", status: "failed" });
+    await t.mutation(internal.assistant.replies.sweep, {});
+    expect((await chat(t, threadId))?.reply).toBeUndefined();
+
+    mockDoStream.mockImplementation(finishingDoStream(["Ok"]));
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "Me too" });
+    await ended(t, threadId);
+    expect(await newest()).toMatchObject({ text: "Ok", status: "done" });
+  });
+
+  it("page their chat's messages within a limit the caller can't lift", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await sharedChat(t);
+    await t.run(async (ctx) => {
+      const thread = (await ctx.db.get("assistantThreads", threadId))!;
+      for (let i = 0; i < 70; i++) await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: `Message ${i}`, skipEmbeddings: true });
+    });
+    // An end cursor makes the agent component's paginator ignore `numItems`.
+    const { page, isDone } = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: { cursor: null, numItems: 500, endCursor: "[]" } });
+    expect(page.length).toBeLessThanOrEqual(50);
+    expect(page[0].text).toBe("Message 69");
+    expect(isDone).toBe(false);
   });
 
   it("are refused while the assistant is switched off", async () => {

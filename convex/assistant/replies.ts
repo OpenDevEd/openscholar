@@ -2,7 +2,8 @@
  * An assistant chat's messages and replies (#324). A person sends a message and the
  * assistant writes one reply to it as that person: with their access, on their credits.
  * A chat writes one reply at a time, and the reply being written is the chat's lock
- * (`reply` on its record).
+ * (`reply` on its record). The lock names the scheduled action writing the reply, and
+ * holds for as long as that action waits to run or runs.
  *
  *   send (mutation)    saves the message, takes the lock, schedules `reply`
  *   reply (action)     runs the reply through runTurn (./turn.ts), which releases the lock
@@ -15,9 +16,8 @@ import { paginationOptsValidator, paginationResultValidator } from "convex/serve
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { effortValidator } from "../aiModelConfig/validators";
-import { STALE_LOCK_MS } from "../chat/concurrency";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
@@ -33,22 +33,31 @@ import { runTurn } from "./turn";
 
 const FLAG = "assistant.enabled";
 const MESSAGES_PAGE_MAX = 50;
+/** What one page of messages may read. A message can be tens of kilobytes, so a page of long ones ends early. */
+const MESSAGES_PAGE_BYTES = 1024 * 1024;
 /** Rows of a reply's stream one read returns: the agent component's own limit. */
 const DELTAS_PER_READ = 100;
 /**
- * Reads of a reply's stream that one `live` read makes.
- * ponytail: `live` reads the stream from its start each time a row is added to it, up to
- * 2,400 rows, which is ten minutes of text and as long as an action runs. If replies get
- * long enough for that to cost, read on from a cursor the page keeps.
+ * Reads of a reply's stream that one `live` read makes: 3,000 rows. A stream gains at most
+ * four rows a second (runTurn's throttle) for the ten minutes an action can run, so 2,400.
+ * ponytail: `live` reads the stream from its start each time a row is added to it. If
+ * replies get long enough for that to cost, send the new rows from a cursor the page keeps.
  */
-const LIVE_READS = 24;
-/** Dead replies one sweep releases; more clear over the following runs. */
+const LIVE_READS = 30;
+/** Chats writing a reply that one sweep checks, oldest first. */
 const SWEEP_BATCH = 200;
 
 type Reply = NonNullable<Doc<"assistantThreads">["reply"]>;
 
-/** Whether a reply is being written: its lock is there and was renewed lately. */
-const running = (reply: Reply | undefined, now: number): reply is Reply => reply !== undefined && now - reply.renewedAt < STALE_LOCK_MS;
+/**
+ * Whether a reply is still being written: its action is waiting to run or running. An
+ * action that ended, or died, without releasing its lock no longer holds the chat.
+ */
+async function writing(ctx: QueryCtx | MutationCtx, reply: Reply | undefined): Promise<boolean> {
+  if (!reply) return false;
+  const state = (await ctx.db.system.get(reply.scheduledId))?.state.kind;
+  return state === "pending" || state === "inProgress";
+}
 
 export const send = mutation({
   args: { threadId: v.id("assistantThreads"), text: v.string() },
@@ -61,13 +70,13 @@ export const send = mutation({
       throw createError("VALIDATION_ERROR", `A message can be at most ${CHAT_PROMPT_MAX_CHARS.toLocaleString("en")} characters.`);
     }
     const { thread } = await requireThread(ctx, userId, threadId, "write");
-    const now = Date.now();
-    if (running(thread.reply, now)) throw createError("CONFLICT", "The assistant is still replying in this chat.");
+    if (await writing(ctx, thread.reply)) throw createError("CONFLICT", "The assistant is still replying in this chat.");
     const mine = await ctx.db
       .query("assistantThreads")
-      .withIndex("by_replySender_and_renewedAt", (q) => q.eq("reply.senderId", userId).gt("reply.renewedAt", now - STALE_LOCK_MS))
+      .withIndex("by_replySender", (q) => q.eq("reply.senderId", userId))
       .take(CHAT_CONCURRENCY_LIMIT);
-    if (mine.length >= CHAT_CONCURRENCY_LIMIT) {
+    const stillWriting = await Promise.all(mine.map((other) => writing(ctx, other.reply)));
+    if (stillWriting.filter(Boolean).length >= CHAT_CONCURRENCY_LIMIT) {
       throw createError("CONFLICT", `The assistant is already writing ${CHAT_CONCURRENCY_LIMIT} replies for you. Wait for one to finish.`);
     }
     const model = thread.modelId ? await requireAvailableModel(ctx, thread.modelId) : null;
@@ -75,10 +84,10 @@ export const send = mutation({
     // The message, the lock and the scheduled reply commit together, so a second send
     // can't slip in between them.
     const { messageId, message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId, prompt: text, skipEmbeddings: true });
+    const now = Date.now();
     const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
-    await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId, senderId: userId, order: message.order, startedAt: now, renewedAt: now } });
     await touchThread(ctx, threadId, now);
-    await ctx.scheduler.runAfter(0, internal.assistant.replies.reply, {
+    const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.replies.reply, {
       threadId,
       agentThreadId: thread.agentThreadId,
       promptMessageId: messageId,
@@ -89,6 +98,7 @@ export const send = mutation({
       // An effort the catalog has since dropped runs at the model's default.
       effort: thread.effort && model?.reasoningEfforts?.includes(thread.effort) ? thread.effort : undefined,
     });
+    await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
     return null;
   },
 });
@@ -107,6 +117,9 @@ export const reply = internalAction({
   returns: v.null(),
   handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort }) => {
     const lock = { threadId, attemptId };
+    const state = () => ctx.runQuery(internal.assistant.replies.lockState, lock);
+    // A reply whose chat was deleted, or whose lock is another reply's, never starts.
+    if ((await state()) === "gone") return null;
     await runTurn(ctx, {
       agent: assistant,
       threadId: agentThreadId,
@@ -117,8 +130,7 @@ export const reply = internalAction({
       attemptId,
       credits: ESTIMATED_CREDITS_PER_CHAT_MESSAGE,
       log: { assistantThreadId: threadId },
-      shouldStop: () => ctx.runQuery(internal.assistant.replies.stopRequested, lock),
-      renewLease: () => ctx.runMutation(internal.assistant.replies.renew, lock),
+      shouldStop: async () => (await state()) !== "writing",
       release: () => ctx.runMutation(internal.assistant.replies.release, lock),
     });
     return null;
@@ -138,24 +150,14 @@ export const stop = mutation({
   },
 });
 
-/** Whether a running reply should stop: someone stopped it, its chat is gone, or its lock went to a later reply. */
-export const stopRequested = internalQuery({
+/** Where a reply's lock stands: still its own (`writing`), stopped by someone (`stop`), or gone with its chat or to another reply (`gone`). */
+export const lockState = internalQuery({
   args: lockArgs,
-  returns: v.boolean(),
+  returns: v.union(v.literal("writing"), v.literal("stop"), v.literal("gone")),
   handler: async (ctx, { threadId, attemptId }) => {
     const current = (await ctx.db.get("assistantThreads", threadId))?.reply;
-    return current?.attemptId !== attemptId || current.stop === true;
-  },
-});
-
-/** Renews a running reply's lock, about once a minute, while it's still that reply's. */
-export const renew = internalMutation({
-  args: lockArgs,
-  returns: v.null(),
-  handler: async (ctx, { threadId, attemptId }) => {
-    const current = (await ctx.db.get("assistantThreads", threadId))?.reply;
-    if (current?.attemptId === attemptId) await ctx.db.patch("assistantThreads", threadId, { reply: { ...current, renewedAt: Date.now() } });
-    return null;
+    if (current?.attemptId !== attemptId) return "gone" as const;
+    return current.stop ? ("stop" as const) : ("writing" as const);
   },
 });
 
@@ -171,19 +173,21 @@ export const release = internalMutation({
 });
 
 /**
- * The cron's entry (convex/crons.ts). A reply whose action died never releases its lock;
- * one not renewed for STALE_LOCK_MS, several renewals long, is released here.
+ * The cron's entry (convex/crons.ts). A reply whose action died never releases its lock.
+ * Nothing treats such a lock as held (`writing`), and this clears it away.
  */
 export const sweep = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const dead = await ctx.db
+    const held = await ctx.db
       .query("assistantThreads")
-      // Chats writing no reply have no renewal time and sort before every number.
-      .withIndex("by_replyRenewedAt", (q) => q.gt("reply.renewedAt", 0).lt("reply.renewedAt", Date.now() - STALE_LOCK_MS))
+      // Chats writing no reply have no start time, and sort before every number.
+      .withIndex("by_replyStartedAt", (q) => q.gt("reply.startedAt", 0))
       .take(SWEEP_BATCH);
-    for (const thread of dead) await ctx.db.patch("assistantThreads", thread._id, { reply: undefined });
+    for (const thread of held) {
+      if (!(await writing(ctx, thread.reply))) await ctx.db.patch("assistantThreads", thread._id, { reply: undefined });
+    }
     return null;
   },
 });
@@ -202,7 +206,6 @@ const messageValidator = v.object({
       code: errorCodeValidator,
       message: v.string(),
       retryAfterMs: v.optional(v.number()),
-      credits: v.optional(v.object({ required: v.number(), available: v.number(), deficit: v.number() })),
     }),
   ),
   /** Who sent it, on a person's message. Their name is empty when they gave none. */
@@ -235,17 +238,25 @@ export const messagesAction = defineUserQuery({
     const { thread } = await requireThread(ctx, userId, threadId);
     const read = await listMessages(ctx, components.agent, {
       threadId: thread.agentThreadId,
-      paginationOpts: { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, MESSAGES_PAGE_MAX) },
+      // The caps bound a page whatever the caller asks for: with an `endCursor`, `numItems` alone doesn't.
+      paginationOpts: {
+        ...paginationOpts,
+        numItems: Math.min(paginationOpts.numItems, MESSAGES_PAGE_MAX),
+        maximumRowsRead: MESSAGES_PAGE_MAX,
+        maximumBytesRead: MESSAGES_PAGE_BYTES,
+      },
       excludeToolMessages: true,
     });
     const sentBy = await senders(ctx, read.page);
+    // The exchange being answered now. A lock whose action died isn't one.
+    const answering = (await writing(ctx, thread.reply)) ? thread.reply?.order : undefined;
     const page = read.page.flatMap((row) => {
       const role = row.message?.role;
       if (role !== "user" && role !== "assistant") return [];
       const error = row.status === "failed" ? parseChatError(row.error) : null;
       const stopped = error?.class === "aborted";
       // A reply still pending that the chat isn't writing died with its action.
-      const pending = row.status === "pending" && thread.reply?.order === row.order;
+      const pending = row.status === "pending" && answering === row.order;
       const sender = role === "user" && row.userId ? sentBy.get(row.userId) : undefined;
       return [
         {
@@ -259,8 +270,8 @@ export const messagesAction = defineUserQuery({
                 error: {
                   code: error.class,
                   message: error.message,
+                  // The sender's credit balance, which an error can carry, stays out: everyone in the chat reads this.
                   ...(error.retryAfterMs !== undefined ? { retryAfterMs: error.retryAfterMs } : {}),
-                  ...(error.creditEstimate ? { credits: error.creditEstimate } : {}),
                 },
               }
             : {}),
@@ -313,7 +324,7 @@ export const live = query({
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
     const current = thread.reply;
-    if (!current) return null;
+    if (!current || !(await writing(ctx, current))) return null;
     // Newest first. A stream that has just ended still counts: its text stays up until the
     // reply's message holds it and the lock is released, so the page never shows it vanish.
     const streams = await listStreams(ctx, components.agent, {

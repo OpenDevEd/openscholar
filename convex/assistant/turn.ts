@@ -50,8 +50,8 @@ export type Turn = {
   log: Record<string, unknown>;
   /** Read every STOP_ABORT_POLL_INTERVAL_MS while the reply streams; true stops it. */
   shouldStop: () => Promise<boolean>;
-  /** Called every LEASE_RENEW_MS, so a long reply's lock isn't taken for one that died. */
-  renewLease: () => Promise<unknown>;
+  /** Called every LEASE_RENEW_MS, where a lock is one that has to be renewed. */
+  renewLease?: () => Promise<unknown>;
   /** Releases the reply's lock. Runs whether the reply finished, failed or was stopped. */
   release: () => Promise<unknown>;
   /** Keeps a failure where the caller shows it, besides the failed message. A stop isn't one. */
@@ -76,7 +76,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   let leaseRenewedAt = Date.now();
   const stopAbortPoller = startAbortPoller({
     readFlag: async () => {
-      if (Date.now() - leaseRenewedAt >= LEASE_RENEW_MS) {
+      if (turn.renewLease && Date.now() - leaseRenewedAt >= LEASE_RENEW_MS) {
         leaseRenewedAt = Date.now();
         await turn.renewLease();
       }

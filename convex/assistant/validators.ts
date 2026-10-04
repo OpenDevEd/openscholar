@@ -19,8 +19,8 @@ export const assistantReplyValidator = v.object({
   /** The exchange it belongs to: the agent component's order of the message it answers. */
   order: v.number(),
   startedAt: v.number(),
-  /** Renewed while the reply runs; one that stops being renewed died (./replies.ts). */
-  renewedAt: v.number(),
+  /** The scheduled action writing it. The reply is being written while that waits to run or runs. */
+  scheduledId: v.id("_scheduled_functions"),
   /** Set when someone stops it. */
   stop: v.optional(v.boolean()),
 });
