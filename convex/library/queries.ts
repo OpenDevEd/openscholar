@@ -1,7 +1,7 @@
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { paginationOptsValidator, paginationResultValidator, type Cursor, type PaginationOptions } from "convex/server";
-import { v } from "convex/values";
+import { v, type ObjectType } from "convex/values";
 import { stream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { requireAuth } from "../lib/auth";
@@ -372,21 +372,43 @@ const short = (text: string, max: number) => (text.length > max ? `${text.slice(
 const SORTS = { saved: "savedAt", rating: "rating", year: "publicationYear", citations: "citedByCount", title: "title" } as const;
 const optional = <V extends Parameters<typeof v.union>[number]>(validator: V) => v.optional(v.union(validator, v.null()));
 
+/** What narrows the library, as the assistant gives it. */
+const narrowing = {
+  search: optional(v.string()),
+  collectionId: optional(v.id("collections")),
+  rated: optional(v.boolean()),
+  minRating: optional(v.number()),
+  maxRating: optional(v.number()),
+  yearFrom: optional(v.number()),
+  yearTo: optional(v.number()),
+};
+/** The library's own filters from those. A model that fills in every argument sends null or nothing for what it doesn't mean: each reads as left out. */
+function viewOf(given: ObjectType<typeof narrowing>) {
+  const text = given.search?.trim();
+  const view = {
+    ...(text ? { searchText: text } : {}),
+    ...(given.collectionId ? { collectionId: given.collectionId } : {}),
+    ...(given.rated === false ? { unrated: true } : {}),
+    // Only rated papers: every rating from 0 up, unless a bound says otherwise.
+    ...(given.minRating != null || given.rated === true ? { minRating: given.minRating ?? 0 } : {}),
+    ...(given.maxRating != null ? { maxRating: given.maxRating } : {}),
+    ...(given.yearFrom != null ? { yearFrom: given.yearFrom } : {}),
+    ...(given.yearTo != null ? { yearTo: given.yearTo } : {}),
+  };
+  if (given.rated === false && (view.minRating !== undefined || view.maxRating !== undefined)) throw createError("VALIDATION_ERROR", "A paper they haven't rated has no rating to filter by: give `rated` false or a rating range, not both.");
+  return view;
+}
+
 export const papersAction = defineUserQuery({
   path: "library/queries:papers",
   description:
-    `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, the rating they gave it, the day they saved it, its paper ID and its library item ID, with how many papers match in all. ` +
+    `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, the rating they gave it, the day they saved it, its paper ID and its library item ID. ` +
+    "`total` is how many papers the whole library or one collection has; a narrowed list has none, and library/queries:countPapers counts it. " +
     "With nothing else given it lists the whole library, newest saved first. To narrow it: `search` is words to find in titles, abstracts and authors; `collectionId` is one of their collections (from library/collections:listCollections); " +
     "`rated` is true for only the papers they rated and false for only those they haven't; `minRating` and `maxRating` are 0 to 5; `yearFrom` and `yearTo` are years published. " +
     "`sort` is saved, rating, year, citations or title, and `ascending` turns its order round. `cursor` is `next` from the page before.",
   args: {
-    search: optional(v.string()),
-    collectionId: optional(v.id("collections")),
-    rated: optional(v.boolean()),
-    minRating: optional(v.number()),
-    maxRating: optional(v.number()),
-    yearFrom: optional(v.number()),
-    yearTo: optional(v.number()),
+    ...narrowing,
     sort: optional(v.union(...Object.keys(SORTS).map((name) => v.literal(name as keyof typeof SORTS)))),
     ascending: optional(v.boolean()),
     cursor: optional(v.string()),
@@ -395,25 +417,12 @@ export const papersAction = defineUserQuery({
   run: async (ctx, userId, given) => {
     const user = await ctx.db.get("users", userId);
     if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
-    // A model that fills in every argument sends null, false or nothing for what it doesn't mean: each reads as left out.
-    const text = given.search?.trim();
-    const view = {
-      sortBy: SORTS[given.sort ?? "saved"],
-      sortOrder: given.ascending ? ("asc" as const) : ("desc" as const),
-      ...(text ? { searchText: text } : {}),
-      ...(given.collectionId ? { collectionId: given.collectionId } : {}),
-      ...(given.rated === false ? { unrated: true } : {}),
-      // Only rated papers: every rating from 0 up, unless a bound says otherwise.
-      ...(given.minRating != null || given.rated === true ? { minRating: given.minRating ?? 0 } : {}),
-      ...(given.maxRating != null ? { maxRating: given.maxRating } : {}),
-      ...(given.yearFrom != null ? { yearFrom: given.yearFrom } : {}),
-      ...(given.yearTo != null ? { yearTo: given.yearTo } : {}),
-    };
-    if (given.rated === false && (view.minRating !== undefined || view.maxRating !== undefined)) throw createError("VALIDATION_ERROR", "A paper they haven't rated has no rating to filter by: give `rated` false or a rating range, not both.");
-    const [read, counted] = await Promise.all([readLibraryPage(ctx, userId, view, { cursor: given.cursor || null, numItems: PAPERS_PAGE }), countLibraryView(ctx, user, view)]);
+    const view = viewOf(given);
+    const read = await readLibraryPage(ctx, userId, { ...view, sortBy: SORTS[given.sort ?? "saved"], sortOrder: given.ascending ? "asc" : "desc" }, { cursor: given.cursor || null, numItems: PAPERS_PAGE });
+    // A narrowed view is counted by reading it, which a page of it leaves no room for in one read: its count is its own action.
+    const kept = view.searchText === undefined && !hasNonCollectionLibraryFilters(view);
     return {
-      total: counted.count,
-      ...(counted.capped ? { totalIsAtLeast: true as const } : {}),
+      ...(kept ? { total: (await countLibraryView(ctx, user, view)).count } : {}),
       papers: read.page.map((item) => ({
         libraryItemId: item._id,
         id: item.openalexId,
@@ -430,6 +439,23 @@ export const papersAction = defineUserQuery({
 });
 export const papers = userQuery(papersAction);
 export const papersForAssistant = assistantQuery(papersAction);
+
+export const countPapersAction = defineUserQuery({
+  path: "library/queries:countPapers",
+  description:
+    "Counts the papers in the person's library that a narrowed list has, by the same `search`, `collectionId`, `rated`, `minRating`, `maxRating`, `yearFrom` and `yearTo` as library/queries:papers. " +
+    "A count that stopped short of them all comes with `atLeast`.",
+  args: narrowing,
+  returns: v.object({ count: v.number(), atLeast: v.optional(v.literal(true)) }),
+  run: async (ctx, userId, given) => {
+    const user = await ctx.db.get("users", userId);
+    if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
+    const counted = await countLibraryView(ctx, user, viewOf(given));
+    return { count: counted.count, ...(counted.capped ? { atLeast: true as const } : {}) };
+  },
+});
+export const countPapers = userQuery(countPapersAction);
+export const countPapersForAssistant = assistantQuery(countPapersAction);
 
 export const getLibraryCount = query({
   args: {},

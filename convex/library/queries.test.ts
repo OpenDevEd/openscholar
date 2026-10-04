@@ -1385,7 +1385,11 @@ describe("the library as the assistant reads it", () => {
 
     // The ones they haven't rated, the ones they have, and a rating range.
     expect((await papers({ rated: false })).papers.map((paper) => paper.title)).toEqual(["Phones and literacy"]);
-    expect(await papers({ rated: true })).toMatchObject({ total: 2 });
+    expect((await papers({ rated: true })).papers).toHaveLength(2);
+    // A narrowed list has no total: counting it is its own read, so a page and a count never share one.
+    expect((await papers({ rated: true })).total).toBeUndefined();
+    const count = (args: Parameters<typeof asUser.query<typeof api.library.queries.countPapers>>[1] = {}) => asUser.query(api.library.queries.countPapers, args);
+    expect([await count({ rated: true }), await count({ rated: false }), await count({ search: "literacy" }), await count({ collectionId, minRating: 4 }), await count()]).toEqual([{ count: 2 }, { count: 1 }, { count: 1 }, { count: 1 }, { count: 3 }]);
     expect((await papers({ minRating: 4 })).papers.map((paper) => paper.title)).toEqual(["Tutoring at scale"]);
     await expect(papers({ rated: false, minRating: 4 })).rejects.toThrow(/not both/);
     // One collection, a span of years, words, and another order.

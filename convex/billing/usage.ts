@@ -135,7 +135,7 @@ async function spendingOf(ctx: QueryCtx, userId: Id<"users">, since: number, day
 export const balanceAction = defineUserQuery({
   path: "billing/usage:balance",
   description:
-    "Says how many credits the person has to spend now. A reply the assistant is writing holds some until it ends, so while one is, this is lower than their balance by what that reply holds.",
+    "Says how many credits the person has, as last read from the billing service. It can be a little behind: a reply being written holds credits until it ends, and a charge shows once it's settled.",
   args: {},
   returns: v.object({ credits: v.number() }),
   run: async (ctx, userId) => ({ credits: await availableCredits(ctx, userId) }),

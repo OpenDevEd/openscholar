@@ -33,9 +33,8 @@ export type LibraryView = Infer<typeof libraryViewValidator>;
 export const PAPERS_PAGE = 20;
 /** A page of the library as the assistant reads it: each paper in short, with how many match. */
 export const libraryPapersValidator = v.object({
-  /** How many papers match, and whether the count stopped short of them all. */
-  total: v.number(),
-  totalIsAtLeast: v.optional(v.literal(true)),
+  /** How many papers the view has, when that's kept as a count: the whole library, or one collection. A narrowed view is counted by library/queries:countPapers. */
+  total: v.optional(v.number()),
   papers: capped(
     v.array(
       v.object({

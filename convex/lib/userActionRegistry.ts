@@ -14,7 +14,7 @@ import { countJobResultsAction as extractionResultCountAction, listJobResultsAct
 import { candidatesAction as chatCandidatesAction, grantAction as chatGrantAction, listAccessAction as chatAccessAction, revokeAction as chatRevokeAction } from "../assistant/sharing";
 import { messagesAction as chatMessagesAction } from "../assistant/replies";
 import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, removeAction as chatRemoveAction, renameAction as chatRenameAction, setModelAction as chatModelAction } from "../assistant/threads";
-import { papersAction as libraryPapersAction, savedPaperAction } from "../library/queries";
+import { countPapersAction as libraryCountPapersAction, papersAction as libraryPapersAction, savedPaperAction } from "../library/queries";
 import { addToCollectionAction, countCollectionsAction, createCollectionAction, deleteCollectionAction, getCollectionAction, listCollectionsAction, removeFromCollectionAction, renameCollectionAction } from "../library/collections";
 import { estimateAction as screeningEstimateAction, listJobsAction as screeningJobsAction } from "../screening/queries";
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
@@ -55,6 +55,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   paperSearchAction,
   paperGetAction,
   libraryPapersAction,
+  libraryCountPapersAction,
   balanceAction,
   screeningJobsAction,
   lookupFindAction,
