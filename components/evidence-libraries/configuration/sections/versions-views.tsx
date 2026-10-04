@@ -41,7 +41,8 @@ export type VersionHistoryRow = {
   runtimeCommit?: string;
 };
 
-const PAGE_SIZE = 10;
+/** Versions the history reads at a time. */
+export const VERSIONS_PAGE_SIZE = 10;
 
 export const VERSION_TONE: Record<VersionStatus, StatusTone> = {
   live: "success",
@@ -167,19 +168,30 @@ export function ReleaseNotes({
  */
 export function VersionHistory<Row extends VersionHistoryRow>({
   rows,
+  total,
+  more,
+  loading,
   blocked,
   onRestore,
 }: {
+  /** The versions read so far, newest first. */
   rows: readonly Row[];
+  /** How many versions the library has. */
+  total: number;
+  /** Reads the next page; absent when there is none. */
+  more?: () => void;
+  /** The next page is on its way. */
+  loading: boolean;
   blocked: boolean;
   onRestore: (row: Row) => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
   const format = useFormatter();
-  const [shown, setShown] = useState(PAGE_SIZE);
-  if (rows.length === 0) return <EmptyList>{t("versions.empty")}</EmptyList>;
-  const visible = rows.slice(0, shown);
-  const remaining = rows.length - visible.length;
+  // A page can come back empty with older versions still unread, so the list is empty only once nothing is left to read.
+  if (rows.length === 0 && !more && !loading) return <EmptyList>{t("versions.empty")}</EmptyList>;
+  const visible = rows;
+  // The count is kept apart from the rows, so it never reads lower than the rows shown, nor names fewer than one more.
+  const remaining = Math.max(1, Math.max(total, rows.length) - rows.length);
 
   return (
     <div className="space-y-2">
@@ -252,16 +264,11 @@ export function VersionHistory<Row extends VersionHistoryRow>({
       </ol>
       <div className="flex items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
         <span>
-          {t("versions.showing", { shown: visible.length, total: rows.length })}
+          {t("versions.showing", { shown: visible.length, total: Math.max(total, rows.length) })}
         </span>
-        {remaining > 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setShown((count) => count + PAGE_SIZE)}
-          >
-            {t("versions.showMore", { count: Math.min(remaining, PAGE_SIZE) })}
+        {more || loading ? (
+          <Button type="button" variant="ghost" size="sm" disabled={loading} onClick={more}>
+            {t("versions.showMore", { count: Math.min(remaining, VERSIONS_PAGE_SIZE) })}
           </Button>
         ) : null}
       </div>

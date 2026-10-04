@@ -1042,8 +1042,8 @@ describe("Evidence Library configuration deployment", () => {
       {},
     );
     const versions = await fixture.admin.query(
-      api.evidenceLibraries.versions.listVersions,
-      { libraryId },
+      api.evidenceLibraries.versions.listVersionRows,
+      { libraryId, paginationOpts: { cursor: null, numItems: 10 } },
     );
     for (const view of [draft, overviews, versions]) {
       const seen = JSON.stringify(view);

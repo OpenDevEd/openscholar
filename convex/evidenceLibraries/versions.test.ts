@@ -101,6 +101,8 @@ async function readSectionPayloads(
   });
 }
 
+const firstVersions = { cursor: null, numItems: 10 };
+
 describe("Evidence Library versions", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -169,10 +171,11 @@ describe("Evidence Library versions", () => {
     expect(state.library?.activeRevisionId).toBe(second.revisionId);
     expect(state.library?.latestRevisionId).toBe(restored.revisionId);
 
-    const versionsWhileDeploying = await fixture.admin.query(
-      api.evidenceLibraries.versions.listVersions,
-      { libraryId: fixture.created.libraryId },
+    const { page: versionsWhileDeploying } = await fixture.admin.query(
+      api.evidenceLibraries.versions.listVersionRows,
+      { libraryId: fixture.created.libraryId, paginationOpts: firstVersions },
     );
+    expect(await fixture.admin.query(api.evidenceLibraries.versions.countVersions, { libraryId: fixture.created.libraryId })).toBe(3);
     expect(
       versionsWhileDeploying.map(({ revisionKey, status, kind }) => ({
         revisionKey,
@@ -187,9 +190,9 @@ describe("Evidence Library versions", () => {
     expect(versionsWhileDeploying[0]?.changedSections).toEqual(["identity"]);
 
     await markSucceeded(fixture, restored.operationId, restored.revisionId);
-    const versions = await fixture.admin.query(
-      api.evidenceLibraries.versions.listVersions,
-      { libraryId: fixture.created.libraryId },
+    const { page: versions } = await fixture.admin.query(
+      api.evidenceLibraries.versions.listVersionRows,
+      { libraryId: fixture.created.libraryId, paginationOpts: firstVersions },
     );
     expect(
       versions.map(({ revisionKey, status }) => [revisionKey, status]),
@@ -653,9 +656,9 @@ describe("Evidence Library versions", () => {
       });
     });
 
-    const versions = await fixture.admin.query(
-      api.evidenceLibraries.versions.listVersions,
-      { libraryId: fixture.created.libraryId },
+    const { page: versions } = await fixture.admin.query(
+      api.evidenceLibraries.versions.listVersionRows,
+      { libraryId: fixture.created.libraryId, paginationOpts: firstVersions },
     );
     expect(
       versions.map(({ revisionKey, status, kind, by, changedSections }) => ({
