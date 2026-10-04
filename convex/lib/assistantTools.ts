@@ -43,11 +43,18 @@ export const toolName = (path: string) => path.replace(/[/:]/g, "_");
 
 const retryKeyOf = (entry: UserAction) => (entry.kind === "query" ? undefined : entry.retryKey);
 
+/**
+ * A page to read, as the model gives it: how many, and where to carry on from. Convex's own
+ * page options also hold limits on what one page reads. A model that fills in every argument
+ * set those to 0, and the read failed; they're left out here, and dropped when sent anyway.
+ */
+const PAGE = z.object({ numItems: z.number(), cursor: z.string().nullable() });
+
 /** What the model fills in to call an action: its arguments but the retry key, with IDs as strings. */
 export function inputSchema(entry: UserAction) {
   const retryKey = retryKeyOf(entry);
   const fields = Object.fromEntries(Object.entries(entry.args as PropertyValidators).filter(([name]) => name !== retryKey));
-  return z.object(convexToZodFields(fieldsWithStringIds(fields)));
+  return z.object({ ...convexToZodFields(fieldsWithStringIds(fields)), ...("paginationOpts" in fields ? { paginationOpts: PAGE } : {}) });
 }
 
 /**
@@ -60,8 +67,9 @@ export function runAction(ctx: ActionCtx, userId: Id<"users">, entry: UserAction
   const args = { ...input, ...(retryKey ? { [retryKey]: callKey } : {}), userId };
   const ref = assistantPath(entry.path);
   if (entry.kind === "query") return ctx.runQuery(makeFunctionReference<"query">(ref), args);
-  if (entry.kind === "mutation") return ctx.runMutation(makeFunctionReference<"mutation">(ref), { ...args, ...(stepId ? { stepId } : {}), ...(approved ? { approved } : {}) });
-  return ctx.runAction(makeFunctionReference<"action">(ref), args);
+  const change = { ...args, ...(stepId ? { stepId } : {}), ...(approved ? { approved } : {}) };
+  if (entry.kind === "mutation") return ctx.runMutation(makeFunctionReference<"mutation">(ref), change);
+  return ctx.runAction(makeFunctionReference<"action">(ref), entry.changes ? change : args);
 }
 
 /** One call of an action by the model. */

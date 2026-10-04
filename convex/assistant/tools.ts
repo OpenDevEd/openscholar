@@ -50,7 +50,7 @@ const CORE_PATHS = [
   "research/records:ratingsOf",
   "library/queries:papers",
   "library/queries:savedPaper",
-  "library/mutations:saveToLibrary",
+  "library/papers:save",
   "library/mutations:setLibraryRating",
   "library/mutations:setPaperInCollection",
   "library/collections:listCollections",
@@ -135,8 +135,17 @@ function subjectOf(input: Record<string, unknown>) {
   return typeof named === "string" ? cut(named.trim(), 200) : undefined;
 }
 
-/** An error as the model should read it: the action's own message, without the runtime's wrapping. */
-const messageOf = (error: unknown) => cut(readConvexErrorData(error)?.message ?? (error instanceof Error ? error.message : String(error)), MODEL_READS / 4);
+/**
+ * An error as the model should read it, and as the step shows it to the person: the action's
+ * own message. One the action didn't write (a crash, a limit of the runtime) is cut to its
+ * first line, without the runtime's prefix and the trace of where it was thrown.
+ */
+const messageOf = (error: unknown) => {
+  const told = readConvexErrorData(error)?.message;
+  if (told) return cut(told, MODEL_READS / 4);
+  console.error("[assistant] an action failed with an error it didn't write", error);
+  return cut((error instanceof Error ? error.message : String(error)).split("\n")[0].replace(/^(?:\[Request ID: \w+\] Server Error\s*)?(?:Uncaught \w*Error: )?/, ""), 300);
+};
 
 /**
  * The actions whose name or description hold the most of these words, best first; an action
@@ -204,9 +213,10 @@ export function toolsFor(
     const subject = subjectOf(input);
     const stepId = allowed ?? (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}) }));
     try {
-      // A change ends its step in its own transaction, so the two are saved together. A read's step is ended here.
-      const result = await runAction(ctx, userId, entry, input, key, entry.kind === "mutation" ? stepId : undefined, allowed !== undefined);
-      if (entry.kind !== "mutation") await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
+      // A change ends its step in its own transaction, so the two are saved together: a mutation, or an action whose write does. A read's step is ended here.
+      const change = entry.kind === "mutation" || (entry.kind === "action" && entry.changes === true);
+      const result = await runAction(ctx, userId, entry, input, key, change ? stepId : undefined, allowed !== undefined);
+      if (!change) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
       return forModel(result);
     } catch (error) {
       const message = messageOf(error);
