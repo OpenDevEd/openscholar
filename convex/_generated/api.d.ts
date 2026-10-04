@@ -265,7 +265,6 @@ import type * as migrations_calendarDayDates from "../migrations/calendarDayDate
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
 import type * as migrations_countBillingUsage from "../migrations/countBillingUsage.js";
 import type * as migrations_countScreeningJobs from "../migrations/countScreeningJobs.js";
-import type * as migrations_dropScreeningResultCounts from "../migrations/dropScreeningResultCounts.js";
 import type * as migrations_expireInvitations from "../migrations/expireInvitations.js";
 import type * as migrations_moveLibraryCounts from "../migrations/moveLibraryCounts.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
@@ -610,7 +609,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
   "migrations/countBillingUsage": typeof migrations_countBillingUsage;
   "migrations/countScreeningJobs": typeof migrations_countScreeningJobs;
-  "migrations/dropScreeningResultCounts": typeof migrations_dropScreeningResultCounts;
   "migrations/expireInvitations": typeof migrations_expireInvitations;
   "migrations/moveLibraryCounts": typeof migrations_moveLibraryCounts;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
