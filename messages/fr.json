@@ -879,6 +879,7 @@
     "downloadFailedDescription": "Impossible de télécharger {format}. Veuillez réessayer.",
     "uploadFailed": "Échec du téléversement",
     "uploadFailedDescription": "Impossible de téléverser {format}. Veuillez réessayer.",
+    "accountChanged": "Votre compte a changé. Réessayez.",
     "copyFailedDescription": "Impossible de copier dans le presse-papiers. Veuillez réessayer.",
     "validationFailed": "Échec de la validation",
     "entityCreated": "{entity} créé",
@@ -1201,6 +1202,7 @@
     "guideTip2Description": "Votre favori s'étendra automatiquement aux termes de recherche complets. Exemple : <code>ml...</code> devient <code>AI OR ML OR \"intelligence artificielle\"</code>"
   },
   "historyPage": {
+    "importMissingFilters": "Cet ancien fichier contient uniquement les requêtes et les nombres de résultats. Les filtres manquants ne peuvent pas être récupérés.",
     "description": "Voir et revisiter vos recherches précédentes",
     "searchPlaceholder": "Rechercher dans votre historique...",
     "clearAllHistory": "Effacer tout l'historique",

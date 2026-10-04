@@ -6,12 +6,21 @@
 import type { ConvexReactClient } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import type { SearchSnapshot } from "@/convex/paperSets/openalex";
+import { sourceMetadata, type PaperSourceMetadata } from "@/lib/library/paper-metadata";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface ScreeningExportJob {
+  _id?: string;
+  revision?: string;
+  set?: { kind: string; searchId?: string; jobId?: string; collectionId?: string };
+  snapshot?: SearchSnapshot;
+  serverEffort?: string;
+  first?: number;
+  last?: number;
   status: string;
   questions: Array<{ key: string; question: string }>;
   scoringConfig: {
@@ -33,7 +42,10 @@ export interface ScreeningExportJob {
   completedAt?: number;
 }
 
-export interface ScreeningExportResult {
+export interface ScreeningExportResult extends PaperSourceMetadata {
+  venue?: string;
+  citedByCount?: number;
+  resultId?: string;
   openalexId: string;
   title: string;
   authors?: string[];
@@ -44,6 +56,12 @@ export interface ScreeningExportResult {
   score?: number;
   stars?: number;
   qualified?: boolean;
+  modelAnswers?: Record<string, boolean | null>;
+  modelConfidences?: Record<string, number>;
+  decisions?: Record<string, { by: "model" | "person" | "assistant" | "unrecorded"; at?: number }>;
+  outcome?: string;
+  model?: string;
+  completedAt?: number;
 }
 
 type Questions = ScreeningExportJob["questions"];
@@ -54,14 +72,14 @@ type Questions = ScreeningExportJob["questions"];
 
 /**
  * Formats a screening answer for display.
- * true -> "Yes", false -> "No", null/undefined -> "N/A"
+ * Missing answers differ from answers the model or reviewer marked unclear.
  */
 export function formatScreeningAnswer(
   answer: boolean | null | undefined,
 ): string {
   if (answer === true) return 'Yes';
   if (answer === false) return 'No';
-  return 'N/A';
+  return answer === null ? 'Unclear' : 'Not answered';
 }
 
 /**
@@ -87,7 +105,7 @@ export function screeningExportName(job: Pick<ScreeningExportJob, "createdAt" | 
 
 /** The columns of the results table: the paper, an answer per question, then the scoring. */
 export function screeningHeaders(questions: Questions): string[] {
-  return ['Title', 'Authors', 'Year', 'DOI', 'OpenAlex ID', ...questions.map((q) => q.question), 'Score', 'Stars', 'Qualified', 'Status'];
+  return ['Title', 'Authors', 'Year', 'DOI', 'OpenAlex ID', ...questions.map((q) => `${q.key}: ${q.question}`), 'Score', 'Stars', 'Qualified', 'Status', 'Outcome', 'Result ID', 'Model', 'Completed at', ...questions.flatMap((q) => [`${q.key}: model answer`, `${q.key}: model confidence`, `${q.key}: decided by`, `${q.key}: decided at`]), 'Authors (unparsed)', 'Venue', 'Citation count', 'Work type', 'Open access', 'Access status', 'Open access URL', 'PDF URL'];
 }
 
 /** One result under those columns. Score and stars stay numbers, for a spreadsheet. */
@@ -103,6 +121,12 @@ export function screeningCells(questions: Questions, result: ScreeningExportResu
     result.stars ?? '',
     result.qualified === undefined ? '' : result.qualified ? 'Yes' : 'No',
     result.status,
+    result.outcome ?? '',
+    result.resultId ?? '',
+    result.model ?? '',
+    result.completedAt === undefined ? '' : new Date(result.completedAt).toISOString(),
+    ...questions.flatMap(({ key }) => [formatScreeningAnswer(result.modelAnswers?.[key]), result.modelConfidences?.[key] ?? '', result.decisions?.[key]?.by ?? 'unrecorded', result.decisions?.[key]?.at === undefined ? '' : new Date(result.decisions[key].at!).toISOString()]),
+    result.authorsUnparsed ?? '', result.venue ?? '', result.citedByCount ?? '', result.workType ?? '', result.isOpenAccess === undefined ? 'Unknown' : result.isOpenAccess ? 'Yes' : 'No', result.oaStatus ?? '', result.oaUrl ?? '', result.pdfUrl ?? '',
   ];
 }
 
@@ -110,13 +134,31 @@ const csvLine = (cells: Array<string | number>) => cells.map((cell) => escapeCSV
 /** `text`, a value printed with two-space indentation, moved `by` spaces in. */
 const indented = (text: string, by: number) => text.replace(/\n/g, `\n${' '.repeat(by)}`);
 
+type Run = Pick<ScreeningExportJob, '_id' | 'revision' | 'set' | 'snapshot' | 'first' | 'last' | 'serverEffort' | 'scoringConfig'>;
+const runProvenance = (job: Run) => ({ jobId: job._id ?? null, revision: job.revision ?? null, source: job.set ?? null, searchSnapshot: job.snapshot ?? null, first: job.first ?? null, last: job.last ?? null, effort: job.serverEffort ?? null, scoringConfig: job.scoringConfig });
+
+/** Keep long metadata below Excel's cell limit without splitting a Unicode character. */
+function metadataCells(value: unknown): string[] {
+  const cells = [''];
+  for (const character of JSON.stringify(value)) {
+    if (cells[cells.length - 1].length + character.length > 32_000) cells.push('');
+    cells[cells.length - 1] += character;
+  }
+  return cells;
+}
+
 /** One result in each format, as it follows the results before it. */
-export const screeningItems = (questions: Questions) => ({
-  csv: (result: ScreeningExportResult) => `\n${csvLine(screeningCells(questions, result))}`,
+export const screeningItems = (questions: Questions, job: Run) => {
+  const provenance = metadataCells(runProvenance(job));
+  return {
+  csv: (result: ScreeningExportResult, index: number) => `\n${csvLine([...screeningCells(questions, result), ...(index === 0 ? provenance : provenance.map((_, part) => part === 0 ? JSON.stringify({ jobId: job._id ?? null, revision: job.revision ?? null }) : ''))])}`,
   json: (result: ScreeningExportResult, index: number) =>
     `${index === 0 ? '' : ','}\n    ${indented(JSON.stringify({
       openalexId: result.openalexId,
       title: result.title,
+      ...sourceMetadata(result),
+      venue: result.venue ?? null,
+      citedByCount: result.citedByCount ?? null,
       authors: result.authors ?? [],
       publicationYear: result.publicationYear ?? null,
       doi: result.doi ?? null,
@@ -126,8 +168,16 @@ export const screeningItems = (questions: Questions) => ({
       score: result.score ?? null,
       stars: result.stars ?? null,
       qualified: result.qualified ?? null,
+      outcome: result.outcome ?? null,
+      resultId: result.resultId ?? null,
+      model: result.model ?? null,
+      completedAt: result.completedAt === undefined ? null : new Date(result.completedAt).toISOString(),
+      modelAnswers: result.modelAnswers ?? null,
+      modelConfidences: result.modelConfidences ?? null,
+      decisions: result.decisions ?? null,
     }, null, 2), 4)}`,
-});
+  };
+};
 
 /**
  * A job's export as the server writes it: a start, each result, and an end. Put together
@@ -135,12 +185,12 @@ export const screeningItems = (questions: Questions) => ({
  * indentation.
  */
 export function screeningExportFiles(job: ScreeningExportJob) {
-  const items = screeningItems(job.questions);
+  const items = screeningItems(job.questions, job);
   return {
     name: () => screeningExportName(job),
     csv: {
       contentType: 'text/csv; charset=utf-8',
-      start: () => csvLine(screeningHeaders(job.questions)),
+      start: () => `\ufeff${csvLine([...screeningHeaders(job.questions), ...metadataCells(runProvenance(job)).map((_, index) => index === 0 ? 'Run provenance' : `Run provenance continuation ${index + 1}`)])}`,
       item: items.csv,
       end: () => '',
     },
@@ -150,6 +200,13 @@ export function screeningExportFiles(job: ScreeningExportJob) {
         JSON.stringify({
           exportedAt: exportedAt.toISOString(),
           job: {
+            id: job._id ?? null,
+            revision: job.revision ?? null,
+            source: job.set ?? null,
+            searchSnapshot: job.snapshot ?? null,
+            first: job.first ?? null,
+            last: job.last ?? null,
+            effort: job.serverEffort ?? null,
             status: job.status,
             createdAt: new Date(job.createdAt).toISOString(),
             completedAt: job.completedAt ? new Date(job.completedAt).toISOString() : null,
@@ -207,6 +264,14 @@ export async function generateScreeningXLSXWorkbook(
   // Section 1: Job Info
   summarySheet.addRow(['Job Info']);
   summarySheet.addRow(['Status', job.status]);
+  summarySheet.addRow(['Job ID', job._id ?? '']);
+  summarySheet.addRow(['Revision', job.revision ?? '']);
+  summarySheet.addRow(['Minimum score', job.scoringConfig.minimumScore ?? '']);
+  summarySheet.addRow(['Source', JSON.stringify(job.set ?? null)]);
+  metadataCells(job.snapshot ?? null).forEach((cell, index) => summarySheet.addRow([index === 0 ? 'Search snapshot' : `Search snapshot continuation ${index + 1}`, cell]));
+  summarySheet.addRow(['First paper', job.first ?? '']);
+  summarySheet.addRow(['Last paper', job.last ?? '']);
+  summarySheet.addRow(['Model effort', job.serverEffort ?? '']);
   summarySheet.addRow([
     'Created',
     new Date(job.createdAt).toISOString(),
@@ -284,12 +349,14 @@ export async function exportScreeningToXLSX(convex: ConvexReactClient, jobId: Id
     let cursor: string | null = null;
     do {
       const page: { page: ScreeningExportResult[]; isDone: boolean; continueCursor: string } =
-        await convex.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor, numItems: XLSX_PAGE_SIZE } });
+        await convex.query(api.screening.queries.listScreeningResults, { jobId, revision: job!.revision, paginationOpts: { cursor, numItems: XLSX_PAGE_SIZE } });
       yield page.page;
       cursor = page.isDone ? null : page.continueCursor;
     } while (cursor !== null);
   }
   const workbook = await generateScreeningXLSXWorkbook(job, pages());
+  const latest = await convex.query(api.screening.queries.getScreeningJob, { jobId });
+  if (!latest || latest.revision !== job.revision) throw new Error('Screening changed during export. Download it again.');
   const buffer = await workbook.xlsx.writeBuffer();
   const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
   const link = document.createElement('a');

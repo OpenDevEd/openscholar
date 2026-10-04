@@ -10,6 +10,7 @@ describe("deleteExtractionInternal cascade", () => {
     const t = convexTest(schema);
 
     const ids = await seedFullJobGraph(t);
+    await t.run(ctx => ctx.db.insert("extractionEvidenceChanges", { jobId: ids.jobId, resultId: ids.resultId, before: "{}", after: "{}", answerSnapshot: "[]", createdAt: 1 }));
 
     // Enable fake timers BEFORE the mutation so scheduled functions
     // can be advanced by finishAllScheduledFunctions
@@ -40,6 +41,9 @@ describe("deleteExtractionInternal cascade", () => {
         .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
         .collect();
       expect(results).toHaveLength(0);
+
+      const evidenceChanges = await ctx.db.query("extractionEvidenceChanges").withIndex("by_job", q => q.eq("jobId", ids.jobId)).take(1);
+      expect(evidenceChanges).toEqual([]);
 
       // 3. Paper error history
       const paperErrors = await ctx.db

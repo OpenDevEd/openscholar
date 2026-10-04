@@ -13,6 +13,7 @@ import { MAX_AUTHORS } from "../lib/listCaps";
 import { readLibraryPage } from "../library/queries";
 import { paperSetValidator, screeningPaperInputValidator } from "../screening/validators";
 import { checkRange, type SearchPaper } from "./search";
+import { authorMetadata, sourceMetadata } from "../../lib/library/paper-metadata";
 
 type PaperSet = Infer<typeof paperSetValidator>;
 export type HeldSet = Exclude<PaperSet, { kind: "search" }>;
@@ -25,15 +26,18 @@ const fromLibrary = (item: Doc<"libraryItems">): SearchPaper => ({
   openalexId: item.openalexId,
   title: item.title,
   ...(item.abstract ? { abstract: item.abstract } : {}),
-  ...(item.authors ? { authors: item.authors.split(", ").slice(0, MAX_AUTHORS) } : {}),
+  ...sourceMetadata(item),
+  ...authorMetadata(item),
+  authors: authorMetadata(item).authors?.slice(0, MAX_AUTHORS),
   ...(item.publicationYear === undefined ? {} : { publicationYear: item.publicationYear }),
   ...(item.doi ? { doi: item.doi } : {}),
   ...(item.journal ? { venue: item.journal } : {}),
   ...(item.citedByCount === undefined ? {} : { citedByCount: item.citedByCount }),
 });
 
-const fromResult = ({ openalexId, title, abstract, authors, publicationYear, doi, venue, citedByCount }: Doc<"screeningResults">): SearchPaper => ({
-  openalexId, title, abstract, authors, publicationYear, doi, venue, citedByCount,
+const fromResult = (paper: Doc<"screeningResults">): SearchPaper => ({
+  ...sourceMetadata(paper),
+  openalexId: paper.openalexId, title: paper.title, abstract: paper.abstract, authors: paper.authors, publicationYear: paper.publicationYear, doi: paper.doi, venue: paper.venue, citedByCount: paper.citedByCount,
 });
 
 /** One page of a held set's papers, in its order. Another person's collection or job reads as not found. */

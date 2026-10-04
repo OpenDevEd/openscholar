@@ -31,7 +31,7 @@ describe("trimPaperData", () => {
 
     expect(result.openalexId).toBe("https://openalex.org/W1234567890");
     expect(result.title).toBe("Machine Learning for Climate Science");
-    expect(result.authors).toBe("John Doe, Jane Smith, Bob Johnson");
+    expect(result.authors).toEqual(["John Doe", "Jane Smith", "Bob Johnson"]);
     expect(result.doi).toBe("https://doi.org/10.1234/example.2024");
     expect(result.abstract).toBe(
       "This paper explores the use of machine learning techniques in climate science modeling and prediction."
@@ -76,7 +76,7 @@ describe("trimPaperData", () => {
     expect(result.title).toBe("Fallback Title Via Display Name");
   });
 
-  it("flattens multiple authorships into a comma-separated string", () => {
+  it("preserves individual names from multiple authorships", () => {
     const workWithAuthors = {
       id: "https://openalex.org/W2222222222",
       title: "Multi-Author Paper",
@@ -90,7 +90,7 @@ describe("trimPaperData", () => {
 
     const result = trimPaperData(workWithAuthors);
 
-    expect(result.authors).toBe("Alice, Bob, Charlie, Diana");
+    expect(result.authors).toEqual(["Alice", "Bob", "Charlie", "Diana"]);
   });
 
   it("filters out authorships with missing display_name", () => {
@@ -107,10 +107,10 @@ describe("trimPaperData", () => {
 
     const result = trimPaperData(workWithMissingNames);
 
-    expect(result.authors).toBe("Alice, Charlie");
+    expect(result.authors).toEqual(["Alice", "Charlie"]);
   });
 
-  it("returns undefined for authors when authorships array is empty", () => {
+  it("preserves an explicitly empty authorship list", () => {
     const workWithEmptyAuthorships = {
       id: "https://openalex.org/W4444444444",
       title: "No Authors Paper",
@@ -119,7 +119,7 @@ describe("trimPaperData", () => {
 
     const result = trimPaperData(workWithEmptyAuthorships);
 
-    expect(result.authors).toBeUndefined();
+    expect(result.authors).toEqual([]);
   });
 
   it("produces output under 1500 bytes for a full Work fixture", () => {

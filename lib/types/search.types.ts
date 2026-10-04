@@ -13,7 +13,9 @@ import type { ScreeningQuestionEntry, ScreeningResponses } from './screening.typ
  * but not yet typed in the SDK. Uses Omit to override the SDK's
  * untyped sustainable_development_goals field with proper types.
  */
-export type PaperResult = Omit<Work, 'sustainable_development_goals'> & {
+export type PaperResult = Omit<Work, 'sustainable_development_goals' | 'open_access'> & {
+  open_access?: Partial<NonNullable<Work["open_access"]>>;
+  authors_unparsed?: string;
   /** Field-weighted citation impact */
   fwci?: number;
   /** Number of referenced works (API returns this alongside referenced_works) */
@@ -147,6 +149,7 @@ export interface SearchFilters {
  */
 export interface SearchResult {
   id: string;
+  importSource?: { id: string; query: string; resolvedQuery: string; resolution: "at_export" };
   query: string;
   /** How many queries the search has had, the current one included. */
   queryHistoryCount: number;

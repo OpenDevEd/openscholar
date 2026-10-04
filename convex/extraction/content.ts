@@ -2,11 +2,12 @@ export const MIN_ABSTRACT_LENGTH = 50;
 
 export function getProcessableFlags(args: {
   pdfUrl?: string | null;
+  oaUrl?: string | null;
   storageId?: string | null;
   abstract?: string | null;
   pdfEnabled: boolean;
 }) {
-  const hasPdfUrl = args.pdfEnabled && (!!args.pdfUrl || !!args.storageId);
+  const hasPdfUrl = args.pdfEnabled && (!!args.pdfUrl || !!args.oaUrl || !!args.storageId);
   const hasAbstract = !!args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH;
   return {
     hasPdfUrl,

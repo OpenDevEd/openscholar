@@ -37,7 +37,7 @@ async function seedLibraryItem(
     openalexId: string;
     rating: number;
     title: string;
-    authors: string;
+    authors: string[];
     doi: string;
     abstract: string;
     publicationYear: number;
@@ -53,10 +53,10 @@ async function seedLibraryItem(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const title = overrides.title ?? "Default Title";
-    const authors = overrides.authors ?? "Author A";
+    const authors = overrides.authors ?? ["Author A"];
     const abstract = overrides.abstract ?? "Default abstract text";
     const searchableText =
-      overrides.searchableText ?? [title, abstract, authors].join(" ");
+      overrides.searchableText ?? [title, abstract, authors.join(" ")].join(" ");
 
     const id = await ctx.db.insert("libraryItems", {
       userId,

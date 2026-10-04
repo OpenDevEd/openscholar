@@ -81,13 +81,31 @@ const REGIONS = (function names(region: Region): string[] {
 /** Countries the page lets one filter on where authors work reach: OpenAlex takes no more in one request. */
 const AUTHOR_COUNTRIES_MAX = 100;
 
+/**
+ * Names people use for a part of the world the page has no one region for, as the page's own
+ * regions. By the United Nations' regions, as the page's are: Sudan is in northern Africa
+ * there, and so outside this sub-Saharan Africa.
+ */
+const REGION_GROUPS: Record<string, readonly string[]> = {
+  sub_saharan_africa: ["eastern_africa", "middle_africa", "southern_africa", "western_africa"],
+  latin_america: ["caribbean", "central_america", "south_america"],
+  latin_america_and_the_caribbean: ["caribbean", "central_america", "south_america"],
+};
+
 /** Places as the saved search keeps them: a region by its name on the page, a country by its two-letter code. */
 function places(given: string[], setting: string) {
-  return given.map((value) => {
-    const place = value.trim().length === 2 ? value.trim().toUpperCase() : value.trim().toLowerCase().replace(/\s+/g, "_");
-    if (!getCountryCodesForRegions([place], true).totalCount) invalid(`"${value}" isn't a place \`${setting}\` takes. Give a two-letter country code, or one of these regions: ${REGIONS.join(", ")}.`);
-    return place;
-  });
+  return [
+    ...new Set(
+      given.flatMap((value) => {
+        // The page's own name for a region keeps its hyphen (south-eastern_asia). A name people use is taken with or without one.
+        const place = value.trim().length === 2 ? value.trim().toUpperCase() : value.trim().toLowerCase().replace(/\s+/g, "_");
+        const group = REGION_GROUPS[place.replace(/-/g, "_")];
+        if (group) return group;
+        if (!getCountryCodesForRegions([place], true).totalCount) invalid(`"${value}" isn't a place \`${setting}\` takes. Give a two-letter country code, or one of these regions: ${[...REGIONS, ...Object.keys(REGION_GROUPS)].join(", ")}.`);
+        return [place];
+      }),
+    ),
+  ];
 }
 
 /** Values as one of the page's own lists has them, or a refusal that says what it takes. */

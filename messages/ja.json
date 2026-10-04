@@ -879,6 +879,7 @@
     "downloadFailedDescription": "{format} をダウンロードできませんでした。もう一度お試しください。",
     "uploadFailed": "アップロードに失敗しました",
     "uploadFailedDescription": "{format} をアップロードできませんでした。もう一度お試しください。",
+    "accountChanged": "アカウントが変更されました。もう一度お試しください。",
     "copyFailedDescription": "クリップボードにコピーできませんでした。もう一度お試しください。",
     "validationFailed": "検証に失敗しました",
     "entityCreated": "{entity} を作成しました",
@@ -1201,6 +1202,7 @@
     "guideTip2Description": "ブックマークは完全な検索語に自動展開されます。例：<code>ml...</code> → <code>AI OR ML OR \"artificial intelligence\"</code>"
   },
   "historyPage": {
+    "importMissingFilters": "この古いファイルには検索クエリと件数のみが含まれています。欠落したフィルターは復元できません。",
     "description": "過去の検索を表示して再訪",
     "searchPlaceholder": "履歴を検索...",
     "clearAllHistory": "すべての履歴をクリア",

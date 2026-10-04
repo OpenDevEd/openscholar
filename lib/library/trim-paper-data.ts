@@ -9,10 +9,11 @@ export interface WorkInput {
   abstract?: string;
   publication_year?: number;
   authorships?: { author?: { display_name?: string } }[];
-  primary_location?: { source?: { display_name?: string } };
+  primary_location?: { source?: { display_name?: string }; pdf_url?: string | null };
+  best_oa_location?: { pdf_url?: string | null } | null;
   cited_by_count?: number;
   type?: string;
-  open_access?: { is_oa?: boolean; oa_status?: string };
+  open_access?: { is_oa?: boolean; oa_status?: string; oa_url?: string | null };
 }
 
 /**
@@ -24,8 +25,7 @@ export function trimPaperData(work: WorkInput): TrimmedPaperData {
   const authors =
     work.authorships
       ?.map((a) => a.author?.display_name)
-      .filter(Boolean)
-      .join(", ") || undefined;
+      .filter((name): name is string => !!name?.trim());
 
   return {
     openalexId: work.id,
@@ -39,5 +39,7 @@ export function trimPaperData(work: WorkInput): TrimmedPaperData {
     workType: work.type || undefined,
     isOpenAccess: work.open_access?.is_oa ?? undefined,
     oaStatus: work.open_access?.oa_status || undefined,
+    oaUrl: work.open_access?.oa_url || undefined,
+    pdfUrl: work.best_oa_location?.pdf_url || work.primary_location?.pdf_url || undefined,
   };
 }

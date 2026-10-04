@@ -72,8 +72,8 @@ export function PaperContent({
           {isPreview
             ? `${tFocus("machineLearningPreview")} (2024)`
             : showTranslated && translatedContent
-            ? `${translatedContent.translatedTitle} (${paper.publication_year})`
-            : `${paper.title} (${paper.publication_year})`}
+            ? `${translatedContent.translatedTitle}${paper.publication_year == null ? "" : ` (${paper.publication_year})`}`
+            : `${paper.title}${paper.publication_year == null ? "" : ` (${paper.publication_year})`}`}
         </h1>
         <div className="text-sm text-muted-foreground">
           {isPreview ? (
@@ -81,13 +81,14 @@ export function PaperContent({
               {tFocus("authorsPreview")}
             </span>
           ) : (
-            paper.authorships && (
+            (paper.authorships?.length || paper.authors_unparsed) ? (
               <AuthorNames
-                authorships={paper.authorships}
+                authorships={paper.authorships ?? []}
+                unparsed={paper.authors_unparsed}
                 selected={selectedAuthors}
                 onToggleAuthor={onToggleAuthor}
               />
-            )
+            ) : null
           )}
         </div>
         {/* Journal/Source with volume/issue/pages */}

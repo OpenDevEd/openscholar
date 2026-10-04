@@ -28,6 +28,9 @@ export const assistantReplyValidator = v.object({
   compacting: v.optional(v.boolean()),
 });
 
+/** Requests whose digests a reply carries along, to tell when it is going round in circles (./tools.ts). */
+export const RECENT_REQUESTS = 6;
+
 /**
  * A reply that asked the person before running an action, and waits for their answer
  * (./steps.ts). Nothing runs meanwhile, so no reply holds the chat; the chat takes no
@@ -44,6 +47,9 @@ export const assistantAskingValidator = v.object({
   spent: v.number(),
   rounds: v.number(),
   made: v.number(),
+  /** How many of its requests in a row, up to the one that asked, had every action fail, and the digests of what its last few did (./tools.ts). */
+  failed: v.optional(v.number()),
+  recent: capped(v.optional(v.array(v.string())), RECENT_REQUESTS),
   askedAt: v.number(),
 });
 

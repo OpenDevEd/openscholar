@@ -1,5 +1,7 @@
 import { v } from "convex/values";
 import { MAX_AUTHORS, MAX_QUESTIONS, MAX_STARS, capped } from "../lib/listCaps";
+import { answerSourceValidator } from "../../lib/research/records";
+import { sourceMetadataFields } from "../lib/paperMetadata";
 
 /**
  * Screening question snapshot embedded in job records.
@@ -47,11 +49,18 @@ export const screeningAuthorsValidator = capped(v.optional(v.array(v.string())),
 /** A screened paper's answers, one per question. */
 export const screeningAnswersValidator = capped(v.optional(v.record(v.string(), v.union(v.boolean(), v.null()))), MAX_QUESTIONS);
 
+export const screeningDecisionSourcesValidator = capped(v.optional(v.record(v.string(), v.object({
+  by: answerSourceValidator,
+  at: v.optional(v.number()),
+}))), MAX_QUESTIONS);
+export const screeningConfidencesValidator = capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS);
+
 /**
  * Paper input shape for screening job creation.
  * Snapshot of paper metadata at job creation time.
  */
 export const screeningPaperInputValidator = v.object({
+  ...sourceMetadataFields,
   openalexId: v.string(),
   title: v.string(),
   abstract: v.optional(v.string()),
@@ -95,6 +104,7 @@ export const screeningTalliesValidator = capped(
 
 /** One paper of a job as its list shows it: the paper, its score, and its answer to each question now. */
 export const screeningJobPaperValidator = v.object({
+  ...sourceMetadataFields,
   openalexId: v.string(),
   title: v.string(),
   abstract: v.optional(v.string()),

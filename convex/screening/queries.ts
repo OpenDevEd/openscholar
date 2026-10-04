@@ -1,5 +1,7 @@
 import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
+import { sourceMetadataFields } from "../lib/paperMetadata";
+import { sourceMetadata } from "../../lib/library/paper-metadata";
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import { effortValidator } from "../aiModelConfig/validators";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -7,6 +9,8 @@ import {
   paperSetValidator,
   saveToValidator,
   screeningAnswersValidator,
+  screeningDecisionSourcesValidator,
+  screeningConfidencesValidator,
   screeningAuthorsValidator,
   screeningJobStatusValidator,
   screeningQuestionsValidator,
@@ -19,7 +23,7 @@ import { paperLimit } from "./slots";
 import { searchSnapshotValidator } from "../paperSets/openalex";
 import { answeredFully, screeningFor } from "../research/answers";
 import { SCREENING_POOL_SIZE } from "../workpool";
-import { jobAnswers } from "./accounting";
+import { jobModel, screeningRevision } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { availableCredits } from "../billing/accounts";
@@ -176,13 +180,18 @@ export const getScreeningProgress = query({
  * if the user is not authenticated, the job doesn't exist, or it belongs
  * to another user.
  */
-export const getScreeningJob = query({
+export const getScreeningJobAction = defineUserQuery({
+  path: "screening/queries:getScreeningJob",
+  description: "Read a screening job's source, questions, scoring rules, decision revision and outcome counts. Only the owner can read it.",
   args: { jobId: v.id("screeningJobs") },
   returns: v.union(
     v.null(),
     v.object({
       _id: v.id("screeningJobs"),
       _creationTime: v.number(),
+      revision: v.string(),
+      snapshot: v.optional(searchSnapshotValidator),
+      serverEffort: v.optional(effortValidator),
       userId: v.id("users"),
       status: screeningJobStatusValidator,
       totalPapers: v.number(),
@@ -210,12 +219,9 @@ export const getScreeningJob = query({
       credits: v.object({ spent: v.optional(v.number()), estimate: v.number() }),
     })
   ),
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
+  run: async (ctx, userId, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
-    if (!job || job.userId !== user._id) return null;
+    if (!job || job.userId !== userId) return null;
     const progress = await readJobProgressSnapshot(ctx, job);
     const kept = await progressRow(ctx, job._id);
     const counts = await readScreeningProgressCounts(ctx, job);
@@ -233,6 +239,9 @@ export const getScreeningJob = query({
       tallies: kept?.tallies,
       _id: job._id,
       _creationTime: job._creationTime,
+      revision: await screeningRevision(ctx, job),
+      snapshot: job.snapshot,
+      serverEffort: job.serverEffort,
       userId: job.userId,
       status: job.status,
       totalPapers: job.totalPapers,
@@ -247,6 +256,8 @@ export const getScreeningJob = query({
     };
   },
 });
+export const getScreeningJob = userQuery(getScreeningJobAction, { signedOut: null });
+export const getScreeningJobForAssistant = assistantQuery(getScreeningJobAction);
 
 /**
  * Get the latest active screening job progress for the authenticated user.
@@ -387,6 +398,10 @@ export const countUserScreeningJobs = query({
 });
 
 const screeningResultRowValidator = v.object({
+  ...sourceMetadataFields,
+  venue: v.optional(v.string()),
+  citedByCount: v.optional(v.number()),
+  resultId: v.id("screeningResults"),
   openalexId: v.string(),
   title: v.string(),
   authors: screeningAuthorsValidator,
@@ -394,6 +409,12 @@ const screeningResultRowValidator = v.object({
   doi: v.optional(v.string()),
   status: screeningResultStatusValidator,
   answers: screeningAnswersValidator,
+  modelAnswers: screeningAnswersValidator,
+  modelConfidences: screeningConfidencesValidator,
+  decisions: screeningDecisionSourcesValidator,
+  outcome: v.optional(v.string()),
+  model: v.optional(v.string()),
+  completedAt: v.optional(v.number()),
   score: v.optional(v.number()),
   stars: v.optional(v.number()),
   qualified: v.optional(v.boolean()),
@@ -402,45 +423,60 @@ const screeningResultRowValidator = v.object({
 /** Most results one page of a job holds; each also reads its answers. */
 const RESULTS_PAGE_MAX = 200;
 
-/**
- * One page of a job's results, any status, in the order they were made, each with what the
- * job answered. No `aiMetadata` or abstract: an export doesn't write them.
- */
+/** Scored decisions and their original model answers, in the job's order. */
 export async function readScreeningResultsPage(ctx: QueryCtx, job: Doc<"screeningJobs">, paginationOpts: PaginationOptions) {
   const results = await ctx.db
     .query("screeningResults")
     .withIndex("by_job", (q) => q.eq("jobId", job._id))
     .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, RESULTS_PAGE_MAX) });
-  const answers = await Promise.all(results.page.map((result) => jobAnswers(ctx, job, result)));
+  const models = await Promise.all(results.page.map((result) => result.doneAt === undefined ? jobModel(ctx, job, result) : undefined));
   return {
     ...results,
-    page: results.page.map((r, i) => ({
-      openalexId: r.openalexId,
-      title: r.title,
-      authors: r.authors,
-      publicationYear: r.publicationYear,
-      doi: r.doi,
-      status: r.status,
-      answers: answers[i],
-      score: r.score,
-      stars: r.stars,
-      qualified: r.qualified,
-    })),
+    page: results.page.map((r, i) => {
+      const pending = r.doneAt !== undefined || r.status === "processing";
+      const answers = pending ? undefined : r.counted?.answers ?? models[i]?.answers;
+      return {
+        resultId: r._id,
+        ...sourceMetadata(r),
+        venue: r.venue,
+        citedByCount: r.citedByCount,
+        openalexId: r.openalexId,
+        title: r.title,
+        authors: r.authors,
+        publicationYear: r.publicationYear,
+        doi: r.doi,
+        status: pending ? "processing" as const : r.status,
+        answers,
+        modelAnswers: models[i]?.answers,
+        modelConfidences: models[i]?.confidences,
+        decisions: answers ? Object.fromEntries(Object.keys(answers).map((key) => [key, r.counted?.decisions?.[key] ?? { by: "unrecorded" as const }])) : undefined,
+        outcome: pending ? undefined : r.outcome,
+        model: pending ? undefined : r.aiMetadata?.model,
+        completedAt: pending ? undefined : r.completedAt,
+        score: pending ? undefined : r.score,
+        stars: pending ? undefined : r.stars,
+        qualified: pending ? undefined : r.qualified,
+      };
+    }),
   };
 }
 export type ScreeningResultRow = Awaited<ReturnType<typeof readScreeningResultsPage>>["page"][number];
 
 /** One page of the results of a job the person owns; an empty page for anyone else. */
-export const listScreeningResults = query({
-  args: { jobId: v.id("screeningJobs"), paginationOpts: paginationOptsValidator },
+export const listScreeningResultsAction = defineUserQuery({
+  path: "screening/queries:listScreeningResults",
+  description: "Read a page of a screening job's scored decisions with original model answers and decision provenance. Pass the job revision to reject changes between pages.",
+  args: { jobId: v.id("screeningJobs"), paginationOpts: paginationOptsValidator, revision: v.optional(v.string()) },
   returns: paginationResultValidator(screeningResultRowValidator),
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    const job = user ? await ctx.db.get("screeningJobs", args.jobId) : null;
-    if (!user || !job || job.userId !== user._id) return { page: [], isDone: true, continueCursor: "" };
+  run: async (ctx, userId, args) => {
+    const job = await ctx.db.get("screeningJobs", args.jobId);
+    if (!job || job.userId !== userId) return { page: [], isDone: true, continueCursor: "" };
+    await screeningRevision(ctx, job, args.revision);
     return await readScreeningResultsPage(ctx, job, args.paginationOpts);
   },
 });
+export const listScreeningResults = userQuery(listScreeningResultsAction, { signedOut: { page: [], isDone: true, continueCursor: "" } });
+export const listScreeningResultsForAssistant = assistantQuery(listScreeningResultsAction);
 
 // ═══════════════════════════════════════════════════════════════
 // INTERNAL QUERIES (for workpool/background context)

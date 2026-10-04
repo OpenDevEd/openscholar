@@ -120,7 +120,7 @@ function CitationPreview({
         {tc("citation")}
       </span>
       <span className="line-clamp-4 block text-xs leading-relaxed text-muted-foreground">{citation.text}</span>
-      <span className="block text-xs font-medium text-primary">{tc("viewInPdf")}</span>
+      <span className="block text-xs font-medium text-primary">{citation.source === "abstract" ? tc("abstract") : tc("viewInPdf")}</span>
     </button>
   );
 }

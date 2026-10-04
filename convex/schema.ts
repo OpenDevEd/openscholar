@@ -3,12 +3,13 @@ import { exportFormatValidator, exportSourceValidator } from "./exportValidators
 import { libraryItemFields, removedItemValidator } from "./library/validators";
 import { MAX_COLLECTIONS_PER_USER } from "./lib/queryBounds";
 import { v } from "convex/values";
+import { sourceMetadataFields } from "./lib/paperMetadata";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
   MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_METADATA_FIELDS, MAX_QUESTIONS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
-import { screeningAnswersValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
+import { screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import {
   errorCodeValidator,
@@ -763,6 +764,7 @@ export default defineSchema({
   // so a job's inputs can be reconstructed exactly after submission.
   // ═══════════════════════════════════════════════════════════════
   extractionJobSources: defineTable({
+    ...sourceMetadataFields,
     jobId: v.id("extractionJobs"),
     position: v.number(),
     bucketKey: v.string(),
@@ -780,13 +782,11 @@ export default defineSchema({
     doi: v.optional(v.string()),
     openalexId: v.optional(v.string()),
     abstract: v.optional(v.string()),
-    pdfUrl: v.optional(v.string()),
     storageId: v.optional(v.id("_storage")),
     // Per-paper signals surfaced to the chat-mode AI context. Optional
     // because non-OpenAlex sources (zotero/upload) cannot populate them.
     citedByCount: v.optional(v.number()),
     venueName: v.optional(v.string()), // primary_location.source.display_name
-    workType: v.optional(v.string()),
     // history: saved-search placeholder that expands during queue setup
     searchFilters: v.optional(storedSearchFiltersValidator),
     // zotero context (libraryType/groupId resolve the OAuth target at queue setup)
@@ -923,6 +923,16 @@ export default defineSchema({
   // named `citationValidator` / `retrievalDiagnosticsValidator`
   // validators via the field object.
   // ═══════════════════════════════════════════════════════════════
+  extractionEvidenceChanges: defineTable({
+    jobId: v.id("extractionJobs"),
+    resultId: v.id("extractionResults"),
+    before: v.string(),
+    after: v.string(),
+    answerSnapshot: v.string(),
+    createdAt: v.number(),
+    revertedAt: v.optional(v.number()),
+  }).index("by_job", ["jobId"]),
+
   extractionResults: defineTable(extractionResultFields)
     .index("by_paper", ["paperId"])
     .index("by_paper_question", ["paperId", "questionKey"])
@@ -983,6 +993,7 @@ export default defineSchema({
   // SCREENING RESULTS - individual paper screening outcomes
   // ═══════════════════════════════════════════════════════════════
   screeningResults: defineTable({
+    ...sourceMetadataFields,
     jobId: v.id("screeningJobs"),
     openalexId: v.string(),
     title: v.string(),
@@ -1021,6 +1032,7 @@ export default defineSchema({
         // The answers it was scored on, by question key, and the keys of those a person or the assistant set.
         answers: screeningAnswersValidator,
         changed: capped(v.optional(v.array(v.string())), MAX_QUESTIONS),
+        decisions: screeningDecisionSourcesValidator,
       }),
     ),
     venue: v.optional(v.string()),
@@ -1052,6 +1064,7 @@ export default defineSchema({
   })
     .index("by_job", ["jobId"])
     .index("by_job_openalexId", ["jobId", "openalexId"])
+    .index("by_openalexId", ["openalexId"])
     // A job's papers of one outcome, in the order the job took them.
     .index("by_job_and_outcome", ["jobId", "outcome"])
     // A job's papers the model is reading: processing, and no longer waiting for a slot.
@@ -1065,6 +1078,7 @@ export default defineSchema({
   // A Screen all job's finished papers, counted by the bookkeeping worker alone.
   screeningJobProgress: defineTable({
     jobId: v.id("screeningJobs"),
+    exportRevision: v.optional(v.number()),
     completed: v.number(),
     skipped: v.number(),
     failed: v.number(),
@@ -1103,6 +1117,15 @@ export default defineSchema({
       filterFields: ["userId", "rating"],
     }),
 
+  paperMetadataChanges: defineTable({
+    table: v.union(v.literal("libraryItems"), v.literal("libraryRemovals")),
+    recordId: v.string(),
+    before: v.string(),
+    after: v.string(),
+    createdAt: v.number(),
+    revertedAt: v.optional(v.number()),
+  }).index("by_record", ["table", "recordId"]),
+
   // A paper removed from a library, with the collections it was in, kept a day so Undo
   // (the page's or the assistant's) can put it back by this record's ID.
   libraryRemovals: defineTable({
@@ -1138,6 +1161,8 @@ export default defineSchema({
     digest: v.string(),
     format: exportFormatValidator,
     source: exportSourceValidator,
+    sourceRevision: v.optional(v.string()),
+    failureReason: v.optional(v.literal("changed")),
     part: v.number(),
     cursor: v.union(v.string(), v.null()),
     serving: v.boolean(),

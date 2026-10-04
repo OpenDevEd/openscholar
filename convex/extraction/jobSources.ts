@@ -12,6 +12,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { PAPER_LIMIT } from "../../lib/extraction/limits";
+import { sourceMetadata, type PaperSourceMetadata } from "../../lib/library/paper-metadata";
 
 export type JobSourceSearchFilters = NonNullable<
   Doc<"extractionJobSources">["searchFilters"]
@@ -31,7 +32,7 @@ export type BucketSource =
  * Server-side BucketItem shape. Mirrors `lib/bucket/bucketItem.ts::BucketItem`
  * minus the client-only `addedAt` / `status` fields.
  */
-export type BucketItemInput = {
+export type BucketItemInput = PaperSourceMetadata & {
   bucketKey: string;
   source: BucketSource;
   sourceRefId: string;
@@ -60,6 +61,7 @@ export function rowFromBucketItem(
   item: BucketItemInput,
 ) {
   return {
+    ...sourceMetadata(item),
     jobId,
     position,
     bucketKey: item.bucketKey,
@@ -88,6 +90,7 @@ export function rowFromBucketItem(
 
 function bucketItemFromRow(row: Doc<"extractionJobSources">): BucketItemInput {
   return {
+    ...sourceMetadata(row),
     bucketKey: row.bucketKey,
     source: row.source,
     sourceRefId: row.sourceRefId,

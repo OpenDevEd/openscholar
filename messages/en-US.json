@@ -869,6 +869,7 @@
     "downloadFailedDescription": "Could not download {format}. Please try again.",
     "uploadFailed": "Upload failed",
     "uploadFailedDescription": "Could not upload {format}. Please try again.",
+    "accountChanged": "Your account changed. Try again.",
     "copyFailedDescription": "Could not copy to clipboard. Please try again.",
     "validationFailed": "Validation failed",
     "entityCreated": "{entity} created",
@@ -1191,6 +1192,7 @@
     "guideTip2Description": "Your bookmark will automatically expand to the full search terms. Example: <code>ml...</code> becomes <code>AI OR ML OR \"artificial intelligence\"</code>"
   },
   "historyPage": {
+    "importMissingFilters": "This older file contains only queries and counts. Missing filters cannot be recovered.",
     "description": "View and revisit your previous searches",
     "searchPlaceholder": "Search your history...",
     "clearAllHistory": "Clear all history",

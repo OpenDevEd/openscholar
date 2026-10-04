@@ -1,6 +1,7 @@
 import { mutation, internalMutation } from "../lib/functions";
 import { internal } from "../_generated/api";
 import { v, type Infer } from "convex/values";
+import { sourceMetadata } from "../../lib/library/paper-metadata";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import {
@@ -158,6 +159,7 @@ async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers
   for (const paper of batch) {
     const done = reused.has(paper.openalexId);
     await ctx.db.insert("screeningResults", {
+      ...sourceMetadata(paper),
       jobId: job._id,
       openalexId: paper.openalexId,
       title: paper.title,
@@ -374,6 +376,7 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
     let pending: { answers: Record<string, boolean | null>; confidences: Record<string, number> } | null = null;
     if (result.kind === "success" && job.status === "processing") {
       const data = result.returnValue as {
+        model?: string;
         responses: Record<string, boolean | null>;
         // Missing from results returned before #334.
         confidences?: Record<string, number>;
@@ -404,7 +407,7 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
           stars,
           qualified,
           outcome,
-          aiMetadata: { confidence: data.confidence },
+          aiMetadata: { confidence: data.confidence, ...(data.model ? { model: data.model } : {}) },
           ...(data.credits === undefined ? {} : { creditsUsed: data.credits }),
         },
       });

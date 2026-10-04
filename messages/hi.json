@@ -879,6 +879,7 @@
     "downloadFailedDescription": "{format} डाउनलोड नहीं कर सके। कृपया पुनः प्रयास करें।",
     "uploadFailed": "अपलोड विफल",
     "uploadFailedDescription": "{format} अपलोड नहीं कर सके। कृपया पुनः प्रयास करें।",
+    "accountChanged": "आपका खाता बदल गया है। फिर से कोशिश करें।",
     "copyFailedDescription": "क्लिपबोर्ड पर कॉपी नहीं कर सके। कृपया पुनः प्रयास करें।",
     "validationFailed": "सत्यापन विफल",
     "entityCreated": "{entity} बनाया गया",
@@ -1201,6 +1202,7 @@
     "guideTip2Description": "आपका बुकमार्क स्वचालित रूप से पूर्ण खोज शब्दों में विस्तारित हो जाएगा। उदाहरण: <code>ml...</code> <code>AI OR ML OR \"कृत्रिम बुद्धिमत्ता\"</code> हो जाता है"
   },
   "historyPage": {
+    "importMissingFilters": "इस पुरानी फ़ाइल में केवल खोज क्वेरी और परिणामों की संख्याएँ हैं। छूटे हुए फ़िल्टर पुनः प्राप्त नहीं किए जा सकते।",
     "description": "अपनी पिछली खोजें देखें और दोबारा देखें",
     "searchPlaceholder": "अपना इतिहास खोजें...",
     "clearAllHistory": "सभी इतिहास साफ़ करें",

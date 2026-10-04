@@ -12,6 +12,7 @@ import { answerPaper } from "../research/answers";
 import { collectionSortName } from "../library/collections";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 import type { SavedSearch } from "../../lib/research/records";
+import { exportParts } from "../exports.test-support";
 
 const questions = [{ key: "q1", question: "Randomized?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 };
@@ -35,7 +36,7 @@ async function setup({ saved = 6, inCollection = 4, credits = 100_000 } = {}) {
     await seedCreditsForTest(ctx, { userId, free: credits });
     const collectionId = await ctx.db.insert("collections", { userId, name: "Reading trials", sortName: collectionSortName("Reading trials"), itemCount: inCollection, createdAt: 1, updatedAt: 1 });
     for (let i = 1; i <= saved; i++) {
-      const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: W(i), title: `Paper ${i}`, authors: "Ada Lovelace, Alan Turing", abstract: "Tutoring works", journal: "A journal", citedByCount: i, publicationYear: 2020, searchableText: `Paper ${i}`, savedAt: i, updatedAt: i });
+      const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: W(i), title: `Paper ${i}`, authors: ["Ada Lovelace", "Alan Turing"], abstract: "Tutoring works", journal: "A journal", citedByCount: i, publicationYear: 2020, searchableText: `Paper ${i}`, savedAt: i, updatedAt: i });
       if (i <= inCollection) await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: i });
     }
     return { userId, collectionId };
@@ -263,5 +264,9 @@ describe("a job on a search whose page already answered some papers", () => {
     await answerAll(jobId, [3]);
     expect(await read(jobId)).toMatchObject({ status: "completed", running: 0, outcomes: { included: 2, excluded: 1, unclear: 0, failed: 0 }, tallies: [{ key: "q1", yes: 2, no: 1, unclear: 0 }] });
     expect(await alice.query(api.screening.queries.slots, {})).toEqual({ limit: 20, running: 0 });
+    const exported = JSON.parse((await exportParts(t, alice, { kind: "screening", jobId })).text);
+    expect(exported.results[0]).toMatchObject({ answers: { q1: true }, modelAnswers: {}, decisions: { q1: { by: "person" } } });
+    expect(exported.results[0].modelAnswers).toEqual({});
+    expect(exported.results[1]).toMatchObject({ answers: { q1: false }, modelAnswers: { q1: false } });
   });
 });

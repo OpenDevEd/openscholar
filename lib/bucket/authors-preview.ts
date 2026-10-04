@@ -5,6 +5,7 @@
  */
 export type AuthorsPreviewInput = {
   authors: string[];
+  authorsUnparsed?: string;
   year?: number;
   paperCount?: number;
   sourceMeta?: Record<string, unknown>;
@@ -29,7 +30,7 @@ export function authorsPreview(item: AuthorsPreviewInput): string {
     return `${count} ${count === 1 ? "paper" : "papers"}`;
   }
 
-  const authors = item.authors.slice(0, 3).join(", ");
+  const authors = item.authors.slice(0, 3).join(", ") || item.authorsUnparsed;
   const parts: string[] = [];
   if (authors) parts.push(authors);
   if (item.year) parts.push(String(item.year));

@@ -19,6 +19,8 @@ import { isTerminalPaperStatus, markPaperTerminalTx } from "../paperLifecycle";
 import { isRetryable, type ClassifiedError } from "@/lib/errors/taxonomy";
 import { recomputePaperListProjection } from "../listProjection";
 import { MAX_AUTHORS } from "../../lib/listCaps";
+import { sourceMetadataFields } from "../../lib/paperMetadata";
+import { sourceMetadata } from "../../../lib/library/paper-metadata";
 
 function matchesExpectedEpoch(
   job: { runEpoch?: number } | null | undefined,
@@ -33,15 +35,16 @@ export const createPaperRecords = internalMutation({
     jobId: v.id("extractionJobs"),
     papers: v.array(
       v.object({
+        ...sourceMetadataFields,
+        citedByCount: v.optional(v.number()),
+        venueName: v.optional(v.string()),
         openalexId: v.string(),
         title: v.string(),
         doi: v.optional(v.string()),
         publicationYear: v.optional(v.number()),
         abstract: v.optional(v.string()),
         authors: v.optional(v.array(v.string())),
-        pdfUrl: v.optional(v.string()),
         storageId: v.optional(v.id("_storage")),
-        isOpenAccess: v.optional(v.boolean()),
         sourceType: v.optional(paperSourceTypeValidator),
         sourceId: v.optional(v.string()),
       }),
@@ -67,6 +70,7 @@ export const createPaperRecords = internalMutation({
       const sanitizedStorageId = pdfEnabled ? paper.storageId : undefined;
       const { processable } = getProcessableFlags({
         pdfUrl: sanitizedPdfUrl,
+        oaUrl: paper.oaUrl,
         storageId: sanitizedStorageId,
         abstract: paper.abstract,
         pdfEnabled,
@@ -77,6 +81,9 @@ export const createPaperRecords = internalMutation({
       }
 
       const paperId = await ctx.db.insert("extractionPapers", {
+        ...sourceMetadata(paper),
+        citedByCount: paper.citedByCount,
+        venueName: paper.venueName,
         jobId: args.jobId,
         openalexId: paper.openalexId,
         title: paper.title,
@@ -84,7 +91,7 @@ export const createPaperRecords = internalMutation({
         publicationYear: paper.publicationYear,
         abstract: paper.abstract,
         authors: paper.authors?.slice(0, MAX_AUTHORS),
-        pdfUrl: sanitizedPdfUrl,
+        pdfUrl: paper.pdfUrl,
         storageId: sanitizedStorageId,
         isOpenAccess: paper.isOpenAccess,
         sourceType: paper.sourceType,
@@ -195,6 +202,7 @@ export const setPaperStorage = internalMutation({
     const pdfEnabled = pdfFlag?.enabled ?? true;
     const { processable } = getProcessableFlags({
       pdfUrl: paper.pdfUrl,
+      oaUrl: paper.oaUrl,
       storageId: args.storageId,
       abstract: paper.abstract,
       pdfEnabled,

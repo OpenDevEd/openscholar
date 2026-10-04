@@ -4,6 +4,7 @@ import { mutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
+import { STEP_TEXT_MAX } from "../assistant/steps";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, type Author } from "../lib/userActions";
 import { answersAmong, clearPaperAnswers, removeAnswers, screeningFor, seedAnswers, setPaperAnswers, sweepAnswers, type AnswerSource } from "./answers";
@@ -411,7 +412,10 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
   switch (command.kind) {
     case "createSearch": {
       validateSearch(command.search);
-      if (await findSearch(ctx, userId, command.search.id)) throw new Error("Search already exists.");
+      if (await findSearch(ctx, userId, command.search.id)) {
+        if (command.ifExists === "keep") return;
+        throw new Error("Search already exists.");
+      }
       // The history it starts with: what came with it, or else its first query.
       const queries = command.history?.queryHistory.length ? command.history.queryHistory : [{ query: command.search.query, field: command.search.field, timestamp: command.search.createdAt }];
       const questions = command.history?.questionHistory ?? [];
@@ -569,6 +573,46 @@ export const changeAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   retryKey: "requestId",
+  // The assistant asks the person before a change nothing puts back, by the rules that decide whether a change returns an undo (applyCommand).
+  asksFirst: async (ctx, userId, { command }) => {
+    switch (command.kind) {
+      case "createSearch":
+      case "rating":
+        return false;
+      case "clearSearches":
+      case "clearShortcuts":
+        return true;
+      // A deleted search stays deleted, whatever the delete names as what it expects to find: that
+      // says the search hasn't changed, not that the person agreed. The Undo button runs as allowed.
+      case "deleteSearch":
+        return true;
+      // No undo is returned for a shortcut too long to keep, as it was or as it would be, and
+      // a step keeps none that holds more than it can: the undo carries both.
+      case "shortcut": {
+        const row = await ctx.db.query("queryShortcuts").withIndex("by_user_and_shorthand", q => q.eq("userId", userId).eq("data.shorthand", command.shorthand)).unique();
+        const before = row ? { expansion: row.data.expansion, createdAt: row.data.createdAt } : null;
+        const undo = { command: { kind: "shortcut", shorthand: command.shorthand, value: before, expect: command.value } };
+        return [before, command.value].some(value => value && value.expansion.length > UNDO_SHORTCUT_MAX) || JSON.stringify(undo).length > STEP_TEXT_MAX;
+      }
+      case "editSearch": {
+        const edit = command.edit;
+        // Changes to questions, answers and history stay done.
+        if (edit.kind !== "patch" && edit.kind !== "query" && edit.kind !== "restore") return true;
+        const found = await findSearch(ctx, userId, command.id);
+        if (!found) return false;
+        if (edit.kind !== "restore") {
+          const previous: SavedSearch = { ...currentSearch(found.data), screeningResponses: [] };
+          const next = applySearchEdit(previous, edit, previous.updatedAt);
+          // What a restore leaves as it is, the screening questions and the chats started from the search, isn't put back by one.
+          if (!restoreReverses(previous, next)) return true;
+          // A change only to what the results page writes as it's read, the page opened and the count, has nothing to put back.
+          if (restoresNothing(next, previous)) return false;
+        }
+        // The rest is undone by restoring the revision before it. A search from before revisions were kept has none to go back to.
+        return (await revisionRow(ctx, found._id, found.revision)) === null;
+      }
+    }
+  },
   // The receipt makes a retried request apply once, from the page or from the assistant. It
   // keeps the undo, so a caller that lost the first answer gets the same one from a retry.
   run: async (ctx, userId, args, author: Author) => {

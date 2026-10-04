@@ -10,6 +10,7 @@ import { getAllCitationLocations, getCitationStatus } from "@/lib/extraction/cit
 import type { ExtractionResultRecord, PaperWithResults } from "@/lib/extraction/filtering";
 import { cn } from "@/lib/utils";
 import { HighlightedText } from "./highlighted-text";
+import { normalizeDoi } from "@/lib/topics/identity";
 
 // The pieces every results view shares, so a table cell, a card and the split
 // view say the same thing the same way.
@@ -169,6 +170,7 @@ export function ResultCell({ result, type, searchQuery = "", clamp, selected = f
 
 /** A paper's year, DOI and what the answers were read from. */
 export function PaperDetails({ paper, pdfEnabled }: { paper: PaperWithResults; pdfEnabled: boolean }) {
+  const doi = normalizeDoi(paper.doi ?? null);
   const tc = useTranslations("common");
   const hasAbstract = !!paper.abstract && paper.abstract.length > MIN_ABSTRACT_LENGTH;
   const hasPdfSource = !!paper.pdfUrl || !!paper.storageId || !!paper.ragEntryId || !!paper.isIndexed;
@@ -183,9 +185,9 @@ export function PaperDetails({ paper, pdfEnabled }: { paper: PaperWithResults; p
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
       {paper.publicationYear ? <span className="tabular-nums">{paper.publicationYear}</span> : null}
-      {paper.doi ? (
+      {doi ? (
         <a
-          href={`https://doi.org/${paper.doi}`}
+          href={`https://doi.org/${doi}`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-0.5 hover:text-primary hover:underline"

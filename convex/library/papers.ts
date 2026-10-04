@@ -8,13 +8,14 @@ import { v, type Infer } from "convex/values";
 import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
-import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
+import { assistantAction, assistantMutation, defineUserAction, defineUserMutation, userAction, userMutation } from "../lib/userActions";
 import { readWork } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
 import { trimPaperData, type WorkInput } from "../../lib/library/trim-paper-data";
 import { OPENALEX_WORK_SELECT_FIELDS } from "../../lib/openalex/search-params";
 import { workUrl } from "../../lib/openalex/work-id";
-import { saveAsksFirst, savedByIdValidator } from "./mutations";
+import { followed } from "./followed";
+import { canonical, findItem, saveAsksFirst, savedByIdValidator, setPaperInCollectionAction } from "./mutations";
 
 export const saveAction = defineUserAction({
   path: "library/papers:save",
@@ -53,3 +54,31 @@ export const saveAction = defineUserAction({
 });
 export const save = userAction(saveAction);
 export const saveForAssistant = assistantAction(saveAction);
+
+/**
+ * A saved paper into a collection, or out of it, by the paper's ID alone. The page's own
+ * action for this also takes a paper's whole record, to save it on the way; offered that,
+ * the assistant read each paper first to send its record. This is that action with only the ID.
+ */
+export const collectAction = defineUserMutation({
+  path: "library/papers:collect",
+  description:
+    "Puts a paper that's in the person's library into one of their collections, or takes it out, by the paper's ID alone, as results give it. `inCollection` is true to put it in and false to take it out. " +
+    "A paper that isn't saved yet is saved first, with library/papers:save. Taking it out keeps it in the library. " +
+    "A change returns `undo`: the action to run and the arguments to run it with to put the collection back as it was.",
+  args: { id: v.string(), collectionId: v.id("collections"), inCollection: v.boolean() },
+  returns: setPaperInCollectionAction.returns,
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: true,
+  // A library may follow the collection, which shows the change outside the account.
+  asksFirst: (ctx, _userId, { collectionId }) => followed(ctx, collectionId),
+  run: async (ctx, userId, { id, collectionId, inCollection }, author) => {
+    const item = await findItem(ctx, userId, id);
+    if (inCollection && !item) throw createError("NOT_FOUND", "This paper isn't in the library yet. Save it first, with library/papers:save.");
+    // By the ID the paper is saved under: one saved before the library kept one form is under the ID it was given.
+    return await setPaperInCollectionAction.run(ctx, userId, { paper: { openalexId: item?.openalexId ?? canonical(id) }, collectionId, inCollection }, author);
+  },
+});
+export const collect = userMutation(collectAction);
+export const collectForAssistant = assistantMutation(collectAction);

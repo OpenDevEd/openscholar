@@ -9,6 +9,8 @@
  */
 
 import { reconstructAbstract } from "./reconstruct-abstract";
+import { trimPaperData } from "../library/trim-paper-data";
+import { sourceMetadata, type PaperSourceMetadata } from "../library/paper-metadata";
 
 export type OpenAlexWork = {
   id?: string;
@@ -17,13 +19,14 @@ export type OpenAlexWork = {
   publication_year?: number;
   abstract_inverted_index?: Record<string, number[]>;
   authorships?: Array<{ author?: { display_name?: string } }>;
-  open_access?: { oa_url?: string; is_oa?: boolean };
+  open_access?: { oa_url?: string; is_oa?: boolean; oa_status?: string };
   cited_by_count?: number;
-  primary_location?: { source?: { display_name?: string } };
+  primary_location?: { source?: { display_name?: string }; pdf_url?: string };
+  best_oa_location?: { pdf_url?: string };
   type?: string;
 };
 
-export type PaperDataOut = {
+export type PaperDataOut = PaperSourceMetadata & {
   openalexId: string;
   title: string;
   doi?: string;
@@ -40,30 +43,20 @@ export type PaperDataOut = {
 const OPENALEX_ID_PREFIX = "https://openalex.org/";
 
 export function mapOpenAlexWorkToPaperData(work: OpenAlexWork): PaperDataOut {
-  const authors =
-    work.authorships
-      ?.map((a) => a.author?.display_name)
-      .filter((name): name is string => Boolean(name)) ?? [];
-
   const abstract = work.abstract_inverted_index
     ? reconstructAbstract(work.abstract_inverted_index)
     : undefined;
 
-  // 0 is meaningful for `cited_by_count` (uncited paper), so use ?? not ||.
-  const citedByCount =
-    typeof work.cited_by_count === "number" ? work.cited_by_count : undefined;
-
+  const paper = trimPaperData({ ...work, id: work.id ?? "", abstract });
   return {
+    ...sourceMetadata(paper),
     openalexId: work.id?.replace(OPENALEX_ID_PREFIX, "") || "",
     title: work.display_name || "Untitled",
     doi: work.doi || undefined,
     publicationYear: work.publication_year || undefined,
     abstract,
-    authors,
-    pdfUrl: work.open_access?.oa_url || undefined,
-    isOpenAccess: work.open_access?.is_oa || false,
-    citedByCount,
-    venueName: work.primary_location?.source?.display_name || undefined,
-    workType: work.type || undefined,
+    authors: paper.authors ?? [],
+    citedByCount: paper.citedByCount,
+    venueName: paper.journal,
   };
 }

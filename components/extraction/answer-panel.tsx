@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import type { ExtractionResultRecord, PaperWithResults, Question } from "@/lib/extraction/filtering";
 import { getAllCitationLocations, getCitationStatus } from "@/lib/extraction/citations";
 import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
-import { PdfCitationPanel } from "./pdf-citation-panel";
+import { CitationPanel } from "./citation-panel";
 import { ResultAnswer, ResultMeta } from "./results-views/result-parts";
 
 /** The answer a reader opened from the results: which paper, which question, and what came back. */
@@ -23,7 +23,7 @@ export const openAnswerKey = (answer: OpenAnswer | null) => (answer ? `${answer.
  */
 export function AnswerPanel({ answer }: { answer: OpenAnswer | null }) {
   const t = useTranslations();
-  if (!answer) return <PdfCitationPanel payload={null} />;
+  if (!answer) return <CitationPanel payload={null} />;
   const { paper, question, result } = answer;
   const citations = getAllCitationLocations(result);
   const citation = result
@@ -34,6 +34,7 @@ export function AnswerPanel({ answer }: { answer: OpenAnswer | null }) {
         citationStatus: getCitationStatus(result),
         answer: result.answer,
         questionText: question.question,
+        abstract: paper.abstract,
       })
     : null;
   return (
@@ -56,7 +57,7 @@ export function AnswerPanel({ answer }: { answer: OpenAnswer | null }) {
       </section>
       {citation ? (
         <div className="min-h-0 flex-1">
-          <PdfCitationPanel key={`${paper._id}-${question.key}`} payload={citation} />
+          <CitationPanel key={`${paper._id}-${question.key}`} payload={citation} />
         </div>
       ) : (
         <p className="rounded-xl border border-dashed border-border p-4 text-xs text-muted-foreground">

@@ -30,5 +30,6 @@ export const OPENALEX_WORK_SELECT_FIELDS = [
   "open_access",
   "cited_by_count",
   "primary_location",
+  "best_oa_location",
   "type",
 ] as const;

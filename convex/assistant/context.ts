@@ -10,6 +10,13 @@
  * model writes a summary of everything so far, and the next request starts from that
  * summary. Only the model's view is compacted: the chat keeps every message.
  *
+ * A reply that still has work to do when that happens is summarized where it stands, and
+ * goes on from the summary by itself, in an exchange of its own that begins with a message
+ * telling it to (`CARRY_ON`). This is what opencode does when it compacts inside a turn:
+ * a message of its own making follows the summary and continues the work. Each exchange
+ * then stays short however long the reply runs, which the agent component needs: it reads
+ * the whole of the exchange it answers with every request.
+ *
  * A summary only ever covers messages that were read whole, from the previous summary's
  * end, so nothing drops out of the model's view unsummarized. A compaction that fails or
  * is stopped stays owed, and the next reply writes it first.
@@ -53,6 +60,17 @@ const tooLong = () =>
 export const SUMMARY_MAX_TOKENS = 8_000;
 
 const SUMMARY_LEAD = "This conversation grew long, so its earlier messages were replaced with this summary:\n\n";
+/**
+ * The message a reply summarized partway goes on from. The app writes it, the model reads
+ * it as the person's, and the chat's page leaves it out (./replies.ts). It names everything
+ * left, not the next step alone: told to continue with the next step, GPT-6 Luna did that
+ * one step of six and stopped.
+ */
+/** The name that message is saved under, in place of the agent's, which is what tells it from a message a person wrote, whatever theirs says. */
+export const CARRIED = "carry-on";
+export const CARRY_ON =
+  "Carry on. Do everything the summary lists as unfinished, starting with its next step, and don't do again what it says is done. " +
+  "Keep going until all of it is done, then give me the answer I asked for. If you're unsure how to proceed, ask me.";
 
 const SUMMARIZE =
   "Write a summary of this conversation that can replace every message above, so the conversation can carry on from the summary alone. " +
@@ -83,8 +101,8 @@ export async function historySince(
     paginationOpts: { numItems: READ_MESSAGES, cursor: null, maximumRowsRead: READ_MESSAGES, maximumBytesRead: READ_BYTES },
     ...(args.before ? { upToAndIncludingMessageId: args.before } : {}),
   });
-  // The read reaches the end of that message's exchange. A reply that carries on after asking
-  // the person already has responses there, which the agent hands over with the message itself.
+  // The read reaches the end of that message's exchange. A reply already has responses there after
+  // its first request, which the agent hands over with the message itself.
   const exchange = read.page.find((doc) => doc._id === args.before)?.order ?? Infinity;
   return {
     docs: read.page.filter((doc) => doc.order < exchange && doc.order > through).reverse(),
@@ -103,8 +121,9 @@ export function contextSince(args: Compacted & { agentThreadId: string; promptMe
     const { docs, whole } = await historySince(ctx, { agentThreadId: args.agentThreadId, compactedThrough: args.compactedThrough, before: args.promptMessageId });
     // Answering from part of the conversation would lose the rest without a word.
     if (!whole) throw tooLong();
-    // Bytes as Convex counts them: a character outside ASCII is two to four.
-    args.onHistory({ messages: docs.length, bytes: new TextEncoder().encode(JSON.stringify(docs)).length });
+    // What the reply has written of its own exchange counts with the history: a reply that runs long is most of
+    // it. Bytes as Convex counts them: a character outside ASCII is two to four.
+    args.onHistory({ messages: docs.length + existingResponses.length, bytes: new TextEncoder().encode(JSON.stringify([docs, existingResponses])).length });
     return [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), ...inputMessages, ...inputPrompt, ...existingResponses];
   };
 }

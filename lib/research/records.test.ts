@@ -14,7 +14,7 @@ describe("saved search edits", () => {
     expect(csv).toMatchObject({ query: "education", count: 42, field: "title" });
     expect(csv).not.toHaveProperty("search_query");
     const full = { ...restoreSearch(search), yearRange: [2020, 2025], page: 3 };
-    expect(serializeSearch(importSearchRecord(full))).toMatchObject({ ...search, id: expect.any(String), queryHistoryCount: 1, yearRange: [2020, 2025], page: 3 });
+    expect(serializeSearch(importSearchRecord(full))).toMatchObject({ ...search, id: expect.any(String), queryHistoryCount: 1, screeningResponses: [], yearRange: [2020, 2025], page: 3 });
   });
   it("clears optional filters without removing required search fields", () => {
     const result = applySearchEdit({ ...search, yearRange: [2020, 2025] }, { kind: "patch", fields: {}, clear: ["yearRange"] }, search.updatedAt);

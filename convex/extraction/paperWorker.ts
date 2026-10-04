@@ -343,7 +343,7 @@ async function reservePaperCredits(
       : (queueRow.questionKeys?.length ?? 0);
   const reserved = estimatePaperCredits({
     questionCount,
-    pdf: args.pdfEnabled && Boolean(paper.pdfUrl || paper.storageId),
+    pdf: args.pdfEnabled && Boolean(paper.pdfUrl || paper.oaUrl || paper.storageId),
   });
   const reservation = {
     chargeId: `extraction:${queueRow._id}:${crypto.randomUUID()}`,
@@ -432,6 +432,7 @@ export const runPaperQueueItem = internalAction({
 
     const { processable: computedProcessable } = getProcessableFlags({
       pdfUrl: paper.pdfUrl,
+      oaUrl: paper.oaUrl,
       storageId: paper.storageId,
       abstract: paper.abstract,
       pdfEnabled: args.pdfEnabled,

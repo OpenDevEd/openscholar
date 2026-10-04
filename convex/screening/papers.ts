@@ -12,6 +12,7 @@ import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { answerAt, answerPaper, paperAnswers, restoreAnswer, restoreModelAnswer } from "../research/answers";
 import { answerSourceValidator } from "../../lib/research/records";
+import { sourceMetadata } from "../../lib/library/paper-metadata";
 import schema from "../schema";
 import { account, answersNow, jobAnswers, shown, stood, withDeltas } from "./accounting";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
@@ -26,6 +27,7 @@ const PAGE_BYTES = 4 * 1024 * 1024;
 /** A paper as a job's list shows it. */
 async function paperOf(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, outcome: Infer<typeof screeningOutcomeValidator>) {
   return {
+    ...sourceMetadata(result),
     openalexId: result.openalexId,
     title: result.title,
     abstract: result.abstract,
@@ -143,7 +145,7 @@ export const answerAction = defineUserMutation({
     // counted yet, or counted before papers kept theirs, is scored on its answers as they stand.
     const was = result.counted?.answers;
     const scoredOn = was
-      ? { answers: { ...was, [questionKey]: mine.answer }, changed: [...(result.counted?.changed ?? []).filter((key) => key !== questionKey), ...(mine.changed ? [questionKey] : [])] }
+      ? { answers: { ...was, [questionKey]: mine.answer }, changed: [...(result.counted?.changed ?? []).filter((key) => key !== questionKey), ...(mine.changed ? [questionKey] : [])], decisions: { ...result.counted?.decisions, [questionKey]: { by: left?.setBy ?? "unrecorded", ...(left ? { at: left.updatedAt } : {}) } } }
       : stood(await answersNow(ctx, job, result));
 
     const { patch: { counted, ...scored }, delta, move } = account(job, result, scoredOn);

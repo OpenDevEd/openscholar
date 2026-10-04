@@ -9,7 +9,7 @@ import { v } from "convex/values";
 import { components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { modelSummary, presetPick } from "../ai/serverModel";
+import { modelSummary, resolveTaskPick } from "../ai/serverModel";
 import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
 import { requireFeature } from "../featureFlags/guard";
 import { createError } from "../lib/errors";
@@ -93,12 +93,13 @@ const listedValidator = v.object({
 });
 
 /**
- * What a chat's replies run on: the model picked for it, or the Balanced preset's chat
- * model while it has none. The model is null when neither is set.
+ * What a chat's replies run on for one person: the model picked for the chat, or, while it
+ * has none, what their own AI settings run chat on: their preset's pick, or their own
+ * under Custom (convex/ai/serverModel.ts). The model is null when nothing is set at all.
  */
-export async function chatModel(ctx: QueryCtx | MutationCtx, thread: Doc<"assistantThreads">): Promise<{ modelId: Id<"models"> | null; effort?: Effort }> {
+export async function chatModel(ctx: QueryCtx | MutationCtx, thread: Doc<"assistantThreads">, userId: Id<"users">): Promise<{ modelId: Id<"models"> | null; effort?: Effort }> {
   if (thread.modelId) return { modelId: thread.modelId, effort: thread.effort };
-  const pick = await presetPick(ctx, "balanced", "chat");
+  const pick = await resolveTaskPick(ctx, userId, "chat");
   return { modelId: pick?.modelId ?? null, effort: pick?.effort };
 }
 
@@ -259,7 +260,7 @@ export const getAction = defineUserQuery({
   run: async (ctx, userId, { threadId }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread, role } = await requireThread(ctx, userId, threadId);
-    const { modelId, effort } = await chatModel(ctx, thread);
+    const { modelId, effort } = await chatModel(ctx, thread, userId);
     return { ...shown(thread, role), model: await modelSummary(ctx, modelId), ...(effort ? { effort } : {}) };
   },
 });

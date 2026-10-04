@@ -6,6 +6,8 @@ import { insertJob } from "./screening/createJob.test-support";
 import { digestOpaqueToken } from "./lib/opaqueTokenDigest";
 import { EXPORT_LINK_MS } from "../lib/export";
 import { exportLibrary, exportParts } from "./exports.test-support";
+import { parseImportFile } from "../lib/import";
+import { importSearchRecord, serializeSearch } from "../lib/research/records";
 
 const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const };
 
@@ -31,7 +33,7 @@ describe("library export", () => {
     expect(response.headers.get("Content-Disposition")).toMatch(/^attachment; filename="library-export-\d{4}-\d{2}-\d{2}\.csv"$/);
     const [header, ...rows] = text.trimEnd().split("\n");
     // Excel reads a CSV as UTF-8 only after a byte order mark.
-    expect(header).toBe("\ufeffabstract,authors,citedByCount,doi,isOpenAccess,journal,oaStatus,openalexId,publicationYear,rating,savedAt,title,updatedAt");
+    expect(header).toBe("\ufeffabstract,authors,authorsUnparsed,citedByCount,doi,isOpenAccess,journal,oaStatus,oaUrl,pdfUrl,workType,metadataRecoveredAt,openalexId,publicationYear,rating,savedAt,title,updatedAt");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toContain(',"Has ""quotes"", and commas",');
     expect(text).not.toContain("Not theirs");
@@ -76,7 +78,7 @@ describe("search history export", () => {
       await ctx.db.insert("queryShortcuts", { userId, data: { shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1 } });
       for (const [i, query] of queries.entries()) {
         const at = `2026-09-0${i + 1}T00:00:00.000Z`;
-        const data = { id: `${clerkId}-${i}`, query, field: "title" as const, count: 10 + i, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: at, updatedAt: at };
+        const data = { id: `${clerkId}-${i}`, query, field: "title" as const, count: 10 + i, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: at, updatedAt: at, dateRange: { from: "2020-01-01", to: "2025-12-31" }, yearRange: [2020, 2025], workTypes: ["article", "preprint"], openAccessOnly: true, sortBy: "cited_by_count:desc", chatJobIdsByAccountId: { owner: "private-chat" } };
         await ctx.db.insert("searches", { userId, localId: data.id, revision: 1, data });
       }
     });
@@ -90,20 +92,19 @@ describe("search history export", () => {
 
     const json = await exportParts(t, as, { kind: "history" });
     expect(json.response.headers.get("Content-Disposition")).toBe('attachment; filename="search_history.json"');
-    expect(JSON.parse(json.text)).toEqual([
-      // A shortcut the person never saved leaves the query as they wrote it.
-      { count: 12, field: "title", search_query: "unknown... AND maths" },
-      { count: 11, field: "title", search_query: "randomized controlled trial AND reading, phonics" },
-      { count: 10, field: "title", search_query: "tutoring" },
-    ]);
-
     const csv = await exportParts(t, as, { kind: "history" }, "csv");
-    expect(csv.text.trimEnd().split("\n")).toEqual([
-      "﻿count,field,search_query",
-      "12,title,unknown... AND maths",
-      '11,title,"randomized controlled trial AND reading, phonics"',
-      "10,title,tutoring",
-    ]);
+    for (const [format, content] of [["json", json.text], ["csv", csv.text]] as const) {
+      const rows = parseImportFile(content, format).map(row => serializeSearch(importSearchRecord(row)));
+      expect(rows.map(row => ({ query: row.query, count: row.count, field: row.field }))).toEqual([
+        { count: 12, field: "title", query: "unknown... AND maths" },
+        { count: 11, field: "title", query: "randomized controlled trial AND reading, phonics" },
+        { count: 10, field: "title", query: "tutoring" },
+      ]);
+      expect(rows[1]).toMatchObject({ id: "import:owner-1", createdAt: "2026-09-02T00:00:00.000Z", dateRange: { from: "2020-01-01", to: "2025-12-31" }, yearRange: [2020, 2025], workTypes: ["article", "preprint"], openAccessOnly: true, sortBy: "cited_by_count:desc", importSource: { query: "rct... AND reading, phonics", resolution: "at_export" } });
+      expect(rows[1]).not.toHaveProperty("chatJobIdsByAccountId");
+      expect(rows[1].screeningResponses).toEqual([]);
+    }
+    expect(JSON.parse(json.text)).toMatchObject({ format: "openscholar.searches", version: 1, scope: "current search specifications" });
   });
 });
 
@@ -151,16 +152,15 @@ describe("screening export", () => {
     expect(csv.response.headers.get("Content-Disposition")).toBe('attachment; filename="screening-export-2026-09-01-completed.csv"');
     const lines = csv.text.split("\n");
     expect(lines).toHaveLength(121);
-    expect(lines[0]).toBe('Title,Authors,Year,DOI,OpenAlex ID,"Randomized, or quasi-experimental?",Score,Stars,Qualified,Status');
-    expect(lines[1]).toBe("Paper 0,,,,https://openalex.org/W0,Yes,1,5,Yes,completed");
-    expect(lines[120]).toBe("Paper 119,,,,https://openalex.org/W119,No,0,5,No,completed");
+    expect(lines[0]).toContain('Title,Authors,Year,DOI,OpenAlex ID,"q1: Randomized, or quasi-experimental?",Score,Stars,Qualified,Status');
+    expect(lines[1]).toMatch(/^Paper 0,,,,https:\/\/openalex.org\/W0,Yes,1,5,Yes,completed,/);
+    expect(lines[120]).toMatch(/^Paper 119,,,,https:\/\/openalex.org\/W119,No,0,5,No,completed,/);
 
     const json = JSON.parse((await exportParts(t, as, { kind: "screening", jobId })).text);
     expect(json.job).toMatchObject({ status: "completed", totalPapers: 120, createdAt: "2026-09-01T00:00:00.000Z" });
     expect(json.results).toHaveLength(120);
     expect(json.results[119]).toMatchObject({ title: "Paper 119", answers: { q1: false }, qualified: false });
 
-    const other = await exportParts(t, t.withIdentity({ subject: "someone_else" }), { kind: "screening", jobId });
-    expect(other.response.status).toBe(404);
+    await expect(exportParts(t, t.withIdentity({ subject: "someone_else" }), { kind: "screening", jobId })).rejects.toThrow(/not found/i);
   });
 });

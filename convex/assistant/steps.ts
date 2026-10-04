@@ -23,8 +23,9 @@ import { assistant } from "./agent";
 export const STEP_TEXT_MAX = 16_000;
 /** Characters of an action's result that are kept, well inside one document. */
 export const STEP_RESULT_MAX = 200_000;
-/** Steps of one exchange a page of the chat shows. A reply takes few; this bounds a runaway one. */
-export const STEPS_SHOWN = 60;
+/** Steps of one exchange a page of the chat lists: the newest, when a reply ran more. */
+export const STEPS_SHOWN = 150;
+
 /** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
 export const MAX_ASKS = 10;
 /**
@@ -39,9 +40,13 @@ const FORGET_STEPS = 100;
 
 type Step = Doc<"assistantSteps">;
 
-/** An exchange's steps, in the order they ran. */
-export function stepsOfExchange(ctx: Pick<QueryCtx, "db">, threadId: Id<"assistantThreads">, order: number) {
-  return ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).eq("order", order)).take(STEPS_SHOWN);
+/**
+ * An exchange's steps, in the order they ran. A reply runs as many as its work takes; of
+ * more than a page lists, these are the newest, so a step that waits for the person is
+ * always among them.
+ */
+export async function stepsOfExchange(ctx: Pick<QueryCtx, "db">, threadId: Id<"assistantThreads">, order: number) {
+  return (await ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).eq("order", order)).order("desc").take(STEPS_SHOWN)).reverse();
 }
 
 /** A chat's steps at one status. Only steps a reply asked about are ever many at once, and those are bounded. */
@@ -213,7 +218,7 @@ export async function settleAsked(ctx: MutationCtx, threadId: Id<"assistantThrea
   for (const step of await stepsAt(ctx, threadId, "running")) await failStep(ctx, step, "The reply ended while this ran, so it may or may not have finished. Check before trying it again.");
 }
 
-/** Messages of a chat's newest exchange that are read to find calls left without a result: more than a reply's rounds write. */
+/** The newest messages of a chat that are read to find calls left without a result. A call with none is among the last a reply wrote. */
 const HEAL_MESSAGES = 80;
 type Part = { type?: string; toolCallId?: string; toolName?: string };
 const partsOf = (content: unknown): Part[] => (Array.isArray(content) ? (content as Part[]) : []);
@@ -236,11 +241,12 @@ export async function healCalls(ctx: MutationCtx, agentThreadId: string) {
       if (answers !== -1) open.splice(answers, 1);
     }
   }
-  const prompt = exchange.find((doc) => doc.message?.role === "user");
-  if (!open.length || !prompt) return;
+  // The result goes at the end of the exchange, which any of its messages places it in: a long reply's first message isn't among the ones read.
+  const anchor = exchange.find((doc) => doc.message?.role === "user") ?? exchange[0];
+  if (!open.length || !anchor) return;
   await assistant.saveMessage(ctx, {
     threadId: agentThreadId,
-    promptMessageId: prompt._id,
+    promptMessageId: anchor._id,
     message: { role: "tool", content: open.map((call) => ({ type: "tool-result" as const, toolCallId: call.toolCallId!, toolName: call.toolName ?? "", output: { type: "execution-denied" as const, reason: "This was never run: the reply ended before it could be." } })) },
     skipEmbeddings: true,
   });

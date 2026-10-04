@@ -5,6 +5,7 @@
  */
 
 import { v, type Validator } from "convex/values";
+import { sourceMetadataFields } from "../lib/paperMetadata";
 import { effortValidator } from "../aiModelConfig/validators";
 import { errorCodeValidator } from "@/lib/errors/taxonomy";
 import { type AssertExactDoc } from "../lib/validators";
@@ -152,9 +153,8 @@ export const paperSourceTypeValidator = v.union(
 
 // ---- Nested object validators ----
 
-export const citationValidator = v.object({
+const citationFields = {
   evidenceId: v.string(),
-  page: v.number(),
   charRange: capped(v.array(v.number()), RANGE_ENDS),
   quote: v.string(),
   retrieval: v.object({
@@ -164,7 +164,11 @@ export const citationValidator = v.object({
     rerankScore: v.optional(v.number()),
   }),
   validated: v.boolean(),
-});
+};
+export const citationValidator = v.union(
+  v.object({ ...citationFields, source: v.optional(v.literal("pdf")), page: v.number(), paperId: v.optional(v.string()), sourceHash: v.optional(v.string()) }),
+  v.object({ ...citationFields, source: v.literal("abstract"), paperId: v.string(), sourceHash: v.string() }),
+);
 
 export const retrievalDiagnosticsValidator = v.object({
   denseCandidates: v.number(),
@@ -293,6 +297,7 @@ const _check_extractionJobValidator: AssertExactDoc<"extractionJobs", typeof ext
 void _check_extractionJobValidator;
 
 const bucketItemFields = {
+  ...sourceMetadataFields,
   bucketKey: v.string(),
   source: v.union(
     v.literal("history"),
@@ -309,10 +314,8 @@ const bucketItemFields = {
   openalexId: v.optional(v.string()),
   abstract: v.optional(v.string()),
   storageId: v.optional(v.id("_storage")),
-  pdfUrl: v.optional(v.string()),
   citedByCount: v.optional(v.number()),
   venueName: v.optional(v.string()),
-  workType: v.optional(v.string()),
   libraryType: v.optional(v.union(v.literal("user"), v.literal("group"))),
   groupId: v.optional(v.string()),
   zoteroUserId: v.optional(v.string()),
@@ -368,6 +371,9 @@ const _check_extractionQuestionValidator: AssertExactDoc<"extractionQuestions", 
 void _check_extractionQuestionValidator;
 
 export const extractionPaperFields = {
+  ...sourceMetadataFields,
+  citedByCount: v.optional(v.number()),
+  venueName: v.optional(v.string()),
   jobId: v.id("extractionJobs"),
   openalexId: v.string(),
   title: v.string(),
@@ -375,10 +381,8 @@ export const extractionPaperFields = {
   publicationYear: v.optional(v.number()),
   abstract: v.optional(v.string()),
   authors: capped(v.optional(v.array(v.string())), MAX_AUTHORS),
-  isOpenAccess: v.optional(v.boolean()),
   processable: v.optional(v.boolean()),
   status: paperStatusValidator,
-  pdfUrl: v.optional(v.string()),
   storageId: v.optional(v.id("_storage")),
   pdfDownloadError: v.optional(v.string()),
   sourceType: v.optional(paperSourceTypeValidator),
@@ -507,9 +511,12 @@ export const extractionResultFields = {
   questionKey: v.string(),
   answer: answerValidator,
   confidence: v.optional(v.number()),
+  modelConfidence: v.optional(v.number()),
   reasoning: v.optional(v.string()),
   citations: capped(v.array(citationValidator), MAX_CITATIONS),
   citationStatus: citationStatusValidator,
+  evidenceVersion: v.optional(v.literal(2)),
+  evidenceRepairedAt: v.optional(v.number()),
   retrievalDiagnostics: v.optional(retrievalDiagnosticsValidator),
   status: v.optional(resultStatusValidator),
   billed: v.optional(v.boolean()),

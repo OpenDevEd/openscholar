@@ -11,6 +11,7 @@ import {
   isGenericArrayEntity,
   splitArrayFragments,
 } from "./analysis";
+import type { SourceCitation } from "./source-evidence";
 
 export type CitationStatus =
   | "grounded"
@@ -18,19 +19,7 @@ export type CitationStatus =
   | "insufficient_evidence"
   | "extraction_error";
 
-export type Citation = {
-  evidenceId: string;
-  page: number;
-  charRange: [number, number];
-  quote: string;
-  retrieval: {
-    denseScore?: number;
-    lexicalScore?: number;
-    fusedScore?: number;
-    rerankScore?: number;
-  };
-  validated: true;
-};
+export type Citation = SourceCitation;
 
 export type RetrievalDiagnostics = {
   denseCandidates: number;
@@ -45,6 +34,7 @@ export type ExtractionQuestionResult = {
   questionKey: string;
   answer: string | boolean | number | string[] | null;
   confidence?: number;
+  modelConfidence?: number;
   reasoning?: string;
   citations: Citation[];
   citationStatus: CitationStatus;
@@ -187,7 +177,7 @@ export function applyEvidencePolicy(params: {
   strictNull: boolean;
   selectedCandidates: RetrievalCandidate[];
 } {
-  if (params.validated.length > 0) {
+  if (params.extracted.answer !== null && params.validated.length > 0) {
     return {
       answer: params.extracted.answer,
       confidence: params.extracted.confidence,
@@ -233,6 +223,7 @@ export function isUsableAbstract(
 export function applyAbstractOnlyPolicy(params: {
   extracted: StrictExtractionOutput;
   pdfEnabled: boolean;
+  validatedCount: number;
 }): {
   answer: string | boolean | number | string[] | null;
   confidence: number;
@@ -242,14 +233,13 @@ export function applyAbstractOnlyPolicy(params: {
   const pdfDisabled = !params.pdfEnabled;
 
   if (params.extracted.answer !== null) {
-    // When PDF is disabled, abstract IS the authoritative source — no penalty.
-    // When PDF is enabled but unavailable for this paper, cap as degraded mode.
+    // Cap the adjusted confidence when PDF evidence was requested but unavailable.
     return {
       answer: params.extracted.answer,
-      confidence: pdfDisabled
+      confidence: pdfDisabled || params.validatedCount > 0
         ? params.extracted.confidence
         : Math.min(params.extracted.confidence, ABSTRACT_ONLY_CONFIDENCE_CAP),
-      citationStatus: pdfDisabled ? "grounded" : "best_effort",
+      citationStatus: params.validatedCount > 0 ? "grounded" : "best_effort",
       strictNull: false,
     };
   }
