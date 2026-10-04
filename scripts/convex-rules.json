@@ -23,9 +23,9 @@
       "convex/billing/actions.ts:previewPlan:.lineItems[]": "#425",
       "convex/billing/usage.ts:pageMine:.rows[]": "#424",
       "convex/billing/usage.ts:spendingMine:[]": "#424",
-      "convex/chat/chatPapers.ts:listChatSourcesWithInclusion:.rows[]": "#422",
-      "convex/chat/model.ts:listChatModels:[]": "#422",
-      "convex/chat/sourceEvents.ts:listForThread:[]": "#422",
+      "convex/chat/chatPapers.ts:listChatSourcesWithInclusion:.rows[]": "#325",
+      "convex/chat/model.ts:listChatModels:[]": "#325",
+      "convex/chat/sourceEvents.ts:listForThread:[]": "#325",
       "convex/evidenceLibraries/collectionSources.ts:listLibraryCollectionSources:[]": "#423",
       "convex/evidenceLibraries/credentials.ts:listCredentialMetadata:[]": "#423",
       "convex/evidenceLibraries/domainActions.ts:checkDomains:.results[]": "#425",
@@ -70,15 +70,15 @@
   },
   "untypedReturns": {
     "pending": {
-      "convex/chat/messages.ts:listThreadMessages:.streams*": "#422: the agent component's stream deltas",
-      "convex/chat/messages.ts:listThreadMessages:[]*": "#422: the agent component's UI messages"
+      "convex/chat/messages.ts:listThreadMessages:.streams*": "#325: the agent component's stream deltas",
+      "convex/chat/messages.ts:listThreadMessages:[]*": "#325: the agent component's UI messages"
     }
   },
   "everyPage": {
     "pending": {
       "app/actions/topic-publications.ts:rows": "#424",
-      "convex/chat/messages.ts:listRecentThreadArtifacts": "#422",
-      "convex/chat/messages.ts:readThreadMessagesWithVisiblePageIntegrity": "#422",
+      "convex/chat/messages.ts:listRecentThreadArtifacts": "#325",
+      "convex/chat/messages.ts:readThreadMessagesWithVisiblePageIntegrity": "#325",
       "convex/evidenceLibraries/uploadsClient.ts:listObjectNames": "#425",
       "convex/zotero/actions.ts:fetchAllCollectionsForParent": "#425",
       "convex/zotero/actions.ts:fetchAllTopItemsForCollection": "#425",
