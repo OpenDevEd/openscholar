@@ -9,8 +9,8 @@ import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/bill
 import schema from "../schema";
 import { INSTRUCTIONS, assistant } from "./agent";
 import { people } from "./assistant.test-support";
-import { COMPACT_AT_TOKENS, MAX_CONTEXT_BYTES, MAX_CONTEXT_MESSAGES, compactionDue } from "./context";
-import { finishingDoStream, waitFor } from "./turn.test-support";
+import { COMPACT_AT_TOKENS, MAX_CONTEXT_BYTES, MAX_CONTEXT_MESSAGES, compactionDue, historySince } from "./context";
+import { callingDoStream, finishingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string };
 type Sent = Array<{ role: string; content: string | Part[] }>;
@@ -189,6 +189,77 @@ describe("what the assistant's model is sent", () => {
     const charged = await t.run(async (ctx) => ctx.db.query("billingUsage").collect());
     expect(charged.filter((charge) => charge.description === "Conversation summary")).toMatchObject([{ userId: ada, kind: "chat", model: "mock/model", cacheReadTokens: 60_000 }]);
     expect(charged).toHaveLength(5);
+  });
+
+  it("is summarized while a reply is still being written, when that reply reads a lot, and the reply goes on from the summary by itself", async () => {
+    const t = convexTest(schema);
+    const { say, thread } = await chatOf(t);
+    mockDoStream.mockImplementation(finishingDoStream(["Answer 1"]));
+    await say("Question 1");
+
+    const list = (id: string, read?: number) => ({ id, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } }, ...(read ? { read } : {}) });
+    // The reply's first request is past the budget and calls an action, so it has more to do. The conversation is
+    // summarized there, through what the reply has written, and the reply goes on: a second action, then its answer.
+    requests.length = 0;
+    mockDoStream.mockReset();
+    mockDoStream.mockImplementationOnce(callingDoStream(list("first", COMPACT_AT_TOKENS + 1))).mockImplementationOnce(callingDoStream(list("second"))).mockImplementationOnce(finishingDoStream(["Answer 2"]));
+    mockDoGenerate.mockImplementation(summaryOf("Decisions\nNone.\nNext step\nList the collections once more."));
+    await say("Question 2");
+
+    // The summary call read the reply's own request and what came of it.
+    expect(said(sent(1)).at(-1)).toMatch(/^user: Write a summary/);
+    expect(JSON.stringify(sent(1))).toContain('"toolCallId":"first"');
+    expect(await thread()).toMatchObject({ summary: expect.stringContaining("List the collections once more."), compactedThrough: 0, compactedStep: 2 });
+    // The reply's next request starts from the summary and the message it is answering, and holds nothing the summary covers.
+    expect(said(sent(2))).toEqual([`system: ${INSTRUCTIONS}`, expect.stringMatching(/^system: [\s\S]*summary:\n\nDecisions[\s\S]*partway through answering the message below/), "user: Question 2"]);
+    // The one after it grows from there: the second action and its result.
+    expect(JSON.stringify(sent(3).slice(0, 3))).toBe(JSON.stringify(sent(2)));
+    expect(JSON.stringify(sent(3))).toContain('"toolCallId":"second"');
+    expect(JSON.stringify(sent(3))).not.toContain('"toolCallId":"first"');
+
+    // A later message reads the summary, then what the summarized reply went on to write, whole.
+    mockDoStream.mockImplementation(finishingDoStream(["Answer 3"]));
+    await say("Question 3");
+    const later = said(sent(4));
+    expect(later[1]).toMatch(/summary:\n\nDecisions/);
+    expect(later[1]).not.toMatch(/partway through/);
+    expect(later.filter((line) => /^(user|assistant): ./.test(line))).toEqual(["user: Question 2", "assistant: Answer 2", "user: Question 3"]);
+    expect(JSON.stringify(sent(4))).toContain('"toolCallId":"second"');
+    expect(JSON.stringify(sent(4))).not.toContain('"toolCallId":"first"');
+  });
+
+  it("owes a summary a reply couldn't write partway, lets the reply go on, and stops owing it once one is written", async () => {
+    const t = convexTest(schema);
+    const { say, thread } = await chatOf(t);
+    const list = (id: string, read?: number) => ({ id, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } }, ...(read ? { read } : {}) });
+    // The summary can't be written the first time. The reply goes on as it was, and the summary is owed.
+    mockDoStream.mockImplementationOnce(callingDoStream(list("first", COMPACT_AT_TOKENS + 1))).mockImplementationOnce(finishingDoStream(["Answer 1"]));
+    mockDoGenerate.mockRejectedValueOnce(new Error("The summary service is down"));
+    await say("Question 1");
+    expect(await thread()).toMatchObject({ compactionOwed: true });
+    expect((await thread())?.summary).toBeUndefined();
+    expect(JSON.stringify(requests.at(-1))).toContain('"toolCallId":"first"');
+
+    // The next reply writes what's owed before it answers. When it is summarized again partway, nothing is owed after.
+    mockDoStream.mockReset();
+    mockDoStream.mockImplementationOnce(callingDoStream(list("second", COMPACT_AT_TOKENS + 1))).mockImplementationOnce(finishingDoStream(["Answer 2"]));
+    mockDoGenerate.mockImplementation(summaryOf("Decisions\nNone."));
+    await say("Question 2");
+    const after = await thread();
+    expect(after).toMatchObject({ summary: "Decisions\nNone.", compactedThrough: 0, compactedStep: 2 });
+    expect(after?.compactionOwed).toBeUndefined();
+  });
+
+  it("reads a partly summarized exchange whole only when it reaches the message that exchange began with", async () => {
+    const doc = (order: number, stepOrder: number) => ({ _id: `${order}:${stepOrder}`, order, stepOrder }) as never;
+    const reading = (page: unknown[]) => ({ runQuery: async () => ({ page, isDone: false }) }) as never;
+    const at = { agentThreadId: "thread", compactedThrough: 0, compactedStep: 2 };
+    // Newest first, as it's read. The read stopped among the steps the summary covers, short of the message they answered.
+    expect((await historySince(reading([doc(2, 0), doc(1, 4), doc(1, 3), doc(1, 2)]), at)).whole).toBe(false);
+    const reached = await historySince(reading([doc(2, 0), doc(1, 4), doc(1, 3), doc(1, 2), doc(1, 1), doc(1, 0)]), at);
+    expect(reached.whole).toBe(true);
+    // What the model still reads: the message, and what came after the summarized steps.
+    expect(reached.docs.map((kept) => [kept.order, kept.stepOrder])).toEqual([[1, 0], [1, 3], [1, 4], [2, 0]]);
   });
 
   it("owes a summary that couldn't be written, and the next reply writes it before it answers", async () => {

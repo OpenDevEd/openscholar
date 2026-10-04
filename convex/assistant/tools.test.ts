@@ -14,7 +14,7 @@ import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
 import { MAX_ASKS, MODEL_READS, forModel } from "./steps";
 import { DEFINITION_MAX, MAX_CALLS, MAX_STEPS, core, definition, found, written } from "./tools";
-import { finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
+import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
 type Sent = Array<{ role: string; content: string | Part[] }>;
@@ -54,21 +54,6 @@ beforeEach(() => {
 
 type Test = ReturnType<typeof convexTest>;
 const firstPage = { cursor: null, numItems: 20 };
-
-/** A step in which the model calls tools and writes nothing. */
-const calling =
-  (...calls: Array<{ id: string; name: string; input: unknown; read?: number }>) =>
-  async () => ({
-    stream: new ReadableStream({
-      start(controller) {
-        controller.enqueue({ type: "stream-start", warnings: [] });
-        for (const call of calls) controller.enqueue({ type: "tool-call", toolCallId: call.id, toolName: call.name, input: JSON.stringify(call.input) });
-        // The reason in the shape the model interface defines: with a plain string the SDK runs no tool.
-        controller.enqueue({ type: "finish", finishReason: { unified: "tool-calls", raw: "tool_calls" }, usage: { inputTokens: { total: calls[0]?.read ?? 5, noCache: calls[0]?.read ?? 5, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 3, text: 3, reasoning: 0 } } });
-        controller.close();
-      },
-    }),
-  });
 
 /** What the model was told came of a call, whole, from the request that followed it. */
 function outcome(request: number, toolCallId: string) {

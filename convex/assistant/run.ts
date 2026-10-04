@@ -17,7 +17,7 @@ import { internalAction } from "../lib/functions";
 import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 import { COMPACT_AT_TOKENS, compactedOf, contextSince, summarize } from "./context";
-import { lockArgs, turnArgs } from "./replies";
+import { lockArgs, turnArgs, usedValidator } from "./replies";
 import { MAX_STEPS, OUT_OF_CREDITS, OUT_OF_STEPS, askedSteps, toolsFor } from "./tools";
 import { runTurn } from "./turn";
 
@@ -31,7 +31,7 @@ export const reply = internalAction({
     effort: v.optional(effortValidator),
     // What the reply has used of one reply's credits and rounds, and the actions it has called, in its requests
     // before this one, with the input tokens the last of them read.
-    used: v.optional(v.object({ credits: v.number(), rounds: v.number(), calls: v.number(), tokens: v.optional(v.number()) })),
+    used: v.optional(usedValidator),
   },
   returns: v.null(),
   handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort, used = { credits: 0, rounds: 0, calls: 0 } }) => {
@@ -58,13 +58,15 @@ export const reply = internalAction({
     const turn = { agentThreadId, senderId, modelId, effort };
     const shouldStop = async () => (await state()) !== "writing";
     let read = await compactedOf(ctx, threadId);
-    // A compaction that was due and didn't finish is written now, before the request reads the conversation.
-    if (read.owed && read.answering) {
+    // A compaction that was due and didn't finish is written now, before the request reads the conversation:
+    // the exchanges before this one, where the summary doesn't run through them already. What the reply has
+    // written of its own exchange is summarized as it goes (./replies.ts).
+    if (read.owed && read.answering && (read.compactedThrough ?? -1) < read.answering - 1) {
       try {
         const through = read.answering - 1;
-        const summary = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:${used.rounds}:summary`, shouldStop });
+        const summary = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:before:${used.rounds}:summary`, shouldStop });
         await ctx.runMutation(internal.assistant.replies.summarized, { ...lock, summary, through });
-        read = { ...read, summary, compactedThrough: through, owed: false };
+        read = { ...read, summary, compactedThrough: through, compactedStep: undefined, owed: false };
       } catch (error) {
         // Still owed. The reply goes ahead if the conversation can be read whole, and fails saying so if it can't.
         console.error("[assistant] owed compaction failed", { threadId, error: errorToLogString(error) });
@@ -119,6 +121,7 @@ export const reply = internalAction({
       contextHandler: contextSince({
         summary: read.summary,
         compactedThrough: read.compactedThrough,
+        compactedStep: read.compactedStep,
         agentThreadId,
         promptMessageId,
         onHistory: (read) => {
@@ -145,22 +148,33 @@ export const reply = internalAction({
  * Summarizes the chat through the reply that just ended, under that reply's lock, so the
  * chat takes no message until its next request can start from the summary. A failed or
  * stopped compaction leaves the chat as it was; the next reply that reads a lot tries again.
+ *
+ * With `resume`, the reply hasn't ended: it is summarized through `step` of its exchange,
+ * and goes on from there once the summary is written, or as it was if it isn't.
  */
 export const compact = internalAction({
-  args: { ...lockArgs, ...turnArgs, through: v.number(), lastInputTokens: v.number() },
+  args: {
+    ...lockArgs,
+    ...turnArgs,
+    through: v.number(),
+    step: v.optional(v.number()),
+    lastInputTokens: v.number(),
+    resume: v.optional(v.object({ ...turnArgs, promptMessageId: v.string(), used: usedValidator })),
+  },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, through, ...turn }) => {
+  handler: async (ctx, { threadId, attemptId, through, step, resume, ...turn }) => {
     const lock = { threadId, attemptId };
     let summary: string | undefined;
     const shouldStop = async () => (await ctx.runQuery(internal.assistant.replies.lockState, lock)) !== "writing";
     try {
       if (!(await shouldStop())) {
-        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, chargeId: `chat:${attemptId}:summary`, shouldStop });
+        // A reply can be summarized more than once as it goes: each summary is a charge of its own.
+        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, step, chargeId: `chat:${attemptId}:through:${step ?? "end"}:summary`, shouldStop });
       }
     } catch (error) {
       console.error("[assistant] compaction failed", { threadId, error: errorToLogString(error) });
     }
-    await ctx.runMutation(internal.assistant.replies.release, { ...lock, ...(summary ? { summarized: { summary, through } } : {}) });
+    await ctx.runMutation(internal.assistant.replies.release, { ...lock, ...(summary ? { summarized: { summary, through, ...(step === undefined ? {} : { step }) } } : {}), ...(resume ? { resume } : {}) });
     return null;
   },
 });
