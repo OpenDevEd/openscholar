@@ -495,4 +495,27 @@ describe("at the largest sizes the product allows", () => {
       vi.useRealTimers();
     }
   }, 600_000);
+
+  // A filtered page reads on until it has a page or its allowance of rows runs out; the next read carries on.
+  it("an admin search that matches none of 1,200 admins, and a user picker where all 1,200 users are admins, each read in steps (#424)", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    const people = Array.from({ length: 1_200 }, (_, i) => `max_admin_${i}`);
+    const users = await insertMany(t, "users", people.map((clerkId) => ({ clerkId, email: `${clerkId}@example.org`, firstName: text(12), lastName: text(12, 3), state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 })));
+    await insertMany(t, "admins", [{ email: "max_size_user@example.org", userId, createdAt: 1 }, ...users.map((id, i) => ({ email: `${people[i]}@example.org`, userId: id, createdAt: 1 }))], 200);
+    expect(await as.query(api.admins.queries.countAdmins, {})).toBe(1_201);
+
+    const steps = async (read: (cursor: string | null) => Promise<{ page: unknown[]; isDone: boolean; continueCursor: string }>) => {
+      let cursor: string | null = null;
+      for (let reads = 1; reads <= 5; reads++) {
+        const page = await read(cursor);
+        expect(page.page).toEqual([]);
+        if (page.isDone) return reads;
+        cursor = page.continueCursor;
+      }
+      throw new Error("The list didn't end.");
+    };
+    expect(await steps((cursor) => as.query(api.admins.queries.listAdmins, { search: "no such person", paginationOpts: { cursor, numItems: 8 } }))).toBe(2);
+    expect(await steps((cursor) => as.query(api.admins.queries.listCandidates, { search: "", paginationOpts: { cursor, numItems: 20 } }))).toBe(2);
+  }, 300_000);
 });

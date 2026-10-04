@@ -13,6 +13,9 @@ import { estimateAction as screeningEstimateAction } from "../screening/queries"
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
 import { slotsAction as screeningSlotsAction } from "../screening/queries";
 import { screenAction } from "../screening/start";
+import { countAdminsAction, listAdminsAction, listCandidatesAction } from "../admins/queries";
+import { countChargesAction, listChargesAction, spendingAction } from "../billing/usage";
+import { countKeysAction as walletKeyCountAction, listKeysAction as walletKeysAction } from "../wallet/queries";
 import type { UserAction } from "./userActions";
 
 export const USER_ACTIONS: readonly UserAction[] = [
@@ -46,4 +49,12 @@ export const USER_ACTIONS: readonly UserAction[] = [
   removeFromLibraryAction,
   restoreLibraryItemAction,
   setPaperInCollectionAction,
+  listChargesAction,
+  countChargesAction,
+  spendingAction,
+  walletKeysAction,
+  walletKeyCountAction,
+  listAdminsAction,
+  countAdminsAction,
+  listCandidatesAction,
 ];

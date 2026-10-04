@@ -10,6 +10,7 @@ import { countJobChange, countPaperChange, countPaperErrorChange, countResultCha
 import { nameJob } from "../extraction/jobList";
 import { recordRevisionApprovedQueries } from "../evidenceLibraries/approvedQueries";
 import { countChange } from "../research/recordCounts";
+import { ADMIN_LIST, countList, walletKeyList } from "./listCounts";
 
 export const triggers = new Triggers<DataModel>();
 
@@ -23,3 +24,5 @@ triggers.register("evidenceLibraryConfigSections", recordRevisionApprovedQueries
 triggers.register("searches", countChange("searches"));
 triggers.register("queryShortcuts", countChange("queryShortcuts"));
 triggers.register("screeningJobs", countChange("screeningJobs"));
+triggers.register("walletKeys", countList(walletKeyList));
+triggers.register("admins", countList(() => ADMIN_LIST));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type UIEvent } from "react";
 import { useAction, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { Check, ChevronsUpDown, Loader2, Mail, Plus, RotateCcw, Search, Trash2, UserRound } from "lucide-react";
@@ -14,28 +14,31 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useProtectedQuery, useProtectedStreamPaginatedQuery } from "@/lib/auth/use-auth-query";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import { Enter, LIST, Paged, pagerOf, Segmented, Zone } from "@/components/settings/parts";
+import { Enter, LIST, Paged, Segmented, Zone } from "@/components/settings/parts";
 
 const PER_PAGE = 8;
+/** Users the picker reads at a time, and how close to the bottom of its list, in pixels, the next page starts loading. */
+const PICKER_PAGE_SIZE = 20;
+const LOAD_AHEAD_PX = 80;
 
 export default function AdminsPage() {
   const t = useTranslations("settingsAdmin.admins");
   const tc = useTranslations("common");
-  const { data: admins } = useProtectedQuery(api.admins.queries.list, {});
+  const [query, setQuery] = useState("");
+  // Read a page at a time, by email, searched on the server. A search's matches aren't counted, so its pager shows the page alone.
+  const search = useDebouncedValue(query.trim(), 300);
+  const admins = useCursorPage(api.admins.queries.listAdmins, search ? { search } : {}, PER_PAGE);
+  const { data: count } = useProtectedQuery(api.admins.queries.countAdmins, {});
   const remove = useMutation(api.admins.mutations.remove);
   const resend = useAction(api.admins.invitations.resend);
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(1);
   const [confirm, setConfirm] = useState<Id<"admins"> | null>(null);
   const [busy, setBusy] = useState<Id<"admins"> | null>(null);
 
-  if (!admins) return <Enter ready={false}>{null}</Enter>;
-  const q = query.trim().toLowerCase();
-  const matches = admins.filter((a) => !q || `${a.name ?? ""} ${a.email}`.toLowerCase().includes(q));
-  const pager = pagerOf(matches.length, PER_PAGE, page, setPage);
-  const shown = matches.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE);
+  if (admins.isLoading || count === undefined) return <Enter ready={false}>{null}</Enter>;
 
   const run = async (adminId: Id<"admins">, action: () => Promise<unknown>, done?: string) => {
     setBusy(adminId);
@@ -58,18 +61,15 @@ export default function AdminsPage() {
             <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setPage(1);
-              }}
+              onChange={(e) => setQuery(e.target.value)}
               placeholder={t("search")}
               aria-label={t("search")}
               className="h-11 rounded-2xl border border-border/60 bg-muted/40 pl-11"
             />
           </div>
-          <Paged pager={pager} rowHeight={65} label={t("admins")}>
+          <Paged pager={{ list: admins, size: PER_PAGE, total: search ? undefined : count }} rowHeight={65} label={t("admins")}>
             <ul className={LIST}>
-              {shown.map((a) => (
+              {admins.items.map((a) => (
                 <li key={a._id} className="flex items-center gap-3 p-3">
                   {a.joined ? (
                     <IdentityAvatar name={a.name ?? a.email} imageUrl={a.imageUrl} className="size-10 rounded-xl" />
@@ -135,7 +135,7 @@ export default function AdminsPage() {
                   </div>
                 </li>
               ))}
-              {matches.length === 0 ? <li className="py-10 text-center text-sm text-muted-foreground">{t("noMatches")}</li> : null}
+              {admins.items.length === 0 ? <li className="py-10 text-center text-sm text-muted-foreground">{t("noMatches")}</li> : null}
             </ul>
           </Paged>
         </div>
@@ -156,7 +156,12 @@ function AddAdmin() {
   const [email, setEmail] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { data: candidates } = useProtectedQuery(api.admins.queries.candidates, open && mode === "user" ? { search } : "skip");
+  // The picker searches on the server and reads the next page as its list scrolls.
+  const candidates = useProtectedStreamPaginatedQuery(api.admins.queries.listCandidates, open && mode === "user" ? { search } : "skip", { initialNumItems: PICKER_PAGE_SIZE });
+  const loadOnScroll = (event: UIEvent<HTMLElement>) => {
+    const { scrollHeight, scrollTop, clientHeight } = event.currentTarget;
+    if (candidates.status === "CanLoadMore" && scrollHeight - scrollTop - clientHeight < LOAD_AHEAD_PX) candidates.loadMore(PICKER_PAGE_SIZE);
+  };
   const addUser = useMutation(api.admins.mutations.addUser);
   const invite = useAction(api.admins.invitations.invite);
   const canSubmit = !pending && (mode === "user" ? picked !== null : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()));
@@ -237,10 +242,10 @@ function AddAdmin() {
                 {/* The server searches by email, so the list isn't filtered again here. */}
                 <Command shouldFilter={false}>
                   <CommandInput placeholder={t("searchEmail")} value={search} onValueChange={setSearch} />
-                  <CommandList>
-                    <CommandEmpty>{candidates === undefined ? tc("loading") : t("noUsers")}</CommandEmpty>
+                  <CommandList onScroll={loadOnScroll}>
+                    <CommandEmpty>{candidates.isInitialLoading ? tc("loading") : t("noUsers")}</CommandEmpty>
                     <CommandGroup>
-                      {(candidates ?? []).map((u) => (
+                      {candidates.results.map((u) => (
                         <CommandItem
                           key={u._id}
                           value={u._id}
