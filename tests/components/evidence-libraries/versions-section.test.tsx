@@ -24,7 +24,7 @@ vi.mock("@/convex/_generated/api", () => ({
       domains: { listDomains: "listDomains" },
       updates: {
         check: "check",
-        listAddressNotices: "listAddressNotices",
+        getAddressNotice: "getAddressNotice",
       },
       versions: {
         listVersionRows: "listVersionRows",
@@ -55,8 +55,8 @@ vi.mock("convex/react", () => ({
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: (reference: string) => ({
     data:
-      reference === "listAddressNotices"
-        ? mocks.addressNotices()
+      reference === "getAddressNotice"
+        ? (mocks.addressNotices()[0] ?? null)
         : reference === "listDomains"
           ? mocks.listDomains()
           : mocks.listVersions().length,

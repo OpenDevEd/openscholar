@@ -131,6 +131,7 @@
     "evidenceLibraries/teardown:requestDevelopmentTeardown": "#329",
     "evidenceLibraries/teardown:restartDevelopmentTeardown": "#329",
     "evidenceLibraries/updates:check": "#329",
+    "evidenceLibraries/updates:getAddressNotice": "#329",
     "evidenceLibraries/updates:listAddressNotices": "#329",
     "evidenceLibraries/updates:publishRuntime": "#329",
     "evidenceLibraries/uploadActions:remove": "#329",

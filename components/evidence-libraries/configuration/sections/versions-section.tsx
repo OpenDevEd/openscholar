@@ -145,13 +145,11 @@ export function VersionsSection({
   );
   // The address answer the last check stored. It stays right even when the
   // software check cannot reach GitHub, and clears itself once a move lands.
-  const addressNotices = useProtectedQuery(
-    api.evidenceLibraries.updates.listAddressNotices,
-    live ? {} : "skip",
-  );
   const addressNotice =
-    addressNotices.data?.find((notice) => notice.libraryId === libraryId) ??
-    null;
+    useProtectedQuery(
+      api.evidenceLibraries.updates.getAddressNotice,
+      live ? { libraryId } : "skip",
+    ).data ?? null;
   // A silent custom domain is not fixed by moving the platform address: the
   // way out is to send the library back to it.
   const domains = useProtectedQuery(
