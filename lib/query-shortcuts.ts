@@ -5,6 +5,16 @@
  */
 const SHORTCUT = /(\w[\w-]*)\.\.\./g;
 
+/** A name as it is typed: a space becomes a dash, and what a name can't hold is dropped. */
+export function typedShortcutName(value: string) {
+  return value.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-]/g, "");
+}
+
+/** The name as it is saved: it starts and ends with a letter or number. */
+export function savedShortcutName(typed: string) {
+  return typed.replace(/^-+|-+$/g, "");
+}
+
 /** Each shortcut name a query uses, once. */
 export function shortcutNames(query: string): string[] {
   return [...new Set(Array.from(query.matchAll(SHORTCUT), (match) => match[1]))];

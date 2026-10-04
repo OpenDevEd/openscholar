@@ -1,69 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
-import { Plus } from "@/components/icons";
+import { BookmarkPlus, BookmarksIcon, Plus, TriangleAlert } from "@/components/icons";
 import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { EntryTile } from "@/components/command-center/entry";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
-import { Field } from "@/components/evidence-libraries/configuration/section-card";
+import { FieldError } from "@/components/evidence-libraries/configuration/section-card";
+import { getIdColor } from "@/lib/format";
+import { savedShortcutName, shortcutNames, typedShortcutName } from "@/lib/query-shortcuts";
+import { useQueryShortcuts } from "@/lib/research/reads";
 import { useKeywordExpansionDialogStore, useKeywordExpansionStore } from "@/lib/store";
 import { useShortcutCount } from "@/lib/research/shortcut-list";
-import { useAppToast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 
 /**
- * The one way to add a bookmark: a bar button and a small dialog. With a
- * search in the search box, the dialog starts from it, so saving the current
- * search needs only a name.
+ * The one way to add a bookmark: a bar button and a dialog. With a search in
+ * the search box, the dialog starts from it, so saving the current search
+ * needs only a name.
  */
 export function NewBookmarkDialog() {
-  const toast = useAppToast();
   const tb = useTranslations("bookmarksPage");
+  const th = useTranslations("historyPage");
   const tv = useTranslations("validation");
   const tc = useTranslations("common");
   const addKeyword = useKeywordExpansionStore((state) => state.addKeyword);
+  const keywords = useKeywordExpansionStore((state) => state.keywords);
   const count = useShortcutCount();
   const { suggestedQuery } = useKeywordExpansionDialogStore();
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
+  const [typed, setTyped] = useState("");
   const [expansion, setExpansion] = useState("");
 
+  const name = savedShortcutName(typed);
+  const query = expansion.trim();
+  // The bookmarks the query reuses, and this name: an account looks them up as they are typed.
+  const used = shortcutNames(expansion);
+  const known = useQueryShortcuts(expansion, name ? `${name}...` : null);
+  const taken = Boolean(name && known && keywords[name]);
+  const color = name ? getIdColor(name) : null;
+
   const openDialog = () => {
-    setName("");
+    setTyped("");
     setExpansion(suggestedQuery);
     setOpen(true);
   };
 
-  const nameError = (value: string) => {
-    if (!value) return tb("nameCannotBeEmpty");
-    if (!/^[a-zA-Z0-9-]+$/.test(value)) return tb("nameOnlyLettersNumbersDashes");
-    if (useKeywordExpansionStore.getState().keywords[value]) return tv("bookmarkNameExists", { name: value });
-    return null;
-  };
-
-  const add = async (event: React.FormEvent) => {
+  const add = async (event: FormEvent) => {
     event.preventDefault();
-    const trimmedName = name.trim();
-    const trimmedExpansion = expansion.trim();
-    // An account looks the name up, to say whether it's taken.
+    if (!name || !query || taken) return;
+    // An account looks the name up once more, in case it was taken since it was typed.
     try {
-      if (trimmedName) await useKeywordExpansionStore.getState().ensureShortcuts([trimmedName]);
+      await useKeywordExpansionStore.getState().ensureShortcuts([name]);
     } catch {
       return;
     }
-    const error = nameError(trimmedName) ?? (trimmedExpansion ? null : tv("expansionTextEmpty"));
-    if (error) {
-      toast.validation.failed(error);
-      return;
-    }
-    addKeyword(trimmedName, trimmedExpansion);
+    if (useKeywordExpansionStore.getState().keywords[name]) return;
+    addKeyword(name, query);
     posthog.capture("bookmark_created", {
-      bookmark_name: trimmedName,
-      expansion_length: trimmedExpansion.length,
-      has_boolean_operators: /\b(AND|OR|NOT)\b/.test(trimmedExpansion),
+      bookmark_name: name,
+      expansion_length: query.length,
+      has_boolean_operators: /\b(AND|OR|NOT)\b/.test(query),
       total_bookmarks: (count ?? 0) + 1,
     });
     setOpen(false);
@@ -76,42 +76,80 @@ export function NewBookmarkDialog() {
         <span className={BAR_LABEL}>{tb("addBookmark")}</span>
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{tb("addBookmark")}</DialogTitle>
-          </DialogHeader>
-          <form className="space-y-4" onSubmit={add}>
-            <Field label={tb("bookmarkName")} hint={tb("lettersNumbersDashes")}>
-              {(id) => (
-                <Input
-                  id={id}
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder={tb("bookmarkNamePlaceholder")}
+        <DialogContent className="gap-0 p-0 sm:max-w-xl" aria-describedby={undefined}>
+          <form onSubmit={add}>
+            {/* The bookmark as it is typed in a search, in the colour its name gives it everywhere. */}
+            <div className="space-y-4 border-b border-border-subtle bg-inset p-6">
+              <DialogTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <BookmarkPlus aria-hidden className="size-4" />
+                {tb("addBookmark")}
+              </DialogTitle>
+              <div className="flex items-center font-mono text-2xl font-semibold">
+                <input
+                  aria-label={tb("bookmarkName")}
+                  aria-invalid={taken}
+                  placeholder={th("bookmarkNamePlaceholder")}
+                  value={typed}
+                  onChange={(event) => setTyped(typedShortcutName(event.target.value))}
+                  // As wide as the name; a monospace font makes that exact.
+                  size={typed.length || th("bookmarkNamePlaceholder").length}
                   autoFocus
-                  required
+                  spellCheck={false}
+                  autoComplete="off"
+                  className={cn(
+                    "h-12 min-w-0 max-w-full rounded-xl border px-3 outline-none transition-colors placeholder:font-medium placeholder:text-subtle-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:ring-[3px] aria-invalid:ring-destructive/40",
+                    !color && "border-dashed border-input bg-field",
+                  )}
+                  style={color ? { backgroundColor: color.bg, color: color.text, borderColor: color.border } : undefined}
                 />
+                <span aria-hidden className="shrink-0 pl-1.5 text-subtle-foreground">...</span>
+              </div>
+              {taken && <FieldError>{tv("bookmarkNameExists", { name })}</FieldError>}
+            </div>
+
+            <div className="space-y-3 p-6">
+              <Textarea
+                aria-label={tb("expandsTo")}
+                value={expansion}
+                onChange={(event) => setExpansion(event.target.value)}
+                placeholder={tb("expandsToPlaceholder")}
+                spellCheck={false}
+                className="max-h-[40dvh] min-h-32 font-mono text-sm"
+              />
+              {/* The bookmarks the query reuses; one that doesn't exist is marked. */}
+              {used.length > 0 && (
+                <ul className="flex flex-wrap items-center gap-1.5">
+                  <BookmarksIcon aria-hidden className="size-3.5 text-muted-foreground" />
+                  {used.map((shortcut) => {
+                    const missing = known && !keywords[shortcut];
+                    return (
+                      <li key={shortcut}>
+                        {missing ? (
+                          <span
+                            role="img"
+                            aria-label={tv("bookmarkNotFound", { keyword: shortcut })}
+                            className="tint-warning flex h-6 items-center gap-1.5 rounded-md border border-dashed px-2 font-mono text-xs font-medium"
+                          >
+                            <TriangleAlert aria-hidden className="size-3.5" />
+                            {shortcut}
+                          </span>
+                        ) : (
+                          <EntryTile id={shortcut} className="h-6 rounded-md font-mono font-medium">{shortcut}</EntryTile>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
-            </Field>
-            <Field label={tb("expandsTo")} hint={tb("useInSearch")}>
-              {(id) => (
-                <Textarea
-                  id={id}
-                  value={expansion}
-                  onChange={(event) => setExpansion(event.target.value)}
-                  placeholder={tb("expandsToPlaceholder")}
-                  className="max-h-[40dvh] min-h-24 font-mono text-sm"
-                  required
-                />
-              )}
-            </Field>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>{tc("cancel")}</Button>
-              <Button type="submit" disabled={!name.trim() || !expansion.trim()}>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-border-subtle p-4">
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>{tc("cancel")}</Button>
+              <Button type="submit" disabled={!name || !query || taken}>
                 <Plus />
                 {tb("addBookmark")}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

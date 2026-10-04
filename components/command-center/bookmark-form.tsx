@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { BookmarkPlus } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
-import { shortcutNames } from "@/lib/query-shortcuts";
+import { savedShortcutName, shortcutNames, typedShortcutName } from "@/lib/query-shortcuts";
 import { useKeywordExpansionStore } from "@/lib/store";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -21,8 +21,7 @@ export function BookmarkForm({ query, onDone, className }: { query: string; onDo
   const th = useTranslations("historyPage");
   const tv = useTranslations("validation");
   const [typed, setTyped] = useState("");
-  // A name starts and ends with a letter or number.
-  const name = typed.replace(/^-+|-+$/g, "");
+  const name = savedShortcutName(typed);
   const addKeyword = useKeywordExpansionStore((state) => state.addKeyword);
 
   const save = async (event: FormEvent) => {
@@ -50,7 +49,7 @@ export function BookmarkForm({ query, onDone, className }: { query: string; onDo
           aria-label={tc("saveAsBookmark")}
           placeholder={th("bookmarkNamePlaceholder")}
           value={typed}
-          onChange={(event) => setTyped(event.target.value.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-]/g, ""))}
+          onChange={(event) => setTyped(typedShortcutName(event.target.value))}
           onKeyDown={(event) => {
             if (event.key === "Escape") onDone();
           }}
