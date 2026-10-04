@@ -173,19 +173,23 @@ export const listAction = defineUserQuery({
         const thread = await ctx.db.get("assistantThreads", row.threadId);
         const found = kept.get(row.threadId);
         if (!thread || !found) return [];
-        const here = await viewers(ctx, thread._id);
+        // One more than the row shows, since the reader may be among them. Anyone in the room
+        // could open the chat when they joined it, through a grant of their own or an organization's.
+        const here = (await viewers(ctx, thread._id, ASSISTANT_MEMBERS_SHOWN + 1)).filter((viewer) => viewer !== userId);
         const others = found.access.flatMap((other) => {
           const principal = principalOf(ctx, other.principal);
           return principal && !(principal.kind === "user" && principal.userId === userId) ? [{ principal, owner: other.role === "owner" }] : [];
         });
-        const people = others
-          .flatMap(({ principal, owner }) => (principal.kind === "user" ? [{ userId: principal.userId, owner, here: here.has(principal.userId) }] : []))
-          .sort((a, b) => Number(b.here) - Number(a.here) || Number(b.owner) - Number(a.owner))
-          .slice(0, ASSISTANT_MEMBERS_SHOWN);
+        // The people there now, then the chat's owner, then the people it's shared with by name.
+        const granted = others
+          .flatMap(({ principal, owner }) => (principal.kind === "user" ? [{ userId: principal.userId, owner }] : []))
+          .sort((a, b) => Number(b.owner) - Number(a.owner))
+          .map((person) => person.userId);
+        const people = [...new Set([...here, ...granted])].slice(0, ASSISTANT_MEMBERS_SHOWN);
         const members = await Promise.all(
-          people.map(async ({ userId: memberId, here: isHere }) => {
+          people.map(async (memberId) => {
             const person = await ctx.db.get("users", memberId);
-            return person ? [{ userId: memberId, name: personName(person), here: isHere }] : [];
+            return person ? [{ userId: memberId, name: personName(person), here: here.includes(memberId) }] : [];
           }),
         );
         const sharedWith = others.flatMap(({ principal }) => (principal.kind === "organization" ? [principal.organizationId] : []))[0];

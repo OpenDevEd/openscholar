@@ -108,6 +108,3 @@ export const MAX_ACTIVE_OPERATIONS_READ = 50;
 
 /** People and organizations one assistant chat can be shared with (`assistant/sharing:grant`); reads of a chat's access rows take this many and its owner's. */
 export const MAX_ASSISTANT_THREAD_GRANTS = 50;
-
-/** People one assistant chat lists as having it open (`convex/assistant/presence.ts`). */
-export const MAX_ASSISTANT_THREAD_VIEWERS = 100;

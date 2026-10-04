@@ -5,7 +5,6 @@
 import { v } from "convex/values";
 import { effortValidator } from "../aiModelConfig/validators";
 import { capped } from "../lib/listCaps";
-import { MAX_ASSISTANT_THREAD_VIEWERS } from "../lib/queryBounds";
 
 /** What someone may do in a chat: the owner also shares, renames and deletes it; `write` sends messages; `read` only reads. */
 export const assistantRoleValidator = v.union(v.literal("owner"), v.literal("write"), v.literal("read"));
@@ -65,16 +64,8 @@ export const assistantPrincipalValidator = v.union(
 
 /** People a chat's row in the list of chats names. */
 export const ASSISTANT_MEMBERS_SHOWN = 3;
-/** The first few people in a chat besides the reader, with whether each has it open now. */
+/** The first few people in a chat besides the reader, those who have it open now first. */
 export const assistantMembersValidator = capped(v.array(v.object({ userId: v.id("users"), name: v.string(), here: v.boolean() })), ASSISTANT_MEMBERS_SHOWN);
 
-/** The people in a chat's room (./presence.ts). */
-export const assistantViewersValidator = capped(v.array(v.object({ userId: v.string(), online: v.boolean(), lastDisconnected: v.number() })), MAX_ASSISTANT_THREAD_VIEWERS);
-
-/** People and organizations the share sheet suggests at once. */
-export const ASSISTANT_CANDIDATES_SHOWN = 8;
-/** Who a chat's owner could share it with: their organizations, then the people in them. */
-export const assistantCandidatesValidator = capped(
-  v.array(v.object({ principal: assistantPrincipalValidator, name: v.string(), email: v.optional(v.string()) })),
-  ASSISTANT_CANDIDATES_SHOWN,
-);
+/** Someone a chat's owner could share it with: one of their organizations, or a person in one. */
+export const assistantCandidateValidator = v.object({ principal: assistantPrincipalValidator, name: v.string(), email: v.optional(v.string()) });
