@@ -128,21 +128,18 @@ function Fact({ value, children }: { value?: ReactNode; children: ReactNode }) {
  */
 export function Steps({
   threadId,
-  order,
-  through,
   steps: newest,
 }: {
   threadId: Id<"assistantThreads">;
-  /** The exchange the reply starts in, and the last it can have carried on in. */
-  order: number;
-  through: number;
-  /** The reply's steps as the chat's page holds them: the newest of each exchange. */
+  /** The reply's steps as the chat's page holds them, in the order they ran: the newest of each exchange it ran in. */
   steps: StepItem[];
 }) {
   // An exchange that ran more than the page holds has the ones before them a page away. Reading them here also
-  // keeps the ones the page lets go of as the reply runs on, so no card leaves the map.
+  // keeps the ones the page lets go of as the reply runs on, so no card leaves the map. The read is from the
+  // reply's first exchange through its last, which only changes when a reply still running carries on in a new one.
   const cut = [...Map.groupBy(newest, (step) => step.order).values()].some((ran) => ran.length >= STEPS_SHOWN);
-  const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.steps, cut ? { threadId, order, through } : "skip", { initialNumItems: STEPS_SHOWN });
+  const range = { order: newest[0]!.order, through: newest.at(-1)!.order };
+  const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.steps, cut ? { threadId, ...range } : "skip", { initialNumItems: STEPS_SHOWN });
   // In the order they ran. The page's copy of a step is the one kept: it says what a step that waits for the person would do.
   const all = cut ? [...new Map([...results.toReversed(), ...newest].map((step) => [step.id, step])).values()].sort((a, b) => a.order - b.order || a.at - b.at) : newest;
   const asked = all.filter((step) => step.canAnswer);

@@ -41,8 +41,8 @@ type ThreadId = Id<"assistantThreads">;
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
 type Message = Exclude<Item, StepItem>;
 type Live = NonNullable<FunctionReturnType<typeof api.assistant.replies.live>>;
-/** One reply as the thread draws it: the exchange it starts in, the last it can have carried on in, its steps, and how many messages of it are placed. */
-type Run = { order: number; through: number; steps: StepItem[]; said: number };
+/** One reply as the thread draws it: the exchange of the message it answers, its steps, and how many messages of it are placed. */
+type Run = { order: number; steps: StepItem[]; said: number };
 
 const PANEL_W = 440;
 /** How far the chips above the composer hang over the thread: half their height. */
@@ -389,7 +389,8 @@ function Chat({
       (id) => onShare(id, thread?.title ?? t("newChat"), thread?.role ?? "owner"),
       (error) => toast.error(t("shareFailed"), getErrorMessage(error, "")),
     );
-  const messages = [...results].reverse();
+  // Oldest first. A page loaded while the one before it was still taking its fixed end can hold a row that page holds too: it shows once.
+  const messages = [...new Map(results.map((item) => [item.id, item])).values()].reverse();
   const sent: Message[] =
     first && first.threadId === threadId && results.length === 0
       ? [{ id: SENDING_ID, role: "user", order: Number.MAX_SAFE_INTEGER, text: first.text, status: "done", mine: true, at: 0 }]
@@ -468,14 +469,16 @@ function Thread({
   // first of them stands, and its messages are told apart by their place in the whole of it.
   const replies = new Map<Item, { reply: Run; place: number }>();
   let reply: Run | null = null;
+  // The exchange of the message being answered, which names the reply through every exchange it carries on in.
+  // A message still on its way has none yet, and the reply's first row has the same one.
+  let asked: number | null = null;
   for (const m of rows) {
     if (m.role === "user") {
-      // The reply before this message ran no further than it. A message still on its way has no place in the chat yet.
-      if (reply && !m.id.startsWith(SENDING)) reply.through = m.order - 1;
+      asked = m.id.startsWith(SENDING) ? null : m.order;
       reply = null;
       continue;
     }
-    reply ??= { order: m.order, through: Number.MAX_SAFE_INTEGER, steps: [], said: 0 };
+    reply ??= { order: asked ?? m.order, steps: [], said: 0 };
     if (m.role === "step") reply.steps.push(m);
     replies.set(m, { reply, place: m.role === "step" ? 0 : reply.said++ });
   }
@@ -496,7 +499,7 @@ function Thread({
         {rows.map((m) => {
           if (m.role === "user") return <UserBubble key={m.id} message={m} />;
           const { reply, place } = replies.get(m)!;
-          if (m.role === "step") return reply.steps[0] === m && threadId ? <Steps key={`steps:${reply.order}`} threadId={threadId} order={reply.order} through={reply.through} steps={reply.steps} /> : null;
+          if (m.role === "step") return reply.steps[0] === m && threadId ? <Steps key={`steps:${reply.order}`} threadId={threadId} steps={reply.steps} /> : null;
           return (
             <div key={`reply:${reply.order}:${place}`} className="space-y-3">
               <Reply message={m} live={live?.order === m.order ? live.text : ""} acting={reply.steps.some((step) => step.status === "running")} />
