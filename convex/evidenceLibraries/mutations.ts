@@ -830,6 +830,10 @@ export async function activateEvidenceLibraryConfiguration(
         ...(canonical.redeploy ? { redeploy: true as const } : {}),
         token: claimed.token,
       },
+      // Software older than OpenScholar's contract would refuse this revision.
+      ...(publishRuntime.kind === "update"
+        ? { runtimeUpdate: publishRuntime.runtimeUpdate }
+        : {}),
     });
     await ctx.db.patch(canonical.domain._id, {
       pendingDeployment: {
