@@ -11,7 +11,7 @@ import { stream } from "convex-helpers/server/stream";
 import schema from "../../schema";
 import { assistantQuery, defineUserQuery, userQuery } from "../../lib/userActions";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { resolveOwnedJob } from "../access";
+import { ownJob, resolveOwnedJob } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
 import { PAPER_LIMIT, RESULTS_PAGE_SIZE_MAX } from "@/lib/extraction/limits";
 import {
@@ -331,12 +331,6 @@ const RESULTS_ORDER = {
 } as const;
 
 const resultsViewArgs = { jobId: v.id("extractionJobs"), filters: resultsPageFiltersValidator };
-
-/** The person's job, or null when it isn't theirs. */
-async function ownJob(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"extractionJobs">) {
-  const job = await ctx.db.get("extractionJobs", jobId);
-  return job?.userId === userId ? job : null;
-}
 
 export const listJobResultsAction = defineUserQuery({
   path: "extraction/queries:listJobResults",

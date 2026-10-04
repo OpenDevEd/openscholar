@@ -210,35 +210,3 @@ export const subscribeToJobProgress = query({
   },
 });
 
-/**
- * Public read of the frozen bucket-source rows for a job. Drives the
- * Papers-in-context sidebar in chat mode, but is mode-agnostic — a
- * future extraction-side consumer can reuse it too.
- *
- * Returns the rows ordered by insertion position so the UI list matches
- * the corpus order sent to the model (sorted by openalexId in the
- * prompt renderer, but displayed in user-selection order in the
- * sidebar).
- */
-export const getJobSources = query({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.union(
-    v.object({ status: v.literal("unauthenticated") }),
-    v.object({ status: v.literal("no_access") }),
-    v.object({
-      status: v.literal("ok"),
-      sources: v.array(schema.doc("extractionJobSources")),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    const access = await resolveReadableJob(ctx, args.jobId);
-    if (access.status !== "ok") return access;
-
-    const sources = await ctx.db
-      .query("extractionJobSources")
-      .withIndex("by_job_and_position", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT);
-
-    return { status: "ok" as const, sources };
-  },
-});

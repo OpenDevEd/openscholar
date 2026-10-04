@@ -28,10 +28,10 @@ function resolveRetryable(code: string): boolean {
 }
 
 export function summarizeFailures(
-  counts: Readonly<Record<string, number>>,
+  counts: Readonly<Record<string, number | undefined>>,
 ): FailuresSummary {
   const byCode: FailureByCode[] = Object.entries(counts)
-    .filter(([, count]) => count > 0)
+    .flatMap(([code, count]) => (count ? [[code, count] as const] : []))
     .sort(([codeA, countA], [codeB, countB]) => {
       if (countB !== countA) return countB - countA;
       return codeA < codeB ? -1 : codeA > codeB ? 1 : 0;

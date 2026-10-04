@@ -6,6 +6,7 @@
 import { answersOfAction, changeAction, countSearchesAction, getSearchAction, listedSearchesAction, ratingsAction, ratingsOfAction, revisionsAction, searchHistoryAction, searchHistoryEntryAction, countShortcutsAction, listedShortcutsAction, shortcutsOfAction } from "../research/records";
 import { clearLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAction, saveToLibraryAction, setPaperInCollectionAction } from "../library/mutations";
 import { countJobsAction as extractionJobCountAction, listJobsAction as extractionJobsAction } from "../extraction/queries/jobs";
+import { countJobFailuresAction as extractionFailureCountAction } from "../extraction/queries/failures";
 import { countJobResultsAction as extractionResultCountAction, listJobResultsAction as extractionResultsAction } from "../extraction/queries/results";
 import { savedPaperAction } from "../library/queries";
 import { estimateAction as screeningEstimateAction } from "../screening/queries";
@@ -19,6 +20,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   extractionJobCountAction,
   extractionResultsAction,
   extractionResultCountAction,
+  extractionFailureCountAction,
   listedSearchesAction,
   countSearchesAction,
   getSearchAction,

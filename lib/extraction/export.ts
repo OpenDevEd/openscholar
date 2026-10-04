@@ -21,20 +21,32 @@ export async function readEveryResultsPage<Item extends { _id: string }>(
   throw new Error("The results kept changing while they were exported");
 }
 
-/** One walk over every page, or null when a paper came back twice. */
+/** A view's pages, one read each. */
+async function* resultsPages<Item>(readPage: (cursor: string | null) => Promise<ResultsPage<Item>>) {
+  let cursor: string | null = null;
+  do {
+    const result = await readPage(cursor);
+    yield result.page;
+    cursor = result.isDone ? null : result.continueCursor;
+  } while (cursor !== null);
+}
+
+/**
+ * One walk over every page, or null when a paper came back twice.
+ * ponytail: the papers are held whole in the browser, as the file formats need. A job holds
+ * at most PAPER_LIMIT papers; larger jobs would need a format that streams.
+ */
 async function walkResultsPages<Item extends { _id: string }>(readPage: (cursor: string | null) => Promise<ResultsPage<Item>>) {
   const items: Item[] = [];
   const seen = new Set<string>();
-  for (let cursor: string | null = null; ;) {
-    const result = await readPage(cursor);
-    for (const item of result.page) {
+  for await (const page of resultsPages(readPage)) {
+    for (const item of page) {
       if (seen.has(item._id)) return null;
       seen.add(item._id);
       items.push(item);
     }
-    if (result.isDone) return items;
-    cursor = result.continueCursor;
   }
+  return items;
 }
 
 /**

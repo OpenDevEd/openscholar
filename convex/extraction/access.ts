@@ -29,6 +29,12 @@ export async function resolveOwnedJob(
   return ok({ user, job });
 }
 
+/** The job when it belongs to `userId`, for a function that acts for a named person; else null. */
+export async function ownJob(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"extractionJobs">) {
+  const job = await ctx.db.get("extractionJobs", jobId);
+  return job?.userId === userId ? job : null;
+}
+
 export type OwnedPaperResolution =
   | {
       status: "ok";
