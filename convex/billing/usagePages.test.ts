@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { seedCreditsForTest } from "./billing.test-support";
 import { insertUsage } from "./ledger";
 
 async function setup() {
@@ -80,6 +81,13 @@ describe("charge pages", () => {
     await counted(t);
     expect(await me.query(api.billing.usage.countCharges, {})).toBe(3);
     expect((await me.query(api.billing.usage.listCharges, { paginationOpts: { cursor: null, numItems: 10 } })).page.map((r) => r.credits)).toEqual([3, 2, 1]);
+  });
+
+  it("says how many credits the person has to spend", async () => {
+    const { t, userId, me } = await setup();
+    expect(await me.query(api.billing.usage.balance, {})).toEqual({ credits: 0 });
+    await t.run(async (ctx) => seedCreditsForTest(ctx, { userId, free: 300, paid: 200 }));
+    expect(await me.query(api.billing.usage.balance, {})).toEqual({ credits: 500 });
   });
 
   it("totals each day's spending by kind, leaving refunds out", async () => {

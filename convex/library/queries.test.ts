@@ -1353,3 +1353,60 @@ describe("undoing a library change (#342)", () => {
     await expect(mutation(setPaperInCollection, added.undo!.args)).rejects.toThrow(/no longer exists/);
   });
 });
+
+describe("the library as the assistant reads it", () => {
+  it("lists saved papers a page at a time, narrowed by rating, a collection, years or words, with how many match", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_reader", "reader@test.com", { libraryItemCount: 3 });
+    const other = await seedUser(t, "clerk_other", "other@test.com", { libraryItemCount: 1 });
+    const asUser = t.withIdentity({ subject: "clerk_reader" });
+    const papers = (args: Parameters<typeof asUser.query<typeof api.library.queries.papers>>[1] = {}) => asUser.query(api.library.queries.papers, args);
+
+    const tutoring = await seedLibraryItem(t, user!._id, { title: "Tutoring at scale", authors: "Ada Okafor", rating: 5, publicationYear: 2020, journal: "Journal of Trials", savedAt: Date.UTC(2026, 8, 1), openalexId: "https://openalex.org/W1" });
+    const phones = await seedLibraryItem(t, user!._id, { title: "Phones and literacy", publicationYear: 2022, savedAt: Date.UTC(2026, 8, 2), openalexId: "https://openalex.org/W2" });
+    await seedLibraryItem(t, user!._id, { title: "School feeding", rating: 2, publicationYear: 2018, savedAt: Date.UTC(2026, 8, 3), openalexId: "https://openalex.org/W3" });
+    await seedLibraryItem(t, other!._id, { title: "Someone else's paper", openalexId: "https://openalex.org/W4" });
+    const collectionId = await t.run(async (ctx) => {
+      // The second paper was saved without a rating.
+      await ctx.db.patch("libraryItems", phones!._id, { rating: undefined });
+      const id = await ctx.db.insert("collections", { userId: user!._id, name: "Chapter 2", itemCount: 2, createdAt: 1, updatedAt: 1 });
+      for (const item of [tutoring!, phones!]) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: id, libraryItemId: item._id, assignedAt: 1 });
+      return id;
+    });
+
+    // The whole library, newest saved first, each paper with what the assistant needs to act on it.
+    const all = await papers();
+    expect(all.total).toBe(3);
+    expect(all.next).toBeUndefined();
+    expect(all.papers.map((paper) => paper.title)).toEqual(["School feeding", "Phones and literacy", "Tutoring at scale"]);
+    expect(all.papers[2]).toEqual({ libraryItemId: tutoring!._id, id: "https://openalex.org/W1", title: "Tutoring at scale", authors: "Ada Okafor", year: 2020, journal: "Journal of Trials", rating: 5, savedOn: "2026-09-01" });
+    // A model that fills in every argument sends null or false for what it doesn't mean: that reads as left out.
+    expect((await papers({ search: null, collectionId: null, rated: null, minRating: null, maxRating: null, yearFrom: null, yearTo: null, sort: null, ascending: false, cursor: null })).total).toBe(3);
+
+    // The ones they haven't rated, the ones they have, and a rating range.
+    expect((await papers({ rated: false })).papers.map((paper) => paper.title)).toEqual(["Phones and literacy"]);
+    expect((await papers({ rated: true })).papers).toHaveLength(2);
+    // A narrowed list has no total: counting it is its own read, so a page and a count never share one.
+    expect((await papers({ rated: true })).total).toBeUndefined();
+    const count = (args: Parameters<typeof asUser.query<typeof api.library.queries.countPapers>>[1] = {}) => asUser.query(api.library.queries.countPapers, args);
+    expect([await count({ rated: true }), await count({ rated: false }), await count({ search: "literacy" }), await count({ collectionId, minRating: 4 }), await count()]).toEqual([{ count: 2 }, { count: 1 }, { count: 1 }, { count: 1 }, { count: 3 }]);
+    expect((await papers({ minRating: 4 })).papers.map((paper) => paper.title)).toEqual(["Tutoring at scale"]);
+    await expect(papers({ rated: false, minRating: 4 })).rejects.toThrow(/not both/);
+    // One collection, a span of years, words, and another order.
+    expect(await papers({ collectionId })).toMatchObject({ total: 2, papers: [{ title: "Phones and literacy" }, { title: "Tutoring at scale" }] });
+    expect((await papers({ yearFrom: 2019, yearTo: 2021 })).papers.map((paper) => paper.title)).toEqual(["Tutoring at scale"]);
+    expect((await papers({ search: "literacy" })).papers.map((paper) => paper.title)).toEqual(["Phones and literacy"]);
+    expect((await papers({ sort: "year", ascending: true })).papers.map((paper) => paper.year)).toEqual([2018, 2020, 2022]);
+
+    // More than a page: the next one carries on where this stopped.
+    for (let i = 0; i < 22; i++) await seedLibraryItem(t, user!._id, { title: `Paper ${i}`, savedAt: Date.UTC(2026, 9, 1) + i, openalexId: `https://openalex.org/W${100 + i}` });
+    await t.run(async (ctx) => ctx.db.patch("users", user!._id, { libraryItemCount: 25 }));
+    const first = await papers();
+    expect(first).toMatchObject({ total: 25, next: expect.any(String) });
+    expect(first.papers).toHaveLength(20);
+    const second = await papers({ cursor: first.next });
+    expect(second.papers).toHaveLength(5);
+    expect(second.next).toBeUndefined();
+    expect(new Set([...first.papers, ...second.papers].map((paper) => paper.id)).size).toBe(25);
+  });
+});

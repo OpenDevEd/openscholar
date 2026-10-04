@@ -6,6 +6,7 @@ import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { usageKindValidator } from "./validators";
 import { jobSpace, spendSpace, usageAgg, userSpace } from "./usageLog";
 import { insertUsage } from "./ledger";
+import { availableCredits } from "./accounts";
 
 /**
  * Claims a Stripe charge's refunded total for reversal, one caller at a time.
@@ -130,6 +131,17 @@ async function spendingOf(ctx: QueryCtx, userId: Id<"users">, since: number, day
   );
   return cells.map((cell, i) => ({ ...cell, credits: sums[i]! })).filter((cell) => cell.credits > 0);
 }
+
+export const balanceAction = defineUserQuery({
+  path: "billing/usage:balance",
+  description:
+    "Says how many credits the person has, as last read from the billing service. It can be a little behind: a reply being written holds credits until it ends, and a charge shows once it's settled.",
+  args: {},
+  returns: v.object({ credits: v.number() }),
+  run: async (ctx, userId) => ({ credits: await availableCredits(ctx, userId) }),
+});
+export const balance = userQuery(balanceAction);
+export const balanceForAssistant = assistantQuery(balanceAction);
 
 export const spendingAction = defineUserQuery({
   path: "billing/usage:spending",

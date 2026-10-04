@@ -449,6 +449,9 @@ describe("listUserScreeningJobs", () => {
 
     const asUser = t.withIdentity({ subject: "clerk_list2" });
     const result = (await asUser.query(api.screening.queries.listUserScreeningJobs, { paginationOpts: { cursor: null, numItems: 10 } })).page;
+    // The assistant reads the same list, and the same jobs in one status.
+    expect((await asUser.query(api.screening.queries.listJobs, { paginationOpts: { cursor: null, numItems: 10 } })).page).toEqual(result);
+    expect((await asUser.query(api.screening.queries.listJobs, { status: "processing", paginationOpts: { cursor: null, numItems: 10 } })).page.map((job) => job._id)).toEqual([job2]);
 
     expect(result).toHaveLength(3);
     // Newest first (desc order by _creationTime)

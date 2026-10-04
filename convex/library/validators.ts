@@ -1,4 +1,5 @@
 import { v, type Infer } from "convex/values";
+import { capped } from "../lib/listCaps";
 
 export const librarySortValidator = v.union(
   v.literal("savedAt"),
@@ -27,6 +28,31 @@ export const libraryViewValidator = v.object({
   searchText: v.optional(v.string()),
 });
 export type LibraryView = Infer<typeof libraryViewValidator>;
+
+/** Papers of the library the assistant reads at once (./queries.ts). */
+export const PAPERS_PAGE = 20;
+/** A page of the library as the assistant reads it: each paper in short, with how many match. */
+export const libraryPapersValidator = v.object({
+  /** How many papers the view has, when that's kept as a count: the whole library, or one collection. A narrowed view is counted by library/queries:countPapers. */
+  total: v.optional(v.number()),
+  papers: capped(
+    v.array(
+      v.object({
+        libraryItemId: v.id("libraryItems"),
+        id: v.string(),
+        title: v.string(),
+        authors: v.optional(v.string()),
+        year: v.optional(v.number()),
+        journal: v.optional(v.string()),
+        rating: v.optional(v.number()),
+        savedOn: v.string(),
+      }),
+    ),
+    PAPERS_PAGE,
+  ),
+  /** Given as `cursor`, reads the page after this one. Left out on the last. */
+  next: v.optional(v.string()),
+});
 
 /** What the library keeps of a saved paper. */
 export const libraryItemFields = {
