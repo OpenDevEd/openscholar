@@ -23,4 +23,4 @@ export {
   getJobSources,
 } from "./queries/jobs";
 
-export { getJobResultsPage } from "./queries/results";
+export { getJobResultsPage, listJobResults, listJobResultsForAssistant, countJobResults, countJobResultsForAssistant } from "./queries/results";

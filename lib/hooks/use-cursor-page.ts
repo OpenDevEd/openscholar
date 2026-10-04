@@ -91,8 +91,10 @@ export function useCursorPage<Query extends PageQuery>(query: Query, args: PageA
 
   const visible = args === "skip" ? undefined : emptied ? shown : (data ?? shown);
   const page = visible?.number ?? starts.length + 1;
+  // The same array until the page shown changes, so what's derived from it isn't rebuilt each render.
+  const items = useMemo(() => (visible?.page ?? []).slice(0, pageSize), [visible, pageSize]);
   return {
-    items: (visible?.page ?? []).slice(0, pageSize),
+    items,
     /** Nothing has loaded yet. */
     isLoading: visible === undefined,
     /** What's shown is an earlier page or earlier arguments, still waiting for the new one. */

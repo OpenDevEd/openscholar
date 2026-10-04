@@ -822,6 +822,9 @@ export default defineSchema({
   extractionPapers: defineTable(extractionPaperFields)
     .index("by_job", ["jobId"])
     .index("by_job_processable", ["jobId", "processable"])
+    // A job's processable papers in the orders its results list in.
+    .index("by_job_processable_and_sortTitle", ["jobId", "processable", "sortTitle"])
+    .index("by_job_processable_and_avgConfidence", ["jobId", "processable", "avgConfidence"])
     .index("by_job_status", ["jobId", "status"])
     // A job's papers of one status from the earliest started; `by_job_status` reads them as they were added.
     .index("by_job_status_and_startedAt", ["jobId", "status", "startedAt"])
