@@ -31,6 +31,9 @@ const FOUND_MAX = 6;
 const CORE_PATHS = [
   "research/records:listedSearches",
   "research/records:getSearch",
+  "research/searches:create",
+  "research/searches:update",
+  "research/searches:results",
   "research/records:searchHistory",
   "research/records:listedShortcuts",
   "research/records:ratingsOf",

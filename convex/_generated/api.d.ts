@@ -311,6 +311,8 @@ import type * as paperSets_search from "../paperSets/search.js";
 import type * as research_answers from "../research/answers.js";
 import type * as research_recordCounts from "../research/recordCounts.js";
 import type * as research_records from "../research/records.js";
+import type * as research_searchValidators from "../research/searchValidators.js";
+import type * as research_searches from "../research/searches.js";
 import type * as screening_accounting from "../screening/accounting.js";
 import type * as screening_bookkeeping from "../screening/bookkeeping.js";
 import type * as screening_completion from "../screening/completion.js";
@@ -679,6 +681,8 @@ declare const fullApi: ApiFromModules<{
   "research/answers": typeof research_answers;
   "research/recordCounts": typeof research_recordCounts;
   "research/records": typeof research_records;
+  "research/searchValidators": typeof research_searchValidators;
+  "research/searches": typeof research_searches;
   "screening/accounting": typeof screening_accounting;
   "screening/bookkeeping": typeof screening_bookkeeping;
   "screening/completion": typeof screening_completion;

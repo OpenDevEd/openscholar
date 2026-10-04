@@ -40,9 +40,9 @@ export type SearchSnapshot = Infer<typeof searchSnapshotValidator>;
 type Page = { page: number } | { cursor: string };
 
 /** One page of the search, by number or cursor. An OQL search goes in a POST body: it outgrows the URL limit. */
-async function readPage<Work>(request: SearchRequest, at: Page, select: string): Promise<{ works: Work[]; nextCursor: string | null }> {
+async function readPage<Work>(request: SearchRequest, at: Page, select: string, size = PAGE_SIZE): Promise<{ works: Work[]; nextCursor: string | null; total: number }> {
   const parameters = {
-    "per-page": String(PAGE_SIZE),
+    "per-page": String(size),
     ...("page" in at ? { page: String(at.page) } : { cursor: at.cursor }),
     sort: request.sort,
     select,
@@ -65,8 +65,8 @@ async function readPage<Work>(request: SearchRequest, at: Page, select: string):
     console.error(`[paperSets] OpenAlex page ${JSON.stringify(at)} failed: ${response.status} ${detail}`);
     throw createError("VALIDATION_ERROR", `OpenAlex couldn't return these papers (${response.status}). Try again in a moment.`);
   }
-  const body = (await response.json()) as { results?: Work[]; meta?: { next_cursor?: string | null } };
-  return { works: body.results ?? [], nextCursor: body.meta?.next_cursor || null };
+  const body = (await response.json()) as { results?: Work[]; meta?: { next_cursor?: string | null; count?: number } };
+  return { works: body.results ?? [], nextCursor: body.meta?.next_cursor || null, total: body.meta?.count ?? 0 };
 }
 
 const limited = () => createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
@@ -113,6 +113,23 @@ async function readWorks<Work>(
     if (seen >= last) break;
   }
   return { works, offset: first - 1 };
+}
+
+/**
+ * One short page of the search, by number, with how many works the search has in all: what
+ * the assistant reads (#327). One request, counted against the acting person's allowance.
+ */
+export async function readSearchPage<Work>(
+  request: SearchRequest,
+  { page, size, select }: { page: number; size: number; select: string },
+  spend: (pages: number) => Promise<boolean>,
+): Promise<{ works: Work[]; total: number }> {
+  if (!process.env.OPENALEX_CONTACT_EMAIL) {
+    throw new Error("OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.");
+  }
+  if (!(await spend(1))) throw limited();
+  const { works, total } = await readPage<Work>(request, { page }, select, size);
+  return { works, total };
 }
 
 /**

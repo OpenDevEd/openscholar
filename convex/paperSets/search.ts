@@ -22,7 +22,7 @@ import { ratingsAmong, shortcutExpansions } from "../research/records";
 import { readSearchWorks, searchRequestValidator, type SearchSnapshot } from "./openalex";
 
 /** The fields a screening paper keeps. */
-const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships,cited_by_count,primary_location";
+export const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships,cited_by_count,primary_location";
 
 export type SearchPaper = Infer<typeof screeningPaperInputValidator>;
 
@@ -69,7 +69,7 @@ export const spendRequests = internalMutation({
   handler: async (ctx, { clerkId, count }) => spendOpenAlexRequests(ctx, clerkId, count),
 });
 
-type Work = {
+export type Work = {
   id: string;
   display_name?: string | null;
   title?: string | null;
@@ -81,7 +81,7 @@ type Work = {
   primary_location?: { source?: { display_name?: string | null } | null } | null;
 };
 
-function toPaper(work: Work): SearchPaper {
+export function toPaper(work: Work): SearchPaper {
   const authors = (work.authorships ?? []).flatMap((a) => (a.author?.display_name ? [a.author.display_name] : []));
   return {
     openalexId: work.id,

@@ -270,8 +270,12 @@ export function editedResponses(responses: SavedSearch["screeningResponses"], ed
   }
 }
 
-/** Fields a patch can set that a restore leaves as they are now: screening questions, whose answers have their own history, and the chats started from the search. */
-const KEPT_ON_RESTORE = ["screeningQuestions", "chatJobIdsByAccountId"] as const;
+/**
+ * Fields a patch can set that a restore leaves as they are now: screening questions, whose
+ * answers have their own history, the chats started from the search, and what its results
+ * page writes as it's read, how many results it has and the page last opened.
+ */
+const KEPT_ON_RESTORE = ["screeningQuestions", "chatJobIdsByAccountId", "count", "page"] as const;
 /** Whether a change left those fields alone, so restoring the revision before it reverses all of it. */
 export const restoreReverses = (before: SavedSearch, after: SavedSearch) => KEPT_ON_RESTORE.every((key) => JSON.stringify(before[key]) === JSON.stringify(after[key]));
 
@@ -344,7 +348,7 @@ export const ANSWERED_PAPERS_MAX = 200;
  * it should still hold, and the version of its answers, which a screening job moves without
  * touching the search.
  */
-const searchAsMade = v.object({ created: v.number(), revision: v.number(), answers: v.optional(v.number()) });
+export const searchAsMade = v.object({ created: v.number(), revision: v.number(), answers: v.optional(v.number()) });
 const shortcutValue = v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null());
 export const commandValidator = v.union(
   // `history`: the earlier queries and questions of a search brought from this browser or a file.

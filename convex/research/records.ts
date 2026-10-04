@@ -353,7 +353,7 @@ async function copyHistory(ctx: MutationCtx, userId: Id<"users">, search: Doc<"s
   return { queryHistoryCount, questionCount, latestQuestion, questionText };
 }
 
-function findSearch(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, localId: string) {
+export function findSearch(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, localId: string) {
   return ctx.db.query("searches").withIndex("by_user_and_localId", q => q.eq("userId", userId).eq("localId", localId)).unique();
 }
 
@@ -391,8 +391,12 @@ async function asMade(ctx: Pick<QueryCtx, "db">, search: Doc<"searches">) {
   return { created: search._creationTime, revision: search.revision, ...(answers === undefined ? {} : { answers }) };
 }
 
-/** What a search holds, apart from when it last changed and how many queries it has tried: an edit since undone leaves this as it was. */
-const contents = ({ updatedAt: _at, queryHistoryCount: _tried, ...rest }: StoredSearch) => JSON.stringify(Object.entries(rest).sort(([a], [b]) => a.localeCompare(b)));
+/**
+ * What a search holds, apart from when it last changed, how many queries it has tried, and
+ * what its results page writes as it's read (its result count, the page last opened): an
+ * edit since undone, or the search simply being opened, leaves this as it was.
+ */
+const contents = ({ updatedAt: _at, queryHistoryCount: _tried, count: _count, page: _page, ...rest }: StoredSearch) => JSON.stringify(Object.entries(rest).sort(([a], [b]) => a.localeCompare(b)));
 
 /**
  * Applies one change, in the caller's transaction, for the person it's made for. Returns the
