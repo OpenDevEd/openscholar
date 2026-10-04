@@ -19,7 +19,7 @@ import useSWR from 'swr';
 import { useTranslations } from 'next-intl';
 import { useAppToast } from '@/lib/toast';
 
-import { searchParamsParsers, DEFAULT_SEARCH_PARAMS, parseSearchParamsFromUrl } from '../search-params/parsers';
+import { searchParamsParsers, DEFAULT_SEARCH_PARAMS } from '../search-params/parsers';
 import { buildShareableUrl, effectiveSort } from '../search-params';
 import { sanitizeSelection } from '../search-params/sanitize';
 import type { SearchWithFiltersParams } from '../search-utils';
@@ -75,6 +75,17 @@ const SEARCH_FETCH_PARAM_KEY_SET = new Set<SearchParamKey>(SEARCH_FETCH_PARAM_KE
 
 /** Where a history entry keeps the search it showed, in `history.state`. */
 const ENTRY_SEARCH = 'openScholarSearch';
+/** What an entry keeps: the search's parameters and how many works it found. */
+type KeptSearch = SearchParams & { count: number };
+
+/** The tab's storage, which lasts as long as its Back and Forward list; a browser may refuse it. */
+function tabStorage<T>(use: (storage: Storage) => T): T | null {
+  try {
+    return use(window.sessionStorage);
+  } catch {
+    return null;
+  }
+}
 
 // Module-level cache for params snapshots (avoids ref access during render)
 const paramsSnapshotByKey = new Map<string, SearchParams>();
@@ -141,38 +152,44 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   // history list has a bare address. So each entry keeps the search it showed, in the browser's
   // own history state, written as a change leaves it and read when Back or Forward lands on it.
   // The newest entry is never left by a change, and Next rewrites the state of the entry it is
-  // on, so its search is remembered here when Back leaves it. An entry with neither changes nothing.
-  const newest = useRef<SearchParams | null>(null);
-  const shownNow = useCallback((): SearchParams | null => {
+  // on, so its search is kept in the tab's storage when Back leaves it. An entry with neither
+  // changes nothing.
+  const newestKey = `${ENTRY_SEARCH}:newest:${searchId}`;
+  const shownNow = useCallback((): KeptSearch | null => {
     if (local || !searchId || !window.location.pathname.endsWith(`/${searchId}`)) return null;
     const saved = useSearchHistoryStore.getState().getSearchResult(searchId);
-    if (!saved) return null;
-    if (account) return { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(saved), q: saved.query };
-    const address = parseSearchParamsFromUrl(new URLSearchParams(window.location.search));
-    return { ...address, q: address.field === OQL_FIELD ? saved.query : address.q };
-  }, [local, searchId, account]);
+    return saved ? { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(saved), q: saved.query, count: saved.count } : null;
+  }, [local, searchId]);
   const keepInEntry = useCallback(() => {
     const shown = shownNow();
     if (!shown) return;
-    newest.current = null;
+    tabStorage((storage) => storage.removeItem(newestKey));
+    // Once per entry: several changes can share one new entry (a slider being dragged), and by the
+    // second the saved search is already ahead of what this entry showed.
+    if (window.history.state?.[ENTRY_SEARCH]) return;
     // The browser's own method, not `history.replaceState`: nuqs and Next both wrap that one, and
     // nuqs drops its pending address update when anything else calls it. The address is not changed.
     History.prototype.replaceState.call(window.history, { ...window.history.state, [ENTRY_SEARCH]: shown }, '');
-  }, [shownNow]);
+  }, [shownNow, newestKey]);
   useEffect(() => {
     if (local || !searchId) return;
     const takeEntry = (event: PopStateEvent) => {
       if (!window.location.pathname.endsWith(`/${searchId}`)) return;
       // Still the search of the entry just left: the saved search has not changed yet.
-      newest.current ??= shownNow();
-      const shown = (event.state as { [ENTRY_SEARCH]?: Partial<SearchParams> } | null)?.[ENTRY_SEARCH] ?? newest.current;
-      if (!shown) return;
-      const { count: _count, ...fields } = paramsToSearchResult({ ...DEFAULT_SEARCH_PARAMS, ...shown });
-      useSearchHistoryStore.getState().updateSearchResult(searchId, fields);
+      const leaving = shownNow();
+      const newest = tabStorage((storage) => {
+        if (leaving && !storage.getItem(newestKey)) storage.setItem(newestKey, JSON.stringify(leaving));
+        return JSON.parse(storage.getItem(newestKey) ?? 'null') as KeptSearch | null;
+      });
+      const kept = (event.state as { [ENTRY_SEARCH]?: KeptSearch } | null)?.[ENTRY_SEARCH] ?? newest;
+      if (!kept) return;
+      const { count, ...params } = kept;
+      // The count goes back too: results still in the cache are not fetched again, so nothing else would set it.
+      useSearchHistoryStore.getState().updateSearchResult(searchId, { ...paramsToSearchResult({ ...DEFAULT_SEARCH_PARAMS, ...params }), count });
     };
     window.addEventListener('popstate', takeEntry);
     return () => window.removeEventListener('popstate', takeEntry);
-  }, [local, searchId, shownNow]);
+  }, [local, searchId, shownNow, newestKey]);
   const setUrlParams = useCallback(
     (updates: Partial<SearchParams>, options?: { scroll?: boolean }) => {
       const fromOql = (local ? local.params.field : routeSearchParams.field) === OQL_FIELD;
