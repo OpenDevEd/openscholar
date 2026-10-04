@@ -221,6 +221,16 @@ it("refuses a group with more copies than it reads only when none of those read 
   await t.run(ctx => ctx.db.patch("topicLocations", _id, {state: "unpublished"}));
   await expect(list()).rejects.toThrow(/more copies/);
 });
+it("says a publication with more copies than one page lists isn't fully loaded, instead of calling the topic complete", async () => {
+  const {t, request, send} = await fixture();
+  await send(request());
+  const {_id, _creationTime, ...row} = (await t.run(ctx => ctx.db.query("topicLocations").first()))!;
+  // 100 copies filed under no topic sort before the one this topic lists.
+  await insertMany(t, "topicLocations", Array.from({length: 100}, (_, i) => ({...row, itemKey: `AA${String(i).padStart(6, "0")}`, topicIds: []})));
+  fetchQueryMock.mockImplementation((reference, args) => t.query(reference, args));
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({item: {key: "ABCD1234", title: "Live card title", itemType: "journalArticle", date: "2026", numPages: null, PDFCoverPageImage: null, creators: []}})));
+  expect(await readTopicPublications(topicId, "", null)).toMatchObject({papers: [], unavailableCount: 1, complete: false});
+});
 it("lists a full page of groups that each hold many long copies (#427)", async () => {
   const {t, a, request, send} = await fixture();
   await send(request());

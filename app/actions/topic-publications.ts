@@ -15,9 +15,13 @@ export async function readTopicPublications(topicId: string, query: string, curs
   let unavailableCount = 0;
   const rows = await Promise.all(result.page.map(async group => {
     try {
-      // ponytail: a publication's first 100 copies. One held by more libraries than that needs its links read a page at a time, when asked for.
+      // ponytail: a publication's first 100 copies. One with more is counted as not fully loaded, so the page says so
+      // instead of calling itself complete; its links need reading a page at a time, when asked for.
       const read = await fetchQuery(api.topics.publications.listLocations, {groupKey: group.key, paginationOpts: {cursor: null, numItems: MAX_LOCATIONS}});
-      if (!read.isDone) console.error("Topic publication has more copies than one page lists", {topicId, group: group.key, listed: MAX_LOCATIONS});
+      if (!read.isDone) {
+        unavailableCount++;
+        console.error("Topic publication has more copies than one page lists", {topicId, group: group.key, listed: MAX_LOCATIONS});
+      }
       const locations = read.page;
       const cards = await Promise.allSettled(locations.map(async location => ({location, card: await readPublicationCard(location.library.id, location.itemKey, location.library.url)})));
       const available = cards.flatMap((result, index) => {
