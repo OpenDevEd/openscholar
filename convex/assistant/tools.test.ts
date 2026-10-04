@@ -742,6 +742,33 @@ describe("the assistant's tools", () => {
     expect(rest.isDone).toBe(true);
   });
 
+  it("read a reply's steps through the exchanges it carried on in, and say which of its messages ran actions too", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, threadId, say, thread } = await chatOf(t);
+    mockDoStream.mockImplementationOnce(finishingDoStream(["All saved."]));
+    await say("Save them all");
+    const agentThreadId = (await thread())!.agentThreadId;
+    await t.run(async (ctx) => {
+      // A reply that was summarized partway carried on in the two exchanges after its own.
+      for (const [order, calls] of [[0, 2], [1, 3], [2, 1]] as const) {
+        for (let index = 0; index < calls; index++) await ctx.db.insert("assistantSteps", { threadId, order, userId: ada, toolCallId: `call${order}.${index}`, path: "library/mutations:saveToLibrary", input: "{}", subject: `Paper ${order}.${index}`, status: "done", startedAt: index, endedAt: index });
+      }
+      // One of its requests said something and called an action.
+      const prompt = (await listMessages(ctx, components.agent, { threadId: agentThreadId, paginationOpts: { cursor: null, numItems: 10 } })).page.find((doc) => doc.message?.role === "user")!;
+      await saveMessages(ctx, components.agent, {
+        threadId: agentThreadId,
+        promptMessageId: prompt._id,
+        messages: [{ role: "assistant", content: [{ type: "text", text: "Saving the first two." }, { type: "tool-call", toolCallId: "call0.0", toolName: "run_action", input: {} }] }],
+      });
+    });
+    const read = async (range: { order: number; through?: number }) => (await asAda.query(api.assistant.replies.steps, { threadId, ...range, paginationOpts: { cursor: null, numItems: STEPS_SHOWN } })).page.map((step) => step.subject);
+    expect(await read({ order: 0 })).toEqual(["Paper 0.1", "Paper 0.0"]);
+    expect(await read({ order: 0, through: 1 })).toEqual(["Paper 1.2", "Paper 1.1", "Paper 1.0", "Paper 0.1", "Paper 0.0"]);
+    // The message that called an action isn't the reply's last, and the page says so; its answer is.
+    const said = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.flatMap((item) => (item.role === "assistant" ? [[item.text, item.acted === true]] : []));
+    expect(said).toEqual([["Saving the first two.", true], ["All saved.", false]]);
+  });
+
   it("give a call left without a result its result, however long the reply it's in ran", async () => {
     const t = convexTest(schema);
     const { say, shown, thread } = await chatOf(t);
