@@ -560,6 +560,61 @@ describe("the assistant's tools", () => {
     expect((await shown()).at(-1)).toBe("assistant: Stopping here.");
   });
 
+  it("go on to a reply's next request on what the person has left, send back only calls that ran, and keep what a request read when the next one fails", async () => {
+    const t = convexTest(schema);
+    const { asBen, ben, steps } = await chatOf(t);
+    const list = (id: string, read?: number) => ({ id, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } }, ...(read ? { read } : {}) });
+    const chat = async (free: number) => {
+      await t.run(async (ctx) => {
+        const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ben)).unique();
+        if (account) await ctx.db.delete("billingAccounts", account._id);
+        await seedCreditsForTest(ctx, { userId: ben, free });
+      });
+      const threadId = await asBen.mutation(api.assistant.threads.create, { title: `Chat with ${free}` });
+      const say = async (text: string) => {
+        await asBen.mutation(api.assistant.replies.send, { threadId, text });
+        await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: 5_000 });
+      };
+      const newest = async () => (await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[0];
+      return { threadId, say, newest };
+    };
+
+    // 500 credits. The first request costs about 350 of them and runs an action. The least a reply starts on is 200,
+    // more than is left, but the reply is under way: it holds what there is, and answers.
+    const small = await chat(500);
+    mockDoStream.mockImplementationOnce(calling(list("first", 27_000))).mockImplementationOnce(finishingDoStream(["Nothing there."]));
+    await small.say("What collections do I have?");
+    expect(await small.newest()).toMatchObject({ role: "assistant", text: "Nothing there.", status: "done" });
+
+    // A request the provider cut short at its length names a call that never ran. Nothing is sent back for it: the reply ends there.
+    const cut = await chat(100_000);
+    mockDoStream.mockReset();
+    mockDoStream.mockImplementationOnce(async () => ({
+      stream: new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: "stream-start", warnings: [] });
+          controller.enqueue({ type: "tool-call", toolCallId: "never", toolName: "library_collections_listCollections", input: JSON.stringify({ paginationOpts: { cursor: null, numItems: 5 } }) });
+          controller.enqueue({ type: "finish", finishReason: { unified: "length", raw: "length" }, usage: { inputTokens: { total: 5, noCache: 5, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 3, text: 3, reasoning: 0 } } });
+          controller.close();
+        },
+      }),
+    }));
+    const before = (await steps()).length;
+    await cut.say("List them");
+    expect(mockDoStream).toHaveBeenCalledTimes(1);
+    expect(await steps()).toHaveLength(before);
+
+    // A request that read a great deal, then one the provider refuses: the conversation is still as long as the first found it, and its summary is owed.
+    const long = await chat(100_000);
+    mockDoStream.mockReset();
+    mockDoStream.mockImplementationOnce(calling(list("big", 60_000))).mockImplementationOnce(async () => {
+      throw Object.assign(new Error("Too many requests"), { statusCode: 429 });
+    });
+    await long.say("Look at everything");
+    expect(await long.newest()).toMatchObject({ role: "assistant", status: "failed" });
+    expect((await t.run(async (ctx) => ctx.db.get("assistantThreads", long.threadId)))?.compactionOwed).toBe(true);
+  });
+
   it("hold what the person has when that's less than a reply may cost, so a small balance still gets an answer", async () => {
     const t = convexTest(schema);
     const { asBen, ben } = await chatOf(t);

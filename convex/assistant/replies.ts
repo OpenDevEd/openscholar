@@ -265,7 +265,7 @@ export const release = internalMutation({
     ),
     // The reply's request ended on actions that ran (./turn.ts): their results go back to the model in
     // its next request, with what the reply has used so far.
-    next: v.optional(v.object({ promptMessageId: v.string(), spent: v.number(), rounds: v.number(), made: v.number() })),
+    next: v.optional(v.object({ promptMessageId: v.string(), spent: v.number(), rounds: v.number(), made: v.number(), tokens: v.number() })),
   },
   returns: v.null(),
   handler: async (ctx, { threadId, attemptId, ended, summarized, asking, next }) => {
@@ -315,7 +315,7 @@ export const release = internalMutation({
         attemptId,
         ...turn,
         promptMessageId: next.promptMessageId,
-        used: { credits: next.spent, rounds: next.rounds, calls: next.made },
+        used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens },
       });
       await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: { ...current, scheduledId } });
       return null;

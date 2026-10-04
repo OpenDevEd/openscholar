@@ -29,8 +29,9 @@ export const reply = internalAction({
     senderId: v.id("users"),
     modelId: v.union(v.id("models"), v.null()),
     effort: v.optional(effortValidator),
-    // What the reply has used of one reply's credits and rounds, and the actions it has called, in its requests before this one.
-    used: v.optional(v.object({ credits: v.number(), rounds: v.number(), calls: v.number() })),
+    // What the reply has used of one reply's credits and rounds, and the actions it has called, in its requests
+    // before this one, with the input tokens the last of them read.
+    used: v.optional(v.object({ credits: v.number(), rounds: v.number(), calls: v.number(), tokens: v.optional(v.number()) })),
   },
   returns: v.null(),
   handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort, used = { credits: 0, rounds: 0, calls: 0 } }) => {
@@ -57,11 +58,11 @@ export const reply = internalAction({
     const turn = { agentThreadId, senderId, modelId, effort };
     const shouldStop = async () => (await state()) !== "writing";
     let read = await compactedOf(ctx, threadId);
-    // A compaction that was due and didn't finish is written before the reply's first request reads the conversation.
-    if (read.owed && read.answering && used.rounds === 0) {
+    // A compaction that was due and didn't finish is written now, before the request reads the conversation.
+    if (read.owed && read.answering) {
       try {
         const through = read.answering - 1;
-        const summary = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:summary`, shouldStop });
+        const summary = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:${used.rounds}:summary`, shouldStop });
         await ctx.runMutation(internal.assistant.replies.summarized, { ...lock, summary, through });
         read = { ...read, summary, compactedThrough: through, owed: false };
       } catch (error) {
@@ -76,7 +77,10 @@ export const reply = internalAction({
     let balance = (await ctx.runQuery(internal.billing.accounts.forUser, { userId: senderId }))?.balance;
     // The account's copy of the balance can be behind a top-up. When it says the reply can't have all it may use, it's read again from Autumn.
     if (balance !== undefined && balance < left) balance = (await refreshAccount(ctx, senderId).catch(() => null))?.balance ?? balance;
-    const cap = Math.max(ESTIMATED_CREDITS_PER_CHAT_MESSAGE, Math.min(left, balance ?? left));
+    // A reply that is under way holds whatever the person has left: its first request settled to what
+    // it cost, and the least a reply starts on, asked for again, could stop one the balance still covers.
+    const least = used.rounds === 0 ? ESTIMATED_CREDITS_PER_CHAT_MESSAGE : 1;
+    const cap = Math.max(least, Math.min(left, balance ?? left));
     // This action makes one of the reply's requests. Its actions stop a round before the reply's
     // last request, and once the reply has cost what one may, so the request after is its answer.
     const stopped = () => (used.rounds >= MAX_STEPS - 2 ? OUT_OF_STEPS : left <= 0 ? OUT_OF_CREDITS : null);
@@ -126,9 +130,10 @@ export const reply = internalAction({
         const now = { spent: used.credits + credits, rounds: used.rounds + requests, made: made() };
         return ctx.runMutation(internal.assistant.replies.release, {
           ...lock,
-          ended: { ...turn, ...history, lastInputTokens },
+          // A request that failed before the model answered read nothing: what the one before it read still says how long the conversation is.
+          ended: { ...turn, ...history, lastInputTokens: lastInputTokens || (used.tokens ?? 0) },
           // It waits for the person's answer, or goes on to its next request, or has ended.
-          ...(calls.length ? { asking: { promptMessageId, calls, ...now } } : more ? { next: { promptMessageId, ...now } } : {}),
+          ...(calls.length ? { asking: { promptMessageId, calls, ...now } } : more ? { next: { promptMessageId, ...now, tokens: lastInputTokens } } : {}),
         });
       },
     });

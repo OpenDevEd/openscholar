@@ -159,8 +159,9 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   // The tool calls the reply asked the person about, which it ended on without running.
   const asked: Array<{ toolCallId: string; toolName: string; input: unknown }> = [];
   const stepUsages: Usage[] = [];
-  // The request called tools. They ran in it, unless the person is asked about one first.
-  let calledTools = false;
+  // The request called tools, and every call has its result: they ran. A request cut short
+  // by the provider, at its length or by a filter, can name a call that never runs.
+  let ranTools = false;
   const completedGenerations = new Set<string>();
   let finished = false;
 
@@ -224,7 +225,8 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
             for (const part of content) {
               if (part.type === "tool-approval-request" && !part.isAutomatic) asked.push({ toolCallId: part.toolCall.toolCallId, toolName: part.toolCall.toolName, input: part.toolCall.input });
             }
-            calledTools ||= content.some((part) => part.type === "tool-call");
+            const calls = content.filter((part) => part.type === "tool-call").length;
+            ranTools = calls > 0 && content.filter((part) => part.type === "tool-result" || part.type === "tool-error").length >= calls;
             stepUsages.push(usageOf({ usage, providerMetadata }));
             const inputTokens = usage?.inputTokens ?? 0;
             const outputTokens = usage?.outputTokens ?? 0;
@@ -490,7 +492,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       asked: finished && !streamErrored && !streamAbortedByUser ? asked : [],
       credits: convertUsdToCredits({ usd: completedUsd }) || 0,
       requests: stepUsages.length,
-      more: finished && !streamErrored && !streamAbortedByUser && calledTools && asked.length === 0,
+      more: finished && !streamErrored && !streamAbortedByUser && ranTools && asked.length === 0,
     });
   }
 }
