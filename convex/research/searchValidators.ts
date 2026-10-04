@@ -18,20 +18,45 @@ export const LAST_PAGE_FROM_START = 2_000 / RESULTS_PAGE;
 
 const fieldValidator = v.union(v.literal("title_and_abstract"), v.literal("title"), v.literal("abstract"), v.literal("fulltext"));
 const sortValidator = v.union(v.literal("relevance"), v.literal("most_cited"), v.literal("newest"), v.literal("oldest"));
-const yearValidator = v.optional(v.union(v.number(), v.null()));
+const numberValidator = v.optional(v.union(v.number(), v.null()));
+const dayValidator = v.optional(v.union(v.string(), v.null()));
+const listValidator = v.optional(v.union(v.array(v.string()), v.null()));
 
-/** A search's settings, as the assistant gives them. Left out, a setting stays as it is; null takes a year or a minimum off. */
+/**
+ * A search's settings, as the assistant gives them: the filters its page has that take
+ * plain values. Left out, a setting stays as it is; null takes it off. What they mean is
+ * said once, in SETTINGS, for the tools that take them.
+ */
 export const searchSettings = {
   /** Where the query's words are looked for. */
   field: v.optional(fieldValidator),
-  fromYear: yearValidator,
-  toYear: yearValidator,
+  fromYear: numberValidator,
+  toYear: numberValidator,
+  fromDate: dayValidator,
+  toDate: dayValidator,
+  authorsIn: listValidator,
+  about: listValidator,
+  types: listValidator,
+  languages: listValidator,
+  institutionTypes: listValidator,
+  sdgs: v.optional(v.union(v.array(v.number()), v.null())),
   openAccessOnly: v.optional(v.boolean()),
   withAbstractOnly: v.optional(v.boolean()),
   reviewsOnly: v.optional(v.boolean()),
-  minCitations: v.optional(v.union(v.number(), v.null())),
+  includeRetracted: v.optional(v.boolean()),
+  minCitations: numberValidator,
+  ratedOnly: v.optional(v.boolean()),
+  minRating: numberValidator,
+  maxRating: numberValidator,
   sort: v.optional(sortValidator),
 };
+
+/** What the settings mean, for the description of each tool that takes them. A value one doesn't take is refused with the ones it does. */
+export const SETTINGS =
+  "The time span is whole years (`fromYear`, `toYear`) or exact days (`fromDate`, `toDate`, as YYYY-MM-DD), not both. " +
+  "`authorsIn` is where the authors' institutions are and `about` is where the paper is about: each a list of two-letter country codes or regions, such as africa, western_africa, southern_asia or europe. " +
+  "`types` and `institutionTypes` are OpenAlex's, such as article, preprint, book-chapter, and education, government. `languages` are ISO 639 codes. `sdgs` are goal numbers, 1 to 17. " +
+  "`ratedOnly`, `minRating` and `maxRating` (0 to 5) keep papers by the person's own ratings.";
 
 const paperValidator = v.object({
   id: v.string(),

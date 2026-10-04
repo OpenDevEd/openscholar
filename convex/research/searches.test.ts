@@ -174,6 +174,35 @@ describe("the assistant's search tools", () => {
     expect((await alice.action(results, { id })).papers.map((paper) => paper.id)).toEqual(["https://openalex.org/W2"]);
   });
 
+  it("set the page's own filters: what a paper is about, where its authors work, its type, language and goals, and exact days", async () => {
+    const { alice, make, edit, update, restore, results, search } = await setup();
+    const { id } = await make({ query: "tutoring", about: ["Africa"], authorsIn: ["ke", "Western Africa"], types: ["article"], languages: ["en", "fr"], institutionTypes: ["education"], sdgs: [4], fromDate: "2025-10-04" });
+    // They're kept as the page keeps them, so the page shows them as its own.
+    expect(await search(id)).toMatchObject({
+      selectedCountryFocus: ["africa"], selectedRegions: ["KE", "western_africa"], workTypes: ["article"], workLanguages: ["en", "fr"], institutionTypes: ["education"], sdgs: ["4"], filterType: "date", dateRange: { from: "2025-10-04" },
+    });
+    // And the search OpenAlex is asked is the page's own, with each of them in it.
+    requests = [];
+    await alice.action(results, { id });
+    const asked = decodeURIComponent(reads()[0].url.search);
+    for (const part of ['"Kenya"', '"Nigeria"', "from_publication_date:2025-10-04", "authorships.countries:KE|BJ|", "authorships.institutions.type:education", "sustainable_development_goals.id:https://metadata.un.org/sdg/4", "type:article", "language:en|fr"]) expect(asked).toContain(part);
+
+    // A value a filter doesn't take is refused with the ones it does.
+    await expect(alice.mutation(update, { id, about: ["Atlantis"] })).rejects.toThrow(/western_africa/);
+    await expect(alice.mutation(update, { id, types: ["poem"] })).rejects.toThrow(/book-chapter/);
+    await expect(alice.mutation(update, { id, authorsIn: ["world"] })).rejects.toThrow(/at most 100 countries/);
+    await expect(alice.mutation(update, { id, sdgs: [18] })).rejects.toThrow(/1 to 17/);
+    await expect(alice.mutation(update, { id, fromYear: 2020, fromDate: "2025-01-01" })).rejects.toThrow(/not both/);
+    await expect(alice.mutation(update, { id, fromDate: "last year" })).rejects.toThrow(/YYYY-MM-DD/);
+
+    // null takes a filter off, and the change is undone like any other.
+    const changed = await edit({ id, about: null, sdgs: null, minRating: 4, ratedOnly: true });
+    expect(await search(id)).toMatchObject({ selectedCountryFocus: [], sdgs: [], ratingRange: [4, 5], onlyRatedPapers: true });
+    await alice.mutation(restore, changed.undo!.args);
+    expect(await search(id)).toMatchObject({ selectedCountryFocus: ["africa"], sdgs: ["4"] });
+    expect((await search(id))!.onlyRatedPapers).toBeUndefined();
+  });
+
   it("count a search again when its query or filters change, and record a count as whoever's read made it", async () => {
     const { t, alice, make, edit, results, search } = await setup();
     const { id } = await make({ query: "tutoring" });

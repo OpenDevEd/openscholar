@@ -11,10 +11,11 @@ import { internalAction, internalMutation } from "../lib/functions";
 import { assistantAction, assistantMutation, defineUserAction, defineUserMutation, reversedBy, userAction, userMutation } from "../lib/userActions";
 import { countSearch, PAGE_ORDERED_SORT, readSearchPage } from "../paperSets/openalex";
 import { keptByRating, SCREENING_FIELDS, toPaper, type SavedSearchRequest, type Work } from "../paperSets/search";
-import { MIN_YEAR } from "../../lib/constants";
+import { COUNTRY_HIERARCHY, getCountryCodesForRegions, MIN_YEAR } from "../../lib/constants";
+import { INSTITUTION_TYPES, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { currentSearch, type SavedSearch, type UndoCommand } from "../../lib/research/records";
 import { applyCommand, findSearch, revisionRow } from "./records";
-import { LAST_PAGE, LAST_PAGE_FROM_START, RESULTS_PAGE, resultsValidator, searchSettings } from "./searchValidators";
+import { LAST_PAGE, LAST_PAGE_FROM_START, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 
 const CREATE = "research/searches:create" as const;
 const UPDATE = "research/searches:update" as const;
@@ -31,6 +32,44 @@ type Settings = ObjectType<typeof searchSettings>;
 const needsQuery = () => createError("VALIDATION_ERROR", "A search needs a query.");
 const authorValidator = v.union(v.literal("user"), v.literal("assistant"));
 
+const invalid = (message: string) => createError("VALIDATION_ERROR", message);
+
+type Region = { label: string; children?: Region[] };
+/** The regions the page's two geographic filters name, as it names them: africa, western_africa, and so on. */
+const REGIONS = (function names(region: Region): string[] {
+  return region.children?.length ? [region.label.toLowerCase().replace(/\s+/g, "_"), ...region.children.flatMap(names)] : [];
+})(COUNTRY_HIERARCHY);
+/** Countries the page lets one filter on where authors work reach: OpenAlex takes no more in one request. */
+const AUTHOR_COUNTRIES_MAX = 100;
+
+/** Places as the saved search keeps them: a region by its name on the page, a country by its two-letter code. */
+function places(given: string[], setting: string) {
+  return given.map((value) => {
+    const place = value.trim().length === 2 ? value.trim().toUpperCase() : value.trim().toLowerCase().replace(/\s+/g, "_");
+    if (!getCountryCodesForRegions([place], true).totalCount) throw invalid(`"${value}" isn't a place \`${setting}\` takes. Give a two-letter country code, or one of these regions: ${REGIONS.join(", ")}.`);
+    return place;
+  });
+}
+
+/** Values as one of the page's own lists has them, or a refusal that says what it takes. */
+const among = (allowed: readonly string[], setting: string) => (given: string[]) =>
+  given.map((value) => {
+    const found = allowed.find((one) => one === value.trim().toLowerCase());
+    if (!found) throw invalid(`"${value}" isn't one of \`${setting}\`. It takes: ${allowed.join(", ")}.`);
+    return found;
+  });
+
+/** The settings that are lists, the saved search's field each one is, and how its values are checked. */
+const LISTS = [
+  ["authorsIn", "selectedRegions", (given: string[]) => places(given, "authorsIn")],
+  ["about", "selectedCountryFocus", (given: string[]) => places(given, "about")],
+  ["types", "workTypes", among(WORK_TYPES.map((type) => type.id), "types")],
+  ["languages", "workLanguages", among(WORK_LANGUAGES, "languages")],
+  ["institutionTypes", "institutionTypes", among(INSTITUTION_TYPES.map((type) => type.id), "institutionTypes")],
+] as const;
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
 /**
  * Plain settings as the saved search's own fields: what to set, and what to take off.
  * `current` is the search being changed, whose year range fills in a year left out.
@@ -40,6 +79,41 @@ function savedFields(settings: Settings, current?: SavedSearch) {
   const clear: string[] = [];
   const thisYear = new Date().getFullYear();
   if (settings.field !== undefined) fields.field = settings.field;
+  // Exact days and whole years are the page's two ways of giving a time span: it filters by the one last set.
+  if (settings.fromDate !== undefined || settings.toDate !== undefined) {
+    if (settings.fromYear != null || settings.toYear != null) throw invalid("Give the time span as years or as exact days, not both.");
+    const [from, to] = [settings.fromDate === undefined ? current?.dateRange?.from : settings.fromDate, settings.toDate === undefined ? current?.dateRange?.to : settings.toDate];
+    for (const day of [from, to]) {
+      if (day != null && (!DAY.test(day) || !Number.isFinite(Date.parse(day)))) throw invalid("A day is written YYYY-MM-DD.");
+    }
+    if (from && to && from > to) throw invalid("The first day is after the last.");
+    fields.filterType = "date";
+    if (from == null && to == null) clear.push("dateRange");
+    else fields.dateRange = { ...(from ? { from } : {}), ...(to ? { to } : {}) };
+  }
+  for (const [setting, field, checked] of LISTS) {
+    const given = settings[setting];
+    if (given === undefined) continue;
+    // The page keeps an empty list for a filter that's off.
+    const values = given === null ? [] : [...new Set(checked(given))];
+    if (setting === "authorsIn" && getCountryCodesForRegions(values).isLimitExceeded) {
+      throw invalid(`\`authorsIn\` reaches at most ${AUTHOR_COUNTRIES_MAX} countries at once. Give smaller regions, or countries.`);
+    }
+    fields[field] = values;
+  }
+  if (settings.sdgs !== undefined) {
+    const goals = settings.sdgs ?? [];
+    if (goals.some((goal) => !Number.isInteger(goal) || goal < 1 || goal > 17)) throw invalid("An SDG is its goal's number, 1 to 17.");
+    fields.sdgs = [...new Set(goals)].map(String);
+  }
+  if (settings.includeRetracted !== undefined) fields.includeRetracted = settings.includeRetracted;
+  if (settings.ratedOnly !== undefined) fields.onlyRatedPapers = settings.ratedOnly;
+  if (settings.minRating !== undefined || settings.maxRating !== undefined) {
+    // Left out, an end stays as it is. Taken off, it goes back to the end of the scale, which keeps every rating.
+    const [min, max] = [settings.minRating === undefined ? (current?.ratingRange?.[0] ?? 0) : (settings.minRating ?? 0), settings.maxRating === undefined ? (current?.ratingRange?.[1] ?? 5) : (settings.maxRating ?? 5)];
+    if (![min, max].every((rating) => Number.isInteger(rating) && rating >= 0 && rating <= 5) || min > max) throw invalid("Ratings are whole numbers from 0 to 5, the lowest first.");
+    fields.ratingRange = [min, max];
+  }
   for (const year of [settings.fromYear, settings.toYear]) {
     if (year != null && (!Number.isInteger(year) || year < MIN_YEAR || year > thisYear)) throw createError("VALIDATION_ERROR", `A year is a whole number from ${MIN_YEAR} to ${thisYear}.`);
   }
@@ -78,7 +152,9 @@ export const createAction = defineUserMutation({
   path: CREATE,
   description:
     "Makes a saved search in the person's account from a query and filters, which shows in their search history at once. It doesn't run the search: read its results with research/searches:results. " +
-    "The query is keywords, with AND, OR, NOT and quoted phrases. Returns the search's ID, and `undo`, which deletes it while nothing has been done with it.",
+    "The query is keywords, with AND, OR, NOT and quoted phrases. " +
+    SETTINGS +
+    " Returns the search's ID, and `undo`, which deletes it while nothing has been done with it.",
   args: { query: v.string(), ...searchSettings },
   returns: v.object({ id: v.string(), undo: reversedBy(REMOVE, { id: v.string(), expect: madeHere }) }),
   spendsCredits: false,
@@ -113,7 +189,9 @@ export const createForAssistant = assistantMutation(createAction);
 export const updateAction = defineUserMutation({
   path: UPDATE,
   description:
-    "Changes a saved search's query, its filters, or both. Only what's given changes; null takes a year or the citation minimum off. The person's open page follows, from its first page of results. " +
+    "Changes a saved search's query, its filters, or both. Only what's given changes; null takes a filter off. The person's open page follows, from its first page of results. " +
+    SETTINGS +
+    " " +
     "Returns `undo`, which puts the search back as it was before this change. It is refused if the search changed again in between.",
   args: { id: v.string(), query: v.optional(v.string()), ...searchSettings },
   returns: v.object({ undo: reversedBy(RESTORE, restoreArgs) }),
