@@ -81,7 +81,7 @@ export function JobProgressBar({
           initial={{ width: 0 }}
           animate={{ width: `${total > 0 ? (processed / total) * 100 : 0}%` }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-          className={complete ? "h-full rounded-full bg-emerald-500" : "h-full rounded-full bg-primary"}
+          className={complete ? "h-full rounded-full bg-success" : "h-full rounded-full bg-primary"}
         />
         {failed > 0 ? (
           <motion.div

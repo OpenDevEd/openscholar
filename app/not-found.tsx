@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
-import { Home, Search } from 'lucide-react';
+import { Home, Search } from "@/components/icons";
 import { getTranslations } from 'next-intl/server';
 
 export default async function NotFound() {

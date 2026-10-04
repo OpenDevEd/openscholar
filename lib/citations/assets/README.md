@@ -10,8 +10,13 @@ loads only when the style picker opens. Selecting an additional style fetches
 its compressed group from `public/citation-styles/`; content-addressed URLs and
 an in-memory cache reuse downloads. Failed downloads can be retried.
 
-The JSON provenance records the exact upstream commits. Each CSL tree retains
-its attribution and license information. Upstream sources:
+The JSON provenance records the exact upstream commits. The styles and locales
+are licensed CC BY-SA 3.0. The generated JSON drops each file's own attribution
+and license block, so the credit they require is on the app's Credits page
+(`content/credits/`), which links `public/citation-styles/credits.txt`. That file names
+the authors of every bundled style and locale, and `npm run citations:generate`
+rewrites it from the upstream repositories at the recorded commits. Upstream
+sources:
 
 - https://github.com/citation-style-language/styles
 - https://github.com/citation-style-language/locales

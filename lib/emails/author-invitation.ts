@@ -12,7 +12,7 @@ export function authorInvitationMessage({ origin, profileId, profileName, email 
     name: profileName,
     baseUrl: new URL(`/authors/${profileId}`, origin).href,
     logoUrl: new URL("/web-app-manifest-192x192.png", origin).href,
-    accent: "#f58220",
+    accent: "#2563eb",
   };
   return {
     subject: `Invitation to edit ${profileName}`,

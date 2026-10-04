@@ -3,7 +3,7 @@
 import { memo } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { CheckIcon, ExternalLink, Quote } from "lucide-react";
+import { CheckIcon, ExternalLink, Quote } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
@@ -93,7 +93,7 @@ function SourceRowImpl({
         "group flex items-start gap-2.5 cursor-pointer border-l-2 px-3 py-2.5 transition-colors",
         selected
           ? "border-l-primary bg-primary/[0.06] hover:bg-primary/[0.09]"
-          : "border-l-transparent hover:bg-muted/40",
+          : "border-l-transparent hover:bg-muted",
       )}
     >
       <motion.span
@@ -131,7 +131,7 @@ function SourceRowImpl({
         )}
       >
         <div className="flex items-start justify-between gap-2">
-          <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-foreground">
+          <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
             {row.title}
           </p>
           <TooltipHint label={SOURCE_LABEL[row.sourceType]}>
@@ -146,7 +146,7 @@ function SourceRowImpl({
           </TooltipHint>
         </div>
         <div className="flex items-center justify-between gap-2">
-          <p className="truncate text-[11px] text-muted-foreground">
+          <p className="truncate text-2xs text-muted-foreground">
             {authorLine}
           </p>
           <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
@@ -173,7 +173,7 @@ function SourceRowImpl({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 gap-1 px-1.5 text-[10px] font-medium text-muted-foreground hover:text-foreground"
+                className="h-6 gap-1 px-1.5 text-3xs font-medium text-muted-foreground hover:text-foreground"
                 aria-label="Open DOI"
                 data-source-action="doi"
                 asChild
@@ -192,7 +192,7 @@ function SourceRowImpl({
         </div>
         {hasMeta && (
           <div
-            className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]"
+            className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-2xs"
             data-paper-meta
           >
             {row.venueName?.trim() && (
@@ -207,7 +207,7 @@ function SourceRowImpl({
             )}
             {row.workType?.trim() && (
               <span
-                className="rounded bg-muted/70 px-1.5 py-px text-[11px] font-medium text-muted-foreground first-letter:uppercase"
+                className="rounded bg-muted px-1.5 py-px text-2xs font-medium text-muted-foreground first-letter:uppercase"
                 data-paper-work-type
               >
                 {row.workType}
@@ -229,10 +229,10 @@ function SourceRowImpl({
         )}
         {snippet && matchedNonChromeField && (
           <p
-            className="mt-0.5 text-[11px] italic text-muted-foreground"
+            className="mt-0.5 text-2xs italic text-muted-foreground"
             data-match-field={matchedNonChromeField}
           >
-            <span className="mr-1 inline-block text-[11px] not-italic text-muted-foreground/80 first-letter:uppercase">
+            <span className="mr-1 inline-block text-2xs not-italic text-muted-foreground/80 first-letter:uppercase">
               {matchedNonChromeField}
             </span>
             <SnippetText

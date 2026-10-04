@@ -4,7 +4,7 @@ import { Markdown } from "@tiptap/markdown";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import { Bold, Italic, Link2, List, Unlink } from "lucide-react";
+import { Bold, Italic, Link2, List, Unlink } from "@/components/icons";
 import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,11 +141,11 @@ function RichTextEditor({
   return (
     <div
       className={cn(
-        "rounded-md border border-input bg-background shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30",
+        "rounded-md border border-input bg-field shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
         invalid && "border-destructive ring-destructive/20",
       )}
     >
-      <div className="flex items-center gap-0.5 border-b border-border/60 px-1.5 py-1" role="toolbar" aria-label="Formatting">
+      <div className="flex items-center gap-0.5 border-b border-border-subtle px-1.5 py-1" role="toolbar" aria-label="Formatting">
         <ToolButton label="Bold" active={state?.bold} onClick={() => editor?.chain().focus().toggleBold().run()}>
           <Bold />
         </ToolButton>

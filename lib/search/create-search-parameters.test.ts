@@ -19,6 +19,7 @@ const baseFilters: SearchFilters = {
   workLanguages: [],
   institutionTypes: [],
   funders: [],
+  authors: [],
   minCitations: null,
   hasAbstract: false,
   includeRetracted: false,
@@ -55,7 +56,7 @@ describe("createSearchParameters — wildcard field routing", () => {
   });
 });
 
-describe("createSearchParameters language, institution, funder, citation and abstract filters", () => {
+describe("createSearchParameters language, institution, funder, author, citation and abstract filters", () => {
   it("adds them in the SDK's form, keeping institution location beside institution type", () => {
     const params = createSearchParameters("", {
       ...baseFilters,
@@ -63,13 +64,14 @@ describe("createSearchParameters language, institution, funder, citation and abs
       workLanguages: ["en", "fr"],
       institutionTypes: ["government"],
       funders: ["F4320311904"],
+      authors: ["A5023888391", "A5100000001"],
       minCitations: 10,
       hasAbstract: true,
       includeRetracted: true,
     });
 
     expect(params.filter).toEqual({
-      authorships: { countries: "KE", institutions: { type: "government" } },
+      authorships: { countries: "KE", institutions: { type: "government" }, author: { id: "A5023888391|A5100000001" } },
       language: "en|fr",
       funders: { id: "F4320311904" },
       cited_by_count: ">9",

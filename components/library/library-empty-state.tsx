@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Library, SearchX } from "lucide-react";
+import { Library, SearchX } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
@@ -23,7 +23,7 @@ export function LibraryEmptyState({
   return (
     <CommandCenterContainer>
       <div className="relative flex flex-col items-center justify-center px-6 py-14 text-center sm:px-10">
-        <div className="mb-5 rounded-2xl border border-border/60 bg-background/80 p-4 shadow-sm">
+        <div className="mb-5 rounded-2xl border border-border-subtle bg-card p-4 shadow-sm">
           <Icon className="h-7 w-7 text-muted-foreground" />
         </div>
 

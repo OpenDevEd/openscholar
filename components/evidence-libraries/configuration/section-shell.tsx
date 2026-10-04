@@ -1,6 +1,6 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import type { AppIcon } from "@/components/icons";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useTranslations } from "next-intl";
 import { createContext, type ReactNode, useContext } from "react";
@@ -66,7 +66,7 @@ export function SectionShell({
   children,
 }: Pick<SectionProps, "draft" | "saved" | "reset"> & {
   sectionKey: PageSectionKey;
-  icon: LucideIcon;
+  icon: AppIcon;
   description: ReactNode;
   children: ReactNode;
 }) {

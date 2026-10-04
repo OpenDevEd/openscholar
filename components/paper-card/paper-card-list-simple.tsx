@@ -13,15 +13,15 @@ import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { Quote } from "lucide-react";
-import { useTranslate, useCitationHandlers } from "./hooks";
+import { BookOpen, Quote } from "@/components/icons";
+import { useAuthorFilter, useTranslate, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
   PaperCardProps,
   CardContainer,
   OpenAccessBadge,
   DOIBadge,
-  truncateAuthors,
+  AuthorNames,
   DownloadMenuCompact,
   TranslationToggle,
   ScreeningResponses,
@@ -52,9 +52,7 @@ export function PaperCardListSimple({
     ? translatedContent.translatedTitle
     : result.title;
 
-  const authors = result.authorships
-    ? truncateAuthors(result.authorships, 60)
-    : "";
+  const authorFilter = useAuthorFilter();
 
   const journal = result.primary_location?.source?.display_name || "";
 
@@ -103,12 +101,25 @@ export function PaperCardListSimple({
                 </span>
               </h3>
               
-              {/* Authors and journal - hidden on smallest, visible on @sm */}
-              <p className="hidden @sm/card:block text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                {authors && <span>{authors}</span>}
-                {authors && journal && <span className="mx-1.5">·</span>}
-                {journal && <span className="italic">{journal}</span>}
-              </p>
+              {/* Authors and journal - hidden on smallest, visible on @sm. The journal gives up its room first, so an author control is cut only once the journal is down to its icon. */}
+              <div className="hidden @sm/card:flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                {result.authorships?.length ? (
+                  <span className="min-w-0 overflow-clip text-ellipsis whitespace-nowrap">
+                    <AuthorNames
+                      authorships={result.authorships}
+                      maxLength={60}
+                      selected={authorFilter.authors}
+                      onToggleAuthor={authorFilter.toggle}
+                    />
+                  </span>
+                ) : null}
+                {journal && (
+                  <span className="flex min-w-3 shrink-[100] items-center gap-1.5 italic">
+                    <BookOpen aria-hidden className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{journal}</span>
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Screening badges - icon only */}
@@ -143,7 +154,7 @@ export function PaperCardListSimple({
                       handleCitesSearch();
                     }
                   }}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ink-cites hover:bg-cites/10 transition-colors cursor-pointer"
                 >
                   <Quote className="h-3 w-3" />
                   <span>{format.number(result.cited_by_count ?? 0)}</span>
@@ -187,7 +198,7 @@ export function PaperCardListSimple({
           {/* Mobile citation count */}
           <div
             role="group"
-            className="@sm/card:hidden flex items-center gap-1 flex-shrink-0 text-xs text-orange-600 dark:text-orange-400"
+            className="@sm/card:hidden flex items-center gap-1 flex-shrink-0 text-xs ink-cites"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >

@@ -1,6 +1,6 @@
 "use client";
 
-import { Coins } from "lucide-react";
+import { Coins } from "@/components/icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -49,7 +49,7 @@ export function CostBadge({ jobId, compact = false, href }: CostBadgeProps) {
         role="status"
         aria-busy="true"
         data-credits-total="0"
-        className="inline-flex h-6 w-16 items-center rounded-md bg-muted/40"
+        className="inline-flex h-6 w-16 items-center rounded-md bg-inset"
       />
     );
   }
@@ -57,8 +57,8 @@ export function CostBadge({ jobId, compact = false, href }: CostBadgeProps) {
   const total = data.total;
 
   const chipClasses = compact
-    ? "inline-flex items-center gap-1 rounded-md bg-muted/50 px-2 py-0.5 text-xs"
-    : "inline-flex items-center gap-1.5 rounded-md bg-muted/50 px-2.5 py-1 text-xs";
+    ? "inline-flex items-center gap-1 rounded-md bg-inset px-2 py-0.5 text-xs"
+    : "inline-flex items-center gap-1.5 rounded-md bg-inset px-2.5 py-1 text-xs";
 
   const chipBody = (
     <>

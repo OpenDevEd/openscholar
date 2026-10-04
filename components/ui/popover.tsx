@@ -4,11 +4,12 @@ import * as React from "react"
 import { Popover as PopoverPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
+import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
 
 function Popover({
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />
+  return <TrackOpen {...props}>{(root) => <PopoverPrimitive.Root data-slot="popover" {...props} {...root} />}</TrackOpen>
 }
 
 function PopoverTrigger({
@@ -22,11 +23,14 @@ function PopoverContent({
   align = "center",
   sideOffset = 4,
   collisionPadding = 8,
+  children,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+  const closing = useClosing()
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
+        inert={closing}
         data-slot="popover-content"
         align={align}
         sideOffset={sideOffset}
@@ -36,7 +40,9 @@ function PopoverContent({
           className
         )}
         {...props}
-      />
+      >
+        {props.asChild ? children : <HoldWhileClosing>{children}</HoldWhileClosing>}
+      </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   )
 }

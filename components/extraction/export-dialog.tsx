@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FileSpreadsheet, FileJson, Loader2 } from "lucide-react";
+import { FileSpreadsheet, FileJson, Loader2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

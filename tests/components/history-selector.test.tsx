@@ -33,7 +33,7 @@ vi.mock("next-intl", () => ({
   useNow: () => new Date(0),
 }));
 
-vi.mock("lucide-react", () => ({
+vi.mock("@/components/icons", () => ({
   Search: () => null,
   Calendar: () => null,
   FileText: () => null,

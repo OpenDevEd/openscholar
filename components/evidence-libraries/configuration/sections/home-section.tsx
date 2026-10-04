@@ -5,14 +5,14 @@ import {
   Camera,
   ChevronsUpDown,
   FileText,
-  House,
   Loader2,
   Pencil,
   Plus,
   RefreshCw,
   Sparkles,
   X,
-} from "lucide-react";
+  HomeIcon,
+} from "@/components/icons";
 import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -38,7 +38,7 @@ import { RichTextField } from "../rich-text-field";
 import { HAND_ENTERED_PREFIX, isHandEntered, publicName, publicPhoto } from "@/lib/evidence-libraries/configuration/home-people";
 import { Field } from "../section-card";
 import { SectionShell, type SectionProps } from "../section-shell";
-import { localPickerSource, type PickerRow, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
+import { localPickerSource, PICKER_PAGE_SIZE, type PickerRow, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
 import { IconPreview, NavbarIconPicker } from "./navbar-icon-picker";
 import { PHOTO_ACCEPT, toPersonPhoto } from "../photo-upload";
 import { useDropzone } from "react-dropzone";
@@ -101,7 +101,7 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
   return (
     <SectionShell
       sectionKey="home"
-      icon={House}
+      icon={HomeIcon}
       description="The page visitors land on at the library's address."
       draft={draft}
       saved={saved}
@@ -468,7 +468,7 @@ function PreviewNode({ step }: { step: HomeStepDraft }) {
  */
 function TimelinePreview({ steps, team }: { steps: HomeStepDraft[]; team: TeamPerson[] }) {
   return (
-    <figure className="rounded-lg bg-muted/40 p-4" aria-label="How the steps look on the page">
+    <figure className="rounded-lg bg-inset p-4" aria-label="How the steps look on the page">
       <figcaption className="mb-4 text-xs text-muted-foreground">On the page</figcaption>
       <ol className="grid gap-x-6 gap-y-5" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
         {steps.map((step, index) => {
@@ -517,7 +517,7 @@ function FilledIn({ draft }: { draft: SectionProps["draft"] }) {
   ];
   return (
     <FieldGroup title="Filled in for you" hint="Newest publications, the most cited, digests and the latest review come from the library itself.">
-      <dl className="divide-y divide-border/50 rounded-lg border border-border/50">
+      <dl className="divide-y divide-border-subtle rounded-lg border border-border-subtle">
         {rows.map((row) => (
           <div key={row.label} className="flex items-center gap-4 px-3 py-2.5 text-sm">
             <dt className="w-32 shrink-0 text-muted-foreground">{row.label}</dt>
@@ -825,15 +825,15 @@ function PublicationChoice({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const listReviewed = useAction(api.zotero.runtimeReadActions.listReviewedPublications);
+  const listPublications = useAction(api.zotero.runtimeReadActions.listPublications);
+  const readPublication = useAction(api.zotero.runtimeReadActions.readPublication);
   const [chosen, setChosen] = useState<PickerRow | null>(null);
   // A saved choice is only a key, so its title is asked for once.
   useEffect(() => {
     if (!value || chosen?.id === value) return;
     let current = true;
-    listReviewed({ libraryId, ids: [value] })
-      .then((page) => {
-        const found = page.items.find((item) => item.key === value);
+    readPublication({ libraryId, key: value })
+      .then((found) => {
         if (current && found) setChosen(publicationRow(found));
       })
       // The key stands in for the title when the library cannot answer.
@@ -841,11 +841,11 @@ function PublicationChoice({
     return () => {
       current = false;
     };
-  }, [listReviewed, libraryId, value, chosen?.id]);
+  }, [readPublication, libraryId, value, chosen?.id]);
   const shown = value ? (chosen?.id === value ? chosen : { id: value, title: value }) : null;
   const source: PickerSource = async ({ query, cursor }) => {
-    const page = await listReviewed({ libraryId, query: query || undefined, cursor: cursor ?? undefined });
-    return { reason: page.reason, items: page.items.map(publicationRow), nextCursor: page.nextCursor };
+    const page = await listPublications({ libraryId, query: query || undefined, paginationOpts: { cursor, numItems: PICKER_PAGE_SIZE } });
+    return { reason: page.reason, items: page.page.map(publicationRow), nextCursor: page.isDone ? null : page.continueCursor };
   };
   return (
     <RemotePickerDialog

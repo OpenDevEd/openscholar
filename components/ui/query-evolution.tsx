@@ -8,7 +8,7 @@
 
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronRight, ChevronDown } from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import type { QueryHistoryEntry } from "@/lib/types/search.types";
@@ -77,13 +77,13 @@ export function QueryEvolution({
   const remainingCount = total - 2;
 
   return (
-    <div className={cn("pt-2 border-t border-border/30", className)}>
+    <div className={cn("pt-2 border-t border-border-subtle", className)}>
       {/* Collapsed Preview / Toggle Button */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
           "w-full flex items-start gap-1.5 text-left group",
-          "hover:bg-muted/30 -mx-1 px-1 py-0.5 rounded transition-colors"
+          "hover:bg-muted -mx-1 px-1 py-0.5 rounded transition-colors"
         )}
       >
         <motion.span
@@ -95,11 +95,11 @@ export function QueryEvolution({
         </motion.span>
 
         {isExpanded ? (
-          <span className="text-[10px] text-muted-foreground font-medium">
+          <span className="text-3xs text-muted-foreground font-medium">
             {t("queryEvolution")}
           </span>
         ) : (
-          <div className="flex-1 min-w-0 flex items-center gap-1 text-[10px] text-muted-foreground">
+          <div className="flex-1 min-w-0 flex items-center gap-1 text-3xs text-muted-foreground">
             {previewQueries.map((entry, idx) => (
               <React.Fragment key={entry.query}>
                 <span className="truncate max-w-[80px]">
@@ -158,13 +158,13 @@ export function QueryEvolution({
                       <QueryText 
                         query={entry.query}
                         className={cn(
-                          "text-[10px] break-words leading-relaxed [overflow-wrap:anywhere]",
+                          "text-3xs break-words leading-relaxed [overflow-wrap:anywhere]",
                           isCurrent && "font-medium",
                           // Only long queries are cut off, so a short one keeps its time beside it.
                           entry.query.length > LONG_QUERY_CHARS && "line-clamp-4"
                         )}
                       />
-                      <span className="text-[9px] pl-2 text-muted-foreground/50">
+                      <span className="text-3xs pl-2 text-muted-foreground/50">
                         {format.relativeTime(new Date(entry.timestamp), now)}
                       </span>
                     </div>

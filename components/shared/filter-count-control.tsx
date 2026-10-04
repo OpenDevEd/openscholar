@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { X } from "lucide-react";
+import { X } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -30,7 +30,7 @@ export function FilterCountControl({
     >
       <span
         className={cn(
-          "flex items-center justify-center h-7 text-xs font-medium rounded-md bg-gradient-to-r from-[oklch(0.75_0.15_55)] via-[oklch(0.70_0.17_54)] to-[oklch(0.62_0.16_52)] text-white badge-glow",
+          "flex items-center justify-center h-7 text-xs font-medium rounded-md bg-gradient-to-r from-primary-bright via-primary to-primary-deep text-primary-foreground badge-glow",
           column ? "w-7" : "min-w-7 px-2",
         )}
       >

@@ -1,7 +1,7 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
-import type { ComponentProps, ReactNode } from "react";
+import { ChevronRight } from "@/components/icons";
+import { useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +30,44 @@ export function DisclosureButton({ className, children, ...props }: ComponentPro
       {children}
     </Button>
   );
+}
+
+/**
+ * Text cut short, with its full length on request. Put `ref` on the cut
+ * element and show a `DisclosureButton` while `clipped` or `expanded`. `watch`
+ * is anything that changes the text or how it is cut, such as the text itself
+ * and the view it is in; a change to it cuts the text again.
+ */
+export function useFullText<T extends HTMLElement>(watch?: unknown) {
+  const ref = useRef<T>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [clipped, setClipped] = useState(false);
+  const [watched, setWatched] = useState(watch);
+  if (watched !== watch) {
+    setWatched(watch);
+    setExpanded(false);
+  }
+  // ResizeObserver and the page's fonts: whether the cut text is cut off at its
+  // current width and in its final font. It is measured before the first paint
+  // too, so the button never arrives late and moves things.
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (!node || expanded) return;
+    let watching = true;
+    const measure = () => {
+      if (watching) setClipped(node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    // The font can arrive after the first measure and change how much fits. Not every environment has `document.fonts`.
+    void document.fonts?.ready.then(measure);
+    return () => {
+      watching = false;
+      observer.disconnect();
+    };
+  }, [expanded, watch]);
+  return { ref, expanded, clipped, toggle: () => setExpanded((value) => !value) };
 }
 
 export function DisclosureTrigger({

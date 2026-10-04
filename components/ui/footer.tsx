@@ -19,6 +19,9 @@ export function Footer() {
             {t("cookiePolicy")}
           </Link>
           <CookiePreferencesTrigger />
+          <Link href="/credits" className={footerLinkClassName}>
+            {t("credits")}
+          </Link>
           <span className="text-xs text-muted-foreground">
             {t("builtBy")}{" "}
             <a

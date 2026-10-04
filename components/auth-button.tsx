@@ -11,8 +11,9 @@ import {
   Coins,
   Settings,
   Loader2,
-  Bot,
-} from "lucide-react";
+  SettingsIcon,
+  BotIcon,
+} from "@/components/icons";
 import { useRouter } from "next/navigation";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { cn } from "@/lib/utils";
@@ -81,12 +82,12 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
         )}
         disabled
       >
-        <span className="flex h-[1.2rem] w-[1.2rem] items-center justify-center rounded-full border border-border/60 bg-background/70">
+        <span className="flex h-[1.2rem] w-[1.2rem] items-center justify-center rounded-full border border-border-subtle bg-background">
           <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
         </span>
         {!isCollapsed && (
           <span
-            className="h-2.5 w-16 animate-pulse rounded-full bg-muted/60"
+            className="h-2.5 w-16 animate-pulse rounded-full bg-inset"
             aria-hidden
           />
         )}
@@ -102,7 +103,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
         variant="ghost"
         size="sm"
         className={cn(
-          "transition-all duration-200 hover:bg-sidebar-accent/80",
+          "transition-all duration-200 hover:bg-sidebar-accent",
           isCollapsed ? "h-8 w-8 px-0" : "w-full justify-start px-2 h-8 gap-2",
         )}
       >
@@ -155,7 +156,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
             }}
             className="cursor-pointer flex items-start gap-3 py-2.5"
           >
-            <Bot className="h-4 w-4 shrink-0 mt-0.5" />
+            <BotIcon className="h-4 w-4 shrink-0 mt-0.5" />
             <div className="flex flex-col items-start gap-0.5 min-w-0 text-left">
               <span className="font-medium">{tai("aiConfiguration")}</span>
               <span className="text-xs text-muted-foreground leading-snug">
@@ -216,7 +217,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
       variant="ghost"
       size="sm"
       className={cn(
-        "transition-all duration-200 hover:bg-sidebar-accent/80",
+        "transition-all duration-200 hover:bg-sidebar-accent",
         isCollapsed ? "h-8 w-8 px-0" : "w-full justify-start px-2 h-8 gap-2",
       )}
     >
@@ -268,7 +269,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
                   </span>
                   {isSubscriptionLoading ? (
                     <span
-                      className="h-5 w-16 animate-pulse rounded-full bg-muted/60"
+                      className="h-5 w-16 animate-pulse rounded-full bg-inset"
                       aria-hidden
                     />
                   ) : (
@@ -306,7 +307,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
               {showUpgradeButton && (
                 <Button
                   size="sm"
-                  className="w-full h-8 text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0"
+                  className="w-full h-8 text-xs font-semibold"
                   onClick={() => {
                     setOpen(false);
                     router.push("/pricing");
@@ -339,7 +340,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
           }}
           className="cursor-pointer"
         >
-          <Settings className="h-4 w-4 mr-2" />
+          <SettingsIcon className="h-4 w-4 mr-2" />
           {tc("settings")}
         </DropdownMenuItem>
 

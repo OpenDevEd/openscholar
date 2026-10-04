@@ -119,10 +119,11 @@ vi.mock("@/convex/_generated/api", () => ({
       libraryGroups: { listZoteroGroups: "listZoteroGroups", removeZoteroGroup: "removeZoteroGroup" },
       libraryGroupActions: { listMyZoteroGroups: "listMyZoteroGroups", connectZoteroGroup: "connectZoteroGroup" },
       runtimeReadActions: {
-        listLibraryCollections: "listLibraryCollections",
-        listRecordInstitutions: "listRecordInstitutions",
+        listCollections: "listRuntimeCollections",
+        listInstitutions: "listInstitutions",
         resolveLibraryCollections: "resolveLibraryCollections",
-        listReviewedPublications: "listReviewedPublications",
+        listPublications: "listPublications",
+        readPublication: "readPublication",
         readHomeQuestions: "readHomeQuestions",
         requestSourceRun: "requestSourceRun",
       },
@@ -143,7 +144,7 @@ const resolveCollectionsMock = vi.hoisted(() => vi.fn(async () => ({ items: [] }
 const homeQuestionsMock = vi.hoisted(() =>
   vi.fn(async () => ({ questions: ["What does the evidence say about literacy?", null, null] })),
 );
-const reviewedPublicationsMock = vi.hoisted(() => vi.fn(async () => ({ items: [], nextCursor: null })));
+const reviewedPublicationsMock = vi.hoisted(() => vi.fn(async () => ({ page: [], isDone: true, continueCursor: "" })));
 
 // OpenAlex is not asked during tests.
 vi.mock("@/lib/hooks/use-history-count", () => ({
@@ -177,7 +178,7 @@ vi.mock("convex/react", () => ({
         ? resolveCollectionsMock
         : action === "readHomeQuestions"
           ? homeQuestionsMock
-          : action === "listReviewedPublications"
+          : action === "listPublications"
             ? reviewedPublicationsMock
             : mutationMock(action),
 }));

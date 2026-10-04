@@ -11,17 +11,17 @@ const fundersSchema = z.object({
   results: z.array(z.object({ id: z.string(), display_name: z.string() })),
 });
 
-async function readOpenAlex(path: string, parameters: Record<string, string>): Promise<unknown> {
+export async function readOpenAlex(path: string, parameters: Record<string, string>): Promise<unknown> {
   const response = await fetch(openAlexUrl(path, parameters), { signal: AbortSignal.timeout(12000), next: { revalidate: 3600 } });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    console.error("OpenAlex funder lookup failed", { path, status: response.status, body: body.slice(0, 500) });
-    throw new Error(`OpenAlex funders unavailable: ${response.status}`);
+    console.error("OpenAlex lookup failed", { path, status: response.status, body: body.slice(0, 500) });
+    throw new Error(`OpenAlex ${path} unavailable: ${response.status}`);
   }
   return response.json();
 }
 
-const bareId = (id: string) => id.split("/").at(-1)!;
+export const bareId = (id: string) => id.split("/").at(-1)!;
 
 /** Funders whose names start with the words typed, as OpenAlex's autocomplete finds them. */
 export async function searchOpenAlexFunders(query: string): Promise<FunderOption[]> {

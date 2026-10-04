@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Globe } from "lucide-react";
+import { Copy, GlobeIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ export function IdentitySection({ draft, saved, patch, reset }: SectionProps) {
   return (
     <SectionShell
       sectionKey="identity"
-      icon={Globe}
+      icon={GlobeIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -53,7 +53,7 @@ export function SmartPagination({
   const pageCount = Math.max(currentPage, Math.ceil(filteredCount / pageSize));
 
   return (
-    <div className={cn("flex flex-col items-center justify-between gap-3 border-t border-border/50 px-4 py-3 sm:flex-row md:px-6", stale && "pointer-events-none opacity-60")}>
+    <div className={cn("flex flex-col items-center justify-between gap-3 border-t border-border-subtle px-4 py-3 sm:flex-row md:px-6", stale && "pointer-events-none opacity-60")}>
       {/* Left: Results info */}
       {/* The sides share the row evenly, so the steps stay put when the count's text changes width. */}
       <p className="text-xs tabular-nums text-muted-foreground sm:flex-1">

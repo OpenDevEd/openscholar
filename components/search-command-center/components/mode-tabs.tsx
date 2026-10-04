@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "motion/react";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import type { CommandCenterMode } from "../types";
 import { useTranslations } from "next-intl";
@@ -28,7 +28,7 @@ export function ModeTabs({ mode, onChange, disabled }: ModeTabsProps) {
     { id: "adjust", label: ts("adjustTab"), icon: SlidersHorizontal },
   ];
   return (
-    <div className="relative flex bg-muted/50 rounded-lg p-1 gap-0.5">
+    <div className="relative flex bg-inset rounded-lg p-1 gap-0.5">
       {tabs.map((tab) => {
         const isActive = mode === tab.id;
         const Icon = tab.icon;
@@ -53,8 +53,8 @@ export function ModeTabs({ mode, onChange, disabled }: ModeTabsProps) {
                 layoutId="mode-tab-indicator"
                 className={cn(
                   "absolute inset-0 rounded-md",
-                  "bg-background shadow-sm",
-                  "border border-border/50"
+                  "bg-segment-active shadow-sm",
+                  "border border-border-subtle"
                 )}
                 transition={tabSpring}
               />

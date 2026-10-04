@@ -5,7 +5,7 @@ import { useTranslations, useFormatter } from "next-intl";
 import { useAction } from "convex/react";
 import { ConvexError } from "convex/values";
 import type { FunctionReturnType } from "convex/server";
-import { FlaskConical, KeyRound, Send, ShieldCheck } from "lucide-react";
+import { FlaskConical, KeyRound, ShieldCheck, PublishIcon } from "@/components/icons";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -89,7 +89,7 @@ export function PublicationSection({
   return (
     <SectionCard
       id="sec-publication"
-      icon={Send}
+      icon={PublishIcon}
       title={t("title")}
       description={t("description")}
     >
@@ -406,7 +406,7 @@ function PublicationForm({
         </FieldGroup>
       </fieldset>
       {error && <FieldError>{error}</FieldError>}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
         <p
           className="flex items-center gap-2 text-xs text-muted-foreground"
           role="status"
@@ -420,7 +420,7 @@ function PublicationForm({
             t("needsVerification")
           ) : saved.verifiedAt ? (
             <>
-              <ShieldCheck className="size-4 text-emerald-600" />
+              <ShieldCheck className="size-4 ink-success" />
               {t("verified", {
                 date: format.dateTime(saved.verifiedAt, {
                   dateStyle: "short",
