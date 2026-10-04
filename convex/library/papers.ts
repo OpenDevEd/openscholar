@@ -74,8 +74,10 @@ export const collectAction = defineUserMutation({
   // A library may follow the collection, which shows the change outside the account.
   asksFirst: (ctx, _userId, { collectionId }) => followed(ctx, collectionId),
   run: async (ctx, userId, { id, collectionId, inCollection }, author) => {
-    if (inCollection && !(await findItem(ctx, userId, id))) throw createError("NOT_FOUND", "This paper isn't in the library yet. Save it first, with library/papers:save.");
-    return await setPaperInCollectionAction.run(ctx, userId, { paper: { openalexId: canonical(id) }, collectionId, inCollection }, author);
+    const item = await findItem(ctx, userId, id);
+    if (inCollection && !item) throw createError("NOT_FOUND", "This paper isn't in the library yet. Save it first, with library/papers:save.");
+    // By the ID the paper is saved under: one saved before the library kept one form is under the ID it was given.
+    return await setPaperInCollectionAction.run(ctx, userId, { paper: { openalexId: item?.openalexId ?? canonical(id) }, collectionId, inCollection }, author);
   },
 });
 export const collect = userMutation(collectAction);

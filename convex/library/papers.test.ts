@@ -85,6 +85,8 @@ describe("saving a paper by its ID", () => {
     // A paper saved under its bare ID, before the library kept one form, is still found by it, and can still be removed.
     await t.run(async (ctx) => ctx.db.insert("libraryItems", { userId, openalexId: "W5", title: "Saved bare", searchableText: "Saved bare", savedAt: 1, updatedAt: 1 }));
     expect(await ada.query(api.library.queries.savedPaper, { openalexId: "W5" })).not.toBeNull();
+    await ada.mutation(collect, { id: "W5", collectionId, inCollection: true });
+    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").take(5)).length)).toBe(3);
     await ada.mutation(removeFromLibrary, { openalexId: "W5" });
     expect((await items()).some((row) => row.title === "Saved bare")).toBe(false);
 

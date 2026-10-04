@@ -97,8 +97,10 @@ function places(given: string[], setting: string) {
   return [
     ...new Set(
       given.flatMap((value) => {
-        const place = value.trim().length === 2 ? value.trim().toUpperCase() : value.trim().toLowerCase().replace(/[\s-]+/g, "_");
-        if (REGION_GROUPS[place]) return REGION_GROUPS[place];
+        // The page's own name for a region keeps its hyphen (south-eastern_asia). A name people use is taken with or without one.
+        const place = value.trim().length === 2 ? value.trim().toUpperCase() : value.trim().toLowerCase().replace(/\s+/g, "_");
+        const group = REGION_GROUPS[place.replace(/-/g, "_")];
+        if (group) return group;
         if (!getCountryCodesForRegions([place], true).totalCount) invalid(`"${value}" isn't a place \`${setting}\` takes. Give a two-letter country code, or one of these regions: ${[...REGIONS, ...Object.keys(REGION_GROUPS)].join(", ")}.`);
         return [place];
       }),
