@@ -5,11 +5,11 @@ import { XIcon } from "@/components/icons"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import { HoldWhileClosing, TrackOpen } from "@/components/ui/hold-while-closing"
+import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
 import { withToastsInside } from "@/components/ui/sonner"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <TrackOpen {...props}>{(onOpenChange) => <SheetPrimitive.Root data-slot="sheet" {...props} onOpenChange={onOpenChange} />}</TrackOpen>
+  return <TrackOpen {...props}>{(root) => <SheetPrimitive.Root data-slot="sheet" {...props} {...root} />}</TrackOpen>
 }
 
 function SheetTrigger({
@@ -57,10 +57,12 @@ function SheetContent({
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
 }) {
+  const closing = useClosing()
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
+        inert={closing}
         data-slot="sheet-content"
         className={cn(
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
@@ -77,7 +79,7 @@ function SheetContent({
         onInteractOutside={withToastsInside(onInteractOutside)}
         {...props}
       >
-        <HoldWhileClosing>{children}</HoldWhileClosing>
+        {props.asChild ? children : <HoldWhileClosing>{children}</HoldWhileClosing>}
         {showCloseButton && (
           <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
             <XIcon className="size-4" />

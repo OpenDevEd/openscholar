@@ -5,12 +5,12 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/icons"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import { HoldWhileClosing, TrackOpen } from "@/components/ui/hold-while-closing"
+import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
 
 function DropdownMenu({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <TrackOpen {...props}>{(onOpenChange) => <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} onOpenChange={onOpenChange} />}</TrackOpen>
+  return <TrackOpen {...props}>{(root) => <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} {...root} />}</TrackOpen>
 }
 
 function DropdownMenuPortal({
@@ -38,9 +38,11 @@ function DropdownMenuContent({
   children,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+  const closing = useClosing()
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
+        inert={closing}
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
@@ -49,7 +51,7 @@ function DropdownMenuContent({
         )}
         {...props}
       >
-        <HoldWhileClosing>{children}</HoldWhileClosing>
+        {props.asChild ? children : <HoldWhileClosing>{children}</HoldWhileClosing>}
       </DropdownMenuPrimitive.Content>
     </DropdownMenuPrimitive.Portal>
   )

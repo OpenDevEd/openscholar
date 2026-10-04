@@ -4,13 +4,13 @@ import * as React from "react"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import { HoldWhileClosing, TrackOpen } from "@/components/ui/hold-while-closing"
+import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
 import { Button } from "@/components/ui/button"
 
 function AlertDialog({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  return <TrackOpen {...props}>{(onOpenChange) => <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} onOpenChange={onOpenChange} />}</TrackOpen>
+  return <TrackOpen {...props}>{(root) => <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} {...root} />}</TrackOpen>
 }
 
 function AlertDialogTrigger({
@@ -53,10 +53,12 @@ function AlertDialogContent({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm"
 }) {
+  const closing = useClosing()
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
+        inert={closing}
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
@@ -65,7 +67,7 @@ function AlertDialogContent({
         )}
         {...props}
       >
-        <HoldWhileClosing>{children}</HoldWhileClosing>
+        {props.asChild ? children : <HoldWhileClosing>{children}</HoldWhileClosing>}
       </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   )

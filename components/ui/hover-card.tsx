@@ -4,12 +4,12 @@ import * as React from "react"
 import { HoverCard as HoverCardPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import { HoldWhileClosing, TrackOpen } from "@/components/ui/hold-while-closing"
+import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
 
 function HoverCard({
   ...props
 }: React.ComponentProps<typeof HoverCardPrimitive.Root>) {
-  return <TrackOpen {...props}>{(onOpenChange) => <HoverCardPrimitive.Root data-slot="hover-card" {...props} onOpenChange={onOpenChange} />}</TrackOpen>
+  return <TrackOpen {...props}>{(root) => <HoverCardPrimitive.Root data-slot="hover-card" {...props} {...root} />}</TrackOpen>
 }
 
 function HoverCardTrigger({
@@ -27,9 +27,11 @@ function HoverCardContent({
   children,
   ...props
 }: React.ComponentProps<typeof HoverCardPrimitive.Content>) {
+  const closing = useClosing()
   return (
     <HoverCardPrimitive.Portal data-slot="hover-card-portal">
       <HoverCardPrimitive.Content
+        inert={closing}
         data-slot="hover-card-content"
         align={align}
         sideOffset={sideOffset}
@@ -39,7 +41,7 @@ function HoverCardContent({
         )}
         {...props}
       >
-        <HoldWhileClosing>{children}</HoldWhileClosing>
+        {props.asChild ? children : <HoldWhileClosing>{children}</HoldWhileClosing>}
       </HoverCardPrimitive.Content>
     </HoverCardPrimitive.Portal>
   )

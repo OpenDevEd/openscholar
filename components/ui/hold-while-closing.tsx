@@ -10,19 +10,33 @@ type OpenProps = { open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: 
 
 /**
  * Wraps the root of something that opens and closes, so its content can tell
- * which it is. It follows the root whether the caller holds the open state or
- * the root does; `children` gets the `onOpenChange` to hand to the root.
+ * which it is. `children` gets the `open` and `onOpenChange` to hand to the
+ * root: the root is always told its state from here, so this hears of a close
+ * in the same moment the root does, whoever holds the state.
  */
-export function TrackOpen({ open, defaultOpen = false, onOpenChange, children }: OpenProps & { children: (onOpenChange: (open: boolean) => void) => ReactNode }) {
+export function TrackOpen({ open, defaultOpen = false, onOpenChange, children }: OpenProps & { children: (root: Required<Pick<OpenProps, "open" | "onOpenChange">>) => ReactNode }) {
   const [own, setOwn] = useState(defaultOpen)
+  const isOpen = open ?? own
   return (
-    <OpenContext value={open ?? own}>
-      {children((next) => {
-        setOwn(next)
-        onOpenChange?.(next)
+    <OpenContext value={isOpen}>
+      {children({
+        open: isOpen,
+        onOpenChange: (next) => {
+          setOwn(next)
+          onOpenChange?.(next)
+        },
       })}
     </OpenContext>
   )
+}
+
+/**
+ * Whether the overlay this content belongs to is closing. Content that is held
+ * while it closes still has the handlers it had while open, so it is made inert:
+ * a second click on a confirm button must not run the action again.
+ */
+export function useClosing() {
+  return !use(OpenContext)
 }
 
 /**
