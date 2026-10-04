@@ -70,8 +70,14 @@ describe("assistant chats", () => {
     await waitFor(async () => (await t.run(async (ctx) => ctx.runQuery(components.presence.public.listRoom, { roomId: threadId }))).length === 0);
   });
 
-  it("shows the start of a chat's newest message, cut between characters", () => {
+  it("shows the start of a chat's newest message as plain text, cut between characters", () => {
     expect(previewOf("  Compare   the\ndesigns ")).toBe("Compare the designs");
+    expect(previewOf("## Plan\n**1. Define** the `scope`\n- *then* read [the guide](https://example.com)")).toBe("Plan 1. Define the scope then read the guide");
+    expect(previewOf("_Note_ the [function](https://en.wikipedia.org/wiki/Function_(mathematics)) next")).toBe("Note the function next");
+    // Marks that aren't markdown stay: a product, a name with underscores, what's inside code.
+    expect(previewOf("2 * 3 * 4 in snake_case_name, use `obj.__dict__`")).toBe("2 * 3 * 4 in snake_case_name, use obj.__dict__");
+    // The start that's read ends inside an emoji: no half of it is left.
+    expect(previewOf(`${" ".repeat(2399)}😀`)).toBe("");
     // The cut lands on an emoji, which is two code units: it stays whole.
     expect(previewOf(`${"a".repeat(118)}😀😀😀`)).toBe(`${"a".repeat(118)}😀…`);
   });
