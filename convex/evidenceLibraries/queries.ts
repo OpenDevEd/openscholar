@@ -9,6 +9,10 @@ import {
 } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { type Infer, v } from "convex/values";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import { stream } from "convex-helpers/server/stream";
+import schema from "../schema";
+import { listCounts, organizationLibrariesOf } from "../lib/listCounts";
 import { normalizeEvidenceLibraryName } from "../../lib/evidence-libraries/setup/naming";
 import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
@@ -340,6 +344,141 @@ async function readLibraryOverview(
   };
 }
 
+/** Most libraries one page of the list holds, and the rows one read of it passes over looking for matches. */
+const LIBRARIES_PAGE_MAX = 50;
+const LIBRARY_ROWS_READ = 1_000;
+/** Where the granted libraries sit in the list: after every organization the person owns. */
+const GRANTED = "granted";
+
+/** The organizations a person owns, by name, then by ID so two of one name keep their order. */
+async function ownedOrganizations(ctx: QueryCtx) {
+  return (await readMemberOrganizations(ctx))
+    .filter(({ membership }) => membership.role === "org:admin")
+    .map(({ organization }) => organization)
+    .sort((a, b) => a.name.localeCompare(b.name) || (a._id < b._id ? -1 : 1));
+}
+
+/** A library a person was granted, with their role, unless they own its organization, where it is listed already. */
+async function grantedLibrary(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<"organizations">>, libraryId: Id<"evidenceLibraries">) {
+  const library = await ctx.db.get("evidenceLibraries", libraryId);
+  if (!library || owned.has(library.organizationId)) return null;
+  const role = await readLibraryRole(ctx, library, clerkUserId);
+  const organization = role ? await ctx.db.get("organizations", library.organizationId) : null;
+  return role && organization ? { library, role, organization } : null;
+}
+
+const overviewRow = async (ctx: QueryCtx, library: Doc<"evidenceLibraries">, role: Infer<typeof evidenceLibraryAdminRoleValidator>, organization: Doc<"organizations">) => ({
+  ...(await readLibraryOverview(ctx, library)),
+  role,
+  organization: { name: organization.name, imageUrl: organization.imageUrl ?? null },
+});
+
+/**
+ * One page of the libraries a person can open: those of each organization they own, one
+ * organization after another by name and each in the order they were made, then the libraries
+ * they were granted. Given `organization`, only that organization's; given `search`, only
+ * those whose name, or whose organization's name, contains it. The cursor names the
+ * organization the page stopped in and where.
+ */
+export const listLibraries = query({
+  args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()), organization: v.optional(v.id("organizations")) },
+  returns: paginationResultValidator(libraryOverviewValidator),
+  handler: async (ctx, { paginationOpts, search, organization }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return { page: [], isDone: true, continueCursor: "" };
+    const owned = await ownedOrganizations(ctx);
+    const ownedIds = new Set(owned.map((entry) => entry._id));
+    const needle = search?.trim().toLowerCase();
+    const numItems = Math.min(paginationOpts.numItems, LIBRARIES_PAGE_MAX);
+    // What the page has read so far: every organization of one page shares one allowance of rows.
+    let rows = 0;
+    const within = (name: string, organizationName: string) => {
+      rows++;
+      return !needle || name.toLowerCase().includes(needle) || organizationName.toLowerCase().includes(needle);
+    };
+    const sources: Array<{ key: string; read: (cursor: string | null, room: number) => Promise<{ page: Infer<typeof libraryOverviewValidator>[]; after: string | null }> }> = [
+      ...owned
+        .filter((entry) => !organization || entry._id === organization)
+        .map((entry) => ({
+          key: entry._id as string,
+          read: async (cursor: string | null, room: number) => {
+            const read = await stream(ctx.db, schema)
+              .query("evidenceLibraries")
+              .withIndex("by_organizationId", (index) => index.eq("organizationId", entry._id))
+              .filterWith(async (library) => within(library.name, entry.name))
+              .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
+            return { page: await Promise.all(read.page.map((library) => overviewRow(ctx, library, "owner", entry))), after: read.isDone ? null : read.continueCursor };
+          },
+        })),
+      {
+        key: GRANTED,
+        read: async (cursor: string | null, room: number) => {
+          const read = await stream(ctx.db, schema)
+            .query("evidenceLibraryMembers")
+            .withIndex("by_clerkUserId", (index) => index.eq("clerkUserId", identity.subject))
+            .map(async (grant) => grantedLibrary(ctx, identity.subject, ownedIds, grant.libraryId))
+            .filterWith(async (granted) => granted !== null && (!organization || granted.organization._id === organization) && within(granted.library.name, granted.organization.name))
+            .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
+          return { page: await Promise.all(read.page.map((granted) => overviewRow(ctx, granted!.library, granted!.role, granted!.organization))), after: read.isDone ? null : read.continueCursor };
+        },
+      },
+    ];
+    const from: { source: string; after: string | null } = paginationOpts.cursor ? JSON.parse(paginationOpts.cursor) : { source: sources[0].key, after: null };
+    const start = sources.findIndex((source) => source.key === from.source);
+    // The organization the page before stopped in is no longer one the person owns: the list has changed under it.
+    if (start === -1) return { page: [], isDone: true, continueCursor: "" };
+    const page: Infer<typeof libraryOverviewValidator>[] = [];
+    for (let at = start; at < sources.length; at++) {
+      if (page.length >= numItems) return { page, isDone: false, continueCursor: JSON.stringify({ source: sources[at].key, after: null }) };
+      const read = await sources[at].read(at === start ? from.after : null, numItems - page.length);
+      page.push(...read.page);
+      if (read.after !== null) return { page, isDone: false, continueCursor: JSON.stringify({ source: sources[at].key, after: read.after }) };
+    }
+    return { page, isDone: true, continueCursor: "" };
+  },
+});
+
+/** The libraries a person was granted outside the organizations they own: at most MAX_LIBRARY_GRANTS_PER_PERSON grants (./members.ts). */
+async function grantedLibraries(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<"organizations">>) {
+  const grants = await ctx.db.query("evidenceLibraryMembers").withIndex("by_clerkUserId", (index) => index.eq("clerkUserId", clerkUserId)).take(MAX_LIBRARY_GRANTS_PER_PERSON);
+  return (await Promise.all(grants.map((grant) => grantedLibrary(ctx, clerkUserId, owned, grant.libraryId)))).flatMap((granted) => (granted ? [granted] : []));
+}
+
+/** How many libraries a person can open: each owned organization's kept count (lib/listCounts.ts), and the libraries they were granted. */
+export const countLibraries = query({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return 0;
+    const owned = await ownedOrganizations(ctx);
+    const counts = await listCounts.countBatch(ctx, owned.map((entry) => ({ namespace: organizationLibrariesOf(entry._id) })));
+    const granted = await grantedLibraries(ctx, identity.subject, new Set(owned.map((entry) => entry._id)));
+    return counts.reduce((sum, count) => sum + count, 0) + granted.length;
+  },
+});
+
+/**
+ * The organizations whose libraries a person can open, by name, as one page, for the list's
+ * filter: the ones they own that have a library, and those of the libraries they were granted.
+ * A person owns at most MAX_ORGANIZATIONS_PER_PERSON and holds at most MAX_LIBRARY_GRANTS_PER_PERSON grants.
+ */
+export const listLibraryOwners = query({
+  args: {},
+  returns: paginationResultValidator(v.object({ id: v.id("organizations"), name: v.string(), imageUrl: v.union(v.string(), v.null()) })),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return { page: [], isDone: true, continueCursor: "" };
+    const owned = await ownedOrganizations(ctx);
+    const withLibraries = await Promise.all(owned.map(async (entry) => ((await ctx.db.query("evidenceLibraries").withIndex("by_organizationId", (index) => index.eq("organizationId", entry._id)).first()) ? entry : null)));
+    const granted = await grantedLibraries(ctx, identity.subject, new Set(owned.map((entry) => entry._id)));
+    const owners = new Map([...withLibraries.flatMap((entry) => (entry ? [entry] : [])), ...granted.map((entry) => entry.organization)].map((entry) => [entry._id, entry]));
+    const page = [...owners.values()].sort((a, b) => a.name.localeCompare(b.name)).map((entry) => ({ id: entry._id, name: entry.name, imageUrl: entry.imageUrl ?? null }));
+    return { page, isDone: true, continueCursor: "" };
+  },
+});
+
+/** Kept for one release, while the deployed site still calls it; `listLibraries` replaces it. */
 export const listLibraryOverviews = query({
   args: {},
   returns: v.array(libraryOverviewValidator),

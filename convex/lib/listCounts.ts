@@ -24,6 +24,8 @@ export const walletKeysOf = (userId: Id<"users">, active: boolean) => `walletKey
 export const walletKeyList = (key: Pick<Doc<"walletKeys">, "userId" | "isActive" | "hashedKey">) =>
   key.hashedKey === PENDING_WALLET_KEY ? null : walletKeysOf(key.userId, key.isActive);
 export const ADMIN_LIST = "admins";
+/** The libraries an organization has, for the total of the library list. */
+export const organizationLibrariesOf = (organizationId: Id<"organizations">) => `organizationLibraries:${organizationId}`;
 export const libraryVersionsOf = (libraryId: Id<"evidenceLibraries">) => `libraryVersions:${libraryId}`;
 /** The versions list an operation shows in, if it is one of a library's versions. */
 export const libraryVersionList = (operation: Doc<"evidenceLibraryConfigOperations">) =>

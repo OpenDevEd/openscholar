@@ -36,9 +36,9 @@ describe("library invitations", () => {
     expect(await features()).toEqual({ evidenceLibraries: true, authors: false, extraction: false });
     const invitations = (await fixture.outside.query(api.evidenceLibraries.invitations.listInvitations, {})).page;
     expect(invitations).toEqual([expect.objectContaining({ libraryId: fixture.libraryId, role: "creator" })]);
-    expect(await fixture.outside.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([]);
+    expect((await fixture.outside.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([]);
     await fixture.outside.action(api.evidenceLibraries.invitationActions.respond, { invitationId: invitations[0].invitationId, accept: true });
-    expect(await fixture.outside.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([expect.objectContaining({ _id: fixture.libraryId, role: "creator" })]);
+    expect((await fixture.outside.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([expect.objectContaining({ _id: fixture.libraryId, role: "creator" })]);
     expect(await fixture.t.run(ctx => ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", q => q.eq("clerkUserId", "outside").eq("state", "active")).collect())).toEqual([]);
     expect((await fixture.outside.query(api.evidenceLibraries.invitations.listInvitations, {})).page).toEqual([]);
     expect(await features()).toEqual({ evidenceLibraries: true, authors: false, extraction: false });
@@ -103,7 +103,7 @@ describe("library invitations", () => {
     await fixture.admin.mutation(api.evidenceLibraries.invitations.change, { invitationId: invitation.invitationId, cancel: true });
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ email_addresses: [{ email_address: "outside@example.org", verification: { status: "verified" } }] })));
     await expect(fixture.outside.action(api.evidenceLibraries.invitationActions.respond, { invitationId: invitation.invitationId, accept: true })).rejects.toThrow();
-    expect(await fixture.outside.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([]);
+    expect((await fixture.outside.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([]);
   });
 
   it("uses the library contact address and rejects a formatted platform sender", async () => {

@@ -5,6 +5,10 @@ import { OrganizationAvatar, useLibraryOrganizationChoice } from "./organization
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
+import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AdminAreaLink } from "./admin-area-link";
 import { useState } from "react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
@@ -97,33 +101,37 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   preloadedOrganizations?: Preloaded<typeof api.organizationFeatures.listLibraryOrganizations>;
 }) {
   const owner = useLibraryOrganizationChoice(preloadedOrganizations);
-  const overviews = useProtectedQuery(api.evidenceLibraries.queries.listLibraryOverviews, pending ? "skip" : {});
+  const [view, setView] = useQueryState("view", parseAsStringLiteral(["libraries", "invitations"]).withDefault("libraries"));
+  const [organization, setOrganization] = useState("all");
+  const [search, setSearch] = useState("");
+  const text = useDebouncedValue(search.trim(), 300);
+  // The libraries are read a page at a time, filtered on the server; the organizations they belong to name the filter.
+  const owners = useProtectedQuery(api.evidenceLibraries.queries.listLibraryOwners, pending ? "skip" : {});
+  const overviews = useCursorPage(
+    api.evidenceLibraries.queries.listLibraries,
+    pending ? "skip" : { ...(text ? { search: text } : {}), ...(organization !== "all" ? { organization: organization as Id<"organizations"> } : {}) },
+    COMMAND_CENTER_ITEMS_PER_PAGE,
+  );
+  const libraryCount = useProtectedQuery(api.evidenceLibraries.queries.countLibraries, pending ? "skip" : {});
   const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listInvitations, pending ? "skip" : {});
   const respond = useAction(api.evidenceLibraries.invitationActions.respond);
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
   const [retrying, setRetrying] = useState<string | null>(null);
   const roles = { owner: "Owner", editor: "Editor", creator: "Creator" } as const;
-  const libraries: Library[] = [
-    ...(overviews.data ?? []).map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, faviconUrl: library.faviconUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, operation: library.operation, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) })),
-    ...(invitations.data?.page ?? []).map(invitation => ({ id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: roles[invitation.role], organization: invitation.organization.name, organizationImageUrl: invitation.organization.imageUrl, address: "", pending: true })),
-  ];
-  const [view, setView] = useQueryState("view", parseAsStringLiteral(["libraries", "invitations"]).withDefault("libraries"));
-  const [organization, setOrganization] = useState("all");
-  const [search, setSearch] = useState("");
+  const chosen = owners.data?.page.find((entry) => entry.id === organization);
+  // An address has at most a page of invitations waiting, so they are filtered here.
+  const invited = (invitations.data?.page ?? []).filter(
+    (invitation) =>
+      (organization === "all" || invitation.organization.name === chosen?.name) &&
+      `${invitation.name} ${invitation.organization.name}`.toLowerCase().includes(search.trim().toLowerCase()),
+  );
+  const visible: Library[] = view === "libraries"
+    ? overviews.items.map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, faviconUrl: library.faviconUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, operation: library.operation, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) }))
+    : invited.map(invitation => ({ id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: roles[invitation.role], organization: invitation.organization.name, organizationImageUrl: invitation.organization.imageUrl, address: "", pending: true }));
   const [notice, setNotice] = useState("");
   const [declining, setDeclining] = useState<Library | null>(null);
-  const organizations = [
-    ...new Set(libraries.map((library) => library.organization)),
-  ];
-  const visible = libraries.filter(
-    (library) =>
-      Boolean(library.pending) === (view === "invitations") &&
-      (organization === "all" || library.organization === organization) &&
-      `${library.name} ${library.organization}`
-        .toLowerCase()
-        .includes(search.trim().toLowerCase()),
-  );
-  const loading = !overviews.data || !invitations.data || !owner.isReady;
+  const filtered = Boolean(text) || organization !== "all";
+  const loading = overviews.isLoading || !invitations.data || !owners.data || libraryCount.data === undefined || !owner.isReady;
   return (
     <LibraryPageShell
       title="Evidence libraries"
@@ -144,7 +152,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
             value: tab,
             label: tab === "libraries" ? "Your libraries" : "Invitations",
             icon: tab === "libraries" ? <Layers className="size-3.5" /> : <Mail className="size-3.5" />,
-            count: loading ? undefined : libraries.filter((library) => Boolean(library.pending) === (tab === "invitations")).length,
+            count: loading ? undefined : tab === "libraries" ? libraryCount.data : invitations.data?.page.length,
           }))}
         />
       }
@@ -166,10 +174,10 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All organizations</SelectItem>
-            {organizations.map((org) => (
-              <SelectItem key={org} value={org}>
-                <OrganizationAvatar name={org} imageUrl={libraries.find(l => l.organization === org)?.organizationImageUrl} />
-                {org}
+            {(owners.data?.page ?? []).map((org) => (
+              <SelectItem key={org.id} value={org.id}>
+                <OrganizationAvatar name={org.name} imageUrl={org.imageUrl} />
+                {org.name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -203,7 +211,12 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                   : "Your libraries will appear here when you receive access."}
           </ListEmpty>
         ) : (
-          <ul className="divide-y divide-border/50" data-library-list>
+          // The page shown stays up, dimmed and inert, while the one it steps or filters to loads.
+          <ul
+            className={cn("divide-y divide-border/50", view === "libraries" && overviews.isStale && "opacity-60")}
+            inert={(view === "libraries" && overviews.isStale) || undefined}
+            data-library-list
+          >
             {visible.map((library) => {
               const RoleIcon = roleIcons[library.role];
               return (
@@ -376,6 +389,25 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
               );
             })}
           </ul>
+        )}
+        {view === "libraries" && !loading && overviews.hasPages && (
+          <div className="border-t border-border/50 px-4 pb-4">
+            <CommandCenterPagination
+              currentPage={overviews.page}
+              itemLabel="libraries"
+              steps={{
+                canPrevious: overviews.canPrevious,
+                canNext: overviews.canNext,
+                onPrevious: overviews.previous,
+                onNext: overviews.next,
+                offset: overviews.offset,
+                shown: overviews.items.length,
+                // A search's or an organization's matches aren't counted, so its pager shows the page alone.
+                total: filtered ? undefined : libraryCount.data,
+                pageCount: filtered || libraryCount.data === undefined ? undefined : Math.max(1, Math.ceil(libraryCount.data / COMMAND_CENTER_ITEMS_PER_PAGE)),
+              }}
+            />
+          </div>
         )}
       </div>
       <Dialog
