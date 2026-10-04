@@ -100,6 +100,38 @@ export function pacedDeltasThenHangDoStream(
   });
 }
 
+/**
+ * A doStream as the deployed runtime behaves on Stop: it paces `deltas`, and when the
+ * abortSignal fires the stream fails with the runtime's own error instead of ending.
+ * With no deltas the request itself rejects, as it does before the first token.
+ */
+export function erroringOnAbortDoStream(
+  deltas: string[],
+  delayMs: number,
+): (options: { abortSignal?: AbortSignal }) => Promise<{ stream: ReadableStream<unknown> }> {
+  const aborted = () => new Error("The signal has been aborted");
+  return (options) => {
+    if (deltas.length === 0) return new Promise((_, reject) => options.abortSignal?.addEventListener("abort", () => reject(aborted())));
+    return Promise.resolve({
+      stream: new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: "stream-start", warnings: [] });
+          controller.enqueue({ type: "text-start", id: "0" });
+          let i = 0;
+          const interval = setInterval(() => {
+            if (i >= deltas.length) return clearInterval(interval);
+            controller.enqueue({ type: "text-delta", id: "0", delta: deltas[i++]! });
+          }, delayMs);
+          options.abortSignal?.addEventListener("abort", () => {
+            clearInterval(interval);
+            controller.error(aborted());
+          });
+        },
+      }),
+    });
+  };
+}
+
 /** A doStream that emits a complete `deltas → finish` stream
  *  synchronously, so agent.streamText resolves the happy path. */
 export function finishingDoStream(

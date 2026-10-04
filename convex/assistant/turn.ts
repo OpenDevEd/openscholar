@@ -204,6 +204,13 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
             });
           },
           onError: async ({ error }) => {
+            // After Stop, an error is the stop arriving, not a failure: this runtime ends
+            // the provider's request with an error of its own ("The signal has been
+            // aborted") instead of an aborted stream, most often before the first token.
+            if (abortController.signal.aborted) {
+              streamAbortedByUser = true;
+              return;
+            }
             streamErrored = true;
             // This runs with the ORIGINAL provider error (429 w/
             // retry-after, etc.) but only if the agent's own
@@ -236,7 +243,10 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       );
       streamReturned = true;
     } catch (err) {
-      streamErrored = true;
+      // After Stop this is the stop arriving (see onError), handled below with every other stop.
+      const stopped = abortController.signal.aborted;
+      if (stopped) streamAbortedByUser = true;
+      else streamErrored = true;
       // The agent's `streamText` wrapper re-throws stream errors
       // (node_modules/@convex-dev/agent/src/vercel/client/streamText.ts).
       // We land here for every stream-time failure — and sometimes
@@ -244,11 +254,11 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       // itself threw inside finalizeMessage. Force-transition the
       // stuck pending assistant to `failed` so the UI can render an
       // alert instead of an empty bubble.
-      // NOTE: abort is NOT an error path. AI SDK swallows AbortError
-      // and converts it to an {type:"abort"} stream chunk; agent
-      // .streamText returns normally on abort and this catch never
-      // fires for user-stop.
-      if (!envelopePatchedFromOnError) {
+      // NOTE: with a mock model, abort is not an error path: AI SDK swallows
+      // AbortError and converts it to an {type:"abort"} stream chunk, and
+      // agent.streamText returns normally. On the deployed runtime the
+      // provider's request can reject instead, which lands here.
+      if (!stopped && !envelopePatchedFromOnError) {
         if (!generationErrorRecordedFromOnError) {
           await recordError(err).catch((recordErr) => {
             console.error("[chat] failed to record generation error", {
@@ -315,7 +325,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       // the UI page. Idempotent vs. the agent library's own
       // start.ts:170-178 listener — both paths write identical
       // values (same DOMException toString result).
-      await persistAssistantAbortSentinel(
+      const marked = await persistAssistantAbortSentinel(
         ctx,
         threadId,
         promptMessageId,
@@ -325,7 +335,22 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           threadId,
           err: errorToLogString(err),
         });
+        return true;
       });
+      // Stopped before the reply had a message of its own: it gets one, so the thread shows the stop.
+      if (!marked) {
+        await agent
+          .saveMessage(ctx, {
+            threadId,
+            promptMessageId,
+            message: { role: "assistant", content: "" },
+            metadata: { status: "failed", error: ABORT_ERROR_STRING },
+            skipEmbeddings: true,
+          })
+          .catch((err) => {
+            console.error("[chat] failed to save a stopped reply", { ...log, threadId, err: errorToLogString(err) });
+          });
+      }
     }
 
     const unfinishedGeneration =
@@ -538,6 +563,12 @@ async function persistAssistantAbortSentinel(
   await ctx.runMutation(components.agent.messages.finalizeMessage, {
     messageId: target._id as never,
     result: { status: "failed", error: ABORT_ERROR_STRING },
+  });
+  // A row the agent had already failed with the runtime's own abort error keeps that error
+  // through finalizeMessage, so the sentinel is written over it.
+  await ctx.runMutation(components.agent.messages.updateMessage, {
+    messageId: target._id,
+    patch: { status: "failed", error: ABORT_ERROR_STRING },
   });
   return true;
 }
