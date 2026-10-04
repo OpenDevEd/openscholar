@@ -88,6 +88,8 @@ describe("Screen all on a saved search, read on the server", () => {
       limits: await ctx.db.query("rateLimits").collect(),
     }));
     expect(created.job?.totalPapers).toBe(301);
+    expect(created.job?.snapshot).toMatchObject({ request: { sort: "relevance_score:desc" } });
+    expect(created.job?.snapshot?.request.filter).toContain("randomized controlled trial");
     expect(created.results.map((result) => result.openalexId)).toEqual(["W150", "W151", "W152"].map((id) => `https://openalex.org/${id}`));
     expect(created.results[0]).toMatchObject({ title: "Paper 150", abstract: "Tutoring works", authors: ["Ada Lovelace"], publicationYear: 2020 });
     expect(created.limits.find((row) => row.name === "openalex-day")?.value).toBe(20_000 - 3);
@@ -156,6 +158,7 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(made).toMatchObject({ totalPapers: 100, first: 801, last: 1_800 });
     // Nothing follows this job: no end of the request to reach, and no papers past the search's last.
     expect(made?.through).toBeUndefined();
+    expect(made?.snapshot).toMatchObject({ request: { sort: "relevance_score:desc" } });
     await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1_001, last: 1_000_000, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/None of these papers/);
     expect(requests.length).toBeLessThan(15);
   });

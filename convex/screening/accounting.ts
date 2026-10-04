@@ -86,9 +86,10 @@ export async function jobModel(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJob
     .order("desc")
     .first();
   if (!row) return undefined;
-  const entries = job.questions.map((q) => {
+  const entries = job.questions.flatMap((q) => {
     const entry = row.answers.find((value) => value.question === q.question);
-    return { key: q.key, answer: entry?.model ? entry.model.answer : (entry?.setBy === "model" ? entry.answer : null), confidence: entry?.model?.confidence };
+    if (!entry || (!entry.model && entry.setBy !== "model")) return [];
+    return [{ key: q.key, answer: entry.model ? entry.model.answer : entry.answer, confidence: entry.model?.confidence }];
   });
   return { answers: Object.fromEntries(entries.map(({ key, answer }) => [key, answer])), confidences: Object.fromEntries(entries.flatMap(({ key, confidence }) => confidence === undefined ? [] : [[key, confidence]])) };
 }
