@@ -3,12 +3,13 @@ import { v } from "convex/values";
 import { mutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
+import { createError } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
-import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Author } from "../lib/userActions";
+import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, type Author } from "../lib/userActions";
 import { answersAmong, clearPaperAnswers, removeAnswers, screeningFor, seedAnswers, setPaperAnswers, sweepAnswers, type AnswerSource } from "./answers";
 import {
-  ANSWERED_PAPERS_MAX, applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, paperResponsesValidator, RATED_PAPERS_MAX, ratingValidator, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator,
-  type ResearchCommand, type SavedSearch, type StoredSearch,
+  ANSWERED_PAPERS_MAX, applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, paperResponsesValidator, RATED_PAPERS_MAX, ratingValidator, restoredSearch, restoresNothing, restoreReverses, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator, UNDO_SHORTCUT_MAX, undoCommandValidator,
+  type ResearchCommand, type SavedSearch, type StoredSearch, type UndoCommand,
 } from "../../lib/research/records";
 import { stream } from "convex-helpers/server/stream";
 import { internal } from "../_generated/api";
@@ -375,8 +376,31 @@ async function revision(ctx: MutationCtx, search: Doc<"searches">, author: Autho
   await ctx.db.insert("searchRevisions", { userId: search.userId, searchId: search._id, revision: search.revision, author, data: search.data, ...(answersVersion === undefined ? {} : { answersVersion }), deleted, createdAt: Date.now() });
 }
 
-/** Assistant tools can call this transaction helper with their authenticated owner. */
-export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, command: ResearchCommand, author: Author) {
+/** One revision of a search, if it was kept. */
+function revisionRow(ctx: Pick<QueryCtx, "db">, searchId: Id<"searches">, number: number) {
+  return ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", searchId).eq("revision", number)).unique();
+}
+
+/**
+ * A search as it stands, for the undo of its creation to check against: the row itself, the
+ * revision it's at, and the version of its answers. A screening job answers into the
+ * search's screening without touching the search, so only that version shows it.
+ */
+async function asMade(ctx: Pick<QueryCtx, "db">, search: Doc<"searches">) {
+  const answers = (await screeningFor(ctx, search._id))?.version;
+  return { created: search._creationTime, revision: search.revision, ...(answers === undefined ? {} : { answers }) };
+}
+
+/** What a search holds, apart from when it last changed and how many queries it has tried: an edit since undone leaves this as it was. */
+const contents = ({ updatedAt: _at, queryHistoryCount: _tried, ...rest }: StoredSearch) => JSON.stringify(Object.entries(rest).sort(([a], [b]) => a.localeCompare(b)));
+
+/**
+ * Applies one change, in the caller's transaction, for the person it's made for. Returns the
+ * command that reverses it (#342), when it changed something that can be put back: making a
+ * search, changing its query or filters, a shortcut, a rating. Deleting, clearing, and
+ * changes to questions and answers return none.
+ */
+export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, command: ResearchCommand, author: Author): Promise<UndoCommand | undefined> {
   switch (command.kind) {
     case "createSearch": {
       validateSearch(command.search);
@@ -389,8 +413,9 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       await addHistory(ctx, { _id: id, userId }, "question", questions.map(questionEntry));
       // Answers carried in a new search come from an import or the assistant; neither says who gave them.
       await seedAnswers(ctx, userId, id, command.search.screeningResponses, author === "assistant" ? "assistant" : "unrecorded", Date.now());
-      await revision(ctx, (await ctx.db.get("searches", id))!, author);
-      return;
+      const made = (await ctx.db.get("searches", id))!;
+      await revision(ctx, made, author);
+      return { kind: "deleteSearch", id: command.search.id, expect: await asMade(ctx, made) };
     }
     case "editSearch": {
       const found = await findSearch(ctx, userId, command.id);
@@ -408,9 +433,20 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       }
       // The search's own fields; its answers live in their rows and change only through the edits below.
       const previous: SavedSearch = { ...currentSearch(search.data), screeningResponses: [] };
-      const data = edit.kind === "copySearch"
-        ? { ...applySearchEdit(previous, edit, now.toISOString()), ...(await copyHistory(ctx, userId, search, edit.from, edit.fromUpdatedAt)) }
-        : applySearchEdit(previous, edit, now.toISOString());
+      let data: SavedSearch;
+      if (edit.kind === "restore") {
+        // `expect` names the revision whose query and filters the search should hold now. It
+        // holds them at that revision, and again once every change after it has been undone.
+        if (edit.expect !== undefined && search.revision !== edit.expect) {
+          const left = await revisionRow(ctx, search._id, edit.expect);
+          if (!left || left.deleted || !restoresNothing(previous, currentSearch(left.data))) throw createError("CONFLICT", "This search has changed since then, so it was left as it is.");
+        }
+        const then = await revisionRow(ctx, search._id, edit.revision);
+        if (!then || then.deleted) throw createError("NOT_FOUND", "That version of the search wasn't kept.");
+        data = restoredSearch(previous, currentSearch(then.data), now.toISOString());
+      } else if (edit.kind === "copySearch") {
+        data = { ...applySearchEdit(previous, edit, now.toISOString()), ...(await copyHistory(ctx, userId, search, edit.from, edit.fromUpdatedAt)) };
+      } else data = applySearchEdit(previous, edit, now.toISOString());
       validateSearch(data);
       // An edit that takes answers from every paper: all of them, or those to one question.
       const removes = edit.kind === "clearResponses" || edit.kind === "clearScreeningQuestions" ? { all: true as const }
@@ -428,6 +464,8 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       if (edit.kind !== "copySearch" && !answersChanged && JSON.stringify({ ...data, updatedAt: previous.updatedAt }) === JSON.stringify(previous)) return;
       await ctx.db.patch("searches", search._id, { data: next.data, revision: next.revision });
       if (edit.kind === "query") await addHistory(ctx, search, "query", [{ text: edit.query, field: edit.field, timestamp: data.updatedAt }]);
+      // Going back to an earlier query is one more query the search has had.
+      if (edit.kind === "restore" && data.queryHistoryCount > previous.queryHistoryCount) await addHistory(ctx, search, "query", [{ text: data.query, field: data.field, timestamp: data.updatedAt }]);
       if (edit.kind === "question") await addHistory(ctx, search, "question", [{ text: edit.question, timestamp: data.updatedAt }]);
       if (edit.kind === "removeQueryHistoryEntry") {
         const entry = await ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_timestamp", q => q.eq("searchId", search._id).eq("kind", "query").eq("timestamp", edit.timestamp))
@@ -436,11 +474,24 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
         await ctx.db.delete("searchHistory", entry._id);
       }
       await revision(ctx, next, author);
-      return;
+      // A change to the query or the filters is reversed by restoring the revision before it,
+      // when that revision was kept and restoring it would bring something back.
+      const reversible = (edit.kind === "patch" || edit.kind === "query" || edit.kind === "restore") && restoreReverses(previous, data);
+      if (!reversible || !(await revisionRow(ctx, search._id, search.revision))) return;
+      if (restoresNothing(data, previous)) return;
+      return { kind: "editSearch", id: command.id, edit: { kind: "restore", revision: search.revision, expect: next.revision } };
     }
     case "deleteSearch": {
       const found = await findSearch(ctx, userId, command.id);
       if (!found) return;
+      if (command.expect) {
+        // Still the search that was made: the same row, holding what it held then, its answers
+        // untouched. A change since undone leaves it so. Anything else done to it keeps it.
+        const [then, now, made] = [command.expect, await asMade(ctx, found), await revisionRow(ctx, found._id, command.expect.revision)];
+        if (now.created !== then.created || now.answers !== then.answers || !made || contents(found.data) !== contents(made.data)) {
+          throw createError("CONFLICT", "This search has changed since then, so it was left as it is.");
+        }
+      }
       // Its history stays in its rows, with the revisions, after the search is gone.
       const search = (await moveSearchHistory(ctx, found._id)) ? (await ctx.db.get("searches", found._id))! : found;
       await revision(ctx, { ...search, revision: search.revision + 1 }, author, true);
@@ -450,11 +501,21 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
     case "shortcut": {
       if (!command.shorthand.trim()) throw new Error("Bookmark name is required.");
       const row = await ctx.db.query("queryShortcuts").withIndex("by_user_and_shorthand", q => q.eq("userId", userId).eq("data.shorthand", command.shorthand)).unique();
-      if (command.value === null) { if (row) await ctx.db.delete("queryShortcuts", row._id); return; }
+      type Value = typeof command.value;
+      const before: Value = row ? { expansion: row.data.expansion, createdAt: row.data.createdAt } : null;
+      const same = (a: Value, b: Value) => a?.expansion === b?.expansion && a?.createdAt === b?.createdAt;
+      if (command.expect !== undefined && !same(before, command.expect)) throw createError("CONFLICT", "This shortcut has changed since then, so it was left as it is.");
+      // What puts it back: the shortcut as it was, or none, as long as it's still what this change made it.
+      // A change that changes nothing has no undo, and neither does one with a shortcut too long to keep on either side.
+      const tooLong = [before, command.value].some(value => value && value.expansion.length > UNDO_SHORTCUT_MAX);
+      const undo: UndoCommand | undefined = same(before, command.value) || tooLong
+        ? undefined
+        : { kind: "shortcut", shorthand: command.shorthand, value: before, expect: command.value };
+      if (command.value === null) { if (row) await ctx.db.delete("queryShortcuts", row._id); return undo; }
       const data = { shorthand: command.shorthand, ...command.value };
       if (row) await ctx.db.patch("queryShortcuts", row._id, { data });
       else await ctx.db.insert("queryShortcuts", { userId, data, sortName: shortcutSortName(command.shorthand) });
-      return;
+      return undo;
     }
     // A clear takes the rows up to the newest there is now. A clock can't draw that line:
     // a row made a moment earlier or later can carry the same millisecond.
@@ -471,10 +532,15 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
     case "rating": {
       if (!command.paperId || (command.rating !== null && (!Number.isInteger(command.rating) || command.rating < 0 || command.rating > 5))) throw new Error("Rating must be an integer from 0 to 5.");
       const row = await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique();
-      if (command.rating === null) { if (row) await ctx.db.delete("paperRatings", row._id); return; }
+      if (command.expect !== undefined && (row?.data.rating ?? null) !== command.expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
+      const before = row?.data.rating ?? null;
+      // A rating set to what it already was has nothing to undo.
+      const undo: UndoCommand | undefined = before === command.rating ? undefined : { kind: "rating", paperId: command.paperId, rating: before, expect: command.rating };
+      if (command.rating === null) { if (row) await ctx.db.delete("paperRatings", row._id); return undo; }
       const data = { paperId: command.paperId, rating: command.rating };
       if (row) await ctx.db.patch("paperRatings", row._id, { data });
       else await ctx.db.insert("paperRatings", { userId, data });
+      return undo;
     }
   }
 }
@@ -486,21 +552,22 @@ async function received(ctx: MutationCtx, userId: Id<"users">, key: string) {
 export const changeAction = defineUserMutation({
   path: "research/records:change",
   description:
-    "Changes the person's research records: create, edit or delete a saved search, set or remove a query shortcut, rate a paper, or clear every saved search or every shortcut they have (a batch at a time; searches keep their revisions). Edits to a search show live on the person's open page and are kept as revisions.",
+    "Changes the person's research records: create, edit or delete a saved search, set or remove a query shortcut, rate a paper, or clear every saved search or every shortcut they have (a batch at a time; searches keep their revisions). Edits to a search show live on the person's open page and are kept as revisions. " +
+    "A change that can be reversed returns `undo`: the action to run and the arguments to run it with to put things back. It is refused if the record changed again in between. Making a search, changing its query or filters, a shortcut and a rating can be reversed; deleting, clearing, and changes to questions and answers can't.",
   args: { requestId: v.string(), command: commandValidator },
-  returns: v.null(),
+  returns: v.object({ undo: reversedBy("research/records:change", { command: undoCommandValidator }) }),
   spendsCredits: false,
   outsideEffect: false,
-  // Search changes are kept as revisions, but nothing restores one yet, and shortcuts and ratings keep no history (#342).
-  undoable: false,
+  undoable: true,
   retryKey: "requestId",
-  // The receipt makes a retried request apply once, from the page or from the assistant.
+  // The receipt makes a retried request apply once, from the page or from the assistant. It
+  // keeps the undo, so a caller that lost the first answer gets the same one from a retry.
   run: async (ctx, userId, args, author: Author) => {
     const key = `change:${args.requestId}`;
-    if (await received(ctx, userId, key)) return null;
-    await applyCommand(ctx, userId, args.command, author);
-    await ctx.db.insert("researchReceipts", { userId, key });
-    return null;
+    const receipt = await received(ctx, userId, key);
+    const undo = receipt ? receipt.undo : await applyCommand(ctx, userId, args.command, author);
+    if (!receipt) await ctx.db.insert("researchReceipts", { userId, key, ...(undo ? { undo } : {}) });
+    return undo ? { undo: { path: "research/records:change" as const, args: { command: undo } } } : {};
   },
 });
 export const change = accountMutation(changeAction);
