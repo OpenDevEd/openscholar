@@ -12,7 +12,7 @@ import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
 import { MAX_ASKS, MODEL_READS, forModel } from "./steps";
-import { DEFINITION_MAX, MAX_CALLS, MAX_STEPS, core, definition, found } from "./tools";
+import { DEFINITION_MAX, MAX_CALLS, MAX_STEPS, core, definition, found, written } from "./tools";
 import { finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
@@ -269,6 +269,33 @@ describe("the assistant's tools", () => {
     expect((await thread())?.reply).toBeUndefined();
     // An answer given twice changes nothing.
     await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking._id, allow: true })).rejects.toThrow(/already been answered/);
+  });
+
+  it("tell the model a change that returns nothing was made, make again a write that collided, and keep a reply going past arguments the asking check can't read", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, threadId, sayUntilAsked, settled, steps, shown } = await chatOf(t);
+    // Deleting a collection asks first and returns nothing. Told nothing, a weaker model said the deletion was still waiting for the person.
+    const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Empty" });
+    mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "library/collections:deleteCollection", arguments: { collectionId } } }));
+    await sayUntilAsked("Delete it");
+    const [asking] = await steps();
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Deleted."]));
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking._id, allow: true });
+    await settled();
+    expect(told(1, "delete")).toEqual({ done: true });
+    expect(await shown()).toEqual(["user: Delete it", "step: library/collections:deleteCollection done", "assistant: Deleted."]);
+
+    // Whether a call asks first is read before it runs. Arguments that check can't read aren't a reason to ask: the call goes on to run, and fails there with a message the model reads.
+    expect(await t.query(internal.assistant.asking.first, { userId: ada, path: "library/mutations:removeFromLibrary", input: "{}" })).toBe(false);
+
+    // Calls made in one step run together. A write that lost a race for a row changed nothing, and is made again.
+    const collision = new Error('Documents read from or written to the "libraryCounts" table changed while this mutation was being run and on every subsequent retry.');
+    const write = vi.fn().mockRejectedValueOnce(collision).mockRejectedValueOnce(collision).mockResolvedValueOnce("saved");
+    expect(await written(write)).toBe("saved");
+    expect(write).toHaveBeenCalledTimes(3);
+    const refused = vi.fn().mockRejectedValue(new Error("Not your collection"));
+    await expect(written(refused)).rejects.toThrow(/Not your collection/);
+    expect(refused).toHaveBeenCalledTimes(1);
   });
 
   it("ask about each change that would have no undo, tell the model which the person didn't allow, and carry on once all are answered", async () => {

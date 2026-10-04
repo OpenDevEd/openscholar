@@ -15,6 +15,14 @@ export const first = internalQuery({
   handler: async (ctx, { userId, path, input }) => {
     const entry = USER_ACTIONS.find((candidate) => candidate.path === path);
     if (!entry || entry.kind === "query" || !entry.asksFirst) return false;
-    return entry.asksFirst(ctx, userId, JSON.parse(input));
+    try {
+      return await entry.asksFirst(ctx, userId, JSON.parse(input));
+    } catch (error) {
+      // Arguments the check can't read (an ID of another table, say) aren't a reason to ask, and
+      // threw here, where nothing caught it: the whole reply failed. The call goes on to run,
+      // where a change checks again in its own transaction, and its failure is told to the model.
+      console.error(`[assistant] ${path} couldn't be checked for asking first`, error);
+      return false;
+    }
   },
 });

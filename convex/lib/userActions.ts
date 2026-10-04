@@ -13,7 +13,7 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireActiveUser, requireAuth } from "./auth";
 import { createError } from "./errors";
-import { endStep } from "../assistant/steps";
+import { DONE, endStep } from "../assistant/steps";
 
 /** Who made a change: the person themselves, or the assistant acting for them. */
 export type Author = "user" | "assistant";
@@ -224,7 +224,8 @@ export function assistantMutation<Args extends PropertyValidators, Returns exten
         // Read here, in the change's own transaction: what was true before the call may not be now.
         if (!approved && entry.asksFirst && (await entry.asksFirst(ctx, actingAs, rest))) throw createError("FORBIDDEN", ASKS_FIRST);
         const result = await entry.run(ctx, actingAs, rest, "assistant");
-        if (stepId) await endStep(ctx, stepId, result);
+        // The step, and through it the model, is told a change that returns nothing was made.
+        if (stepId) await endStep(ctx, stepId, result ?? DONE);
         return result;
       },
     }),
