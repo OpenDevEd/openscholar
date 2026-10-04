@@ -1030,5 +1030,35 @@ export const checkedDomainResultsValidator = capped(
   MAX_LIBRARY_DOMAINS,
 );
 
+/** A custom domain as the Domain section shows it. A library has at most MAX_LIBRARY_DOMAINS (./domains.ts refuses more). */
+export const domainRowsValidator = capped(
+  v.array(
+    v.object({
+      domainId: v.id("evidenceLibraryDomains"),
+      host: v.string(),
+      role: v.union(v.literal("primary"), v.literal("redirect")),
+      state: evidenceLibraryDomainStateValidator,
+      failure: v.optional(evidenceLibraryDomainFailureValidator),
+      attached: v.boolean(),
+      removing: v.boolean(),
+      deploymentPending: v.boolean(),
+      isApex: v.boolean(),
+      checkedAt: v.optional(v.number()),
+      suggestedWwwHost: v.optional(v.string()),
+      /** The main address the owner chose, applied by the next activation. */
+      main: v.boolean(),
+      /** Removed by the owner; goes once the next activation is live. */
+      removeOnActivate: v.boolean(),
+      records: dnsRecordsValidator,
+    }),
+  ),
+  MAX_LIBRARY_DOMAINS,
+);
+
 /** The sections one configuration version changed. */
 export const changedSectionsValidator = capped(v.array(sectionKeyValidator), MAX_CONFIG_SECTIONS);
+
+const sectionFields = { sectionKey: sectionKeyValidator, payload: sectionPayloadValidator, payloadByteLength: v.number(), contractProvenance: configProvenanceValidator };
+/** A draft's or a revision's sections: one per section key, so never more than the registry holds. */
+export const draftSectionsValidator = capped(v.array(v.object({ ...sectionFields, updatedAt: v.number() })), MAX_CONFIG_SECTIONS);
+export const revisionSectionsValidator = capped(v.array(v.object({ ...sectionFields, createdAt: v.number() })), MAX_CONFIG_SECTIONS);

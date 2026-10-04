@@ -158,7 +158,7 @@ export function SourcesField({
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const account = useProtectedQuery(api.zotero.queries.getConnectionStatus, {});
   const groups = useProtectedQuery(
-    api.zotero.libraryGroups.listLibraryZoteroGroups,
+    api.zotero.libraryGroups.listZoteroGroups,
     { libraryId },
   );
   const listMyGroups = useAction(
@@ -202,7 +202,7 @@ export function SourcesField({
     (source): source is ZoteroSourceEntry => source.provider === "zotero",
   );
   const byGroupId = new Map<string, ConnectedGroup>(
-    (groups.data ?? []).map((group) => [group.groupId, group]),
+    (groups.data?.page ?? []).map((group) => [group.groupId, group]),
   );
 
   /** Connects each group; returns the ids that could not be connected. */

@@ -49,8 +49,8 @@ describe("the OpenRouter key", () => {
       },
     );
 
-    const metadata = await fixture.admin.query(
-      api.evidenceLibraries.credentials.listCredentialMetadata,
+    const { page: metadata } = await fixture.admin.query(
+      api.evidenceLibraries.credentials.listCredentials,
       { libraryId },
     );
     expect(
@@ -86,10 +86,10 @@ describe("the OpenRouter key", () => {
     expect(
       (
         await fixture.admin.query(
-          api.evidenceLibraries.credentials.listCredentialMetadata,
+          api.evidenceLibraries.credentials.listCredentials,
           { libraryId },
         )
-      ).filter((row) => row.credentialKey === AI_PROVIDER_CREDENTIAL_KEY),
+      ).page.filter((row) => row.credentialKey === AI_PROVIDER_CREDENTIAL_KEY),
     ).toEqual([]);
   });
 

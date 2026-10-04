@@ -73,13 +73,13 @@ vi.mock("@/convex/_generated/api", () => ({
       team: { addOrganizationMember: "addOrganizationMember", changeRole: "changeRole", removeMember: "removeMember" },
       invitations: { change: "changeInvitation" },
       invitationActions: { invite: "inviteMember" },
-      credentials: { listCredentialMetadata: "listCredentialMetadata" },
+      credentials: { listCredentials: "listCredentials" },
       credentialActions: { writeCredential: "writeCredential" },
       aiProviderKey: { removeAiProviderKey: "removeAiProviderKey" },
       openAlexSourceKey: { removeOpenAlexKey: "removeOpenAlexKey" },
       sourceStatus: { listForLibrary: "listSourceStatus" },
       collectionSources: {
-        listLibraryCollectionSources: "listLibraryCollectionSources",
+        listCollectionSources: "listCollectionSources",
         connectCollectionSource: "connectCollectionSource",
       },
       mutations: {
@@ -115,7 +115,7 @@ vi.mock("@/convex/_generated/api", () => ({
       actions: { startOAuth: "startOAuth" },
       mutations: { disconnect: "disconnect" },
       queries: { getConnectionStatus: "getConnectionStatus" },
-      libraryGroups: { listLibraryZoteroGroups: "listLibraryZoteroGroups", removeZoteroGroup: "removeZoteroGroup" },
+      libraryGroups: { listZoteroGroups: "listZoteroGroups", removeZoteroGroup: "removeZoteroGroup" },
       libraryGroupActions: { listMyZoteroGroups: "listMyZoteroGroups", connectZoteroGroup: "connectZoteroGroup" },
       runtimeReadActions: {
         listLibraryCollections: "listLibraryCollections",
@@ -185,13 +185,12 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: (query: unknown, args: unknown) =>
     query === "manualDigestAvailable" ? {data: harness.manualDigestAvailable, isReady: harness.manualDigestAvailable !== undefined} : query === "getPublicationProviders" ? {data: undefined, isReady: false} : query === "getConnectionStatus"
       ? { data: { connected: false }, isReady: true }
-      : query === "listLibraryZoteroGroups" ||
-          query === "listLibraryCollectionSources" ||
-          query === "listVersions" ||
-          query === "listAddressNotices"
+      : query === "listZoteroGroups" || query === "listCollectionSources"
+        ? { data: { page: [], isDone: true, continueCursor: "" }, isReady: true }
+        : query === "listVersions" || query === "listAddressNotices"
         ? { data: [], isReady: true }
-        : query === "listCredentialMetadata"
-          ? { data: harness.storedCredentials, isReady: true }
+        : query === "listCredentials"
+          ? { data: { page: harness.storedCredentials, isDone: true, continueCursor: "" }, isReady: true }
           : query === "listTeam"
             ? {
                 data: { organizationName: "Test Org", owners: [], editors: [], creators: [], invitations: [], availablePeople: [] },

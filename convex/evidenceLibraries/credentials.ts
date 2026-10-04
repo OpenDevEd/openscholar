@@ -7,6 +7,7 @@ import {
 } from "../lib/functions";
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
+import { paginationResultValidator } from "convex/server";
 import {
   credentialKeyFor,
   writeOnlyPatternFor,
@@ -292,6 +293,25 @@ export const storeEncryptedServiceCredential = internalMutation({
   handler: storeLibraryServiceCredential,
 });
 
+const credentialMetadataValidator = v.object({
+  _id: v.id("evidenceLibraryCredentials"),
+  credentialKey: v.string(),
+  instanceKey: v.optional(v.string()),
+  pathPattern: v.optional(v.string()),
+  maskedHint: v.optional(v.string()),
+  validationState: v.union(v.literal("untested"), v.literal("valid"), v.literal("invalid")),
+  lastValidatedAt: v.optional(v.number()),
+  updatedAt: v.number(),
+});
+
+/** What a library's credentials are, never their values, as one page: a library stores at most MAX_CREDENTIALS_PER_LIBRARY. */
+export const listCredentials = query({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: paginationResultValidator(credentialMetadataValidator),
+  handler: async (ctx, args) => ({ page: await readCredentialMetadata(ctx, args), isDone: true, continueCursor: "" }),
+});
+
+/** Kept for one release, while the deployed site still calls it; `listCredentials` replaces it. */
 export const listCredentialMetadata = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.array(

@@ -211,23 +211,3 @@ export const listLocations = query({
   handler: (ctx, args) => locationsPage(ctx, args.groupKey, args.paginationOpts),
 });
 
-/** Kept for one release, while the deployed site still calls it; `listGroups` replaces it. */
-export const list = query({
-  args: {topicId: v.string(), cursor: v.union(v.string(), v.null()), limit: v.number()},
-  returns: v.object({groups: v.array(v.object({key: v.string()})), updating: v.boolean(), nextCursor: v.union(v.string(), v.null())}),
-  handler: async (ctx, args) => {
-    if (!Number.isInteger(args.limit) || args.limit < 1 || args.limit > GROUPS_PAGE_MAX) throw createError("VALIDATION_ERROR", "Invalid publications page");
-    const {page, updating, last} = await groupsAfter(ctx, args.topicId, args.cursor, args.limit);
-    return {groups: page, updating, nextCursor: last};
-  },
-});
-
-/** Kept for one release, while the deployed site still calls it; `listLocations` replaces it. */
-export const locations = query({
-  args: {groupKey: v.string(), paginationOpts: paginationOptsValidator},
-  returns: v.object({locations: v.array(locationValidator), nextCursor: v.union(v.string(), v.null())}),
-  handler: async (ctx, args) => {
-    const read = await locationsPage(ctx, args.groupKey, args.paginationOpts);
-    return {locations: read.page, nextCursor: read.isDone ? null : read.continueCursor};
-  },
-});

@@ -95,8 +95,8 @@ describe("Evidence Library machine credentials", () => {
       createHash("sha256").update(issued.credential).digest("hex"),
     );
 
-    const metadata = await admin.query(
-      api.evidenceLibraries.credentials.listCredentialMetadata,
+    const { page: metadata } = await admin.query(
+      api.evidenceLibraries.credentials.listCredentials,
       { libraryId },
     );
     expect(metadata).toEqual([
