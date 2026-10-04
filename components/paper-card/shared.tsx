@@ -636,58 +636,70 @@ export function DownloadMenuCompact({
 }
 
 
+interface AuthorNamesProps {
+  authorships: { author: { id?: string | null; display_name: string } }[];
+  /** How many characters of names to show before "et al."; leave out to name every author. */
+  maxLength?: number;
+  /** The authors the search is filtered by, as OpenAlex ids. */
+  selected?: readonly string[];
+  /** Makes each name a control that filters the search by that author, or stops filtering by them. */
+  onToggleAuthor?: (author: { id: string; name: string }) => void;
+}
+
+/**
+ * A work's authors, comma separated. With `onToggleAuthor`, each name that
+ * OpenAlex has an author record for is a control; a name without one (often an
+ * organisation typed in as an author) stays plain text.
+ */
+export function AuthorNames({ authorships, maxLength = Infinity, selected, onToggleAuthor }: AuthorNamesProps) {
+  const tf = useTranslations("searchFilters");
+  if (authorships.length === 0) return null;
+
+  const shown = authorsShown(authorships, maxLength);
+  return (
+    <>
+      {authorships.slice(0, shown).map(({ author }, index) => {
+        const id = author.id?.split("/").at(-1);
+        return (
+          <React.Fragment key={`${id}-${index}`}>
+            {index > 0 && ", "}
+            {id && onToggleAuthor ? (
+              <button
+                type="button"
+                aria-pressed={selected?.includes(id) ?? false}
+                aria-label={tf("filterByAuthor", { name: author.display_name })}
+                onClick={() => onToggleAuthor({ id, name: author.display_name })}
+                className="rounded-sm underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring aria-pressed:font-medium aria-pressed:text-primary"
+              >
+                {author.display_name}
+              </button>
+            ) : (
+              author.display_name
+            )}
+          </React.Fragment>
+        );
+      })}
+      {shown < authorships.length && " et al."}
+    </>
+  );
+}
+
 export function AuthorsLine({
   authorships,
   maxLength = 200,
   className,
   selected,
   onToggleAuthor,
-}: {
-  authorships?: { author: { id?: string; display_name: string } }[];
-  maxLength?: number;
-  className?: string;
-  /** The authors the search is filtered by, as OpenAlex ids. */
-  selected?: readonly string[];
-  /** Makes each name a control that filters the search by that author, or stops filtering by them. */
-  onToggleAuthor?: (author: { id: string; name: string }) => void;
-}) {
-  const tf = useTranslations("searchFilters");
+}: Partial<AuthorNamesProps> & { className?: string }) {
   if (!authorships || authorships.length === 0) return null;
 
-  // The same authors the plain line names before "et al.".
-  const shown = authorsShown(authorships, maxLength);
   return (
     <div className={cn("flex gap-2 text-sm text-muted-foreground", className)}>
       <Users className="h-4 w-4 flex-shrink-0 mt-0.5" />
-      {onToggleAuthor ? (
-        // Not cut to one line: a name hidden by the cut would still take keyboard focus.
-        <span>
-          {authorships.slice(0, shown).map(({ author }, index) => {
-            const id = author.id?.split("/").at(-1);
-            return (
-              <React.Fragment key={`${id}-${index}`}>
-                {index > 0 && ", "}
-                {id ? (
-                  <button
-                    type="button"
-                    aria-pressed={selected?.includes(id) ?? false}
-                    aria-label={tf("filterByAuthor", { name: author.display_name })}
-                    onClick={() => onToggleAuthor({ id, name: author.display_name })}
-                    className="rounded-sm underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring aria-pressed:font-medium aria-pressed:text-primary"
-                  >
-                    {author.display_name}
-                  </button>
-                ) : (
-                  author.display_name
-                )}
-              </React.Fragment>
-            );
-          })}
-          {shown < authorships.length && " et al."}
-        </span>
-      ) : (
-        <span className="line-clamp-1">{truncateAuthors(authorships, maxLength)}</span>
-      )}
+      {/* With controls it is not cut to one line: a name hidden by the cut would still take keyboard focus. */}
+      <span className={cn(!onToggleAuthor && "line-clamp-1")}>
+        <AuthorNames authorships={authorships} maxLength={maxLength} selected={selected} onToggleAuthor={onToggleAuthor} />
+      </span>
     </div>
   );
 }

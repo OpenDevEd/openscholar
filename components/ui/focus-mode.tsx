@@ -17,6 +17,7 @@ import { useIsMobile } from "@/lib/hooks";
 import { useTranslations } from "next-intl";
 
 import { useTranslate } from "../paper-card";
+import { useAuthorFilter } from "../paper-card/hooks";
 
 import { PaperContent } from "@/components/focus-mode/paper-content";
 import type { PaperContentProps } from "@/components/focus-mode/paper-content";
@@ -69,6 +70,7 @@ export function FocusMode({
 
   const currentPaper = papers[currentIndex];
   const savePaper = useSavePaper(currentPaper);
+  const authorFilter = useAuthorFilter();
 
   const trackFocusModeClosed = () => {
     if (!focusModeStartTimeRef.current) {
@@ -412,6 +414,12 @@ export function FocusMode({
     tp: tp as (key: string, opts?: Record<string, unknown>) => string,
     tAccessibility: tAccessibility as (key: string) => string,
     isOpen,
+    selectedAuthors: authorFilter.authors,
+    // The results change under the reader, so reading starts again at the first of them.
+    onToggleAuthor: authorFilter.toggle && ((author) => {
+      setCurrentIndex(0);
+      authorFilter.toggle?.(author);
+    }),
   };
 
   if (!currentPaper) return null;

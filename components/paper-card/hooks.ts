@@ -9,7 +9,9 @@ import {
   useSearchHistoryStore,
 } from "@/lib/store";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
-import { createCitationSearch } from "@/lib/search";
+import { createCitationSearch, useSearchOptional } from "@/lib/search";
+import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
+import { rememberAuthorNames } from "@/lib/openalex/use-author-names";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { ScreeningContext, TranslationContext } from "@/components/results-contexts";
 
@@ -153,4 +155,22 @@ export function useCitationHandlers(paperId: string) {
     handleCitedBySearch: () => handleFilteredSearch("citedBy"),
     handleRelatedSearch: () => handleFilteredSearch("related"),
   };
+}
+
+/**
+ * The authors the page's search is filtered by, and the control that adds or
+ * drops one. `toggle` is undefined on a page that has no search to narrow.
+ */
+export function useAuthorFilter() {
+  const pathname = usePathname();
+  const canFilter = Boolean(useSearchOptional()) || pathname.startsWith("/results");
+  const { authors } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const toggle = (author: { id: string; name: string }) => {
+    if (authors.includes(author.id)) return updateFilter({ authors: authors.filter((id) => id !== author.id) });
+    // Saved as it is picked, so the filter's chip never has to look the name up.
+    rememberAuthorNames({ [author.id]: author.name });
+    updateFilter({ authors: [...authors, author.id] });
+  };
+  return { authors, toggle: canFilter ? toggle : undefined };
 }

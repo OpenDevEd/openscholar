@@ -4,6 +4,7 @@ import { BookOpen, Award, ExternalLink, FileText } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { workToCoins } from "@/lib/utils";
 import { ScreeningResponses } from "@/components/paper-card";
+import { AuthorNames } from "@/components/paper-card/shared";
 import { TooltipHint } from "@/components/ui/tooltip";
 import type { PaperResult } from "@/lib/types";
 
@@ -26,6 +27,10 @@ export interface PaperContentProps {
   tp: (key: string, opts?: Record<string, unknown>) => string;
   tAccessibility: (key: string) => string;
   isOpen: boolean;
+  /** The authors the search is filtered by, as OpenAlex ids. */
+  selectedAuthors?: readonly string[];
+  /** Filters the search by an author, or stops filtering by them. Left out where there is no search. */
+  onToggleAuthor?: (author: { id: string; name: string }) => void;
 }
 
 export function PaperContent({
@@ -43,6 +48,8 @@ export function PaperContent({
   tp,
   tAccessibility,
   isOpen,
+  selectedAuthors,
+  onToggleAuthor,
 }: PaperContentProps) {
   return (
     <div className={contentClasses}>
@@ -68,24 +75,18 @@ export function PaperContent({
             ? `${translatedContent.translatedTitle} (${paper.publication_year})`
             : `${paper.title} (${paper.publication_year})`}
         </h1>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground">
           {isPreview ? (
-            <span className="flex-1 truncate">
+            <span className="block truncate">
               {tFocus("authorsPreview")}
             </span>
           ) : (
             paper.authorships && (
-              <span className="flex-1 truncate">
-                {paper.authorships
-                  .slice(0, 3)
-                  .map(
-                    (author: { author: { display_name: string } }) =>
-                      author.author.display_name
-                  )
-                  .join(", ")}
-                {paper.authorships.length > 3 &&
-                  ` +${paper.authorships.length - 3} more`}
-              </span>
+              <AuthorNames
+                authorships={paper.authorships}
+                selected={selectedAuthors}
+                onToggleAuthor={onToggleAuthor}
+              />
             )
           )}
         </div>
