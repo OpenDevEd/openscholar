@@ -49,6 +49,8 @@ const FIRST_MESSAGES = 30;
 const TITLE_MAX = 60;
 /** The ID of a message shown ahead of the server's copy of it. */
 const SENDING = "sending:";
+/** The one message that can be on its way in a chat: its bubble keeps this ID until the server's copy takes its place. */
+const SENDING_ID = `${SENDING}message`;
 /** The key a chat that hasn't started keeps its draft under. */
 const NEW = "new";
 /** Two failures closer together than this are a loop, not a lost chat. */
@@ -293,6 +295,8 @@ function Chat({
   const [sending, setSending] = useState(false);
   // A new chat's first message, shown from the moment it's sent until the server's copy of it loads.
   const [first, setFirst] = useState<{ threadId: ThreadId | null; text: string } | null>(null);
+  // The chat the open new chat became when its first message was sent. It's the thread already on screen, so the thread isn't built again for it.
+  const [born, setBorn] = useState<ThreadId | null>(null);
   // The chat being made, so sending and sharing a chat that hasn't started both end up in the same one.
   const making = useRef<Promise<ThreadId> | null>(null);
   // The message on its way to the server, and the chat it's for: Stop pressed before its reply shows waits for it.
@@ -309,7 +313,8 @@ function Chat({
       paginatedQuery: api.assistant.replies.messages,
       argsToMatch: { threadId: args.threadId },
       localQueryStore,
-      item: { id: `${SENDING}${crypto.randomUUID()}`, role: "user", order: Number.MAX_SAFE_INTEGER, text: args.text, status: "done", mine: true, at: Date.now() },
+      // Convex works this out again on every update until the send lands. The same ID each time keeps it one bubble, which rises in once.
+      item: { id: SENDING_ID, role: "user", order: Number.MAX_SAFE_INTEGER, text: args.text, status: "done", mine: true, at: 0 },
     }),
   );
 
@@ -326,6 +331,7 @@ function Chat({
     if (threadId) return Promise.resolve(threadId);
     making.current ??= create({ ...(title ? { title } : {}), ...(model ? { modelId: model._id, ...(model.effort ? { effort: model.effort } : {}) } : {}) })
       .then((id) => {
+        setBorn(id);
         setThreadId(id);
         return id;
       })
@@ -368,6 +374,7 @@ function Chat({
     if (id && reply) await stopReply({ threadId: id, attemptId: reply.attemptId }).catch(() => {});
   };
   const restart = () => {
+    setBorn(null);
     setThreadId(null);
     composer.current?.focus();
   };
@@ -380,15 +387,15 @@ function Chat({
   const messages = [...results].reverse();
   const sent: Message[] =
     first && first.threadId === threadId && results.length === 0
-      ? [{ id: `${SENDING}first`, role: "user", order: Number.MAX_SAFE_INTEGER, text: first.text, status: "done", mine: true, at: 0 }]
+      ? [{ id: SENDING_ID, role: "user", order: Number.MAX_SAFE_INTEGER, text: first.text, status: "done", mine: true, at: 0 }]
       : [];
 
   return (
     <>
       <Header title={threadId ? (thread?.title ?? "") : t("newChat")} onHistory={onHistory} onShare={share} onRestart={restart} onFold={onFold} />
       <Thread
-        // A different chat starts at its own newest message.
-        key={threadId ?? NEW}
+        // A different chat starts at its own newest message. A new chat that has just become a real one is the same thread.
+        key={threadId === null || threadId === born ? NEW : threadId}
         threadId={threadId}
         messages={[...messages, ...sent]}
         live={live}
@@ -442,8 +449,12 @@ function Thread({
   const t = useTranslations("assistant");
   // A reply's steps are one map, drawn where the first of them stands.
   const steps = Map.groupBy(messages.filter((m) => m.role === "step"), (step) => step.order);
-  // A reply that has nothing to show yet: its action is still starting.
+  // A reply that has nothing to show yet: its action is still starting. It gets its row now, and its
+  // message takes that same row when it arrives, so "Thinking" is one row throughout and never starts over.
   const starting = live !== null && !messages.some((m) => m.role !== "user" && m.order === live.order);
+  const rows: Item[] = starting ? [...messages, { id: `${SENDING}reply`, role: "assistant", order: live.order, text: "", status: "pending", mine: false, at: 0 }] : messages;
+  // Replies are told apart by their exchange and their place in it, which the row above shares with the message that follows it.
+  const nth = new Map<number, number>();
   return (
     // Both edges fade. The bottom one is clear under the hanging chips, then fades the usual
     // distance; the content's bottom padding keeps the last message clear of both.
@@ -463,21 +474,20 @@ function Thread({
             {t("earlier")}
           </button>
         ) : null}
-        {messages.map((m) =>
-          m.role === "user" ? (
-            <UserBubble key={m.id} message={m} />
-          ) : m.role === "step" ? (
-            steps.get(m.order)?.[0] === m && threadId ? <Steps key={m.id} threadId={threadId} steps={steps.get(m.order)!} /> : null
-          ) : (
-            <div key={m.id} className="space-y-3">
+        {rows.map((m) => {
+          if (m.role === "user") return <UserBubble key={m.id} message={m} />;
+          if (m.role === "step") return steps.get(m.order)?.[0] === m && threadId ? <Steps key={m.id} threadId={threadId} steps={steps.get(m.order)!} /> : null;
+          const place = nth.get(m.order) ?? 0;
+          nth.set(m.order, place + 1);
+          return (
+            <div key={`reply:${m.order}:${place}`} className="space-y-3">
               {/* The map of its steps shows the work, so a reply that has run some doesn't also say it's thinking. */}
               <Reply message={m} live={live?.order === m.order ? live.text : ""} quiet={steps.has(m.order)} />
               {m.status === "stopped" ? <StoppedRow /> : null}
               {m.status === "failed" ? <FailedRow error={m.error} /> : null}
             </div>
-          ),
-        )}
-        {starting ? <Thinking /> : null}
+          );
+        })}
       </ConversationContent>
     </Conversation>
   );
