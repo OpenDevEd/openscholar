@@ -61,13 +61,11 @@ export function previewOf(text: string) {
 type Reply = NonNullable<Doc<"assistantThreads">["reply"]>;
 
 /**
- * Whether a reply is still being written: its action is waiting to run or running, or it
- * waits for the person to answer what it asked. An action that ended, or died, without
- * releasing its lock no longer holds the chat.
+ * Whether a reply is still being written: its action is waiting to run or running. An
+ * action that ended, or died, without releasing its lock no longer holds the chat.
  */
 export async function writing(ctx: QueryCtx | MutationCtx, reply: Reply | undefined): Promise<boolean> {
   if (!reply) return false;
-  if (reply.asking) return true;
   const state = (await ctx.db.system.get(reply.scheduledId))?.state.kind;
   return state === "pending" || state === "inProgress";
 }

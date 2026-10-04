@@ -13,11 +13,11 @@ import { assistantTools, inputSchema, runAction, toolName } from "../lib/assista
 import { readConvexErrorData } from "../lib/errors";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { ASKS_FIRST, type UserAction } from "../lib/userActions";
-import { STEP_TEXT_MAX } from "./steps";
+import { MAX_ASKS, STEP_TEXT_MAX, forModel } from "./steps";
 
 /** Requests to the model one reply may make. The last is kept for its answer (./turn.ts). */
 export const MAX_STEPS = 12;
-/** Characters of anything a tool hands the model, about 2,000 tokens (#326). A step keeps the rest of a result. */
+/** Characters of an error or of a list of found actions the model reads (#326). */
 const MODEL_READS = 8_000;
 /** Characters of an action's description and arguments, about 1,000 tokens (#326). A longer one has no tool. */
 export const DEFINITION_MAX = 4_000;
@@ -87,12 +87,6 @@ export function core() {
 
 const cut = (text: string, max: number) => (text.length > max ? text.slice(0, max) : text);
 
-/** What the model reads of anything a tool returns: all of it when it's short, its start and how much was left out when it isn't. */
-export function forModel(value: unknown) {
-  const text = JSON.stringify(value ?? null);
-  return text.length <= MODEL_READS ? (value ?? null) : `${text.slice(0, MODEL_READS)}… (cut: ${(text.length - MODEL_READS).toLocaleString("en")} more characters. Ask for less at a time.)`;
-}
-
 /** The action a tool call is for, with its arguments: the tool's own, or the one run_action names. Null when it names none, or its arguments don't fit. */
 export function called(tool: string, input: unknown): { entry: UserAction; input: Record<string, unknown> } | null {
   const own = core().find((entry) => toolName(entry.path) === tool);
@@ -107,12 +101,16 @@ const RUN_ACTION = "run_action";
 
 /** A tool call the reply asked the person about. */
 export type Asked = { toolCallId: string; toolName: string; input: unknown };
-/** The calls a reply asked about, as the steps that wait for the person's answer. */
+/**
+ * The calls a reply asked about, as the steps that wait for the person's answer. Every one
+ * becomes a step, since every one needs its result written: a call that names no action
+ * any more waits under its tool's name, and fails when it's run.
+ */
 export function askedSteps(requests: Asked[]) {
-  return requests.flatMap(({ toolCallId, toolName: tool, input }) => {
+  return requests.map(({ toolCallId, toolName: tool, input }) => {
     const call = called(tool, input);
     const subject = call && subjectOf(call.input);
-    return call ? [{ toolCallId, tool, path: call.entry.path, input: JSON.stringify(call.input), ...(subject ? { subject } : {}) }] : [];
+    return { toolCallId, tool, path: call?.entry.path ?? tool, input: cut(JSON.stringify(call?.input ?? input ?? {}), STEP_TEXT_MAX), ...(subject ? { subject } : {}) };
   });
 }
 
@@ -162,13 +160,15 @@ export function found(keywords: string) {
  * `stopped` says why the reply's actions have stopped, once they have.
  *
  * `approval` is the reply's rule for asking first, which pauses it at a call the person is
- * asked about. `resume` runs a step they then allowed, and returns what the model reads of it.
+ * asked about. `resume` runs a step they then allowed; its outcome is written to the model
+ * with the step (./steps.ts). It's false once the reply was stopped, and nothing more runs.
  */
 export function toolsFor(
   ctx: ActionCtx,
   { userId, threadId, order, attemptId, stopped }: { userId: Id<"users">; threadId: Id<"assistantThreads">; order: number; attemptId: string; stopped: () => string | null },
 ) {
   let calls = 0;
+  let asked = 0;
   /**
    * Runs one call, kept as a step from when it starts to how it ended. The model reads the
    * short form of the result, and an action's failure as its message, so it can say what
@@ -209,13 +209,18 @@ export function toolsFor(
     const call = called(toolCall.toolName, toolCall.input);
     if (!call || !(await asks(call.entry, call.input))) return undefined;
     // Its arguments wait on its step for the answer, so they have to fit there.
-    return JSON.stringify(call.input).length > STEP_TEXT_MAX ? { type: "denied" as const, reason: "Its arguments are too long to ask the person about." } : ("user-approval" as const);
+    if (JSON.stringify(call.input).length > STEP_TEXT_MAX) return { type: "denied" as const, reason: "Its arguments are too long to ask the person about." };
+    if (asked >= MAX_ASKS) return { type: "denied" as const, reason: `A reply asks the person about at most ${MAX_ASKS} actions at a time. Ask about the rest once these are answered.` };
+    asked++;
+    return "user-approval" as const;
   };
   const resume = async (step: { stepId: Id<"assistantSteps">; toolCallId: string; path: string; input: string }) => {
+    // Claimed once, for this reply: one that died after this and is tried again doesn't run it a second time, and a stopped one runs nothing more.
+    if (!(await ctx.runMutation(internal.assistant.steps.resume, { stepId: step.stepId, attemptId }))) return false;
     const entry = entryAt(step.path);
-    // Run once: a reply that died after this and is tried again doesn't run it a second time.
-    if (!entry || !(await ctx.runMutation(internal.assistant.steps.resume, { stepId: step.stepId }))) return { error: "This couldn't be run any more." };
-    return call(entry, JSON.parse(step.input), step.toolCallId, step.stepId);
+    if (entry) await call(entry, JSON.parse(step.input), step.toolCallId, step.stepId);
+    else await ctx.runMutation(internal.assistant.steps.failed, { stepId: step.stepId, error: "This action can't be run any more." });
+    return true;
   };
   const tools: ToolSet = {
     ...assistantTools(ctx, userId, core(), ({ entry, input, toolCallId }) => call(entry, input, toolCallId)),

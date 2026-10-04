@@ -15,7 +15,7 @@ import { paginationOptsValidator, paginationResultValidator } from "convex/serve
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { effortValidator } from "../aiModelConfig/validators";
 import { requireFeature } from "../featureFlags/guard";
@@ -29,8 +29,10 @@ import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extract
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { compactionDue } from "./context";
-import { stepsOfExchange, stopAsking } from "./steps";
+import { detailsOf } from "./details";
+import { declineSteps, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
+import { askedDetailsValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
 const MESSAGES_PAGE_MAX = 50;
@@ -49,6 +51,27 @@ const LIVE_READS = 30;
 const SWEEP_BATCH = 200;
 
 
+/**
+ * Refuses a reply that would be one too many being written for a person at once. A reply
+ * that waits for an answer runs nothing and isn't one of them; carrying it on is.
+ */
+async function admit(ctx: MutationCtx, userId: Id<"users">) {
+  // Twice the limit, so locks whose action died can't hide live ones behind them. The dead
+  // ones found are released here, which keeps the next count honest too.
+  const mine = await ctx.db
+    .query("assistantThreads")
+    .withIndex("by_replySender", (q) => q.eq("reply.senderId", userId))
+    .take(CHAT_CONCURRENCY_LIMIT * 2);
+  let stillWriting = 0;
+  for (const other of mine) {
+    if (await writing(ctx, other.reply)) stillWriting++;
+    else await ctx.db.patch("assistantThreads", other._id, { reply: undefined });
+  }
+  if (stillWriting >= CHAT_CONCURRENCY_LIMIT) {
+    throw createError("CONFLICT", `The assistant is already writing ${CHAT_CONCURRENCY_LIMIT} replies for you. Wait for one to finish.`);
+  }
+}
+
 export const send = mutation({
   args: { threadId: v.id("assistantThreads"), text: v.string() },
   returns: v.null(),
@@ -60,25 +83,11 @@ export const send = mutation({
       throw createError("VALIDATION_ERROR", `A message can be at most ${CHAT_PROMPT_MAX_CHARS.toLocaleString("en")} characters.`);
     }
     const { thread } = await requireThread(ctx, userId, threadId, "write");
-    if (await writing(ctx, thread.reply)) {
-      throw createError("CONFLICT", thread.reply?.asking ? "The assistant is waiting for an answer in this chat. Answer it, or stop the reply." : "The assistant is still replying in this chat.");
-    }
-    // Twice the limit, so locks whose action died can't hide live ones behind them. The dead
-    // ones found are released here, which keeps the next count honest too.
-    const mine = await ctx.db
-      .query("assistantThreads")
-      .withIndex("by_replySender", (q) => q.eq("reply.senderId", userId))
-      .take(CHAT_CONCURRENCY_LIMIT * 2);
-    let stillWriting = 0;
-    for (const other of mine) {
-      // One that waits for an answer runs nothing, so it doesn't count.
-      if (other.reply?.asking) continue;
-      if (await writing(ctx, other.reply)) stillWriting++;
-      else await ctx.db.patch("assistantThreads", other._id, { reply: undefined });
-    }
-    if (stillWriting >= CHAT_CONCURRENCY_LIMIT) {
-      throw createError("CONFLICT", `The assistant is already writing ${CHAT_CONCURRENCY_LIMIT} replies for you. Wait for one to finish.`);
-    }
+    if (await writing(ctx, thread.reply)) throw createError("CONFLICT", "The assistant is still replying in this chat.");
+    if (thread.asking) throw createError("CONFLICT", "The assistant is waiting for an answer in this chat. Answer it, or stop the reply.");
+    await admit(ctx, userId);
+    // A reply that was stopped, or died, as it carried on from an answer can leave calls without their results.
+    await settleAsked(ctx, threadId);
     const { modelId, effort } = await chatModel(ctx, thread);
     // The model the chat falls back on, or one picked before the rule, is held to it too. So is
     // the server's own default, which runs when nothing picks a model, where the catalog has it.
@@ -105,6 +114,47 @@ export const send = mutation({
       effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
     });
     await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
+    return null;
+  },
+});
+
+/** What Stop takes for a reply that waits for an answer: no reply is being written then, so it has no attempt of its own. */
+const waitingAttempt = (waiting: { order: number; askedAt: number }) => `waiting:${waiting.order}:${waiting.askedAt}`;
+
+/** The person's answer to a call the assistant asked about (./steps.ts): run it, or don't. */
+export const answer = mutation({
+  args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), allow: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, { threadId, stepId, allow }) => {
+    const userId = (await requireAuth(ctx))._id;
+    await requireFeature(ctx, FLAG, userId);
+    const { thread } = await requireThread(ctx, userId, threadId, "write");
+    const step = await ctx.db.get("assistantSteps", stepId);
+    const waiting = thread.asking;
+    if (!step || step.threadId !== threadId) throw createError("NOT_FOUND", "That step isn't in this chat.");
+    if (!waiting || step.order !== waiting.order || step.status !== "asking") throw createError("CONFLICT", "This has already been answered.");
+    // It would run with their access, on their records, so the answer is theirs alone.
+    if (step.userId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can allow this.");
+    const left = (await stepsAt(ctx, threadId, "asking")).filter((other) => other._id !== stepId);
+    // The answer that lets the reply carry on starts a reply, so it's held to how many a person has at once, before anything changes.
+    if (!left.length) await admit(ctx, waiting.senderId);
+    if (allow) await ctx.db.patch("assistantSteps", stepId, { status: "allowed" });
+    else await declineSteps(ctx, [step]);
+    // Calls it asked about together are answered one by one. The reply carries on after the last.
+    if (left.length) return null;
+    const now = Date.now();
+    const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
+    const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.reply, {
+      threadId,
+      agentThreadId: thread.agentThreadId,
+      promptMessageId: waiting.promptMessageId,
+      attemptId,
+      senderId: waiting.senderId,
+      modelId: waiting.modelId,
+      effort: waiting.effort,
+      used: { credits: waiting.spent, rounds: waiting.rounds },
+    });
+    await ctx.db.patch("assistantThreads", threadId, { asking: undefined, reply: { attemptId, senderId: waiting.senderId, order: waiting.order, startedAt: now, scheduledId } });
     return null;
   },
 });
@@ -150,11 +200,10 @@ export const stop = mutation({
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId, "write");
-    // A reply that has ended, or a later one, isn't this Stop's to stop.
-    if (thread.reply?.attemptId !== attemptId) return null;
     // One that waits for an answer has nothing running to hear the stop, so it ends here.
-    if (thread.reply.asking) await stopAsking(ctx, thread);
-    else await ctx.db.patch("assistantThreads", threadId, { reply: { ...thread.reply, stop: true } });
+    if (thread.asking && attemptId === waitingAttempt(thread.asking)) await stopAsking(ctx, thread, thread.asking);
+    // A reply that has ended, or a later one, isn't this Stop's to stop.
+    else if (thread.reply?.attemptId === attemptId) await ctx.db.patch("assistantThreads", threadId, { reply: { ...thread.reply, stop: true } });
     return null;
   },
 });
@@ -180,11 +229,14 @@ export const release = internalMutation({
     ...lockArgs,
     ended: v.optional(v.object({ ...turnArgs, lastInputTokens: v.number(), messages: v.number(), bytes: v.number() })),
     summarized: v.optional(v.object({ summary: v.string(), through: v.number() })),
-    // The reply ended on calls it asks the person about (./asking.ts): the message it answers, and each call as the step that waits.
+    // The reply ended on calls it asks the person about (./steps.ts): the message it answers, each call as the step
+    // that waits, and what the reply has used of one reply's credits and rounds so far.
     asking: v.optional(
       v.object({
         promptMessageId: v.string(),
         calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) })),
+        spent: v.number(),
+        rounds: v.number(),
       }),
     ),
   },
@@ -206,15 +258,28 @@ export const release = internalMutation({
     const written = newest?.message?.role === "assistant" && newest.order === current.order ? previewOf(newest.text ?? "") : "";
     const preview = written ? { preview: written } : {};
     if (ended && asking?.calls.length) {
-      // It holds the chat until every call is answered, or it's stopped. Its summary, if one is due, waits for the reply to end.
+      // The chat takes no message until every call is answered, or the reply is stopped. Its summary, if one is due, waits for the reply to end.
       const now = Date.now();
-      for (const call of asking.calls) await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, ...call, status: "asking", startedAt: now });
-      const waiting = { ...thread, reply: { ...current, asking: { promptMessageId: asking.promptMessageId, modelId: ended.modelId, ...(ended.effort ? { effort: ended.effort } : {}) } } };
+      for (const call of asking.calls) {
+        await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, ...call, prompt: asking.promptMessageId, status: "asking", startedAt: now });
+      }
+      const waiting = {
+        senderId: current.senderId,
+        order: current.order,
+        promptMessageId: asking.promptMessageId,
+        modelId: ended.modelId,
+        ...(ended.effort ? { effort: ended.effort } : {}),
+        spent: asking.spent,
+        rounds: asking.rounds,
+        askedAt: now,
+      };
+      await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: undefined, asking: waiting });
       // Stopped as it asked: the stop found nothing running, and takes effect here.
-      if (current.stop) await stopAsking(ctx, waiting);
-      else await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: waiting.reply });
+      if (current.stop) await stopAsking(ctx, thread, waiting);
       return null;
     }
+    // A reply that carried on from an answer and was stopped, or failed, on the way can leave calls it never ran.
+    await settleAsked(ctx, threadId);
     const window = ended?.modelId ? (await ctx.db.get("models", ended.modelId))?.contextLength : undefined;
     // A stopped reply is left alone: whoever stopped it is waiting to write.
     if (ended && !current.stop && compactionDue({ ...ended, window })) {
@@ -263,8 +328,10 @@ const stepValidator = v.object({
   count: v.optional(v.number()),
   /** `failed` also covers a step whose reply died while it ran. `asking`: the person is asked before it runs. `declined`: they said no, or stopped the reply. */
   status: v.union(v.literal("running"), v.literal("done"), v.literal("failed"), v.literal("asking"), v.literal("declined")),
-  /** Whether the person reading can answer it (./asking.ts): it asks, and it would run for them. */
+  /** Whether the person reading can answer it (`answer`): it asks, and it would run for them. */
   canAnswer: v.boolean(),
+  /** What it would do, for the person who can answer it: its arguments, with the records they name by name (./details.ts). */
+  details: askedDetailsValidator,
   /** Why it failed, as the assistant was told. */
   error: v.optional(v.string()),
   /** Whether the person reading can undo it (./undo.ts): it returned what reverses it (#342), it was done for them, and it isn't undone yet. */
@@ -344,8 +411,12 @@ export const messagesAction = defineUserQuery({
     // Each exchange's steps come with the message it answers, which a page holds once.
     const asked = read.page.filter((row) => row.message?.role === "user");
     const ran = new Map(await Promise.all(asked.map(async (row) => [row._id, await stepsOfExchange(ctx, threadId, row.order)] as const)));
-    // The exchange being answered now. A lock whose action died isn't one.
-    const answering = (await writing(ctx, thread.reply)) ? thread.reply?.order : undefined;
+    // The exchange being answered now, or waiting for the person's answer. A lock whose action died isn't one.
+    const answering = (await writing(ctx, thread.reply)) ? thread.reply?.order : thread.asking?.order;
+    // What each call that waits for this person would do.
+    const reader = thread.asking?.senderId === userId ? await ctx.db.get("users", userId) : null;
+    const mine = reader ? await stepsAt(ctx, threadId, "asking") : [];
+    const details = new Map(await Promise.all(mine.map(async (step) => [step._id, await detailsOf(ctx, reader!, step.input)] as const)));
     const page = read.page.flatMap((row) => {
       const role = row.message?.role;
       if (role !== "user" && role !== "assistant") return [];
@@ -359,7 +430,8 @@ export const messagesAction = defineUserQuery({
           ...(step.subject ? { subject: step.subject } : {}),
           ...(step.count === undefined ? {} : { count: step.count }),
           status: shownStatus(step.status, answering === step.order),
-          canAnswer: step.status === "asking" && answering === step.order && step.userId === userId,
+          canAnswer: details.has(step._id),
+          ...(details.has(step._id) ? { details: details.get(step._id)! } : {}),
           ...(step.error ? { error: step.error } : {}),
           canUndo: step.undo !== undefined && step.userId === userId && step.undone !== true,
           undone: step.undone === true,
@@ -449,6 +521,10 @@ export const live = query({
     const userId: Id<"users"> = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
+    // A reply that waits for an answer isn't being written, and Stop ends it.
+    if (thread.asking) {
+      return { attemptId: waitingAttempt(thread.asking), senderId: thread.asking.senderId, order: thread.asking.order, startedAt: thread.asking.askedAt, stopping: false, compacting: false, asking: true, text: "" };
+    }
     const current = thread.reply;
     if (!current || !(await writing(ctx, current))) return null;
     // Newest first. A stream that has just ended still counts: its text stays up until the
@@ -466,7 +542,7 @@ export const live = query({
       startedAt: current.startedAt,
       stopping: current.stop === true,
       compacting: current.compacting === true,
-      asking: current.asking !== undefined,
+      asking: false,
       text: stream ? await textSoFar(ctx, thread.agentThreadId, stream.streamId) : "",
     };
   },

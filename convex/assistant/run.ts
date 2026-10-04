@@ -17,7 +17,7 @@ import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 import { COMPACT_AT_TOKENS, compactedOf, contextSince, summarize } from "./context";
 import { lockArgs, turnArgs } from "./replies";
-import { MAX_STEPS, OUT_OF_CREDITS, OUT_OF_STEPS, askedSteps, forModel, toolsFor } from "./tools";
+import { MAX_STEPS, OUT_OF_CREDITS, OUT_OF_STEPS, askedSteps, toolsFor } from "./tools";
 import { runTurn } from "./turn";
 
 export const reply = internalAction({
@@ -28,16 +28,15 @@ export const reply = internalAction({
     senderId: v.id("users"),
     modelId: v.union(v.id("models"), v.null()),
     effort: v.optional(effortValidator),
+    // What the reply used of one reply's credits and rounds before it asked the person something, when it carries on from their answer.
+    used: v.optional(v.object({ credits: v.number(), rounds: v.number() })),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort }) => {
+  handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort, used = { credits: 0, rounds: 0 } }) => {
     const lock = { threadId, attemptId };
     const state = () => ctx.runQuery(internal.assistant.replies.lockState, lock);
-    const atStart = await state();
-    // A reply whose chat was deleted, or whose lock is another reply's, never starts.
-    if (atStart === "gone") return null;
-    // Stopped while it waited to run: no credits are held and no model is called. The chat shows a stopped reply.
-    if (atStart === "stop") {
+    // Ends a reply stopped before the model is called: no credits are held, and the chat shows a stopped reply.
+    const stopHere = async () => {
       await assistant.saveMessage(ctx, {
         threadId: agentThreadId,
         promptMessageId,
@@ -47,7 +46,11 @@ export const reply = internalAction({
       });
       await ctx.runMutation(internal.assistant.replies.release, lock);
       return null;
-    }
+    };
+    const atStart = await state();
+    // A reply whose chat was deleted, or whose lock is another reply's, never starts.
+    if (atStart === "gone") return null;
+    if (atStart === "stop") return stopHere();
     // How much history the reply's request read, which decides whether a compaction follows it.
     let history = { messages: 0, bytes: 0 };
     const turn = { agentThreadId, senderId, modelId, effort };
@@ -65,28 +68,29 @@ export const reply = internalAction({
         console.error("[assistant] owed compaction failed", { threadId, error: errorToLogString(error) });
       }
     }
-    // What the reply may cost: a reply's cap, or what the person has when that's less, down
-    // to the least a reply starts on. It holds that much, so a small balance still gets an answer.
+    // What the reply may cost: what's left of a reply's cap, or what the person has when
+    // that's less, down to the least a reply starts on. It holds that much, so a small
+    // balance, or a reply that has used its cap and only has to answer, still gets its answer.
+    const left = Math.max(0, ASSISTANT_REPLY_CREDITS - used.credits);
     const balance = (await ctx.runQuery(internal.billing.accounts.forUser, { userId: senderId }))?.balance;
-    const cap = Math.max(ESTIMATED_CREDITS_PER_CHAT_MESSAGE, Math.min(ASSISTANT_REPLY_CREDITS, balance ?? ASSISTANT_REPLY_CREDITS));
+    const cap = Math.max(ESTIMATED_CREDITS_PER_CHAT_MESSAGE, Math.min(left, balance ?? left));
     // Where the reply stands, heard before each of its requests. Its actions stop a round
     // before its last request and once it has cost its hold, so the request after is its answer.
     let step = { number: 0, credits: 0 };
-    const stopped = () => (step.number >= MAX_STEPS - 2 ? OUT_OF_STEPS : step.credits >= cap ? OUT_OF_CREDITS : null);
-    const order = read.answering ?? 0;
+    const stopped = () => (used.rounds + step.number >= MAX_STEPS - 2 ? OUT_OF_STEPS : step.credits >= Math.min(cap, left) ? OUT_OF_CREDITS : null);
     // Each action it runs is kept as a step of the exchange it's answering.
-    const { tools, approval, resume } = toolsFor(ctx, { userId: senderId, threadId, order, attemptId, stopped });
+    const { tools, approval, resume } = toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped });
     // A reply that waited for an answer carries on here: what the person allowed runs first,
-    // and its result goes where the model's call left off, so the model reads what came of it.
-    const allowed = await ctx.runQuery(internal.assistant.steps.allowed, { threadId, order });
+    // and each result is written where the model's call left off. A Stop ends it between two.
+    const allowed = await ctx.runQuery(internal.assistant.steps.allowed, { threadId });
     for (const waiting of allowed) {
-      const output = forModel(await resume(waiting));
-      await assistant.saveMessage(ctx, {
-        threadId: agentThreadId,
-        promptMessageId,
-        message: { role: "tool", content: [{ type: "tool-result", toolCallId: waiting.toolCallId, toolName: waiting.tool, output: typeof output === "string" ? { type: "text", value: output } : { type: "json", value: output as never } }] },
-        skipEmbeddings: true,
-      });
+      if (!(await resume(waiting))) break;
+    }
+    if (allowed.length) {
+      const now = await state();
+      if (now === "gone") return null;
+      // What didn't run is declined as the chat is released (./steps.ts).
+      if (now === "stop") return stopHere();
     }
     await runTurn(ctx, {
       agent: assistant,
@@ -116,9 +120,13 @@ export const reply = internalAction({
           history = read;
         },
       }),
-      release: ({ lastInputTokens, asked }) => {
+      release: ({ lastInputTokens, asked, credits, requests }) => {
         const calls = askedSteps(asked);
-        return ctx.runMutation(internal.assistant.replies.release, { ...lock, ended: { ...turn, ...history, lastInputTokens }, ...(calls.length ? { asking: { promptMessageId, calls } } : {}) });
+        return ctx.runMutation(internal.assistant.replies.release, {
+          ...lock,
+          ended: { ...turn, ...history, lastInputTokens },
+          ...(calls.length ? { asking: { promptMessageId, calls, spent: used.credits + credits, rounds: used.rounds + requests } } : {}),
+        });
       },
     });
     return null;

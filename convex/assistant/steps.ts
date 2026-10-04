@@ -2,14 +2,20 @@
  * The steps a reply takes (#327): one row for each action the assistant runs, and the
  * command that reverses it when there is one (#342), for the chat's page and for Undo. The
  * model reads a short form of an action's result; the whole of it is kept beside the step.
+ *
+ * Asking first (decisions 8 and 12). A reply that calls an action the person has to allow
+ * ends there, unanswered: the call is kept as a step that waits (`asking`), and the chat
+ * takes no message until each is answered or the reply is stopped. The model's call still
+ * needs its result, or the provider can't read the conversation. So whatever ends such a
+ * step writes that result in the same transaction: the action's outcome when the person
+ * allowed it, or that they didn't. `settleAsked` ends any that a stopped or dead reply left.
  */
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
-import type { Doc } from "../_generated/dataModel";
 import { assistant } from "./agent";
 
 /** Characters of an action's arguments, of what reverses it, and of why it failed, that a step keeps. */
@@ -18,16 +24,33 @@ export const STEP_TEXT_MAX = 16_000;
 export const STEP_RESULT_MAX = 200_000;
 /** Steps of one exchange a page of the chat shows. A reply takes few; this bounds a runaway one. */
 export const STEPS_SHOWN = 60;
+/** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
+export const MAX_ASKS = 10;
+/** Characters of anything a tool hands the model, about 2,000 tokens (#326). A step keeps the rest of a result. */
+const MODEL_READS = 8_000;
 /** Rows one batch deletes of a chat being deleted: results are large, so few at a time. */
 const FORGET_RESULTS = 20;
 const FORGET_STEPS = 100;
+
+type Step = Doc<"assistantSteps">;
 
 /** An exchange's steps, in the order they ran. */
 export function stepsOfExchange(ctx: Pick<QueryCtx, "db">, threadId: Id<"assistantThreads">, order: number) {
   return ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).eq("order", order)).take(STEPS_SHOWN);
 }
 
+/** A chat's steps at one status. Only steps a reply asked about are ever many at once, and those are bounded. */
+export function stepsAt(ctx: Pick<QueryCtx, "db">, threadId: Id<"assistantThreads">, status: Step["status"]) {
+  return ctx.db.query("assistantSteps").withIndex("by_thread_and_status", (q) => q.eq("threadId", threadId).eq("status", status)).take(MAX_ASKS * 4);
+}
+
 const cut = (text: string, max: number) => (text.length > max ? text.slice(0, max) : text);
+
+/** What the model reads of anything a tool returns: all of it when it's short, its start and how much was left out when it isn't. */
+export function forModel(value: unknown) {
+  const text = JSON.stringify(value ?? null);
+  return text.length <= MODEL_READS ? (value ?? null) : `${text.slice(0, MODEL_READS)}… (cut: ${(text.length - MODEL_READS).toLocaleString("en")} more characters. Ask for less at a time.)`;
+}
 
 /** The command that reverses a change, when its result carries one (#342) short enough to keep. */
 export function undoOf(result: unknown) {
@@ -44,18 +67,44 @@ export function countOf(result: unknown) {
   return Array.isArray(page) ? page.length : undefined;
 }
 
+type Output = { type: "json"; value: unknown } | { type: "text"; value: string } | { type: "execution-denied"; reason: string };
+
+/**
+ * Writes the model the results of calls it asked the person about, as one message. A step
+ * the reply ran itself needs none from here: the reply writes that with its own messages.
+ */
+async function answerCalls(ctx: MutationCtx, steps: Step[], output: (step: Step) => Output) {
+  const asked = steps.filter((step) => step.tool && step.prompt);
+  const thread = asked.length ? await ctx.db.get("assistantThreads", asked[0].threadId) : null;
+  // Its chat was deleted while it waited.
+  if (!thread) return;
+  await assistant.saveMessage(ctx, {
+    threadId: thread.agentThreadId,
+    promptMessageId: asked[0].prompt!,
+    message: { role: "tool", content: asked.map((step) => ({ type: "tool-result" as const, toolCallId: step.toolCallId, toolName: step.tool!, output: output(step) as never })) },
+    skipEmbeddings: true,
+  });
+}
+
 /**
  * Ends a step with what its action returned: the result is kept beside it, with what
  * reverses it and how many things it lists. A change calls this in its own transaction
  * (convex/lib/userActions.ts), so a change and the record of it are saved together or not at all.
  */
-export async function endStep(ctx: Pick<MutationCtx, "db">, stepId: Id<"assistantSteps">, result: unknown) {
+export async function endStep(ctx: MutationCtx, stepId: Id<"assistantSteps">, result: unknown) {
   const step = await ctx.db.get("assistantSteps", stepId);
   // Its chat was deleted while it ran.
   if (!step) return;
   const [undo, count] = [undoOf(result), countOf(result)];
   await ctx.db.patch("assistantSteps", stepId, { status: "done", ...(count === undefined ? {} : { count }), ...(undo ? { undo } : {}), endedAt: Date.now() });
   await ctx.db.insert("assistantStepResults", { threadId: step.threadId, stepId, result: cut(JSON.stringify(result ?? null), STEP_RESULT_MAX) });
+  const read = forModel(result);
+  await answerCalls(ctx, [step], () => (typeof read === "string" ? { type: "text", value: read } : { type: "json", value: read }));
+}
+
+async function failStep(ctx: MutationCtx, step: Step, error: string) {
+  await ctx.db.patch("assistantSteps", step._id, { status: "failed", error: cut(error, STEP_TEXT_MAX), endedAt: Date.now() });
+  await answerCalls(ctx, [step], () => ({ type: "json", value: { error: cut(error, MODEL_READS / 4) } }));
 }
 
 /** A step starts. */
@@ -63,25 +112,6 @@ export const begin = internalMutation({
   args: { threadId: v.id("assistantThreads"), order: v.number(), userId: v.id("users"), toolCallId: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) },
   returns: v.id("assistantSteps"),
   handler: async (ctx, args) => ctx.db.insert("assistantSteps", { ...args, status: "running", startedAt: Date.now() }),
-});
-
-/** The steps of an exchange the person allowed, in the order they were asked: the reply runs them as it carries on. */
-export const allowed = internalQuery({
-  args: { threadId: v.id("assistantThreads"), order: v.number() },
-  returns: v.array(v.object({ stepId: v.id("assistantSteps"), toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string() })),
-  handler: async (ctx, { threadId, order }) =>
-    (await stepsOfExchange(ctx, threadId, order)).flatMap((step) => (step.status === "allowed" && step.tool ? [{ stepId: step._id, toolCallId: step.toolCallId, tool: step.tool, path: step.path, input: step.input }] : [])),
-});
-
-/** An allowed step starts to run. False when it isn't one any more, so it never runs twice. */
-export const resume = internalMutation({
-  args: { stepId: v.id("assistantSteps") },
-  returns: v.boolean(),
-  handler: async (ctx, { stepId }) => {
-    if ((await ctx.db.get("assistantSteps", stepId))?.status !== "allowed") return false;
-    await ctx.db.patch("assistantSteps", stepId, { status: "running", startedAt: Date.now() });
-    return true;
-  },
 });
 
 /** A step that read something ends with its result. A change ends its own (`endStep`). */
@@ -100,39 +130,65 @@ export const failed = internalMutation({
   args: { stepId: v.id("assistantSteps"), error: v.string() },
   returns: v.null(),
   handler: async (ctx, { stepId, error }) => {
-    if (await ctx.db.get("assistantSteps", stepId)) await ctx.db.patch("assistantSteps", stepId, { status: "failed", error: cut(error, STEP_TEXT_MAX), endedAt: Date.now() });
+    const step = await ctx.db.get("assistantSteps", stepId);
+    if (step) await failStep(ctx, step, error);
     return null;
   },
 });
 
+/** The steps the person allowed, in the order they were asked: the reply runs them as it carries on. */
+export const allowed = internalQuery({
+  args: { threadId: v.id("assistantThreads") },
+  returns: v.array(v.object({ stepId: v.id("assistantSteps"), toolCallId: v.string(), path: v.string(), input: v.string() })),
+  handler: async (ctx, { threadId }) => (await stepsAt(ctx, threadId, "allowed")).map((step) => ({ stepId: step._id, toolCallId: step.toolCallId, path: step.path, input: step.input })),
+});
+
 /**
- * Tells the model the person didn't allow these calls: each gets its result, since a call
- * left without one would make the conversation unreadable to the provider. The steps show
- * as declined.
+ * An allowed step starts to run, for the reply `attemptId`. False when it isn't allowed
+ * any more, so it never runs twice, or when that reply was stopped or isn't the chat's
+ * reply any more, so nothing runs after a Stop.
  */
-export async function declineSteps(ctx: MutationCtx, agentThreadId: string, promptMessageId: string, steps: Doc<"assistantSteps">[]) {
+export const resume = internalMutation({
+  args: { stepId: v.id("assistantSteps"), attemptId: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { stepId, attemptId }) => {
+    const step = await ctx.db.get("assistantSteps", stepId);
+    const reply = step && (await ctx.db.get("assistantThreads", step.threadId))?.reply;
+    if (step?.status !== "allowed" || reply?.attemptId !== attemptId || reply.stop) return false;
+    await ctx.db.patch("assistantSteps", stepId, { status: "running", startedAt: Date.now() });
+    return true;
+  },
+});
+
+const DECLINED = "The person didn't allow this. Don't try it again unless they ask.";
+
+/** The person didn't allow these calls: the model is told so, and the steps show as declined. */
+export async function declineSteps(ctx: MutationCtx, steps: Step[], reason = DECLINED) {
   if (!steps.length) return;
-  await assistant.saveMessage(ctx, {
-    threadId: agentThreadId,
-    promptMessageId,
-    message: {
-      role: "tool",
-      content: steps.map((step) => ({ type: "tool-result" as const, toolCallId: step.toolCallId, toolName: step.tool ?? "", output: { type: "execution-denied" as const, reason: "The person didn't allow this. Don't try it again unless they ask." } })),
-    },
-    skipEmbeddings: true,
-  });
   for (const step of steps) await ctx.db.patch("assistantSteps", step._id, { status: "declined", endedAt: Date.now() });
+  await answerCalls(ctx, steps, () => ({ type: "execution-denied", reason }));
+}
+
+/**
+ * Ends every call a reply asked about that nothing will end now: the reply was stopped,
+ * died, or was never carried on. Ones still waiting, or allowed and not yet run, are
+ * declined. One that had started may or may not have finished, and says so. After this,
+ * each of the model's calls has its result, so the conversation reads whole again.
+ */
+export async function settleAsked(ctx: MutationCtx, threadId: Id<"assistantThreads">) {
+  await declineSteps(ctx, [...(await stepsAt(ctx, threadId, "asking")), ...(await stepsAt(ctx, threadId, "allowed"))], "This wasn't run: the reply ended before the person's answer could be acted on.");
+  // ponytail: reads the chat's first 40 running steps, and a step whose reply died stays running. A chat with that many dead ones could hide an asked one here; end dead steps when their reply's lock is swept if that ever shows.
+  for (const step of await stepsAt(ctx, threadId, "running")) {
+    if (step.tool && step.prompt) await failStep(ctx, step, "The reply ended while this ran, so it may or may not have finished. Check before trying it again.");
+  }
 }
 
 /**
  * Stops a reply that waits for an answer. Nothing is running, so it ends here: what it
- * still asks is declined, the chat shows it as stopped, and the chat is free again.
+ * still asks is declined, the chat shows it as stopped, and the chat takes messages again.
  */
-export async function stopAsking(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
-  const waiting = thread.reply?.asking;
-  if (!thread.reply || !waiting) return;
-  const steps = await stepsOfExchange(ctx, thread._id, thread.reply.order);
-  await declineSteps(ctx, thread.agentThreadId, waiting.promptMessageId, steps.filter((step) => step.status === "asking" || step.status === "allowed"));
+export async function stopAsking(ctx: MutationCtx, thread: Doc<"assistantThreads">, waiting: NonNullable<Doc<"assistantThreads">["asking"]>) {
+  await settleAsked(ctx, thread._id);
   await assistant.saveMessage(ctx, {
     threadId: thread.agentThreadId,
     promptMessageId: waiting.promptMessageId,
@@ -140,7 +196,7 @@ export async function stopAsking(ctx: MutationCtx, thread: Doc<"assistantThreads
     metadata: { status: "failed", error: ABORT_ERROR_STRING },
     skipEmbeddings: true,
   });
-  await ctx.db.patch("assistantThreads", thread._id, { reply: undefined });
+  await ctx.db.patch("assistantThreads", thread._id, { asking: undefined });
 }
 
 /** Deletes a deleted chat's steps and their results, a batch at a time, until none are left. */

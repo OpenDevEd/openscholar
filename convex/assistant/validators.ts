@@ -26,12 +26,24 @@ export const assistantReplyValidator = v.object({
   stop: v.optional(v.boolean()),
   /** The reply is written, and the conversation so far is being summarized before the chat takes its next message (./context.ts). */
   compacting: v.optional(v.boolean()),
-  /**
-   * The reply asked the person before running an action, and waits for their answer
-   * (./asking.ts). Nothing runs meanwhile, so the scheduled action has ended. What the reply
-   * needs to carry on is kept here: the message it answers, and the model it runs on.
-   */
-  asking: v.optional(v.object({ promptMessageId: v.string(), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator) })),
+});
+
+/**
+ * A reply that asked the person before running an action, and waits for their answer
+ * (./steps.ts). Nothing runs meanwhile, so no reply holds the chat; the chat takes no
+ * message until every call is answered, or the reply is stopped. What the reply needs to
+ * carry on is kept here: who it runs for, the message it answers, its model, and what it
+ * has used of one reply's credits and rounds, which carrying on doesn't start over.
+ */
+export const assistantAskingValidator = v.object({
+  senderId: v.id("users"),
+  order: v.number(),
+  promptMessageId: v.string(),
+  modelId: v.union(v.id("models"), v.null()),
+  effort: v.optional(effortValidator),
+  spent: v.number(),
+  rounds: v.number(),
+  askedAt: v.number(),
 });
 
 export const assistantThreadFields = {
@@ -47,6 +59,7 @@ export const assistantThreadFields = {
   /** The reasoning effort its replies run at, when the model takes one. */
   effort: v.optional(effortValidator),
   reply: v.optional(assistantReplyValidator),
+  asking: v.optional(assistantAskingValidator),
   /** What the model reads in place of the messages through `compactedThrough` (./context.ts). The chat itself keeps them all. */
   summary: v.optional(v.string()),
   /** The last exchange the summary covers, by the agent component's order. */
@@ -66,8 +79,12 @@ export const assistantStepFields = {
   userId: v.id("users"),
   /** The model's ID for the call. Models reuse these, so nothing is looked up by it. */
   toolCallId: v.string(),
-  /** The tool the model called, on a step that asked first: its answer is written to the model under this name. */
+  /**
+   * On a step that asked first: the tool the model called, and the message its reply
+   * answers. Its outcome is written to the model as that call's result, whoever ends it.
+   */
   tool: v.optional(v.string()),
+  prompt: v.optional(v.string()),
   /** The action it ran, by its path in the registry. */
   path: v.string(),
   /** The action's arguments, as JSON. */
@@ -90,6 +107,9 @@ export const assistantStepFields = {
   startedAt: v.number(),
   endedAt: v.optional(v.number()),
 };
+/** Arguments of a call the assistant asks about that the person asked is shown (./details.ts). */
+export const ASKED_DETAILS_MAX = 12;
+export const askedDetailsValidator = capped(v.optional(v.array(v.object({ name: v.string(), value: v.string() }))), ASKED_DETAILS_MAX);
 /** What a step's action returned, as JSON: kept apart from the step, so listing steps reads none of it. */
 export const assistantStepResultFields = { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), result: v.string() };
 

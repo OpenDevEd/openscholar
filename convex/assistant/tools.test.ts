@@ -8,8 +8,9 @@ import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
 import { people } from "./assistant.test-support";
+import { MAX_ASKS } from "./steps";
 import { DEFINITION_MAX, MAX_CALLS, MAX_STEPS, core, definition, found } from "./tools";
-import { finishingDoStream, waitFor } from "./turn.test-support";
+import { finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { value?: unknown } };
 type Sent = Array<{ role: string; content: string | Part[] }>;
@@ -86,10 +87,12 @@ async function chatOf(t: Test) {
   /** Sends a message and waits until its reply stops to ask the person something. */
   const sayUntilAsked = async (text: string) => {
     await who.asAda.mutation(api.assistant.replies.send, { threadId, text });
-    await waitFor(async () => (await thread())?.reply?.asking !== undefined, { timeoutMs: 5_000 });
+    await waitFor(async () => (await thread())?.asking !== undefined, { timeoutMs: 5_000 });
   };
   /** Waits until the chat is free again. */
-  const settled = () => waitFor(async () => !(await thread())?.reply, { timeoutMs: 5_000 });
+  const settled = () => waitFor(async () => !(await thread())?.reply && !(await thread())?.asking, { timeoutMs: 5_000 });
+  /** Stops the reply being written, or waiting, as the panel does. */
+  const stop = async () => who.asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: (await who.asAda.query(api.assistant.replies.live, { threadId }))!.attemptId });
   const steps = () => t.run(async (ctx) => ctx.db.query("assistantSteps").collect());
   const results = () => t.run(async (ctx) => (await ctx.db.query("assistantStepResults").collect()).map((row) => JSON.parse(row.result)));
   /** The chat as its page lists it, oldest first, a line per item. */
@@ -97,7 +100,7 @@ async function chatOf(t: Test) {
     (await who.asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page
       .map((item) => ("text" in item ? `${item.role}: ${item.text}${item.status === "stopped" ? "(stopped)" : ""}` : `step: ${item.action} ${item.status}${item.undone ? ", undone" : item.canUndo ? ", can be undone" : item.canAnswer ? ", can be answered" : ""}`))
       .reverse();
-  return { ...who, threadId, say, sayUntilAsked, settled, thread, steps, results, shown };
+  return { ...who, threadId, say, sayUntilAsked, settled, stop, thread, steps, results, shown };
 }
 
 describe("the assistant's tools", () => {
@@ -207,17 +210,31 @@ describe("the assistant's tools", () => {
     expect(await shown()).toEqual(["user: Add it to both", "step: library/mutations:setPaperInCollection done, can be undone", "step: library/mutations:setPaperInCollection asking, can be answered"]);
     expect(requests).toHaveLength(1);
     await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "And another thing" })).rejects.toThrow(/waiting for an answer/);
+    // Ada is shown what it would do, with her own collection by its name.
+    const asked = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step" && item.status === "asking");
+    expect(asked).toMatchObject({ canAnswer: true, details: expect.arrayContaining([{ name: "collection", value: "Published" }, { name: "title", value: "Tutoring at scale" }, { name: "inCollection", value: "true" }]) });
     // It would run with Ada's access, so only she can allow it.
     await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: ben }, role: "write" });
     const asking = (await steps()).find((step) => step.status === "asking")!;
-    await expect(asBen.mutation(api.assistant.asking.answer, { threadId, stepId: asking._id, allow: true })).rejects.toThrow(/Only the person/);
+    await expect(asBen.mutation(api.assistant.replies.answer, { threadId, stepId: asking._id, allow: true })).rejects.toThrow(/Only the person/);
+    // He sees that it waits, and nothing of what it would do.
+    const seen = (await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step" && item.status === "asking");
+    expect(seen).toMatchObject({ canAnswer: false });
+    expect(seen).not.toHaveProperty("details");
 
     mockDoStream.mockImplementationOnce(finishingDoStream(["It's in both now."]));
-    await asAda.mutation(api.assistant.asking.answer, { threadId, stepId: asking._id, allow: true });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking._id, allow: true });
     await settled();
     // It ran, as its own step, and the model read what came of it where its call left off.
     expect(await collected()).toEqual(expect.arrayContaining([own, followed]));
     expect(outcome(1, "public")).toMatchObject({ type: "json" });
+    // The reply carries on from one conversation, each message once: the question, the calls, then each call's result.
+    expect((requests[1] as Sent).map((message) => (Array.isArray(message.content) ? `${message.role}: ${message.content.map((part) => `${part.type}${part.toolCallId ? ` ${part.toolCallId}` : ""}`).join(", ")}` : message.role))).toEqual([
+      "system",
+      "user: text",
+      "assistant: tool-call public, tool-call private",
+      "tool: tool-result private, tool-result public",
+    ]);
     expect(await shown()).toEqual([
       "user: Add it to both",
       "step: library/mutations:setPaperInCollection done, can be undone",
@@ -226,7 +243,7 @@ describe("the assistant's tools", () => {
     ]);
     expect((await thread())?.reply).toBeUndefined();
     // An answer given twice changes nothing.
-    await expect(asAda.mutation(api.assistant.asking.answer, { threadId, stepId: asking._id, allow: true })).rejects.toThrow(/already been answered/);
+    await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking._id, allow: true })).rejects.toThrow(/already been answered/);
   });
 
   it("ask about each change that would have no undo, tell the model which the person didn't allow, and carry on once all are answered", async () => {
@@ -255,10 +272,10 @@ describe("the assistant's tools", () => {
     ]);
 
     // The first answer isn't the last, so the reply still waits.
-    await asAda.mutation(api.assistant.asking.answer, { threadId, stepId: rename._id, allow: false });
-    expect((await thread())?.reply?.asking).toBeDefined();
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: rename._id, allow: false });
+    expect((await thread())?.asking).toBeDefined();
     mockDoStream.mockImplementationOnce(finishingDoStream(["Saved. The collection keeps its name."]));
-    await asAda.mutation(api.assistant.asking.answer, { threadId, stepId: save._id, allow: true });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: save._id, allow: true });
     await settled();
     expect(outcome(1, "rename")).toMatchObject({ type: "execution-denied" });
     expect(outcome(1, "save")).toMatchObject({ type: "json", value: { id: expect.any(String) } });
@@ -280,14 +297,14 @@ describe("the assistant's tools", () => {
 
   it("decline what a reply still asks when it's stopped, and take the next message as usual", async () => {
     const t = convexTest(schema);
-    const { asAda, threadId, say, sayUntilAsked, thread, shown } = await chatOf(t);
+    const { asAda, threadId, say, sayUntilAsked, stop, thread, shown } = await chatOf(t);
     // Deleting a chat can't be undone.
     const other = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
     mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } }));
     await sayUntilAsked("Delete my old chat");
-    await asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: (await thread())!.reply!.attemptId });
+    await stop();
 
-    expect((await thread())?.reply).toBeUndefined();
+    expect([(await thread())?.reply, (await thread())?.asking]).toEqual([undefined, undefined]);
     expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).not.toBeNull();
     expect(await shown()).toEqual(["user: Delete my old chat", "step: assistant/threads:remove declined", "assistant: (stopped)"]);
     // The call the reply ended on has its answer, so the conversation still reads whole to the model.
@@ -296,6 +313,106 @@ describe("the assistant's tools", () => {
     await say("What happened?");
     expect(outcome(0, "delete")).toMatchObject({ type: "execution-denied" });
     expect((await shown()).at(-1)).toBe("assistant: Nothing was deleted.");
+  });
+
+  it("run nothing the person allowed once the reply is stopped, and still give every call its result", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, say, sayUntilAsked, stop, steps, shown } = await chatOf(t);
+    const [first, second] = await Promise.all(["Old chat", "Older chat"].map((title) => asAda.mutation(api.assistant.threads.create, { title })));
+    const remove = (id: string, chat: string) => ({ id, name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: chat } } });
+    mockDoStream.mockImplementationOnce(calling(remove("one", first), remove("two", second)));
+    await sayUntilAsked("Delete my old chats");
+    const [one, two] = await steps();
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: one._id, allow: true });
+    // The last answer starts the reply again. It's stopped before it runs.
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: two._id, allow: true });
+    await stop();
+    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: 5_000 });
+
+    // Neither chat was deleted, and both calls show as not run.
+    expect(await t.run(async (ctx) => Promise.all([first, second].map((id) => ctx.db.get("assistantThreads", id))))).not.toContain(null);
+    expect(await shown()).toEqual(["user: Delete my old chats", "step: assistant/threads:remove declined", "step: assistant/threads:remove declined", "assistant: (stopped)"]);
+    // The next message reads a conversation where each call has its answer.
+    requests.length = 0;
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Nothing was deleted."]));
+    await say("What happened?");
+    expect([outcome(0, "one"), outcome(0, "two")]).toMatchObject([{ type: "execution-denied" }, { type: "execution-denied" }]);
+  });
+
+  it("hold a reply that carries on to how many a person has at once, and tell the model when a call it asked about was cut off mid-run", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, say, sayUntilAsked, steps, thread } = await chatOf(t);
+    const others = await Promise.all(["Two", "Three", "Four", "Old chat"].map((title) => asAda.mutation(api.assistant.threads.create, { title })));
+    mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: others[3] } } }));
+    await sayUntilAsked("Delete my old chat");
+    const [asked] = await steps();
+
+    // Three replies of hers are being written elsewhere. Waiting isn't one of them, but carrying on would be a fourth.
+    mockDoStream.mockImplementation(hangingDoStream());
+    for (const id of others.slice(0, 3)) await asAda.mutation(api.assistant.replies.send, { threadId: id, text: "Go" });
+    await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asked._id, allow: true })).rejects.toThrow(/already writing 3 replies/);
+    expect((await steps())[0].status).toBe("asking");
+    for (const id of others.slice(0, 3)) {
+      await asAda.mutation(api.assistant.replies.stop, { threadId: id, attemptId: (await t.run(async (ctx) => ctx.db.get("assistantThreads", id)))!.reply!.attemptId });
+      await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", id)))?.reply, { timeoutMs: 5_000 });
+    }
+
+    // A reply that died after it started the call, as its lock's sweep would leave it: the step still running, the chat free.
+    await t.run(async (ctx) => {
+      await ctx.db.patch("assistantSteps", asked._id, { status: "running" });
+      await ctx.db.patch("assistantThreads", threadId, { asking: undefined });
+    });
+    requests.length = 0;
+    mockDoStream.mockReset();
+    mockDoStream.mockImplementationOnce(finishingDoStream(["It may have been deleted. I'd check."]));
+    await say("Did that work?");
+    expect(outcome(0, "delete")).toMatchObject({ type: "json", value: { error: expect.stringMatching(/may or may not have finished/) } });
+    expect((await steps())[0]).toMatchObject({ status: "failed" });
+    expect((await thread())?.asking).toBeUndefined();
+  });
+
+  it("claim a step the person allowed only for the reply that carries on, and not once that reply is stopped", async () => {
+    const t = convexTest(schema);
+    const { ada, threadId } = await chatOf(t);
+    const { stepId, reply } = await t.run(async (ctx) => {
+      const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
+      const reply = { attemptId: "carrying-on", senderId: ada, order: 0, startedAt: 1, scheduledId };
+      await ctx.db.patch("assistantThreads", threadId, { reply });
+      return { reply, stepId: await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "call", tool: "run_action", prompt: "message", path: "assistant/threads:remove", input: "{}", status: "allowed", startedAt: 1 }) };
+    });
+    // Another reply's attempt can't take it, and neither can this one once it's stopped.
+    expect(await t.mutation(internal.assistant.steps.resume, { stepId, attemptId: "another" })).toBe(false);
+    await t.run(async (ctx) => ctx.db.patch("assistantThreads", threadId, { reply: { ...reply, stop: true } }));
+    expect(await t.mutation(internal.assistant.steps.resume, { stepId, attemptId: "carrying-on" })).toBe(false);
+    await t.run(async (ctx) => ctx.db.patch("assistantThreads", threadId, { reply }));
+    // It's taken once.
+    expect(await t.mutation(internal.assistant.steps.resume, { stepId, attemptId: "carrying-on" })).toBe(true);
+    expect(await t.mutation(internal.assistant.steps.resume, { stepId, attemptId: "carrying-on" })).toBe(false);
+    await t.run(async (ctx) => ctx.scheduler.cancel(reply.scheduledId));
+  });
+
+  it("ask about a few actions at a time, and carry on within what's left of one reply's rounds and credits", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, sayUntilAsked, settled, steps, thread } = await chatOf(t);
+    const chats = await Promise.all(Array.from({ length: MAX_ASKS + 1 }, (_, index) => asAda.mutation(api.assistant.threads.create, { title: `Chat ${index}` })));
+    // One round that asks about more than a person would read. Its request reads enough to cost more than one reply may.
+    mockDoStream.mockImplementationOnce(calling(...chats.map((chat, index) => ({ id: `rename${index}`, name: "run_action", input: { name: "assistant/threads:rename", arguments: { threadId: chat, title: `Renamed ${index}` } }, ...(index ? {} : { read: 100_000 }) }))));
+    await sayUntilAsked("Rename them all");
+    const asked = await steps();
+    expect(asked).toHaveLength(MAX_ASKS);
+    // What the reply has used so far waits with it.
+    expect((await thread())?.asking).toMatchObject({ rounds: 1, spent: expect.any(Number) });
+    expect((await thread())!.asking!.spent).toBeGreaterThan(1_000);
+
+    // Carrying on, the last call is already answered: it was refused, since it wasn't asked about.
+    mockDoStream.mockImplementationOnce(calling({ id: "more", name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } })).mockImplementationOnce(finishingDoStream(["Ten renamed."]));
+    for (const step of asked) await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: step._id, allow: true });
+    await settled();
+    expect(outcome(1, `rename${MAX_ASKS}`)).toMatchObject({ type: "execution-denied" });
+    expect(await t.run(async (ctx) => (await ctx.db.get("assistantThreads", chats[0]))?.title)).toBe("Renamed 0");
+    expect(await t.run(async (ctx) => (await ctx.db.get("assistantThreads", chats[MAX_ASKS]))?.title)).toBe(`Chat ${MAX_ASKS}`);
+    // The reply had already cost what one may before it asked, so what it calls next isn't run.
+    expect(told(2, "more")).toMatchObject({ error: expect.stringMatching(/spent the credits/) });
   });
 
   it("run at most so many actions in one reply, and once the reply has cost what one may, refuse the rest and say why", async () => {

@@ -62,7 +62,14 @@ export type Turn = {
    * Releases the reply's lock. Runs whether the reply finished, failed or was stopped, with
    * the input tokens the provider reported for the reply's last request (0 when none finished).
    */
-  release: (outcome: { lastInputTokens: number; asked: Array<{ toolCallId: string; toolName: string; input: unknown }> }) => Promise<unknown>;
+  release: (outcome: {
+    lastInputTokens: number;
+    /** The tool calls the reply ended on, which wait for the person's answer. */
+    asked: Array<{ toolCallId: string; toolName: string; input: unknown }>;
+    /** What its requests cost, in credits, and how many it made. */
+    credits: number;
+    requests: number;
+  }) => Promise<unknown>;
   /** What the model is sent, in place of the agent's own choice of recent messages. */
   contextHandler?: ContextHandler;
   contextOptions?: ContextOptions;
@@ -475,7 +482,12 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
     // placement notes.
     await stopAbortPoller();
     // A reply that failed or was stopped keeps none of its last message, so nothing in it waits for an answer.
-    await turn.release({ lastInputTokens: stepUsages.at(-1)?.inputTokens ?? 0, asked: finished && !streamErrored && !streamAbortedByUser ? asked : [] });
+    await turn.release({
+      lastInputTokens: stepUsages.at(-1)?.inputTokens ?? 0,
+      asked: finished && !streamErrored && !streamAbortedByUser ? asked : [],
+      credits: convertUsdToCredits({ usd: completedUsd }) || 0,
+      requests: stepUsages.length,
+    });
   }
 }
 

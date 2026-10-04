@@ -83,8 +83,11 @@ export async function historySince(
     paginationOpts: { numItems: READ_MESSAGES, cursor: null, maximumRowsRead: READ_MESSAGES, maximumBytesRead: READ_BYTES },
     ...(args.before ? { upToAndIncludingMessageId: args.before } : {}),
   });
+  // The read reaches the end of that message's exchange. A reply that carries on after asking
+  // the person already has responses there, which the agent hands over with the message itself.
+  const exchange = read.page.find((doc) => doc._id === args.before)?.order ?? Infinity;
   return {
-    docs: read.page.filter((doc) => doc._id !== args.before && doc.order > through).reverse(),
+    docs: read.page.filter((doc) => doc.order < exchange && doc.order > through).reverse(),
     whole: read.isDone || read.page.some((doc) => doc.order <= through),
   };
 }
