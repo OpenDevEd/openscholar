@@ -50,13 +50,17 @@ export function inputSchema(entry: UserAction) {
   return z.object(convexToZodFields(fieldsWithStringIds(fields)));
 }
 
-/** Runs an action as `userId`. `callKey` names this call and fills the action's retry key, so the same call tried again applies once. */
-export function runAction(ctx: ActionCtx, userId: Id<"users">, entry: UserAction, input: Record<string, unknown>, callKey: string): Promise<unknown> {
+/**
+ * Runs an action as `userId`. `callKey` names this call and fills the action's retry key, so
+ * the same call tried again applies once. A change given `stepId` ends that step itself, in
+ * its own transaction.
+ */
+export function runAction(ctx: ActionCtx, userId: Id<"users">, entry: UserAction, input: Record<string, unknown>, callKey: string, stepId?: Id<"assistantSteps">): Promise<unknown> {
   const retryKey = retryKeyOf(entry);
   const args = { ...input, ...(retryKey ? { [retryKey]: callKey } : {}), userId };
   const ref = assistantPath(entry.path);
   if (entry.kind === "query") return ctx.runQuery(makeFunctionReference<"query">(ref), args);
-  if (entry.kind === "mutation") return ctx.runMutation(makeFunctionReference<"mutation">(ref), args);
+  if (entry.kind === "mutation") return ctx.runMutation(makeFunctionReference<"mutation">(ref), { ...args, ...(stepId ? { stepId } : {}) });
   return ctx.runAction(makeFunctionReference<"action">(ref), args);
 }
 

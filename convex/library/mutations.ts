@@ -1,6 +1,6 @@
 import { v, type Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
@@ -50,7 +50,7 @@ function requireRating(rating: number) {
   }
 }
 
-async function findItem(ctx: MutationCtx, userId: Id<"users">, openalexId: string) {
+async function findItem(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, openalexId: string) {
   return await ctx.db
     .query("libraryItems")
     .withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", openalexId))
@@ -126,7 +126,7 @@ function setResearchRating(ctx: MutationCtx, userId: Id<"users">, paperId: strin
 }
 
 /** The paper's rating on search cards, or null. */
-async function researchRating(ctx: MutationCtx, userId: Id<"users">, paperId: string) {
+async function researchRating(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperId: string) {
   return (await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", (q) => q.eq("userId", userId).eq("data.paperId", paperId)).unique())?.data.rating ?? null;
 }
 
@@ -151,6 +151,13 @@ export const saveToLibraryAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  // The saves that return no undo (see `run`): one whose undo would lose the rating the paper has on search cards.
+  asksFirst: async (ctx, userId, { rating, openalexId }) => {
+    const [item, onCards] = [await findItem(ctx, userId, openalexId), await researchRating(ctx, userId, openalexId)];
+    if (!item) return onCards !== null;
+    const was = item.rating ?? null;
+    return rating !== undefined && rating !== was && onCards !== was;
+  },
   run: async (ctx, userId, { rating, ...paper }, author) => {
     if (rating !== undefined) requireRating(rating);
     const before = await findItem(ctx, userId, paper.openalexId);
@@ -187,6 +194,12 @@ export const setLibraryRatingAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  // The change that returns no undo (see `run`): the library and search cards hold different ratings, and putting one back would lose the other.
+  asksFirst: async (ctx, userId, { openalexId, rating }) => {
+    const item = await findItem(ctx, userId, openalexId);
+    const was = item?.rating ?? null;
+    return item !== null && was !== rating && (await researchRating(ctx, userId, openalexId)) !== was;
+  },
   run: async (ctx, userId, { openalexId, rating, expect }, author) => {
     if (rating !== null) requireRating(rating);
     const item = await findItem(ctx, userId, openalexId);

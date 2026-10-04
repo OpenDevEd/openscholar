@@ -188,12 +188,14 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           abortSignal: abortController.signal,
           // A reply with tools takes a step for each round of calls, up to its limit. The last
           // step it's allowed is for its answer: it can't call a tool there, so it never ends
-          // on actions it hasn't told the person about.
+          // on actions it hasn't told the person about. It's also made to answer once its
+          // requests have cost what was held for it, so a reply spends at most one request past its hold.
           ...(turn.tools
             ? {
                 tools: turn.tools,
                 stopWhen: isStepCount(turn.maxSteps ?? 1),
-                prepareStep: ({ stepNumber }: { stepNumber: number }) => (turn.maxSteps && stepNumber >= turn.maxSteps - 1 ? { toolChoice: "none" as const } : undefined),
+                prepareStep: ({ stepNumber }: { stepNumber: number }) =>
+                  (turn.maxSteps && stepNumber >= turn.maxSteps - 1) || (convertUsdToCredits({ usd: completedUsd }) || 0) >= turn.credits ? { toolChoice: "none" as const } : undefined,
               }
             : {}),
           // Retries serve no user when the stream is live — the user

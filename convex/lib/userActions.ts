@@ -12,6 +12,8 @@ import { action, internalAction, internalMutation, internalQuery, mutation, quer
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireActiveUser, requireAuth } from "./auth";
+import { createError } from "./errors";
+import { endStep } from "../assistant/steps";
 
 /** Who made a change: the person themselves, or the assistant acting for them. */
 export type Author = "user" | "assistant";
@@ -98,6 +100,14 @@ function tagged<Fn extends object>(fn: Fn, path: string): Fn {
 
 const accountArg = { accountId: v.string() };
 const userArg = { userId: v.id("users") };
+/**
+ * What only the assistant's side passes a change: `stepId`, the step of the reply this call
+ * is, which the change ends in its own transaction; and `approved`, set when the person
+ * themselves asked for it, as when they press Undo.
+ */
+const changeArgs = { ...userArg, stepId: v.optional(v.id("assistantSteps")), approved: v.optional(v.boolean()) };
+/** What the assistant is told when a call asks the person first. */
+export const ASKS_FIRST = "This asks the person first, and a chat can't ask yet. Tell them what you would have done, so they can do it themselves.";
 
 /** The acting user and the action's own arguments, from an internal call. */
 function asUser<Args extends PropertyValidators>(args: ObjectType<Args & typeof userArg>) {
@@ -193,13 +203,19 @@ export function accountMutation<Args extends PropertyValidators, Returns extends
 /** The same mutation for the assistant: it runs as the sender and records the assistant as the author. */
 export function assistantMutation<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserMutation<Args, Returns>) {
   return tagged(
-    internalMutation<Args & typeof userArg, Returns, Promise<Infer<Returns>>>({
-      args: { ...entry.args, ...userArg },
+    internalMutation<Args & typeof changeArgs, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...changeArgs },
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const { userId, rest } = asUser<Args>(args);
+        const { userId, stepId, approved, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
+        const rest = own as ObjectType<Args>;
         // The sender may have been suspended or deleted since the turn began.
-        return entry.run(ctx, (await requireActiveUser(ctx, userId))._id, rest, "assistant");
+        const actingAs = (await requireActiveUser(ctx, userId))._id;
+        // Read here, in the change's own transaction: what was true before the call may not be now.
+        if (!approved && entry.asksFirst && (await entry.asksFirst(ctx, actingAs, rest))) throw createError("FORBIDDEN", ASKS_FIRST);
+        const result = await entry.run(ctx, actingAs, rest, "assistant");
+        if (stepId) await endStep(ctx, stepId, result);
+        return result;
       },
     }),
     entry.path,
