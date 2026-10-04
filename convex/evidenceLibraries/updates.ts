@@ -16,7 +16,6 @@ import {
   readEvidenceLibraryAccess,
   requireEvidenceLibraryAccess,
 } from "./access";
-import { readEvidenceLibraries } from "./queries";
 import { probeEvidenceLibraryAddress } from "./readinessClient";
 import {
   fetchRuntimeRelease,
@@ -444,16 +443,6 @@ export const getAddressNotice = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.union(addressNoticeValidator, v.null()),
   handler: async (ctx, args) => addressNoticeOf(ctx, (await requireEvidenceLibraryAccess(ctx, args.libraryId, "read")).library),
-});
-
-/** Kept for one release, while the deployed site still calls it; `getAddressNotice` replaces it. */
-export const listAddressNotices = query({
-  args: {},
-  returns: v.array(addressNoticeValidator),
-  handler: async (ctx) => {
-    const notices = await Promise.all((await readEvidenceLibraries(ctx)).map((library) => addressNoticeOf(ctx, library)));
-    return notices.filter((notice) => notice !== null);
-  },
 });
 
 // Maintenance entry point: refresh the release row for one running commit

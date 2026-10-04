@@ -146,38 +146,6 @@ export const listCollections = action({
     ),
 });
 
-/** Kept for one release, while the deployed site still calls it; `listCollections` replaces it. */
-export const listLibraryCollections = action({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    query: v.optional(v.string()),
-    cursor: v.optional(v.string()),
-  },
-  returns: v.object({
-    reason: notSetUpValidator,
-    items: v.array(collectionValidator),
-    nextCursor: v.union(v.string(), v.null()),
-  }),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<RuntimeCollectionsPage & { reason?: "not-set-up" }> => {
-    const result = await readRuntime<RuntimeCollectionsPage>(
-      ctx,
-      args.libraryId,
-      (target) =>
-        readRuntimeCollections(fetch, {
-          ...target,
-          query: args.query,
-          cursor: args.cursor,
-        }),
-    );
-    return "reason" in result
-      ? { ...result, items: [], nextCursor: null }
-      : result;
-  },
-});
-
 /** One page of the institutions named on the library's records. */
 export const listInstitutions = action({
   args: {
@@ -200,42 +168,6 @@ export const listInstitutions = action({
         }),
       ),
     ),
-});
-
-/** Kept for one release, while the deployed site still calls it; `listInstitutions` replaces it. */
-export const listRecordInstitutions = action({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    query: v.optional(v.string()),
-    cursor: v.optional(v.string()),
-    sort: v.optional(v.union(v.literal("count"), v.literal("name"))),
-    direction: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-  },
-  returns: v.object({
-    reason: notSetUpValidator,
-    items: v.array(institutionValidator),
-    nextCursor: v.union(v.string(), v.null()),
-  }),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<RuntimeInstitutionsPage & { reason?: "not-set-up" }> => {
-    const result = await readRuntime<RuntimeInstitutionsPage>(
-      ctx,
-      args.libraryId,
-      (target) =>
-        readRuntimeInstitutions(fetch, {
-          ...target,
-          query: args.query,
-          cursor: args.cursor,
-          sort: args.sort,
-          direction: args.direction,
-        }),
-    );
-    return "reason" in result
-      ? { ...result, items: [], nextCursor: null }
-      : result;
-  },
 });
 
 /**
@@ -330,40 +262,6 @@ export const readPublication = action({
     return "reason" in result
       ? null
       : (result.items.find((item) => item.key === args.key) ?? null);
-  },
-});
-
-/** Kept for one release, while the deployed site still calls it; `listPublications` and `readPublication` replace it. */
-export const listReviewedPublications = action({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    query: v.optional(v.string()),
-    cursor: v.optional(v.string()),
-    ids: v.optional(v.array(v.string())),
-  },
-  returns: v.object({
-    reason: notSetUpValidator,
-    items: v.array(reviewedPublicationValidator),
-    nextCursor: v.union(v.string(), v.null()),
-  }),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<RuntimeReviewedPublicationsPage & { reason?: "not-set-up" }> => {
-    const result = await readRuntime<RuntimeReviewedPublicationsPage>(
-      ctx,
-      args.libraryId,
-      (target) =>
-        readRuntimeReviewedPublications(fetch, {
-          ...target,
-          query: args.query,
-          cursor: args.cursor,
-          ids: args.ids,
-        }),
-    );
-    return "reason" in result
-      ? { ...result, items: [], nextCursor: null }
-      : result;
   },
 });
 

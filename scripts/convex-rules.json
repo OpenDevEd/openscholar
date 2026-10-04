@@ -28,8 +28,6 @@
       "convex/evidenceLibraries/queries.ts:listTeam:.owners[]": "#423",
       "convex/evidenceLibraries/updates.ts:check:.changes[]": "#425",
       "convex/evidenceLibraries/updates.ts:check:.releases[]": "#425",
-      "convex/evidenceLibraries/updates.ts:listAddressNotices:[]": "#423",
-      "convex/evidenceLibraries/versions.ts:listVersions:[]": "#423",
       "convex/models/queries.ts:list:[]": "#424",
       "convex/models/queries.ts:listCatalogOptions:[]": "#424",
       "convex/organizationFeatures.ts:libraryOrganizations:[]": "#423",
@@ -37,10 +35,7 @@
       "convex/zotero/actions.ts:fetchGroups:[]": "#425",
       "convex/zotero/actions.ts:fetchItems:.items[]": "#425",
       "convex/zotero/actions.ts:fetchItems:.items[].authors[]": "#425",
-      "convex/zotero/libraryGroupActions.ts:listMyZoteroGroups:.groups[]": "#425",
-      "convex/zotero/runtimeReadActions.ts:listLibraryCollections:.items[]": "#425",
-      "convex/zotero/runtimeReadActions.ts:listRecordInstitutions:.items[]": "#425",
-      "convex/zotero/runtimeReadActions.ts:listReviewedPublications:.items[]": "#425"
+      "convex/zotero/libraryGroupActions.ts:listMyZoteroGroups:.groups[]": "#425"
     }
   },
   "untypedReturns": {
