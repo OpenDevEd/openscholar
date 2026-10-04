@@ -6,6 +6,7 @@ import { api, internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
 import { seedAccount } from "../../lib/maxSize.test-support";
+import { runUntriggered } from "../../../tests/convex-test-with-limits";
 
 type Test = ReturnType<typeof convexTest>;
 type Status = "pending" | "extracting" | "completed" | "failed" | "cancelled" | "paused";
@@ -64,15 +65,40 @@ describe("the extraction job list", () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
     await seedJobs(t, userId, JOBS);
-    const other = await seedAccount(t, "someone_else");
-    await seedJobs(t, other.userId, [{ name: "Alpha of another person", status: "completed" }]);
+    const someoneElse = await t.run((ctx) => ctx.db.insert("users", { clerkId: "someone_else", email: "else@example.org", state: "active", createdAt: 1, updatedAt: 1 }));
+    await seedJobs(t, someoneElse, [{ name: "Alpha of another person", status: "completed" }]);
     const names = async (text: string, sort: "recent" | "status" = "recent") =>
       (await as.query(api.extraction.queries.listJobs, { sort, text, paginationOpts: { cursor: null, numItems: 10 } })).page.map((job) => job.name);
 
     expect(await names("ALPHA")).toEqual(["Alpha review"]);
     expect(await names("primary schools")).toEqual(["Alpha review"]);
-    expect(await names("t", "status")).toEqual(["delta cohort", "beta trials", "Charlie study", "zeta notes"]);
+    expect(await names("ta", "status")).toEqual(["delta cohort", "beta trials", "zeta notes"]);
     expect(await names("nothing like this")).toEqual([]);
+  });
+
+  it("finds the one match among thousands of jobs over several reads, each within its allowance", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    // The match is the oldest completed job: last in the status order, behind 2,299 others.
+    for (let from = 0; from < 2_300; from += 460) {
+      await t.run(async (ctx) => {
+        for (let i = from; i < from + 460; i++) {
+          await ctx.db.insert("extractionJobs", { userId, mode: "extraction", totalPapers: 1, createdAt: i, updatedAt: i, name: i === 0 ? "needle" : `job ${i}`, status: i % 2 ? "pending" : "completed" });
+        }
+      });
+    }
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    let reads = 0;
+    for (; reads < 5; reads++) {
+      const page: { page: Array<{ name: string }>; isDone: boolean; continueCursor: string } = await as.query(api.extraction.queries.listJobs, { sort: "status", text: "needle", paginationOpts: { cursor, numItems: 20 } });
+      seen.push(...page.page.map((job) => job.name));
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+    expect(seen).toEqual(["needle"]);
+    expect(reads).toBeGreaterThan(0);
   });
 
   it("keeps the count of a person's jobs as they are made and deleted", async () => {
@@ -103,8 +129,8 @@ describe("the extraction job list", () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
     await seedJobs(t, userId, JOBS);
-    // As jobs saved before: no sort name, and no count.
-    await t.run(async (ctx) => {
+    // As jobs saved before: no sort name, and no count. Written without the triggers, which would put the sort name back.
+    await runUntriggered(t, async (ctx) => {
       for (const job of await ctx.db.query("extractionJobs").take(10)) await ctx.db.replace(job._id, (({ _id, _creationTime, sortName, ...rest }) => rest)(job));
       for (const row of await ctx.db.query("recordCounts").take(10)) await ctx.db.delete(row._id);
     });

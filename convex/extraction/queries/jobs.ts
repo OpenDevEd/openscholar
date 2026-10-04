@@ -9,7 +9,7 @@
  */
 
 import { query, type QueryCtx } from "../../_generated/server";
-import { v } from "convex/values";
+import { getDocumentSize, v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { stream } from "convex-helpers/server/stream";
 import schema from "../../schema";
@@ -100,22 +100,33 @@ export const listJobsAction = defineUserQuery({
     await requireFeature(ctx, "extraction.enabled");
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, JOBS_PAGE_MAX), maximumBytesRead: JOBS_PAGE_BYTES };
     const needle = text?.trim().toLowerCase();
-    const matches = async (job: Doc<"extractionJobs">) => !needle || job.name.toLowerCase().includes(needle) || (job.description?.toLowerCase().includes(needle) ?? false);
+    // What a filtered page has read so far: the statuses of one page share one allowance.
+    let rows = 0;
+    let bytes = 0;
+    const matches = async (job: Doc<"extractionJobs">) => {
+      rows++;
+      bytes += getDocumentSize(job);
+      return !needle || job.name.toLowerCase().includes(needle) || (job.description?.toLowerCase().includes(needle) ?? false);
+    };
     if (sort === "status") {
       // One status after another in the list's order, each newest first. The cursor says which
-      // status the page stopped in and where.
-      let { rank, cursor }: { rank: number; cursor: string | null } = opts.cursor ? JSON.parse(opts.cursor) : { rank: 0, cursor: null };
-      const page: Doc<"extractionJobs">[] = [];
-      for (; rank < STATUS_ORDER.length; rank++, cursor = null) {
-        const status = STATUS_ORDER[rank];
+      // status the page stopped in and where. A page is at most `numItems` jobs, however many
+      // statuses it takes them from.
+      const from: { rank: number; after: string | null } = opts.cursor ? JSON.parse(opts.cursor) : { rank: 0, after: null };
+      const readStatus = async (rank: number, cursor: string | null, room: number) => {
         const read = await stream(ctx.db, schema)
           .query("extractionJobs")
-          .withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", status))
+          .withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", STATUS_ORDER[rank]))
           .order("desc")
           .filterWith(matches)
-          .paginate({ cursor, numItems: opts.numItems - page.length, maximumBytesRead: JOBS_PAGE_BYTES, maximumRowsRead: JOBS_FILTER_ROWS });
-        page.push(...read.page);
-        if (!read.isDone) return { page, isDone: false, continueCursor: JSON.stringify({ rank, cursor: read.continueCursor }) };
+          .paginate({ cursor, numItems: room, maximumBytesRead: JOBS_PAGE_BYTES - bytes, maximumRowsRead: JOBS_FILTER_ROWS - rows });
+        return { jobs: read.page, after: read.isDone ? null : read.continueCursor };
+      };
+      const page: Doc<"extractionJobs">[] = [];
+      for (let rank = from.rank; rank < STATUS_ORDER.length; rank++) {
+        const { jobs, after } = await readStatus(rank, rank === from.rank ? from.after : null, opts.numItems - page.length);
+        page.push(...jobs);
+        if (after !== null) return { page, isDone: false, continueCursor: JSON.stringify({ rank, after }) };
       }
       return { page, isDone: true, continueCursor: "" };
     }
