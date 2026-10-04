@@ -83,7 +83,7 @@ describe("screening with Jev", () => {
       papers: [{ id: "p1", title: "ok", abstract: "..." }, { id: "p2", title: "broken", abstract: "..." }],
     });
     expect(calls).toBe(2);
-    expect(out.results.p1).toEqual({ responses: { "Primary study?": true, "In Africa?": null }, confidence: 0.7 });
+    expect(out.results.p1).toEqual({ responses: { "Primary study?": true, "In Africa?": null }, confidences: { "Primary study?": 0.8, "In Africa?": 0.6 }, confidence: 0.7 });
     expect(out.errors).toEqual([{ paperId: "p2", error: expect.stringContaining("502") }]);
     expect(out.usageByItemId.p1).toMatchObject({ costUsd: 0.00001 });
   });

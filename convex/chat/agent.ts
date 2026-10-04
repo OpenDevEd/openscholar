@@ -2,7 +2,7 @@ import { Agent } from "@convex-dev/agent";
 import { isStepCount, type ModelMessage } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { components, internal } from "../_generated/api";
-import { SERVER_AI_CONFIG } from "../ai/config";
+import { SERVER_MODEL_SLUG } from "../ai/config";
 import { chatSearchesWeb } from "../../lib/chat/web-search-capability";
 
 /**
@@ -19,16 +19,14 @@ import { chatSearchesWeb } from "../../lib/chat/web-search-capability";
  *   stream settles; keep the agent callback path free of extra DB work
  *   so stop/abort transitions do not race dangling mutations.
  */
-const defaultModelId = SERVER_AI_CONFIG.model.includes("/")
-  ? SERVER_AI_CONFIG.model
-  : `${SERVER_AI_CONFIG.provider}/${SERVER_AI_CONFIG.model}`;
+const defaultModelId = SERVER_MODEL_SLUG;
 
 const openrouter = createOpenRouter();
 // `usage: { include: true }` makes OpenRouter ship the all-in USD
 // cost on providerMetadata.openrouter.usage.cost — the source-of-
 // truth that chat billing prefers when present (see plan-02 and
 // convex/chat/billing.ts).
-const defaultLanguageModel = openrouter.chat(defaultModelId, {
+export const defaultLanguageModel = openrouter.chat(defaultModelId, {
   usage: { include: true },
 });
 

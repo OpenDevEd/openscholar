@@ -26,12 +26,13 @@
 
 import { useId } from "react";
 import { useTranslations } from "next-intl";
-import { CircleCheck, CircleX } from "lucide-react";
+import { CircleCheck, CircleX } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { ERROR_CODES, type ErrorCode } from "@/lib/errors/taxonomy";
+import { summarizeFailures } from "@/lib/extraction/failures-summary";
 
 const KNOWN_CODES: ReadonlySet<string> = new Set(ERROR_CODES);
 
@@ -55,10 +56,8 @@ export function MixedSuccessSummary({ jobId, onShowFailures, papersRead }: Mixed
   const titleForCode = (code: string): string =>
     KNOWN_CODES.has(code) ? tTitle(code as ErrorCode) : code.replace(/_/g, " ");
 
-  const { data: summary, settlement } = useProtectedQuery(
-    api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary,
-    { jobId },
-  );
+  const { data: failures, settlement } = useProtectedQuery(api.extraction.queries.countJobFailures, { jobId });
+  const summary = failures && { ...summarizeFailures(failures.paperErrors), answeredTotal: failures.answered, totalQuestions: failures.asked };
 
   // Only render on the happy-path: query ready and there's at least
   // one classified failure. On a clean completed job nothing renders.
@@ -85,7 +84,7 @@ export function MixedSuccessSummary({ jobId, onShowFailures, papersRead }: Mixed
       </h3>
       {/* A legend for the bar above: what worked, then each reason something failed. */}
       <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-        <CircleCheck aria-hidden className="size-4 text-emerald-600 dark:text-emerald-400" />
+        <CircleCheck aria-hidden className="size-4 ink-success" />
         {t("answeredOverTotal", {
           papers: papersRead,
           answered: summary.answeredTotal,

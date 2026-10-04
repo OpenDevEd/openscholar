@@ -37,7 +37,7 @@ export async function seedOrganizationFeatures(
 
 export async function seedFeatureUser(ctx: MutationCtx, clerkId: string) {
   const existing = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkId)).unique();
-  return existing?._id ?? await ctx.db.insert("users", {
+  return existing?._id ?? await ctx.db.insert("users", {libraryItemCount: 0, 
     clerkId, email: clerkId + "@example.org", state: "active", createdAt: 1, updatedAt: 1,
   });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type Dispatch, type SetStateAction } from "react";
-import { Table2, LayoutGrid, PanelLeft, ArrowUpDown, Columns3, Check, ListFilter } from "lucide-react";
+import { Table2, LayoutGrid, PanelLeft, ArrowUpDown, Columns3, Check, ListFilter } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {

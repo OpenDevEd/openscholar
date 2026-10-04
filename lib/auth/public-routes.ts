@@ -4,13 +4,13 @@ export const PUBLIC_UNAUTHENTICATED_PATHS = [
   "/topics/:path*",
   "/privacy",
   "/cookie-policy",
+  "/credits",
   "/results/:path*",
   "/sign-in/:path*",
   "/sign-up/:path*",
   "/bookmarks",
   "/history",
   "/settings/ai",
-  "/api/openalex/search",
   "/data/:path*", // PostHog proxy - must work when signed out
   "/connect", // Wallet connection consent flow
 ] as const;

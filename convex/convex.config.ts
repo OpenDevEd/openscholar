@@ -5,8 +5,9 @@ import screeningWorkpool from "@convex-dev/workpool/convex.config.js";
 import extractionPaperWorkpool from "@convex-dev/workpool/convex.config.js";
 import aggregate from "@convex-dev/aggregate/convex.config.js";
 import agent from "@convex-dev/agent/convex.config.js";
-import shardedCounter from "@convex-dev/sharded-counter/convex.config.js";
 import migrations from "@convex-dev/migrations/convex.config.js";
+import batchWorker from "@convex-dev/batch-worker/convex.config.js";
+import presence from "@convex-dev/presence/convex.config.js";
 
 const app = defineApp();
 app.use(migrations);
@@ -15,25 +16,17 @@ app.use(workpool);
 app.use(screeningWorkpool, { name: "screeningWorkpool" });
 app.use(extractionPaperWorkpool, { name: "extractionPaperWorkpool" });
 app.use(agent);
-// Tier B (plans/extraction-occ-fixes): per-job processed/failed paper
-// counters live in a sharded counter instead of mutable fields on the
-// extractionJobs row. Two named instances — `extractionProcessedCounter`
-// and `extractionFailedCounter` — each keyed by jobId. The previous
-// singleton-row patch in markPaperTerminalTx forced P-way OCC retries
-// on every job whenever extraction fanned out per paper; routing the
-// increments through shards eliminates the write-write contention so
-// the queue/workpool path can run at bounded parallelism without
-// hot-leaf collapse.
-app.use(shardedCounter, { name: "extractionProcessedCounter" });
-app.use(shardedCounter, { name: "extractionFailedCounter" });
 // creditsAgg: per-job credit totals (convex/extraction/aggregates.ts).
 app.use(aggregate, { name: "creditsAgg" });
-// Screening progress aggregates (plan-02). Both are namespaced by jobId:
-// - screeningResultStatusAgg: counts terminal result states by status
-// - screeningQualifiedAgg: counts completed qualified results
-app.use(aggregate, { name: "screeningResultStatusAgg" });
-app.use(aggregate, { name: "screeningQualifiedAgg" });
 // usageAgg: each charge counted under its user and its job, newest last, so the
 // billing page can page through charges with page numbers (convex/billing/usageLog.ts).
 app.use(aggregate, { name: "usageAgg" });
+// listCounts: how many rows each paged list holds, a namespace per list (convex/lib/listCounts.ts).
+app.use(aggregate, { name: "listCounts" });
+// Queues whose one worker each does shared bookkeeping in batches, so parallel work only
+// writes its own rows: Screen all's results (convex/screening/bookkeeping.ts) and the
+// usage ledger (convex/billing/ledger.ts).
+app.use(batchWorker);
+// Who has an assistant chat open (convex/assistant/presence.ts).
+app.use(presence);
 export default app;

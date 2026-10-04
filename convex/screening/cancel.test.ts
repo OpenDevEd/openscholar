@@ -1,9 +1,11 @@
 import { convexTest } from "convex-test";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { Id } from "../_generated/dataModel";
 import { api } from "../_generated/api";
 import schema from "../schema";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { createJob, insertJob } from "./createJob.test-support";
+import { SCREENING_POOL_SIZE, screeningPool } from "../workpool";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
@@ -16,6 +18,7 @@ async function seedUser(
 ) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId,
       email,
       firstName: "Test",
@@ -40,7 +43,7 @@ async function seedScreeningJob(
 ) {
   return await t.run(async (ctx) => {
     const now = Date.now();
-    const jobId = await ctx.db.insert("screeningJobs", {
+    const jobId = await insertJob(ctx, {
       userId,
       status: overrides.status ?? "processing",
       totalPapers: overrides.totalPapers ?? 5,
@@ -250,9 +253,7 @@ describe("cancelScreeningJob", () => {
     const userATest = t.withIdentity({ subject: "clerk_cancel11a" });
     const userBTest = t.withIdentity({ subject: "clerk_cancel11b" });
 
-    const targetJob = await userATest.mutation(
-      api.screening.mutations.createScreeningJob,
-      {
+    const targetJob = await createJob(userATest, {
         papers: [
           {
             openalexId: "oa:target",
@@ -266,9 +267,7 @@ describe("cancelScreeningJob", () => {
         },
       }
     );
-    const otherJob = await userBTest.mutation(
-      api.screening.mutations.createScreeningJob,
-      {
+    const otherJob = await createJob(userBTest, {
         papers: [
           {
             openalexId: "oa:other",
@@ -304,5 +303,32 @@ describe("cancelScreeningJob", () => {
       expect(typeof targetResult?.workId).toBe("string");
       expect(typeof otherResult?.workId).toBe("string");
     });
+  });
+
+  it("cancels at once, then skips a large job's waiting papers and drops its started papers' work, a batch at a time", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema);
+    setupScreeningWorkpool(t);
+    const user = await seedUser(t, "clerk_cancel_big", "cancel_big@test.com");
+    await seedCredits(t, user._id, 100_000, 0);
+    const asUser = t.withIdentity({ subject: "clerk_cancel_big" });
+    const { jobId } = await createJob(asUser, {
+      papers: Array.from({ length: 250 }, (_, i) => ({ openalexId: `oa:${i}`, title: `Paper ${i}` })),
+      questions: [{ key: "q1", question: "Is this relevant?" }],
+      scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] },
+    });
+    const cancel = vi.spyOn(screeningPool, "cancel");
+
+    await asUser.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
+
+    // The request itself only marks the job; papers check it and skip.
+    expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("cancelled");
+    expect(cancel).not.toHaveBeenCalled();
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect());
+    expect(new Set(cancel.mock.calls.map(([, workId]) => workId)).size).toBe(SCREENING_POOL_SIZE);
+    expect(results.filter((r) => r.status === "skipped" && r.workId === undefined)).toHaveLength(250 - SCREENING_POOL_SIZE);
+    cancel.mockRestore();
+    vi.useRealTimers();
   });
 });

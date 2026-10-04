@@ -2,6 +2,7 @@ import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { assertNonProd } from "../lib/assertNonProd";
 import { readJobCounters } from "./jobCounters";
+import { PAPER_LIMIT } from "../../lib/extraction/limits";
 
 /**
  * Diagnostic query to inspect extraction job status, paper counts, and processing state.
@@ -48,7 +49,7 @@ export const diagnoseJob = internalQuery({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(PAPER_LIMIT);
 
     const statusCounts = papers.reduce((acc, p) => {
       acc[p.status] = (acc[p.status] || 0) + 1;

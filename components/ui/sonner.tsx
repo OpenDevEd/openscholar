@@ -2,27 +2,8 @@
 
 import { useTheme } from "next-themes";
 import { Toaster as Sonner, ToasterProps, toast } from "sonner";
-import { AlertCircle, ArrowRight, Settings, X } from "lucide-react";
+import { AlertCircle, ArrowRight, Settings, X } from "@/components/icons";
 import { cn } from "@/lib/utils";
-
-function ToastGradientBar({
-  from,
-  via,
-  to,
-}: {
-  from: string;
-  via: string;
-  to: string;
-}) {
-  return (
-    <div
-      className="absolute left-0 top-1/2 -translate-y-1/2 h-[60%] w-[3px] rounded-r-sm"
-      style={{
-        background: `linear-gradient(180deg, ${from} 0%, ${via} 50%, ${to} 100%)`,
-      }}
-    />
-  );
-}
 
 type ToastAction = {
   label: string;
@@ -52,18 +33,13 @@ function CustomToast({
     <div
       className={cn(
         "relative flex min-w-[300px] max-w-[400px] items-start gap-3 overflow-hidden rounded-xl border p-3 pl-5",
-        "bg-[oklch(0.96_0.02_25/0.8)] border-[oklch(0.85_0.08_25/0.5)]",
-        "dark:bg-[oklch(0.22_0.02_25/0.9)] dark:border-[oklch(0.35_0.08_25/0.5)]",
+        "bg-[color-mix(in_oklab,var(--destructive)_8%,var(--background))] border-destructive/30",
         "shadow-md transition-shadow duration-200 ease-out hover:shadow-lg"
       )}
     >
-      <ToastGradientBar
-        from="oklch(0.65 0.2 25)"
-        via="oklch(0.58 0.22 27)"
-        to="oklch(0.52 0.2 30)"
-      />
+      <div className="absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r-sm bg-destructive" />
 
-      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[oklch(0.58_0.22_27)]" />
+      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
 
       <div className="flex min-w-0 flex-1 flex-col gap-1 pr-6">
         <span className="text-sm font-medium leading-tight text-foreground">{title}</span>
@@ -79,7 +55,7 @@ function CustomToast({
               }}
               className={cn(
                 "inline-flex h-7 w-fit items-center justify-center gap-1.5 rounded-md border-0 px-3 text-xs font-medium",
-                "bg-primary text-primary-foreground transition-colors duration-150 hover:bg-[oklch(0.62_0.16_52)]",
+                "bg-primary text-primary-foreground transition-colors duration-150 hover:bg-primary-deep",
                 "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               )}
             >
@@ -148,13 +124,29 @@ export function showStyledToast(
   );
 }
 
+/**
+ * Wraps a modal's onInteractOutside so pressing a toast's button, such as Undo,
+ * doesn't count as outside and close the modal.
+ */
+export function withToastsInside<Event extends { target: EventTarget | null; preventDefault(): void }>(
+  handler?: (event: Event) => void,
+) {
+  return (event: Event) => {
+    if (event.target instanceof Element && event.target.closest("[data-sonner-toaster]")) {
+      event.preventDefault();
+    }
+    handler?.(event);
+  };
+}
+
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();
 
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
-      className="toaster group"
+      // A modal blocks pointer events outside itself; toasts stay pressable above it.
+      className="toaster group pointer-events-auto"
       position="bottom-right"
       visibleToasts={4}
       expand

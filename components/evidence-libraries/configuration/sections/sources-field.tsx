@@ -9,7 +9,7 @@ import {
   Plus,
   RefreshCw,
   Settings2,
-} from "lucide-react";
+} from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -158,7 +158,7 @@ export function SourcesField({
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const account = useProtectedQuery(api.zotero.queries.getConnectionStatus, {});
   const groups = useProtectedQuery(
-    api.zotero.libraryGroups.listLibraryZoteroGroups,
+    api.zotero.libraryGroups.listZoteroGroups,
     { libraryId },
   );
   const listMyGroups = useAction(
@@ -202,7 +202,7 @@ export function SourcesField({
     (source): source is ZoteroSourceEntry => source.provider === "zotero",
   );
   const byGroupId = new Map<string, ConnectedGroup>(
-    (groups.data ?? []).map((group) => [group.groupId, group]),
+    (groups.data?.page ?? []).map((group) => [group.groupId, group]),
   );
 
   /** Connects each group; returns the ids that could not be connected. */
@@ -271,7 +271,7 @@ export function SourcesField({
       ) : (
         <ul
           aria-label={t("listLabel")}
-          className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 bg-background"
+          className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-background"
         >
           {zoteroSources.map((entry) => (
             <GroupRow
@@ -425,7 +425,7 @@ export function SourcesField({
                 open={advancedOpen}
                 onOpenChange={setAdvancedOpen}
                 label={t("tagRulesHeading")}
-                className="border-t border-border/50 pt-5"
+                className="border-t border-border-subtle pt-5"
               >
                 <div className="pt-3">
                   <Panel tone="muted" className="space-y-4">

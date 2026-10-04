@@ -20,7 +20,7 @@
  *   data-paper-id         — stable id hook for deep-links
  */
 
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
@@ -52,7 +52,7 @@ export function NowProcessing({ jobId }: NowProcessingProps) {
       aria-label={t("label", { title: data.paperTitle })}
       data-now-processing-paper={data.paperTitle}
       data-paper-id={data.paperId}
-      className="inline-flex items-center gap-2 rounded-md bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground"
+      className="inline-flex items-center gap-2 rounded-md bg-inset px-3 py-1.5 text-xs text-muted-foreground"
     >
       <Loader2
         className="h-3.5 w-3.5 animate-spin text-primary"

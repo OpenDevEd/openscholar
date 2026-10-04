@@ -2,8 +2,8 @@
 
 import { createHash } from "node:crypto";
 import { internal } from "../_generated/api";
-import type { Doc } from "../_generated/dataModel";
-import { internalAction } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
+import { internalAction, type ActionCtx } from "../_generated/server";
 import { v } from "convex/values";
 import {
   featuresAiEnabled,
@@ -21,6 +21,7 @@ import {
   type CoolifyConfigurationUpdateResult,
   type CoolifyDeployment,
 } from "./coolifyClient";
+import { DomainEgressRefused } from "./domainEgress";
 import { openOwnProxyClient, openPinnedDomainClient } from "./domainEgressNode";
 import {
   activateLibraryRuntimeConfiguration,
@@ -47,7 +48,6 @@ import {
 } from "./runtimeActionConfig";
 import {
   assembleEvidenceLibraryRuntimePayload,
-  buildEvidenceLibraryLoginPageUrl,
 } from "./runtimeConfiguration";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import {
@@ -55,6 +55,50 @@ import {
   StorageSetupError,
 } from "./storageSetupClient";
 import type { RuntimeImageReference } from "./runtimeImageRegistry";
+import { ClerkApiError } from "./clerkOAuthApplications";
+import {
+  isRetryableOAuthClientError,
+  OAuthClientBusyError,
+  syncLibraryOAuthClientFor,
+  syncLibrarySignIn,
+  type LibrarySignIn,
+} from "./oauthClientSync";
+
+/**
+ * Once a deployment has landed, only the addresses it answers on keep a
+ * sign-in callback. A failure leaves extra callbacks, which the next
+ * deployment removes, so it does not undo a deployment that worked.
+ */
+function namesCurrentOAuthClient(runtimeConfigJson: string, signIn: LibrarySignIn, encryptionKey: string) {
+  const oauth = (
+    JSON.parse(runtimeConfigJson) as {
+      authentication?: { openScholar?: { oauth?: { clientId?: string; clientSecret?: string } } };
+    }
+  ).authentication?.openScholar?.oauth;
+  return (
+    oauth?.clientId === signIn.oauth.clientId &&
+    oauth.clientSecret === decrypt(signIn.oauth.encryptedClientSecret, encryptionKey)
+  );
+}
+
+async function narrowLibraryOAuthCallbacks(
+  ctx: ActionCtx,
+  libraryId: Id<"evidenceLibraries">,
+  target: { targetBaseUrl: string; customDomains: string[] },
+) {
+  try {
+    await syncLibraryOAuthClientFor(ctx, {
+      libraryId,
+      origins: [target.targetBaseUrl, ...target.customDomains],
+      mode: "exact",
+    });
+  } catch (error) {
+    console.error("[evidence-library] could not remove old sign-in callbacks", {
+      libraryId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
 
 const invalidConfiguration = (message: string) =>
   new CoolifyClientError("INVALID_CONFIGURATION_DEPLOYMENT_CONFIG", message);
@@ -78,6 +122,27 @@ type ConfigurationDeploymentActionResult =
 type ConfigurationDeploymentTarget = NonNullable<
   Doc<"evidenceLibraryConfigOperations">["configurationDeploymentTarget"]
 >;
+
+/**
+ * The client that reads a running library at its own address, or nothing for
+ * a platform address, which is ours.
+ *
+ * The address may be a customer's domain, whose records they can repoint at
+ * any moment, so every request to one goes through our own proxy under that
+ * name: it reaches this library whatever the records say. A domain behind
+ * another proxy, or one whose records were deleted, must not fail a
+ * deployment that has already happened.
+ */
+async function openLibraryAddressClient(readiness: {
+  targetBaseUrl: string;
+  platformBaseUrl: string;
+}): Promise<typeof fetch | undefined> {
+  return readiness.targetBaseUrl === readiness.platformBaseUrl
+    ? undefined
+    : await openOwnProxyClient({
+        host: new URL(readiness.targetBaseUrl).hostname,
+      });
+}
 
 export const runConfigurationDeployment = internalAction({
   args: {
@@ -174,6 +239,13 @@ export const runConfigurationDeployment = internalAction({
           ...pendingTarget.customDomains,
         ]),
       ].filter((origin) => !platformOriginSet.has(origin));
+      // Sign-in has to keep working on the old address and start working on
+      // the new one before any traffic moves, so both get callbacks now.
+      const signIn = await syncLibrarySignIn(ctx, {
+        libraryId: args.libraryId,
+        origins: [...platformOrigins, ...customOrigins],
+        mode: "include",
+      });
       // Only a deployment puts traffic behind the guard, so only a deployment
       // puts it back there when it fails. A direct activation never does:
       // no later direct activation would ever take it down again.
@@ -199,6 +271,53 @@ export const runConfigurationDeployment = internalAction({
       if (prepared.state === "saved") {
         target = prepared.target;
       } else {
+        // A software update that failed late leaves the application on the
+        // release it staged, which only the next update finishes. A deployment
+        // without one would be refused as a hosting conflict the owner cannot
+        // act on, so say what to do, before anything changes.
+        if (prepared.requiresDeployment && !runtimeUpdate && coolify) {
+          const staged = await coolify
+            .readBoundApplication({
+              applicationUuid: prepared.applicationId,
+              libraryId: args.libraryId,
+              publicDomain:
+                prepared.addressMove && !prepared.addressMove.applied
+                  ? prepared.addressMove.from
+                  : prepared.targetBaseUrl,
+              customDomains: prepared.customDomains,
+            })
+            // A conflict here is the strict read's to report. Anything else,
+            // such as Coolify not answering, must stop the deployment before
+            // it changes an address it could not check.
+            .catch((error: unknown) => {
+              if (
+                error instanceof CoolifyClientError &&
+                error.code === "COOLIFY_APPLICATION_CONFLICT"
+              ) {
+                return null;
+              }
+              throw error;
+            });
+          if (
+            staged &&
+            staged.runtimeCommit !== prepared.runtimeCommit &&
+            (await ctx.runQuery(
+              internal.evidenceLibraries.configurationDeployment
+                .isFailedRuntimeTarget,
+              {
+                libraryId: args.libraryId,
+                runtimeCommit: staged.runtimeCommit,
+                runtimeImage: staged.runtimeImage,
+                updateOnly: true,
+              },
+            ))
+          ) {
+            throw new ReadinessClientError(
+              "SOFTWARE_UPDATE_UNFINISHED",
+              "A software update did not finish. Update the software, then activate again.",
+            );
+          }
+        }
         // A move changes Coolify's domain first. Only when the application
         // answers on the new address do the records take it, so a failure
         // here leaves the library on the address it has.
@@ -304,6 +423,7 @@ export const runConfigurationDeployment = internalAction({
           },
           sections,
           credentials: prepared.credentials,
+          signIn,
           search: prepared.search,
           storage: prepared.storage,
           zoteroTranslationUrl: prepared.zoteroTranslationUrl,
@@ -356,6 +476,14 @@ export const runConfigurationDeployment = internalAction({
         throw new CoolifyClientError(
           "CONFIGURATION_TARGET_INVALID",
           "The saved Evidence Library configuration target is invalid",
+        );
+      }
+      // A retry reuses the configuration it saved. If Clerk's application
+      // was replaced since, that copy names a client Clerk no longer has.
+      if (!namesCurrentOAuthClient(runtimeConfigJson, signIn, encryptionKey)) {
+        throw new CoolifyClientError(
+          "CONFIGURATION_TARGET_INVALID",
+          "OpenScholar sign-in for this library changed after this publish was prepared. Publish again.",
         );
       }
       const runtimeImage = requireTargetRuntimeImage(target.runtimeImage);
@@ -469,12 +597,7 @@ export const runConfigurationDeployment = internalAction({
             .prepareConfigurationActivation,
           args,
         );
-        const targetFetchImpl =
-          readiness.targetBaseUrl === readiness.platformBaseUrl
-            ? undefined
-            : await openPinnedDomainClient({
-                host: new URL(readiness.targetBaseUrl).hostname,
-              });
+        const targetFetchImpl = await openLibraryAddressClient(readiness);
         const readinessInput = {
           ...(targetFetchImpl ? { targetFetchImpl } : {}),
           applicationUuid: readiness.applicationId,
@@ -483,13 +606,6 @@ export const runConfigurationDeployment = internalAction({
           revisionKey: readiness.revisionKey,
           targetBaseUrl: readiness.targetBaseUrl,
           platformBaseUrl: readiness.platformBaseUrl,
-          loginPageUrl: buildEvidenceLibraryLoginPageUrl({
-            libraryId: args.libraryId,
-            appOrigin: requireRuntimeHttpsOrigin(
-              "EL_OPENSCHOLAR_URL",
-              invalidConfiguration,
-            ),
-          }),
           verifierUrl,
           verifierToken,
         };
@@ -509,6 +625,7 @@ export const runConfigurationDeployment = internalAction({
           { ...args, checkedAt: Date.now() },
         );
         restoreDirectConfiguration = undefined;
+        await narrowLibraryOAuthCallbacks(ctx, args.libraryId, target);
         return result;
       }
 
@@ -533,6 +650,19 @@ export const runConfigurationDeployment = internalAction({
           coolifyConfigHash: current.coolifyConfigHash,
         };
       } else {
+        // A deployment that moves the library onto a custom address needs
+        // that address to point at us before anything changes: afterwards it
+        // is read through our own proxy, which answers whatever its records say.
+        const nextOrigin = new URL(
+          (JSON.parse(runtimeConfigJson) as { identity: { baseUrl: string } })
+            .identity.baseUrl,
+        ).origin;
+        if (
+          nextOrigin !== new URL(prepared.continuity.liveOrigin).origin &&
+          nextOrigin !== new URL(target.targetBaseUrl).origin
+        ) {
+          await openPinnedDomainClient({ host: new URL(nextOrigin).hostname });
+        }
         // A runtime update points the app at the new commit first, so the
         // configuration write and the deployment both see that commit.
         if (runtimeUpdate) {
@@ -693,16 +823,7 @@ export const runConfigurationDeployment = internalAction({
         coolifyConfigHash: readiness.coolifyConfigHash,
         allowMissingConfigurationHash: true,
       });
-      // The address the runtime is read at may be a customer's domain, whose
-      // records they can repoint at any moment. Every readiness request to
-      // one goes through a client that can only reach the addresses that
-      // passed the check; a platform address is ours and needs no pinning.
-      const targetFetchImpl =
-        readiness.targetBaseUrl === readiness.platformBaseUrl
-          ? undefined
-          : await openPinnedDomainClient({
-              host: new URL(readiness.targetBaseUrl).hostname,
-            });
+      const targetFetchImpl = await openLibraryAddressClient(readiness);
       const readinessInput = {
         // Only the requests to the library's own address are pinned. The
         // verifier and the platform address are ours, so they use the
@@ -714,22 +835,17 @@ export const runConfigurationDeployment = internalAction({
         revisionKey: readiness.revisionKey,
         targetBaseUrl: readiness.targetBaseUrl,
         platformBaseUrl: readiness.platformBaseUrl,
-        loginPageUrl: buildEvidenceLibraryLoginPageUrl({
-          libraryId: args.libraryId,
-          appOrigin: requireRuntimeHttpsOrigin(
-            "EL_OPENSCHOLAR_URL",
-            invalidConfiguration,
-          ),
-        }),
         verifierUrl,
         verifierToken,
       };
       await handOffLibraryRuntime(targetRoute, readinessInput);
-      return await ctx.runMutation(
+      const completed = await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .completeConfigurationDeployment,
         { ...args, checkedAt: Date.now() },
       );
+      await narrowLibraryOAuthCallbacks(ctx, args.libraryId, target);
+      return completed;
     } catch (error) {
       // Coolify goes quiet for a moment while it redeploys an app or reloads
       // its proxy for a new domain, and storage can drop a request. The run is
@@ -739,6 +855,7 @@ export const runConfigurationDeployment = internalAction({
         isRetryableReadinessError(error) ||
         (error instanceof CoolifyClientError &&
           error.code === "COOLIFY_UNAVAILABLE") ||
+        isRetryableOAuthClientError(error) ||
         (error instanceof StorageSetupError &&
           (error.code === "STORAGE_UNAVAILABLE" ||
             (error.status ?? 0) >= 500))
@@ -793,6 +910,14 @@ export const runConfigurationDeployment = internalAction({
         error instanceof StorageSetupError ||
         error instanceof PlatformEmbeddingKeyMissingError
           ? { code: error.code, message: error.message }
+          : error instanceof ClerkApiError || error instanceof OAuthClientBusyError
+            ? {
+                code: "OAUTH_CLIENT_SYNC_FAILED",
+                message: "OpenScholar sign-in could not be prepared for this library",
+              }
+          : error instanceof DomainEgressRefused
+            ? // Written for the owner: it says what is wrong with their domain.
+              { code: "DOMAIN_REFUSED", message: error.message }
           : error instanceof ConfigurationAssemblyError
             ? {
                 code: "CONFIGURATION_ASSEMBLY_FAILED",

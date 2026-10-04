@@ -5,13 +5,12 @@
  * functions, deleteExtraction's scheduler hop).
  */
 
-import { internalMutation } from "../../../_generated/server";
+import { internalMutation } from "../../../lib/functions";
 import { v } from "convex/values";
 import { internal } from "../../../_generated/api";
 import { batchDeleteByIndex } from "../../../lib/cascade";
 import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import { clearJobCredits } from "../../aggregates";
-import { clearJobCounters } from "../../jobCounters";
 import { recomputePaperListProjection } from "../../listProjection";
 
 const PROJECTION_REPAIR_BATCH_SIZE = 25;
@@ -108,11 +107,8 @@ export const deleteExtractionInternal = internalMutation({
     // jobId FK becomes dangling.
     await clearJobCredits(ctx, jobId);
 
-    // Tier B: zero the per-job processed/failed sharded counters so a
-    // recreated job (same jobId reuse is impossible — Convex Ids are
-    // unique — but stale shards would otherwise linger) is dropped from
-    // the component too.
-    await clearJobCounters(ctx, jobId);
+    // The job's counts row and waiting count changes go with the job, through the
+    // trigger on extractionJobs (../../counts.ts).
 
     // Straightforward by-job drains. Results/evidence normally disappear
     // through the per-paper pass above, but the by-job drains catch any

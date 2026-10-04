@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
-import { setupAggregates } from "../aggregates.test-support";
 import { setupExtractionPaperWorkpool } from "./workpool.test-support";
 import { fakeAutumn, installFakeAutumn, seedCreditsForTest } from "../../billing/billing.test-support";
 
@@ -17,6 +16,7 @@ async function seedLeasedPaperQueueItem(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: `clerk_worker_${now}`,
       email: "worker@test.com",
       state: "active" as const,
@@ -69,6 +69,7 @@ async function seedLeasedUnprocessablePaper(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: `clerk_worker_unprocessable_${now}`,
       email: "worker-unprocessable@test.com",
       state: "active" as const,
@@ -125,6 +126,7 @@ async function seedAlreadyAnsweredPaper(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: `clerk_worker_answered_${now}`,
       email: "worker-answered@test.com",
       state: "active" as const,
@@ -207,6 +209,7 @@ async function seedQueueRefillJob(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: `clerk_worker_refill_${now}`,
       email: "worker-refill@test.com",
       state: "active" as const,
@@ -332,7 +335,6 @@ describe("extraction paper queue worker", () => {
 
   it("pauses the job and parks the paper when its credits can't be reserved", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { userId, jobId, paperId, queueId } = await seedAlreadyAnsweredPaper(t, {
       credits: 2,
       answered: false,
@@ -419,7 +421,6 @@ describe("extraction paper queue worker", () => {
 
   it("marks an unprocessable paper download_failed and completes the queue item", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { paperId, queueId } = await seedLeasedUnprocessablePaper(t);
 
     await t.action(internal.extraction.paperWorker.runPaperQueueItem, {
@@ -441,7 +442,6 @@ describe("extraction paper queue worker", () => {
 
   it("finalizes an already answered paper without re-running question work", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { paperId, queueId } = await seedAlreadyAnsweredPaper(t);
 
     await t.action(internal.extraction.paperWorker.runPaperQueueItem, {
@@ -470,9 +470,8 @@ describe("extraction paper queue worker", () => {
     expect(results[0].answer).toBe("Already answered");
   });
 
-  it("dispatches the next pending paper when a worker opens capacity", async () => {
+  it("releases its row to the extraction worker, which dispatches the next pending paper", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     setupExtractionPaperWorkpool(t);
     const {
       completedPaperId,
@@ -502,9 +501,17 @@ describe("extraction paper queue worker", () => {
 
     expect(paper?.status).toBe("completed");
     expect(completedQueue?.status).toBe("completed");
+    // Released to the worker, which hasn't run: the window is as it was.
+    expect(completedQueue?.releasedAt).toBeDefined();
     expect(activeQueue?.status).toBe("running");
-    expect(pendingQueue?.status).toBe("leased");
-    expect(pendingQueue?.workId).toBeDefined();
-    expect(pendingQueue?.leaseOwner).toContain("worker:");
+    expect(pendingQueue?.status).toBe("pending");
+
+    // The worker's batch: one refill for the job.
+    await t.mutation(internal.extraction.queue.dispatcher.refill, { rows: [completedQueueId] });
+    const [released, refilled] = await t.run((ctx) => Promise.all([ctx.db.get(completedQueueId), ctx.db.get(pendingQueueId)]));
+    expect(released?.releasedAt).toBeUndefined();
+    expect(refilled?.status).toBe("leased");
+    expect(refilled?.workId).toBeDefined();
+    expect(refilled?.leaseOwner).toContain("refill:");
   });
 });

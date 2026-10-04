@@ -49,8 +49,8 @@ describe("the OpenRouter key", () => {
       },
     );
 
-    const metadata = await fixture.admin.query(
-      api.evidenceLibraries.credentials.listCredentialMetadata,
+    const { page: metadata } = await fixture.admin.query(
+      api.evidenceLibraries.credentials.listCredentials,
       { libraryId },
     );
     expect(
@@ -86,10 +86,10 @@ describe("the OpenRouter key", () => {
     expect(
       (
         await fixture.admin.query(
-          api.evidenceLibraries.credentials.listCredentialMetadata,
+          api.evidenceLibraries.credentials.listCredentials,
           { libraryId },
         )
-      ).filter((row) => row.credentialKey === AI_PROVIDER_CREDENTIAL_KEY),
+      ).page.filter((row) => row.credentialKey === AI_PROVIDER_CREDENTIAL_KEY),
     ).toEqual([]);
   });
 
@@ -605,6 +605,14 @@ describe("the OpenRouter key", () => {
             "postgresql://library:password@postgres:5432/library",
             ENCRYPTION_KEY,
           ),
+        },
+        signIn: {
+          oauth: {
+            issuer: "https://clerk.example.test",
+            clientId: "library-client",
+            encryptedClientSecret: encrypt("library-client-secret", ENCRYPTION_KEY),
+          },
+          accountUrl: "https://accounts.example.test/user",
         },
         search: {
           host: "http://meilisearch:7700",

@@ -31,7 +31,7 @@ describe("listTeam", () => {
         createdAt: 1,
         updatedAt: 1,
       });
-      await ctx.db.insert("users", {
+      await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "user_editor",
         email: "grace@example.org",
         firstName: "Grace",
@@ -83,7 +83,7 @@ describe("listTeam", () => {
     // The published home page names everyone with a role, and nobody else.
     // An email is private: a member with an email but no name is left off, never shown by their address.
     await fixture.t.run(async ctx => {
-      await ctx.db.insert("users", { clerkId: "user_unnamed", email: "private@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("users", {libraryItemCount: 0,  clerkId: "user_unnamed", email: "private@example.org", state: "active", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("evidenceLibraryMembers", { libraryId, clerkUserId: "user_unnamed", role: "editor", grantedBy: "owner", grantedAt: 1 });
     });
     await fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_new", role: "creator" });
@@ -108,19 +108,19 @@ describe("listTeam", () => {
       });
     });
     const creator = fixture.t.withIdentity({ subject: "user_creator" });
-    expect(await creator.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([]);
+    expect((await creator.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([]);
     await fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_creator", role: "creator" });
-    expect(await creator.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([
+    expect((await creator.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([
       expect.objectContaining({ _id: libraryId, role: "creator" }),
     ]);
     await expect(creator.query(api.evidenceLibraries.queries.listTeam, { libraryId })).rejects.toThrow();
     await expect(creator.mutation(api.evidenceLibraries.team.changeRole, { libraryId, clerkUserId: "user_creator", role: "editor" })).rejects.toThrow();
     await fixture.admin.mutation(api.evidenceLibraries.team.changeRole, { libraryId, clerkUserId: "user_creator", role: "editor" });
-    expect(await creator.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([
+    expect((await creator.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([
       expect.objectContaining({ _id: libraryId, role: "editor" }),
     ]);
     await fixture.admin.mutation(api.evidenceLibraries.team.removeMember, { libraryId, clerkUserId: "user_creator" });
-    expect(await creator.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([]);
+    expect((await creator.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([]);
   });
 
   it("removes deleted users' grants and never offers them as organization candidates", async () => {
@@ -128,7 +128,7 @@ describe("listTeam", () => {
     const libraryId = fixture.created.libraryId;
     await fixture.t.run(async ctx => {
       const library = (await ctx.db.get("evidenceLibraries", libraryId))!;
-      await ctx.db.insert("users", {clerkId: "deleted_user", email: "deleted@example.org", state: "active", createdAt: 1, updatedAt: 1});
+      await ctx.db.insert("users", {libraryItemCount: 0, clerkId: "deleted_user", email: "deleted@example.org", state: "active", createdAt: 1, updatedAt: 1});
       await ctx.db.insert("organizationMemberships", {organizationId: library.organizationId, clerkMembershipId: "deleted_membership", clerkUserId: "deleted_user", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
       await ctx.db.insert("evidenceLibraryMembers", {libraryId, clerkUserId: "deleted_user", role: "creator", grantedBy: "owner", grantedAt: 1});
       await applyUserDeleteProjection(ctx, {entityId: "deleted_user", entityType: "user", clerkId: "deleted_user", eventId: "delete-user", eventType: "user.deleted", instanceId: "instance", occurredAt: 2, processedAt: 2, payloadSha256: "a".repeat(64)});

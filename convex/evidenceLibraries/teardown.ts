@@ -5,7 +5,7 @@ import {
   mutation,
   query,
   type MutationCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
@@ -19,6 +19,7 @@ import {
   requireEvidenceLibraryAccess,
   readEvidenceLibraryAccess,
 } from "./access";
+
 
 /**
  * Only the attempt that holds the teardown may write about it. Without this
@@ -103,12 +104,36 @@ async function requestTeardown(
       "Enter the full library name to confirm deletion",
     );
   }
-  const operations = await ctx.db
+  // The teardown's own operation, and running or retrying work, are found through their
+  // indexes, so a long operation history isn't read (#357).
+  const teardown = await ctx.db
     .query("evidenceLibraryConfigOperations")
-    .withIndex("by_libraryId_and_createdAt", (query) =>
-      query.eq("libraryId", args.libraryId),
+    .withIndex("by_libraryId_and_idempotencyKey", (query) =>
+      query.eq("libraryId", args.libraryId).eq("idempotencyKey", `development-teardown:${args.libraryId}`),
     )
-    .collect();
+    .unique();
+  // Running work, and queued work that already ran and waits to retry: a queued setup that
+  // never started doesn't block. Each is read from an index on its own condition.
+  const [running, retrying, restarted] = await Promise.all([
+    ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_status_and_updatedAt", (query) =>
+        query.eq("libraryId", args.libraryId).eq("status", "running"),
+      )
+      .take(2),
+    ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_status_and_attemptCount", (query) =>
+        query.eq("libraryId", args.libraryId).eq("status", "queued").gt("attemptCount", 0),
+      )
+      .first(),
+    ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_status_and_startedAt", (query) =>
+        query.eq("libraryId", args.libraryId).eq("status", "queued").gte("startedAt", 0),
+      )
+      .first(),
+  ]);
   // A domain change that is still running owns router state this teardown
   // would delete underneath it. It finishes or expires first.
   const domains = await readEvidenceLibraryDomains(ctx, args.libraryId);
@@ -124,21 +149,14 @@ async function requestTeardown(
       "A change to one of this library's domains is still running. Wait for it to finish, then delete the library.",
     );
   }
-  const teardown = operations.find(
-    (operation) => operation.kind === "teardown",
-  );
   if (teardown?.status === "queued" || teardown?.status === "running") {
     return { operationId: teardown._id, status: teardown.status };
   }
   // A draft's setup operation is created as "queued" but never starts until
   // the Owner activates it. Only work that is running, or that already ran
   // and is waiting to retry, blocks deletion.
-  const activeOperation = operations.find(
-    (operation) =>
-      operation.kind !== "teardown" &&
-      (operation.status === "running" ||
-        (operation.status === "queued" &&
-          (operation.attemptCount > 0 || operation.startedAt !== undefined))),
+  const activeOperation = [...running, retrying, restarted].find(
+    (operation) => operation !== null && operation.kind !== "teardown",
   );
   if (activeOperation) {
     throw createError(
@@ -696,6 +714,26 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       await Promise.all(routeLeases.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
+    const oauthClients = await ctx.db
+      .query("evidenceLibraryOAuthClients")
+      .withIndex("by_libraryId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .take(BATCH_SIZE);
+    if (oauthClients.length > 0) {
+      await Promise.all(oauthClients.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
+    const readerDeletions = await ctx.db
+      .query("evidenceLibraryReaderDeletions")
+      .withIndex("by_libraryId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .take(BATCH_SIZE);
+    if (readerDeletions.length > 0) {
+      await Promise.all(readerDeletions.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
     const digestJobs = await ctx.db
       .query("evidenceLibraryDigestJobs")
       .withIndex("by_libraryId_and_editionId", (query) =>
@@ -719,14 +757,14 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       await Promise.all(sourceStatus.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
-    const adminCodes = await ctx.db
-      .query("evidenceLibraryAdminLoginCodes")
-      .withIndex("by_libraryId_and_codeDigest", (query) =>
+    const approvedQueries = await ctx.db
+      .query("evidenceLibraryApprovedQueries")
+      .withIndex("by_libraryId_and_version", (query) =>
         query.eq("libraryId", args.libraryId),
       )
       .take(BATCH_SIZE);
-    if (adminCodes.length > 0) {
-      await Promise.all(adminCodes.map((row) => ctx.db.delete(row._id)));
+    if (approvedQueries.length > 0) {
+      await Promise.all(approvedQueries.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
     const credentials = await ctx.db
@@ -781,6 +819,27 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       .take(BATCH_SIZE);
     if (bindings.length > 0) {
       await Promise.all(bindings.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
+    // Its grants and invitations go with it, so they don't count against the people who held them.
+    const members = await ctx.db
+      .query("evidenceLibraryMembers")
+      .withIndex("by_libraryId_and_clerkUserId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .take(BATCH_SIZE);
+    if (members.length > 0) {
+      await Promise.all(members.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
+    const invitations = await ctx.db
+      .query("evidenceLibraryInvitations")
+      .withIndex("by_libraryId_and_state", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .take(BATCH_SIZE);
+    if (invitations.length > 0) {
+      await Promise.all(invitations.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
     await ctx.db.delete(operation._id);

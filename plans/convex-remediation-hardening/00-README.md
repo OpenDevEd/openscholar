@@ -191,7 +191,7 @@ Repo sources:
 
 Skills and local guidance:
 
-- [convex-performance-audit skill](../../.agents/skills/convex-performance-audit/SKILL.md)
+- [convex-performance-audit skill](https://github.com/get-convex/agent-skills/blob/7a6fcc6882f344577a34365fdadbd0f8f8c467d7/skills/convex-performance-audit/SKILL.md)
 - [Next.js Vitest guide](../../node_modules/next/dist/docs/01-app/02-guides/testing/vitest.md)
 
 Runtime sources:

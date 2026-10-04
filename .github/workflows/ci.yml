@@ -120,7 +120,10 @@ jobs:
       NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
       NEXT_PUBLIC_CONVEX_URL: https://example.convex.cloud
     steps:
+      # Full history: the Convex rules compare pending lists with the branch's base.
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup-project
 
@@ -169,6 +172,18 @@ jobs:
 
       - name: Check animation and transition clashes
         run: npm run check:animation-clash
+
+      - name: Check every OpenAlex request carries the key
+        run: npm run check:openalex-key
+
+      - name: Check every user action is registered for the assistant
+        run: npm run check:user-actions
+
+      - name: Check the Convex rules (every list paged, returns validators, no clock in queries)
+        env:
+          # A pull request compares with its base; a push with the commit it moved from.
+          RULES_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: npm run check:convex-rules
 
       # The browser job builds Next.js on the same guest at the same time. Fifteen jsdom workers on a shared CPU share pushed single tests
       # past their timeouts; eight finish sooner.
@@ -290,6 +305,14 @@ jobs:
             exit 1
           fi
           npx convex deploy --yes
+          # Each run reserves a library, and an organization holds 200 at most: the test
+          # backend starts every run with none. Its only libraries are the ones runs made.
+          : > "$RUNNER_TEMP/no-rows.jsonl"
+          for table in evidenceLibraries evidenceLibraryConfigDrafts evidenceLibraryConfigRevisions evidenceLibraryConfigSections evidenceLibraryConfigOperations evidenceLibraryRuntimeBindings; do
+            npx convex import --table "$table" --replace --yes "$RUNNER_TEMP/no-rows.jsonl"
+          done
+          # An import skips the triggers that count those rows, so the counts kept from them go too.
+          npx convex run migrations/pagedLibraryList:reset
 
       - name: Run auth and citation E2E
         if: steps.auth-environment.outputs.available == 'true'

@@ -7,6 +7,7 @@ import {
   classifySourceType,
   type ChatSourceType,
 } from "../../lib/chat/source-type";
+import { authorListValidator } from "../extraction/validators";
 
 export type ChatSourceRow = {
   chatPaperId: Id<"chatPapers">;
@@ -46,7 +47,7 @@ export const chatSourceRowValidator = v.object({
   position: v.number(),
   included: v.boolean(),
   title: v.string(),
-  authors: v.array(v.string()),
+  authors: authorListValidator,
   year: v.union(v.number(), v.null()),
   abstract: v.union(v.string(), v.null()),
   doi: v.union(v.string(), v.null()),

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Command as CommandPrimitive } from "cmdk"
-import { SearchIcon } from "lucide-react"
+import { SearchIcon } from "@/components/icons"
 
 import { cn } from "@/lib/utils"
 import {
@@ -73,7 +73,7 @@ function CommandInput({
       <CommandPrimitive.Input
         data-slot="command-input"
         className={cn(
-          "flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50",
+          "flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden placeholder:text-subtle-foreground disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         {...props}

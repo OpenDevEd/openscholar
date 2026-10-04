@@ -1,13 +1,17 @@
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
-import { internalMutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
+import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
+import { stream } from "convex-helpers/server/stream";
+import schema from "../schema";
+import { internalMutation, query, type MutationCtx, type QueryCtx } from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
+import { MAX_LOCATIONS_READ_PER_GROUP } from "../lib/queryBounds";
 import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
 import { readActiveTopicsEnabled } from "../evidenceLibraries/activeTopics";
 import { topicAssociationRequestSchema, topicIdSchema } from "../../lib/topics/contract";
+import { metadataValidator, recordTopicIdsValidator } from "./validators";
 import { normalizeDoi, publicationGroupKey } from "../../lib/topics/identity";
 import { authenticate } from "./auth";
 
@@ -139,47 +143,71 @@ function publicLibraries(ctx: QueryCtx): PublicLibraries {
   };
 }
 async function hasPublicTopic(ctx: QueryCtx, libraries: PublicLibraries, topicId: string, groupKey: string) {
-  // This reads one indexed publication group and stops at its first eligible assignment.
-  for await (const row of ctx.db.query("topicLocations").withIndex("by_groupKey_and_libraryId_and_itemKey", q => q.eq("groupKey", groupKey))) {
-    if (row.state !== "published" || !row.topicIds.includes(topicId)) continue;
-    if (!await libraries(row.libraryId)) continue;
-    if (publicationGroupKey(row.libraryId, row.itemKey, row.doi, row.openalexId, await linkedDois(ctx, row.openalexId)) === groupKey) return true;
-  }
-  return false;
+  // Reads the group a row at a time and stops at its first public copy, so a page of large groups stays within one query's limits.
+  const read = await stream(ctx.db, schema).query("topicLocations").withIndex("by_groupKey_and_libraryId_and_itemKey", q => q.eq("groupKey", groupKey))
+    .filterWith(async row => row.state === "published" && row.topicIds.includes(topicId) && await libraries(row.libraryId) !== null
+      && publicationGroupKey(row.libraryId, row.itemKey, row.doi, row.openalexId, await linkedDois(ctx, row.openalexId)) === groupKey)
+    .paginate({cursor: null, numItems: 1, maximumRowsRead: MAX_LOCATIONS_READ_PER_GROUP + 1});
+  if (read.page.length > 0) return true;
+  if (read.isDone) return false;
+  // None of the rows read is public, and more are unread: saying "not public" would be a guess. A regroup can move rows in, so no write caps a group.
+  console.error("[topics] A publication group has more locations than one read checks", {groupKey, topicId, read: MAX_LOCATIONS_READ_PER_GROUP});
+  throw createError("VALIDATION_ERROR", "This topic has a publication with more copies than its page can check.");
 }
-/** Page over materialized publication groups, not per-library records. The cursor is the last group key, which deliveries never move. */
-export const list = query({
-  args: {topicId: v.string(), cursor: v.union(v.string(), v.null()), limit: v.number()},
-  handler: async (ctx, args) => {
-    if (!topicIdSchema.safeParse(args.topicId).success || !Number.isInteger(args.limit) || args.limit < 1 || args.limit > 50 || (args.cursor?.length ?? 0) > 2200) throw createError("VALIDATION_ERROR", "Invalid publications page");
-    const state = await ctx.db.query("topicProjectionState").withIndex("by_key", q => q.eq("key", "publications")).unique();
-    const groups = await ctx.db.query("topicPublicationGroups").withIndex("by_topicId_and_groupKey", q => q.eq("topicId", args.topicId).gt("groupKey", args.cursor ?? "")).take(args.limit + 1);
-    const candidates = groups.slice(0, args.limit);
-    const libraries = publicLibraries(ctx);
-    const page = [];
-    for (const group of candidates) {
-      if (await hasPublicTopic(ctx, libraries, args.topicId, group.groupKey)) page.push({key: group.groupKey});
-    }
-    return {groups: page, updating: (state?.pending ?? 0) > 0, nextCursor: groups.length > args.limit ? candidates.at(-1)!.groupKey : null};
+const publicLibraryValidator = v.object({id: v.id("evidenceLibraries"), name: v.string(), url: v.string()});
+const locationValidator = v.object({id: v.id("topicLocations"), itemKey: v.string(), topicIds: recordTopicIdsValidator, metadata: metadataValidator, library: publicLibraryValidator});
+/** Most publication groups one page holds. */
+const GROUPS_PAGE_MAX = 50;
+
+/** A topic's publication groups after `cursor`, the last group key of the page before, which deliveries never move: those with a public copy, and whether more follow. */
+async function groupsAfter(ctx: QueryCtx, topicId: string, cursor: string | null, limit: number) {
+  if (!topicIdSchema.safeParse(topicId).success || (cursor?.length ?? 0) > 2200) throw createError("VALIDATION_ERROR", "Invalid publications page");
+  const state = await ctx.db.query("topicProjectionState").withIndex("by_key", q => q.eq("key", "publications")).unique();
+  const groups = await ctx.db.query("topicPublicationGroups").withIndex("by_topicId_and_groupKey", q => q.eq("topicId", topicId).gt("groupKey", cursor ?? "")).take(limit + 1);
+  const candidates = groups.slice(0, limit);
+  const libraries = publicLibraries(ctx);
+  const page = [];
+  for (const group of candidates) {
+    if (await hasPublicTopic(ctx, libraries, topicId, group.groupKey)) page.push({key: group.groupKey});
+  }
+  return {page, updating: (state?.pending ?? 0) > 0, last: groups.length > limit ? candidates.at(-1)!.groupKey : null};
+}
+
+/** One page of a group's locations: the published copies in public libraries that still belong to the group. A page can hold fewer than it read. */
+async function locationsPage(ctx: QueryCtx, groupKey: string, paginationOpts: PaginationOptions) {
+  if (groupKey.length > 2200 || paginationOpts.numItems > 100) throw createError("VALIDATION_ERROR", "Invalid location page");
+  const read = await ctx.db.query("topicLocations").withIndex("by_groupKey_and_libraryId_and_itemKey", q => q.eq("groupKey", groupKey)).paginate(paginationOpts);
+  const libraries = publicLibraries(ctx);
+  const eligible = await Promise.all(read.page.map(async row => {
+    if (row.state !== "published" || !row.metadata) return null;
+    // During a batched identity rebuild, never leak a conflicting DOI through an old group.
+    const actual = publicationGroupKey(row.libraryId, row.itemKey, row.doi, row.openalexId, await linkedDois(ctx, row.openalexId));
+    if (actual !== groupKey) return null;
+    const library = await libraries(row.libraryId);
+    if (!library) return null;
+    return {id: row._id, itemKey: row.itemKey, topicIds: row.topicIds, metadata: row.metadata, library};
+  }));
+  return {...read, page: eligible.flatMap(row => row ? [row] : [])};
+}
+
+/**
+ * One page of a topic's publication groups, not per-library records, by group key.
+ * `updating` says a regroup is still running, so the list may change.
+ */
+export const listGroups = query({
+  args: {topicId: v.string(), paginationOpts: paginationOptsValidator},
+  returns: v.object({page: v.array(v.object({key: v.string()})), isDone: v.boolean(), continueCursor: v.string(), updating: v.boolean()}),
+  handler: async (ctx, {topicId, paginationOpts}) => {
+    const limit = Math.min(Math.max(1, Math.floor(paginationOpts.numItems)), GROUPS_PAGE_MAX);
+    const {page, updating, last} = await groupsAfter(ctx, topicId, paginationOpts.cursor, limit);
+    return {page, isDone: last === null, continueCursor: last ?? "", updating};
   },
 });
 
 /** Every location is paged independently; large groups never silently lose links. */
-export const locations = query({
+export const listLocations = query({
   args: {groupKey: v.string(), paginationOpts: paginationOptsValidator},
-  handler: async (ctx, args) => {
-    if (args.groupKey.length > 2200 || args.paginationOpts.numItems > 100) throw createError("VALIDATION_ERROR", "Invalid location page");
-    const page = await ctx.db.query("topicLocations").withIndex("by_groupKey_and_libraryId_and_itemKey", q => q.eq("groupKey", args.groupKey)).paginate(args.paginationOpts);
-    const libraries = publicLibraries(ctx);
-    const eligible = await Promise.all(page.page.map(async row => {
-      if (row.state !== "published" || !row.metadata) return null;
-      // During a batched identity rebuild, never leak a conflicting DOI through an old group.
-      const actual = publicationGroupKey(row.libraryId, row.itemKey, row.doi, row.openalexId, await linkedDois(ctx, row.openalexId));
-      if (actual !== args.groupKey) return null;
-      const library = await libraries(row.libraryId);
-      if (!library) return null;
-      return {id: row._id, itemKey: row.itemKey, topicIds: row.topicIds, metadata: row.metadata, library};
-    }));
-    return {locations: eligible.flatMap(row => row ? [row] : []), nextCursor: page.isDone ? null : page.continueCursor};
-  },
+  returns: paginationResultValidator(locationValidator),
+  handler: (ctx, args) => locationsPage(ctx, args.groupKey, args.paginationOpts),
 });
+

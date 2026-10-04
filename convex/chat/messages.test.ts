@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { CHAT_PROMPT_MAX_CHARS } from "@/lib/extraction/limits";
 import { ConvexError } from "convex/values";
 import { convexTest } from "convex-test";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -9,11 +10,11 @@ import { register as registerAgentComponent } from "@convex-dev/agent/test";
 import { APICallError } from "@ai-sdk/provider";
 import { paperChat } from "./agent";
 import { startAbortPoller } from "../../lib/chat/abort-poller";
-import { STOP_ABORT_POLL_INTERVAL_MS } from "./messages";
+import { STOP_ABORT_POLL_INTERVAL_MS } from "../assistant/turn";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import { convertUsdToCredits, creditsForUsage } from "../../lib/pricing";
-import { setupAggregates } from "../extraction/aggregates.test-support";
 import { parseChatError } from "../../lib/errors/taxonomy";
+import { finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, partialDeltasThenHangDoStream, waitFor } from "../assistant/turn.test-support";
 
 // Capture the composed abortSignal the library hands to doStream so
 // tests can assert it transitioned to aborted after we flip
@@ -108,148 +109,6 @@ afterEach(() => {
     }
   }
 });
-
-/** A doStream that opens a minimal stream and blocks until the
- *  composed abortSignal fires, then closes cleanly. */
-function hangingDoStream(
-  opts: { onStarted?: () => void } = {},
-): (options: {
-  abortSignal?: AbortSignal;
-}) => Promise<{ stream: ReadableStream<unknown> }> {
-  return async (options) => ({
-    stream: new ReadableStream({
-      start(controller) {
-        controller.enqueue({ type: "stream-start", warnings: [] });
-        opts.onStarted?.();
-        options.abortSignal?.addEventListener("abort", () => {
-          try {
-            controller.close();
-          } catch {
-            // already closed
-          }
-        });
-      },
-    }),
-  });
-}
-
-/** A doStream that emits `deltas.length` text-delta chunks then hangs
- *  until abortSignal fires. Used to verify partial-delta persistence. */
-function partialDeltasThenHangDoStream(
-  deltas: string[],
-): (options: {
-  abortSignal?: AbortSignal;
-}) => Promise<{ stream: ReadableStream<unknown> }> {
-  return async (options) => ({
-    stream: new ReadableStream({
-      start(controller) {
-        controller.enqueue({ type: "stream-start", warnings: [] });
-        controller.enqueue({ type: "text-start", id: "0" });
-        for (const d of deltas) {
-          controller.enqueue({ type: "text-delta", id: "0", delta: d });
-        }
-        options.abortSignal?.addEventListener("abort", () => {
-          try {
-            controller.close();
-          } catch {
-            // already closed
-          }
-        });
-      },
-    }),
-  });
-}
-
-/** A doStream that paces text-delta chunks with `delayMs` between
- *  them, then hangs until abortSignal fires. Required for tests that
- *  need DeltaStreamer's throttled flush to actually persist multiple
- *  delta batches to the streamDeltas table — `partialDeltasThenHang
- *  DoStream` enqueues all chunks synchronously, so DeltaStreamer
- *  flushes the first batch and then has no further `addParts` calls
- *  to retrigger the throttle window, leaving subsequent text-deltas
- *  buffered in memory and never written. */
-function pacedDeltasThenHangDoStream(
-  deltas: string[],
-  delayMs: number,
-): (options: {
-  abortSignal?: AbortSignal;
-}) => Promise<{ stream: ReadableStream<unknown> }> {
-  return async (options) => ({
-    stream: new ReadableStream({
-      start(controller) {
-        controller.enqueue({ type: "stream-start", warnings: [] });
-        controller.enqueue({ type: "text-start", id: "0" });
-        let i = 0;
-        const interval = setInterval(() => {
-          if (i >= deltas.length) {
-            clearInterval(interval);
-            return;
-          }
-          try {
-            controller.enqueue({
-              type: "text-delta",
-              id: "0",
-              delta: deltas[i]!,
-            });
-          } catch {
-            clearInterval(interval);
-          }
-          i++;
-        }, delayMs);
-        options.abortSignal?.addEventListener("abort", () => {
-          clearInterval(interval);
-          try {
-            controller.close();
-          } catch {
-            // already closed
-          }
-        });
-      },
-    }),
-  });
-}
-
-/** A doStream that emits a complete `deltas → finish` stream
- *  synchronously, so paperChat.streamText resolves the happy path. */
-function finishingDoStream(
-  deltas: string[],
-): () => Promise<{ stream: ReadableStream<unknown> }> {
-  return async () => ({
-    stream: new ReadableStream({
-      start(controller) {
-        controller.enqueue({ type: "stream-start", warnings: [] });
-        controller.enqueue({ type: "text-start", id: "0" });
-        for (const d of deltas) {
-          controller.enqueue({ type: "text-delta", id: "0", delta: d });
-        }
-        controller.enqueue({ type: "text-end", id: "0" });
-        controller.enqueue({
-          type: "finish",
-          finishReason: "stop",
-          usage: {
-            inputTokens: { total: 5, noCache: 5, cacheRead: 0, cacheWrite: 0 },
-            outputTokens: { total: 3, text: 3, reasoning: 0 },
-          },
-        });
-        controller.close();
-      },
-    }),
-  });
-}
-
-/** Poll helper: wait until a predicate returns true, or throw. */
-async function waitFor(
-  predicate: () => boolean,
-  { timeoutMs = 2_000, intervalMs = 20 } = {},
-): Promise<void> {
-  const start = Date.now();
-  while (!predicate()) {
-    if (Date.now() - start > timeoutMs) {
-      throw new Error(`waitFor timed out after ${timeoutMs}ms`);
-    }
-    await new Promise((r) => setTimeout(r, intervalMs));
-  }
-}
 
 async function seedModelAndCredits(
   t: ReturnType<typeof convexTest>,
@@ -415,7 +274,6 @@ function createTestConvex() {
   const t = convexTest(schema);
   registerAgentComponent(t);
   // Settled chat charges add to the job's credit total.
-  setupAggregates(t);
   return t;
 }
 
@@ -429,6 +287,7 @@ async function seedUserAndChatJob(
 ) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "c_msg",
       email: "m@t",
       state: "active",
@@ -537,7 +396,7 @@ describe("chat.messages — auth + mode gating", () => {
     const t = createTestConvex();
     const { threadId } = await seedUserAndChatJob(t);
     await t.run(async (ctx) =>
-      ctx.db.insert("users", {
+      ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "c_other",
         email: "o@t",
         state: "active",
@@ -607,11 +466,7 @@ describe("chat.messages — auth + mode gating", () => {
       .mutation(api.chat.messages.sendMessage, { threadId, prompt: "hi" })
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ConvexError);
-    // convex-test serializes .data to a JSON string on the caught error.
-    const envelope = JSON.parse((err as ConvexError<string>).data) as {
-      code: string;
-      message?: string;
-    };
+    const envelope = (err as ConvexError<{ code: string; message?: string }>).data;
     expect(envelope.code).toBe("NO_SOURCES_INCLUDED");
 
     // Guard short-circuits before any saveMessage / job.patch runs.
@@ -619,6 +474,18 @@ describe("chat.messages — auth + mode gating", () => {
     expect(job?.messageCount).toBe(0);
     expect(job?.isGenerating).toBeUndefined();
     expect(job?.lastMessageAt).toBeUndefined();
+  });
+
+  it("sendMessage refuses a prompt over the length limit", async () => {
+    const t = createTestConvex();
+    const { jobId, threadId } = await seedUserAndChatJob(t);
+    await seedChatPapers(t, jobId, [true]);
+
+    const err = await asCaller(t, "c_msg")
+      .mutation(api.chat.messages.sendMessage, { threadId, prompt: "x".repeat(CHAT_PROMPT_MAX_CHARS + 1) })
+      .catch((e: unknown) => e);
+    expect((err as ConvexError<{ code: string }>).data.code).toBe("VALIDATION_ERROR");
+    expect((await t.run((ctx) => ctx.db.get(jobId)))?.messageCount).toBe(0);
   });
 
   it("sendMessage succeeds when at least one chatPapers row is included", async () => {
@@ -691,7 +558,7 @@ describe("chat.messages.setChatWebSearchEnabled", () => {
     const t = createTestConvex();
     const { jobId, threadId } = await seedUserAndChatJob(t);
     await t.run(async (ctx) =>
-      ctx.db.insert("users", {
+      ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "c_other",
         email: "o@t",
         state: "active",
@@ -762,7 +629,7 @@ describe("chat.messages.setChatWebSearchEnabled", () => {
     // Seed only the user; do NOT create a chat job for them, so any
     // threadId we pass cannot resolve to one of their rows.
     await t.run(async (ctx) =>
-      ctx.db.insert("users", {
+      ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "c_msg",
         email: "m@t",
         state: "active",

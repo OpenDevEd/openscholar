@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery, mutation, type MutationCtx } from "../_generated/server";
+import { internalMutation, internalQuery, mutation, type MutationCtx } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { isAdmin, normalizeEmail, requireAdmin } from "./access";

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { ExternalLink, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { ExternalLink, ChevronDown, ChevronUp, Loader2 } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ function CitationTextBlock({
     <div className="mt-1.5">
       <p
         className={cn(
-          "text-[11px] leading-relaxed text-muted-foreground",
+          "text-2xs leading-relaxed text-muted-foreground",
           !expanded && "line-clamp-2"
         )}
       >
@@ -33,7 +33,7 @@ function CitationTextBlock({
         <Button
           variant="link"
           size="sm"
-          className="h-auto p-0 text-[11px]"
+          className="h-auto p-0 text-2xs"
           onClick={() => setExpanded((value) => !value)}
         >
           {expanded ? (
@@ -86,7 +86,7 @@ export function PdfCitationPanel({
 
   if (!payload) {
     return (
-      <div className="flex h-full min-h-0 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center">
+      <div className="flex h-full min-h-0 items-center justify-center rounded-xl border border-dashed border-border bg-inset p-6 text-center">
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">{t('pdfViewer.noCitationSelected')}</p>
           <p className="text-xs text-muted-foreground">
@@ -98,8 +98,8 @@ export function PdfCitationPanel({
   }
 
   return (
-    <div className="@container/citation flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
-      <div className="border-b border-border/60 bg-background/95 px-3 py-2">
+    <div className="@container/citation flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden rounded-xl border border-border-subtle bg-card shadow-sm">
+      <div className="border-b border-border-subtle bg-card px-3 py-2">
         <div className="flex items-center gap-2">
           <h3 className="min-w-0 truncate text-sm font-semibold">{t('common.citation')}</h3>
           <div className="ml-auto flex shrink-0 items-center gap-2">
@@ -135,10 +135,10 @@ export function PdfCitationPanel({
                 key={`${item.page}-${item.charRange[0]}-${item.charRange[1]}`}
                 type="button"
                 className={cn(
-                  "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
+                  "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-3xs font-medium transition-colors",
                   index === effectiveSelectedIndex
                     ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80",
+                    : "bg-muted text-muted-foreground hover:bg-accent",
                 )}
                 onClick={() => setSelectedIndex(index)}
               >
@@ -152,13 +152,13 @@ export function PdfCitationPanel({
 
       <div className="min-h-0 flex-1 overflow-hidden p-1.5">
         {pdfUrlQuery.isDeferred ? (
-          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-inset p-6 text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             {t('pdfViewer.checkingPdfAccess')}
           </div>
         ) : null}
         {!pdfUrlQuery.isDeferred && !pdfUrl ? (
-          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-inset p-6 text-sm text-muted-foreground">
             {pdfUrlResult?.status === "no_access"
               ? t('pdfViewer.noAccessToPaper')
               : pdfUrlResult?.status === "unauthenticated"
@@ -166,7 +166,7 @@ export function PdfCitationPanel({
                 : t('pdfViewer.pdfUnavailable')}
           </div>
         ) : !pdfUrlQuery.isDeferred && !citation ? (
-          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-inset p-6 text-sm text-muted-foreground">
             {t('pdfViewer.citationUnavailable')}
           </div>
         ) : shouldRenderPdfViewer ? (

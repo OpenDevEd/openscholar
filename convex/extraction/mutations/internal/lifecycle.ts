@@ -11,7 +11,7 @@
  * helpers directly through Workpool actions.
  */
 
-import { internalMutation } from "../../../_generated/server";
+import { internalMutation } from "../../../lib/functions";
 import { v } from "convex/values";
 import { writeJobSources } from "../../jobSources";
 import { extractionStamp } from "../../../ai/serverModel";
@@ -25,6 +25,7 @@ import {
   sourceTypeValidator,
 } from "../../validators";
 import { readJobCounters } from "../../jobCounters";
+import { hasWaitingChanges } from "../../counts";
 
 export const maybeFinalizeJob = internalMutation({
   args: {
@@ -51,7 +52,10 @@ export const maybeFinalizeJob = internalMutation({
       // while the job is parked — the resume path
       // owns status transitions back to active.
       job.status === "paused" ||
-      job.status === "creditsExhausted"
+      job.status === "creditsExhausted" ||
+      // A retry is still putting papers back to extracting in batches; the last batch
+      // clears this and checks again (mutations/retry.ts).
+      job.retryReset
     ) {
       return null;
     }
@@ -72,13 +76,14 @@ export const maybeFinalizeJob = internalMutation({
       return null;
     }
 
+    // The counts worker hasn't folded every change yet; it checks again once it has, when
+    // the counts row alone is exact (../../counts.ts).
+    if (await hasWaitingChanges(ctx, args.jobId)) return null;
     const { processed, failed } = await readJobCounters(ctx, args.jobId);
 
-    // Tier B: when the job is still mid-flight, do not patch the row.
-    // Bumping `updatedAt` here would re-introduce per-paper OCC contention
-    // on the same singleton row that the sharded counter just eliminated.
-    // `updatedAt` is owned by genuine state transitions only — for "last
-    // activity" the sharded counter values themselves are reactive.
+    // While the job is still mid-flight, don't patch its row: bumping `updatedAt` here would
+    // bring back the per-paper contention on that one row that its counts row took away.
+    // `updatedAt` belongs to real state changes; the counts row is what moves as papers finish.
     if (processed + failed < total) {
       return null;
     }

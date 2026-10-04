@@ -2,7 +2,7 @@
 
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { ExternalLink, Settings , CircleDashed } from "lucide-react";
+import { ExternalLink, Settings , CircleDashed } from "@/components/icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -118,7 +118,7 @@ export function SetupProgressView({
           ) : null}
           {active ? (
             <Button asChild size="sm" className={BAR_ACTION}>
-              <AdminAreaLink libraryId={setup.library._id}>
+              <AdminAreaLink address={setup.publicAddress}>
                 <ExternalLink />
                 <span className={BAR_LABEL}>{t("openAdmin")}</span>
               </AdminAreaLink>
@@ -164,7 +164,7 @@ export function SetupProgressView({
               >
                 {t("draftHint")}
               </InlineNotice>
-              <ol className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 bg-background">
+              <ol className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-background">
                 {steps.map((step) => (
                   <DraftStepRow key={step.key} step={step} />
                 ))}

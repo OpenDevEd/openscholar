@@ -162,12 +162,14 @@ describe("sectionProblems", () => {
     expect(sectionProblems(draft, "institutions")).toEqual([]);
   });
 
-  it("flags a missing name and an unnamed funding partner", () => {
+  it("flags a missing name or short name and an unnamed funding partner", () => {
     const draft = savedDraft();
     draft.identity.name = "  ";
+    draft.identity.shortName = " ";
     draft.identity.fundingPartners.push({ id: "fp_2", name: "" });
     expect(sectionProblems(draft, "identity")).toEqual([
       "nameMissing",
+      "shortNameMissing",
       "partnerName",
     ]);
   });
@@ -1525,7 +1527,8 @@ describe("home page", () => {
         steps: [
           { type: "arrival", title: "Submitted" },
           { type: "check", editor: "user_ada" },
-          { type: "text", title: "Read", text: "We read it." },
+          { type: "text", title: "Read", text: "We read it.", icon: "AiSearchIcon", figure: { value: "25,000", label: "AI screening judgements" } },
+          { type: "search" },
         ],
       },
       team: "A small team.",
@@ -1574,7 +1577,7 @@ describe("home page", () => {
 
   it("reads a saved row back to the same payload", () => {
     const draft = readDraft(rows);
-    expect(draft.home.steps.map((step) => step.editor)).toEqual(["", "user_ada", ""]);
+    expect(draft.home.steps.map((step) => step.editor)).toEqual(["", "user_ada", "", ""]);
     expect(draft.home.questions).toEqual(["", "What works?", ""]);
     expect(changedSectionRows(draft, rows)).toEqual([]);
     expect(sectionState(draft, rows, "home")).toBe("complete");
@@ -1591,7 +1594,7 @@ describe("home page", () => {
       intro: " ",
       statement: "",
       team: "",
-      steps: [{ id: "st_1", type: "check", title: "", text: "", editor: "" }],
+      steps: [{ id: "st_1", type: "check", title: "", text: "", editor: "", icon: "", figureValue: "", figureLabel: "" }],
       people: [{ id: "user_ada", name: "Ada", photo: "", title: "", location: "" }],
       questions: ["", "What works?", " "],
       followed: "",
@@ -1612,6 +1615,19 @@ describe("home page", () => {
     expect(
       validateOwnerSections([{ sectionKey: "home", payload: row!.payload }]).issues,
     ).toEqual([]);
+  });
+
+  it("publishes a text step's figure only with both its number and label, and never on a typed step", () => {
+    const draft = readDraft(rows);
+    const blank = { id: "st_1", title: "Screened", text: "", editor: "", icon: "" };
+    draft.home.steps = [
+      { ...blank, type: "text", figureValue: "25,000", figureLabel: " " },
+      { ...blank, type: "text", figureValue: " 25,000 ", figureLabel: "AI screening judgements" },
+      { ...blank, type: "search", figureValue: "25,000", figureLabel: "AI screening judgements" },
+    ];
+    const [row] = changedSectionRows(draft, rows).filter((entry) => entry.sectionKey === "home");
+    const steps = (row?.payload as { curation: { steps: { figure?: unknown }[] } }).curation.steps;
+    expect(steps.map((step) => step.figure)).toEqual([undefined, { value: "25,000", label: "AI screening judgements" }, undefined]);
   });
 
   it("keeps a closing heading without its text and asks for the text", () => {

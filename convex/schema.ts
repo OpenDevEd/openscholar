@@ -1,6 +1,15 @@
 import { defineSchema, defineTable } from "convex/server";
+import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
+import { libraryItemFields, removedItemValidator } from "./library/validators";
+import { MAX_COLLECTIONS_PER_USER } from "./lib/queryBounds";
 import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
+import {
+  MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_METADATA_FIELDS, MAX_QUESTIONS,
+  MAX_TOPIC_KEYWORDS, capped,
+} from "./lib/listCaps";
+import { screeningAnswersValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
+import { searchSnapshotValidator } from "./paperSets/openalex";
 import {
   errorCodeValidator,
   extractionEvidenceUnitFields,
@@ -22,7 +31,9 @@ import {
 } from "./lib/validators";
 import {
   clerkEventLogFields,
-  evidenceLibraryAdminLoginCodeFields,
+  evidenceLibraryReaderDeletionFields,
+  evidenceLibraryOAuthClientFields,
+  clerkDeletedUserFields,
   evidenceLibraryConfigDraftFields,
   evidenceLibraryConfigRevisionFields,
   evidenceLibraryConfigSectionValidator,
@@ -34,7 +45,6 @@ import {
   evidenceLibraryOperationFields,
   evidenceLibraryRuntimeBindingValidator,
   evidenceLibraryRuntimeReleaseFields,
-  evidenceLibraryServedHostsFields,
   organizationFields,
   organizationMembershipFields,
 } from "./evidenceLibraries/validators";
@@ -42,22 +52,75 @@ import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidator
 import { evidenceLibraryCollectionSourceFields } from "./evidenceLibraries/collectionSourceValidators";
 import { evidenceLibrarySourceStatusFields } from "./evidenceLibraries/sourceStatusValidators";
 
-import { authorContentFields } from "./authors/validators";
+import { authorContentFields, authorProfileInvitationFields } from "./authors/validators";
 
-import { topicNodeFields, metadataValidator } from "./topics/validators";
+import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
-import { customPicksValidator, effortValidator, modelChoiceValidator } from "./aiModelConfig/validators";
+import { assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields } from "./assistant/validators";
+import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
+import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
 export default defineSchema({
+  searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator })
+    .index("by_user", ["userId"])
+    .index("by_user_and_createdAt", ["userId", "data.createdAt"])
+    .index("by_user_and_count", ["userId", "data.count"])
+    .index("by_user_and_localId", ["userId", "localId"]),
+  // How many saved searches, shortcuts and screening jobs a person has, kept by the triggers on those tables
+  // (research/recordCounts.ts), for page totals. While a first count is being taken,
+  // `countedTo` is the creation time it has reached.
+  recordCounts: defineTable({ userId: v.id("users"), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), count: v.number(), countedTo: v.optional(v.number()) })
+    .index("by_user_and_table", ["userId", "table"]),
+  searchRevisions: defineTable({
+    userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
+    author: v.union(v.literal("user"), v.literal("assistant")),
+    data: storedSearchValidator, deleted: v.boolean(), createdAt: v.number(),
+    // The screening version this revision saw; its answers are the history up to it.
+    answersVersion: v.optional(v.number()),
+  }).index("by_search_and_revision", ["searchId", "revision"]),
+  // A search's earlier queries and research questions, in the order they were made (#354).
+  searchHistory: defineTable({
+    userId: v.id("users"), searchId: v.id("searches"), kind: v.union(v.literal("query"), v.literal("question")),
+    text: v.string(), field: v.optional(fieldValidator), timestamp: v.string(), position: v.number(),
+  }).index("by_search_and_kind_and_position", ["searchId", "kind", "position"])
+    .index("by_search_and_kind_and_timestamp", ["searchId", "kind", "timestamp"]),
+  // A screening's answers, one row per paper, and an append-only history of each paper's
+  // answers that old revisions are rebuilt from. A saved search has one screening, which its
+  // page and its Screen all jobs both answer into; a Screen all job run before #334 has its
+  // own, with no search. `version` counts the writes to its answers, so a revision finds its
+  // answers exactly.
+  screenings: defineTable({ userId: v.id("users"), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number(), removals: removalsValidator })
+    .index("by_search", ["searchId"]),
+  // `version`: the screening's when the row was last written; a row from before this was kept owes every removal.
+  screeningAnswers: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.optional(v.number()) })
+    .index("by_screening_and_paper", ["screeningId", "paperId"]),
+  // A paper's answers after each change; an empty list means its answers were removed.
+  screeningAnswerHistory: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.number(), at: v.number() })
+    .index("by_screening_and_version", ["screeningId", "version"])
+    // A paper's answers as of a version: what a Screen all job answered, for its export.
+    .index("by_screening_and_paper_and_version", ["screeningId", "paperId", "version"]),
+  // `sortName` is the name as the Bookmarks page orders it (lower case); optional until migrations/pagedRecords has run.
+  queryShortcuts: defineTable({ userId: v.id("users"), data: shortcutValidator, sortName: v.optional(v.string()) })
+    .index("by_user_and_createdAt", ["userId", "data.createdAt"])
+    .index("by_user_and_sortName", ["userId", "sortName"])
+    .index("by_user", ["userId"])
+    .index("by_user_and_shorthand", ["userId", "data.shorthand"]),
+  paperRatings: defineTable({ userId: v.id("users"), data: ratingValidator })
+    .index("by_user", ["userId"])
+    .index("by_user_and_paperId", ["userId", "data.paperId"]),
+  // `undo` is what reverses the change a request made, kept so a retry of it answers the same (#342).
+  researchReceipts: defineTable({ userId: v.id("users"), key: v.string(), fingerprint: v.optional(v.string()), undo: v.optional(undoCommandValidator) })
+    .index("by_user_and_key", ["userId", "key"]),
   topicCatalog: defineTable(topicNodeFields)
     .index("by_external_id", ["id"]).index("by_parent_and_name", ["parent", "name"])
     .searchIndex("search_text", { searchField: "searchText" }),
   topicCatalogState: defineTable({revision: v.string(), complete: v.boolean()}).index("by_revision", ["revision"]),
-  topicDetails: defineTable({id: v.string(), description: v.string(), keywords: v.array(v.string()), worksCount: v.number(), fetchedAt: v.number(), revision: v.string()}).index("by_external_id", ["id"]),
+  // `refreshRequestedAt`: when a reader last asked for this stale topic to be fetched again (#355).
+  topicDetails: defineTable({id: v.string(), description: v.string(), keywords: capped(v.array(v.string()), MAX_TOPIC_KEYWORDS), worksCount: v.number(), fetchedAt: v.number(), revision: v.string(), refreshRequestedAt: v.optional(v.number())}).index("by_external_id", ["id"]),
   topicLocations: defineTable({
     libraryId: v.id("evidenceLibraries"), itemKey: v.string(), generation: v.number(), publishedRevision: v.number(),
     state: v.union(v.literal("published"), v.literal("unpublished")),
-    topicIds: v.array(v.string()), doi: v.union(v.string(), v.null()), openalexId: v.union(v.string(), v.null()),
+    topicIds: recordTopicIdsValidator, doi: v.union(v.string(), v.null()), openalexId: v.union(v.string(), v.null()),
     metadata: v.union(metadataValidator, v.null()), groupKey: v.string(),
   }).index("by_libraryId_and_itemKey", ["libraryId", "itemKey"])
     .index("by_openalexId_and_doi", ["openalexId", "doi"])
@@ -82,6 +145,7 @@ export default defineSchema({
     itemKey: v.string(),
     rank: v.optional(v.number()),
   }).index("by_profileId", ["profileId"])
+    .index("by_profileId_and_rank", ["profileId", "rank"])
     .index("by_libraryId_and_itemKey", ["libraryId", "itemKey"]),
 
   authorProfiles: defineTable({
@@ -99,14 +163,9 @@ export default defineSchema({
   }).index("by_profileId_and_userId", ["profileId", "userId"])
     .index("by_userId", ["userId"]),
 
-  authorProfileInvitations: defineTable({
-    profileId: v.id("authorProfiles"),
-    email: v.string(),
-    invitedBy: v.id("users"),
-    expiresAt: v.number(),
-    state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled")),
-    delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
-  }).index("by_profileId_and_email", ["profileId", "email"])
+  authorProfileInvitations: defineTable(authorProfileInvitationFields)
+    .index("by_profileId_and_email", ["profileId", "email"])
+    .index("by_profileId_and_state", ["profileId", "state"])
     .index("by_email_and_state", ["email", "state"]),
 
   clerkEventLogs: defineTable(clerkEventLogFields)
@@ -135,6 +194,31 @@ export default defineSchema({
     .index("by_organizationId_and_state", ["organizationId", "state"])
     .index("by_clerkUserId_and_state", ["clerkUserId", "state"]),
 
+  // ═══════════════════════════════════════════════════════════════
+  // ASSISTANT CHATS (#324) - a chat, and who it is shared with
+  // ═══════════════════════════════════════════════════════════════
+  assistantThreads: defineTable(assistantThreadFields)
+    .index("by_agentThreadId", ["agentThreadId"])
+    // An account's chats, for deleting them with it.
+    .index("by_owner", ["ownerId"])
+    // The replies being written for a person, which are limited.
+    .index("by_replySender", ["reply.senderId"])
+    // Every chat writing a reply, oldest first, for releasing the ones whose action died.
+    .index("by_replyStartedAt", ["reply.startedAt"]),
+  // The actions a chat's replies ran, each found by the model's ID for the call.
+  assistantSteps: defineTable(assistantStepFields)
+    // The steps that wait for the person, or for the reply to run them (convex/assistant/steps.ts).
+    .index("by_thread_and_status", ["threadId", "status"]).index("by_thread_and_order", ["threadId", "order"]),
+  assistantStepResults: defineTable(assistantStepResultFields).index("by_step", ["stepId"]).index("by_thread", ["threadId"]),
+  assistantThreadAccess: defineTable(assistantThreadAccessFields)
+    // A person's chats, newest first, through each of their principals.
+    .index("by_principal_and_lastMessageAt", ["principal", "lastMessageAt"])
+    .index("by_thread_and_principal", ["threadId", "principal"]),
+
+  // Each approved OpenAlex query version a library has published, with its query's
+  // fingerprint, so a sources save checks versions without reading every revision (#357).
+  evidenceLibraryApprovedQueries: defineTable({ libraryId: v.id("evidenceLibraries"), version: v.string(), fingerprint: v.string() })
+    .index("by_libraryId_and_version", ["libraryId", "version"]),
   evidenceLibraries: defineTable(evidenceLibraryFields)
     .index("by_organizationId", ["organizationId"])
     .index("by_organizationId_and_name_and_state", [
@@ -151,9 +235,10 @@ export default defineSchema({
     role: v.union(v.literal("editor"), v.literal("creator")),
     invitedBy: v.string(),
     expiresAt: v.number(),
-    state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled")),
+    state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled"), v.literal("expired")),
     delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
-  }).index("by_libraryId_and_email", ["libraryId", "email"])
+  }).index("by_libraryId_and_email_and_state", ["libraryId", "email", "state"])
+    .index("by_libraryId_and_state", ["libraryId", "state"])
     .index("by_email_and_state", ["email", "state"]),
 
   evidenceLibraryMembers: defineTable({
@@ -193,10 +278,6 @@ export default defineSchema({
     .index("by_libraryId", ["libraryId"])
     .index("by_libraryId_and_credentialKey", ["libraryId", "credentialKey"]),
 
-  evidenceLibraryAdminLoginCodes: defineTable(
-    evidenceLibraryAdminLoginCodeFields,
-  ).index("by_libraryId_and_codeDigest", ["libraryId", "codeDigest"]),
-
   evidenceLibraryRuntimeBindings: defineTable(
     evidenceLibraryRuntimeBindingValidator,
   )
@@ -212,6 +293,17 @@ export default defineSchema({
     .index("by_libraryId", ["libraryId"])
     // The sweep walks working domains oldest check first, so none starves.
     .index("by_state_and_checkedAt", ["state", "checkedAt"]),
+
+  clerkDeletedUsers: defineTable(clerkDeletedUserFields).index("by_clerkId", ["clerkId"]),
+
+  // One row per library: its Clerk OAuth application.
+  evidenceLibraryOAuthClients: defineTable(evidenceLibraryOAuthClientFields)
+    .index("by_libraryId", ["libraryId"]),
+
+  // Reader data a library still has to drop for a deleted OpenScholar account.
+  evidenceLibraryReaderDeletions: defineTable(evidenceLibraryReaderDeletionFields)
+    .index("by_libraryId", ["libraryId"])
+    .index("by_libraryId_and_clerkUserId", ["libraryId", "clerkUserId"]),
 
   evidenceLibraryDomainRouteLeases: defineTable(
     evidenceLibraryDomainRouteLeaseFields,
@@ -239,11 +331,18 @@ export default defineSchema({
     .index("by_libraryId_and_groupId", ["libraryId", "groupId"]),
 
   evidenceLibraryCollectionSources: defineTable(evidenceLibraryCollectionSourceFields)
-    .index("by_libraryId_and_collectionId", ["libraryId", "collectionId"]),
+    .index("by_libraryId_and_collectionId", ["libraryId", "collectionId"])
+    // Whether any library follows a collection, which makes a change to it show outside the account.
+    .index("by_collectionId", ["collectionId"]),
 
-  evidenceLibraryServedHosts: defineTable(
-    evidenceLibraryServedHostsFields,
-  ).index("by_source", ["source"]),
+  // The hosts Coolify served when it was last asked: one row per host per listing, and the
+  // current listing. `listing` is a refresh's own ID; `startedAt`, when it began, orders
+  // refreshes and ages the cache. Rows of older or discarded listings are pruned.
+  evidenceLibraryServedHostRows: defineTable({ listing: v.string(), host: v.string(), startedAt: v.number() })
+    .index("by_listing_and_host", ["listing", "host"])
+    .index("by_startedAt", ["startedAt"]),
+  evidenceLibraryServedHostsListing: defineTable({ source: v.literal("coolify"), listing: v.string(), startedAt: v.number() })
+    .index("by_source", ["source"]),
 
   evidenceLibraryConfigOperations: defineTable(evidenceLibraryOperationFields)
     .index("by_libraryId_and_idempotencyKey", ["libraryId", "idempotencyKey"])
@@ -252,11 +351,18 @@ export default defineSchema({
       "activationEditVersion",
     ])
     .index("by_libraryId_and_createdAt", ["libraryId", "createdAt"])
+    // Publish operations newest first, where configuration deployments are found (#357).
+    .index("by_libraryId_and_kind_and_createdAt", ["libraryId", "kind", "createdAt"])
+    // Queued work that already ran, which blocks a teardown (#357).
+    .index("by_libraryId_and_status_and_attemptCount", ["libraryId", "status", "attemptCount"])
+    .index("by_libraryId_and_status_and_startedAt", ["libraryId", "status", "startedAt"])
     .index("by_libraryId_and_status_and_updatedAt", [
       "libraryId",
       "status",
       "updatedAt",
     ])
+    // The queued or running operations of one kind, which the guards ask about (#427).
+    .index("by_libraryId_and_status_and_kind", ["libraryId", "status", "kind"])
     .index("by_libraryId_and_failed_runtime", [
       "libraryId",
       "status",
@@ -281,8 +387,8 @@ export default defineSchema({
 
     // ── Architecture ──
     modality: v.optional(v.string()),
-    inputModalities: v.optional(v.array(v.string())),
-    outputModalities: v.optional(v.array(v.string())),
+    inputModalities: modelModalitiesValidator,
+    outputModalities: modelModalitiesValidator,
     tokenizer: v.optional(v.string()),
     instructType: v.optional(v.string()),
 
@@ -303,9 +409,9 @@ export default defineSchema({
     isModerated: v.optional(v.boolean()),
 
     // ── Capabilities ──
-    supportedParameters: v.optional(v.array(v.string())),
+    supportedParameters: modelParametersValidator,
     // Reasoning effort levels the model takes, lowest first; absent when it doesn't reason.
-    reasoningEfforts: v.optional(v.array(effortValidator)),
+    reasoningEfforts: modelEffortsValidator,
     defaultEffort: v.optional(effortValidator),
     /** Reasoning can't be turned off ("none" is refused). */
     reasoningMandatory: v.optional(v.boolean()),
@@ -407,23 +513,43 @@ export default defineSchema({
   users: defineTable(userFields)
     .index("by_clerk_id", ["clerkId"])
     .index("by_email", ["email"])
+    // Active users by email, for the picker that adds an admin (admins/queries.ts).
+    .index("by_state_and_email", ["state", "email"])
     .index("by_state", ["state"]),
 
   // ═══════════════════════════════════════════════════════════════
   // BILLING - balances and plans live in Autumn (convex/billing).
   // billingAccounts caches each user's plan, features and balance;
   // billingCatalog caches Autumn's plans and features;
-  // billingUsage records every settled charge.
+  // billingUsage records every settled charge; billingHolds the Autumn
+  // locks still held, with the release scheduled for each one's expiry.
   // ═══════════════════════════════════════════════════════════════
   billingAccounts: defineTable(billingAccountFields)
     .index("by_user", ["userId"])
     .index("by_stripe_customer", ["stripeCustomerId"]),
   billingCatalog: defineTable({ ...billingCatalogValidator.fields, syncedAt: v.number() }),
-  billingUsage: defineTable(billingUsageFields)
+  billingUsage: defineTable({
+    ...billingUsageFields,
+    // Set when the charge is recorded, in commit order, while it waits for the ledger
+    // worker (convex/billing/ledger.ts), which clears it once it's counted.
+    queuedAt: v.optional(v.commitTs()),
+  })
     .index("by_charge", ["chargeId"])
+    .index("by_queuedAt", ["queuedAt"])
     .index("by_user_and_createdAt", ["userId", "createdAt"])
+    // `by_job` stays for the chat's tests, which go with chat mode (#325); the charge list reads `by_job_and_createdAt`.
     .index("by_job", ["jobId"])
+    .index("by_job_and_createdAt", ["jobId", "createdAt"])
     .index("by_stripe_charge", ["stripeChargeId"]),
+  billingHolds: defineTable({
+    userId: v.id("users"),
+    chargeId: v.string(),
+    credits: v.number(),
+    release: v.id("_scheduled_functions"),
+    // Set before a settle confirms the hold as it stands and charges the rest
+    // separately, so a retry finishes that path instead of confirming again.
+    rest: v.optional(v.literal(true)),
+  }).index("by_charge", ["chargeId"]),
 
   // Retired billing tables: credits, creditTransactions, subscriptions,
   // billingCustomers, stripeEventLogs, and chatGenerationUsages. Only
@@ -513,7 +639,7 @@ export default defineSchema({
   auditLogs: defineTable({
     action: v.string(),
     userId: v.optional(v.string()),
-    metadata: v.optional(v.record(v.string(), v.string())),
+    metadata: capped(v.optional(v.record(v.string(), v.string())), MAX_METADATA_FIELDS),
     timestamp: v.number(),
   })
     .index("by_action", ["action"])
@@ -608,10 +734,16 @@ export default defineSchema({
   extractionJobs: defineTable(extractionJobFields)
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
+    // The job list ordered by name.
+    .index("by_user_and_sortName", ["userId", "sortName"])
     // Unified history list + single-mode scoping (count user's chats).
     .index("by_user_mode_updated", ["userId", "mode", "updatedAt"])
     // Cross-user iteration by mode (admin backfills, ops tooling).
     .index("by_mode", ["mode"])
+    // Chats generating now, per user and across users, oldest first: the concurrency
+    // check and the stale lock sweep read only these (#355).
+    .index("by_user_and_mode_and_isGenerating_and_generatingStartedAt", ["userId", "mode", "isGenerating", "generatingStartedAt"])
+    .index("by_mode_and_isGenerating_and_generatingStartedAt", ["mode", "isGenerating", "generatingStartedAt"])
     // Reverse lookup: thread -> job (auth + lock acquisition).
     .index("by_chatThread", ["chatThreadId"]),
 
@@ -643,7 +775,7 @@ export default defineSchema({
     ),
     sourceRefId: v.string(),
     title: v.string(),
-    authors: v.array(v.string()),
+    authors: capped(v.array(v.string()), MAX_AUTHORS),
     year: v.optional(v.number()),
     doi: v.optional(v.string()),
     openalexId: v.optional(v.string()),
@@ -714,7 +846,12 @@ export default defineSchema({
   extractionPapers: defineTable(extractionPaperFields)
     .index("by_job", ["jobId"])
     .index("by_job_processable", ["jobId", "processable"])
+    // A job's processable papers in the orders its results list in.
+    .index("by_job_processable_and_sortTitle", ["jobId", "processable", "sortTitle"])
+    .index("by_job_processable_and_avgConfidence", ["jobId", "processable", "avgConfidence"])
     .index("by_job_status", ["jobId", "status"])
+    // A job's papers of one status from the earliest started; `by_job_status` reads them as they were added.
+    .index("by_job_status_and_startedAt", ["jobId", "status", "startedAt"])
     .index("by_openalex", ["openalexId"])
     .index("by_work", ["workId"])
     .index("by_status_completedAt", ["status", "completedAt"])
@@ -732,6 +869,19 @@ export default defineSchema({
   // diagnose flaky upstream behavior without bloating extractionPapers.
   // Plan-01 § "Persistence hooks".
   // ═══════════════════════════════════════════════════════════════
+  // An extraction job's counts (convex/extraction/counts.ts): every write that changes a
+  // count appends its change, and one worker folds them into the job's counts row.
+  extractionCountChanges: defineTable({
+    jobId: v.id("extractionJobs"),
+    deltas: capped(v.record(v.string(), v.number()), MAX_COUNT_BUCKETS),
+    queuedAt: v.commitTs(),
+  })
+    .index("by_queuedAt", ["queuedAt"])
+    .index("by_job", ["jobId"]),
+  extractionJobCounts: defineTable({
+    jobId: v.id("extractionJobs"),
+    counts: capped(v.record(v.string(), v.number()), MAX_COUNT_BUCKETS),
+  }).index("by_job", ["jobId"]),
   extractionPaperErrors: defineTable(extractionPaperErrorFields)
     .index("by_paper", ["paperId"])
     .index("by_job", ["jobId"]),
@@ -752,7 +902,8 @@ export default defineSchema({
     ])
     .index("by_paper_and_epoch_and_kind", ["paperId", "runEpoch", "kind"])
     .index("by_status_and_priority", ["status", "priority"])
-    .index("by_work", ["workId"]),
+    .index("by_work", ["workId"])
+    .index("by_releasedAt", ["releasedAt"]),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION EVIDENCE UNITS - Anchored sentence evidence (V3)
@@ -792,25 +943,32 @@ export default defineSchema({
       v.literal("creditsExhausted"),
     ),
     totalPapers: v.number(),
-    questions: v.array(v.object({ key: v.string(), question: v.string() })),
-    scoringConfig: v.object({
-      rules: v.array(
-        v.object({
-          questionKey: v.string(),
-          yesPoints: v.number(),
-          noPoints: v.number(),
-          nullPoints: v.number(),
-        }),
-      ),
-      starThresholds: v.array(
-        v.object({
-          minScore: v.number(),
-          stars: v.number(),
-        }),
-      ),
-      minimumScore: v.optional(v.number()),
-    }),
+    questions: screeningQuestionsValidator,
+    scoringConfig: screeningScoringConfigValidator,
     targetCollectionId: v.optional(v.id("collections")),
+    // Where its papers came from (#341), as the screening page shows it: the set, the set's
+    // name when it started (a search's query, a collection's or a job's name), and which of
+    // its papers, counting from 1. Jobs from before the page have none.
+    set: v.optional(paperSetValidator),
+    label: v.optional(v.string()),
+    first: v.optional(v.number()),
+    last: v.optional(v.number()),
+    // The last paper of the whole request when one job can't hold it: the job for the next
+    // papers starts when this one completes.
+    through: v.optional(v.number()),
+    // Where a collection, the saved papers or a job's papers go on after this job's (./paperSets/held.ts).
+    resume: v.optional(v.string()),
+    // The search as it was when the request began, which its later jobs read their papers from.
+    snapshot: v.optional(searchSnapshotValidator),
+    // Its included papers aren't saved anywhere.
+    unsaved: v.optional(v.literal(true)),
+    // Papers that end excluded or failed leave the collection it read (`set`).
+    prune: v.optional(v.literal(true)),
+    // Papers its search's page had already answered every question for: done on those
+    // answers, without asking the model.
+    reused: v.optional(v.number()),
+    // The screening its answers go to.
+    screeningId: v.id("screenings"),
     // Resolved per-user server model for this bulk screening run (credits path).
     serverModelId: v.optional(v.id("models")),
     serverEffort: v.optional(effortValidator),
@@ -829,7 +987,7 @@ export default defineSchema({
     openalexId: v.string(),
     title: v.string(),
     abstract: v.optional(v.string()),
-    authors: v.optional(v.array(v.string())),
+    authors: screeningAuthorsValidator,
     publicationYear: v.optional(v.number()),
     doi: v.optional(v.string()),
     status: v.union(
@@ -838,10 +996,35 @@ export default defineSchema({
       v.literal("failed"),
       v.literal("skipped"),
     ),
-    answers: v.optional(v.record(v.string(), v.union(v.boolean(), v.null()))),
+    // A finished paper's answers by question key, with the model's confidence in each, waiting
+    // (`pendingAnswers`) to move to the job's screening (convex/screening/drain.ts).
+    answers: screeningAnswersValidator,
+    confidences: capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS),
+    pendingAnswers: v.optional(v.literal(true)),
+    // The screening's version once this paper's answers moved there; its export reads the
+    // job's answers as of it, whatever has changed since.
+    answersVersion: v.optional(v.number()),
     score: v.optional(v.number()),
     stars: v.optional(v.number()),
     qualified: v.optional(v.boolean()),
+    // Where the paper landed (./screening/scoring.ts), set as it settles and again when an
+    // answer of its is changed; a job's list reads its papers by it. Results from before it
+    // was kept get theirs from migrations/screeningOutcomes.
+    outcome: v.optional(screeningOutcomeValidator),
+    // What the paper has added to its job's kept counts (./screening/accounting.ts), so a
+    // later change adds only the difference. Missing while it waits for the bookkeeping
+    // worker, and on a paper counted before outcomes were kept.
+    counted: v.optional(
+      v.object({
+        qualified: v.boolean(),
+        outcome: screeningOutcomeValidator,
+        // The answers it was scored on, by question key, and the keys of those a person or the assistant set.
+        answers: screeningAnswersValidator,
+        changed: capped(v.optional(v.array(v.string())), MAX_QUESTIONS),
+      }),
+    ),
+    venue: v.optional(v.string()),
+    citedByCount: v.optional(v.number()),
     aiMetadata: v.optional(
       v.object({
         reasoning: v.optional(v.string()),
@@ -852,38 +1035,62 @@ export default defineSchema({
     ),
     creditsUsed: v.optional(v.number()),
     savedToLibrary: v.optional(v.boolean()),
+    // Taken from the collection its pruning job read, and not put back since.
+    pruned: v.optional(v.literal(true)),
     libraryItemId: v.optional(v.id("libraryItems")),
     workId: v.optional(v.string()),
+    // Set while the paper waits for one of its person's paper slots (#335), whose papers
+    // start oldest first across their jobs; cleared when it starts and gets its `workId`.
+    waitingUser: v.optional(v.id("users")),
+    waitingSince: v.optional(v.number()),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
+    // Set when the paper finishes, in commit order, while it waits for the bookkeeping
+    // worker (convex/screening/bookkeeping.ts), which clears it.
+    doneAt: v.optional(v.commitTs()),
     errorMessage: v.optional(v.string()),
   })
     .index("by_job", ["jobId"])
-    .index("by_job_status", ["jobId", "status"])
-    .index("by_job_openalexId", ["jobId", "openalexId"]),
+    .index("by_job_openalexId", ["jobId", "openalexId"])
+    // A job's papers of one outcome, in the order the job took them.
+    .index("by_job_and_outcome", ["jobId", "outcome"])
+    // A job's papers the model is reading: processing, and no longer waiting for a slot.
+    .index("by_job_and_status_and_waitingUser", ["jobId", "status", "waitingUser"])
+    .index("by_waitingUser_and_waitingSince", ["waitingUser", "waitingSince"])
+    .index("by_doneAt", ["doneAt"]),
+  // How many of a person's Screen all papers are running (#335). Written by job creation and
+  // the bookkeeping worker, which start a person's waiting papers while this is under their
+  // plan's limit, as Firecrawl's per-team semaphore does.
+  screeningSlots: defineTable({ userId: v.id("users"), running: v.number() }).index("by_user", ["userId"]),
+  // A Screen all job's finished papers, counted by the bookkeeping worker alone.
+  screeningJobProgress: defineTable({
+    jobId: v.id("screeningJobs"),
+    completed: v.number(),
+    skipped: v.number(),
+    failed: v.number(),
+    qualified: v.number(),
+    // Completed papers that aren't included but could be, and each question's answers.
+    // Missing on a job counted before they were kept, until migrations/screeningOutcomes.
+    unclear: v.optional(v.number()),
+    tallies: screeningTalliesValidator,
+    // Credits its counted papers cost.
+    credits: v.optional(v.number()),
+    // Papers it saved for the first time, and papers it took from the collection it read
+    // that are still out of it.
+    saved: v.optional(v.number()),
+    removed: v.optional(v.number()),
+  }).index("by_job", ["jobId"]),
+
+  // How many papers a person has saved. It has its own row, not a field on `users`, because
+  // every mutation of the person's reads their user row: a bulk save rewriting it would make
+  // their other edits conflict (#383). `users.libraryItemCount` is read until
+  // migrations/moveLibraryCounts gives everyone a row.
+  libraryCounts: defineTable({ userId: v.id("users"), count: v.number() }).index("by_user", ["userId"]),
 
   // ═══════════════════════════════════════════════════════════════
-  // LIBRARY ITEMS - User's saved paper library (rated papers)
+  // LIBRARY ITEMS - User's saved paper library
   // ═══════════════════════════════════════════════════════════════
-  libraryItems: defineTable({
-    userId: v.id("users"),
-    openalexId: v.string(), // e.g. "https://openalex.org/W1234567890"
-    rating: v.number(), // 0-5
-    title: v.string(),
-    authors: v.optional(v.string()), // Flattened: "John Doe, Jane Smith"
-    doi: v.optional(v.string()),
-    abstract: v.optional(v.string()),
-    publicationYear: v.optional(v.number()),
-    journal: v.optional(v.string()), // primary_location.source.display_name
-    citedByCount: v.optional(v.number()),
-    workType: v.optional(v.string()), // OpenAlex `type` — "article" | "review" | "book-chapter" | ...
-    isOpenAccess: v.optional(v.boolean()),
-    oaStatus: v.optional(v.string()), // "gold" | "green" | "bronze" | "hybrid" | "closed"
-    paperData: v.optional(v.string()), // Full PaperResult JSON for rich card rendering
-    searchableText: v.string(), // title + abstract + authors (for Phase 23 search index)
-    savedAt: v.number(),
-    updatedAt: v.number(),
-  })
+  libraryItems: defineTable(libraryItemFields)
     .index("by_user", ["userId"])
     .index("by_user_openalexId", ["userId", "openalexId"])
     .index("by_user_rating", ["userId", "rating"])
@@ -896,18 +1103,50 @@ export default defineSchema({
       filterFields: ["userId", "rating"],
     }),
 
+  // A paper removed from a library, with the collections it was in, kept a day so Undo
+  // (the page's or the assistant's) can put it back by this record's ID.
+  libraryRemovals: defineTable({
+    userId: v.id("users"),
+    item: removedItemValidator,
+    collectionIds: capped(v.array(v.id("collections")), MAX_COLLECTIONS_PER_USER),
+    // When the paper was put in each of `collectionIds`, in the same order. A removal from before these were kept has none.
+    assignedAts: capped(v.optional(v.array(v.number())), MAX_COLLECTIONS_PER_USER),
+    expiresAt: v.number(),
+  }),
+
   // ═══════════════════════════════════════════════════════════════
   // COLLECTIONS - Named groups for organizing library items
   // ═══════════════════════════════════════════════════════════════
   collections: defineTable({
     userId: v.id("users"),
     name: v.string(),
+    // `name` folded for ordering (collectionSortName); optional until migrations/pagedCollections has run.
+    sortName: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     itemCount: v.optional(v.number()),
     // Goes up on every item added or removed; libraries following the collection compare it.
     membershipRevision: v.optional(v.number()),
-  }).index("by_user", ["userId"]),
+  })
+    .index("by_user_sortName", ["userId", "sortName"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["userId"] }),
+
+  // An export a browser is downloading in parts: its token's SHA-256 digest, what it writes,
+  // the next part to serve and where it starts, whether a part failed, and when the link expires.
+  exports: defineTable({
+    userId: v.id("users"),
+    digest: v.string(),
+    format: exportFormatValidator,
+    source: exportSourceValidator,
+    part: v.number(),
+    cursor: v.union(v.string(), v.null()),
+    serving: v.boolean(),
+    failed: v.boolean(),
+    expiresAt: v.number(),
+  }).index("by_digest", ["digest"]),
+
+  // How many collections a person has, kept as they make and delete them, for page totals.
+  collectionCounts: defineTable({ userId: v.id("users"), count: v.number() }).index("by_user", ["userId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEM COLLECTIONS - Junction table for many-to-many

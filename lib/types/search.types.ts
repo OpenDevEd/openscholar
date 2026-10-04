@@ -135,6 +135,7 @@ export interface SearchFilters {
   workLanguages: string[];
   institutionTypes: string[];
   funders: string[];
+  authors: string[];
   minCitations: number | null;
   hasAbstract: boolean;
   /** Retracted works are left out unless this is set. */
@@ -147,8 +148,18 @@ export interface SearchFilters {
 export interface SearchResult {
   id: string;
   query: string;
-  queryHistory: QueryHistoryEntry[];
-  questionHistory: QuestionHistoryEntry[];
+  /** How many queries the search has had, the current one included. */
+  queryHistoryCount: number;
+  questionCount: number;
+  latestQuestion?: string;
+  /** The search's past questions, one a line, newest kept up to QUESTION_TEXT_MAX; for filtering by them. */
+  questionText: string;
+  /**
+   * The full history, held only by a signed-out visitor's searches in this browser. A
+   * signed-in account's history is read a search at a time (lib/research/history.ts).
+   */
+  queryHistory?: QueryHistoryEntry[];
+  questionHistory?: QuestionHistoryEntry[];
   screeningQuestions: ScreeningQuestionEntry[];
   screeningResponses: ScreeningResponses;
   count: number;
@@ -173,6 +184,7 @@ export interface SearchResult {
   workLanguages?: string[];
   institutionTypes?: string[];
   funders?: string[];
+  authors?: string[];
   minCitations?: number;
   hasAbstract?: boolean;
   includeRetracted?: boolean;

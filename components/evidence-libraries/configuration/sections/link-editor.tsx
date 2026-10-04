@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";

@@ -1,15 +1,20 @@
 import { z } from "zod";
 import { v } from "convex/values";
-import { action, internalAction, internalMutation, internalQuery, type ActionCtx } from "../_generated/server";
+import { action, internalAction, internalMutation, internalQuery, type ActionCtx } from "../lib/functions";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import { requireAppUrl } from "../lib/env";
 import { topicIdSchema, type TopicNode } from "../../lib/topics/contract";
 import { CATALOG_REVISION } from "../../lib/topics/catalog";
 import type { Doc } from "../_generated/dataModel";
+import { openAlexUrl } from "../../lib/openalex/request-url";
+import { MAX_TOPIC_KEYWORDS } from "../lib/listCaps";
+import { topicKeywordsValidator, topicPathValidator } from "./validators";
 
 const provider = z.object({id: z.string(), description: z.string().max(100000), keywords: z.array(z.string().max(1000)).max(1000), works_count: z.number().int().nonnegative()});
 const DAY = 86_400_000;
+/** A stale topic is fetched again at most this often, however many people read it. */
+const REFRESH_EVERY_MS = 60 * 60 * 1000;
 export const read = internalQuery({
   args: {id: v.string()},
   handler: async (ctx, args) => {
@@ -29,14 +34,30 @@ export const save = internalMutation({
     return null;
   },
 });
+/**
+ * Schedules one refresh of a stale topic. Anyone may read a topic, so without this every
+ * reader of a stale one would ask OpenAlex again on the shared key (#355); now OpenAlex
+ * is asked at most once an hour per topic, so a day's topic fetches stay within the
+ * catalog's size.
+ */
+export const requestRefresh = internalMutation({
+  args: {id: v.string()},
+  returns: v.null(),
+  handler: async (ctx, {id}) => {
+    const current = await ctx.db.query("topicDetails").withIndex("by_external_id", q => q.eq("id", id)).unique();
+    const now = Date.now();
+    if (!current || now - current.fetchedAt <= DAY || (current.refreshRequestedAt !== undefined && now - current.refreshRequestedAt < REFRESH_EVERY_MS)) return null;
+    await ctx.db.patch("topicDetails", current._id, {refreshRequestedAt: now});
+    await ctx.scheduler.runAfter(0, internal.topics.details.refresh, {id});
+    return null;
+  },
+});
 async function fetchTopicDetail(id: string) {
-  const url = new URL(`https://api.openalex.org/topics/${id}`);
-  if (process.env.OPENALEX_API_KEY) url.searchParams.set("api_key", process.env.OPENALEX_API_KEY);
-  const response = await fetch(url, {signal: AbortSignal.timeout(10000)});
+  const response = await fetch(openAlexUrl(`topics/${id}`), {signal: AbortSignal.timeout(10000)});
   if (!response.ok) throw new Error(`OpenAlex topic returned ${response.status}`);
   const topic = provider.parse(await response.json());
   if (topic.id.replace("https://openalex.org/", "") !== id) throw new Error("OpenAlex returned a different topic");
-  return {id, description: topic.description, keywords: topic.keywords, worksCount: topic.works_count, fetchedAt: Date.now(), revision: CATALOG_REVISION};
+  return {id, description: topic.description, keywords: topic.keywords.slice(0, MAX_TOPIC_KEYWORDS), worksCount: topic.works_count, fetchedAt: Date.now(), revision: CATALOG_REVISION};
 }
 /** Keeps a saved topic's publication count current without making a reader wait. */
 export const refresh = internalAction({
@@ -65,8 +86,7 @@ export async function readTopicDetail(ctx: ActionCtx, args: {id: string; library
         throw createError("INVALID_DATA", "Topic description unavailable");
       }
     } else if (Date.now() - detail.fetchedAt > DAY) {
-      // ponytail: every reader of a stale topic schedules a refresh until one lands; save keeps the newest.
-      await ctx.scheduler.runAfter(0, internal.topics.details.refresh, {id: args.id});
+      await ctx.runMutation(internal.topics.details.requestRefresh, {id: args.id});
     }
     return {contractVersion: 1 as const, id: args.id, name: result.node.name, description: detail.description,
       keywords: detail.keywords, path: result.path, worksCount: detail.worksCount, fetchedAt: new Date(detail.fetchedAt).toISOString(), revision: detail.revision,
@@ -74,5 +94,10 @@ export async function readTopicDetail(ctx: ActionCtx, args: {id: string; library
  }
 export const get = action({
   args: {id: v.string()},
+  returns: v.object({
+    contractVersion: v.literal(1), id: v.string(), name: v.string(), description: v.string(), keywords: topicKeywordsValidator,
+    path: topicPathValidator, worksCount: v.number(), fetchedAt: v.string(), revision: v.string(),
+    publicBaseUrl: v.string(), topicUrl: v.string(),
+  }),
   handler: (ctx, args) => readTopicDetail(ctx, args),
 });

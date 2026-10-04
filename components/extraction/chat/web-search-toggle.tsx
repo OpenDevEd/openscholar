@@ -1,6 +1,6 @@
 "use client";
 
-import { Coins, Globe, Zap } from "lucide-react";
+import { Coins, Globe, Zap } from "@/components/icons";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { PromptInputButton } from "@/components/ai-elements/prompt-input";
@@ -106,7 +106,7 @@ export function WebSearchToggle({
           className={cn(
             "h-[3px] w-full",
             state === "on" &&
-              "bg-gradient-to-r from-primary via-primary/70 to-[oklch(0.55_0.15_293)]",
+              "bg-gradient-to-r from-primary via-primary/70 to-ai",
             state === "off" &&
               "bg-gradient-to-r from-muted-foreground/35 via-muted-foreground/20 to-muted-foreground/10",
             state === "unsupported" &&
@@ -119,7 +119,7 @@ export function WebSearchToggle({
               unsupported state, where the title alone carries it). */}
           <div className="mb-1 flex items-center justify-between gap-2">
             <p
-              className="text-[12.5px] font-semibold leading-snug text-popover-foreground"
+              className="text-xs font-semibold leading-snug text-popover-foreground"
               data-web-search-tooltip-title={state}
             >
               {title}
@@ -128,7 +128,7 @@ export function WebSearchToggle({
               <span
                 data-web-search-status-pill={state}
                 className={cn(
-                  "inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[11px] font-medium",
+                  "inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-2xs font-medium",
                   state === "on" && "bg-primary/15 text-primary",
                   state === "off" &&
                     "bg-muted text-muted-foreground/80",
@@ -143,7 +143,7 @@ export function WebSearchToggle({
 
           {/* Body — full sentence describing the state. */}
           <p
-            className="text-[11.5px] leading-relaxed text-muted-foreground"
+            className="text-2xs leading-relaxed text-muted-foreground"
             data-web-search-tooltip-body={state}
           >
             {body}
@@ -153,12 +153,12 @@ export function WebSearchToggle({
               the user always knows what a search costs. The unsupported
               state has nothing to bill. */}
           {showMeta ? (
-            <div className="mt-2.5 space-y-1.5 border-t border-border/60 pt-2">
+            <div className="mt-2.5 space-y-1.5 border-t border-border-subtle pt-2">
               <div
-                className="flex items-center gap-2 text-[11px]"
+                className="flex items-center gap-2 text-2xs"
                 data-tooltip-cost-line=""
               >
-                <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-muted/70 text-muted-foreground">
+                <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                   <Coins className="size-2.5" aria-hidden="true" />
                 </span>
                 <span className="text-muted-foreground">
@@ -166,7 +166,7 @@ export function WebSearchToggle({
                 </span>
               </div>
               <p
-                className="pl-6 text-[10px] leading-tight text-muted-foreground/70"
+                className="pl-6 text-3xs leading-tight text-muted-foreground/70"
                 data-tooltip-cost-note=""
               >
                 {t("webSearch.metaCostNote", {
@@ -174,10 +174,10 @@ export function WebSearchToggle({
                 })}
               </p>
               <div
-                className="flex items-center gap-2 text-[11px]"
+                className="flex items-center gap-2 text-2xs"
                 data-tooltip-provider-line=""
               >
-                <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-[oklch(0.55_0.15_293/0.12)] text-[oklch(0.45_0.16_293)] dark:text-[oklch(0.78_0.12_293)]">
+                <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-ai/12 text-ai">
                   <Zap className="size-2.5" aria-hidden="true" />
                 </span>
                 <span className="text-muted-foreground">

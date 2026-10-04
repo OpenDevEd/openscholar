@@ -11,7 +11,7 @@ import {
   internalQuery,
   mutation,
   type MutationCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import { v } from "convex/values";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
 import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
@@ -71,6 +71,7 @@ import {
   isCurrentConfigurationTargetBaseUrl,
   isCurrentConfigurationDeploymentTarget,
   isRetryableConfigurationDeployment,
+  readActiveOperations,
 } from "./operations";
 
 export { isConfigurationDeploymentOperation } from "./operations";
@@ -83,6 +84,11 @@ export const isFailedRuntimeTarget = internalQuery({
     libraryId: v.id("evidenceLibraries"),
     runtimeCommit: v.string(),
     runtimeImage: v.string(),
+    /**
+     * Only when the last failed move to this release was a software update.
+     * A failed rollback stages a release too, and updating does not undo it.
+     */
+    updateOnly: v.optional(v.boolean()),
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
@@ -95,8 +101,11 @@ export const isFailedRuntimeTarget = internalQuery({
           .eq("runtimeUpdate.to", args.runtimeCommit)
           .eq("runtimeUpdate.toImage", args.runtimeImage),
       )
+      .order("desc")
       .first();
-    return operation !== null;
+    return (
+      operation !== null && (!args.updateOnly || operation.kind === "publish")
+    );
   },
 });
 
@@ -302,12 +311,7 @@ export async function requireNoActiveConfigurationDeployment(
   exceptOperationId?: Id<"evidenceLibraryConfigOperations">,
 ) {
   for (const status of ["queued", "running"] as const) {
-    const operations = ctx.db
-      .query("evidenceLibraryConfigOperations")
-      .withIndex("by_libraryId_and_status_and_updatedAt", (query) =>
-        query.eq("libraryId", libraryId).eq("status", status),
-      );
-    for await (const operation of operations) {
+    for (const operation of await readActiveOperations(ctx, libraryId, status, "publish")) {
       if (
         operation._id !== exceptOperationId &&
         isConfigurationDeploymentOperation(operation)

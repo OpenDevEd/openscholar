@@ -10,6 +10,7 @@ import { z } from "zod";
 import { MAX_CATALOG_MODELS } from "./catalog";
 import { EFFORTS, type Effort } from "../../lib/ai/core/call-options";
 import { JEV_MODEL } from "../../lib/ai/decisions";
+import { MAX_MODEL_MODALITIES, MAX_MODEL_PARAMETERS } from "../lib/listCaps";
 
 const DECISION_MODELS = [JEV_MODEL];
 
@@ -117,8 +118,9 @@ export function transformModel(raw: OpenRouterModel) {
     huggingFaceId: raw.hugging_face_id ?? undefined,
 
     modality: raw.architecture?.modality ?? undefined,
-    inputModalities: raw.architecture?.input_modalities ?? undefined,
-    outputModalities: raw.architecture?.output_modalities ?? undefined,
+    // OpenRouter's lists are cut to the caps a model row holds (#426).
+    inputModalities: raw.architecture?.input_modalities?.slice(0, MAX_MODEL_MODALITIES) ?? undefined,
+    outputModalities: raw.architecture?.output_modalities?.slice(0, MAX_MODEL_MODALITIES) ?? undefined,
     tokenizer: raw.architecture?.tokenizer ?? undefined,
     instructType: raw.architecture?.instruct_type ?? undefined,
 
@@ -137,7 +139,7 @@ export function transformModel(raw: OpenRouterModel) {
     maxCompletionTokens: raw.top_provider?.max_completion_tokens ?? undefined,
     isModerated: raw.top_provider?.is_moderated ?? undefined,
 
-    supportedParameters: raw.supported_parameters ?? undefined,
+    supportedParameters: raw.supported_parameters?.slice(0, MAX_MODEL_PARAMETERS) ?? undefined,
     ...reasoningOf(raw.reasoning),
     intelligenceIndex: raw.benchmarks?.artificial_analysis?.intelligence_index ?? undefined,
 

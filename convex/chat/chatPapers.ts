@@ -16,7 +16,7 @@
  */
 
 import { v } from "convex/values";
-import { mutation, query } from "../_generated/server";
+import { mutation, query } from "../lib/functions";
 import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { assertCallerOwnsJob } from "./auth";
@@ -24,6 +24,7 @@ import {
   chatSourcesSnapshotValidator,
   readChatSourcesSnapshot,
 } from "./sourceReadModel";
+import { PAPER_LIMIT } from "../../lib/extraction/limits";
 
 export type { ChatSourceRow } from "./sourceReadModel";
 
@@ -72,7 +73,7 @@ export const bulkSetChatPapers = mutation({
     const allForJob = await ctx.db
       .query("chatPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .collect();
+      .take(PAPER_LIMIT);
 
     const rows =
       sourceIds === undefined

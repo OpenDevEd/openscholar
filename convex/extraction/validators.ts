@@ -4,10 +4,13 @@
  * These mirror the schema definitions in convex/schema.ts exactly.
  */
 
-import { v } from "convex/values";
+import { v, type Validator } from "convex/values";
 import { effortValidator } from "../aiModelConfig/validators";
 import { errorCodeValidator } from "@/lib/errors/taxonomy";
 import { type AssertExactDoc } from "../lib/validators";
+import {
+  MAX_ANSWER_ITEMS, MAX_AUTHORS, MAX_CHAT_PAPERS, MAX_CITATIONS, MAX_ERROR_CONTEXT_BYTES, MAX_FILTER_VALUES, MAX_QUESTIONS, MAX_UNIT_TOKENS, RANGE_ENDS, capped, sized,
+} from "../lib/listCaps";
 
 /**
  * Re-export so all extraction code can pull the taxonomy validator from
@@ -23,10 +26,13 @@ export { errorCodeValidator };
  * `context` is bounded at 4 KB by classifyUnknownError to keep doc
  * sizes well under the 1 MB row limit.
  */
+/** An error's diagnostic fields: free-form, cut to MAX_ERROR_CONTEXT_BYTES of JSON (lib/errors/taxonomy.ts). */
+const errorContextValidator = sized(v.optional(v.any()), MAX_ERROR_CONTEXT_BYTES);
+
 export const structuredErrorValidator = v.object({
   code: errorCodeValidator,
   message: v.string(),
-  context: v.optional(v.any()),
+  context: errorContextValidator,
   httpStatus: v.optional(v.number()),
   providerName: v.optional(v.string()),
   at: v.number(),
@@ -41,7 +47,7 @@ export const classifiedErrorValidator = v.object({
   code: errorCodeValidator,
   message: v.string(),
   retryable: v.boolean(),
-  context: v.optional(v.any()),
+  context: errorContextValidator,
   httpStatus: v.optional(v.number()),
   providerName: v.optional(v.string()),
 });
@@ -52,7 +58,12 @@ export const classifiedErrorValidator = v.object({
 // `assertBucketWithinLimits`. These question-shape caps still apply and are
 // enforced inline.
 
-export const MAX_QUESTIONS_PER_JOB = 50;
+export const MAX_QUESTIONS_PER_JOB = MAX_QUESTIONS;
+
+/** Papers picked at once for a job or chat, which holds at most this many. */
+export function paperSelectionValidator<V extends Validator<any, "required", any>>(paper: V) {
+  return capped(v.array(paper), MAX_CHAT_PAPERS);
+}
 export const MAX_QUESTION_TEXT_LENGTH = 2000;
 export const MAX_PAPER_TITLE_LENGTH = 500;
 export const MAX_PAPER_ABSTRACT_LENGTH = 10000;
@@ -110,7 +121,7 @@ export const answerValidator = v.union(
   v.string(),
   v.boolean(),
   v.number(),
-  v.array(v.string()),
+  capped(v.array(v.string()), MAX_ANSWER_ITEMS),
   v.null()
 );
 
@@ -144,7 +155,7 @@ export const paperSourceTypeValidator = v.union(
 export const citationValidator = v.object({
   evidenceId: v.string(),
   page: v.number(),
-  charRange: v.array(v.number()),
+  charRange: capped(v.array(v.number()), RANGE_ENDS),
   quote: v.string(),
   retrieval: v.object({
     denseScore: v.optional(v.number()),
@@ -193,20 +204,20 @@ const legacySearchFiltersValidator = v.object({
   field: v.optional(v.string()),
   searchField: v.optional(v.string()),
   sortBy: v.optional(v.string()),
-  yearRange: v.optional(v.array(v.number())),
+  yearRange: capped(v.optional(v.array(v.number())), RANGE_ENDS),
   dateRange: v.optional(v.object({
     from: v.optional(v.string()),
     to: v.optional(v.string()),
   })),
-  selectedRegions: v.optional(v.array(v.string())),
-  selectedCountryFocus: v.optional(v.array(v.string())),
+  selectedRegions: capped(v.optional(v.array(v.string())), MAX_FILTER_VALUES),
+  selectedCountryFocus: capped(v.optional(v.array(v.string())), MAX_FILTER_VALUES),
   reviewFilter: v.optional(v.boolean()),
   citesItemId: v.optional(v.string()),
   citedByItemId: v.optional(v.string()),
   relatedToItemId: v.optional(v.string()),
   isYearRangeEnabled: v.optional(v.boolean()),
   filterType: v.optional(v.string()),
-  ratingRange: v.optional(v.array(v.number())),
+  ratingRange: capped(v.optional(v.array(v.number())), RANGE_ENDS),
   onlyRatedPapers: v.optional(v.boolean()),
   language: v.optional(v.string()),
   perPage: v.optional(v.number()),
@@ -232,6 +243,9 @@ export const extractionJobFields = {
   usePdfs: v.optional(v.boolean()),
   pausedAt: v.optional(v.number()),
   pausedFromStatus: v.optional(pausedFromStatusValidator),
+  // Set while a retry resets failed results in batches (#351); the job doesn't finish until it clears.
+  /** Set while a retry resets the job's failures a batch at a time; where the next batch starts. */
+  retryReset: v.optional(v.object({ cursor: v.union(v.string(), v.null()) })),
   estimatedCredits: v.optional(
     v.object({
       low: v.number(),
@@ -257,8 +271,11 @@ export const extractionJobFields = {
   shouldAbort: v.optional(v.boolean()),
   webSearchEnabled: v.optional(v.boolean()),
   chatSourceFingerprint: v.optional(v.string()),
-  chatSourceOpenAlexIds: v.optional(v.array(v.string())),
+  chatSourceOpenAlexIds: capped(v.optional(v.array(v.string())), MAX_CHAT_PAPERS),
   name: v.string(),
+  // The name as the job list orders it, ignoring case and accents; a trigger keeps it
+  // (../extraction/jobList.ts). Missing until migrations/pagedExtractionJobs has run.
+  sortName: v.optional(v.string()),
   description: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
@@ -286,7 +303,7 @@ const bucketItemFields = {
   ),
   sourceRefId: v.string(),
   title: v.string(),
-  authors: v.array(v.string()),
+  authors: capped(v.array(v.string()), MAX_AUTHORS),
   year: v.optional(v.number()),
   doi: v.optional(v.string()),
   openalexId: v.optional(v.string()),
@@ -343,6 +360,9 @@ export const extractionQuestionValidator = v.object({
   _creationTime: v.number(),
   ...extractionQuestionFields,
 });
+/** A job's questions, all of them: a job takes at most MAX_QUESTIONS_PER_JOB (convex/extraction/mutations/jobs.ts). */
+export const jobQuestionsValidator = capped(v.array(extractionQuestionValidator), MAX_QUESTIONS);
+
 
 const _check_extractionQuestionValidator: AssertExactDoc<"extractionQuestions", typeof extractionQuestionValidator> = true;
 void _check_extractionQuestionValidator;
@@ -354,7 +374,7 @@ export const extractionPaperFields = {
   doi: v.optional(v.string()),
   publicationYear: v.optional(v.number()),
   abstract: v.optional(v.string()),
-  authors: v.optional(v.array(v.string())),
+  authors: capped(v.optional(v.array(v.string())), MAX_AUTHORS),
   isOpenAccess: v.optional(v.boolean()),
   processable: v.optional(v.boolean()),
   status: paperStatusValidator,
@@ -382,7 +402,7 @@ export const extractionPaperFields = {
   avgConfidence: v.optional(v.number()),
   hasErrors: v.optional(v.boolean()),
   hasPdfSource: v.optional(v.boolean()),
-  questionAnswerTokens: v.optional(v.array(v.string())),
+  questionAnswerTokens: capped(v.optional(v.array(v.string())), MAX_QUESTIONS),
   searchText: v.optional(v.string()),
 };
 
@@ -408,7 +428,7 @@ export const extractionPaperErrorFields = {
   message: v.string(),
   httpStatus: v.optional(v.number()),
   providerName: v.optional(v.string()),
-  context: v.optional(v.any()),
+  context: errorContextValidator,
 };
 
 export const extractionPaperErrorValidator = v.object({
@@ -451,8 +471,12 @@ export const extractionPaperQueueFields = {
   leasedAt: v.optional(v.number()),
   leaseExpiresAt: v.optional(v.number()),
   workId: v.optional(v.string()),
-  questionKeys: v.optional(v.array(v.string())),
+  questionKeys: capped(v.optional(v.array(v.string())), MAX_QUESTIONS),
   lastError: v.optional(structuredErrorValidator),
+  // Set when the paper's run releases the row, in commit order, while it waits for the
+  // extraction worker to refill the job's window (convex/extraction/queue/dispatcher.ts),
+  // which clears it.
+  releasedAt: v.optional(v.commitTs()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
@@ -484,7 +508,7 @@ export const extractionResultFields = {
   answer: answerValidator,
   confidence: v.optional(v.number()),
   reasoning: v.optional(v.string()),
-  citations: v.array(citationValidator),
+  citations: capped(v.array(citationValidator), MAX_CITATIONS),
   citationStatus: citationStatusValidator,
   retrievalDiagnostics: v.optional(retrievalDiagnosticsValidator),
   status: v.optional(resultStatusValidator),
@@ -503,6 +527,9 @@ export const extractionResultValidator = v.object({
   _creationTime: v.number(),
   ...extractionResultFields,
 });
+/** One paper's results, one per question of its job. */
+export const paperResultsValidator = capped(v.array(extractionResultValidator), MAX_QUESTIONS);
+
 
 const _check_extractionResultValidator: AssertExactDoc<"extractionResults", typeof extractionResultValidator> = true;
 void _check_extractionResultValidator;
@@ -512,10 +539,10 @@ export const extractionEvidenceUnitFields = {
   paperId: v.id("extractionPapers"),
   evidenceId: v.string(),
   page: v.number(),
-  charRange: v.array(v.number()),
+  charRange: capped(v.array(v.number()), RANGE_ENDS),
   text: v.string(),
   section: v.optional(v.string()),
-  tokens: v.array(v.string()),
+  tokens: capped(v.array(v.string()), MAX_UNIT_TOKENS),
   anchorConfidence: v.number(),
   source: v.string(),
   createdAt: v.number(),
@@ -565,5 +592,8 @@ export const paginatedPaperWithResultsValidator = v.object({
   _id: v.id("extractionPapers"),
   _creationTime: v.number(),
   ...extractionPaperFields,
-  results: v.array(extractionResultValidator),
+  results: paperResultsValidator,
 });
+
+/** A paper's authors, the first MAX_AUTHORS of them. */
+export const authorListValidator = capped(v.array(v.string()), MAX_AUTHORS);

@@ -9,14 +9,27 @@ import {
 } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { type Infer, v } from "convex/values";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import { stream } from "convex-helpers/server/stream";
+import schema from "../schema";
+import { listCounts, organizationLibrariesOf } from "../lib/listCounts";
 import { normalizeEvidenceLibraryName } from "../../lib/evidence-libraries/setup/naming";
 import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
-import { evidenceLibraryTeardownStepValidator } from "./validators";
+import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
+import {
+  draftSectionsValidator,
+  evidenceLibraryTeardownStepValidator,
+  grantedPeopleValidator,
+  organizationPeopleValidator,
+  revisionSectionsValidator,
+  teamInvitationsValidator,
+} from "./validators";
 import {
   readLibraryRole,
+  libraryRoleFrom,
   requireEvidenceLibraryAccess,
   readEvidenceLibraryAccess,
 } from "./access";
@@ -31,7 +44,6 @@ import {
   evidenceLibraryPublicOperationFields,
   currentOwnerConfigurationVersionValidator,
   ownerConfigurationVersionValidator,
-  sectionKeyValidator,
   toPublicEvidenceLibraryOperation,
 } from "./validators";
 import {
@@ -111,24 +123,6 @@ export function projectRevisionConfigurationSections(
       sectionKey,
     };
   });
-}
-
-export async function readEvidenceLibraries(ctx: QueryCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return [];
-  const [memberships, assignments] = await Promise.all([
-    readMemberOrganizations(ctx),
-    ctx.db.query("evidenceLibraryMembers")
-      .withIndex("by_clerkUserId", q => q.eq("clerkUserId", identity.subject))
-      .collect(),
-  ]);
-  const owned = await Promise.all(memberships.filter(({membership}) => membership.role === "org:admin").map(({membership}) =>
-    ctx.db.query("evidenceLibraries").withIndex("by_organizationId", q => q.eq("organizationId", membership.organizationId)).collect()));
-  const assigned = await Promise.all(assignments.map(m => ctx.db.get("evidenceLibraries", m.libraryId)));
-  const candidates = new Map([...owned.flat(), ...assigned].filter((library): library is Doc<"evidenceLibraries"> => library !== null).map(library => [library._id, library]));
-  const accessible = await Promise.all([...candidates.values()].map(async library =>
-    await readLibraryRole(ctx, library, identity.subject) ? library : null));
-  return accessible.filter((library): library is Doc<"evidenceLibraries"> => library !== null);
 }
 
 export const libraryOverviewStatusValidator = v.union(
@@ -333,20 +327,140 @@ async function readLibraryOverview(
   };
 }
 
-export const listLibraryOverviews = query({
+/** Most libraries one page of the list holds, and the rows one read of it passes over looking for matches. */
+const LIBRARIES_PAGE_MAX = 50;
+const LIBRARY_ROWS_READ = 1_000;
+/** Where the granted libraries sit in the list: after every organization the person owns. */
+const GRANTED = "granted";
+
+/** The organizations a person owns, by name, then by ID so two of one name keep their order. */
+async function ownedOrganizations(ctx: QueryCtx) {
+  return (await readMemberOrganizations(ctx))
+    .filter(({ membership }) => membership.role === "org:admin")
+    .map(({ organization }) => organization)
+    .sort((a, b) => a.name.localeCompare(b.name) || (a._id < b._id ? -1 : 1));
+}
+
+/** A library a person was granted, with their role, unless they own its organization, where it is listed already. */
+async function grantedLibrary(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<"organizations">>, libraryId: Id<"evidenceLibraries">) {
+  const library = await ctx.db.get("evidenceLibraries", libraryId);
+  if (!library || owned.has(library.organizationId)) return null;
+  const role = await readLibraryRole(ctx, library, clerkUserId);
+  const organization = role ? await ctx.db.get("organizations", library.organizationId) : null;
+  return role && organization ? { library, role, organization } : null;
+}
+
+const overviewRow = async (ctx: QueryCtx, library: Doc<"evidenceLibraries">, role: Infer<typeof evidenceLibraryAdminRoleValidator>, organization: Doc<"organizations">) => ({
+  ...(await readLibraryOverview(ctx, library)),
+  role,
+  organization: { name: organization.name, imageUrl: organization.imageUrl ?? null },
+});
+
+/**
+ * One page of the libraries a person can open: those of each organization they own, one
+ * organization after another by name and each in the order they were made, then the libraries
+ * they were granted. Given `organization`, only that organization's; given `search`, only
+ * those whose name, or whose organization's name, contains it. The cursor names the
+ * organization the page stopped in and where.
+ */
+export const listLibraries = query({
+  args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()), organization: v.optional(v.id("organizations")) },
+  returns: paginationResultValidator(libraryOverviewValidator),
+  handler: async (ctx, { paginationOpts, search, organization }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return { page: [], isDone: true, continueCursor: "" };
+    const owned = await ownedOrganizations(ctx);
+    const ownedIds = new Set(owned.map((entry) => entry._id));
+    const needle = search?.trim().toLowerCase();
+    const numItems = Math.min(paginationOpts.numItems, LIBRARIES_PAGE_MAX);
+    // What the page has read so far: every organization of one page shares one allowance of rows.
+    let rows = 0;
+    const within = (name: string, organizationName: string) => {
+      rows++;
+      return !needle || name.toLowerCase().includes(needle) || organizationName.toLowerCase().includes(needle);
+    };
+    const sources: Array<{ key: string; name: string; read: (cursor: string | null, room: number) => Promise<{ page: Infer<typeof libraryOverviewValidator>[]; after: string | null }> }> = [
+      ...owned
+        .filter((entry) => !organization || entry._id === organization)
+        .map((entry) => ({
+          key: entry._id as string,
+          name: entry.name,
+          read: async (cursor: string | null, room: number) => {
+            const read = await stream(ctx.db, schema)
+              .query("evidenceLibraries")
+              .withIndex("by_organizationId", (index) => index.eq("organizationId", entry._id))
+              .filterWith(async (library) => within(library.name, entry.name))
+              .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
+            return { page: await Promise.all(read.page.map((library) => overviewRow(ctx, library, "owner", entry))), after: read.isDone ? null : read.continueCursor };
+          },
+        })),
+      {
+        key: GRANTED,
+        name: "",
+        read: async (cursor: string | null, room: number) => {
+          const read = await stream(ctx.db, schema)
+            .query("evidenceLibraryMembers")
+            .withIndex("by_clerkUserId", (index) => index.eq("clerkUserId", identity.subject))
+            .map(async (grant) => grantedLibrary(ctx, identity.subject, ownedIds, grant.libraryId))
+            .filterWith(async (granted) => granted !== null && (!organization || granted.organization._id === organization) && within(granted.library.name, granted.organization.name))
+            .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
+          return { page: await Promise.all(read.page.map((granted) => overviewRow(ctx, granted!.library, granted!.role, granted!.organization))), after: read.isDone ? null : read.continueCursor };
+        },
+      },
+    ];
+    const stoppedAt = (at: number, after: string | null) => JSON.stringify({ source: sources[at].key, name: sources[at].name, after });
+    const from: { source: string; name: string; after: string | null } | null = paginationOpts.cursor ? JSON.parse(paginationOpts.cursor) : null;
+    const same = from ? sources.findIndex((source) => source.key === from.source) : 0;
+    // The organization the page before stopped in is no longer one the person owns: the list goes on from the next one after it by name.
+    const start = same !== -1 ? same : sources.findIndex((source) => source.key === GRANTED || (source.name.localeCompare(from!.name) || (source.key < from!.source ? -1 : 1)) > 0);
+    const page: Infer<typeof libraryOverviewValidator>[] = [];
+    for (let at = start; at < sources.length; at++) {
+      if (page.length >= numItems) return { page, isDone: false, continueCursor: stoppedAt(at, null) };
+      const read = await sources[at].read(at === same ? (from?.after ?? null) : null, numItems - page.length);
+      page.push(...read.page);
+      if (read.after !== null) return { page, isDone: false, continueCursor: stoppedAt(at, read.after) };
+    }
+    return { page, isDone: true, continueCursor: "" };
+  },
+});
+
+/** The libraries a person was granted outside the organizations they own: at most MAX_LIBRARY_GRANTS_PER_PERSON grants (./members.ts). */
+async function grantedLibraries(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<"organizations">>) {
+  const grants = await ctx.db.query("evidenceLibraryMembers").withIndex("by_clerkUserId", (index) => index.eq("clerkUserId", clerkUserId)).take(MAX_LIBRARY_GRANTS_PER_PERSON);
+  return (await Promise.all(grants.map((grant) => grantedLibrary(ctx, clerkUserId, owned, grant.libraryId)))).flatMap((granted) => (granted ? [granted] : []));
+}
+
+/** How many libraries a person can open: each owned organization's kept count (lib/listCounts.ts), and the libraries they were granted. */
+export const countLibraries = query({
   args: {},
-  returns: v.array(libraryOverviewValidator),
+  returns: v.number(),
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const libraries = await readEvidenceLibraries(ctx);
-    return await Promise.all(libraries.map(async library => {
-      const role = await readLibraryRole(ctx, library, identity.subject);
-      const organization = await ctx.db.get("organizations", library.organizationId);
-      if (!role || !organization) throw createError("FORBIDDEN", "Library access denied");
-      return { ...await readLibraryOverview(ctx, library), role,
-        organization: { name: organization.name, imageUrl: organization.imageUrl ?? null } };
-    }));
+    if (!identity) return 0;
+    const owned = await ownedOrganizations(ctx);
+    const counts = await listCounts.countBatch(ctx, owned.map((entry) => ({ namespace: organizationLibrariesOf(entry._id) })));
+    const granted = await grantedLibraries(ctx, identity.subject, new Set(owned.map((entry) => entry._id)));
+    return counts.reduce((sum, count) => sum + count, 0) + granted.length;
+  },
+});
+
+/**
+ * The organizations whose libraries a person can open, by name, as one page, for the list's
+ * filter: the ones they own that have a library, and those of the libraries they were granted.
+ * A person owns at most MAX_ORGANIZATIONS_PER_PERSON and holds at most MAX_LIBRARY_GRANTS_PER_PERSON grants.
+ */
+export const listLibraryOwners = query({
+  args: {},
+  returns: paginationResultValidator(v.object({ id: v.id("organizations"), name: v.string(), imageUrl: v.union(v.string(), v.null()) })),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return { page: [], isDone: true, continueCursor: "" };
+    const owned = await ownedOrganizations(ctx);
+    const withLibraries = await Promise.all(owned.map(async (entry) => ((await ctx.db.query("evidenceLibraries").withIndex("by_organizationId", (index) => index.eq("organizationId", entry._id)).first()) ? entry : null)));
+    const granted = await grantedLibraries(ctx, identity.subject, new Set(owned.map((entry) => entry._id)));
+    const owners = new Map([...withLibraries.flatMap((entry) => (entry ? [entry] : [])), ...granted.map((entry) => entry.organization)].map((entry) => [entry._id, entry]));
+    const page = [...owners.values()].sort((a, b) => a.name.localeCompare(b.name)).map((entry) => ({ id: entry._id, name: entry.name, imageUrl: entry.imageUrl ?? null }));
+    return { page, isDone: true, continueCursor: "" };
   },
 });
 
@@ -391,24 +505,35 @@ export const readAddressCandidates = internalQuery({
   },
 });
 
+/** Most hosts one served check asks about: a library's address candidates, or one custom domain. */
+const MAX_SERVED_HOSTS_ASKED = 50;
+
 /**
- * The hosts Coolify served when it was last asked, with the time it was
- * asked. The address action decides whether that is recent enough.
+ * Which of `hosts` the current listing holds, and when that listing began, read together in
+ * one transaction so a refresh can't swap the listing between the two. Null when Coolify has
+ * never been listed. The address action decides whether the listing is recent enough.
  */
-export const readServedHostsCache = internalQuery({
-  args: {},
-  returns: v.union(
-    v.null(),
-    v.object({ hosts: v.array(v.string()), fetchedAt: v.number() }),
-  ),
-  handler: async (ctx) => {
-    // Internal only, and the same for everybody: the hosts Coolify serves.
-    // Address recovery reads it with no signed-in owner behind the request.
-    const row = await ctx.db
-      .query("evidenceLibraryServedHosts")
+export const servedHostsCheck = internalQuery({
+  args: { hosts: v.array(v.string()) },
+  returns: v.union(v.null(), v.object({ startedAt: v.number(), served: v.array(v.string()) })),
+  handler: async (ctx, { hosts }) => {
+    // Internal only, and the same for everybody: address recovery reads it with no
+    // signed-in owner behind the request.
+    const current = await ctx.db
+      .query("evidenceLibraryServedHostsListing")
       .withIndex("by_source", (query) => query.eq("source", "coolify"))
       .unique();
-    return row ? { hosts: row.hosts, fetchedAt: row.fetchedAt } : null;
+    if (!current) return null;
+    const asked = hosts.slice(0, MAX_SERVED_HOSTS_ASKED);
+    const found = await Promise.all(
+      asked.map((host) =>
+        ctx.db
+          .query("evidenceLibraryServedHostRows")
+          .withIndex("by_listing_and_host", (query) => query.eq("listing", current.listing).eq("host", host))
+          .first(),
+      ),
+    );
+    return { startedAt: current.startedAt, served: asked.filter((_, i) => found[i] !== null) };
   },
 });
 
@@ -582,11 +707,15 @@ export async function readEvidenceLibraryDraft(
         ),
       }
     : null;
+  const runtimeBinding = access.library.runtimeBindingId
+    ? await ctx.db.get("evidenceLibraryRuntimeBindings", access.library.runtimeBindingId)
+    : null;
   return {
     draft: {
       ...draft,
       ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
     },
+    liveAddress: runtimeBinding?.canonicalBaseUrl ?? runtimeBinding?.targetBaseUrl ?? null,
     library: access.library,
     operation,
     hasUnpublishedChanges:
@@ -662,15 +791,9 @@ export const getDraft = query({
       }),
     ),
     hasUnpublishedChanges: v.boolean(),
-    sections: v.array(
-      v.object({
-        sectionKey: sectionKeyValidator,
-        payload: v.any(),
-        payloadByteLength: v.number(),
-        contractProvenance: configProvenanceValidator,
-        updatedAt: v.number(),
-      }),
-    ),
+    /** Where the library answers now, or null before it first runs. */
+    liveAddress: v.union(v.string(), v.null()),
+    sections: draftSectionsValidator,
   })),
   handler: async (ctx, args) => {
     const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
@@ -703,24 +826,9 @@ export const getRevision = query({
       createdByClerkUserId: v.string(),
       createdAt: v.number(),
     }),
-    sections: v.array(
-      v.object({
-        sectionKey: sectionKeyValidator,
-        payload: v.any(),
-        payloadByteLength: v.number(),
-        contractProvenance: configProvenanceValidator,
-        createdAt: v.number(),
-      }),
-    ),
+    sections: revisionSectionsValidator,
   }),
   handler: readEvidenceLibraryRevision,
-});
-
-const teamPersonValidator = v.object({
-  clerkUserId: v.string(),
-  name: v.string(),
-  email: v.string(),
-  imageUrl: v.optional(v.string()),
 });
 
 /**
@@ -730,16 +838,24 @@ const teamPersonValidator = v.object({
 async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
   const [memberships, assignments] = await Promise.all([
     ctx.db.query("organizationMemberships")
-      .withIndex("by_organizationId_and_state", q => q.eq("organizationId", library.organizationId).eq("state", "active")).collect(),
+      .withIndex("by_organizationId_and_state", q => q.eq("organizationId", library.organizationId).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS_READ + 1),
+    // A library grants at most MAX_LIBRARY_MEMBERS people (./members.ts).
     ctx.db.query("evidenceLibraryMembers")
-      .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id)).collect(),
+      .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id)).take(MAX_LIBRARY_MEMBERS),
   ]);
-  const memberIds = new Set(memberships.map(m => m.clerkUserId));
-  const userIds = new Set([...memberIds, ...assignments.map(m => m.clerkUserId)]);
+  if (memberships.length > MAX_ORGANIZATION_MEMBERS_READ) {
+    throw createError("VALIDATION_ERROR", `This organization has more than ${MAX_ORGANIZATION_MEMBERS_READ.toLocaleString("en")} members, more than the team page lists.`);
+  }
+  const membershipOf = new Map(memberships.map(m => [m.clerkUserId, m]));
+  const assignmentOf = new Map(assignments.map(m => [m.clerkUserId, m]));
+  const memberIds = new Set(membershipOf.keys());
+  const userIds = new Set([...memberIds, ...assignmentOf.keys()]);
+  // Roles come from the rows read above, so each person costs one more read: their user.
+  const organization = await ctx.db.get("organizations", library.organizationId);
   return await Promise.all([...userIds].map(async clerkUserId => {
     const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
     return {
-      role: await readLibraryRole(ctx, library, clerkUserId),
+      role: libraryRoleFrom(library, organization, { user, membership: membershipOf.get(clerkUserId) ?? null, assignment: assignmentOf.get(clerkUserId) ?? null }),
       canAdd: memberIds.has(clerkUserId) && user?.state !== "deleted" && library.state !== "disabled",
       person: { clerkUserId, name: [user?.firstName, user?.lastName].filter(Boolean).join(" "), email: user?.email ?? "", imageUrl: user?.avatarUrl },
     };
@@ -751,19 +867,18 @@ export const listTeam = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.object({
     organizationName: v.string(),
-    owners: v.array(teamPersonValidator),
-    editors: v.array(teamPersonValidator),
-    creators: v.array(teamPersonValidator),
-    availablePeople: v.array(teamPersonValidator),
-    invitations: v.array(v.object({ invitationId: v.id("evidenceLibraryInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
+    owners: organizationPeopleValidator,
+    editors: grantedPeopleValidator,
+    creators: grantedPeopleValidator,
+    availablePeople: organizationPeopleValidator,
+    invitations: teamInvitationsValidator,
   }),
   handler: async (ctx, args) => {
     const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
     const people = await readLibraryPeople(ctx, access.library);
     people.sort((a, b) => (a.person.name || a.person.email).localeCompare(b.person.name || b.person.email));
     return {
-      invitations: (await ctx.db.query("evidenceLibraryInvitations").withIndex("by_libraryId_and_email", q => q.eq("libraryId", args.libraryId)).collect())
-        .filter(i => i.state === "pending" && i.expiresAt > Date.now())
+      invitations: (await ctx.db.query("evidenceLibraryInvitations").withIndex("by_libraryId_and_state", q => q.eq("libraryId", args.libraryId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_LIBRARY))
         .map(i => ({ invitationId: i._id, email: i.email, role: i.role, delivery: i.delivery })),
       organizationName: access.organization.name,
       owners: people.filter(p => p.role === "owner").map(p => p.person),

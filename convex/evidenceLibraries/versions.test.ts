@@ -101,6 +101,8 @@ async function readSectionPayloads(
   });
 }
 
+const firstVersions = { cursor: null, numItems: 10 };
+
 describe("Evidence Library versions", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -169,10 +171,11 @@ describe("Evidence Library versions", () => {
     expect(state.library?.activeRevisionId).toBe(second.revisionId);
     expect(state.library?.latestRevisionId).toBe(restored.revisionId);
 
-    const versionsWhileDeploying = await fixture.admin.query(
-      api.evidenceLibraries.versions.listVersions,
-      { libraryId: fixture.created.libraryId },
+    const { page: versionsWhileDeploying } = await fixture.admin.query(
+      api.evidenceLibraries.versions.listVersionRows,
+      { libraryId: fixture.created.libraryId, paginationOpts: firstVersions },
     );
+    expect(await fixture.admin.query(api.evidenceLibraries.versions.countVersions, { libraryId: fixture.created.libraryId })).toBe(3);
     expect(
       versionsWhileDeploying.map(({ revisionKey, status, kind }) => ({
         revisionKey,
@@ -187,9 +190,9 @@ describe("Evidence Library versions", () => {
     expect(versionsWhileDeploying[0]?.changedSections).toEqual(["identity"]);
 
     await markSucceeded(fixture, restored.operationId, restored.revisionId);
-    const versions = await fixture.admin.query(
-      api.evidenceLibraries.versions.listVersions,
-      { libraryId: fixture.created.libraryId },
+    const { page: versions } = await fixture.admin.query(
+      api.evidenceLibraries.versions.listVersionRows,
+      { libraryId: fixture.created.libraryId, paginationOpts: firstVersions },
     );
     expect(
       versions.map(({ revisionKey, status }) => [revisionKey, status]),
@@ -270,7 +273,7 @@ describe("Evidence Library versions", () => {
     expect(state.candidate).toMatchObject({
       basedOnRevisionId: second.revisionId,
       rollbackOfRevisionId: historicalRevisionId,
-      ownerConfigurationVersion: 7,
+      ownerConfigurationVersion: 8,
     });
     expect(state.candidateIdentity?.payload).toMatchObject({ assets: {} });
     expect(state.library?.activeRevisionId).toBe(second.revisionId);
@@ -366,7 +369,7 @@ describe("Evidence Library versions", () => {
     expect(firstState.active?.ownerConfigurationVersion).toBe(1);
     expect(firstState.candidate).toMatchObject({
       basedOnRevisionId: activeRevisionId,
-      ownerConfigurationVersion: 7,
+      ownerConfigurationVersion: 8,
     });
     expect(firstState.library?.activeRevisionId).toBe(activeRevisionId);
     expect(firstState.library?.latestRevisionId).toBe(started.revisionId);
@@ -376,7 +379,7 @@ describe("Evidence Library versions", () => {
     expect(
       firstState.operations.find((operation) => operation.runtimeUpdate)
         ?.idempotencyKey,
-    ).toContain(`${activeRevisionId}:v7:${RUNTIME_COMMIT}:${NEWER_COMMIT}`);
+    ).toContain(`${activeRevisionId}:v8:${RUNTIME_COMMIT}:${NEWER_COMMIT}`);
 
     await markFailed(fixture, started.operationId);
     const repeated = await fixture.admin.mutation(
@@ -601,7 +604,7 @@ describe("Evidence Library versions", () => {
     expect(state.active?.ownerConfigurationVersion).toBe(1);
     expect(state.candidate).toMatchObject({
       basedOnRevisionId: activeRevisionId,
-      ownerConfigurationVersion: 7,
+      ownerConfigurationVersion: 8,
     });
     expect(state.candidateIdentity?.payload).toMatchObject({
       baseUrl: "https://climate.example.org",
@@ -653,9 +656,9 @@ describe("Evidence Library versions", () => {
       });
     });
 
-    const versions = await fixture.admin.query(
-      api.evidenceLibraries.versions.listVersions,
-      { libraryId: fixture.created.libraryId },
+    const { page: versions } = await fixture.admin.query(
+      api.evidenceLibraries.versions.listVersionRows,
+      { libraryId: fixture.created.libraryId, paginationOpts: firstVersions },
     );
     expect(
       versions.map(({ revisionKey, status, kind, by, changedSections }) => ({
@@ -812,7 +815,7 @@ describe("Evidence Library address move", () => {
     });
     expect(state.candidate).toMatchObject({
       basedOnRevisionId: fixture.activated.revisionId,
-      ownerConfigurationVersion: 7,
+      ownerConfigurationVersion: 8,
     });
     expect(state.candidateIdentity?.payload).toMatchObject({
       baseUrl: movedTo,

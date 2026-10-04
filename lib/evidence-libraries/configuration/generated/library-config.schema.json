@@ -15,7 +15,7 @@
 		"updatedAt": {
 			"type": "string",
 			"format": "date-time",
-			"pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+			"pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
 		},
 		"identity": {
 			"type": "object",
@@ -782,7 +782,7 @@
 					"type": "string",
 					"maxLength": 254,
 					"format": "email",
-					"pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+					"pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
 				},
 				"phone": {
 					"type": "string",
@@ -1265,16 +1265,12 @@
 					"default": false,
 					"type": "boolean"
 				},
-				"login": {
+				"readerAccounts": {
 					"default": false,
 					"type": "boolean"
 				},
 				"navbarSearch": {
 					"default": true,
-					"type": "boolean"
-				},
-				"userCollections": {
-					"default": false,
 					"type": "boolean"
 				},
 				"ai": {
@@ -1585,7 +1581,7 @@
 											"approvedAt": {
 												"type": "string",
 												"format": "date-time",
-												"pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+												"pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
 											},
 											"query": {
 												"type": "object",
@@ -1858,7 +1854,7 @@
 									"type": "string",
 									"maxLength": 254,
 									"format": "email",
-									"pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+									"pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
 								},
 								"password": {
 									"type": "string",
@@ -2143,29 +2139,6 @@
 		"authentication": {
 			"type": "object",
 			"properties": {
-				"google": {
-					"default": {},
-					"type": "object",
-					"properties": {
-						"enabled": {
-							"default": false,
-							"type": "boolean"
-						},
-						"clientId": {
-							"type": "string",
-							"minLength": 10,
-							"maxLength": 255,
-							"writeOnly": true
-						},
-						"clientSecret": {
-							"type": "string",
-							"minLength": 20,
-							"maxLength": 512,
-							"writeOnly": true
-						}
-					},
-					"additionalProperties": false
-				},
 				"openScholar": {
 					"type": "object",
 					"properties": {
@@ -2180,7 +2153,13 @@
 							"minLength": 1,
 							"maxLength": 128
 						},
-						"loginPageUrl": {
+						"libraryUrl": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 2048,
+							"format": "uri"
+						},
+						"accountUrl": {
 							"type": "string",
 							"minLength": 1,
 							"maxLength": 2048,
@@ -2191,13 +2170,43 @@
 							"minLength": 47,
 							"maxLength": 47,
 							"writeOnly": true
+						},
+						"oauth": {
+							"type": "object",
+							"properties": {
+								"issuer": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 2048,
+									"format": "uri"
+								},
+								"clientId": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 255
+								},
+								"clientSecret": {
+									"type": "string",
+									"minLength": 16,
+									"maxLength": 512,
+									"writeOnly": true
+								}
+							},
+							"required": [
+								"issuer",
+								"clientId",
+								"clientSecret"
+							],
+							"additionalProperties": false
 						}
 					},
 					"required": [
 						"convexSiteUrl",
 						"libraryId",
-						"loginPageUrl",
-						"machineCredential"
+						"libraryUrl",
+						"accountUrl",
+						"machineCredential",
+						"oauth"
 					],
 					"additionalProperties": false
 				},
@@ -2222,13 +2231,13 @@
 					"type": "string",
 					"maxLength": 254,
 					"format": "email",
-					"pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+					"pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
 				},
 				"takedownRecipient": {
 					"type": "string",
 					"maxLength": 254,
 					"format": "email",
-					"pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+					"pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
 				},
 				"smtp": {
 					"default": {},
@@ -2270,7 +2279,7 @@
 							"type": "string",
 							"maxLength": 254,
 							"format": "email",
-							"pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+							"pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
 						}
 					},
 					"additionalProperties": false
@@ -2547,6 +2556,10 @@
 											"arrival",
 											"check",
 											"publication",
+											"search",
+											"sync",
+											"duplicates",
+											"fulltext",
 											"text"
 										]
 									},
@@ -2564,6 +2577,29 @@
 										"type": "string",
 										"minLength": 1,
 										"maxLength": 64
+									},
+									"icon": {
+										"$ref": "#/$defs/PlatformNavbarIconId"
+									},
+									"figure": {
+										"type": "object",
+										"properties": {
+											"value": {
+												"type": "string",
+												"minLength": 1,
+												"maxLength": 16
+											},
+											"label": {
+												"type": "string",
+												"minLength": 1,
+												"maxLength": 60
+											}
+										},
+										"required": [
+											"value",
+											"label"
+										],
+										"additionalProperties": false
 									}
 								},
 								"required": [

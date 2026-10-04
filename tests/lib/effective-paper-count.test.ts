@@ -49,7 +49,7 @@ describe("paperCountForItem", () => {
   });
 
   it("history placeholder with unset limit falls back to the pull cap", () => {
-    // Mirrors `buildOpenAlexSearchParams` falling back to OPENALEX_MAX_PER_PAGE.
+    // As the server reads it: an unset limit pulls the cap.
     expect(
       paperCountForItem(
         { source: "history", searchFilters: {} },

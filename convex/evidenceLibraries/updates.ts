@@ -7,7 +7,7 @@ import {
   query,
   type ActionCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import type { Doc } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
@@ -16,7 +16,6 @@ import {
   readEvidenceLibraryAccess,
   requireEvidenceLibraryAccess,
 } from "./access";
-import { readEvidenceLibraries } from "./queries";
 import { probeEvidenceLibraryAddress } from "./readinessClient";
 import {
   fetchRuntimeRelease,
@@ -27,8 +26,8 @@ import {
 import {
   evidenceLibraryAddressStateValidator,
   runtimeContractSupportValidator,
-  runtimeReleaseChangeValidator,
-  runtimeReleaseNotesValidator,
+  runtimeReleaseChangesValidator,
+  runtimeReleasesValidator,
 } from "./validators";
 
 const CONTRACT_COMMIT = EVIDENCE_LIBRARY_CONFIG_PROVENANCE.commit;
@@ -37,8 +36,8 @@ const runtimeUpdateStateValidator = v.object({
   running: v.string(),
   latest: v.string(),
   latestImage: v.string(),
-  changes: v.array(runtimeReleaseChangeValidator),
-  releases: v.array(runtimeReleaseNotesValidator),
+  changes: runtimeReleaseChangesValidator,
+  releases: runtimeReleasesValidator,
   checkedAt: v.number(),
   contractSupport: v.optional(runtimeContractSupportValidator),
 });
@@ -418,47 +417,32 @@ export const check = action({
  * to it is not the one they reserved. A live library reports the address it
  * runs on and who last answered there, when that was not this library.
  */
-export const listAddressNotices = query({
-  args: {},
-  returns: v.array(
-    v.object({
-      libraryId: v.id("evidenceLibraries"),
-      address: v.string(),
-      movedFrom: v.union(v.string(), v.null()),
-      addressState: v.union(evidenceLibraryAddressStateValidator, v.null()),
-    }),
-  ),
-  handler: async (ctx) => {
-    const libraries = await readEvidenceLibraries(ctx);
-    const notices = await Promise.all(
-      libraries.map(async (library) => {
-        const binding = library.runtimeBindingId
-          ? await ctx.db.get(
-              "evidenceLibraryRuntimeBindings",
-              library.runtimeBindingId,
-            )
-          : null;
-        const address =
-          binding?.canonicalBaseUrl ?? binding?.targetBaseUrl ?? "";
-        if (library.state === "active") {
-          const addressState = binding?.addressState;
-          return addressState && addressState !== "ours"
-            ? { libraryId: library._id, address, movedFrom: null, addressState }
-            : null;
-        }
-        if (!library.setupOperationId) return null;
-        const operation = await ctx.db.get(
-          "evidenceLibraryConfigOperations",
-          library.setupOperationId,
-        );
-        const movedFrom = operation?.addressMove?.from;
-        return movedFrom
-          ? { libraryId: library._id, address, movedFrom, addressState: null }
-          : null;
-      }),
-    );
-    return notices.filter((notice) => notice !== null);
-  },
+const addressNoticeValidator = v.object({
+  libraryId: v.id("evidenceLibraries"),
+  address: v.string(),
+  movedFrom: v.union(v.string(), v.null()),
+  addressState: v.union(evidenceLibraryAddressStateValidator, v.null()),
+});
+
+/** What there is to say about one library's address, or null when it's as reserved and answers as ours. */
+async function addressNoticeOf(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
+  const binding = library.runtimeBindingId ? await ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId) : null;
+  const address = binding?.canonicalBaseUrl ?? binding?.targetBaseUrl ?? "";
+  if (library.state === "active") {
+    const addressState = binding?.addressState;
+    return addressState && addressState !== "ours" ? { libraryId: library._id, address, movedFrom: null, addressState } : null;
+  }
+  if (!library.setupOperationId) return null;
+  const operation = await ctx.db.get("evidenceLibraryConfigOperations", library.setupOperationId);
+  const movedFrom = operation?.addressMove?.from;
+  return movedFrom ? { libraryId: library._id, address, movedFrom, addressState: null } : null;
+}
+
+/** One library's address notice, for its Versions section; null when there is none. */
+export const getAddressNotice = query({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.union(addressNoticeValidator, v.null()),
+  handler: async (ctx, args) => addressNoticeOf(ctx, (await requireEvidenceLibraryAccess(ctx, args.libraryId, "read")).library),
 });
 
 // Maintenance entry point: refresh the release row for one running commit

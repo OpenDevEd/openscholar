@@ -2,7 +2,7 @@
 "use no memo"; // Sync effect setCurrentQuery(urlQuery) for store; try/finally in handlers
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Search, Wand2, Loader2 } from "lucide-react";
+import { Search, Wand2, Loader2 } from "@/components/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,8 @@ import {
 import { useEffectiveSearchId, useQueryHistory } from "@/lib/hooks";
 import { useAppToast, getErrorMessage } from "@/lib/toast";
 import { useEnhanceSearchQuery, useTranslateQuery } from "@/lib/ai/client/router";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { ensureQueryShortcuts, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
+import { useQueryShortcuts } from "@/lib/research/reads";
 import { cn } from "@/lib/utils";
 import { AISetupGate } from "@/components/ai/ai-setup-gate";
 import posthog from "posthog-js";
@@ -30,10 +31,9 @@ import posthog from "posthog-js";
 interface SearchModeProps {
   isLoading?: boolean;
   isValidating?: boolean;
-  allowEmpty?: boolean;
 }
 
-export function SearchMode({ isLoading, isValidating, allowEmpty = false }: SearchModeProps) {
+export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const toast = useAppToast();
   const t = useTranslations("searchCommand");
   const tc = useTranslations("common");
@@ -53,6 +53,8 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
   const { setCurrentQuery } = useCurrentQueryStore();
   const urlQuery = search?.params?.q ?? "";
   const [localInputValue, setLocalInputValue] = useState(urlQuery);
+  // The shortcuts the box names are read as they're typed, for the suggestion and the actions below.
+  useQueryShortcuts(localInputValue);
   const [isTranslating, setIsTranslating] = useState(false);
 
   // Sync local input + global store when URL query changes (e.g. history nav, AI enhance, translation)
@@ -77,10 +79,8 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
   useEffect(() => {
     if (effectiveSearchId) {
       const currentSearch = getSearchResult(effectiveSearchId);
-      if (currentSearch?.questionHistory?.length) {
-        const latestQuestion =
-          currentSearch.questionHistory[currentSearch.questionHistory.length - 1].question;
-        setCurrentQuestion(latestQuestion);
+      if (currentSearch?.latestQuestion) {
+        setCurrentQuestion(currentSearch.latestQuestion);
       } else {
         setCurrentQuestion("");
       }
@@ -103,11 +103,10 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
   const handleSearchSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      if (search && (allowEmpty || localInputValue.trim())) {
-        search.setQuery(localInputValue);
-      }
+      // No keywords is a search too: every work the filters leave, newest first.
+      search?.setQuery(localInputValue);
     },
-    [search, localInputValue, allowEmpty]
+    [search, localInputValue]
   );
 
   // Handle research question submit
@@ -174,8 +173,9 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
         return;
       }
       setIsTranslating(true);
-      const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
       try {
+        await ensureQueryShortcuts(localInputValue);
+        const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
         const result = await translateQueryFn({
           query: expandedQuery,
           targetLanguage,
@@ -311,7 +311,7 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
               <Button
                 type="submit"
                 size="sm"
-                disabled={isFormDisabled || (!allowEmpty && !localInputValue.trim())}
+                disabled={isFormDisabled}
                 className="px-3"
               >
                 <>

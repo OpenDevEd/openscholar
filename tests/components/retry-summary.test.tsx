@@ -28,11 +28,15 @@ const summaryStore = {
   data: undefined as
     | undefined
     | {
-        retryableCount: number;
-        permanentCount: number;
-        permanentBreakdown: Record<string, number>;
+        asked: number;
+        answered: number;
+        retryable: number;
+        permanent: Record<string, number>;
+        paperErrors: Record<string, number>;
       },
 };
+/** The job's failure counts, as the query returns them. */
+const failures = (retryable: number, permanent: Record<string, number> = {}) => ({ asked: 0, answered: 0, retryable, permanent, paperErrors: {} });
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: () => summaryStore,
 }));
@@ -45,7 +49,7 @@ vi.mock("convex/react", () => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     extraction: {
-      queries: { retry: { getRetryableSummary: "getRetryableSummary" } },
+      queries: { countJobFailures: "countJobFailures" },
       mutations: { retryFailedQuestions: "retryFailedQuestions" },
     },
     billing: {
@@ -69,21 +73,13 @@ describe("<RetrySummary>", () => {
   });
 
   it("renders nothing when there are zero failures and zero permanents", () => {
-    summaryStore.data = {
-      retryableCount: 0,
-      permanentCount: 0,
-      permanentBreakdown: {},
-    };
+    summaryStore.data = failures(0);
     const { container } = render(<RetrySummary jobId={jobId} />);
     expect(container.firstChild).toBeNull();
   });
 
   it("exposes data-retryable-count and data-permanent-count attributes", () => {
-    summaryStore.data = {
-      retryableCount: 3,
-      permanentCount: 2,
-      permanentBreakdown: { pdf_invalid: 1, moderation: 1 },
-    };
+    summaryStore.data = failures(3, { pdf_invalid: 1, moderation: 1 });
     render(<RetrySummary jobId={jobId} />);
     const banner = screen.getByRole("status");
     expect(banner).toHaveAttribute("data-retryable-count", "3");
@@ -91,11 +87,7 @@ describe("<RetrySummary>", () => {
   });
 
   it("shows the retry button when retryableCount > 0, with a count-aware label", () => {
-    summaryStore.data = {
-      retryableCount: 5,
-      permanentCount: 0,
-      permanentBreakdown: {},
-    };
+    summaryStore.data = failures(5);
     render(<RetrySummary jobId={jobId} />);
     const btn = screen.getByRole("button", { name: /retryButton.*5/ });
     expect(btn).toHaveAttribute("data-action", "retry");
@@ -103,11 +95,7 @@ describe("<RetrySummary>", () => {
   });
 
   it("hides the retry button when retryableCount === 0 but permanents exist", () => {
-    summaryStore.data = {
-      retryableCount: 0,
-      permanentCount: 2,
-      permanentBreakdown: { pdf_invalid: 2 },
-    };
+    summaryStore.data = failures(0, { pdf_invalid: 2 });
     render(<RetrySummary jobId={jobId} />);
     expect(screen.queryByRole("button", { name: /retryButton/ })).toBeNull();
     // But the banner itself stays so the permanent-failures callout (B6)
@@ -119,11 +107,7 @@ describe("<RetrySummary>", () => {
   });
 
   it("clicking retry opens the confirm dialog (does NOT call the mutation directly)", async () => {
-    summaryStore.data = {
-      retryableCount: 2,
-      permanentCount: 0,
-      permanentBreakdown: {},
-    };
+    summaryStore.data = failures(2);
     retryMock.mockResolvedValue({ retryableCount: 2 });
     render(<RetrySummary jobId={jobId} />);
     fireEvent.click(screen.getByRole("button", { name: /retryButton/ }));

@@ -1,6 +1,8 @@
-import { internalMutation, internalQuery, type MutationCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
+import { MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
+import { internalMutation, internalQuery, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
-import { requireAuth } from "../lib/auth";
+import { requireActiveUser, requireAuth } from "../lib/auth";
 import { userValidator } from "../lib/validators";
 import { createUserWithDefaults, ensureBillingAccount } from "../lib/userCreation";
 import { clerkEventOutcomeValidator } from "../evidenceLibraries/validators";
@@ -10,6 +12,7 @@ import {
   type ClerkEventOutcome,
 } from "../webhooks/eventOrdering";
 import { claimAdminInvite } from "../admins/access";
+import { queueReaderDeletion } from "../evidenceLibraries/readerDeletions";
 
 const clerkEventMetadataFields = {
   eventId: v.string(),
@@ -25,6 +28,13 @@ export const getCurrentUser = internalQuery({
   handler: async (ctx) => {
     return await requireAuth(ctx);
   },
+});
+
+/** The user an internal call acts for; refuses a missing, suspended or deleted account. */
+export const getActiveUser = internalQuery({
+  args: { userId: v.id("users") },
+  returns: userValidator,
+  handler: async (ctx, { userId }) => requireActiveUser(ctx, userId),
 });
 
 export const getUserById = internalQuery({
@@ -120,8 +130,16 @@ export async function applyUserDeleteProjection(
       .unique();
 
     const grants = await ctx.db.query("evidenceLibraryMembers")
-      .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.clerkId)).collect();
+      .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.clerkId)).take(MAX_LIBRARY_GRANTS_PER_PERSON);
     for (const grant of grants) await ctx.db.delete("evidenceLibraryMembers", grant._id);
+    // More than one read's worth, from before grants were capped: the rest go in the next batches.
+    if (grants.length === MAX_LIBRARY_GRANTS_PER_PERSON) await ctx.scheduler.runAfter(0, internal.users.internal.deleteLibraryGrants, { clerkId: args.clerkId });
+    // Kept even without a user row, for a deletion that arrives before the
+    // account's creation: libraries ask whether a reader still exists.
+    const tombstone = await ctx.db.query("clerkDeletedUsers")
+      .withIndex("by_clerkId", q => q.eq("clerkId", args.clerkId)).unique();
+    if (!tombstone) await ctx.db.insert("clerkDeletedUsers", { clerkId: args.clerkId, deletedAt: Date.now() });
+    await queueReaderDeletion(ctx, args.clerkId);
     if (!user) return;
 
     await ctx.db.patch("users", user._id, {
@@ -161,6 +179,19 @@ export const updateLastLogin = internalMutation({
       lastLoginAt: Date.now(),
     });
 
+    return null;
+  },
+});
+
+/** Deletes a batch of a deleted account's library grants, and schedules the next until none are left. */
+export const deleteLibraryGrants = internalMutation({
+  args: { clerkId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { clerkId }) => {
+    const grants = await ctx.db.query("evidenceLibraryMembers")
+      .withIndex("by_clerkUserId", q => q.eq("clerkUserId", clerkId)).take(MAX_LIBRARY_GRANTS_PER_PERSON);
+    for (const grant of grants) await ctx.db.delete("evidenceLibraryMembers", grant._id);
+    if (grants.length === MAX_LIBRARY_GRANTS_PER_PERSON) await ctx.scheduler.runAfter(0, internal.users.internal.deleteLibraryGrants, { clerkId });
     return null;
   },
 });

@@ -30,7 +30,7 @@ export type AutumnCustomer = {
   stripe_id: string | null;
   subscriptions: AutumnSubscription[];
   purchases?: Array<{ plan_id: string }>;
-  balances: { credits?: AutumnBalance };
+  balances: { credits?: AutumnBalance; concurrency?: AutumnBalance };
   /** Boolean features the customer has, keyed by feature id. */
   flags?: Record<string, unknown>;
   payment_method?: { card?: { brand: string; last4: string } | null } | null;
@@ -129,11 +129,13 @@ export const autumn = {
     return call<{ list: AutumnFeature[] }>("features.list", {});
   },
 
-  customer(customerId: string, data: { email?: string; name?: string } = {}) {
+  /** The customer, with its card only when `card` is set: Autumn asks Stripe for it. */
+  customer(customerId: string, data: { email?: string; name?: string; card?: boolean } = {}) {
+    const { card, ...profile } = data;
     return call<AutumnCustomer>("customers.get_or_create", {
       customer_id: customerId,
-      expand: ["payment_method"],
-      ...data,
+      ...(card ? { expand: ["payment_method"] } : {}),
+      ...profile,
     });
   },
 

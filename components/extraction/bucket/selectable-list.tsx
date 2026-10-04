@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export interface SelectableListProps<T> {
@@ -146,7 +146,7 @@ export function SelectableList<T>({
       )}
     >
       <div
-        className="flex items-center gap-3 p-3 bg-muted/50 text-xs font-medium text-muted-foreground"
+        className="flex items-center gap-3 p-3 bg-inset text-xs font-medium text-muted-foreground"
         data-selectable-header
       >
         {onToggleAll && (
@@ -232,10 +232,10 @@ export function SelectableList<T>({
             }}
             className={cn(
               "cursor-pointer transition-colors duration-150 p-4 flex items-start gap-3 outline-none",
-              index % 2 === 0 ? "bg-background" : "bg-muted/30",
+              index % 2 === 0 ? "bg-background" : "bg-inset",
               selected
                 ? "bg-primary/5 border-l-4 border-l-primary"
-                : "hover:bg-muted/50 border-l-4 border-l-transparent",
+                : "hover:bg-muted border-l-4 border-l-transparent",
               "focus-visible:ring-2 focus-visible:ring-ring",
             )}
           >

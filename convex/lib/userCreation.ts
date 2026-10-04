@@ -23,6 +23,8 @@ export async function createUserWithDefaults(
     createdAt: now,
     updatedAt: now,
   });
+  // A new person starts with a count row, so the library never reads the count on their user row.
+  await ctx.db.insert("libraryCounts", { userId, count: 0 });
 
   await ctx.scheduler.runAfter(0, internal.billing.accounts.provision, { userId });
   return userId;

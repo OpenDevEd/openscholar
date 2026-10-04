@@ -10,8 +10,8 @@ import { useFormatter, useNow, useTranslations } from "next-intl";
 import { toast as sonnerToast } from "sonner";
 import {
   AlertCircle, ArrowRight, CalendarClock, CheckCircle2, Coins, CreditCard, FileSearch, KeyRound, Languages,
-  ListFilter, Loader2, MessageSquare, Repeat, Search, Undo2, X, type LucideIcon,
-} from "lucide-react";
+  ListFilter, Loader2, MessageSquare, Repeat, Search, Undo2, X, type AppIcon,
+} from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
@@ -21,10 +21,11 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { defaultPlanId, findPlan, planCreditCap, topUpBundles } from "@/lib/billing/catalog";
-import { Enter, LIST, Paged, pagerOf, Tile, Zone } from "@/components/settings/parts";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 
 type Kind = "chat" | "extraction" | "screening" | "search" | "translation" | "wallet_api" | "refund";
-const KINDS: Record<Kind, { icon: LucideIcon; tint: string }> = {
+const KINDS: Record<Kind, { icon: AppIcon; tint: string }> = {
   chat: { icon: MessageSquare, tint: "#a78bfa" },
   extraction: { icon: FileSearch, tint: "#60a5fa" },
   screening: { icon: ListFilter, tint: "#34d399" },
@@ -61,24 +62,21 @@ export default function BillingPage() {
   const [openingPortal, setOpeningPortal] = useState(false);
   const [hover, setHover] = useState<Kind | null>(null);
   const [day, setDay] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
 
   // The chart's window starts at midnight 29 days ago, so its query only changes once a day.
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
   const start = today.getTime() - (DAYS - 1) * DAY;
-  const { data: spending } = useProtectedQuery(api.billing.usage.spendingMine, { since: start, days: DAYS });
-  const { data: chargesPage } = useProtectedQuery(api.billing.usage.pageMine, {
-    page,
-    pageSize: CHARGES_PER_PAGE,
-    ...(jobId ? { jobId: jobId as Id<"extractionJobs"> } : {}),
-  });
-  // The last page stays on screen, dimmed, while the next one loads.
-  const [charges, setCharges] = useState(chargesPage);
-  if (chargesPage !== undefined && chargesPage !== charges) setCharges(chargesPage);
-  const chargesLoading = chargesPage === undefined;
+  const { data: spending } = useProtectedQuery(api.billing.usage.spending, { since: start, days: DAYS });
+  // Charges are read a page at a time, newest first; the count totals the pages.
+  const ofJob = jobId ? { jobId: jobId as Id<"extractionJobs"> } : {};
+  const charges = useCursorPage(api.billing.usage.listCharges, ofJob, CHARGES_PER_PAGE);
+  const { data: counted } = useProtectedQuery(api.billing.usage.countCharges, ofJob);
+  // The last count stays up while another job's charges are counted.
+  const [chargeCount, setChargeCount] = useState(counted);
+  if (counted !== undefined && counted !== chargeCount) setChargeCount(counted);
 
-  const ready = Boolean(account && catalog) && spending !== undefined && charges !== undefined;
+  const ready = Boolean(account && catalog) && spending !== undefined && !charges.isLoading && chargeCount !== undefined;
   if (!account || !catalog) return <Enter ready={false}>{null}</Enter>;
 
   const plan = state.resolvedPlan ?? "";
@@ -104,7 +102,7 @@ export default function BillingPage() {
   // Spending per day, stacked by kind.
   const days = Array.from({ length: DAYS }, (_, i) => ({ at: start + i * DAY, byKind: {} as Partial<Record<Kind, number>>, total: 0 }));
   const totals: Partial<Record<Kind, number>> = {};
-  for (const s of spending ?? []) {
+  for (const s of spending?.page ?? []) {
     const d = days[s.day];
     if (!d) continue;
     d.byKind[s.kind] = (d.byKind[s.kind] ?? 0) + s.credits;
@@ -114,8 +112,6 @@ export default function BillingPage() {
   const peak = Math.max(1, ...days.map((d) => d.total));
   const kinds = (Object.keys(totals) as Kind[]).sort((a, b) => (totals[b] ?? 0) - (totals[a] ?? 0));
   const spent = kinds.reduce((sum, k) => sum + (totals[k] ?? 0), 0);
-
-  const pager = pagerOf(charges?.total ?? 0, CHARGES_PER_PAGE, page, setPage);
 
   const keep = async () => {
     setKeeping(true);
@@ -165,7 +161,7 @@ export default function BillingPage() {
     <Enter ready={ready}>
       <div className="space-y-8">
         {returnedFrom ? (
-          <div role="status" className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 py-2 pl-4 pr-2 text-sm text-emerald-700 dark:text-emerald-400">
+          <div role="status" className="flex items-center justify-between gap-3 rounded-2xl border border-success/30 bg-success/10 py-2 pl-4 pr-2 text-sm ink-success">
             <span className="flex items-center gap-2">
               <CheckCircle2 className="size-4" />
               {t("paymentReceived")}
@@ -177,7 +173,7 @@ export default function BillingPage() {
         ) : null}
 
         {creditsEnabled ? (
-          <section className="grid overflow-hidden rounded-2xl border border-border/60 @min-[46rem]/configuration:grid-cols-[minmax(0,1fr)_17rem]">
+          <section className="grid overflow-hidden rounded-2xl border border-border-subtle @min-[46rem]/configuration:grid-cols-[minmax(0,1fr)_17rem]">
             <div className="space-y-5 p-5">
               <div>
                 <p className="text-4xl font-semibold tabular-nums tracking-tight">{format.number(account.balance)}</p>
@@ -212,7 +208,7 @@ export default function BillingPage() {
               ) : null}
             </div>
             {topupsEnabled && bundles.length > 0 ? (
-              <div className="flex flex-col border-t border-border/60 bg-muted/20 @min-[46rem]/configuration:border-l @min-[46rem]/configuration:border-t-0">
+              <div className="flex flex-col border-t border-border-subtle bg-inset @min-[46rem]/configuration:border-l @min-[46rem]/configuration:border-t-0">
                 <p className="px-5 pb-1 pt-4 text-xs font-medium text-muted-foreground">{t("topUp")}</p>
                 <div className="flex flex-1 flex-col justify-center p-2">
                   {bundles.map((bundle) => (
@@ -222,7 +218,7 @@ export default function BillingPage() {
                       disabled={buying !== null}
                       onClick={() => buy(bundle.credits)}
                       aria-label={t("buyBundle", { credits: format.number(bundle.credits), price: money(bundle.amount) })}
-                      className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/60 disabled:opacity-60"
+                      className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted disabled:opacity-60"
                     >
                       <span className="flex-1 text-sm font-semibold tabular-nums">+{format.number(bundle.credits)}</span>
                       <span className="text-sm tabular-nums text-muted-foreground">{money(bundle.amount)}</span>
@@ -241,7 +237,7 @@ export default function BillingPage() {
 
         {creditsEnabled ? (
           <Zone label={t("spendingLast30Days")}>
-            <div className="rounded-2xl bg-muted/30 px-4 pb-3 pt-4">
+            <div className="rounded-2xl bg-inset px-4 pb-3 pt-4">
               <div className="flex h-28 items-end gap-1" onMouseLeave={() => setDay(null)} role="img" aria-label={t("spendingSummary", { credits: format.number(spent) })}>
                 {days.map((d, i) => (
                   <div key={d.at} onMouseEnter={() => setDay(i)} className="flex h-full flex-1 flex-col justify-end">
@@ -271,7 +267,7 @@ export default function BillingPage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-2 flex justify-between text-[11px] tabular-nums text-muted-foreground">
+              <div className="mt-2 flex justify-between text-2xs tabular-nums text-muted-foreground">
                 <span>{date(start)}</span>
                 <span>{day !== null ? t("onDay", { credits: format.number(days[day]!.total), date: date(days[day]!.at) }) : t("today")}</span>
               </div>
@@ -286,7 +282,7 @@ export default function BillingPage() {
                     style={{ flexGrow: totals[k] ?? 0, flexBasis: 0 }}
                   >
                     <span className="h-1.5 rounded-full transition-opacity" style={{ backgroundColor: KINDS[k].tint, opacity: hover && hover !== k ? 0.25 : 1 }} />
-                    <span className={cn("truncate text-[11px] transition-colors", hover && hover !== k ? "text-muted-foreground/40" : "text-muted-foreground")}>
+                    <span className={cn("truncate text-2xs transition-colors", hover && hover !== k ? "text-muted-foreground/40" : "text-muted-foreground")}>
                       {tu(`kinds.${k}`)}
                     </span>
                   </div>
@@ -311,7 +307,7 @@ export default function BillingPage() {
               ) : null
             }
           >
-            <div className="space-y-4 rounded-2xl border border-border/60 px-5 py-4">
+            <div className="space-y-4 rounded-2xl border border-border-subtle px-5 py-4">
               <div className="flex items-start justify-between gap-6">
                 <div className="min-w-0 space-y-1">
                   <p className="flex items-baseline gap-2">
@@ -368,7 +364,7 @@ export default function BillingPage() {
                   <div className="flex justify-between text-xs tabular-nums text-muted-foreground">
                     <span>{date(periodStart)}</span>
                     {change ? (
-                      <span data-testid="billing-pending-change-banner" className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                      <span data-testid="billing-pending-change-banner" className="inline-flex items-center gap-1.5 ink-info">
                         <CalendarClock className="size-3.5" />
                         {endsWithoutRenewal
                           ? t("endsOn", { date: date(periodEnd) })
@@ -387,7 +383,7 @@ export default function BillingPage() {
           </Zone>
         ) : null}
 
-        {creditsEnabled && (charges?.total ?? 0) > 0 ? (
+        {creditsEnabled && charges.items.length > 0 ? (
           <Zone
             label={jobId ? t("jobCharges") : t("charges")}
             aside={
@@ -396,19 +392,16 @@ export default function BillingPage() {
                   variant="ghost"
                   size="sm"
                   className="h-7"
-                  onClick={() => {
-                    setPage(1);
-                    void setJobId(null);
-                  }}
+                  onClick={() => void setJobId(null)}
                 >
                   {tu("showAll")}
                 </Button>
               ) : null
             }
           >
-            <Paged pager={pager} rowHeight={61} label={t("chargesLabel")}>
-              <ul className={cn(LIST, chargesLoading && "pointer-events-none opacity-60")} aria-busy={chargesLoading}>
-                {charges!.rows.map((c) => {
+            <Paged pager={{ list: charges, size: CHARGES_PER_PAGE, total: chargeCount }} rowHeight={61} label={t("chargesLabel")}>
+              <ul className={LIST}>
+                {charges.items.map((c) => {
                   const kind = KINDS[c.kind];
                   return (
                     <li

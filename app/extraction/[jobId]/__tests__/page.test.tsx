@@ -11,7 +11,9 @@ const {
   resultsFiltersSpy,
   smartPaginationSpy,
   exportDialogSpy,
+  convexQueryMock,
 } = vi.hoisted(() => ({
+  convexQueryMock: vi.fn(),
   pushMock: vi.fn(),
   currentJobIdMock: { value: "job_1" },
   resultsFiltersSpy: vi.fn(
@@ -59,34 +61,31 @@ const {
   smartPaginationSpy: vi.fn(
     ({
       currentPage,
-      totalPages,
       pageSize,
       totalCount,
       filteredCount,
       displayedCount,
-      onPageChange,
+      onNext,
       onPageSizeChange,
     }: {
       currentPage: number;
-      totalPages: number;
       pageSize: number;
       totalCount: number;
       filteredCount: number;
       displayedCount: number;
-      onPageChange: (page: number) => void;
+      onNext: () => void;
       onPageSizeChange: (pageSize: number) => void;
     }) => (
       <div
         data-testid="smart-pagination"
         data-current-page={String(currentPage)}
-        data-total-pages={String(totalPages)}
         data-page-size={String(pageSize)}
         data-total-count={String(totalCount)}
         data-filtered-count={String(filteredCount)}
         data-displayed-count={String(displayedCount)}
       >
-        <button type="button" onClick={() => onPageChange(2)}>
-          go to page 2
+        <button type="button" onClick={onNext}>
+          next page
         </button>
         <button type="button" onClick={() => onPageSizeChange(25)}>
           set page size 25
@@ -96,16 +95,14 @@ const {
   ),
   exportDialogSpy: vi.fn(
     ({
-      papers = [],
-      isLoading,
+      paperCount,
     }: {
-      papers?: Array<{ _id: string }>;
-      isLoading?: boolean;
+      paperCount: number;
+      loadPapers: () => Promise<Array<{ _id: string }>>;
     }) => (
       <div
         data-testid="export-dialog"
-        data-papers-count={String(papers.length)}
-        data-loading={String(Boolean(isLoading))}
+        data-papers-count={String(paperCount)}
       />
     ),
   ),
@@ -239,87 +236,51 @@ const extractionSharedProtectedQueryResult = {
   },
 } as unknown as MockProtectedQueryHookResult;
 
-const extractionResultsPageQueryResult = {
-  "1:200:": {
-    status: "ok" as const,
-    totalAll: 293,
-    totalFiltered: 293,
-    totalPages: 2,
-    page: 1,
-    pageSize: 200,
-    items: buildPageRows(1, 200),
-  },
-  "2:200:": {
-    status: "ok" as const,
-    totalAll: 293,
-    totalFiltered: 293,
-    totalPages: 2,
-    page: 2,
-    pageSize: 200,
-    items: buildPageRows(201, 93),
-  },
-  "1:25:": {
-    status: "ok" as const,
-    totalAll: 293,
-    totalFiltered: 293,
-    totalPages: 12,
-    page: 1,
-    pageSize: 25,
-    items: buildPageRows(1, 25),
-  },
-  "1:200:Paper 250": {
-    status: "ok" as const,
-    totalAll: 293,
-    totalFiltered: 1,
-    totalPages: 1,
-    page: 1,
-    pageSize: 200,
-    items: buildPageRows(250, 1),
-  },
-  "1:25:Paper 250": {
-    status: "ok" as const,
-    totalAll: 293,
-    totalFiltered: 1,
-    totalPages: 1,
-    page: 1,
-    pageSize: 25,
-    items: buildPageRows(250, 1),
-  },
-} as const;
+type ResultsView = { filters: { searchQuery?: string }; paginationOpts?: { cursor: string | null; numItems: number } };
 
-const extractionResultsExportQueryResult = {
-  "": {
-    status: "ok" as const,
-    totalAll: 293,
-    totalFiltered: 293,
-    items: buildPageRows(1, 293),
-  },
-  "Paper 250": {
-    status: "ok" as const,
-    totalAll: 293,
-    totalFiltered: 1,
-    items: buildPageRows(250, 1),
-  },
-} as const;
+/** The job's papers as the server lists them for a view: all 293, or the one a search keeps. */
+const serverRows = (view: ResultsView) => (view.filters.searchQuery === "Paper 250" ? buildPageRows(250, 1) : buildPageRows(1, 293));
 
-type MockResultsPageData =
-  (typeof extractionResultsPageQueryResult)[keyof typeof extractionResultsPageQueryResult];
-type MockResultsExportData =
-  (typeof extractionResultsExportQueryResult)[keyof typeof extractionResultsExportQueryResult];
-
-function buildResultsPageHookResult(data: MockResultsPageData) {
-  return {
-    ...mockQueryResult,
-    data,
-  } as unknown as MockProtectedQueryHookResult;
+/** The job's shared queries, and the count of the papers a filtered view keeps. */
+function mockExtractionQueries() {
+  (
+    authQuery.useProtectedQuery as unknown as {
+      mockImplementation: (fn: (query: unknown, args: unknown) => MockProtectedQueryHookResult) => void;
+    }
+  ).mockImplementation((_query, args) => {
+    if (args === "skip") return mockSkippedQueryResult;
+    if (typeof args === "object" && args !== null && "filters" in args) {
+      return { ...mockQueryResult, data: { all: 293, matching: serverRows(args as ResultsView).length } } as unknown as MockProtectedQueryHookResult;
+    }
+    return extractionSharedProtectedQueryResult;
+  });
 }
 
-function buildResultsExportHookResult(data: MockResultsExportData) {
+// The page hook over the list the test holds whole: one page of it, stepped by number.
+vi.mock("@/lib/hooks/use-cursor-page", async () => {
+  const { useState } = await import("react");
   return {
-    ...mockQueryResult,
-    data,
-  } as unknown as MockProtectedQueryHookResult;
-}
+    useCursorPage: (_query: unknown, args: ResultsView | "skip", pageSize: number) => {
+      const key = JSON.stringify([args, pageSize]);
+      const [at, setAt] = useState({ key, page: 1 });
+      const page = at.key === key ? at.page : 1;
+      const rows = args === "skip" ? [] : serverRows(args);
+      const offset = (page - 1) * pageSize;
+      return {
+        items: rows.slice(offset, offset + pageSize),
+        isLoading: false,
+        isStale: false,
+        page,
+        offset,
+        hasPages: rows.length > pageSize,
+        canPrevious: page > 1,
+        canNext: offset + pageSize < rows.length,
+        previous: () => setAt({ key, page: page - 1 }),
+        next: () => setAt({ key, page: page + 1 }),
+      };
+    },
+  };
+});
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -339,6 +300,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("convex/react", () => ({
   useMutation: () => vi.fn(),
+  useConvex: () => ({ query: convexQueryMock }),
 }));
 
 vi.mock("motion/react", () => {
@@ -585,43 +547,7 @@ describe("JobDetailPage", () => {
   });
 
   it("renders the extraction route without mounting the chat shell", () => {
-    (
-      authQuery.useProtectedQuery as unknown as {
-        mockImplementation: (
-          fn: (
-            query: unknown,
-            args: unknown,
-          ) => MockProtectedQueryHookResult,
-        ) => void;
-      }
-    ).mockImplementation((_query, args) => {
-      if (args === "skip") return mockSkippedQueryResult;
-      if (
-        typeof args === "object" &&
-        args !== null &&
-        "page" in args &&
-        "pageSize" in args &&
-        "filters" in args
-      ) {
-        const {
-          page,
-          pageSize,
-          filters,
-        } = args as {
-          page: number;
-          pageSize: number;
-          filters: { searchQuery?: string };
-        };
-        return {
-          ...buildResultsPageHookResult(
-            extractionResultsPageQueryResult[
-              `${page}:${pageSize}:${filters.searchQuery ?? ""}` as keyof typeof extractionResultsPageQueryResult
-            ],
-          ),
-        };
-      }
-      return extractionSharedProtectedQueryResult;
-    });
+    mockExtractionQueries();
 
     render(<JobDetailPage />);
 
@@ -708,43 +634,7 @@ describe("JobDetailPage", () => {
   });
 
   it("shows the full server filtered count while keeping the progress bar total authoritative", () => {
-    (
-      authQuery.useProtectedQuery as unknown as {
-        mockImplementation: (
-          fn: (
-            query: unknown,
-            args: unknown,
-          ) => MockProtectedQueryHookResult,
-        ) => void;
-      }
-    ).mockImplementation((_query, args) => {
-      if (args === "skip") return mockSkippedQueryResult;
-      if (
-        typeof args === "object" &&
-        args !== null &&
-        "page" in args &&
-        "pageSize" in args &&
-        "filters" in args
-      ) {
-        const {
-          page,
-          pageSize,
-          filters,
-        } = args as {
-          page: number;
-          pageSize: number;
-          filters: { searchQuery?: string };
-        };
-        return {
-          ...buildResultsPageHookResult(
-            extractionResultsPageQueryResult[
-              `${page}:${pageSize}:${filters.searchQuery ?? ""}` as keyof typeof extractionResultsPageQueryResult
-            ],
-          ),
-        };
-      }
-      return extractionSharedProtectedQueryResult;
-    });
+    mockExtractionQueries();
 
     render(<JobDetailPage />);
 
@@ -759,55 +649,19 @@ describe("JobDetailPage", () => {
     );
   });
 
-  it("navigates to page 2 and renders rows 201-293 from the server page query", () => {
-    (
-      authQuery.useProtectedQuery as unknown as {
-        mockImplementation: (
-          fn: (
-            query: unknown,
-            args: unknown,
-          ) => MockProtectedQueryHookResult,
-        ) => void;
-      }
-    ).mockImplementation((_query, args) => {
-      if (args === "skip") return mockSkippedQueryResult;
-      if (
-        typeof args === "object" &&
-        args !== null &&
-        "page" in args &&
-        "pageSize" in args &&
-        "filters" in args
-      ) {
-        const {
-          page,
-          pageSize,
-          filters,
-        } = args as {
-          page: number;
-          pageSize: number;
-          filters: { searchQuery?: string };
-        };
-        return {
-          ...buildResultsPageHookResult(
-            extractionResultsPageQueryResult[
-              `${page}:${pageSize}:${filters.searchQuery ?? ""}` as keyof typeof extractionResultsPageQueryResult
-            ],
-          ),
-        };
-      }
-      return extractionSharedProtectedQueryResult;
-    });
+  it("steps to page 2 and renders rows 201-293 from the server page query", () => {
+    mockExtractionQueries();
 
     render(<JobDetailPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "go to page 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "next page" }));
 
     expect(document.querySelector("[data-results-scope]")).toHaveAttribute("data-total-papers", "293");
     expect(document.querySelector("[data-results-scope]")).toHaveAttribute("data-filtered-papers", "293");
     expect(smartPaginationSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
         currentPage: 2,
-        totalPages: 2,
+        offset: 200,
         displayedCount: 93,
         filteredCount: 293,
       }),
@@ -816,43 +670,7 @@ describe("JobDetailPage", () => {
   });
 
   it("keeps full-corpus counts truthful after switching to page size 25 and filtering on the server", () => {
-    (
-      authQuery.useProtectedQuery as unknown as {
-        mockImplementation: (
-          fn: (
-            query: unknown,
-            args: unknown,
-          ) => MockProtectedQueryHookResult,
-        ) => void;
-      }
-    ).mockImplementation((_query, args) => {
-      if (args === "skip") return mockSkippedQueryResult;
-      if (
-        typeof args === "object" &&
-        args !== null &&
-        "page" in args &&
-        "pageSize" in args &&
-        "filters" in args
-      ) {
-        const {
-          page,
-          pageSize,
-          filters,
-        } = args as {
-          page: number;
-          pageSize: number;
-          filters: { searchQuery?: string };
-        };
-        return {
-          ...buildResultsPageHookResult(
-            extractionResultsPageQueryResult[
-              `${page}:${pageSize}:${filters.searchQuery ?? ""}` as keyof typeof extractionResultsPageQueryResult
-            ],
-          ),
-        };
-      }
-      return extractionSharedProtectedQueryResult;
-    });
+    mockExtractionQueries();
 
     render(<JobDetailPage />);
 
@@ -877,57 +695,15 @@ describe("JobDetailPage", () => {
     ).not.toBeNull();
   });
 
-  it("opens export-all with the full filtered corpus instead of the current page rows", () => {
-    (
-      authQuery.useProtectedQuery as unknown as {
-        mockImplementation: (
-          fn: (
-            query: unknown,
-            args: unknown,
-          ) => MockProtectedQueryHookResult,
-        ) => void;
-      }
-    ).mockImplementation((_query, args) => {
-      if (args === "skip") return mockSkippedQueryResult;
-      if (
-        typeof args === "object" &&
-        args !== null &&
-        "filters" in args &&
-        !("page" in args) &&
-        !("pageSize" in args)
-      ) {
-        const { filters } = args as {
-          filters: { searchQuery?: string };
-        };
-        return buildResultsExportHookResult(
-          extractionResultsExportQueryResult[
-            `${filters.searchQuery ?? ""}` as keyof typeof extractionResultsExportQueryResult
-          ],
-        );
-      }
-      if (
-        typeof args === "object" &&
-        args !== null &&
-        "page" in args &&
-        "pageSize" in args &&
-        "filters" in args
-      ) {
-        const {
-          page,
-          pageSize,
-          filters,
-        } = args as {
-          page: number;
-          pageSize: number;
-          filters: { searchQuery?: string };
-        };
-        return buildResultsPageHookResult(
-          extractionResultsPageQueryResult[
-            `${page}:${pageSize}:${filters.searchQuery ?? ""}` as keyof typeof extractionResultsPageQueryResult
-          ],
-        );
-      }
-      return extractionSharedProtectedQueryResult;
+  it("opens export-all with the full filtered corpus instead of the current page rows", async () => {
+    mockExtractionQueries();
+
+    convexQueryMock.mockImplementation(async (_query, args: ResultsView) => {
+      const rows = serverRows(args);
+      if (!args.paginationOpts) return { all: 293, matching: rows.length };
+      const start = Number(args.paginationOpts.cursor ?? 0);
+      const page = rows.slice(start, start + args.paginationOpts.numItems);
+      return { page, isDone: start + page.length >= rows.length, continueCursor: String(start + page.length) };
     });
 
     render(<JobDetailPage />);
@@ -943,5 +719,8 @@ describe("JobDetailPage", () => {
       "data-displayed-count",
       "25",
     );
+    // The export reads every page of the filtered view, not the 25 rows on screen.
+    const papers = await exportDialogSpy.mock.lastCall![0].loadPapers();
+    expect(papers.map((paper) => paper._id)).toEqual(buildPageRows(1, 293).map((paper) => paper._id));
   });
 });

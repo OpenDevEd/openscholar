@@ -29,14 +29,14 @@ export function OrganizationAvatar({
 
 /** `preloaded` is the server's answer, used until the live query takes over, so the page knows at once. */
 export function useLibraryOrganizationChoice(
-  preloaded?: Preloaded<typeof api.organizationFeatures.libraryOrganizations>,
+  preloaded?: Preloaded<typeof api.organizationFeatures.listLibraryOrganizations>,
 ) {
   const query = useProtectedQuery(
-    api.organizationFeatures.libraryOrganizations,
+    api.organizationFeatures.listLibraryOrganizations,
     {},
   );
   const [chosenId, choose] = useState<string | null>(null);
-  const organizations = query.data ?? (preloaded ? preloadedQueryResult(preloaded) : []);
+  const organizations = (query.data ?? (preloaded ? preloadedQueryResult(preloaded) : undefined))?.page ?? [];
   const selected =
     organizations.find((org) => org.id === chosenId) ?? organizations[0];
   return { organizations, selected, choose, isReady: query.isReady || Boolean(preloaded) };
@@ -51,8 +51,8 @@ export function LibraryOrganizationPicker({
 }: {
   id?: string;
   organizations: FunctionReturnType<
-    typeof api.organizationFeatures.libraryOrganizations
-  >;
+    typeof api.organizationFeatures.listLibraryOrganizations
+  >["page"];
   value?: string;
   onChange: (value: string) => void;
   disabled?: boolean;

@@ -4,12 +4,10 @@ import { api } from "../_generated/api";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { SEED_IDENTITY, seedFullJobGraph } from "./tests/seed";
-import { setupAggregates } from "./aggregates.test-support";
 
 describe("deleteExtractionInternal cascade", () => {
   it("deletes full job graph leaving zero orphaned rows", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
 
     const ids = await seedFullJobGraph(t);
 
@@ -102,12 +100,11 @@ describe("deleteExtractionInternal cascade", () => {
 
   it("handles job with no child records gracefully", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const now = Date.now();
 
     // Seed only a user + job (no papers, questions, or anything)
     const { userId, jobId } = await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {
+      const userId = await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "clerk_empty_job",
         email: "empty@test.com",
         firstName: "Test",
@@ -159,7 +156,6 @@ describe("deleteExtractionInternal cascade", () => {
   describe("partial-failure recovery (TEST-04)", () => {
     it("resumes cascade after partial deletion (evidence units already removed)", async () => {
       const t = convexTest(schema);
-    setupAggregates(t);
       const ids = await seedFullJobGraph(t);
 
       // Simulate partial failure: manually delete only evidence units
@@ -239,7 +235,6 @@ describe("deleteExtractionInternal cascade", () => {
 
     it("complete deletion leaves no orphaned records in any child table", async () => {
       const t = convexTest(schema);
-    setupAggregates(t);
       const ids = await seedFullJobGraph(t);
 
       vi.useFakeTimers();
@@ -320,7 +315,6 @@ describe("deleteExtractionInternal cascade", () => {
 
     it("re-invocation on already-deleted job is idempotent (no-op)", async () => {
       const t = convexTest(schema);
-    setupAggregates(t);
       const ids = await seedFullJobGraph(t);
 
       // First: complete the full cascade deletion
@@ -359,7 +353,6 @@ describe("deleteExtractionInternal cascade", () => {
 
   it("public delete removes the visible job row immediately and schedules cascade cleanup", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const ids = await seedFullJobGraph(t);
     const auth = t.withIdentity(SEED_IDENTITY);
 

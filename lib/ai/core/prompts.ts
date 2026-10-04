@@ -247,7 +247,7 @@ export function buildScreeningResponsesPrompts(input: GenerateScreeningResponses
   return {
     system: `You are an expert systematic review researcher conducting literature screening.
 
-CRITICAL: You MUST respond with valid JSON matching the required schema with "responses" object and "confidence" number.
+CRITICAL: You MUST respond with valid JSON matching the required schema with "responses" and "confidences" objects.
 
 Your task is to carefully analyze academic papers and provide YES/NO answers to specific screening questions based on the paper's content.
 
@@ -262,7 +262,7 @@ CRITICAL INSTRUCTIONS:
 RESPONSE FORMAT:
 Return a JSON object with:
 - responses: Object mapping each question to boolean|null
-- confidence: Overall confidence score (0-1)`,
+- confidences: Object mapping each question to your confidence in that response (0-1)`,
     prompt: `Please screen this academic paper by answering the following questions:
 
 PAPER TITLE: "${input.title}"

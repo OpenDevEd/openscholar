@@ -11,6 +11,7 @@ import type { QueryHistoryEntry, SearchField, SearchFilters } from '@/lib/types'
 
 // Import the new search context
 import { useSearchOptional, type SearchParams, type SetQueryOptions } from './search';
+import { useSearchHistoryEntries } from "./research/history";
 
 // Shared store for query history navigation index, keyed by searchId.
 // Lives here (not in lib/store) because it's an implementation detail of useQueryHistory.
@@ -88,10 +89,15 @@ export function useEffectiveSearchId(): string | undefined {
   return getEffectiveSearchId(pathname, search?.searchId || undefined);
 }
 
+/** How many steps before the oldest read query the arrows read older ones. */
+const HISTORY_READ_AHEAD = 5;
+
 /**
  * Shared query history navigation hook.
  * Tracks position in a search's queryHistory and exposes prev/next navigation.
  * Calls setQuery with { skipHistory: true } so navigation doesn't create new entries.
+ * The position is kept as steps back from the newest query, so reading older queries
+ * (lib/research/history.ts) doesn't move it.
  */
 export function useQueryHistory(
   searchId: string | null | undefined,
@@ -101,20 +107,22 @@ export function useQueryHistory(
   const currentSearchResult = useSearchHistoryStore((state) =>
     searchId ? state.searchHistory.find((item) => item.id === searchId) : null
   );
-  const queryHistory = currentSearchResult?.queryHistory || [];
+  const stepsBack = useQueryHistoryIndexStore((s) => s.indices[key] ?? 0);
+  // A position kept from an earlier visit is read with the first page.
+  const history = useSearchHistoryEntries(currentSearchResult, "query", true, stepsBack + HISTORY_READ_AHEAD + 1);
+  const queryHistory = history.entries;
 
-  const defaultIndex = queryHistory.length > 0 ? queryHistory.length - 1 : 0;
-  const historyIndex = useQueryHistoryIndexStore((s) => s.indices[key] ?? defaultIndex);
-  const setHistoryIndex = useQueryHistoryIndexStore((s) => s.set);
-  const prevHistoryLengthRef = useRef(queryHistory.length);
+  const setStepsBack = useQueryHistoryIndexStore((s) => s.set);
+  const loadedIndex = queryHistory.length - 1 - stepsBack;
+  const prevTotalRef = useRef(history.total);
 
   // Jump to latest only when a NEW entry is added (not when navigating)
   useEffect(() => {
-    if (queryHistory.length > prevHistoryLengthRef.current) {
-      setHistoryIndex(key, queryHistory.length - 1);
+    if (history.total > prevTotalRef.current) {
+      setStepsBack(key, 0);
     }
-    prevHistoryLengthRef.current = queryHistory.length;
-  }, [queryHistory.length, key, setHistoryIndex]);
+    prevTotalRef.current = history.total;
+  }, [history.total, key, setStepsBack]);
 
   // Entries from before scopes were saved are keyword queries.
   const showEntry = useCallback(
@@ -123,29 +131,50 @@ export function useQueryHistory(
     [setQuery],
   );
 
-  const canGoPrevious = queryHistory.length > 0 && historyIndex > 0;
-  const canGoNext = queryHistory.length > 0 && historyIndex < queryHistory.length - 1;
+  const canGoPrevious = stepsBack < history.total - 1;
+  const canGoNext = stepsBack > 0;
 
-  const goToPrevious = useCallback(() => {
-    if (canGoPrevious) {
-      const prevIndex = historyIndex - 1;
-      setHistoryIndex(key, prevIndex);
-      showEntry(queryHistory[prevIndex]);
+  // Older queries are read a few steps before the arrows reach them. A step to one not read
+  // yet, from a place kept from an earlier visit or pressed during a read, reads it first;
+  // a press during that read steps on from where the read will land. The read's result is
+  // dropped if anything else moved meanwhile: a new query, another search, or these arrows
+  // going away.
+  const readToken = useRef(0);
+  const pendingTarget = useRef<number | null>(null);
+  useEffect(() => () => { readToken.current += 1; pendingTarget.current = null; }, [key]);
+  const step = useCallback(async (delta: -1 | 1) => {
+    const from = pendingTarget.current ?? stepsBack;
+    const target = from - delta;
+    if (target < 0 || target >= history.total) return;
+    const loaded = pendingTarget.current === null ? queryHistory[loadedIndex + delta] : undefined;
+    if (loaded) {
+      if (loadedIndex + delta <= HISTORY_READ_AHEAD && history.hasOlder) history.loadOlder();
+      setStepsBack(key, target);
+      showEntry(loaded);
+      return;
     }
-  }, [canGoPrevious, historyIndex, queryHistory, showEntry, key, setHistoryIndex]);
-
-  const goToNext = useCallback(() => {
-    if (canGoNext) {
-      const nextIndex = historyIndex + 1;
-      setHistoryIndex(key, nextIndex);
-      showEntry(queryHistory[nextIndex]);
+    const token = ++readToken.current;
+    pendingTarget.current = target;
+    const positions = useQueryHistoryIndexStore.getState().indices;
+    try {
+      const entry = await history.readAt(target);
+      if (token !== readToken.current || useQueryHistoryIndexStore.getState().indices !== positions) return;
+      if (!entry) return;
+      setStepsBack(key, target);
+      showEntry(entry);
+    } catch (error) {
+      console.error("Couldn't read an earlier query of this search", { searchId: key, stepsBack: target, error });
+    } finally {
+      if (token === readToken.current) pendingTarget.current = null;
     }
-  }, [canGoNext, historyIndex, queryHistory, showEntry, key, setHistoryIndex]);
+  }, [loadedIndex, stepsBack, queryHistory, showEntry, key, setStepsBack, history]);
+  const goToPrevious = useCallback(() => { if (canGoPrevious) void step(-1); }, [canGoPrevious, step]);
+  const goToNext = useCallback(() => { if (canGoNext) void step(1); }, [canGoNext, step]);
 
   return {
     queryHistory,
-    historyIndex,
-    historyLength: queryHistory.length,
+    historyIndex: Math.max(0, history.total - 1 - stepsBack),
+    historyLength: history.total,
     canGoPrevious,
     canGoNext,
     goToPrevious,
@@ -222,6 +251,7 @@ function useCurrentSearchFormStateFromUrl() {
     workLanguages: search.params.wlang,
     institutionTypes: search.params.itype,
     funders: search.params.funder,
+    authors: search.params.author,
     minCitations: search.params.mincite,
     hasAbstract: search.params.abs,
     includeRetracted: search.params.retracted,
@@ -264,6 +294,7 @@ function useCurrentSearchFormStateFromStore() {
     workLanguages: searchResult?.workLanguages ?? [],
     institutionTypes: searchResult?.institutionTypes ?? [],
     funders: searchResult?.funders ?? [],
+    authors: searchResult?.authors ?? [],
     minCitations: searchResult?.minCitations ?? null,
     hasAbstract: searchResult?.hasAbstract ?? false,
     includeRetracted: searchResult?.includeRetracted ?? false,
@@ -417,6 +448,10 @@ function useUpdateSearchFilterFromUrl() {
       batchUpdates.funder = updates.funders as string[];
       shouldResetPage = true;
     }
+    if ('authors' in updates) {
+      batchUpdates.author = updates.authors as string[];
+      shouldResetPage = true;
+    }
     if ('minCitations' in updates) {
       batchUpdates.mincite = updates.minCitations as number | null;
       shouldResetPage = true;
@@ -472,6 +507,7 @@ export function useCreateSearchFilters() {
     workLanguages,
     institutionTypes,
     funders,
+    authors,
     minCitations,
     hasAbstract,
     includeRetracted,
@@ -499,6 +535,7 @@ export function useCreateSearchFilters() {
     workLanguages,
     institutionTypes,
     funders,
+    authors,
     minCitations,
     hasAbstract,
     includeRetracted,

@@ -10,37 +10,37 @@ import { internalAction, type ActionCtx } from "../_generated/server";
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { PaperData } from "./types";
 import { storedSearchFiltersValidator } from "./validators";
-import {
-  buildOpenAlexSearchParams,
-} from "../../lib/openalex/search-params";
 import {
   mapOpenAlexWorkToPaperData,
   type OpenAlexWork,
+  type PaperDataOut,
 } from "../../lib/openalex/work-mapper";
-import { dedupeExpandedSources, expandJobSources } from "./expandSources";
+import { readSearchWorks } from "../paperSets/openalex";
+import { spender } from "../paperSets/search";
+import { dedupeExpandedSources, expandJobSources, readLibraryInBatches } from "./expandSources";
+import { LIBRARY_READ_BATCH } from "./queries/internal";
 import { OLD_SEARCH_MESSAGE } from "./jobSources";
 import { createError } from "../lib/errors";
 import {
   EXTRACTION_PAPER_CONCURRENCY,
   EXTRACTION_QUESTION_CONCURRENCY,
+  EXTRACTION_QUEUE_LEASE_MS,
   PAPER_LIMIT,
+  PAPER_PULL_CAP,
 } from "../../lib/extraction/limits";
+import { OPENALEX_WORK_SELECT_FIELDS } from "../../lib/openalex/search-params";
 import {
   classifyUnknownError,
   type ClassifiedError,
 } from "@/lib/errors/taxonomy";
 
-const OPENALEX_WORKS_URL = "https://api.openalex.org/works";
-const OPENALEX_ROOT_URL = "https://api.openalex.org/";
 
 // Per-mutation chunk size for createPaperRecords. The per-paper payload
 // after the citedByCount/venueName/workType strip is roughly 1.5–2 KB
 // (title + abstract dominate), so 100 papers stays comfortably under the
 // 1 MiB single-document limit even on the upper-end of abstract size.
 const CREATE_PAPER_CHUNK_SIZE = 100;
-const QUEUE_LEASE_MS = 60_000;
 
 type StoredSearchFilters = Infer<typeof storedSearchFiltersValidator>;
 
@@ -198,68 +198,31 @@ function setupRuntime(pdfEnabled: boolean): SetupRuntime {
   };
 }
 
+/**
+ * A saved search's papers for extraction or chat: the first `limit` of them, in its results
+ * page's order (convex/paperSets/openalex.ts), spending the person's OpenAlex allowance.
+ */
 export async function runFetchPapersFromHistory(
+  ctx: ActionCtx,
+  userId: Id<"users">,
   searchFilters: StoredSearchFilters,
-): Promise<PaperData[]> {
+): Promise<PaperDataOut[]> {
   if (!("openAlexQuery" in searchFilters)) {
     throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
   }
-  const searchParams = buildOpenAlexSearchParams({
-    openAlexQuery: searchFilters.openAlexQuery,
-    limit: searchFilters.limit,
-  });
-
-  // CORR-02: fail loudly when OPENALEX_CONTACT_EMAIL isn't configured —
-  // OpenAlex polite-pool requires a contact address in the UA header.
-  const contactEmail = process.env.OPENALEX_CONTACT_EMAIL;
-  if (!contactEmail) {
-    throw new Error(
-      "OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.",
-    );
-  }
-
-  // An OQL search goes in a POST body to the API root: it outgrows the URL limit.
-  const { oql } = searchFilters.openAlexQuery;
-  const url = `${oql ? OPENALEX_ROOT_URL : OPENALEX_WORKS_URL}?${searchParams.toString()}`;
-  console.log(`[fetchPapersFromHistory] Fetching: ${url}${oql ? ` (OQL, ${oql.length} characters)` : ""}`);
-  // Without OpenScholar's key a search costs 10 of 1,000 shared daily credits.
-  // Added after the log line so the key stays out of the logs.
-  const apiKey = process.env.OPENALEX_API_KEY;
-  const requestUrl = apiKey ? `${url}&api_key=${encodeURIComponent(apiKey)}` : url;
-
-  const response = await fetch(requestUrl, {
-    method: oql ? "POST" : "GET",
-    headers: {
-      "User-Agent": `OpenAlex-Count/1.0 (mailto:${contactEmail})`,
-      Accept: "application/json",
-      ...(oql ? { "Content-Type": "application/json" } : {}),
-    },
-    ...(oql ? { body: JSON.stringify({ oql }) } : {}),
-  });
-
-  if (!response.ok) {
-    const detail = (await response.text().catch(() => "")).slice(0, 500);
-    throw new Error(
-      `OpenAlex API error: ${response.status} ${response.statusText} ${detail}`.trim(),
-    );
-  }
-
-  const data = await response.json();
-  const papers = isRecord(data) && Array.isArray(data.results)
-    ? data.results.map((work) => mapOpenAlexWorkToPaperData(toOpenAlexWork(work)))
-    : [];
-
-  console.log(`[fetchPapersFromHistory] Fetched ${papers.length} papers`);
-  const withAbstracts = papers.filter((p) => p.abstract).length;
-  console.log(
-    `[fetchPapersFromHistory] Papers with abstracts: ${withAbstracts}/${papers.length}`,
-  );
-
-  return papers;
+  // An unset limit pulls the cap, as the bucket's limits count it (lib/bucket/effective-paper-count.ts).
+  const last = Math.min(PAPER_PULL_CAP, Math.floor(searchFilters.limit ?? PAPER_PULL_CAP));
+  if (last < 1) return [];
+  // Typed here: the generated API's types depend on this module, so inference would loop.
+  const user: Doc<"users"> | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
+  if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
+  const works = await readSearchWorks<unknown>(searchFilters.openAlexQuery, { first: 1, last, select: OPENALEX_WORK_SELECT_FIELDS.join(",") }, spender(ctx, user.clerkId));
+  return works.map((work) => mapOpenAlexWorkToPaperData(toOpenAlexWork(work)));
 }
 
 export const fetchPapersFromHistory = internalAction({
   args: {
+    userId: v.id("users"),
     searchFilters: storedSearchFiltersValidator,
   },
   returns: v.array(
@@ -277,8 +240,8 @@ export const fetchPapersFromHistory = internalAction({
       workType: v.optional(v.string()),
     }),
   ),
-  handler: async (_ctx, args): Promise<PaperData[]> => {
-    return await runFetchPapersFromHistory(args.searchFilters);
+  handler: async (ctx, args): Promise<PaperDataOut[]> => {
+    return await runFetchPapersFromHistory(ctx, args.userId, args.searchFilters);
   },
 });
 
@@ -295,10 +258,14 @@ export async function runFetchAndPersistPapers(
     internal.extraction.queries.internal.getJobSourcesInternal,
     { jobId },
   );
+  const job: Doc<"extractionJobs"> | null = await ctx.runQuery(internal.extraction.queries.internal.getJobInternal, { jobId });
+  if (!job) throw createError("NOT_FOUND", "Job not found");
 
   let cachedZoteroUserId: string | undefined;
   const expandedSources = await expandJobSources(bucketItems, {
-    fetchPapersFromHistory: runFetchPapersFromHistory,
+    fetchPapersFromHistory: (searchFilters) => runFetchPapersFromHistory(ctx, job.userId, searchFilters),
+    readLibraryItems: (ids) =>
+      readLibraryInBatches(ids, LIBRARY_READ_BATCH, (batch) => ctx.runQuery(internal.extraction.queries.internal.ownedLibraryItems, { userId: job.userId, ids: batch })),
     resolveZoteroUserId: async () => {
       if (cachedZoteroUserId !== undefined) return cachedZoteroUserId;
       try {
@@ -465,7 +432,7 @@ export async function runSetupExtractionQueueJob(
         expectedEpoch,
         paperConcurrency: runtime.paperConcurrency,
         leaseOwner: `setup:${jobId}:${expectedEpoch}`,
-        leaseMs: QUEUE_LEASE_MS,
+        leaseMs: EXTRACTION_QUEUE_LEASE_MS,
         questionConcurrency: runtime.questionConcurrency,
         pdfEnabled: runtime.pdfEnabled,
       },

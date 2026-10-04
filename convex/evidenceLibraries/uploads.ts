@@ -1,4 +1,4 @@
-import { internalQuery, mutation } from "../_generated/server";
+import { internalQuery, mutation } from "../lib/functions";
 import { v } from "convex/values";
 import { requireEvidenceLibraryAccess } from "./access";
 

@@ -19,11 +19,68 @@ import {
   TEST_RUNTIME_IMAGE,
   toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
+import {
+  createFakeClerkOAuth,
+  FAKE_CLERK_ACCOUNT_URL,
+  FAKE_CLERK_ISSUER,
+} from "../../tests/helpers/fake-clerk-oauth";
 
-vi.mock("./domainEgressNode", () => ({
-  openPinnedDomainClient: async () => globalThis.fetch,
-  openOwnProxyClient: async () => globalThis.fetch,
+// Every deployment keeps the library's OAuth application in step with its
+// addresses, so Clerk answers from memory here.
+let clerk = createFakeClerkOAuth();
+beforeEach(() => {
+  clerk = createFakeClerkOAuth();
+  vi.stubEnv("CLERK_SECRET_KEY", "sk_test_fake");
+});
+function stubFetch(fetchImpl: typeof fetch) {
+  const library = clerk.wrap(fetchImpl);
+  vi.stubGlobal("fetch", (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = new URL(
+      typeof input === "string" || input instanceof URL ? input : input.url,
+    );
+    if (
+      domainRecords.pointElsewhere &&
+      domainRecords.throughOwnProxy === 0 &&
+      url.hostname === CUSTOM_HOST
+    ) {
+      return new Response("Someone else's site", { status: 200 });
+    }
+    return library(input, init);
+  }) as typeof fetch);
+}
+
+// A domain's own records can stop pointing straight at us, as behind another
+// proxy. The client that checks them then refuses, and an ordinary request to
+// the domain reaches whoever the records name. Our own proxy still answers.
+const CUSTOM_HOST = "evidence.example.org";
+const domainRecords = vi.hoisted(() => ({
+  pointElsewhere: false,
+  throughOwnProxy: 0,
 }));
+afterEach(() => {
+  domainRecords.pointElsewhere = false;
+  domainRecords.throughOwnProxy = 0;
+});
+vi.mock("./domainEgressNode", async () => {
+  const { DomainEgressRefused } = await import("./domainEgress");
+  return {
+    openPinnedDomainClient: async () => {
+      if (domainRecords.pointElsewhere) {
+        throw new DomainEgressRefused("That domain no longer points at us");
+      }
+      return globalThis.fetch;
+    },
+    openOwnProxyClient: async () =>
+      (async (input: RequestInfo | URL, init?: RequestInit) => {
+        domainRecords.throughOwnProxy += 1;
+        try {
+          return await globalThis.fetch(input, init);
+        } finally {
+          domainRecords.throughOwnProxy -= 1;
+        }
+      }) as typeof fetch,
+  };
+});
 
 const ENCRYPTION_KEY = "33".repeat(32);
 const APPLICATION_UUID = "app000000000000000000001";
@@ -412,8 +469,8 @@ function createRuntimeNetwork(input: {
           },
         });
       }
-      // A live library sends a signed-out visitor of its admin area to
-      // OpenScholar, and readiness checks exactly that.
+      // A live library sends a signed-out visitor of its admin area to its
+      // own OpenScholar sign-in, and readiness checks exactly that.
       if (
         url.origin === new URL(canonical ?? publicDomain).origin &&
         method === "GET" &&
@@ -422,7 +479,7 @@ function createRuntimeNetwork(input: {
         return new Response(null, {
           status: 307,
           headers: {
-            location: `https://openscholar.example.test/evidence-libraries/${input.libraryId}/admin?return=%2Fadmin`,
+            location: "/api/admin/sign-in?return=%2Fadmin",
           },
         });
       }
@@ -668,7 +725,7 @@ async function switchCustomDomain(
       return revision?.revisionKey ?? "";
     }),
   });
-  vi.stubGlobal("fetch", network.fetchImpl);
+  stubFetch(network.fetchImpl);
   const off = await fixture.admin.mutation(
     api.evidenceLibraries.versions.setDomainPrimary,
     {
@@ -861,7 +918,7 @@ describe("Evidence Library configuration deployment", () => {
       ctx.db.get(activated.operationId),
     );
     let calls = 0;
-    vi.stubGlobal("fetch", async () => {
+    stubFetch(async () => {
       calls += 1;
       throw new Error("Coolify must not be called");
     });
@@ -945,7 +1002,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
 
     await fixture.t.action(
       internal.evidenceLibraries.configurationDeploymentActions
@@ -980,13 +1037,13 @@ describe("Evidence Library configuration deployment", () => {
       { libraryId },
     );
     assert(draft, "Expected an accessible draft");
-    const overviews = await fixture.admin.query(
-      api.evidenceLibraries.queries.listLibraryOverviews,
-      {},
+    const { page: overviews } = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraries,
+      { paginationOpts: { cursor: null, numItems: 50 } },
     );
     const versions = await fixture.admin.query(
-      api.evidenceLibraries.versions.listVersions,
-      { libraryId },
+      api.evidenceLibraries.versions.listVersionRows,
+      { libraryId, paginationOpts: { cursor: null, numItems: 10 } },
     );
     for (const view of [draft, overviews, versions]) {
       const seen = JSON.stringify(view);
@@ -996,6 +1053,53 @@ describe("Evidence Library configuration deployment", () => {
     }
   });
 
+  it("sends the library its own OpenScholar sign-in and keeps the client secret out of owner views", async () => {
+    const deployment = await activateChangedConfiguration("action-sign-in");
+    const network = createRuntimeNetwork({
+      libraryId: deployment.fixture.created.libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    stubFetch(network.fetchImpl);
+    const libraryId = deployment.fixture.created.libraryId;
+
+    await deployment.fixture.t.action(
+      internal.evidenceLibraries.configurationDeploymentActions
+        .runConfigurationDeployment,
+      {
+        libraryId,
+        operationId: deployment.activated.operationId,
+        attemptToken: deployment.attemptToken,
+        attemptCount: deployment.attemptCount,
+      },
+    );
+
+    const [application] = [...clerk.applications.values()];
+    assert(application, "Expected the library's OAuth application");
+    const runtimeConfigWrite = network.requests.find(
+      ({ method, url }) =>
+        method === "PUT" && url.pathname === "/api/openscholar/configuration",
+    );
+    expect(runtimeConfigWrite?.body).toMatchObject({
+      authentication: {
+        openScholar: {
+          libraryUrl: `https://openscholar.example.test/evidence-libraries/${libraryId}`,
+          accountUrl: FAKE_CLERK_ACCOUNT_URL,
+          oauth: {
+            issuer: FAKE_CLERK_ISSUER,
+            clientId: application.client_id,
+            clientSecret: application.client_secret,
+          },
+        },
+      },
+    });
+    const draft = await deployment.fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId },
+    );
+    expect(JSON.stringify(draft)).not.toContain(application.client_secret);
+  });
+
   it("activates a configuration without rebuilding or changing traffic", async () => {
     const deployment = await activateChangedConfiguration("action-success");
     const network = createRuntimeNetwork({
@@ -1003,7 +1107,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: deployment.fixture.created.libraryId,
       operationId: deployment.activated.operationId,
@@ -1086,12 +1190,6 @@ describe("Evidence Library configuration deployment", () => {
       network.environments.find(({ key }) => key === "LIBRARY_CONFIG_JSON")!
         .value,
     ).toBe(JSON.stringify({ revision: "old" }));
-    await expect(
-      deployment.fixture.admin.action(
-        api.evidenceLibraries.adminHandoffActions.issueAdminHandoff,
-        { libraryId: deployment.fixture.created.libraryId },
-      ),
-    ).resolves.toMatchObject({ status: "allowed" });
   });
 
   it("writes a configuration through the canonical custom address", async () => {
@@ -1105,7 +1203,7 @@ describe("Evidence Library configuration deployment", () => {
       canonicalAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
 
     await expect(
       deployment.fixture.t.action(
@@ -1125,6 +1223,100 @@ describe("Evidence Library configuration deployment", () => {
           method === "PUT" && url.pathname === "/api/openscholar/configuration",
       )?.url.origin,
     ).toBe(canonicalAddress);
+  });
+
+  it("activates settings on a custom address whose records no longer point straight at us", async () => {
+    const canonicalAddress = "https://evidence.example.org";
+    const deployment = await activateChangedConfiguration("proxied-domain", {
+      canonicalBaseUrl: canonicalAddress,
+    });
+    stubFetch(
+      createRuntimeNetwork({
+        libraryId: deployment.fixture.created.libraryId,
+        publicAddress: deployment.fixture.created.publicAddress,
+        canonicalAddress,
+        revisionKey: deployment.activated.revisionKey,
+      }).fetchImpl,
+    );
+    domainRecords.pointElsewhere = true;
+
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: deployment.fixture.created.libraryId,
+          operationId: deployment.activated.operationId,
+          attemptToken: deployment.attemptToken,
+          attemptCount: deployment.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "succeeded" });
+  });
+
+  it("finishes a software update on a custom address whose records no longer point straight at us", async () => {
+    const canonicalAddress = "https://evidence.example.org";
+    const { fixture, activated, attemptToken, attemptCount } =
+      await activateChangedConfiguration("proxied-update", {
+        canonicalBaseUrl: canonicalAddress,
+      });
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      canonicalAddress,
+      servedAddresses: [fixture.created.publicAddress],
+      revisionKey: activated.revisionKey,
+    });
+    stubFetch(network.fetchImpl);
+    const run = (
+      operationId: typeof activated.operationId,
+      token: string,
+      count: number,
+    ) =>
+      fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId,
+          attemptToken: token,
+          attemptCount: count,
+        },
+      );
+    // The custom address becomes the library's own while its records are right.
+    expect(await run(activated.operationId, attemptToken, attemptCount)).toEqual({
+      status: "succeeded",
+    });
+
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: NEWER_COMMIT,
+        latestImage: NEWER_RUNTIME_IMAGE,
+        changes: [{ sha: NEWER_COMMIT, message: "feat: faster search" }],
+        checkedAt: Date.now(),
+      });
+    });
+    const started = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(started.operationId),
+    );
+    domainRecords.pointElsewhere = true;
+    const update = () =>
+      run(
+        started.operationId,
+        operation!.configurationAttemptToken!,
+        operation!.attemptCount,
+      );
+    expect(await update()).toMatchObject({ status: "running" });
+    network.finishDeployment();
+    expect(await update()).toEqual({ status: "succeeded" });
+    expect(
+      await fixture.t.run((ctx) => ctx.db.get(fixture.created.runtimeBindingId)),
+    ).toMatchObject({ runtimeCommit: NEWER_COMMIT });
   });
 
   it("switches a library onto a working custom domain without a deployment", async () => {
@@ -1156,6 +1348,15 @@ describe("Evidence Library configuration deployment", () => {
       role: "primary",
       deploymentPending: false,
     });
+    // Sign-in answers on exactly the addresses the library now serves.
+    const [application] = [...clerk.applications.values()].filter(
+      ({ name }) => name === `evidence-library-${fixture.created.libraryId}`,
+    );
+    expect(application.redirect_uris).toEqual(
+      [customAddress, fixture.created.publicAddress]
+        .map((origin) => `${origin}/api/auth/callback/openscholar`)
+        .sort(),
+    );
   });
 
   it("finishes an address switch that landed before a check failed", async () => {
@@ -1206,6 +1407,23 @@ describe("Evidence Library configuration deployment", () => {
     expect(listed.canonicalAddress).toBe(fixture.created.publicAddress);
   });
 
+  it("says why it will not switch onto a domain whose records point elsewhere", async () => {
+    const { fixture, run } = await switchCustomDomain(
+      "canonical-on-proxied",
+      "active",
+      "on",
+    );
+    domainRecords.pointElsewhere = true;
+    await expect(run()).resolves.toEqual({ status: "failed" });
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.query("evidenceLibraryConfigOperations").order("desc").first(),
+    );
+    expect(operation?.error).toMatchObject({
+      code: "DOMAIN_REFUSED",
+      message: "That domain no longer points at us",
+    });
+  });
+
   it("waits out a busy runtime rather than trying the other address", async () => {
     const { network, run } = await switchCustomDomain(
       "canonical-on-busy",
@@ -1251,7 +1469,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     network.rejectConfiguration();
 
     await expect(
@@ -1280,7 +1498,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: deployment.fixture.created.libraryId,
       operationId: deployment.activated.operationId,
@@ -1346,6 +1564,66 @@ describe("Evidence Library configuration deployment", () => {
     ).resolves.toMatchObject({ status: "succeeded" });
   });
 
+  it("refuses to retry with a saved OAuth client Clerk no longer has", async () => {
+    const deployment = await activateChangedConfiguration("retry-replaced-oauth");
+    const network = createRuntimeNetwork({
+      libraryId: deployment.fixture.created.libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    stubFetch(network.fetchImpl);
+    const actionArgs = {
+      libraryId: deployment.fixture.created.libraryId,
+      operationId: deployment.activated.operationId,
+      attemptToken: deployment.attemptToken,
+      attemptCount: deployment.attemptCount,
+    };
+    network.failReadiness();
+    await deployment.fixture.t.action(
+      internal.evidenceLibraries.configurationDeploymentActions
+        .runConfigurationDeployment,
+      actionArgs,
+    );
+    await failSavedConfigurationDeployment(deployment);
+    network.restoreReadiness();
+    // Removed from Clerk by hand: the next sync makes a new application.
+    clerk.applications.clear();
+
+    await deployment.fixture.admin.mutation(
+      api.evidenceLibraries.configurationDeployment
+        .retryConfigurationDeployment,
+      {
+        libraryId: deployment.fixture.created.libraryId,
+        operationId: deployment.activated.operationId,
+      },
+    );
+    const claimed = await deployment.fixture.t.run((ctx) =>
+      ctx.db.get(deployment.activated.operationId),
+    );
+    assert(claimed?.configurationAttemptToken, "Expected the retry to claim the deployment");
+    const writesBeforeRetry = network.requests.filter(
+      ({ method, url }) =>
+        method === "PUT" && url.pathname === "/api/openscholar/configuration",
+    ).length;
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          ...actionArgs,
+          attemptToken: claimed.configurationAttemptToken,
+          attemptCount: claimed.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "failed" });
+    expect(
+      network.requests.filter(
+        ({ method, url }) =>
+          method === "PUT" && url.pathname === "/api/openscholar/configuration",
+      ),
+    ).toHaveLength(writesBeforeRetry);
+  });
+
   it("bases a publish after a failed publish on the live revision", async () => {
     const deployment = await activateChangedConfiguration(
       "publish-after-failure",
@@ -1357,7 +1635,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const firstActionArgs = {
       libraryId,
       operationId: deployment.activated.operationId,
@@ -1447,7 +1725,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: deployment.fixture.created.libraryId,
       operationId: deployment.activated.operationId,
@@ -1505,7 +1783,7 @@ describe("Evidence Library configuration deployment", () => {
       revisionKey: deployment.activated.revisionKey,
     });
     network.failReadiness();
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: deployment.fixture.created.libraryId,
       operationId: deployment.activated.operationId,
@@ -1601,7 +1879,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: activeRevision!.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: fixture.created.libraryId,
       operationId: started.operationId,
@@ -1695,7 +1973,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: activeRevision!.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: fixture.created.libraryId,
       operationId: started.operationId,
@@ -1750,7 +2028,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: fixture.created.libraryId,
       operationId: activated.operationId,
@@ -1877,7 +2155,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: "r1",
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     await expect(
       fixture.t.action(
         internal.evidenceLibraries.configurationDeploymentActions
@@ -1941,6 +2219,132 @@ describe("Evidence Library configuration deployment", () => {
     ).toBe(LATEST_RUNTIME_IMAGE);
   });
 
+  it("says to finish a failed software update before an activation that needs a deployment", async () => {
+    const fixture = await createReadyLibrary("unfinished-update");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: NEWER_COMMIT,
+        latestImage: NEWER_RUNTIME_IMAGE,
+        changes: [{ sha: NEWER_COMMIT, message: "feat: first image" }],
+        checkedAt: Date.now(),
+      });
+    });
+    const update = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    const updateOperation = await fixture.t.run((ctx) =>
+      ctx.db.get(update.operationId),
+    );
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      revisionKey: "r1",
+    });
+    stubFetch(network.fetchImpl);
+    const run = (
+      operationId: typeof update.operationId,
+      attemptToken: string,
+      attemptCount: number,
+    ) =>
+      fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId,
+          attemptToken,
+          attemptCount,
+        },
+      );
+    // The update switches the application to the new release, then fails.
+    await run(
+      update.operationId,
+      updateOperation!.configurationAttemptToken!,
+      updateOperation!.attemptCount,
+    );
+    expect(network.commit).toBe(NEWER_COMMIT);
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(update.operationId, {
+        status: "failed",
+        error: {
+          code: "RUNTIME_NOT_READY",
+          message: "The verifier was unavailable",
+          stage: "publishing",
+        },
+        completedAt: Date.now(),
+        configurationAttemptToken: undefined,
+        configurationLeaseExpiresAt: undefined,
+        updatedAt: Date.now(),
+      });
+    });
+
+    // An address move needs a deployment and carries no software update.
+    const moved = await fixture.admin.action(
+      api.evidenceLibraries.addressActions.moveLibraryAddress,
+      { libraryId: fixture.created.libraryId },
+    );
+    if (moved.status !== "moving") throw new Error("The move did not start");
+    const move = await readMoveOperation(fixture);
+    await expect(
+      run(move._id, move.configurationAttemptToken!, move.attemptCount),
+    ).resolves.toEqual({ status: "failed" });
+    expect((await fixture.t.run((ctx) => ctx.db.get(move._id)))?.error).toMatchObject({
+      code: "SOFTWARE_UPDATE_UNFINISHED",
+      message:
+        "A software update did not finish. Update the software, then activate again.",
+    });
+    // Nothing changed, so the update it asks for can still go through.
+    expect(network.publicDomain).toBe(fixture.created.publicAddress);
+    const again = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    const againOperation = await fixture.t.run((ctx) =>
+      ctx.db.get(again.operationId),
+    );
+    await expect(
+      run(
+        again.operationId,
+        againOperation!.configurationAttemptToken!,
+        againOperation!.attemptCount,
+      ),
+    ).resolves.toMatchObject({ status: "running" });
+  });
+
+  it("does not call a release staged by a failed rollback an unfinished update", async () => {
+    const fixture = await createReadyLibrary("failed-rollback-target");
+    const staged = { runtimeCommit: NEWER_COMMIT, runtimeImage: NEWER_RUNTIME_IMAGE };
+    await fixture.t.run(async (ctx) => {
+      const update = await ctx.db
+        .query("evidenceLibraryConfigOperations")
+        .order("desc")
+        .first();
+      const { _id, _creationTime, ...copied } = update!;
+      await ctx.db.insert("evidenceLibraryConfigOperations", {
+        ...copied,
+        kind: "rollback",
+        status: "failed",
+        idempotencyKey: "runtime-rollback:test",
+        runtimeUpdate: {
+          from: RUNTIME_COMMIT,
+          to: NEWER_COMMIT,
+          fromImage: TEST_RUNTIME_IMAGE,
+          toImage: NEWER_RUNTIME_IMAGE,
+        },
+      });
+    });
+    const read = (updateOnly: boolean) =>
+      fixture.t.query(
+        internal.evidenceLibraries.configurationDeployment.isFailedRuntimeTarget,
+        { libraryId: fixture.created.libraryId, ...staged, updateOnly },
+      );
+    // The next software update may still continue from it.
+    await expect(read(false)).resolves.toBe(true);
+    await expect(read(true)).resolves.toBe(false);
+  });
+
   it("refuses an intermediate release that is not in this library's failed update history", async () => {
     const fixture = await createReadyLibrary("runtime-update-unknown");
     await fixture.t.run(async (ctx) => {
@@ -1969,7 +2373,7 @@ describe("Evidence Library configuration deployment", () => {
       runtimeCommit: NEWER_COMMIT,
       runtimeImage: NEWER_RUNTIME_IMAGE,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
 
     await expect(
       fixture.t.action(
@@ -2027,7 +2431,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: candidate.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
 
     const firstAttempt = await fixture.t.run((ctx) =>
       ctx.db.get(started.operationId),
@@ -2168,7 +2572,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: fixture.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
 
     const moved = await fixture.admin.action(
       api.evidenceLibraries.addressActions.moveLibraryAddress,
@@ -2285,7 +2689,7 @@ describe("Evidence Library configuration deployment", () => {
       }
       return await network.fetchImpl(requestInput, init);
     };
-    vi.stubGlobal("fetch", flaky);
+    stubFetch(flaky);
 
     await fixture.admin.action(
       api.evidenceLibraries.addressActions.moveLibraryAddress,
@@ -2340,7 +2744,7 @@ describe("Evidence Library configuration deployment", () => {
       }
       return await network.fetchImpl(requestInput, init);
     };
-    vi.stubGlobal("fetch", failing);
+    stubFetch(failing);
 
     const moved = await fixture.admin.action(
       api.evidenceLibraries.addressActions.moveLibraryAddress,
@@ -2660,7 +3064,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     // The configuration lands, readiness never answers, and the last allowed
     // check puts the previous configuration back.
     network.failReadiness();
@@ -2727,7 +3131,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
 
     await deployment.fixture.admin.mutation(
       api.evidenceLibraries.configurationDeployment
@@ -2841,7 +3245,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId,
       operationId: deployment.activated.operationId,
@@ -2866,7 +3270,7 @@ describe("Evidence Library configuration deployment", () => {
         });
       });
     };
-    vi.stubGlobal("fetch", (async (
+    stubFetch((async (
       input: RequestInfo | URL,
       init?: RequestInit,
     ) => {

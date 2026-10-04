@@ -14,7 +14,7 @@ async function setup() {
     const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_sources", evidenceLibrariesEnabled: true, name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
     const users = new Map<string, Awaited<ReturnType<typeof ctx.db.insert<"users">>>>();
     for (const clerkId of ["owner", "colleague"]) {
-      users.set(clerkId, await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 }));
+      users.set(clerkId, await ctx.db.insert("users", {libraryItemCount: 0,  clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 }));
       await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `membership-${clerkId}`, clerkUserId: clerkId, role: "org:admin", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
     }
     const libraryId = await ctx.db.insert("evidenceLibraries", { organizationId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
@@ -24,7 +24,7 @@ async function setup() {
   });
   const owner = t.withIdentity({ subject: "owner" });
   const colleague = t.withIdentity({ subject: "colleague" });
-  const collectionId = await owner.mutation(api.library.collections.createCollection, { name: "Reading list" });
+  const collectionId = (await owner.mutation(api.library.collections.createCollection, { name: "Reading list" })).id;
   const read = async (body: Record<string, unknown> = {}, credential = token) => {
     const response = await t.fetch("/api/v1/evidence-libraries/source-collections/items", {
       method: "POST",
@@ -76,4 +76,16 @@ it("lets only the collection's owner connect it, and stops serving it once they 
 
   await t.run(async (ctx) => ctx.db.delete("collections", collectionId));
   expect(await read()).toEqual({ status: 404, body: { error: "collection_not_found" } });
+});
+
+it("reads the library's connections to the collections asked for as one page, and leaves out one it never connected", async () => {
+  const { owner, collectionId, libraryId } = await setup();
+  const other = (await owner.mutation(api.library.collections.createCollection, { name: "Other" })).id;
+  await owner.mutation(api.evidenceLibraries.collectionSources.connectCollectionSource, { libraryId, collectionId: other });
+  const read = (collectionIds: string[]) => owner.query(api.evidenceLibraries.collectionSources.listCollectionSources, { libraryId, collectionIds });
+  expect(await read([other, collectionId, other])).toMatchObject({ page: [{ collectionId: other, name: "Other" }], isDone: true });
+  expect((await read([])).page).toEqual([]);
+  // A saved source can hold an ID that is no collection's; it is passed over, not refused.
+  expect((await read(["c1", other])).page).toHaveLength(1);
+  await expect(read(Array.from({ length: 201 }, () => other))).rejects.toThrow(/200 at a time/);
 });

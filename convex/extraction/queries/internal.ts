@@ -30,6 +30,7 @@ import {
   jobStatusValidator,
   paperStatusValidator,
 } from "../validators";
+import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 export const getJobInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
@@ -46,7 +47,7 @@ export const getQuestionCount = internalQuery({
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(MAX_QUESTIONS_PER_JOB);
     return questions.length;
   },
 });
@@ -138,11 +139,11 @@ export const getPaperExtractionContext = internalQuery({
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
         .order("asc")
-        .collect(),
+        .take(MAX_QUESTIONS_PER_JOB),
       ctx.db
         .query("extractionResults")
         .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
-        .collect(),
+        .take(MAX_QUESTIONS_PER_JOB),
       ctx.db
         .query("extractionEvidenceUnits")
         .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
@@ -159,24 +160,6 @@ export const getPaperExtractionContext = internalQuery({
       results,
       evidenceUnits,
     };
-  },
-});
-
-/**
- * Plan-05 retry: load every `extractionResults` row for a job whose
- * status is "pending". Retained for internal retry/debug callers that
- * need to inspect reset rows after `retryFailedQuestions` runs.
- */
-export const getPendingResultsInternal = internalQuery({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.array(extractionResultValidator),
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("extractionResults")
-      .withIndex("by_job_status", (q) =>
-        q.eq("jobId", args.jobId).eq("status", "pending"),
-      )
-      .collect();
   },
 });
 
@@ -325,5 +308,51 @@ export const getPapersDebug = internalQuery({
       papersWithWorkIds: papersWithWorkIds.slice(0, 20),
       samplePaper: papers[0] || null,
     };
+  },
+});
+
+/** Library papers one `ownedLibraryItems` read takes. */
+export const LIBRARY_READ_BATCH = 100;
+
+/** A library paper's fields a job's library and collection sources read. */
+const libraryPaperValidator = v.object({
+  _id: v.id("libraryItems"),
+  title: v.string(),
+  authors: v.optional(v.string()),
+  doi: v.optional(v.string()),
+  openalexId: v.string(),
+  abstract: v.optional(v.string()),
+  publicationYear: v.optional(v.number()),
+  journal: v.optional(v.string()),
+  citedByCount: v.optional(v.number()),
+  workType: v.optional(v.string()),
+});
+
+/**
+ * The person's own library papers among these ids (#341): a job reads its library and
+ * collection sources from here, not from the copy the browser sent. Papers that are gone
+ * or someone else's are left out.
+ */
+export const ownedLibraryItems = internalQuery({
+  args: { userId: v.id("users"), ids: v.array(v.string()) },
+  returns: v.array(libraryPaperValidator),
+  handler: async (ctx, { userId, ids }) => {
+    // A library row holds its paper's full JSON, so a read is bounded by count, well under
+    // Convex's 16 MiB a transaction: callers read a job's papers in batches of this size.
+    if (ids.length > LIBRARY_READ_BATCH) throw new Error(`Read at most ${LIBRARY_READ_BATCH} library papers at a time`);
+    const rows = await Promise.all(
+      ids.map((id) => {
+        const itemId = ctx.db.normalizeId("libraryItems", id);
+        return itemId ? ctx.db.get("libraryItems", itemId) : null;
+      }),
+    );
+    return rows.flatMap((row) =>
+      row && row.userId === userId
+        ? [{
+            _id: row._id, title: row.title, authors: row.authors, doi: row.doi, openalexId: row.openalexId, abstract: row.abstract,
+            publicationYear: row.publicationYear, journal: row.journal, citedByCount: row.citedByCount, workType: row.workType,
+          }]
+        : [],
+    );
   },
 });

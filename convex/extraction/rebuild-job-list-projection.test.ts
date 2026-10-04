@@ -3,11 +3,9 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { setupAggregates } from "./aggregates.test-support";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
-import { incPaperOutcome } from "./jobCounters";
 
 const CLERK_OWNER = "clerk_rebuild_projection";
 const OWNER_IDENTITY = {
@@ -21,6 +19,7 @@ async function seedPreProjectionJob(t: ReturnType<typeof convexTest>) {
     const now = Date.now();
     await seedOrganizationFeatures(ctx, [CLERK_OWNER], { extraction: true });
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: CLERK_OWNER,
       email: "rebuild-projection@test.com",
       state: "active" as const,
@@ -79,7 +78,6 @@ async function seedPreProjectionJob(t: ReturnType<typeof convexTest>) {
       processedAt: now,
     });
 
-    await incPaperOutcome(ctx, jobId, true);
 
     return { jobId };
   });
@@ -88,15 +86,13 @@ async function seedPreProjectionJob(t: ReturnType<typeof convexTest>) {
 describe("rebuildJobListProjection", () => {
   it("repairs pre-projection jobs instead of relying on a runtime fallback", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { jobId } = await seedPreProjectionJob(t);
     const auth = t.withIdentity(OWNER_IDENTITY);
 
     await expect(
-      auth.query(api.extraction.queries.getJobResultsPage, {
+      auth.query(api.extraction.queries.listJobResults, {
         jobId,
-        page: 1,
-        pageSize: 25,
+        paginationOpts: { cursor: null, numItems: 25 },
         filters: {
           searchQuery: "",
           confidenceRange: [0, 100],
@@ -115,10 +111,9 @@ describe("rebuildJobListProjection", () => {
     expect(repair.remaining).toBe(0);
     expect(repair.scheduled).toBe(false);
 
-    const results = await auth.query(api.extraction.queries.getJobResultsPage, {
+    const results = await auth.query(api.extraction.queries.listJobResults, {
       jobId,
-      page: 1,
-      pageSize: 25,
+      paginationOpts: { cursor: null, numItems: 25 },
       filters: {
         searchQuery: "",
         confidenceRange: [0, 100],
@@ -128,12 +123,8 @@ describe("rebuildJobListProjection", () => {
       sortBy: "default",
     });
 
-    expect(results.status).toBe("ok");
-    if (results.status !== "ok") {
-      throw new Error("unreachable");
-    }
-    expect(results.totalFiltered).toBe(1);
-    expect(results.items[0]?.title).toBe("Repairable Paper");
-    expect(results.items[0]?.results[0]?.answer).toBe("Recovered answer");
+    expect(results.page).toHaveLength(1);
+    expect(results.page[0]?.title).toBe("Repairable Paper");
+    expect(results.page[0]?.results[0]?.answer).toBe("Recovered answer");
   });
 });

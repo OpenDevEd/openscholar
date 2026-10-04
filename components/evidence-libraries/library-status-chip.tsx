@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, CloudUpload, PencilLine, RefreshCw, Trash2, type LucideIcon } from "lucide-react";
+import { Clock, CloudUpload, PencilLine, RefreshCw, Trash2, type AppIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import type { FunctionReturnType } from "convex/server";
 import type { api } from "@/convex/_generated/api";
@@ -18,7 +18,7 @@ export const LIBRARY_TONE: Record<LibraryStatus, StatusTone> = {
 };
 
 /** Active, setting up and setup failed take their tone's sign: the check extraction uses when done, a spinner, a cross. */
-const LIBRARY_ICON: Record<LibraryStatus, LucideIcon | "tone"> = {
+const LIBRARY_ICON: Record<LibraryStatus, AppIcon | "tone"> = {
   draft: PencilLine,
   setting_up: "tone",
   active: "tone",
@@ -43,7 +43,7 @@ export function libraryStatusOf(
 
 /** The build a live library is running: a software update, or published changes. */
 export type LibraryOperation = NonNullable<
-  FunctionReturnType<typeof api.evidenceLibraries.queries.listLibraryOverviews>[number]["operation"]
+  FunctionReturnType<typeof api.evidenceLibraries.queries.listLibraries>["page"][number]["operation"]
 >;
 
 /**

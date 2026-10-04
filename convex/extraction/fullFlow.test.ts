@@ -6,7 +6,6 @@ import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
-import { setupAggregates } from "./aggregates.test-support";
 import { setupExtractionPaperWorkpool } from "./queue/workpool.test-support";
 
 const {
@@ -92,6 +91,7 @@ async function seedUserFlagsAndCredits(
     const now = Date.now();
     await seedOrganizationFeatures(ctx, [TEST_CLERK], { extraction: true });
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: TEST_CLERK,
       email: "full-flow@test.com",
       state: "active" as const,
@@ -154,7 +154,6 @@ describe("extraction full flow with mocked provider I/O", () => {
 
   it("runs a multi-question job through queue/workpool, settles one paper charge, and never calls a provider network", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     setupExtractionPaperWorkpool(t);
     const { userId } = await seedUserFlagsAndCredits(t);
     const auth = t.withIdentity(TEST_IDENTITY);

@@ -1,4 +1,7 @@
+import { assertCredentialRoom } from "../evidenceLibraries/credentials";
 import { v } from "convex/values";
+import { paginationResultValidator } from "convex/server";
+import { MAX_ZOTERO_GROUPS_PER_LIBRARY } from "../lib/queryBounds";
 import type { Id } from "../_generated/dataModel";
 import {
   internalMutation,
@@ -7,7 +10,7 @@ import {
   query,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import { requireEvidenceLibraryAccess } from "../evidenceLibraries/access";
 import { writeAuditLogRecord } from "../lib/audit";
 import { createError } from "../lib/errors";
@@ -53,10 +56,7 @@ export async function readLibraryZoteroGroupCredentials(
   ctx: ReadCtx,
   libraryId: Id<"evidenceLibraries">,
 ) {
-  const groups = await ctx.db
-    .query("evidenceLibraryZoteroGroups")
-    .withIndex("by_libraryId", (q) => q.eq("libraryId", libraryId))
-    .take(100);
+  const groups = await libraryZoteroGroups(ctx, libraryId);
   const result: {
     groupId: string;
     encryptedApiKey: string;
@@ -79,15 +79,20 @@ export async function readLibraryZoteroGroupCredentials(
   return result;
 }
 
-export const listLibraryZoteroGroups = query({
+/** The Zotero groups a library connects: at most MAX_ZOTERO_GROUPS_PER_LIBRARY, which connecting a group enforces. */
+const libraryZoteroGroups = (ctx: ReadCtx, libraryId: Id<"evidenceLibraries">) =>
+  ctx.db
+    .query("evidenceLibraryZoteroGroups")
+    .withIndex("by_libraryId", (q) => q.eq("libraryId", libraryId))
+    .take(MAX_ZOTERO_GROUPS_PER_LIBRARY);
+
+/** A library's Zotero groups, as one page: a library holds no more than one page of them. */
+export const listZoteroGroups = query({
   args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.array(evidenceLibraryZoteroGroupValidator),
+  returns: paginationResultValidator(evidenceLibraryZoteroGroupValidator),
   handler: async (ctx, args) => {
     await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-    return await ctx.db
-      .query("evidenceLibraryZoteroGroups")
-      .withIndex("by_libraryId", (q) => q.eq("libraryId", args.libraryId))
-      .take(100);
+    return { page: await libraryZoteroGroups(ctx, args.libraryId), isDone: true, continueCursor: "" };
   },
 });
 
@@ -173,6 +178,7 @@ export const saveLibraryZoteroGroup = internalMutation({
     if (credential) {
       await ctx.db.patch("evidenceLibraryCredentials", credential._id, credentialFields);
     } else {
+      await assertCredentialRoom(ctx, args.libraryId);
       await ctx.db.insert("evidenceLibraryCredentials", {
         ...credentialFields,
         createdByClerkUserId: args.clerkUserId,
@@ -196,6 +202,9 @@ export const saveLibraryZoteroGroup = internalMutation({
       args.libraryId,
       args.groupId,
     );
+    if (!existing && (await libraryZoteroGroups(ctx, args.libraryId)).length >= MAX_ZOTERO_GROUPS_PER_LIBRARY) {
+      throw createError("VALIDATION_ERROR", `A library connects at most ${MAX_ZOTERO_GROUPS_PER_LIBRARY} Zotero groups. Remove one to connect another.`);
+    }
     const groupRowId = existing
       ? (await ctx.db.replace("evidenceLibraryZoteroGroups", existing._id, groupFields),
         existing._id)

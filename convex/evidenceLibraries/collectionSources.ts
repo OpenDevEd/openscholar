@@ -1,4 +1,6 @@
 import { v } from "convex/values";
+import { paginationResultValidator } from "convex/server";
+import { MAX_LIBRARY_SOURCES } from "../lib/listCaps";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   httpAction,
@@ -7,7 +9,7 @@ import {
   query,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import { internal } from "../_generated/api";
 import { writeAuditLogRecord } from "../lib/audit";
 import { requireAuth } from "../lib/auth";
@@ -17,8 +19,6 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { readActiveOrganizationMembership, requireEvidenceLibraryAccess } from "./access";
 import { authenticateLibraryServiceCredential } from "./credentials";
 
-// A library follows at most this many collections; far more than it lists.
-const MAX_LIBRARY_COLLECTIONS = 100;
 // Items a page carries. Each costs one read of its library item.
 const ITEMS_PER_PAGE = 1_000;
 
@@ -47,27 +47,34 @@ const collectionSourceValidator = v.object({
 });
 
 /** The collections the library follows, with their current names. */
-export const listLibraryCollectionSources = query({
-  args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.array(collectionSourceValidator),
+const row = async (ctx: QueryCtx, connection: Doc<"evidenceLibraryCollectionSources">) => {
+  const collection = await ctx.db.get("collections", connection.collectionId);
+  return {
+    collectionId: connection.collectionId,
+    name: collection?.name ?? null,
+    itemCount: collection?.itemCount ?? 0,
+    connectedByClerkUserId: connection.connectedByClerkUserId,
+    connectedAt: connection.connectedAt,
+  };
+};
+
+/**
+ * The library's connections to these collections, as one page; a collection it never
+ * connected is left out. A configuration holds at most MAX_LIBRARY_SOURCES sources, so a page
+ * asks for no more. Connections are kept when a source leaves a draft, so they are read by the
+ * sources shown and never listed whole. The IDs come from saved configuration, so one that
+ * isn't a collection's is passed over like a collection that was never connected.
+ */
+export const listCollectionSources = query({
+  args: { libraryId: v.id("evidenceLibraries"), collectionIds: v.array(v.string()) },
+  returns: paginationResultValidator(collectionSourceValidator),
   handler: async (ctx, args) => {
     await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-    const rows = await ctx.db
-      .query("evidenceLibraryCollectionSources")
-      .withIndex("by_libraryId_and_collectionId", (q) => q.eq("libraryId", args.libraryId))
-      .take(MAX_LIBRARY_COLLECTIONS);
-    return await Promise.all(
-      rows.map(async (row) => {
-        const collection = await ctx.db.get("collections", row.collectionId);
-        return {
-          collectionId: row.collectionId,
-          name: collection?.name ?? null,
-          itemCount: collection?.itemCount ?? 0,
-          connectedByClerkUserId: row.connectedByClerkUserId,
-          connectedAt: row.connectedAt,
-        };
-      }),
-    );
+    if (args.collectionIds.length > MAX_LIBRARY_SOURCES) throw createError("VALIDATION_ERROR", `Collections are read ${MAX_LIBRARY_SOURCES} at a time.`);
+    const collectionIds = [...new Set(args.collectionIds)].flatMap((id) => ctx.db.normalizeId("collections", id) ?? []);
+    const connections = await Promise.all(collectionIds.map((collectionId) => findConnection(ctx, args.libraryId, collectionId)));
+    const page = await Promise.all(connections.flatMap((connection) => (connection ? [row(ctx, connection)] : [])));
+    return { page, isDone: true, continueCursor: "" };
   },
 });
 

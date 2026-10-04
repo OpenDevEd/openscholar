@@ -88,7 +88,7 @@ vi.mock("motion/react", () => ({
   useReducedMotion: () => true,
 }));
 
-vi.mock("lucide-react", () => ({
+vi.mock("@/components/icons", () => ({
   Expand: () => null,
   Minimize2: () => null,
   Loader2: () => null,
@@ -170,6 +170,7 @@ vi.mock("@/lib/search", () => ({
       wlang: [],
       itype: [],
       funder: [],
+      author: [],
       mincite: null,
       abs: false,
       retracted: false,
@@ -180,6 +181,7 @@ vi.mock("@/lib/search", () => ({
 }));
 
 vi.mock("@/lib/store", () => ({
+  useKeywordExpansionStore: { getState: () => ({ ensureShortcuts: async () => {}, expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }) },
   useCurrentQuestionStore: () => ({ currentQuestion: "" }),
   useSearchHistoryStore: <T,>(selector: (state: unknown) => T) =>
     selector({
@@ -222,11 +224,6 @@ vi.mock("@/lib/keyword-validation", () => ({
     expandedQuery: query,
     warnings: [],
   }),
-}));
-
-vi.mock("@/components/screening/screening-dialog", () => ({
-  ScreeningDialog: ({ open }: { open: boolean }) =>
-    open ? <div role="dialog" /> : null,
 }));
 
 vi.mock("@/components/ui/tooltip", () => {

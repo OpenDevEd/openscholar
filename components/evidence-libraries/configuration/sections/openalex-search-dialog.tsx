@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Filter, History, Pencil, RotateCcw, Save, X } from "lucide-react";
+import { ArrowLeft, Filter, History, Pencil, RotateCcw, Save, X } from "@/components/icons";
 import { HistoryCommandCenter } from "@/components/history-command-center";
 import { ResultsList } from "@/components/results-list";
 import { SidebarContent } from "@/components/search-sidebar";
@@ -19,6 +19,8 @@ import { useIsTablet } from "@/lib/hooks";
 import { DEFAULT_SEARCH_PARAMS, SearchProvider, useSearch, type SearchParams } from "@/lib/search";
 import { paramsToSearchResult, searchResultToParams } from "@/lib/search-params";
 import { useSearchHistoryStore } from "@/lib/store";
+import { useWatchedSearch } from "@/lib/research/reads";
+import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 import { sidebarSpring } from "@/lib/ui/sidebar-motion";
 import { isCitedByFilterActive, isCitesFilterActive, isRelatedToFilterActive } from "@/lib/utils";
 
@@ -103,7 +105,7 @@ function SearchWorkspace({
         data-openalex-filters
       >
         <div className="sticky top-0 z-10 flex justify-end px-4 pt-4">
-          <div className="flex min-h-10 items-center gap-1 rounded-lg border border-border/30 bg-background/95 p-1 shadow-lg shadow-black/10">
+          <div className="flex min-h-10 items-center gap-1 rounded-lg border border-border-subtle bg-card p-1 shadow-lg shadow-black/10">
             <AnimatePresence>
               {activeFilters > 0 && <FilterCountControl count={activeFilters} onClearAll={clearAll} />}
             </AnimatePresence>
@@ -122,7 +124,7 @@ function SearchWorkspace({
       <motion.div
         layout="position"
         transition={reducedMotion ? { duration: 0 } : sidebarSpring}
-        className="relative z-10 my-4 flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-border/50 bg-sidebar shadow-2xl lg:w-[calc(100%-20.5rem)] lg:flex-none"
+        className="relative z-10 my-4 flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-border-subtle bg-sidebar shadow-2xl lg:w-[calc(100%-20.5rem)] lg:flex-none"
         data-openalex-preview
       >
         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
@@ -136,7 +138,7 @@ function SearchWorkspace({
                 maxLength={80}
                 placeholder={t("namePlaceholder")}
                 onChange={(event) => setName(event.target.value)}
-                className="-ml-2 min-w-40 max-w-full field-sizing-content rounded-lg border border-transparent bg-transparent px-2 py-1 text-xl font-semibold outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border/60 focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/10"
+                className="-ml-2 min-w-40 max-w-full field-sizing-content rounded-lg border border-transparent bg-transparent px-2 py-1 text-xl font-semibold outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/10"
               />
               <Button
                 type="button"
@@ -192,15 +194,11 @@ function SearchWorkspace({
             // The history page itself, choosing instead of opening.
             <HistoryCommandCenter
               pick={{
-                label: t("useSearch"),
                 excludeId: search.searchId,
                 onPick: (entry) => {
                   const picked = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(entry) };
-                  useSearchHistoryStore.getState().updateSearchResult(search.searchId, {
-                    ...paramsToSearchResult(picked),
-                    queryHistory: entry.queryHistory,
-                    questionHistory: entry.questionHistory,
-                  });
+                  const history = useSearchHistoryStore.getState();
+                  history.copySearch(search.searchId, entry, paramsToSearchResult(picked));
                   setParams(() => picked);
                   if (!name) setName(entry.query.slice(0, 80));
                   setChoosingFromHistory(false);
@@ -219,7 +217,7 @@ function SearchWorkspace({
           )}
         </div>
 
-        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border/50 bg-background/80 px-4 py-3 sm:px-6">
+        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border-subtle bg-card px-4 py-3 sm:px-6">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <p className="text-xs text-muted-foreground">
               {unbounded
@@ -266,6 +264,8 @@ export function OpenAlexSearchDialog({
   onApprove: (source: OpenAlexSourceEntry) => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources.openAlex");
+  // The editor's search, read by ID while it's open, so its screening and history are there.
+  useWatchedSearch(searchId);
   const startingName = initial?.settings.name ?? "";
   const startingParams = useMemo(() => readOpenAlexSourceSearch(initial), [initial]);
   const [name, setName] = useState(startingName);
@@ -274,7 +274,8 @@ export function OpenAlexSearchDialog({
   const queryUnchanged = Boolean(initial) && sameOpenAlexSourceSearch(params, startingParams);
   const changed = name !== startingName || !queryUnchanged || downloadPdfs !== (initial?.settings.downloadPdfs ?? false);
 
-  function save() {
+  async function save() {
+    await ensureQueryShortcuts(params.q);
     const canonical = queryUnchanged ? initial!.settings.approvedQuery.query : buildOpenAlexSourceQuery(params);
     if (!canonical) return;
     onApprove({

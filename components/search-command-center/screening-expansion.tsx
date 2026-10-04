@@ -11,7 +11,7 @@ import {
   Plus,
   Sparkles,
   Trash2,
-} from "lucide-react";
+} from "@/components/icons";
 import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -19,7 +19,8 @@ import { Input } from "@/components/ui/input";
 import { CompactQuestionList } from "./components/compact-question-list";
 import { useSearchHistoryStore, useTransientScreeningStore } from "@/lib/store";
 import { useGenerateScreeningQuestions } from "@/lib/ai/client/router";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { ensureQueryShortcuts, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
+import { useQueryShortcuts } from "@/lib/research/reads";
 import { commandCenterSpring } from "@/lib/animation-config";
 import { useCooldown } from "@/lib/hooks/use-cooldown";
 import { useAppToast } from "@/lib/toast";
@@ -58,9 +59,9 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
   const searchResult = getSearchResult(searchId);
   const screeningQuestions = searchResult?.screeningQuestions || [];
 
-  const lastQuestionFromHistory =
-    searchResult?.questionHistory?.[searchResult.questionHistory.length - 1]?.question;
+  const lastQuestionFromHistory = searchResult?.latestQuestion;
   const searchQuery = searchResult?.query || "";
+  useQueryShortcuts(searchQuery);
   const researchQuestion =
     lastQuestionFromHistory ||
     (searchQuery ? validateAndExpandKeywordsSilently(searchQuery).expandedQuery : "");
@@ -171,8 +172,10 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
 
     setIsGenerating(true);
     try {
+      // The question is the query with its shortcuts expanded, so they're read first.
+      await ensureQueryShortcuts(searchQuery);
       const result = await generateQuestions({
-        researchQuestion,
+        researchQuestion: lastQuestionFromHistory || validateAndExpandKeywordsSilently(searchQuery).expandedQuery,
         existingQuestions: screeningQuestions.map((q) => q.question),
         responseLanguage: localeToLanguageCode(locale),
       });
@@ -226,7 +229,7 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
           transition={commandCenterSpring}
           className="overflow-hidden"
         >
-          <div className="border-t border-border/40 px-4 pb-4 pt-3 space-y-3">
+          <div className="border-t border-border-subtle px-4 pb-4 pt-3 space-y-3">
             {/* Input row */}
             <div className="flex flex-wrap gap-2 items-center">
               <ButtonGroup>

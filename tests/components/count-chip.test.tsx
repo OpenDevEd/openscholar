@@ -31,7 +31,7 @@ vi.mock("next-intl", () => ({
   }),
 }));
 
-vi.mock("lucide-react", () => ({
+vi.mock("@/components/icons", () => ({
   Minus: () => null,
   Plus: () => null,
   ChevronDown: () => null,
@@ -73,6 +73,9 @@ function makeEntry(overrides: Partial<SearchResult> = {}): SearchResult {
     query: "cancer therapy",
     queryHistory: [],
     questionHistory: [],
+    queryHistoryCount: 0,
+    questionCount: 0,
+    questionText: "",
     screeningQuestions: [],
     screeningResponses: {},
     count: 3000,

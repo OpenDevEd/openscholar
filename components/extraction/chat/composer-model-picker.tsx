@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";

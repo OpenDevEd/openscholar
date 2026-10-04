@@ -1,6 +1,6 @@
 import { v, type Infer } from "convex/values";
 import { validate } from "convex-helpers/validators";
-import { httpAction, internalMutation, query } from "../_generated/server";
+import { httpAction, internalMutation, query } from "../lib/functions";
 import { internal } from "../_generated/api";
 import { createError, readConvexErrorData } from "../lib/errors";
 import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";
@@ -8,13 +8,14 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { requireEvidenceLibraryAccess } from "./access";
 import { authenticateLibraryServiceCredential } from "./credentials";
 import {
+  evidenceLibrarySourceStatusFields,
   type SourceStatus,
   sourceStatusSnapshotValidator,
   sourceStatusValidator,
 } from "./sourceStatusValidators";
+import { MAX_LIBRARY_SOURCES as MAX_SOURCES } from "../lib/listCaps";
 
 // A library lists its sources in its configuration; far fewer than this.
-const MAX_SOURCES = 200;
 // Newest wins, so a clock far ahead would freeze a library's status.
 const MAX_CLOCK_AHEAD_MS = 5 * 60_000;
 
@@ -68,7 +69,7 @@ export const record = internalMutation({
 /** The runtime's latest report, for the owner's configuration page. */
 export const listForLibrary = query({
   args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.union(v.null(), v.object({ observedAt: v.number(), sources: v.array(sourceStatusValidator) })),
+  returns: v.union(v.null(), v.object({ observedAt: v.number(), sources: evidenceLibrarySourceStatusFields.sources })),
   handler: async (ctx, args) => {
     await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
     const snapshot = await ctx.db

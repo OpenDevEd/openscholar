@@ -1,3 +1,4 @@
+import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
@@ -17,13 +18,13 @@ export async function readPendingLibraryInvitations(
 ) {
   if (user.state !== "active") return [];
   const invitations = await ctx.db.query("evidenceLibraryInvitations")
-    .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).collect();
-  const rows = await Promise.all(invitations.filter(i => i.expiresAt > Date.now()).map(async invitation => {
+    .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_EMAIL);
+  const rows = await Promise.all(invitations.map(async invitation => {
     const library = await ctx.db.get("evidenceLibraries", invitation.libraryId);
     if (!library || library.state === "disabled") return null;
     const organization = await ctx.db.get("organizations", library.organizationId);
     if (organization?.state !== "active") return null;
-    return { invitationId: invitation._id, libraryId: library._id, name: library.name, role: invitation.role, organization: { name: organization.name, imageUrl: organization.imageUrl ?? null } };
+    return { invitationId: invitation._id, libraryId: library._id, name: library.name, role: invitation.role, organization: { id: organization._id, name: organization.name, imageUrl: organization.imageUrl ?? null } };
   }));
   return rows.filter(row => row !== null);
 }
@@ -33,8 +34,9 @@ export async function hasDirectLibraryAccess(
   user: Doc<"users">,
 ) {
   if (user.state !== "active") return false;
-  for await (const assignment of ctx.db.query("evidenceLibraryMembers")
-    .withIndex("by_clerkUserId", q => q.eq("clerkUserId", user.clerkId))) {
+  // A person has at most MAX_LIBRARY_GRANTS_PER_PERSON grants (./members.ts).
+  for (const assignment of await ctx.db.query("evidenceLibraryMembers")
+    .withIndex("by_clerkUserId", q => q.eq("clerkUserId", user.clerkId)).take(MAX_LIBRARY_GRANTS_PER_PERSON)) {
     const library = await ctx.db.get("evidenceLibraries", assignment.libraryId);
     if (library && await readLibraryRole(ctx, library, user.clerkId)) return true;
   }
@@ -69,8 +71,24 @@ export async function readLibraryRole(
   const assignment = await ctx.db.query("evidenceLibraryMembers")
     .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id).eq("clerkUserId", clerkUserId))
     .unique();
-  if (!assignment) return null;
-  return assignment.role;
+  return libraryRoleFrom(library, organization, { user, membership, assignment });
+}
+
+/**
+ * A person's role from rows already read: their user, active organization membership and
+ * library grant. readLibraryRole reads them for one person; the team page reads them for
+ * everyone at once (#357).
+ */
+export function libraryRoleFrom(
+  library: Doc<"evidenceLibraries">,
+  organization: Doc<"organizations"> | null,
+  rows: { user: Doc<"users"> | null; membership: Pick<Doc<"organizationMemberships">, "role"> | null; assignment: Pick<Doc<"evidenceLibraryMembers">, "role"> | null },
+): EvidenceLibraryAdminRole | null {
+  if (rows.user?.state === "deleted") return null;
+  if (!organization || organization.state !== "active") return null;
+  if (rows.membership?.role === "org:admin") return "owner";
+  if (library.state === "disabled") return null;
+  return rows.assignment?.role ?? null;
 }
 
 export async function readEvidenceLibraryAccess(

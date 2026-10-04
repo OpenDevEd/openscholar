@@ -1,11 +1,13 @@
+import { MAX_CREDENTIALS_PER_LIBRARY, SETUP_CREDENTIALS_RESERVED } from "../lib/queryBounds";
 import {
   internalMutation,
   query,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
+import { paginationResultValidator } from "convex/server";
 import {
   credentialKeyFor,
   writeOnlyPatternFor,
@@ -107,6 +109,7 @@ export async function storeEvidenceLibraryCredential(
     ...args,
     clerkUserId: access.clerkUserId,
     validationState: "untested",
+    added: true,
   });
 }
 
@@ -120,6 +123,8 @@ export async function writeEvidenceLibraryCredentialRecord(
     maskedHint?: string;
     clerkUserId: string;
     validationState: "untested" | "valid" | "invalid";
+    /** A credential a person adds, which waits for room; setup's own are always written. */
+    added?: boolean;
   },
 ) {
   const resolved = resolveCredentialPath(args.concretePath, args.instanceKey);
@@ -147,6 +152,7 @@ export async function writeEvidenceLibraryCredentialRecord(
     await ctx.db.patch("evidenceLibraryCredentials", existing._id, fields);
     return existing._id;
   }
+  if (args.added) await assertCredentialRoom(ctx, args.libraryId);
   return await ctx.db.insert("evidenceLibraryCredentials", {
     ...fields,
     createdByClerkUserId: args.clerkUserId,
@@ -230,6 +236,19 @@ export async function writeLibraryServiceCredentialRecord(
   return credentialId;
 }
 
+/**
+ * Refuses another credential a person adds once the library has all but the places kept
+ * for setup's own, so a library's credentials read in one query (#427) and its setup can
+ * always store what it needs.
+ */
+export async function assertCredentialRoom(ctx: Pick<QueryCtx, "db">, libraryId: Id<"evidenceLibraries">) {
+  const room = MAX_CREDENTIALS_PER_LIBRARY - SETUP_CREDENTIALS_RESERVED;
+  const stored = await ctx.db.query("evidenceLibraryCredentials").withIndex("by_libraryId", (query) => query.eq("libraryId", libraryId)).take(room);
+  if (stored.length >= room) {
+    throw createError("VALIDATION_ERROR", `A library can store up to ${room} credentials for its sources. Remove one to add another.`);
+  }
+}
+
 export async function readCredentialMetadata(
   ctx: QueryCtx,
   args: { libraryId: Id<"evidenceLibraries"> },
@@ -238,7 +257,7 @@ export async function readCredentialMetadata(
   const credentials = await ctx.db
     .query("evidenceLibraryCredentials")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
-    .collect();
+    .take(MAX_CREDENTIALS_PER_LIBRARY);
   return credentials.map((credential) => ({
     _id: credential._id,
     credentialKey: credential.credentialKey,
@@ -274,23 +293,20 @@ export const storeEncryptedServiceCredential = internalMutation({
   handler: storeLibraryServiceCredential,
 });
 
-export const listCredentialMetadata = query({
+const credentialMetadataValidator = v.object({
+  _id: v.id("evidenceLibraryCredentials"),
+  credentialKey: v.string(),
+  instanceKey: v.optional(v.string()),
+  pathPattern: v.optional(v.string()),
+  maskedHint: v.optional(v.string()),
+  validationState: v.union(v.literal("untested"), v.literal("valid"), v.literal("invalid")),
+  lastValidatedAt: v.optional(v.number()),
+  updatedAt: v.number(),
+});
+
+/** What a library's credentials are, never their values, as one page: a library stores at most MAX_CREDENTIALS_PER_LIBRARY. */
+export const listCredentials = query({
   args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.array(
-    v.object({
-      _id: v.id("evidenceLibraryCredentials"),
-      credentialKey: v.string(),
-      instanceKey: v.optional(v.string()),
-      pathPattern: v.optional(v.string()),
-      maskedHint: v.optional(v.string()),
-      validationState: v.union(
-        v.literal("untested"),
-        v.literal("valid"),
-        v.literal("invalid"),
-      ),
-      lastValidatedAt: v.optional(v.number()),
-      updatedAt: v.number(),
-    }),
-  ),
-  handler: readCredentialMetadata,
+  returns: paginationResultValidator(credentialMetadataValidator),
+  handler: async (ctx, args) => ({ page: await readCredentialMetadata(ctx, args), isDone: true, continueCursor: "" }),
 });

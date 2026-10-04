@@ -8,7 +8,7 @@
 
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronRight, ChevronDown } from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import type { QueryHistoryEntry } from "@/lib/types/search.types";
@@ -16,11 +16,26 @@ import { QueryText } from "@/components/ui/query-text";
 
 // About four lines at this size; longer queries are cut off.
 const LONG_QUERY_CHARS = 240;
+// Rows after these, read as the timeline scrolls, show without waiting their turn.
+const STAGGERED_ROWS = 8;
 
 interface QueryEvolutionProps {
+  /** The queries read so far, oldest first; the newest may be all of them. */
   queryHistory: QueryHistoryEntry[];
+  /** All of the search's queries, read or not. */
+  total: number;
+  /** Reads older queries; called when the end of the timeline scrolls into view. */
+  onLoadOlder?: () => void;
   currentQuery: string;
   className?: string;
+}
+
+/** Calls `onVisible` whenever `node` scrolls into view; the returned cleanup stops watching. */
+function observeEnd(node: HTMLElement | null, onVisible: () => void) {
+  if (!node) return;
+  const observer = new IntersectionObserver(([entry]) => entry.isIntersecting && onVisible());
+  observer.observe(node);
+  return () => observer.disconnect();
 }
 
 /**
@@ -39,6 +54,8 @@ function truncateQuery(query: string, maxLength: number = 20): string {
  */
 export function QueryEvolution({
   queryHistory,
+  total,
+  onLoadOlder,
   currentQuery,
   className,
 }: QueryEvolutionProps) {
@@ -49,23 +66,24 @@ export function QueryEvolution({
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Don't render if there's only one or no queries
-  if (!queryHistory || queryHistory.length <= 1) {
+  if (total <= 1) {
     return null;
   }
 
-  // Get queries in reverse chronological order (newest first)
+  // Get queries in reverse chronological order (newest first). While they're read, the
+  // preview line shows only the count, at the same height.
   const sortedHistory = [...queryHistory].reverse();
   const previewQueries = sortedHistory.slice(1, 3);
-  const remainingCount = sortedHistory.length - 2;
+  const remainingCount = total - 2;
 
   return (
-    <div className={cn("pt-2 border-t border-border/30", className)}>
+    <div className={cn("pt-2 border-t border-border-subtle", className)}>
       {/* Collapsed Preview / Toggle Button */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
           "w-full flex items-start gap-1.5 text-left group",
-          "hover:bg-muted/30 -mx-1 px-1 py-0.5 rounded transition-colors"
+          "hover:bg-muted -mx-1 px-1 py-0.5 rounded transition-colors"
         )}
       >
         <motion.span
@@ -77,11 +95,11 @@ export function QueryEvolution({
         </motion.span>
 
         {isExpanded ? (
-          <span className="text-[10px] text-muted-foreground font-medium">
+          <span className="text-3xs text-muted-foreground font-medium">
             {t("queryEvolution")}
           </span>
         ) : (
-          <div className="flex-1 min-w-0 flex items-center gap-1 text-[10px] text-muted-foreground">
+          <div className="flex-1 min-w-0 flex items-center gap-1 text-3xs text-muted-foreground">
             {previewQueries.map((entry, idx) => (
               <React.Fragment key={entry.query}>
                 <span className="truncate max-w-[80px]">
@@ -121,7 +139,7 @@ export function QueryEvolution({
                     key={entry.query}
                     initial={{ opacity: 0, x: -4 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.03 }}
+                    transition={{ delay: Math.min(idx, STAGGERED_ROWS) * 0.03 }}
                     className={cn(
                       "relative flex items-start gap-2",
                       // Dot - centered at -8px from item edge
@@ -140,13 +158,13 @@ export function QueryEvolution({
                       <QueryText 
                         query={entry.query}
                         className={cn(
-                          "text-[10px] break-words leading-relaxed [overflow-wrap:anywhere]",
+                          "text-3xs break-words leading-relaxed [overflow-wrap:anywhere]",
                           isCurrent && "font-medium",
                           // Only long queries are cut off, so a short one keeps its time beside it.
                           entry.query.length > LONG_QUERY_CHARS && "line-clamp-4"
                         )}
                       />
-                      <span className="text-[9px] pl-2 text-muted-foreground/50">
+                      <span className="text-3xs pl-2 text-muted-foreground/50">
                         {format.relativeTime(new Date(entry.timestamp), now)}
                       </span>
                     </div>
@@ -154,6 +172,7 @@ export function QueryEvolution({
                 );
               })}
             </div>
+            {onLoadOlder && <div ref={(node) => observeEnd(node, onLoadOlder)} className="h-px" />}
           </motion.div>
         )}
       </AnimatePresence>

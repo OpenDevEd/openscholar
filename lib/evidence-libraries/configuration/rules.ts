@@ -91,6 +91,7 @@ export type SectionState = "complete" | "edited" | "attention";
 
 type SectionProblem =
   | "nameMissing"
+  | "shortNameMissing"
   | "partnerName"
   | "badColour"
   | "institutionName"
@@ -184,6 +185,7 @@ export const CONSENT_POLICY_VERSION_DEFAULT = schemaNode(
 export const SCHEMA_LIMITS = {
   identity: {
     name: schemaNumber("/identity/name", "maxLength"),
+    shortName: schemaNumber("/identity/shortName", "maxLength"),
     tagline: schemaNumber("/identity/tagline", "maxLength"),
     description: schemaNumber("/identity/description", "maxLength"),
     fundingPartners: schemaNumber("/identity/fundingPartners", "maxItems"),
@@ -219,6 +221,8 @@ export const SCHEMA_LIMITS = {
     steps: schemaNumber("/home/curation/steps", "maxItems"),
     stepTitle: schemaNumber("/home/curation/steps/*/title", "maxLength"),
     stepText: schemaNumber("/home/curation/steps/*/text", "maxLength"),
+    figureValue: schemaNumber("/home/curation/steps/*/figure/value", "maxLength"),
+    figureLabel: schemaNumber("/home/curation/steps/*/figure/label", "maxLength"),
     team: schemaNumber("/home/team", "maxLength"),
     people: schemaNumber("/home/people", "maxItems"),
     personName: schemaNumber("/home/people/*/name", "maxLength"),
@@ -342,7 +346,7 @@ const FEATURE_DEFAULTS = Object.fromEntries(
 export const FEATURE_KEYS = Object.keys(FEATURE_DEFAULTS) as FeatureKey[];
 
 export const HOME_STEP_TYPES = schemaEnum<
-  "arrival" | "check" | "publication" | "text"
+  "arrival" | "check" | "publication" | "search" | "sync" | "duplicates" | "fulltext" | "text"
 >("/home/curation/steps/*/type");
 export type HomeStepType = (typeof HOME_STEP_TYPES)[number];
 const HOME_INVOLVEMENT_DEFAULTS = {
@@ -465,13 +469,19 @@ export type AiDraft = {
   defaultModel: string;
 };
 
-/** `editor` is a team member's id; empty shows whoever approved the publication. */
+/**
+ * `editor` is a team member's id; empty shows whoever approved the publication. `icon` is a Hugeicon id; empty shows
+ * the type's own icon, or none on a text step. A text step's figure is published only with both its number and label.
+ */
 export type HomeStepDraft = {
   id: string;
   type: HomeStepType;
   title: string;
   text: string;
   editor: string;
+  icon: string;
+  figureValue: string;
+  figureLabel: string;
 };
 /** Name and photo are as last seen on the team; the platform refreshes them at publish. */
 export type HomePersonDraft = {
@@ -530,7 +540,7 @@ export type ConfigurationDraft = {
   home: HomeDraft;
 };
 
-/** Feature switches the page shows, in their groups. Accounts and AI come later. */
+/** Feature switches the page shows, in their groups. AI has its own section. */
 export const FEATURE_GROUPS = [
   { key: "appearance", features: ["themeSwitcher", "languageSwitcher"] },
   {
@@ -544,6 +554,7 @@ export const FEATURE_GROUPS = [
     ],
   },
   { key: "exports", features: ["downloads", "atomFeed"] },
+  { key: "accounts", features: ["readerAccounts"] },
 ] as const satisfies readonly {
   key: string;
   features: readonly FeatureKey[];
@@ -1010,6 +1021,9 @@ function readHome(payload: unknown): HomeDraft {
         title: text(row.title),
         text: text(row.text),
         editor: text(row.editor),
+        icon: text(row.icon),
+        figureValue: text(record(row.figure).value),
+        figureLabel: text(record(row.figure).label),
       };
     }),
     team: text(home.team),
@@ -1294,6 +1308,13 @@ function legalPayload(legal: LegalDraft) {
 // a blank box writes no key. Question slots are the exception: a blank slot
 // keeps the page's own question, so only trailing blanks are dropped.
 // `directory` is never written here; the platform fills it at assembly.
+/** A text step's own figure, sent only when both its number and what it counts are written. */
+function stepFigure(step: HomeStepDraft) {
+  const value = step.figureValue.trim();
+  const label = step.figureLabel.trim();
+  return step.type === "text" && value && label ? { value, label } : undefined;
+}
+
 function homePayload(home: HomeDraft) {
   const questions = [...home.questions];
   while (questions.length > 0 && questions.at(-1)!.trim() === "")
@@ -1308,6 +1329,8 @@ function homePayload(home: HomeDraft) {
           title: optional(step.title),
           text: optional(step.text),
           editor: optional(step.editor),
+          icon: optional(step.icon),
+          figure: stepFigure(step),
         }),
       ),
     }),
@@ -1702,6 +1725,7 @@ export function sectionProblems(
   switch (sectionKey) {
     case "identity":
       if (!draft.identity.name.trim()) problems.push("nameMissing");
+      if (!draft.identity.shortName.trim()) problems.push("shortNameMissing");
       if (
         draft.identity.fundingPartners.some((partner) => !partner.name.trim())
       ) {
@@ -1882,7 +1906,9 @@ export function sectionProblems(
         home.steps.some(
           (step) =>
             over(step.title, limits.stepTitle) ||
-            over(step.text, limits.stepText),
+            over(step.text, limits.stepText) ||
+            over(step.figureValue, limits.figureValue) ||
+            over(step.figureLabel, limits.figureLabel),
         ) ||
         home.people.length > limits.people ||
         home.people.some(

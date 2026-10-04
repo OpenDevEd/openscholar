@@ -17,7 +17,7 @@ export type BucketSearchFilters = {
 /** Null when the query is not valid; `options.onWarning` gets the reason. */
 export function paramsToBucketSearchFilters(
   params: SearchParams,
-  options?: GetSearchResultsWithFiltersOptions,
+  options: GetSearchResultsWithFiltersOptions,
 ): BucketSearchFilters | null {
   const query = buildOpenAlexWorksQuery(params, options);
   return query ? { query: params.q, openAlexQuery: { ...query, sort: effectiveSort(params) } } : null;

@@ -4,7 +4,7 @@
 
 import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSidebarStore, getSidebarDimensions } from "@/lib/store";
@@ -28,11 +28,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
-  useSearchHistoryStore,
-  useSearchHistoryUIStore,
   useCurrentQueryStore,
   useKeywordExpansionStore,
 } from "@/lib/store";
+import { useSearchList } from "@/lib/research/search-list";
+import { usePreloadSearch, useQueryShortcuts } from "@/lib/research/reads";
 import { useEffectiveSearchId } from "@/lib/hooks";
 import { restoreFromHistory } from "@/lib/search";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
@@ -40,23 +40,21 @@ import { SearchHistoryTab } from "./search-history-tab";
 import { KeywordExpansionPreview } from "./keyword-expansion-preview";
 import { AuthButton } from "./auth-button";
 import {
-  Home,
-  Network,
-  BookOpen,
-  Library,
   ListChecks,
-  Clock,
-  Database,
-  Layers,
-  Users,
   PanelLeft,
   ChevronLeft,
   ChevronRight,
-  Settings,
-} from "lucide-react";
+  HomeIcon,
+  LibraryIcon,
+  BookmarksIcon,
+  HistoryIcon,
+  ExtractionIcon,
+  TopicsIcon,
+  AuthorsIcon,
+  EvidenceLibrariesIcon,
+} from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
-import { ScreeningJobsDialog } from "@/components/screening/screening-jobs-dialog";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
@@ -111,8 +109,8 @@ function NavItem({
         "flex items-center gap-3 px-3 py-2.5 rounded-lg h-auto",
         "group relative overflow-hidden",
         isActive
-          ? "bg-sidebar-accent/80"
-          : "hover:bg-sidebar-accent/60",
+          ? "bg-sidebar-accent"
+          : "hover:bg-sidebar-accent",
         isActive
           ? "text-sidebar-primary font-medium"
           : "text-sidebar-foreground",
@@ -133,7 +131,7 @@ function NavItem({
             "h-5 w-5 flex-shrink-0 transition-colors duration-200",
             isActive
               ? "text-sidebar-primary drop-shadow-sm"
-              : "text-muted-foreground group-hover:text-sidebar-foreground",
+              : "text-sidebar-primary/65 group-hover:text-sidebar-primary",
           )}
         />
         {/* Badge overlay when collapsed */}
@@ -141,7 +139,7 @@ function NavItem({
           <motion.span
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center text-[10px] font-bold bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white rounded-full"
+            className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center text-3xs font-bold bg-gradient-to-r from-primary-bright to-primary-deep text-primary-foreground rounded-full"
           >
             {badge > 9 ? "9+" : badge}
           </motion.span>
@@ -176,7 +174,7 @@ function NavItem({
                 className={cn(
                   "text-xs px-2 py-0.5 rounded-full font-medium badge-glow",
                   isActive
-                    ? "bg-gradient-to-r from-[oklch(0.75_0.15_55)] via-[oklch(0.70_0.17_54)] to-[oklch(0.62_0.16_52)] text-white shadow-md"
+                    ? "bg-gradient-to-r from-primary-bright via-primary to-primary-deep text-primary-foreground shadow-md"
                     : "bg-muted text-muted-foreground",
                 )}
               >
@@ -191,7 +189,7 @@ function NavItem({
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.1 }}
-          className="absolute inset-0 bg-gradient-to-r from-[oklch(0.70_0.17_54)] to-transparent pointer-events-none"
+          className="absolute inset-0 bg-gradient-to-r from-primary to-transparent pointer-events-none"
         />
       )}
     </Link>
@@ -226,7 +224,7 @@ function NavItem({
                     <motion.span
                       initial={{ scale: 0.95, opacity: 0 }}
                       animate={{ scale: 1 }}
-                      className="text-xs bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white px-1.5 py-0.5 rounded-full"
+                      className="text-xs bg-gradient-to-r from-primary-bright to-primary-deep text-primary-foreground px-1.5 py-0.5 rounded-full"
                     >{badge}</motion.span>
                   )}
                 </>
@@ -276,7 +274,7 @@ function ScreeningFooterButton({
             cx="12"
             cy="12"
             r="10"
-            stroke="oklch(0.70 0.17 54)"
+            stroke="var(--primary)"
             strokeWidth="1.5"
             strokeDasharray={circumference}
             strokeDashoffset={
@@ -300,7 +298,7 @@ function ScreeningFooterButton({
             size="icon"
             onClick={onClick}
             aria-label={accessibleLabel}
-            className="h-8 w-8 px-0 transition-all duration-200 hover:bg-sidebar-accent/80"
+            className="h-8 w-8 px-0 transition-all duration-200 hover:bg-sidebar-accent"
           >
             {icon}
           </Button>
@@ -323,7 +321,7 @@ function ScreeningFooterButton({
       size="sm"
       onClick={onClick}
       aria-label={accessibleLabel}
-      className="h-8 w-auto px-2 transition-all duration-200 hover:bg-sidebar-accent/80"
+      className="h-8 w-auto px-2 transition-all duration-200 hover:bg-sidebar-accent"
     >
       {icon}
       {progressPercent !== null && (
@@ -346,13 +344,13 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { phase } = useAuthReadiness();
   const hasEvidenceLibrariesAccess = organizationFeatures?.evidenceLibraries;
   const goToSignIn = useSignInRedirect();
-  const [isScreeningJobsOpen, setIsScreeningJobsOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
   const isCollapsed = useSidebarStore((s) => s.isCollapsed);
-  const { searchHistory } = useSearchHistoryStore();
-  const { currentPage, setCurrentPage } = useSearchHistoryUIStore();
+  const recents = useSearchList({ sort: "recent", pageSize: 10 });
+  const preloadSearch = usePreloadSearch();
+  const currentPage = recents.page;
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
   const effectiveSearchId = useEffectiveSearchId();
@@ -367,6 +365,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   // Determine active query - now uses store for real-time updates on all pages
   // Fallback to URL params if store is empty (shouldn't happen but safety first)
   const activeQuery = currentQuery || searchParams.get("q") || "";
+  useQueryShortcuts(activeQuery);
 
   // Calculate expandable keywords count
   const getExpandableCount = (query: string) => {
@@ -384,12 +383,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const expandableCount = getExpandableCount(activeQuery);
   const hasBookmarkSyntax = /(\w[\w-]*)\.\.\./g.test(activeQuery);
 
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(searchHistory.length / itemsPerPage);
-  const displayItems = searchHistory.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  const totalPages = Math.max(currentPage, recents.pageCount ?? currentPage);
+  const displayItems = recents.items;
 
   const getCurrentPage = () => {
     if (!pathname) return null;
@@ -412,21 +407,12 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     onClose?.();
   };
 
-  const handlePrevPage = () => {
-    setCurrentPage(Math.max(1, currentPage - 1));
-  };
+  const handlePrevPage = recents.previous;
+  const handleNextPage = recents.next;
 
-  const handleNextPage = () => {
-    setCurrentPage(Math.min(totalPages, currentPage + 1));
-  };
-
-  const handleSearchHistoryClick = (searchId: string) => {
-    const entry = searchHistory.find((s) => s.id === searchId);
-    if (entry) {
-      router.push(restoreFromHistory(entry));
-    } else {
-      router.push(`/results/${searchId}`);
-    }
+  const handleSearchHistoryClick = (search: (typeof recents.items)[number]) => {
+    preloadSearch(search);
+    router.push(restoreFromHistory(search));
     onClose?.();
   };
 
@@ -442,7 +428,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         >
           <NavItem
             href="/"
-            icon={Home}
+            icon={HomeIcon}
             label={tc("home")}
             isActive={currentPageValue === "home"}
             isCollapsed={isCollapsed && !isMobile}
@@ -452,7 +438,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
           <NavItem
             href="/library"
-            icon={Library}
+            icon={LibraryIcon}
             label={tc("library")}
             isActive={currentPageValue === "library"}
             isCollapsed={isCollapsed && !isMobile}
@@ -462,7 +448,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
           <NavItem
             href="/bookmarks"
-            icon={BookOpen}
+            icon={BookmarksIcon}
             label={tc("bookmarks")}
             isActive={currentPageValue === "bookmarks"}
             isCollapsed={isCollapsed && !isMobile}
@@ -478,7 +464,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
           <NavItem
             href="/history"
-            icon={Clock}
+            icon={HistoryIcon}
             label={tc("history")}
             isActive={currentPageValue === "history"}
             isCollapsed={isCollapsed && !isMobile}
@@ -489,7 +475,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           {hasExtractionAccess && (
             <NavItem
               href="/extraction"
-              icon={Database}
+              icon={ExtractionIcon}
               label={tc("extraction")}
               isActive={currentPageValue === "extraction"}
               isCollapsed={isCollapsed && !isMobile}
@@ -498,11 +484,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             />
           )}
 
-          <NavItem href="/topics" icon={Network} label="Topics" isActive={currentPageValue === "topics"} isCollapsed={isCollapsed && !isMobile} onClick={handleNavClick} index={5} />
+          <NavItem href="/topics" icon={TopicsIcon} label="Topics" isActive={currentPageValue === "topics"} isCollapsed={isCollapsed && !isMobile} onClick={handleNavClick} index={5} />
 
           {organizationFeatures?.authors && <NavItem
             href="/authors"
-            icon={Users}
+            icon={AuthorsIcon}
             label="Authors"
             isActive={currentPageValue === "authors"}
             isCollapsed={isCollapsed && !isMobile}
@@ -513,7 +499,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           {hasEvidenceLibrariesAccess && (
             <NavItem
               href="/evidence-libraries"
-              icon={Layers}
+              icon={EvidenceLibrariesIcon}
               label={tc("evidenceLibraries")}
               isActive={currentPageValue === "evidence-libraries"}
               isCollapsed={isCollapsed && !isMobile}
@@ -526,7 +512,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
       {/* Search history - scrollable */}
       <div className="flex-1 min-h-0 flex flex-col">
-        {searchHistory.length > 0 && (
+        {(recents.items.length > 0 || recents.hasPages) && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
@@ -564,17 +550,14 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                       updatedAt={search.updatedAt}
                       isActive={search.id === effectiveSearchId}
                       isCollapsed={isCollapsed && !isMobile}
-                      queryHistory={search.queryHistory}
-                      questionHistory={search.questionHistory}
-                      screeningQuestions={search.screeningQuestions}
-                      screeningResponses={search.screeningResponses}
-                      onClick={() => handleSearchHistoryClick(search.id)}
+                      search={search}
+                      onClick={() => handleSearchHistoryClick(search)}
                       index={idx + 3}
                     />
                   ))}
                 </motion.div>
 
-                {totalPages > 1 && (
+                {recents.hasPages && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -592,11 +575,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                             size="icon"
                             onClick={handlePrevPage}
                             aria-label={tc("previousPage")}
-                            disabled={currentPage === 1}
+                            disabled={!recents.canPrevious}
                             className={cn(
                               "h-7 w-7 transition-all duration-200",
                               isCollapsed && !isMobile ? "h-8 w-8" : "",
-                              currentPage > 1 && "hover:bg-sidebar-accent/80",
+                              currentPage > 1 && "hover:bg-sidebar-accent",
                             )}
                           >
                             <motion.div
@@ -658,12 +641,12 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                             size="icon"
                             onClick={handleNextPage}
                             aria-label={tc("nextPage")}
-                            disabled={currentPage === totalPages}
+                            disabled={!recents.canNext}
                             className={cn(
                               "h-7 w-7 transition-all duration-200",
                               isCollapsed && !isMobile ? "h-8 w-8" : "",
-                              currentPage < totalPages &&
-                                "hover:bg-sidebar-accent/80",
+                              recents.canNext &&
+                                "hover:bg-sidebar-accent",
                             )}
                           >
                             <motion.div
@@ -711,7 +694,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           >
             <div className="flex items-center gap-1">
               <ScreeningFooterButton
-                onClick={() => phase === "authenticated" ? setIsScreeningJobsOpen(true) : goToSignIn()}
+                onClick={() => phase === "authenticated" ? router.push("/screening") : goToSignIn()}
                 isCollapsed={false}
                 progressPercent={progressPercent}
                 label={tc("screening")}
@@ -724,7 +707,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         ) : (
           <>
             <ScreeningFooterButton
-              onClick={() => phase === "authenticated" ? setIsScreeningJobsOpen(true) : goToSignIn()}
+              onClick={() => phase === "authenticated" ? router.push("/screening") : goToSignIn()}
               isCollapsed={true}
               progressPercent={progressPercent}
               label={tc("screening")}
@@ -735,11 +718,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           </>
         )}
       </motion.div>
-
-      <ScreeningJobsDialog
-        open={isScreeningJobsOpen}
-        onOpenChange={setIsScreeningJobsOpen}
-      />
     </div>
   );
 }
@@ -812,7 +790,7 @@ export function AppSidebar() {
   // The saved width is only known after hydration. Until then hold the space
   // the head script measured, so the page does not shift when the sidebar mounts.
   if (!_hasHydrated) {
-    return <div aria-hidden className="sticky top-0 hidden h-screen w-(--app-sidebar-width) shrink-0 border-r border-sidebar-border/60 bg-sidebar md:block" />;
+    return <div aria-hidden className="sticky top-0 hidden h-screen w-(--app-sidebar-width) shrink-0 border-r border-sidebar-border bg-sidebar md:block" />;
   }
 
   if (isMobile) {
@@ -828,7 +806,7 @@ export function AppSidebar() {
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
             className="h-full flex flex-col"
           >
-            <SheetHeader className="px-3 py-4 border-b border-sidebar-border/50 bg-sidebar shrink-0">
+            <SheetHeader className="px-3 py-4 border-b border-sidebar-border bg-sidebar shrink-0">
               <SheetTitle className="flex items-center">
                 <Logo size="sm" context="general" clickable={false} />
               </SheetTitle>
@@ -847,7 +825,7 @@ export function AppSidebar() {
   return (
     <motion.aside
       className={cn(
-        "h-screen flex flex-col border-r border-sidebar-border/60 bg-sidebar",
+        "h-screen flex flex-col border-r border-sidebar-border bg-sidebar",
         "sticky top-0 left-0 z-40 transition-shadow duration-300",
         "hover:shadow-lg",
       )}
@@ -860,7 +838,7 @@ export function AppSidebar() {
     >
       <div
         className={cn(
-          "relative flex items-center border-b border-sidebar-border/50 py-4 min-h-[52px] bg-gradient-to-r from-sidebar/30 to-transparent overflow-hidden px-4",
+          "relative flex items-center border-b border-sidebar-border py-4 min-h-[52px] bg-gradient-to-r from-sidebar/30 to-transparent overflow-hidden px-4",
           "relative justify-center",
           !isCollapsed && "justify-end",
         )}
@@ -897,7 +875,7 @@ export function AppSidebar() {
                 onClick={() => toggle(isMobile)}
                 aria-label={isCollapsed ? ts("expandSidebar") : ts("collapseSidebar")}
                 aria-expanded={!isCollapsed}
-                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-200"
               >
                 <motion.div
                   animate={{ rotate: isCollapsed ? 0 : 180 }}

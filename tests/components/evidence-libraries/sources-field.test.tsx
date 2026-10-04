@@ -60,22 +60,23 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
-      credentials: { listCredentialMetadata: "listCredentialMetadata" },
+      credentials: { listCredentials: "listCredentials" },
       credentialActions: { writeCredential: "writeCredential" },
       openAlexSourceKey: { removeOpenAlexKey: "removeOpenAlexKey" },
       sourceStatus: { listForLibrary: "listForLibrary" },
+      queries: { getDraft: "getDraft" },
       collectionSources: {
-        listLibraryCollectionSources: "listLibraryCollectionSources",
+        listCollectionSources: "listCollectionSources",
         connectCollectionSource: "connectCollectionSource",
       },
     },
-    library: { collections: { getCollectionsWithCounts: "getCollectionsWithCounts" } },
+    library: { collections: { listCollections: "listCollections" } },
     zotero: {
       actions: { startOAuth: "startOAuth" },
       mutations: { disconnect: "disconnect" },
       queries: { getConnectionStatus: "getConnectionStatus" },
       libraryGroups: {
-        listLibraryZoteroGroups: "listLibraryZoteroGroups",
+        listZoteroGroups: "listZoteroGroups",
         removeZoteroGroup: "removeZoteroGroup",
       },
       libraryGroupActions: {
@@ -190,9 +191,11 @@ function queries(input: {
         ? input.connected
           ? { connected: true, zoteroUserId: "1", username: "owner" }
           : { connected: false }
-        : query === "listCredentialMetadata"
-          ? (input.credentials ?? [])
-          : (input.groups ?? []),
+        : query === "listCredentials"
+          ? { page: input.credentials ?? [], isDone: true, continueCursor: "" }
+          : query === "getDraft"
+            ? { liveAddress: "https://library.example.test" }
+            : { page: input.groups ?? [], isDone: true, continueCursor: "" },
     isReady: true,
   }));
 }
@@ -396,10 +399,14 @@ describe("<SourcesField>", () => {
 
   it("adds the owner's collections only once each is connected, with the library's OpenAlex access", async () => {
     queries({ connected: false });
-    mocks.myCollections.mockResolvedValue([
-      { _id: "c1", name: "Early grade reading", itemCount: 3 },
-      { _id: "c2", name: "Refused", itemCount: 2 },
-    ]);
+    mocks.myCollections.mockResolvedValue({
+      page: [
+        { _id: "c1", name: "Early grade reading", itemCount: 3, containsItem: false },
+        { _id: "c2", name: "Refused", itemCount: 2, containsItem: false },
+      ],
+      isDone: true,
+      continueCursor: "",
+    });
     mocks.connectCollection.mockImplementation(async ({ collectionId }: { collectionId: string }) => {
       if (collectionId === "c2") throw new Error("Only the collection's owner can add it to a library");
       return { collectionId, name: "Early grade reading", itemCount: 3 };

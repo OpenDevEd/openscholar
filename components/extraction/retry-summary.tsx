@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { RotateCw } from "lucide-react";
+import { RotateCw } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { summarizeRetryable } from "@/lib/extraction/retry-summary";
 import { RetryConfirmDialog } from "@/components/extraction/retry-confirm-dialog";
 import { PermanentFailuresCallout } from "@/components/extraction/permanent-failures-callout";
 
@@ -34,10 +35,8 @@ export interface RetrySummaryProps {
  */
 export function RetrySummary({ jobId, usePdfs = false }: RetrySummaryProps) {
   const t = useTranslations("extraction.retry");
-  const { data: summary } = useProtectedQuery(
-    api.extraction.queries.retry.getRetryableSummary,
-    { jobId },
-  );
+  const { data: failures } = useProtectedQuery(api.extraction.queries.countJobFailures, { jobId });
+  const summary = failures && summarizeRetryable(failures);
   const retryFailed = useMutation(
     api.extraction.mutations.retryFailedQuestions,
   );

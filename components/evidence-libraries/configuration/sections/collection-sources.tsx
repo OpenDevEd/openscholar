@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { LogoMark } from "@/components/logo";
 import { useConvex, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { type RefObject, useRef } from "react";
@@ -14,7 +14,6 @@ import {
   type OpenScholarCollectionSourceEntry,
 } from "@/lib/evidence-libraries/configuration/sources";
 import {
-  localPickerSource,
   type PickerHandle,
   type PickerSource,
   RemotePickerDialog,
@@ -22,9 +21,12 @@ import {
 import { SourceRow, SourceSwitch } from "./source-row";
 import type { SourceLive } from "./source-activity";
 
+/** Collections the picker reads at a time. */
+const COLLECTION_PICKER_PAGE_SIZE = 50;
+
 /** OpenScholar's own icon, as the logo shows it. */
 export function CollectionSourceIcon() {
-  return <Image src="/icon.svg" alt="" width={16} height={16} className="size-4" />;
+  return <LogoMark className="size-4" />;
 }
 
 /**
@@ -47,23 +49,27 @@ export function useCollectionSources({
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const convex = useConvex();
-  const connected = useProtectedQuery(
-    api.evidenceLibraries.collectionSources.listLibraryCollectionSources,
-    { libraryId },
-  );
   const connect = useMutation(api.evidenceLibraries.collectionSources.connectCollectionSource);
   const picker = useRef<PickerHandle>(null);
   const sources = value.filter(
     (source): source is OpenScholarCollectionSourceEntry => source.provider === "openscholar",
   );
-  const byId = new Map((connected.data ?? []).map((row) => [row.collectionId as string, row]));
+  // The connections of the collections shown: a library keeps every connection it ever made.
+  const connected = useProtectedQuery(
+    api.evidenceLibraries.collectionSources.listCollectionSources,
+    { libraryId, collectionIds: sources.map((source) => source.collectionId) },
+  );
+  const byId = new Map((connected.data?.page ?? []).map((row) => [row.collectionId as string, row]));
 
-  // Read once per open; a person keeps a few dozen collections at most.
-  const readMine: PickerSource = async (input) => {
-    const mine = await convex.query(api.library.collections.getCollectionsWithCounts, {});
-    return localPickerSource(
-      mine.map((collection) => ({ id: collection._id, title: collection.name, count: collection.itemCount })),
-    )(input);
+  const readMine: PickerSource = async ({ query, cursor }) => {
+    const page = await convex.query(api.library.collections.listCollections, {
+      search: query || undefined,
+      paginationOpts: { cursor, numItems: COLLECTION_PICKER_PAGE_SIZE },
+    });
+    return {
+      items: page.page.map((collection) => ({ id: collection._id, title: collection.name, count: collection.itemCount })),
+      nextCursor: page.isDone ? null : page.continueCursor,
+    };
   };
 
   /** Connects each collection; returns the ids that could not be added. */

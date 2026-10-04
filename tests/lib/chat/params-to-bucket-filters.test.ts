@@ -3,6 +3,9 @@ vi.mock("@/app/actions/openalex", () => ({ getSearchResults: vi.fn() }));
 import { DEFAULT_SEARCH_PARAMS } from "@/lib/search-params";
 import { paramsToBucketSearchFilters } from "@/lib/chat/params-to-bucket-filters";
 import { buildOpenAlexWorksQuery } from "@/lib/openalex/works-query";
+import { expandShortcuts } from "@/lib/query-shortcuts";
+
+const noShortcuts = (query: string) => expandShortcuts(query, {});
 
 describe("paramsToBucketSearchFilters", () => {
   it("keeps the exact request the results page makes, which chat and extraction run", () => {
@@ -14,10 +17,10 @@ describe("paramsToBucketSearchFilters", () => {
       review: true,
       sort: "cited_by_count:desc",
     };
-    const stored = paramsToBucketSearchFilters(params);
+    const stored = paramsToBucketSearchFilters(params, { expand: noShortcuts });
     expect(stored).toEqual({
       query: "education",
-      openAlexQuery: { ...buildOpenAlexWorksQuery(params), sort: "cited_by_count:desc" },
+      openAlexQuery: { ...buildOpenAlexWorksQuery(params, { expand: noShortcuts }), sort: "cited_by_count:desc" },
     });
     // Country focus and reviews become search terms and institution location a
     // countries filter, as on the results page; OpenAlex rejects the old
@@ -27,13 +30,13 @@ describe("paramsToBucketSearchFilters", () => {
   });
 
   it("sorts a search without a query newest first, as the results page does", () => {
-    const stored = paramsToBucketSearchFilters({ ...DEFAULT_SEARCH_PARAMS, oa: true });
+    const stored = paramsToBucketSearchFilters({ ...DEFAULT_SEARCH_PARAMS, oa: true }, { expand: noShortcuts });
     expect(stored?.openAlexQuery.sort).toBe("publication_date:desc");
   });
 
   it("returns nothing for an invalid query and says why", () => {
     const onWarning = vi.fn();
-    expect(paramsToBucketSearchFilters({ ...DEFAULT_SEARCH_PARAMS, q: "a" }, { onWarning })).toBeNull();
+    expect(paramsToBucketSearchFilters({ ...DEFAULT_SEARCH_PARAMS, q: "a" }, { expand: noShortcuts, onWarning })).toBeNull();
     expect(onWarning).toHaveBeenCalledWith(expect.stringContaining("Single character"));
   });
 });

@@ -25,6 +25,7 @@ async function seedUser(
   return await t.run(async (ctx) => {
     const now = Date.now();
     return await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: CLERK,
       email: "pause@test.com",
       state: "active" as const,
@@ -188,7 +189,7 @@ describe("pauseExtraction — auth + mode guards", () => {
     const jobId = await seedJob(t, userId, "extracting");
     await t.run(async (ctx) => {
       const now = Date.now();
-      await ctx.db.insert("users", {
+      await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "clerk_pause_other",
         email: "other@test.com",
         state: "active" as const,

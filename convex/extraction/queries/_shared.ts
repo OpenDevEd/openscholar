@@ -40,27 +40,6 @@ export function buildQuestionInfoByKey(
 }
 
 /**
- * Load all results for a job in one indexed query and bucket by paperId in JS.
- */
-export async function loadResultsByJob(
-  ctx: QueryCtx,
-  jobId: Id<"extractionJobs">,
-): Promise<Map<string, Doc<"extractionResults">[]>> {
-  const all = await ctx.db
-    .query("extractionResults")
-    .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .take(PAPER_LIMIT * MAX_QUESTIONS_PER_JOB);
-
-  const byPaper = new Map<string, Doc<"extractionResults">[]>();
-  for (const row of all) {
-    const bucket = byPaper.get(row.paperId);
-    if (bucket) bucket.push(row);
-    else byPaper.set(row.paperId, [row]);
-  }
-  return byPaper;
-}
-
-/**
  * Load result rows only for the visible page papers.
  */
 export async function loadResultsByPaperIds(
@@ -73,35 +52,11 @@ export async function loadResultsByPaperIds(
       await ctx.db
         .query("extractionResults")
         .withIndex("by_paper", (q) => q.eq("paperId", paperId))
-        .collect(),
+        .take(MAX_QUESTIONS_PER_JOB),
     ] as const),
   );
 
   return new Map<string, Doc<"extractionResults">[]>(
     resultGroups.map(([paperId, results]) => [paperId, results]),
   );
-}
-
-export async function loadJobPapersAndResults(
-  ctx: QueryCtx,
-  jobId: Id<"extractionJobs">,
-) {
-  const questions = await ctx.db
-    .query("extractionQuestions")
-    .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .order("asc")
-    .collect();
-
-  const papers = await ctx.db
-    .query("extractionPapers")
-    .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .take(PAPER_LIMIT);
-
-  const resultsByPaperRaw = await loadResultsByJob(ctx, jobId);
-  const resultsByPaper = new Map<string, Doc<"extractionResults">[]>();
-  for (const paper of papers) {
-    resultsByPaper.set(paper._id, resultsByPaperRaw.get(paper._id) ?? []);
-  }
-
-  return { questions, papers, resultsByPaper };
 }

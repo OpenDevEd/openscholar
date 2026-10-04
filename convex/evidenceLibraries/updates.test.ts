@@ -40,6 +40,13 @@ const LATEST_RELEASE = {
   ],
 };
 
+const COMMIT_MESSAGES: Record<string, string> = {
+  ["c".repeat(40)]:
+    "feat(config): add tagline and share image\n\nLonger body text.",
+  ["d".repeat(40)]: "  fix: trim whitespace  ",
+  [LATEST]: "Dismiss source import issues (#183)",
+};
+
 type RecordedRequest = { url: URL; headers: Headers };
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -67,7 +74,24 @@ function createGithub(input: {
   // "ahead" reads it, "behind" predates it. The running one reads it unless
   // a test says otherwise.
   contract?: { running?: string | number; latest?: string | number };
+  // The commits between the running one and the latest, newest first.
+  between?: string[];
+  // Releases besides the running and the latest one.
+  releases?: { commit: string; publishedAt: string }[];
+  // When the running commit was made, read only when it was never released.
+  runningCommittedAt?: string;
+  // The running commit left the branch at the commit the tests call RUNNING.
+  diverged?: boolean;
 }) {
+  const between = (
+    input.between ?? [input.latest, "d".repeat(40), "c".repeat(40)]
+  ).map((sha) => ({ sha, commit: { message: COMMIT_MESSAGES[sha] ?? `change ${sha}` } }));
+  // What GitHub lists back from the latest commit: it does not stop at the running one.
+  const history = [
+    ...between,
+    { sha: RUNNING, commit: { message: "the running commit" } },
+    { sha: "7".repeat(40), commit: { message: "an older commit" } },
+  ];
   const requests: RecordedRequest[] = [];
   const addressRequests: URL[] = [];
   const fetchImpl: typeof fetch = vi.fn(
@@ -140,7 +164,26 @@ function createGithub(input: {
             published_at: "2026-09-09T10:00:00Z",
             body: LATEST_NOTES,
           },
+          ...(input.releases ?? []).map(({ commit, publishedAt }) => ({
+            tag_name: `runtime-${commit}`,
+            draft: false,
+            published_at: publishedAt,
+            body: `Notes for ${commit}.`,
+          })),
         ]);
+      }
+      if (url.pathname === `${REPO}/commits`) {
+        const size = Number(url.searchParams.get("per_page") ?? 30);
+        const start = (Number(url.searchParams.get("page") ?? 1) - 1) * size;
+        return jsonResponse(history.slice(start, start + size));
+      }
+      // The first page of a comparison carries every changed file: megabytes
+      // once a library is far behind. Only a later page is the comparison alone.
+      if (
+        url.pathname.startsWith(`${REPO}/compare/`) &&
+        Number(url.searchParams.get("page") ?? 1) < 2
+      ) {
+        return jsonResponse({ files: "x".repeat(3 * 1024 * 1024) });
       }
       // A number is an HTTP failure instead of a placement.
       const placement = (answer: string | number) =>
@@ -153,31 +196,22 @@ function createGithub(input: {
       if (url.pathname === `${REPO}/compare/${CONTRACT}...${input.latest}`) {
         return placement(input.contract?.latest ?? "ahead");
       }
-      if (url.pathname === `${REPO}/compare/${RUNNING}...${input.latest}`) {
+      if (url.pathname.endsWith(`...${input.latest}`)) {
         if (input.compareStatus && input.compareStatus !== 200) {
           return jsonResponse({ message: "Not Found" }, input.compareStatus);
         }
         return jsonResponse({
-          status: "ahead",
-          ahead_by: 3,
-          total_commits: 3,
-          commits: [
-            {
-              sha: "c".repeat(40),
-              commit: {
-                message:
-                  "feat(config): add tagline and share image\n\nLonger body text.",
+          status: input.diverged ? "diverged" : "ahead",
+          ahead_by: between.length,
+          // Where the walk back from the latest commit stops.
+          merge_base_commit: { sha: RUNNING },
+          base_commit: {
+            commit: {
+              committer: {
+                date: input.runningCommittedAt ?? "2026-09-08T09:30:00Z",
               },
             },
-            {
-              sha: "d".repeat(40),
-              commit: { message: "  fix: trim whitespace  " },
-            },
-            {
-              sha: input.latest,
-              commit: { message: "Dismiss source import issues (#183)" },
-            },
-          ],
+          },
         });
       }
       return jsonResponse({ message: "Not Found" }, 404);
@@ -235,7 +269,80 @@ describe("Evidence Library software release lookup", () => {
       "/token",
       `/v2/opendeved/evidence-library-runtime/manifests/${LATEST}`,
       `${REPO}/compare/${RUNNING}...${LATEST}`,
+      `${REPO}/commits`,
     ]);
+  });
+
+  it("names every release since the running one, however far behind the library is", async () => {
+    // 300 commits behind, with a release 281 commits back: past the 250 changes one check keeps.
+    const between = Array.from({ length: 300 }, (_, index) =>
+      index === 0 ? LATEST : index.toString(16).padStart(40, "0"),
+    );
+    const middle = between[280]!;
+    const github = createGithub({
+      latest: LATEST,
+      between,
+      releases: [{ commit: middle, publishedAt: "2026-09-08T12:00:00Z" }],
+    });
+    const release = await fetchRuntimeRelease({
+      running: RUNNING,
+      token: "github-token",
+      fetchImpl: github.fetchImpl,
+    });
+    expect(release.releases).toEqual([
+      LATEST_RELEASE,
+      { commit: middle, summary: `Notes for ${middle}.`, notes: [] },
+    ]);
+    // The newest 250, oldest first.
+    expect(release.changes).toHaveLength(250);
+    expect(release.changes[0]?.sha).toBe(between[249]);
+    expect(release.changes.at(-1)?.sha).toBe(LATEST);
+  });
+
+  it("places a commit that was never released by when it was made", async () => {
+    const unreleased = "e".repeat(40);
+    const github = createGithub({
+      latest: LATEST,
+      // After the 8 September release, before the 9 September one.
+      runningCommittedAt: "2026-09-08T18:00:00Z",
+    });
+    const release = await fetchRuntimeRelease({
+      running: unreleased,
+      token: "github-token",
+      fetchImpl: github.fetchImpl,
+    });
+    expect(release.releases).toEqual([LATEST_RELEASE]);
+  });
+
+  it("lists what the latest release has that a diverged library does not", async () => {
+    const github = createGithub({
+      latest: LATEST,
+      diverged: true,
+      runningCommittedAt: "2026-09-08T18:00:00Z",
+    });
+    const release = await fetchRuntimeRelease({
+      running: "e".repeat(40),
+      token: "github-token",
+      fetchImpl: github.fetchImpl,
+    });
+    expect(release.changes.map(({ sha }) => sha)).toEqual([
+      "c".repeat(40),
+      "d".repeat(40),
+      LATEST,
+    ]);
+  });
+
+  it("offers only the newest notes when GitHub does not date an unreleased commit", async () => {
+    const github = createGithub({
+      latest: LATEST,
+      runningCommittedAt: "not a date",
+    });
+    const release = await fetchRuntimeRelease({
+      running: "e".repeat(40),
+      token: "github-token",
+      fetchImpl: github.fetchImpl,
+    });
+    expect(release.releases).toEqual([LATEST_RELEASE]);
   });
 
   it("still offers the latest release when the running commit is no longer on the branch", async () => {
@@ -353,13 +460,13 @@ describe("Evidence Library update check", () => {
       checkedAt: Date.now(),
       contractSupport: { commit: CONTRACT, running: true, latest: true },
     });
-    expect(github.requests).toHaveLength(7);
+    expect(github.requests).toHaveLength(8);
 
     vi.setSystemTime(Date.now() + RUNTIME_RELEASE_CACHE_MS - 1_000);
     await expect(
       fixture.admin.action(api.evidenceLibraries.updates.check, args),
     ).resolves.toEqual(first);
-    expect(github.requests).toHaveLength(7);
+    expect(github.requests).toHaveLength(8);
 
     vi.setSystemTime(Date.now() + 2_000);
     const refreshed = await fixture.admin.action(
@@ -367,7 +474,7 @@ describe("Evidence Library update check", () => {
       args,
     );
     expect(refreshed.checkedAt).toBe(Date.now());
-    expect(github.requests).toHaveLength(14);
+    expect(github.requests).toHaveLength(16);
     const rows = await fixture.t.run((ctx) =>
       ctx.db.query("evidenceLibraryRuntimeReleases").collect(),
     );
@@ -506,7 +613,7 @@ describe("Evidence Library update check", () => {
         libraryId: fixture.created.libraryId,
       }),
     ).resolves.toMatchObject({ latest: LATEST, checkedAt: Date.now() });
-    expect(github.requests).toHaveLength(7);
+    expect(github.requests).toHaveLength(8);
   });
 
   it("finds software too old for OpenScholar's contract and tells the publish dialog", async () => {
@@ -648,8 +755,8 @@ describe("Evidence Library address notices", () => {
     const movedTo = "https://climate-evidence-2-lib.libraries.example.test";
 
     await expect(
-      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
-    ).resolves.toEqual([]);
+      fixture.admin.query(api.evidenceLibraries.updates.getAddressNotice, { libraryId: fixture.created.libraryId }),
+    ).resolves.toBeNull();
 
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(fixture.created.setupOperationId, {
@@ -664,15 +771,13 @@ describe("Evidence Library address notices", () => {
     });
 
     await expect(
-      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
-    ).resolves.toEqual([
-      {
-        libraryId: fixture.created.libraryId,
-        address: fixture.created.publicAddress,
-        movedFrom: fixture.created.publicAddress,
-        addressState: null,
-      },
-    ]);
+      fixture.admin.query(api.evidenceLibraries.updates.getAddressNotice, { libraryId: fixture.created.libraryId }),
+    ).resolves.toEqual({
+      libraryId: fixture.created.libraryId,
+      address: fixture.created.publicAddress,
+      movedFrom: fixture.created.publicAddress,
+      addressState: null,
+    });
   });
 
   it("says nothing once the library is live at its address", async () => {
@@ -690,8 +795,8 @@ describe("Evidence Library address notices", () => {
     });
 
     await expect(
-      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
-    ).resolves.toEqual([]);
+      fixture.admin.query(api.evidenceLibraries.updates.getAddressNotice, { libraryId: fixture.created.libraryId }),
+    ).resolves.toBeNull();
   });
 });
 
@@ -735,8 +840,8 @@ describe("Evidence Library address ownership check", () => {
     );
     expect(afterProbe).toMatchObject({ addressState: "ours" });
     await expect(
-      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
-    ).resolves.toEqual([]);
+      fixture.admin.query(api.evidenceLibraries.updates.getAddressNotice, { libraryId: fixture.created.libraryId }),
+    ).resolves.toBeNull();
   });
 
   it("checks the canonical custom address instead of its redirecting platform address", async () => {
@@ -786,15 +891,13 @@ describe("Evidence Library address ownership check", () => {
     );
     expect(binding).toMatchObject({ addressState: "not-ours" });
     await expect(
-      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
-    ).resolves.toEqual([
-      {
-        libraryId: fixture.created.libraryId,
-        address: fixture.created.publicAddress,
-        movedFrom: null,
-        addressState: "not-ours",
-      },
-    ]);
+      fixture.admin.query(api.evidenceLibraries.updates.getAddressNotice, { libraryId: fixture.created.libraryId }),
+    ).resolves.toEqual({
+      libraryId: fixture.created.libraryId,
+      address: fixture.created.publicAddress,
+      movedFrom: null,
+      addressState: "not-ours",
+    });
   });
 
   it("stores an address that nothing answers as unreachable", async () => {

@@ -45,7 +45,7 @@ function iconRows(): Promise<PickerRow[]> {
 const iconSource: PickerSource = async (input) =>
   localPickerSource(await iconRows(), PAGE_SIZE)(input);
 
-function IconPreview({
+export function IconPreview({
   iconId,
   className,
 }: {
@@ -63,10 +63,13 @@ export function NavbarIconPicker({
   id,
   value,
   onChange,
+  placeholder,
 }: {
   id: string;
   value: NavIcon | "";
   onChange: (icon: NavIcon | "") => void;
+  /** What the trigger and the clearing row say while no icon is chosen. */
+  placeholder?: string;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.links");
   return (
@@ -93,7 +96,7 @@ export function NavbarIconPicker({
               <IconPreview iconId={value} className="size-4 shrink-0" />
             ) : null}
             <span className="truncate">
-              {value ? iconDisplayName(value) : t("noIcon")}
+              {value ? iconDisplayName(value) : (placeholder ?? t("noIcon"))}
             </span>
           </span>
           <HugeiconsIcon
@@ -116,7 +119,7 @@ export function NavbarIconPicker({
       emptyLabel={t("iconPicker.empty")}
       noMatchLabel={t("iconPicker.noMatch")}
       notSetUpLabel={t("iconPicker.empty")}
-      noneLabel={t("noIcon")}
+      noneLabel={placeholder ?? t("noIcon")}
     />
   );
 }

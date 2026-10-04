@@ -2,11 +2,12 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-interface CommandCenterPaginationProps {
+interface NumberedPages {
+  className?: string;
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -16,20 +17,31 @@ interface CommandCenterPaginationProps {
 }
 
 /**
+ * A list read a cursor page at a time: previous and next around "page / pages", and the
+ * range from where the page really starts, since a page can't be jumped to. Without `total`
+ * (a search, whose matches aren't counted) both read "at least", until the last page.
+ */
+interface SteppedPages {
+  className?: string;
+  currentPage: number;
+  itemLabel: string;
+  steps: { canPrevious: boolean; canNext: boolean; onPrevious: () => void; onNext: () => void; offset: number; shown: number; total?: number; pageCount?: number };
+}
+
+/**
  * Shared pagination component for command centers.
  * Shows page info, page numbers, and prev/next buttons.
  */
-export function CommandCenterPagination({
-  currentPage,
-  totalPages,
-  onPageChange,
-  totalItems,
-  itemsPerPage,
-  itemLabel,
-}: CommandCenterPaginationProps) {
+export function CommandCenterPagination(props: NumberedPages | SteppedPages) {
+  const { currentPage, itemLabel } = props;
+  const steps = "steps" in props ? props.steps : undefined;
+  const { totalPages = 1, itemsPerPage = 1, onPageChange = () => {}, totalItems: counted = 0 }: Partial<NumberedPages> = "steps" in props ? {} : props;
   const tc = useTranslations("common");
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+  const atLeast = (shown: number) => (steps?.canNext ? `${shown}+` : shown);
+  const startItem = steps ? steps.offset + 1 : (currentPage - 1) * itemsPerPage + 1;
+  const endItem = steps ? steps.offset + steps.shown : Math.min(currentPage * itemsPerPage, counted);
+  // A kept count can lag the rows it counts by a moment; it never reads lower than the rows shown.
+  const totalItems = steps ? (steps.total === undefined ? atLeast(endItem) : Math.max(steps.total, endItem)) : counted;
 
   // Generate page numbers to display
   const getPageNumbers = () => {
@@ -72,7 +84,7 @@ export function CommandCenterPagination({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6">
+    <div className={cn("flex flex-col sm:flex-row items-center justify-between gap-4 pt-6", props.className)}>
       {/* Info text */}
       <p className="text-xs tabular-nums text-muted-foreground">
         {tc("showingStartEnd", { start: startItem, end: endItem, total: totalItems, label: itemLabel })}
@@ -84,14 +96,18 @@ export function CommandCenterPagination({
           variant="outline"
           size="icon"
           className="size-8"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
+          onClick={() => (steps ? steps.onPrevious() : onPageChange(currentPage - 1))}
+          disabled={steps ? !steps.canPrevious : currentPage === 1}
         >
           <ChevronLeft className="h-4 w-4" />
           <span className="sr-only">{tc("previousPage")}</span>
         </Button>
 
-        {getPageNumbers().map((page, index) =>
+        {steps ? (
+          <span className="min-w-16 text-center text-xs tabular-nums text-muted-foreground">
+            {currentPage} / {steps.pageCount === undefined ? atLeast(currentPage) : Math.max(currentPage, steps.pageCount)}
+          </span>
+        ) : getPageNumbers().map((page, index) =>
           page === "ellipsis" ? (
             <span
               key={index === 1 ? "ellipsis-start" : "ellipsis-end"}
@@ -119,8 +135,8 @@ export function CommandCenterPagination({
           variant="outline"
           size="icon"
           className="size-8"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
+          onClick={() => (steps ? steps.onNext() : onPageChange(currentPage + 1))}
+          disabled={steps ? !steps.canNext : currentPage === totalPages}
         >
           <ChevronRight className="h-4 w-4" />
           <span className="sr-only">{tc("nextPage")}</span>

@@ -19,6 +19,7 @@ async function seedChatJob(t: TestInstance) {
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "clerk_source_refresh",
       email: "source-refresh@test.com",
       state: "active" as const,

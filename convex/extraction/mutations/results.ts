@@ -6,11 +6,12 @@
  *   - recordQuestionBatch upserts all completed/failed question rows for
  *     one paper batch in a single mutation.
  *   - finalizePaper aggregates those rows through aggregatePaperStatus,
- *     flips the paper terminal, settles one paper-level credit debit, and
- *     fires maybeFinalizeJob. Re-running after terminal is a no-op.
+ *     flips the paper terminal and settles one paper-level credit debit; the
+ *     extraction worker finishes the job (../queue/dispatcher.ts). Re-running
+ *     after terminal is a no-op.
  */
 
-import { internalMutation, type MutationCtx } from "../../_generated/server";
+import { internalMutation, type MutationCtx } from "../../lib/functions";
 import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { internal } from "../../_generated/api";
@@ -29,6 +30,7 @@ import {
 } from "../validators";
 import { aggregatePaperStatus } from "@/lib/extraction/paper-status";
 import type { ErrorCode } from "@/lib/errors/taxonomy";
+import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 export const updateJobStatus = internalMutation({
   args: {
@@ -472,11 +474,11 @@ export const finalizePaper = internalMutation({
       ctx.db
         .query("extractionResults")
         .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
-        .collect(),
+        .take(MAX_QUESTIONS_PER_JOB),
       ctx.db
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", paper.jobId))
-        .collect(),
+        .take(MAX_QUESTIONS_PER_JOB),
     ]);
 
     const byKey = new Map(resultsForPaper.map((r) => [r.questionKey, r]));
@@ -520,10 +522,9 @@ export const finalizePaper = internalMutation({
       pdfContentUsed: anyPdfUsed ? true : undefined,
     });
 
-    await ctx.runMutation(
-      internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob,
-      { jobId: paper.jobId },
-    );
+    // The job finishes from the extraction worker once its window is empty
+    // (../queue/dispatcher.ts), not here: every paper reading the job's counters as it
+    // finished conflicted with every other paper finishing.
 
     console.log(
       `[finalizePaper] ${args.paperId} → ${terminalStatus} (completed=${rollup.completedQuestions} failed=${rollup.failedQuestions})`,

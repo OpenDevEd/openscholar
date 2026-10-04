@@ -68,6 +68,48 @@ plans, Stripe subscriptions, and proration, and we can host it ourselves.
     `planFeature` is on only for users whose plan includes it, so which plans
     get extraction is set in Autumn. Plan tiers are gone.
 
+## Changes (2026-10-02)
+
+Screen all on Jev spent about 660 ms of each paper's 1.05 s in Autumn calls.
+Charges also conflicted on `usageAgg`: at 20 papers at a time, 528 of 1,000
+gave up and were recorded later by `retrySettle`. The new flow follows
+Autumn's balance-locking docs and what Firecrawl does.
+
+- **Decision 6, settle.** A held charge now settles with one `finalize`
+  confirm at the real amount (`override_value`). Settling first cancels the
+  hold's scheduled release, recorded in `billingHolds`. A retried confirm
+  that gets "Lock not found" therefore knows it already landed. Autumn
+  answers the same for an expired lock, so it can't tell the two apart.
+  When the real amount is more than the hold plus the balance, Autumn refuses
+  the confirm. The hold is then confirmed as it stands and the rest tracked
+  with a cap.
+- **Bulk items hold nothing.** A Screen all paper runs while the cached
+  balance has credits and is charged afterwards with one `track`, the way
+  Firecrawl bills each page of a crawl. Papers already running when the
+  balance reaches zero can go uncharged: at most the pool's parallelism.
+- **Decision 6, release.** Self-hosted Autumn still never expires locks
+  (current upstream sweeps only locks that confirm on expiry), so the
+  scheduled release stays. It is cancelled once the charge settles.
+- **Decision 7, usage history.** `usageAgg` writes are queued (`async: true`)
+  and applied by the aggregate's own batch worker. Usage pages and the
+  spending chart read with `stale: true`.
+- **Decision 8, snapshot.** Charges no longer re-read the customer. A charge
+  queues one refresh per user at most every few seconds. A `track` that
+  reports a zero balance zeroes the cached balance at once. Only billing
+  screens, card events and migration imports ask Autumn for the card, which
+  costs it a Stripe call.
+
+Proof, on the e2e backend with sandbox Autumn, measured against `dev`
+alternately the same night:
+
+- A 1,000-paper Jev job took 187 s against 264 s.
+- The paper step median went from 1.99 s to 1.06 s, and p90 from 8.37 s to 1.61 s.
+- `recordUsage` gave up 0 times against 528, with 0 conflicts against 4,259.
+- Account writes went from 1,016 to 39.
+- Around chat, a stopped chat turn and extraction, Autumn's deductions equalled
+  the usage log exactly. Search, translation, page screening and the wallet API
+  matched too, and no hold or release was left behind.
+
 ## Trial results (2026-09-28, Autumn e16a31db)
 
 Checked against the live trial with Stripe test mode and test clocks. The
@@ -109,7 +151,7 @@ This plan keeps Autumn's behavior.
 |---|---|
 | Balance, plan, subscription, top-up | Autumn |
 | Autumn HTTP calls and diagnostics | `convex/billing/autumn.ts` |
-| Reserve, settle, release, charge | `convex/billing/charge.ts` |
+| Reserve, settle, release, charge; holds (`billingHolds`) | `convex/billing/charge.ts` |
 | USD → credits | `lib/pricing` (`convertUsdToCredits`) |
 | Usage history | `billingUsage` table, written only by `charge.ts` |
 | Plan/balance snapshot | `billingAccounts` table, written only by `convex/billing/accounts.ts` |

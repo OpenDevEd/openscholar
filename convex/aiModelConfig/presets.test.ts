@@ -2,12 +2,10 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { setupAggregates } from "../extraction/aggregates.test-support";
 import { usableFor, type AiTask } from "../../lib/ai/tasks";
 
 async function setup() {
   const t = convexTest(schema);
-  setupAggregates(t);
   const model = (modelId: string, reasoningEfforts?: Array<"low" | "medium" | "high">, supportedParameters = ["structured_outputs"]) =>
     t.run((ctx) =>
       ctx.db.insert("models", {
@@ -22,10 +20,10 @@ async function setup() {
   // JSON mode without schemas isn't enough for the tasks that parse an answer.
   const chatOnly = await model("acme/chat-only", undefined, ["response_format", "tools"]);
   const userId = await t.run((ctx) =>
-    ctx.db.insert("users", { clerkId: "clerk_user", email: "user@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }),
+    ctx.db.insert("users", {libraryItemCount: 0,  clerkId: "clerk_user", email: "user@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }),
   );
   await t.run((ctx) =>
-    ctx.db.insert("users", { clerkId: "clerk_admin", email: "admin@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }),
+    ctx.db.insert("users", {libraryItemCount: 0,  clerkId: "clerk_admin", email: "admin@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }),
   );
   await t.mutation(internal.admins.mutations.grant, { email: "admin@test.local" });
   const user = t.withIdentity({ subject: "clerk_user" });
@@ -42,6 +40,12 @@ describe("presets", () => {
     await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "fast", task: "chat", modelId: flash });
 
     expect(await runsOn("chat")).toEqual({ modelId: sonnet, effort: "high" });
+    // What the settings map reads: each preset's pick per task, and nothing where none is set.
+    const picks = await user.query(api.aiModelConfig.queries.presetPicks, {});
+    const chat = (preset: "cheap" | "fast" | "balanced") => picks[preset].find((pick) => pick.task === "chat");
+    expect(chat("balanced")).toMatchObject({ model: { _id: sonnet, modelId: "anthropic/sonnet" }, effort: "high" });
+    expect(chat("fast")).toMatchObject({ model: { _id: flash }, effort: null });
+    expect(chat("cheap")).toEqual({ task: "chat", model: null, effort: null });
     await user.mutation(api.userAiConfig.mutations.choose, { choice: "fast" });
     expect(await runsOn("chat")).toEqual({ modelId: flash });
     // Fast has no screening pick, so screening falls back to Balanced's (none either).

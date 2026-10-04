@@ -10,7 +10,7 @@ import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
   ArrowUpDown, Brain, Check, ChevronsUpDown, Cloud, Filter, Languages, ListChecks, MessageSquare, PiggyBank, SlidersHorizontal,
   Search, TableProperties, Wand2, Scale, Zap,
-} from "lucide-react";
+} from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
@@ -232,7 +232,7 @@ export function RoutingMap({
         onMouseLeave={() => setHover(null)}
         className={cn(
           "flex h-11 w-full items-center gap-3 rounded-l-xl pl-3 text-left transition-colors",
-          hover?.task === task && "bg-muted/50",
+          hover?.task === task && "bg-inset",
           wrapTask && "cursor-pointer",
         )}
       >
@@ -337,9 +337,9 @@ export function NodeCard({
       {...props}
       className={cn(
         "flex w-full items-center gap-3 rounded-2xl px-3 text-left transition-[background-color,border-color]",
-        key ? "rounded-tl-none bg-primary/10 hover:bg-primary/15" : "border border-border/60 bg-muted/40",
+        key ? "rounded-tl-none bg-primary/10 hover:bg-primary/15" : "border border-border-subtle bg-inset",
         interactive ? "cursor-pointer" : "cursor-default",
-        interactive && !key && "hover:border-border hover:bg-muted/70",
+        interactive && !key && "hover:border-border hover:bg-muted",
       )}
       style={{ height: NODE_H }}
     >
@@ -430,7 +430,7 @@ export function MapSummary({
                   transition={{ duration: 0.45, ease: EASE }}
                 >
                   <span className="h-1.5 rounded-full" style={{ backgroundColor: routing.colorOf(n.id), opacity: dim ? 0.25 : 1 }} />
-                  <span className={cn("truncate text-[11px] tabular-nums", dim ? "text-muted-foreground/40" : "text-muted-foreground")}>
+                  <span className={cn("truncate text-2xs tabular-nums", dim ? "text-muted-foreground/40" : "text-muted-foreground")}>
                     {`${n.tasks.length}/${total}`}
                   </span>
                 </motion.div>
@@ -504,10 +504,10 @@ export function PresetSwitch<T extends PresetKey | "custom">({
 
 /** What each preset runs a task on, from the preset maps; undefined while loading. */
 export function usePresetModels() {
-  const presets = useQuery(api.aiModelConfig.queries.presets, {});
+  const presets = useQuery(api.aiModelConfig.queries.presetPicks, {});
   if (!presets) return undefined;
   return (preset: PresetKey, task: AiTask): PickedModel | null => {
-    const pick = presets.find((p) => p.preset === preset)?.tasks.find((r) => r.task === task);
+    const pick = presets[preset].find((r) => r.task === task);
     return pick?.model ? toMapModel(pick.model, pick.effort) : null;
   };
 }

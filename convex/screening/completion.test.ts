@@ -5,10 +5,10 @@ import {
 } from "./completion";
 
 const completedRowDetails: CompletedScreeningRowDetails = {
-  answers: { q1: true, q2: null },
   score: 3,
   stars: 2,
   qualified: true,
+  outcome: "included",
   aiMetadata: { confidence: 0.87 },
 };
 
@@ -25,16 +25,12 @@ describe("deriveCompletionTransition", () => {
       kind: "patch",
       rowPatch: {
         status: "completed",
-        answers: { q1: true, q2: null },
         score: 3,
         stars: 2,
         qualified: true,
+        outcome: "included",
         aiMetadata: { confidence: 0.87 },
       },
-      aggregateStatus: "completed",
-      aggregateQualified: true,
-      scheduleQualifiedPersistence: true,
-      scheduleJobFinalization: true,
     });
   });
 
@@ -48,10 +44,6 @@ describe("deriveCompletionTransition", () => {
     ).toEqual({
       kind: "patch",
       rowPatch: { status: "skipped" },
-      aggregateStatus: "skipped",
-      aggregateQualified: false,
-      scheduleQualifiedPersistence: false,
-      scheduleJobFinalization: true,
     });
   });
 
@@ -64,12 +56,12 @@ describe("deriveCompletionTransition", () => {
       }),
     ).toEqual({
       kind: "patch",
-      rowPatch: { status: "failed" },
-      aggregateStatus: "failed",
-      aggregateQualified: false,
-      scheduleQualifiedPersistence: false,
-      scheduleJobFinalization: true,
+      rowPatch: { status: "failed", outcome: "failed" },
     });
+  });
+
+  it("skips a paper whose queued work was dropped, since it was never screened", () => {
+    expect(deriveCompletionTransition({ currentRowStatus: "processing", jobStatus: "cancelled", resultKind: "canceled" })).toEqual({ kind: "patch", rowPatch: { status: "skipped" } });
   });
 
   it("does not schedule library persistence for completed but non-qualified rows", () => {
@@ -89,8 +81,6 @@ describe("deriveCompletionTransition", () => {
         status: "completed",
         qualified: false,
       },
-      scheduleQualifiedPersistence: false,
-      scheduleJobFinalization: true,
     });
   });
 

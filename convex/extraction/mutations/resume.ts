@@ -30,7 +30,7 @@ import { requireOrganizationFeature } from "../../organizationFeatures";
  *   only the questions without a saved answer, then finalises.
  */
 
-import { mutation } from "../../_generated/server";
+import { mutation } from "../../lib/functions";
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import { requireAuth } from "../../lib/auth";
@@ -53,6 +53,7 @@ import { getFlag } from "../../featureFlags/guard";
 import {
   dispatchPaperQueueWindowTx,
   enqueueInitialPapersForJobTx,
+  enqueueRetryPapersForJobTx,
 } from "../queue/mutations";
 
 export const resumeExtraction = mutation({
@@ -91,7 +92,7 @@ export const resumeExtraction = mutation({
       const questions = await ctx.db
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect();
+        .take(MAX_QUESTIONS_PER_JOB);
       remainingEstimateHigh = estimatePaperCredits({
         questionCount: questions.length,
         pdf: job.usePdfs ?? false,
@@ -159,10 +160,35 @@ export const resumeExtraction = mutation({
         internal.extraction.actions.setupExtractionQueueJob,
         { jobId, expectedEpoch: nextEpoch },
       );
-    } else if (nonTerminalPaperIds.length > 0) {
+    } else if (nonTerminalPaperIds.length === 0) {
+      // Every paper finished before the pause took effect; nothing will run to finish the job.
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId, expectedEpoch: nextEpoch });
+    } else {
+      // A paper queued for a retry before the pause is queued for the same questions
+      // again; a full run would redo its answered and permanently failed questions.
+      const initialPaperIds: typeof nonTerminalPaperIds = [];
+      const retryPapers: Array<{ paperId: (typeof nonTerminalPaperIds)[number]; questionKeys: string[] }> = [];
+      for (const paperId of nonTerminalPaperIds) {
+        const lastQueued = await ctx.db
+          .query("extractionPaperQueue")
+          .withIndex("by_paper_and_epoch_and_kind", (q) => q.eq("paperId", paperId))
+          .order("desc")
+          .first();
+        if (lastQueued?.kind === "retry" && lastQueued.questionKeys?.length) {
+          retryPapers.push({ paperId, questionKeys: lastQueued.questionKeys });
+        } else {
+          initialPaperIds.push(paperId);
+        }
+      }
       await enqueueInitialPapersForJobTx(ctx, {
         jobId,
-        paperIds: nonTerminalPaperIds,
+        paperIds: initialPaperIds,
+        expectedEpoch: nextEpoch,
+        priority: 0,
+      });
+      await enqueueRetryPapersForJobTx(ctx, {
+        jobId,
+        retryPapers,
         expectedEpoch: nextEpoch,
         priority: 0,
       });
@@ -175,6 +201,11 @@ export const resumeExtraction = mutation({
         questionConcurrency,
         pdfEnabled,
       });
+    }
+
+    // A retry stopped while it reset the job's failures carries on where it stopped.
+    if (job.retryReset && decision.nextStatus === "extracting") {
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch: nextEpoch });
     }
 
     return { resumed: true };

@@ -2,7 +2,8 @@
 
 import React, { useEffect } from 'react'
 import { useKeywordExpansionDialogStore, useCurrentQueryStore } from '@/lib/store'
-import { validateAndExpandKeywordsSilently } from '@/lib/keyword-validation'
+import { validateAndExpandKeywordsSilently } from '@/lib/keyword-validation-browser'
+import { useQueryShortcuts } from '@/lib/research/reads'
 import { useSearchOptional } from '@/lib/search'
 
 interface QuerySyncProviderProps {
@@ -26,6 +27,7 @@ export function QuerySyncProvider({ children }: QuerySyncProviderProps) {
   const { currentQuery: storeQuery } = useCurrentQueryStore()
   
   const { setSuggestedQuery } = useKeywordExpansionDialogStore()
+  const shortcutsRead = useQueryShortcuts(storeQuery)
 
   // Only sync on home page - results pages handle this in useSWR onSuccess
   useEffect(() => {
@@ -37,7 +39,7 @@ export function QuerySyncProvider({ children }: QuerySyncProviderProps) {
     } else {
       setSuggestedQuery('')
     }
-  }, [storeQuery, isOnResultsPage, setSuggestedQuery])
+  }, [storeQuery, isOnResultsPage, setSuggestedQuery, shortcutsRead])
 
   return <>{children}</>
 } 

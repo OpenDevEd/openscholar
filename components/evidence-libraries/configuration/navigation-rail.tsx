@@ -25,6 +25,7 @@ export function RailLink({
   active,
   danger,
   onClick,
+  className,
   children,
 }: {
   href: string;
@@ -32,6 +33,7 @@ export function RailLink({
   active: boolean;
   danger?: boolean;
   onClick: () => void;
+  className?: string;
   children: ReactNode;
 }) {
   return (
@@ -46,9 +48,10 @@ export function RailLink({
         buttonVariants({ variant: "ghost", size: "sm" }),
         "group relative w-full justify-start gap-3 overflow-hidden transition-all duration-200",
         active
-          ? "bg-sidebar-accent/80 font-medium text-sidebar-primary shadow-sm hover:bg-sidebar-accent/90"
-          : "text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground",
+          ? "bg-sidebar-accent font-medium text-sidebar-primary shadow-sm hover:bg-sidebar-accent"
+          : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
         danger && "text-destructive hover:text-destructive",
+        className,
       )}
     >
       {active ? (
@@ -59,7 +62,7 @@ export function RailLink({
           "h-4 w-4 shrink-0 transition-colors",
           active
             ? "text-primary"
-            : "text-muted-foreground group-hover:text-foreground",
+            : "text-primary/65 group-hover:text-primary",
           danger && "text-destructive group-hover:text-destructive",
         )}
       />

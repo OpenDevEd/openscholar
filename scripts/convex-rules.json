@@ -1,0 +1,41 @@
+{
+  "unboundedReads": {
+    "pending": {}
+  },
+  "listReturns": {
+    "pending": {
+      "convex/authors/publications.ts:list:[]": "#424",
+      "convex/chat/chatPapers.ts:listChatSourcesWithInclusion:.rows[]": "#325",
+      "convex/chat/model.ts:listChatModels:[]": "#325",
+      "convex/chat/sourceEvents.ts:listForThread:[]": "#325",
+      "convex/models/queries.ts:list:[]": "#424",
+      "convex/models/queries.ts:listCatalogOptions:[]": "#424",
+      "convex/zotero/actions.ts:fetchCollections:[]": "#425",
+      "convex/zotero/actions.ts:fetchGroups:[]": "#425",
+      "convex/zotero/actions.ts:fetchItems:.items[]": "#425",
+      "convex/zotero/actions.ts:fetchItems:.items[].authors[]": "#425",
+      "convex/zotero/libraryGroupActions.ts:listMyZoteroGroups:.groups[]": "#425"
+    }
+  },
+  "untypedReturns": {
+    "pending": {
+      "convex/chat/messages.ts:listThreadMessages:.streams*": "#325: the agent component's stream deltas",
+      "convex/chat/messages.ts:listThreadMessages:[]*": "#325: the agent component's UI messages"
+    }
+  },
+  "everyPage": {
+    "pending": {
+      "convex/chat/messages.ts:listRecentThreadArtifacts": "#325",
+      "convex/chat/messages.ts:readThreadMessagesWithVisiblePageIntegrity": "#325",
+      "convex/zotero/actions.ts:fetchAllCollectionsForParent": "#425",
+      "convex/zotero/actions.ts:fetchAllTopItemsForCollection": "#425",
+      "convex/zotero/libraryGroupActions.ts:listAllUserGroups": "#425"
+    }
+  },
+  "missingReturns": {
+    "pending": {}
+  },
+  "argumentSizedTakes": {
+    "bounded": {}
+  }
+}

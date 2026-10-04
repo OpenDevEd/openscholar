@@ -3,17 +3,19 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { Boxes, Search } from "lucide-react";
+import { Boxes, Search } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useAppToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
-import { Enter, LIST, Paged, pagerOf, Segmented, Tile } from "@/components/settings/parts";
+import { Enter, LIST, Paged, Segmented, Tile } from "@/components/settings/parts";
 import { IntelligenceMeter, priceLabel } from "@/components/models/meters";
 import { tintOf } from "@/components/settings/model-map";
 
@@ -34,33 +36,28 @@ export default function ModelListPage() {
   const [provider, setProvider] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [show, setShow] = useState<Show>("all");
-  const [page, setPage] = useState(1);
-  const args = { ...(provider ? { provider } : {}), search, show, page, pageSize: PER_PAGE };
-  const { data } = useProtectedQuery(api.models.admin.list, args);
-  const [shown, setShown] = useState(data);
-  // Keep the last page on screen while the next one loads, so the list never empties.
-  if (data !== undefined && data !== shown) setShown(data);
+  // The list is filtered and read a page at a time on the server; the summary totals the view and names the chips.
+  const view = { ...(provider ? { provider } : {}), search: useDebouncedValue(search.trim(), 300), show };
+  const models = useCursorPage(api.models.admin.listModels, view, PER_PAGE);
+  const { data: counted } = useProtectedQuery(api.models.admin.summary, view);
+  // The last summary stays up while another view is counted.
+  const [summary, setSummary] = useState(counted);
+  if (counted !== undefined && counted !== summary) setSummary(counted);
   const setOffered = useMutation(api.models.admin.setOffered).withOptimisticUpdate((store, { modelId, on }) => {
-    const current = store.getQuery(api.models.admin.list, args);
-    if (current) {
-      store.setQuery(api.models.admin.list, args, { ...current, rows: current.rows.map((r) => (r._id === modelId ? { ...r, on } : r)) });
+    // Every page of the list that's subscribed, whichever view and cursor it was read with.
+    for (const { args, value } of store.getAllQueries(api.models.admin.listModels)) {
+      if (value) store.setQuery(api.models.admin.listModels, args, { ...value, page: value.page.map((r) => (r._id === modelId ? { ...r, on } : r)) });
     }
   });
 
-  const list = data ?? shown;
-  const reset = <T,>(set: (v: T) => void) => (v: T) => {
-    set(v);
-    setPage(1);
-  };
-  const pager = pagerOf(list?.total ?? 0, PER_PAGE, page, setPage);
   const chips = [
     { key: null, label: tc("all"), sample: null as string | null },
-    ...(list?.providers ?? []).map((p) => ({ key: p.provider, label: providerName(p.provider), sample: p.sampleModelId })),
+    ...(summary?.providers ?? []).map((p) => ({ key: p.provider, label: providerName(p.provider), sample: p.sampleModelId })),
     { key: "other", label: tc("other"), sample: null as string | null },
   ];
 
   return (
-    <Enter ready={list !== undefined}>
+    <Enter ready={!models.isLoading && summary !== undefined}>
       <div className="space-y-6">
         <div className="flex flex-wrap gap-2" role="group" aria-label={t("filterByProvider")}>
           {chips.map((chip) => {
@@ -72,10 +69,10 @@ export default function ModelListPage() {
                 key={chip.key ?? "all"}
                 type="button"
                 aria-pressed={active}
-                onClick={() => reset(setProvider)(chip.key)}
+                onClick={() => setProvider(chip.key)}
                 className={cn(
                   "flex h-9 items-center gap-2 rounded-full border pl-2.5 pr-3.5 text-sm font-medium transition-colors",
-                  active ? "border-transparent" : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  active ? "border-transparent" : "border-border-subtle bg-inset text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
                 style={active ? { backgroundColor: `color-mix(in oklab, ${tint} 18%, transparent)`, color: tint } : undefined}
               >
@@ -92,16 +89,16 @@ export default function ModelListPage() {
               <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
-                onChange={(e) => reset(setSearch)(e.target.value)}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("search")}
                 aria-label={t("search")}
-                className="h-11 rounded-2xl border border-border/60 bg-muted/40 pl-11"
+                className="h-11 rounded-2xl border border-border-subtle bg-inset pl-11"
               />
             </div>
             <Segmented
               label={t("show")}
               value={show}
-              onChange={reset(setShow)}
+              onChange={setShow}
               options={[
                 { id: "all", label: tc("all") },
                 { id: "on", label: t("on") },
@@ -109,14 +106,14 @@ export default function ModelListPage() {
               ]}
             />
           </div>
-          <Paged pager={pager} rowHeight={61} label={t("models")}>
-            <ul className={cn(LIST, data === undefined && "opacity-60")}>
-              {(list?.rows ?? []).map((m) => (
+          <Paged pager={{ list: models, size: PER_PAGE, total: summary?.total, counting: counted === undefined }} rowHeight={61} label={t("models")}>
+            <ul className={LIST}>
+              {models.items.map((m) => (
                 <li key={m._id} className={cn("flex items-center gap-3 p-3 transition-opacity", !m.on && "opacity-50")}>
                   <Tile icon={getModelIcon(m.modelId)} tint={m.on ? tintOf(m.modelId) : "#94a3b8"} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">{stripProviderPrefix(m.name)}</span>
-                    <span className="block truncate font-mono text-[11px] text-muted-foreground">{m.modelId}</span>
+                    <span className="block truncate font-mono text-2xs text-muted-foreground">{m.modelId}</span>
                   </span>
                   {m.contextLength ? <span className="w-12 text-right text-xs tabular-nums text-muted-foreground">{context(m.contextLength)}</span> : null}
                   <IntelligenceMeter index={m.intelligenceIndex} className="w-24" />
@@ -135,7 +132,7 @@ export default function ModelListPage() {
                   />
                 </li>
               ))}
-              {list && list.rows.length === 0 ? <li className="py-10 text-center text-sm text-muted-foreground">{t("noMatches")}</li> : null}
+              {!models.isLoading && models.items.length === 0 ? <li className="py-10 text-center text-sm text-muted-foreground">{t("noMatches")}</li> : null}
             </ul>
           </Paged>
         </div>

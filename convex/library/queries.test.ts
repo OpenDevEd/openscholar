@@ -1,9 +1,10 @@
 import { convexTest } from "convex-test";
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { exportedTitles } from "../exports.test-support";
 
 // Helper: create a user directly in the mock DB, return user doc
 async function seedUser(
@@ -245,7 +246,7 @@ describe("browseLibrary", () => {
     });
 
     expect(result.page).toHaveLength(2);
-    expect(result.page.every((item: { rating: number; title: string }) => item.rating >= 3)).toBe(true);
+    expect(result.page.every((item: { rating?: number; title: string }) => item.rating! >= 3)).toBe(true);
   });
 
   it("applies maxRating and savedBefore together when they are provided", async () => {
@@ -398,7 +399,7 @@ describe("searchLibrary", () => {
     });
 
     expect(result.page.length).toBeGreaterThanOrEqual(1);
-    expect(result.page.some((item: { rating: number; title: string }) => item.title.includes("Machine"))).toBe(
+    expect(result.page.some((item: { rating?: number; title: string }) => item.title.includes("Machine"))).toBe(
       true
     );
   });
@@ -427,7 +428,7 @@ describe("searchLibrary", () => {
       paginationOpts: { numItems: 10, cursor: null },
     });
 
-    expect(result.page.every((item: { rating: number; title: string }) => item.rating >= 4)).toBe(true);
+    expect(result.page.every((item: { rating?: number; title: string }) => item.rating! >= 4)).toBe(true);
   });
 
   it("returns empty page when search text matches nothing", async () => {
@@ -473,87 +474,48 @@ describe("searchLibrary", () => {
 
     // Should only contain user1's paper
     expect(
-      result.page.every((item: { rating: number; title: string }) => item.title.includes("User1"))
+      result.page.every((item: { rating?: number; title: string }) => item.title.includes("User1"))
     ).toBe(true);
   });
 });
 
-describe("listLibrary", () => {
-  it("sorts searched items using the requested sort order instead of search relevance", async () => {
+describe("a filtered library view, read page by page", () => {
+  it("keeps each page's place when a paper before it is removed", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const items: Array<Awaited<ReturnType<typeof seedLibraryItem>>> = [];
+    for (let i = 1; i <= 4; i++) items.push(await seedLibraryItem(t, user!._id, { title: `Paper ${i}`, rating: 4, savedAt: 1_000 - i, openalexId: `https://openalex.org/W${i}` }));
+    const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, minRating: 3 };
+    const read = (cursor: string | null, endCursor?: string) => asUser.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { cursor, numItems: 2, ...(endCursor ? { endCursor } : {}) } });
+    const first = await read(null);
+    const second = await read(first.continueCursor);
 
-    await seedLibraryItem(t, user!._id, {
-      title: "Gamma machine paper",
-      searchableText: "machine gamma paper",
-      citedByCount: 10,
-      openalexId: "https://openalex.org/W1",
-    });
-    await seedLibraryItem(t, user!._id, {
-      title: "Alpha machine paper",
-      searchableText: "machine alpha paper",
-      citedByCount: 3,
-      openalexId: "https://openalex.org/W2",
-    });
-    await seedLibraryItem(t, user!._id, {
-      title: "Beta machine paper",
-      searchableText: "machine beta paper",
-      citedByCount: 30,
-      openalexId: "https://openalex.org/W3",
-    });
-
-    const result = await asUser.query(api.library.queries.listLibrary, {
-      searchText: "machine",
-      sortBy: "title",
-      sortOrder: "asc",
-    });
-
-    expect(result.map((item) => item.title)).toEqual([
-      "Alpha machine paper",
-      "Beta machine paper",
-      "Gamma machine paper",
-    ]);
+    await t.run((ctx) => ctx.db.delete("libraryItems", items[0]!._id));
+    // The page hook asks again for each page between the cursors it already has.
+    const again = [...(await read(null, first.continueCursor)).page, ...(await read(first.continueCursor, second.continueCursor)).page];
+    expect(again.map((item) => item.title)).toEqual(["Paper 2", "Paper 3", "Paper 4"]);
   });
 
-  it("returns the full filtered set for export-style library views", async () => {
+  it("returns every match once, in the view's order, as an export reads it", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "Picked" })).id;
+    for (let i = 0; i < 24; i++) {
+      const item = await seedLibraryItem(t, user!._id, { title: `Paper ${i}`, rating: (i % 5) + 1, publicationYear: 2010 + (i % 12), savedAt: 1_000 + i, openalexId: `https://openalex.org/W${i}` });
+      if (i % 3 !== 0) await asUser.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: item!._id });
+    }
+    const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, minRating: 2, maxRating: 4, yearFrom: 2012, collectionId };
+    const exported = await exportedTitles(t, asUser, view);
 
-    await seedLibraryItem(t, user!._id, {
-      title: "Keep me",
-      rating: 4,
-      publicationYear: 2021,
-      savedAt: 1200,
-      openalexId: "https://openalex.org/W1",
-    });
-    await seedLibraryItem(t, user!._id, {
-      title: "Too old",
-      rating: 4,
-      publicationYear: 2010,
-      savedAt: 1000,
-      openalexId: "https://openalex.org/W2",
-    });
-    await seedLibraryItem(t, user!._id, {
-      title: "Too low rated",
-      rating: 1,
-      publicationYear: 2022,
-      savedAt: 1400,
-      openalexId: "https://openalex.org/W3",
-    });
-
-    const result = await asUser.query(api.library.queries.listLibrary, {
-      sortBy: "savedAt",
-      sortOrder: "desc",
-      minRating: 3,
-      maxRating: 4,
-      savedAfter: 1100,
-      yearFrom: 2020,
-    });
-
-    expect(result).toHaveLength(1);
-    expect(result[0].title).toBe("Keep me");
+    const expected = Array.from({ length: 24 }, (_, i) => i)
+      .filter((i) => i % 3 !== 0 && (i % 5) + 1 >= 2 && (i % 5) + 1 <= 4 && 2010 + (i % 12) >= 2012)
+      .reverse()
+      .map((i) => `Paper ${i}`);
+    expect(expected.length).toBeGreaterThan(4);
+    expect(exported).toEqual(expected);
+    expect(await asUser.query(api.library.queries.getLibraryFilteredCount, view)).toEqual({ count: expected.length, capped: false });
   });
 });
 
@@ -590,6 +552,48 @@ describe("getLibraryCount", () => {
     expect(count).toBe(3);
   });
 
+  it("returns the live item count when the stored counter is missing", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W2",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+
+    expect(count).toBe(2);
+  });
+
+  it("returns the repaired count after the counter migration runs", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W2",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W3",
+    });
+
+    await t.action(internal.migrations.backfillLibraryCounters.backfillUsers, {});
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+
+    expect(count).toBe(3);
+  });
   it("does NOT count items belonging to other users", async () => {
     const t = convexTest(schema);
     const user1 = await seedUser(t, "clerk_user1", "user1@test.com", {
@@ -615,48 +619,6 @@ describe("getLibraryCount", () => {
     expect(count).toBe(2);
   });
 
-  it("returns the live item count when the stored counter is missing", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
-      libraryItemCount: undefined,
-    });
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W1",
-    });
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W2",
-    });
-
-    const count = await asUser.query(api.library.queries.getLibraryCount, {});
-
-    expect(count).toBe(2);
-  });
-
-  it("returns the repaired count after an explicit backfill runs", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
-      libraryItemCount: undefined,
-    });
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W1",
-    });
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W2",
-    });
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W3",
-    });
-
-    await t.mutation(internal.library.mutations.backfillAllLibraryCounts, {});
-
-    const count = await asUser.query(api.library.queries.getLibraryCount, {});
-
-    expect(count).toBe(3);
-  });
 });
 
 describe("getLibraryFilteredCount", () => {
@@ -667,14 +629,8 @@ describe("getLibraryFilteredCount", () => {
     });
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
-    const collectionId = await asUser.mutation(
-      api.library.collections.createCollection,
-      { name: "Focus set" },
-    );
-    const otherCollectionId = await asUser.mutation(
-      api.library.collections.createCollection,
-      { name: "Other set" },
-    );
+    const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "Focus set" })).id;
+    const otherCollectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "Other set" })).id;
 
     const item1 = await seedLibraryItem(t, user!._id, {
       title: "Paper 1",
@@ -708,7 +664,7 @@ describe("getLibraryFilteredCount", () => {
       collectionId,
     });
 
-    expect(count).toBe(2);
+    expect(count).toEqual({ count: 2, capped: false });
   });
 
   it("returns the exact filtered count for search and numeric filters", async () => {
@@ -755,7 +711,7 @@ describe("getLibraryFilteredCount", () => {
       yearFrom: 2020,
     });
 
-    expect(count).toBe(2);
+    expect(count).toEqual({ count: 2, capped: false });
   });
 
   it("returns the live item count when no filters are active and the stored counter is missing", async () => {
@@ -779,7 +735,7 @@ describe("getLibraryFilteredCount", () => {
       sortOrder: "desc",
     });
 
-    expect(count).toBe(2);
+    expect(count).toEqual({ count: 2, capped: false });
   });
 });
 
@@ -848,7 +804,7 @@ describe("library counter", () => {
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
-    const itemId1 = await asUser.mutation(api.library.mutations.saveToLibrary, {
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
       openalexId: "https://openalex.org/W1",
       rating: 3,
       title: "Paper 1",
@@ -860,30 +816,6 @@ describe("library counter", () => {
     });
 
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      itemId: itemId1,
-    });
-
-    const count = await asUser.query(api.library.queries.getLibraryCount, {});
-    expect(count).toBe(1);
-  });
-
-  it("removeFromLibraryByOpenalexId decrements counter", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/W1",
-      rating: 3,
-      title: "Paper 1",
-    });
-    await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/W2",
-      rating: 4,
-      title: "Paper 2",
-    });
-
-    await asUser.mutation(api.library.mutations.removeFromLibraryByOpenalexId, {
       openalexId: "https://openalex.org/W1",
     });
 
@@ -891,7 +823,7 @@ describe("library counter", () => {
     expect(count).toBe(1);
   });
 
-  it("removeFromLibraryByOpenalexId with non-existent item does not change counter", async () => {
+  it("removeFromLibrary with non-existent item does not change counter", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
@@ -902,7 +834,7 @@ describe("library counter", () => {
       title: "Paper 1",
     });
 
-    await asUser.mutation(api.library.mutations.removeFromLibraryByOpenalexId, {
+    await asUser.mutation(api.library.mutations.removeFromLibrary, {
       openalexId: "https://openalex.org/W999",
     });
 
@@ -916,20 +848,20 @@ describe("library counter", () => {
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     // Save and remove to get counter to 0
-    const itemId = await asUser.mutation(api.library.mutations.saveToLibrary, {
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
       openalexId: "https://openalex.org/W1",
       rating: 3,
       title: "Paper 1",
     });
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      itemId,
+      openalexId: "https://openalex.org/W1",
     });
 
     const count = await asUser.query(api.library.queries.getLibraryCount, {});
     expect(count).toBe(0);
 
     // Try removing a non-existent item -- counter should stay at 0
-    await asUser.mutation(api.library.mutations.removeFromLibraryByOpenalexId, {
+    await asUser.mutation(api.library.mutations.removeFromLibrary, {
       openalexId: "https://openalex.org/W999",
     });
 
@@ -943,7 +875,7 @@ describe("library counter", () => {
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     // Save A
-    const itemA = await asUser.mutation(api.library.mutations.saveToLibrary, {
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
       openalexId: "https://openalex.org/WA",
       rating: 3,
       title: "Paper A",
@@ -956,7 +888,7 @@ describe("library counter", () => {
     });
     // Remove A
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      itemId: itemA,
+      openalexId: "https://openalex.org/WA",
     });
     // Save C
     await asUser.mutation(api.library.mutations.saveToLibrary, {
@@ -998,7 +930,7 @@ describe("library counter", () => {
     });
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
-    const itemId = await seedLibraryItem(t, user!._id, {
+    await seedLibraryItem(t, user!._id, {
       openalexId: "https://openalex.org/W-remove",
       title: "Remove me",
     });
@@ -1008,30 +940,6 @@ describe("library counter", () => {
     });
 
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      itemId: itemId!._id,
-    });
-
-    const count = await asUser.query(api.library.queries.getLibraryCount, {});
-    expect(count).toBe(1);
-  });
-
-  it("removeFromLibraryByOpenalexId repairs a missing counter before decrementing", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
-      libraryItemCount: undefined,
-    });
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W-remove",
-      title: "Remove me",
-    });
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W-keep",
-      title: "Keep me",
-    });
-
-    await asUser.mutation(api.library.mutations.removeFromLibraryByOpenalexId, {
       openalexId: "https://openalex.org/W-remove",
     });
 
@@ -1041,50 +949,27 @@ describe("library counter", () => {
 });
 
 describe("removeFromLibrary", () => {
-  it("deletes item owned by authenticated user, returns null", async () => {
+  it("removes the person's paper and returns it so Undo can put it back", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     const item = await seedLibraryItem(t, user!._id, {
       openalexId: "https://openalex.org/W1",
+      rating: 4,
     });
 
-    const result = await asUser.mutation(
-      api.library.mutations.removeFromLibrary,
-      { itemId: item!._id }
-    );
-
-    expect(result).toBeNull();
-
-    // Verify item is actually deleted
-    const deleted = await t.run(async (ctx) => {
-      return await ctx.db.get("libraryItems", item!._id);
+    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, {
+      openalexId: "https://openalex.org/W1",
     });
+
+    // What Undo needs is kept on the server, under the ID the removal returns.
+    expect(await t.run(async (ctx) => await ctx.db.get("libraryRemovals", removed.undo!.args.removalId))).toMatchObject({ item: { openalexId: "https://openalex.org/W1", rating: 4, savedAt: item!.savedAt }, collectionIds: [] });
+    const deleted = await t.run(async (ctx) => await ctx.db.get("libraryItems", item!._id));
     expect(deleted).toBeNull();
   });
 
-  it("throws NOT_FOUND for non-existent item ID", async () => {
-    const t = convexTest(schema);
-    await seedUser(t, "clerk_user1", "user1@test.com");
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    // Create and delete an item to get a valid-format but non-existent ID
-    const item = await seedLibraryItem(t, (await seedUser(t, "clerk_temp", "temp@test.com"))!._id, {
-      openalexId: "https://openalex.org/Wtemp",
-    });
-    await t.run(async (ctx) => {
-      await ctx.db.delete("libraryItems", item!._id);
-    });
-
-    await expect(
-      asUser.mutation(api.library.mutations.removeFromLibrary, {
-        itemId: item!._id,
-      })
-    ).rejects.toThrow();
-  });
-
-  it("throws FORBIDDEN when trying to delete another user's item", async () => {
+  it("leaves another person's copy of the paper alone", async () => {
     const t = convexTest(schema);
     await seedUser(t, "clerk_user1", "user1@test.com");
     const user2 = await seedUser(t, "clerk_user2", "user2@test.com");
@@ -1094,10 +979,434 @@ describe("removeFromLibrary", () => {
       openalexId: "https://openalex.org/W1",
     });
 
+    const removed = await asUser1.mutation(api.library.mutations.removeFromLibrary, {
+      openalexId: "https://openalex.org/W1",
+    });
+
+    expect(removed.undo).toBeUndefined();
+    const kept = await t.run(async (ctx) => await ctx.db.get("libraryItems", otherItem!._id));
+    expect(kept).not.toBeNull();
+  });
+});
+
+describe("saving without a rating", () => {
+  const paper = { openalexId: "https://openalex.org/W1", title: "Paper 1" };
+
+  it("saves an unrated paper and keeps a saved rating when saved again without one", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const { id: itemId } = await asUser.mutation(api.library.mutations.saveToLibrary, paper);
+    expect((await t.run(async (ctx) => await ctx.db.get("libraryItems", itemId)))?.rating).toBeUndefined();
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 4 });
+    await asUser.mutation(api.library.mutations.saveToLibrary, paper);
+
+    expect((await t.run(async (ctx) => await ctx.db.get("libraryItems", itemId)))?.rating).toBe(4);
+    expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(1);
+  });
+
+  it("clears a rating without removing the paper", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const { id: itemId } = await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 2 });
+    await asUser.mutation(api.library.mutations.setLibraryRating, { openalexId: paper.openalexId, rating: null });
+
+    const item = await t.run(async (ctx) => await ctx.db.get("libraryItems", itemId));
+    expect(item).not.toBeNull();
+    expect(item?.rating).toBeUndefined();
+    expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(1);
+  });
+
+  it("leaves unrated papers out of a rating filter", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, paper);
+    await asUser.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W2", title: "Paper 2", rating: 1 });
+
+    for (const sortBy of ["savedAt", "rating"] as const) {
+      const result = await asUser.query(api.library.queries.browseLibrary, {
+        sortBy,
+        sortOrder: "desc",
+        maxRating: 3,
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(result.page.map((item) => item.title)).toEqual(["Paper 2"]);
+    }
+  });
+
+  it("puts a removed paper back with its rating, saved date and collections", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "Reading" })).id;
+    const { id: itemId } = await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 5 });
+    await asUser.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: itemId });
+    const savedAt = (await t.run(async (ctx) => await ctx.db.get("libraryItems", itemId)))!.savedAt;
+
+    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
+    expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(0);
+
+    const { id: restoredId } = await asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
+    // An undo works once, and never for someone else's removal.
+    await expect(asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args)).rejects.toThrow(/no longer be undone/);
+
+    const restored = await t.run(async (ctx) => await ctx.db.get("libraryItems", restoredId));
+    expect(restored).toMatchObject({ openalexId: paper.openalexId, rating: 5, savedAt });
+    const holding = await asUser.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: 10 }, openalexId: paper.openalexId });
+    expect(holding.page.filter((c) => c.containsItem).map((c) => c._id)).toEqual([collectionId]);
+    const collection = await t.run(async (ctx) => await ctx.db.get("collections", collectionId));
+    expect(collection?.itemCount).toBe(1);
+    expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(1);
+  });
+
+  it("keeps a removal for a day, then forgets it", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      await seedUser(t, "clerk_user1", "user1@test.com");
+      const asUser = t.withIdentity({ subject: "clerk_user1" });
+      await asUser.mutation(api.library.mutations.saveToLibrary, paper);
+      const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
+      await seedUser(t, "clerk_user2", "user2@test.com");
+      await expect(t.withIdentity({ subject: "clerk_user2" }).mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args)).rejects.toThrow(/no longer be undone/);
+
+      // Past its day, it can't be undone, whether or not the cleanup has run yet.
+      vi.setSystemTime(Date.now() + 24 * 60 * 60_000 + 1);
+      await expect(asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args)).rejects.toThrow(/no longer be undone/);
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      await expect(asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args)).rejects.toThrow(/no longer be undone/);
+      expect(await t.run((ctx) => ctx.db.query("libraryRemovals").take(1))).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("puts a paper back in every collection it was in, even when rows of a deleted collection came first", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const { id: itemId } = await asUser.mutation(api.library.mutations.saveToLibrary, paper);
+    // 600 rows a deleted collection left behind, older than the live ones.
+    const gone = (await asUser.mutation(api.library.collections.createCollection, { name: "Gone" })).id;
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 600; i++) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: gone, libraryItemId: itemId, assignedAt: i });
+      await ctx.db.delete("collections", gone);
+    });
+    const live = [];
+    for (const name of ["One", "Two", "Three"]) {
+      const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name })).id;
+      await asUser.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: itemId });
+      live.push(collectionId);
+    }
+
+    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
+    const { id: restoredId } = await asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
+    await t.finishAllScheduledFunctions(() => {});
+
+    const memberships = await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", restoredId)).take(10));
+    expect(memberships.map((membership) => membership.collectionId).sort()).toEqual([...live].sort());
+    // The removed paper's own rows are all gone.
+    expect(await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", itemId)).take(1))).toEqual([]);
+  });
+
+  it("deletes every membership of a deleted collection, however many, so none is left behind", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "Big" })).id;
+    const { id: itemId } = await asUser.mutation(api.library.mutations.saveToLibrary, paper);
+    // More than one transaction deletes.
+    for (let start = 0; start < 2_500; start += 500) {
+      await t.run(async (ctx) => {
+        for (let i = start; i < start + 500; i++) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId, libraryItemId: itemId, assignedAt: i });
+      });
+    }
+    await asUser.mutation(api.library.collections.deleteCollection, { collectionId });
+    await t.finishAllScheduledFunctions(() => {});
+    expect(await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).take(1))).toEqual([]);
+  });
+
+  it("keeps the research rating search cards show in step with the library", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const researchRating = async () =>
+      await t.run(async (ctx) =>
+        (await ctx.db
+          .query("paperRatings")
+          .withIndex("by_user_and_paperId", (q) => q.eq("userId", user!._id).eq("data.paperId", paper.openalexId))
+          .unique())?.data.rating ?? null,
+      );
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 3 });
+    expect(await researchRating()).toBe(3);
+
+    await asUser.mutation(api.library.mutations.setLibraryRating, { openalexId: paper.openalexId, rating: null });
+    expect(await researchRating()).toBeNull();
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 5 });
+    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
+    expect(await researchRating()).toBeNull();
+
+    await asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
+    expect(await researchRating()).toBe(5);
+  });
+
+  it("adds an unsaved paper to a collection by saving it once, and takes it out without unsaving it", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "Reading" })).id;
+    await asUser.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: true });
+    await asUser.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: true });
+
+    const saved = await asUser.query(api.library.queries.savedPaper, { openalexId: paper.openalexId });
+    expect(saved?.inCollection).toBe(true);
+    expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(1);
+    expect((await t.run(async (ctx) => await ctx.db.get("collections", collectionId)))?.itemCount).toBe(1);
+
+    await asUser.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: false });
+
+    expect(await asUser.query(api.library.queries.savedPaper, { openalexId: paper.openalexId })).toEqual({
+      libraryItemId: saved!.libraryItemId,
+      inCollection: false,
+    });
+    expect((await t.run(async (ctx) => await ctx.db.get("collections", collectionId)))?.itemCount).toBe(0);
+  });
+
+  it("won't put a paper in another person's collection", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    await seedUser(t, "clerk_user2", "user2@test.com");
+    const asUser1 = t.withIdentity({ subject: "clerk_user1" });
+    const asUser2 = t.withIdentity({ subject: "clerk_user2" });
+
+    const collectionId = (await asUser2.mutation(api.library.collections.createCollection, { name: "Theirs" })).id;
+
     await expect(
-      asUser1.mutation(api.library.mutations.removeFromLibrary, {
-        itemId: otherItem!._id,
-      })
+      asUser1.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: true }),
     ).rejects.toThrow();
+    expect(await asUser1.query(api.library.queries.getLibraryCount, {})).toBe(0);
+  });
+});
+
+describe("undoing a library change (#342)", () => {
+  const paper = { openalexId: "https://openalex.org/W1", title: "Paper 1" };
+  const { saveToLibrary, setLibraryRating, removeFromLibrary, restoreLibraryItem, setPaperInCollection } = api.library.mutations;
+  const [REMOVE, RATE, IN_COLLECTION, CHANGE] = ["library/mutations:removeFromLibrary", "library/mutations:setLibraryRating", "library/mutations:setPaperInCollection", "research/records:change"] as const;
+  /** The undo, once it's checked to go through the action expected. */
+  function through<Undo extends { path: string }, Path extends Undo["path"]>(undo: Undo | undefined, path: Path) {
+    if (undo?.path !== path) throw new Error(`Expected an undo through ${path}, got ${undo?.path}.`);
+    return undo as Extract<Undo, { path: Path }>;
+  }
+  // A save and a place in a collection are told apart by when they were made, so each step here takes a second.
+  beforeEach(() => void vi.useFakeTimers({ toFake: ["Date"], now: 1_800_000_000_000 }));
+  afterEach(() => void vi.useRealTimers());
+  async function library() {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const signedIn = t.withIdentity({ subject: "clerk_user1" });
+    const mutation = ((...args: unknown[]) => {
+      vi.advanceTimersByTime(1_000);
+      return (signedIn.mutation as (...args: unknown[]) => unknown)(...args);
+    }) as unknown as typeof signedIn.mutation;
+    const onCards = () =>
+      t.run(async (ctx) => (await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", (q) => q.eq("userId", user!._id).eq("data.paperId", paper.openalexId)).unique())?.data.rating ?? null);
+    return {
+      t, mutation, onCards,
+      count: () => signedIn.query(api.library.queries.getLibraryCount, {}),
+      rating: async () => (await t.run((ctx) => ctx.db.query("libraryItems").first()))?.rating,
+      rateOnCards: (rating: number | null) => mutation(api.research.records.change, { accountId: "clerk_user1", requestId: `rate-${Date.now()}`, command: { kind: "rating", paperId: paper.openalexId, rating } }),
+    };
+  }
+
+  it("removes a paper its save added, unless the paper changed in between", async () => {
+    const { mutation, count, onCards, rateOnCards } = await library();
+    const saved = await mutation(saveToLibrary, paper);
+    const unsaved = await mutation(removeFromLibrary, through(saved.undo, REMOVE).args);
+    expect(await count()).toBe(0);
+    // Put back, it's the save it was, so the save can be undone again.
+    await mutation(restoreLibraryItem, unsaved.undo!.args);
+    expect(await count()).toBe(1);
+    await mutation(removeFromLibrary, through(saved.undo, REMOVE).args);
+    expect(await count()).toBe(0);
+    // Saved afresh, it isn't the paper that save added.
+    await mutation(saveToLibrary, paper);
+    await expect(mutation(removeFromLibrary, through(saved.undo, REMOVE).args)).rejects.toThrow(/changed since/);
+    await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+
+    // Rated since its save: undoing the save leaves it. Once that rating is undone, the save can be undone.
+    const second = await mutation(saveToLibrary, paper);
+    const rated = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 3 });
+    await expect(mutation(removeFromLibrary, through(second.undo, REMOVE).args)).rejects.toThrow(/changed since/);
+    await mutation(setLibraryRating, through(rated.undo, RATE).args);
+    // Rated on a search card alone since: removing the paper would clear that rating, so it stays too.
+    await rateOnCards(5);
+    await expect(mutation(removeFromLibrary, through(second.undo, REMOVE).args)).rejects.toThrow(/changed since/);
+    expect([await count(), await onCards()]).toEqual([1, 5]);
+    await rateOnCards(null);
+    await mutation(removeFromLibrary, through(second.undo, REMOVE).args);
+    expect(await count()).toBe(0);
+  });
+
+  it("leaves a paper put in a collection since its save, and keeps its save and its places through a removal that's undone", async () => {
+    const { t, mutation, count } = await library();
+    const { id: collectionId } = await mutation(api.library.collections.createCollection, { name: "Reading" });
+    const items = async () => (await t.run((ctx) => ctx.db.get("collections", collectionId)))?.itemCount;
+    const saved = await mutation(saveToLibrary, paper);
+    const added = await mutation(setPaperInCollection, { paper, collectionId, inCollection: true });
+    // Undoing the save would take the paper out of the collection.
+    await expect(mutation(removeFromLibrary, through(saved.undo, REMOVE).args)).rejects.toThrow(/changed since/);
+    expect([await count(), await items()]).toEqual([1, 1]);
+
+    // Removed and put back, it's the same save in the same place, so both steps can still be undone, newest first.
+    const removed = await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+    await mutation(restoreLibraryItem, removed.undo!.args);
+    expect([await count(), await items()]).toEqual([1, 1]);
+    await mutation(setPaperInCollection, added.undo!.args);
+    await mutation(removeFromLibrary, through(saved.undo, REMOVE).args);
+    expect([await count(), await items()]).toEqual([0, 0]);
+  });
+
+  it("puts a rating back to what it was in the library and on search cards, and refuses once either has changed", async () => {
+    const { mutation, rating, onCards, rateOnCards } = await library();
+    await mutation(saveToLibrary, paper);
+    const rated = await mutation(saveToLibrary, { ...paper, rating: 4 });
+    expect(rated.undo).toMatchObject({ path: RATE, args: { openalexId: paper.openalexId, rating: null, expect: { rating: 4 } } });
+    const rerated = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 2 });
+    await expect(mutation(setLibraryRating, through(rated.undo, RATE).args)).rejects.toThrow(/changed since/);
+    await mutation(setLibraryRating, through(rerated.undo, RATE).args);
+    expect([await rating(), await onCards()]).toEqual([4, 4]);
+    // Setting what it already is, and saving again without a rating, change nothing: no undo.
+    expect((await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 4 })).undo).toBeUndefined();
+    expect((await mutation(saveToLibrary, paper)).undo).toBeUndefined();
+
+    // Rated on a search card since: the undo would overwrite that, so it's refused and both stay.
+    await rateOnCards(5);
+    await expect(mutation(setLibraryRating, through(rated.undo, RATE).args)).rejects.toThrow(/changed since/);
+    expect([await rating(), await onCards()]).toEqual([4, 5]);
+    // The two now differ, so a new rating has no undo: putting one back would lose the other.
+    expect((await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 1 })).undo).toBeUndefined();
+
+    // A paper removed and saved afresh with the same rating isn't the paper the undo was for.
+    const first = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 3 });
+    await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+    await mutation(saveToLibrary, { ...paper, rating: 3 });
+    await expect(mutation(setLibraryRating, through(first.undo, RATE).args)).rejects.toThrow(/changed since/);
+    await expect(mutation(setLibraryRating, { openalexId: "https://openalex.org/W9", rating: 1 })).rejects.toThrow(/isn't in the library/);
+  });
+
+  it("keeps a rating a paper had on search cards before it was saved", async () => {
+    const { mutation, onCards, rateOnCards } = await library();
+    await rateOnCards(4);
+    // Removing the paper would clear that rating, so this save has no undo.
+    expect((await mutation(saveToLibrary, paper)).undo).toBeUndefined();
+    expect((await mutation(saveToLibrary, { openalexId: "https://openalex.org/W2", title: "Paper 2" })).undo).toBeDefined();
+    await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+
+    // Not in the library: clearing its rating clears the one on search cards, and the undo puts that back.
+    await rateOnCards(4);
+    const cleared = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: null });
+    expect(await onCards()).toBeNull();
+    await mutation(api.research.records.change, { accountId: "clerk_user1", requestId: "undo-clear", ...through(cleared.undo, CHANGE).args });
+    expect(await onCards()).toBe(4);
+  });
+
+  it("reverses only the collection change it made, by the paper's ID, and says so when the paper or the collection is gone", async () => {
+    const { t, mutation, count } = await library();
+    const { id: collectionId } = await mutation(api.library.collections.createCollection, { name: "Reading" });
+    const items = async () => (await t.run((ctx) => ctx.db.get("collections", collectionId)))?.itemCount;
+
+    const added = await mutation(setPaperInCollection, { paper, collectionId, inCollection: true });
+    expect(added.undo).toMatchObject({ path: IN_COLLECTION, args: { paper: { openalexId: paper.openalexId }, collectionId, inCollection: false } });
+    // Already there: no undo, so undoing never takes out a paper this call didn't put in.
+    expect((await mutation(setPaperInCollection, { paper, collectionId, inCollection: true })).undo).toBeUndefined();
+    const takenOut = await mutation(setPaperInCollection, added.undo!.args);
+    expect([await items(), await count()]).toEqual([0, 1]);
+    // Already out: no undo either.
+    expect((await mutation(setPaperInCollection, { paper, collectionId, inCollection: false })).undo).toBeUndefined();
+    // Put back by that undo, by its ID alone, it has its place again: the add can be undone once more.
+    await mutation(setPaperInCollection, takenOut.undo!.args);
+    await mutation(setPaperInCollection, added.undo!.args);
+    expect(await items()).toBe(0);
+    // Put in again by hand, it's a new place, which the first add's undo leaves.
+    await mutation(setPaperInCollection, { paper, collectionId, inCollection: true });
+    await expect(mutation(setPaperInCollection, added.undo!.args)).rejects.toThrow(/put in the collection again/);
+    expect(await items()).toBe(1);
+
+    const out = await mutation(setPaperInCollection, { paper, collectionId, inCollection: false });
+    await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+    await expect(mutation(setPaperInCollection, out.undo!.args)).rejects.toThrow(/no longer in the library/);
+    // Saved afresh, it isn't the paper that was taken out.
+    await mutation(saveToLibrary, paper);
+    await expect(mutation(setPaperInCollection, out.undo!.args)).rejects.toThrow(/saved again/);
+    expect(await items()).toBe(0);
+    await mutation(api.library.collections.deleteCollection, { collectionId });
+    await expect(mutation(setPaperInCollection, added.undo!.args)).rejects.toThrow(/no longer exists/);
+  });
+});
+
+describe("the library as the assistant reads it", () => {
+  it("lists saved papers a page at a time, narrowed by rating, a collection, years or words, with how many match", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_reader", "reader@test.com", { libraryItemCount: 3 });
+    const other = await seedUser(t, "clerk_other", "other@test.com", { libraryItemCount: 1 });
+    const asUser = t.withIdentity({ subject: "clerk_reader" });
+    const papers = (args: Parameters<typeof asUser.query<typeof api.library.queries.papers>>[1] = {}) => asUser.query(api.library.queries.papers, args);
+
+    const tutoring = await seedLibraryItem(t, user!._id, { title: "Tutoring at scale", authors: "Ada Okafor", rating: 5, publicationYear: 2020, journal: "Journal of Trials", savedAt: Date.UTC(2026, 8, 1), openalexId: "https://openalex.org/W1" });
+    const phones = await seedLibraryItem(t, user!._id, { title: "Phones and literacy", publicationYear: 2022, savedAt: Date.UTC(2026, 8, 2), openalexId: "https://openalex.org/W2" });
+    await seedLibraryItem(t, user!._id, { title: "School feeding", rating: 2, publicationYear: 2018, savedAt: Date.UTC(2026, 8, 3), openalexId: "https://openalex.org/W3" });
+    await seedLibraryItem(t, other!._id, { title: "Someone else's paper", openalexId: "https://openalex.org/W4" });
+    const collectionId = await t.run(async (ctx) => {
+      // The second paper was saved without a rating.
+      await ctx.db.patch("libraryItems", phones!._id, { rating: undefined });
+      const id = await ctx.db.insert("collections", { userId: user!._id, name: "Chapter 2", itemCount: 2, createdAt: 1, updatedAt: 1 });
+      for (const item of [tutoring!, phones!]) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: id, libraryItemId: item._id, assignedAt: 1 });
+      return id;
+    });
+
+    // The whole library, newest saved first, each paper with what the assistant needs to act on it.
+    const all = await papers();
+    expect(all.total).toBe(3);
+    expect(all.next).toBeUndefined();
+    expect(all.papers.map((paper) => paper.title)).toEqual(["School feeding", "Phones and literacy", "Tutoring at scale"]);
+    expect(all.papers[2]).toEqual({ libraryItemId: tutoring!._id, id: "https://openalex.org/W1", title: "Tutoring at scale", authors: "Ada Okafor", year: 2020, journal: "Journal of Trials", rating: 5, savedOn: "2026-09-01" });
+    // A model that fills in every argument sends null or false for what it doesn't mean: that reads as left out.
+    expect((await papers({ search: null, collectionId: null, rated: null, minRating: null, maxRating: null, yearFrom: null, yearTo: null, sort: null, ascending: false, cursor: null })).total).toBe(3);
+
+    // The ones they haven't rated, the ones they have, and a rating range.
+    expect((await papers({ rated: false })).papers.map((paper) => paper.title)).toEqual(["Phones and literacy"]);
+    expect((await papers({ rated: true })).papers).toHaveLength(2);
+    // A narrowed list has no total: counting it is its own read, so a page and a count never share one.
+    expect((await papers({ rated: true })).total).toBeUndefined();
+    const count = (args: Parameters<typeof asUser.query<typeof api.library.queries.countPapers>>[1] = {}) => asUser.query(api.library.queries.countPapers, args);
+    expect([await count({ rated: true }), await count({ rated: false }), await count({ search: "literacy" }), await count({ collectionId, minRating: 4 }), await count()]).toEqual([{ count: 2 }, { count: 1 }, { count: 1 }, { count: 1 }, { count: 3 }]);
+    expect((await papers({ minRating: 4 })).papers.map((paper) => paper.title)).toEqual(["Tutoring at scale"]);
+    await expect(papers({ rated: false, minRating: 4 })).rejects.toThrow(/not both/);
+    // One collection, a span of years, words, and another order.
+    expect(await papers({ collectionId })).toMatchObject({ total: 2, papers: [{ title: "Phones and literacy" }, { title: "Tutoring at scale" }] });
+    expect((await papers({ yearFrom: 2019, yearTo: 2021 })).papers.map((paper) => paper.title)).toEqual(["Tutoring at scale"]);
+    expect((await papers({ search: "literacy" })).papers.map((paper) => paper.title)).toEqual(["Phones and literacy"]);
+    expect((await papers({ sort: "year", ascending: true })).papers.map((paper) => paper.year)).toEqual([2018, 2020, 2022]);
+
+    // More than a page: the next one carries on where this stopped.
+    for (let i = 0; i < 22; i++) await seedLibraryItem(t, user!._id, { title: `Paper ${i}`, savedAt: Date.UTC(2026, 9, 1) + i, openalexId: `https://openalex.org/W${100 + i}` });
+    await t.run(async (ctx) => ctx.db.patch("users", user!._id, { libraryItemCount: 25 }));
+    const first = await papers();
+    expect(first).toMatchObject({ total: 25, next: expect.any(String) });
+    expect(first.papers).toHaveLength(20);
+    const second = await papers({ cursor: first.next });
+    expect(second.papers).toHaveLength(5);
+    expect(second.next).toBeUndefined();
+    expect(new Set([...first.papers, ...second.papers].map((paper) => paper.id)).size).toBe(25);
   });
 });

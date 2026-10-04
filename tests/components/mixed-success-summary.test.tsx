@@ -21,9 +21,7 @@ vi.mock("@/convex/_generated/api", () => ({
   api: {
     extraction: {
       queries: {
-        mixedSuccessSummary: {
-          getMixedSuccessSummary: "__stub_mixed_success",
-        },
+        countJobFailures: "__stub_job_failures",
       },
     },
   },
@@ -44,12 +42,9 @@ import type { Id } from "@/convex/_generated/dataModel";
 
 const fakeJobId = "job_abc" as Id<"extractionJobs">;
 
-function withSummary(summary: {
-  total: number;
-  byCode: Array<{ code: string; count: number; retryable: boolean }>;
-  answeredTotal: number;
-  totalQuestions: number;
-}) {
+/** The job's failure counts, as the query returns them: papers that failed per code. */
+function withFailures(paperErrors: Record<string, number>, answered: number, asked: number) {
+  const summary = { asked, answered, retryable: 0, permanent: {}, paperErrors };
   useProtectedQueryMock.mockReturnValue({
     data: summary,
     phase: "authenticated",
@@ -79,27 +74,13 @@ describe("<MixedSuccessSummary>", () => {
   });
 
   it("renders nothing when there are zero failures (clean completed job)", () => {
-    withSummary({
-      total: 0,
-      byCode: [],
-      answeredTotal: 500,
-      totalQuestions: 500,
-    });
+    withFailures({}, 500, 500);
     const { container } = render(<MixedSuccessSummary jobId={fakeJobId} papersRead={11} />);
     expect(container).toBeEmptyDOMElement();
   });
 
   it("renders a region with the full data-* contract when there are failures", () => {
-    withSummary({
-      total: 27,
-      byCode: [
-        { code: "rate_limit", count: 15, retryable: true },
-        { code: "pdf_invalid", count: 8, retryable: false },
-        { code: "context_too_long", count: 4, retryable: false },
-      ],
-      answeredTotal: 473,
-      totalQuestions: 500,
-    });
+    withFailures({ rate_limit: 15, pdf_invalid: 8, context_too_long: 4 }, 473, 500);
     render(<MixedSuccessSummary jobId={fakeJobId} papersRead={11} />);
     const region = screen.getByRole("region");
     expect(region).toHaveAttribute("data-mixed-success-summary");
@@ -116,16 +97,7 @@ describe("<MixedSuccessSummary>", () => {
   });
 
   it("emits one data-failure-code row per breakdown entry, preserving query order", () => {
-    withSummary({
-      total: 7,
-      byCode: [
-        { code: "rate_limit", count: 4, retryable: true },
-        { code: "auth", count: 2, retryable: false },
-        { code: "pdf_invalid", count: 1, retryable: false },
-      ],
-      answeredTotal: 3,
-      totalQuestions: 10,
-    });
+    withFailures({ rate_limit: 4, auth: 2, pdf_invalid: 1 }, 3, 10);
     render(<MixedSuccessSummary jobId={fakeJobId} papersRead={11} />);
     const rows = document.querySelectorAll("[data-failure-code]");
     expect(rows.length).toBe(3);
@@ -135,15 +107,7 @@ describe("<MixedSuccessSummary>", () => {
   });
 
   it("data-retryable-total is zero when all failures are permanent", () => {
-    withSummary({
-      total: 3,
-      byCode: [
-        { code: "pdf_invalid", count: 2, retryable: false },
-        { code: "auth", count: 1, retryable: false },
-      ],
-      answeredTotal: 7,
-      totalQuestions: 10,
-    });
+    withFailures({ pdf_invalid: 2, auth: 1 }, 7, 10);
     render(<MixedSuccessSummary jobId={fakeJobId} papersRead={11} />);
     const region = screen.getByRole("region");
     expect(region).toHaveAttribute("data-retryable-total", "0");

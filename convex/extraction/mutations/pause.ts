@@ -17,7 +17,7 @@
  * pausing the pool would leak across all users sharing it.
  */
 
-import { mutation } from "../../_generated/server";
+import { mutation } from "../../lib/functions";
 import { v } from "convex/values";
 import { requireAuth } from "../../lib/auth";
 import { createError } from "../../lib/errors";

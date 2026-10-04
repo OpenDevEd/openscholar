@@ -81,7 +81,7 @@ export function ChatStartReview() {
 
       <dl
         data-role="source-ledger"
-        className="divide-y divide-border/60 border-y border-border/60"
+        className="divide-y divide-border-subtle border-y border-border-subtle"
       >
         {breakdown.map((row) => (
           <LedgerRow key={rowKey(row)} row={row} t={t} />

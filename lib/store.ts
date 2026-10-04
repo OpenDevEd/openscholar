@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { expandShortcuts, type ShortcutExpansions } from './query-shortcuts'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { SIDEBAR_STORAGE_KEY, SIDEBAR_WIDTH_COLLAPSED, SIDEBAR_WIDTH_EXPANDED } from './sidebar-width'
 import type {
@@ -17,6 +18,8 @@ import type {
   BookmarkData,
 } from './types';
 import { MIN_YEAR } from './constants';
+import { bindResearchStore } from './research/binding';
+import { historySummary, importSearchRecord, withQuestion } from './research/records';
 
 // Fallback UUID generator for mobile compatibility
 const generateUUID = (): string => {
@@ -45,29 +48,40 @@ const removeQuestionFromResponses = (
     ])
   );
 
-interface RatingsState {
+export interface RatingsState {
   ratings: Record<string, number>
   setRating: (paperId: string, rating: number | null) => void
-  clearRatings: () => void
+  /** The person's ratings of these papers, read now: what a download writes, whatever the page has loaded. */
+  readRatings: (paperIds: string[]) => Promise<Record<string, number>>
 }
 
-interface SearchHistoryState {
+/** The search a copy takes its history from, as a list shows it. */
+export type CopySource = Pick<SearchResult, 'id' | 'updatedAt' | 'queryHistoryCount' | 'questionCount' | 'latestQuestion' | 'questionText'>;
+
+export interface SearchHistoryState {
   searchHistory: SearchResult[]
-  addSearchResult: (result: Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt' | 'queryHistory' | 'screeningQuestions' | 'screeningResponses' | 'questionHistory'> & { questionHistory?: QuestionHistoryEntry[] }) => string
+  addSearchResult: (result: Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt' | 'queryHistory' | 'screeningQuestions' | 'screeningResponses' | 'questionHistory' | 'queryHistoryCount' | 'questionCount' | 'latestQuestion' | 'questionText'> & { questionHistory?: QuestionHistoryEntry[] }) => string
   updateSearchResult: (id: string, updates: Partial<Omit<SearchResult, 'id' | 'createdAt'>>) => void
   addQueryToHistory: (id: string, query: string, field: SearchField) => void
+  removeQueryHistoryEntry: (id: string, entry: QueryHistoryEntry) => void
+  /** Gives search `id` the history of search `from`. */
+  /** Gives a search another search's parameters (`updates`) and history at once. */
+  copySearch: (id: string, from: CopySource, updates: Partial<Omit<SearchResult, 'id' | 'createdAt'>>) => void
   addQuestionToHistory: (id: string, question: string) => void
   addScreeningQuestion: (id: string, question: string) => void
   updateScreeningQuestion: (id: string, questionIndex: number, updates: Partial<ScreeningQuestionEntry>) => void
   removeScreeningQuestion: (id: string, questionIndex: number) => void
   clearScreeningQuestions: (id: string) => void
   setScreeningResponse: (searchId: string, paperId: string, question: string, response: boolean | null) => void
-  setScreeningResponses: (searchId: string, paperId: string, responses: Record<string, boolean | null>) => void
+  /** The model's answers for one paper; `confidences` is its confidence in each, by question. */
+  setScreeningResponses: (searchId: string, paperId: string, responses: Record<string, boolean | null>, confidences?: Record<string, number>) => void
   getScreeningResponse: (searchId: string, paperId: string, question: string) => boolean | null | undefined
+  /** A search's answers for these papers, read from the account when signed in: a page holds only the answers of the papers it shows. */
+  readScreeningResponses: (searchId: string, paperIds: string[]) => Promise<ScreeningResponses>
   clearScreeningResponses: (searchId: string, paperId?: string) => void
   removeScreeningQuestionFromAllPapers: (searchId: string, question: string) => void
   getSearchResult: (id: string) => SearchResult | undefined
-  removeSearchResult: (index: number) => void
+  removeSearchResult: (id: string) => void
   clearSearchHistory: () => void
   migrateSearchResult: (result: SearchResult) => string
   importSearchHistory: (data: Record<string, unknown>[]) => number
@@ -125,17 +139,22 @@ interface FocusModeSettingsState {
   resetSettings: () => void
 }
 
-interface KeywordExpansionState {
+export interface KeywordExpansionState {
   keywords: Record<string, BookmarkData>
   addKeyword: (shorthand: string, expansion: string) => void
-  updateKeyword: (shorthand: string, expansion: string) => void
+  /** Changes a shortcut's expansion; `createdAt` is the shortcut's own, which the list shows it by. */
+  updateKeyword: (shorthand: string, expansion: string, createdAt: number) => void
   removeKeyword: (shorthand: string) => void
   clearKeywords: () => void
+  /** Expands the shortcuts this store holds: every one in this browser, and for an account those read by name. */
   expandQuery: (query: string) => {
     expandedQuery: string;
     warnings: Array<{ key: string; params?: Record<string, string> }>;
   }
-  importKeywords: (data: Record<string, unknown>[]) => number
+  /** Reads the shortcuts with these names, so `keywords` and `expandQuery` have them for what follows. */
+  ensureShortcuts: (names: string[]) => Promise<void>
+  /** Adds the shortcuts in an uploaded file whose names aren't taken; says how many. */
+  importKeywords: (data: Record<string, unknown>[]) => Promise<number>
 }
 
 interface AIConfigState {
@@ -152,10 +171,11 @@ interface AIConfigState {
   clearConfig: () => void
 }
 
-export const useRatingsStore = create<RatingsState>()(
+export const localRatingsStore = create<RatingsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ratings: {},
+      readRatings: async () => get().ratings,
       setRating: (paperId: string, rating: number | null) =>
         set((state) => {
           if (rating === null) {
@@ -169,7 +189,6 @@ export const useRatingsStore = create<RatingsState>()(
             },
           }
         }),
-      clearRatings: () => set({ ratings: {} }),
     }),
     {
       name: 'paper-ratings-store',
@@ -185,6 +204,13 @@ interface SearchHistoryPersistedState {
 }
 
 // `unknown` is correct for Zustand persist `migrate` — shape varies by version.
+/** A local history without one `entry`, and its count. */
+function withoutEntry(queryHistory: QueryHistoryEntry[], entry: QueryHistoryEntry) {
+  const index = queryHistory.findIndex((current) => current.timestamp === entry.timestamp && current.query === entry.query && current.field === entry.field);
+  const next = index === -1 ? queryHistory : queryHistory.toSpliced(index, 1);
+  return { queryHistory: next, queryHistoryCount: next.length };
+}
+
 export function migrateSearchHistoryState(persistedState: unknown, version: number): unknown {
   const state = persistedState as SearchHistoryPersistedState;
 
@@ -293,21 +319,34 @@ export function migrateSearchHistoryState(persistedState: unknown, version: numb
     }
   }
 
+  // Migration for version 7 -> 8: the summary a search keeps of its history (#354)
+  if (version <= 7) {
+    if (state.searchHistory) {
+      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => ({
+        ...item,
+        ...historySummary((item.queryHistory || []) as unknown[], (item.questionHistory || []) as Array<{ question: string }>),
+      }));
+    }
+  }
+
   return state;
 }
 
-export const useSearchHistoryStore = create<SearchHistoryState>()(
+export const localSearchHistoryStore = create<SearchHistoryState>()(
   persist(
     (set, get) => ({
       searchHistory: [],
       addSearchResult: (result) => {
         const id = generateUUID();
         const now = new Date().toISOString();
+        const queryHistory = [{ query: result.query, timestamp: now, field: result.field }];
+        const questionHistory = result.questionHistory || [];
         const newResult: SearchResult = {
           ...result,
           id,
-          queryHistory: [{ query: result.query, timestamp: now, field: result.field }],
-          questionHistory: result.questionHistory || [],
+          queryHistory,
+          questionHistory,
+          ...historySummary(queryHistory, questionHistory),
           screeningQuestions: [],
           screeningResponses: {},
           createdAt: now,
@@ -337,12 +376,34 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
               ? {
                   ...item,
                   query,
-                  queryHistory: [...item.queryHistory, { query, timestamp: now, field }],
+                  queryHistory: [...(item.queryHistory ?? []), { query, timestamp: now, field }],
+                  queryHistoryCount: item.queryHistoryCount + 1,
                   updatedAt: now
                 }
               : item
           ),
         }));
+      },
+      removeQueryHistoryEntry: (id, entry) => {
+        set((state) => ({
+          searchHistory: state.searchHistory.map((item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  ...withoutEntry(item.queryHistory ?? [], entry),
+                  updatedAt: new Date().toISOString(),
+                }
+              : item
+          ),
+        }));
+      },
+      copySearch: (id, from, updates) => {
+        set((state) => {
+          const source = state.searchHistory.find((item) => item.id === from.id);
+          if (!source) return state;
+          const { queryHistory, questionHistory, queryHistoryCount, questionCount, latestQuestion, questionText } = source;
+          return { searchHistory: state.searchHistory.map((item) => item.id === id ? { ...item, ...updates, queryHistory, questionHistory, queryHistoryCount, questionCount, latestQuestion, questionText, updatedAt: new Date().toISOString() } : item) };
+        });
       },
       addQuestionToHistory: (id, question) => {
         const now = new Date().toISOString();
@@ -351,7 +412,8 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
             item.id === id
               ? {
                   ...item,
-                  questionHistory: [...item.questionHistory, { question, timestamp: now }],
+                  questionHistory: [...(item.questionHistory ?? []), { question, timestamp: now }],
+                  ...withQuestion(item, question),
                   updatedAt: now
                 }
               : item
@@ -468,6 +530,11 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
         const searchResult = get().searchHistory.find(item => item.id === searchId);
         return searchResult?.screeningResponses?.[paperId]?.[question];
       },
+      // This browser holds every answer of its own searches.
+      readScreeningResponses: async (searchId, paperIds) => {
+        const responses = get().searchHistory.find(item => item.id === searchId)?.screeningResponses ?? {};
+        return Object.fromEntries(paperIds.flatMap(paperId => (responses[paperId] ? [[paperId, responses[paperId]]] : [])));
+      },
       clearScreeningResponses: (searchId, paperId) => {
         set((state) => ({
           searchHistory: state.searchHistory.map((item) =>
@@ -501,9 +568,9 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
       getSearchResult: (id) => {
         return get().searchHistory.find((item) => item.id === id);
       },
-      removeSearchResult: (index) =>
+      removeSearchResult: (id) =>
         set((state) => ({
-          searchHistory: state.searchHistory.filter((_, i) => i !== index),
+          searchHistory: state.searchHistory.filter((item) => item.id !== id),
         })),
       clearSearchHistory: () => set({ searchHistory: [] }),
       migrateSearchResult: (result) => {
@@ -515,6 +582,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
             ...result,
             id,
             questionHistory: result.questionHistory || [],
+            ...historySummary(result.queryHistory || [], result.questionHistory || []),
             screeningQuestions: result.screeningQuestions || [],
             screeningResponses: result.screeningResponses || {},
             createdAt: now,
@@ -533,39 +601,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
         return result.id;
       },
       importSearchHistory: (data) => {
-        let importedCount = 0;
-        const validItems: SearchResult[] = [];
-        
-        data.forEach((item) => {
-          // Map different possible field names to our expected format
-          const query = String(item.search_query || item.query || '');
-          const count = typeof item.count === 'number' ? item.count : 0;
-          const field = String(item.field || 'title_and_abstract');
-
-          // Skip items without required fields (allow empty query but require count)
-          if (query === undefined || query === null || typeof count !== 'number') {
-            return;
-          }
-          
-          // Create a new search result with generated ID and timestamps
-          const id = generateUUID();
-          const now = new Date().toISOString();
-          const newResult: SearchResult = {
-            id,
-            query,
-            queryHistory: [{ query, timestamp: now, field: field as SearchField }],
-            questionHistory: [],
-            screeningQuestions: [],
-            screeningResponses: {},
-            count,
-            field: field as SearchField,
-            createdAt: now,
-            updatedAt: now,
-          };
-          
-          validItems.push(newResult);
-          importedCount++;
-        });
+        const validItems = data.map(item => importSearchRecord(item, generateUUID()));
         
         if (validItems.length > 0) {
           set((state) => ({
@@ -573,12 +609,12 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
           }));
         }
         
-        return importedCount;
+        return validItems.length;
       },
     }),
     {
       name: 'search-history-store',
-      version: 7, // Increment when migrations are needed
+      version: 8, // Increment when migrations are needed
       migrate: migrateSearchHistoryState,
     }
   )
@@ -703,7 +739,7 @@ export const useFocusModeSettingsStore = create<FocusModeSettingsState>()(
   )
 )
 
-export const useKeywordExpansionStore = create<KeywordExpansionState>()(
+export const localKeywordExpansionStore = create<KeywordExpansionState>()(
   persist(
     (set, get) => ({
       keywords: {},
@@ -727,21 +763,10 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
         return { keywords: rest };
       }),
       clearKeywords: () => set({ keywords: {} }),
-      expandQuery: (query) => {
-        const { keywords } = get();
-        const warnings: Array<{ key: string; params?: Record<string, string> }> = [];
-        const expandedQuery = query.replace(/(\w[\w-]*)\.\.\./g, (match, keyword) => {
-          const bookmarkData = keywords[keyword];
-          if (bookmarkData?.expansion) {
-            return bookmarkData.expansion;
-          } else {
-            warnings.push({ key: 'bookmarkNotFound', params: { keyword } });
-            return match;
-          }
-        });
-        return { expandedQuery, warnings };
-      },
-      importKeywords: (data) => {
+      expandQuery: (query) => expandShortcuts(query, shortcutExpansions(get().keywords)),
+      // Every shortcut is in this browser already.
+      ensureShortcuts: async () => {},
+      importKeywords: async (data) => {
         let importedCount = 0;
         const validItems: Record<string, BookmarkData> = {};
         
@@ -873,11 +898,6 @@ interface KeywordExpansionDialogState {
   resetForm: () => void
 }
 
-interface SearchHistoryUIState {
-  currentPage: number
-  setCurrentPage: (page: number) => void
-}
-
 // Removed NavbarState - using currentQuery from ResultsStore as single source of truth
 // Removed PageContentState - using currentQuery from ResultsStore as single source of truth
 
@@ -919,11 +939,6 @@ export const useKeywordExpansionDialogStore = create<KeywordExpansionDialogState
   setCurrentKeyword: (keyword) => set({ currentKeyword: keyword }),
   setSuggestedQuery: (query) => set({ suggestedQuery: query }),
   resetForm: () => set({ newShorthand: '', newExpansion: '', currentKeyword: '', suggestedQuery: '' }),
-}))
-
-export const useSearchHistoryUIStore = create<SearchHistoryUIState>((set) => ({
-  currentPage: 1,
-  setCurrentPage: (page) => set({ currentPage: page }),
 }))
 
 export const useAIConfigDialogStore = create<AIConfigDialogState>((set) => ({
@@ -1258,3 +1273,12 @@ export const useTransientScreeningStore = create<{
     }
   )
 );
+
+export const useSearchHistoryStore = Object.assign(bindResearchStore(localSearchHistoryStore, 'history'), { persist: localSearchHistoryStore.persist });
+export const useKeywordExpansionStore = Object.assign(bindResearchStore(localKeywordExpansionStore, 'shortcuts'), { persist: localKeywordExpansionStore.persist });
+export const useRatingsStore = Object.assign(bindResearchStore(localRatingsStore, 'ratings'), { persist: localRatingsStore.persist });
+
+/** The Bookmarks page's shortcuts as expansions by name. */
+export function shortcutExpansions(keywords: Record<string, { expansion: string }>): ShortcutExpansions {
+  return Object.fromEntries(Object.entries(keywords).map(([name, { expansion }]) => [name, expansion]))
+}

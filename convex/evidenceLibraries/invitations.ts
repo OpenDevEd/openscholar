@@ -1,10 +1,14 @@
 import { z } from "zod";
 import { v } from "convex/values";
-import { internalMutation, internalQuery, mutation, query } from "../_generated/server";
+import { paginationResultValidator } from "convex/server";
+import { internal } from "../_generated/api";
+import { internalMutation, internalQuery, mutation, query, type QueryCtx } from "../lib/functions";
 import { requireEvidenceLibraryAccess, readLibraryRole, readPendingLibraryInvitations } from "./access";
 import { getCurrentUser } from "../lib/auth";
 import { rateLimit } from "../lib/rateLimit";
 import { createError } from "../lib/errors";
+import { assertLibraryHasRoom, assertPersonHasRoom } from "./members";
+import { MAX_ACCOUNTS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_EMAIL,MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
 
 const roleValidator = v.union(v.literal("editor"), v.literal("creator"));
 const invitationArgs = { libraryId: v.id("evidenceLibraries"), email: v.string(), role: roleValidator };
@@ -17,18 +21,42 @@ export const prepare = internalMutation({
     await rateLimit(ctx, { name: "library-invitation", key: args.libraryId, throws: true });
     const email = args.email.trim().toLowerCase();
     if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw createError("VALIDATION_ERROR", "Enter a valid email address");
-    const users = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", email)).collect();
+    // A deleted account keeps its address, so one address can name several accounts.
+    const users = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", email)).take(MAX_ACCOUNTS_PER_EMAIL + 1);
+    if (users.length > MAX_ACCOUNTS_PER_EMAIL) throw createError("VALIDATION_ERROR", "Too many accounts have used this address to check which of them already has access. Invite a different address.");
     for (const user of users) {
       if (await readLibraryRole(ctx, access.library, user.clerkId)) throw createError("CONFLICT", "This person already has library access");
     }
-    const invitations = await ctx.db.query("evidenceLibraryInvitations")
-      .withIndex("by_libraryId_and_email", q => q.eq("libraryId", args.libraryId).eq("email", email)).collect();
-    const pending = invitations.find(i => i.state === "pending");
-    if (pending) {
-      await ctx.db.patch("evidenceLibraryInvitations", pending._id, { role: args.role, invitedBy: access.clerkUserId, expiresAt: Date.now() + 7 * 86400000, delivery: "queued" });
-      return pending._id;
+    const pending = await ctx.db.query("evidenceLibraryInvitations")
+      .withIndex("by_libraryId_and_email_and_state", q => q.eq("libraryId", args.libraryId).eq("email", email).eq("state", "pending")).first();
+    if (!pending) {
+      // Both lists of waiting invitations stay small enough to read in one query.
+      const waiting = await ctx.db.query("evidenceLibraryInvitations")
+        .withIndex("by_libraryId_and_state", q => q.eq("libraryId", args.libraryId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_LIBRARY);
+      if (waiting.length >= MAX_PENDING_INVITATIONS_PER_LIBRARY) throw createError("VALIDATION_ERROR", `This library has ${MAX_PENDING_INVITATIONS_PER_LIBRARY} invitations waiting. Cancel one to send another.`);
+      const theirs = await ctx.db.query("evidenceLibraryInvitations")
+        .withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_EMAIL);
+      if (theirs.length >= MAX_PENDING_INVITATIONS_PER_EMAIL) throw createError("VALIDATION_ERROR", "This person has too many invitations waiting. Ask them to answer some first.");
     }
-    return await ctx.db.insert("evidenceLibraryInvitations", { ...args, email, invitedBy: access.clerkUserId, expiresAt: Date.now() + 7 * 86400000, state: "pending", delivery: "queued" });
+    const expiresAt = Date.now() + 7 * 86400000;
+    const invitationId = pending?._id ?? await ctx.db.insert("evidenceLibraryInvitations", { ...args, email, invitedBy: access.clerkUserId, expiresAt, state: "pending", delivery: "queued" });
+    if (pending) await ctx.db.patch("evidenceLibraryInvitations", pending._id, { role: args.role, invitedBy: access.clerkUserId, expiresAt, delivery: "queued" });
+    await ctx.scheduler.runAt(expiresAt, internal.evidenceLibraries.invitations.expire, { invitationId });
+    return invitationId;
+  },
+});
+
+/**
+ * Marks an invitation expired once its time is up, so lists filter on its state and
+ * never on the clock. A re-sent invitation has a later time and waits for its own run.
+ */
+export const expire = internalMutation({
+  args: { invitationId: v.id("evidenceLibraryInvitations") },
+  returns: v.null(),
+  handler: async (ctx, { invitationId }) => {
+    const invitation = await ctx.db.get("evidenceLibraryInvitations", invitationId);
+    if (invitation?.state === "pending" && invitation.expiresAt <= Date.now()) await ctx.db.patch("evidenceLibraryInvitations", invitationId, { state: "expired" });
+    return null;
   },
 });
 
@@ -81,12 +109,21 @@ export const change = mutation({
   },
 });
 
-export const listMine = query({
+const pendingInvitationValidator = v.object({
+  invitationId: v.id("evidenceLibraryInvitations"), libraryId: v.id("evidenceLibraries"), name: v.string(),
+  role: v.union(v.literal("editor"), v.literal("creator")),
+  organization: v.object({ id: v.id("organizations"), name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
+});
+const pendingInvitations = async (ctx: QueryCtx) => {
+  const user = await getCurrentUser(ctx);
+  return user ? await readPendingLibraryInvitations(ctx, user) : [];
+};
+
+/** The library invitations waiting for the person, as one page: an address has at most MAX_PENDING_INVITATIONS_PER_EMAIL waiting, which inviting enforces. */
+export const listInvitations = query({
   args: {},
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    return user ? await readPendingLibraryInvitations(ctx, user) : [];
-  },
+  returns: paginationResultValidator(pendingInvitationValidator),
+  handler: async (ctx) => ({ page: await pendingInvitations(ctx), isDone: true, continueCursor: "" }),
 });
 
 /** Called only after Clerk confirms a verified address on the signed-in account. */
@@ -105,6 +142,8 @@ export const respondVerified = internalMutation({
     if (args.accept) {
       const member = await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", invitation.libraryId).eq("clerkUserId", identity.subject)).unique();
       // An outstanding invitation cannot overwrite a role granted since it was sent.
+      if (!member) await assertLibraryHasRoom(ctx, invitation.libraryId);
+      if (!member) await assertPersonHasRoom(ctx, identity.subject);
       if (!member) await ctx.db.insert("evidenceLibraryMembers", { libraryId: invitation.libraryId, clerkUserId: identity.subject, role: invitation.role, grantedBy: invitation.invitedBy, grantedAt: Date.now() });
     }
     await ctx.db.patch("evidenceLibraryInvitations", invitation._id, { state: args.accept ? "accepted" : "declined" });

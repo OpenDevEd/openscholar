@@ -1,5 +1,54 @@
 import type { PaperWithResults, Question } from './filtering';
 
+type ResultsPage<Item> = { page: Item[]; isDone: boolean; continueCursor: string };
+
+/**
+ * Every paper of a results view, read one page per query so an export of any size stays
+ * within Convex's per-query limits (#352). Pages are separate reads, so a paper whose
+ * sort position or filter match changes mid-walk would be read twice or missed: the walk
+ * starts again when a paper comes back twice or it ends with another number of papers
+ * than the view counts, and gives up after `attempts` walks.
+ */
+export async function readEveryResultsPage<Item extends { _id: string }>(
+  readPage: (cursor: string | null) => Promise<ResultsPage<Item>>,
+  countMatching: () => Promise<number>,
+  attempts = 3,
+): Promise<Item[]> {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const items = await walkResultsPages(readPage);
+    if (items && items.length === (await countMatching())) return items;
+  }
+  throw new Error("The results kept changing while they were exported");
+}
+
+/** A view's pages, one read each. */
+async function* resultsPages<Item>(readPage: (cursor: string | null) => Promise<ResultsPage<Item>>) {
+  let cursor: string | null = null;
+  do {
+    const result = await readPage(cursor);
+    yield result.page;
+    cursor = result.isDone ? null : result.continueCursor;
+  } while (cursor !== null);
+}
+
+/**
+ * One walk over every page, or null when a paper came back twice.
+ * ponytail: the papers are held whole in the browser, as the file formats need. A job holds
+ * at most PAPER_LIMIT papers; larger jobs would need a format that streams.
+ */
+async function walkResultsPages<Item extends { _id: string }>(readPage: (cursor: string | null) => Promise<ResultsPage<Item>>) {
+  const items: Item[] = [];
+  const seen = new Set<string>();
+  for await (const page of resultsPages(readPage)) {
+    for (const item of page) {
+      if (seen.has(item._id)) return null;
+      seen.add(item._id);
+      items.push(item);
+    }
+  }
+  return items;
+}
+
 /**
  * Downloads a file with the given content
  */

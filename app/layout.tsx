@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Outfit, Geist_Mono } from "next/font/google";
+import { Ubuntu } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { QuerySyncProvider } from "@/components/query-sync-provider";
@@ -22,15 +22,13 @@ import { preloadQuery } from "convex/nextjs";
 import { AssistantOverlay } from "@/components/assistant-mock/assistant-mock";
 import { api } from "@/convex/_generated/api";
 
-const outfit = Outfit({
-  variable: "--font-outfit",
+// The brand typeface. To change it, swap the family here; --font-app feeds
+// --font-sans in globals.css.
+const appFont = Ubuntu({
+  variable: "--font-app",
+  weight: ["400", "500", "700"],
   subsets: ["latin"],
   display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -75,12 +73,12 @@ export default async function RootLayout({
   const [locale, messages, preloadedFlags, preloadedCatalog] = await Promise.all([
     getLocale(),
     getMessages(),
-    preloadQuery(api.featureFlags.queries.getAll),
+    preloadQuery(api.featureFlags.queries.list),
     preloadQuery(api.billing.catalog.get),
   ]);
 
   return (
-    <html lang={locale} suppressHydrationWarning className={cn(outfit.variable, geistMono.variable, "antialiased")}>
+    <html lang={locale} suppressHydrationWarning className={cn(appFont.variable, "antialiased")}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: sidebarWidthScript }} />
       </head>

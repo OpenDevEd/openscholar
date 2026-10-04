@@ -7,12 +7,14 @@
  */
 
 import { defineRateLimits } from "convex-helpers/server/rateLimit";
-import { internalMutation } from "../_generated/server";
+import { internalMutation, type MutationCtx } from "./functions";
 import { v } from "convex/values";
+import { OPENALEX_REQUEST_LIMITS } from "../../lib/openalex/request-limiter";
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
 
 export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
   "library-digest": { kind: "token bucket", rate: 3, period: HOUR, capacity: 3 },
@@ -87,7 +89,33 @@ export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
     period: MINUTE,
     capacity: 6,
   },
+  // OpenAlex requests one account makes on OpenScholar's shared key (#355), from the
+  // Next.js server actions and from Convex actions alike, keyed by Clerk user ID. The day
+  // is a fixed window from midnight UTC, so a day never allows more than its total.
+  "openalex-minute": {
+    kind: "token bucket",
+    rate: OPENALEX_REQUEST_LIMITS.account.perMinute,
+    period: MINUTE,
+    capacity: OPENALEX_REQUEST_LIMITS.account.perMinute,
+  },
+  "openalex-day": {
+    kind: "fixed window",
+    rate: OPENALEX_REQUEST_LIMITS.account.perDay,
+    period: DAY,
+    start: 0,
+  },
 });
+
+/**
+ * Counts `count` OpenAlex requests against an account, by its Clerk user ID. False,
+ * counting none, when its minute or its day doesn't have that many left.
+ */
+export async function spendOpenAlexRequests(ctx: MutationCtx, clerkId: string, count: number): Promise<boolean> {
+  const limits = [{ name: "openalex-minute", key: clerkId, count }, { name: "openalex-day", key: clerkId, count }] as const;
+  for (const limit of limits) if (!(await checkRateLimit(ctx, limit)).ok) return false;
+  for (const limit of limits) await rateLimit(ctx, { ...limit, throws: true });
+  return true;
+}
 
 /**
  * Internal mutation for action endpoints that lack ctx.db.

@@ -8,7 +8,6 @@ import { api } from "../_generated/api";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import { createEvidenceLibrarySetup } from "./mutations";
 import {
-  readEvidenceLibraries,
   readEvidenceLibraryDraft,
   readEvidenceLibraryRevision,
 } from "./queries";
@@ -55,8 +54,8 @@ describe("Evidence Library draft storage", () => {
         revisionId: fixture.created.revisionId,
       },
     );
-    expect(currentDraft.draft.ownerConfigurationVersion).toBe(7);
-    expect(currentRevision.revision.ownerConfigurationVersion).toBe(7);
+    expect(currentDraft.draft.ownerConfigurationVersion).toBe(8);
+    expect(currentRevision.revision.ownerConfigurationVersion).toBe(8);
 
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(fixture.created.draftId, {
@@ -106,7 +105,7 @@ describe("Evidence Library draft storage", () => {
     const storedRolloutDraft = await fixture.t.run((ctx) =>
       ctx.db.get(fixture.created.draftId),
     );
-    expect(rolloutDraft.draft.ownerConfigurationVersion).toBe(7);
+    expect(rolloutDraft.draft.ownerConfigurationVersion).toBe(8);
     expect(storedRolloutDraft?.ownerConfigurationVersion).toBe(3);
     expect(
       rolloutDraft.sections.find((row) => row.sectionKey === "features")
@@ -127,7 +126,7 @@ describe("Evidence Library draft storage", () => {
     const migratedDraft = await fixture.t.run((ctx) =>
       ctx.db.get(fixture.created.draftId),
     );
-    expect(migratedDraft?.ownerConfigurationVersion).toBe(7);
+    expect(migratedDraft?.ownerConfigurationVersion).toBe(8);
 
     await expect(
       fixture.t.run((ctx) =>
@@ -247,7 +246,7 @@ describe("Evidence Library draft storage", () => {
       o: { id: "org_identity_contract", rol: "org:admin" },
     });
     const created = await admin.run(async (ctx) =>
-      createEvidenceLibrarySetup(ctx, { organizationId: (await admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id,
+      createEvidenceLibrarySetup(ctx, { organizationId: ((await admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id,
         name: "Identity Library",
         slug: "identity-library",
         publicAddress: "https://identity-library.example.org",
@@ -339,7 +338,7 @@ describe("Evidence Library draft storage", () => {
       o: { id: "org_generic_sections", rol: "org:admin" },
     });
     const created = await admin.run(async (ctx) =>
-      createEvidenceLibrarySetup(ctx, { organizationId: (await admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id,
+      createEvidenceLibrarySetup(ctx, { organizationId: ((await admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id,
         name: "Generic Library",
         slug: "generic-library",
         publicAddress: "https://generic-library.example.org",
@@ -505,7 +504,7 @@ describe("Evidence Library draft storage", () => {
     });
 
     const created = await asAdmin.run(async (ctx) =>
-      createEvidenceLibrarySetup(ctx, { organizationId: (await asAdmin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id,
+      createEvidenceLibrarySetup(ctx, { organizationId: ((await asAdmin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id,
         name: "Climate Evidence",
         slug: "climate-evidence",
         publicAddress: "https://climate-evidence.example.org",
@@ -528,7 +527,7 @@ describe("Evidence Library draft storage", () => {
       { libraryId: created.libraryId },
     );
     assert(reloaded, "Expected an accessible draft");
-    const libraries = await asMember.run((ctx) => readEvidenceLibraries(ctx));
+    const { page: libraries } = await asMember.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 12 } });
 
     expect(saved.editVersion).toBe(1);
     expect(libraries).toEqual([]);
@@ -632,7 +631,7 @@ describe("Evidence Library draft storage", () => {
       o: { id: "org_revision", rol: "org:member" },
     });
     const created = await admin.run(async (ctx) =>
-      createEvidenceLibrarySetup(ctx, { organizationId: (await admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id,
+      createEvidenceLibrarySetup(ctx, { organizationId: ((await admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id,
         name: "Revision Library",
         slug: "revision-library",
         publicAddress: "https://revision-library.example.org",

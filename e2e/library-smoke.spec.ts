@@ -56,7 +56,7 @@ async function seedLibrarySmokeFixture(args: {
 
   await client.mutation(api.users.mutations.ensureUser, {});
 
-  const collectionId = await client.mutation(
+  const { id: collectionId } = await client.mutation(
     api.library.collections.createCollection,
     {
       name: `Plan 05 smoke ${args.seedId}`,
@@ -67,7 +67,7 @@ async function seedLibrarySmokeFixture(args: {
   const totalTargetCount = 22;
 
   for (let index = 0; index < totalTargetCount; index += 1) {
-    const libraryItemId = await client.mutation(api.library.mutations.saveToLibrary, {
+    const { id: libraryItemId } = await client.mutation(api.library.mutations.saveToLibrary, {
       openalexId: `W_PLAN05_${args.seedId}_${index}`,
       rating: 5,
       title: `Plan 05 Smoke Paper ${index + 1}`,
@@ -92,7 +92,7 @@ async function seedLibrarySmokeFixture(args: {
     }
   }
 
-  const [filteredCount, totalCount] = await Promise.all([
+  const [{ count: filteredCount }, totalCount] = await Promise.all([
     client.query(api.library.queries.getLibraryFilteredCount, {
       sortBy: "savedAt",
       sortOrder: "desc",

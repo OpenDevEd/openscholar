@@ -1,4 +1,5 @@
 "use client";
+import { useRatedPapers } from "@/lib/research/reads";
 import {
   LinkedInIcon,
   OrcidIcon,
@@ -11,7 +12,6 @@ import { LibraryPageShell } from "@/components/evidence-libraries/library-page-s
 import { ListEmpty, ListLoading, ListSearch, ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { ConfigurationLayout } from "@/components/evidence-libraries/configuration/configuration-layout";
-
 import { AuthorAvatar } from "./author-avatar";
 import { useRef, useState, type ReactNode } from "react";
 import {
@@ -35,7 +35,10 @@ import {
   RefreshCw,
   Search,
   SearchX,
-} from "lucide-react";
+  PersonIcon,
+  LinkIcon,
+  BookIcon,
+} from "@/components/icons";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
 import { useUIStore } from "@/lib/store";
@@ -74,6 +77,7 @@ import { toast } from "sonner";
 import { readProfileAuthor } from "@/app/actions/authors";
 import {PublicationListItem, PublicationMetadata} from "@/components/evidence-libraries/publication-list-item";
 import type {AuthorProfile, OpenAlexMatch, AuthorPublication} from "./types";
+import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 
 const safeUrl = (value?: string) => {
   try {
@@ -86,8 +90,8 @@ const safeUrl = (value?: string) => {
 
 export default function AuthorPage({
   profile, configuration, canEdit, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
-  openAlexAuthors, openAlexPapers, onSearchAuthors, openAlexError,
-  hasMoreWorks, workCount, loadingWorks, onLoadMoreWorks, invitationSection,
+  openAlexAuthors, openAlexPapers: works, onSearchAuthors, openAlexError,
+  hasMoreWorks, workCount, loadingWorks: fetchingWorks, onLoadMoreWorks, invitationSection,
 }: {
   profile: AuthorProfile;
   configuration: boolean;
@@ -107,6 +111,10 @@ export default function AuthorPage({
   hasMoreWorks: boolean; workCount: number; loadingWorks: boolean; onLoadMoreWorks: () => void;
 }) {
   const profileId = profile.id;
+  // A paper is shown once its rating is read, so its card opens at its final size.
+  const rated = useRatedPapers(works);
+  const openAlexPapers = rated.papers;
+  const loadingWorks = fetchingWorks || rated.loading;
   const profileHref = `/authors/${profileId}`;
   const configurationHref = `/authors/${profileId}/configuration`;
   const photoInput = useRef<HTMLInputElement>(null);
@@ -168,7 +176,7 @@ export default function AuthorPage({
         <ConfigurationLayout
           header={
             <PanelHeader
-              icon={UserRound}
+              icon={PersonIcon}
               title={profile.name}
               backHref={profileHref}
               backLabel="Back to author profile"
@@ -249,12 +257,12 @@ export default function AuthorPage({
                 </FieldError>
               ) : formError ? <FieldError>{formError}</FieldError> : null}
               <SectionCard
-                icon={UserRound}
+                icon={PersonIcon}
                 title="Profile details"
                 id="sec-profile-details"
               >
-                <div className="flex items-center gap-4 rounded-xl bg-muted/20 p-3">
-                  <AuthorAvatar photo={draft.photo} className="size-16 border border-border/50" />
+                <div className="flex items-center gap-4 rounded-xl bg-inset p-3">
+                  <AuthorAvatar photo={draft.photo} className="size-16 border border-border-subtle" />
                   <div className="min-w-0 flex-1">
                     <p className="mb-2 text-sm font-medium">Profile photo</p>
                     <div className="flex flex-wrap items-center gap-2">
@@ -371,7 +379,7 @@ export default function AuthorPage({
               </SectionCard>
               <SectionCard
                 id="sec-profile-links"
-                icon={Link2}
+                icon={LinkIcon}
                 title="Links & identifiers"
               >
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -415,7 +423,7 @@ export default function AuthorPage({
               <SectionCard
                 id="sec-profile-publications"
                 title="Selected publications"
-                icon={BookOpen}
+                icon={BookIcon}
                 description="Choose the published works to feature on this profile."
               >
                 <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -438,11 +446,11 @@ export default function AuthorPage({
                     Select all
                   </Button>
                 </div>
-                <div className="divide-y divide-border/50">
+                <div className="divide-y divide-border-subtle">
                   {papers.map((paper) => (
                     <label
                       key={paper.id}
-                      className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/30 has-[:checked]:bg-primary/5"
+                      className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted has-[:checked]:bg-primary/5"
                     >
                       <input
                         type="checkbox"
@@ -459,7 +467,7 @@ export default function AuthorPage({
                           })
                         }
                       />
-                      <Avatar className="h-14 w-10 shrink-0 rounded-sm border border-border/50">
+                      <Avatar className="h-14 w-10 shrink-0 rounded-sm border border-border-subtle">
                         <AvatarImage
                           src={paper.cover}
                           alt=""
@@ -548,7 +556,7 @@ export default function AuthorPage({
       )}
       {!draft && (
         <LibraryPageShell
-          icon={UserRound}
+          icon={PersonIcon}
           title={profile.name}
           backHref={canBrowseAuthors ? "/authors" : undefined}
           backLabel="Back to authors"
@@ -634,7 +642,7 @@ export default function AuthorPage({
                 <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.85fr)] lg:gap-14">
                   <div>
                     <div className="flex items-center gap-5">
-                      <AuthorAvatar photo={profile.photo} className="size-24 border border-border/50 sm:size-28" />
+                      <AuthorAvatar photo={profile.photo} className="size-24 border border-border-subtle sm:size-28" />
                       <div className="min-w-0">
                         <p className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
                           {profile.name}
@@ -774,7 +782,7 @@ export default function AuthorPage({
                     ))}
                 </div>
                 {hasMoreWorks && (
-                  <div className="flex items-center justify-between gap-3 border-t border-border/50 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-4 py-3">
                     <span className="text-xs text-muted-foreground">
                       {openAlexPapers.length} of{" "}
                       {workCount} publications
@@ -871,11 +879,11 @@ export default function AuthorPage({
                         <button
                           type="button"
                           key={m.id}
-                          className="flex w-full items-center gap-3 p-3 text-left hover:bg-muted/50"
+                          className="flex w-full items-center gap-3 p-3 text-left hover:bg-muted"
                           onClick={async () => {
                             setCandidate(m);
-                            try { const detail = await readProfileAuthor(m.id); setCandidate(current => current?.id === m.id ? detail : current); }
-                            catch { toast.error("Could not load this author’s publications"); }
+                            try { const detail = await unlessLimited(readProfileAuthor(m.id)); setCandidate(current => current?.id === m.id ? detail : current); }
+                            catch (error) { toast.error(error instanceof OpenAlexLimitedError ? error.message : "Could not load this author’s publications"); }
                           }}
                         >
                           <AuthorAvatar className="size-9" />

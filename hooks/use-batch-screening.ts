@@ -29,7 +29,8 @@ interface UseBatchScreeningOptions {
    */
   questionSetKey: string;
   canStart: boolean;
-  onResults: (paperId: string, responses: Record<string, boolean | null>) => void;
+  /** `confidences` is the model's confidence in each answer, by question, when it reported them. */
+  onResults: (paperId: string, responses: Record<string, boolean | null>, confidences?: Record<string, number>) => void;
 }
 
 /**
@@ -84,11 +85,11 @@ export function useBatchScreening({
   const handleResult = useCallback(
     (
       paperId: string,
-      data: { responses: Record<string, boolean | null> },
+      data: { responses: Record<string, boolean | null>; confidences?: Record<string, number> },
       context: { searchId: string }
     ) => {
       if (context.searchId === searchId) {
-        onResults(paperId, data.responses);
+        onResults(paperId, data.responses, data.confidences);
       }
     },
     [onResults, searchId]
@@ -136,7 +137,7 @@ export function useBatchScreening({
 
   const { loadingState, errors } = useBatchOperation<
     { papers: { id: string; title: string; abstract: string }[]; questions: string[] },
-    { responses: Record<string, boolean | null> },
+    { responses: Record<string, boolean | null>; confidences?: Record<string, number> },
     { searchId: string },
     Record<string, Set<string>>
   >({

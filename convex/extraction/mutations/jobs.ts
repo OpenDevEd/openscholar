@@ -14,7 +14,7 @@
  * cascades for both modes (cascade is mode-agnostic).
  */
 
-import { mutation } from "../../_generated/server";
+import { mutation } from "../../lib/functions";
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
@@ -42,6 +42,7 @@ import {
   type ExtractionCostEstimate,
 } from "../../../lib/extraction/cost-estimate";
 import { cancelPaperQueueRowsForJobTx } from "../queue/mutations";
+import { refillPerson } from "../queue/dispatcher";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -286,7 +287,7 @@ export const duplicateJob = mutation({
       const oldChatPapers = await ctx.db
         .query("chatPapers")
         .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-        .collect();
+        .take(PAPER_LIMIT);
       const newChatPaperRows = cloneChatPapersForDuplicate(
         newJobId,
         oldChatPapers.map((r) => ({
@@ -313,7 +314,7 @@ export const duplicateJob = mutation({
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .order("asc")
-      .collect();
+      .take(MAX_QUESTIONS_PER_JOB);
 
     const dupStamp = await extractionStamp(ctx, user._id);
     const newJobId = await ctx.db.insert("extractionJobs", {
@@ -386,6 +387,8 @@ export const cancelExtraction = mutation({
       updatedAt: Date.now(),
     });
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
+    // Its papers no longer count against the person's limit; their other jobs start in it.
+    await refillPerson(ctx, job.userId);
 
     // Any in-flight paper action sees the cancelled job on its next
     // status check and returns without persisting.
@@ -405,6 +408,9 @@ export const deleteExtraction = mutation({
     }
 
     await ctx.db.delete(args.jobId);
+    // Its papers stop holding the person's capacity now, not when the cascade reaches them.
+    await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
+    await refillPerson(ctx, user._id);
 
     // Schedule the cascade delete as an independent mutation to avoid
     // transaction limits on a large job's child tables. Cascade is

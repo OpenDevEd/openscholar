@@ -148,7 +148,7 @@ describe("processScreeningBatch", () => {
           "Is the study randomized?": true,
           "Does it include humans?": false,
         },
-        confidence: 0.9,
+        confidences: { "Is the study randomized?": 0.9, "Does it include humans?": 0.7 },
       },
       usage,
     });
@@ -175,7 +175,9 @@ describe("processScreeningBatch", () => {
         "Is the study randomized?": true,
         "Does it include humans?": false,
       },
-      confidence: 0.9,
+      confidences: { "Is the study randomized?": 0.9, "Does it include humans?": 0.7 },
+      // The overall figure is the mean of the answers' confidences.
+      confidence: 0.8,
     });
   });
 });

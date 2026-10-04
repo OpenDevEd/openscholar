@@ -9,8 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { getIdColor } from "@/lib/format";
-import { QueryHistoryEntry, QuestionHistoryEntry } from "@/lib/types/search.types";
-import { ScreeningQuestionEntry, ScreeningResponses } from "@/lib/types/screening.types";
+import type { SearchResult } from "@/lib/types/search.types";
 import { SearchTooltipContent } from "@/components/search-tooltip-content";
 import { motion, AnimatePresence } from "motion/react";
 import { countActiveFilters, type FilterParams } from "@/lib/filters";
@@ -42,10 +41,8 @@ interface SearchHistoryTabProps {
   updatedAt: string;
   isActive: boolean;
   isCollapsed: boolean;
-  queryHistory?: QueryHistoryEntry[];
-  questionHistory?: QuestionHistoryEntry[];
-  screeningQuestions?: ScreeningQuestionEntry[];
-  screeningResponses?: ScreeningResponses;
+  /** The search, for its query history in the tooltip. */
+  search?: SearchResult;
   onClick?: () => void;
   index?: number;
 }
@@ -60,10 +57,7 @@ export function SearchHistoryTab({
   updatedAt,
   isActive,
   isCollapsed,
-  queryHistory,
-  questionHistory,
-  screeningQuestions,
-  screeningResponses,
+  search,
   onClick,
   index = 0,
 }: SearchHistoryTabProps) {
@@ -93,7 +87,7 @@ export function SearchHistoryTab({
         className={cn(
           "group relative flex w-full overflow-hidden",
           "hover:bg-sidebar-accent transition-colors duration-200",
-          isActive && "bg-sidebar-accent/80",
+          isActive && "bg-sidebar-accent",
           isCollapsed
             ? "flex-col items-center justify-center px-2 py-1.5 gap-1 h-auto"
             : "flex-row items-center px-3 py-1.5 gap-1.5 h-auto",
@@ -106,7 +100,7 @@ export function SearchHistoryTab({
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-gradient-to-r from-[oklch(0.70_0.17_54)] to-transparent pointer-events-none"
+              className="absolute inset-0 bg-gradient-to-r from-primary to-transparent pointer-events-none"
             />
           )}
         </AnimatePresence>
@@ -118,7 +112,7 @@ export function SearchHistoryTab({
               transition={{ duration: 0.2, ease: "easeInOut" }}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              className="text-[9px] px-1 py-0.5 rounded-full shrink-0 font-medium badge-glow"
+              className="text-3xs px-1 py-0.5 rounded-full shrink-0 font-medium badge-glow"
               style={{
                 backgroundColor: idColor.bg,
                 color: idColor.text,
@@ -145,7 +139,7 @@ export function SearchHistoryTab({
                 <motion.span
                   key={`filter-count-${searchId}`}
                   layoutId={`filter-count-${searchId}`}
-                  className="text-[9px] px-1 py-0.5 rounded shrink-0 font-medium opacity-60"
+                  className="text-3xs px-1 py-0.5 rounded shrink-0 font-medium opacity-60"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 0.6, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
@@ -160,7 +154,7 @@ export function SearchHistoryTab({
               transition={{ duration: 0.2, ease: "easeInOut" }}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              className="text-[9px] px-1 py-0.5 rounded-full shrink-0 font-medium badge-glow"
+              className="text-3xs px-1 py-0.5 rounded-full shrink-0 font-medium badge-glow"
               style={{
                 backgroundColor: idColor.bg,
                 color: idColor.text,
@@ -194,7 +188,7 @@ export function SearchHistoryTab({
             filters={filters}
             createdAt={createdAt}
             updatedAt={updatedAt || createdAt}
-            queryHistory={queryHistory}
+            search={search}
           />
         </div>
       </TooltipContent>

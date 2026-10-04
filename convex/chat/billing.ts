@@ -1,5 +1,5 @@
 /**
- * Chat turns reserve credits before they stream (see messages.ts). This file
+ * Replies reserve credits before they stream (see convex/assistant/turn.ts). This file
  * settles the turns that stop or fail after OpenRouter started a generation: the
  * generation record is looked up with retries, and its cost is charged.
  */
@@ -162,7 +162,8 @@ async function fetchOpenRouterGeneration(
 export const settleFromOpenRouter = internalAction({
   args: {
     userId: v.id("users"),
-    jobId: v.id("extractionJobs"),
+    /** The paper chat the reply is in; the assistant's replies have none. */
+    jobId: v.optional(v.id("extractionJobs")),
     chargeId: v.string(),
     generationId: v.string(),
     /** Cost already known outside this generation: its earlier steps. */
@@ -198,7 +199,7 @@ export const settleFromOpenRouter = internalAction({
       usage: {
         kind: "chat",
         description: "Chat message",
-        jobId: args.jobId,
+        ...(args.jobId ? { jobId: args.jobId } : {}),
         ...(result.kind === "ok" ? { model: result.generation.model } : {}),
         costUsd: usd,
         // OpenRouter's generation record has no cache-write count.

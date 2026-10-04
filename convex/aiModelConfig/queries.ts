@@ -1,29 +1,24 @@
-import { query } from "../_generated/server";
-import { v } from "convex/values";
+import { query, type QueryCtx } from "../_generated/server";
 import { modelSummary, presetPick } from "../ai/serverModel";
-import { AI_TASKS, PRESET_KEYS } from "../../lib/ai/tasks";
-import { aiTaskValidator, effortValidator, modelSummaryValidator, presetKeyValidator } from "./validators";
+import { AI_TASKS, type PresetKey } from "../../lib/ai/tasks";
+import { presetPicksValidator } from "./validators";
 
-export const taskPickSummaryValidator = v.object({
-  task: aiTaskValidator,
-  model: v.union(modelSummaryValidator, v.null()),
-  effort: v.union(effortValidator, v.null()),
-});
+/** What a preset runs every task on. A null model means nothing live is set. */
+const picksOf = (ctx: QueryCtx, preset: PresetKey) =>
+  Promise.all(
+    AI_TASKS.map(async (task) => {
+      const pick = await presetPick(ctx, preset, task);
+      return { task, model: await modelSummary(ctx, pick?.modelId ?? null), effort: pick?.effort ?? null };
+    }),
+  );
 
-/** What each preset runs every task on. A null model means nothing live is set. */
-export const presets = query({
+/** What each preset runs every task on, a field per preset. */
+export const presetPicks = query({
   args: {},
-  returns: v.array(v.object({ preset: presetKeyValidator, tasks: v.array(taskPickSummaryValidator) })),
-  handler: async (ctx) =>
-    await Promise.all(
-      PRESET_KEYS.map(async (preset) => ({
-        preset,
-        tasks: await Promise.all(
-          AI_TASKS.map(async (task) => {
-            const pick = await presetPick(ctx, preset, task);
-            return { task, model: await modelSummary(ctx, pick?.modelId ?? null), effort: pick?.effort ?? null };
-          }),
-        ),
-      })),
-    ),
+  returns: presetPicksValidator,
+  handler: async (ctx) => {
+    const [cheap, fast, balanced, intelligent] = await Promise.all((["cheap", "fast", "balanced", "intelligent"] as const).map((preset) => picksOf(ctx, preset)));
+    return { cheap, fast, balanced, intelligent };
+  },
 });
+

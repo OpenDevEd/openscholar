@@ -17,20 +17,18 @@ import { decrypt } from "../lib/crypto";
 import type { ZoteroGroupScopes } from "../zotero/groupAccess";
 import { createSourceCredentials } from "./sourceCredentials";
 import { createAiProviderKey } from "./aiProviderKey";
+import type { LibrarySignIn } from "./oauthClientSync";
 
 export const EVIDENCE_LIBRARY_SEARCH_HOST = "http://meilisearch:7700";
 export const EVIDENCE_LIBRARY_SEARCH_INDEX = "evidence_library";
 
-/**
- * Where a library sends someone who opens its admin area without a session:
- * the OpenScholar page that signs them in and hands the session back.
- */
-export function buildEvidenceLibraryLoginPageUrl(input: {
+/** The library's page in OpenScholar, which its admin area links back to. */
+function buildEvidenceLibraryPageUrl(input: {
   libraryId: Id<"evidenceLibraries">;
   appOrigin: string;
 }): string {
   return new URL(
-    `/evidence-libraries/${encodeURIComponent(input.libraryId)}/admin`,
+    `/evidence-libraries/${encodeURIComponent(input.libraryId)}`,
     input.appOrigin,
   ).toString();
 }
@@ -53,6 +51,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
     encryptedAuthentication: string;
     encryptedDatabaseUrl: string;
   };
+  signIn: LibrarySignIn;
   search: { host: string; encryptedKey: string; index: string };
   storage: {
     url: string;
@@ -95,10 +94,19 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       updatedAt: new Date(input.assembledAt).toISOString(),
       libraryId: input.libraryId,
       convexSiteUrl: input.origins.convexSite,
-      loginPageUrl: buildEvidenceLibraryLoginPageUrl({
+      libraryUrl: buildEvidenceLibraryPageUrl({
         libraryId: input.libraryId,
         appOrigin: input.origins.app,
       }),
+      accountUrl: input.signIn.accountUrl,
+      oauth: {
+        issuer: input.signIn.oauth.issuer,
+        clientId: input.signIn.oauth.clientId,
+        clientSecret: decrypt(
+          input.signIn.oauth.encryptedClientSecret,
+          input.encryptionKey,
+        ),
+      },
       machineCredential: decrypt(
         input.credentials.encryptedMachine,
         input.encryptionKey,

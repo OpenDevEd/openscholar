@@ -3,10 +3,26 @@ import {
   summarizeRetryable,
   type RetryableResultInput,
 } from "@/lib/extraction/retry-summary";
+import { resultBuckets as bucketsOf } from "../../convex/extraction/counts";
+
+/** Buckets each row the way the result counters do, then summarizes the counts. */
+function summarize(results: ReadonlyArray<RetryableResultInput>) {
+  const counts = { retryable: 0, permanent: {} as Record<string, number> };
+  for (const result of results) {
+    for (const bucket of bucketsOf({ jobId: "job" as never, status: result.status ?? "pending", lastError: result.lastError ?? undefined } as never)) {
+      if (bucket === "retryable") counts.retryable += 1;
+      if (bucket.startsWith("permanent:")) {
+        const code = bucket.slice("permanent:".length);
+        counts.permanent[code] = (counts.permanent[code] ?? 0) + 1;
+      }
+    }
+  }
+  return summarizeRetryable(counts);
+}
 
 describe("summarizeRetryable", () => {
   it("R1: empty list → zero counts and empty breakdown", () => {
-    expect(summarizeRetryable([])).toEqual({
+    expect(summarize([])).toEqual({
       retryableCount: 0,
       permanentCount: 0,
       permanentBreakdown: {},
@@ -19,7 +35,7 @@ describe("summarizeRetryable", () => {
       { status: "completed" },
       { status: "completed" },
     ];
-    expect(summarizeRetryable(results)).toEqual({
+    expect(summarize(results)).toEqual({
       retryableCount: 0,
       permanentCount: 0,
       permanentBreakdown: {},
@@ -30,7 +46,7 @@ describe("summarizeRetryable", () => {
     const results: RetryableResultInput[] = [
       { status: "failed", lastError: { code: "rate_limit" } },
     ];
-    expect(summarizeRetryable(results)).toEqual({
+    expect(summarize(results)).toEqual({
       retryableCount: 1,
       permanentCount: 0,
       permanentBreakdown: {},
@@ -41,7 +57,7 @@ describe("summarizeRetryable", () => {
     const results: RetryableResultInput[] = [
       { status: "failed", lastError: { code: "pdf_invalid" } },
     ];
-    expect(summarizeRetryable(results)).toEqual({
+    expect(summarize(results)).toEqual({
       retryableCount: 0,
       permanentCount: 1,
       permanentBreakdown: { pdf_invalid: 1 },
@@ -56,7 +72,7 @@ describe("summarizeRetryable", () => {
       { status: "failed", lastError: { code: "pdf_invalid" } },
       { status: "failed", lastError: { code: "moderation" } },
     ];
-    expect(summarizeRetryable(results)).toEqual({
+    expect(summarize(results)).toEqual({
       retryableCount: 3,
       permanentCount: 2,
       permanentBreakdown: { pdf_invalid: 1, moderation: 1 },
@@ -74,7 +90,7 @@ describe("summarizeRetryable", () => {
       { status: "failed", lastError: { code: "auth" } },
       { status: "failed", lastError: { code: "auth" } }, // 2 → second
     ];
-    const { permanentBreakdown } = summarizeRetryable(results);
+    const { permanentBreakdown } = summarize(results);
     // Object.keys() iterates in insertion order; summarizer must insert
     // in the contract's sort order.
     expect(Object.keys(permanentBreakdown)).toEqual([
@@ -99,7 +115,7 @@ describe("summarizeRetryable", () => {
       // test pins the forward-compat guarantee.
       { status: "failed", lastError: { code: "future_unseen_code" } },
     ];
-    expect(summarizeRetryable(results)).toEqual({
+    expect(summarize(results)).toEqual({
       retryableCount: 1,
       permanentCount: 0,
       permanentBreakdown: {},
@@ -114,7 +130,7 @@ describe("summarizeRetryable", () => {
       { status: "completed", lastError: { code: "rate_limit" } },
       { status: "completed", lastError: { code: "pdf_invalid" } },
     ];
-    expect(summarizeRetryable(results)).toEqual({
+    expect(summarize(results)).toEqual({
       retryableCount: 0,
       permanentCount: 0,
       permanentBreakdown: {},
@@ -130,8 +146,8 @@ describe("summarizeRetryable", () => {
     ];
     const snapshot = JSON.parse(JSON.stringify(input));
 
-    const first = summarizeRetryable(input);
-    const second = summarizeRetryable(input);
+    const first = summarize(input);
+    const second = summarize(input);
 
     // Deterministic output.
     expect(first).toEqual(second);

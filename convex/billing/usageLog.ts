@@ -16,29 +16,25 @@ export const userSpace = (userId: Id<"users">) => `user:${userId}`;
 export const jobSpace = (jobId: Id<"extractionJobs">) => `job:${jobId}`;
 export const spendSpace = (userId: Id<"users">, kind: Doc<"billingUsage">["kind"]) => `spend:${userId}:${kind}`;
 
-/** Counts a charge. Safe to call again for the same row. */
-export async function countUsage(
-  ctx: MutationCtx,
-  row: Pick<Doc<"billingUsage">, "_id" | "userId" | "jobId" | "createdAt" | "kind" | "credits">,
-) {
-  await usageAgg.insertIfDoesNotExist(ctx, { namespace: userSpace(row.userId), key: row.createdAt, id: row._id });
-  // Refunds are recorded before their credits are known, and the chart leaves them out.
-  if (row.kind !== "refund") {
-    await usageAgg.insertIfDoesNotExist(ctx, {
-      namespace: spendSpace(row.userId, row.kind),
-      key: row.createdAt,
-      id: row._id,
-      sumValue: row.credits,
-    });
-  }
-  if (row.jobId) {
-    await usageAgg.insertIfDoesNotExist(ctx, { namespace: jobSpace(row.jobId), key: row.createdAt, id: row._id });
-  }
+type Counted = Pick<Doc<"billingUsage">, "_id" | "userId" | "jobId" | "createdAt" | "kind" | "credits">;
+
+/** The aggregate writes that count a charge: under its user, its kind (with its credits), and its job. */
+export function usageOps(row: Counted) {
+  const item = { key: row.createdAt, id: row._id };
+  return [
+    { type: "insertIfDoesNotExist" as const, namespace: userSpace(row.userId), ...item },
+    // Refunds are recorded before their credits are known, and the chart leaves them out.
+    ...(row.kind !== "refund"
+      ? [{ type: "insertIfDoesNotExist" as const, namespace: spendSpace(row.userId, row.kind), ...item, sumValue: row.credits }]
+      : []),
+    ...(row.jobId ? [{ type: "insertIfDoesNotExist" as const, namespace: jobSpace(row.jobId), ...item }] : []),
+  ];
 }
 
-/** The one way to add a charge row: inserts it and counts it. */
-export async function insertUsage(ctx: MutationCtx, row: Omit<Doc<"billingUsage">, "_id" | "_creationTime">) {
-  const _id = await ctx.db.insert("billingUsage", row);
-  await countUsage(ctx, { _id, ...row });
-  return _id;
+/**
+ * Counts a charge, queued to the aggregate's own batch worker, so reads use
+ * `stale: true`. Safe to call again for the same row.
+ */
+export async function countUsage(ctx: MutationCtx, row: Counted) {
+  await usageAgg.enqueueBatch(ctx, usageOps(row));
 }

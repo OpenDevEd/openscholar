@@ -47,8 +47,13 @@ const managedConfiguration = {
   updatedAt: "2026-08-24T19:00:00.000Z",
   libraryId: "j57climate32",
   convexSiteUrl: "https://lane.example.convex.site",
-  loginPageUrl:
-    "https://app.example.test/evidence-libraries/j57climate32/admin",
+  libraryUrl: "https://app.example.test/evidence-libraries/j57climate32",
+  accountUrl: "https://accounts.example.test/user",
+  oauth: {
+    issuer: "https://clerk.example.test",
+    clientId: "climate-client",
+    clientSecret: "climate-client-secret",
+  },
   machineCredential: `els_${"a".repeat(43)}`,
   authenticationSecret: "a".repeat(32),
   databaseUrl: "postgresql://library:password@db.example.test:5432/library",
@@ -348,7 +353,7 @@ describe("assembleEvidenceLibraryConfiguration", () => {
       navigation: ownerSections.navigation,
       footer: { poweredBy: true, disclaimer: "Views are the authors' own." },
       filters: { years: { enabled: true } },
-      features: { collections: false, countryFocus: false, login: false },
+      features: { collections: false, countryFocus: false, readerAccounts: false },
       // Sections that were never saved come from the schema defaults.
       institutions: [],
       contact: {},
@@ -367,8 +372,10 @@ describe("assembleEvidenceLibraryConfiguration", () => {
         openScholar: {
           convexSiteUrl: managedConfiguration.convexSiteUrl,
           libraryId: managedConfiguration.libraryId,
-          loginPageUrl: managedConfiguration.loginPageUrl,
+          libraryUrl: managedConfiguration.libraryUrl,
+          accountUrl: managedConfiguration.accountUrl,
           machineCredential: managedConfiguration.machineCredential,
+          oauth: managedConfiguration.oauth,
         },
         secret: managedConfiguration.authenticationSecret,
       },
@@ -889,6 +896,14 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     });
     expect(result.valid).toBe(false);
     expect(result.issues).toContainEqual(expect.objectContaining({ pointer: "/home/curation/steps/1/title" }));
+  });
+
+  test("refuses a figure on a step that counts its own, as the runtime would", () => {
+    const result = validateOwnerSection("home", {
+      curation: { steps: [{ type: "search", figure: { value: "2", label: "terms" } }, { type: "text", title: "Screened", figure: { value: "2", label: "terms" } }] },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.issues.map((issue) => issue.pointer)).toEqual(["/home/curation/steps/0/figure"]);
   });
 
   test("adds the platform mail service under the owner's recipients", () => {

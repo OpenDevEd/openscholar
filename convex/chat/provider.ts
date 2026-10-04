@@ -15,7 +15,7 @@ import type { ActionCtx } from "../_generated/server";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { getProviderModel } from "../../lib/ai/server/providers";
-import { SERVER_AI_CONFIG } from "../ai/config";
+import { SERVER_AI_CONFIG, SERVER_MODEL_SLUG } from "../ai/config";
 import { createError } from "../lib/errors";
 import { MODEL_UNAVAILABLE_MESSAGE } from "../models/catalog";
 import type { LanguageModel } from "ai";
@@ -75,9 +75,7 @@ export async function resolveOpenRouterModel(
   } else {
     // Fallback to the server default. Matches the UX contract that
     // ModelPicker auto-picks the first served model on first render.
-    modelSlug = SERVER_AI_CONFIG.model.includes("/")
-      ? SERVER_AI_CONFIG.model
-      : `${SERVER_AI_CONFIG.provider}/${SERVER_AI_CONFIG.model}`;
+    modelSlug = SERVER_MODEL_SLUG;
     const [p, offered] = await Promise.all([
       ctx.runQuery(internal.models.queries.getPricing, { modelId: modelSlug }),
       ctx.runQuery(api.models.queries.getCatalogOption, { modelId: modelSlug }),
@@ -89,7 +87,12 @@ export async function resolveOpenRouterModel(
     pricing = p ?? { input: 0, output: 0 };
   }
 
-  const model = await getProviderModel("openrouter", undefined, modelSlug, {
+  return { model: await openRouterModel(modelSlug, options), modelSlug, pricing };
+}
+
+/** A catalog model the caller already read, wired through OpenRouter with the server's provider preferences. */
+export async function openRouterModel(modelSlug: string, options?: { generationIdSink?: GenerationIdSink }) {
+  return await getProviderModel("openrouter", undefined, modelSlug, {
     openrouterProviderOrder: SERVER_AI_CONFIG.openrouterProviderOrder,
     openrouterAllowFallbacks: SERVER_AI_CONFIG.openrouterAllowFallbacks,
     // Bills against providerMetadata.openrouter.usage.cost when
@@ -99,6 +102,4 @@ export async function resolveOpenRouterModel(
       ? { fetch: withGenerationIdCapture(options.generationIdSink) }
       : {}),
   });
-
-  return { model, modelSlug, pricing };
 }

@@ -1,12 +1,18 @@
+import { SECTION_REGISTRY } from "../../lib/evidence-libraries/configuration/section-registry";
 import {
   internalMutation,
   mutation,
   query,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import { stream } from "convex-helpers/server/stream";
+import schema from "../schema";
+import { countOf, libraryVersionsOf } from "../lib/listCounts";
+import { isVersionOperation } from "./operationKinds";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
 import {
@@ -43,16 +49,14 @@ import {
 } from "./operations";
 import { isFreshRuntimeRelease } from "./runtimeReleases";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
-import { sectionKeyValidator, type SectionKey } from "./validators";
+import { sectionKeyValidator } from "./validators";
 import {
-  configurationSectionFingerprints,
   loadDraftConfigurationSnapshot,
   loadRevisionConfigurationSnapshot,
   persistDraftConfigurationSnapshot,
 } from "./configurationSnapshot";
 import { validateSectionPayload } from "./sectionPayload";
-
-const MAX_VERSION_ROWS = 100;
+import { changedSectionsValidator } from "./validators";
 
 type RunningBinding = Extract<
   Doc<"evidenceLibraryRuntimeBindings">,
@@ -388,6 +392,15 @@ async function queueCandidateOperation(
 // Publishes the active revision again at the newest Evidence Library
 // software. The owner checks for updates first; the fresh release row is
 // the only source of the target commit.
+/**
+ * Section rows a restore deletes from a draft. The schema allows only the registry's
+ * sections, one row each, so a draft has no more than there are sections; twice that leaves
+ * room for a doubled row of each, which a restore clears too.
+ */
+const DRAFT_ROWS_REPLACED = SECTION_REGISTRY.length * 2;
+/** Publishes read that moved a library onto its current software; past it the restore is refused, not guessed. */
+export const RUNTIME_ARRIVALS_READ = 100;
+
 export async function startEvidenceLibraryRuntimeUpdate(
   ctx: MutationCtx,
   args: { libraryId: Id<"evidenceLibraries"> },
@@ -601,7 +614,11 @@ export async function restoreEvidenceLibraryRevision(
     .withIndex("by_draftId_and_sectionKey", (query) =>
       query.eq("draftId", draft._id),
     )
-    .collect();
+    .take(DRAFT_ROWS_REPLACED + 1);
+  // Every prior row must go, or the restored draft would carry a stale section.
+  if (draftRows.length > DRAFT_ROWS_REPLACED) {
+    throw new Error(`The draft has more than ${DRAFT_ROWS_REPLACED} section rows; it can't be restored over until the extra rows are removed.`);
+  }
   for (const row of draftRows) await ctx.db.delete(row._id);
   for (const section of sourceSnapshot.migration.snapshot.sections) {
     await ctx.db.insert("evidenceLibraryConfigSections", {
@@ -647,23 +664,6 @@ export async function restoreEvidenceLibraryRevision(
   };
 }
 
-async function readSectionFingerprints(
-  ctx: QueryCtx,
-  revisionId: Id<"evidenceLibraryConfigRevisions">,
-  cache: Map<Id<"evidenceLibraryConfigRevisions">, Map<SectionKey, string>>,
-) {
-  const cached = cache.get(revisionId);
-  if (cached) return cached;
-  const loaded = await loadRevisionConfigurationSnapshot(ctx, revisionId, {
-    requireComplete: false,
-  });
-  const fingerprints = configurationSectionFingerprints(
-    loaded.migration.snapshot,
-  );
-  cache.set(revisionId, fingerprints);
-  return fingerprints;
-}
-
 async function readRequesterName(
   ctx: QueryCtx,
   clerkUserId: string,
@@ -700,103 +700,102 @@ export const versionRowValidator = v.object({
   revisionNumber: v.number(),
   createdAt: v.number(),
   by: v.string(),
-  changedSections: v.array(sectionKeyValidator),
+  changedSections: changedSectionsValidator,
   status: versionStatusValidator,
   kind: versionKindValidator,
   runtimeCommit: v.optional(v.string()),
 });
 
-// One row per setup, publish or software update, newest first.
-export async function readEvidenceLibraryVersions(
-  ctx: QueryCtx,
-  args: { libraryId: Id<"evidenceLibraries"> },
-) {
-  const access = await requireEvidenceLibraryAccess(
-    ctx,
-    args.libraryId,
-    "manage",
-  );
-  const operations = await ctx.db
-    .query("evidenceLibraryConfigOperations")
-    .withIndex("by_libraryId_and_createdAt", (query) =>
-      query.eq("libraryId", args.libraryId),
-    )
-    .order("desc")
-    .take(MAX_VERSION_ROWS);
-  const revisions = new Map<
-    Id<"evidenceLibraryConfigRevisions">,
-    Doc<"evidenceLibraryConfigRevisions"> | null
-  >();
-  const fingerprints = new Map<
-    Id<"evidenceLibraryConfigRevisions">,
-    Map<SectionKey, string>
-  >();
-  const names = new Map<string, string>();
-  const rows = [];
-  for (const operation of operations) {
-    if (
-      !operation.revisionId ||
-      (operation.kind !== "setup" &&
-        !isConfigurationDeploymentOperation(operation))
-    ) {
-      continue;
-    }
-    let revision = revisions.get(operation.revisionId);
-    if (revision === undefined) {
-      revision = await ctx.db.get(operation.revisionId);
-      revisions.set(operation.revisionId, revision);
-    }
-    if (!revision) continue;
-    const kind: "runtime" | "config" = operation.runtimeUpdate
-      ? "runtime"
-      : "config";
-    const status: "live" | "previous" | "failed" | "deploying" =
-      operation.status === "failed"
-        ? "failed"
-        : operation.status === "succeeded"
-          ? access.library.activeDeploymentOperationId === operation._id
-            ? "live"
-            : "previous"
-          : "deploying";
-    let changedSections: SectionKey[] = [];
-    if (kind === "config") {
-      const current = await readSectionFingerprints(
-        ctx,
-        revision._id,
-        fingerprints,
-      );
-      const previous = revision.basedOnRevisionId
-        ? await readSectionFingerprints(
-            ctx,
-            revision.basedOnRevisionId,
-            fingerprints,
-          )
-        : new Map<SectionKey, string>();
-      const keys = new Set<SectionKey>([...current.keys(), ...previous.keys()]);
-      changedSections = [...keys]
-        .filter((key) => current.get(key) !== previous.get(key))
-        .sort();
-    }
-    const runtimeCommit =
-      operation.runtimeUpdate?.to ??
-      (operation.receipt && "runtimeCommit" in operation.receipt
-        ? operation.receipt.runtimeCommit
-        : undefined);
-    rows.push({
-      operationId: operation._id,
-      revisionId: revision._id,
-      revisionKey: revision.revisionKey,
-      revisionNumber: revision.revisionNumber,
-      createdAt: operation.createdAt,
-      by: await readRequesterName(ctx, operation.requestedByClerkUserId, names),
-      changedSections,
-      status,
-      kind,
-      ...(runtimeCommit === undefined ? {} : { runtimeCommit }),
-    });
+/** What a read of versions has looked up so far, so each revision and each person is read once. */
+type VersionReads = {
+  revisions: Map<Id<"evidenceLibraryConfigRevisions">, Doc<"evidenceLibraryConfigRevisions"> | null>;
+  names: Map<string, string>;
+};
+const versionReads = (): VersionReads => ({ revisions: new Map(), names: new Map() });
+
+/** The revision a version operation ran, or null when the operation isn't a version or its revision is gone. */
+async function versionRevision(ctx: QueryCtx, operation: Doc<"evidenceLibraryConfigOperations">, reads: VersionReads) {
+  if (!operation.revisionId || !isVersionOperation(operation)) return null;
+  let revision = reads.revisions.get(operation.revisionId);
+  if (revision === undefined) {
+    revision = await ctx.db.get(operation.revisionId);
+    reads.revisions.set(operation.revisionId, revision);
   }
-  return rows;
+  return revision;
 }
+
+/** One version as the Versions section lists it. */
+async function versionRow(
+  ctx: QueryCtx,
+  library: Doc<"evidenceLibraries">,
+  operation: Doc<"evidenceLibraryConfigOperations">,
+  revision: Doc<"evidenceLibraryConfigRevisions">,
+  reads: VersionReads,
+) {
+  const kind: "runtime" | "config" = operation.runtimeUpdate ? "runtime" : "config";
+  const status: "live" | "previous" | "failed" | "deploying" =
+    operation.status === "failed"
+      ? "failed"
+      : operation.status === "succeeded"
+        ? library.activeDeploymentOperationId === operation._id
+          ? "live"
+          : "previous"
+        : "deploying";
+  // Recorded with the version (./operations.ts), so a page of versions reads no configuration.
+  const changedSections = kind === "config" ? (operation.changedSections ?? []) : [];
+  const runtimeCommit =
+    operation.runtimeUpdate?.to ??
+    (operation.receipt && "runtimeCommit" in operation.receipt ? operation.receipt.runtimeCommit : undefined);
+  return {
+    operationId: operation._id,
+    revisionId: revision._id,
+    revisionKey: revision.revisionKey,
+    revisionNumber: revision.revisionNumber,
+    createdAt: operation.createdAt,
+    by: await readRequesterName(ctx, operation.requestedByClerkUserId, reads.names),
+    changedSections,
+    status,
+    kind,
+    ...(runtimeCommit === undefined ? {} : { runtimeCommit }),
+  };
+}
+
+/**
+ * Most versions one page holds, and the operations one read of it passes over looking for them.
+ * ponytail: an operation keeps its deployment's encrypted configuration, so its row can be near
+ * the 1 MiB a document may hold, and a read may take 16 MiB: 14 rows is what fits. A page that
+ * meets more than four operations that aren't versions comes back short, with more to show.
+ * Keeping the saved configuration off the operation row would let a read pass over many more.
+ */
+const VERSIONS_PAGE_MAX = 10;
+const VERSION_ROWS_READ = 14;
+
+/** One row per setup, publish or software update, newest first, a page at a time. */
+export const listVersionRows = query({
+  args: { libraryId: v.id("evidenceLibraries"), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(versionRowValidator),
+  handler: async (ctx, args) => {
+    const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    const reads = versionReads();
+    return await stream(ctx.db, schema)
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_createdAt", (query) => query.eq("libraryId", args.libraryId))
+      .order("desc")
+      .filterWith(async (operation) => (await versionRevision(ctx, operation, reads)) !== null)
+      .map(async (operation) => versionRow(ctx, access.library, operation, (await versionRevision(ctx, operation, reads))!, reads))
+      .paginate({ ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, VERSIONS_PAGE_MAX), maximumRowsRead: VERSION_ROWS_READ });
+  },
+});
+
+/** How many versions a library has, kept as its operations are recorded (lib/listCounts.ts). */
+export const countVersions = query({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    return await countOf(ctx, libraryVersionsOf(args.libraryId));
+  },
+});
 
 export const startRuntimeUpdate = mutation({
   args: { libraryId: v.id("evidenceLibraries") },
@@ -862,12 +861,19 @@ export const startRuntimeRollback = internalMutation({
           .eq("runtimeUpdate.to", binding.runtimeCommit)
           .eq("runtimeUpdate.toImage", binding.runtimeImage),
       )
-      .collect();
-    const arrival = arrivals.find(
+      .take(RUNTIME_ARRIVALS_READ + 1);
+    const arrival = arrivals.slice(0, RUNTIME_ARRIVALS_READ).find(
       (operation) =>
         operation.activationEditVersion !== undefined &&
         operation.runtimeUpdate?.from === previous.commit,
     );
+    // Calling the settings readable on a partial read could put software back under settings it can't read.
+    if (!arrival && arrivals.length > RUNTIME_ARRIVALS_READ) {
+      throw createError(
+        "CONFLICT",
+        `This library has moved onto its current software more than ${RUNTIME_ARRIVALS_READ} times, too many to check its settings against the earlier software`,
+      );
+    }
     const arrivalRevision = arrival?.revisionId
       ? await ctx.db.get(arrival.revisionId)
       : null;
@@ -1206,7 +1212,7 @@ export const setDomainPrimary = mutation({
         .withIndex("by_libraryId", (index) =>
           index.eq("libraryId", args.libraryId),
         )
-        .collect()
+        .take(MAX_EVIDENCE_LIBRARY_DOMAINS)
     ).find((entry) => entry.role === "primary");
     const redeploy = leaving !== undefined;
     // The lease is taken now, and held until the deployment carrying this
@@ -1317,7 +1323,7 @@ export async function applyEvidenceLibraryCanonicalAddress(
   const rows = await ctx.db
     .query("evidenceLibraryDomains")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
-    .collect();
+    .take(MAX_EVIDENCE_LIBRARY_DOMAINS);
   for (const entry of rows) {
     const role =
       primary && entry._id === args.domainId ? "primary" : "redirect";
@@ -1327,8 +1333,3 @@ export async function applyEvidenceLibraryCanonicalAddress(
   }
 }
 
-export const listVersions = query({
-  args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.array(versionRowValidator),
-  handler: readEvidenceLibraryVersions,
-});

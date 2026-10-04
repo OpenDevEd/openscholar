@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { WorkId } from "@convex-dev/workpool";
 import { internal } from "../../_generated/api";
-import { internalMutation, type MutationCtx } from "../../_generated/server";
+import { internalMutation, type MutationCtx } from "../../lib/functions";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { extractionPaperPool } from "../../workpool";
 import { extractionQueueStatusValidator } from "../validators";
@@ -11,6 +11,8 @@ import {
   shouldClearQueueLease,
   type ExtractionQueueStatus,
 } from "./status";
+import { planConcurrency } from "../../billing/accounts";
+import { PAPER_LIMIT } from "../../../lib/extraction/limits";
 
 type QueueKind = Doc<"extractionPaperQueue">["kind"];
 
@@ -48,6 +50,8 @@ type DispatchWindowResult = {
 type CancelQueueRowsResult = {
   cancelled: number;
   cancelRequested: number;
+  /** Whose rows they were, when any were cancelled. */
+  userId?: Id<"users">;
 };
 
 async function loadQueueRowsByStatus(
@@ -73,7 +77,7 @@ async function loadQueueRowsByStatus(
       q.eq("jobId", jobId).eq("runEpoch", runEpoch).eq("status", status),
     );
   return normalizedLimit === undefined
-    ? await query.collect()
+    ? await query.take(PAPER_LIMIT)
     : await query.take(normalizedLimit);
 }
 
@@ -334,10 +338,30 @@ export const leaseNextPaperQueueRows = internalMutation({
   },
 });
 
+/**
+ * How many more papers the person may start across their extraction jobs (#335): their
+ * plan's `concurrency`, or the whole window when it sets none, less the papers they hold
+ * leased or running in any job. Firecrawl's per-team limit (`apps/api/src/lib/concurrency-limit.ts`).
+ */
+async function personCapacity(ctx: MutationCtx, userId: Id<"users">, window: number) {
+  const limit = Math.max(1, Math.min(window, (await planConcurrency(ctx, userId)) ?? window));
+  let held = 0;
+  for (const status of ["leased", "running"] as const) {
+    if (held >= limit) break;
+    held += (await ctx.db
+      .query("extractionPaperQueue")
+      .withIndex("by_user_and_status", (q) => q.eq("userId", userId).eq("status", status))
+      .take(limit - held)).length;
+  }
+  return Math.max(0, limit - held);
+}
+
 async function leaseNextPaperQueueRowsTx(
   ctx: MutationCtx,
   args: LeaseRowsArgs,
 ): Promise<LeaseRowsResult> {
+  const job = await ctx.db.get(args.jobId);
+  const personFree = job ? await personCapacity(ctx, job.userId, args.paperConcurrency) : 0;
   const activeReadLimit = Math.max(0, Math.floor(args.paperConcurrency));
   const [leasedRows, runningRows] = await Promise.all([
     loadQueueRowsByStatus(ctx, {
@@ -354,10 +378,10 @@ async function leaseNextPaperQueueRowsTx(
     }),
   ]);
   const activeCount = leasedRows.length + runningRows.length;
-  const capacity = getQueueCapacity({
-    activeCount,
-    paperConcurrency: args.paperConcurrency,
-  });
+  const capacity = Math.min(
+    getQueueCapacity({ activeCount, paperConcurrency: args.paperConcurrency }),
+    personFree,
+  );
   const pendingRows = await loadPendingQueueRowsForLease(ctx, {
     jobId: args.jobId,
     runEpoch: args.expectedEpoch,
@@ -455,6 +479,18 @@ export async function dispatchPaperQueueWindowTx(
   };
 }
 
+/**
+ * Queue rows of each status one cancelling transaction takes. A job paused and resumed
+ * many times can hold more than a transaction should patch, so the rest are cancelled by
+ * the batches this schedules.
+ */
+const CANCEL_BATCH = 250;
+
+/**
+ * Cancels a batch of the job's queue rows that could still run, and schedules the next
+ * until none are left. The caller frees the person's capacity for the rows cancelled here;
+ * each later batch frees it for its own.
+ */
 export async function cancelPaperQueueRowsForJobTx(
   ctx: MutationCtx,
   args: { jobId: Id<"extractionJobs"> },
@@ -465,7 +501,7 @@ export async function cancelPaperQueueRowsForJobTx(
     "running",
     "parked",
   ];
-  const rows = (
+  const batches = (
     await Promise.all(
       cancellableStatuses.map((status) =>
         ctx.db
@@ -473,10 +509,11 @@ export async function cancelPaperQueueRowsForJobTx(
           .withIndex("by_job_and_status", (q) =>
             q.eq("jobId", args.jobId).eq("status", status),
           )
-          .collect(),
+          .take(CANCEL_BATCH),
       ),
     )
-  ).flat();
+  );
+  const rows = batches.flat();
 
   const now = Date.now();
   let cancelRequested = 0;
@@ -494,7 +531,10 @@ export async function cancelPaperQueueRowsForJobTx(
     });
   }
 
-  return { cancelled: rows.length, cancelRequested };
+  if (batches.some((batch) => batch.length === CANCEL_BATCH)) {
+    await ctx.scheduler.runAfter(0, internal.extraction.queue.mutations.cancelPaperQueueRowsForJob, { jobId: args.jobId });
+  }
+  return { cancelled: rows.length, cancelRequested, userId: rows[0]?.userId };
 }
 
 export const cancelPaperQueueRowsForJob = internalMutation({
@@ -503,8 +543,11 @@ export const cancelPaperQueueRowsForJob = internalMutation({
     cancelled: v.number(),
     cancelRequested: v.number(),
   }),
-  handler: async (ctx, args): Promise<CancelQueueRowsResult> => {
-    return await cancelPaperQueueRowsForJobTx(ctx, args);
+  handler: async (ctx, args) => {
+    const { userId, ...result } = await cancelPaperQueueRowsForJobTx(ctx, args);
+    // The rows a later batch cancels stop holding the person's capacity; their other jobs start in it.
+    if (userId) await ctx.scheduler.runAfter(0, internal.extraction.queue.dispatcher.wakePerson, { userId });
+    return result;
   },
 });
 
@@ -522,6 +565,11 @@ export const updatePaperQueueStatus = internalMutation({
     }
 
     const clearLease = shouldClearQueueLease(args.status);
+    // A row that held its person's capacity and stops without a release (a stale run parking)
+    // frees it; their held-back jobs have no other event to start them.
+    if ((row.status === "leased" || row.status === "running") && args.status !== "leased" && args.status !== "running") {
+      await ctx.scheduler.runAfter(0, internal.extraction.queue.dispatcher.wakePerson, { userId: row.userId });
+    }
     await ctx.db.patch(args.queueId, {
       status: args.status,
       updatedAt: Date.now(),

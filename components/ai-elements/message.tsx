@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import type { UIMessage } from "ai";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
 import {
   createContext,

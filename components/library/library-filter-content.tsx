@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { subMonths, subWeeks, subYears } from "date-fns";
-import { Check, ChevronLeft, ChevronRight, Clock, FolderOpen, LibraryBig, Search, Settings, SlidersHorizontal, Star } from "lucide-react";
+import { Check, Clock, FolderOpen, LibraryBig, Search, Settings, SlidersHorizontal, Star } from "@/components/icons";
 import type { DateRange } from "react-day-picker";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -14,12 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { api } from "@/convex/_generated/api";
 import { FilterSection } from "@/components/shared/filter-section";
+import { PageStepper } from "@/components/shared/page-stepper";
 import { DateRangePicker, type DatePreset } from "@/components/shared/date-range-picker";
 import { PublicationTimeframeFilter } from "@/components/shared/publication-timeframe-filter";
 import { RatingRangePicker } from "@/components/rating-range-picker";
 import { MIN_YEAR } from "@/lib/constants";
 import type { LibrarySortCombined } from "@/lib/library/search-params";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
 
 /**
@@ -57,9 +62,6 @@ interface LibraryFilterContentProps {
   isPublicationDateActive: boolean;
   collectionId: string | null;
   onCollectionChange: (id: string | null) => void;
-  collections:
-    | Array<{ _id: string; name: string; itemCount: number }>
-    | undefined;
   onManageCollections: () => void;
   sort: LibrarySortCombined;
   onSortChange: (value: LibrarySortCombined) => void;
@@ -81,7 +83,6 @@ export function LibraryFilterContent({
   isPublicationDateActive,
   collectionId,
   onCollectionChange,
-  collections,
   onManageCollections,
   sort,
   onSortChange,
@@ -167,7 +168,6 @@ export function LibraryFilterContent({
       <CollectionFilterSection
         collectionId={collectionId}
         onCollectionChange={onCollectionChange}
-        collections={collections}
         onManageCollections={onManageCollections}
         isCollectionActive={isCollectionActive}
       />
@@ -271,44 +271,33 @@ function PublicationTimeframeSection({
 
 const PAGE_SIZE = 6;
 const SEARCH_THRESHOLD = 8;
+/**
+ * A row and the gap under it, measured: a paged list keeps a full first page's height (its
+ * collections and "All"), so a shorter page doesn't move the pager or what's below.
+ */
+const ROW_PX = 38;
+const FULL_PAGE_PX = (PAGE_SIZE + 1) * ROW_PX - 2;
 
 function CollectionFilterSection({
   collectionId,
   onCollectionChange,
-  collections,
   onManageCollections,
   isCollectionActive,
 }: {
   collectionId: string | null;
   onCollectionChange: (id: string | null) => void;
-  collections:
-    | Array<{ _id: string; name: string; itemCount: number }>
-    | undefined;
   onManageCollections: () => void;
   isCollectionActive: boolean;
 }) {
   const t = useTranslations("libraryPage");
   const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(0);
+  const search = useDebouncedValue(searchQuery.trim(), 300);
+  const { data: totalCollections } = useProtectedQuery(api.library.collections.countCollections, {});
+  const collections = useCursorPage(api.library.collections.listCollections, { search: search || undefined }, PAGE_SIZE);
 
-  const totalCollections = collections?.length ?? 0;
-  const showSearch = totalCollections >= SEARCH_THRESHOLD;
-  const hasSearch = searchQuery.trim().length > 0;
-
-  const filteredCollections = useMemo(() => {
-    if (!collections) return [];
-    if (!hasSearch) return collections;
-    const q = searchQuery.toLowerCase().trim();
-    return collections.filter((c) => c.name.toLowerCase().includes(q));
-  }, [collections, searchQuery, hasSearch]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredCollections.length / PAGE_SIZE));
-  const effectivePage = Math.min(page, totalPages - 1);
-  const pageCollections = filteredCollections.slice(
-    effectivePage * PAGE_SIZE,
-    (effectivePage + 1) * PAGE_SIZE,
-  );
-  const showPagination = !hasSearch && filteredCollections.length > PAGE_SIZE;
+  const showSearch = (totalCollections ?? 0) >= SEARCH_THRESHOLD;
+  const hasSearch = search.length > 0;
+  const showPagination = collections.hasPages;
 
   return (
     <FilterSection
@@ -337,10 +326,7 @@ function CollectionFilterSection({
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setPage(0);
-              }}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t("searchCollections")}
               className="h-8 pl-8 text-sm"
             />
@@ -348,9 +334,12 @@ function CollectionFilterSection({
         )}
 
         {/* Vertical list */}
-        <div className="space-y-0.5">
-          {/* "All" row — first on page 0, hidden when searching */}
-          {!hasSearch && effectivePage === 0 && (
+        <div
+          className={cn("space-y-0.5", collections.isStale && "pointer-events-none opacity-60")}
+          style={showPagination ? { minHeight: FULL_PAGE_PX } : undefined}
+        >
+          {/* "All" row — first on page 1, hidden when searching */}
+          {!hasSearch && collections.page === 1 && (
             <CollectionRow
               name={t("allCollections")}
               isActive={collectionId === null}
@@ -358,53 +347,38 @@ function CollectionFilterSection({
             />
           )}
 
-          {(hasSearch ? filteredCollections : pageCollections).map(
-            (collection) => (
-              <CollectionRow
-                key={collection._id}
-                name={collection.name}
-                count={collection.itemCount}
-                isActive={collectionId === collection._id}
-                onClick={() => onCollectionChange(collection._id)}
-              />
-            ),
-          )}
+          {collections.items.map((collection) => (
+            <CollectionRow
+              key={collection._id}
+              name={collection.name}
+              count={collection.itemCount}
+              isActive={collectionId === collection._id}
+              onClick={() => onCollectionChange(collection._id)}
+            />
+          ))}
 
           {/* No search results */}
-          {hasSearch && filteredCollections.length === 0 && (
+          {hasSearch && !collections.isLoading && collections.items.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-3">
               {t("noCollections")}
             </p>
           )}
         </div>
 
-        {/* Pagination */}
         {showPagination && (
-          <div className="flex items-center justify-between pt-1">
-            <button
-              type="button"
-              disabled={effectivePage === 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-            <span className="text-[11px] tabular-nums text-muted-foreground">
-              {effectivePage + 1} / {totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={effectivePage >= totalPages - 1}
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors"
-            >
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          <PageStepper
+            className="pt-1"
+            page={collections.page}
+            pageCount={hasSearch || totalCollections === undefined ? undefined : Math.ceil(totalCollections / PAGE_SIZE)}
+            canPrevious={collections.canPrevious}
+            canNext={collections.canNext}
+            onPrevious={collections.previous}
+            onNext={collections.next}
+          />
         )}
 
         {/* Empty state */}
-        {!collections?.length && !hasSearch && (
+        {totalCollections === 0 && (
           <div className="text-center py-3">
             <FolderOpen className="h-5 w-5 mx-auto mb-1.5 text-muted-foreground/50" />
             <p className="text-xs text-muted-foreground">
@@ -437,7 +411,7 @@ function CollectionRow({
         "flex items-center gap-2 w-full rounded-lg px-2.5 py-2 text-sm transition-colors text-left",
         isActive
           ? "bg-primary/10 text-foreground"
-          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
       {isActive ? (
@@ -447,7 +421,7 @@ function CollectionRow({
       )}
       <span className="truncate flex-1">{name}</span>
       {count !== undefined && (
-        <span className="text-[11px] tabular-nums text-muted-foreground shrink-0">
+        <span className="text-2xs tabular-nums text-muted-foreground shrink-0">
           {count}
         </span>
       )}

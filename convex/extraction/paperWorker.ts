@@ -1,6 +1,7 @@
 "use node";
 
 import { v } from "convex/values";
+import { retryOnConflict } from "../lib/retryOnConflict";
 import { internal } from "../_generated/api";
 import { internalAction, type ActionCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -31,7 +32,6 @@ import {
 type QueueRow = Doc<"extractionPaperQueue">;
 type QueueStatus = QueueRow["status"];
 type QueueStopStatus = Extract<QueueStatus, "cancelled" | "failed" | "parked">;
-const QUEUE_LEASE_MS = 60_000;
 
 type QuestionItem = Doc<"extractionQuestions">;
 
@@ -110,45 +110,20 @@ async function updateQueueStatus(
   return result.applied;
 }
 
-async function dispatchNextQueueWindow(
-  ctx: ActionCtx,
-  queueRow: QueueRow,
-  args: {
-    paperConcurrency: number;
-    questionConcurrency: number;
-    pdfEnabled: boolean;
-  },
-): Promise<void> {
-  await ctx.runMutation(
-    internal.extraction.queue.mutations.dispatchPaperQueueWindow,
-    {
-      jobId: queueRow.jobId,
-      expectedEpoch: queueRow.runEpoch,
-      paperConcurrency: args.paperConcurrency,
-      leaseOwner: `worker:${queueRow.jobId}:${queueRow.runEpoch}:${queueRow._id}`,
-      leaseMs: QUEUE_LEASE_MS,
-      questionConcurrency: args.questionConcurrency,
-      pdfEnabled: args.pdfEnabled,
-    },
-  );
-}
-
+/**
+ * The run is done with its row: sets its status and releases it to the extraction worker,
+ * which refills the job's window and finishes the job when nothing is left
+ * (./queue/dispatcher.ts).
+ */
 async function completeQueueItem(
   ctx: ActionCtx,
   queueRow: QueueRow,
-  args: {
-    status: Extract<QueueStatus, "completed" | "failed">;
-    paperConcurrency: number;
-    questionConcurrency: number;
-    pdfEnabled: boolean;
-  },
+  status: Extract<QueueStatus, "completed" | "failed">,
 ): Promise<void> {
-  const applied = await updateQueueStatus(ctx, queueRow, args.status);
-  if (!applied) return;
-  await dispatchNextQueueWindow(ctx, queueRow, {
-    paperConcurrency: args.paperConcurrency,
-    questionConcurrency: args.questionConcurrency,
-    pdfEnabled: args.pdfEnabled,
+  await ctx.runMutation(internal.extraction.queue.dispatcher.releasePaperQueueItem, {
+    queueId: queueRow._id,
+    expectedEpoch: queueRow.runEpoch,
+    status,
   });
 }
 
@@ -174,16 +149,6 @@ async function markPaperStatus(
       expectedEpoch: args.expectedEpoch,
       ...(args.error ? { error: args.error } : {}),
     },
-  );
-}
-
-async function maybeFinalizeJob(
-  ctx: ActionCtx,
-  queueRow: QueueRow,
-): Promise<void> {
-  await ctx.runMutation(
-    internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob,
-    { jobId: queueRow.jobId, expectedEpoch: queueRow.runEpoch },
   );
 }
 
@@ -261,7 +226,8 @@ async function runQuestionBatch(
     return { stop: null, credits: 0, usages: [] };
   }
 
-  const writeResult = await ctx.runMutation(
+  // Many workers write one job's results at once; a write conflict must not lose answers.
+  const writeResult = await retryOnConflict(() => ctx.runMutation(
     internal.extraction.mutations.results.recordQuestionBatch,
     {
       paperId: context.paper._id,
@@ -272,7 +238,7 @@ async function runQuestionBatch(
         error: toFailureError(outcome.error),
       })),
     },
-  );
+  ));
 
   if (writeResult.status === "skipped") {
     return {
@@ -286,7 +252,7 @@ async function runQuestionBatch(
 
   const persisted = new Set(writeResult.completed);
   if (context.user && completed.length > 0) {
-    await captureCompletedQuestionTracking({
+    await captureCompletedQuestionTracking(ctx, {
       distinctId: context.user.clerkId,
       outcomes: completed,
       persistedQuestionKeys: persisted,
@@ -460,12 +426,7 @@ export const runPaperQueueItem = internalAction({
       paperId: queueRow.paperId,
     });
     if (!paper) {
-      await completeQueueItem(ctx, queueRow, {
-        status: "completed",
-        paperConcurrency: args.paperConcurrency,
-        questionConcurrency: args.questionConcurrency,
-        pdfEnabled: args.pdfEnabled,
-      });
+      await completeQueueItem(ctx, queueRow, "completed");
       return null;
     }
 
@@ -486,13 +447,7 @@ export const runPaperQueueItem = internalAction({
         },
         expectedEpoch: args.expectedEpoch,
       });
-      await maybeFinalizeJob(ctx, queueRow);
-      await completeQueueItem(ctx, queueRow, {
-        status: "completed",
-        paperConcurrency: args.paperConcurrency,
-        questionConcurrency: args.questionConcurrency,
-        pdfEnabled: args.pdfEnabled,
-      });
+      await completeQueueItem(ctx, queueRow, "completed");
       return null;
     }
 
@@ -536,13 +491,7 @@ export const runPaperQueueItem = internalAction({
           },
           expectedEpoch: args.expectedEpoch,
         });
-        await maybeFinalizeJob(ctx, queueRow);
-        await completeQueueItem(ctx, queueRow, {
-          status: "completed",
-          paperConcurrency: args.paperConcurrency,
-          questionConcurrency: args.questionConcurrency,
-          pdfEnabled: args.pdfEnabled,
-        });
+          await completeQueueItem(ctx, queueRow, "completed");
         return null;
       }
       charged += indexed.embeddingCredits;
@@ -574,15 +523,10 @@ export const runPaperQueueItem = internalAction({
         return null;
       }
 
-      await ctx.runMutation(internal.extraction.mutations.results.finalizePaper, {
+      await retryOnConflict(() => ctx.runMutation(internal.extraction.mutations.results.finalizePaper, {
         paperId: paper._id,
-      });
-      await completeQueueItem(ctx, queueRow, {
-        status: "completed",
-        paperConcurrency: args.paperConcurrency,
-        questionConcurrency: args.questionConcurrency,
-        pdfEnabled: args.pdfEnabled,
-      });
+      }));
+      await completeQueueItem(ctx, queueRow, "completed");
     } finally {
       await settlePaperCredits(ctx, job, reservation, charged, aggregateUsage(usages));
     }

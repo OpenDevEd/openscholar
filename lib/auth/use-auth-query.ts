@@ -10,6 +10,7 @@ import {
   type UsePaginatedQueryReturnType,
 } from "convex/react";
 import type { FunctionReference } from "convex/server";
+import { usePaginatedQuery as useStreamPaginatedQuery } from "convex-helpers/react";
 import {
   useAuthReadiness,
   type AuthReadinessPhase,
@@ -114,65 +115,76 @@ type ProtectedPaginatedResult<Query extends PaginatedQueryReference> = {
   isSettled: boolean;
 } & QueryHookMetadata;
 
-export function useProtectedPaginatedQuery<Query extends PaginatedQueryReference>(
-  query: Query,
-  args: PaginatedQueryArgs<Query> | "skip",
-  options: { initialNumItems: number },
-): ProtectedPaginatedResult<Query> {
-  const { phase, canRunProtectedQueries } = useAuthReadiness();
-  const shouldRun = canRunProtectedQueries && args !== "skip";
+/** A paginated query that waits for sign-in, run by `usePaginated`. */
+function protectedPaginatedQuery(usePaginated: typeof usePaginatedQuery) {
+  return function useProtectedPaginated<Query extends PaginatedQueryReference>(
+    query: Query,
+    args: PaginatedQueryArgs<Query> | "skip",
+    options: { initialNumItems: number },
+  ): ProtectedPaginatedResult<Query> {
+    const { phase, canRunProtectedQueries } = useAuthReadiness();
+    const shouldRun = canRunProtectedQueries && args !== "skip";
 
-  const paginated = usePaginatedQuery(
-    query as never,
-    shouldRun ? (args as never) : "skip",
-    options,
-  ) as UsePaginatedQueryReturnType<Query>;
-  const loadMoreNoop = useCallback((_numItems: number) => {
-    // Intentional noop while query is deferred.
-  }, []);
+    const paginated = usePaginated(
+      query as never,
+      shouldRun ? (args as never) : "skip",
+      options,
+    ) as UsePaginatedQueryReturnType<Query>;
+    const loadMoreNoop = useCallback((_numItems: number) => {
+      // Intentional noop while query is deferred.
+    }, []);
 
-  const isAnonymous = phase === "anonymous";
-  const disabledByCaller = args === "skip";
-  const deferredForAuth = !disabledByCaller && !canRunProtectedQueries;
+    const isAnonymous = phase === "anonymous";
+    const disabledByCaller = args === "skip";
+    const deferredForAuth = !disabledByCaller && !canRunProtectedQueries;
 
-  if (disabledByCaller || deferredForAuth) {
+    if (disabledByCaller || deferredForAuth) {
+      const settlement = getSettlementState({
+        phase,
+        queryEnabled: shouldRun,
+        hasData: disabledByCaller,
+      });
+      return {
+        results: [] as PaginatedQueryItem<Query>[],
+        status: "Deferred",
+        isLoading: false,
+        loadMore: loadMoreNoop,
+        isInitialLoading: false,
+        hasLoadedFirstPage: disabledByCaller,
+        isSettled: settlement === "ready",
+        phase,
+        isDeferred: deferredForAuth,
+        isReady: canRunProtectedQueries,
+        isAnonymous,
+        settlement,
+      };
+    }
+
+    const hasLoadedFirstPage = paginated.status !== "LoadingFirstPage";
     const settlement = getSettlementState({
       phase,
-      queryEnabled: shouldRun,
-      hasData: disabledByCaller,
+      queryEnabled: true,
+      hasData: hasLoadedFirstPage,
     });
+
     return {
-      results: [] as PaginatedQueryItem<Query>[],
-      status: "Deferred",
-      isLoading: false,
-      loadMore: loadMoreNoop,
-      isInitialLoading: false,
-      hasLoadedFirstPage: disabledByCaller,
+      ...paginated,
+      isInitialLoading: !hasLoadedFirstPage,
+      hasLoadedFirstPage,
       isSettled: settlement === "ready",
       phase,
-      isDeferred: deferredForAuth,
-      isReady: canRunProtectedQueries,
+      isDeferred: false,
+      isReady: hasLoadedFirstPage,
       isAnonymous,
       settlement,
     };
-  }
-
-  const hasLoadedFirstPage = paginated.status !== "LoadingFirstPage";
-  const settlement = getSettlementState({
-    phase,
-    queryEnabled: true,
-    hasData: hasLoadedFirstPage,
-  });
-
-  return {
-    ...paginated,
-    isInitialLoading: !hasLoadedFirstPage,
-    hasLoadedFirstPage,
-    isSettled: settlement === "ready",
-    phase,
-    isDeferred: false,
-    isReady: hasLoadedFirstPage,
-    isAnonymous,
-    settlement,
   };
 }
+
+// Each hook is looked up when it runs, not when this module loads, as before.
+export const useProtectedPaginatedQuery = protectedPaginatedQuery(((...args) => usePaginatedQuery(...args)) as typeof usePaginatedQuery);
+/**
+ * For queries paged with convex-helpers streams: their pages hold their place only when
+ * the hook pins each page's end cursor, which convex-helpers' hook does.
+ */
+export const useProtectedStreamPaginatedQuery = protectedPaginatedQuery(((...args) => useStreamPaginatedQuery(...args)) as typeof usePaginatedQuery);

@@ -4,7 +4,8 @@ import { renderHook, act, waitFor } from "@testing-library/react";
 import { NuqsTestingAdapter, type UrlUpdateEvent } from "nuqs/adapters/testing";
 import { SearchProvider, useSearch } from "@/lib/search";
 import { useQueryHistory } from "@/lib/hooks";
-import { useSearchHistoryStore } from "@/lib/store";
+import { useSearchHistoryStore, localSearchHistoryStore, localKeywordExpansionStore, localRatingsStore } from "@/lib/store";
+import { ResearchContext } from "@/lib/research/binding";
 import type { SearchResult } from "@/lib/types";
 import { DEFAULT_SEARCH_PARAMS } from "@/lib/search-params";
 
@@ -15,6 +16,12 @@ vi.mock("next/navigation", () => ({
   usePathname: () => `/results/${searchId}`,
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
+}));
+// Signed out: the search keeps its history in this browser.
+vi.mock("@clerk/nextjs", () => ({ useAuth: () => ({ userId: null }) }));
+vi.mock("convex/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("convex/react")>()),
+  usePaginatedQuery: () => ({ results: [], status: "Exhausted", loadMore: vi.fn() }),
 }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/lib/toast", () => ({ useAppToast: () => ({ search: { failed: vi.fn() } }) }));
@@ -47,6 +54,9 @@ function seed(history: Entry[]) {
         field: current.field,
         queryHistory: history.map((entry) => ({ ...entry, timestamp: now })),
         questionHistory: [],
+        queryHistoryCount: history.length,
+        questionCount: 0,
+        questionText: "",
         screeningQuestions: [],
         screeningResponses: {},
         count: 0,
@@ -57,10 +67,10 @@ function seed(history: Entry[]) {
   });
 }
 
-function renderSearch(searchParams: string, onUrlUpdate: (event: UrlUpdateEvent) => void) {
+function renderSearch(searchParams: string, onUrlUpdate: (event: UrlUpdateEvent) => void, account = false) {
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate} hasMemory>
-      <SearchProvider>{children}</SearchProvider>
+      <ResearchContext.Provider value={account ? { history: localSearchHistoryStore, shortcuts: localKeywordExpansionStore, ratings: localRatingsStore } : null}><SearchProvider>{children}</SearchProvider></ResearchContext.Provider>
     </NuqsTestingAdapter>
   );
   return renderHook(() => {
@@ -72,6 +82,16 @@ function renderSearch(searchParams: string, onUrlUpdate: (event: UrlUpdateEvent)
 // One step per test: nuqs's testing adapter can drop a second update that arrives
 // before it has synced the first, which a person clicking never does.
 describe("query history arrows across keyword and OQL scopes", () => {
+  it("renders live account edits instead of stale URL filters and query", () => {
+    seed([{ query: "saved query", field: "title_and_abstract" }]);
+    const { result } = renderSearch("?q=stale&mincite=99", vi.fn(), true);
+    expect(result.current.search.params.q).toBe("saved query");
+    expect(result.current.search.params.mincite).toBeNull();
+    act(() => localSearchHistoryStore.getState().updateSearchResult(searchId, { query: "edited on another device", minCitations: 7, page: 3 }));
+    expect(result.current.search.params).toMatchObject({ q: "edited on another device", mincite: 7, page: 3 });
+    act(() => result.current.search.setQuery("preview", { skipHistory: true }));
+    expect(result.current.search.params.q).toBe("preview");
+  });
   it("brings an OQL entry's scope back without putting the query in the URL", async () => {
     seed([{ query: OQL, field: "oql" }, { query: "chatgpt", field: "title_and_abstract" }]);
     const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>();

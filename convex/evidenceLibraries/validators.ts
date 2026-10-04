@@ -5,6 +5,8 @@ import {
   SECTION_REGISTRY,
   type SectionKey,
 } from "../../lib/evidence-libraries/configuration/section-registry";
+import { MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
+import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
 
 export type { SectionKey };
 
@@ -142,11 +144,14 @@ export const sectionKeyValidator = v.union(
   ]),
 );
 
+/** A section's settings: its contract checks the shape, and its JSON stays within MAX_SECTION_PAYLOAD_BYTES. */
+export const sectionPayloadValidator = sized(v.any(), MAX_SECTION_PAYLOAD_BYTES);
+
 // One owner-edited section as it travels to and from the client. The payload
 // is checked in the mutation against the generated validator for its section.
 export const sectionRowValidator = v.object({
   sectionKey: sectionKeyValidator,
-  payload: v.any(),
+  payload: sectionPayloadValidator,
 });
 
 // One problem the full validator found while assembling a configuration.
@@ -175,6 +180,7 @@ export const ownerConfigurationVersionValidator = v.union(
   v.literal(5),
   v.literal(6),
   v.literal(7),
+  v.literal(8),
 );
 export const draftOwnerConfigurationVersionValidator = v.union(
   v.literal(3),
@@ -182,8 +188,9 @@ export const draftOwnerConfigurationVersionValidator = v.union(
   v.literal(5),
   v.literal(6),
   v.literal(7),
+  v.literal(8),
 );
-export const currentOwnerConfigurationVersionValidator = v.literal(7);
+export const currentOwnerConfigurationVersionValidator = v.literal(8);
 
 export const evidenceLibraryStateValidator = v.union(
   v.literal("provisioning"),
@@ -193,6 +200,9 @@ export const evidenceLibraryStateValidator = v.union(
 
 export const evidenceLibraryFields = {
   activePublicationConfigDigest: v.optional(v.string()),
+  // Set once every approved OpenAlex query version in the library's revisions is in
+  // evidenceLibraryApprovedQueries; until then a sources save reads the revisions (#357).
+  approvedQueriesRecorded: v.optional(v.literal(true)),
   organizationId: v.id("organizations"),
   name: v.string(),
   slug: v.string(),
@@ -209,14 +219,6 @@ export const evidenceLibraryFields = {
   updatedByClerkUserId: v.string(),
   createdAt: v.number(),
   updatedAt: v.number(),
-};
-
-// One row: the hosts Coolify served when it was last asked. Read while an
-// owner reserves an address, so a burst of checks costs one pair of reads.
-export const evidenceLibraryServedHostsFields = {
-  source: v.literal("coolify"),
-  hosts: v.array(v.string()),
-  fetchedAt: v.number(),
 };
 
 // One custom domain of one library. `host` is unique across the platform.
@@ -377,7 +379,7 @@ export const evidenceLibraryConfigSectionValidator = v.union(
     libraryId: v.id("evidenceLibraries"),
     draftId: v.id("evidenceLibraryConfigDrafts"),
     sectionKey: sectionKeyValidator,
-    payload: v.any(),
+    payload: sectionPayloadValidator,
     payloadByteLength: v.number(),
     contractProvenance: configProvenanceValidator,
     updatedByClerkUserId: v.string(),
@@ -388,7 +390,7 @@ export const evidenceLibraryConfigSectionValidator = v.union(
     libraryId: v.id("evidenceLibraries"),
     revisionId: v.id("evidenceLibraryConfigRevisions"),
     sectionKey: sectionKeyValidator,
-    payload: v.any(),
+    payload: sectionPayloadValidator,
     payloadByteLength: v.number(),
     contractProvenance: configProvenanceValidator,
     createdByClerkUserId: v.string(),
@@ -406,7 +408,7 @@ export const evidenceLibraryOperationErrorInputValidator = v.object({
 export const evidenceLibraryOperationFailureValidator = v.object({
   code: v.string(),
   message: v.string(),
-  issues: v.optional(v.array(configurationIssueValidator)),
+  issues: capped(v.optional(v.array(configurationIssueValidator)), MAX_CONFIGURATION_ISSUES),
 });
 
 // Who answers the public address, from the last check. "not-ours" means
@@ -503,7 +505,7 @@ export const runtimeReleaseChangeValidator = v.object({
 export const runtimeReleaseNotesValidator = v.object({
   commit: v.string(),
   summary: v.string(),
-  notes: v.array(v.string()),
+  notes: capped(v.array(v.string()), MAX_RELEASE_NOTES),
 });
 
 // The newest Evidence Library software commit, checked against GitHub and
@@ -536,14 +538,18 @@ export const evidenceLibraryDigestJobFields = {
   result: v.optional(evidenceLibraryDigestResultValidator),
 };
 
+/** The commits and the release notes one software check holds, capped as the release row stores them. */
+export const runtimeReleaseChangesValidator = capped(v.array(runtimeReleaseChangeValidator), MAX_RELEASE_CHANGES);
+export const runtimeReleasesValidator = capped(v.array(runtimeReleaseNotesValidator), MAX_RELEASES);
+
 export const evidenceLibraryRuntimeReleaseFields = {
   running: v.string(),
   latest: v.string(),
   latestImage: v.string(),
-  changes: v.array(runtimeReleaseChangeValidator),
+  changes: runtimeReleaseChangesValidator,
   // Rows written before release notes existed have no list; the check treats
   // them as stale and asks GitHub again.
-  releases: v.optional(v.array(runtimeReleaseNotesValidator)),
+  releases: capped(v.optional(v.array(runtimeReleaseNotesValidator)), MAX_RELEASES),
   checkedAt: v.number(),
   contractSupport: v.optional(runtimeContractSupportValidator),
 };
@@ -567,17 +573,6 @@ export const evidenceLibraryCredentialFields = {
   updatedByClerkUserId: v.string(),
   createdAt: v.number(),
   updatedAt: v.number(),
-};
-
-export const evidenceLibraryAdminLoginCodeFields = {
-  libraryId: v.id("evidenceLibraries"),
-  organizationId: v.id("organizations"),
-  clerkUserId: v.string(),
-  role: evidenceLibraryAdminRoleValidator,
-  codeDigest: v.string(),
-  issuedAt: v.number(),
-  expiresAt: v.number(),
-  consumedAt: v.optional(v.number()),
 };
 
 export const evidenceLibraryRequestableOperationKindValidator = v.union(
@@ -752,7 +747,7 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   targetBaseUrl: v.string(),
   // The custom domains the proxy serves beside the platform address, taken
   // from our own records when the deployment was planned.
-  customDomains: v.array(v.string()),
+  customDomains: capped(v.array(v.string()), MAX_LIBRARY_DOMAINS),
   revisionKey: v.string(),
   defaultLocale: v.string(),
   runtimeCommit: v.string(),
@@ -815,6 +810,9 @@ export const evidenceLibraryOperationFields = {
   addressMove: v.optional(evidenceLibraryAddressMoveValidator),
   domainChange: v.optional(evidenceLibraryDomainChangeValidator),
   revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
+  // The sections this version's revision changed, recorded with the revision so the Versions
+  // list reads no configuration. Absent on a software update and on an operation with no revision.
+  changedSections: capped(v.optional(v.array(sectionKeyValidator)), MAX_CONFIG_SECTIONS),
   setupReceipts: v.optional(evidenceLibrarySetupReceiptsValidator),
   setupAttemptToken: v.optional(v.string()),
   setupLeaseExpiresAt: v.optional(v.number()),
@@ -887,7 +885,7 @@ export const evidenceLibraryOperationFields = {
       stage: v.string(),
     }),
   ),
-  issues: v.optional(v.array(configurationIssueValidator)),
+  issues: capped(v.optional(v.array(configurationIssueValidator)), MAX_CONFIGURATION_ISSUES),
   requestedByClerkUserId: v.string(),
   createdAt: v.number(),
   updatedAt: v.number(),
@@ -956,3 +954,132 @@ export function toPublicEvidenceLibraryOperation(
     "_id" | "_creationTime" | (typeof PUBLIC_OPERATION_FIELDS)[number]
   >;
 }
+
+/**
+ * A deleted OpenScholar account is removed from every library, not only the
+ * ones the reader comes back to. One row per library still owed the call; the
+ * row goes away when the library confirms.
+ */
+export const evidenceLibraryReaderDeletionFields = {
+  libraryId: v.id("evidenceLibraries"),
+  clerkUserId: v.string(),
+  attempts: v.number(),
+  state: v.union(v.literal("pending"), v.literal("failed")),
+  lastError: v.optional(v.object({ status: v.optional(v.number()), message: v.string() })),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
+
+/**
+ * The Clerk OAuth application a library signs readers and admins in with.
+ * `intentAt` is written before Clerk is asked to create it, so an attempt
+ * whose answer was lost is adopted on the next try instead of repeated.
+ * `redirectUris` is what Clerk last confirmed; every sync reads Clerk again,
+ * because an answer can be lost after Clerk applied the change.
+ */
+export const evidenceLibraryOAuthClientFields = {
+  libraryId: v.id("evidenceLibraries"),
+  intentAt: v.number(),
+  applicationId: v.optional(v.string()),
+  clientId: v.optional(v.string()),
+  encryptedClientSecret: v.optional(v.string()),
+  discoveryUrl: v.optional(v.string()),
+  redirectUris: capped(v.array(v.string()), MAX_REDIRECT_URIS),
+  // One sync at a time per library: two that overlap could each create an
+  // application, or save a secret Clerk has already replaced.
+  lease: v.optional(v.object({ token: v.string(), expiresAt: v.number() })),
+  lastError: v.optional(
+    v.object({
+      status: v.optional(v.number()),
+      code: v.optional(v.string()),
+      traceId: v.optional(v.string()),
+      message: v.string(),
+      at: v.number(),
+    }),
+  ),
+  updatedAt: v.number(),
+};
+
+/**
+ * Clerk users OpenScholar has seen deleted, kept even when no user row ever
+ * existed, so a deletion delivered before the creation is not forgotten.
+ */
+export const clerkDeletedUserFields = {
+  clerkId: v.string(),
+  deletedAt: v.number(),
+};
+
+/** The DNS records one custom domain needs. */
+export const dnsRecordsValidator = capped(
+  v.array(
+    v.object({
+      type: v.union(v.literal("A"), v.literal("CNAME"), v.literal("TXT")),
+      label: v.string(),
+      name: v.string(),
+      value: v.string(),
+    }),
+  ),
+  MAX_DNS_RECORDS,
+);
+
+/** What a check found for each of a library's domains still waiting: at most the MAX_LIBRARY_DOMAINS a library has. */
+export const checkedDomainResultsValidator = capped(
+  v.array(
+    v.object({
+      domainId: v.id("evidenceLibraryDomains"),
+      state: evidenceLibraryDomainStateValidator,
+      failure: v.optional(evidenceLibraryDomainFailureValidator),
+    }),
+  ),
+  MAX_LIBRARY_DOMAINS,
+);
+
+/** A custom domain as the Domain section shows it. A library has at most MAX_LIBRARY_DOMAINS (./domains.ts refuses more). */
+export const domainRowsValidator = capped(
+  v.array(
+    v.object({
+      domainId: v.id("evidenceLibraryDomains"),
+      host: v.string(),
+      role: v.union(v.literal("primary"), v.literal("redirect")),
+      state: evidenceLibraryDomainStateValidator,
+      failure: v.optional(evidenceLibraryDomainFailureValidator),
+      attached: v.boolean(),
+      removing: v.boolean(),
+      deploymentPending: v.boolean(),
+      isApex: v.boolean(),
+      checkedAt: v.optional(v.number()),
+      suggestedWwwHost: v.optional(v.string()),
+      /** The main address the owner chose, applied by the next activation. */
+      main: v.boolean(),
+      /** Removed by the owner; goes once the next activation is live. */
+      removeOnActivate: v.boolean(),
+      records: dnsRecordsValidator,
+    }),
+  ),
+  MAX_LIBRARY_DOMAINS,
+);
+
+/** The sections one configuration version changed. */
+export const changedSectionsValidator = capped(v.array(sectionKeyValidator), MAX_CONFIG_SECTIONS);
+
+const sectionFields = { sectionKey: sectionKeyValidator, payload: sectionPayloadValidator, payloadByteLength: v.number(), contractProvenance: configProvenanceValidator };
+/** A draft's or a revision's sections: one per section key, so never more than the registry holds. */
+export const draftSectionsValidator = capped(v.array(v.object({ ...sectionFields, updatedAt: v.number() })), MAX_CONFIG_SECTIONS);
+export const revisionSectionsValidator = capped(v.array(v.object({ ...sectionFields, createdAt: v.number() })), MAX_CONFIG_SECTIONS);
+
+/** One person on a library's team page. */
+export const teamPersonValidator = v.object({
+  clerkUserId: v.string(),
+  name: v.string(),
+  email: v.string(),
+  imageUrl: v.optional(v.string()),
+});
+/** People of the library's organization: its owners, or those who could be added. A team page reads no more members than this and refuses a larger organization. */
+export const organizationPeopleValidator = capped(v.array(teamPersonValidator), MAX_ORGANIZATION_MEMBERS_READ);
+/** People a library grants a role to directly: granting another past this is refused. */
+export const grantedPeopleValidator = capped(v.array(teamPersonValidator), MAX_LIBRARY_MEMBERS);
+/** A library's invitations waiting: inviting another past this is refused. */
+export const teamInvitationsValidator = capped(
+  v.array(v.object({ invitationId: v.id("evidenceLibraryInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
+  MAX_PENDING_INVITATIONS_PER_LIBRARY,
+);

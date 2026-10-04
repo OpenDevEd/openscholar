@@ -68,6 +68,8 @@ export class RuntimeReadError extends Error {
       | "RUNTIME_READ_INVALID"
       | "RUNTIME_READ_UNAVAILABLE",
     message: string,
+    /** The library's HTTP status, when it answered at all. */
+    readonly status?: number,
   ) {
     super(message);
     this.name = "RuntimeReadError";
@@ -153,7 +155,7 @@ async function runtimeFetch(
   fetchImpl: typeof fetch,
   target: { baseUrl: string; credential: string },
   url: URL,
-  method: "GET" | "POST" = "GET",
+  method: "GET" | "POST" | "DELETE" = "GET",
 ): Promise<Response> {
   let response: Response;
   try {
@@ -175,12 +177,14 @@ async function runtimeFetch(
     throw new RuntimeReadError(
       "RUNTIME_READ_REFUSED",
       "The library refused the machine credential",
+      response.status,
     );
   }
   if (!response.ok) {
     throw new RuntimeReadError(
       "RUNTIME_READ_UNAVAILABLE",
       `The library answered ${response.status}`,
+      response.status,
     );
   }
   return response;
@@ -246,6 +250,7 @@ export async function readRuntimeCollections(
     credential: string;
     query?: string;
     cursor?: string;
+    pageSize?: number;
   },
 ): Promise<RuntimeCollectionsPage> {
   const body = await runtimeGet(
@@ -255,7 +260,7 @@ export async function readRuntimeCollections(
     {
       query: input.query,
       cursor: input.cursor,
-      pageSize: String(RUNTIME_READ_PAGE_SIZE),
+      pageSize: String(input.pageSize ?? RUNTIME_READ_PAGE_SIZE),
     },
   );
   return readPage(body, readCollection, "collection list");
@@ -270,6 +275,7 @@ export async function readRuntimeInstitutions(
     cursor?: string;
     sort?: RuntimeInstitutionSort;
     direction?: RuntimeSortDirection;
+    pageSize?: number;
   },
 ): Promise<RuntimeInstitutionsPage> {
   const body = await runtimeGet(
@@ -281,7 +287,7 @@ export async function readRuntimeInstitutions(
       cursor: input.cursor,
       sort: input.sort,
       direction: input.direction,
-      pageSize: String(RUNTIME_READ_PAGE_SIZE),
+      pageSize: String(input.pageSize ?? RUNTIME_READ_PAGE_SIZE),
     },
   );
   return readPage(body, readInstitution, "institution list");
@@ -356,6 +362,7 @@ export async function readRuntimeReviewedPublications(
     query?: string;
     cursor?: string;
     ids?: readonly string[];
+    pageSize?: number;
   },
 ): Promise<RuntimeReviewedPublicationsPage> {
   const body = await runtimeGet(
@@ -367,11 +374,17 @@ export async function readRuntimeReviewedPublications(
       : {
           query: input.query,
           cursor: input.cursor,
-          pageSize: String(RUNTIME_READ_PAGE_SIZE),
+          pageSize: String(input.pageSize ?? RUNTIME_READ_PAGE_SIZE),
         },
   );
   return readPage(body, readReviewedPublication, "reviewed publication list");
 }
+
+/**
+ * The most questions kept from one answer. The home page has three slots
+ * (`/properties/home/properties/questions`, `maxItems`); the rest is room.
+ */
+export const RUNTIME_HOME_QUESTIONS_MAX = 10;
 
 /**
  * The questions the home page asks when the owner leaves a slot empty, one
@@ -398,7 +411,7 @@ export async function readRuntimeHomeQuestions(
       "The library's home page questions have an unexpected shape",
     );
   }
-  return questions as (string | null)[];
+  return (questions as (string | null)[]).slice(0, RUNTIME_HOME_QUESTIONS_MAX);
 }
 
 /** Asks the library to import one source now instead of at its next sweep. */
@@ -412,4 +425,26 @@ export async function requestRuntimeSourceRun(
     target.baseUrl,
   );
   await runtimeFetch(fetchImpl, target, url, "POST");
+}
+
+/**
+ * Removes a deleted OpenScholar account's reader data from the library. A 404
+ * means the library has no such reader, or runs software without readers, so
+ * there is nothing left to remove.
+ */
+export async function deleteRuntimeReader(
+  fetchImpl: typeof fetch,
+  target: { baseUrl: string; credential: string },
+  clerkUserId: string,
+): Promise<void> {
+  const url = new URL(
+    `/api/v1/openscholar/readers/${encodeURIComponent(clerkUserId)}`,
+    target.baseUrl,
+  );
+  try {
+    await runtimeFetch(fetchImpl, target, url, "DELETE");
+  } catch (error) {
+    if (error instanceof RuntimeReadError && error.status === 404) return;
+    throw error;
+  }
 }

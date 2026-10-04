@@ -18,12 +18,13 @@
  * plan-01 backfill. Never ship a 500-row seed to prod.
  */
 
+import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { v } from "convex/values";
 import {
   internalAction,
   internalMutation,
   type ActionCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { assertNonProd } from "../lib/assertNonProd";
@@ -31,7 +32,8 @@ import { paperChat } from "./agent";
 import { buildSeedChatPaperRows } from "./chatPapersSeed";
 
 const DEFAULT_COUNT = 500;
-const MAX_COUNT = 2_000;
+// A job holds at most PAPER_LIMIT sources (extraction/jobSources.ts), and its reads rely on it.
+const MAX_COUNT = PAPER_LIMIT;
 
 /**
  * Builds N synthetic source rows. Authors / abstracts are intentionally

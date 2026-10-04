@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { pick } from "convex-helpers";
 import {
   action,
   internalAction,
@@ -8,7 +9,7 @@ import {
   type ActionCtx,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
@@ -38,6 +39,7 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
     nextPlan: scheduled?.plan_id,
     features: Object.keys(customer.flags ?? {}),
     balance: customer.balances.credits?.remaining ?? 0,
+    concurrency: customer.balances.concurrency?.remaining,
     purchased: (customer.balances.credits?.breakdown ?? [])
       .filter((balance) => balance.plan_id === TOPUP_PLAN)
       .reduce((sum, balance) => sum + balance.remaining, 0),
@@ -62,6 +64,14 @@ export async function availableCredits(ctx: QueryCtx | MutationCtx, userId: Id<"
   return (await readAccount(ctx, userId))?.balance ?? 0;
 }
 
+/**
+ * Papers the person may have running at once in each paper pool (#335): their plan's
+ * `concurrency` balance in Autumn, or undefined when it sets none.
+ */
+export async function planConcurrency(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
+  return (await readAccount(ctx, userId))?.concurrency;
+}
+
 /** Whether the user's plans grant `featureId`, per the cached snapshot. */
 export async function hasPlanFeature(
   ctx: QueryCtx | MutationCtx,
@@ -71,28 +81,92 @@ export async function hasPlanFeature(
   return (await readAccount(ctx, userId))?.features?.includes(featureId) ?? false;
 }
 
+/**
+ * Stores a snapshot read from Autumn at `fetchedAt`. `withCard` says its card
+ * was fetched; without it the cached card stays. A balance the cache learned
+ * after `fetchedAt` (a charge that emptied it) stays too.
+ */
 export const writeSnapshot = internalMutation({
-  args: { userId: v.id("users"), snapshot: billingAccountSnapshotValidator },
+  args: { userId: v.id("users"), snapshot: billingAccountSnapshotValidator, withCard: v.boolean(), fetchedAt: v.number() },
   returns: v.null(),
-  handler: async (ctx, { userId, snapshot }) => {
+  handler: async (ctx, { userId, snapshot, withCard, fetchedAt }) => {
     const existing = await readAccount(ctx, userId);
-    const row = { ...snapshot, userId, refreshedAt: Date.now() };
+    const newer = existing !== null && existing.refreshedAt > fetchedAt;
+    const row = {
+      ...snapshot,
+      card: withCard ? snapshot.card : existing?.card,
+      ...(newer && { balance: existing.balance, purchased: existing.purchased }),
+      userId,
+      refreshedAt: newer ? existing.refreshedAt : fetchedAt,
+    };
     if (existing) await ctx.db.replace(existing._id, row);
     else await ctx.db.insert("billingAccounts", row);
     return null;
   },
 });
 
-/** Fetches the customer from Autumn and stores the snapshot. */
+/**
+ * Zeroes the cached balance now, so work that only checks the cache stops: a
+ * charge reported the balance empty, or couldn't reach Autumn. The queued
+ * refresh restores the real balance.
+ */
+export async function zeroCachedBalance(ctx: MutationCtx, userId: Id<"users">) {
+  const account = await readAccount(ctx, userId);
+  if (account && account.balance > 0) {
+    await ctx.db.patch("billingAccounts", account._id, { balance: 0, purchased: 0, refreshedAt: Date.now() });
+  }
+  await requestRefresh(ctx, userId);
+}
+
+export const zeroBalance = internalMutation({
+  args: { userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    await zeroCachedBalance(ctx, userId);
+    return null;
+  },
+});
+
+/**
+ * Fetches the customer from Autumn and stores the snapshot. The card costs
+ * Autumn a call to Stripe, so only billing screens and card events ask for it.
+ */
 export async function refreshAccount(
   ctx: ActionCtx,
   userId: Id<"users">,
-  profile: { email?: string; name?: string } = {},
+  options: { email?: string; name?: string; card?: boolean } = {},
 ): Promise<BillingAccountSnapshot> {
-  const snapshot = snapshotFromCustomer(await autumn.customer(userId, profile));
-  await ctx.runMutation(internal.billing.accounts.writeSnapshot, { userId, snapshot });
+  const fetchedAt = Date.now();
+  const snapshot = snapshotFromCustomer(await autumn.customer(userId, options));
+  await ctx.runMutation(internal.billing.accounts.writeSnapshot, { userId, snapshot, withCard: options.card ?? false, fetchedAt });
   return snapshot;
 }
+
+/** How long charges wait before the account re-reads Autumn, so a burst of them reads it once. */
+const REFRESH_DELAY_MS = 3_000;
+/** A queued refresh older than this failed; the next charge queues another. */
+const REFRESH_STUCK_MS = 60_000;
+
+/**
+ * Re-reads the account from Autumn shortly, unless a re-read is already
+ * queued. Charges call it instead of reading Autumn themselves, so parallel
+ * work doesn't write the account row once per charge.
+ */
+export async function requestRefresh(ctx: MutationCtx, userId: Id<"users">) {
+  const account = await readAccount(ctx, userId);
+  if (account?.refreshQueuedAt && Date.now() - account.refreshQueuedAt < REFRESH_STUCK_MS) return;
+  if (account) await ctx.db.patch("billingAccounts", account._id, { refreshQueuedAt: Date.now() });
+  await ctx.scheduler.runAfter(REFRESH_DELAY_MS, internal.billing.accounts.refresh, { userId });
+}
+
+export const refresh = internalAction({
+  args: { userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    await refreshAccount(ctx, userId);
+    return null;
+  },
+});
 
 /**
  * Creates the Autumn customer and grants the one-time signup credits.
@@ -134,7 +208,7 @@ export const refreshMine = action({
     if (!user) return null;
     const account = await ctx.runQuery(internal.billing.accounts.forUser, { userId: user._id });
     if (account && Date.now() - account.refreshedAt < REFRESH_AFTER_MS) return null;
-    await refreshAccount(ctx, user._id);
+    await refreshAccount(ctx, user._id, { card: true });
     return null;
   },
 });
@@ -152,6 +226,7 @@ export const forUser = internalQuery({
 
 const { stripeCustomerId: _stripeCustomerId, ...myAccountFields } =
   billingAccountSnapshotValidator.fields;
+const myAccountKeys = Object.keys(myAccountFields) as (keyof typeof myAccountFields)[];
 
 export const mine = query({
   args: {},
@@ -161,8 +236,8 @@ export const mine = query({
     if (!user) return null;
     const row = await readAccount(ctx, user._id);
     if (!row) return null;
-    const { _id, _creationTime, userId, refreshedAt, stripeCustomerId, ...snapshot } = row;
-    return snapshot;
+    // Copy only the fields the validator declares, so internal columns stay private.
+    return pick(row, myAccountKeys);
   },
 });
 

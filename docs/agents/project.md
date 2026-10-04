@@ -57,10 +57,17 @@ supported process changed. Read the page back before claiming success.
 The assistant can do everything a user can, through the same actions
 (`plans/research-assistant/README.md`, milestone OS-17).
 
-- Every new or changed user action needs an assistant tool. Once the action
-  registry lands (#323), add the action's registry entry; CI fails on a public
-  mutation or action that is neither registered nor exempt with a reason.
-  Until then, name the tool the action needs in the pull request.
+- Every new or changed user action ships with its registry entry
+  (`convex/lib/userActions.ts`). Define it once with `defineUserQuery` or
+  `defineUserMutation` (a core that takes the acting user), export the public
+  function built from it and its `…ForAssistant` twin, and add the entry to
+  `USER_ACTIONS` in `convex/lib/userActionRegistry.ts`. The assistant's tool is
+  built from that list.
+- `npm run check:user-actions` runs in CI and fails on any public Convex
+  function or Next.js server action that is neither registered nor listed in
+  `scripts/user-actions-exempt.json`. That file lists plumbing, with the reason
+  it isn't a user action, and pending user actions, with the issue that will
+  register them. Plumbing is never a place for a missing user action.
 - Tools address records by ID. The assistant changes what a user sees by
   changing the Convex record the page renders.
 - Reading at scale runs through OpenScholar's own features (screening,
@@ -136,6 +143,36 @@ settings, so every change to its shape ships a migration.
 - For `app/` or `components/` work, run `npm run dev:web`, open the
   changed page, and check the browser plus terminal.
 - GitHub CI runs the full pre-merge suite.
+
+## Convex limits
+
+Every page, export and count works at the largest sizes the product allows
+(milestone OS-18).
+
+- Convex tests run under Convex's transaction limits: `vitest.config.ts`
+  aliases `convex-test` to `tests/convex-test-with-limits.ts`. A flow that
+  holds a whole job, library or history in one read fails its test the way it
+  would fail in production.
+- `convex/lib/maxSize.test-support.ts` generates the largest sizes the product
+  allows, at the row sizes measured on shared dev. A flow that reads more than
+  one page proves it with a case in `convex/limits/maxSize.test.ts`.
+- `convex-test` runs one transaction at a time, so it never shows a write
+  conflict. Counters and anything else written in parallel are proven on a real
+  backend as well.
+- Every list pages by cursor, infinite scroll included (#428). A function
+  reads a page (`.paginate()`) or a named cap (`.take(CAP)`) that its writes
+  enforce, and returns a list only as the `page` of a pagination result. A list
+  stored on a record has a cap enforced on write (#426). Clients and actions
+  load the next page when the person asks for it, and exports stream page by
+  page; nothing loads every page into one array.
+- `npm run check:convex-rules` runs in CI. It fails on a `.collect()` or
+  `for await` over a query, on a public function whose `returns` holds a list
+  or record outside a pagination page, on `loadMore` from an effect or a loop,
+  and on a cursor loop that gathers pages, unless the case is listed as pending
+  in `scripts/convex-rules.json` with its issue. Pending lists only shrink: CI
+  fails on a function that isn't pending on `dev`, or has more pending entries
+  than on `dev`. It also fails on a public function without a `returns`
+  validator and on a public query that reads the clock.
 
 ## References
 

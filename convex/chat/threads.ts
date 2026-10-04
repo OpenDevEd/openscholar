@@ -13,13 +13,14 @@ import {
   mutation,
   type ActionCtx,
   type MutationCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { assertCallerOwnsJob, authorizeThreadAccess } from "./auth";
 import { paperChat } from "./agent";
-import { dedupeExpandedSources, expandJobSources } from "../extraction/expandSources";
+import { dedupeExpandedSources, expandJobSources, readLibraryInBatches } from "../extraction/expandSources";
+import { LIBRARY_READ_BATCH } from "../extraction/queries/internal";
 import { assertBucketWithinLimits } from "../extraction/bucket/limits";
 import { replaceJobSources, type BucketItemInput } from "../extraction/jobSources";
 import type { PaperData } from "../extraction/types";
@@ -35,6 +36,7 @@ import {
   hasSameOrderedOpenAlexIds,
   orderedOpenAlexIds,
 } from "./sourceRefreshModel";
+import { PAPER_LIMIT } from "../../lib/extraction/limits";
 
 function classifyChatPrepError(error: unknown) {
   const result = classifyUnknownError(error);
@@ -47,16 +49,18 @@ function classifyChatPrepError(error: unknown) {
 async function resolvePreparedSources(
   ctx: ActionCtx,
   jobId: Id<"extractionJobs">,
+  userId: Id<"users">,
 ): Promise<BucketItemInput[]> {
   const bucketItems = await ctx.runQuery(
     internal.extraction.queries.internal.getJobSourcesInternal,
     { jobId },
   );
-  return await resolvePreparedSourcesFromItems(ctx, bucketItems);
+  return await resolvePreparedSourcesFromItems(ctx, userId, bucketItems);
 }
 
 async function resolvePreparedSourcesFromItems(
   ctx: ActionCtx,
+  userId: Id<"users">,
   bucketItems: BucketItemInput[],
 ): Promise<BucketItemInput[]> {
   let cachedZoteroUserId: string | undefined;
@@ -65,10 +69,12 @@ async function resolvePreparedSourcesFromItems(
     fetchPapersFromHistory: async (searchFilters) => {
       const result = await ctx.runAction(
         internal.extraction.actions.fetchPapersFromHistory,
-        { searchFilters },
+        { userId, searchFilters },
       );
       return result as PaperData[];
     },
+    readLibraryItems: (ids) =>
+      readLibraryInBatches(ids, LIBRARY_READ_BATCH, (batch) => ctx.runQuery(internal.extraction.queries.internal.ownedLibraryItems, { userId, ids: batch })),
     resolveZoteroUserId: async () => {
       if (cachedZoteroUserId !== undefined) {
         return cachedZoteroUserId;
@@ -144,7 +150,7 @@ export const ensureThreadForJob = internalAction({
     }
 
     try {
-      const preparedSources = await resolvePreparedSources(ctx, jobId);
+      const preparedSources = await resolvePreparedSources(ctx, jobId, job.userId);
       assertBucketWithinLimits(
         preparedSources.map((item) => ({
           source: item.source,
@@ -334,6 +340,7 @@ export const continueChatWithSourceRefresh = action({
 
     const preparedSources = await resolvePreparedSourcesFromItems(
       ctx,
+      job.userId,
       bucketItems,
     );
     const nextOpenAlexIds = orderedOpenAlexIds(preparedSources);
@@ -370,12 +377,12 @@ async function replaceChatSourcesForJob(
   const existingPapers = await ctx.db
     .query("chatPapers")
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .collect();
+    .take(PAPER_LIMIT);
   const existingSources = opts.preserveInclusion
     ? await ctx.db
         .query("extractionJobSources")
         .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-        .collect()
+        .take(PAPER_LIMIT)
     : [];
 
   const sourceById = new Map(
@@ -400,7 +407,7 @@ async function replaceChatSourcesForJob(
   const newSources = await ctx.db
     .query("extractionJobSources")
     .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-    .collect();
+    .take(PAPER_LIMIT);
   for (const source of newSources) {
     const openalexId = source.openalexId?.trim();
     await ctx.db.insert("chatPapers", {
@@ -442,7 +449,7 @@ export const applyChatSourceRefresh = internalMutation({
     const currentSources = await ctx.db
       .query("extractionJobSources")
       .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-      .collect();
+      .take(PAPER_LIMIT);
     const currentOpenAlexIds = orderedOpenAlexIds(currentSources);
     const nextOpenAlexIds = orderedOpenAlexIds(items);
     try {

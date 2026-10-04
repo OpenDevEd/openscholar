@@ -1,5 +1,6 @@
+import { assertFlagRoom } from "./internal";
 import { v } from "convex/values";
-import { mutation } from "../_generated/server";
+import { mutation } from "../lib/functions";
 import { FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { requireAdmin } from "../admins/access";
 import { createError } from "../lib/errors";
@@ -17,7 +18,8 @@ export const setEnabled = mutation({
       .withIndex("by_key", (q) => q.eq("key", key))
       .unique();
     if (row) await ctx.db.patch("featureFlags", row._id, { enabled, updatedAt: Date.now() });
-    else
+    else {
+      await assertFlagRoom(ctx);
       await ctx.db.insert("featureFlags", {
         key,
         enabled,
@@ -25,6 +27,7 @@ export const setEnabled = mutation({
         description: flag.description,
         updatedAt: Date.now(),
       });
+    }
     return null;
   },
 });

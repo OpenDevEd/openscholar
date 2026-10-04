@@ -2,11 +2,13 @@ import {
   mutation,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
+import { readChangedSections } from "./configurationSnapshot";
+import { isConfigurationDeploymentOperation } from "./operationKinds";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import { requireEvidenceLibraryAccess } from "./access";
 import { readAttachedDomainOrigins } from "./domains";
@@ -16,6 +18,11 @@ import {
   evidenceLibraryOperationReceiptValidator,
   evidenceLibraryRequestableOperationKindValidator,
 } from "./validators";
+import { MAX_CONFIGURATION_ISSUES } from "../lib/listCaps";
+import { MAX_ACTIVE_OPERATIONS_READ } from "../lib/queryBounds";
+
+/** Newest publish operations read to find the newest configuration deployment. */
+const NEWEST_PUBLISHES_READ = 50;
 
 type OperationReadCtx = QueryCtx | MutationCtx;
 type ConfigurationDeploymentTarget = NonNullable<
@@ -42,18 +49,33 @@ export function isCurrentConfigurationTargetBaseUrl(
   return targetBaseUrl === runtimeBinding.targetBaseUrl;
 }
 
-/** A publish operation owned by the configuration deployment pipeline. */
-export function isConfigurationDeploymentOperation(
-  operation: Doc<"evidenceLibraryConfigOperations">,
-): boolean {
-  return (
-    operation.kind === "publish" &&
-    (operation.activationEditVersion !== undefined ||
-      operation.runtimeUpdate !== undefined ||
-      operation.addressMove !== undefined ||
-      operation.domainChange !== undefined)
-  );
+/**
+ * A library's queued or running operations of one kind, for the guards that ask whether a
+ * setup or a deployment is under way. Only that kind is read, so requests nothing starts,
+ * such as a queued validation, never count. One setup and one deployment run at a time;
+ * past the bound the library is refused as busy by name, because a guard can't call it idle
+ * on a partial read.
+ */
+export async function readActiveOperations(
+  ctx: Pick<OperationReadCtx, "db">,
+  libraryId: Id<"evidenceLibraries">,
+  status: "queued" | "running",
+  kind: "setup" | "publish",
+) {
+  const operations = await ctx.db
+    .query("evidenceLibraryConfigOperations")
+    .withIndex("by_libraryId_and_status_and_kind", (query) =>
+      query.eq("libraryId", libraryId).eq("status", status).eq("kind", kind),
+    )
+    .take(MAX_ACTIVE_OPERATIONS_READ + 1);
+  if (operations.length > MAX_ACTIVE_OPERATIONS_READ) {
+    console.error("[evidence library] More active operations than a guard reads", { libraryId, status, kind, read: MAX_ACTIVE_OPERATIONS_READ });
+    throw createError("CONFLICT", `This library has more than ${MAX_ACTIVE_OPERATIONS_READ} ${status} ${kind} operations. Wait for them to finish before changing it.`);
+  }
+  return operations;
 }
+
+export { isConfigurationDeploymentOperation };
 
 /** The target still describes the ready runtime and the revision being sent. */
 export function isCurrentConfigurationDeploymentTarget(
@@ -134,21 +156,17 @@ export async function isAcceptableSavedConfigurationTarget(
   ) {
     return false;
   }
-  const operations = ctx.db
+  // Configuration deployments are publish operations, and nearly every publish is one, so
+  // the newest is among the newest few publishes. Not finding one among them reads as a
+  // stale target, which only means the next attempt assembles a new one.
+  const publishes = await ctx.db
     .query("evidenceLibraryConfigOperations")
-    .withIndex("by_libraryId_and_createdAt", (query) =>
-      query.eq("libraryId", operation.libraryId),
+    .withIndex("by_libraryId_and_kind_and_createdAt", (query) =>
+      query.eq("libraryId", operation.libraryId).eq("kind", "publish"),
     )
-    .order("desc");
-  let newestConfigurationOperation:
-    | Doc<"evidenceLibraryConfigOperations">
-    | undefined;
-  for await (const candidate of operations) {
-    if (isConfigurationDeploymentOperation(candidate)) {
-      newestConfigurationOperation = candidate;
-      break;
-    }
-  }
+    .order("desc")
+    .take(NEWEST_PUBLISHES_READ);
+  const newestConfigurationOperation = publishes.find(isConfigurationDeploymentOperation);
   if (newestConfigurationOperation?._id !== operation._id) return false;
   const runtimeBinding = library.runtimeBindingId
     ? await ctx.db.get(
@@ -222,19 +240,16 @@ export async function reissueConfigurationDeploymentOperation(
     return;
   }
 
-  let newestCreatedAt = operation.createdAt;
-  const operations = ctx.db
+  // The command must come after the newest configuration deployment; the newest operation
+  // of any kind is at least as new, and is one read.
+  const newest = await ctx.db
     .query("evidenceLibraryConfigOperations")
     .withIndex("by_libraryId_and_createdAt", (query) =>
       query.eq("libraryId", operation.libraryId),
     )
-    .order("desc");
-  for await (const candidate of operations) {
-    if (isConfigurationDeploymentOperation(candidate)) {
-      newestCreatedAt = Math.max(newestCreatedAt, candidate.createdAt);
-      break;
-    }
-  }
+    .order("desc")
+    .first();
+  const newestCreatedAt = Math.max(operation.createdAt, newest?.createdAt ?? 0);
   const commandAt = Math.max(Date.now(), newestCreatedAt) + 1;
   await ctx.db.patch(operation._id, {
     configurationDeploymentTarget: undefined,
@@ -361,7 +376,6 @@ export function validateOperationReceipt(
   return normalized;
 }
 
-const MAX_CONFIGURATION_ISSUES = 200;
 
 export type ConfigurationIssue = { pointer: string; message: string };
 
@@ -424,14 +438,11 @@ async function queueOperationRecord(
       "Publish and rollback operations require a revision",
     );
   }
-  if (args.revisionId) {
-    const revision = await ctx.db.get(
-      "evidenceLibraryConfigRevisions",
-      args.revisionId,
-    );
-    if (!revision || revision.libraryId !== args.libraryId) {
-      throw createError("NOT_FOUND", "Evidence Library revision not found");
-    }
+  const revision = args.revisionId
+    ? await ctx.db.get("evidenceLibraryConfigRevisions", args.revisionId)
+    : null;
+  if (args.revisionId && (!revision || revision.libraryId !== args.libraryId)) {
+    throw createError("NOT_FOUND", "Evidence Library revision not found");
   }
   const existing = await ctx.db
     .query("evidenceLibraryConfigOperations")
@@ -471,6 +482,10 @@ async function queueOperationRecord(
     activationEditVersion: args.activationEditVersion,
     runtimeUpdate: args.runtimeUpdate,
     revisionId: args.revisionId,
+    // A software update lists as one, with no sections named.
+    ...(revision && !args.runtimeUpdate && (args.kind === "publish" || args.kind === "setup")
+      ? { changedSections: await readChangedSections(ctx, revision) }
+      : {}),
     status: "queued",
     stage: "queued",
     attemptCount: 0,
@@ -599,6 +614,13 @@ export async function queueDomainChangeOperation(
       redeploy?: true;
       token: string;
     };
+    /** Set when the activation's settings need newer software than is running. */
+    runtimeUpdate?: {
+      from: string;
+      to: string;
+      fromImage: string;
+      toImage: string;
+    };
   },
 ) {
   const { domainChange, ...record } = args;
@@ -672,6 +694,7 @@ export async function attachRevisionToSetupOperation(
     await ctx.db.patch("evidenceLibraryConfigOperations", operation._id, {
       activationEditVersion: args.activationEditVersion,
       revisionId: args.revisionId,
+      changedSections: await readChangedSections(ctx, revision),
       updatedAt: Date.now(),
     });
   }

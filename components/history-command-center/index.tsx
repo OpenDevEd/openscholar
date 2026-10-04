@@ -1,14 +1,14 @@
 "use client";
 "use no memo"; // Date.now in posthog handler
 
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { parseAsInteger, useQueryState } from "nuqs";
-import { Clock, Search, ArrowRight } from "lucide-react";
+import { useConvex } from "convex/react";
+import { Clock, Search, ArrowRight, HistoryIcon } from "@/components/icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { useSearchHistoryStore, useUIStore } from "@/lib/store";
+import { localSearchHistoryStore, useSearchHistoryStore, useUIStore } from "@/lib/store";
 import { restoreFromHistory } from "@/lib/search/actions";
 import {
   jsonToCSV,
@@ -16,9 +16,10 @@ import {
   uploadFile,
   triggerFileUpload,
 } from "@/lib/utils";
+import { downloadExport } from "@/lib/export";
 import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { SearchResult, HistorySortBy } from "@/lib/types";
 import {
@@ -33,16 +34,20 @@ import { HistoryItem } from "./history-item";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
+import { useResearchStatus } from "@/lib/research/provider";
+import { usePreloadSearch, useResearchSession } from "@/lib/research/reads";
+import { useSearchList } from "@/lib/research/search-list";
+import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
 import posthog from "posthog-js";
 
 interface HistoryCommandCenterProps {
   /**
    * Turns the page into a chooser: picking a search hands it to the caller
-   * instead of opening it, the page number stays out of the URL, and the
-   * import, export and clear-all tools are left out.
+   * instead of opening it, and the import, export and clear-all tools are
+   * left out.
    */
-  pick?: { label: string; onPick: (item: SearchResult) => void; excludeId?: string };
+  pick?: { onPick: (item: SearchResult) => void; excludeId?: string };
 }
 
 export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
@@ -59,83 +64,29 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     { value: "least", label: th("leastResults") },
   ];
   const router = useRouter();
+  const convex = useConvex();
+  const account = useResearchSession();
+  const preloadSearch = usePreloadSearch();
   const [searchFilter, setSearchFilter] = useState("");
-  const [urlPage, setUrlPage] = useQueryState(
-    "page",
-    parseAsInteger.withDefault(1).withOptions({ scroll: true }),
-  );
-  const [localPage, setLocalPage] = useState(1);
-  const currentPage = pick ? localPage : urlPage;
-  const setCurrentPage = (page: number) => (pick ? setLocalPage(page) : void setUrlPage(page));
 
-  const { searchHistory: allHistory, clearSearchHistory, importSearchHistory } =
-    useSearchHistoryStore();
-  const excludeId = pick?.excludeId;
-  const searchHistory = useMemo(
-    () => (excludeId ? allHistory.filter((item) => item.id !== excludeId) : allHistory),
-    [allHistory, excludeId],
-  );
-  // History and view settings are saved in the browser; wait for them rather than flash an empty list.
-  const listReady = usePersistedStoreReady(useSearchHistoryStore);
+  const clearSearchHistory = useSearchHistoryStore((state) => state.clearSearchHistory);
+  const importSearchHistory = useSearchHistoryStore((state) => state.importSearchHistory);
+  const { ready: listReady, error, retry } = useResearchStatus();
   const settingsReady = usePersistedStoreReady(useUIStore);
-  const ready = listReady && settingsReady;
   const {
     historyViewMode,
     setHistoryViewMode,
     historySortBy,
     setHistorySortBy,
   } = useUIStore();
-
-  // Filter history
-  const filteredHistory = useMemo(() => {
-    if (!searchFilter.trim()) return searchHistory;
-    const query = searchFilter.toLowerCase();
-    return searchHistory.filter((item) => {
-      const matchesQuery = item.query?.toLowerCase().includes(query);
-      const matchesQuestion = item.questionHistory?.some((q) =>
-        q.question?.toLowerCase().includes(query),
-      );
-      return matchesQuery || matchesQuestion;
-    });
-  }, [searchHistory, searchFilter]);
-
-  // Sort history
-  const sortedHistory = useMemo(() => {
-    const sorted = [...filteredHistory];
-    switch (historySortBy) {
-      case "oldest":
-        return sorted.sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-        );
-      case "most":
-        return sorted.sort((a, b) => (b.count || 0) - (a.count || 0));
-      case "least":
-        return sorted.sort((a, b) => (a.count || 0) - (b.count || 0));
-      case "recent":
-      default:
-        return sorted.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        );
-    }
-  }, [filteredHistory, historySortBy]);
-
-  // Pagination
-  const totalPages = Math.ceil(
-    sortedHistory.length / COMMAND_CENTER_ITEMS_PER_PAGE,
-  );
-  const paginatedHistory = useMemo(() => {
-    const start = (currentPage - 1) * COMMAND_CENTER_ITEMS_PER_PAGE;
-    return sortedHistory.slice(start, start + COMMAND_CENTER_ITEMS_PER_PAGE);
-  }, [sortedHistory, currentPage]);
-
-  // Reset to page 1 when filter changes
-  React.useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
-    }
-  }, [currentPage, totalPages, setCurrentPage]);
+  // Read a page at a time: the page number can't be jumped to, so it stays out of the URL.
+  const history = useSearchList({ sort: historySortBy, text: searchFilter, pageSize: COMMAND_CENTER_ITEMS_PER_PAGE, excludeId: pick?.excludeId });
+  const ready = listReady && settingsReady && !history.isLoading;
+  // The page's own steps go back to its top; a chooser stays where its host put it.
+  const step = (to: () => void) => () => {
+    to();
+    if (!pick) window.scrollTo({ top: 0 });
+  };
 
   // Handlers
   const handleSearchClick = (item: SearchResult) => {
@@ -154,13 +105,15 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
       ),
     });
 
+    preloadSearch(item);
     router.push(restoreFromHistory(item));
   };
 
-  // Download handlers
-  const handleDownloadJSON = () => {
+  // An account's history is written by the server, a page at a time; this browser's is all here.
+  const download = async (format: "json" | "csv") => {
     try {
-      const data = searchHistory.map((item) => {
+      if (account) return await downloadExport(convex, { kind: "history" }, format);
+      const data = localSearchHistoryStore.getState().searchHistory.map((item) => {
         const { expandedQuery } = validateAndExpandKeywordsSilently(item.query);
         return {
           search_query: expandedQuery,
@@ -168,30 +121,10 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
           field: item.field,
         };
       });
-      downloadAsFile(
-        JSON.stringify(data, null, 2),
-        "search_history.json",
-        "json",
-      );
-    } catch {
-      toast.io.downloadFailed(tToast("entityJson"));
-    }
-  };
-
-  const handleDownloadCSV = async () => {
-    try {
-      const data = searchHistory.map((item) => {
-        const { expandedQuery } = validateAndExpandKeywordsSilently(item.query);
-        return {
-          search_query: expandedQuery,
-          count: item.count,
-          field: item.field,
-        };
-      });
-      const csv = await jsonToCSV(data);
-      downloadAsFile(csv, "search_history.csv", "csv");
-    } catch {
-      toast.io.downloadFailed(tToast("entityCsv"));
+      downloadAsFile(format === "json" ? JSON.stringify(data, null, 2) : jsonToCSV(data), `search_history.${format}`, format);
+    } catch (error) {
+      console.error(`[History] Failed to export as ${format}:`, error);
+      toast.io.downloadFailed(tToast(format === "json" ? "entityJson" : "entityCsv"));
     }
   };
 
@@ -218,7 +151,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   const handleClearAll = () => {
     showConfirmation({
       title: th("clearAllHistoryTitle"),
-      message: th("clearAllHistoryConfirm", { count: searchHistory.length }),
+      message: th("clearAllHistoryConfirm", { count: history.count ?? 0 }),
       confirmText: tc("clearAll"),
       cancelText: tc("cancel"),
       onConfirm: () => {
@@ -237,9 +170,9 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   };
 
   const list = (
-    <div className="p-4 md:p-6">
-      {!ready ? <ListLoading label={tc("loading")} /> : <CommandCenterList
-        items={paginatedHistory}
+    <div>
+      {!ready ? error ? <AuthStatePanel variant="sync_error_retry" onRetry={retry} /> : <ListLoading label={tc("loading")} /> : <CommandCenterList
+        items={history.items}
         viewMode={historyViewMode}
         keyExtractor={(item) => item.id}
         emptyIcon={Clock}
@@ -256,26 +189,32 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
         )}
         hasFilter={!!searchFilter.trim()}
         onClearFilter={() => setSearchFilter("")}
-        renderItem={(item, index) => (
+        renderItem={(item) => (
           <HistoryItem
             item={item}
-            index={index}
             viewMode={historyViewMode}
             onSearchClick={handleSearchClick}
-            pickLabel={pick?.label}
+            choosing={Boolean(pick)}
           />
         )}
       />}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {ready && history.hasPages && (
         <CommandCenterPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          totalItems={sortedHistory.length}
-          itemsPerPage={COMMAND_CENTER_ITEMS_PER_PAGE}
+          className="border-t border-border-subtle p-4"
+          currentPage={history.page}
           itemLabel={tcc("searchesLabel")}
+          steps={{
+            canPrevious: history.canPrevious,
+            canNext: history.canNext,
+            onPrevious: step(history.previous),
+            onNext: step(history.next),
+            offset: history.offset,
+            shown: history.items.length,
+            total: history.total,
+            pageCount: history.pageCount,
+          }}
         />
       )}
     </div>
@@ -287,13 +226,13 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     tabs={<ViewModeSwitch value={historyViewMode} onChange={setHistoryViewMode} />}
     filters={<CommandCenterFilters {...filters} />}
     actions={<CommandCenterFileActions
-      onDownloadJSON={handleDownloadJSON}
-      onDownloadCSV={handleDownloadCSV}
+      onDownloadJSON={() => void download("json")}
+      onDownloadCSV={() => download("csv")}
       onUploadJSON={handleUploadJSON}
       onUploadCSV={handleUploadCSV}
       onClearAll={handleClearAll}
       clearTooltip={th("clearAllHistory")}
-      totalCount={searchHistory.length}
+      totalCount={history.count}
     />}
   >{list}</HistoryPageFrame>;
 }
@@ -301,7 +240,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
 /** The history page's frame, shared with its loading state so nothing moves when it loads. */
 export function HistoryPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
   const tc = useTranslations("common");
-  return <LibraryPageShell icon={Clock} title={tc("searchHistory")} {...controls}>{children}</LibraryPageShell>;
+  return <LibraryPageShell icon={HistoryIcon} title={tc("searchHistory")} {...controls}>{children}</LibraryPageShell>;
 }
 
 export function HistoryLoading() {

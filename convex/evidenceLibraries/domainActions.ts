@@ -13,7 +13,7 @@ import { getDomain } from "tldts";
 import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { readServedHosts } from "./addressActions";
+import { servedAmong } from "./addressActions";
 import { CoolifyClientError, createCoolifyClient } from "./coolifyClient";
 import {
   caaScanNames,
@@ -53,10 +53,7 @@ import {
   requireRuntimeEnvironment,
   requireRuntimeHttpsOrigin,
 } from "./runtimeActionConfig";
-import {
-  evidenceLibraryDomainFailureValidator,
-  evidenceLibraryDomainStateValidator,
-} from "./validators";
+import { checkedDomainResultsValidator } from "./validators";
 
 /** A step that could not run. Nothing is written and no state moves. */
 class DomainCheckUnavailable extends Error {
@@ -125,13 +122,7 @@ const checkedDomainsValidator = v.object({
     v.literal("deploying"),
     v.literal("rate-limited"),
   ),
-  results: v.array(
-    v.object({
-      domainId: v.id("evidenceLibraryDomains"),
-      state: evidenceLibraryDomainStateValidator,
-      failure: v.optional(evidenceLibraryDomainFailureValidator),
-    }),
-  ),
+  results: checkedDomainResultsValidator,
 });
 
 /**
@@ -244,7 +235,7 @@ export const addDomain = action({
     }
     let served: Set<string>;
     try {
-      served = await readServedHosts(ctx);
+      served = await servedAmong(ctx, [host]);
     } catch {
       return { status: "refused" as const, reason: "check-failed" as const };
     }
@@ -664,6 +655,12 @@ export const checkDomains = action({
     );
     const held = new Set(claimed.claims.map((claim) => claim.domainId));
     const results: CheckedDomain[] = [];
+    // One result a domain: a later outcome, such as a host found taken after its DNS verified, replaces the earlier one.
+    const record = (result: CheckedDomain) => {
+      const earlier = results.findIndex((entry) => entry.domainId === result.domainId);
+      if (earlier === -1) results.push(result);
+      else results[earlier] = result;
+    };
     const deploymentChanges: Array<{
       domainId: Id<"evidenceLibraryDomains">;
       token: string;
@@ -697,7 +694,7 @@ export const checkDomains = action({
           ...(failure ? { failure } : {}),
         },
       );
-      results.push({
+      record({
         domainId: row.domainId,
         state: outcome.state,
         ...(failure ? { failure } : {}),
@@ -758,7 +755,7 @@ export const checkDomains = action({
               },
             );
             held.delete(row.domainId);
-            results.push({ domainId: row.domainId, state: "active" });
+            record({ domainId: row.domainId, state: "active" });
             continue;
           }
           if (live?.state === "failed") {

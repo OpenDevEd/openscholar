@@ -3,44 +3,39 @@ import type { Doc } from "../_generated/dataModel";
 type ScreeningJobStatus = Doc<"screeningJobs">["status"];
 type ScreeningResultStatus = Doc<"screeningResults">["status"];
 
+// The answers themselves go to the job's screening; the row keeps what is worked out from them.
 export type CompletedScreeningRowDetails = {
-  answers: Record<string, boolean | null>;
   score: number;
   stars: number;
   qualified: boolean;
+  outcome: "included" | "unclear" | "excluded";
   aiMetadata: {
     confidence: number;
   };
+  creditsUsed?: number;
 };
 
 type CompletionTransitionInput = {
   currentRowStatus: ScreeningResultStatus;
   jobStatus: ScreeningJobStatus;
-  resultKind: "success" | "failure";
+  // "canceled": its queued work was dropped because its job ended, so it was never screened.
+  resultKind: "success" | "failure" | "canceled";
   completedRowDetails?: CompletedScreeningRowDetails;
-};
-
-type CompletionTransitionBase = {
-  aggregateStatus: Extract<ScreeningResultStatus, "completed" | "failed" | "skipped">;
-  aggregateQualified: boolean;
-  scheduleQualifiedPersistence: boolean;
-  scheduleJobFinalization: boolean;
 };
 
 export type CompletionTransition =
   | {
       kind: "noop";
     }
-  | ({
+  | {
       kind: "patch";
       rowPatch:
         | ({
             status: "completed";
           } & CompletedScreeningRowDetails)
-        | {
-            status: "failed" | "skipped";
-          };
-    } & CompletionTransitionBase);
+        | { status: "failed"; outcome: "failed" }
+        | { status: "skipped" };
+    };
 
 export function deriveCompletionTransition(
   input: CompletionTransitionInput,
@@ -49,25 +44,17 @@ export function deriveCompletionTransition(
     return { kind: "noop" };
   }
 
-  if (input.resultKind !== "success") {
+  if (input.resultKind === "failure") {
     return {
       kind: "patch",
-      rowPatch: { status: "failed" },
-      aggregateStatus: "failed",
-      aggregateQualified: false,
-      scheduleQualifiedPersistence: false,
-      scheduleJobFinalization: true,
+      rowPatch: { status: "failed", outcome: "failed" },
     };
   }
 
-  if (input.jobStatus !== "processing") {
+  if (input.resultKind === "canceled" || input.jobStatus !== "processing") {
     return {
       kind: "patch",
       rowPatch: { status: "skipped" },
-      aggregateStatus: "skipped",
-      aggregateQualified: false,
-      scheduleQualifiedPersistence: false,
-      scheduleJobFinalization: true,
     };
   }
 
@@ -83,9 +70,5 @@ export function deriveCompletionTransition(
       status: "completed",
       ...input.completedRowDetails,
     },
-    aggregateStatus: "completed",
-    aggregateQualified: input.completedRowDetails.qualified,
-    scheduleQualifiedPersistence: input.completedRowDetails.qualified,
-    scheduleJobFinalization: true,
   };
 }

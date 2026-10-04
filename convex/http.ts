@@ -7,9 +7,10 @@ import { internal } from "./_generated/api";
 import { stripeWebhook } from "./billing/stripeWebhook";
 import { autumnWebhook } from "./billing/autumnWebhook";
 import { clerkWebhook } from "./webhooks/clerk";
-import { redeemAdminLoginCode, checkAdminSession } from "./evidenceLibraries/serviceHttp";
+import { checkAdminSession, checkReaderStatus } from "./evidenceLibraries/serviceHttp";
 import { receiveSourceStatus } from "./evidenceLibraries/sourceStatus";
 import { readCollectionItems } from "./evidenceLibraries/collectionSources";
+import { download as downloadExport } from "./exports";
 import { requireAppUrl } from "./lib/env";
 import {
   handleChatCompletions,
@@ -19,6 +20,7 @@ import {
 } from "./wallet/gateway/handler";
 
 const http = httpRouter();
+http.route({path: "/export", method: "GET", handler: downloadExport});
 http.route({path: "/api/v1/evidence-libraries/topics/catalog", method: "POST", handler: topicCatalog});
 http.route({path: "/api/v1/evidence-libraries/topics/detail", method: "POST", handler: topicDetail});
 http.route({path: "/api/v1/evidence-libraries/topic-associations", method: "POST", handler: topicAssociations});
@@ -34,15 +36,15 @@ http.route({
 });
 
 http.route({
-  path: "/webhooks/clerk",
+  path: "/api/v1/evidence-libraries/reader-status",
   method: "POST",
-  handler: clerkWebhook,
+  handler: checkReaderStatus,
 });
 
 http.route({
-  path: "/api/v1/evidence-libraries/admin-login/redeem",
+  path: "/webhooks/clerk",
   method: "POST",
-  handler: redeemAdminLoginCode,
+  handler: clerkWebhook,
 });
 
 http.route({

@@ -61,6 +61,7 @@ async function seedUser(
   return await t.run(async (ctx) => {
     const now = Date.now();
     return await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: overrides?.clerkId ?? "clerk_gw_test",
       email: overrides?.email ?? "gateway@test.com",
       firstName: "Gateway",

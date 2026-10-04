@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { X } from "lucide-react";
+import { X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -32,14 +32,14 @@ export const FilterSection = React.memo(function FilterSection({
         "relative rounded-xl overflow-hidden transition-all duration-200",
         "border",
         isActive
-          ? "bg-sidebar-accent/80 border-border/60"
-          : "bg-card/50 dark:bg-card/40 border-border/40 hover:border-border/60"
+          ? "bg-sidebar-accent border-border-subtle"
+          : "bg-card border-border-subtle hover:border-border"
       )}
     >
       {/* Active indicator - left gradient bar */}
       {isActive && (
         <div
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-sm bg-gradient-to-b from-[oklch(0.75_0.15_55)] via-[oklch(0.70_0.17_54)] to-[oklch(0.62_0.16_52)]"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-sm bg-gradient-to-b from-primary-bright via-primary to-primary-deep"
         />
       )}
 
@@ -70,7 +70,7 @@ export const FilterSection = React.memo(function FilterSection({
                 variant="ghost"
                 size="sm"
                 onClick={onClear}
-                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
               >
                 <X className="h-3 w-3 mr-1" />
                 {tc("clear")}

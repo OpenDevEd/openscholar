@@ -42,8 +42,8 @@ describe("<ConfigurationWorkspace>", () => {
     it("asks for a pinned institution only in the featured mode", async () => {
       const user = userEvent.setup();
       mutationMock.mockImplementation((reference: unknown) =>
-        reference === "listRecordInstitutions"
-          ? async () => ({ reason: "not-set-up", items: [] })
+        reference === "listInstitutions"
+          ? async () => ({ reason: "not-set-up", page: [], isDone: true, continueCursor: "" })
           : async () => null,
       );
       await renderWorkspace();

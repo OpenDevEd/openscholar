@@ -3,16 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
-import { useConvex, useMutation } from "convex/react";
+import { useConvex } from "convex/react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
-import type { Doc, Id } from "@/convex/_generated/dataModel";
-import {
-  useProtectedPaginatedQuery,
-  useProtectedQuery,
-} from "@/lib/auth/use-auth-query";
-import { showConfirmation } from "@/lib/confirmation";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
 import {
@@ -27,13 +24,13 @@ import {
 } from "@/lib/library/search-params";
 import { MIN_YEAR } from "@/lib/constants";
 import type { DateRange } from "react-day-picker";
-import { exportLibraryAsCSV, exportLibraryAsJSON } from "@/lib/library/export";
+import { downloadExport } from "@/lib/export";
 import { libraryItemToPaperResult } from "@/lib/library/library-item-to-paper-result";
 import {
   downloadLibraryItem,
   downloadLibraryEssentialItem,
 } from "@/lib/library/download-handlers";
-import { useRatingsStore, useUIStore } from "@/lib/store";
+import { useUIStore } from "@/lib/store";
 import type { PaperResult } from "@/lib/types/search.types";
 import type { ViewMode } from "@/lib/types";
 import {
@@ -47,12 +44,11 @@ import { SidebarLayout } from "@/components/shared/sidebar-layout";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Button } from "@/components/ui/button";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
+import { cn } from "@/lib/utils";
 import { CollectionManager } from "./collection-manager";
-import { CollectionPicker } from "./collection-picker";
 import { LibraryCommandCenter } from "./library-command-center";
 import { LibraryEmptyState } from "./library-empty-state";
 import { LibraryFilterSidebar } from "./library-filter-sidebar";
-import { LibraryItemActions } from "./library-item-shared";
 import { LibraryItemSkeleton } from "./library-item-skeleton";
 
 const PAGE_SIZE = 20;
@@ -68,7 +64,6 @@ export function LibraryPageClient() {
   const t = useTranslations("libraryPage");
   const tf = useTranslations("searchFilters");
   const format = useFormatter();
-  const convex = useConvex();
   const [params, setParams] = useQueryStates(librarySearchParams);
 
   const [rawSearch, setRawSearch] = useState(params.q);
@@ -80,7 +75,7 @@ export function LibraryPageClient() {
 
   useEffect(() => {
     if (rawSearch === debouncedSearch && debouncedSearch !== params.q) {
-      setParams({ q: debouncedSearch, p: 1 });
+      setParams({ q: debouncedSearch });
     }
   }, [debouncedSearch, params.q, rawSearch, setParams]);
 
@@ -93,21 +88,13 @@ export function LibraryPageClient() {
     if (range?.from || range?.to) {
       const yf = range.from ? range.from.getFullYear() : null;
       const yt = range.to ? range.to.getFullYear() : null;
-      setParams({ yf, yt, p: 1 });
+      setParams({ yf, yt });
     } else {
-      setParams({ yf: null, yt: null, p: 1 });
+      setParams({ yf: null, yt: null });
     }
   }, [setParams]);
 
   const [collectionManagerOpen, setCollectionManagerOpen] = useState(false);
-  const [collectionPickerItemId, setCollectionPickerItemId] = useState<
-    string | null
-  >(null);
-
-  const { data: collectionsWithCounts } = useProtectedQuery(
-    api.library.collections.getCollectionsWithCounts,
-    {},
-  );
 
   const { data: totalCount } = useProtectedQuery(
     api.library.queries.getLibraryCount,
@@ -164,116 +151,42 @@ export function LibraryPageClient() {
     filteredCountQueryArgs,
   );
 
-  const browseItems = useProtectedPaginatedQuery(
+  const browseItems = useCursorPage(
     api.library.queries.browseLibrary,
     queryText ? "skip" : libraryFilters,
-    { initialNumItems: PAGE_SIZE },
+    PAGE_SIZE,
   );
-  const searchItems = useProtectedPaginatedQuery(
+  const searchItems = useCursorPage(
     api.library.queries.searchLibrary,
-    queryText
-      ? {
-          ...libraryFilters,
-          searchText: queryText,
-        }
-      : "skip",
-    { initialNumItems: PAGE_SIZE },
+    queryText ? { ...libraryFilters, searchText: queryText } : "skip",
+    PAGE_SIZE,
   );
-  const paginatedItems = queryText ? searchItems : browseItems;
-
-  useEffect(() => {
-    if (paginatedItems.status !== "CanLoadMore") return;
-    if (paginatedItems.results.length > 0) return;
-    paginatedItems.loadMore(PAGE_SIZE * 5);
-  }, [
-    paginatedItems.loadMore,
-    paginatedItems.results.length,
-    paginatedItems.status,
-  ]);
-
-  useEffect(() => {
-    const requiredItems = params.p * PAGE_SIZE;
-    if (paginatedItems.results.length >= requiredItems) return;
-    if (paginatedItems.status !== "CanLoadMore") return;
-    paginatedItems.loadMore(
-      Math.max(PAGE_SIZE, requiredItems - paginatedItems.results.length),
-    );
-  }, [
-    paginatedItems.loadMore,
-    paginatedItems.results.length,
-    paginatedItems.status,
-    params.p,
-  ]);
+  const paged = queryText ? searchItems : browseItems;
 
   const [isExporting, setIsExporting] = useState(false);
+  const convex = useConvex();
 
-  const fetchExportItems = useCallback(async () => {
-    return await convex.query(
-      api.library.queries.listLibrary,
-      filteredCountQueryArgs,
-    );
-  }, [convex, filteredCountQueryArgs]);
+  const handleExport = useCallback(
+    async (format: "csv" | "json") => {
+      if (isExporting) return;
+      setIsExporting(true);
+      try {
+        await downloadExport(convex, { kind: "library", view: { ...libraryFilters, searchText: queryText || undefined } }, format);
+      } catch (error) {
+        console.error(`[Library] Failed to start the ${format} export:`, error);
+        toast.error(t("exportError"));
+      } finally {
+        setIsExporting(false);
+      }
+    },
+    [convex, isExporting, libraryFilters, queryText, t],
+  );
 
-  const handleExportCSV = useCallback(async () => {
-    if (isExporting) return;
-    setIsExporting(true);
-    try {
-      const exportItems = await fetchExportItems();
-      if (exportItems.length === 0) return;
-      exportLibraryAsCSV(exportItems);
-    } catch (error) {
-      console.error("[Library] Failed to export CSV:", error);
-      toast.error(t("exportError"));
-    } finally {
-      setIsExporting(false);
-    }
-  }, [fetchExportItems, isExporting, t]);
+  const pageItems = paged.items;
 
-  const handleExportJSON = useCallback(async () => {
-    if (isExporting) return;
-    setIsExporting(true);
-    try {
-      const exportItems = await fetchExportItems();
-      if (exportItems.length === 0) return;
-      exportLibraryAsJSON(exportItems);
-    } catch (error) {
-      console.error("[Library] Failed to export JSON:", error);
-      toast.error(t("exportError"));
-    } finally {
-      setIsExporting(false);
-    }
-  }, [fetchExportItems, isExporting, t]);
-
-  const filteredItems = paginatedItems.results;
-
-  const removeItem = useMutation(api.library.mutations.removeFromLibrary);
-  const { setRating } = useRatingsStore();
   const { isFocusModeOpen } = useUIStore();
   const isMobile = useIsTablet();
-
-  const loadedPageCount = Math.max(
-    1,
-    Math.ceil(filteredItems.length / PAGE_SIZE),
-  );
-  const effectivePage =
-    paginatedItems.status === "Exhausted"
-      ? Math.min(params.p, loadedPageCount)
-      : params.p;
-
-  useEffect(() => {
-    if (paginatedItems.status !== "Exhausted") return;
-    if (params.p <= loadedPageCount) return;
-    setParams({ p: loadedPageCount });
-  }, [loadedPageCount, paginatedItems.status, params.p, setParams]);
-
-  const isWalkingEmpty =
-    filteredItems.length === 0 &&
-    (paginatedItems.status === "CanLoadMore" ||
-      paginatedItems.status === "LoadingMore");
-  const isPageLoading =
-    filteredItems.length < effectivePage * PAGE_SIZE &&
-    paginatedItems.status !== "Exhausted";
-  const isLoading = paginatedItems.isInitialLoading || isWalkingEmpty || isPageLoading;
+  const isLoading = paged.isLoading;
 
   // Force list-detail on mobile
   const effectiveViewMode: ViewMode = isMobile
@@ -282,47 +195,17 @@ export function LibraryPageClient() {
 
   // Convert library items to PaperResult[] for PaperCard/FocusMode
   const paperResults = useMemo(
-    () => (filteredItems ?? []).map(libraryItemToPaperResult),
-    [filteredItems],
+    () => pageItems.map(libraryItemToPaperResult),
+    [pageItems],
   );
 
-  // Lookup map: openalexId -> Doc<"libraryItems"> for library-specific actions
-  const libraryItemMap = useMemo(
-    () =>
-      new Map(
-        (filteredItems ?? []).map((item) => [item.openalexId, item]),
-      ),
-    [filteredItems],
-  );
-
-  // Server-authoritative ratings map for FocusMode
+  // Server-authoritative ratings for the cards and FocusMode; null marks a paper saved unrated
   const serverRatingsMap = useMemo(
     () =>
       new Map(
-        (filteredItems ?? []).map((item) => [item.openalexId, item.rating]),
+        pageItems.map((item) => [item.openalexId, item.rating ?? null]),
       ),
-    [filteredItems],
-  );
-
-  const handleRemove = useCallback(
-    (item: Doc<"libraryItems">) => {
-      showConfirmation({
-        title: t("removeConfirmTitle"),
-        message: t("removeConfirmMessage", { title: item.title }),
-        confirmText: t("removeButton"),
-        cancelText: t("cancelButton"),
-        variant: "destructive",
-        onConfirm: () => {
-          removeItem({ itemId: item._id })
-            .catch((error) => {
-              console.error("[Library] Failed to remove item:", error);
-              toast.error(t("removeFromLibraryError"));
-            });
-          setRating(item.openalexId, null);
-        },
-      });
-    },
-    [removeItem, setRating, t],
+    [pageItems],
   );
 
   // Download handlers for PaperCard and FocusMode
@@ -350,7 +233,6 @@ export function LibraryPageClient() {
       yt: null,
       col: null,
       sort: "savedAt:desc",
-      p: 1,
     });
   }, [setParams]);
 
@@ -366,48 +248,37 @@ export function LibraryPageClient() {
       yt: null,
       col: null,
       sort: "savedAt:desc",
-      p: 1,
     });
   }, [setParams]);
 
-  const pageResults = useMemo(
-    () =>
-      paperResults.slice(
-        (effectivePage - 1) * PAGE_SIZE,
-        effectivePage * PAGE_SIZE,
-      ),
-    [effectivePage, paperResults],
-  );
-
-  const rangeStart =
-    pageResults.length > 0 ? (effectivePage - 1) * PAGE_SIZE + 1 : 0;
+  const pageResults = paperResults;
+  const pageStart = paged.offset;
+  const rangeStart = pageResults.length > 0 ? pageStart + 1 : 0;
   const rangeEnd = rangeStart + pageResults.length - 1;
   const filteredTotal =
-    filteredTotalCount ??
-    (paginatedItems.status === "Exhausted" ? filteredItems.length : undefined);
+    filteredTotalCount && !filteredTotalCount.capped
+      ? filteredTotalCount.count
+      : paged.hasPages || paged.isLoading
+        ? undefined
+        : pageItems.length;
+  // A count that stopped before the end: at least this many, and at least what's been paged to.
+  const filteredAtLeast =
+    filteredTotal === undefined && filteredTotalCount?.capped
+      ? Math.max(filteredTotalCount.count, pageStart + pageItems.length)
+      : undefined;
   const totalPages =
     filteredTotal === undefined
       ? undefined
       : Math.max(1, Math.ceil(filteredTotal / PAGE_SIZE));
-  const canGoNext =
-    (filteredTotal !== undefined && effectivePage * PAGE_SIZE < filteredTotal) ||
-    filteredItems.length > effectivePage * PAGE_SIZE ||
-    paginatedItems.status === "CanLoadMore" ||
-    paginatedItems.status === "LoadingMore";
 
-  const setPageParam = useCallback(
-    (page: number) => {
-      setParams({ p: Math.max(1, page) }, { scroll: true });
-    },
-    [setParams],
-  );
+  const stepPage = useCallback((step: () => void) => {
+    step();
+    window.scrollTo({ top: 0 });
+  }, []);
 
-  const selectedCollection = useMemo(
-    () =>
-      collectionsWithCounts?.find(
-        (collection) => collection._id === params.col,
-      ),
-    [collectionsWithCounts, params.col],
+  const { data: selectedCollection } = useProtectedQuery(
+    api.library.collections.getCollection,
+    params.col ? { collectionId: params.col as Id<"collections"> } : "skip",
   );
 
   const sortLabelMap = useMemo<Record<LibrarySortCombined, string>>(
@@ -528,11 +399,11 @@ export function LibraryPageClient() {
 
   const isEmptyLibrary =
     !isLoading &&
-    filteredItems.length === 0 &&
+    pageItems.length === 0 &&
     !hasNarrowingCriteria &&
     totalCount === 0;
   const isNoResults =
-    !isLoading && filteredItems.length === 0 && hasNarrowingCriteria;
+    !isLoading && pageItems.length === 0 && hasNarrowingCriteria && !paged.hasPages;
 
   return (
     <TranslationContext.Provider value={{}}>
@@ -553,7 +424,7 @@ export function LibraryPageClient() {
               ratingRange={[params.rmin ?? 0, params.rmax ?? 5]}
               onRatingRangeChange={(range) => {
                 const isDefault = range[0] <= 0 && range[1] >= 5;
-                setParams({ rmin: isDefault ? null : range[0], rmax: isDefault ? null : range[1], p: 1 });
+                setParams({ rmin: isDefault ? null : range[0], rmax: isDefault ? null : range[1] });
               }}
               isRatingActive={params.rmin !== null || params.rmax !== null}
               savedDateRange={(() => {
@@ -566,7 +437,6 @@ export function LibraryPageClient() {
                 setParams({
                   sf: range?.from ? dateToParam(range.from) : null,
                   st: range?.to ? dateToParam(range.to) : null,
-                  p: 1,
                 })
               }
               isSavedDateActive={params.sf !== null || params.st !== null}
@@ -574,18 +444,17 @@ export function LibraryPageClient() {
               onYearRangeChange={(range) => {
                 const currentYear = new Date().getFullYear();
                 const isDefault = range[0] === MIN_YEAR && range[1] === currentYear;
-                setParams({ yf: isDefault ? null : range[0], yt: isDefault ? null : range[1], p: 1 });
+                setParams({ yf: isDefault ? null : range[0], yt: isDefault ? null : range[1] });
               }}
               isYearActive={params.yf !== null || params.yt !== null}
               publicationDateRange={publicationDateRange}
               onPublicationDateRangeChange={handlePublicationDateRangeChange}
               isPublicationDateActive={publicationDateRange !== undefined && (publicationDateRange.from !== undefined || publicationDateRange.to !== undefined)}
               collectionId={params.col}
-              onCollectionChange={(id) => setParams({ col: id, p: 1 })}
-              collections={collectionsWithCounts}
+              onCollectionChange={(id) => setParams({ col: id })}
               onManageCollections={() => setCollectionManagerOpen(true)}
               sort={params.sort}
-              onSortChange={(value) => setParams({ sort: value, p: 1 })}
+              onSortChange={(value) => setParams({ sort: value })}
               activeFilterCount={activeFilterCount}
               onClearAll={clearSidebarFilters}
             />
@@ -598,19 +467,20 @@ export function LibraryPageClient() {
                   rawSearch={rawSearch}
                   onSearchChange={setRawSearch}
                   totalCount={totalCount}
-                  filteredCount={filteredTotal}
+                  filteredCount={filteredTotal ?? filteredAtLeast}
+                  filteredCountIsAtLeast={filteredAtLeast !== undefined}
                   activeFilterLabels={activeFilterLabels}
                   viewMode={params.view}
                   onViewModeChange={(mode) =>
                     setParams({ view: mode as LibraryViewMode })
                   }
-                  onExportCSV={handleExportCSV}
-                  onExportJSON={handleExportJSON}
+                  onExportCSV={() => void handleExport("csv")}
+                  onExportJSON={() => void handleExport("json")}
                   hasExportableResults={
                     !isExporting &&
                     !isEmptyLibrary &&
                     !isNoResults &&
-                    (filteredTotal ?? 0) !== 0
+                    (filteredTotal ?? filteredAtLeast ?? 0) !== 0
                   }
                 />
 
@@ -637,38 +507,24 @@ export function LibraryPageClient() {
                   />
                 )}
 
-                {!isLoading && pageResults.length > 0 && (
+                {/* A sparse filter can leave a page empty with more after it: the pager stays to reach them. */}
+                {!isLoading && (pageResults.length > 0 || paged.hasPages) && (
                   <>
-                    <div className={GRID_CLASSES[effectiveViewMode]}>
+                    {/* The page shown stays, dimmed and still, until the one it steps to arrives. */}
+                    <div className={cn(GRID_CLASSES[effectiveViewMode], paged.isStale && "pointer-events-none opacity-60")}>
                       {pageResults.map((paper, index) => {
-                        const globalIndex =
-                          (effectivePage - 1) * PAGE_SIZE + index;
-                        const libraryItem = libraryItemMap.get(paper.id);
-
+                        const globalIndex = pageStart + index;
                         return (
-                          <div key={paper.id} className="relative group">
-                            <PaperCard
-                              result={paper}
-                              resultIndex={globalIndex}
-                              onDownloadItem={handleDownloadItem}
-                              onDownloadEssentialItem={
-                                handleDownloadEssentialItem
-                              }
-                              viewMode={effectiveViewMode}
-                            />
-                            {/* Library-specific actions overlay */}
-                            {libraryItem && (
-                              <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
-                                <LibraryItemActions
-                                  item={libraryItem}
-                                  onRemove={handleRemove}
-                                  onAddToCollection={(nextItem) =>
-                                    setCollectionPickerItemId(nextItem._id)
-                                  }
-                                />
-                              </div>
-                            )}
-                          </div>
+                          <PaperCard
+                            key={paper.id}
+                            result={paper}
+                            resultIndex={globalIndex}
+                            onDownloadItem={handleDownloadItem}
+                            onDownloadEssentialItem={
+                              handleDownloadEssentialItem
+                            }
+                            viewMode={effectiveViewMode}
+                          />
                         );
                       })}
                     </div>
@@ -676,26 +532,26 @@ export function LibraryPageClient() {
                     <CommandCenterContainer>
                       <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-sm text-muted-foreground">
-                          {t("showingRange", {
-                            start: rangeStart,
-                            end: rangeEnd,
-                            total:
-                              filteredTotal === undefined
-                                ? `${filteredItems.length}+`
-                                : filteredTotal,
-                          })}
+                          {/* An empty page between others has no range; the line keeps its height. */}
+                          {pageResults.length === 0
+                            ? "\u00a0"
+                            : t("showingRange", {
+                                start: rangeStart,
+                                end: rangeEnd,
+                                total:
+                                  filteredTotal ??
+                                  `${format.number(filteredAtLeast ?? pageStart + pageItems.length)}+`,
+                              })}
                         </p>
 
-                        {(canGoNext || effectivePage > 1) && (
+                        {paged.hasPages && (
                           <div className="flex items-center gap-2">
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() =>
-                                setPageParam(effectivePage - 1)
-                              }
-                              disabled={effectivePage <= 1}
+                              onClick={() => stepPage(paged.previous)}
+                              disabled={!paged.canPrevious}
                               className="rounded-xl"
                             >
                               <ChevronLeft className="mr-1 h-4 w-4" />
@@ -703,20 +559,18 @@ export function LibraryPageClient() {
                             </Button>
 
                             <span className="min-w-[110px] text-center text-sm text-muted-foreground">
-                              {format.number(effectivePage)}
+                              {format.number(paged.page)}
                               {totalPages === undefined
-                                ? ` / ${format.number(loadedPageCount)}+`
-                                : ` / ${format.number(totalPages)}`}
+                                ? ` / ${format.number(paged.page)}+`
+                                : ` / ${format.number(Math.max(paged.page, totalPages))}`}
                             </span>
 
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() =>
-                                setPageParam(effectivePage + 1)
-                              }
-                              disabled={!canGoNext}
+                              onClick={() => stepPage(paged.next)}
+                              disabled={!paged.canNext}
                               className="rounded-xl"
                             >
                               {t("nextPage")}
@@ -733,23 +587,8 @@ export function LibraryPageClient() {
               <CollectionManager
                 open={collectionManagerOpen}
                 onOpenChange={setCollectionManagerOpen}
-                collections={collectionsWithCounts}
               />
 
-              {collectionPickerItemId && (
-                <CollectionPicker
-                  open={collectionPickerItemId !== null}
-                  onOpenChange={(open) => {
-                    if (!open) {
-                      setCollectionPickerItemId(null);
-                    }
-                  }}
-                  libraryItemId={
-                    collectionPickerItemId as Id<"libraryItems">
-                  }
-                  collections={collectionsWithCounts}
-                />
-              )}
             </div>
           </PageWrapper>
         </SidebarLayout>

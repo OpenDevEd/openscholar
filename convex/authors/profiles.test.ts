@@ -15,8 +15,8 @@ async function setup() {
     await seedOrganizationFeatures(ctx, ["owner", "editor"], { authors: true });
     const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
     return {
-      owner: await ctx.db.insert("users", {...fields, clerkId: "owner", email: "owner@example.org"}),
-      editor: await ctx.db.insert("users", {...fields, clerkId: "editor", email: "editor@example.org"}),
+      owner: await ctx.db.insert("users", {libraryItemCount: 0, ...fields, clerkId: "owner", email: "owner@example.org"}),
+      editor: await ctx.db.insert("users", {libraryItemCount: 0, ...fields, clerkId: "editor", email: "editor@example.org"}),
     };
   });
   const owner = t.withIdentity({subject: "owner"});
@@ -38,6 +38,70 @@ describe("author profiles", () => {
       expect(mail.sendMail.mock.lastCall?.[0].html).toContain(`href="https://app.example.org/authors/${profileId}/invitation"`);
     } finally { vi.unstubAllEnvs(); }
   });
+  it("expires a profile invitation when its time is up, and never one that was answered", async () => {
+    const {t, owner, editor, profileId} = await setup();
+    vi.useFakeTimers();
+    try {
+      const day = 86_400_000;
+      const invite = () => owner.mutation(internal.authors.invitations.prepare, {profileId, email: "editor@example.org"});
+      const listed = async () => (await editor.query(api.authors.invitations.listInvitations, {})).page.length;
+      await invite();
+      vi.advanceTimersByTime(3 * day);
+      await invite();
+      // The first send's expiry runs at day 7 and leaves the re-sent invitation pending.
+      vi.advanceTimersByTime(5 * day);
+      await t.finishInProgressScheduledFunctions();
+      expect(await listed()).toBe(1);
+      expect((await owner.query(api.authors.members.list, {profileId})).invitations).toHaveLength(1);
+      vi.advanceTimersByTime(3 * day);
+      await t.finishInProgressScheduledFunctions();
+      expect(await listed()).toBe(0);
+      expect((await owner.query(api.authors.members.list, {profileId})).invitations).toHaveLength(0);
+      // An invitation cancelled before its time stays cancelled when its expiry runs.
+      const cancelled = await invite();
+      await owner.mutation(api.authors.invitations.cancel, {invitationId: cancelled});
+      vi.advanceTimersByTime(8 * day);
+      await t.finishInProgressScheduledFunctions();
+      expect((await t.run(ctx => ctx.db.get("authorProfileInvitations", cancelled)))?.state).toBe("cancelled");
+    } finally { vi.useRealTimers(); }
+  });
+
+  it("refuses an invitation to an address that already has a page of them waiting, and still sends one of those again", async () => {
+    const {t, owner, ids, profileId} = await setup();
+    const [other, third] = [await owner.mutation(api.authors.profiles.create, {name: "Another profile"}), await owner.mutation(api.authors.profiles.create, {name: "A third profile"})];
+    const invite = (email: string) => owner.mutation(internal.authors.invitations.prepare, {profileId, email});
+    const first = await invite("busy@example.org");
+    await t.run(async ctx => {
+      for (let waiting = 1; waiting < 100; waiting++) await ctx.db.insert("authorProfileInvitations", {profileId: other, email: "busy@example.org", invitedBy: ids.owner, expiresAt: Date.now() + 86_400_000, state: "pending", delivery: "sent"});
+    });
+    await expect(owner.mutation(internal.authors.invitations.prepare, {profileId: third, email: "busy@example.org"})).rejects.toThrow(/too many invitations waiting/);
+    expect(await invite("busy@example.org")).toBe(first);
+  });
+
+  it("refuses an invitation from a profile with a page of them waiting, and an acceptance into a profile with a page of editors", async () => {
+    const {t, owner, editor, ids, profileId} = await setup();
+    const invitationId = await owner.mutation(internal.authors.invitations.prepare, {profileId, email: "editor@example.org"});
+    await t.run(async ctx => {
+      for (let waiting = 1; waiting < 100; waiting++) await ctx.db.insert("authorProfileInvitations", {profileId, email: `waiting-${waiting}@example.org`, invitedBy: ids.owner, expiresAt: Date.now() + 86_400_000, state: "pending", delivery: "sent"});
+    });
+    await expect(owner.mutation(internal.authors.invitations.prepare, {profileId, email: "one-more@example.org"})).rejects.toThrow(/100 invitations waiting/);
+    expect((await owner.query(api.authors.members.list, {profileId})).invitations).toHaveLength(100);
+
+    await t.run(async ctx => {
+      for (let members = 0; members < 100; members++) await ctx.db.insert("authorProfileMembers", {profileId, userId: ids.owner});
+    });
+    await expect(editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true})).rejects.toThrow(/up to 100 editors/);
+
+    // A deleted account's place is given up, so the next person can accept.
+    await t.run(async ctx => {
+      const gone = await ctx.db.insert("users", {libraryItemCount: 0, state: "deleted", createdAt: 1, updatedAt: 1, clerkId: "gone", email: "gone@example.org"});
+      const place = (await ctx.db.query("authorProfileMembers").withIndex("by_profileId_and_userId", q => q.eq("profileId", profileId)).first())!;
+      await ctx.db.patch(place._id, {userId: gone});
+    });
+    await editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true});
+    expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBe("editor");
+  });
+
   it("keeps profile ownership separate from organization roles", async () => {
     const {t, owner, editor, profileId} = await setup();
     await expect(t.mutation(api.authors.profiles.create, {name: content.name})).rejects.toThrow();
@@ -60,11 +124,12 @@ describe("author profiles", () => {
     await expect(owner.query(api.authors.profiles.list, {search: "", paginationOpts: {numItems: 10, cursor: null}})).rejects.toThrow('"code":"FORBIDDEN"');
     await owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content});
     const invitationId = await owner.mutation(internal.authors.invitations.prepare, {profileId, email: "Editor@example.org"});
-    expect(await editor.query(api.authors.invitations.listMine, {profileId})).toEqual([{invitationId, profileId, name: content.name}]);
-    expect(await owner.query(api.authors.invitations.listMine, {profileId})).toEqual([]);
+    const waiting = async (person: typeof editor) => (await person.query(api.authors.invitations.listInvitations, {profileId})).page;
+    expect(await waiting(editor)).toEqual([{invitationId, profileId, name: content.name}]);
+    expect(await waiting(owner)).toEqual([]);
     await expect(editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: [], accept: true})).rejects.toThrow();
     await editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true});
-    expect(await editor.query(api.authors.invitations.listMine, {profileId})).toEqual([]);
+    expect(await waiting(editor)).toEqual([]);
     expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBe("editor");
     await editor.action(api.authors.photos.save, {profileId, expectedRevision: 2, content: {...content, bio: "Edited by a profile collaborator"}});
     await expect(editor.mutation(internal.authors.invitations.prepare, {profileId, email: "third@example.org"})).rejects.toThrow();

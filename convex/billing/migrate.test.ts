@@ -1,6 +1,9 @@
+import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import type { Id } from "../_generated/dataModel";
-import { importBody } from "./migrate";
+import schema from "../schema";
+import { insertMany } from "../lib/maxSize.test-support";
+import { importBody, LEDGER_PAGE, readLegacyAccounts, SUBSCRIPTIONS_READ } from "./migrate";
 
 const base = {
   userId: "user_1" as Id<"users">,
@@ -49,5 +52,33 @@ describe("importBody", () => {
     const body = importBody({ ...base, free: -40, paid: -5 }, 10_000);
     expect(planIds(body)).toEqual(["signup_credits"]);
     expect(body.billables[0]).toMatchObject({ plan: { balances: [{ balance: 0 }] } });
+  });
+});
+
+describe("readLegacyAccounts", () => {
+  async function account() {
+    const t = convexTest(schema);
+    const ids = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "clerk_ledger", email: "ledger@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 });
+      return { userId, creditsId: await ctx.db.insert("credits", { userId, createdAt: 1 }) };
+    });
+    const read = () => readLegacyAccounts({ runQuery: t.query as never }, null);
+    return { t, ...ids, read };
+  }
+
+  it("adds up a ledger longer than one read (#427)", async () => {
+    const { t, creditsId, read } = await account();
+    const row = (creditType: "free" | "paid", amount: number) => ({ creditsId, type: "usage", creditType, amount, createdAt: 1 });
+    await insertMany(t, "creditTransactions", [
+      ...Array.from({ length: LEDGER_PAGE }, () => row("free", 1)),
+      ...Array.from({ length: 5 }, () => row("paid", 3)),
+    ]);
+    expect((await read()).accounts).toMatchObject([{ free: LEDGER_PAGE, paid: 15 }]);
+  });
+
+  it("stops by name on a user with more subscription rows than it reads (#427)", async () => {
+    const { t, userId, read } = await account();
+    await insertMany(t, "subscriptions", Array.from({ length: SUBSCRIPTIONS_READ + 1 }, () => ({ userId, plan: "go", status: "canceled", createdAt: 1, updatedAt: 1 })));
+    await expect(read()).rejects.toThrow(/subscription rows/);
   });
 });

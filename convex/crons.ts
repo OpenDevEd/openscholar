@@ -29,4 +29,20 @@ crons.interval(
   {},
 );
 
+// A chat whose generation died without releasing its lock is released here (#355).
+crons.interval(
+  "release stale chat locks",
+  { minutes: 5 },
+  internal.chat.concurrency.cleanupZombieChatLocks,
+  {},
+);
+
+// An assistant reply whose action died without releasing its chat is released here (#324).
+crons.interval(
+  "release dead assistant replies",
+  { minutes: 5 },
+  internal.assistant.replies.sweep,
+  {},
+);
+
 export default crons;

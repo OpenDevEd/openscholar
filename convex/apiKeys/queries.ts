@@ -1,44 +1,6 @@
-import { query, internalQuery } from "../_generated/server";
+import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { getCurrentUser } from "../lib/auth";
 import { apiKeyProviderValidator } from "../lib/validators";
-
-/**
- * Get user's saved API keys (metadata only, not the actual keys)
- */
-export const getMy = query({
-  args: {},
-  returns: v.array(
-    v.object({
-      _id: v.id("apiKeys"),
-      provider: apiKeyProviderValidator,
-      keyPrefix: v.string(),
-      lastUsedAt: v.optional(v.number()),
-      isValid: v.optional(v.boolean()),
-      createdAt: v.number(),
-    })
-  ),
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return [];
-
-    // Cardinality: ~1-3 API keys per user
-    const keys = await ctx.db
-      .query("apiKeys")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-
-    // Never return encrypted key to client, only metadata
-    return keys.map((k) => ({
-      _id: k._id,
-      provider: k.provider,
-      keyPrefix: k.keyPrefix,
-      lastUsedAt: k.lastUsedAt,
-      isValid: k.isValid,
-      createdAt: k.createdAt,
-    }));
-  },
-});
 
 /**
  * Get encrypted key for a provider (used internally by actions)

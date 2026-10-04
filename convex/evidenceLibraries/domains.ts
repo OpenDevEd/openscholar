@@ -16,7 +16,7 @@ import {
   query,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
@@ -24,14 +24,16 @@ import { rateLimit } from "../lib/rateLimit";
 import { internal } from "../_generated/api";
 import { customDomainDnsRecords } from "./domainConfig";
 import { readDomainActivationPlan } from "./domainPlan";
-import { isConfigurationDeploymentOperation } from "./operations";
+import { isConfigurationDeploymentOperation, readActiveOperations } from "./operations";
 import {
   evidenceLibraryDomainFailureValidator,
   evidenceLibraryDomainStateValidator,
 } from "./validators";
+import { MAX_LIBRARY_DOMAINS } from "../lib/listCaps";
+import { dnsRecordsValidator, domainRowsValidator } from "./validators";
 
 /** One library may hold a small, fixed number of custom domains. */
-export const MAX_EVIDENCE_LIBRARY_DOMAINS = 5;
+export const MAX_EVIDENCE_LIBRARY_DOMAINS = MAX_LIBRARY_DOMAINS;
 
 const VERIFICATION_TOKEN_BYTES = 16;
 
@@ -41,32 +43,6 @@ const VERIFICATION_TOKEN_BYTES = 16;
  * its place, and an abandoned check expires.
  */
 export const DOMAIN_CHECK_LEASE_MS = 120_000;
-
-const domainRowValidator = v.object({
-  domainId: v.id("evidenceLibraryDomains"),
-  host: v.string(),
-  role: v.union(v.literal("primary"), v.literal("redirect")),
-  state: evidenceLibraryDomainStateValidator,
-  failure: v.optional(evidenceLibraryDomainFailureValidator),
-  attached: v.boolean(),
-  removing: v.boolean(),
-  deploymentPending: v.boolean(),
-  isApex: v.boolean(),
-  checkedAt: v.optional(v.number()),
-  suggestedWwwHost: v.optional(v.string()),
-  /** The main address the owner chose, applied by the next activation. */
-  main: v.boolean(),
-  /** Removed by the owner; goes once the next activation is live. */
-  removeOnActivate: v.boolean(),
-  records: v.array(
-    v.object({
-      type: v.union(v.literal("A"), v.literal("CNAME"), v.literal("TXT")),
-      label: v.string(),
-      name: v.string(),
-      value: v.string(),
-    }),
-  ),
-});
 
 const domainContextRowValidator = v.object({
   domainId: v.id("evidenceLibraryDomains"),
@@ -91,7 +67,7 @@ export async function readEvidenceLibraryDomains(
   return await ctx.db
     .query("evidenceLibraryDomains")
     .withIndex("by_libraryId", (index) => index.eq("libraryId", libraryId))
-    .collect();
+    .take(MAX_EVIDENCE_LIBRARY_DOMAINS);
 }
 
 /**
@@ -202,7 +178,7 @@ export const listDomains = query({
     /** The chosen main domain stopped working, so it will not be applied. */
     mainNeedsAttention: v.boolean(),
     live: v.boolean(),
-    domains: v.array(domainRowValidator),
+    domains: domainRowsValidator,
   }),
   handler: async (ctx, args) => {
     const access = await requireEvidenceLibraryAccess(
@@ -1265,12 +1241,7 @@ export const claimDomainRoutes = internalMutation({
       throw createError("CONFLICT", "This library is not running yet");
     }
     for (const status of ["queued", "running"] as const) {
-      const operations = ctx.db
-        .query("evidenceLibraryConfigOperations")
-        .withIndex("by_libraryId_and_status_and_updatedAt", (index) =>
-          index.eq("libraryId", args.libraryId).eq("status", status),
-        );
-      for await (const operation of operations) {
+      for (const operation of await readActiveOperations(ctx, args.libraryId, status, "publish")) {
         if (isConfigurationDeploymentOperation(operation)) {
           return { status: "busy" as const };
         }

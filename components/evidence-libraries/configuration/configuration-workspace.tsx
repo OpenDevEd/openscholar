@@ -6,33 +6,33 @@ import type { FunctionReturnType } from "convex/server";
 import {
   AlertCircle,
   ArrowUp,
-  BarChart3,
-  Building2,
-  Database,
   ExternalLink,
-  FolderTree,
-  Globe,
-  History,
-  House,
-  Languages,
-  Layers,
-  Link2,
-  type LucideIcon,
-  Mail,
-  Menu,
-  Palette,
-  PanelBottom,
-  Quote,
   Save,
-  Send,
-  Search,
-  Sparkles,
-  ToggleRight,
-  Trash2,
-  Users,
   PencilLine,
   CircleAlert,
-} from "lucide-react";
+  HomeIcon,
+  HistoryIcon,
+  SourcesIcon,
+  TeamIcon,
+  EvidenceLibrariesIcon,
+  SparklesIcon,
+  SwitchesIcon,
+  GlobeIcon,
+  PaletteIcon,
+  BuildingsIcon,
+  MenuIcon,
+  FooterIcon,
+  MailIcon,
+  CollectionsIcon,
+  SearchIcon,
+  QuoteIcon,
+  LanguagesIcon,
+  AnalyticsIcon,
+  LinkIcon,
+  PublishIcon,
+  TrashIcon,
+  type AppIcon,
+} from "@/components/icons";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
@@ -155,27 +155,27 @@ const RAIL_GROUPS: {
   { key: "danger", sections: ["danger"] },
 ];
 
-const SECTION_ICONS: Record<RailKey, LucideIcon> = {
-  identity: Globe,
-  theme: Palette,
-  institutions: Building2,
-  home: House,
-  navigation: Menu,
-  footer: PanelBottom,
-  contact: Mail,
-  collections: FolderTree,
-  search: Search,
-  sources: Database,
-  citations: Quote,
-  features: ToggleRight,
-  ai: Sparkles,
-  languages: Languages,
-  analytics: BarChart3,
-  domain: Link2,
-  publication: Send,
-  versions: History,
-  team: Users,
-  danger: Trash2,
+const SECTION_ICONS: Record<RailKey, AppIcon> = {
+  identity: GlobeIcon,
+  theme: PaletteIcon,
+  institutions: BuildingsIcon,
+  home: HomeIcon,
+  navigation: MenuIcon,
+  footer: FooterIcon,
+  contact: MailIcon,
+  collections: CollectionsIcon,
+  search: SearchIcon,
+  sources: SourcesIcon,
+  citations: QuoteIcon,
+  features: SwitchesIcon,
+  ai: SparklesIcon,
+  languages: LanguagesIcon,
+  analytics: AnalyticsIcon,
+  domain: LinkIcon,
+  publication: PublishIcon,
+  versions: HistoryIcon,
+  team: TeamIcon,
+  danger: TrashIcon,
 };
 
 const SECTION_COMPONENTS: Record<
@@ -241,6 +241,7 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
     draft,
     hasUnpublishedChanges,
     library,
+    liveAddress,
     operation,
     sections,
   } = draftQuery.data;
@@ -251,6 +252,7 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
       libraryId={draft.libraryId}
       libraryName={library.name}
       libraryState={library.state}
+      liveAddress={liveAddress}
       editVersion={draft.editVersion}
       saved={sections}
       hasUnpublishedChanges={hasUnpublishedChanges}
@@ -265,6 +267,7 @@ function Workspace({
   libraryId,
   libraryName,
   libraryState,
+  liveAddress,
   editVersion,
   saved,
   hasUnpublishedChanges,
@@ -275,6 +278,7 @@ function Workspace({
   libraryId: Id<"evidenceLibraries">;
   libraryName: string;
   libraryState: DraftResult["library"]["state"];
+  liveAddress: string | null;
   editVersion: number;
   saved: readonly SectionRow[];
   hasUnpublishedChanges: boolean;
@@ -301,12 +305,12 @@ function Workspace({
   // Whether an OpenRouter key is stored is not a saved row; it comes from the
   // credential store and is folded into the draft while the page renders.
   const credentials = useProtectedQuery(
-    api.evidenceLibraries.credentials.listCredentialMetadata,
+    api.evidenceLibraries.credentials.listCredentials,
     { libraryId },
   );
   const draft = withAiKey(
     edited,
-    (credentials.data ?? []).some(
+    (credentials.data?.page ?? []).some(
       (credential) => credential.credentialKey === AI_PROVIDER_CREDENTIAL_KEY,
     ),
   );
@@ -458,7 +462,7 @@ function Workspace({
       <ConfigurationLayout
         header={<>
             <PanelHeader
-              icon={Layers}
+              icon={EvidenceLibrariesIcon}
               image={draft.identity.assets.favicon || null}
               title={draft.identity.name || t("untitled")}
               backHref={LIBRARIES_HREF}
@@ -488,9 +492,9 @@ function Workspace({
                 {saving ? <Spinner /> : <Save />}
                 <span className={BAR_LABEL}>{saving ? t("saving") : t("save")}</span>
               </Button>
-              {libraryState === "active" && !operationRunning && !activating ? (
+              {libraryState === "active" && liveAddress && !operationRunning && !activating ? (
                 <Button asChild variant="outline" size="sm" className={BAR_ACTION}>
-                  <AdminAreaLink libraryId={libraryId}>
+                  <AdminAreaLink address={liveAddress}>
                     <ExternalLink />
                     <span className={BAR_LABEL}>{tList("openAdmin")}</span>
                   </AdminAreaLink>

@@ -10,6 +10,7 @@ async function seedUserAndJob(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId,
       email: `${clerkId}@test.com`,
       firstName: "Test",
@@ -135,5 +136,33 @@ describe("cancelExtraction scope", () => {
     expect(res.success).toBe(true);
     const job = await t.run((ctx) => ctx.db.get("extractionJobs", a.jobId));
     expect(job?.status).toBe("completed");
+  });
+});
+
+describe("cancelling a job with more queue rows than one transaction takes (#427)", () => {
+  it("cancels every row that could still run, a batch at a time, and leaves finished ones", async () => {
+    const t = convexTest(schema);
+    const { jobId, userId, paperId, clerkId } = await seedUserAndJob(t, "carol");
+    // Left by several pauses and resumes: 600 pending rows across epochs, and some already done.
+    for (let start = 0; start < 600; start += 200) {
+      await t.run(async (ctx) => {
+        for (let i = start; i < start + 200; i++) {
+          await ctx.db.insert("extractionPaperQueue", { jobId, userId, paperId, runEpoch: i % 3, kind: "initial", status: "pending", priority: 0, attempt: 0, createdAt: i, updatedAt: i });
+        }
+      });
+    }
+    await t.run((ctx) => ctx.db.insert("extractionPaperQueue", { jobId, userId, paperId, runEpoch: 0, kind: "initial", status: "completed", priority: 0, attempt: 0, createdAt: 1, updatedAt: 1 }));
+
+    await t.withIdentity({ subject: clerkId, tokenIdentifier: `${clerkId}|test` }).mutation(api.extraction.mutations.cancelExtraction, { jobId });
+    await t.finishAllScheduledFunctions(() => {});
+
+    const statuses = await t.run(async (ctx) => {
+      const counts: Record<string, number> = {};
+      for (const status of ["pending", "leased", "running", "parked", "cancelled", "completed"] as const) {
+        counts[status] = (await ctx.db.query("extractionPaperQueue").withIndex("by_job_and_status", (q) => q.eq("jobId", jobId).eq("status", status)).take(1000)).length;
+      }
+      return counts;
+    });
+    expect(statuses).toEqual({ pending: 0, leased: 0, running: 0, parked: 0, cancelled: 601, completed: 1 });
   });
 });

@@ -119,6 +119,22 @@ export function approveOpenAlexQuery(
   };
 }
 
+/** Each approved OpenAlex query version in a sources payload, with its query's fingerprint. */
+export function approvedQueryVersions(payload: unknown): Array<{ version: string; fingerprint: string }> {
+  if (!Array.isArray(payload)) return [];
+  return payload.flatMap((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+    const source = value as Record<string, unknown>;
+    if (source.provider !== "openalex") return [];
+    const settings = source.settings;
+    if (!settings || typeof settings !== "object" || Array.isArray(settings)) return [];
+    const approved = (settings as Record<string, unknown>).approvedQuery;
+    if (!approved || typeof approved !== "object" || Array.isArray(approved)) return [];
+    const { version, query } = approved as Record<string, unknown>;
+    return typeof version === "string" ? [{ version, fingerprint: queryFingerprint(query) }] : [];
+  });
+}
+
 /** A version identifies immutable query contents, even across source removal. */
 export function assertImmutableOpenAlexQueryVersions(
   historical: readonly unknown[],
@@ -126,20 +142,7 @@ export function assertImmutableOpenAlexQueryVersions(
 ): void {
   const versions = new Map<string, string>();
   for (const payload of [...historical, proposed]) {
-    if (!Array.isArray(payload)) continue;
-    for (const value of payload) {
-      if (!value || typeof value !== "object" || Array.isArray(value)) continue;
-      const source = value as Record<string, unknown>;
-      if (source.provider !== "openalex") continue;
-      const settings = source.settings;
-      if (!settings || typeof settings !== "object" || Array.isArray(settings))
-        continue;
-      const approved = (settings as Record<string, unknown>).approvedQuery;
-      if (!approved || typeof approved !== "object" || Array.isArray(approved))
-        continue;
-      const { version, query } = approved as Record<string, unknown>;
-      if (typeof version !== "string") continue;
-      const fingerprint = queryFingerprint(query);
+    for (const { version, fingerprint } of approvedQueryVersions(payload)) {
       const previous = versions.get(version);
       if (previous !== undefined && previous !== fingerprint) {
         throw new Error("An approved OpenAlex query version cannot be changed");

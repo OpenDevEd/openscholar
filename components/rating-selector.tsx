@@ -1,7 +1,7 @@
 "use client";
 
-import React from 'react';
-import { Star } from "lucide-react";
+import React, { useCallback } from 'react';
+import { Star } from "@/components/icons";
 
 function NoRatingDisplay() {
   return (
@@ -21,7 +21,7 @@ function RatingStarsDisplay({ count }: { count: number }) {
   return (
     <span className="flex shrink-0">
       {Array.from({ length: count }, (_, i) => (
-        <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+        <Star key={i} className="h-3 w-3 fill-rating text-rating" />
       ))}
     </span>
   );
@@ -39,53 +39,52 @@ import posthog from "posthog-js";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { trimPaperData, type WorkInput } from "@/lib/library/trim-paper-data";
+import type { WorkInput } from "@/lib/library/trim-paper-data";
+import { paperArgs } from "@/components/library/save-control";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 
+/**
+ * Rates a paper. The rating is kept for the person either way; signed in, rating
+ * also saves the paper to the library, and clearing the rating keeps it saved.
+ */
+export function useRatePaper() {
+  const { setRating } = useRatingsStore();
+  const { phase } = useAuthReadiness();
+  const saveToLibrary = useMutation(api.library.mutations.saveToLibrary);
+  const setLibraryRating = useMutation(api.library.mutations.setLibraryRating);
+
+  return useCallback((paper: WorkInput, rating: number | null) => {
+    setRating(paper.id, rating);
+    if (phase !== "authenticated") return;
+    if (rating === null) {
+      setLibraryRating({ openalexId: paper.id, rating: null }).catch((error) => {
+        console.error("[Library] Failed to clear rating:", error);
+      });
+    } else {
+      saveToLibrary({ ...paperArgs(paper), rating }).catch((error) => {
+        console.error("[Library] Failed to save to library:", error);
+      });
+    }
+  }, [setRating, phase, saveToLibrary, setLibraryRating]);
+}
+
 interface RatingSelectorProps {
-  paperId: string;
-  paperResult?: WorkInput;
+  paper: WorkInput;
   variant?: "default" | "compact";
 }
 
-export function RatingSelector({ paperId, paperResult, variant = "default" }: RatingSelectorProps) {
+export function RatingSelector({ paper, variant = "default" }: RatingSelectorProps) {
   const t = useTranslations('rating');
-  const { setRating } = useRatingsStore();
+  const paperId = paper.id;
   const currentRating = useEffectiveRating(paperId);
-  const { phase } = useAuthReadiness();
-  const saveToLibrary = useMutation(api.library.mutations.saveToLibrary);
-  const removeFromLibrary = useMutation(api.library.mutations.removeFromLibraryByOpenalexId);
+  const rate = useRatePaper();
 
   const handleRatingChange = (rating: string) => {
     const previousRating = currentRating;
     const newRating = rating === "no-rating" ? null : parseInt(rating);
+    rate(paper, newRating);
 
-    // 1. ALWAYS update Zustand (optimistic, localStorage) -- unconditional
-    if (rating === "no-rating") {
-      setRating(paperId, null);
-    } else {
-      setRating(paperId, parseInt(rating));
-    }
-
-    // 2. If signed-in: save to library on rate, remove from library on clear
-    if (phase === "authenticated") {
-      if (newRating !== null && paperResult) {
-        const trimmed = trimPaperData(paperResult);
-        saveToLibrary({
-          ...trimmed,
-          rating: newRating,
-          paperData: JSON.stringify(paperResult),
-        }).catch((error) => {
-          console.error("[Library] Failed to save to library:", error);
-        });
-      } else if (newRating === null) {
-        removeFromLibrary({ openalexId: paperId }).catch((error) => {
-          console.error("[Library] Failed to remove from library:", error);
-        });
-      }
-    }
-
-    // 3. PostHog tracking
+    // PostHog tracking
     posthog.capture("paper_rated", {
       paper_id: paperId,
       rating: newRating,
@@ -102,7 +101,7 @@ export function RatingSelector({ paperId, paperResult, variant = "default" }: Ra
         value={currentRating?.toString() || "no-rating"}
         onValueChange={handleRatingChange}
       >
-        <SelectTrigger className="h-8 w-auto min-w-[4rem] px-2">
+        <SelectTrigger size="sm" className="w-auto min-w-[4rem] px-2">
           <SelectValue placeholder={t('noRating')} />
         </SelectTrigger>
         <SelectContent>

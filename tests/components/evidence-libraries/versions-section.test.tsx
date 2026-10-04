@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   restoreRevision: vi.fn(),
   setDomainPrimary: vi.fn(),
   listVersions: vi.fn(),
+  /** Whether the history has another page to read, and the call that reads it. */
+  versions: { status: "Exhausted", loadMore: vi.fn() },
   listDomains: vi.fn(),
   addressNotices: vi.fn(),
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }),
@@ -24,10 +26,11 @@ vi.mock("@/convex/_generated/api", () => ({
       domains: { listDomains: "listDomains" },
       updates: {
         check: "check",
-        listAddressNotices: "listAddressNotices",
+        getAddressNotice: "getAddressNotice",
       },
       versions: {
-        listVersions: "listVersions",
+        listVersionRows: "listVersionRows",
+        countVersions: "countVersions",
         startRuntimeUpdate: "startRuntimeUpdate",
         restoreRevision: "restoreRevision",
         setDomainPrimary: "setDomainPrimary",
@@ -54,13 +57,15 @@ vi.mock("convex/react", () => ({
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: (reference: string) => ({
     data:
-      reference === "listAddressNotices"
-        ? mocks.addressNotices()
+      reference === "getAddressNotice"
+        ? (mocks.addressNotices()[0] ?? null)
         : reference === "listDomains"
           ? mocks.listDomains()
-          : mocks.listVersions(),
+          : mocks.listVersions().length,
     isReady: true,
   }),
+  // The history's rows arrive as one loaded page.
+  useProtectedStreamPaginatedQuery: () => ({ results: mocks.listVersions(), status: mocks.versions.status, isInitialLoading: false, loadMore: mocks.versions.loadMore }),
 }));
 
 vi.mock("next-intl", () => ({
@@ -152,6 +157,8 @@ describe("<VersionsSection>", () => {
       domains: [],
     });
     mocks.listVersions.mockReset();
+    mocks.versions.status = "Exhausted";
+    mocks.versions.loadMore.mockReset();
     mocks.addressNotices.mockReset();
     mocks.addressNotices.mockReturnValue([]);
     mocks.toast.mockReset();
@@ -477,4 +484,22 @@ describe("<VersionsSection>", () => {
     expect(screen.getByRole("button", { name: "versions.checkAgain" })).toBeEnabled();
   });
 
+  it("keeps the way to older versions when a page of history comes back empty", async () => {
+    const user = userEvent.setup();
+    mocks.listVersions.mockReturnValue([]);
+    mocks.versions.status = "CanLoadMore";
+    await renderSection();
+
+    expect(screen.queryByText("versions.empty")).toBeNull();
+    await user.click(screen.getByRole("button", { name: /^versions\.showMore/ }));
+    expect(mocks.versions.loadMore).toHaveBeenCalledWith(10);
+  });
+
+  it("says there are no versions once nothing is left to read", async () => {
+    mocks.listVersions.mockReturnValue([]);
+    await renderSection();
+
+    expect(screen.getByText("versions.empty")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /^versions\.showMore/ })).toBeNull();
+  });
 });

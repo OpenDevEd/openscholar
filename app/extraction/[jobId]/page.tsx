@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useConvex, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -28,7 +28,8 @@ import {
   MoreHorizontal,
   ListChecks,
   SearchX,
-} from "lucide-react";
+  DocumentIcon,
+} from "@/components/icons";
 import posthog from "posthog-js";
 import { PageWrapper } from "@/components/PageWrapper";
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
@@ -54,6 +55,9 @@ import { TableView, CardView, SplitView } from "@/components/extraction/results-
 import { SmartPagination } from "@/components/extraction/smart-pagination";
 import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
 import { ExportDialog } from "@/components/extraction/export-dialog";
+import { readEveryResultsPage } from "@/lib/extraction/export";
+import { RESULTS_PAGE_SIZE_MAX } from "@/lib/extraction/limits";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
 import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
 import { ChatJobView } from "@/components/extraction/chat/chat-job-view";
@@ -134,7 +138,6 @@ export default function JobDetailPage() {
   const [searchQueryResetKey, setSearchQueryResetKey] = useState(0);
   const debouncedFilters = useDebouncedValue(filters, 150);
 
-  const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(200);
 
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>('default');
@@ -143,7 +146,8 @@ export default function JobDetailPage() {
   const [exportMode, setExportMode] = useState<'all' | 'selected'>('all');
   const [openAnswer, setOpenAnswer] = useState<OpenAnswer | null>(null);
   const [mobilePane, setMobilePane] = useState<"results" | "citation">("results");
-  const { expand: expandCitationPanel } = useExtractionCitationPanelStore();
+  // Only the action: reading the whole store would redraw this page each time the panel collapses or expands.
+  const expandCitationPanel = useExtractionCitationPanelStore((state) => state.expand);
 
   const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
   const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
@@ -193,53 +197,43 @@ export default function JobDetailPage() {
     [debouncedFilters],
   );
 
-  const resultsPageArgs = useMemo(
-    () =>
-      isExtractionJob
-        ? {
-            jobId,
-            page: currentPage,
-            pageSize,
-            filters: serializedResultsFilters,
-            sortBy: resultsSortBy,
-          }
-        : "skip",
-    [
-      currentPage,
-      isExtractionJob,
-      jobId,
-      pageSize,
-      serializedResultsFilters,
-      resultsSortBy,
-    ],
-  );
-  const resultsPageQuery = useProtectedQuery(
-    api.extraction.queries.getJobResultsPage,
-    resultsPageArgs,
-  );
-  const resultsPage = resultsPageQuery.data;
+  const hasActiveResultFilters =
+    debouncedFilters.searchQuery.trim().length > 0 ||
+    debouncedFilters.confidenceRange[0] > 0 ||
+    debouncedFilters.confidenceRange[1] < 100 ||
+    debouncedFilters.statusFilters.size > 0 ||
+    debouncedFilters.questionFilters.size > 0;
 
-  const exportResultsArgs = useMemo(
-    () =>
-      isExtractionJob && exportDialogOpen && exportMode === "all"
-        ? {
-            jobId,
-            filters: serializedResultsFilters,
-            sortBy: resultsSortBy,
-          }
-        : "skip",
-    [
-      exportDialogOpen,
-      exportMode,
-      isExtractionJob,
-      jobId,
-      serializedResultsFilters,
-      resultsSortBy,
-    ],
+  // The results are read a page at a time, sorted and filtered on the server; the hook starts
+  // over from the first page whenever the filters, the order or the page size change.
+  const resultsView = useMemo(() => ({ jobId, filters: serializedResultsFilters }), [jobId, serializedResultsFilters]);
+  const results = useCursorPage(
+    api.extraction.queries.listJobResults,
+    isExtractionJob ? { ...resultsView, sortBy: resultsSortBy } : "skip",
+    pageSize,
   );
-  const exportResultsQuery = useProtectedQuery(
-    api.extraction.queries.getJobResultsForExport,
-    exportResultsArgs,
+  // Only a filtered view is counted: without filters every paper of the job matches.
+  const { data: resultCounts } = useProtectedQuery(
+    api.extraction.queries.countJobResults,
+    isExtractionJob && hasActiveResultFilters ? resultsView : "skip",
+  );
+  // The last count stays up, dimmed, while the filters now set are counted.
+  const [lastMatching, setLastMatching] = useState(resultCounts?.matching);
+  if (resultCounts && resultCounts.matching !== lastMatching) setLastMatching(resultCounts.matching);
+
+  const convex = useConvex();
+  const loadAllPapers = useCallback(
+    () =>
+      readEveryResultsPage(
+        (cursor) =>
+          convex.query(api.extraction.queries.listJobResults, {
+            ...resultsView,
+            sortBy: resultsSortBy,
+            paginationOpts: { cursor, numItems: RESULTS_PAGE_SIZE_MAX },
+          }),
+        async () => (await convex.query(api.extraction.queries.countJobResults, resultsView)).matching,
+      ) as Promise<PaperWithResults[]>,
+    [convex, resultsView, resultsSortBy],
   );
 
   const questions: Question[] = useMemo(() => {
@@ -252,31 +246,10 @@ export default function JobDetailPage() {
     }));
   }, [jobDetails]);
 
-  const papersWithResults = useMemo(
-    () =>
-      resultsPage?.status === "ok"
-        ? (resultsPage.items as PaperWithResults[])
-        : [],
-    [resultsPage]
-  );
-
-  const hasActiveResultFilters = useMemo(
-    () =>
-      debouncedFilters.searchQuery.trim().length > 0 ||
-      debouncedFilters.confidenceRange[0] > 0 ||
-      debouncedFilters.confidenceRange[1] < 100 ||
-      debouncedFilters.statusFilters.size > 0 ||
-      debouncedFilters.questionFilters.size > 0,
-    [
-      debouncedFilters.confidenceRange,
-      debouncedFilters.questionFilters,
-      debouncedFilters.searchQuery,
-      debouncedFilters.statusFilters,
-    ],
-  );
+  const papersWithResults = results.items as PaperWithResults[];
   const resultsRenderState = getAuthSensitiveListRenderState({
-    settlement: resultsPageQuery.settlement,
-    hasLoadedFirstPage: resultsPageQuery.isReady,
+    settlement: "ready",
+    hasLoadedFirstPage: !results.isLoading,
     visibleCount: papersWithResults.length,
     hasActiveFilter: hasActiveResultFilters,
   });
@@ -299,19 +272,7 @@ export default function JobDetailPage() {
     () => papersWithResults.filter(p => selectedIds.has(p._id)),
     [papersWithResults, selectedIds]
   );
-  const exportAllPapers = useMemo(
-    () =>
-      exportResultsQuery.data?.status === "ok"
-        ? (exportResultsQuery.data.items as PaperWithResults[])
-        : [],
-    [exportResultsQuery.data],
-  );
-  const exportDialogPapers =
-    exportMode === "all" ? exportAllPapers : selectedPapers;
-  const exportDialogLoading =
-    exportMode === "all" &&
-    exportResultsArgs !== "skip" &&
-    (exportResultsQuery.isDeferred || exportResultsQuery.data === undefined);
+  const loadSelectedPapers = useCallback(async () => selectedPapers, [selectedPapers]);
 
   const handleTableSelectionChange = useCallback((newIds: Set<string>) => {
     setSelection(newIds);
@@ -321,17 +282,14 @@ export default function JobDetailPage() {
     setSelection(newIds);
   }, [setSelection]);
 
-  // Clicking the answer that is already open closes the panel again.
+  // Clicking the answer that is already open closes the panel again. The callback
+  // never changes, so the table's rows are not redrawn for it. With no answer open
+  // the panel and the mobile pane are not shown, so setting them either way is the same.
   const openAnswerPanel = useCallback((answer: OpenAnswer) => {
-    if (openAnswerKey(answer) === openAnswerKey(openAnswer)) {
-      setOpenAnswer(null);
-      setMobilePane("results");
-      return;
-    }
-    setOpenAnswer(answer);
+    setOpenAnswer((current) => (openAnswerKey(answer) === openAnswerKey(current) ? null : answer));
     expandCitationPanel();
     setMobilePane("citation");
-  }, [expandCitationPanel, openAnswer]);
+  }, [expandCitationPanel]);
 
   const handleCancel = async () => {
     try {
@@ -411,8 +369,7 @@ export default function JobDetailPage() {
     (isExtractionJob &&
       (jobDetailsQuery.isDeferred ||
         jobDetails === undefined ||
-        !hasCurrentJobDetails ||
-        resultsPageQuery.isDeferred))
+        !hasCurrentJobDetails))
   ) {
     const showChatPreparingHint = modeHint === "chat" && jobShell === undefined;
     // A chat has its own full-height layout; everything else loads inside the
@@ -550,17 +507,12 @@ export default function JobDetailPage() {
         failed: 0,
         percentage: 0,
       };
-  const authoritativeTotalPapers =
-    resultsPage?.status === "ok"
-      ? resultsPage.totalAll
-      : resolvedProgress.total;
-  const authoritativeFilteredPapers =
-    resultsPage?.status === "ok"
-      ? resultsPage.totalFiltered
-      : resolvedProgress.total;
+  const authoritativeTotalPapers = resolvedProgress.total;
+  const countsAreStale = hasActiveResultFilters && resultCounts === undefined;
+  const authoritativeFilteredPapers = hasActiveResultFilters
+    ? (resultCounts?.matching ?? lastMatching ?? resolvedProgress.total)
+    : resolvedProgress.total;
   const resultsScope = "full";
-  const totalPages =
-    resultsPage?.status === "ok" ? resultsPage.totalPages : 0;
 
   const isProcessing =
     job.status === "pending" ||
@@ -583,7 +535,7 @@ export default function JobDetailPage() {
         rightColumn={
           <PageWrapper>
             <LibraryPageShell
-              icon={FileText}
+              icon={DocumentIcon}
               title={job.name}
               backHref="/extraction"
               backLabel={tError("backToJobs")}
@@ -598,10 +550,7 @@ export default function JobDetailPage() {
                 <ResultsFilters
                   filters={filters}
                   searchQueryResetKey={searchQueryResetKey}
-                  onFiltersChange={(f) => {
-                    setFilters(f);
-                    setCurrentPage(1);
-                  }}
+                  onFiltersChange={setFilters}
                   sortBy={resultsSortBy}
                   onSortChange={setResultsSortBy}
                 />
@@ -609,10 +558,7 @@ export default function JobDetailPage() {
               actions={<>
                 <ResultsFilterMenu
                   filters={filters}
-                  onFiltersChange={(f) => {
-                    setFilters(f);
-                    setCurrentPage(1);
-                  }}
+                  onFiltersChange={setFilters}
                 />
                 {viewMode === "table" && <ResultsColumnsMenu showCredits={showCreditsColumn} onShowCreditsChange={setShowCreditsColumn} />}
                 <Tooltip>
@@ -739,7 +685,7 @@ export default function JobDetailPage() {
               </>}
               intro={<>
           {/* What the job covers and how far it has got. Its name and state sit in the bar. */}
-          <div className="space-y-3 border-b border-border/40 px-4 py-4 md:px-6">
+          <div className="space-y-3 border-b border-border-subtle px-4 py-4 md:px-6">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <FileText className="size-3.5" />
@@ -772,7 +718,6 @@ export default function JobDetailPage() {
                 papersRead={resolvedProgress.processed}
                 onShowFailures={() => {
                   setFilters((prev) => ({ ...prev, statusFilters: new Set([...prev.statusFilters, "has-errors"]) }));
-                  setCurrentPage(1);
                 }}
               />
             )}
@@ -783,7 +728,7 @@ export default function JobDetailPage() {
               between real DOM siblings, and `empty:hidden` collapses
               the whole strip when every banner is null — so no phantom
               padding remains on clean completed / idle jobs. */}
-          <div className="space-y-3 border-b border-border/40 px-4 py-4 empty:hidden md:px-6">
+          <div className="space-y-3 border-b border-border-subtle px-4 py-4 empty:hidden md:px-6">
             {job.status === "creditsExhausted" && (
               <CreditsExhaustedBanner
                 onResume={handleResume}
@@ -824,7 +769,7 @@ export default function JobDetailPage() {
               >
 
                 <div
-                  className="min-h-[500px] min-w-0"
+                  className={cn("min-h-[500px] min-w-0", results.isStale && "pointer-events-none opacity-60")}
                   data-results-scope={resultsScope}
                   data-total-papers={authoritativeTotalPapers}
                   data-filtered-papers={authoritativeFilteredPapers}
@@ -843,7 +788,6 @@ export default function JobDetailPage() {
                             size="sm"
                             onClick={() => {
                               setFilters(defaultFilters);
-                              setCurrentPage(1);
                               setSearchQueryResetKey((k) => k + 1);
                             }}
                           >
@@ -897,18 +841,20 @@ export default function JobDetailPage() {
                   )}
                 </div>
 
-                {authoritativeFilteredPapers > 0 && (
+                {(displayedPapers.length > 0 || results.hasPages) && (
                   <SmartPagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
+                    currentPage={results.page}
                     pageSize={pageSize}
-                    onPageChange={setCurrentPage}
-                    onPageSizeChange={(nextPageSize) => {
-                      setPageSize(nextPageSize);
-                      setCurrentPage(1);
-                    }}
+                    hasPages={results.hasPages}
+                    canPrevious={results.canPrevious}
+                    canNext={results.canNext}
+                    onPrevious={results.previous}
+                    onNext={results.next}
+                    onPageSizeChange={setPageSize}
                     totalCount={authoritativeTotalPapers}
                     filteredCount={authoritativeFilteredPapers}
+                    stale={countsAreStale || results.isStale}
+                    offset={results.offset}
                     displayedCount={displayedPapers.length}
                   />
                 )}
@@ -925,9 +871,9 @@ export default function JobDetailPage() {
                 <ExportDialog
                   open={exportDialogOpen}
                   onOpenChange={setExportDialogOpen}
-                  papers={exportDialogPapers}
+                  loadPapers={exportMode === 'all' ? loadAllPapers : loadSelectedPapers}
+                  paperCount={exportMode === 'all' ? authoritativeFilteredPapers : selectedPapers.length}
                   questions={questions}
-                  isLoading={exportDialogLoading}
                   label={
                     exportMode === 'all'
                       ? authoritativeFilteredPapers === 1

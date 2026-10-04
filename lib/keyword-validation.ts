@@ -1,4 +1,7 @@
-import { useKeywordExpansionStore } from './store';
+import type { expandShortcuts } from './query-shortcuts';
+
+/** Expands a query's shortcuts: from the browser's store, or the account's records on the server. */
+export type ExpandShortcuts = (query: string) => ReturnType<typeof expandShortcuts>;
 
 export interface KeywordValidationResult {
   /** Whether the validation passed (no missing keywords) */
@@ -24,6 +27,7 @@ export interface ValidateAndExpandKeywordsOptions {
  */
 export function validateAndExpandKeywords(
   query: string,
+  expand: ExpandShortcuts,
   options?: ValidateAndExpandKeywordsOptions
 ): KeywordValidationResult {
   const { getMessage, onWarning } = options ?? {};
@@ -49,8 +53,7 @@ export function validateAndExpandKeywords(
     };
   }
 
-  const { expandQuery } = useKeywordExpansionStore.getState();
-  const { expandedQuery, warnings } = expandQuery(query);
+  const { expandedQuery, warnings } = expand(query);
 
   if (warnings.length > 0) {
     const resolveWarning = (w: { key: string; params?: Record<string, string> }) =>
@@ -76,7 +79,7 @@ export function validateAndExpandKeywords(
  * Validates keyword expansion silently without showing warning notifications.
  * Use this for UI previews where you don't want to show notifications.
  */
-export function validateAndExpandKeywordsSilently(query: string): KeywordValidationResult {
+export function validateAndExpandKeywordsSilently(query: string, expand: ExpandShortcuts): KeywordValidationResult {
   // Allow empty queries - they are valid for browsing all papers
   const trimmedQuery = query.trim();
   if (trimmedQuery.length === 0) {
@@ -97,8 +100,7 @@ export function validateAndExpandKeywordsSilently(query: string): KeywordValidat
     };
   }
 
-  const { expandQuery } = useKeywordExpansionStore.getState();
-  const { expandedQuery, warnings } = expandQuery(query);
+  const { expandedQuery, warnings } = expand(query);
   const resolvedWarnings = warnings.map(
     (w) => `Bookmark "${w.params?.keyword ?? ''}" not found`
   );

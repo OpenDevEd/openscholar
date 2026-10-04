@@ -1,14 +1,9 @@
 /**
- * Failures-by-code summarizer for extraction `extractionPaperErrors`
- * rows. Feeds the mixed-success callout. Pure — no Convex dependency — so the
- * UI can compute it from any source without a round trip.
+ * Failures-by-code summary for a job's paper errors, from their counts per code
+ * (`convex/extraction/resultCounts.ts`). Feeds the mixed-success callout.
  */
 
 import { isRetryable } from "@/lib/errors/taxonomy";
-
-export type FailureInput = {
-  code: string;
-};
 
 export type FailureByCode = {
   code: string;
@@ -33,14 +28,10 @@ function resolveRetryable(code: string): boolean {
 }
 
 export function summarizeFailures(
-  failures: ReadonlyArray<FailureInput>,
+  counts: Readonly<Record<string, number | undefined>>,
 ): FailuresSummary {
-  const counts = new Map<string, number>();
-  for (const f of failures) {
-    counts.set(f.code, (counts.get(f.code) ?? 0) + 1);
-  }
-
-  const byCode: FailureByCode[] = [...counts.entries()]
+  const byCode: FailureByCode[] = Object.entries(counts)
+    .flatMap(([code, count]) => (count ? [[code, count] as const] : []))
     .sort(([codeA, countA], [codeB, countB]) => {
       if (countB !== countA) return countB - countA;
       return codeA < codeB ? -1 : codeA > codeB ? 1 : 0;
@@ -51,5 +42,5 @@ export function summarizeFailures(
       retryable: resolveRetryable(code),
     }));
 
-  return { total: failures.length, byCode };
+  return { total: byCode.reduce((sum, { count }) => sum + count, 0), byCode };
 }

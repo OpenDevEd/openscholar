@@ -20,6 +20,10 @@ import { SIGNUP_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
 import { findPlan } from "../../lib/billing/catalog";
 
 const BATCH = 25;
+/** Ledger rows one read sums; a longer ledger takes as many reads as it needs. */
+export const LEDGER_PAGE = 2_000;
+/** Most subscription rows read for one user; a user with more stops the run by name, not with a wrong plan. */
+export const SUBSCRIPTIONS_READ = 100;
 const LIVE_STATUSES = new Set(["active", "trialing", "past_due"]);
 
 const legacyAccountValidator = v.object({
@@ -38,11 +42,13 @@ const legacyAccountValidator = v.object({
   free: v.number(),
   paid: v.number(),
 });
+const { free: _free, paid: _paid, ...accountFields } = legacyAccountValidator.fields;
 
+/** A page of users as the old data has them; `creditsId` names the ledger legacyLedger sums. */
 export const legacyAccounts = internalQuery({
   args: { cursor: v.union(v.string(), v.null()) },
   returns: v.object({
-    accounts: v.array(legacyAccountValidator),
+    accounts: v.array(v.object({ ...accountFields, creditsId: v.optional(v.id("credits")) })),
     continueCursor: v.string(),
     isDone: v.boolean(),
   }),
@@ -59,21 +65,14 @@ export const legacyAccounts = internalQuery({
         ctx.db
           .query("subscriptions")
           .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .collect(),
+          .take(SUBSCRIPTIONS_READ + 1),
         ctx.db
           .query("billingCustomers")
           .withIndex("by_user", (q) => q.eq("userId", user._id))
           .first(),
       ]);
-      let free = 0;
-      let paid = 0;
-      if (credits) {
-        for await (const tx of ctx.db
-          .query("creditTransactions")
-          .withIndex("by_credits", (q) => q.eq("creditsId", credits._id))) {
-          if (tx.creditType === "free") free += tx.amount;
-          else paid += tx.amount;
-        }
+      if (subscriptions.length > SUBSCRIPTIONS_READ) {
+        throw new Error(`[migrate] ${user._id} has more than ${SUBSCRIPTIONS_READ} subscription rows; raise SUBSCRIPTIONS_READ to import them`);
       }
       const live = subscriptions
         .filter(
@@ -100,15 +99,58 @@ export const legacyAccounts = internalQuery({
                 pastDue: live.status === "past_due",
               }
             : undefined,
-        free,
-        paid,
+        creditsId: credits?._id,
       });
     }
     return { accounts, continueCursor: page.continueCursor, isDone: page.isDone };
   },
 });
 
+/** One page of a user's ledger, summed by pool. */
+export const legacyLedger = internalQuery({
+  args: { creditsId: v.id("credits"), cursor: v.union(v.string(), v.null()) },
+  returns: v.object({ free: v.number(), paid: v.number(), continueCursor: v.string(), isDone: v.boolean() }),
+  handler: async (ctx, { creditsId, cursor }) => {
+    const page = await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
+      .paginate({ cursor, numItems: LEDGER_PAGE });
+    let free = 0;
+    let paid = 0;
+    for (const tx of page.page) {
+      if (tx.creditType === "free") free += tx.amount;
+      else paid += tx.amount;
+    }
+    return { free, paid, continueCursor: page.continueCursor, isDone: page.isDone };
+  },
+});
+
 type LegacyAccount = (typeof legacyAccountValidator)["type"];
+
+/** One ledger's balances, summed a page at a time, so its length never matters. */
+async function ledgerBalances(ctx: Pick<ActionCtx, "runQuery">, creditsId: Id<"credits"> | undefined) {
+  let free = 0;
+  let paid = 0;
+  let cursor: string | null = null;
+  while (creditsId) {
+    const read: { free: number; paid: number; continueCursor: string; isDone: boolean } =
+      await ctx.runQuery(internal.billing.migrate.legacyLedger, { creditsId, cursor });
+    free += read.free;
+    paid += read.paid;
+    if (read.isDone) break;
+    cursor = read.continueCursor;
+  }
+  return { free, paid };
+}
+
+/** A page of users with the balances their ledgers add up to. */
+export async function readLegacyAccounts(ctx: Pick<ActionCtx, "runQuery">, cursor: string | null) {
+  const page = await ctx.runQuery(internal.billing.migrate.legacyAccounts, { cursor });
+  const accounts: LegacyAccount[] = await Promise.all(
+    page.accounts.map(async ({ creditsId, ...account }) => ({ ...account, ...(await ledgerBalances(ctx, creditsId)) })),
+  );
+  return { ...page, accounts };
+}
 
 /**
  * The `billing.import` body for one user. Negative ledger balances import as
@@ -202,7 +244,7 @@ async function importAccount(
     );
     return false;
   }
-  if (!dryRun) await refreshAccount(ctx, account.userId);
+  if (!dryRun) await refreshAccount(ctx, account.userId, { card: true });
   console.log(
     `[migrate] ${dryRun ? "checked" : "imported"} ${account.userId}: ${account.subscription?.plan ?? "free"}, free ${account.free}, paid ${account.paid}`,
   );
@@ -221,9 +263,7 @@ export const run = internalAction({
     const catalog = await ctx.runQuery(api.billing.catalog.get, {});
     const topUpUnit = catalog && findPlan(catalog, TOPUP_PLAN)?.credits?.unitPrice?.billingUnits;
     if (!topUpUnit) throw new Error("The catalog has no top-up plan with a billing unit; sync it first");
-    const page = await ctx.runQuery(internal.billing.migrate.legacyAccounts, {
-      cursor: args.cursor ?? null,
-    });
+    const page = await readLegacyAccounts(ctx, args.cursor ?? null);
     let imported = args.imported ?? 0;
     let failed = args.failed ?? 0;
     for (const account of page.accounts) {
@@ -249,9 +289,7 @@ export const verify = internalAction({
   args: { cursor: v.optional(v.union(v.string(), v.null())), mismatches: v.optional(v.number()) },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const page = await ctx.runQuery(internal.billing.migrate.legacyAccounts, {
-      cursor: args.cursor ?? null,
-    });
+    const page = await readLegacyAccounts(ctx, args.cursor ?? null);
     let mismatches = args.mismatches ?? 0;
     for (const account of page.accounts) {
       const expected = {

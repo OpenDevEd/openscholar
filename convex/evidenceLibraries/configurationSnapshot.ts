@@ -145,6 +145,28 @@ export async function loadRevisionConfigurationSnapshot(
   };
 }
 
+/**
+ * The sections a revision changed from the one it was built on, by key; every section of a
+ * first revision. Reads both configurations whole, so it runs once, when a version is
+ * recorded, and never for a list.
+ */
+export async function readChangedSections(
+  ctx: SnapshotCtx,
+  revision: Doc<"evidenceLibraryConfigRevisions">,
+) {
+  const fingerprints = async (revisionId: Id<"evidenceLibraryConfigRevisions">) =>
+    configurationSectionFingerprints(
+      (await loadRevisionConfigurationSnapshot(ctx, revisionId, { requireComplete: false })).migration.snapshot,
+    );
+  const current = await fingerprints(revision._id);
+  const previous: typeof current = revision.basedOnRevisionId
+    ? await fingerprints(revision.basedOnRevisionId)
+    : new Map();
+  return [...new Set([...current.keys(), ...previous.keys()])]
+    .filter((key) => current.get(key) !== previous.get(key))
+    .sort();
+}
+
 function samePayload(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }

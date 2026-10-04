@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Download } from "lucide-react";
+import { Download } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -66,7 +66,8 @@ export function BulkActionsBar({
       <ExportDialog
         open={exportDialogOpen}
         onOpenChange={setExportDialogOpen}
-        papers={papers}
+        loadPapers={async () => papers}
+        paperCount={papers.length}
         questions={questions}
         label={tc("paperCount", { count: selectedIds.size })}
       />

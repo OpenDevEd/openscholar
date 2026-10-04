@@ -1,8 +1,10 @@
 import { convexTest } from "convex-test";
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { ConvexError } from "convex/values";
 import { api } from "../_generated/api";
 import schema from "../schema";
+import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
+import { collectionSortName } from "./collections";
 import type { Doc, Id } from "../_generated/dataModel";
 
 // Helper: create a user directly in the mock DB, return user doc
@@ -13,6 +15,7 @@ async function seedUser(
 ) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId,
       email,
       firstName: "Test",
@@ -88,6 +91,7 @@ async function seedCollection(
       userId,
       itemCount: 0,
       name,
+      sortName: collectionSortName(name),
       createdAt: now,
       updatedAt: now,
     });
@@ -113,7 +117,7 @@ async function seedJunctionRow(
     const collection = await ctx.db.get("collections", collectionId);
     if (collection) {
       await ctx.db.patch("collections", collectionId, {
-        itemCount: (collection.itemCount ?? 0) + 1,
+        itemCount: collection.itemCount + 1,
       });
     }
     return await ctx.db.get("libraryItemCollections", id);
@@ -126,10 +130,7 @@ describe("createCollection", () => {
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
-    const collectionId = await asUser.mutation(
-      api.library.collections.createCollection,
-      { name: "My Papers" }
-    );
+    const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "My Papers" })).id;
 
     expect(collectionId).toBeDefined();
 
@@ -153,6 +154,17 @@ describe("createCollection", () => {
         name: "My Papers",
       })
     ).rejects.toThrow();
+  });
+
+  it("refuses a collection past the per-user cap, so a user's collection lists stay small", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    await t.run(async (ctx) => {
+      for (let i = 0; i < MAX_COLLECTIONS_PER_USER; i++) await ctx.db.insert("collections", { userId: user!._id, name: `c${i}`, itemCount: 0, createdAt: 1, updatedAt: 1 });
+    });
+    await expect(asUser.mutation(api.library.collections.createCollection, { name: "One more" })).rejects.toThrow(/VALIDATION_ERROR/);
+    expect(await t.run(async (ctx) => (await ctx.db.query("collections").take(MAX_COLLECTIONS_PER_USER + 1)).length)).toBe(MAX_COLLECTIONS_PER_USER);
   });
 
   it("rejects empty name (ConvexError with VALIDATION_ERROR)", async () => {
@@ -322,38 +334,32 @@ describe("deleteCollection", () => {
   });
 });
 
+const firstPage = (numItems: number) => ({ paginationOpts: { cursor: null, numItems } });
+
 describe("listCollections", () => {
-  it("returns all collections for the authenticated user, sorted alphabetically by name", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    await seedCollection(t, user!._id, "Zebra");
-    await seedCollection(t, user!._id, "Alpha");
-    await seedCollection(t, user!._id, "Middle");
-
-    const collections = await asUser.query(
-      api.library.collections.listCollections,
-      {}
-    );
-
-    expect(collections).toHaveLength(3);
-    expect(collections[0].name).toBe("Alpha");
-    expect(collections[1].name).toBe("Middle");
-    expect(collections[2].name).toBe("Zebra");
-  });
-
-  it("returns empty array when user has no collections", async () => {
+  it("pages the person's collections by name, ignoring case and accents", async () => {
     const t = convexTest(schema);
     await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
+    for (const name of ["zebra", "Alpha", "Éclair", "middle"]) (await asUser.mutation(api.library.collections.createCollection, { name })).id;
 
-    const collections = await asUser.query(
-      api.library.collections.listCollections,
-      {}
-    );
+    const first = await asUser.query(api.library.collections.listCollections, firstPage(2));
+    expect(first.page.map((c) => c.name)).toEqual(["Alpha", "Éclair"]);
+    expect(first.isDone).toBe(false);
+    const second = await asUser.query(api.library.collections.listCollections, { paginationOpts: { cursor: first.continueCursor, numItems: 2 } });
+    expect(second.page.map((c) => c.name)).toEqual(["middle", "zebra"]);
+  });
 
-    expect(collections).toHaveLength(0);
+  it("keeps a renamed collection in name order", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const first = (await asUser.mutation(api.library.collections.createCollection, { name: "Alpha" })).id;
+    (await asUser.mutation(api.library.collections.createCollection, { name: "Beta" })).id;
+    await asUser.mutation(api.library.collections.renameCollection, { collectionId: first, name: "gamma" });
+
+    const page = await asUser.query(api.library.collections.listCollections, firstPage(10));
+    expect(page.page.map((c) => c.name)).toEqual(["Beta", "gamma"]);
   });
 
   it("does not return collections belonging to other users", async () => {
@@ -362,16 +368,83 @@ describe("listCollections", () => {
     const user2 = await seedUser(t, "clerk_user2", "user2@test.com");
     const asUser1 = t.withIdentity({ subject: "clerk_user1" });
 
-    await seedCollection(t, user1!._id, "User1 Collection");
-    await seedCollection(t, user2!._id, "User2 Collection");
+    await seedCollection(t, user1!._id, "Shared Name");
+    await seedCollection(t, user2!._id, "Shared Name");
 
-    const collections = await asUser1.query(
-      api.library.collections.listCollections,
-      {}
-    );
+    const listed = await asUser1.query(api.library.collections.listCollections, firstPage(10));
+    expect(listed.page).toHaveLength(1);
+    const searched = await asUser1.query(api.library.collections.listCollections, { ...firstPage(10), search: "shared" });
+    expect(searched.page).toHaveLength(1);
+  });
 
-    expect(collections).toHaveLength(1);
-    expect(collections[0].name).toBe("User1 Collection");
+  it("searches the person's collections by name on the server", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    await seedCollection(t, user!._id, "Climate adaptation");
+    await seedCollection(t, user!._id, "Tutoring");
+
+    const page = await asUser.query(api.library.collections.listCollections, { ...firstPage(10), search: "clim" });
+    expect(page.page.map((c) => c.name)).toEqual(["Climate adaptation"]);
+  });
+
+  it("says which collections hold a paper of the person's, and none for a paper they haven't saved", async () => {
+    const t = convexTest(schema);
+    const user1 = await seedUser(t, "clerk_user1", "user1@test.com");
+    const user2 = await seedUser(t, "clerk_user2", "user2@test.com");
+    const asUser1 = t.withIdentity({ subject: "clerk_user1" });
+    const holding = await seedCollection(t, user1!._id, "Holding");
+    await seedCollection(t, user1!._id, "Other");
+    const mine = await seedLibraryItem(t, user1!._id, { openalexId: "https://openalex.org/W1" });
+    const theirs = await seedLibraryItem(t, user2!._id, { openalexId: "https://openalex.org/W2" });
+    await seedJunctionRow(t, user1!._id, holding!._id, mine!._id);
+
+    const flags = async (openalexId: string) =>
+      (await asUser1.query(api.library.collections.listCollections, { ...firstPage(10), openalexId })).page.map((c) => [c.name, c.containsItem]);
+    expect(await flags(mine!.openalexId)).toEqual([["Holding", true], ["Other", false]]);
+    // Someone else's saved paper, and a paper nobody saved.
+    expect(await flags(theirs!.openalexId)).toEqual([["Holding", false], ["Other", false]]);
+    expect(await flags("https://openalex.org/W404")).toEqual([["Holding", false], ["Other", false]]);
+  });
+
+  it("shows each collection's item count", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const collection = await seedCollection(t, user!._id, "Research");
+    const item = await seedLibraryItem(t, user!._id, { openalexId: "https://openalex.org/W1" });
+    await asUser.mutation(api.library.collections.addToCollection, { collectionId: collection!._id, libraryItemId: item!._id });
+
+    const page = await asUser.query(api.library.collections.listCollections, firstPage(10));
+    expect(page.page).toMatchObject([{ name: "Research", itemCount: 1 }]);
+  });
+});
+
+describe("countCollections and getCollection", () => {
+  it("count and read only the person's own collections", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const user2 = await seedUser(t, "clerk_user2", "user2@test.com");
+    const asUser1 = t.withIdentity({ subject: "clerk_user1" });
+    const mine = (await asUser1.mutation(api.library.collections.createCollection, { name: "Mine" })).id;
+    const theirs = await seedCollection(t, user2!._id, "Theirs");
+
+    expect(await asUser1.query(api.library.collections.countCollections, {})).toBe(1);
+    expect(await asUser1.query(api.library.collections.getCollection, { collectionId: mine })).toMatchObject({ name: "Mine", itemCount: 0 });
+    expect(await asUser1.query(api.library.collections.getCollection, { collectionId: theirs!._id })).toBeNull();
+  });
+
+  it("keeps the count as collections are made and deleted, starting exact for someone counted before", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    // Saved before counts existed: no count row.
+    await seedCollection(t, user!._id, "Old one");
+    await seedCollection(t, user!._id, "Old two");
+    const made = (await asUser.mutation(api.library.collections.createCollection, { name: "New" })).id;
+    expect(await asUser.query(api.library.collections.countCollections, {})).toBe(3);
+    await asUser.mutation(api.library.collections.deleteCollection, { collectionId: made });
+    expect(await asUser.query(api.library.collections.countCollections, {})).toBe(2);
   });
 });
 
@@ -392,7 +465,7 @@ describe("removeFromLibrary cascade", () => {
 
     // Remove the library item
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      itemId: item!._id,
+      openalexId: "https://openalex.org/W1",
     });
 
     // Verify junction rows are deleted
@@ -420,7 +493,7 @@ describe("removeFromLibrary cascade", () => {
 
     // Remove the library item
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      itemId: item!._id,
+      openalexId: "https://openalex.org/W1",
     });
 
     // Collection should still exist
@@ -640,128 +713,91 @@ describe("removeFromCollection", () => {
         libraryItemId: item!._id,
       }
     );
-    expect(result).toBeNull();
+    // Nothing was taken out, so there's nothing to put back.
+    expect(result.undo).toBeUndefined();
   });
 });
 
-describe("getCollectionsWithCounts", () => {
-  it("returns all user collections with correct item counts", async () => {
+describe("undoing a collection change (#342)", () => {
+  const { createCollection, renameCollection, deleteCollection, addToCollection, removeFromCollection } = api.library.collections;
+  // A paper's place in a collection is told apart by when it was put in, so each step here takes a second.
+  beforeEach(() => void vi.useFakeTimers({ toFake: ["Date"], now: 1_800_000_000_000 }));
+  afterEach(() => void vi.useRealTimers());
+  async function owner() {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const signedIn = t.withIdentity({ subject: "clerk_user1" });
+    const asUser = {
+      mutation: ((...args: unknown[]) => {
+        vi.advanceTimersByTime(1_000);
+        return (signedIn.mutation as (...args: unknown[]) => unknown)(...args);
+      }) as unknown as typeof signedIn.mutation,
+    };
+    const collection = (collectionId: Id<"collections">) => t.run((ctx) => ctx.db.get("collections", collectionId));
+    return { t, user: user!, asUser, collection };
+  }
 
-    const col1 = await seedCollection(t, user!._id, "Research");
-    const col2 = await seedCollection(t, user!._id, "Favorites");
+  it("deletes a collection it made while that's empty and still has its name", async () => {
+    const { t, user, asUser, collection } = await owner();
+    const made = await asUser.mutation(createCollection, { name: " Reading " });
+    expect(made.undo).toEqual({ path: "library/collections:deleteCollection", args: { collectionId: made.id, expect: { name: "Reading" } } });
+    await asUser.mutation(deleteCollection, made.undo!.args);
+    expect(await collection(made.id)).toBeNull();
 
-    const item1 = await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W1",
-    });
-    const item2 = await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W2",
-    });
-
-    await seedJunctionRow(t, user!._id, col1!._id, item1!._id);
-    await seedJunctionRow(t, user!._id, col1!._id, item2!._id);
-    await seedJunctionRow(t, user!._id, col2!._id, item1!._id);
-
-    const result = await asUser.query(
-      api.library.collections.getCollectionsWithCounts,
-      {}
-    );
-
-    expect(result).toHaveLength(2);
-    const favorites = result.find((c: { name: string; itemCount: number }) => c.name === "Favorites");
-    const research = result.find((c: { name: string; itemCount: number }) => c.name === "Research");
-    expect(favorites!.itemCount).toBe(1);
-    expect(research!.itemCount).toBe(2);
+    // Renamed since: it stays.
+    const renamed = await asUser.mutation(createCollection, { name: "Drafts" });
+    await asUser.mutation(renameCollection, { collectionId: renamed.id, name: "Final" });
+    await expect(asUser.mutation(deleteCollection, renamed.undo!.args)).rejects.toThrow(/renamed or holds papers/);
+    // A paper put in it since: it stays. Once that's undone, so can the collection be.
+    const used = await asUser.mutation(createCollection, { name: "Used" });
+    const item = await seedLibraryItem(t, user._id, { openalexId: "https://openalex.org/W1" });
+    const added = await asUser.mutation(addToCollection, { collectionId: used.id, libraryItemId: item!._id });
+    await expect(asUser.mutation(deleteCollection, used.undo!.args)).rejects.toThrow(/renamed or holds papers/);
+    expect(await collection(used.id)).not.toBeNull();
+    await asUser.mutation(removeFromCollection, added.undo!.args);
+    await asUser.mutation(deleteCollection, used.undo!.args);
+    expect(await collection(used.id)).toBeNull();
   });
 
-  it("collections with no items have count 0", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    await seedCollection(t, user!._id, "Empty Collection");
-
-    const result = await asUser.query(
-      api.library.collections.getCollectionsWithCounts,
-      {}
-    );
-
-    expect(result).toHaveLength(1);
-    expect(result[0].itemCount).toBe(0);
+  it("gives a collection its name back, unless it was renamed again", async () => {
+    const { asUser, collection } = await owner();
+    const { id: collectionId } = await asUser.mutation(createCollection, { name: "Reading" });
+    const first = await asUser.mutation(renameCollection, { collectionId, name: "To read" });
+    expect(first.undo).toEqual({ path: "library/collections:renameCollection", args: { collectionId, name: "Reading", expect: "To read" } });
+    // The same name again changes nothing: no undo.
+    expect((await asUser.mutation(renameCollection, { collectionId, name: "To read" })).undo).toBeUndefined();
+    const second = await asUser.mutation(renameCollection, { collectionId, name: "Read later" });
+    await expect(asUser.mutation(renameCollection, first.undo!.args)).rejects.toThrow(/renamed since/);
+    await asUser.mutation(renameCollection, second.undo!.args);
+    await asUser.mutation(renameCollection, first.undo!.args);
+    expect((await collection(collectionId))?.name).toBe("Reading");
   });
 
-  it("only counts items in the user's own collections", async () => {
-    const t = convexTest(schema);
-    const user1 = await seedUser(t, "clerk_user1", "user1@test.com");
-    const user2 = await seedUser(t, "clerk_user2", "user2@test.com");
-    const asUser1 = t.withIdentity({ subject: "clerk_user1" });
+  it("takes out only a paper it put in, and puts back only one it took out", async () => {
+    const { t, user, asUser, collection } = await owner();
+    const { id: collectionId } = await asUser.mutation(createCollection, { name: "Reading" });
+    const item = await seedLibraryItem(t, user._id, { openalexId: "https://openalex.org/W1" });
+    const membership = { collectionId, libraryItemId: item!._id };
 
-    const myCol = await seedCollection(t, user1!._id, "My Collection");
-    const otherCol = await seedCollection(t, user2!._id, "Other Collection");
-
-    const myItem = await seedLibraryItem(t, user1!._id, {
-      openalexId: "https://openalex.org/W1",
-    });
-    const otherItem = await seedLibraryItem(t, user2!._id, {
-      openalexId: "https://openalex.org/W2",
-    });
-
-    await seedJunctionRow(t, user1!._id, myCol!._id, myItem!._id);
-    await seedJunctionRow(t, user2!._id, otherCol!._id, otherItem!._id);
-
-    const result = await asUser1.query(
-      api.library.collections.getCollectionsWithCounts,
-      {}
-    );
-
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("My Collection");
-    expect(result[0].itemCount).toBe(1);
-  });
-});
-
-describe("getItemCollections", () => {
-  it("returns collection IDs for a given library item", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    const col1 = await seedCollection(t, user!._id, "Collection A");
-    const col2 = await seedCollection(t, user!._id, "Collection B");
-    const item = await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W1",
-    });
-
-    await seedJunctionRow(t, user!._id, col1!._id, item!._id);
-    await seedJunctionRow(t, user!._id, col2!._id, item!._id);
-
-    const result = await asUser.query(
-      api.library.collections.getItemCollections,
-      { libraryItemId: item!._id }
-    );
-
-    expect(result).toHaveLength(2);
-    expect(result).toContain(col1!._id);
-    expect(result).toContain(col2!._id);
-  });
-
-  it("returns empty array if item is not in any collection", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    const item = await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W1",
-    });
-
-    const result = await asUser.query(
-      api.library.collections.getItemCollections,
-      { libraryItemId: item!._id }
-    );
-
-    expect(result).toHaveLength(0);
+    const added = await asUser.mutation(addToCollection, membership);
+    expect(added.undo).toMatchObject({ path: "library/collections:removeFromCollection", args: membership });
+    // Already there: no undo, so undoing never takes out a paper this call didn't put in.
+    expect((await asUser.mutation(addToCollection, membership)).undo).toBeUndefined();
+    const removed = await asUser.mutation(removeFromCollection, added.undo!.args);
+    expect((await collection(collectionId))?.itemCount).toBe(0);
+    expect(removed.undo).toMatchObject({ path: "library/collections:addToCollection", args: membership });
+    // Put back by that undo, it has its place again: the add can be undone once more.
+    await asUser.mutation(addToCollection, removed.undo!.args);
+    await asUser.mutation(removeFromCollection, added.undo!.args);
+    expect((await collection(collectionId))?.itemCount).toBe(0);
+    // Put in again by hand, it's a new place, which the first add's undo leaves.
+    await asUser.mutation(addToCollection, membership);
+    await expect(asUser.mutation(removeFromCollection, added.undo!.args)).rejects.toThrow(/put in the collection again/);
+    expect((await collection(collectionId))?.itemCount).toBe(1);
+    // A paper that has left the library since has nothing to take out, and the undo says so.
+    await t.run((ctx) => ctx.db.delete("libraryItems", item!._id));
+    await t.run(async (ctx) => { for (const row of await ctx.db.query("libraryItemCollections").collect()) await ctx.db.delete("libraryItemCollections", row._id); });
+    await expect(asUser.mutation(removeFromCollection, added.undo!.args)).rejects.toThrow(/left the library/);
   });
 });
 
@@ -821,29 +857,15 @@ describe("browseLibrary with collectionId filter", () => {
     await seedJunctionRow(t, user!._id, collection!._id, first!._id);
     await seedJunctionRow(t, user!._id, collection!._id, second!._id);
 
-    const firstPage = await asUser.query(api.library.queries.browseLibrary, {
-      sortBy: "savedAt",
-      sortOrder: "desc",
-      collectionId: collection!._id,
-      paginationOpts: { numItems: 1, cursor: null },
-    });
+    const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, collectionId: collection!._id };
+    const pageOne = await asUser.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { numItems: 1, cursor: null } });
+    const pageTwo = await asUser.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { numItems: 1, cursor: pageOne.continueCursor } });
+    const walked = [...pageOne.page, ...pageTwo.page].map((item) => item.title);
 
-    expect(firstPage.page.map((item) => item.title)).toEqual([
+    expect(walked).toEqual([
       "First in collection",
-    ]);
-    expect(firstPage.isDone).toBe(false);
-
-    const secondPage = await asUser.query(api.library.queries.browseLibrary, {
-      sortBy: "savedAt",
-      sortOrder: "desc",
-      collectionId: collection!._id,
-      paginationOpts: { numItems: 1, cursor: firstPage.continueCursor },
-    });
-
-    expect(secondPage.page.map((item) => item.title)).toEqual([
       "Second in collection",
     ]);
-    expect(secondPage.isDone).toBe(true);
   });
 
   it("when collectionId is undefined, all items are returned (existing behavior)", async () => {

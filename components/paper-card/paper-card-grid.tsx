@@ -10,16 +10,17 @@ import { useUIStore } from "@/lib/store";
 import { useIsTablet } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "@/components/rating-selector";
+import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { Quote, Network, Users, BookOpen } from "lucide-react";
-import { useTranslate, useScreening, useCitationHandlers } from "./hooks";
+import { Quote, Network, Users, BookOpen } from "@/components/icons";
+import { useAuthorFilter, useTranslate, useScreening, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
   PaperCardProps,
   CardContainer,
   OpenAccessBadge,
   DOIBadge,
-  getFirstAuthor,
+  AuthorNames,
   ScreeningBadge,
   finalState,
   DownloadMenuCompact,
@@ -61,7 +62,7 @@ export function PaperCardGrid({
     ? translatedContent.translatedTitle
     : result.title;
 
-  const author = result.authorships ? getFirstAuthor(result.authorships) : "";
+  const authorFilter = useAuthorFilter();
   const journal = result.primary_location?.source?.display_name || "";
 
   const isCompact = viewMode === "grid-3";
@@ -134,15 +135,23 @@ export function PaperCardGrid({
           </h3>
 
           {/* Author */}
-          {author && (
+          {result.authorships?.length ? (
             <div className={cn(
               "flex items-center gap-1.5 text-muted-foreground mb-1.5",
               isCompact ? "text-xs" : "text-sm"
             )}>
               <Users className={cn(isCompact ? "h-3 w-3" : "h-3.5 w-3.5", "flex-shrink-0")} />
-              <span className="line-clamp-1">{author}</span>
+              <span className="line-clamp-1">
+                {/* The first author; "et al." stands for the rest. */}
+                <AuthorNames
+                  authorships={result.authorships}
+                  maxLength={0}
+                  selected={authorFilter.authors}
+                  onToggleAuthor={authorFilter.toggle}
+                />
+              </span>
             </div>
-          )}
+          ) : null}
 
           {/* Journal - hidden in compact mode */}
           {journal && !isCompact && (
@@ -187,15 +196,28 @@ export function PaperCardGrid({
           {/* Footer: Rating and citations */}
           <div
             role="group"
-            className="flex items-center justify-between pt-3 mt-auto border-t border-border/50"
+            className="flex flex-wrap items-center gap-2 pt-3 mt-auto border-t border-border-subtle"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
+            {/* Narrow cards give the rating its own row; the breakpoints fit five stars, save and the counts */}
             {!hide?.rating && (
-              <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+              <>
+                <div
+                  className={cn(
+                    "basis-full",
+                    isCompact
+                      ? "@min-[18.5rem]/card:basis-auto"
+                      : "@min-[22.5rem]/card:basis-auto",
+                  )}
+                >
+                  <RatingSelector paper={result} variant="compact" />
+                </div>
+                <SaveControl paper={result} compact />
+              </>
             )}
-            
-            <div className="flex items-center gap-2">
+
+            <div className="ml-auto flex items-center gap-2">
               {/* Cited by count */}
               <TooltipHint label={tp("citedByCount", { count: format.number(result.cited_by_count ?? 0) })}>
                 <button
@@ -205,7 +227,7 @@ export function PaperCardGrid({
                   }}
                   className={cn(
                     "flex items-center gap-1 rounded-lg font-medium transition-colors",
-                    "text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50",
+                    "ink-cites hover:bg-cites/10",
                     isCompact ? "px-1.5 py-0.5 text-xs" : "px-2 py-1 text-sm"
                   )}
                 >
@@ -222,7 +244,7 @@ export function PaperCardGrid({
                       e.stopPropagation();
                       handleRelatedSearch();
                     }}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium ink-related hover:bg-related/10 transition-colors"
                   >
                     <Network className="h-3.5 w-3.5" />
                     <span>{format.number(result.related_works?.length ?? 0)}</span>
