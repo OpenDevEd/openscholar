@@ -5,11 +5,12 @@ import { v } from "convex/values";
 import { stream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { requireAuth } from "../lib/auth";
+import { createError } from "../lib/errors";
 import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
 import { libraryCount } from "./counter";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { LIBRARY_SEARCH_RESULTS_MAX as SEARCH_RESULTS_MAX } from "../../lib/library/limits";
-import { libraryFilterFields, librarySortOrderValidator, librarySortValidator, type LibraryView } from "./validators";
+import { libraryFilterFields, libraryPapersValidator, librarySortOrderValidator, librarySortValidator, PAPERS_PAGE, type LibraryView } from "./validators";
 
 /**
  * Papers one page of a filtered view reads at most. A sparse filter gets a short page
@@ -42,6 +43,8 @@ const SORT_INDEX_MAP = {
 } as const;
 
 type SharedLibraryFilterArgs = {
+  /** Only papers with no rating. The library page has no such filter; the assistant is asked for them. */
+  unrated?: boolean;
   minRating?: number;
   maxRating?: number;
   savedAfter?: number;
@@ -87,6 +90,8 @@ function matchesLibraryFilters(
   if (collectionItemIds && !collectionItemIds.has(item._id as string)) {
     return false;
   }
+
+  if (args.unrated && item.rating !== undefined) return false;
 
   if (args.minRating !== undefined || args.maxRating !== undefined) {
     // A rating filter only matches rated papers.
@@ -177,6 +182,7 @@ function sortLibraryItems(
 
 function hasNonCollectionLibraryFilters(args: SharedLibraryFilterArgs): boolean {
   return (
+    args.unrated === true ||
     args.minRating !== undefined ||
     args.maxRating !== undefined ||
     args.savedAfter !== undefined ||
@@ -257,7 +263,7 @@ const emptyPage: LibraryPage = { page: [], isDone: true, continueCursor: "" as C
  * limit, and pages them in memory; a browse reads through the sort's index, and a filtered
  * one stops after FILTERED_PAGE_ROWS papers with a cursor to carry on from.
  */
-export async function readLibraryPage(ctx: QueryCtx, userId: Id<"users">, view: LibraryView, paginationOpts: PaginationOptions): Promise<LibraryPage> {
+export async function readLibraryPage(ctx: QueryCtx, userId: Id<"users">, view: LibraryView & { unrated?: boolean }, paginationOpts: PaginationOptions): Promise<LibraryPage> {
   const collectionItemIds = await loadCollectionItemIds(ctx, userId, view.collectionId);
   if (view.collectionId && (collectionItemIds === null || collectionItemIds.size === 0)) return emptyPage;
 
@@ -326,37 +332,104 @@ export const getLibraryFilteredCount = query({
     searchText: v.optional(v.string()),
   },
   returns: v.object({ count: v.number(), capped: v.boolean() }),
-  handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
-    const searchText = args.searchText?.trim();
-    const hasFilters = Boolean(searchText) || hasNonCollectionLibraryFilters(args);
+  handler: async (ctx, args) => countLibraryView(ctx, await requireAuth(ctx), args),
+});
 
-    if (!args.collectionId && !hasFilters) {
-      return { count: await libraryCount(ctx, user), capped: false };
-    }
-    if (args.collectionId && !hasFilters) {
-      const collection = await ctx.db.get("collections", args.collectionId);
-      if (collection?.userId !== user._id) return { count: 0, capped: false };
-      // A collection saved before counts were kept is counted until migrations/backfillLibraryCounters runs.
-      return { count: collection.itemCount ?? (await loadCollectionItemIds(ctx, user._id, args.collectionId))!.size, capped: false };
-    }
+/** How many papers a view of someone's library shows, and whether the count stopped short (see getLibraryFilteredCount). */
+async function countLibraryView(ctx: QueryCtx, user: Doc<"users">, args: Omit<LibraryView, "sortBy" | "sortOrder"> & { unrated?: boolean }) {
+  const searchText = args.searchText?.trim();
+  const hasFilters = Boolean(searchText) || hasNonCollectionLibraryFilters(args);
 
-    const collectionItemIds = await loadCollectionItemIds(ctx, user._id, args.collectionId);
-    if (args.collectionId && !collectionItemIds?.size) return { count: 0, capped: false };
+  if (!args.collectionId && !hasFilters) {
+    return { count: await libraryCount(ctx, user), capped: false };
+  }
+  if (args.collectionId && !hasFilters) {
+    const collection = await ctx.db.get("collections", args.collectionId);
+    if (collection?.userId !== user._id) return { count: 0, capped: false };
+    // A collection saved before counts were kept is counted until migrations/backfillLibraryCounters runs.
+    return { count: collection.itemCount ?? (await loadCollectionItemIds(ctx, user._id, args.collectionId))!.size, capped: false };
+  }
 
-    if (searchText) {
-      const found = await searchLibraryItems(ctx, user._id, searchText);
-      const count = found.filter((item) => matchesLibraryFilters(item, args, collectionItemIds)).length;
-      return { count, capped: found.length === SEARCH_RESULTS_MAX };
-    }
+  const collectionItemIds = await loadCollectionItemIds(ctx, user._id, args.collectionId);
+  if (args.collectionId && !collectionItemIds?.size) return { count: 0, capped: false };
 
-    // Read along the index of a filtered field, so single-field filters only read matches.
-    const field = (["rating", "publicationYear", "savedAt"] as const).find((name) => filterRange(name, args).some((bound) => bound !== undefined)) ?? "savedAt";
-    const counted = await filteredItems(ctx, user._id, field, "asc", args, collectionItemIds)
-      .paginate({ cursor: null, numItems: FILTERED_COUNT_CAP, maximumRowsRead: FILTERED_COUNT_ROWS, maximumBytesRead: FILTERED_BYTES });
-    return { count: counted.page.length, capped: !counted.isDone };
+  if (searchText) {
+    const found = await searchLibraryItems(ctx, user._id, searchText);
+    const count = found.filter((item) => matchesLibraryFilters(item, args, collectionItemIds)).length;
+    return { count, capped: found.length === SEARCH_RESULTS_MAX };
+  }
+
+  // Read along the index of a filtered field, so single-field filters only read matches.
+  const field = (["rating", "publicationYear", "savedAt"] as const).find((name) => filterRange(name, args).some((bound) => bound !== undefined)) ?? "savedAt";
+  const counted = await filteredItems(ctx, user._id, field, "asc", args, collectionItemIds)
+    .paginate({ cursor: null, numItems: FILTERED_COUNT_CAP, maximumRowsRead: FILTERED_COUNT_ROWS, maximumBytesRead: FILTERED_BYTES });
+  return { count: counted.page.length, capped: !counted.isDone };
+}
+
+/** The characters of each text the assistant gets of a saved paper. */
+const PAPER_SHOWN = { title: 160, authors: 120, journal: 60 };
+const short = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)}…` : text);
+const SORTS = { saved: "savedAt", rating: "rating", year: "publicationYear", citations: "citedByCount", title: "title" } as const;
+const optional = <V extends Parameters<typeof v.union>[number]>(validator: V) => v.optional(v.union(validator, v.null()));
+
+export const papersAction = defineUserQuery({
+  path: "library/queries:papers",
+  description:
+    `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, the rating they gave it, the day they saved it, its paper ID and its library item ID, with how many papers match in all. ` +
+    "With nothing else given it lists the whole library, newest saved first. To narrow it: `search` is words to find in titles, abstracts and authors; `collectionId` is one of their collections (from library/collections:listCollections); " +
+    "`rated` is true for only the papers they rated and false for only those they haven't; `minRating` and `maxRating` are 0 to 5; `yearFrom` and `yearTo` are years published. " +
+    "`sort` is saved, rating, year, citations or title, and `ascending` turns its order round. `cursor` is `next` from the page before.",
+  args: {
+    search: optional(v.string()),
+    collectionId: optional(v.id("collections")),
+    rated: optional(v.boolean()),
+    minRating: optional(v.number()),
+    maxRating: optional(v.number()),
+    yearFrom: optional(v.number()),
+    yearTo: optional(v.number()),
+    sort: optional(v.union(...Object.keys(SORTS).map((name) => v.literal(name as keyof typeof SORTS)))),
+    ascending: optional(v.boolean()),
+    cursor: optional(v.string()),
+  },
+  returns: libraryPapersValidator,
+  run: async (ctx, userId, given) => {
+    const user = await ctx.db.get("users", userId);
+    if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
+    // A model that fills in every argument sends null, false or nothing for what it doesn't mean: each reads as left out.
+    const text = given.search?.trim();
+    const view = {
+      sortBy: SORTS[given.sort ?? "saved"],
+      sortOrder: given.ascending ? ("asc" as const) : ("desc" as const),
+      ...(text ? { searchText: text } : {}),
+      ...(given.collectionId ? { collectionId: given.collectionId } : {}),
+      ...(given.rated === false ? { unrated: true } : {}),
+      // Only rated papers: every rating from 0 up, unless a bound says otherwise.
+      ...(given.minRating != null || given.rated === true ? { minRating: given.minRating ?? 0 } : {}),
+      ...(given.maxRating != null ? { maxRating: given.maxRating } : {}),
+      ...(given.yearFrom != null ? { yearFrom: given.yearFrom } : {}),
+      ...(given.yearTo != null ? { yearTo: given.yearTo } : {}),
+    };
+    if (given.rated === false && (view.minRating !== undefined || view.maxRating !== undefined)) throw createError("VALIDATION_ERROR", "A paper they haven't rated has no rating to filter by: give `rated` false or a rating range, not both.");
+    const [read, counted] = await Promise.all([readLibraryPage(ctx, userId, view, { cursor: given.cursor || null, numItems: PAPERS_PAGE }), countLibraryView(ctx, user, view)]);
+    return {
+      total: counted.count,
+      ...(counted.capped ? { totalIsAtLeast: true as const } : {}),
+      papers: read.page.map((item) => ({
+        libraryItemId: item._id,
+        id: item.openalexId,
+        title: short(item.title, PAPER_SHOWN.title),
+        ...(item.authors ? { authors: short(item.authors, PAPER_SHOWN.authors) } : {}),
+        ...(item.publicationYear == null ? {} : { year: item.publicationYear }),
+        ...(item.journal ? { journal: short(item.journal, PAPER_SHOWN.journal) } : {}),
+        ...(item.rating === undefined ? {} : { rating: item.rating }),
+        savedOn: new Date(item.savedAt).toISOString().slice(0, 10),
+      })),
+      ...(read.isDone || !read.continueCursor ? {} : { next: read.continueCursor }),
+    };
   },
 });
+export const papers = userQuery(papersAction);
+export const papersForAssistant = assistantQuery(papersAction);
 
 export const getLibraryCount = query({
   args: {},
