@@ -496,7 +496,14 @@ Later, without issues yet:
 - Shared dev is the live deployment, so its data is user data. The one
   exception is its chat jobs (9 on 2026-10-04): #325 deletes them, with their
   `chatPapers`, `chatSourceEvents` and threads, when it removes chat mode from
-  extraction. Decided on 2026-10-04, see "Decision changes".
+  extraction. Decided on 2026-10-04, see "Decision changes". Before it deletes
+  anything there, chat is switched off, so no reply or thread setup is in
+  flight, and a dry run lists what would go and is checked: only jobs with
+  `mode: "chat"`, the rows that point at them, and the agent threads their
+  `chatThreadId` names. Credit transactions keep their job ID, as they do when
+  a job is deleted today. Afterwards a verifier reads 0 chat-mode jobs, 0 chat
+  rows left pointing at one, none of the listed agent threads, and every
+  extraction-mode job ID that existed before.
 - Each migration runs on shared dev, and on e2e when its tests need it, and is
   verified there before a schema is narrowed. #384 and #403 narrow after
   theirs.
