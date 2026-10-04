@@ -415,9 +415,9 @@ export function FocusMode({
     tAccessibility: tAccessibility as (key: string) => string,
     isOpen,
     selectedAuthors: authorFilter.authors,
-    // The results change under the reader, so reading starts again at the first of them.
+    // The paper being read may not be in the new results, so a change to the search closes focus mode.
     onToggleAuthor: authorFilter.toggle && ((author) => {
-      setCurrentIndex(0);
+      onClose();
       authorFilter.toggle?.(author);
     }),
   };
