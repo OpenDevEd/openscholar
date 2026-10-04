@@ -8,7 +8,7 @@ import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
 import { people } from "./assistant.test-support";
-import { DEFINITION_MAX, MAX_STEPS, core, definition, found } from "./tools";
+import { DEFINITION_MAX, MAX_CALLS, MAX_STEPS, core, definition, found } from "./tools";
 import { finishingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { value?: unknown } };
@@ -52,14 +52,14 @@ const firstPage = { cursor: null, numItems: 20 };
 
 /** A step in which the model calls tools and writes nothing. */
 const calling =
-  (...calls: Array<{ id: string; name: string; input: unknown }>) =>
+  (...calls: Array<{ id: string; name: string; input: unknown; read?: number }>) =>
   async () => ({
     stream: new ReadableStream({
       start(controller) {
         controller.enqueue({ type: "stream-start", warnings: [] });
         for (const call of calls) controller.enqueue({ type: "tool-call", toolCallId: call.id, toolName: call.name, input: JSON.stringify(call.input) });
         // The reason in the shape the model interface defines: with a plain string the SDK runs no tool.
-        controller.enqueue({ type: "finish", finishReason: { unified: "tool-calls", raw: "tool_calls" }, usage: { inputTokens: { total: 5, noCache: 5, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 3, text: 3, reasoning: 0 } } });
+        controller.enqueue({ type: "finish", finishReason: { unified: "tool-calls", raw: "tool_calls" }, usage: { inputTokens: { total: calls[0]?.read ?? 5, noCache: calls[0]?.read ?? 5, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 3, text: 3, reasoning: 0 } } });
         controller.close();
       },
     }),
@@ -199,6 +199,64 @@ describe("the assistant's tools", () => {
     expect(told(1, "public")).toMatchObject({ error: expect.stringMatching(/asks the person first/) });
     expect(await steps()).toMatchObject([{ path: "library/mutations:setPaperInCollection", status: "done", input: expect.stringContaining(own) }]);
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").collect()).map((row) => row.collectionId))).toEqual([own]);
+  });
+
+  it("ask first where a change would have no undo, and when the check and the change disagree the change itself refuses", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, say, steps } = await chatOf(t);
+    // The paper already has a rating on search cards, which removing it from the library would clear: saving it has no undo.
+    await asAda.mutation(api.research.records.change, { accountId: "ada", requestId: "rated", command: { kind: "rating", paperId: "https://openalex.org/W1", rating: 4 } });
+    const { id: followed } = await asAda.mutation(api.library.collections.createCollection, { name: "Published" });
+    await t.run(async (ctx) => {
+      const organizationId = (await ctx.db.query("organizations").first())!._id;
+      const libraryId = await ctx.db.insert("evidenceLibraries", { organizationId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("evidenceLibraryCollectionSources", { libraryId, collectionId: followed, connectedByClerkUserId: "ada", connectedAt: 1 });
+    });
+    mockDoStream
+      .mockImplementationOnce(
+        calling(
+          { id: "save", name: "library_mutations_saveToLibrary", input: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } },
+          // A library that follows the collection shows its name.
+          { id: "rename", name: "run_action", input: { name: "library/collections:renameCollection", arguments: { collectionId: followed, name: "Public reading" } } },
+        ),
+      )
+      .mockImplementationOnce(finishingDoStream(["Those need you."]));
+    await say("Save it and rename the collection");
+    expect(told(1, "save")).toMatchObject({ error: expect.stringMatching(/asks the person first/) });
+    expect(told(1, "rename")).toMatchObject({ error: expect.stringMatching(/asks the person first/) });
+    expect(await steps()).toEqual([]);
+
+    // The change holds the same check in its own transaction, for a collection that comes to be followed between the two.
+    const add = { userId: ada, paper: { openalexId: "https://openalex.org/W2", title: "Another paper" }, collectionId: followed, inCollection: true };
+    await expect(t.mutation(internal.library.mutations.setPaperInCollectionForAssistant, add)).rejects.toThrow(/asks the person first/);
+    // The person's own click is their approval.
+    await t.mutation(internal.library.mutations.setPaperInCollectionForAssistant, { ...add, approved: true });
+    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").collect()).length)).toBe(1);
+  });
+
+  it("run at most so many actions in one reply, and stop calling tools once the reply has cost what was held for it", async () => {
+    const t = convexTest(schema);
+    const { say, steps } = await chatOf(t);
+    const list = (index: number) => ({ id: `c${index}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } });
+    // One round that calls more actions than a reply may run.
+    mockDoStream.mockImplementationOnce(calling(...Array.from({ length: MAX_CALLS + 2 }, (_, index) => list(index)))).mockImplementationOnce(finishingDoStream(["That's all I could run."]));
+    await say("Look at everything");
+    expect(await steps()).toHaveLength(MAX_CALLS);
+    expect(told(1, `c${MAX_CALLS + 1}`)).toMatchObject({ error: expect.stringMatching(/at most/) });
+
+    // A round that read a great deal costs more than the reply's hold: the next request can't call a tool.
+    toolChoices.length = 0;
+    mockDoStream.mockImplementationOnce(calling({ ...list(0), read: 2_000_000_000 })).mockImplementationOnce(finishingDoStream(["Stopping here."]));
+    await say("Look again");
+    expect(toolChoices).toEqual(["auto", "none"]);
+  });
+
+  it("show a reply that came back with nothing, when it called no tool", async () => {
+    const t = convexTest(schema);
+    const { say, shown } = await chatOf(t);
+    mockDoStream.mockImplementationOnce(finishingDoStream([]));
+    await say("Hello");
+    expect(await shown()).toEqual(["user: Hello", "assistant: "]);
   });
 
   it("tell the model why an action failed, keep the failed step, and let the reply go on", async () => {

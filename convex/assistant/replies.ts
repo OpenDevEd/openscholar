@@ -330,7 +330,7 @@ export const messagesAction = defineUserQuery({
         }))
         .reverse();
       // A message of the reply that only called actions has no text of its own to show.
-      if (role === "assistant" && !row.text && row.status === "success") return [];
+      if (role === "assistant" && !row.text && row.status === "success" && Array.isArray(row.message?.content) && row.message.content.some((part) => part.type === "tool-call")) return [];
       const error = row.status === "failed" ? parseChatError(row.error) : null;
       const stopped = error?.class === "aborted";
       // A reply still pending that the chat isn't writing died with its action.

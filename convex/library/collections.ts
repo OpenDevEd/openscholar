@@ -93,6 +93,8 @@ export const renameCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  // A library that follows the collection shows its name.
+  asksFirst: (ctx, _userId, { collectionId }) => followed(ctx, collectionId),
   run: async (ctx, userId, args) => {
     const collection = await ownCollection(ctx, userId, args.collectionId);
     if (args.expect !== undefined && collection.name !== args.expect) throw createError("CONFLICT", "This collection has been renamed since then, so it was left as it is.");

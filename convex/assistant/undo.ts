@@ -27,7 +27,7 @@ export const run = mutation({
     const entry = USER_ACTIONS.find((candidate) => candidate.path === step.undo!.path);
     if (!entry || entry.kind !== "mutation") throw createError("NOT_FOUND", "This can no longer be undone.");
     // The reversing action refuses on its own when the record has changed since (its `expect`).
-    await ctx.runMutation(makeFunctionReference<"mutation">(assistantPath(entry.path)), { ...JSON.parse(step.undo.args), ...(entry.retryKey ? { [entry.retryKey]: `undo:${stepId}` } : {}), userId });
+    await ctx.runMutation(makeFunctionReference<"mutation">(assistantPath(entry.path)), { ...JSON.parse(step.undo.args), ...(entry.retryKey ? { [entry.retryKey]: `undo:${stepId}` } : {}), userId, approved: true });
     await ctx.db.patch("assistantSteps", stepId, { undone: true });
     return null;
   },

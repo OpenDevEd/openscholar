@@ -12,8 +12,8 @@ import type { ActionCtx } from "../_generated/server";
 import { assistantTools, inputSchema, runAction } from "../lib/assistantTools";
 import { readConvexErrorData } from "../lib/errors";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
-import type { UserAction } from "../lib/userActions";
-import { STEP_RESULT_MAX, STEP_TEXT_MAX } from "./steps";
+import { ASKS_FIRST, type UserAction } from "../lib/userActions";
+import { STEP_TEXT_MAX } from "./steps";
 
 /** Requests to the model one reply may make. The last is kept for its answer (./turn.ts). */
 export const MAX_STEPS = 12;
@@ -23,6 +23,8 @@ const MODEL_READS = 8_000;
 export const DEFINITION_MAX = 4_000;
 /** Actions one search returns. */
 const FOUND_MAX = 6;
+/** Actions one reply may run, however many it calls at once: every one of them shows on the chat's page (./steps.ts). */
+export const MAX_CALLS = 40;
 
 /**
  * The actions that are tools of their own, in this order. Changing the list resets every
@@ -47,8 +49,6 @@ const CORE_PATHS = [
   "screening/papers:get",
   "extraction/queries:listJobs",
 ] as const;
-
-const ASKS = "This asks the person first, and a chat can't ask yet. Tell them what you would have done, so they can do it themselves.";
 
 /**
  * Whether the assistant runs an action without asking: it only reads, or its change can be
@@ -87,26 +87,11 @@ function forModel(value: unknown) {
   return text.length <= MODEL_READS ? (value ?? null) : `${text.slice(0, MODEL_READS)}… (cut: ${(text.length - MODEL_READS).toLocaleString("en")} more characters. Ask for less at a time.)`;
 }
 
-/** The command that reverses a change, when its result carries one (#342) short enough to keep. */
-function undoOf(result: unknown) {
-  const undo = result && typeof result === "object" && "undo" in result ? (result as { undo?: { path?: unknown; args?: unknown } }).undo : undefined;
-  if (!undo || typeof undo.path !== "string") return undefined;
-  const args = JSON.stringify(undo.args ?? {});
-  return args.length <= STEP_TEXT_MAX ? { path: undo.path, args } : undefined;
-}
-
 /** What a call is about, for its step's card: a title, a name or a query among its arguments. */
 function subjectOf(input: Record<string, unknown>) {
   const paper = input.paper && typeof input.paper === "object" ? (input.paper as Record<string, unknown>) : {};
   const named = [input.title, paper.title, input.name, input.query, input.search].find((value) => typeof value === "string" && value.trim() !== "");
   return typeof named === "string" ? cut(named.trim(), 200) : undefined;
-}
-
-/** How many things a result lists: its page's rows, or its own when it's a list. */
-function countOf(result: unknown) {
-  if (Array.isArray(result)) return result.length;
-  const page = result && typeof result === "object" ? (result as { page?: unknown }).page : undefined;
-  return Array.isArray(page) ? page.length : undefined;
 }
 
 /** An error as the model should read it: the action's own message, without the runtime's wrapping. */
@@ -154,18 +139,19 @@ export function toolsFor(ctx: ActionCtx, { userId, threadId, order, attemptId }:
    * message, so it can say what went wrong or try something else.
    */
   const call = async (entry: UserAction, input: Record<string, unknown>, toolCallId: string) => {
-    if (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) })) return { error: ASKS };
+    if (calls >= MAX_CALLS) return { error: `A reply runs at most ${MAX_CALLS} actions, and this one has. Say what's left, so the person can ask for it.` };
     const key = `${attemptId}:${calls++}`;
+    if (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) })) return { error: ASKS_FIRST };
     const subject = subjectOf(input);
     const stepId = await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}) });
     try {
-      const result = await runAction(ctx, userId, entry, input, key);
-      const [undo, count] = [undoOf(result), countOf(result)];
-      await ctx.runMutation(internal.assistant.steps.end, { stepId, result: cut(JSON.stringify(result ?? null), STEP_RESULT_MAX), ...(count === undefined ? {} : { count }), ...(undo ? { undo } : {}) });
+      // A change ends its step in its own transaction, so the two are saved together. A read's step is ended here.
+      const result = await runAction(ctx, userId, entry, input, key, entry.kind === "mutation" ? stepId : undefined);
+      if (entry.kind !== "mutation") await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
       return forModel(result);
     } catch (error) {
       const message = messageOf(error);
-      await ctx.runMutation(internal.assistant.steps.end, { stepId, error: message });
+      await ctx.runMutation(internal.assistant.steps.failed, { stepId, error: message });
       return { error: message };
     }
   };
@@ -184,7 +170,7 @@ export function toolsFor(ctx: ActionCtx, { userId, threadId, order, attemptId }:
       execute: async ({ name, arguments: given }, { toolCallId }) => {
         const entry = entryAt(name);
         if (!entry) return { error: `No action is named ${cut(name, 200)}. Look one up with find_action.` };
-        if (!runsWithoutAsking(entry)) return { error: ASKS };
+        if (!runsWithoutAsking(entry)) return { error: ASKS_FIRST };
         const parsed = inputSchema(entry).safeParse(given);
         // The arguments it takes come back with the refusal, for one more try.
         if (!parsed.success) return forModel({ error: `These arguments don't fit: ${cut(z.prettifyError(parsed.error), 1_000)}`, arguments: definition(entry).arguments });

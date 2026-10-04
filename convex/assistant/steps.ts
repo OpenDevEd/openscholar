@@ -6,7 +6,7 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 
 /** Characters of an action's arguments, of what reverses it, and of why it failed, that a step keeps. */
@@ -24,6 +24,37 @@ export function stepsOfExchange(ctx: Pick<QueryCtx, "db">, threadId: Id<"assista
   return ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).eq("order", order)).take(STEPS_SHOWN);
 }
 
+const cut = (text: string, max: number) => (text.length > max ? text.slice(0, max) : text);
+
+/** The command that reverses a change, when its result carries one (#342) short enough to keep. */
+export function undoOf(result: unknown) {
+  const undo = result && typeof result === "object" && "undo" in result ? (result as { undo?: { path?: unknown; args?: unknown } }).undo : undefined;
+  if (!undo || typeof undo.path !== "string") return undefined;
+  const args = JSON.stringify(undo.args ?? {});
+  return args.length <= STEP_TEXT_MAX ? { path: undo.path, args } : undefined;
+}
+
+/** How many things a result lists: its page's rows, or its own when it's a list. */
+export function countOf(result: unknown) {
+  if (Array.isArray(result)) return result.length;
+  const page = result && typeof result === "object" ? (result as { page?: unknown }).page : undefined;
+  return Array.isArray(page) ? page.length : undefined;
+}
+
+/**
+ * Ends a step with what its action returned: the result is kept beside it, with what
+ * reverses it and how many things it lists. A change calls this in its own transaction
+ * (convex/lib/userActions.ts), so a change and the record of it are saved together or not at all.
+ */
+export async function endStep(ctx: Pick<MutationCtx, "db">, stepId: Id<"assistantSteps">, result: unknown) {
+  const step = await ctx.db.get("assistantSteps", stepId);
+  // Its chat was deleted while it ran.
+  if (!step) return;
+  const [undo, count] = [undoOf(result), countOf(result)];
+  await ctx.db.patch("assistantSteps", stepId, { status: "done", ...(count === undefined ? {} : { count }), ...(undo ? { undo } : {}), endedAt: Date.now() });
+  await ctx.db.insert("assistantStepResults", { threadId: step.threadId, stepId, result: cut(JSON.stringify(result ?? null), STEP_RESULT_MAX) });
+}
+
 /** A step starts. */
 export const begin = internalMutation({
   args: { threadId: v.id("assistantThreads"), order: v.number(), userId: v.id("users"), toolCallId: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) },
@@ -31,22 +62,23 @@ export const begin = internalMutation({
   handler: async (ctx, args) => ctx.db.insert("assistantSteps", { ...args, status: "running", startedAt: Date.now() }),
 });
 
-/** A step ends, with its result or with why it failed. */
-export const end = internalMutation({
-  args: {
-    stepId: v.id("assistantSteps"),
-    result: v.optional(v.string()),
-    count: v.optional(v.number()),
-    error: v.optional(v.string()),
-    undo: v.optional(v.object({ path: v.string(), args: v.string() })),
-  },
+/** A step that read something ends with its result. A change ends its own (`endStep`). */
+export const read = internalMutation({
+  // `result` is what the action returned, as JSON.
+  args: { stepId: v.id("assistantSteps"), result: v.string() },
   returns: v.null(),
-  handler: async (ctx, { stepId, result, count, error, undo }) => {
-    const step = await ctx.db.get("assistantSteps", stepId);
-    // Its chat was deleted while it ran.
-    if (!step) return null;
-    await ctx.db.patch("assistantSteps", stepId, { status: error === undefined ? "done" : "failed", ...(error === undefined ? {} : { error }), ...(count === undefined ? {} : { count }), ...(undo ? { undo } : {}), endedAt: Date.now() });
-    if (result !== undefined) await ctx.db.insert("assistantStepResults", { threadId: step.threadId, stepId, result });
+  handler: async (ctx, { stepId, result }) => {
+    await endStep(ctx, stepId, JSON.parse(result));
+    return null;
+  },
+});
+
+/** A step fails, with why, as the model is told. */
+export const failed = internalMutation({
+  args: { stepId: v.id("assistantSteps"), error: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { stepId, error }) => {
+    if (await ctx.db.get("assistantSteps", stepId)) await ctx.db.patch("assistantSteps", stepId, { status: "failed", error: cut(error, STEP_TEXT_MAX), endedAt: Date.now() });
     return null;
   },
 });
