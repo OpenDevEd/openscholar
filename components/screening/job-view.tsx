@@ -6,7 +6,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import {
   AlertTriangle, Ban, ChevronDown, Clock, Coins, Copy, Download, FolderMinus, FolderPlus, Gauge, Hourglass, Layers, Loader2, Quote, Search, Square, Undo2,
-} from "lucide-react";
+} from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -31,8 +31,8 @@ import { ANSWER, AnimatedNumber, AnswerMark, Chip, Meter, OUTCOME, OutcomeBar, P
 
 /** The chip on a paper about to move to another outcome, in that outcome's colour. */
 const MOVING: Record<Outcome, string> = {
-  included: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400",
-  unclear: "bg-amber-500/12 text-amber-700 dark:text-amber-400",
+  included: "bg-success/12 ink-success",
+  unclear: "bg-warning/12 ink-warning",
   excluded: "bg-foreground/10 text-foreground/80",
   failed: "bg-destructive/10 text-destructive",
 };
@@ -144,7 +144,7 @@ export function JobView({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {job.status !== "completed" ? (
-                <p className="mb-1 flex items-center gap-1.5 border-b border-border/40 px-2 py-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+                <p className="mb-1 flex items-center gap-1.5 border-b border-border-subtle px-2 py-1.5 text-[11px] ink-warning">
                   <AlertTriangle className="size-3 shrink-0" />{t("exportPartial")}
                 </p>
               ) : null}
@@ -157,7 +157,7 @@ export function JobView({
       </div>
 
       <Zone label={t("progress")}>
-        <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/40 p-4">
+        <div className="space-y-4 rounded-2xl border border-border-subtle bg-inset p-4">
           <OutcomeBar counts={counts} total={total} flight={phase === "running" ? job.running : 0} className="h-3" />
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
             {OUTCOMES.map((o) => {
@@ -177,14 +177,14 @@ export function JobView({
               </span>
             ) : null}
           </div>
-          <div className="grid gap-4 border-t border-border/40 pt-4 sm:grid-cols-2">
+          <div className="grid gap-4 border-t border-border-subtle pt-4 sm:grid-cols-2">
             {phase === "waiting" && blocker ? (
               <div className="space-y-2">
                 <p className="flex items-center justify-between gap-3 text-xs font-medium">
-                  <span className="flex min-w-0 items-center gap-1.5"><Hourglass className="size-3.5 shrink-0 text-amber-500" /><span className="truncate">{t("startsAfter", { name: blocker.name })}</span></span>
+                  <span className="flex min-w-0 items-center gap-1.5"><Hourglass className="size-3.5 shrink-0 text-warning" /><span className="truncate">{t("startsAfter", { name: blocker.name })}</span></span>
                   <span className="shrink-0 tabular-nums text-muted-foreground">{t("ofTotal", { done: blocker.done, total: blocker.total })}</span>
                 </p>
-                <Meter value={blocker.done} max={blocker.total} fill="bg-amber-400" />
+                <Meter value={blocker.done} max={blocker.total} fill="bg-warning" />
               </div>
             ) : phase === "running" ? (
               <div className="space-y-2">
@@ -220,7 +220,7 @@ export function JobView({
             )}
           </div>
           {active && (savedTo || pruned) ? (
-            <div className="flex flex-wrap items-center gap-1.5 border-t border-border/40 pt-4">
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-border-subtle pt-4">
               {savedTo ? <Chip icon={FolderPlus}>{t("savesTo", { name: savedTo })}</Chip> : null}
               {pruned ? <Chip icon={FolderMinus}>{t("removesFrom", { name: pruned })}</Chip> : null}
             </div>
@@ -242,7 +242,7 @@ export function JobView({
                 <div className="flex w-full items-center gap-4 @2xl:w-auto">
                   <div className="flex h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-foreground/10 @2xl:w-40 @2xl:flex-none">
                     {(["yes", "unclear", "no"] as const).map((a) => (
-                      <span key={a} className={cn("h-full transition-[width] duration-500 motion-reduce:transition-none", a === "yes" ? "bg-emerald-500" : a === "unclear" ? "bg-amber-400" : "bg-muted-foreground/35")} style={{ width: `${answered ? (tally[a] / answered) * 100 : 0}%` }} />
+                      <span key={a} className={cn("h-full transition-[width] duration-500 motion-reduce:transition-none", a === "yes" ? "bg-success" : a === "unclear" ? "bg-warning" : "bg-muted-foreground/35")} style={{ width: `${answered ? (tally[a] / answered) * 100 : 0}%` }} />
                     ))}
                   </div>
                   {/* Three columns, each wide enough for the job's every paper, so no count reaches the bar and the counts line up from question to question. */}
@@ -251,7 +251,7 @@ export function JobView({
                       const { icon: Icon } = ANSWER[a];
                       return (
                         <span key={a} className="inline-flex items-center justify-end gap-1" style={{ width: `calc(${String(total).length}ch + 1rem)` }} aria-label={t("tally", { count: tally[a], answer: t(`answer.${a}`) })}>
-                          <Icon aria-hidden className={cn("size-3 shrink-0", a === "yes" ? "text-emerald-500" : a === "unclear" ? "text-amber-500" : "text-muted-foreground")} />
+                          <Icon aria-hidden className={cn("size-3 shrink-0", a === "yes" ? "text-success" : a === "unclear" ? "text-warning" : "text-muted-foreground")} />
                           {tally[a]}
                         </span>
                       );
@@ -365,7 +365,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
                       type="button"
                       aria-expanded={expanded}
                       onClick={() => { if (paper.openalexId !== held?.paper.openalexId) setHeld(null); setOpen(expanded ? null : paper.openalexId); }}
-                      className="flex w-full items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                      className="flex w-full items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-muted"
                     >
                       <div className={cn("min-w-0 flex-1 transition-opacity duration-300", leaving && "opacity-50")}>
                         <p className="truncate text-sm font-medium">{paper.title}</p>
@@ -425,7 +425,7 @@ function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Pape
   const score = paper.score ?? 0;
   const { icon: OutcomeIcon, text, bar } = OUTCOME[paper.outcome];
   return (
-    <div className="space-y-4 bg-muted/20 px-4 pb-5 pt-2">
+    <div className="space-y-4 bg-inset px-4 pb-5 pt-2">
       <div className="flex items-center gap-3">
         <span className={cn("inline-flex shrink-0 items-center gap-1.5 text-sm font-medium", text)}><OutcomeIcon className="size-4" />{t(`outcome.${paper.outcome}`)}</span>
         {/* The score as a track, with a mark where a paper starts to be included. */}
@@ -474,7 +474,7 @@ function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Pape
                     </TooltipHint>
                   ) : given?.confidence !== undefined ? (
                     <span className="flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground" aria-label={t("confidence", { percent: Math.round(given.confidence * 100) })}>
-                      <Meter value={given.confidence} max={1} className="w-10" fill={a === "unclear" ? "bg-amber-400" : "bg-primary"} />
+                      <Meter value={given.confidence} max={1} className="w-10" fill={a === "unclear" ? "bg-warning" : "bg-primary"} />
                       {Math.round(given.confidence * 100)}%
                     </span>
                   ) : null}
