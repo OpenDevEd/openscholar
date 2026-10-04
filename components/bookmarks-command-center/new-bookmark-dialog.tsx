@@ -131,8 +131,9 @@ export function NewBookmarkDialog() {
 
               <div>
                 {/* The bookmark as it is typed in a search, in the colour its name gives it everywhere. It
-                    sits on the edge of the query it stands for. */}
-                <div className="relative z-10 -mb-5 ml-3 flex w-fit max-w-[calc(100%-1.5rem)] items-center bg-background pr-2 font-mono text-xl font-semibold">
+                    sits on the edge of the query it stands for, and hides the edge behind it: its upper half
+                    is over the dialog and its lower half over the field, so it takes each one's colour. */}
+                <div className="relative z-10 -mb-5 ml-3 flex w-fit max-w-[calc(100%-1.5rem)] items-center bg-[linear-gradient(to_bottom,var(--background)_50%,var(--field)_50%)] pr-2 font-mono text-xl font-semibold">
                   <input
                     aria-label={tb("bookmarkName")}
                     aria-invalid={taken}
