@@ -3405,6 +3405,7 @@
     "thinking": "Thinking",
     "stopped": "This reply was stopped",
     "failed": "The reply didn't finish. Send your message again to retry.",
+    "tooLong": "This chat has grown past what the assistant can read. Start a new chat to carry on.",
     "interrupted": "This reply was interrupted before it finished",
     "earlier": "Earlier messages",
     "model": "Model",

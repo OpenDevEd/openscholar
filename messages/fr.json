@@ -3413,6 +3413,7 @@
     "thinking": "Réflexion",
     "stopped": "Cette réponse a été arrêtée",
     "failed": "La réponse ne s'est pas terminée. Renvoyez votre message pour réessayer.",
+    "tooLong": "Cette discussion dépasse ce que l'assistant peut lire. Commencez une nouvelle discussion pour continuer.",
     "interrupted": "Cette réponse a été interrompue avant la fin",
     "earlier": "Messages précédents",
     "model": "Modèle",

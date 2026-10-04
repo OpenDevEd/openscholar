@@ -493,8 +493,9 @@ function FailedRow({ error }: { error: Message["error"] }) {
       <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-destructive" />
       {error ? (
         <span className="leading-5">
-          {/* The shared text for an unknown error points at details this row doesn't have. */}
-          <span className="font-medium text-foreground">{te(`title.${error.code}`)}</span> {error.code === "unknown" ? t("failed") : te(`body.${error.code}`)}
+          {/* The shared texts for an unknown error and for a conversation that is too long are written for the paper chat. */}
+          <span className="font-medium text-foreground">{te(`title.${error.code}`)}</span>{" "}
+          {error.code === "unknown" ? t("failed") : error.code === "context_too_long" ? t("tooLong") : te(`body.${error.code}`)}
         </span>
       ) : (
         <span className="leading-5">{t("interrupted")}</span>
