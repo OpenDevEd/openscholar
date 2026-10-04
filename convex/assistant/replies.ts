@@ -12,7 +12,7 @@
  */
 import { listMessages, listStreams, saveMessages, type MessageDoc } from "@convex-dev/agent";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
-import { v, type Infer } from "convex/values";
+import { getConvexSize, v, type Infer, type Value } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -479,19 +479,34 @@ async function senders(ctx: QueryCtx, rows: MessageDoc[]) {
 }
 
 /**
- * A chat's newest page, read as two halves so it can say where to split. The agent component
- * pages without recording where a page ended, so a page with no `endCursor` is the newest
+ * One page of a chat's messages, with its end kept where it is. The agent component pages
+ * without recording where a page ended, so a page read with no `endCursor` is the newest
  * rows whatever they are: as a reply adds rows, the ones before them drop out of it, and the
- * message it answers takes its steps along. The page that subscribes splits at the cursor
- * this names, and both halves then end at a fixed row, the newer one growing with the chat.
+ * message it answers takes its steps along. So the newest page says where to split, and the
+ * page that subscribes then reads each half to a fixed end, the newer one growing with the chat.
  */
-async function newestPage<Opts extends { numItems: number; cursor: string | null }>(list: (opts: Opts) => ReturnType<typeof listMessages>, opts: Opts) {
-  const half = Math.ceil(opts.numItems / 2);
-  const newer = await list({ ...opts, numItems: half });
-  // A short chat has nothing to split yet, and a half that stopped at a cap says where to split itself.
-  if (newer.isDone || newer.pageStatus) return newer;
-  const older = await list({ ...opts, cursor: newer.continueCursor, numItems: opts.numItems - half });
-  return { ...older, page: [...newer.page, ...older.page], splitCursor: newer.continueCursor, pageStatus: "SplitRecommended" as const };
+async function pageOf<Opts extends { numItems: number; cursor: string | null; endCursor?: string | null }>(list: (opts: Opts) => ReturnType<typeof listMessages>, opts: Opts) {
+  const end = opts.endCursor;
+  if (!end) {
+    // A page after the newest starts at a fixed row and its rows don't change. One item can't be split.
+    if (opts.cursor !== null || opts.numItems < 2) return list(opts);
+    const half = Math.ceil(opts.numItems / 2);
+    const newer = await list({ ...opts, numItems: half });
+    // A short chat has nothing to split yet, and a half that stopped at a cap says where to split itself.
+    if (newer.isDone || newer.pageStatus) return newer;
+    const older = await list({ ...opts, cursor: newer.continueCursor, numItems: opts.numItems - half });
+    return { ...older, page: [...newer.page, ...older.page], splitCursor: newer.continueCursor, pageStatus: "SplitRecommended" as const };
+  }
+  const read = await list(opts);
+  // A cap stopped it short of its end. The halves it splits into end where it was to end, or the rows between would be in no page.
+  if (read.pageStatus === "SplitRequired" && read.continueCursor !== end) return { ...read, continueCursor: end };
+  if (read.pageStatus === "SplitRecommended") return read;
+  // It reads whole. A page that a cap stops shows nothing until its halves load, so one that holds half of what
+  // a page may read is split while it still reads whole. One row can't be split, however large.
+  const whole = { ...read, pageStatus: null, splitCursor: null };
+  if (read.page.length < 2 || getConvexSize(read.page as Value) < MESSAGES_PAGE_BYTES / 2) return whole;
+  const middle = (await list({ ...opts, endCursor: undefined, numItems: Math.ceil(read.page.length / 2) })).continueCursor;
+  return middle === read.continueCursor ? whole : { ...read, splitCursor: middle, pageStatus: "SplitRecommended" as const };
 }
 
 export const messagesAction = defineUserQuery({
@@ -505,7 +520,7 @@ export const messagesAction = defineUserQuery({
     // The caps bound a page whatever the caller asks for: with an `endCursor`, `numItems` alone doesn't.
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, MESSAGES_PAGE_MAX), maximumRowsRead: MESSAGES_PAGE_MAX, maximumBytesRead: MESSAGES_PAGE_BYTES };
     const list = (pageOpts: typeof opts) => listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: pageOpts });
-    const read = paginationOpts.cursor === null && !paginationOpts.endCursor ? await newestPage(list, opts) : await list(opts);
+    const read = await pageOf(list, opts);
     const sentBy = await senders(ctx, read.page);
     // Each exchange's steps come with the message it answers, which a page holds once.
     const asked = read.page.filter((row) => row.message?.role === "user");

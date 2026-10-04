@@ -365,6 +365,59 @@ describe("assistant replies", () => {
     expect((await read(firstPage)).texts).toEqual(newestFirst(49, 20));
   });
 
+  it("split a page of large messages before the size cap stops it, and lose none when the cap does", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await sharedChat(t);
+    // Rows of about 100 KB, each holding its text twice. Ten are a megabyte: what a page may read.
+    const add = (from: number, to: number) =>
+      t.run(async (ctx) => {
+        const thread = (await ctx.db.get("assistantThreads", threadId))!;
+        for (let i = from; i < to; i++) await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: `Message ${i} ${"x".repeat(50_000)}`, skipEmbeddings: true });
+      });
+    const read = async (paginationOpts: { cursor: string | null; numItems: number; endCursor?: string }) => {
+      const { page, ...rest } = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts });
+      return { ...rest, names: page.map((item) => ("text" in item ? item.text.slice(0, 10).trim() : "")) };
+    };
+    const names = (from: number, count: number) => Array.from({ length: count }, (_, i) => `Message ${from - i}`);
+    await add(0, 4);
+    // The whole chat so far, pinned to its oldest message.
+    const first = await read(firstPage);
+    expect(first).toMatchObject({ isDone: true, names: names(3, 4) });
+    const pinned = { ...firstPage, endCursor: "[]" };
+    expect(await read(pinned)).toMatchObject({ pageStatus: null, names: names(3, 4) });
+    // Past half a megabyte it still reads whole, and says where to split.
+    await add(4, 7);
+    const heavy = await read(pinned);
+    expect(heavy).toMatchObject({ pageStatus: "SplitRecommended", names: names(6, 7) });
+    // The cap stops it short. Its halves still end where the page did, so every message is in one of them.
+    await add(7, 14);
+    const stopped = await read(pinned);
+    expect(stopped).toMatchObject({ pageStatus: "SplitRequired", continueCursor: "[]" });
+    const newer = await read({ ...firstPage, endCursor: stopped.splitCursor! });
+    const older = await read({ cursor: stopped.splitCursor!, numItems: 20, endCursor: stopped.continueCursor });
+    const halves = [newer, older];
+    // A half the cap stops again splits the same way.
+    for (let n = 0; n < 6 && halves.some((half) => half.pageStatus === "SplitRequired"); n++) {
+      const at = halves.findIndex((half) => half.pageStatus === "SplitRequired");
+      const from = at === 0 ? null : halves[at - 1].continueCursor;
+      const [half] = halves.splice(at, 1);
+      halves.splice(at, 0, await read({ cursor: from, numItems: 20, endCursor: half.splitCursor! }), await read({ cursor: half.splitCursor!, numItems: 20, endCursor: half.continueCursor }));
+    }
+    expect(halves.flatMap((half) => half.names)).toEqual(names(13, 14));
+  });
+
+  it("read one message of a chat as one message, with the rest still to read", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await sharedChat(t);
+    await t.run(async (ctx) => {
+      const thread = (await ctx.db.get("assistantThreads", threadId))!;
+      for (let i = 0; i < 3; i++) await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: `Message ${i}`, skipEmbeddings: true });
+    });
+    const one = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: { cursor: null, numItems: 1 } });
+    expect(one).toMatchObject({ page: [{ text: "Message 2" }], isDone: false });
+    expect(one.pageStatus ?? null).toBeNull();
+  });
+
   it("are refused while the assistant is switched off", async () => {
     const t = convexTest(schema);
     const { asAda, threadId } = await sharedChat(t);
