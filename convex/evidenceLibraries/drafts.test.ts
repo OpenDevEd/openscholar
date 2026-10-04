@@ -8,7 +8,6 @@ import { api } from "../_generated/api";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import { createEvidenceLibrarySetup } from "./mutations";
 import {
-  readEvidenceLibraries,
   readEvidenceLibraryDraft,
   readEvidenceLibraryRevision,
 } from "./queries";
@@ -528,7 +527,7 @@ describe("Evidence Library draft storage", () => {
       { libraryId: created.libraryId },
     );
     assert(reloaded, "Expected an accessible draft");
-    const libraries = await asMember.run((ctx) => readEvidenceLibraries(ctx));
+    const { page: libraries } = await asMember.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 12 } });
 
     expect(saved.editVersion).toBe(1);
     expect(libraries).toEqual([]);

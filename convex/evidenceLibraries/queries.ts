@@ -18,7 +18,7 @@ import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
-import { MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
+import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
 import {
   draftSectionsValidator,
   evidenceLibraryTeardownStepValidator,
@@ -123,26 +123,6 @@ export function projectRevisionConfigurationSections(
       sectionKey,
     };
   });
-}
-
-export async function readEvidenceLibraries(ctx: QueryCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return [];
-  const [memberships, assignments] = await Promise.all([
-    readMemberOrganizations(ctx),
-    // A person has at most MAX_LIBRARY_GRANTS_PER_PERSON grants (./members.ts).
-    ctx.db.query("evidenceLibraryMembers")
-      .withIndex("by_clerkUserId", q => q.eq("clerkUserId", identity.subject))
-      .take(MAX_LIBRARY_GRANTS_PER_PERSON),
-  ]);
-  const owned = await Promise.all(memberships.filter(({membership}) => membership.role === "org:admin").map(({membership}) =>
-    // An organization makes at most MAX_LIBRARIES_PER_ORGANIZATION libraries (mutations.ts).
-    ctx.db.query("evidenceLibraries").withIndex("by_organizationId", q => q.eq("organizationId", membership.organizationId)).take(MAX_LIBRARIES_PER_ORGANIZATION)));
-  const assigned = await Promise.all(assignments.map(m => ctx.db.get("evidenceLibraries", m.libraryId)));
-  const candidates = new Map([...owned.flat(), ...assigned].filter((library): library is Doc<"evidenceLibraries"> => library !== null).map(library => [library._id, library]));
-  const accessible = await Promise.all([...candidates.values()].map(async library =>
-    await readLibraryRole(ctx, library, identity.subject) ? library : null));
-  return accessible.filter((library): library is Doc<"evidenceLibraries"> => library !== null);
 }
 
 export const libraryOverviewStatusValidator = v.union(
@@ -481,24 +461,6 @@ export const listLibraryOwners = query({
     const owners = new Map([...withLibraries.flatMap((entry) => (entry ? [entry] : [])), ...granted.map((entry) => entry.organization)].map((entry) => [entry._id, entry]));
     const page = [...owners.values()].sort((a, b) => a.name.localeCompare(b.name)).map((entry) => ({ id: entry._id, name: entry.name, imageUrl: entry.imageUrl ?? null }));
     return { page, isDone: true, continueCursor: "" };
-  },
-});
-
-/** Kept for one release, while the deployed site still calls it; `listLibraries` replaces it. */
-export const listLibraryOverviews = query({
-  args: {},
-  returns: v.array(libraryOverviewValidator),
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const libraries = await readEvidenceLibraries(ctx);
-    return await Promise.all(libraries.map(async library => {
-      const role = await readLibraryRole(ctx, library, identity.subject);
-      const organization = await ctx.db.get("organizations", library.organizationId);
-      if (!role || !organization) throw createError("FORBIDDEN", "Library access denied");
-      return { ...await readLibraryOverview(ctx, library), role,
-        organization: { name: organization.name, imageUrl: organization.imageUrl ?? null } };
-    }));
   },
 });
 

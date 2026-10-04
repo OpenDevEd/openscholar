@@ -137,10 +137,3 @@ export const listLibraryOrganizations = query({
   returns: paginationResultValidator(libraryOrganizationValidator),
   handler: async (ctx) => ({ page: await libraryOrganizationsOf(ctx), isDone: true, continueCursor: "" }),
 });
-
-/** Kept for one release, while the deployed site still calls it; `listLibraryOrganizations` replaces it. */
-export const libraryOrganizations = query({
-  args: {},
-  returns: v.array(libraryOrganizationValidator),
-  handler: libraryOrganizationsOf,
-});

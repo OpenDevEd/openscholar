@@ -126,13 +126,6 @@ export const listInvitations = query({
   handler: async (ctx) => ({ page: await pendingInvitations(ctx), isDone: true, continueCursor: "" }),
 });
 
-/** Kept for one release, while the deployed site still calls it; `listInvitations` replaces it. */
-export const listMine = query({
-  args: {},
-  returns: v.array(pendingInvitationValidator),
-  handler: pendingInvitations,
-});
-
 /** Called only after Clerk confirms a verified address on the signed-in account. */
 export const respondVerified = internalMutation({
   args: { invitationId: v.id("evidenceLibraryInvitations"), emails: v.array(v.string()), accept: v.boolean() },
