@@ -20,7 +20,7 @@ export {
   getJobShell,
   getJobDetails,
   subscribeToJobProgress,
-  getJobSources,
 } from "./queries/jobs";
 
-export { getJobResultsPage } from "./queries/results";
+export { countJobFailures, countJobFailuresForAssistant } from "./queries/failures";
+export { getJobResultsPage, listJobResults, listJobResultsForAssistant, countJobResults, countJobResultsForAssistant } from "./queries/results";

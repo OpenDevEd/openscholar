@@ -28,7 +28,7 @@ const MAX_READS_PER_PAGE = 5;
 /**
  * One page of a cursor-paged query, stepped with previous and next. It keeps the start
  * cursor of every page it passed, so it reads only the page shown, and starts over from
- * the first page when `args` change. The last page shown stays up until the next arrives.
+ * the first page when `args` or the page size change. The last page shown stays up until the next arrives.
  *
  * A live Convex page keeps the range it first read, so rows added inside it grow it past
  * what was asked; a grown page is read again from its start, under a new query id. A page
@@ -38,7 +38,8 @@ const MAX_READS_PER_PAGE = 5;
  */
 export function useCursorPage<Query extends PageQuery>(query: Query, args: PageArgs<Query> | "skip", pageSize: number) {
   const { canRunProtectedQueries } = useAuthReadiness();
-  const key = JSON.stringify(args);
+  // A page of another size starts somewhere else, so the size is part of what the pages are of.
+  const key = JSON.stringify([args, pageSize]);
   // `starts` holds where every page after the first starts; `reads`, the current page's reads.
   // `end` is where the list was found to end, by stepping to an empty page: the page before
   // it, and the cursor the empty page started at.
@@ -103,8 +104,10 @@ export function useCursorPage<Query extends PageQuery>(query: Query, args: PageA
 
   const visible = args === "skip" ? undefined : emptied ? shown : (data ?? shown);
   const page = visible?.number ?? starts.length + 1;
+  // The same array until the page shown changes, so what's derived from it isn't rebuilt each render.
+  const items = useMemo(() => (visible?.page ?? []).slice(0, pageSize), [visible, pageSize]);
   return {
-    items: (visible?.page ?? []).slice(0, pageSize),
+    items,
     /** Nothing has loaded yet. */
     isLoading: visible === undefined,
     /** What's shown is an earlier page or earlier arguments, still waiting for the new one. */

@@ -50,6 +50,7 @@ describe("extraction job counters", () => {
     await folded(t);
     expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toEqual({ retryableCount: 2, permanentCount: 2, permanentBreakdown: { moderation: 1, pdf_invalid: 1 } });
     expect(await as.query(api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary, { jobId })).toMatchObject({ total: 2, answeredTotal: 1, totalQuestions: 5 });
+    expect(await as.query(api.extraction.queries.countJobFailures, { jobId })).toEqual({ asked: 5, answered: 1, retryable: 2, permanent: { moderation: 1, pdf_invalid: 1 }, paperErrors: { pdf_invalid: 2 } });
 
     await t.run(async (ctx) => {
       await ctx.db.patch("extractionResults", results[1], { ...completed, lastError: undefined });
@@ -62,5 +63,6 @@ describe("extraction job counters", () => {
     await folded(t);
     expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toEqual({ retryableCount: 0, permanentCount: 2, permanentBreakdown: { auth: 1, pdf_invalid: 1 } });
     expect(await as.query(api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary, { jobId })).toMatchObject({ answeredTotal: 2, totalQuestions: 4 });
+    expect(await as.query(api.extraction.queries.countJobFailures, { jobId })).toMatchObject({ asked: 4, answered: 2, retryable: 0, permanent: { auth: 1, pdf_invalid: 1 } });
   });
 });

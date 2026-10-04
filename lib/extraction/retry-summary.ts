@@ -55,13 +55,13 @@ export type RetrySummary = {
  */
 export function summarizeRetryable(counts: {
   retryable: number;
-  permanent: Readonly<Record<string, number>>;
+  permanent: Readonly<Record<string, number | undefined>>;
 }): RetrySummary {
   const retryableCount = counts.retryable;
   // Insert into the returned object in count-desc, code-asc order so
   // Object.keys/entries iterate in the UI's render order. Modern JS
   // preserves string-key insertion order on plain objects.
-  const sorted = Object.entries(counts.permanent).filter(([, count]) => count > 0).sort(([codeA, countA], [codeB, countB]) => {
+  const sorted = Object.entries(counts.permanent).flatMap(([code, count]) => (count ? [[code, count] as const] : [])).sort(([codeA, countA], [codeB, countB]) => {
     if (countB !== countA) return countB - countA;
     return codeA < codeB ? -1 : codeA > codeB ? 1 : 0;
   });

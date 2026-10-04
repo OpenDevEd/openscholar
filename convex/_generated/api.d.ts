@@ -195,6 +195,7 @@ import type * as extraction_prompts from "../extraction/prompts.js";
 import type * as extraction_queries from "../extraction/queries.js";
 import type * as extraction_queries__shared from "../extraction/queries/_shared.js";
 import type * as extraction_queries_costs from "../extraction/queries/costs.js";
+import type * as extraction_queries_failures from "../extraction/queries/failures.js";
 import type * as extraction_queries_internal from "../extraction/queries/internal.js";
 import type * as extraction_queries_jobs from "../extraction/queries/jobs.js";
 import type * as extraction_queries_mixedSuccessSummary from "../extraction/queries/mixedSuccessSummary.js";
@@ -542,6 +543,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/queries": typeof extraction_queries;
   "extraction/queries/_shared": typeof extraction_queries__shared;
   "extraction/queries/costs": typeof extraction_queries_costs;
+  "extraction/queries/failures": typeof extraction_queries_failures;
   "extraction/queries/internal": typeof extraction_queries_internal;
   "extraction/queries/jobs": typeof extraction_queries_jobs;
   "extraction/queries/mixedSuccessSummary": typeof extraction_queries_mixedSuccessSummary;

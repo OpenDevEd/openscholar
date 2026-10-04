@@ -1,42 +1,52 @@
 import type { PaperWithResults, Question } from './filtering';
 
-type ResultsPage<Item> = { status: string; page: number; totalPages: number; totalFiltered: number; items: Item[] };
+type ResultsPage<Item> = { page: Item[]; isDone: boolean; continueCursor: string };
 
 /**
  * Every paper of a results view, read one page per query so an export of any size stays
  * within Convex's per-query limits (#352). Pages are separate reads, so a paper whose
  * sort position or filter match changes mid-walk would be read twice or missed: the walk
- * starts again when the view's total changes or a paper comes back twice, and gives up
- * after `attempts` walks.
+ * starts again when a paper comes back twice or it ends with another number of papers
+ * than the view counts, and gives up after `attempts` walks.
  */
 export async function readEveryResultsPage<Item extends { _id: string }>(
-  readPage: (page: number) => Promise<ResultsPage<Item>>,
+  readPage: (cursor: string | null) => Promise<ResultsPage<Item>>,
+  countMatching: () => Promise<number>,
   attempts = 3,
 ): Promise<Item[]> {
   for (let attempt = 1; attempt <= attempts; attempt++) {
     const items = await walkResultsPages(readPage);
-    if (items) return items;
+    if (items && items.length === (await countMatching())) return items;
   }
   throw new Error("The results kept changing while they were exported");
 }
 
-/** One walk over every page, or null when the view changed during it. */
-async function walkResultsPages<Item extends { _id: string }>(readPage: (page: number) => Promise<ResultsPage<Item>>) {
+/** A view's pages, one read each. */
+async function* resultsPages<Item>(readPage: (cursor: string | null) => Promise<ResultsPage<Item>>) {
+  let cursor: string | null = null;
+  do {
+    const result = await readPage(cursor);
+    yield result.page;
+    cursor = result.isDone ? null : result.continueCursor;
+  } while (cursor !== null);
+}
+
+/**
+ * One walk over every page, or null when a paper came back twice.
+ * ponytail: the papers are held whole in the browser, as the file formats need. A job holds
+ * at most PAPER_LIMIT papers; larger jobs would need a format that streams.
+ */
+async function walkResultsPages<Item extends { _id: string }>(readPage: (cursor: string | null) => Promise<ResultsPage<Item>>) {
   const items: Item[] = [];
   const seen = new Set<string>();
-  let total: number | undefined;
-  for (let page = 1; ; page++) {
-    const result = await readPage(page);
-    if (result.status !== "ok") throw new Error(`Results unavailable: ${result.status}`);
-    total ??= result.totalFiltered;
-    if (result.totalFiltered !== total) return null;
-    for (const item of result.items) {
+  for await (const page of resultsPages(readPage)) {
+    for (const item of page) {
       if (seen.has(item._id)) return null;
       seen.add(item._id);
       items.push(item);
     }
-    if (page >= result.totalPages) return items.length === total ? items : null;
   }
+  return items;
 }
 
 /**
