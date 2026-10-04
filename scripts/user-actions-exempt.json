@@ -58,7 +58,6 @@
     "authors/invitationActions:respond": "#323",
     "authors/invitations:cancel": "#323",
     "authors/invitations:listInvitations": "#323",
-    "authors/invitations:listMine": "#323",
     "authors/members:list": "#323",
     "authors/members:remove": "#323",
     "authors/photos:save": "#323",

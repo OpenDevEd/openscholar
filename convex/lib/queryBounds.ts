@@ -61,6 +61,12 @@ export const MAX_PENDING_INVITATIONS_PER_EMAIL = 100;
 /** Most author profile invitations waiting for one address; another is refused until some are answered or expire. */
 export const MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL = 100;
 
+/** Most people one author profile gives editing to, beside its owner; accepting another invitation past this is refused. */
+export const MAX_PROFILE_MEMBERS = 100;
+
+/** Most invitations one author profile has waiting; another is refused until some are answered, cancelled or expire. */
+export const MAX_PENDING_INVITATIONS_PER_PROFILE = 100;
+
 /** Most Zotero groups one library connects; another is refused until one is removed. */
 export const MAX_ZOTERO_GROUPS_PER_LIBRARY = 100;
 

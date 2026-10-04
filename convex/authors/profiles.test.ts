@@ -78,6 +78,30 @@ describe("author profiles", () => {
     expect(await invite("busy@example.org")).toBe(first);
   });
 
+  it("refuses an invitation from a profile with a page of them waiting, and an acceptance into a profile with a page of editors", async () => {
+    const {t, owner, editor, ids, profileId} = await setup();
+    const invitationId = await owner.mutation(internal.authors.invitations.prepare, {profileId, email: "editor@example.org"});
+    await t.run(async ctx => {
+      for (let waiting = 1; waiting < 100; waiting++) await ctx.db.insert("authorProfileInvitations", {profileId, email: `waiting-${waiting}@example.org`, invitedBy: ids.owner, expiresAt: Date.now() + 86_400_000, state: "pending", delivery: "sent"});
+    });
+    await expect(owner.mutation(internal.authors.invitations.prepare, {profileId, email: "one-more@example.org"})).rejects.toThrow(/100 invitations waiting/);
+    expect((await owner.query(api.authors.members.list, {profileId})).invitations).toHaveLength(100);
+
+    await t.run(async ctx => {
+      for (let members = 0; members < 100; members++) await ctx.db.insert("authorProfileMembers", {profileId, userId: ids.owner});
+    });
+    await expect(editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true})).rejects.toThrow(/up to 100 editors/);
+
+    // A deleted account's place is given up, so the next person can accept.
+    await t.run(async ctx => {
+      const gone = await ctx.db.insert("users", {libraryItemCount: 0, state: "deleted", createdAt: 1, updatedAt: 1, clerkId: "gone", email: "gone@example.org"});
+      const place = (await ctx.db.query("authorProfileMembers").withIndex("by_profileId_and_userId", q => q.eq("profileId", profileId)).first())!;
+      await ctx.db.patch(place._id, {userId: gone});
+    });
+    await editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true});
+    expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBe("editor");
+  });
+
   it("keeps profile ownership separate from organization roles", async () => {
     const {t, owner, editor, profileId} = await setup();
     await expect(t.mutation(api.authors.profiles.create, {name: content.name})).rejects.toThrow();
