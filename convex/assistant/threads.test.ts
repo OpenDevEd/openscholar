@@ -73,12 +73,12 @@ describe("assistant chats", () => {
     expect(await asBen.query(api.assistant.threads.get, { threadId })).toMatchObject({ role: "write" });
 
     const access = await asBen.query(api.assistant.sharing.listAccess, { threadId, paginationOpts: firstPage });
+    // Ada gave no name. Her email is for her alone, so Ben gets neither.
     expect(access.page.map((row) => [row.principal.kind, row.role, row.name])).toEqual([
       ["organization", "write", "Feature test"],
-      ["user", "owner", "ada@example.org"],
+      ["user", "owner", ""],
     ]);
-    // A person's email is for the owner alone.
-    expect(access.page.every((row) => row.email === undefined)).toBe(true);
+    expect(JSON.stringify(access)).not.toContain("ada@example.org");
     const own = await asAda.query(api.assistant.sharing.listAccess, { threadId, paginationOpts: firstPage });
     expect(own.page.find((row) => row.role === "owner")?.email).toBe("ada@example.org");
   });
@@ -118,6 +118,30 @@ describe("assistant chats", () => {
       cursor = page.continueCursor;
     }
     expect(seen).toEqual(["Reading trials", "Ben's own notes", "Teacher coaching"]);
+  });
+
+  it("lists within Convex's limits when hundreds of chats reach someone through their last organization and none match", async () => {
+    const t = convexTest(schema);
+    const { asBen, ada } = await people(t);
+    // Ben is in four more organizations; the chats are shared with the last of them.
+    const last = await t.run(async (ctx) => {
+      const made: Array<Id<"organizations">> = [];
+      for (let i = 0; i < 4; i++) made.push(await seedOrganizationFeatures(ctx, ["ben"], {}));
+      return made.sort().at(-1)!;
+    });
+    for (let from = 0; from < 900; from += 300) {
+      await t.run(async (ctx) => {
+        for (let i = from; i < from + 300; i++) {
+          const threadId = await ctx.db.insert("assistantThreads", { ownerId: ada, title: `Chat ${i}`, agentThreadId: `agent${i}`, lastMessageAt: i, createdAt: i, updatedAt: i });
+          await ctx.db.insert("assistantThreadAccess", { threadId, principal: `user:${ada}`, role: "owner", lastMessageAt: i, createdAt: i });
+          await ctx.db.insert("assistantThreadAccess", { threadId, principal: `organization:${last}`, role: "read", lastMessageAt: i, createdAt: i });
+        }
+      });
+    }
+    // A page that finds nothing stops at its read allowance and says there is more.
+    const page = await asBen.query(api.assistant.threads.list, { scope: "all", text: "no such chat", paginationOpts: firstPage });
+    expect(page).toMatchObject({ page: [], isDone: false });
+    expect(titles(await asBen.query(api.assistant.threads.list, { scope: "shared", paginationOpts: { cursor: null, numItems: 2 } }))).toEqual(["Chat 899", "Chat 898"]);
   });
 
   it("can be shared with 50 people and organizations, and no more", async () => {

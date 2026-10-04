@@ -58,14 +58,14 @@ export function accessRows(ctx: QueryCtx | MutationCtx, threadId: Id<"assistantT
     .take(MAX_ASSISTANT_THREAD_GRANTS + 1);
 }
 
+/** The highest of some roles; at least one is given. */
+export const best = (roles: readonly AssistantRole[]) => roles.reduce((most, role) => (RANK[role] > RANK[most] ? role : most));
+
 /** The most this person may do in the chat through any of `principals`, or null when it isn't shared with them. */
 export async function roleAmong(ctx: QueryCtx | MutationCtx, threadId: Id<"assistantThreads">, principals: readonly string[]): Promise<AssistantRole | null> {
   const mine = new Set(principals);
-  let best: AssistantRole | null = null;
-  for (const row of await accessRows(ctx, threadId)) {
-    if (mine.has(row.principal) && (!best || RANK[row.role] > RANK[best])) best = row.role;
-  }
-  return best;
+  const roles = (await accessRows(ctx, threadId)).filter((row) => mine.has(row.principal)).map((row) => row.role);
+  return roles.length ? best(roles) : null;
 }
 
 /**

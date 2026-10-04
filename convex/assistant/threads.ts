@@ -12,14 +12,18 @@ import { requireFeature } from "../featureFlags/guard";
 import { createError } from "../lib/errors";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import schema from "../schema";
-import { accessRow, accessRows, principalsOf, requireThread, roleAmong, userPrincipal } from "./access";
+import { accessRows, best, principalsOf, requireThread, userPrincipal, type AssistantRole } from "./access";
 import { assistantRoleValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
 const TITLE_MAX = 120;
 const LIST_PAGE_MAX = 50;
-/** Access rows one page of the list may read while it looks for chats the filter keeps. */
-const LIST_FILTER_ROWS = 1_000;
+/**
+ * Access rows one page of the list may read while it looks for chats the filter keeps. Each
+ * costs one more read, of its chat's access rows, so this stays far inside the index ranges
+ * a query may read.
+ */
+const LIST_FILTER_ROWS = 500;
 const LIST_PAGE_BYTES = 2 * 1024 * 1024;
 
 const threadValidator = v.object({
@@ -70,7 +74,7 @@ export const listAction = defineUserQuery({
     const user = await ctx.db.get("users", userId);
     if (!user) return { page: [], isDone: true, continueCursor: "" };
     const principals = await principalsOf(ctx, user);
-    const order = new Map(principals.map((principal, i) => [principal, i]));
+    const mine = new Set(principals);
     const needle = text?.trim().toLowerCase();
     // Their own chats are all under their own principal.
     const through = scope === "mine" ? principals.slice(0, 1) : principals;
@@ -80,32 +84,38 @@ export const listAction = defineUserQuery({
       ),
       ["lastMessageAt"],
     );
+    // What each chat the filter keeps lets the person do, for the page built below.
+    const roles = new Map<string, AssistantRole>();
     const read = await rows
       .filterWith(async (row) => {
         if (scope !== "all" && (row.role === "owner") !== (scope === "mine")) return false;
-        // A chat that reaches the person several ways lists once, through the first of them.
-        for (const earlier of principals.slice(0, order.get(row.principal))) {
-          if (await accessRow(ctx, row.threadId, earlier)) return false;
+        // One read of the chat's access rows says both which of the person's principals reach
+        // it and the most they may do. A chat that reaches them several ways lists once,
+        // through the first of those principals.
+        const reaching = (await accessRows(ctx, row.threadId)).filter((other) => mine.has(other.principal));
+        if (principals.find((principal) => reaching.some((other) => other.principal === principal)) !== row.principal) return false;
+        if (needle) {
+          const thread = await ctx.db.get("assistantThreads", row.threadId);
+          if (!thread?.title.toLowerCase().includes(needle)) return false;
         }
-        if (!needle) return true;
-        const thread = await ctx.db.get("assistantThreads", row.threadId);
-        return thread !== null && thread.title.toLowerCase().includes(needle);
+        roles.set(row.threadId, best(reaching.map((other) => other.role)));
+        return true;
       })
       .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LIST_PAGE_MAX), maximumRowsRead: LIST_FILTER_ROWS, maximumBytesRead: LIST_PAGE_BYTES });
     const page = await Promise.all(
       read.page.map(async (row) => {
         const thread = await ctx.db.get("assistantThreads", row.threadId);
-        const role = thread && (await roleAmong(ctx, row.threadId, principals));
+        const role = roles.get(row.threadId);
         return thread && role ? [shown(thread, role)] : [];
       }),
     );
-    return { page: page.flat(), isDone: read.isDone, continueCursor: read.continueCursor };
+    return { ...read, page: page.flat() };
   },
 });
 export const list = userQuery(listAction);
 export const listForAssistant = assistantQuery(listAction);
 
-const shown = (thread: Doc<"assistantThreads">, role: Doc<"assistantThreadAccess">["role"]) => ({
+const shown = (thread: Doc<"assistantThreads">, role: AssistantRole) => ({
   _id: thread._id,
   title: thread.title,
   lastMessageAt: thread.lastMessageAt,

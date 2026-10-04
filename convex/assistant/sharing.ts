@@ -105,6 +105,7 @@ export const listAccessAction = defineUserQuery({
     v.object({
       principal: assistantPrincipalValidator,
       role: assistantRoleValidator,
+      /** A person's name as they gave it, or empty when they gave none. */
       name: v.string(),
       /** A person's email, for the chat's owner only. */
       email: v.optional(v.string()),
@@ -127,11 +128,11 @@ export const listAccessAction = defineUserQuery({
         }
         const person = await ctx.db.get("users", principal.userId);
         if (!person) return [];
-        const name = [person.firstName, person.lastName].filter(Boolean).join(" ") || person.email;
+        const name = [person.firstName, person.lastName].filter(Boolean).join(" ");
         return [{ principal, role: row.role, name, ...(role === "owner" ? { email: person.email } : {}) }];
       }),
     );
-    return { page: page.flat(), isDone: read.isDone, continueCursor: read.continueCursor };
+    return { ...read, page: page.flat() };
   },
 });
 export const listAccess = userQuery(listAccessAction);
