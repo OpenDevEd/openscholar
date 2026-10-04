@@ -39,10 +39,9 @@ export function CountryFocusPicker() {
       <CountrySelector
         selectedRegions={selectedValues}
         onSelectionChange={handleSelectionChange}
+        label={tf("countryFocus")}
         placeholder={tf("addCountryFocus")}
-        description={tf("chooseCountriesToAdd")}
-        showCountryNames={true}
-        bypassLimit={true}
+        bypassLimit
       />
 
       {/* Enhanced search preview */}
