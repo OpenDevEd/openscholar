@@ -3404,7 +3404,7 @@
     "foldIntoBubble": "Réduire en bulle",
     "newChat": "Nouvelle discussion",
     "emptyTitle": "Posez vos questions ici",
-    "emptyBody": "Pour l'instant, je peux seulement discuter. Je ne peux pas encore chercher, ouvrir des pages ni modifier quoi que ce soit.",
+    "emptyBody": "Je peux parcourir vos recherches, votre bibliothèque, vos collections, vos sélections et vos extractions, et enregistrer, noter et classer des articles pour vous. Je ne peux pas encore modifier une recherche ni lancer une tâche.",
     "placeholder": "Écrire à l'assistant",
     "readOnly": "Vous pouvez lire cette discussion, mais pas y écrire",
     "messageLabel": "Écrire à l'assistant",
@@ -3458,6 +3458,104 @@
     "copyLink": "Copier le lien pour les personnes ayant accès",
     "linkCopied": "Lien copié",
     "shareFailed": "Impossible de modifier le partage de cette discussion",
-    "morePeople": "Plus de personnes"
+    "morePeople": "Plus de personnes",
+    "steps": {
+      "undo": "Annuler",
+      "done": "Terminé",
+      "failed": "Échec",
+      "undoFailed": "Impossible d'annuler",
+      "interrupted": "La réponse s'est terminée avant la fin de cette étape",
+      "found": "trouvés",
+      "searches": {
+        "doing": "Parcours de vos recherches",
+        "did": "Recherches parcourues",
+        "where": "Recherches enregistrées"
+      },
+      "search": {
+        "doing": "Lecture d'une recherche",
+        "did": "Recherche lue",
+        "where": "Recherches enregistrées"
+      },
+      "searchHistory": {
+        "doing": "Lecture de l'historique d'une recherche",
+        "did": "Historique de la recherche lu",
+        "where": "Recherches enregistrées"
+      },
+      "bookmarks": {
+        "doing": "Parcours de vos favoris",
+        "did": "Favoris parcourus",
+        "where": "Favoris"
+      },
+      "ratings": {
+        "doing": "Vérification de vos notes",
+        "did": "Notes vérifiées",
+        "where": "Notes"
+      },
+      "saved": {
+        "doing": "Vérification de votre bibliothèque",
+        "did": "Bibliothèque vérifiée",
+        "where": "Bibliothèque"
+      },
+      "save": {
+        "doing": "Enregistrement d'un article",
+        "did": "Article enregistré",
+        "where": "Bibliothèque"
+      },
+      "rate": {
+        "doing": "Notation d'un article",
+        "did": "Article noté",
+        "where": "Bibliothèque"
+      },
+      "remove": {
+        "doing": "Retrait d'un article",
+        "did": "Article retiré",
+        "where": "Bibliothèque"
+      },
+      "restore": {
+        "doing": "Remise en place d'un article",
+        "did": "Article remis en place",
+        "where": "Bibliothèque"
+      },
+      "collect": {
+        "doing": "Mise à jour d'une collection",
+        "did": "Collection mise à jour",
+        "where": "Collections"
+      },
+      "collections": {
+        "doing": "Parcours de vos collections",
+        "did": "Collections parcourues",
+        "where": "Collections"
+      },
+      "collection": {
+        "doing": "Lecture d'une collection",
+        "did": "Collection lue",
+        "where": "Collections"
+      },
+      "newCollection": {
+        "doing": "Création d'une collection",
+        "did": "Collection créée",
+        "where": "Collections"
+      },
+      "renameCollection": {
+        "doing": "Renommage d'une collection",
+        "did": "Collection renommée",
+        "where": "Collections"
+      },
+      "screening": {
+        "doing": "Lecture d'une sélection",
+        "did": "Sélection lue",
+        "where": "Sélection"
+      },
+      "extractions": {
+        "doing": "Parcours de vos extractions",
+        "did": "Extractions parcourues",
+        "where": "Extraction"
+      },
+      "other": {
+        "doing": "Travail dans votre compte",
+        "did": "Travail effectué dans votre compte",
+        "where": "Votre compte"
+      }
+    }
   }
 }

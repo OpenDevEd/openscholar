@@ -210,6 +210,7 @@ export { WindowFrameIcon as AppWindow } from "@solar-icons/react/bold-duotone/wi
 export { DialogIcon as MessagesSquare } from "@solar-icons/react/bold-duotone/dialog";
 export { Pip2Icon as PictureInPicture2 } from "@solar-icons/react/bold-duotone/pip-2";
 export { UserPlusRoundedIcon as UserPlus } from "@solar-icons/react/bold-duotone/user-plus-rounded";
+export { CompassIcon as Compass } from "@solar-icons/react/bold-duotone/compass";
 
 // Solar has no match for these: spinners, a balance scale, a few plain shapes
 // and other companies' logos.

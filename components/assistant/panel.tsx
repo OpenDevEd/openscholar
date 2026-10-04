@@ -31,11 +31,13 @@ import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "./logo-mark";
+import { Steps, type StepItem } from "./steps";
 import { IconButton, WorkingText } from "./parts";
 import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, stackedUnder, type OpenSheet } from "./sheets";
 
 type ThreadId = Id<"assistantThreads">;
-type Message = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
+type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
+type Message = Exclude<Item, StepItem>;
 type Live = NonNullable<FunctionReturnType<typeof api.assistant.replies.live>>;
 
 const PANEL_W = 440;
@@ -385,6 +387,7 @@ function Chat({
       <Thread
         // A different chat starts at its own newest message.
         key={threadId ?? NEW}
+        threadId={threadId}
         messages={[...messages, ...sent]}
         live={live}
         fresh={threadId === null && sent.length === 0}
@@ -419,13 +422,15 @@ function Launcher({ working, onOpen }: { working: boolean; onOpen: () => void })
 }
 
 function Thread({
+  threadId,
   messages,
   live,
   fresh,
   older,
 }: {
-  /** Oldest first. */
-  messages: Message[];
+  threadId: ThreadId | null;
+  /** Oldest first: each message, then the steps of the reply to it, then the reply's text. */
+  messages: Item[];
   live: Live | null;
   /** No chat yet: the empty state shows. */
   fresh: boolean;
@@ -433,8 +438,10 @@ function Thread({
   older: (() => void) | "loading" | null;
 }) {
   const t = useTranslations("assistant");
-  // A reply that has no message yet: its action is still starting.
-  const starting = live !== null && !messages.some((m) => m.role === "assistant" && m.order === live.order);
+  // A reply's steps are one map, drawn where the first of them stands.
+  const steps = Map.groupBy(messages.filter((m) => m.role === "step"), (step) => step.order);
+  // A reply that has nothing to show yet: its action is still starting.
+  const starting = live !== null && !messages.some((m) => m.role !== "user" && m.order === live.order);
   return (
     // Both edges fade. The bottom one is clear under the hanging chips, then fades the usual
     // distance; the content's bottom padding keeps the last message clear of both.
@@ -457,9 +464,12 @@ function Thread({
         {messages.map((m) =>
           m.role === "user" ? (
             <UserBubble key={m.id} message={m} />
+          ) : m.role === "step" ? (
+            steps.get(m.order)?.[0] === m && threadId ? <Steps key={m.id} threadId={threadId} steps={steps.get(m.order)!} /> : null
           ) : (
             <div key={m.id} className="space-y-3">
-              <Reply message={m} live={live?.order === m.order ? live.text : ""} />
+              {/* The map of its steps shows the work, so a reply that has run some doesn't also say it's thinking. */}
+              <Reply message={m} live={live?.order === m.order ? live.text : ""} quiet={steps.has(m.order)} />
               {m.status === "stopped" ? <StoppedRow /> : null}
               {m.status === "failed" ? <FailedRow error={m.error} /> : null}
             </div>
@@ -472,11 +482,11 @@ function Thread({
 }
 
 /** A reply: its text as it arrives, or "Thinking" until the first of it does. */
-function Reply({ message, live }: { message: Message; live: string }) {
+function Reply({ message, live, quiet }: { message: Message; live: string; quiet: boolean }) {
   const pending = message.status === "pending";
   // One hook for the reply's whole life, so text still being revealed carries on when the reply is done.
   const [text, { isStreaming }] = useSmoothText(pending ? live : message.text, { startStreaming: pending });
-  if (!text) return pending ? <Thinking /> : null;
+  if (!text) return pending && !quiet ? <Thinking /> : null;
   return (
     <div className="text-sm leading-relaxed text-foreground">
       <MessageResponse isAnimating={pending || isStreaming} parseIncompleteMarkdown={pending || isStreaming || message.status === "stopped"} linkSafety={CHAT_LINK_SAFETY}>
