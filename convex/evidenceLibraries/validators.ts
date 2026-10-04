@@ -5,6 +5,7 @@ import {
   SECTION_REGISTRY,
   type SectionKey,
 } from "../../lib/evidence-libraries/configuration/section-registry";
+import { MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
 import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
 
 export type { SectionKey };
@@ -1046,3 +1047,20 @@ const sectionFields = { sectionKey: sectionKeyValidator, payload: sectionPayload
 /** A draft's or a revision's sections: one per section key, so never more than the registry holds. */
 export const draftSectionsValidator = capped(v.array(v.object({ ...sectionFields, updatedAt: v.number() })), MAX_CONFIG_SECTIONS);
 export const revisionSectionsValidator = capped(v.array(v.object({ ...sectionFields, createdAt: v.number() })), MAX_CONFIG_SECTIONS);
+
+/** One person on a library's team page. */
+export const teamPersonValidator = v.object({
+  clerkUserId: v.string(),
+  name: v.string(),
+  email: v.string(),
+  imageUrl: v.optional(v.string()),
+});
+/** People of the library's organization: its owners, or those who could be added. A team page reads no more members than this and refuses a larger organization. */
+export const organizationPeopleValidator = capped(v.array(teamPersonValidator), MAX_ORGANIZATION_MEMBERS_READ);
+/** People a library grants a role to directly: granting another past this is refused. */
+export const grantedPeopleValidator = capped(v.array(teamPersonValidator), MAX_LIBRARY_MEMBERS);
+/** A library's invitations waiting: inviting another past this is refused. */
+export const teamInvitationsValidator = capped(
+  v.array(v.object({ invitationId: v.id("evidenceLibraryInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
+  MAX_PENDING_INVITATIONS_PER_LIBRARY,
+);
