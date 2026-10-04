@@ -97,6 +97,15 @@ describe("the library list", () => {
       }
       expect(await t.action(internal.migrations.pagedLibraryList.verify, {})).toBe(0);
       expect(await me.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(before + 2);
+
+      // A deployment whose libraries were replaced without their triggers forgets the counts, then counts again.
+      await t.mutation(internal.migrations.pagedLibraryList.reset, {});
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await t.action(internal.migrations.pagedLibraryList.verify, {})).toBe(8);
+      await t.mutation(internal.migrations.pagedLibraryList.run, { reset: true });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await t.action(internal.migrations.pagedLibraryList.verify, {})).toBe(0);
+      expect(await me.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(before + 2);
     } finally {
       vi.useRealTimers();
     }

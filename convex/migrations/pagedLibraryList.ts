@@ -52,3 +52,22 @@ export const verify = internalAction({
     return wrong;
   },
 });
+
+/**
+ * Forgets the counts kept from the library tables, a page of them at a time: for a deployment
+ * whose libraries were replaced without their triggers, as CI's test backend is before every
+ * run (.github/workflows/ci.yml). `run`, and `migrations/pagedLibraryVersions:run`, count
+ * what is there again.
+ */
+export const reset = internalMutation({
+  args: { cursor: v.optional(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, { cursor }) => {
+    const page = await listCounts.paginateNamespaces(ctx, cursor, 100);
+    for (const namespace of page.page) {
+      if (namespace.startsWith("organizationLibraries:") || namespace.startsWith("libraryVersions:")) await listCounts.clear(ctx, { namespace });
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.pagedLibraryList.reset, { cursor: page.cursor });
+    return null;
+  },
+});

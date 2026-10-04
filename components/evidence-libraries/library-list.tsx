@@ -213,7 +213,8 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
         ) : (
           // The page shown stays up, dimmed and inert, while the one it steps or filters to loads.
           <ul
-            className={cn("divide-y divide-border/50", view === "libraries" && overviews.isStale && "opacity-60")}
+            // A paged list keeps a full page of rows with their addresses (75px each with its divider) where a row sits on one line, so a short last page, or a page of shorter rows, doesn't move the pager.
+            className={cn("divide-y divide-border/50", view === "libraries" && overviews.hasPages && "sm:min-h-[899px]", view === "libraries" && overviews.isStale && "opacity-60")}
             inert={(view === "libraries" && overviews.isStale) || undefined}
             data-library-list
           >
