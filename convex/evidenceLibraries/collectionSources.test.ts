@@ -82,8 +82,10 @@ it("reads the library's connections to the collections asked for as one page, an
   const { owner, collectionId, libraryId } = await setup();
   const other = await owner.mutation(api.library.collections.createCollection, { name: "Other" });
   await owner.mutation(api.evidenceLibraries.collectionSources.connectCollectionSource, { libraryId, collectionId: other });
-  const read = (collectionIds: (typeof collectionId)[]) => owner.query(api.evidenceLibraries.collectionSources.listCollectionSources, { libraryId, collectionIds });
+  const read = (collectionIds: string[]) => owner.query(api.evidenceLibraries.collectionSources.listCollectionSources, { libraryId, collectionIds });
   expect(await read([other, collectionId, other])).toMatchObject({ page: [{ collectionId: other, name: "Other" }], isDone: true });
   expect((await read([])).page).toEqual([]);
+  // A saved source can hold an ID that is no collection's; it is passed over, not refused.
+  expect((await read(["c1", other])).page).toHaveLength(1);
   await expect(read(Array.from({ length: 201 }, () => other))).rejects.toThrow(/200 at a time/);
 });
