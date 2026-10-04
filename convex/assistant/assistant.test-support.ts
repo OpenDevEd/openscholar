@@ -1,5 +1,6 @@
 // The people the assistant chat tests act as.
 import { register as registerAgentComponent } from "@convex-dev/agent/test";
+import { register as registerPresence } from "@convex-dev/presence/test";
 import type { convexTest } from "convex-test";
 import { seedFeatureUser, seedOrganizationFeatures } from "../organizationFeatures.test-support";
 
@@ -10,6 +11,7 @@ type Test = ReturnType<typeof convexTest>;
  */
 export async function people(t: Test) {
   registerAgentComponent(t);
+  registerPresence(t);
   const ids = await t.run(async (ctx) => {
     await ctx.db.insert("featureFlags", { key: "assistant.enabled", enabled: true, updatedAt: 1 });
     const [ada, ben, cy] = await Promise.all(["ada", "ben", "cy"].map((clerkId) => seedFeatureUser(ctx, clerkId)));

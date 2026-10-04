@@ -5,6 +5,7 @@
  * message, with that person's access and credits.
  */
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import { mergedStream, stream } from "convex-helpers/server/stream";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -13,11 +14,18 @@ import { createError } from "../lib/errors";
 import { MAX_ASSISTANT_THREAD_GRANTS } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { readMemberOrganizations } from "../organizationFeatures";
+import schema from "../schema";
 import { accessRow, accessRows, personName, principalKey, principalOf, requireThread, type AssistantPrincipal } from "./access";
-import { assistantGrantRoleValidator, assistantPrincipalValidator, assistantRoleValidator } from "./validators";
+import { assistantCandidateValidator, assistantGrantRoleValidator, assistantPrincipalValidator, assistantRoleValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
-const ACCESS_PAGE_MAX = 50;
+/** A chat's owner and everyone it can be shared with fit one page. */
+const ACCESS_PAGE_MAX = MAX_ASSISTANT_THREAD_GRANTS + 1;
+const CANDIDATES_PAGE_MAX = 20;
+/** Organization members one page of suggestions looks through for the ones the text matches. */
+const CANDIDATE_ROWS = 500;
+/** An organization's size is counted this far; past it the sheet says "100+". */
+const MEMBERS_COUNTED = 100;
 
 /** The owner's active organizations, by ID. */
 async function organizationsOf(ctx: QueryCtx | MutationCtx, user: Doc<"users">) {
@@ -109,6 +117,8 @@ export const listAccessAction = defineUserQuery({
       name: v.string(),
       /** A person's email, for the chat's owner only. */
       email: v.optional(v.string()),
+      /** An organization's active members, counted up to one past MEMBERS_COUNTED. */
+      members: v.optional(v.number()),
     }),
   ),
   run: async (ctx, userId, { threadId, paginationOpts }) => {
@@ -124,7 +134,12 @@ export const listAccessAction = defineUserQuery({
         if (!principal) return [];
         if (principal.kind === "organization") {
           const organization = await ctx.db.get("organizations", principal.organizationId);
-          return organization ? [{ principal, role: row.role, name: organization.name }] : [];
+          if (!organization) return [];
+          const members = await ctx.db
+            .query("organizationMemberships")
+            .withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active"))
+            .take(MEMBERS_COUNTED + 1);
+          return [{ principal, role: row.role, name: organization.name, members: members.length }];
         }
         const person = await ctx.db.get("users", principal.userId);
         if (!person) return [];
@@ -136,3 +151,56 @@ export const listAccessAction = defineUserQuery({
 });
 export const listAccess = userQuery(listAccessAction);
 export const listAccessForAssistant = assistantQuery(listAccessAction);
+
+export const candidatesAction = defineUserQuery({
+  path: "assistant/sharing:candidates",
+  description:
+    "Suggests who the person could share an assistant chat with, a page at a time: the organizations they belong to, then the people in them. " +
+    "Given `text`, only those whose name or email contains it. A page can be short while more remain, since it only looks through so many members at once.",
+  args: { text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(assistantCandidateValidator),
+  run: async (ctx, userId, { text, paginationOpts }) => {
+    await requireFeature(ctx, FLAG, userId);
+    const me = await ctx.db.get("users", userId);
+    if (!me) return { page: [], isDone: true, continueCursor: "" };
+    const needle = text?.trim().toLowerCase() ?? "";
+    const matches = (...fields: string[]) => !needle || fields.some((field) => field.toLowerCase().includes(needle));
+    const mine = [...(await organizationsOf(ctx, me)).values()];
+    // Someone in no organization has nobody to suggest.
+    if (!mine.length) return { page: [], isDone: true, continueCursor: "" };
+
+    // The people in those organizations. Someone in several of them is one membership in
+    // each, so they show once on a page; the sheet drops a repeat on a later page.
+    const seen = new Set<string>([me.clerkId]);
+    const found = new Map<string, Doc<"users">>();
+    const read = await mergedStream(
+      mine.map((organization) =>
+        stream(ctx.db, schema)
+          .query("organizationMemberships")
+          .withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")),
+      ),
+      ["_creationTime"],
+    )
+      .filterWith(async (membership) => {
+        if (seen.has(membership.clerkUserId)) return false;
+        seen.add(membership.clerkUserId);
+        const person = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
+        if (person?.state !== "active" || !matches(personName(person), person.email)) return false;
+        found.set(membership.clerkUserId, person);
+        return true;
+      })
+      .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, CANDIDATES_PAGE_MAX), maximumRowsRead: CANDIDATE_ROWS });
+    const people = read.page.flatMap((membership) => {
+      const person = found.get(membership.clerkUserId);
+      return person ? [{ principal: { kind: "user" as const, userId: person._id }, name: personName(person), email: person.email }] : [];
+    });
+    // The organizations lead the first page.
+    const organizations =
+      paginationOpts.cursor === null
+        ? mine.filter((organization) => matches(organization.name)).map((organization) => ({ principal: { kind: "organization" as const, organizationId: organization._id }, name: organization.name }))
+        : [];
+    return { ...read, page: [...organizations, ...people] };
+  },
+});
+export const candidates = userQuery(candidatesAction);
+export const candidatesForAssistant = assistantQuery(candidatesAction);
