@@ -25,6 +25,7 @@ import { internalMutation, internalQuery, mutation, query } from "../lib/functio
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
+import { viewOf, viewPart } from "../../lib/assistant/view";
 import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
@@ -50,9 +51,10 @@ const SWEEP_BATCH = 200;
 
 
 export const send = mutation({
-  args: { threadId: v.id("assistantThreads"), text: v.string() },
+  // `view`: the address of the page the message is sent from, its path and parameters.
+  args: { threadId: v.id("assistantThreads"), text: v.string(), view: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx, { threadId, text }) => {
+  handler: async (ctx, { threadId, text, view: address }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     if (!text.trim()) throw createError("VALIDATION_ERROR", "Write a message first.");
@@ -85,7 +87,16 @@ export const send = mutation({
 
     // The message, the lock and the scheduled reply commit together, so a second send
     // can't slip in between them.
-    const { messageId, message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId, prompt: text, skipEmbeddings: true });
+    // Where it's sent from goes with the message, for the model alone, when that's a new place: it stays there, so nothing already sent changes.
+    const view = address === undefined ? null : viewOf(address);
+    // A summary still owed is written before this message is answered, and takes the place of the one that last said it.
+    const moved = view !== null && (view !== thread.view || thread.compactionOwed === true);
+    const { messageId, message } = await assistant.saveMessage(ctx, {
+      threadId: thread.agentThreadId,
+      userId,
+      ...(moved ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: viewPart(view) }] } } : { prompt: text }),
+      skipEmbeddings: true,
+    });
     const now = Date.now();
     const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
     await touchThread(ctx, threadId, now);
@@ -100,7 +111,7 @@ export const send = mutation({
       // An effort the catalog has since dropped runs at the model's default.
       effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
     });
-    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
+    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), ...(moved ? { view } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
     return null;
   },
 });
@@ -134,7 +145,8 @@ export const summarized = internalMutation({
   handler: async (ctx, { threadId, attemptId, summary, through }) => {
     const thread = await ctx.db.get("assistantThreads", threadId);
     // One handed in after Stop isn't kept: the reply it was written for won't run, and it stays owed.
-    if (thread?.reply?.attemptId === attemptId && !thread.reply.stop) await ctx.db.patch("assistantThreads", threadId, { summary, compactedThrough: through, compactionOwed: undefined });
+    // The summary replaces the message that said where the person was, so the next one says it again.
+    if (thread?.reply?.attemptId === attemptId && !thread.reply.stop) await ctx.db.patch("assistantThreads", threadId, { summary, compactedThrough: through, compactionOwed: undefined, view: undefined });
     return null;
   },
 });
@@ -184,7 +196,7 @@ export const release = internalMutation({
       const kept = summarized && !current.stop;
       await ctx.db.patch("assistantThreads", threadId, {
         reply: undefined,
-        ...(kept ? { summary: summarized.summary, compactedThrough: summarized.through, compactionOwed: undefined } : { compactionOwed: true }),
+        ...(kept ? { summary: summarized.summary, compactedThrough: summarized.through, compactionOwed: undefined, view: undefined } : { compactionOwed: true }),
       });
       return null;
     }
@@ -272,6 +284,14 @@ const messageValidator = v.object({
   at: v.number(),
 });
 
+/** What a person typed: their message's first part. Where they sent it from can follow it (`send`), which only the model reads. */
+function typed(row: MessageDoc) {
+  const content = row.message?.content;
+  if (!Array.isArray(content)) return row.text ?? "";
+  const first = content[0];
+  return first?.type === "text" ? first.text : "";
+}
+
 /** Who sent a message, for the people a page of messages names. */
 async function senders(ctx: QueryCtx, rows: MessageDoc[]) {
   const ids = [...new Set(rows.flatMap((row) => (row.message?.role === "user" && row.userId ? [row.userId] : [])))];
@@ -330,7 +350,7 @@ export const messagesAction = defineUserQuery({
         }))
         .reverse();
       // A message of the reply that only called actions has no text of its own to show.
-      if (role === "assistant" && !row.text && row.status === "success") return [];
+      if (role === "assistant" && !row.text && row.status === "success" && Array.isArray(row.message?.content) && row.message.content.some((part) => part.type === "tool-call")) return [];
       const error = row.status === "failed" ? parseChatError(row.error) : null;
       const stopped = error?.class === "aborted";
       // A reply still pending that the chat isn't writing died with its action.
@@ -342,7 +362,7 @@ export const messagesAction = defineUserQuery({
           id: row._id,
           role,
           order: row.order,
-          text: row.text ?? "",
+          text: role === "user" ? typed(row) : (row.text ?? ""),
           status: pending ? ("pending" as const) : stopped ? ("stopped" as const) : row.status === "success" ? ("done" as const) : ("failed" as const),
           ...(error && !stopped
             ? {

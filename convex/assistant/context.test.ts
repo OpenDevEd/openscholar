@@ -58,8 +58,8 @@ async function chatOf(t: Test) {
   const threadId = await who.asAda.mutation(api.assistant.threads.create, { title: "Reading trials" });
   const thread = (id: Id<"assistantThreads">) => t.run(async (ctx) => ctx.db.get("assistantThreads", id));
   /** Sends a message and waits until the chat is free again: its reply written, and any compaction after it done. */
-  const say = async (text: string) => {
-    await who.asAda.mutation(api.assistant.replies.send, { threadId, text });
+  const say = async (text: string, view?: string) => {
+    await who.asAda.mutation(api.assistant.replies.send, { threadId, text, ...(view ? { view } : {}) });
     await waitFor(async () => !(await thread(threadId))?.reply, { timeoutMs: 5_000 });
   };
   return { ...who, threadId, say, thread: () => thread(threadId) };
@@ -90,6 +90,36 @@ describe("what the assistant's model is sent", () => {
       expect(said(sent(i)).slice(sent(i - 1).length)).toEqual([`assistant: Answer ${i}`, `user: Question ${i + 1}`]);
     }
     expect((await thread())?.summary).toBeUndefined();
+  });
+
+  it("is told the page a message was sent from when that changes, which the chat itself doesn't show", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, say } = await chatOf(t);
+    const asked = (request: Sent) => said(request).filter((line) => line.startsWith("user: "));
+    mockDoStream.mockImplementation(finishingDoStream(["Answer"]));
+    // Only what names the page's records is kept of its address: a ticket in it never reaches the chat.
+    await say("What is this?", "/results/search-1?page=2&__clerk_ticket=secret&utm_source=mail");
+    await say("And this one?", "/results/search-1?page=2");
+    await say("Now here", "/library?col=collection-9");
+    // An address that isn't a page of the app says nothing.
+    await say("And from elsewhere", "https://example.com/results/x");
+
+    expect(asked(sent(3))).toEqual([
+      "user: What is this?<view>/results/search-1?page=2</view>",
+      "user: And this one?",
+      "user: Now here<view>/library?col=collection-9</view>",
+      "user: And from elsewhere",
+    ]);
+    const { page } = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
+    expect(page.flatMap((message) => (message.role === "user" ? [message.text] : [])).reverse()).toEqual(["What is this?", "And this one?", "Now here", "And from elsewhere"]);
+
+    // A summary takes the place of the messages that said it, so the next one says it again.
+    mockDoStream.mockImplementation(finishingDoStream(["Answer"], COMPACT_AT_TOKENS + 1));
+    mockDoGenerate.mockImplementation(summaryOf("Decisions\nNone"));
+    await say("Still here", "/library?col=collection-9");
+    mockDoStream.mockImplementation(finishingDoStream(["Answer"]));
+    await say("And now?", "/library?col=collection-9");
+    expect(asked(requests.at(-1) as Sent)).toEqual(["user: And now?<view>/library?col=collection-9</view>"]);
   });
 
   it("is a summary and what came after it, once a reply has read a lot", async () => {
