@@ -49,6 +49,13 @@ describe("researcher export contents", () => {
     expect(data.papers[0]).toMatchObject({ openAccess: null, pdfUsed: null });
   });
 
+  it("leaves an uncited source unknown when PDF evidence was not used", async () => {
+    const papers = exportPapers.map(paper => ({ ...paper, results: paper.results.map(result => ({ ...result, citations: [], pdfContentUsed: false })) }));
+    exportToJSON(papers, exportQuestions);
+    const data = JSON.parse(await downloaded.text());
+    expect(data.papers[0].results.map((r: { source: unknown }) => r.source)).toEqual(exportQuestions.map(() => null));
+  });
+
   it.each(["csv", "json"] as const)("%s honors every exclusion option", async format => {
     const options = { job: exportJob, includeMetadata: false, includeConfidence: false, includeReasoning: false, includeCitations: false };
     if (format === "csv") exportToCSV(exportPapers, exportQuestions, options);

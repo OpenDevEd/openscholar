@@ -11,6 +11,7 @@
  * folds them. This module holds no Convex functions, so the triggers can load it.
  */
 import { ping } from "@convex-dev/batch-worker";
+import { convexToJson } from "convex/values";
 import type { Change } from "convex-helpers/server/triggers";
 import { components, internal } from "../_generated/api";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
@@ -140,7 +141,11 @@ export async function readCounts(ctx: QueryCtx | MutationCtx, jobId: Id<"extract
 export async function countJobChange(ctx: MutationCtx, change: Change<DataModel, "extractionJobs">) {
   if (!change.oldDoc && change.newDoc) await ctx.db.insert("extractionJobCounts", { jobId: change.newDoc._id, counts: {} });
   if (change.oldDoc && !change.newDoc) await clearCounts(ctx, change.oldDoc._id);
-  if (change.oldDoc && change.newDoc?.mode === "extraction") await append(ctx, change.newDoc._id, { exportRevision: 1 });
+  if (change.oldDoc && change.newDoc?.mode === "extraction") {
+    const { sortName: beforeSortName, ...before } = change.oldDoc;
+    const { sortName: afterSortName, ...after } = change.newDoc;
+    if (JSON.stringify(convexToJson(before)) !== JSON.stringify(convexToJson(after))) await append(ctx, change.newDoc._id, { exportRevision: 1 });
+  }
 }
 
 /** Includes unfurled changes, so folding counters never changes the export version. */

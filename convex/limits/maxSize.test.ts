@@ -34,27 +34,6 @@ describe("at the largest sizes the product allows", () => {
     expect(details).toMatchObject({ status: "ok" });
   }, 300_000);
 
-  // An export reads the job page by page (lib/extraction/export.ts); the largest page,
-  // searched or not, is the most any one read takes.
-  it("a 1,000-paper, 50-question extraction job reads its largest export page", async () => {
-    const t = convexTest(schema);
-    const { userId, as } = await seedAccount(t);
-    const { jobId, paperIds } = await seedExtractionJob(t, userId);
-    const page = (searchQuery: string, pageSize: number) =>
-      as.query(api.extraction.queries.listJobResults, { jobId, filters: { ...filters, searchQuery }, sortBy: "default", paginationOpts: { cursor: null, numItems: pageSize } });
-    // Both the item cap and the joined-answer byte budget bound a page.
-    const whole = await page("", MAX_SIZE.papersPerJob);
-    expect(whole.page.length).toBeGreaterThan(0);
-    expect(whole.page.length).toBeLessThanOrEqual(RESULTS_PAGE_SIZE_MAX);
-    expect(whole.page.map(paper => paper._id)).toEqual(paperIds.slice(0, whole.page.length));
-    expect(whole.page.every((paper) => paper.results.length === MAX_SIZE.questionsPerJob)).toBe(true);
-    // A search reads only its matches, so its largest page fits too.
-    const searched = await page("tutoring", RESULTS_PAGE_SIZE_MAX);
-    expect(searched.page.length).toBeGreaterThan(0);
-    expect(searched.page.length).toBeLessThanOrEqual(RESULTS_PAGE_SIZE_MAX);
-    expect(searched.page.every(paper => paper.results.length === MAX_SIZE.questionsPerJob)).toBe(true);
-  }, 300_000);
-
   it("pages a full extraction job by answer and citation bytes without losing papers", async () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
@@ -62,16 +41,19 @@ describe("at the largest sizes the product allows", () => {
     // Eight citation-heavy papers already exceed one transaction's read budget.
     for (const paperId of paperIds.slice(0, 8)) {
       const ids = await t.run(async ctx => (await ctx.db.query("extractionResults").withIndex("by_paper", q => q.eq("paperId", paperId)).take(50)).map(row => row._id));
-      for (const id of ids) await t.run(ctx => ctx.db.patch("extractionResults", id, {
+      await t.run(async ctx => { for (const id of ids) await ctx.db.patch("extractionResults", id, {
         citations: Array.from({ length: 50 }, (_, i) => ({ source: "pdf" as const, paperId, sourceHash: "a".repeat(64), evidenceId: `page-${i}`, page: i + 1, charRange: [0, 900], quote: text(900, i), retrieval: {}, validated: true })),
-      }));
+      }); });
     }
     for (const searchQuery of ["", "tutoring"]) {
       const ids: string[] = [];
       let cursor: string | null = null;
       for (let pages = 0; pages <= PAPER_LIMIT; pages++) {
-        const read: Awaited<ReturnType<typeof as.query<typeof api.extraction.queries.listJobResults>>> = await as.query(api.extraction.queries.listJobResults, { jobId, filters: { ...filters, searchQuery }, sortBy: "default", paginationOpts: { cursor, numItems: RESULTS_PAGE_SIZE_MAX } });
+        const read: Awaited<ReturnType<typeof as.query<typeof api.extraction.queries.listJobResults>>> = await as.query(api.extraction.queries.listJobResults, { jobId, filters: { ...filters, searchQuery }, sortBy: "default", paginationOpts: { cursor, numItems: cursor ? RESULTS_PAGE_SIZE_MAX : PAPER_LIMIT } });
         if (!cursor) expect(read.page.length).toBeLessThan(RESULTS_PAGE_SIZE_MAX);
+        expect(read.page.length).toBeGreaterThan(0);
+        expect(read.page.length).toBeLessThanOrEqual(RESULTS_PAGE_SIZE_MAX);
+        expect(read.page.every(paper => paper.results.length === MAX_SIZE.questionsPerJob)).toBe(true);
         expect(getDocumentSize({ page: read.page })).toBeLessThan(8 * 1024 * 1024);
         ids.push(...read.page.map(paper => paper._id));
         for (const paper of read.page) if (paperIds.slice(0, 8).includes(paper._id)) {
@@ -84,6 +66,12 @@ describe("at the largest sizes the product allows", () => {
       expect(ids).toHaveLength(PAPER_LIMIT);
       expect(new Set(ids)).toEqual(new Set(paperIds));
     }
+    // Selecting a late, small record never hydrates the unselected large answers.
+    const selectedPaperIds = [paperIds.at(-1)!];
+    const selected = await as.query(api.extraction.queries.listJobResults, { jobId, filters, selectedPaperIds, sortBy: "default", paginationOpts: { cursor: null, numItems: RESULTS_PAGE_SIZE_MAX } });
+    expect(selected.page.map(paper => paper._id)).toEqual(selectedPaperIds);
+    expect(selected.isDone).toBe(true);
+    expect(await as.query(api.extraction.queries.countJobResults, { jobId, filters, selectedPaperIds, includeRevision: true })).toMatchObject({ all: PAPER_LIMIT, matching: 1 });
   }, 300_000);
 
   it("a 1,000-paper, 50-question extraction job shows its progress and retry summaries", async () => {

@@ -103,7 +103,7 @@ async function seedJobWithProjectionCorpus(t: ReturnType<typeof convexTest>) {
   });
 }
 
-type View = Partial<{ cursor: string | null; numItems: number; filters: typeof DEFAULT_FILTERS; sortBy: "default" | "title-asc" | "title-desc" | "confidence-high" | "confidence-low" }>;
+type View = Partial<{ cursor: string | null; numItems: number; selectedPaperIds: Doc<"extractionPapers">["_id"][]; filters: typeof DEFAULT_FILTERS; sortBy: "default" | "title-asc" | "title-desc" | "confidence-high" | "confidence-low" }>;
 
 async function listResults(auth: ReturnType<ReturnType<typeof convexTest>["withIdentity"]>, jobId: string, view?: View) {
   return await auth.query(api.extraction.queries.listJobResults, {
@@ -111,6 +111,7 @@ async function listResults(auth: ReturnType<ReturnType<typeof convexTest>["withI
     filters: view?.filters ?? DEFAULT_FILTERS,
     sortBy: view?.sortBy ?? "default",
     paginationOpts: { cursor: view?.cursor ?? null, numItems: view?.numItems ?? 25 },
+    selectedPaperIds: view?.selectedPaperIds,
   });
 }
 
@@ -129,9 +130,22 @@ async function everyPage(auth: ReturnType<ReturnType<typeof convexTest>["withIde
 
 const titles = (papers: Array<{ title: string }>) => papers.map((paper) => paper.title);
 const countMatching = (auth: ReturnType<ReturnType<typeof convexTest>["withIdentity"]>, jobId: string, filters = DEFAULT_FILTERS) =>
-  auth.query(api.extraction.queries.countJobResults, { jobId: jobId as never, filters });
+  auth.query(api.extraction.queries.countJobResults, { jobId: jobId as never, filters, includeRevision: true });
 
 describe("listJobResults", () => {
+  it("reads only selected papers and treats an empty selection as empty", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithProjectionCorpus(t);
+    const auth = t.withIdentity(OWNER_IDENTITY);
+    const all = await listResults(auth, jobId, { numItems: 60 });
+    const selectedPaperIds = [all.page[52]._id, all.page[58]._id];
+    expect((await listResults(auth, jobId, { selectedPaperIds })).page.map(p => p._id)).toEqual(selectedPaperIds);
+    expect((await listResults(auth, jobId, { selectedPaperIds: [] })).page).toEqual([]);
+    expect(await auth.query(api.extraction.queries.countJobResults, { jobId, filters: DEFAULT_FILTERS, selectedPaperIds })).toEqual({ all: 60, matching: 2, revision: null });
+    const filtered = await listResults(auth, jobId, { selectedPaperIds, filters: { ...DEFAULT_FILTERS, searchQuery: "rare" } });
+    expect(filtered.page).toEqual([]);
+  });
+
   it("steps through every paper once in the order they were added, with answers only on the page's papers", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedJobWithProjectionCorpus(t);

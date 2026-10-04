@@ -221,16 +221,17 @@ export default function JobDetailPage() {
   if (resultCounts && resultCounts.matching !== lastMatching) setLastMatching(resultCounts.matching);
 
   const convex = useConvex();
-  const loadAllExport = useCallback(
-    (signal?: AbortSignal) =>
+  const loadExport = useCallback(
+    (signal?: AbortSignal, selectedPaperIds?: Id<"extractionPapers">[]) =>
       readExtractionExport(
         (cursor) =>
           convex.query(api.extraction.queries.listJobResults, {
             ...resultsView,
+            selectedPaperIds,
             sortBy: resultsSortBy,
             paginationOpts: { cursor, numItems: RESULTS_PAGE_SIZE_MAX },
           }),
-        () => convex.query(api.extraction.queries.countJobResults, resultsView),
+        () => convex.query(api.extraction.queries.countJobResults, { ...resultsView, selectedPaperIds, includeRevision: true }),
         async () => {
           const details = await convex.query(api.extraction.queries.getJobDetails, { jobId });
           if (details.status !== "ok") throw new Error("This extraction is no longer available.");
@@ -240,6 +241,7 @@ export default function JobDetailPage() {
       ),
     [convex, jobId, resultsView, resultsSortBy],
   );
+  const loadAllExport = useCallback((signal?: AbortSignal) => loadExport(signal), [loadExport]);
 
   const questions: Question[] = useMemo(() => {
     if (jobDetails?.status !== "ok") return [];
@@ -274,11 +276,10 @@ export default function JobDetailPage() {
   } = useSelection<string>(paperIds);
 
   const loadSelectedExport = useCallback(async (signal?: AbortSignal) => {
-    const data = await loadAllExport(signal);
-    const papers = data.papers.filter(paper => selectedIds.has(paper._id));
-    if (papers.length !== selectedIds.size) throw new ExtractionExportError("exportChanged");
-    return { ...data, papers };
-  }, [loadAllExport, selectedIds]);
+    const data = await loadExport(signal, [...selectedIds] as Id<"extractionPapers">[]);
+    if (data.papers.length !== selectedIds.size) throw new ExtractionExportError("exportChanged");
+    return data;
+  }, [loadExport, selectedIds]);
 
   const handleTableSelectionChange = useCallback((newIds: Set<string>) => {
     setSelection(newIds);

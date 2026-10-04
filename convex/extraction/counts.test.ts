@@ -7,6 +7,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { readJobCounters } from "./jobCounters";
 import { readResultCounts } from "./resultCounts";
+import { exportRevision } from "./counts";
 
 // The worker schedules its runs on whichever timers are active when counts change.
 beforeEach(() => vi.useFakeTimers());
@@ -23,6 +24,16 @@ const counts = (t: ReturnType<typeof convexTest>, jobId: Id<"extractionJobs">) =
   t.run(async (ctx) => ({ papers: await readJobCounters(ctx, jobId), results: await readResultCounts(ctx, jobId) }));
 
 describe("extraction counts", () => {
+  it("revises exported job data once without queueing the derived sort-name write", async () => {
+    const t = convexTest(schema);
+    const jobId = await seedJob(t, 0);
+    expect(await t.run(ctx => exportRevision(ctx, jobId))).toBe(0);
+    await t.run(ctx => ctx.db.patch(jobId, { name: "Renamed" }));
+    expect(await t.run(ctx => exportRevision(ctx, jobId))).toBe(1);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await t.run(ctx => exportRevision(ctx, jobId))).toBe(1);
+  });
+
   it("does not queue export revisions for chat updates", async () => {
     const t = convexTest(schema);
     const extractionId = await seedJob(t, 0);

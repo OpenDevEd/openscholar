@@ -119,7 +119,7 @@ function exportRecord(papers: PaperWithResults[], questions: Question[], options
           answer: r?.answer ?? null,
           status: r ? r.status ?? "unknown" : "missing",
           citationStatus: r?.citationStatus ?? null,
-          source: sources.length ? sources.join("+") : r?.pdfContentUsed === true ? "pdf" : r?.pdfContentUsed === false ? "abstract" : null,
+          source: sources.length ? sources.join("+") : null,
           model: r?.model ?? null,
           provider: r?.provider ?? null,
           runEpoch: r?.runEpoch ?? null,
