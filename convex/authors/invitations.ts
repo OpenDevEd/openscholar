@@ -126,7 +126,17 @@ export const respondVerified = internalMutation({
         .withIndex("by_profileId_and_userId", q => q.eq("profileId", profile._id).eq("userId", user._id)).unique();
       if (!member) {
         const members = await ctx.db.query("authorProfileMembers").withIndex("by_profileId_and_userId", q => q.eq("profileId", profile._id)).take(MAX_PROFILE_MEMBERS);
-        if (members.length >= MAX_PROFILE_MEMBERS) throw createError("VALIDATION_ERROR", `A profile can have up to ${MAX_PROFILE_MEMBERS} editors. Ask its owner to remove one first.`);
+        let held = members.length;
+        // A deleted account's place shows on no list and nobody can remove it, so a full profile gives those up first.
+        if (held >= MAX_PROFILE_MEMBERS) {
+          for (const row of members) {
+            const person = await ctx.db.get("users", row.userId);
+            if (person && person.state !== "deleted") continue;
+            await ctx.db.delete("authorProfileMembers", row._id);
+            held--;
+          }
+        }
+        if (held >= MAX_PROFILE_MEMBERS) throw createError("VALIDATION_ERROR", `A profile can have up to ${MAX_PROFILE_MEMBERS} editors. Ask its owner to remove one first.`);
         await ctx.db.insert("authorProfileMembers", {profileId: profile._id, userId: user._id});
       }
     }

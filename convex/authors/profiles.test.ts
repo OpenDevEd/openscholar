@@ -91,6 +91,15 @@ describe("author profiles", () => {
       for (let members = 0; members < 100; members++) await ctx.db.insert("authorProfileMembers", {profileId, userId: ids.owner});
     });
     await expect(editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true})).rejects.toThrow(/up to 100 editors/);
+
+    // A deleted account's place is given up, so the next person can accept.
+    await t.run(async ctx => {
+      const gone = await ctx.db.insert("users", {libraryItemCount: 0, state: "deleted", createdAt: 1, updatedAt: 1, clerkId: "gone", email: "gone@example.org"});
+      const place = (await ctx.db.query("authorProfileMembers").withIndex("by_profileId_and_userId", q => q.eq("profileId", profileId)).first())!;
+      await ctx.db.patch(place._id, {userId: gone});
+    });
+    await editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true});
+    expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBe("editor");
   });
 
   it("keeps profile ownership separate from organization roles", async () => {
