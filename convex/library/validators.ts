@@ -60,7 +60,7 @@ export const libraryItemFields = {
     openalexId: v.string(), // e.g. "https://openalex.org/W1234567890"
     rating: v.optional(v.number()), // 0-5; unset when the paper was saved without rating it
     title: v.string(),
-    authors: v.optional(v.union(v.string(), capped(v.array(v.string()), MAX_AUTHORS))),
+    authors: v.optional(capped(v.array(v.string()), MAX_AUTHORS)),
     authorsUnparsed: v.optional(v.string()),
     metadataVersion: v.optional(v.literal(2)),
     metadataRecoveredAt: v.optional(v.number()),

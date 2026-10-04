@@ -17,7 +17,7 @@ export function sourceMetadata(paper: PaperSourceMetadata): PaperSourceMetadata 
 
 export type PaperMetadata = PaperSourceMetadata & {
   title: string;
-  authors?: string[] | string;
+  authors?: string[];
   doi?: string;
   abstract?: string;
   publicationYear?: number;
@@ -60,11 +60,11 @@ export function metadataFromPaperData(raw?: string): Partial<PaperMetadata> {
 
 /** Old text is recoverable only when retained names reproduce it exactly. */
 export function authorMetadata(paper: Pick<PaperMetadata, "authors" | "authorsUnparsed" | "paperData">): { authors?: string[]; authorsUnparsed?: string } {
-  if (Array.isArray(paper.authors) && paper.authors.length) return {
+  if (paper.authors?.length) return {
     authors: paper.authors,
     ...(paper.authorsUnparsed && paper.authorsUnparsed !== paper.authors.join(", ") ? { authorsUnparsed: paper.authorsUnparsed } : {}),
   };
-  const text = typeof paper.authors === "string" ? paper.authors : paper.authorsUnparsed;
+  const text = paper.authorsUnparsed;
   const raw = paperRecord(paper.paperData)?.authorships;
   const names = Array.isArray(raw) ? raw.flatMap((entry) => isRecord(entry) && isRecord(entry.author) && typeof entry.author.display_name === "string" && entry.author.display_name.trim() ? [entry.author.display_name] : []) : [];
   if (names.length && (!text || names.join(", ") === text)) return names.length <= MAX_AUTHORS ? { authors: names } : { authorsUnparsed: text || names.join(", ") };

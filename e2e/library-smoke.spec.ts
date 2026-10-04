@@ -71,7 +71,7 @@ async function seedLibrarySmokeFixture(args: {
       openalexId: `W_PLAN05_${args.seedId}_${index}`,
       rating: 5,
       title: `Plan 05 Smoke Paper ${index + 1}`,
-      authors: "Smoke, Test",
+      authors: ["Smoke, Test"],
       abstract: `Plan 05 smoke abstract ${index + 1}`,
       publicationYear: 2024,
       journal: "Smoke Journal",

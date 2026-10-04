@@ -16,7 +16,7 @@ export type ExpandedSourcePaper = {
 export type LibraryPaper = PaperSourceMetadata & {
   _id: string;
   title: string;
-  authors?: string[] | string;
+  authors?: string[];
   doi?: string;
   openalexId: string;
   abstract?: string;

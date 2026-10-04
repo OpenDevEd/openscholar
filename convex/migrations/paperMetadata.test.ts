@@ -18,7 +18,7 @@ it("migrates retained authors without crossing owners or guessing, and guards ro
     await result(foreignJob, "https://openalex.org/W2", ["Smith", "John"]);
     await result(ownedJob, "https://openalex.org/W3", ["Smith", "John"]);
     await result(ownedJob, "https://openalex.org/W3", ["Smith, John"]);
-    const saved = (openalexId: string, authors?: string, paperData?: string) => ctx.db.insert("libraryItems", { userId: owner, openalexId, title: openalexId, authors, paperData, rating: 4, searchableText: `${openalexId} ${authors ?? ""}`, savedAt: 10, updatedAt: 20 });
+    const saved = (openalexId: string, authors?: string, paperData?: string) => ctx.db.insert("libraryItems", { userId: owner, openalexId, title: openalexId, authorsUnparsed: authors, paperData, rating: 4, searchableText: `${openalexId} ${authors ?? ""}`, savedAt: 10, updatedAt: 20 });
     const retained = await saved("W1", "Smith, Jr., John, ليلى");
     const foreignOnly = await saved("W2", "Smith, John");
     const ambiguous = await saved("W3", "Smith, John");
@@ -26,7 +26,7 @@ it("migrates retained authors without crossing owners or guessing, and guards ro
     await saved("W5");
     const longAuthors = Array.from({ length: 101 }, (_, i) => `Author ${i}`);
     const long = await saved("W6", longAuthors.join(", "), JSON.stringify({ authorships: longAuthors.map(display_name => ({ author: { display_name } })) }));
-    const removal = await ctx.db.insert("libraryRemovals", { userId: owner, item: { openalexId: "W4", title: "Removed", authors: "Doe, Jane", paperData: JSON.stringify({ authorships: [{ author: { display_name: "Doe, Jane" } }] }), searchableText: "Removed Doe, Jane", savedAt: 1, updatedAt: 2 }, collectionIds: [], expiresAt: Date.now() + 100_000 });
+    const removal = await ctx.db.insert("libraryRemovals", { userId: owner, item: { openalexId: "W4", title: "Removed", authorsUnparsed: "Doe, Jane", paperData: JSON.stringify({ authorships: [{ author: { display_name: "Doe, Jane" } }] }), searchableText: "Removed Doe, Jane", savedAt: 1, updatedAt: 2 }, collectionIds: [], expiresAt: Date.now() + 100_000 });
     return { retained, foreignOnly, ambiguous, raw, removal, long, longAuthors };
   });
   const migrate = async () => {
@@ -60,9 +60,13 @@ it("migrates retained authors without crossing owners or guessing, and guards ro
   expect(manifest).toHaveLength(7);
   await migrate();
   expect(await t.run((ctx) => ctx.db.query("paperMetadataChanges").take(10))).toEqual(manifest);
+  const change = manifest.find((row) => row.recordId === seeded.retained)!;
+  await t.run(ctx => ctx.db.patch("paperMetadataChanges", change._id, { before: JSON.stringify({ authors: "Smith, Jr., John, ليلى" }) }));
   await t.run((ctx) => ctx.db.patch("libraryItems", seeded.retained, { rating: 5 }));
-  expect(await t.mutation(internal.migrations.paperMetadata.rollback, { changeId: manifest.find((row) => row.recordId === seeded.retained)!._id })).toBe(true);
-  expect(await t.run((ctx) => ctx.db.get("libraryItems", seeded.retained))).toMatchObject({ authorsUnparsed: "Smith, Jr., John, ليلى", rating: 5 });
+  expect(await t.mutation(internal.migrations.paperMetadata.rollback, { changeId: change._id })).toBe(true);
+  const rolledBack = await t.run((ctx) => ctx.db.get("libraryItems", seeded.retained));
+  expect(rolledBack).toMatchObject({ authorsUnparsed: "Smith, Jr., John, ليلى", rating: 5, metadataVersion: 2 });
+  expect(rolledBack!.authors).toBeUndefined();
   await t.run((ctx) => ctx.db.patch("libraryItems", seeded.raw, { authors: ["Later correction"] }));
   await expect(t.mutation(internal.migrations.paperMetadata.rollback, { changeId: manifest.find((row) => row.recordId === seeded.raw)!._id })).rejects.toThrow(/changed after migration/);
 });

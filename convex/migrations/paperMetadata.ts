@@ -13,6 +13,7 @@ const migrations = new Migrations<DataModel>(components.migrations, { internalMu
 const RECOVERY_LIMIT = 20;
 const fields = ["authors", "authorsUnparsed", "journal", "citedByCount", "workType", "isOpenAccess", "oaStatus", "oaUrl", "pdfUrl", "metadataVersion", "metadataRecoveredAt"] as const;
 type Stored = Omit<Doc<"libraryItems">, "_id" | "_creationTime" | "userId">;
+type BeforeNarrowing = Omit<Stored, "authors"> & { authors?: string | string[] };
 type Patch = Partial<Pick<Stored, typeof fields[number]>>;
 
 function snapshot(item: Patch): string {
@@ -21,7 +22,7 @@ function snapshot(item: Patch): string {
 
 /** Reads only retained snapshots from the same owner; never refetches historical inputs. */
 export async function recoverMetadata(ctx: MutationCtx, userId: Id<"users">, item: Stored): Promise<Patch | undefined> {
-  if (item.metadataVersion === 2 && typeof item.authors !== "string") return;
+  if (item.metadataVersion === 2) return;
   const names = authorMetadata(item);
   const canonical = workUrl(item.openalexId);
   const ids = [...new Set([item.openalexId, canonical, canonical?.split("/").at(-1)].filter((id): id is string => !!id))];
@@ -35,8 +36,8 @@ export async function recoverMetadata(ctx: MutationCtx, userId: Id<"users">, ite
     }
   }
   const patch: Patch = { authors: names.authors, authorsUnparsed: names.authorsUnparsed, metadataVersion: 2 };
-  if (Array.isArray(patch.authors) && patch.authors.length > MAX_AUTHORS) {
-    patch.authorsUnparsed = typeof item.authors === "string" ? item.authors : patch.authors.join(", ");
+  if (patch.authors && patch.authors.length > MAX_AUTHORS) {
+    patch.authorsUnparsed = patch.authors.join(", ");
     patch.authors = undefined;
   }
   if (complete) {
@@ -85,7 +86,11 @@ export const rollback = internalMutation({
     const change = await ctx.db.get("paperMetadataChanges", changeId);
     if (!change || change.revertedAt !== undefined) return false;
     const patch = Object.fromEntries(fields.map((key) => [key, undefined])) as Patch;
-    Object.assign(patch, JSON.parse(change.before) as Patch);
+    const before = JSON.parse(change.before) as Partial<BeforeNarrowing>;
+    // Keep receipt bytes unchanged and restore names in the narrowed shape.
+    // Version 2 makes rollback terminal so rerunning recovery cannot undo the rollback.
+    const names = authorMetadata({ authors: Array.isArray(before.authors) ? before.authors : undefined, authorsUnparsed: typeof before.authors === "string" ? before.authors : before.authorsUnparsed });
+    Object.assign(patch, before, { authors: names.authors, authorsUnparsed: names.authorsUnparsed, metadataVersion: 2 });
     if (change.table === "libraryItems") {
       const id = ctx.db.normalizeId("libraryItems", change.recordId);
       const item = id && await ctx.db.get("libraryItems", id);
@@ -112,8 +117,8 @@ export const verifyPage = internalQuery({
     const count: Stats = { total: page.page.length, remaining: 0, arrays: 0, unparsed: 0, missing: 0 };
     for (const row of page.page) {
       const item = "item" in row ? row.item : row;
-      if (typeof item.authors === "string" || item.metadataVersion !== 2) count.remaining++;
-      if (Array.isArray(item.authors) && item.authors.length) count.arrays++;
+      if (item.metadataVersion !== 2) count.remaining++;
+      if (item.authors?.length) count.arrays++;
       else if (item.authorsUnparsed) count.unparsed++;
       else count.missing++;
     }

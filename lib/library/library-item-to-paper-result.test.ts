@@ -14,11 +14,11 @@ describe("a saved paper as its card shows it", () => {
     }
   });
   it("preserves unknown access and unparsed author text without inventing a status or authors", () => {
-    const saved = { ...item(), authors: "Smith, Jr., John, ليلى", isOpenAccess: true };
+    const saved = { ...item(), authors: undefined, authorsUnparsed: "Smith, Jr., John, ليلى", isOpenAccess: true };
     const shown = libraryItemToPaperResult(saved);
     expect(shown.open_access).toEqual({ is_oa: true });
     expect(shown.authorships).toBeUndefined();
-    expect(shown.authors_unparsed).toBe(saved.authors);
+    expect(shown.authors_unparsed).toBe(saved.authorsUnparsed);
     expect(libraryItemToPaperResult(item()).open_access).toBeUndefined();
   });
 });
