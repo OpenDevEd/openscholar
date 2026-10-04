@@ -25,12 +25,12 @@ import { StatusIcon } from "@/components/evidence-libraries/configuration/status
 import { EASE, effortOf, usePresetModels, type PickedModel, type PresetPick } from "@/components/settings/model-map";
 import { ApprovalCard, CollectionCard, Facts, JobCard, KindTile, QuestionCard, RunMap, VersionBars, WorkingText, type Ask, type Step } from "./run-map";
 import { LogoMark } from "./logo-mark";
-import { Dim, EdgeGlow, HistorySheet, SHEET_SPRING, Sheet, ShareSheet, SpendingSheet, TopUpSheet, stackedUnder, type Allowance, type ReplyLimit, type SheetKind } from "./sheets";
+import { Dim, EdgeGlow, HistorySheet, SHEET_SPRING, Sheet, ShareSheet, SpendingSheet, TopUpSheet, stackedUnder, type Allowance, type SheetKind } from "./sheets";
 import { Cite, EXTRACT_CELLS, ExtractionCard } from "./extraction";
 import { MentionComposer, MessageText } from "./mentions";
 import {
   ACCOUNT, BALANCE, COLLECTED, COLLECTION_CHOICES, COLLECTION_NAME, EXTRACT_HOLD, EXTRACT_SPENT, LIBRARY, ORIGINAL_COUNT, OTHER_SCREENING,
-  JOB_CAPS, REPLY_CAP, SCREEN_HOLD, SCREEN_ORDER, SCREEN_SPENT, SEARCH_NAME, SETTLED, TIGHT_COUNT, type Decision,
+  JOB_CAPS, SCREEN_HOLD, SCREEN_ORDER, SCREEN_SPENT, SEARCH_NAME, SETTLED, TIGHT_COUNT, type Decision, type Limit,
 } from "./data";
 
 type Card =
@@ -49,10 +49,8 @@ type Turn = UserTurn | AssistantTurn;
 type Choice = "once" | "always" | "no";
 /** A new chat asks before every job; allowing credits starts at the smallest limit that covers the job. */
 const NO_ALLOWANCE: Allowance = { on: false, cap: JOB_CAPS[0] };
-/** A new chat puts no limit on a reply: it runs for as long as the person has credits. A limit turned on starts at the default. */
-const NO_REPLY_LIMIT: ReplyLimit = { on: false, cap: REPLY_CAP };
-/** Where a reply pauses under a limit: nowhere, with the limit off. */
-const capOf = (limit: ReplyLimit) => (limit.on ? limit.cap : null);
+/** A new chat puts no limit on a reply: it runs for as long as the person has credits. */
+const NO_REPLY_LIMIT: Limit = null;
 /** Where the included studies went. */
 type Home = { name: string; count: number };
 type Answer = { id: string; typed?: string };
@@ -127,7 +125,7 @@ class Stopped extends Error {}
 /** A job on its own clock: Stop ends the reply, never the job; only its Cancel does. */
 type Job = { cancelled: boolean; settled: boolean; progress: number; hold: number; spent: number; done: Promise<boolean> };
 /** A reply's own AI use: `cap` is where it pauses, and null is no limit. */
-type Reply = { id: number; spent: number; cap: number | null; paused: boolean };
+type Reply = { id: number; spent: number; cap: Limit; paused: boolean };
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 type OpenSheet = { kind: SheetKind; chat: string; balance?: number; need?: number; purpose?: Ask };
@@ -138,7 +136,7 @@ export function AssistantOverlay() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [allowance, setAllowanceState] = useState<Allowance>(NO_ALLOWANCE);
   // What a reply may spend on its own AI use, and whether new chats start with these settings.
-  const [replyLimit, setReplyLimitState] = useState<ReplyLimit>(NO_REPLY_LIMIT);
+  const [replyCap, setReplyCapState] = useState<Limit>(NO_REPLY_LIMIT);
   const [forNewChats, setForNewChats] = useState(false);
   const [balance, setBalanceState] = useState(BALANCE);
   const [home, setHomeState] = useState<Home>(START_HOME);
@@ -163,7 +161,7 @@ export function AssistantOverlay() {
   const continuations = useRef(new Map<number, { step: number; run: (token: number) => Promise<boolean | void> }>());
   // Read at the gates, so a change mid-step counts.
   const allowanceRef = useRef<Allowance>(NO_ALLOWANCE);
-  const replyLimitRef = useRef<ReplyLimit>(NO_REPLY_LIMIT);
+  const replyCapRef = useRef<Limit>(NO_REPLY_LIMIT);
   const balanceRef = useRef(BALANCE);
   // The script reads where the studies went from here, so a rerun sees the restored value.
   const homeRef = useRef<Home>(START_HOME);
@@ -200,9 +198,9 @@ export function AssistantOverlay() {
     setAllowanceState(value);
   };
   // A new limit applies from the next reply; the running one keeps what it started with.
-  const setReplyLimit = (value: ReplyLimit) => {
-    replyLimitRef.current = value;
-    setReplyLimitState(value);
+  const setReplyCap = (value: Limit) => {
+    replyCapRef.current = value;
+    setReplyCapState(value);
   };
   const setBalance = (value: number) => {
     balanceRef.current = value;
@@ -237,8 +235,8 @@ export function AssistantOverlay() {
       });
       capWait.current = null;
       if (token !== run.current) throw new Stopped();
-      // Allowing more adds the limit as it is now. With the limit turned off since, the reply runs on without one.
-      cap = replyLimitRef.current.on ? cap + replyLimitRef.current.cap : null;
+      // Allowing more adds the limit as it is now. With the limit taken off since, the reply runs on without one.
+      cap = replyCapRef.current === null ? null : cap + replyCapRef.current;
     }
     setReply({ id, spent: current.spent + credits, cap, paused: false });
     charge(credits);
@@ -314,7 +312,7 @@ export function AssistantOverlay() {
     if (choice === "always") {
       const { cap } = allowanceRef.current;
       const needed = Math.max(ask.credits ?? 0, cap ?? 0);
-      setAllowance({ on: true, cap: cap === null ? null : (JOB_CAPS.find((c) => c !== null && c >= needed) ?? null) });
+      setAllowance({ on: true, cap: cap === null ? null : (JOB_CAPS.find((c) => c >= needed) ?? null) });
     }
     return { choice, asked: true };
   };
@@ -570,7 +568,7 @@ export function AssistantOverlay() {
     const token = ++run.current;
     const id = ++ids.current;
     setBusy(true);
-    setReply({ id, spent: 0, cap: capOf(replyLimitRef.current), paused: false });
+    setReply({ id, spent: 0, cap: replyCapRef.current, paused: false });
     setTurns((all) => [...all, { kind: "assistant", id, steps: [], text: "", shown: 0, cards: [] }]);
     try {
       await wait(token, 450);
@@ -640,7 +638,7 @@ export function AssistantOverlay() {
     if (!rest || busy) return;
     const token = ++run.current;
     setBusy(true);
-    setReply({ id, spent: replyRef.current?.id === id ? replyRef.current.spent : 0, cap: capOf(replyLimitRef.current), paused: false });
+    setReply({ id, spent: replyRef.current?.id === id ? replyRef.current.spent : 0, cap: replyCapRef.current, paused: false });
     patch(id, (t) => ({ stopped: false, text: "", shown: 0, steps: t.steps.filter((s) => s.status !== "stopped") }));
     void (async () => {
       try {
@@ -682,7 +680,7 @@ export function AssistantOverlay() {
     // A new chat starts from the person's settings for new chats, or the defaults.
     if (!forNewChats) {
       setAllowance(NO_ALLOWANCE);
-      setReplyLimit(NO_REPLY_LIMIT);
+      setReplyCap(NO_REPLY_LIMIT);
     }
     setBalance(BALANCE);
     setHome(START_HOME);
@@ -807,7 +805,7 @@ export function AssistantOverlay() {
                   onStop={stop}
                   reply={busy ? reply : null}
                   onAllowMore={allowMore}
-                  replyLimit={replyLimit}
+                  replyCap={replyCap}
                   allowance={allowance}
                   onStopAllowance={() => setAllowance({ ...allowanceRef.current, on: false })}
                   onSpending={openSpending}
@@ -826,8 +824,8 @@ export function AssistantOverlay() {
                   ) : sheet.kind === "spending" ? (
                     <SpendingSheet
                       chat={sheet.chat}
-                      replyLimit={replyLimit}
-                      onReplyLimit={setReplyLimit}
+                      replyCap={replyCap}
+                      onReplyCap={setReplyCap}
                       allowance={allowance}
                       onAllowance={setAllowance}
                       forNewChats={forNewChats}
@@ -1340,7 +1338,7 @@ function IconButton({ label, icon, onClick, small }: { label: string; icon: Reac
  * set one, and on its own where they didn't. At a limit the reply pauses here until they
  * allow more.
  */
-function ReplyMeter({ reply, replyLimit, onAllowMore, onSpending }: { reply: Reply; replyLimit: ReplyLimit; onAllowMore: () => void; onSpending: () => void }) {
+function ReplyMeter({ reply, replyCap, onAllowMore, onSpending }: { reply: Reply; replyCap: Limit; onAllowMore: () => void; onSpending: () => void }) {
   // One cell: the meter and the pause cross-fade, so the row never changes size.
   return (
     <div className="grid h-8 items-center text-xs [&>*]:col-start-1 [&>*]:row-start-1">
@@ -1372,7 +1370,7 @@ function ReplyMeter({ reply, replyLimit, onAllowMore, onSpending }: { reply: Rep
         <CirclePause className="size-3.5 text-amber-600 dark:text-amber-400" />
         <span className="whitespace-nowrap font-medium text-amber-700 dark:text-amber-400">Paused at {reply.cap} credits</span>
         <Button size="sm" variant="secondary" className="h-7 rounded-full px-3" onClick={onAllowMore}>
-          {replyLimit.on ? `Allow ${replyLimit.cap} more` : "Carry on"}
+          {replyCap === null ? "Carry on" : `Allow ${replyCap} more`}
         </Button>
         <IconButton small label="Change the limit" icon={<Gauge className="size-3.5" />} onClick={onSpending} />
       </motion.div>
@@ -1394,7 +1392,7 @@ function Footer({
   onStop,
   reply,
   onAllowMore,
-  replyLimit,
+  replyCap,
   allowance,
   onStopAllowance,
   onSpending,
@@ -1415,7 +1413,7 @@ function Footer({
   /** The running reply's own spending, shown while it runs. */
   reply: Reply | null;
   onAllowMore: () => void;
-  replyLimit: ReplyLimit;
+  replyCap: Limit;
   /** Credits allowed for this chat; the chip opens Spending, and its X turns the allowance off. */
   allowance: Allowance;
   onStopAllowance: () => void;
@@ -1440,7 +1438,7 @@ function Footer({
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.25, ease: EASE }}
                 >
-                  <ReplyMeter reply={reply} replyLimit={replyLimit} onAllowMore={onAllowMore} onSpending={onSpending} />
+                  <ReplyMeter reply={reply} replyCap={replyCap} onAllowMore={onAllowMore} onSpending={onSpending} />
                 </motion.div>
               ) : suggestion ? (
                 <motion.button

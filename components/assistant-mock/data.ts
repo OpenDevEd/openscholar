@@ -44,13 +44,15 @@ export const SCREEN_HOLD = 24 * 4.5;
 export const SCREEN_SPENT = 62;
 export const EXTRACT_HOLD = 3 * 4 * 5;
 export const EXTRACT_SPENT = 17;
-/** Credits one reply may spend on its own AI use before it pauses, where a limit is first turned on. */
-export const REPLY_CAP = 15;
-/** The limits a person picks from, per chat. Any other whole number is typed in as their own. */
+/**
+ * A spending limit in credits, the same for a reply and a job: one of the listed ones, the
+ * person's own whole number, or null for no limit.
+ */
+export type Limit = number | null;
+/** The limits listed for what one reply may spend on its own AI use before it pauses, per chat. */
 export const REPLY_CAPS = [10, 15, 25, 50] as const;
-/** What a job may hold without asking once credits are allowed in a chat; null is no limit. */
-export const JOB_CAPS = [100, 250, 1000, null] as const;
-export type JobCap = (typeof JOB_CAPS)[number];
+/** The limits listed for what a job may hold without asking, once credits are allowed in a chat. */
+export const JOB_CAPS = [100, 250, 1000] as const;
 /** What the person's last replies spent on their own AI use, oldest first; made up for the mock. */
 export const RECENT_REPLIES = [4, 6, 3, 11, 5, 17, 7, 9, 3, 13, 6, 22];
 /** Enough to screen, then short of the extraction's hold, so the top-up shows. */
