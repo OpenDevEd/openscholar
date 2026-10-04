@@ -83,6 +83,20 @@ describe("useCursorPage", () => {
     expect(result.current).toMatchObject({ items: ["a", "b"], page: 1, canNext: true });
   });
 
+  it("offers next again on the last page once a row is added after it", () => {
+    server.pages.set("|c1", page(["c", "d"], "c2"));
+    server.pages.set("|c2", page([], "", true));
+    const { result, rerender } = renderHook(() => useCursorPage(query, {}, 2));
+    act(() => result.current.next());
+    act(() => result.current.next());
+    expect(result.current).toMatchObject({ page: 2, canNext: false });
+    server.pages.set("|c2", page(["e"], "c3", true));
+    rerender();
+    expect(result.current).toMatchObject({ items: ["c", "d"], page: 2, canNext: true });
+    act(() => result.current.next());
+    expect(result.current).toMatchObject({ items: ["e"], page: 3, canNext: false });
+  });
+
   it("reads a page again from its start when an earlier read no longer stops where the next one starts", () => {
     // A filtered read stops after a set number of rows; a row deleted inside it moves that stop one row on.
     server.pages.set("|null", page(["a"], "s1"));
