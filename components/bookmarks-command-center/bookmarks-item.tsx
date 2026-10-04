@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { Entry, EntryAction, EntryAside, EntryTile, ENTRY_OPEN, isGrid } from "@/components/command-center/entry";
+import { Entry, EntryAction, EntryAside, EntryTile, ENTRY_OPEN, FullTextToggle, isGrid } from "@/components/command-center/entry";
+import { useFullText } from "@/components/evidence-libraries/configuration/disclosure-button";
 import { cn, createDefaultFilters } from "@/lib/utils";
 import type { ViewMode } from "@/lib/types";
 import { useAppToast } from "@/lib/toast";
@@ -33,6 +34,7 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
   const format = useFormatter();
   const router = useRouter();
   const [editValue, setEditValue] = useState(bookmark.expansion);
+  const expansionText = useFullText<HTMLButtonElement>(`${viewMode}${isEditing}`);
   const grid = isGrid(viewMode);
   const simple = viewMode === "list-simple";
 
@@ -88,8 +90,15 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
     </EntryAside>
   );
 
-  const open = (clamp: string) => (
-    <button type="button" aria-label={`${tb("useInSearchTooltip")}: ${bookmark.name}`} className={cn(ENTRY_OPEN, "font-normal", clamp)} onClick={useInSearch}>
+  // What the bookmark expands to, cut to `clamp` until it is asked for in full.
+  const open = (clamp: string, shape?: string) => (
+    <button
+      ref={expansionText.ref}
+      type="button"
+      aria-label={`${tb("useInSearchTooltip")}: ${bookmark.name}`}
+      className={cn(ENTRY_OPEN, "font-normal", shape, !expansionText.expanded && clamp)}
+      onClick={useInSearch}
+    >
       {bookmark.expansion}
     </button>
   );
@@ -120,7 +129,7 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
           if (event.key === "Escape") cancel();
         }}
         autoFocus
-        className="min-h-24 font-mono text-sm"
+        className="max-h-72 min-h-24 font-mono text-sm"
       />
       <div className="flex gap-2">
         <Button size="sm" onClick={save} disabled={!editValue.trim()}>
@@ -141,14 +150,30 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
             {name}
             {!isEditing && aside}
           </div>
-          {isEditing ? editor : open(viewMode === "grid-2" ? "line-clamp-4" : "line-clamp-3")}
+          {isEditing ? editor : (
+            <>
+              {open(viewMode === "grid-2" ? "line-clamp-4" : "line-clamp-3")}
+              <FullTextToggle text={expansionText} className="-ml-1.5 self-start" />
+            </>
+          )}
         </>
       ) : (
         <>
           {name}
           {isEditing ? editor : (
             <>
-              <span className="min-w-0 flex-1">{open(simple ? "block w-full truncate" : "line-clamp-3")}</span>
+              {simple ? (
+                <>
+                  <span className="min-w-0">{open("truncate", "block w-full")}</span>
+                  <FullTextToggle text={expansionText} iconOnly />
+                  <span className="flex-1" />
+                </>
+              ) : (
+                <div className="min-w-0 flex-1">
+                  {open("line-clamp-3")}
+                  <FullTextToggle text={expansionText} className="-ml-1.5 mt-1 flex" />
+                </div>
+              )}
               {aside}
             </>
           )}

@@ -2,7 +2,7 @@
 
 import { Search } from "@/components/icons";
 import { useTranslations } from "next-intl";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId } from "react";
 import { FilterChips } from "@/components/ui/filter-display";
 import { QueryText } from "@/components/ui/query-text";
 import { getFieldLabel, type FilterT } from "@/lib/filters";
@@ -10,24 +10,13 @@ import { paramsToSearchResult } from "@/lib/search-params";
 import { cn } from "@/lib/utils";
 import type { OpenAlexSourceEntry } from "@/lib/evidence-libraries/configuration/sources";
 import { readOpenAlexSourceSearch } from "@/lib/evidence-libraries/openalex-source-query";
-import { DisclosureButton } from "../disclosure-button";
+import { DisclosureButton, useFullText } from "../disclosure-button";
 
 /** The query cut to three lines, with the full text on request. */
 function QueryLine({ query, scope }: { query: string; scope: string | null }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const queryId = useId();
-  const queryRef = useRef<HTMLSpanElement>(null);
-  const [expanded, setExpanded] = useState(false);
-  const [clipped, setClipped] = useState(false);
-
-  // ResizeObserver: whether the collapsed query is cut off at the row's current width.
-  useEffect(() => {
-    const node = queryRef.current;
-    if (!node || expanded) return;
-    const observer = new ResizeObserver(() => setClipped(node.scrollHeight > node.clientHeight));
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [expanded]);
+  const { ref: queryRef, expanded, clipped, toggle } = useFullText<HTMLSpanElement>();
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -48,7 +37,7 @@ function QueryLine({ query, scope }: { query: string; scope: string | null }) {
           aria-expanded={expanded}
           aria-controls={queryId}
           className="-my-1 ml-0 h-6"
-          onClick={() => setExpanded((value) => !value)}
+          onClick={toggle}
         >
           {t(expanded ? "showLessQuery" : "showFullQuery")}
         </DisclosureButton>

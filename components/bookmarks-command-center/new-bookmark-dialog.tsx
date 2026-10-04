@@ -100,7 +100,7 @@ export function NewBookmarkDialog() {
                   value={expansion}
                   onChange={(event) => setExpansion(event.target.value)}
                   placeholder={tb("expandsToPlaceholder")}
-                  className="min-h-24 font-mono text-sm"
+                  className="max-h-[40dvh] min-h-24 font-mono text-sm"
                   required
                 />
               )}

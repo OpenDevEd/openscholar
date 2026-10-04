@@ -4,8 +4,10 @@
 // a row in the list views, a cell in the grid views.
 
 import type { ComponentProps, ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import type { AppIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { DisclosureButton, type useFullText } from "@/components/evidence-libraries/configuration/disclosure-button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { getIdColor } from "@/lib/format";
 import type { ViewMode } from "@/lib/types";
@@ -67,6 +69,27 @@ export function EntryAside({ meta, className, children }: { meta: ReactNode; cla
       </span>
     </div>
   );
+}
+
+/**
+ * Shows an entry's cut query in full, and cuts it again. It is there only
+ * while there is more to see. `iconOnly` is for the one-line view.
+ */
+export function FullTextToggle({ text, iconOnly = false, className }: { text: Pick<ReturnType<typeof useFullText>, "expanded" | "clipped" | "toggle">; iconOnly?: boolean; className?: string }) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources");
+  if (!text.clipped && !text.expanded) return null;
+  const label = t(text.expanded ? "showLessQuery" : "showFullQuery");
+  const button = (
+    <DisclosureButton
+      aria-expanded={text.expanded}
+      aria-label={iconOnly ? label : undefined}
+      className={cn("relative z-10 ml-0 h-6 shrink-0", iconOnly ? "w-6 px-0" : "px-1.5", className)}
+      onClick={text.toggle}
+    >
+      {iconOnly ? null : label}
+    </DisclosureButton>
+  );
+  return iconOnly ? <TooltipHint label={label}>{button}</TooltipHint> : button;
 }
 
 /** An icon button among an entry's actions. */

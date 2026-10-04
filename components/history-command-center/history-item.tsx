@@ -11,7 +11,8 @@ import type { SearchResult, ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
 import { BookmarkForm } from "@/components/command-center";
-import { Entry, EntryAction, EntryAside, EntryTile, ENTRY_OPEN, isGrid, isRoomy } from "@/components/command-center/entry";
+import { Entry, EntryAction, EntryAside, EntryTile, ENTRY_OPEN, FullTextToggle, isGrid, isRoomy } from "@/components/command-center/entry";
+import { useFullText } from "@/components/evidence-libraries/configuration/disclosure-button";
 import { QueryText } from "@/components/ui/query-text";
 import { FilterChips } from "@/components/ui/filter-display";
 import { languageOptions } from "@/components/language-selector";
@@ -41,6 +42,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
   const [isHistoryWanted, setIsHistoryWanted] = useState(false);
   const history = useSearchHistoryEntries(item, "query", isQueryHistoryOpen || isHistoryWanted);
   const removeSearchResult = useSearchHistoryStore((state) => state.removeSearchResult);
+  const queryText = useFullText<HTMLButtonElement>(viewMode);
 
   const handleCopy = async () => {
     try {
@@ -80,8 +82,9 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
     </EntryTile>
   );
 
-  const open = (clamp: string) => (
-    <button type="button" className={cn(ENTRY_OPEN, clamp)} onClick={openSearch}>
+  // The query, cut to `clamp` until it is asked for in full.
+  const open = (clamp: string, shape?: string) => (
+    <button ref={queryText.ref} type="button" className={cn(ENTRY_OPEN, shape, !queryText.expanded && clamp)} onClick={openSearch}>
       <QueryText query={item.query} />
     </button>
   );
@@ -143,6 +146,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
 
   const chips = (
     <div className="flex flex-wrap items-center gap-1.5 empty:hidden">
+      <FullTextToggle text={queryText} className="-ml-1.5" />
       {versions}
       {languageInfo && (
         <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md bg-secondary px-2 text-xs text-secondary-foreground">
@@ -189,6 +193,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
             {aside()}
           </div>
           {open(roomy ? "line-clamp-3" : "line-clamp-2")}
+          {!roomy && <FullTextToggle text={queryText} className="-ml-1.5 self-start" />}
           {roomy && question}
           {roomy && chips}
         </>
@@ -206,7 +211,8 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
       ) : (
         <>
           {count}
-          <span className="min-w-0">{open("block w-full truncate")}</span>
+          <span className="min-w-0">{open("truncate", "block w-full")}</span>
+          <FullTextToggle text={queryText} iconOnly />
           {versions}
           <span className="flex-1" />
           {aside()}
