@@ -108,6 +108,8 @@ export const RANGE_ENDS = 2;
 export const MAX_FILTER_VALUES = 100;
 /** Questions one screening or extraction asks, and so the answers, scores and keys per paper. */
 export const MAX_QUESTIONS = 50;
+/** Papers one batch AI call answers or translates: a results page holds no more. */
+export const MAX_BATCH_PAPERS = 200;
 /** Star ratings run from one to five. */
 export const MAX_STARS = 5;
 /** OpenAlex lists at most 100 authorships for a work; longer author lists are cut to these. */

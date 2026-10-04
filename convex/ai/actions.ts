@@ -27,6 +27,8 @@ import { internal } from "../_generated/api";
 import { BATCH_LOCK_TTL_MS } from "../lib/locks";
 import { createError } from "../lib/errors";
 import { searchTaskValidator } from "../aiModelConfig/validators";
+import { MAX_BATCH_PAPERS, MAX_QUESTIONS } from "../lib/listCaps";
+import { batchScreeningValidator, batchTranslationsValidator } from "./validators";
 
 export const enhanceSearchQuery = createAIAction(
   {
@@ -141,28 +143,14 @@ export const generateBatchTranslations = action({
     ),
     targetLanguage: v.optional(v.string()),
   },
-  returns: v.object({
-    results: v.record(
-      v.string(),
-      v.object({
-        translatedTitle: v.string(),
-        translatedAbstract: v.string(),
-        noTranslationNeeded: v.boolean(),
-      })
-    ),
-    errors: v.array(
-      v.object({
-        paperId: v.string(),
-        error: v.string(),
-      })
-    ),
-  }),
+  returns: batchTranslationsValidator,
   handler: async (ctx, args) => {
     const { papers, targetLanguage } = args;
 
     if (papers.length === 0) {
       return { results: {}, errors: [] };
     }
+    if (papers.length > MAX_BATCH_PAPERS) throw createError("VALIDATION_ERROR", `Papers are translated ${MAX_BATCH_PAPERS} at a time.`);
 
     // Auth → rate-limit → lock → run → finally release. Same shape
     // as generateBatchScreeningResponses with the translation kind
@@ -243,23 +231,7 @@ export const generateBatchScreeningResponses = action({
     ),
     questions: v.array(v.string()),
   },
-  returns: v.object({
-    results: v.record(
-      v.string(),
-      v.object({
-        responses: v.record(v.string(), v.union(v.boolean(), v.null())),
-        // The confidence in each answer, under the same encoded keys.
-        confidences: v.record(v.string(), v.number()),
-        confidence: v.number(),
-      })
-    ),
-    errors: v.array(
-      v.object({
-        paperId: v.string(),
-        error: v.string(),
-      })
-    ),
-  }),
+  returns: batchScreeningValidator,
   handler: async (ctx, args) => {
     const { papers, questions } = args;
 
@@ -267,6 +239,8 @@ export const generateBatchScreeningResponses = action({
     if (papers.length === 0 || questions.length === 0) {
       return { results: {}, errors: [] };
     }
+    if (papers.length > MAX_BATCH_PAPERS) throw createError("VALIDATION_ERROR", `Papers are screened ${MAX_BATCH_PAPERS} at a time.`);
+    if (questions.length > MAX_QUESTIONS) throw createError("VALIDATION_ERROR", `A screening asks at most ${MAX_QUESTIONS} questions.`);
 
     // Auth → rate-limit → lock → run → finally release.
     // The rate-limit consume happens BEFORE the lock acquire so a
