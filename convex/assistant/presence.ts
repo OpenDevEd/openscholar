@@ -12,9 +12,9 @@ import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { mutation, query } from "../lib/functions";
-import { capped } from "../lib/listCaps";
 import { MAX_ASSISTANT_THREAD_VIEWERS } from "../lib/queryBounds";
 import { requireThread } from "./access";
+import { assistantViewersValidator } from "./validators";
 
 const presence = new Presence<Id<"assistantThreads">, Id<"users">>(components.presence);
 
@@ -38,7 +38,7 @@ export const heartbeat = mutation({
 /** The people in a room, for the browser that holds its token: `heartbeat` hands that out to people who can open the chat. */
 export const list = query({
   args: { roomToken: v.string() },
-  returns: capped(v.array(v.object({ userId: v.string(), online: v.boolean(), lastDisconnected: v.number() })), MAX_ASSISTANT_THREAD_VIEWERS),
+  returns: assistantViewersValidator,
   handler: async (ctx, { roomToken }) =>
     (await presence.list(ctx, roomToken, MAX_ASSISTANT_THREAD_VIEWERS)).map(({ userId, online, lastDisconnected }) => ({ userId, online, lastDisconnected })),
 });

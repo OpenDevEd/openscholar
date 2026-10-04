@@ -13,14 +13,13 @@ import { modelSummary, presetPick } from "../ai/serverModel";
 import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
 import { requireFeature } from "../featureFlags/guard";
 import { createError } from "../lib/errors";
-import { capped } from "../lib/listCaps";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import schema from "../schema";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { accessRows, best, deleteThread, personName, principalOf, principalsOf, requireThread, userPrincipal, type AssistantRole } from "./access";
 import { viewers } from "./presence";
-import { assistantRoleValidator } from "./validators";
+import { ASSISTANT_MEMBERS_SHOWN, assistantMembersValidator, assistantRoleValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
 const TITLE_MAX = 120;
@@ -32,8 +31,6 @@ const LIST_PAGE_MAX = 50;
  */
 const LIST_FILTER_ROWS = 500;
 const LIST_PAGE_BYTES = 2 * 1024 * 1024;
-/** People a chat's row in the list names. */
-const MEMBERS_SHOWN = 3;
 const PREVIEW_MAX = 120;
 
 /** The start of a message, on one line, for the list of chats. */
@@ -71,7 +68,7 @@ const listedValidator = v.object({
   /** A reply is being written in it now. */
   writing: v.boolean(),
   /** The first few people in it besides the reader, those who have it open now first, then its owner. */
-  members: capped(v.array(v.object({ userId: v.id("users"), name: v.string(), here: v.boolean() })), MEMBERS_SHOWN),
+  members: assistantMembersValidator,
   /** The first organization it's shared with, by name. */
   organization: v.optional(v.string()),
 });
@@ -184,7 +181,7 @@ export const listAction = defineUserQuery({
         const people = others
           .flatMap(({ principal, owner }) => (principal.kind === "user" ? [{ userId: principal.userId, owner, here: here.has(principal.userId) }] : []))
           .sort((a, b) => Number(b.here) - Number(a.here) || Number(b.owner) - Number(a.owner))
-          .slice(0, MEMBERS_SHOWN);
+          .slice(0, ASSISTANT_MEMBERS_SHOWN);
         const members = await Promise.all(
           people.map(async ({ userId: memberId, here: isHere }) => {
             const person = await ctx.db.get("users", memberId);
