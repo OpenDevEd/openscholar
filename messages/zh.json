@@ -982,6 +982,7 @@
     "typeToSearchAuthors": "输入作者姓名",
     "authorsUnavailable": "无法加载作者，请重试。",
     "filterByAuthor": "仅显示 {name} 的作品",
+    "authorByName": "任何使用此名称的作者",
     "minCitations": "最少被引次数",
     "anyNumber": "不限",
     "atLeastCitations": "{count, plural, other {至少被引 # 次}}",

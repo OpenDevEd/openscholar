@@ -982,6 +982,7 @@
     "typeToSearchAuthors": "लेखक का नाम लिखें",
     "authorsUnavailable": "लेखक लोड नहीं हो सके। फिर से कोशिश करें।",
     "filterByAuthor": "केवल {name} की रचनाएँ",
+    "authorByName": "इस नाम का कोई भी लेखक",
     "minCitations": "न्यूनतम उद्धरण",
     "anyNumber": "कोई भी संख्या",
     "atLeastCitations": "{count, plural, one {कम से कम # उद्धरण} other {कम से कम # उद्धरण}}",

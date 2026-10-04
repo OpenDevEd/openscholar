@@ -26,6 +26,8 @@ export function OpenAlexLookupFilter({
     search: (query: string) => Promise<Option[] | OpenAlexLimited>;
     useNames: (ids: readonly string[]) => Record<string, string>;
     remember: (names: Record<string, string>) => void;
+    /** An option made from the words typed, for what OpenAlex has no record of. Listed first, so the records load in under it. */
+    typed?: (query: string) => Option | null;
   };
   labels: { label: string; placeholder: string; searchPlaceholder: string; typeToSearch: string; unavailable: string };
 }) {
@@ -38,7 +40,8 @@ export function OpenAlexLookupFilter({
     keepPreviousData: true,
   });
   const savedNames = lookup.useNames(selected);
-  const options = query ? (results.data ?? []) : [];
+  const typed = query ? lookup.typed?.(query) : null;
+  const options = query ? [...(typed ? [typed] : []), ...(results.data ?? [])] : [];
   const names = {
     ...savedNames,
     ...Object.fromEntries(options.map((option) => [option.id, option.name])),

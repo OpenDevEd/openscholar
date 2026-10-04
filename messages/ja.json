@@ -982,6 +982,7 @@
     "typeToSearchAuthors": "著者名を入力してください",
     "authorsUnavailable": "著者を読み込めませんでした。もう一度お試しください。",
     "filterByAuthor": "{name} の著作のみ",
+    "authorByName": "この名前の著者すべて",
     "minCitations": "最小被引用数",
     "anyNumber": "指定なし",
     "atLeastCitations": "{count, plural, other {被引用数#件以上}}",

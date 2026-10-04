@@ -982,6 +982,7 @@
     "typeToSearchAuthors": "Saisissez le nom d'un auteur",
     "authorsUnavailable": "Impossible de charger les auteurs. Réessayez.",
     "filterByAuthor": "Uniquement les travaux de {name}",
+    "authorByName": "Tout auteur portant ce nom",
     "minCitations": "Citations minimum",
     "anyNumber": "Aucun minimum",
     "atLeastCitations": "{count, plural, one {Au moins # citation} other {Au moins # citations}}",
