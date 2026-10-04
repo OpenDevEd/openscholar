@@ -28,7 +28,8 @@ import {
   MoreHorizontal,
   ListChecks,
   SearchX,
-} from "lucide-react";
+  DocumentIcon,
+} from "@/components/icons";
 import posthog from "posthog-js";
 import { PageWrapper } from "@/components/PageWrapper";
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
@@ -145,7 +146,8 @@ export default function JobDetailPage() {
   const [exportMode, setExportMode] = useState<'all' | 'selected'>('all');
   const [openAnswer, setOpenAnswer] = useState<OpenAnswer | null>(null);
   const [mobilePane, setMobilePane] = useState<"results" | "citation">("results");
-  const { expand: expandCitationPanel } = useExtractionCitationPanelStore();
+  // Only the action: reading the whole store would redraw this page each time the panel collapses or expands.
+  const expandCitationPanel = useExtractionCitationPanelStore((state) => state.expand);
 
   const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
   const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
@@ -280,17 +282,14 @@ export default function JobDetailPage() {
     setSelection(newIds);
   }, [setSelection]);
 
-  // Clicking the answer that is already open closes the panel again.
+  // Clicking the answer that is already open closes the panel again. The callback
+  // never changes, so the table's rows are not redrawn for it. With no answer open
+  // the panel and the mobile pane are not shown, so setting them either way is the same.
   const openAnswerPanel = useCallback((answer: OpenAnswer) => {
-    if (openAnswerKey(answer) === openAnswerKey(openAnswer)) {
-      setOpenAnswer(null);
-      setMobilePane("results");
-      return;
-    }
-    setOpenAnswer(answer);
+    setOpenAnswer((current) => (openAnswerKey(answer) === openAnswerKey(current) ? null : answer));
     expandCitationPanel();
     setMobilePane("citation");
-  }, [expandCitationPanel, openAnswer]);
+  }, [expandCitationPanel]);
 
   const handleCancel = async () => {
     try {
@@ -536,7 +535,7 @@ export default function JobDetailPage() {
         rightColumn={
           <PageWrapper>
             <LibraryPageShell
-              icon={FileText}
+              icon={DocumentIcon}
               title={job.name}
               backHref="/extraction"
               backLabel={tError("backToJobs")}
@@ -686,7 +685,7 @@ export default function JobDetailPage() {
               </>}
               intro={<>
           {/* What the job covers and how far it has got. Its name and state sit in the bar. */}
-          <div className="space-y-3 border-b border-border/40 px-4 py-4 md:px-6">
+          <div className="space-y-3 border-b border-border-subtle px-4 py-4 md:px-6">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <FileText className="size-3.5" />
@@ -729,7 +728,7 @@ export default function JobDetailPage() {
               between real DOM siblings, and `empty:hidden` collapses
               the whole strip when every banner is null — so no phantom
               padding remains on clean completed / idle jobs. */}
-          <div className="space-y-3 border-b border-border/40 px-4 py-4 empty:hidden md:px-6">
+          <div className="space-y-3 border-b border-border-subtle px-4 py-4 empty:hidden md:px-6">
             {job.status === "creditsExhausted" && (
               <CreditsExhaustedBanner
                 onResume={handleResume}

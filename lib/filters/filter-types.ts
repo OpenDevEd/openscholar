@@ -3,7 +3,7 @@
  * Shared type definitions for the filter display system
  */
 
-import { LucideIcon } from "lucide-react";
+import { AppIcon } from "@/components/icons";
 import { SearchField } from "@/lib/types/search.types";
 import { DateRange } from "react-day-picker";
 
@@ -31,6 +31,7 @@ export type FilterType =
   | "workLanguage"
   | "institutionType"
   | "funder"
+  | "author"
   | "minCitations"
   | "hasAbstract"
   | "includeRetracted";
@@ -55,7 +56,7 @@ export interface FilterItem {
   /** The type of filter */
   type: FilterType;
   /** Lucide icon component, the same one the sidebar card uses */
-  icon: LucideIcon;
+  icon: AppIcon;
   /** Human-readable label */
   label: string;
   /** Formatted display value */
@@ -105,6 +106,7 @@ export interface FilterParams {
   workLanguages?: string[];
   institutionTypes?: string[];
   funders?: string[];
+  authors?: string[];
   minCitations?: number | null;
   hasAbstract?: boolean;
   includeRetracted?: boolean;

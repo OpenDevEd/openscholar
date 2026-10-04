@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { X } from "lucide-react";
+import { X } from "@/components/icons";
 import { ListSearch } from "@/components/evidence-libraries/list-controls";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";

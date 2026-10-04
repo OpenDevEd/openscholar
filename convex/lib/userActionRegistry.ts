@@ -9,7 +9,8 @@ import { countJobsAction as extractionJobCountAction, listJobsAction as extracti
 import { countJobFailuresAction as extractionFailureCountAction } from "../extraction/queries/failures";
 import { countJobResultsAction as extractionResultCountAction, listJobResultsAction as extractionResultsAction } from "../extraction/queries/results";
 import { grantAction as chatGrantAction, listAccessAction as chatAccessAction, revokeAction as chatRevokeAction } from "../assistant/sharing";
-import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, removeAction as chatRemoveAction, renameAction as chatRenameAction } from "../assistant/threads";
+import { messagesAction as chatMessagesAction } from "../assistant/replies";
+import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, removeAction as chatRemoveAction, renameAction as chatRenameAction, setModelAction as chatModelAction } from "../assistant/threads";
 import { savedPaperAction } from "../library/queries";
 import { estimateAction as screeningEstimateAction } from "../screening/queries";
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
@@ -26,7 +27,9 @@ export const USER_ACTIONS: readonly UserAction[] = [
   chatAction,
   chatCreateAction,
   chatRenameAction,
+  chatModelAction,
   chatRemoveAction,
+  chatMessagesAction,
   chatAccessAction,
   chatGrantAction,
   chatRevokeAction,

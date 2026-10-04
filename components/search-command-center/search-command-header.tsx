@@ -3,7 +3,7 @@
 import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Share2, Check, Download } from "lucide-react";
+import { Share2, Check, Download } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -79,7 +79,7 @@ export function SearchCommandHeader({
     <div
       className={cn(
         "relative flex items-center justify-between gap-4 px-4 py-3",
-        "border-b border-border/40"
+        "border-b border-border-subtle"
       )}
     >
       {/* Mode tabs */}
@@ -138,7 +138,7 @@ export function SearchCommandHeader({
                 className="h-8 w-8 text-muted-foreground hover:text-foreground"
               >
                 {isCopied ? (
-                  <Check className="h-4 w-4 text-green-500" />
+                  <Check className="h-4 w-4 text-success" />
                 ) : (
                   <Share2 className="h-4 w-4" />
                 )}

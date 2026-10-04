@@ -2,7 +2,7 @@
 "use no memo"; // Sync effect setCurrentQuery(urlQuery) for store; try/finally in handlers
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Search, Wand2, Loader2 } from "lucide-react";
+import { Search, Wand2, Loader2 } from "@/components/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { Button } from "@/components/ui/button";
@@ -31,10 +31,9 @@ import posthog from "posthog-js";
 interface SearchModeProps {
   isLoading?: boolean;
   isValidating?: boolean;
-  allowEmpty?: boolean;
 }
 
-export function SearchMode({ isLoading, isValidating, allowEmpty = false }: SearchModeProps) {
+export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const toast = useAppToast();
   const t = useTranslations("searchCommand");
   const tc = useTranslations("common");
@@ -104,11 +103,10 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
   const handleSearchSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      if (search && (allowEmpty || localInputValue.trim())) {
-        search.setQuery(localInputValue);
-      }
+      // No keywords is a search too: every work the filters leave, newest first.
+      search?.setQuery(localInputValue);
     },
-    [search, localInputValue, allowEmpty]
+    [search, localInputValue]
   );
 
   // Handle research question submit
@@ -313,7 +311,7 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
               <Button
                 type="submit"
                 size="sm"
-                disabled={isFormDisabled || (!allowEmpty && !localInputValue.trim())}
+                disabled={isFormDisabled}
                 className="px-3"
               >
                 <>

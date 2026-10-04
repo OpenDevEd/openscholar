@@ -201,7 +201,6 @@ export const COUNTRIES: Record<string, string> = {
 	NA: 'Namibia',
 	NP: 'Nepal',
 	NL: 'Netherlands',
-	AN: 'Netherlands Antilles',
 	NC: 'New Caledonia',
 	NZ: 'New Zealand',
 	NI: 'Nicaragua',
@@ -412,7 +411,6 @@ export const COUNTRY_HIERARCHY: Entry = {
 						{ label: "JM" }, // Jamaica
 						{ label: "MQ" }, // Martinique
 						{ label: "MS" }, // Montserrat
-						{ label: "AN" }, // Netherlands Antilles (Added - Dissolved)
 						{ label: "PR" }, // Puerto Rico
 						{ label: "BL" }, // Saint Barthelemy
 						{ label: "KN" }, // Saint Kitts and Nevis
@@ -787,8 +785,8 @@ export function getCountryCodesForRegions(regionIds: string[], bypassLimit = fal
 
 /** Open Access status badge color classes -- shared between search and library components */
 export const OA_STATUS_COLORS: Record<string, string> = {
-  gold: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-  green: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-  bronze: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-  hybrid: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+  gold: "tint-amber-500",
+  green: "tint-emerald-500",
+  bronze: "tint-orange-500",
+  hybrid: "tint-blue-500",
 };

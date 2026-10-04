@@ -88,7 +88,7 @@ vi.mock("motion/react", () => ({
   useReducedMotion: () => true,
 }));
 
-vi.mock("lucide-react", () => ({
+vi.mock("@/components/icons", () => ({
   Expand: () => null,
   Minimize2: () => null,
   Loader2: () => null,
@@ -170,6 +170,7 @@ vi.mock("@/lib/search", () => ({
       wlang: [],
       itype: [],
       funder: [],
+      author: [],
       mincite: null,
       abs: false,
       retracted: false,

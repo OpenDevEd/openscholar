@@ -9,7 +9,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { Command as CommandPrimitive } from "cmdk";
-import { ArrowLeft, ArrowUpRight, Check, Search } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, Search } from "@/components/icons";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
@@ -65,7 +65,7 @@ function Stats({ model }: { model: CatalogModel | undefined }) {
       <span className={cn(CONTEXT_CELL, "text-xs tabular-nums text-muted-foreground")}>{contextLabel(model?.contextLength)}</span>
       <span className="text-right text-xs tabular-nums text-muted-foreground">
         {!model ? null : free ? (
-          <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 font-medium text-emerald-600 dark:text-emerald-400">{t("free")}</span>
+          <span className="rounded-full bg-success/15 px-1.5 py-0.5 font-medium ink-success">{t("free")}</span>
         ) : (
           priceLabel(model.inputPricePerMillion, model.outputPricePerMillion)
         )}
@@ -131,7 +131,7 @@ function EffortStep({
                 type="button"
                 aria-label={t("back")}
                 onClick={onBack}
-                className="-my-1 -ml-1 flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-background/70"
+                className="-my-1 -ml-1 flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-background"
               >
                 <ArrowLeft className="size-4" />
               </button>
@@ -144,7 +144,7 @@ function EffortStep({
         </motion.div>
       </div>
       <motion.div
-        className="px-4 pb-1.5 text-[11px] font-medium text-muted-foreground"
+        className="px-4 pb-1.5 text-2xs font-medium text-muted-foreground"
         initial={reduce ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: reduce ? 0 : 0.12, duration: 0.25 }}
@@ -183,7 +183,7 @@ function EffortStep({
             <EffortMeter levels={levels} level={level} />
             <span className="font-medium">{tm(`efforts.${level}`)}</span>
             {level === row.defaultEffort ? (
-              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{t("default")}</span>
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-2xs text-muted-foreground">{t("default")}</span>
             ) : null}
             <Check className={cn("ml-auto size-4 text-primary", level === chosen ? "opacity-100" : "opacity-0")} />
           </motion.button>
@@ -340,9 +340,9 @@ export function ModelPicker({
         {/* Uncontrolled on purpose: a controlled value makes cmdk scroll to every row the pointer passes. */}
         <CommandPrimitive className="flex min-h-0 flex-1 flex-col" defaultValue={current?.id}>
           <div className="space-y-2 p-2">
-            <label className="flex h-10 items-center gap-2.5 rounded-xl border border-border/60 bg-muted/40 px-3">
+            <label className="flex h-10 items-center gap-2.5 rounded-xl border border-border-subtle bg-inset px-3">
               <Search className="size-4 shrink-0 text-muted-foreground" />
-              <CommandPrimitive.Input ref={search} placeholder={tm("searchModels")} className="h-full w-full bg-transparent text-sm outline-hidden placeholder:text-muted-foreground" />
+              <CommandPrimitive.Input ref={search} placeholder={tm("searchModels")} className="h-full w-full bg-transparent text-sm outline-hidden placeholder:text-subtle-foreground" />
             </label>
             {filters.length > 0 ? (
               <div
@@ -385,7 +385,7 @@ export function ModelPicker({
               </div>
             ) : null}
           </div>
-          <div className={cn(GRID, "border-y border-border/50 bg-muted/30 px-4 py-1.5 text-[11px] font-medium text-muted-foreground")}>
+          <div className={cn(GRID, "border-y border-border-subtle bg-inset px-4 py-1.5 text-2xs font-medium text-muted-foreground")}>
             <span>{t("model")}</span>
             <a
               href="https://artificialanalysis.ai/methodology/intelligence-benchmarking"
@@ -435,7 +435,7 @@ export function ModelPicker({
                               return <Brand key={m.id} className="size-3 shrink-0" />;
                             })}
                             <span className="truncate">{models.map((m) => stripProviderPrefix(m.name)).join(", ")}</span>
-                            {onlyEffort ? <span className="shrink-0 rounded-full bg-muted px-1.5 text-[11px]">{tm(`efforts.${onlyEffort}`)}</span> : null}
+                            {onlyEffort ? <span className="shrink-0 rounded-full bg-muted px-1.5 text-2xs">{tm(`efforts.${onlyEffort}`)}</span> : null}
                           </span>
                         </span>
                       </span>
@@ -491,7 +491,7 @@ export function ModelPicker({
           {/* Built from the current pick, which the caller already has, so it's there on the first frame. */}
           {efforts && current?.reasoningEfforts?.length ? (
             // The current model's effort, changed in place without closing.
-            <div className="flex items-center justify-between gap-3 border-t border-border/50 py-2 pl-4 pr-2">
+            <div className="flex items-center justify-between gap-3 border-t border-border-subtle py-2 pl-4 pr-2">
               <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">{tm("effort")}</span>
               <Segmented
                 label={tm("effort")}

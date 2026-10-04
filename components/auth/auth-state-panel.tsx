@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion, type Variants } from "motion/react";
-import { LogIn, RefreshCw, ShieldAlert } from "lucide-react";
+import { LogIn, RefreshCw, ShieldAlert } from "@/components/icons";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -100,7 +100,7 @@ const REDUCED_SPINNER_VARIANTS: Variants = {
 const ICON_TREATMENT: Record<AuthStateVariant, string> = {
   loading: "bg-primary/10 text-primary",
   sign_in_required: "bg-primary/12 text-primary",
-  no_access: "bg-amber-500/14 text-amber-700 dark:text-amber-300",
+  no_access: "bg-warning/14 ink-warning",
   sync_error_retry: "bg-primary/14 text-primary",
 };
 
@@ -169,7 +169,7 @@ export function AuthStatePanel({
       >
         <div className="relative mx-auto flex items-center justify-center">
           <div className="absolute -z-10 h-24 w-24 rounded-full bg-primary/16 blur-2xl" />
-          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-primary/25 bg-card/95 shadow-lg">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-primary/25 bg-card shadow-lg">
             <Spinner className="h-6 w-6 text-primary" aria-hidden />
           </div>
           <span className="sr-only">{resolvedTitle || t("loadingSession")}</span>
@@ -202,14 +202,14 @@ export function AuthStatePanel({
       exit="exit"
       aria-live="polite"
     >
-      <div className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-border/60 bg-card/95 px-6 py-8 text-center shadow-lg sm:px-8">
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(70%_55%_at_50%_-5%,oklch(0.7_0.17_54_/_0.12),transparent_70%)]" />
+      <div className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-border-subtle bg-card px-6 py-8 text-center shadow-lg sm:px-8">
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(70%_55%_at_50%_-5%,color-mix(in_oklab,var(--primary)_12%,transparent),transparent_70%)]" />
         <div className="pointer-events-none absolute -left-20 top-10 -z-10 h-40 w-40 rounded-full bg-primary/8 blur-3xl" />
         <div className="pointer-events-none absolute -right-20 bottom-8 -z-10 h-40 w-40 rounded-full bg-primary/8 blur-3xl" />
 
         <motion.div
           className={cn(
-            "mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-border/50",
+            "mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-border-subtle",
             ICON_TREATMENT[variant],
           )}
           variants={itemVariants}
@@ -218,14 +218,14 @@ export function AuthStatePanel({
         </motion.div>
 
         <motion.h2
-          className="mx-auto mb-2 max-w-[24ch] text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]"
+          className="mx-auto mb-2 max-w-[24ch] text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl"
           variants={itemVariants}
         >
           {resolvedTitle}
         </motion.h2>
 
         <motion.p
-          className="mx-auto mb-7 max-w-[48ch] text-pretty text-[0.95rem] leading-6 text-muted-foreground"
+          className="mx-auto mb-7 max-w-[48ch] text-pretty text-base leading-6 text-muted-foreground"
           variants={itemVariants}
         >
           {resolvedDescription}

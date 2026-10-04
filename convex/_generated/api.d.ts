@@ -25,8 +25,11 @@ import type * as apiKeys_actions from "../apiKeys/actions.js";
 import type * as apiKeys_mutations from "../apiKeys/mutations.js";
 import type * as apiKeys_queries from "../apiKeys/queries.js";
 import type * as assistant_access from "../assistant/access.js";
+import type * as assistant_agent from "../assistant/agent.js";
+import type * as assistant_replies from "../assistant/replies.js";
 import type * as assistant_sharing from "../assistant/sharing.js";
 import type * as assistant_threads from "../assistant/threads.js";
+import type * as assistant_turn from "../assistant/turn.js";
 import type * as assistant_validators from "../assistant/validators.js";
 import type * as authors_access from "../authors/access.js";
 import type * as authors_invitationActions from "../authors/invitationActions.js";
@@ -116,6 +119,7 @@ import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutation
 import type * as evidenceLibraries_oauthClientSync from "../evidenceLibraries/oauthClientSync.js";
 import type * as evidenceLibraries_oauthClients from "../evidenceLibraries/oauthClients.js";
 import type * as evidenceLibraries_openAlexSourceKey from "../evidenceLibraries/openAlexSourceKey.js";
+import type * as evidenceLibraries_operationKinds from "../evidenceLibraries/operationKinds.js";
 import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
 import type * as evidenceLibraries_platformMail from "../evidenceLibraries/platformMail.js";
@@ -278,6 +282,7 @@ import type * as migrations_moveSearchHistory from "../migrations/moveSearchHist
 import type * as migrations_pagedAccountLists from "../migrations/pagedAccountLists.js";
 import type * as migrations_pagedCollections from "../migrations/pagedCollections.js";
 import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
+import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
 import type * as migrations_pagedRecords from "../migrations/pagedRecords.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_removeOrphanLibraryAccess from "../migrations/removeOrphanLibraryAccess.js";
@@ -351,6 +356,7 @@ import type * as zotero_mutations from "../zotero/mutations.js";
 import type * as zotero_queries from "../zotero/queries.js";
 import type * as zotero_runtimeReadActions from "../zotero/runtimeReadActions.js";
 import type * as zotero_runtimeReadClient from "../zotero/runtimeReadClient.js";
+import type * as zotero_runtimeReadValidators from "../zotero/runtimeReadValidators.js";
 import type * as zotero_runtimeReads from "../zotero/runtimeReads.js";
 import type * as zotero_sourceEntry from "../zotero/sourceEntry.js";
 
@@ -378,8 +384,11 @@ declare const fullApi: ApiFromModules<{
   "apiKeys/mutations": typeof apiKeys_mutations;
   "apiKeys/queries": typeof apiKeys_queries;
   "assistant/access": typeof assistant_access;
+  "assistant/agent": typeof assistant_agent;
+  "assistant/replies": typeof assistant_replies;
   "assistant/sharing": typeof assistant_sharing;
   "assistant/threads": typeof assistant_threads;
+  "assistant/turn": typeof assistant_turn;
   "assistant/validators": typeof assistant_validators;
   "authors/access": typeof authors_access;
   "authors/invitationActions": typeof authors_invitationActions;
@@ -469,6 +478,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/oauthClientSync": typeof evidenceLibraries_oauthClientSync;
   "evidenceLibraries/oauthClients": typeof evidenceLibraries_oauthClients;
   "evidenceLibraries/openAlexSourceKey": typeof evidenceLibraries_openAlexSourceKey;
+  "evidenceLibraries/operationKinds": typeof evidenceLibraries_operationKinds;
   "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
   "evidenceLibraries/platformMail": typeof evidenceLibraries_platformMail;
@@ -631,6 +641,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedAccountLists": typeof migrations_pagedAccountLists;
   "migrations/pagedCollections": typeof migrations_pagedCollections;
   "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
+  "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
   "migrations/pagedRecords": typeof migrations_pagedRecords;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/removeOrphanLibraryAccess": typeof migrations_removeOrphanLibraryAccess;
@@ -704,6 +715,7 @@ declare const fullApi: ApiFromModules<{
   "zotero/queries": typeof zotero_queries;
   "zotero/runtimeReadActions": typeof zotero_runtimeReadActions;
   "zotero/runtimeReadClient": typeof zotero_runtimeReadClient;
+  "zotero/runtimeReadValidators": typeof zotero_runtimeReadValidators;
   "zotero/runtimeReads": typeof zotero_runtimeReads;
   "zotero/sourceEntry": typeof zotero_sourceEntry;
 }>;

@@ -14,6 +14,7 @@ import {
   createSerializer,
 } from 'nuqs';
 import { encodeRegions, decodeRegions } from './regions';
+import { authorFilterValue } from '../openalex/author-filter';
 
 /**
  * Custom parser for region arrays with smart encoding
@@ -53,11 +54,14 @@ export const parseAsRegions = createParser({
  * - wlang: languages the works are written in
  * - itype: types of the authors' institutions
  * - funder: OpenAlex funder ids
+ * - author: OpenAlex author ids, or author names OpenAlex has no record for
  * - mincite: minimum number of citations
  * - abs: only works with an abstract
  * - retracted: include retracted works, which are left out by default
  * - lang: language filter
  */
+const parseAsAuthor = createParser({ parse: authorFilterValue, serialize: String });
+
 export const searchParamsParsers = {
   // Core search
   q: parseAsString.withDefault(''),
@@ -99,6 +103,7 @@ export const searchParamsParsers = {
   wlang: parseAsArrayOf(parseAsString).withDefault([]),
   itype: parseAsArrayOf(parseAsString).withDefault([]),
   funder: parseAsArrayOf(parseAsString).withDefault([]),
+  author: parseAsArrayOf(parseAsAuthor).withDefault([]),
   mincite: parseAsInteger,
   abs: parseAsBoolean.withDefault(false),
   retracted: parseAsBoolean.withDefault(false),
@@ -136,6 +141,7 @@ export type ParsedSearchParams = {
   wlang: string[];
   itype: string[];
   funder: string[];
+  author: string[];
   mincite: number | null;
   abs: boolean;
   retracted: boolean;
@@ -204,6 +210,7 @@ export function parseSearchParamsFromUrl(
     wlang: parseListParam(searchParams, 'wlang'),
     itype: parseListParam(searchParams, 'itype'),
     funder: parseListParam(searchParams, 'funder'),
+    author: parseListParam(searchParams, 'author').map(authorFilterValue).filter((author) => author !== null),
     mincite: parseIntegerParam(searchParams, 'mincite', null),
     abs: searchParams.get('abs') === 'true',
     retracted: searchParams.get('retracted') === 'true',
@@ -255,6 +262,7 @@ export const DEFAULT_SEARCH_PARAMS: ParsedSearchParams = {
   wlang: [],
   itype: [],
   funder: [],
+  author: [],
   mincite: null,
   abs: false,
   retracted: false,

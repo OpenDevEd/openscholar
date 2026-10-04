@@ -1,12 +1,13 @@
 "use client";
 
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import { Star } from "lucide-react";
+import { Star } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { getAllFilterItems, type FilterItem, type FilterParams, type FilterT } from "@/lib/filters";
 import { getRegionDisplayName } from "@/lib/i18n/region-names";
 import { useFunderNames } from "@/lib/openalex/use-funder-names";
+import { useAuthorNames } from "@/lib/openalex/use-author-names";
 import { topicName } from "@/lib/topics/search";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +36,7 @@ export function FilterChips({
     (filters.researchAreas ?? []).map((id) => [id, topicName(id) ?? id]),
   );
   const funders = useFunderNames(filters.funders ?? []);
+  const authors = useAuthorNames(filters.authors ?? []);
   const languageNames = new Intl.DisplayNames([locale], { type: "language" });
   const items = getAllFilterItems(
     filters,
@@ -43,6 +45,7 @@ export function FilterChips({
     {
       researchAreas,
       funders,
+      authors,
       place: (id) => getRegionDisplayName(id, locale, (key) => (t as FilterT)(key)),
       language: (code) => languageNames.of(code) ?? code,
     },
@@ -71,7 +74,7 @@ function FilterChip({ item, compact, singleLine }: { item: FilterItem; compact: 
       className={cn(
         "items-start gap-1.5 rounded-md font-normal",
         singleLine ? "whitespace-nowrap" : "max-w-full whitespace-normal",
-        compact ? "px-1.5 py-0.5 text-[10px] [&>svg]:size-2.5" : "py-1",
+        compact ? "px-1.5 py-0.5 text-3xs [&>svg]:size-2.5" : "py-1",
       )}
     >
       <Icon className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
@@ -98,7 +101,7 @@ function RatingStars({ range: [min, max], label }: { range: [number, number]; la
           key={star}
           className={cn(
             "size-2.5",
-            star >= min && star <= max ? "fill-amber-500 text-amber-500" : "text-muted-foreground/30",
+            star >= min && star <= max ? "fill-rating text-rating" : "text-muted-foreground/30",
           )}
         />
       ))}

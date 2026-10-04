@@ -1,6 +1,5 @@
 "use client";
 
-import { Palette } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +24,7 @@ import { Field } from "../section-card";
 import { ChoiceCards, ColourField, FieldGroup, UploadField } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { Disclosure } from "../disclosure-button";
+import { PaletteIcon } from "@/components/icons";
 
 const ADVANCED_COLOURS = [
   "backgroundDark",
@@ -68,7 +68,7 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
   return (
     <SectionShell
       sectionKey="theme"
-      icon={Palette}
+      icon={PaletteIcon}
       description={t("description")}
       draft={draft}
       saved={saved}
@@ -125,7 +125,7 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
             onChange={(body) => set("fonts", { ...theme.fonts, body })}
           />
         </div>
-        <div className="rounded-lg border border-border/50 bg-background p-4" data-font-sample>
+        <div className="rounded-lg border border-border-subtle bg-background p-4" data-font-sample>
           <p className="text-lg font-semibold" style={{ fontFamily: fontStack(theme.fonts.heading) }}>
             {draft.identity.name || t("sampleHeading")}
           </p>
@@ -198,7 +198,7 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
                     {[p.colors.accent, p.colors.tertiary, p.colors.link].map((c) => (
                       <span
                         key={c}
-                        className="size-3 rounded-sm border border-border/40"
+                        className="size-3 rounded-sm border border-border-subtle"
                         style={{ background: c }}
                       />
                     ))}
@@ -236,10 +236,10 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
         open={advancedOpen}
         onOpenChange={setAdvancedOpen}
         label={t("advanced")}
-        className="border-t border-border/50 pt-5"
+        className="border-t border-border-subtle pt-5"
       >
         <div className="pt-3">
-          <div className="grid gap-4 rounded-lg bg-muted/30 p-3 sm:grid-cols-2">
+          <div className="grid gap-4 rounded-lg bg-inset p-3 sm:grid-cols-2">
             {ADVANCED_COLOURS.map((key) => (
               <ColourField
                 key={key}
@@ -293,13 +293,13 @@ function NavbarPreview({ layout }: { layout: "small" | "wide" }) {
     <span
       aria-hidden
       data-layout-preview={layout}
-      className="block h-16 w-full overflow-hidden rounded-md border border-border/50 bg-muted/40"
+      className="block h-16 w-full overflow-hidden rounded-md border border-border-subtle bg-inset"
     >
       <span
         className={
           layout === "small"
-            ? "mx-3 mt-2 flex h-6 items-center gap-2 rounded-md border border-border/60 bg-background px-2 shadow-xs"
-            : "flex h-7 items-center gap-2 border-b border-border/60 bg-background px-3"
+            ? "mx-3 mt-2 flex h-6 items-center gap-2 rounded-md border border-border-subtle bg-background px-2 shadow-xs"
+            : "flex h-7 items-center gap-2 border-b border-border-subtle bg-background px-3"
         }
       >
         <span className="h-2 w-10 rounded-sm bg-foreground/70" />

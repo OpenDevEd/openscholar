@@ -1,12 +1,12 @@
 "use client";
 
-import { Layers, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 import { cn } from "@/lib/utils";
 import { PanelHeader } from "./configuration/panel-header";
 import { ListLoading } from "./list-controls";
+import { EvidenceLibrariesIcon, type AppIcon } from "@/components/icons";
 
 /**
  * The page frame shared by the library, topic, author, history and bookmark
@@ -17,7 +17,7 @@ import { ListLoading } from "./list-controls";
  * card's toolbar instead: filters first, then tabs.
  */
 export function LibraryPageShell({
-  icon = Layers,
+  icon = EvidenceLibrariesIcon,
   image,
   title,
   backHref,
@@ -31,7 +31,7 @@ export function LibraryPageShell({
   allowOverflow = false,
   children,
 }: {
-  icon?: LucideIcon | null;
+  icon?: AppIcon | null;
   image?: string | null;
   title: string;
   backHref?: string;
@@ -74,10 +74,10 @@ export function LibraryPageShell({
 
       <div className="container mx-auto max-w-6xl p-4 sm:p-6">
         <CommandCenterContainer allowOverflow={allowOverflow}>
-          {intro ? <div className="border-b border-border/50">{intro}</div> : null}
+          {intro ? <div className="border-b border-border-subtle">{intro}</div> : null}
           {tabs || cardFilters ? (
             <Collapse className={cardToolbar}>
-              <div className="flex flex-wrap items-center gap-x-3 border-b border-border/50 p-4">
+              <div className="flex flex-wrap items-center gap-x-3 border-b border-border-subtle p-4">
                 {tabs ? <div className="-mx-1 max-w-full overflow-x-auto px-1 @3xl:hidden">{tabs}</div> : null}
                 {cardFilters ? (
                   <Collapse className={cn("w-full min-w-0 @lg:w-auto @lg:flex-1", filters ? OPEN : CLOSED)}>

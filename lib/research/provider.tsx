@@ -56,5 +56,5 @@ export function useResearchStatus() {
 export function ResearchLoading({ children }: { children: ReactNode }) {
   const { ready, error, retry } = useResearchStatus();
   if (error && !ready) return <AuthStatePanel variant="sync_error_retry" onRetry={retry} />;
-  return ready ? children : <div className="flex min-h-screen items-center justify-center" aria-busy="true"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900" /></div>;
+  return ready ? children : <div className="flex min-h-screen items-center justify-center" aria-busy="true"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-foreground" /></div>;
 }

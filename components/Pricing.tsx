@@ -24,7 +24,7 @@ import {
   CreditCard,
   BookOpen,
   Sparkles,
-} from "lucide-react";
+} from "@/components/icons";
 import { useAppToast } from "@/lib/toast";
 import { toast as sonnerToast } from "sonner";
 import {
@@ -493,7 +493,7 @@ export function Pricing() {
 
       {/* Plans Grid */}
       {hasPendingDowngrade && account?.changesAt !== undefined && (
-        <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-700 flex items-center justify-between gap-3">
+        <div className="rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm ink-info flex items-center justify-between gap-3">
           <span>
             {t("downgradeScheduledTo")}{" "}
             <span className="font-semibold">{planName(scheduledPlan!)}</span>{" "}
@@ -541,16 +541,16 @@ export function Pricing() {
               transition={{ ...subtleSpring, delay: index * 0.1 }}
               className={cn(
                 "relative rounded-xl overflow-hidden flex flex-col",
-                "bg-background/90",
+                "bg-card",
                 "border",
                 isCurrent && "border-primary/50 bg-primary/[0.02]",
-                !isCurrent && "border-border/50",
+                !isCurrent && "border-border-subtle",
               )}
             >
               {/* Current Plan Badge */}
               {isCurrent && (
-                <div className="bg-green-500/10 border-b border-green-500/20 px-4 py-2 flex items-center justify-center">
-                  <span data-testid="pricing-current-badge" className="text-xs font-semibold text-green-600 uppercase tracking-wider">
+                <div className="bg-success/10 border-b border-success/20 px-4 py-2 flex items-center justify-center">
+                  <span data-testid="pricing-current-badge" className="text-xs font-semibold ink-success uppercase tracking-wider">
                     {tc("currentPlan")}
                   </span>
                 </div>
@@ -566,15 +566,15 @@ export function Pricing() {
               )}
 
               {isScheduledTarget && !isCurrent && (
-                <div className="bg-blue-500/10 border-b border-blue-500/20 px-4 py-2 flex items-center justify-center">
-                  <span data-testid="pricing-scheduled-badge" className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
+                <div className="bg-info/10 border-b border-info/20 px-4 py-2 flex items-center justify-center">
+                  <span data-testid="pricing-scheduled-badge" className="text-xs font-semibold ink-info uppercase tracking-wider">
                     Scheduled
                   </span>
                 </div>
               )}
 
               {/* Header */}
-              <div className="p-6 border-b border-border/40">
+              <div className="p-6 border-b border-border-subtle">
                 <div className="flex items-center gap-3 mb-4">
                   <Icon className="w-8 h-8 text-primary" />
                   <h3 className="text-2xl font-bold">{plan.name}</h3>

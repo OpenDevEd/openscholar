@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { LogoMark } from "@/components/logo";
 import { useConvex, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { type RefObject, useRef } from "react";
@@ -26,7 +26,7 @@ const COLLECTION_PICKER_PAGE_SIZE = 50;
 
 /** OpenScholar's own icon, as the logo shows it. */
 export function CollectionSourceIcon() {
-  return <Image src="/icon.svg" alt="" width={16} height={16} className="size-4" />;
+  return <LogoMark className="size-4" />;
 }
 
 /**

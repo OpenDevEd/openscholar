@@ -39,6 +39,7 @@ const SEARCH_PARAM_KEYS: SearchParamKey[] = [
   "wlang",
   "itype",
   "funder",
+  "author",
   "mincite",
   "abs",
   "retracted",
@@ -67,6 +68,7 @@ export const SEARCH_FETCH_PARAM_KEYS: SearchParamKey[] = [
   "wlang",
   "itype",
   "funder",
+  "author",
   "mincite",
   "abs",
   "retracted",
@@ -107,6 +109,7 @@ function getActiveFilterKeys(params: SearchParams): string[] {
   if (params.wlang.length > 0) activeKeys.push("work_languages");
   if (params.itype.length > 0) activeKeys.push("institution_types");
   if (params.funder.length > 0) activeKeys.push("funders");
+  if (params.author.length > 0) activeKeys.push("authors");
   if (params.mincite !== null) activeKeys.push("min_citations");
   if (params.abs) activeKeys.push("has_abstract");
   if (params.retracted) activeKeys.push("include_retracted");
@@ -150,6 +153,7 @@ export interface SearchFilterSnapshot {
   work_languages: string[];
   institution_types: string[];
   funders: string[];
+  authors: string[];
   min_citations: number | null;
   has_abstract: boolean;
   include_retracted: boolean;
@@ -256,6 +260,7 @@ export function buildSearchFilterSnapshot(
     work_languages: params.wlang,
     institution_types: params.itype,
     funders: params.funder,
+    authors: params.author,
     min_citations: params.mincite,
     has_abstract: params.abs,
     include_retracted: params.retracted,
@@ -274,7 +279,7 @@ export function getChangedParamKeys(
 
   const changed: SearchParamKey[] = [];
   for (const key of SEARCH_PARAM_KEYS) {
-    if (key === "reg" || key === "focus" || key === "area" || key === "sdg" || key === "type" || key === "wlang" || key === "itype" || key === "funder") {
+    if (key === "reg" || key === "focus" || key === "area" || key === "sdg" || key === "type" || key === "wlang" || key === "itype" || key === "funder" || key === "author") {
       if (!arraysEqualStable(previous[key], current[key])) {
         changed.push(key);
       }

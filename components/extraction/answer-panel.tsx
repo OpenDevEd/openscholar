@@ -39,7 +39,7 @@ export function AnswerPanel({ answer }: { answer: OpenAnswer | null }) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       {/* With a citation below, the details share the height with the PDF. */}
-      <section className={cn("shrink-0 space-y-3 overflow-y-auto rounded-xl border border-border/60 bg-card p-4", citation && "max-h-[50%]")}>
+      <section className={cn("shrink-0 space-y-3 overflow-y-auto rounded-xl border border-border-subtle bg-card p-4", citation && "max-h-[50%]")}>
         {/* Room on the right for the panel's collapse button. */}
         <div className="space-y-1 pr-10">
           <p className="text-sm font-medium leading-snug">{paper.title}</p>
@@ -48,7 +48,7 @@ export function AnswerPanel({ answer }: { answer: OpenAnswer | null }) {
         <ResultAnswer result={result} type={question.type} clamp="" />
         <ResultMeta result={result} />
         {result?.reasoning ? (
-          <div className="space-y-1 border-t border-border/50 pt-3">
+          <div className="space-y-1 border-t border-border-subtle pt-3">
             <p className="text-xs font-medium">{t("common.reasoning")}</p>
             <p className="text-xs leading-relaxed text-muted-foreground">{result.reasoning}</p>
           </div>

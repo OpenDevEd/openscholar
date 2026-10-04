@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR, { preload } from "swr";
-import { Check, Copy, Quote } from "lucide-react";
+import { Check, Copy, Quote } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Popover,

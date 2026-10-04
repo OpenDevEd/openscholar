@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Coins } from "lucide-react";
+import { Coins } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import type { ExtractionCostEstimate } from "@/lib/extraction/cost-estimate";
 
@@ -49,7 +49,7 @@ export function ExtractionPreflightBanner({
       role="status"
       data-preflight-ok={ok ? "true" : "false"}
       className={`flex items-center justify-between rounded-md px-3 py-2 text-xs ${
-        ok ? "bg-muted/50" : "bg-destructive/10"
+        ok ? "bg-inset" : "bg-destructive/10"
       }`}
     >
       <div className="flex items-center gap-3">
@@ -82,7 +82,7 @@ export function ExtractionPreflightBanner({
         <Button
           size="sm"
           variant="outline"
-          className="h-6 shrink-0 gap-1.5 px-2 text-[11px] font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all"
+          className="h-6 shrink-0 gap-1.5 px-2 text-2xs font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all"
           onClick={() => {
             onBeforeNavigate?.();
             router.push("/settings/billing#topup-section");

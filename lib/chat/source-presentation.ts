@@ -1,5 +1,5 @@
 import type { ComponentType, CSSProperties } from "react";
-import { CircleHelp, Layers } from "lucide-react";
+import { CircleHelp, Layers } from "@/components/icons";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import type { ChatSourceType } from "@/lib/chat/source-type";

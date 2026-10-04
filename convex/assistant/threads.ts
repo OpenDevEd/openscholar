@@ -13,6 +13,8 @@ import { createError } from "../lib/errors";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import schema from "../schema";
 import { accessRows, best, deleteThread, principalsOf, requireThread, userPrincipal, type AssistantRole } from "./access";
+import { effortValidator } from "../aiModelConfig/validators";
+import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import { assistantRoleValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
@@ -31,6 +33,9 @@ const threadValidator = v.object({
   title: v.string(),
   lastMessageAt: v.number(),
   createdAt: v.number(),
+  /** The model its replies run on, and their reasoning effort; none runs the server's default. */
+  modelId: v.optional(v.id("models")),
+  effort: v.optional(effortValidator),
   /** The most the person may do in it, through any way it reaches them. */
   role: assistantRoleValidator,
 });
@@ -120,6 +125,8 @@ const shown = (thread: Doc<"assistantThreads">, role: AssistantRole) => ({
   title: thread.title,
   lastMessageAt: thread.lastMessageAt,
   createdAt: thread.createdAt,
+  ...(thread.modelId ? { modelId: thread.modelId } : {}),
+  ...(thread.effort ? { effort: thread.effort } : {}),
   role,
 });
 
@@ -156,6 +163,29 @@ export const renameAction = defineUserMutation({
 });
 export const rename = userMutation(renameAction);
 export const renameForAssistant = assistantMutation(renameAction);
+
+export const setModelAction = defineUserMutation({
+  path: "assistant/threads:setModel",
+  description:
+    "Sets the model an assistant chat's replies run on, and their reasoning effort when the model takes one. It applies from the next message. " +
+    "Anyone who can write in the chat can.",
+  args: { threadId: v.id("assistantThreads"), modelId: v.id("models"), effort: v.optional(effortValidator) },
+  returns: v.null(),
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: false,
+  run: async (ctx, userId, { threadId, modelId, effort }) => {
+    await requireFeature(ctx, FLAG, userId);
+    await requireThread(ctx, userId, threadId, "write");
+    const model = await requireAvailableModel(ctx, modelId);
+    requireEffort(model, effort);
+    requireTaskModel(model, "chat");
+    await ctx.db.patch("assistantThreads", threadId, { modelId, effort, updatedAt: Date.now() });
+    return null;
+  },
+});
+export const setModel = userMutation(setModelAction);
+export const setModelForAssistant = assistantMutation(setModelAction);
 
 export const removeAction = defineUserMutation({
   path: "assistant/threads:remove",

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Cookie, Settings2 } from "lucide-react";
+import { Cookie, Settings2 } from "@/components/icons";
 import posthog from "posthog-js";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";

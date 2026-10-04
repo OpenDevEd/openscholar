@@ -3,7 +3,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "motion/react";
-import { RefreshCw, Loader2, X } from "lucide-react";
+import { RefreshCw, Loader2, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { LanguageSelector } from "@/components/language-selector";
 import { cn } from "@/lib/utils";

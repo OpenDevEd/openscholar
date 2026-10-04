@@ -7,7 +7,7 @@ import { useAuth, useClerk } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { create } from "zustand";
-import { BookCheck, BookPlus, Folder, FolderCheck, Plus, Search } from "lucide-react";
+import { BookCheck, BookPlus, Folder, FolderCheck, Plus, Search } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
@@ -416,7 +416,7 @@ function CollectionChecklist({
         return (
           <label
             key={collection._id}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted/50 transition-colors cursor-pointer"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted transition-colors cursor-pointer"
           >
             <Checkbox
               checked={isChecked}
@@ -429,7 +429,7 @@ function CollectionChecklist({
             </TooltipHint>
             <Badge
               variant="secondary"
-              className="text-[10px] h-4 px-1 shrink-0"
+              className="text-3xs h-4 px-1 shrink-0"
             >
               {collection.itemCount}
             </Badge>

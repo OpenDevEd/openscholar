@@ -28,7 +28,7 @@ const openrouter = createOpenRouter();
 // cost on providerMetadata.openrouter.usage.cost — the source-of-
 // truth that chat billing prefers when present (see plan-02 and
 // convex/chat/billing.ts).
-const defaultLanguageModel = openrouter.chat(defaultModelId, {
+export const defaultLanguageModel = openrouter.chat(defaultModelId, {
   usage: { include: true },
 });
 

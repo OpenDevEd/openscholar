@@ -26,7 +26,7 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { ListChecks } from "lucide-react";
+import { ListChecks } from "@/components/icons";
 
 type ResultStatus = "pending" | "extracting" | "completed" | "failed";
 type PaperStatus =

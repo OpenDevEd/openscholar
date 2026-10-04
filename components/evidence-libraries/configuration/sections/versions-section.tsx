@@ -3,7 +3,7 @@
 import { ConvexError } from "convex/values";
 import { useAction, useMutation } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
-import { History, RefreshCw } from "lucide-react";
+import { RefreshCw, HistoryIcon } from "@/components/icons";
 import { useFormatter, useTranslations } from "next-intl";
 import { Suspense, use, useDeferredValue, useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useProtectedQuery, useProtectedStreamPaginatedQuery } from "@/lib/auth/use-auth-query";
 import {
   runtimeUpdateState,
   shortCommit,
@@ -29,12 +29,12 @@ import {
 import { FieldGroup, Panel } from "../fields";
 import { InlineNotice, SectionCard } from "../section-card";
 import { StatusChip } from "../status-chip";
-import { ReleaseNotes, VersionHistory } from "./versions-views";
+import { ReleaseNotes, VERSIONS_PAGE_SIZE, VersionHistory } from "./versions-views";
 
 type RuntimeState = FunctionReturnType<typeof api.evidenceLibraries.updates.check>;
 type VersionRow = FunctionReturnType<
-  typeof api.evidenceLibraries.versions.listVersions
->[number];
+  typeof api.evidenceLibraries.versions.listVersionRows
+>["page"][number];
 
 /** The check never throws into render; a failure becomes a message in the panel. */
 type RuntimeCheck =
@@ -133,19 +133,23 @@ export function VersionsSection({
   const restoreRevision = useMutation(
     api.evidenceLibraries.versions.restoreRevision,
   );
-  const versions = useProtectedQuery(
-    api.evidenceLibraries.versions.listVersions,
+  // The history is read a page at a time, newest first; the count totals it.
+  const versions = useProtectedStreamPaginatedQuery(
+    api.evidenceLibraries.versions.listVersionRows,
+    { libraryId },
+    { initialNumItems: VERSIONS_PAGE_SIZE },
+  );
+  const versionCount = useProtectedQuery(
+    api.evidenceLibraries.versions.countVersions,
     { libraryId },
   );
   // The address answer the last check stored. It stays right even when the
   // software check cannot reach GitHub, and clears itself once a move lands.
-  const addressNotices = useProtectedQuery(
-    api.evidenceLibraries.updates.listAddressNotices,
-    live ? {} : "skip",
-  );
   const addressNotice =
-    addressNotices.data?.find((notice) => notice.libraryId === libraryId) ??
-    null;
+    useProtectedQuery(
+      api.evidenceLibraries.updates.getAddressNotice,
+      live ? { libraryId } : "skip",
+    ).data ?? null;
   // A silent custom domain is not fixed by moving the platform address: the
   // way out is to send the library back to it.
   const domains = useProtectedQuery(
@@ -244,7 +248,7 @@ export function VersionsSection({
   return (
     <SectionCard
       id="sec-versions"
-      icon={History}
+      icon={HistoryIcon}
       title={t("sections.versions")}
       description={t("versions.description")}
     >
@@ -317,7 +321,7 @@ export function VersionsSection({
       </div>
 
       <FieldGroup title={t("versions.historyHeading")}>
-        {versions.data === undefined ? (
+        {versions.isInitialLoading || versionCount.data === undefined ? (
           <Panel
             tone="muted"
             role="status"
@@ -328,7 +332,10 @@ export function VersionsSection({
           </Panel>
         ) : (
           <VersionHistory
-            rows={versions.data}
+            rows={versions.results}
+            total={versionCount.data}
+            more={versions.status === "CanLoadMore" ? () => versions.loadMore(VERSIONS_PAGE_SIZE) : undefined}
+            loading={versions.status === "LoadingMore"}
             blocked={blocked}
             onRestore={setRestoring}
           />
@@ -479,7 +486,7 @@ function SoftwarePanel({
         </dd>
       </dl>
       {updateAvailable && (releases.length > 0 || changes.length > 0) ? (
-        <div className="space-y-2 border-t border-border/50 pt-3">
+        <div className="space-y-2 border-t border-border-subtle pt-3">
           <p className="text-xs font-medium text-muted-foreground">
             {t("versions.changesHeading")}
           </p>

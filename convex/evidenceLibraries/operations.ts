@@ -7,6 +7,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
+import { isConfigurationDeploymentOperation } from "./operationKinds";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import { requireEvidenceLibraryAccess } from "./access";
 import { readAttachedDomainOrigins } from "./domains";
@@ -73,18 +74,7 @@ export async function readActiveOperations(
   return operations;
 }
 
-/** A publish operation owned by the configuration deployment pipeline. */
-export function isConfigurationDeploymentOperation(
-  operation: Doc<"evidenceLibraryConfigOperations">,
-): boolean {
-  return (
-    operation.kind === "publish" &&
-    (operation.activationEditVersion !== undefined ||
-      operation.runtimeUpdate !== undefined ||
-      operation.addressMove !== undefined ||
-      operation.domainChange !== undefined)
-  );
-}
+export { isConfigurationDeploymentOperation };
 
 /** The target still describes the ready runtime and the revision being sent. */
 export function isCurrentConfigurationDeploymentTarget(

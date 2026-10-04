@@ -44,7 +44,8 @@ export function oqlClauses(filter: object): string[] {
     // The API writes at least N citations as `cited_by_count:>N-1`, a comparison in OQL.
     if (column === "cited_by_count") return `cited_by_count > (${list[0].replace(/^>/, "")})`;
     const ids = column === "sustainable_development_goals.id" ? list.map((goal) => goal.replace(SDG_PREFIX, "")) : list;
-    return `${column} is (${ids.join(" or ")})`;
+    // A search column takes `has`; OpenAlex refuses `is` on one.
+    return `${column} ${column.endsWith(".search") ? "has" : "is"} (${ids.join(" or ")})`;
   });
 }
 

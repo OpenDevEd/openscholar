@@ -15,7 +15,7 @@ export function SegmentedToggle<Value extends string>({
   ariaLabel: string;
 }) {
   return (
-    <div role="group" aria-label={ariaLabel} className="flex rounded-lg bg-muted p-1">
+    <div role="group" aria-label={ariaLabel} className="flex rounded-lg bg-segment p-1">
       {options.map((option) => (
         <button
           key={option.value}
@@ -25,7 +25,7 @@ export function SegmentedToggle<Value extends string>({
           className={cn(
             "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200",
             value === option.value
-              ? "bg-background shadow-sm text-foreground"
+              ? "bg-segment-active shadow-sm text-foreground"
               : "text-muted-foreground hover:text-foreground",
           )}
         >

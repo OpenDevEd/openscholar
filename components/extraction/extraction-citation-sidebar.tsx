@@ -1,6 +1,7 @@
 "use client";
 
-import { FileSearch } from "lucide-react";
+import { useState } from "react";
+import { FileSearch } from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,12 @@ export function ExtractionCitationSidebar({
   const { expandedWidth, collapsedWidth } =
     getExtractionCitationPanelDimensions(isCollapsed);
 
+  // The answer stays on the panel while it slides shut, then is let go, so the
+  // closing panel never shows its empty state and a hidden one holds no PDF.
+  const [closing, setClosing] = useState<OpenAnswer | null>(null);
+  if (answer && closing !== answer) setClosing(answer);
+  const shown = answer ?? closing;
+
   if (!_hasHydrated) return null;
 
   const hasPayload = answer !== null;
@@ -42,14 +49,17 @@ export function ExtractionCitationSidebar({
         // Quick, so an opened answer shows at once.
         transition: "width 180ms ease-out",
       }}
+      onTransitionEnd={(event) => {
+        if (event.target === event.currentTarget && event.propertyName === "width" && !answer) setClosing(null);
+      }}
     >
       {/* The same line across the collapsed strip, where the panel itself has slid away. */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-16 h-px bg-sidebar-border/50" />
       <motion.aside
         className={cn(
           "h-full flex flex-col overflow-hidden absolute right-0 top-0 bottom-0",
-          "bg-background/95 dark:bg-background/90",
-          "border-l border-border/50",
+          "bg-background",
+          "border-l border-border-subtle",
         )}
         initial={false}
         animate={{ x: translateX }}
@@ -63,7 +73,7 @@ export function ExtractionCitationSidebar({
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-16 h-px bg-sidebar-border/50" />
 
         {/* Floating controls — expanded state */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border/30 bg-background/95 p-1">
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border-subtle bg-card p-1">
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <motion.div
@@ -75,7 +85,7 @@ export function ExtractionCitationSidebar({
                   variant="ghost"
                   size="icon"
                   onClick={() => setCollapsed(true)}
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-200"
                   aria-label={t("accessibility.collapsePanel")}
                 >
                   <motion.div
@@ -94,7 +104,7 @@ export function ExtractionCitationSidebar({
 
         {/* Scrollable content, above the line */}
         <div className="relative flex-1 min-h-0 overflow-hidden p-2">
-          <AnswerPanel key={openAnswerKey(answer) ?? ""} answer={answer} />
+          <AnswerPanel key={openAnswerKey(shown) ?? ""} answer={shown} />
         </div>
       </motion.aside>
 
@@ -119,7 +129,7 @@ export function ExtractionCitationSidebar({
                     variant="ghost"
                     size="icon"
                     onClick={toggle}
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-200"
                     aria-label={t("accessibility.expandPanel")}
                   >
                     <motion.div

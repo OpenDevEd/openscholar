@@ -2,13 +2,11 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { SearchX } from "lucide-react";
+import { SearchX, type AppIcon } from "@/components/icons";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { GRID_CLASSES } from "@/lib/constants/view-modes";
 import type { ViewMode } from "@/lib/types";
-import type { LucideIcon } from "lucide-react";
 
 interface CommandCenterListProps<T> {
   items: T[];
@@ -18,7 +16,7 @@ interface CommandCenterListProps<T> {
   ItemComponent?: React.ComponentType<{ item: T; index: number }>;
   keyExtractor: (item: T) => string;
   // Empty state
-  emptyIcon: LucideIcon;
+  emptyIcon: AppIcon;
   emptyTitle: string;
   emptyDescription: string;
   emptyAction?: React.ReactNode;
@@ -29,7 +27,7 @@ interface CommandCenterListProps<T> {
 
 /**
  * Shared list component for command centers.
- * Handles grid layout based on view mode and empty state rendering.
+ * Lays the entries out as rows or cells across the card, and renders the empty state.
  */
 export function CommandCenterList<T>({
   items,
@@ -63,7 +61,9 @@ export function CommandCenterList<T>({
   }
 
   return (
-    <div className={cn(GRID_CLASSES[viewMode])}>
+    // The grid's cells draw their own right and bottom lines; the outer ones are clipped away.
+    <div className="overflow-hidden">
+      <div className={GRID_CLASSES[viewMode]}>
       {items.map((item, index) => (
         <React.Fragment key={keyExtractor(item)}>
           {ItemComponent ? (
@@ -73,6 +73,7 @@ export function CommandCenterList<T>({
           )}
         </React.Fragment>
       ))}
+      </div>
     </div>
   );
 }

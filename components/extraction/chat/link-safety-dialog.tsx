@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { CopyIcon, ExternalLinkIcon } from "lucide-react";
+import { CopyIcon, ExternalLinkIcon } from "@/components/icons";
 import type { LinkSafetyModalProps } from "streamdown";
 import { Button } from "@/components/ui/button";
 import {
