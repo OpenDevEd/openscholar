@@ -27,7 +27,11 @@ const openAlex = vi.fn(async (input: string | URL) => {
         ? [["2023", "2023", 30], ["2024", "2024", 22], ["2022", "2022", 5]]
         : by === "authorships.author.id"
           ? [["https://openalex.org/A1", "Ada Okafor", 9], ["https://openalex.org/A2", "Ben Mwangi", 4]]
-          : [["https://openalex.org/languages/en", "English", 50], ["https://openalex.org/languages/fr", "French", 7]];
+          : by === "primary_topic.field.id"
+            ? [["https://openalex.org/fields/33", "Social Sciences", 50]]
+            : by === "authorships.institutions.id"
+              ? Array.from({ length: 60 }, (_, at) => [`https://openalex.org/I${at}`, `Institution ${at}`, 100 - at])
+              : [["https://openalex.org/languages/en", "English", 50], ["https://openalex.org/languages/fr", "French", 7]];
     return new Response(JSON.stringify({ meta: { count: 57 }, group_by: groups.map(([key, name, count]) => ({ key, key_display_name: name, count })) }), { status: 200 });
   }
   const one = url.pathname.match(/\/works\/(?:https:\/\/doi\.org\/)?(.+)$/)?.[1];
@@ -363,15 +367,20 @@ describe("the assistant's search tools", () => {
     expect(requests[0].url.searchParams.get("group_by")).toBe("publication_year");
     // By author, largest first, each with the ID the `authors` filter takes; by language, with none.
     expect((await alice.action(count, { query: "tutoring", by: "author" })).groups).toEqual([{ name: "Ada Okafor", count: 9, id: "A1" }, { name: "Ben Mwangi", count: 4, id: "A2" }]);
-    expect((await alice.action(count, { query: "tutoring", by: "language" })).groups).toEqual([{ name: "English", count: 50 }, { name: "French", count: 7 }]);
+    // A group that a filter narrows by comes as that filter takes it: a language by its code.
+    expect((await alice.action(count, { query: "tutoring", by: "language" })).groups).toEqual([{ name: "English", count: 50, id: "en" }, { name: "French", count: 7, id: "fr" }]);
+    expect((await alice.action(count, { query: "tutoring", by: "field" })).groups![0]).toEqual({ name: "Social Sciences", count: 50, id: "fields/33" });
+    // More groups than are returned says so, without a number: OpenAlex gives its largest 200.
+    expect(await alice.action(count, { query: "tutoring", by: "institution" })).toMatchObject({ moreGroups: true, groups: expect.arrayContaining([{ name: "Institution 0", count: 100 }]) });
     // Which papers a person rated isn't OpenAlex's to count.
     await expect(alice.action(count, { query: "tutoring", ratedOnly: true, by: "year" })).rejects.toThrow(/can't be counted/);
 
     // Sub-Saharan Africa and Latin America are the page's own regions put together, each once.
-    const { id } = await make({ query: "tutoring", about: ["Sub-Saharan Africa", "latin_america", "eastern_africa"], authorsIn: ["latin america and the caribbean"] });
+    const { id } = await make({ query: "tutoring", about: ["Sub-Saharan Africa", "latin_america", "eastern_africa"], authorsIn: ["latin america and the caribbean", "South-Eastern Asia"] });
     expect(await search(id)).toMatchObject({
       selectedCountryFocus: ["eastern_africa", "middle_africa", "southern_africa", "western_africa", "caribbean", "central_america", "south_america"],
-      selectedRegions: ["caribbean", "central_america", "south_america"],
+      // A region of the page's own keeps its name as the page has it, hyphen and all.
+      selectedRegions: ["caribbean", "central_america", "south_america", "south-eastern_asia"],
     });
   });
 

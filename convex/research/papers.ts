@@ -37,15 +37,28 @@ export const searchAction = defineUserAction({
 export const search = userAction(searchAction);
 export const searchForAssistant = assistantAction(searchAction);
 
-/** The groupings whose groups are records the matching filter takes by ID: `authors`, `funders`. */
-const FILTERED_BY_ID: readonly Grouping[] = ["author", "funder"];
+/**
+ * A group as the filter that narrows by it takes it, from OpenAlex's address for the group:
+ * an author or a funder by its ID (`authors`, `funders`), a country, a language, a type or
+ * a goal by its code (`authorsIn` and `about`, `languages`, `types`, `sdgs`), and a field
+ * as `researchAreas` has it, fields/33. An institution or a journal has no filter here.
+ */
+const FILTER_ID: Partial<Record<Grouping, (key: string) => string>> = {
+  author: (key) => key.split("/").at(-1)!,
+  funder: (key) => key.split("/").at(-1)!,
+  country: (key) => key.split("/").at(-1)!,
+  language: (key) => key.split("/").at(-1)!,
+  type: (key) => key.split("/").at(-1)!,
+  sdg: (key) => key.split("/").at(-1)!,
+  field: (key) => key.split("/").slice(-2).join("/"),
+};
 
 export const countAction = defineUserAction({
   path: "research/papers:count",
   description:
     "Counts the papers a query, filters, or both find in OpenAlex, and saves nothing. With `by`, also how they divide: by year, language, type, openAccess, country (where the authors work), author, institution, funder, journal, field or sdg. " +
     `It returns up to ${GROUPS_MAX} groups with how many papers each has: the largest first, or by year the latest ${GROUPS_MAX} in order. Use it for how many, how a topic changed over the years, who publishes most, which countries or languages, in one call, and never by reading pages of results. ` +
-    "An author's or a funder's group comes with the ID the `authors` and `funders` filters take. The query and the filters are the ones research/papers:search takes, and mean the same. " +
+    "A group comes with the `id` the filter that narrows by it takes: `authors`, `funders`, `authorsIn` or `about` for a country, `languages`, `types`, `sdgs`, and `researchAreas` for a field. The query and the filters are the ones research/papers:search takes, and mean the same. " +
     "One request against the person's OpenAlex allowance.",
   args: { query: v.optional(v.string()), ...searchSettings, by: v.optional(v.union(...(Object.keys(GROUPINGS) as Grouping[]).map((name) => v.literal(name)), v.null())) },
   returns: countValidator,
@@ -66,8 +79,9 @@ export const countAction = defineUserAction({
     const ordered = by === "year" ? groups.sort((a, b) => Number(a.key) - Number(b.key)).slice(-GROUPS_MAX) : groups.slice(0, GROUPS_MAX);
     return {
       total,
-      groups: ordered.map(({ key, name, count }) => ({ name: name.slice(0, NAME_MAX), count, ...(FILTERED_BY_ID.includes(by) ? { id: key.split("/").at(-1)! } : {}) })),
-      ...(groups.length > ordered.length ? { moreGroups: groups.length - ordered.length } : {}),
+      groups: ordered.map(({ key, name, count }) => ({ name: name.slice(0, NAME_MAX), count, ...(FILTER_ID[by] ? { id: FILTER_ID[by](key) } : {}) })),
+      // OpenAlex returns its largest 200 groups, so how many more there are isn't known.
+      ...(groups.length > ordered.length ? { moreGroups: true as const } : {}),
     };
   },
 });

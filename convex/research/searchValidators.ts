@@ -113,8 +113,8 @@ export const countValidator = v.object({
   total: v.number(),
   /** The groups, largest first, or by year from the earliest. `id` is what the matching filter takes, where there is one. */
   groups: capped(v.optional(v.array(v.object({ name: v.string(), count: v.number(), id: v.optional(v.string()) }))), GROUPS_MAX),
-  /** How many more groups there are than these. */
-  moreGroups: v.optional(v.number()),
+  /** There are more groups than these. How many isn't known: OpenAlex returns the largest 200. */
+  moreGroups: v.optional(v.literal(true)),
 });
 
 /** Countries a paper's authors work in that a results page names. */
