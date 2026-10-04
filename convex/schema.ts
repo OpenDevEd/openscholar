@@ -204,7 +204,10 @@ export default defineSchema({
   assistantThreads: defineTable(assistantThreadFields)
     .index("by_agentThreadId", ["agentThreadId"])
     // An account's chats, for deleting them with it.
-    .index("by_owner", ["ownerId"]),
+    .index("by_owner", ["ownerId"])
+    // The replies a person has running, which are limited, and the ones that died.
+    .index("by_replySender_and_renewedAt", ["reply.senderId", "reply.renewedAt"])
+    .index("by_replyRenewedAt", ["reply.renewedAt"]),
   assistantThreadAccess: defineTable(assistantThreadAccessFields)
     // A person's chats, newest first, through each of their principals.
     .index("by_principal_and_lastMessageAt", ["principal", "lastMessageAt"])

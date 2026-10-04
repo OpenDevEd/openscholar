@@ -25,7 +25,7 @@ import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { CHAT_CONCURRENCY_LIMIT } from "@/lib/extraction/limits";
 
-const STALE_LOCK_MS = 5 * 60 * 1000;
+export const STALE_LOCK_MS = 5 * 60 * 1000;
 /** How often a running generation renews its lock: well inside STALE_LOCK_MS. */
 export const LEASE_RENEW_MS = 60 * 1000;
 

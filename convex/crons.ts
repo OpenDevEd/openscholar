@@ -37,4 +37,12 @@ crons.interval(
   {},
 );
 
+// An assistant reply whose action died without releasing its chat is released here (#324).
+crons.interval(
+  "release dead assistant replies",
+  { minutes: 5 },
+  internal.assistant.replies.sweep,
+  {},
+);
+
 export default crons;
