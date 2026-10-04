@@ -3396,6 +3396,7 @@
     }
   },
   "modelPicker": {
+    "current": "現在",
     "vendors": "提供元",
     "all": "すべて",
     "other": "その他",

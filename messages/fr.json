@@ -3396,6 +3396,7 @@
     }
   },
   "modelPicker": {
+    "current": "Actuel",
     "vendors": "Fournisseurs",
     "all": "Tous",
     "other": "Autres",

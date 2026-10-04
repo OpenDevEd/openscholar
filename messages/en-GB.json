@@ -3388,6 +3388,7 @@
     }
   },
   "modelPicker": {
+    "current": "Current",
     "vendors": "Vendors",
     "all": "All",
     "other": "Other",

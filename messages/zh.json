@@ -3396,6 +3396,7 @@
     }
   },
   "modelPicker": {
+    "current": "当前",
     "vendors": "提供商",
     "all": "全部",
     "other": "其他",

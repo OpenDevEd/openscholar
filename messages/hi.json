@@ -3396,6 +3396,7 @@
     }
   },
   "modelPicker": {
+    "current": "वर्तमान",
     "vendors": "प्रदाता",
     "all": "सभी",
     "other": "अन्य",

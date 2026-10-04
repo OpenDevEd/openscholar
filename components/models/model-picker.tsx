@@ -26,6 +26,10 @@ import { EASE, PRESET_ICONS, effortOf, toMapModel, type MapModel, type PickedMod
 
 export type CatalogModel = FunctionReturnType<typeof api.models.queries.listCatalogOptions>[number];
 
+/** MOCK (#424): models the list reads at a time, and how close to its bottom, in pixels, the next page loads. */
+const PAGE_SIZE = 30;
+const LOAD_AHEAD_PX = 120;
+
 /** What's picked now: a catalog slug, with the effort it runs at. */
 type Current = Pick<MapModel, "id" | "effort" | "reasoningEfforts" | "defaultEffort">;
 
@@ -235,15 +239,14 @@ export function ModelPicker({
   const panel = useRef<HTMLDivElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const reduce = useReducedMotion();
-  // Whether this opening has scrolled to the current model yet. cmdk hands rows a new
-  // ref on every render, so without it each hover would scroll back to the current model.
-  const revealed = useRef(false);
-  const revealCurrent = (row: HTMLElement | null) => {
-    const list = row?.closest<HTMLElement>("[cmdk-list]");
-    if (!row || !list || revealed.current) return;
-    revealed.current = true;
-    // Near the top, with one row above it: the list may still shrink to fit a short screen.
-    list.scrollTop += row.getBoundingClientRect().top - list.getBoundingClientRect().top - row.clientHeight;
+  // MOCK (#424): the search runs as the server would match it, and the list shows the pages read so far.
+  const [query, setQuery] = useState("");
+  const [loaded, setLoaded] = useState(PAGE_SIZE);
+  const needle = query.trim().toLowerCase();
+  const start = (set: () => void) => {
+    set();
+    setLoaded(PAGE_SIZE);
+    panel.current?.querySelector("[cmdk-list]")?.scrollTo({ top: 0 });
   };
   // Subscribed from mount, not on open, so the list is there the moment the picker opens.
   // Every picker shares this one subscription and filters for its own tasks.
@@ -251,14 +254,15 @@ export function ModelPicker({
   const needed = tasks.length > 0 ? tasks : (["chat"] as const);
 
   // ponytail: filtered and grouped on every render; a few hundred rows is cheap.
-  const rows = (catalog ?? []).filter(
+  const usable = (catalog ?? []).filter(
     (row) =>
       (!provider || (row.provider === provider && !isVariant(row.modelId))) &&
       !exclude?.includes(row.modelId) &&
       needed.every((task) => usableFor(row, task)),
   );
-  const byId = new Map(rows.map((row) => [row.modelId, row]));
-  const present = new Set(rows.map((row) => vendorOf(row.modelId)));
+  const byId = new Map(usable.map((row) => [row.modelId, row]));
+  const present = new Set(usable.map((row) => vendorOf(row.modelId)));
+  const rows = needle ? usable.filter((row) => `${row.name} ${row.modelId} ${vendorName(vendorOf(row.modelId))}`.toLowerCase().includes(needle)) : usable;
   // Featured vendors first in their order, then the rest by name; smartest first inside each.
   const groups = (() => {
     const shown = rows.filter((row) => {
@@ -275,6 +279,14 @@ export function ModelPicker({
         list.sort((a, b) => (b.intelligenceIndex ?? -1) - (a.intelligenceIndex ?? -1) || (b.createdOnOpenRouter ?? 0) - (a.createdOnOpenRouter ?? 0)),
       ] as const);
   })();
+  // The pages read so far, in the list's order. A vendor's heading keeps its full count.
+  let room = loaded;
+  const pages = groups.flatMap(([v, list]) => {
+    const shown = list.slice(0, room);
+    room -= shown.length;
+    return shown.length ? [[v, shown, list.length] as const] : [];
+  });
+  const more = rows.length > loaded;
 
   // Every opening starts on the full list. It resets here rather than on close, so
   // nothing inside the popover changes while it fades out.
@@ -283,8 +295,8 @@ export function ModelPicker({
     if (!next) return;
     setVendor("all");
     setStep(null);
-    // Scroll to the current model only when the list is already there, never after it arrives.
-    revealed.current = catalog === undefined;
+    setQuery("");
+    setLoaded(PAGE_SIZE);
   };
   const pick = (run: () => void) => () => {
     run();
@@ -296,9 +308,9 @@ export function ModelPicker({
     if (e.key === "Enter" || e.key === " ") e.stopPropagation();
   };
   const currentRow = current ? byId.get(current.id) : undefined;
-  const choose = (row: CatalogModel) => {
+  const choose = (row: CatalogModel, pinned = false) => {
     if (!efforts || !row.reasoningEfforts?.length) return pick(() => onChange(toMapModel(row)))();
-    const el = panel.current?.querySelector(`[data-model-option="${CSS.escape(row.modelId)}"]`);
+    const el = panel.current?.querySelector(`[data-model-option="${CSS.escape(`${pinned ? "current " : ""}${row.modelId}`)}"]`);
     const fromY = el && panel.current ? el.getBoundingClientRect().top - panel.current.getBoundingClientRect().top : 8;
     setStep({ row, fromY });
   };
@@ -311,6 +323,23 @@ export function ModelPicker({
   const filters = provider ? [] : ["all", ...FEATURED, "other"];
   const empty = (v: string) =>
     catalog !== undefined && v !== "all" && (v === "other" ? ![...present].some((p) => !featured(p)) : !present.has(v));
+  // The current pick leads the list, since its own place may be pages down.
+  const pinned = vendor === "all" && !needle ? currentRow : undefined;
+  const option = (row: CatalogModel, asCurrent = false) => {
+    const selected = current?.id === row.modelId;
+    const Brand = getModelIcon(row.modelId);
+    const value = `${asCurrent ? "current " : ""}${row.modelId}`;
+    return (
+      <CommandPrimitive.Item key={value} value={value} onSelect={() => choose(row, asCurrent)} className={ROW} data-model-option={value}>
+        <span className="flex min-w-0 items-center gap-2.5">
+          <Brand className={cn("size-4 shrink-0", selected ? "text-foreground" : "text-muted-foreground")} />
+          <span className={cn("truncate", selected && "font-medium")}>{stripProviderPrefix(row.name)}</span>
+        </span>
+        <Stats model={row} />
+        <Check className={cn("size-4 text-primary", selected ? "opacity-100" : "opacity-0")} />
+      </CommandPrimitive.Item>
+    );
+  };
 
   return (
     <Popover
@@ -338,11 +367,11 @@ export function ModelPicker({
           inert={step ? true : undefined}
         >
         {/* Uncontrolled on purpose: a controlled value makes cmdk scroll to every row the pointer passes. */}
-        <CommandPrimitive className="flex min-h-0 flex-1 flex-col" defaultValue={current?.id}>
+        <CommandPrimitive className="flex min-h-0 flex-1 flex-col" defaultValue={current ? `current ${current.id}` : undefined} shouldFilter={false}>
           <div className="space-y-2 p-2">
             <label className="flex h-10 items-center gap-2.5 rounded-xl border border-border/60 bg-muted/40 px-3">
               <Search className="size-4 shrink-0 text-muted-foreground" />
-              <CommandPrimitive.Input ref={search} placeholder={tm("searchModels")} className="h-full w-full bg-transparent text-sm outline-hidden placeholder:text-muted-foreground" />
+              <CommandPrimitive.Input ref={search} value={query} onValueChange={(value) => start(() => setQuery(value))} placeholder={tm("searchModels")} className="h-full w-full bg-transparent text-sm outline-hidden placeholder:text-muted-foreground" />
             </label>
             {filters.length > 0 ? (
               <div
@@ -364,7 +393,7 @@ export function ModelPicker({
                       aria-checked={active}
                       aria-label={name}
                       disabled={empty(v)}
-                      onClick={() => setVendor(v)}
+                      onClick={() => start(() => setVendor(v))}
                       className={cn(
                         "flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors disabled:opacity-30",
                         active ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -403,18 +432,30 @@ export function ModelPicker({
             <span />
           </div>
           {/* 22rem when there's room; shorter when the screen is, since the popover caps at the space it has. */}
-          <CommandPrimitive.List className="h-[22rem] min-h-0 overflow-y-auto overscroll-contain">
+          <CommandPrimitive.List
+            className="h-[22rem] min-h-0 overflow-y-auto overscroll-contain"
+            onScroll={(event) => {
+              const { scrollHeight, scrollTop, clientHeight } = event.currentTarget;
+              if (more && scrollHeight - scrollTop - clientHeight < LOAD_AHEAD_PX) setLoaded((n) => n + PAGE_SIZE);
+            }}
+          >
             {/* The whole list arrives at once, already scrolled to the current model, and fades in. */}
             {rowsReady ? (
             <div className="animate-in fade-in-0 duration-200 motion-reduce:animate-none">
             <CommandPrimitive.Empty className="py-10 text-center text-sm text-muted-foreground">
               {catalog === undefined ? tm("loadingModels") : tm("noModels")}
             </CommandPrimitive.Empty>
+            {pinned ? (
+              <CommandPrimitive.Group heading={t("current")} className={GROUP}>
+                {option(pinned, true)}
+              </CommandPrimitive.Group>
+            ) : null}
             {presets?.length && vendor === "all" ? (
               <CommandPrimitive.Group heading={tm("presetsGroup")} className={GROUP}>
                 {presets.map((preset) => {
                   const Icon = PRESET_ICONS[preset.id];
                   const models = [...new Map(preset.models.map((m) => [`${m.id}:${effortOf(m)}`, m])).values()];
+                  if (needle && !`${tm(`presets.${preset.id}`)} ${models.map((m) => m.name).join(" ")}`.toLowerCase().includes(needle)) return null;
                   const only = models.length === 1 ? models[0] : undefined;
                   const onlyEffort = only ? effortOf(only) : null;
                   const selected = Boolean(only && current && only.id === current.id && onlyEffort === currentEffort);
@@ -446,7 +487,7 @@ export function ModelPicker({
                 })}
               </CommandPrimitive.Group>
             ) : null}
-            {groups.map(([v, list]) => {
+            {pages.map(([v, list, total]) => {
               const Brand = getModelIcon(list[0]!.modelId);
               return (
                 <CommandPrimitive.Group
@@ -456,31 +497,11 @@ export function ModelPicker({
                     <span className="flex items-center gap-1.5">
                       <Brand className="size-3.5" />
                       {vendorName(v)}
-                      <span className="tabular-nums text-muted-foreground/60">{list.length}</span>
+                      <span className="tabular-nums text-muted-foreground/60">{total}</span>
                     </span>
                   }
                 >
-                  {list.map((row) => {
-                    const selected = current?.id === row.modelId;
-                    return (
-                      <CommandPrimitive.Item
-                        key={row.modelId}
-                        value={row.modelId}
-                        keywords={[vendorName(v), row.name]}
-                        onSelect={() => choose(row)}
-                        className={ROW}
-                        data-model-option={row.modelId}
-                        ref={selected ? revealCurrent : undefined}
-                      >
-                        <span className="flex min-w-0 items-center gap-2.5">
-                          <Brand className={cn("size-4 shrink-0", selected ? "text-foreground" : "text-muted-foreground")} />
-                          <span className={cn("truncate", selected && "font-medium")}>{stripProviderPrefix(row.name)}</span>
-                        </span>
-                        <Stats model={row} />
-                        <Check className={cn("size-4 text-primary", selected ? "opacity-100" : "opacity-0")} />
-                      </CommandPrimitive.Item>
-                    );
-                  })}
+                  {list.map((row) => option(row))}
                 </CommandPrimitive.Group>
               );
             })}
