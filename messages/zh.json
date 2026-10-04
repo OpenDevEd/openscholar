@@ -3411,6 +3411,7 @@
     "send": "发送",
     "stop": "停止",
     "thinking": "思考中",
+    "summarizing": "正在总结目前的对话",
     "stopped": "此回复已被停止",
     "failed": "回复未完成。请重新发送你的消息。",
     "tooLong": "此对话已超出助手可读取的长度。请开始新对话以继续。",
@@ -3479,6 +3480,31 @@
       "searchHistory": {
         "doing": "正在读取检索历史",
         "did": "已读取检索历史",
+        "where": "已保存的检索"
+      },
+      "newSearch": {
+        "doing": "正在创建检索",
+        "did": "已创建检索",
+        "where": "已保存的检索"
+      },
+      "changeSearch": {
+        "doing": "正在修改检索",
+        "did": "已修改检索",
+        "where": "已保存的检索"
+      },
+      "restoreSearch": {
+        "doing": "正在放回检索",
+        "did": "已放回检索",
+        "where": "已保存的检索"
+      },
+      "removeSearch": {
+        "doing": "正在移除检索",
+        "did": "已移除检索",
+        "where": "已保存的检索"
+      },
+      "results": {
+        "doing": "正在读取检索结果",
+        "did": "已读取检索结果",
         "where": "已保存的检索"
       },
       "bookmarks": {

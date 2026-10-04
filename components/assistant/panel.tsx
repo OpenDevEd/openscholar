@@ -393,7 +393,7 @@ function Chat({
         fresh={threadId === null && sent.length === 0}
         older={status === "CanLoadMore" ? () => loadMore(FIRST_MESSAGES) : status === "LoadingMore" ? "loading" : null}
       />
-      <Footer composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} busy={busy} canWrite={canWrite} onSend={send} onStop={stop} model={model} onModel={pickModel} presetModel={presetModel} />
+      <Footer composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} model={model} onModel={pickModel} presetModel={presetModel} />
     </>
   );
 }
@@ -660,6 +660,7 @@ function Footer({
   draft,
   setDraft,
   busy,
+  summarizing,
   canWrite,
   onSend,
   onStop,
@@ -672,6 +673,8 @@ function Footer({
   setDraft: (text: string) => void;
   /** A reply is being written, here or for someone else in the chat. */
   busy: boolean;
+  /** The reply is written and the chat is summarizing itself before it takes the next message: the box says so. */
+  summarizing: boolean;
   /** Someone who only reads the chat can't send. */
   canWrite: boolean;
   onSend: () => void;
@@ -698,7 +701,7 @@ function Footer({
             }
           }}
           rows={2}
-          placeholder={canWrite ? t("placeholder") : t("readOnly")}
+          placeholder={!canWrite ? t("readOnly") : summarizing ? t("summarizing") : t("placeholder")}
           aria-label={t("messageLabel")}
           className="relative block w-full resize-none bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground"
         />

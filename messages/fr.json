@@ -3411,6 +3411,7 @@
     "send": "Envoyer",
     "stop": "Arrêter",
     "thinking": "Réflexion",
+    "summarizing": "Résumé de la conversation jusqu'ici",
     "stopped": "Cette réponse a été arrêtée",
     "failed": "La réponse ne s'est pas terminée. Renvoyez votre message pour réessayer.",
     "tooLong": "Cette discussion dépasse ce que l'assistant peut lire. Commencez une nouvelle discussion pour continuer.",
@@ -3479,6 +3480,31 @@
       "searchHistory": {
         "doing": "Lecture de l'historique d'une recherche",
         "did": "Historique de la recherche lu",
+        "where": "Recherches enregistrées"
+      },
+      "newSearch": {
+        "doing": "Création d'une recherche",
+        "did": "Recherche créée",
+        "where": "Recherches enregistrées"
+      },
+      "changeSearch": {
+        "doing": "Modification d'une recherche",
+        "did": "Recherche modifiée",
+        "where": "Recherches enregistrées"
+      },
+      "restoreSearch": {
+        "doing": "Remise en place d'une recherche",
+        "did": "Recherche remise en place",
+        "where": "Recherches enregistrées"
+      },
+      "removeSearch": {
+        "doing": "Retrait d'une recherche",
+        "did": "Recherche retirée",
+        "where": "Recherches enregistrées"
+      },
+      "results": {
+        "doing": "Lecture des résultats d'une recherche",
+        "did": "Résultats d'une recherche lus",
         "where": "Recherches enregistrées"
       },
       "bookmarks": {

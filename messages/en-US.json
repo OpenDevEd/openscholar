@@ -3401,6 +3401,7 @@
     "send": "Send",
     "stop": "Stop",
     "thinking": "Thinking",
+    "summarizing": "Summarizing the conversation so far",
     "stopped": "This reply was stopped",
     "failed": "The reply didn't finish. Send your message again to retry.",
     "tooLong": "This chat has grown past what the assistant can read. Start a new chat to carry on.",
@@ -3469,6 +3470,31 @@
       "searchHistory": {
         "doing": "Reading a search's history",
         "did": "Read a search's history",
+        "where": "Saved searches"
+      },
+      "newSearch": {
+        "doing": "Making a search",
+        "did": "Made a search",
+        "where": "Saved searches"
+      },
+      "changeSearch": {
+        "doing": "Changing a search",
+        "did": "Changed a search",
+        "where": "Saved searches"
+      },
+      "restoreSearch": {
+        "doing": "Putting a search back",
+        "did": "Put a search back",
+        "where": "Saved searches"
+      },
+      "removeSearch": {
+        "doing": "Removing a search",
+        "did": "Removed a search",
+        "where": "Saved searches"
+      },
+      "results": {
+        "doing": "Reading a search's results",
+        "did": "Read a search's results",
         "where": "Saved searches"
       },
       "bookmarks": {
