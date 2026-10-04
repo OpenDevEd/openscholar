@@ -32,9 +32,10 @@ import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
 import { detailsOf } from "./details";
+import { carriedOn, noteReply, pausedAt, replyLimitOf } from "./spending";
 import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
-import { askedDetailsValidator } from "./validators";
+import { askedDetailsValidator, assistantPausedValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
 const MESSAGES_PAGE_MAX = 50;
@@ -89,6 +90,7 @@ export const send = mutation({
     }
     const { thread } = await requireThread(ctx, userId, threadId, "write");
     if (await writing(ctx, thread.reply)) throw createError("CONFLICT", "The assistant is still replying in this chat.");
+    if (thread.asking?.paused) throw createError("CONFLICT", "The assistant's reply is paused in this chat. Carry it on, or stop it.");
     if (thread.asking) throw createError("CONFLICT", "The assistant is waiting for an answer in this chat. Answer it, or stop the reply.");
     await admit(ctx, userId);
     // A reply that was stopped, or died, around asking the person can leave calls without their results.
@@ -123,6 +125,8 @@ export const send = mutation({
     });
     const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
     await touchThread(ctx, threadId, now);
+    // What the sender lets a reply spend here, if they set a limit (./spending.ts). Taken with the message, like its model.
+    const cap = await replyLimitOf(ctx, threadId, userId);
     const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.reply, {
       threadId,
       agentThreadId: thread.agentThreadId,
@@ -133,8 +137,9 @@ export const send = mutation({
       modelId,
       // An effort the catalog has since dropped runs at the model's default.
       effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
+      ...(cap === undefined ? {} : { used: { credits: 0, rounds: 0, calls: 0, cap } }),
     });
-    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), ...(moved ? { view: { ...((view ?? said?.address) === undefined ? {} : { address: view ?? said?.address }), day: today, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
+    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), ...(moved ? { view: { ...((view ?? said?.address) === undefined ? {} : { address: view ?? said?.address }), day: today, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId, spent: 0, ...(cap === undefined ? {} : { cap }) } });
     return null;
   },
 });
@@ -164,19 +169,49 @@ export const answer = mutation({
     else await declineSteps(ctx, [step]);
     // Calls it asked about together are answered one by one. The reply carries on after the last.
     if (left.length) return null;
-    const now = Date.now();
-    const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
-    const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.reply, {
-      threadId,
-      agentThreadId: thread.agentThreadId,
-      promptMessageId: waiting.promptMessageId,
-      attemptId,
-      senderId: waiting.senderId,
-      modelId: waiting.modelId,
-      effort: waiting.effort,
-      used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made, ...(waiting.failed ? { failed: waiting.failed } : {}), ...(waiting.recent ? { recent: waiting.recent } : {}) },
-    });
-    await ctx.db.patch("assistantThreads", threadId, { asking: undefined, reply: { attemptId, senderId: waiting.senderId, order: waiting.order, startedAt: now, scheduledId } });
+    await goOnFrom(ctx, thread, waiting, { ...(waiting.cap === undefined ? {} : { cap: waiting.cap }), ...(waiting.lap === undefined ? {} : { lap: waiting.lap }) });
+    return null;
+  },
+});
+
+/** Starts a reply that waited again, from where it stood, with the limits it now runs to. */
+async function goOnFrom(ctx: MutationCtx, thread: Doc<"assistantThreads">, waiting: NonNullable<Doc<"assistantThreads">["asking"]>, limits: { cap?: number; lap?: number }) {
+  const now = Date.now();
+  const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
+  const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.reply, {
+    threadId: thread._id,
+    agentThreadId: thread.agentThreadId,
+    promptMessageId: waiting.promptMessageId,
+    attemptId,
+    senderId: waiting.senderId,
+    modelId: waiting.modelId,
+    effort: waiting.effort,
+    used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made, ...(waiting.failed ? { failed: waiting.failed } : {}), ...(waiting.recent ? { recent: waiting.recent } : {}), ...limits },
+  });
+  await ctx.db.patch("assistantThreads", thread._id, {
+    asking: undefined,
+    reply: { attemptId, senderId: waiting.senderId, order: waiting.order, startedAt: now, scheduledId, spent: waiting.spent, ...(limits.cap === undefined ? {} : { cap: limits.cap }) },
+  });
+}
+
+/**
+ * Carries on a reply that paused at a limit (./spending.ts). It may spend as much again
+ * as its sender's limit is now, or make as many requests again, from where it stands.
+ */
+export const carryOn = mutation({
+  args: { threadId: v.id("assistantThreads") },
+  returns: v.null(),
+  handler: async (ctx, { threadId }) => {
+    const userId = (await requireAuth(ctx))._id;
+    await requireFeature(ctx, FLAG, userId);
+    const { thread } = await requireThread(ctx, userId, threadId, "write");
+    const waiting = thread.asking;
+    if (!waiting?.paused) throw createError("CONFLICT", "This reply isn't paused.");
+    // It spends their credits, so carrying it on is theirs alone.
+    if (waiting.senderId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can carry this on.");
+    // Carrying it on starts a reply, so it's held to how many a person has at once.
+    await admit(ctx, userId);
+    await goOnFrom(ctx, thread, waiting, carriedOn(waiting, await replyLimitOf(ctx, threadId, userId)));
     return null;
   },
 });
@@ -188,10 +223,21 @@ export const turnArgs = { agentThreadId: v.string(), senderId: v.id("users"), mo
 /**
  * Where a reply stands after its requests so far: the credits they cost, how many they were,
  * the actions they called, the input tokens the last of them read, how many of them in a
- * row had every action fail, the digests of what the last few did (./tools.ts), and why its
- * actions were refused in the last one, when they were.
+ * row had every action fail, the digests of what the last few did (./tools.ts), why its
+ * actions were refused in the last one, when they were, and the credits and the requests
+ * it pauses at (./spending.ts).
  */
-export const usedValidator = v.object({ credits: v.number(), rounds: v.number(), calls: v.number(), tokens: v.optional(v.number()), failed: v.optional(v.number()), recent: v.optional(v.array(v.string())), told: v.optional(v.string()) });
+export const usedValidator = v.object({
+  credits: v.number(),
+  rounds: v.number(),
+  calls: v.number(),
+  tokens: v.optional(v.number()),
+  failed: v.optional(v.number()),
+  recent: v.optional(v.array(v.string())),
+  told: v.optional(v.string()),
+  cap: v.optional(v.number()),
+  lap: v.optional(v.number()),
+});
 /** What a reply's next request starts from: whose it is, the message it answers, and what the reply has used. */
 const resumeValidator = v.object({ ...turnArgs, promptMessageId: v.string(), used: usedValidator });
 
@@ -263,6 +309,8 @@ export const release = internalMutation({
   args: {
     ...lockArgs,
     ended: v.optional(v.object({ ...turnArgs, lastInputTokens: v.number(), messages: v.number(), bytes: v.number() })),
+    // What the reply's requests have cost in all, for its sender's record once it has ended (./spending.ts).
+    spent: v.optional(v.number()),
     summarized: v.optional(v.object({ summary: v.string(), through: v.number() })),
     // The compaction ran while a reply was under way: the reply goes on from here.
     resume: v.optional(resumeValidator),
@@ -277,14 +325,29 @@ export const release = internalMutation({
         made: v.number(),
         failed: v.number(),
         recent: v.array(v.string()),
+        cap: v.optional(v.number()),
+        lap: v.optional(v.number()),
       }),
     ),
     // The reply's request ended on actions that ran (./turn.ts): their results go back to the model in
     // its next request, with what the reply has used so far.
-    next: v.optional(v.object({ promptMessageId: v.string(), spent: v.number(), rounds: v.number(), made: v.number(), tokens: v.number(), failed: v.number(), recent: v.array(v.string()), told: v.optional(v.string()) })),
+    next: v.optional(
+      v.object({
+        promptMessageId: v.string(),
+        spent: v.number(),
+        rounds: v.number(),
+        made: v.number(),
+        tokens: v.number(),
+        failed: v.number(),
+        recent: v.array(v.string()),
+        told: v.optional(v.string()),
+        cap: v.optional(v.number()),
+        lap: v.optional(v.number()),
+      }),
+    ),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, ended, summarized, asking, next, resume }) => {
+  handler: async (ctx, { threadId, attemptId, ended, spent, summarized, asking, next, resume }) => {
     const thread = await ctx.db.get("assistantThreads", threadId);
     if (thread?.reply?.attemptId !== attemptId) return null;
     const current = thread.reply;
@@ -292,7 +355,8 @@ export const release = internalMutation({
     const goOn = async ({ used, ...from }: Infer<typeof resumeValidator>) => {
       const { compacting: _compacting, ...lock } = current;
       const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.reply, { threadId, attemptId, ...from, used });
-      return { ...lock, scheduledId };
+      const { cap: _cap, ...held } = lock;
+      return { ...held, scheduledId, spent: used.credits, ...(used.cap === undefined ? {} : { cap: used.cap }) };
     };
     if (current.compacting) {
       const kept = summarized && !current.stop ? { summary: summarized.summary, compactedThrough: summarized.through, compactionOwed: undefined } : null;
@@ -335,6 +399,8 @@ export const release = internalMutation({
         made: asking.made,
         ...(asking.failed ? { failed: asking.failed } : {}),
         ...(asking.recent.length ? { recent: asking.recent } : {}),
+        ...(asking.cap === undefined ? {} : { cap: asking.cap }),
+        ...(asking.lap === undefined ? {} : { lap: asking.lap }),
         askedAt: now,
       };
       // A conversation as long as a request should read is owed its summary: nothing compacts it while it waits.
@@ -346,7 +412,32 @@ export const release = internalMutation({
     if (ended && next) {
       // The reply goes on, in an action of its own.
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
-      const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens, failed: next.failed, recent: next.recent, ...(next.told ? { told: next.told } : {}) } };
+      const limits = { ...(next.cap === undefined ? {} : { cap: next.cap }), ...(next.lap === undefined ? {} : { lap: next.lap }) };
+      // It has reached what its sender lets a reply spend, or the requests a reply makes before it asks (./spending.ts).
+      // It waits to be carried on, as a reply that asked about an action waits for its answer. A reply that was
+      // stopped ends at its next request instead, and one whose next request is its answer (./run.ts) makes it.
+      const paused = current.stop || next.told ? null : pausedAt(next);
+      if (paused) {
+        const waiting = {
+          senderId: current.senderId,
+          order: current.order,
+          promptMessageId: next.promptMessageId,
+          modelId: ended.modelId,
+          ...(ended.effort ? { effort: ended.effort } : {}),
+          spent: next.spent,
+          rounds: next.rounds,
+          made: next.made,
+          ...(next.failed ? { failed: next.failed } : {}),
+          ...(next.recent.length ? { recent: next.recent } : {}),
+          ...limits,
+          paused,
+          askedAt: Date.now(),
+        };
+        // A conversation as long as a request should read is owed its summary: nothing compacts it while it waits.
+        await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: undefined, asking: waiting, ...(compactionDue({ ...ended, window }) ? { compactionOwed: true } : {}) });
+        return null;
+      }
+      const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens, failed: next.failed, recent: next.recent, ...(next.told ? { told: next.told } : {}), ...limits } };
       // A conversation as long as a request should read is summarized first, through what the reply
       // has written, and the reply goes on from the summary (./context.ts).
       if (!current.stop && compactionDue({ ...ended, window })) {
@@ -360,6 +451,9 @@ export const release = internalMutation({
     }
     // A reply that carried on from an answer and was stopped, or failed, on the way can leave calls it never ran.
     await settleAsked(ctx, threadId);
+    // What it cost is kept among its sender's last replies. One that ended before a request of its own
+    // reported in, stopped as it went on, say, has what its lock last held.
+    await noteReply(ctx, current.senderId, spent ?? current.spent ?? 0);
     // A stopped reply is left alone: whoever stopped it is waiting to write.
     if (ended && !current.stop && compactionDue({ ...ended, window })) {
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
@@ -660,8 +754,16 @@ export const live = query({
       stopping: v.boolean(),
       /** The reply is written, and the chat is summarizing the conversation so far before it takes the next message. */
       compacting: v.boolean(),
-      /** The reply waits for the person to answer what it asked. Stop ends it. */
+      /** The reply waits for the person: to answer what it asked, or to carry it on from a pause. Stop ends it. */
       asking: v.boolean(),
+      /** Why it paused, when it did (./spending.ts). */
+      paused: v.union(v.null(), assistantPausedValidator),
+      /**
+       * For the person it answers alone, whose credits it spends: what its requests have cost so
+       * far, and the credits it pauses at when they set a limit.
+       */
+      spent: v.optional(v.number()),
+      cap: v.optional(v.number()),
       text: v.string(),
     }),
   ),
@@ -670,8 +772,21 @@ export const live = query({
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
     // A reply that waits for an answer isn't being written, and Stop ends it.
+    /** What a reply has cost and may cost is its sender's to see. */
+    const spending = (of: { senderId: Id<"users">; spent?: number; cap?: number }) => (of.senderId === userId ? { spent: of.spent ?? 0, ...(of.cap === undefined ? {} : { cap: of.cap }) } : {});
     if (thread.asking) {
-      return { attemptId: waitingAttempt(thread.asking), senderId: thread.asking.senderId, order: thread.asking.order, startedAt: thread.asking.askedAt, stopping: false, compacting: false, asking: true, text: "" };
+      return {
+        attemptId: waitingAttempt(thread.asking),
+        senderId: thread.asking.senderId,
+        order: thread.asking.order,
+        startedAt: thread.asking.askedAt,
+        stopping: false,
+        compacting: false,
+        asking: true,
+        paused: thread.asking.paused ?? null,
+        ...spending(thread.asking),
+        text: "",
+      };
     }
     const current = thread.reply;
     if (!current || !(await writing(ctx, current))) return null;
@@ -692,6 +807,8 @@ export const live = query({
       stopping: current.stop === true,
       compacting: current.compacting === true,
       asking: false,
+      paused: null,
+      ...spending(current),
       text: stream ? await textSoFar(ctx, thread.agentThreadId, stream.streamId) : "",
     };
   },

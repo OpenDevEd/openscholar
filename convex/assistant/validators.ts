@@ -26,17 +26,24 @@ export const assistantReplyValidator = v.object({
   stop: v.optional(v.boolean()),
   /** The reply is written, and the conversation so far is being summarized before the chat takes its next message (./context.ts). */
   compacting: v.optional(v.boolean()),
+  /** What its requests so far have cost, and the credits it pauses at when its sender set a limit (./spending.ts). */
+  spent: v.optional(v.number()),
+  cap: v.optional(v.number()),
 });
+
+/** Why a reply paused: it reached the credits its sender lets a reply spend, or the requests a reply makes before it asks. */
+export const assistantPausedValidator = v.union(v.literal("credits"), v.literal("requests"));
 
 /** Requests whose digests a reply carries along, to tell when it is going round in circles (./tools.ts). */
 export const RECENT_REQUESTS = 6;
 
 /**
  * A reply that asked the person before running an action, and waits for their answer
- * (./steps.ts). Nothing runs meanwhile, so no reply holds the chat; the chat takes no
- * message until every call is answered, or the reply is stopped. What the reply needs to
- * carry on is kept here: who it runs for, the message it answers, its model, and what it
- * has used of one reply's credits, rounds and calls, which carrying on doesn't start over.
+ * (./steps.ts), or one that paused at a limit and waits to be carried on (./spending.ts).
+ * Nothing runs meanwhile, so no reply holds the chat; the chat takes no message until the
+ * reply is answered, carried on or stopped. What the reply needs to carry on is kept here:
+ * who it runs for, the message it answers, its model, and what it has used of one reply's
+ * credits, rounds and calls, which carrying on doesn't start over.
  */
 export const assistantAskingValidator = v.object({
   senderId: v.id("users"),
@@ -50,8 +57,33 @@ export const assistantAskingValidator = v.object({
   /** How many of its requests in a row, up to the one that asked, had every action fail, and the digests of what its last few did (./tools.ts). */
   failed: v.optional(v.number()),
   recent: capped(v.optional(v.array(v.string())), RECENT_REQUESTS),
+  /** The credits it pauses at, when its sender set a limit, and the requests it pauses at. */
+  cap: v.optional(v.number()),
+  lap: v.optional(v.number()),
+  /** Set on a reply that paused at one of them. It asked about no action: carrying it on is the answer. */
+  paused: v.optional(assistantPausedValidator),
   askedAt: v.number(),
 });
+
+/** Replies whose cost a person's record keeps, for the Spending sheet's chart. */
+export const RECENT_REPLIES = 12;
+
+/** What a person lets the assistant spend in one chat (#346). People in a shared chat each set their own, and spend their own credits. */
+export const assistantLimitFields = {
+  threadId: v.id("assistantThreads"),
+  userId: v.id("users"),
+  /** Credits a reply may spend before it pauses and asks. With none, a reply has no limit. */
+  replyLimit: v.optional(v.number()),
+};
+
+/** A person's own record with the assistant: what the chats they start take, and what their last replies cost. */
+export const assistantSpenderFields = {
+  userId: v.id("users"),
+  /** Set while "Use these for my new chats" is on: the limits a chat they start begins with. */
+  newChats: v.optional(v.object({ replyLimit: v.optional(v.number()) })),
+  /** What their last replies cost in credits, oldest first. */
+  recent: capped(v.array(v.number()), RECENT_REPLIES),
+};
 
 export const assistantThreadFields = {
   ownerId: v.id("users"),

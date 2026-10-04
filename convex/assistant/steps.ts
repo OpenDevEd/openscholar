@@ -19,6 +19,7 @@ import { internalMutation, internalQuery } from "../lib/functions";
 import { STEPS_SHOWN } from "../../lib/assistant/steps";
 import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
+import { forgetLimits, noteReply } from "./spending";
 
 /** Characters of an action's arguments, of what reverses it, and of why it failed, that a step keeps. */
 export const STEP_TEXT_MAX = 16_000;
@@ -266,6 +267,7 @@ export async function stopAsking(ctx: MutationCtx, thread: Doc<"assistantThreads
     skipEmbeddings: true,
   });
   await ctx.db.patch("assistantThreads", thread._id, { asking: undefined });
+  await noteReply(ctx, waiting.senderId, waiting.spent);
 }
 
 /** Deletes a deleted chat's steps and their results, a batch at a time, until none are left. */
@@ -278,7 +280,9 @@ export const forget = internalMutation({
     // Steps go once their results are gone, so a batch never reads large rows and small ones together.
     const steps = results.length === FORGET_RESULTS ? [] : await ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId)).take(FORGET_STEPS);
     for (const step of steps) await ctx.db.delete("assistantSteps", step._id);
-    if (results.length === FORGET_RESULTS || steps.length === FORGET_STEPS) await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId });
+    // What people let the assistant spend in it goes too (./spending.ts).
+    const limitsLeft = await forgetLimits(ctx, threadId);
+    if (results.length === FORGET_RESULTS || steps.length === FORGET_STEPS || limitsLeft) await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId });
     return null;
   },
 });

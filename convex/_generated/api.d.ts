@@ -32,6 +32,7 @@ import type * as assistant_presence from "../assistant/presence.js";
 import type * as assistant_replies from "../assistant/replies.js";
 import type * as assistant_run from "../assistant/run.js";
 import type * as assistant_sharing from "../assistant/sharing.js";
+import type * as assistant_spending from "../assistant/spending.js";
 import type * as assistant_steps from "../assistant/steps.js";
 import type * as assistant_threads from "../assistant/threads.js";
 import type * as assistant_tools from "../assistant/tools.js";
@@ -410,6 +411,7 @@ declare const fullApi: ApiFromModules<{
   "assistant/replies": typeof assistant_replies;
   "assistant/run": typeof assistant_run;
   "assistant/sharing": typeof assistant_sharing;
+  "assistant/spending": typeof assistant_spending;
   "assistant/steps": typeof assistant_steps;
   "assistant/threads": typeof assistant_threads;
   "assistant/tools": typeof assistant_tools;

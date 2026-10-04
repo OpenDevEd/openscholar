@@ -133,13 +133,14 @@ export const reply = internalAction({
       }),
       release: ({ lastInputTokens, asked, credits, requests, more, failed }) => {
         const calls = askedSteps(asked);
-        const now = { spent: used.credits + credits, rounds: used.rounds + requests, made: made() };
+        const now = { spent: used.credits + credits, rounds: used.rounds + requests, made: made(), ...(used.cap === undefined ? {} : { cap: used.cap }), ...(used.lap === undefined ? {} : { lap: used.lap }) };
         const did = digest();
         const recent = [...(used.recent ?? []), ...(did ? [did] : [])].slice(-RECENT_REQUESTS);
         return ctx.runMutation(internal.assistant.replies.release, {
           ...lock,
           // A request that failed before the model answered read nothing: what the one before it read still says how long the conversation is.
           ended: { ...turn, ...history, lastInputTokens: lastInputTokens || (used.tokens ?? 0) },
+          spent: now.spent,
           // It waits for the person's answer, or goes on to its next request, or has ended.
           // A request that was the reply's answer ends it, whatever the model called in it.
           ...(calls.length
