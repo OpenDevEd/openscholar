@@ -3475,6 +3475,7 @@
       "done": "完了",
       "failed": "失敗",
       "undoFailed": "元に戻せませんでした",
+      "earlier": "以前のステップ",
       "interrupted": "この処理が終わる前に返信が終了しました",
       "found": "件",
       "declined": "許可されませんでした",

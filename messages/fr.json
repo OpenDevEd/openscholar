@@ -3475,6 +3475,7 @@
       "done": "Terminé",
       "failed": "Échec",
       "undoFailed": "Impossible d'annuler",
+      "earlier": "Étapes précédentes",
       "interrupted": "La réponse s'est terminée avant la fin de cette étape",
       "found": "trouvés",
       "declined": "Non autorisé",

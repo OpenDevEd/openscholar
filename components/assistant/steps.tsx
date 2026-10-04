@@ -6,7 +6,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { useMutation } from "convex/react";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Check, CircleAlert, Compass, FileText, FolderPlus, ListChecks, MessagesSquare, Search, TableProperties, Undo2, X, type AppIcon } from "@/components/icons";
@@ -15,6 +15,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { EASE } from "@/components/settings/model-map";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { STEPS_SHOWN } from "@/lib/assistant/steps";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "./logo-mark";
@@ -125,12 +126,30 @@ function Fact({ value, children }: { value?: ReactNode; children: ReactNode }) {
  * runs a curve from each task to its model. Each card is as tall as the next, and the map
  * grows by a card as a step starts, so nothing above it moves.
  */
-export function Steps({ threadId, steps: all }: { threadId: Id<"assistantThreads">; steps: StepItem[] }) {
+export function Steps({
+  threadId,
+  order,
+  through,
+  steps: newest,
+}: {
+  threadId: Id<"assistantThreads">;
+  /** The exchange the reply starts in, and the last it can have carried on in. */
+  order: number;
+  through: number;
+  /** The reply's steps as the chat's page holds them: the newest of each exchange. */
+  steps: StepItem[];
+}) {
+  // An exchange that ran more than the page holds has the ones before them a page away. Reading them here also
+  // keeps the ones the page lets go of as the reply runs on, so no card leaves the map.
+  const cut = [...Map.groupBy(newest, (step) => step.order).values()].some((ran) => ran.length >= STEPS_SHOWN);
+  const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.steps, cut ? { threadId, order, through } : "skip", { initialNumItems: STEPS_SHOWN });
+  // In the order they ran. The page's copy of a step is the one kept: it says what a step that waits for the person would do.
+  const all = cut ? [...new Map([...results.toReversed(), ...newest].map((step) => [step.id, step])).values()].sort((a, b) => a.order - b.order || a.at - b.at) : newest;
   const asked = all.filter((step) => step.canAnswer);
   const steps = all.filter((step) => !step.canAnswer);
   return (
     <div className="space-y-3">
-      {steps.length ? <RunMap threadId={threadId} steps={steps} /> : null}
+      {steps.length ? <RunMap threadId={threadId} steps={steps} earlier={status === "CanLoadMore" ? () => loadMore(STEPS_SHOWN) : status === "LoadingMore" ? "loading" : null} /> : null}
       <AnimatePresence initial={false}>
         {asked.map((step) => (
           <ApprovalCard key={step.id} threadId={threadId} step={step} />
@@ -210,7 +229,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
   );
 }
 
-function RunMap({ threadId, steps }: { threadId: Id<"assistantThreads">; steps: StepItem[] }) {
+function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">; steps: StepItem[]; /** Loads the steps before these, when the reply ran more. */ earlier: (() => void) | "loading" | null }) {
   const t = useTranslations("assistant");
   const reduceMotion = useReducedMotion();
   const undo = useMutation(api.assistant.undo.run);
@@ -227,6 +246,17 @@ function RunMap({ threadId, steps }: { threadId: Id<"assistantThreads">; steps: 
       <span className="absolute left-0.5 top-0 flex size-5 items-center justify-center rounded-md bg-primary/10">
         <LogoMark size={14} />
       </span>
+      {earlier ? (
+        // Beside the tile, in the room the curves start from, so the cards stay where they are.
+        <button
+          type="button"
+          disabled={earlier === "loading"}
+          onClick={earlier === "loading" ? undefined : earlier}
+          className="absolute left-9 top-0 z-10 flex h-5 items-center rounded-full px-2 text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground disabled:opacity-50"
+        >
+          {t("steps.earlier")}
+        </button>
+      ) : null}
       <svg className="overflow-visible" width={GUTTER} height={height} aria-hidden>
         {steps.map((step, i) => (
           <motion.path

@@ -5,7 +5,7 @@
 // This is the chat itself. The run map, the cards, the sheets, the @ picker and the
 // spending controls arrive with the issues that build what they show.
 
-import { Component, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Component, useEffect, useEffectEvent, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
 import { insertAtTop, useConvex, useConvexAuth, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -13,6 +13,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { usePathname } from "next/navigation";
 import { ArrowUp, ChevronDown, CircleAlert, CircleStop, Eye, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus } from "@/components/icons";
 import { useTranslations } from "next-intl";
+import { useStickToBottomContext } from "use-stick-to-bottom";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Conversation, ConversationContent } from "@/components/ai-elements/conversation";
@@ -40,12 +41,16 @@ type ThreadId = Id<"assistantThreads">;
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
 type Message = Exclude<Item, StepItem>;
 type Live = NonNullable<FunctionReturnType<typeof api.assistant.replies.live>>;
+/** One reply as the thread draws it: the exchange it starts in, the last it can have carried on in, its steps, and how many messages of it are placed. */
+type Run = { order: number; through: number; steps: StepItem[]; said: number };
 
 const PANEL_W = 440;
 /** How far the chips above the composer hang over the thread: half their height. */
 const CHIP_HANG = 16;
 const SHELL_SPRING = { type: "spring" as const, stiffness: 380, damping: 36, mass: 0.9 };
 const FIRST_MESSAGES = 30;
+/** How far above the thread's top edge the messages before these start to load, so they're there before the person scrolls to them. */
+const LOAD_AHEAD = 1200;
 const TITLE_MAX = 60;
 /** The ID of a message shown ahead of the server's copy of it. */
 const SENDING = "sending:";
@@ -446,15 +451,34 @@ function Thread({
   /** Loads the messages before these, when there are any. */
   older: (() => void) | "loading" | null;
 }) {
-  const t = useTranslations("assistant");
-  // A reply's steps are one map, drawn where the first of them stands.
-  const steps = Map.groupBy(messages.filter((m) => m.role === "step"), (step) => step.order);
-  // A reply that has nothing to show yet: its action is still starting. It gets its row now, and its
-  // message takes that same row when it arrives, so "Thinking" is one row throughout and never starts over.
-  const starting = live !== null && !messages.some((m) => m.role !== "user" && m.order === live.order);
-  const rows: Item[] = starting ? [...messages, { id: `${SENDING}reply`, role: "assistant", order: live.order, text: "", status: "pending", mine: false, at: 0 }] : messages;
-  // Replies are told apart by their exchange and their place in it, which the row above shares with the message that follows it.
-  const nth = new Map<number, number>();
+  // An open chat's first pages arrive one after another. The thread shows once they fill it, not a part at a time.
+  const [filled, setFilled] = useState(false);
+  // What the reply being written has said so far. A message of it that also ran actions isn't its last.
+  const said = live ? messages.filter((m): m is Message => m.role === "assistant" && m.order === live.order) : [];
+  // A reply at work with no message being written: its action is starting, or it is between two of its requests.
+  // It gets its row now, and each message takes that same row as it arrives, so "Thinking" is one row throughout and never starts over.
+  const waiting = live !== null && !live.asking && said.every((m) => m.status === "done" && m.acted);
+  const all: Item[] = waiting ? [...messages, { id: `${SENDING}reply`, role: "assistant", order: live.order, text: "", status: "pending", mine: false, at: 0 }] : messages;
+  // While earlier messages remain, the thread starts at a person's message: a reply shows whole, never from partway in,
+  // so nothing of it is rebuilt when the page before it loads.
+  const start = older ? all.findIndex((m) => m.role === "user") : 0;
+  const rows = start < 0 ? [] : all.slice(start);
+  // A reply is everything from one person's message to the next. One that was summarized partway carries on in a later
+  // exchange, whose opening message the app wrote and the page leaves out, so its steps are still one map, drawn where the
+  // first of them stands, and its messages are told apart by their place in the whole of it.
+  const replies = new Map<Item, { reply: Run; place: number }>();
+  let reply: Run | null = null;
+  for (const m of rows) {
+    if (m.role === "user") {
+      // The reply before this message ran no further than it. A message still on its way has no place in the chat yet.
+      if (reply && !m.id.startsWith(SENDING)) reply.through = m.order - 1;
+      reply = null;
+      continue;
+    }
+    reply ??= { order: m.order, through: Number.MAX_SAFE_INTEGER, steps: [], said: 0 };
+    if (m.role === "step") reply.steps.push(m);
+    replies.set(m, { reply, place: m.role === "step" ? 0 : reply.said++ });
+  }
   return (
     // Both edges fade. The bottom one is clear under the hanging chips, then fades the usual
     // distance; the content's bottom padding keeps the last message clear of both.
@@ -462,27 +486,20 @@ function Thread({
       className="min-h-0 flex-1"
       style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${CHIP_HANG + EDGE_FADE}px), transparent calc(100% - ${CHIP_HANG}px))` }}
     >
-      <ConversationContent className="gap-5 overflow-x-clip px-4 pt-4" style={{ paddingBottom: CHIP_HANG + EDGE_FADE + 8 }}>
+      <ConversationContent
+        // Hidden at once, shown with a fade: the transition belongs to the shown state only.
+        className={cn("gap-5 overflow-x-clip px-4 pt-4", older && !filled ? "pointer-events-none opacity-0" : "transition-opacity duration-200")}
+        style={{ paddingBottom: CHIP_HANG + EDGE_FADE + 8 }}
+      >
         {fresh ? <Empty /> : null}
-        {older ? (
-          <button
-            type="button"
-            disabled={older === "loading"}
-            onClick={older === "loading" ? undefined : older}
-            className="flex h-7 items-center self-center rounded-full px-2.5 text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground disabled:opacity-50"
-          >
-            {t("earlier")}
-          </button>
-        ) : null}
+        {older ? <Earlier older={older} onFilled={() => setFilled(true)} /> : null}
         {rows.map((m) => {
           if (m.role === "user") return <UserBubble key={m.id} message={m} />;
-          if (m.role === "step") return steps.get(m.order)?.[0] === m && threadId ? <Steps key={m.id} threadId={threadId} steps={steps.get(m.order)!} /> : null;
-          const place = nth.get(m.order) ?? 0;
-          nth.set(m.order, place + 1);
+          const { reply, place } = replies.get(m)!;
+          if (m.role === "step") return reply.steps[0] === m && threadId ? <Steps key={`steps:${reply.order}`} threadId={threadId} order={reply.order} through={reply.through} steps={reply.steps} /> : null;
           return (
-            <div key={`reply:${m.order}:${place}`} className="space-y-3">
-              {/* The map of its steps shows the work, so a reply that has run some doesn't also say it's thinking. */}
-              <Reply message={m} live={live?.order === m.order ? live.text : ""} quiet={steps.has(m.order)} />
+            <div key={`reply:${reply.order}:${place}`} className="space-y-3">
+              <Reply message={m} live={live?.order === m.order ? live.text : ""} acting={reply.steps.some((step) => step.status === "running")} />
               {m.status === "stopped" ? <StoppedRow /> : null}
               {m.status === "failed" ? <FailedRow error={m.error} /> : null}
             </div>
@@ -493,12 +510,50 @@ function Thread({
   );
 }
 
-/** A reply: its text as it arrives, or "Thinking" until the first of it does. */
-function Reply({ message, live, quiet }: { message: Message; live: string; quiet: boolean }) {
+/**
+ * The messages before these. They load when the button comes into view as well as when it's
+ * pressed, so a page that shows little, like the end of a long reply, fills the thread by itself.
+ */
+function Earlier({ older, onFilled }: { older: (() => void) | "loading"; onFilled: () => void }) {
+  const t = useTranslations("assistant");
+  const { scrollRef } = useStickToBottomContext();
+  const button = useRef<HTMLButtonElement>(null);
+  const loading = older === "loading";
+  const seen = useEffectEvent((near: boolean, inView: boolean) => {
+    // The thread is full once the button is out of view. The messages before it go on loading while it's near.
+    if (!inView) onFilled();
+    if (near && older !== "loading") older();
+  });
+  // An observer is an outside system: it says whether the button is in view, or about to be, again each time a page has loaded.
+  useEffect(() => {
+    if (loading || !button.current) return;
+    const observer = new IntersectionObserver(
+      // The root's bounds reach LOAD_AHEAD above the thread's top edge, which is where the view itself starts.
+      ([entry]) => seen(entry!.isIntersecting, entry!.isIntersecting && entry!.boundingClientRect.bottom > (entry!.rootBounds?.top ?? 0) + LOAD_AHEAD),
+      { root: scrollRef.current, rootMargin: `${LOAD_AHEAD}px 0px 0px` },
+    );
+    observer.observe(button.current);
+    return () => observer.disconnect();
+  }, [loading, scrollRef]);
+  return (
+    <button
+      ref={button}
+      type="button"
+      disabled={loading}
+      onClick={loading ? undefined : older}
+      className="flex h-7 items-center self-center rounded-full px-2.5 text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground disabled:opacity-50"
+    >
+      {t("earlier")}
+    </button>
+  );
+}
+
+/** A reply: its text as it arrives, or "Thinking" until the first of it does. `acting`: one of its actions is running. */
+function Reply({ message, live, acting }: { message: Message; live: string; acting: boolean }) {
   const pending = message.status === "pending";
   // One hook for the reply's whole life, so text still being revealed carries on when the reply is done.
   const [text, { isStreaming }] = useSmoothText(pending ? live : message.text, { startStreaming: pending });
-  if (!text) return pending && !quiet ? <Thinking /> : null;
+  if (!text) return pending ? <Thinking wordless={acting} /> : null;
   return (
     <div className="text-sm leading-relaxed text-foreground">
       <MessageResponse isAnimating={pending || isStreaming} parseIncompleteMarkdown={pending || isStreaming || message.status === "stopped"} linkSafety={CHAT_LINK_SAFETY}>
@@ -556,12 +611,18 @@ function UserBubble({ message }: { message: Message }) {
   );
 }
 
-function Thinking() {
+/**
+ * The reply is at work, from the moment it's taken on until its text arrives. While one of its
+ * actions runs, the action's card says what it's doing, so the row keeps its mark and drops its word.
+ */
+function Thinking({ wordless }: { wordless: boolean }) {
   const t = useTranslations("assistant");
   return (
     <div className="flex h-9 items-center gap-2 pl-1 text-sm">
       <LogoMark size={18} working />
-      <WorkingText>{t("thinking")}</WorkingText>
+      <span aria-hidden={wordless} className={cn("transition-opacity duration-200", wordless && "opacity-0")}>
+        <WorkingText>{t("thinking")}</WorkingText>
+      </span>
     </div>
   );
 }

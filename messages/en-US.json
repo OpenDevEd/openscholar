@@ -3465,6 +3465,7 @@
       "done": "Done",
       "failed": "Failed",
       "undoFailed": "Couldn't undo that",
+      "earlier": "Earlier steps",
       "interrupted": "The reply ended before this finished",
       "found": "found",
       "declined": "Not allowed",
