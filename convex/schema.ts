@@ -56,7 +56,7 @@ import { authorContentFields } from "./authors/validators";
 
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
-import { assistantThreadAccessFields, assistantThreadFields } from "./assistant/validators";
+import { assistantThreadAccessFields, assistantThreadFields, assistantStepFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
 
@@ -209,6 +209,8 @@ export default defineSchema({
     .index("by_replySender", ["reply.senderId"])
     // Every chat writing a reply, oldest first, for releasing the ones whose action died.
     .index("by_replyStartedAt", ["reply.startedAt"]),
+  // The actions a chat's replies ran, each found by the model's ID for the call.
+  assistantSteps: defineTable(assistantStepFields).index("by_thread_and_toolCallId", ["threadId", "toolCallId"]),
   assistantThreadAccess: defineTable(assistantThreadAccessFields)
     // A person's chats, newest first, through each of their principals.
     .index("by_principal_and_lastMessageAt", ["principal", "lastMessageAt"])

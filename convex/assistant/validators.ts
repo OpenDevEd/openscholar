@@ -51,6 +51,28 @@ export const assistantThreadFields = {
   updatedAt: v.number(),
 };
 
+/** One action the assistant ran in a reply (./steps.ts). */
+export const assistantStepFields = {
+  threadId: v.id("assistantThreads"),
+  /** The exchange it belongs to: the agent component's order of the message being answered. */
+  order: v.number(),
+  /** The model's ID for the call, which the chat's messages name it by. */
+  toolCallId: v.string(),
+  /** The action it ran, by its path in the registry. */
+  path: v.string(),
+  /** The action's arguments, as JSON. */
+  input: v.string(),
+  status: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
+  /** The action's result, as JSON, cut at STEP_RESULT_MAX. */
+  result: v.optional(v.string()),
+  /** Why it failed, as the model was told. */
+  error: v.optional(v.string()),
+  /** What reverses it: the action to run, and its arguments as JSON. */
+  undo: v.optional(v.object({ path: v.string(), args: v.string() })),
+  startedAt: v.number(),
+  endedAt: v.optional(v.number()),
+};
+
 export const assistantThreadAccessFields = {
   threadId: v.id("assistantThreads"),
   /**

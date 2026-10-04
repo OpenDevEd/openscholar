@@ -38,29 +38,46 @@ function fieldsWithStringIds(fields: PropertyValidators): PropertyValidators {
   return Object.fromEntries(Object.entries(fields).map(([name, validator]) => [name, idsAsStrings(validator)]));
 }
 
+/** A tool's name: its action's path, in the characters a tool name takes. */
+export const toolName = (path: string) => path.replace(/[/:]/g, "_");
+
+const retryKeyOf = (entry: UserAction) => (entry.kind === "query" ? undefined : entry.retryKey);
+
+/** What the model fills in to call an action: its arguments but the retry key, with IDs as strings. */
+export function inputSchema(entry: UserAction) {
+  const retryKey = retryKeyOf(entry);
+  const fields = Object.fromEntries(Object.entries(entry.args as PropertyValidators).filter(([name]) => name !== retryKey));
+  return z.object(convexToZodFields(fieldsWithStringIds(fields)));
+}
+
+/** Runs an action as `userId`. Its retry key is the tool call's ID, so a retried call applies once. */
+export function runAction(ctx: ActionCtx, userId: Id<"users">, entry: UserAction, input: Record<string, unknown>, toolCallId: string): Promise<unknown> {
+  const retryKey = retryKeyOf(entry);
+  const args = { ...input, ...(retryKey ? { [retryKey]: toolCallId } : {}), userId };
+  const ref = assistantPath(entry.path);
+  if (entry.kind === "query") return ctx.runQuery(makeFunctionReference<"query">(ref), args);
+  if (entry.kind === "mutation") return ctx.runMutation(makeFunctionReference<"mutation">(ref), args);
+  return ctx.runAction(makeFunctionReference<"action">(ref), args);
+}
+
+/** One call of an action by the model. */
+export type ToolCall = { entry: UserAction; input: Record<string, unknown>; toolCallId: string };
+/** What happens around a call: `run` makes it, and what this returns is what the model reads. */
+export type Around = (call: ToolCall, run: () => Promise<unknown>) => Promise<unknown>;
+
 /**
  * The assistant's tools for these actions, acting as `userId`. Each tool's input is its
  * action's arguments, minus the retry key, which the tool fills from its call's ID.
  */
-export function assistantTools(ctx: ActionCtx, userId: Id<"users">, entries: readonly UserAction[]): Record<string, Tool> {
+export function assistantTools(ctx: ActionCtx, userId: Id<"users">, entries: readonly UserAction[], around: Around = (_call, run) => run()): Record<string, Tool> {
   return Object.fromEntries(
-    entries.map((entry) => {
-      const retryKey = entry.kind === "query" ? undefined : entry.retryKey;
-      const fields = Object.fromEntries(Object.entries(entry.args as PropertyValidators).filter(([name]) => name !== retryKey));
-      const ref = assistantPath(entry.path);
-      return [
-        entry.path.replace(/[/:]/g, "_"),
-        tool({
-          description: entry.description,
-          inputSchema: z.object(convexToZodFields(fieldsWithStringIds(fields))),
-          execute: async (input: Record<string, unknown>, { toolCallId }) => {
-            const args = { ...input, ...(retryKey ? { [retryKey]: toolCallId } : {}), userId };
-            if (entry.kind === "query") return ctx.runQuery(makeFunctionReference<"query">(ref), args);
-            if (entry.kind === "mutation") return ctx.runMutation(makeFunctionReference<"mutation">(ref), args);
-            return ctx.runAction(makeFunctionReference<"action">(ref), args);
-          },
-        }),
-      ];
-    }),
+    entries.map((entry) => [
+      toolName(entry.path),
+      tool({
+        description: entry.description,
+        inputSchema: inputSchema(entry),
+        execute: async (input: Record<string, unknown>, { toolCallId }) => around({ entry, input, toolCallId }, () => runAction(ctx, userId, entry, input, toolCallId)),
+      }),
+    ]),
   );
 }

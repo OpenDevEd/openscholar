@@ -118,7 +118,7 @@ describe("what the assistant's model is sent", () => {
 
     // The chat itself keeps every message.
     const { page } = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
-    expect(page.map((message) => message.text).reverse()).toEqual(["Question 1", "Answer 1", "Question 2", "Answer 2", "Question 3", "Answer 3", "Question 4", "Answer 4"]);
+    expect(page.map((message) => ("text" in message ? message.text : message.action)).reverse()).toEqual(["Question 1", "Answer 1", "Question 2", "Answer 2", "Question 3", "Answer 3", "Question 4", "Answer 4"]);
 
     // The summary is its own charge, to the person whose reply made it due.
     const charged = await t.run(async (ctx) => ctx.db.query("billingUsage").collect());
