@@ -72,7 +72,7 @@ function withUrlQuery(params: Partial<ParsedSearchParams>): Partial<ParsedSearch
  * @returns Full URL path like "/results/abc-123?q=test&field=title"
  */
 export function buildResultsUrl(searchId: string, params: Partial<ParsedSearchParams>): string {
-  return serializeSearchParams(`/results/${searchId}`, withUrlQuery(params));
+  return serializeSearchParams(`/results/${encodeURIComponent(searchId)}`, withUrlQuery(params));
 }
 
 /**
@@ -91,5 +91,4 @@ export function buildShareableUrl(origin: string, params: Partial<ParsedSearchPa
   // A browser never sends the fragment to the server, so a long OQL query fits there.
   return params.field === OQL_FIELD && params.q ? `${url}#${SHARED_OQL}=${encodeURIComponent(params.q)}` : url;
 }
-
 

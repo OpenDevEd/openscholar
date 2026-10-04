@@ -1191,6 +1191,7 @@
     "guideTip2Description": "Your bookmark will automatically expand to the full search terms. Example: <code>ml...</code> becomes <code>AI OR ML OR \"artificial intelligence\"</code>"
   },
   "historyPage": {
+    "importMissingFilters": "This older file contains only queries and counts. Missing filters cannot be recovered.",
     "description": "View and revisit your previous searches",
     "searchPlaceholder": "Search your history...",
     "clearAllHistory": "Clear all history",

@@ -1,17 +1,18 @@
 "use client";
 
 import React, { Suspense, useContext } from "react";
-import { useParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { SearchProvider, SearchInitializer } from "@/lib/search";
 import { ResearchLoading, useResearchStatus } from "@/lib/research/provider";
 import { useWatchedSearch } from "@/lib/research/reads";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { ResearchContext } from "@/lib/research/binding";
 import { useSearchHistoryStore } from "@/lib/store";
+import { getEffectiveSearchId } from "@/lib/utils";
 
 function InitializeResults({ children }: { children: React.ReactNode }) {
   const account = useContext(ResearchContext);
-  const { searchId } = useParams<{ searchId?: string }>();
+  const searchId = getEffectiveSearchId(usePathname());
   const watched = useWatchedSearch(account ? searchId : undefined);
   const { retry } = useResearchStatus();
   const saved = useSearchHistoryStore(state => searchId !== undefined && state.getSearchResult(searchId) !== undefined);

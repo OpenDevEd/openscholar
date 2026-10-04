@@ -27,11 +27,16 @@ export async function importLocalResearch(
 ) {
   const failures: unknown[] = [];
   // Persist an identity for records made by old versions before claiming them.
-  localSearchHistoryStore.setState(state => ({ searchHistory: state.searchHistory.map(search =>
-    search.id ? search : importSearchRecord(search as unknown as Record<string, unknown>)) }));
+  localSearchHistoryStore.setState(state => ({ searchHistory: state.searchHistory.map(search => {
+    if (search.id) return search;
+    try {
+      return { ...importSearchRecord(search as unknown as Record<string, unknown>), screeningResponses: search.screeningResponses ?? {}, chatJobIdsByAccountId: search.chatJobIdsByAccountId };
+    } catch (error) { failures.push(error); return search; }
+  }) }));
   const claims = JSON.parse(localStorage.getItem(CLAIMS_KEY) ?? "{}") as Record<string, string>;
   const items: LocalItem[] = [];
   for (const search of localSearchHistoryStore.getState().searchHistory) {
+    if (!search.id) continue;
     try {
     const data = serializeSearch(search);
     const serialized = JSON.stringify(data);

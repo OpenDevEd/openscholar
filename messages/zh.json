@@ -1201,6 +1201,7 @@
     "guideTip2Description": "您的书签将自动扩展为完整的搜索词。例如：<code>ml...</code> 会变成 <code>AI OR ML OR \"artificial intelligence\"</code>"
   },
   "historyPage": {
+    "importMissingFilters": "此旧文件仅包含查询和结果数量。缺失的筛选条件无法恢复。",
     "description": "查看并重访您之前的搜索",
     "searchPlaceholder": "搜索您的历史记录...",
     "clearAllHistory": "清除所有历史记录",
