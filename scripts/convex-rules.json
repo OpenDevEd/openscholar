@@ -11,8 +11,6 @@
       "convex/ai/actions.ts:generateBatchTranslations:.errors[]": "#425",
       "convex/ai/actions.ts:generateBatchTranslations:.results{}": "#425",
       "convex/authors/invitations.ts:listMine:[]": "#424",
-      "convex/authors/members.ts:list:.invitations[]": "#424",
-      "convex/authors/members.ts:list:.members[]": "#424",
       "convex/authors/publications.ts:list:[]": "#424",
       "convex/billing/actions.ts:previewPlan:.lineItems[]": "#425",
       "convex/chat/chatPapers.ts:listChatSourcesWithInclusion:.rows[]": "#325",

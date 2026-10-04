@@ -6,7 +6,7 @@ import type { QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery, mutation, query } from "../lib/functions";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
+import { MAX_PENDING_INVITATIONS_PER_PROFILE, MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL, MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
 import { rateLimit } from "../lib/rateLimit";
 import { requireProfileAccess } from "./access";
 
@@ -22,6 +22,9 @@ export const prepare = internalMutation({
       .withIndex("by_profileId_and_email", q => q.eq("profileId", args.profileId).eq("email", email)).unique();
     // Sending one again changes nothing about how many wait; only a new one, or one answered or expired, counts.
     if (pending?.state !== "pending") {
+      const waiting = await ctx.db.query("authorProfileInvitations")
+        .withIndex("by_profileId_and_state", q => q.eq("profileId", args.profileId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_PROFILE);
+      if (waiting.length >= MAX_PENDING_INVITATIONS_PER_PROFILE) throw createError("VALIDATION_ERROR", `This profile has ${MAX_PENDING_INVITATIONS_PER_PROFILE} invitations waiting. Cancel one to send another.`);
       const theirs = await ctx.db.query("authorProfileInvitations")
         .withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).take(MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL);
       if (theirs.length >= MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL) throw createError("VALIDATION_ERROR", "This person has too many invitations waiting. Ask them to answer some first.");
@@ -121,7 +124,11 @@ export const respondVerified = internalMutation({
     if (args.accept && profile.ownerId !== user._id) {
       const member = await ctx.db.query("authorProfileMembers")
         .withIndex("by_profileId_and_userId", q => q.eq("profileId", profile._id).eq("userId", user._id)).unique();
-      if (!member) await ctx.db.insert("authorProfileMembers", {profileId: profile._id, userId: user._id});
+      if (!member) {
+        const members = await ctx.db.query("authorProfileMembers").withIndex("by_profileId_and_userId", q => q.eq("profileId", profile._id)).take(MAX_PROFILE_MEMBERS);
+        if (members.length >= MAX_PROFILE_MEMBERS) throw createError("VALIDATION_ERROR", `A profile can have up to ${MAX_PROFILE_MEMBERS} editors. Ask its owner to remove one first.`);
+        await ctx.db.insert("authorProfileMembers", {profileId: profile._id, userId: user._id});
+      }
     }
     await ctx.db.patch("authorProfileInvitations", invitation._id, {state: args.accept ? "accepted" : "declined"});
   },

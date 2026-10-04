@@ -52,7 +52,7 @@ import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidator
 import { evidenceLibraryCollectionSourceFields } from "./evidenceLibraries/collectionSourceValidators";
 import { evidenceLibrarySourceStatusFields } from "./evidenceLibraries/sourceStatusValidators";
 
-import { authorContentFields } from "./authors/validators";
+import { authorContentFields, authorProfileInvitationFields } from "./authors/validators";
 
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
@@ -162,14 +162,9 @@ export default defineSchema({
   }).index("by_profileId_and_userId", ["profileId", "userId"])
     .index("by_userId", ["userId"]),
 
-  authorProfileInvitations: defineTable({
-    profileId: v.id("authorProfiles"),
-    email: v.string(),
-    invitedBy: v.id("users"),
-    expiresAt: v.number(),
-    state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled"), v.literal("expired")),
-    delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
-  }).index("by_profileId_and_email", ["profileId", "email"])
+  authorProfileInvitations: defineTable(authorProfileInvitationFields)
+    .index("by_profileId_and_email", ["profileId", "email"])
+    .index("by_profileId_and_state", ["profileId", "state"])
     .index("by_email_and_state", ["email", "state"]),
 
   clerkEventLogs: defineTable(clerkEventLogFields)
