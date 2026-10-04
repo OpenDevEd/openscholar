@@ -65,6 +65,8 @@ export const assistantThreadFields = {
   summary: v.optional(v.string()),
   /** The last exchange the summary covers, by the agent component's order. */
   compactedThrough: v.optional(v.number()),
+  /** How far into the exchange after that the summary runs, by the component's step order, when a reply was summarized while it was being written. */
+  compactedStep: v.optional(v.number()),
   /** A compaction was due and didn't finish, so the next reply writes the summary before it answers. */
   compactionOwed: v.optional(v.boolean()),
   /**

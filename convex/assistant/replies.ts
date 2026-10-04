@@ -12,7 +12,7 @@
  */
 import { listMessages, listStreams, type MessageDoc } from "@convex-dev/agent";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -26,7 +26,8 @@ import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { notePart, viewOf } from "../../lib/assistant/view";
-import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
+import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
+import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { compactionDue } from "./context";
@@ -62,14 +63,14 @@ async function admit(ctx: MutationCtx, userId: Id<"users">) {
   const mine = await ctx.db
     .query("assistantThreads")
     .withIndex("by_replySender", (q) => q.eq("reply.senderId", userId))
-    .take(CHAT_CONCURRENCY_LIMIT * 2);
+    .take(ASSISTANT_REPLIES_AT_ONCE * 2);
   let stillWriting = 0;
   for (const other of mine) {
     if (await writing(ctx, other.reply)) stillWriting++;
     else await ctx.db.patch("assistantThreads", other._id, { reply: undefined });
   }
-  if (stillWriting >= CHAT_CONCURRENCY_LIMIT) {
-    throw createError("CONFLICT", `The assistant is already writing ${CHAT_CONCURRENCY_LIMIT} replies for you. Wait for one to finish.`);
+  if (stillWriting >= ASSISTANT_REPLIES_AT_ONCE) {
+    throw createError("CONFLICT", `The assistant is already writing ${ASSISTANT_REPLIES_AT_ONCE} replies for you. Wait for one to finish.`);
   }
 }
 
@@ -91,7 +92,7 @@ export const send = mutation({
     // A reply that was stopped, or died, around asking the person can leave calls without their results.
     await settleAsked(ctx, threadId);
     await healCalls(ctx, thread.agentThreadId);
-    const { modelId, effort } = await chatModel(ctx, thread);
+    const { modelId, effort } = await chatModel(ctx, thread, userId);
     // The model the chat falls back on, or one picked before the rule, is held to it too. So is
     // the server's own default, which runs when nothing picks a model, where the catalog has it.
     const model = modelId
@@ -182,18 +183,24 @@ export const lockArgs = { threadId: v.id("assistantThreads"), attemptId: v.strin
 
 export const turnArgs = { agentThreadId: v.string(), senderId: v.id("users"), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator) };
 
+/** What a reply has used of one reply's credits and rounds, and the actions it has called, in its requests so far, with the input tokens the last of them read. */
+export const usedValidator = v.object({ credits: v.number(), rounds: v.number(), calls: v.number(), tokens: v.optional(v.number()) });
+/** What a reply's next request starts from: whose it is, the message it answers, and what the reply has used. */
+const resumeValidator = v.object({ ...turnArgs, promptMessageId: v.string(), used: usedValidator });
+
 /**
  * What a chat's replies read from its record: its summary, the exchange the summary runs
  * through, whether a compaction is owed, and the exchange being answered now.
  */
 export const compacted = internalQuery({
   args: { threadId: v.id("assistantThreads") },
-  returns: v.object({ summary: v.optional(v.string()), compactedThrough: v.optional(v.number()), owed: v.boolean(), answering: v.optional(v.number()) }),
+  returns: v.object({ summary: v.optional(v.string()), compactedThrough: v.optional(v.number()), compactedStep: v.optional(v.number()), owed: v.boolean(), answering: v.optional(v.number()) }),
   handler: async (ctx, { threadId }) => {
     const thread = await ctx.db.get("assistantThreads", threadId);
     return {
       ...(thread?.summary ? { summary: thread.summary } : {}),
       ...(thread?.compactedThrough !== undefined ? { compactedThrough: thread.compactedThrough } : {}),
+      ...(thread?.compactedStep !== undefined ? { compactedStep: thread.compactedStep } : {}),
       owed: thread?.compactionOwed === true,
       ...(thread?.reply ? { answering: thread.reply.order } : {}),
     };
@@ -207,7 +214,7 @@ export const summarized = internalMutation({
   handler: async (ctx, { threadId, attemptId, summary, through }) => {
     const thread = await ctx.db.get("assistantThreads", threadId);
     // One handed in after Stop isn't kept: the reply it was written for won't run, and it stays owed.
-    if (thread?.reply?.attemptId === attemptId && !thread.reply.stop) await ctx.db.patch("assistantThreads", threadId, { summary, compactedThrough: through, compactionOwed: undefined });
+    if (thread?.reply?.attemptId === attemptId && !thread.reply.stop) await ctx.db.patch("assistantThreads", threadId, { summary, compactedThrough: through, compactedStep: undefined, compactionOwed: undefined });
     return null;
   },
 });
@@ -250,7 +257,10 @@ export const release = internalMutation({
   args: {
     ...lockArgs,
     ended: v.optional(v.object({ ...turnArgs, lastInputTokens: v.number(), messages: v.number(), bytes: v.number() })),
-    summarized: v.optional(v.object({ summary: v.string(), through: v.number() })),
+    // The summary a compaction wrote: through an exchange, or through a step of the exchange whose reply is still being written.
+    summarized: v.optional(v.object({ summary: v.string(), through: v.number(), step: v.optional(v.number()) })),
+    // The compaction ran while a reply was under way: the reply goes on from here.
+    resume: v.optional(resumeValidator),
     // The reply ended on calls it asks the person about (./steps.ts): the message it answers, each call as the step
     // that waits, and what the reply has used of one reply's credits and rounds so far.
     asking: v.optional(
@@ -262,19 +272,39 @@ export const release = internalMutation({
         made: v.number(),
       }),
     ),
+    // The reply's request ended on actions that ran (./turn.ts): their results go back to the model in
+    // its next request, with what the reply has used so far.
+    next: v.optional(v.object({ promptMessageId: v.string(), spent: v.number(), rounds: v.number(), made: v.number(), tokens: v.number() })),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, ended, summarized, asking }) => {
+  handler: async (ctx, { threadId, attemptId, ended, summarized, asking, next, resume }) => {
     const thread = await ctx.db.get("assistantThreads", threadId);
     if (thread?.reply?.attemptId !== attemptId) return null;
     const current = thread.reply;
+    /** Schedules the reply's next request, under the same lock. One stopped meanwhile finds that out there, and shows as stopped. */
+    const goOn = async ({ used, ...from }: Infer<typeof resumeValidator>) => {
+      const { compacting: _compacting, ...lock } = current;
+      const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.reply, { threadId, attemptId, ...from, used });
+      return { ...lock, scheduledId };
+    };
     if (current.compacting) {
-      // A summary that was stopped, or never written, stays owed: the next reply writes it first.
       const kept = summarized && !current.stop;
-      await ctx.db.patch("assistantThreads", threadId, {
-        reply: undefined,
-        ...(kept ? { summary: summarized.summary, compactedThrough: summarized.through, compactionOwed: undefined } : { compactionOwed: true }),
-      });
+      const position = kept
+        ? {
+            summary: summarized.summary,
+            // Through an exchange, or partway into the one after the last it covers whole.
+            ...(summarized.step === undefined ? { compactedThrough: summarized.through, compactedStep: undefined } : { compactedThrough: summarized.through - 1, compactedStep: summarized.step }),
+          }
+        : null;
+      if (resume) {
+        // The reply goes on, from the summary if one was written: its next request then reads the summary, not
+        // what the last one read, and nothing is owed any more, since the summary runs through everything before
+        // it. One that wasn't written stays owed, and is tried again after the reply's next request.
+        await ctx.db.patch("assistantThreads", threadId, { ...(position ? { ...position, compactionOwed: undefined } : {}), reply: await goOn(position ? { ...resume, used: { ...resume.used, tokens: 0 } } : resume) });
+        return null;
+      }
+      // A summary that was stopped, or never written, stays owed: the next reply writes it first.
+      await ctx.db.patch("assistantThreads", threadId, { reply: undefined, ...(position ? { ...position, compactionOwed: undefined } : { compactionOwed: true }) });
       return null;
     }
     const newest = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null }, excludeToolMessages: true })).page[0];
@@ -302,9 +332,33 @@ export const release = internalMutation({
       if (current.stop) await stopAsking(ctx, thread, waiting);
       return null;
     }
+    const window = ended?.modelId ? (await ctx.db.get("models", ended.modelId))?.contextLength : undefined;
+    if (ended && next) {
+      // The reply goes on, in an action of its own.
+      const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
+      const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens } };
+      // A conversation as long as a request should read is summarized first, through what the reply
+      // has written, and the reply goes on from the summary (./context.ts).
+      const last = !current.stop && compactionDue({ ...ended, window }) ? (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null }, statuses: ["success"] })).page[0] : undefined;
+      if (last?.order === current.order && last.stepOrder > 0) {
+        const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, {
+          threadId,
+          attemptId,
+          ...turn,
+          through: current.order,
+          step: last.stepOrder,
+          lastInputTokens,
+          resume: from,
+        });
+        // Owed from here until a summary is kept, so one that is stopped, or whose action dies, is written by the next reply.
+        await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true } });
+        return null;
+      }
+      await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: await goOn(from) });
+      return null;
+    }
     // A reply that carried on from an answer and was stopped, or failed, on the way can leave calls it never ran.
     await settleAsked(ctx, threadId);
-    const window = ended?.modelId ? (await ctx.db.get("models", ended.modelId))?.contextLength : undefined;
     // A stopped reply is left alone: whoever stopped it is waiting to write.
     if (ended && !current.stop && compactionDue({ ...ended, window })) {
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
@@ -561,12 +615,13 @@ export const live = query({
     }
     const current = thread.reply;
     if (!current || !(await writing(ctx, current))) return null;
-    // Newest first. A stream that has just ended still counts: its text stays up until the
-    // reply's message holds it and the lock is released, so the page never shows it vanish.
+    // Newest first. A request's stream finishes in the write that saves its message, so one
+    // that has finished has nothing the page doesn't hold already. Between two of a reply's
+    // requests there is none, and the text is empty.
     const streams = await listStreams(ctx, components.agent, {
       threadId: thread.agentThreadId,
       startOrder: current.order,
-      includeStatuses: ["streaming", "finished", "aborted"],
+      includeStatuses: ["streaming", "aborted"],
     });
     const stream = streams.find((candidate) => candidate.order === current.order);
     return {

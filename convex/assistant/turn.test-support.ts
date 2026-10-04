@@ -174,3 +174,18 @@ export async function waitFor(
     await new Promise((r) => setTimeout(r, intervalMs));
   }
 }
+
+/** A step in which the model calls tools and writes nothing. */
+export const callingDoStream =
+  (...calls: Array<{ id: string; name: string; input: unknown; read?: number }>) =>
+  async () => ({
+    stream: new ReadableStream({
+      start(controller) {
+        controller.enqueue({ type: "stream-start", warnings: [] });
+        for (const call of calls) controller.enqueue({ type: "tool-call", toolCallId: call.id, toolName: call.name, input: JSON.stringify(call.input) });
+        // The reason in the shape the model interface defines: with a plain string the SDK runs no tool.
+        controller.enqueue({ type: "finish", finishReason: { unified: "tool-calls", raw: "tool_calls" }, usage: { inputTokens: { total: calls[0]?.read ?? 5, noCache: calls[0]?.read ?? 5, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 3, text: 3, reasoning: 0 } } });
+        controller.close();
+      },
+    }),
+  });
