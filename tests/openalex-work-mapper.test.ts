@@ -85,22 +85,23 @@ describe("mapOpenAlexWorkToPaperData — authors", () => {
 });
 
 describe("mapOpenAlexWorkToPaperData — open access", () => {
-  it("extracts pdfUrl from open_access.oa_url", () => {
+  it("keeps an open access landing page separate from a known PDF URL", () => {
     const paper = mapOpenAlexWorkToPaperData({
       id: "https://openalex.org/W1",
       display_name: "T",
-      open_access: { oa_url: "https://example.com/paper.pdf", is_oa: true },
+      open_access: { oa_url: "https://example.com/paper", is_oa: true },
     });
-    expect(paper.pdfUrl).toBe("https://example.com/paper.pdf");
+    expect(paper.oaUrl).toBe("https://example.com/paper");
+    expect(paper.pdfUrl).toBeUndefined();
     expect(paper.isOpenAccess).toBe(true);
   });
 
-  it("defaults isOpenAccess to false when missing", () => {
+  it("keeps access unknown when the source does not report it", () => {
     const paper = mapOpenAlexWorkToPaperData({
       id: "https://openalex.org/W1",
       display_name: "T",
     });
-    expect(paper.isOpenAccess).toBe(false);
+    expect(paper.isOpenAccess).toBeUndefined();
     expect(paper.pdfUrl).toBeUndefined();
   });
 });

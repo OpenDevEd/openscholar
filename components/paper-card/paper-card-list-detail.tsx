@@ -157,9 +157,9 @@ export function PaperCardListDetail({
               {showTranslated && translatedContent
                 ? translatedContent.translatedTitle
                 : result.title}
-              <span className="ml-2 text-muted-foreground font-normal">
+              {result.publication_year != null && <span className="ml-2 text-muted-foreground font-normal">
                 ({result.publication_year})
-              </span>
+              </span>}
             </h3>
           </TitleContainer>
         </div>
@@ -167,6 +167,7 @@ export function PaperCardListDetail({
         {/* Authors */}
         <AuthorsLine
           authorships={result.authorships}
+          unparsed={result.authors_unparsed}
           className="mb-3"
           selected={authorFilter.authors}
           onToggleAuthor={authorFilter.toggle}

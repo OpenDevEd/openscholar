@@ -4,11 +4,13 @@ import type { ConvexReactClient } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { digestOpaqueToken } from "@/convex/lib/opaqueTokenDigest";
 import { searchFields, type SavedSearch } from "./research/records";
+import { authorMetadata } from "./library/paper-metadata";
 
-type Row = Record<string, string | number | boolean>;
+type Cell = string | number | boolean | string[];
+type Row = Record<string, Cell>;
 
-function csvValue(value: string | number | boolean) {
-  const text = String(value);
+function csvValue(value: Cell) {
+  const text = Array.isArray(value) ? JSON.stringify(value) : String(value);
   return /[",\n\r]/.test(text) || text === "" ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -28,14 +30,20 @@ function csvFile<Item>(columns: string[], row: (item: Item) => Row) {
 
 /** One exported paper. */
 function libraryRow(item: Doc<"libraryItems">) {
+  const names = authorMetadata(item);
   return {
     abstract: item.abstract ?? "",
-    authors: item.authors ?? "",
+    authors: names.authors ?? [],
+    authorsUnparsed: names.authorsUnparsed ?? "",
     citedByCount: item.citedByCount ?? "",
     doi: item.doi ?? "",
     isOpenAccess: item.isOpenAccess ?? "",
     journal: item.journal ?? "",
     oaStatus: item.oaStatus ?? "",
+    oaUrl: item.oaUrl ?? "",
+    pdfUrl: item.pdfUrl ?? "",
+    workType: item.workType ?? "",
+    metadataRecoveredAt: item.metadataRecoveredAt === undefined ? "" : new Date(item.metadataRecoveredAt).toISOString(),
     openalexId: item.openalexId,
     publicationYear: item.publicationYear ?? "",
     rating: item.rating ?? "",

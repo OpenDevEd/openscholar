@@ -88,12 +88,12 @@ export function PaperCardGrid({
         <div className={cn("flex flex-col h-full", isCompact ? "p-3" : "p-4")}>
           {/* Header: Year badge and quick actions */}
           <div className="flex items-start justify-between gap-2 mb-2">
-            <span className={cn(
+            <span>{result.publication_year != null && <span className={cn(
               "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium",
               "bg-primary/10 text-primary"
             )}>
               {result.publication_year}
-            </span>
+            </span>}</span>
             
             <div
               role="group"
@@ -135,7 +135,7 @@ export function PaperCardGrid({
           </h3>
 
           {/* Author */}
-          {result.authorships?.length ? (
+          {result.authorships?.length || result.authors_unparsed ? (
             <div className={cn(
               "flex items-center gap-1.5 text-muted-foreground mb-1.5",
               isCompact ? "text-xs" : "text-sm"
@@ -144,7 +144,8 @@ export function PaperCardGrid({
               <span className="line-clamp-1">
                 {/* The first author; "et al." stands for the rest. */}
                 <AuthorNames
-                  authorships={result.authorships}
+                  authorships={result.authorships ?? []}
+                  unparsed={result.authors_unparsed}
                   maxLength={0}
                   selected={authorFilter.authors}
                   onToggleAuthor={authorFilter.toggle}

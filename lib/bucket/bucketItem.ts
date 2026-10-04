@@ -6,6 +6,7 @@
 import type { BucketSearchFilters } from "@/lib/chat/params-to-bucket-filters";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { buildDedupeKey } from "./dedupe";
+import { authorMetadata, sourceMetadata, type PaperSourceMetadata } from "../library/paper-metadata";
 
 export type BucketSource =
   | "history"
@@ -16,7 +17,7 @@ export type BucketSource =
 
 export type BucketItemStatus = "ready" | "uploading" | "failed";
 
-export type BucketItem = {
+export type BucketItem = PaperSourceMetadata & {
   bucketKey: string;
   source: BucketSource;
   sourceRefId: string;
@@ -120,15 +121,6 @@ export function fromSavedSearchQuery(
   };
 }
 
-/** A library item's flattened authors ("John Doe, Jane Smith") as a list. */
-export function splitLibraryAuthors(raw?: string): string[] {
-  if (!raw) return [];
-  return raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 export function fromLibraryItem(
   item: Doc<"libraryItems">,
   now: number = Date.now(),
@@ -143,7 +135,9 @@ export function fromLibraryItem(
     source: "library",
     sourceRefId: item._id,
     title: item.title,
-    authors: splitLibraryAuthors(item.authors),
+    ...sourceMetadata(item),
+    ...authorMetadata(item),
+    authors: authorMetadata(item).authors ?? [],
     year: item.publicationYear,
     doi: item.doi,
     openalexId: item.openalexId || undefined,

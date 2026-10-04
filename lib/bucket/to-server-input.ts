@@ -13,8 +13,9 @@
  * cosmetic.
  */
 import type { BucketItem } from "./bucketItem";
+import { sourceMetadata, type PaperSourceMetadata } from "../library/paper-metadata";
 
-export type BucketItemServerInput = {
+export type BucketItemServerInput = PaperSourceMetadata & {
   bucketKey: string;
   source: BucketItem["source"];
   sourceRefId: string;
@@ -51,6 +52,7 @@ export function bucketItemToServerInput(
   }
 
   return {
+    ...sourceMetadata(item),
     bucketKey: item.bucketKey,
     source: item.source,
     sourceRefId: item.sourceRefId,

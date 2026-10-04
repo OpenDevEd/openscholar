@@ -269,6 +269,7 @@ export const getPapersDebug = internalQuery({
       statusCounts[paper.status] = (statusCounts[paper.status] || 0) + 1;
       const { hasPdfUrl, hasAbstract } = getProcessableFlags({
         pdfUrl: paper.pdfUrl,
+        oaUrl: paper.oaUrl,
         storageId: paper.storageId,
         abstract: paper.abstract,
         pdfEnabled,
@@ -318,7 +319,12 @@ export const LIBRARY_READ_BATCH = 100;
 const libraryPaperValidator = v.object({
   _id: v.id("libraryItems"),
   title: v.string(),
-  authors: v.optional(v.string()),
+  authors: v.optional(v.union(v.string(), v.array(v.string()))),
+  authorsUnparsed: v.optional(v.string()),
+  isOpenAccess: v.optional(v.boolean()),
+  oaStatus: v.optional(v.string()),
+  oaUrl: v.optional(v.string()),
+  pdfUrl: v.optional(v.string()),
   doi: v.optional(v.string()),
   openalexId: v.string(),
   abstract: v.optional(v.string()),
@@ -351,6 +357,7 @@ export const ownedLibraryItems = internalQuery({
         ? [{
             _id: row._id, title: row.title, authors: row.authors, doi: row.doi, openalexId: row.openalexId, abstract: row.abstract,
             publicationYear: row.publicationYear, journal: row.journal, citedByCount: row.citedByCount, workType: row.workType,
+            authorsUnparsed: row.authorsUnparsed, isOpenAccess: row.isOpenAccess, oaStatus: row.oaStatus, oaUrl: row.oaUrl, pdfUrl: row.pdfUrl,
           }]
         : [],
     );

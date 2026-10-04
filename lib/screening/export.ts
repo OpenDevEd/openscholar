@@ -7,6 +7,7 @@ import type { ConvexReactClient } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { SearchSnapshot } from "@/convex/paperSets/openalex";
+import { sourceMetadata, type PaperSourceMetadata } from "@/lib/library/paper-metadata";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,7 +42,9 @@ export interface ScreeningExportJob {
   completedAt?: number;
 }
 
-export interface ScreeningExportResult {
+export interface ScreeningExportResult extends PaperSourceMetadata {
+  venue?: string;
+  citedByCount?: number;
   resultId?: string;
   openalexId: string;
   title: string;
@@ -102,7 +105,7 @@ export function screeningExportName(job: Pick<ScreeningExportJob, "createdAt" | 
 
 /** The columns of the results table: the paper, an answer per question, then the scoring. */
 export function screeningHeaders(questions: Questions): string[] {
-  return ['Title', 'Authors', 'Year', 'DOI', 'OpenAlex ID', ...questions.map((q) => `${q.key}: ${q.question}`), 'Score', 'Stars', 'Qualified', 'Status', 'Outcome', 'Result ID', 'Model', 'Completed at', ...questions.flatMap((q) => [`${q.key}: model answer`, `${q.key}: model confidence`, `${q.key}: decided by`, `${q.key}: decided at`])];
+  return ['Title', 'Authors', 'Year', 'DOI', 'OpenAlex ID', ...questions.map((q) => `${q.key}: ${q.question}`), 'Score', 'Stars', 'Qualified', 'Status', 'Outcome', 'Result ID', 'Model', 'Completed at', ...questions.flatMap((q) => [`${q.key}: model answer`, `${q.key}: model confidence`, `${q.key}: decided by`, `${q.key}: decided at`]), 'Authors (unparsed)', 'Venue', 'Citation count', 'Work type', 'Open access', 'Access status', 'Open access URL', 'PDF URL'];
 }
 
 /** One result under those columns. Score and stars stay numbers, for a spreadsheet. */
@@ -123,6 +126,7 @@ export function screeningCells(questions: Questions, result: ScreeningExportResu
     result.model ?? '',
     result.completedAt === undefined ? '' : new Date(result.completedAt).toISOString(),
     ...questions.flatMap(({ key }) => [formatScreeningAnswer(result.modelAnswers?.[key]), result.modelConfidences?.[key] ?? '', result.decisions?.[key]?.by ?? 'unrecorded', result.decisions?.[key]?.at === undefined ? '' : new Date(result.decisions[key].at!).toISOString()]),
+    result.authorsUnparsed ?? '', result.venue ?? '', result.citedByCount ?? '', result.workType ?? '', result.isOpenAccess === undefined ? 'Unknown' : result.isOpenAccess ? 'Yes' : 'No', result.oaStatus ?? '', result.oaUrl ?? '', result.pdfUrl ?? '',
   ];
 }
 
@@ -152,6 +156,9 @@ export const screeningItems = (questions: Questions, job: Run) => {
     `${index === 0 ? '' : ','}\n    ${indented(JSON.stringify({
       openalexId: result.openalexId,
       title: result.title,
+      ...sourceMetadata(result),
+      venue: result.venue ?? null,
+      citedByCount: result.citedByCount ?? null,
       authors: result.authors ?? [],
       publicationYear: result.publicationYear ?? null,
       doi: result.doi ?? null,

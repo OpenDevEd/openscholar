@@ -4,6 +4,7 @@
  */
 
 import { v } from "convex/values";
+import type { PaperSourceMetadata } from "../../lib/library/paper-metadata";
 
 export const extractionQuestionSchema = v.object({
   key: v.string(),
@@ -30,7 +31,7 @@ export interface ExtractionQuestionInput {
   description?: string;
 }
 
-export interface PaperData {
+export interface PaperData extends PaperSourceMetadata {
   openalexId: string;
   title: string;
   doi?: string;

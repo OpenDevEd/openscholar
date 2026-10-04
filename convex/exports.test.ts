@@ -33,7 +33,7 @@ describe("library export", () => {
     expect(response.headers.get("Content-Disposition")).toMatch(/^attachment; filename="library-export-\d{4}-\d{2}-\d{2}\.csv"$/);
     const [header, ...rows] = text.trimEnd().split("\n");
     // Excel reads a CSV as UTF-8 only after a byte order mark.
-    expect(header).toBe("\ufeffabstract,authors,citedByCount,doi,isOpenAccess,journal,oaStatus,openalexId,publicationYear,rating,savedAt,title,updatedAt");
+    expect(header).toBe("\ufeffabstract,authors,authorsUnparsed,citedByCount,doi,isOpenAccess,journal,oaStatus,oaUrl,pdfUrl,workType,metadataRecoveredAt,openalexId,publicationYear,rating,savedAt,title,updatedAt");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toContain(',"Has ""quotes"", and commas",');
     expect(text).not.toContain("Not theirs");

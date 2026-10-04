@@ -96,17 +96,18 @@ export function PaperCardListSimple({
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-sm leading-tight line-clamp-1 group-hover:text-primary transition-colors">
                 {displayTitle}
-                <span className="ml-1.5 text-muted-foreground font-normal">
+                {result.publication_year != null && <span className="ml-1.5 text-muted-foreground font-normal">
                   ({result.publication_year})
-                </span>
+                </span>}
               </h3>
               
               {/* Authors and journal - hidden on smallest, visible on @sm. The journal gives up its room first, so an author control is cut only once the journal is down to its icon. */}
               <div className="hidden @sm/card:flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                {result.authorships?.length ? (
+                {result.authorships?.length || result.authors_unparsed ? (
                   <span className="min-w-0 overflow-clip text-ellipsis whitespace-nowrap">
                     <AuthorNames
-                      authorships={result.authorships}
+                      authorships={result.authorships ?? []}
+                      unparsed={result.authors_unparsed}
                       maxLength={60}
                       selected={authorFilter.authors}
                       onToggleAuthor={authorFilter.toggle}
