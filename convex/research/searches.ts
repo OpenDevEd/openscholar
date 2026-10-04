@@ -10,7 +10,7 @@ import { createError } from "../lib/errors";
 import { assistantAction, assistantMutation, defineUserAction, defineUserMutation, reversedBy, userAction, userMutation } from "../lib/userActions";
 import { internalAction, internalMutation, internalQuery, type ActionCtx } from "../lib/functions";
 import { countSearch, PAGE_ORDERED_SORT, readSearchPage } from "../paperSets/openalex";
-import { ASSISTANT_FIELDS, keptByRating, requestOf, savedSearchValidator, toPaper, type SavedSearchRequest, type SearchPaper, type Work } from "../paperSets/search";
+import { ASSISTANT_FIELDS, keptByRating, requestOf, savedSearchValidator, spender, toPaper, type SavedSearchRequest, type SearchPaper, type Work } from "../paperSets/search";
 import { COUNTRY_HIERARCHY, getCountryCodesForRegions, MIN_YEAR } from "../../lib/constants";
 import { authorFilterValue } from "../../lib/openalex/author-filter";
 import { INSTITUTION_TYPES, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
@@ -439,7 +439,7 @@ export async function readPage(ctx: ActionCtx, userId: Id<"users">, found: Saved
   // Checked before anything is spent. OpenAlex answers no numbered page past the last, and a sort read from the start costs a request for every 200 works.
   const lastPage = found.request.sort === PAGE_ORDERED_SORT ? LAST_PAGE : LAST_PAGE_FROM_START;
   if (page > lastPage) throw createError("VALIDATION_ERROR", `These results can be read up to page ${lastPage.toLocaleString("en")}. Narrow the search to reach the rest.`);
-  const { works, total } = await readSearchPage<Work>(found.request, { page, size: RESULTS_PAGE, select: ASSISTANT_FIELDS }, (count) => ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId: found.clerkId, count }));
+  const { works, total } = await readSearchPage<Work>(found.request, { page, size: RESULTS_PAGE, select: ASSISTANT_FIELDS }, spender(ctx, found.clerkId));
   const papers = await keptByRating(ctx, userId, works.map(toPaper), found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined);
   const read = new Map(works.map((work) => [work.id, work]));
   return { total, page, pages: Math.min(Math.ceil(total / RESULTS_PAGE), lastPage), papers: papers.map((paper) => shownPaper(read.get(paper.openalexId)!, paper)) };
@@ -472,7 +472,7 @@ export const recount = internalAction({
     try {
       const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: id });
       if (!found.request) return null;
-      const count = await countSearch(found.request, (pages) => ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId: found.clerkId, count: pages }));
+      const count = await countSearch(found.request, spender(ctx, found.clerkId));
       await ctx.runMutation(internal.research.searches.counted, { userId, id, revision: found.revision, count, author });
     } catch (error) {
       console.error("[research] couldn't count a search after it changed", { id, error: error instanceof Error ? error.message : String(error) });
