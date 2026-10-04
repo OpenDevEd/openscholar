@@ -353,7 +353,7 @@ async function copyHistory(ctx: MutationCtx, userId: Id<"users">, search: Doc<"s
   return { queryHistoryCount, questionCount, latestQuestion, questionText };
 }
 
-function findSearch(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, localId: string) {
+export function findSearch(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, localId: string) {
   return ctx.db.query("searches").withIndex("by_user_and_localId", q => q.eq("userId", userId).eq("localId", localId)).unique();
 }
 
@@ -377,9 +377,12 @@ async function revision(ctx: MutationCtx, search: Doc<"searches">, author: Autho
 }
 
 /** One revision of a search, if it was kept. */
-function revisionRow(ctx: Pick<QueryCtx, "db">, searchId: Id<"searches">, number: number) {
+export function revisionRow(ctx: Pick<QueryCtx, "db">, searchId: Id<"searches">, number: number) {
   return ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", searchId).eq("revision", number)).unique();
 }
+
+/** The revision a search is made at. */
+const FIRST_REVISION = 1;
 
 /**
  * A search as it stands, for the undo of its creation to check against: the row itself, the
@@ -391,8 +394,12 @@ async function asMade(ctx: Pick<QueryCtx, "db">, search: Doc<"searches">) {
   return { created: search._creationTime, revision: search.revision, ...(answers === undefined ? {} : { answers }) };
 }
 
-/** What a search holds, apart from when it last changed and how many queries it has tried: an edit since undone leaves this as it was. */
-const contents = ({ updatedAt: _at, queryHistoryCount: _tried, ...rest }: StoredSearch) => JSON.stringify(Object.entries(rest).sort(([a], [b]) => a.localeCompare(b)));
+/**
+ * What a search holds, apart from when it last changed, how many queries it has tried, and
+ * what its results page writes as it's read (its result count, the page last opened): an
+ * edit since undone, or the search simply being opened, leaves this as it was.
+ */
+const contents = ({ updatedAt: _at, queryHistoryCount: _tried, count: _count, page: _page, ...rest }: StoredSearch) => JSON.stringify(Object.entries(rest).sort(([a], [b]) => a.localeCompare(b)));
 
 /**
  * Applies one change, in the caller's transaction, for the person it's made for. Returns the
@@ -408,7 +415,7 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       // The history it starts with: what came with it, or else its first query.
       const queries = command.history?.queryHistory.length ? command.history.queryHistory : [{ query: command.search.query, field: command.search.field, timestamp: command.search.createdAt }];
       const questions = command.history?.questionHistory ?? [];
-      const id = await ctx.db.insert("searches", { userId, localId: command.search.id, data: { ...command.search, ...historySummary(queries, questions), screeningResponses: [] }, revision: 1 });
+      const id = await ctx.db.insert("searches", { userId, localId: command.search.id, data: { ...command.search, ...historySummary(queries, questions), screeningResponses: [] }, revision: FIRST_REVISION });
       await addHistory(ctx, { _id: id, userId }, "query", queries.map(queryEntry));
       await addHistory(ctx, { _id: id, userId }, "question", questions.map(questionEntry));
       // Answers carried in a new search come from an import or the assistant; neither says who gave them.
@@ -487,8 +494,10 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       if (command.expect) {
         // Still the search that was made: the same row, holding what it held then, its answers
         // untouched. A change since undone leaves it so. Anything else done to it keeps it.
-        const [then, now, made] = [command.expect, await asMade(ctx, found), await revisionRow(ctx, found._id, command.expect.revision)];
-        if (now.created !== then.created || now.answers !== then.answers || !made || contents(found.data) !== contents(made.data)) {
+        // `expect` is the caller's word, so what the search held then is read from its first
+        // revision: a later one named there would pass a changed search off as untouched.
+        const [then, now, made] = [command.expect, await asMade(ctx, found), await revisionRow(ctx, found._id, FIRST_REVISION)];
+        if (then.revision !== FIRST_REVISION || now.created !== then.created || now.answers !== then.answers || !made || contents(found.data) !== contents(made.data)) {
           throw createError("CONFLICT", "This search has changed since then, so it was left as it is.");
         }
       }

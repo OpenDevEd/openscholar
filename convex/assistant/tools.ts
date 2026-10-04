@@ -41,6 +41,9 @@ export const OUT_OF_CREDITS = `This reply has spent the credits one reply may. $
 const CORE_PATHS = [
   "research/records:listedSearches",
   "research/records:getSearch",
+  "research/searches:create",
+  "research/searches:update",
+  "research/searches:results",
   "research/records:searchHistory",
   "research/records:listedShortcuts",
   "research/records:ratingsOf",

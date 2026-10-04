@@ -270,7 +270,10 @@ export function editedResponses(responses: SavedSearch["screeningResponses"], ed
   }
 }
 
-/** Fields a patch can set that a restore leaves as they are now: screening questions, whose answers have their own history, and the chats started from the search. */
+/**
+ * Fields a patch can set that a restore leaves as they are now: screening questions, whose
+ * answers have their own history, and the chats started from the search.
+ */
 const KEPT_ON_RESTORE = ["screeningQuestions", "chatJobIdsByAccountId"] as const;
 /** Whether a change left those fields alone, so restoring the revision before it reverses all of it. */
 export const restoreReverses = (before: SavedSearch, after: SavedSearch) => KEPT_ON_RESTORE.every((key) => JSON.stringify(before[key]) === JSON.stringify(after[key]));
@@ -291,9 +294,16 @@ export function restoredSearch(search: SavedSearch, then: SavedSearch, now: stri
   return { ...(next as SavedSearch), queryHistoryCount: search.queryHistoryCount + (requeried ? 1 : 0), updatedAt: now };
 }
 
+/**
+ * A search without what its results page writes as it's read: how many results it has, and
+ * the page last opened. A restore brings both back, since results still in the page's cache
+ * aren't read again to count them. But a search that was only read holds the same query and
+ * filters as before.
+ */
+const unread = ({ count: _count, page: _page, ...search }: SavedSearch) => JSON.stringify(search);
 /** Whether restoring `then` would leave the search as it is: it already holds that revision's query and filters. */
 export const restoresNothing = (search: SavedSearch, then: SavedSearch) =>
-  JSON.stringify({ ...restoredSearch(search, then, search.updatedAt), queryHistoryCount: search.queryHistoryCount }) === JSON.stringify(search);
+  unread({ ...restoredSearch(search, then, search.updatedAt), queryHistoryCount: search.queryHistoryCount }) === unread(search);
 
 /**
  * Shared by the transaction and the optimistic browser view. The transaction passes a search
@@ -344,7 +354,7 @@ export const ANSWERED_PAPERS_MAX = 200;
  * it should still hold, and the version of its answers, which a screening job moves without
  * touching the search.
  */
-const searchAsMade = v.object({ created: v.number(), revision: v.number(), answers: v.optional(v.number()) });
+export const searchAsMade = v.object({ created: v.number(), revision: v.number(), answers: v.optional(v.number()) });
 const shortcutValue = v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null());
 export const commandValidator = v.union(
   // `history`: the earlier queries and questions of a search brought from this browser or a file.

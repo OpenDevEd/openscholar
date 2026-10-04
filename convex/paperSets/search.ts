@@ -22,7 +22,7 @@ import { ratingsAmong, shortcutExpansions } from "../research/records";
 import { readSearchWorks, searchRequestValidator, type SearchSnapshot } from "./openalex";
 
 /** The fields a screening paper keeps. */
-const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships,cited_by_count,primary_location";
+export const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships,cited_by_count,primary_location";
 
 export type SearchPaper = Infer<typeof screeningPaperInputValidator>;
 
@@ -30,8 +30,10 @@ const savedSearchValidator = v.object({
   clerkId: v.string(),
   request: v.union(searchRequestValidator, v.null()),
   ratingRange: v.union(v.array(v.number()), v.null()),
+  /** The revision the search was at when this was read. */
+  revision: v.number(),
 });
-type SavedSearchRequest = Infer<typeof savedSearchValidator>;
+export type SavedSearchRequest = Infer<typeof savedSearchValidator>;
 
 /** The request a saved search's results page makes, and its rating filter. */
 export const readSearch = internalQuery({
@@ -48,7 +50,7 @@ export const readSearch = internalQuery({
     const expansions = await shortcutExpansions(ctx, userId, shortcutNames(saved.query));
     const request = paramsToBucketSearchFilters(params, { expand: (query) => expandShortcuts(query, expansions) })?.openAlexQuery ?? null;
     const ratingRange: [number, number] = [params.rmin, params.rmax];
-    return { clerkId: user.clerkId, request, ratingRange: isRatingFilterActive(ratingRange, params.rated) ? ratingRange : null };
+    return { clerkId: user.clerkId, request, ratingRange: isRatingFilterActive(ratingRange, params.rated) ? ratingRange : null, revision: row.revision };
   },
 });
 
@@ -69,7 +71,7 @@ export const spendRequests = internalMutation({
   handler: async (ctx, { clerkId, count }) => spendOpenAlexRequests(ctx, clerkId, count),
 });
 
-type Work = {
+export type Work = {
   id: string;
   display_name?: string | null;
   title?: string | null;
@@ -81,7 +83,7 @@ type Work = {
   primary_location?: { source?: { display_name?: string | null } | null } | null;
 };
 
-function toPaper(work: Work): SearchPaper {
+export function toPaper(work: Work): SearchPaper {
   const authors = (work.authorships ?? []).flatMap((a) => (a.author?.display_name ? [a.author.display_name] : []));
   return {
     openalexId: work.id,
@@ -129,18 +131,16 @@ export async function searchPapers(
   const works = await readSearchWorks<Work>(request, { first, last, select: SCREENING_FIELDS }, (count) =>
     ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId: found.clerkId, count }),
   );
-  const ended = works.length < last - first + 1;
-  const papers = works.map(toPaper);
-  if (!rating) return { papers, ended, snapshot: taken };
+  return { papers: await keptByRating(ctx, userId, works.map(toPaper), rating), ended: works.length < last - first + 1, snapshot: taken };
+}
 
+/** The papers a search's rating filter keeps, as its results page does: those the person rated within it. Every paper, when it has none. */
+export async function keptByRating(ctx: ActionCtx, userId: Id<"users">, papers: SearchPaper[], rating: { min: number; max: number } | undefined): Promise<SearchPaper[]> {
+  if (!rating || !papers.length) return papers;
   const rated: Array<{ paperId: string; rating: number }> = await ctx.runQuery(internal.paperSets.search.ratingsOf, { userId, paperIds: papers.map((paper) => paper.openalexId) });
   const ratings = new Map(rated.map((row) => [row.paperId, row.rating]));
-  return {
-    papers: papers.filter((paper) => {
-      const value = ratings.get(paper.openalexId);
-      return value !== undefined && value >= rating.min && value <= rating.max;
-    }),
-    ended,
-    snapshot: taken,
-  };
+  return papers.filter((paper) => {
+    const value = ratings.get(paper.openalexId);
+    return value !== undefined && value >= rating.min && value <= rating.max;
+  });
 }
