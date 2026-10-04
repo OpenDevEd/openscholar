@@ -64,6 +64,10 @@ export const assistantStepFields = {
   path: v.string(),
   /** The action's arguments, as JSON. */
   input: v.string(),
+  /** What it was about, for its card: a title, a name or a query from its arguments. */
+  subject: v.optional(v.string()),
+  /** How many things its result lists, when it lists any. */
+  count: v.optional(v.number()),
   status: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
   /** Why it failed, as the model was told. */
   error: v.optional(v.string()),

@@ -92,6 +92,20 @@ function undoOf(result: unknown) {
   return args.length <= STEP_TEXT_MAX ? { path: undo.path, args } : undefined;
 }
 
+/** What a call is about, for its step's card: a title, a name or a query among its arguments. */
+function subjectOf(input: Record<string, unknown>) {
+  const paper = input.paper && typeof input.paper === "object" ? (input.paper as Record<string, unknown>) : {};
+  const named = [input.title, paper.title, input.name, input.query, input.search].find((value) => typeof value === "string" && value.trim() !== "");
+  return typeof named === "string" ? cut(named.trim(), 200) : undefined;
+}
+
+/** How many things a result lists: its page's rows, or its own when it's a list. */
+function countOf(result: unknown) {
+  if (Array.isArray(result)) return result.length;
+  const page = result && typeof result === "object" ? (result as { page?: unknown }).page : undefined;
+  return Array.isArray(page) ? page.length : undefined;
+}
+
 /** An error as the model should read it: the action's own message, without the runtime's wrapping. */
 const messageOf = (error: unknown) => cut(readConvexErrorData(error)?.message ?? (error instanceof Error ? error.message : String(error)), MODEL_READS / 4);
 
@@ -139,11 +153,12 @@ export function toolsFor(ctx: ActionCtx, { userId, threadId, order, attemptId }:
   const call = async (entry: UserAction, input: Record<string, unknown>, toolCallId: string) => {
     if (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) })) return { error: ASKS };
     const key = `${attemptId}:${calls++}`;
-    const stepId = await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX) });
+    const subject = subjectOf(input);
+    const stepId = await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}) });
     try {
       const result = await runAction(ctx, userId, entry, input, key);
-      const undo = undoOf(result);
-      await ctx.runMutation(internal.assistant.steps.end, { stepId, result: cut(JSON.stringify(result ?? null), STEP_RESULT_MAX), ...(undo ? { undo } : {}) });
+      const [undo, count] = [undoOf(result), countOf(result)];
+      await ctx.runMutation(internal.assistant.steps.end, { stepId, result: cut(JSON.stringify(result ?? null), STEP_RESULT_MAX), ...(count === undefined ? {} : { count }), ...(undo ? { undo } : {}) });
       return forModel(result);
     } catch (error) {
       const message = messageOf(error);

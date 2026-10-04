@@ -100,7 +100,7 @@ describe("the assistant's tools", () => {
     // The paper is in the sender's library, not anyone else's.
     const [saved] = await t.run(async (ctx) => ctx.db.query("libraryItems").collect());
     expect(saved).toMatchObject({ userId: ada, openalexId: "https://openalex.org/W1" });
-    expect(await steps()).toMatchObject([{ threadId, order: 0, userId: ada, toolCallId: "save", path: "library/mutations:saveToLibrary", status: "done", input: expect.stringContaining("Tutoring at scale"), undo: { path: "library/mutations:removeFromLibrary" } }]);
+    expect(await steps()).toMatchObject([{ threadId, order: 0, userId: ada, toolCallId: "save", path: "library/mutations:saveToLibrary", status: "done", input: expect.stringContaining("Tutoring at scale"), subject: "Tutoring at scale", undo: { path: "library/mutations:removeFromLibrary" } }]);
     // The whole result is kept beside the step, and the model's next request holds it.
     expect(await results()).toMatchObject([{ id: saved._id }]);
     expect(told(1, "save")).toMatchObject({ id: saved._id, undo: { path: "library/mutations:removeFromLibrary" } });
@@ -236,6 +236,8 @@ describe("the assistant's tools", () => {
     );
     await say("Keep going");
     expect(requests).toHaveLength(MAX_STEPS);
+    // A step that lists things says how many it found.
+    expect((await t.run(async (ctx) => ctx.db.query("assistantSteps").collect())).at(-1)).toMatchObject({ path: "library/collections:listCollections", count: 0 });
     expect(toolChoices.at(-1)).toBe("none");
     expect((await shown()).at(-1)).toBe("assistant: Here is what I did.");
   });
