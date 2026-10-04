@@ -345,3 +345,11 @@ export const commandValidator = v.union(
   v.object({ kind: v.literal("clearShortcuts") }),
 );
 export type ResearchCommand = Infer<typeof commandValidator>;
+/** The commands that reverse a change: each is one of the commands above, with what the record should be now. */
+export const undoCommandValidator = v.union(
+  v.object({ kind: v.literal("deleteSearch"), id: v.string() }),
+  v.object({ kind: v.literal("editSearch"), id: v.string(), edit: v.object({ kind: v.literal("restore"), revision: v.number(), expect: v.number() }) }),
+  v.object({ kind: v.literal("shortcut"), shorthand: v.string(), value: v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null()), expect: v.union(v.string(), v.null()) }),
+  v.object({ kind: v.literal("rating"), paperId: v.string(), rating: v.union(v.number(), v.null()), expect: v.union(v.number(), v.null()) }),
+);
+export type UndoCommand = Infer<typeof undoCommandValidator>;

@@ -8,8 +8,8 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Author } from "../lib/userActions";
 import { answersAmong, clearPaperAnswers, removeAnswers, screeningFor, seedAnswers, setPaperAnswers, sweepAnswers, type AnswerSource } from "./answers";
 import {
-  ANSWERED_PAPERS_MAX, applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, paperResponsesValidator, RATED_PAPERS_MAX, ratingValidator, restoredSearch, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator,
-  type ResearchCommand, type SavedSearch, type StoredSearch,
+  ANSWERED_PAPERS_MAX, applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, paperResponsesValidator, RATED_PAPERS_MAX, ratingValidator, restoredSearch, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator, undoCommandValidator,
+  type ResearchCommand, type SavedSearch, type StoredSearch, type UndoCommand,
 } from "../../lib/research/records";
 import { stream } from "convex-helpers/server/stream";
 import { internal } from "../_generated/api";
@@ -387,7 +387,7 @@ function revisionRow(ctx: Pick<QueryCtx, "db">, searchId: Id<"searches">, number
  * search, changing its query or filters, a shortcut, a rating. Deleting, clearing, and
  * changes to questions and answers return none.
  */
-export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, command: ResearchCommand, author: Author): Promise<ResearchCommand | undefined> {
+export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, command: ResearchCommand, author: Author): Promise<UndoCommand | undefined> {
   switch (command.kind) {
     case "createSearch": {
       validateSearch(command.search);
@@ -477,7 +477,7 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       const row = await ctx.db.query("queryShortcuts").withIndex("by_user_and_shorthand", q => q.eq("userId", userId).eq("data.shorthand", command.shorthand)).unique();
       if (command.expect !== undefined && (row?.data.expansion ?? null) !== command.expect) throw createError("CONFLICT", "This shortcut has changed since then, so it was left as it is.");
       // What puts it back: the shortcut as it was, or none, as long as it's still what this change made it.
-      const undo: ResearchCommand = { kind: "shortcut", shorthand: command.shorthand, value: row ? { expansion: row.data.expansion, createdAt: row.data.createdAt } : null, expect: command.value?.expansion ?? null };
+      const undo: UndoCommand = { kind: "shortcut", shorthand: command.shorthand, value: row ? { expansion: row.data.expansion, createdAt: row.data.createdAt } : null, expect: command.value?.expansion ?? null };
       if (command.value === null) { if (row) await ctx.db.delete("queryShortcuts", row._id); return row ? undo : undefined; }
       const data = { shorthand: command.shorthand, ...command.value };
       if (row) await ctx.db.patch("queryShortcuts", row._id, { data });
@@ -500,7 +500,7 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       if (!command.paperId || (command.rating !== null && (!Number.isInteger(command.rating) || command.rating < 0 || command.rating > 5))) throw new Error("Rating must be an integer from 0 to 5.");
       const row = await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique();
       if (command.expect !== undefined && (row?.data.rating ?? null) !== command.expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
-      const undo: ResearchCommand = { kind: "rating", paperId: command.paperId, rating: row?.data.rating ?? null, expect: command.rating };
+      const undo: UndoCommand = { kind: "rating", paperId: command.paperId, rating: row?.data.rating ?? null, expect: command.rating };
       if (command.rating === null) { if (row) await ctx.db.delete("paperRatings", row._id); return row ? undo : undefined; }
       const data = { paperId: command.paperId, rating: command.rating };
       if (row) await ctx.db.patch("paperRatings", row._id, { data });
@@ -520,7 +520,7 @@ export const changeAction = defineUserMutation({
     "Changes the person's research records: create, edit or delete a saved search, set or remove a query shortcut, rate a paper, or clear every saved search or every shortcut they have (a batch at a time; searches keep their revisions). Edits to a search show live on the person's open page and are kept as revisions. " +
     "A change that can be reversed returns `undo`: run this action with that command to put things back. It is refused if the record changed again in between. Making a search, changing its query or filters, a shortcut and a rating can be reversed; deleting, clearing, and changes to questions and answers can't.",
   args: { requestId: v.string(), command: commandValidator },
-  returns: v.object({ undo: v.optional(v.object({ command: commandValidator })) }),
+  returns: v.object({ undo: v.optional(v.object({ command: undoCommandValidator })) }),
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
