@@ -40,6 +40,7 @@ const work = (number: number, long: string) => ({
   type: "article",
   language: "en",
   open_access: { is_oa: true, oa_url: `https://example.org/paper-${number}.pdf` },
+  funders: [{ id: "https://openalex.org/F4320332161", display_name: "Wellcome Trust" }],
   publication_year: 2020,
   cited_by_count: 12,
   abstract_inverted_index: Object.fromEntries(Array.from({ length: 120 }, (_, word) => [`word${word}`, [word]])),
@@ -315,7 +316,7 @@ describe("the assistant's search tools", () => {
 
     // One paper, whole: every author with where they work, and all of its abstract.
     const paper = await alice.action(get, { id: "https://openalex.org/W7" });
-    expect(paper).toMatchObject({ id: "https://openalex.org/W7", doi: "10.1234/paper.7", type: "article", language: "en", openAccess: true, link: "https://example.org/paper-7.pdf", year: 2020, citations: 12 });
+    expect(paper).toMatchObject({ id: "https://openalex.org/W7", doi: "10.1234/paper.7", type: "article", language: "en", openAccess: true, link: "https://example.org/paper-7.pdf", year: 2020, citations: 12, funders: [{ name: "Wellcome Trust", id: "F4320332161" }] });
     expect(paper.authors[0]).toEqual({ name: `Ada Lovelace${"y".repeat(40)}`, id: "A1", institutions: ["University of Nairobi (KE)"] });
     expect(paper.abstract!.split(" ")).toHaveLength(120);
     // By its DOI too, and one OpenAlex doesn't have says so.

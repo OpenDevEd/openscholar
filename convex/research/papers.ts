@@ -11,7 +11,7 @@ import { assistantAction, defineUserAction, userAction } from "../lib/userAction
 import { readWork } from "../paperSets/openalex";
 import { ASSISTANT_FIELDS, toPaper, type SavedSearchRequest, type Work } from "../paperSets/search";
 import { readPage } from "./searches";
-import { AUTHORS_LISTED, INSTITUTIONS_LISTED, pageValidator, paperRecordValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
+import { AUTHORS_LISTED, FUNDERS_LISTED, INSTITUTIONS_LISTED, pageValidator, paperRecordValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 
 export const searchAction = defineUserAction({
   path: "research/papers:search",
@@ -52,7 +52,7 @@ function workPath(id: string) {
 export const getAction = defineUserAction({
   path: "research/papers:get",
   description:
-    "Reads one paper whole, by its ID as results give it (such as W2741809807) or its DOI: its title, its authors with their IDs and where each works, year, venue, type, language, DOI, whether and where it's free to read, citations, and all of its abstract. " +
+    "Reads one paper whole, by its ID as results give it (such as W2741809807) or its DOI: its title, its authors with their IDs and where each works, year, venue, type, language, DOI, whether and where it's free to read, citations, who funded it, and all of its abstract. " +
     "One request against the person's OpenAlex allowance.",
   args: { id: v.string() },
   returns: paperRecordValidator,
@@ -65,7 +65,7 @@ export const getAction = defineUserAction({
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const { clerkId } = person;
-    const work = await readWork<Work>(path, ASSISTANT_FIELDS, (count) => ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId, count }));
+    const work = await readWork<Work>(path, `${ASSISTANT_FIELDS},funders`, (count) => ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId, count }));
     if (!work) throw createError("NOT_FOUND", "OpenAlex has no paper by that ID.");
     const paper = toPaper(work);
     const authors = (work.authorships ?? []).flatMap(({ author, institutions }) => {
@@ -73,6 +73,7 @@ export const getAction = defineUserAction({
       const works = (institutions ?? []).flatMap(({ display_name: name, country_code: country }) => (name ? [`${name.slice(0, NAME_MAX)}${country ? ` (${country})` : ""}`] : []));
       return [{ name: author.display_name.slice(0, NAME_MAX), ...(author.id ? { id: author.id.split("/").at(-1)! } : {}), ...(works.length ? { institutions: works.slice(0, INSTITUTIONS_LISTED) } : {}) }];
     });
+    const funders = (work.funders ?? []).flatMap(({ id: funder, display_name: name }) => (funder && name ? [{ name: name.slice(0, NAME_MAX), id: funder.split("/").at(-1)! }] : []));
     return {
       id: paper.openalexId,
       title: paper.title,
@@ -86,6 +87,7 @@ export const getAction = defineUserAction({
       ...(typeof work.open_access?.is_oa === "boolean" ? { openAccess: work.open_access.is_oa } : {}),
       ...(work.open_access?.oa_url ? { link: work.open_access.oa_url } : {}),
       ...(paper.citedByCount === undefined ? {} : { citations: paper.citedByCount }),
+      ...(funders.length ? { funders: funders.slice(0, FUNDERS_LISTED) } : {}),
       ...(paper.abstract ? { abstract: paper.abstract.slice(0, ABSTRACT_MAX) } : {}),
     };
   },

@@ -90,6 +90,7 @@ export type Work = {
   type?: string | null;
   language?: string | null;
   open_access?: { is_oa?: boolean | null; oa_url?: string | null } | null;
+  funders?: Array<{ id?: string | null; display_name?: string | null }> | null;
 };
 
 export function toPaper(work: Work): SearchPaper {

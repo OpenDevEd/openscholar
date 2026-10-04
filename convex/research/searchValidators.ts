@@ -113,9 +113,10 @@ const paperValidator = v.object({
   abstract: v.optional(v.string()),
 });
 
-/** Authors of one paper its record lists, and institutions named for each. */
+/** Authors of one paper its record lists, institutions named for each, and its funders. */
 export const AUTHORS_LISTED = 20;
 export const INSTITUTIONS_LISTED = 3;
+export const FUNDERS_LISTED = 8;
 /** One paper, whole: what a results page says of it, with every author it can list, where each works, and all of its abstract. */
 export const paperRecordValidator = v.object({
   id: v.string(),
@@ -131,6 +132,8 @@ export const paperRecordValidator = v.object({
   /** Where it can be read for free, when it can. */
   link: v.optional(v.string()),
   citations: v.optional(v.number()),
+  /** Who funded it, as OpenAlex records it, each with the ID the `funders` filter takes. */
+  funders: capped(v.optional(v.array(v.object({ name: v.string(), id: v.string() }))), FUNDERS_LISTED),
   abstract: v.optional(v.string()),
 });
 

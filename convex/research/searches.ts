@@ -23,7 +23,7 @@ const CREATE = "research/searches:create" as const;
 const UPDATE = "research/searches:update" as const;
 const RESTORE = "research/searches:restore" as const;
 const REMOVE = "research/searches:remove" as const;
-const DELETE = "research/searches:delete" as const;
+const DELETE = "research/searches:deleteSearch" as const;
 
 const SORTS = { relevance: "relevance_score:desc", most_cited: "cited_by_count:desc", newest: "publication_date:desc", oldest: "publication_date:asc" } as const;
 /**
@@ -366,7 +366,7 @@ export const restoreForAssistant = assistantMutation(restoreAction);
 export const removeAction = defineUserMutation({
   path: REMOVE,
   description:
-    "Deletes a saved search that was just made, as the undo of making it: `expect` is the search as its creation left it, and the search stays if anything has been done with it since. It deletes no other search.",
+    "Takes back a saved search that research/searches:create just made, as its undo: `expect` is the search as its creation left it, and the search stays if anything has been done with it since. Only for that undo: any other search goes with research/searches:deleteSearch.",
   args: { id: v.string(), expect: madeHere },
   returns: v.null(),
   spendsCredits: false,
