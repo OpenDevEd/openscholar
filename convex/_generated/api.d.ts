@@ -275,6 +275,7 @@ import type * as library_collections from "../library/collections.js";
 import type * as library_followed from "../library/followed.js";
 import type * as library_counter from "../library/counter.js";
 import type * as library_mutations from "../library/mutations.js";
+import type * as library_papers from "../library/papers.js";
 import type * as library_queries from "../library/queries.js";
 import type * as library_sortName from "../library/sortName.js";
 import type * as library_validators from "../library/validators.js";
@@ -649,6 +650,7 @@ declare const fullApi: ApiFromModules<{
   "library/followed": typeof library_followed;
   "library/counter": typeof library_counter;
   "library/mutations": typeof library_mutations;
+  "library/papers": typeof library_papers;
   "library/queries": typeof library_queries;
   "library/sortName": typeof library_sortName;
   "library/validators": typeof library_validators;

@@ -11,6 +11,7 @@ import { assistantAction, defineUserAction, userAction } from "../lib/userAction
 import { readWork } from "../paperSets/openalex";
 import { ASSISTANT_FIELDS, spender, toPaper, type SavedSearchRequest, type Work } from "../paperSets/search";
 import { readPage, short } from "./searches";
+import { workUrl } from "../../lib/openalex/work-id";
 import { AUTHORS_LISTED, FUNDERS_LISTED, INSTITUTIONS_LISTED, pageValidator, paperRecordValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 
 export const searchAction = defineUserAction({
@@ -42,8 +43,8 @@ const NAME_MAX = 120;
 /** A paper by its OpenAlex ID or its DOI, as OpenAlex's address for one work takes it. */
 function workPath(id: string) {
   const given = id.trim();
-  const work = given.match(/^(?:https?:\/\/openalex\.org\/(?:works\/)?)?(W\d+)$/i)?.[1];
-  if (work) return work.toUpperCase();
+  const work = workUrl(given);
+  if (work) return work.split("/").at(-1)!;
   // A DOI goes into the address as it is, so one that would change the address isn't taken: a "?" or "#", or a ".." that climbs out of the work's path.
   const doi = given.match(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:)?(10\.\d{4,9}\/[^\s?#]+)$/i)?.[1];
   if (doi && !doi.split("/").some((part) => part === "." || part === "..")) return `https://doi.org/${doi}`;

@@ -179,12 +179,11 @@ async function savePaper(ctx: MutationCtx, userId: Id<"users">, given: Infer<typ
  * again, which takes it out of the collection too; one that was already saved goes back to
  * its rating, or leaves the collection.
  */
+export const saveReadUndo = v.union(...saveUndo.members, reversal(IN_COLLECTION, { paper: savedPaper, collectionId: v.id("collections"), inCollection: v.boolean(), assignedAt: v.number() }));
+export const saveReadValidator = v.object({ id: v.id("libraryItems"), undo: v.optional(saveReadUndo) });
 export const saveRead = internalMutation({
   args: { userId: v.id("users"), paper: libraryPaper, rating: v.optional(ratingArg), collectionId: v.optional(v.id("collections")), author: v.union(v.literal("user"), v.literal("assistant")) },
-  returns: v.object({
-    id: v.id("libraryItems"),
-    undo: v.optional(v.union(...saveUndo.members, reversal(IN_COLLECTION, { paper: savedPaper, collectionId: v.id("collections"), inCollection: v.boolean(), assignedAt: v.number() }))),
-  }),
+  returns: saveReadValidator,
   handler: async (ctx, { userId, paper, rating, collectionId, author }) => {
     const collection = collectionId ? await ownedCollection(ctx, userId, collectionId) : null;
     const saved = await savePaper(ctx, userId, paper, rating, author);

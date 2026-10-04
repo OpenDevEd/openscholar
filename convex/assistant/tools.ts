@@ -50,7 +50,7 @@ const CORE_PATHS = [
   "research/records:ratingsOf",
   "library/queries:papers",
   "library/queries:savedPaper",
-  "library/mutations:saveToLibrary",
+  "library/papers:save",
   "library/mutations:setLibraryRating",
   "library/mutations:setPaperInCollection",
   "library/collections:listCollections",
@@ -135,8 +135,17 @@ function subjectOf(input: Record<string, unknown>) {
   return typeof named === "string" ? cut(named.trim(), 200) : undefined;
 }
 
-/** An error as the model should read it: the action's own message, without the runtime's wrapping. */
-const messageOf = (error: unknown) => cut(readConvexErrorData(error)?.message ?? (error instanceof Error ? error.message : String(error)), MODEL_READS / 4);
+/**
+ * An error as the model should read it, and as the step shows it to the person: the action's
+ * own message. One the action didn't write (a crash, a limit of the runtime) is cut to its
+ * first line, without the runtime's prefix and the trace of where it was thrown.
+ */
+const messageOf = (error: unknown) => {
+  const told = readConvexErrorData(error)?.message;
+  if (told) return cut(told, MODEL_READS / 4);
+  console.error("[assistant] an action failed with an error it didn't write", error);
+  return cut((error instanceof Error ? error.message : String(error)).split("\n")[0].replace(/^(?:\[Request ID: \w+\] Server Error\s*)?(?:Uncaught \w*Error: )?/, ""), 300);
+};
 
 /**
  * The actions whose name or description hold the most of these words, best first; an action

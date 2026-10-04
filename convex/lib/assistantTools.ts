@@ -43,11 +43,18 @@ export const toolName = (path: string) => path.replace(/[/:]/g, "_");
 
 const retryKeyOf = (entry: UserAction) => (entry.kind === "query" ? undefined : entry.retryKey);
 
+/**
+ * A page to read, as the model gives it: how many, and where to carry on from. Convex's own
+ * page options also hold limits on what one page reads. A model that fills in every argument
+ * set those to 0, and the read failed; they're left out here, and dropped when sent anyway.
+ */
+const PAGE = z.object({ numItems: z.number(), cursor: z.string().nullable() });
+
 /** What the model fills in to call an action: its arguments but the retry key, with IDs as strings. */
 export function inputSchema(entry: UserAction) {
   const retryKey = retryKeyOf(entry);
   const fields = Object.fromEntries(Object.entries(entry.args as PropertyValidators).filter(([name]) => name !== retryKey));
-  return z.object(convexToZodFields(fieldsWithStringIds(fields)));
+  return z.object({ ...convexToZodFields(fieldsWithStringIds(fields)), ...("paginationOpts" in fields ? { paginationOpts: PAGE } : {}) });
 }
 
 /**

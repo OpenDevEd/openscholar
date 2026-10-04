@@ -8,6 +8,7 @@ import { createAction as searchCreateAction, deleteAction as searchDeleteAction,
 import { getAction as paperGetAction, searchAction as paperSearchAction } from "../research/papers";
 import { findAction as lookupFindAction } from "../research/lookup";
 import { setLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAction, saveToLibraryAction, setPaperInCollectionAction } from "../library/mutations";
+import { saveAction as librarySaveAction } from "../library/papers";
 import { countJobsAction as extractionJobCountAction, listJobsAction as extractionJobsAction } from "../extraction/queries/jobs";
 import { countJobFailuresAction as extractionFailureCountAction } from "../extraction/queries/failures";
 import { countJobResultsAction as extractionResultCountAction, listJobResultsAction as extractionResultsAction } from "../extraction/queries/results";
@@ -55,6 +56,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   paperSearchAction,
   paperGetAction,
   libraryPapersAction,
+  librarySaveAction,
   libraryCountPapersAction,
   balanceAction,
   screeningJobsAction,

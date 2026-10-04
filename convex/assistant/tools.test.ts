@@ -7,6 +7,7 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
+import { inputSchema } from "../lib/assistantTools";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
@@ -109,7 +110,7 @@ describe("the assistant's tools", () => {
   it("run an action as the person who sent the message, keep it as a step, and tell the model what came of it", async () => {
     const t = convexTest(schema);
     const { ada, threadId, say, steps, results, shown } = await chatOf(t);
-    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "library_mutations_saveToLibrary", input: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
 
     // The paper is in the sender's library, not anyone else's.
@@ -262,7 +263,7 @@ describe("the assistant's tools", () => {
     });
     mockDoStream.mockImplementationOnce(
       calling(
-        { id: "save", name: "library_mutations_saveToLibrary", input: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } },
+        { id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } },
         // A library that follows the collection shows its name.
         { id: "rename", name: "run_action", input: { name: "library/collections:renameCollection", arguments: { collectionId: followed, name: "Public reading" } } },
       ),
@@ -270,7 +271,7 @@ describe("the assistant's tools", () => {
     await sayUntilAsked("Save it and rename the collection");
     const [save, rename] = await steps();
     expect([save, rename]).toMatchObject([
-      { path: "library/mutations:saveToLibrary", status: "asking", tool: "library_mutations_saveToLibrary", subject: "Tutoring at scale" },
+      { path: "library/mutations:saveToLibrary", status: "asking", tool: "run_action", subject: "Tutoring at scale" },
       { path: "library/collections:renameCollection", status: "asking", tool: "run_action", subject: "Public reading" },
     ]);
 
@@ -584,7 +585,7 @@ describe("the assistant's tools", () => {
     const t = convexTest(schema);
     const { asAda, asBen, threadId, say, steps, shown } = await chatOf(t);
     await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: (await t.run(async (ctx) => (await ctx.db.query("users").collect()).find((user) => user.clerkId === "ben")))!._id }, role: "write" });
-    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "library_mutations_saveToLibrary", input: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
     const [step] = await steps();
     const benSees = (await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step");
@@ -642,6 +643,14 @@ describe("the assistant's tools", () => {
     expect(forModel({ page: [{ id: "W1", authors: [{ name: "Ada" }] }] })).toEqual({ page: [{ id: "W1", authors: [{ name: "Ada" }] }] });
   });
 
+  it("ask for a page by how many and where from, and drop the read limits a model fills in with it", () => {
+    const listed = USER_ACTIONS.find((entry) => entry.path === "library/collections:listCollections")!;
+    // Convex's page options also take limits on what one page reads. Set to 0, as a model that fills in every argument sets them, the read failed.
+    const filled = { paginationOpts: { numItems: 50, cursor: null, endCursor: null, id: 0, maximumRowsRead: 0, maximumBytesRead: 0 } };
+    expect(inputSchema(listed).parse(filled)).toEqual({ paginationOpts: { numItems: 50, cursor: null } });
+    expect(Object.keys((definition(listed).arguments as unknown as { properties: { paginationOpts: { properties: object } } }).properties.paginationOpts.properties)).toEqual(["numItems", "cursor"]);
+  });
+
   it("find actions by what they do, with the arguments they take and whether they ask first", () => {
     const { actions } = found("delete an assistant chat");
     const remove = actions.find((action) => action.name === "assistant/threads:remove");
@@ -658,7 +667,7 @@ describe("the assistant's tools", () => {
   it("go with their chat when it's deleted", async () => {
     const t = convexTest(schema);
     const { asAda, threadId, say, steps, results } = await chatOf(t);
-    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "library_mutations_saveToLibrary", input: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
     expect(await steps()).toHaveLength(1);
     await asAda.mutation(api.assistant.threads.remove, { threadId: threadId as Id<"assistantThreads"> });
