@@ -33,9 +33,22 @@ const LIST_FILTER_ROWS = 500;
 const LIST_PAGE_BYTES = 2 * 1024 * 1024;
 const PREVIEW_MAX = 120;
 
-/** The start of a message, on one line, for the list of chats. Cut between characters, never inside one. */
+const EMPHASIS = /(\*\*|__|~~|\*|`)(?=\S)(.+?)(?<=\S)\1/g;
+
+/**
+ * The start of a message, on one line and without its markdown marks, for the list of chats.
+ * Cut between characters, never inside one.
+ */
 export function previewOf(text: string) {
-  const characters = [...text.trim().replace(/\s+/g, " ")];
+  // ponytail: a few patterns for the marks a message opens with, not a markdown parser. Use one if a preview ever has to read a table or a code block.
+  // Only the start is read, so a long reply costs no more than a short one.
+  const plain = text
+    .slice(0, PREVIEW_MAX * 20)
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\s{0,3}(#{1,6}|>|[-*+])\s+/gm, "")
+    .replace(EMPHASIS, "$2")
+    .replace(EMPHASIS, "$2");
+  const characters = [...plain.trim().replace(/\s+/g, " ")];
   return characters.length > PREVIEW_MAX ? `${characters.slice(0, PREVIEW_MAX - 1).join("").trimEnd()}…` : characters.join("");
 }
 
