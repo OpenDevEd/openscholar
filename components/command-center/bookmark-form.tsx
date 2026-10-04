@@ -8,6 +8,7 @@ import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-brow
 import { savedShortcutName, shortcutNames, typedShortcutName } from "@/lib/query-shortcuts";
 import { useKeywordExpansionStore } from "@/lib/store";
 import { useAppToast } from "@/lib/toast";
+import { useResearchStatus } from "@/lib/research/provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,6 +18,8 @@ import { cn } from "@/lib/utils";
  */
 export function BookmarkForm({ query, onDone, className }: { query: string; onDone: () => void; className?: string }) {
   const toast = useAppToast();
+  const tToast = useTranslations("toast");
+  const { ready } = useResearchStatus();
   const tc = useTranslations("common");
   const th = useTranslations("historyPage");
   const tv = useTranslations("validation");
@@ -26,11 +29,15 @@ export function BookmarkForm({ query, onDone, className }: { query: string; onDo
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    if (!name) return;
+    if (!ready || !name) return;
     // An account looks up the name, to say whether it's taken, and the shortcuts the query names.
     try {
       await useKeywordExpansionStore.getState().ensureShortcuts([name, ...shortcutNames(query)]);
     } catch {
+      return;
+    }
+    if (useKeywordExpansionStore.getState().addKeyword !== addKeyword) {
+      toast.validation.failed(tToast("accountChanged"));
       return;
     }
     if (useKeywordExpansionStore.getState().keywords[name]) {
@@ -58,7 +65,7 @@ export function BookmarkForm({ query, onDone, className }: { query: string; onDo
         />
         <span aria-hidden className="text-muted-foreground">...</span>
       </label>
-      <Button type="submit" size="sm" className="h-8" disabled={!name}>
+      <Button type="submit" size="sm" className="h-8" disabled={!ready || !name}>
         {tc("save")}
       </Button>
     </form>

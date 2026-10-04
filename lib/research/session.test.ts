@@ -32,6 +32,20 @@ function connection() {
 }
 
 describe("research save recovery", () => {
+  it("refuses actions captured from an inactive account and never queues them for its return", async () => {
+    const { client, commands } = connection();
+    const session = new ResearchSession(client, "alice");
+    const stop = session.subscribe(() => {});
+    await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
+    const clear = session.stores.history.getState().clearSearchHistory;
+    stop();
+    expect(() => clear()).toThrow(/account changed/i);
+    expect(session.getSnapshot().pending).toBe(0);
+    const resume = session.subscribe(() => {});
+    await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
+    expect(commands).toEqual([]);
+    resume();
+  });
   it("validates the whole upload before queuing any search writes", () => {
     const { client, commands } = connection();
     const session = new ResearchSession(client, "alice");

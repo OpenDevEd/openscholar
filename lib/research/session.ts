@@ -5,7 +5,7 @@ import { shortcutExpansions, type SearchHistoryState, type KeywordExpansionState
 import type { SearchResult } from "../types";
 import { expandShortcuts } from "../query-shortcuts";
 import { ANSWERED_PAPERS_MAX, applySearchEdit, editedResponses, historySummary, importSearchRecord, RATED_PAPERS_MAX, SHORTCUT_NAMES_MAX, restoreResponses, restoreSearch, serializeResponses, serializeSearch, serializeSearchPatch, type ListedSearch, type ResearchCommand, type SavedSearch, type SearchEdit } from "./records";
-import { activateResearch, type ResearchStores } from "./binding";
+import { activateResearch, ResearchAccountChangedError, type ResearchStores } from "./binding";
 import { migrateLocalResearch, ResearchImportError } from "./migrate";
 
 type Page<T> = { page: T[]; isDone: boolean; continueCursor: string };
@@ -351,6 +351,7 @@ export class ResearchSession {
     } catch (error) { if (this.epoch === epoch) this.fail(error); }
   }
   private dispatch(command: ResearchCommand) {
+    if (!this.listeners.size) throw new ResearchAccountChangedError();
     this.pending.push({ requestId: crypto.randomUUID(), command });
     this.render(); this.notify(); void this.pump();
   }

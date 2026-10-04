@@ -43,6 +43,7 @@ interface CommandCenterFileActionsProps {
   onClearAll?: () => void;
   clearTooltip?: string;
   totalCount?: number;
+  disabled?: boolean;
 }
 
 /** A command center's search and sort, as siblings so a page bar or card toolbar can lay them out. */
@@ -90,6 +91,7 @@ export function CommandCenterFileActions({
   onClearAll,
   clearTooltip,
   totalCount,
+  disabled = false,
 }: CommandCenterFileActionsProps) {
   const tc = useTranslations("common");
   const hasDownloadUpload = onDownloadJSON || onDownloadCSV || onUploadJSON || onUploadCSV;
@@ -98,19 +100,19 @@ export function CommandCenterFileActions({
       {hasDownloadUpload && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label={tc("downloadAsJson")} className="size-8 text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="icon" disabled={disabled} aria-label={tc("downloadAsJson")} className="size-8 text-muted-foreground hover:text-foreground">
               <Download className="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {onDownloadJSON && (
-              <DropdownMenuItem onClick={onDownloadJSON} disabled={totalCount === 0}>
+              <DropdownMenuItem onClick={onDownloadJSON} disabled={disabled || totalCount === 0}>
                 <Download className="h-4 w-4 mr-2" />
                 {tc("downloadAsJson")}
               </DropdownMenuItem>
             )}
             {onDownloadCSV && (
-              <DropdownMenuItem onClick={onDownloadCSV} disabled={totalCount === 0}>
+              <DropdownMenuItem onClick={onDownloadCSV} disabled={disabled || totalCount === 0}>
                 <Download className="h-4 w-4 mr-2" />
                 {tc("downloadAsCsv")}
               </DropdownMenuItem>
@@ -119,13 +121,13 @@ export function CommandCenterFileActions({
               <DropdownMenuSeparator />
             )}
             {onUploadJSON && (
-              <DropdownMenuItem onClick={onUploadJSON}>
+              <DropdownMenuItem onClick={onUploadJSON} disabled={disabled}>
                 <Upload className="h-4 w-4 mr-2" />
                 {tc("uploadJson")}
               </DropdownMenuItem>
             )}
             {onUploadCSV && (
-              <DropdownMenuItem onClick={onUploadCSV}>
+              <DropdownMenuItem onClick={onUploadCSV} disabled={disabled}>
                 <Upload className="h-4 w-4 mr-2" />
                 {tc("uploadCsv")}
               </DropdownMenuItem>
@@ -142,7 +144,7 @@ export function CommandCenterFileActions({
               size="icon"
               aria-label={clearTooltip}
               onClick={onClearAll}
-              disabled={totalCount === 0}
+              disabled={disabled || totalCount === 0}
               className="size-8 text-muted-foreground hover:text-destructive"
             >
               <Trash2 className="size-4" />

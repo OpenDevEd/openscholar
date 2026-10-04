@@ -879,6 +879,7 @@
     "downloadFailedDescription": "无法下载 {format}。请重试。",
     "uploadFailed": "上传失败",
     "uploadFailedDescription": "无法上传 {format}。请重试。",
+    "accountChanged": "您的账户已更改。请重试。",
     "copyFailedDescription": "无法复制到剪贴板。请重试。",
     "validationFailed": "验证失败",
     "entityCreated": "{entity} 已创建",

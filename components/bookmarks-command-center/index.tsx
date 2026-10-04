@@ -24,6 +24,7 @@ import { LibraryPageShell } from "@/components/evidence-libraries/library-page-s
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
 import { useResearchStatus } from "@/lib/research/provider";
+import { ResearchAccountChangedError } from "@/lib/research/binding";
 import { useResearchSession } from "@/lib/research/reads";
 import { useShortcutList } from "@/lib/research/shortcut-list";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -138,23 +139,17 @@ export function BookmarksCommandCenter() {
     }
   };
 
-  const handleUploadJSON = async () => {
+  const upload = async (format: "json" | "csv") => {
+    if (!listReady) return;
     try {
-      const file = await triggerFileUpload(".json");
+      const file = await triggerFileUpload(`.${format}`);
       const data = await uploadFile(file);
+      if (useKeywordExpansionStore.getState().importKeywords !== importKeywords) {
+        throw new ResearchAccountChangedError();
+      }
       await importKeywords(data);
     } catch (error) {
-      toast.io.uploadFailed(tToast("entityJson"), error);
-    }
-  };
-
-  const handleUploadCSV = async () => {
-    try {
-      const file = await triggerFileUpload(".csv");
-      const data = await uploadFile(file);
-      await importKeywords(data);
-    } catch (error) {
-      toast.io.uploadFailed(tToast("entityCsv"), error);
+      toast.io.uploadFailed(tToast(format === "json" ? "entityJson" : "entityCsv"), error);
     }
   };
 
@@ -165,6 +160,10 @@ export function BookmarksCommandCenter() {
       confirmText: tc("clearAll"),
       cancelText: tc("cancel"),
       onConfirm: () => {
+        if (useKeywordExpansionStore.getState().clearKeywords !== clearKeywords) {
+          toast.validation.failed(tToast("accountChanged"));
+          return;
+        }
         clearKeywords();
       },
     });
@@ -184,10 +183,11 @@ export function BookmarksCommandCenter() {
       actions={<>
         <NewBookmarkDialog />
         <CommandCenterFileActions
+        disabled={!listReady}
         onDownloadJSON={() => void download("json")}
         onDownloadCSV={() => download("csv")}
-        onUploadJSON={handleUploadJSON}
-        onUploadCSV={handleUploadCSV}
+        onUploadJSON={() => upload("json")}
+        onUploadCSV={() => upload("csv")}
         onClearAll={handleClearAll}
         clearTooltip={tb("clearAllBookmarks")}
         totalCount={bookmarks.count}

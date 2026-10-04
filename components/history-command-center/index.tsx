@@ -35,6 +35,7 @@ import { LibraryPageShell } from "@/components/evidence-libraries/library-page-s
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
 import { useResearchStatus } from "@/lib/research/provider";
+import { ResearchAccountChangedError } from "@/lib/research/binding";
 import { usePreloadSearch, useResearchSession } from "@/lib/research/reads";
 import { useSearchList } from "@/lib/research/search-list";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -127,9 +128,13 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   };
 
   const upload = async (format: "json" | "csv") => {
+    if (!listReady) return;
     try {
       const file = await triggerFileUpload(`.${format}`);
       const data = await uploadFile(file);
+      if (useSearchHistoryStore.getState().importSearchHistory !== importSearchHistory) {
+        throw new ResearchAccountChangedError();
+      }
       importSearchHistory(data);
       if (data.some(row => row.spec === undefined && typeof row.search_query === "string")) notify.info(th("importMissingFilters"));
     } catch (error) {
@@ -146,6 +151,10 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
       confirmText: tc("clearAll"),
       cancelText: tc("cancel"),
       onConfirm: () => {
+        if (useSearchHistoryStore.getState().clearSearchHistory !== clearSearchHistory) {
+          toast.validation.failed(tToast("accountChanged"));
+          return;
+        }
         clearSearchHistory();
       },
     });
@@ -217,6 +226,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     tabs={<ViewModeSwitch value={historyViewMode} onChange={setHistoryViewMode} />}
     filters={<CommandCenterFilters {...filters} />}
     actions={<CommandCenterFileActions
+      disabled={!listReady}
       onDownloadJSON={() => void download("json")}
       onDownloadCSV={() => download("csv")}
       onUploadJSON={handleUploadJSON}

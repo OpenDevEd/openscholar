@@ -6,6 +6,10 @@ import { buildResultsUrl } from "./search-params";
 import { getEffectiveSearchId } from "./utils";
 
 describe("research file parsing", () => {
+  it("uses the default search field when a versioned import omits it", () => {
+    expect(importSearchRecord({ format_version: 1, export_id: "missing-field", search_query: "reading", spec: { query: "reading" } })).toMatchObject({ id: "import:missing-field", field: "title_and_abstract", count: 0 });
+    for (const field of [undefined, ""]) expect(importSearchRecord({ format_version: 1, export_id: "nested-field", search_query: "reading", field, spec: { query: "reading", field: "title", count: 7 } })).toMatchObject({ field: "title", count: 7 });
+  });
   it("opens imported IDs with reserved characters without looking up a different search", () => {
     const imported = importSearchRecord({ id: "بحث:100%/study", query: "reading" });
     const url = new URL(buildResultsUrl(imported.id, { q: imported.query }), "https://example.test");
