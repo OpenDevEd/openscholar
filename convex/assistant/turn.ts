@@ -22,7 +22,7 @@ import { callOptions, type Effort } from "../../lib/ai/core/call-options";
 import { aggregateUsage, calculateCostInDollars, usageOf } from "../../lib/ai/core/cost";
 import type { Usage } from "../../lib/ai/core/types";
 import { startAbortPoller } from "../../lib/chat/abort-poller";
-import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
+import { ABORT_ERROR_STRING, isAbortLike } from "../../lib/chat/abort-signal";
 import { pickProviderCostUsd } from "../../lib/chat/pick-provider-cost";
 import { classifyChatError, serializeChatError } from "../../lib/errors/taxonomy";
 import { convertUsdToCredits } from "../../lib/pricing";
@@ -65,6 +65,13 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
     if (!turn.recordError || classifyChatError(error).class === "aborted") return;
     await turn.recordError(error);
   };
+
+  // After Stop, a cancellation error is the stop arriving, not a failure: this runtime ends
+  // the provider's request with an error of its own ("The signal has been aborted")
+  // instead of an aborted stream, most often before the first token. Any other error, such
+  // as a rate limit that landed as Stop was pressed, is still the failure it is.
+  const isStop = (error: unknown) =>
+    abortController.signal.aborted && (isAbortLike(error) || /abort/i.test(error instanceof Error ? error.message : String(error)));
 
   // Abort wiring (plans/chat-stop-streaming/01-action-abort-wiring.md).
   // Poll the stop flag every 500ms; when flipped, abort the signal
@@ -204,6 +211,10 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
             });
           },
           onError: async ({ error }) => {
+            if (isStop(error)) {
+              streamAbortedByUser = true;
+              return;
+            }
             streamErrored = true;
             // This runs with the ORIGINAL provider error (429 w/
             // retry-after, etc.) but only if the agent's own
@@ -236,7 +247,10 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       );
       streamReturned = true;
     } catch (err) {
-      streamErrored = true;
+      // A cancellation after Stop is the stop arriving (see isStop), handled below with every other stop.
+      const stopped = isStop(err);
+      if (stopped) streamAbortedByUser = true;
+      else streamErrored = true;
       // The agent's `streamText` wrapper re-throws stream errors
       // (node_modules/@convex-dev/agent/src/vercel/client/streamText.ts).
       // We land here for every stream-time failure — and sometimes
@@ -244,11 +258,11 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       // itself threw inside finalizeMessage. Force-transition the
       // stuck pending assistant to `failed` so the UI can render an
       // alert instead of an empty bubble.
-      // NOTE: abort is NOT an error path. AI SDK swallows AbortError
-      // and converts it to an {type:"abort"} stream chunk; agent
-      // .streamText returns normally on abort and this catch never
-      // fires for user-stop.
-      if (!envelopePatchedFromOnError) {
+      // NOTE: with a mock model, abort is not an error path: AI SDK swallows
+      // AbortError and converts it to an {type:"abort"} stream chunk, and
+      // agent.streamText returns normally. On the deployed runtime the
+      // provider's request can reject instead, which lands here.
+      if (!stopped && !envelopePatchedFromOnError) {
         if (!generationErrorRecordedFromOnError) {
           await recordError(err).catch((recordErr) => {
             console.error("[chat] failed to record generation error", {
@@ -315,7 +329,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       // the UI page. Idempotent vs. the agent library's own
       // start.ts:170-178 listener — both paths write identical
       // values (same DOMException toString result).
-      await persistAssistantAbortSentinel(
+      const marked = await persistAssistantAbortSentinel(
         ctx,
         threadId,
         promptMessageId,
@@ -325,7 +339,22 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           threadId,
           err: errorToLogString(err),
         });
+        return true;
       });
+      // Stopped before the reply had a message of its own: it gets one, so the thread shows the stop.
+      if (!marked) {
+        await agent
+          .saveMessage(ctx, {
+            threadId,
+            promptMessageId,
+            message: { role: "assistant", content: "" },
+            metadata: { status: "failed", error: ABORT_ERROR_STRING },
+            skipEmbeddings: true,
+          })
+          .catch((err) => {
+            console.error("[chat] failed to save a stopped reply", { ...log, threadId, err: errorToLogString(err) });
+          });
+      }
     }
 
     const unfinishedGeneration =
@@ -535,9 +564,20 @@ async function persistAssistantAbortSentinel(
   // is no longer "pending" (component/messages.ts:380-385). Idempotent
   // vs. the agent library's own listener: whichever fires second
   // sees status !== pending and no-ops.
-  await ctx.runMutation(components.agent.messages.finalizeMessage, {
-    messageId: target._id as never,
-    result: { status: "failed", error: ABORT_ERROR_STRING },
+  await ctx
+    .runMutation(components.agent.messages.finalizeMessage, {
+      messageId: target._id as never,
+      result: { status: "failed", error: ABORT_ERROR_STRING },
+    })
+    // It throws when the stream it replays holds an error chunk. The patch below still marks the row.
+    .catch((err) => {
+      console.error("[chat] failed to finalize a stopped reply", { threadId, err: errorToLogString(err) });
+    });
+  // A row the agent had already failed with the runtime's own abort error keeps that error
+  // through finalizeMessage, so the sentinel is written over it.
+  await ctx.runMutation(components.agent.messages.updateMessage, {
+    messageId: target._id,
+    patch: { status: "failed", error: ABORT_ERROR_STRING },
   });
   return true;
 }
