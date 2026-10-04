@@ -13,6 +13,10 @@
 
 export {
   getMyJobs,
+  listJobs,
+  listJobsForAssistant,
+  countJobs,
+  countJobsForAssistant,
   getJobShell,
   getJobDetails,
   subscribeToJobProgress,
