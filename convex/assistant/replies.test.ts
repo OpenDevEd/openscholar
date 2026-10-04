@@ -8,6 +8,7 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
+import { SERVER_MODEL_SLUG } from "../ai/config";
 import { assistant } from "./agent";
 import { people } from "./assistant.test-support";
 import { erroringOnAbortDoStream, finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, waitFor } from "./turn.test-support";
@@ -242,6 +243,15 @@ describe("assistant replies", () => {
     await t.run(async (ctx) => ctx.db.patch("assistantThreads", threadId, { modelId: small }));
     await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "Third" })).rejects.toThrow(/long enough/);
     await asAda.mutation(api.assistant.threads.setModel, { threadId, modelId: picked });
+
+    // With nothing picking a model, the server's own default runs, and it's held to the rule where the catalog has it.
+    const bare = await asAda.mutation(api.assistant.threads.create, {});
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query("aiModelConfig").collect()) await ctx.db.delete("aiModelConfig", row._id);
+      const { _id, _creationTime, ...fields } = (await ctx.db.get("models", picked))!;
+      await ctx.db.insert("models", { ...fields, modelId: SERVER_MODEL_SLUG, supportedParameters: [] });
+    });
+    await expect(asAda.mutation(api.assistant.replies.send, { threadId: bare, text: "First" })).rejects.toThrow(/tools/);
 
     // A chat started on a model runs on it from its first message.
     const own = await asAda.mutation(api.assistant.threads.create, { modelId: picked });

@@ -18,6 +18,7 @@ import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
+import { SERVER_MODEL_SLUG } from "../ai/config";
 import { effortValidator } from "../aiModelConfig/validators";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
@@ -79,8 +80,11 @@ export const send = mutation({
       throw createError("CONFLICT", `The assistant is already writing ${CHAT_CONCURRENCY_LIMIT} replies for you. Wait for one to finish.`);
     }
     const { modelId, effort } = await chatModel(ctx, thread);
-    const model = modelId ? await requireAvailableModel(ctx, modelId) : null;
-    // The model the chat falls back on, or one picked before the rule, is held to it too.
+    // The model the chat falls back on, or one picked before the rule, is held to it too. So is
+    // the server's own default, which runs when nothing picks a model, where the catalog has it.
+    const model = modelId
+      ? await requireAvailableModel(ctx, modelId)
+      : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
     if (model) requireAssistantModel(model);
 
     // The message, the lock and the scheduled reply commit together, so a second send
@@ -206,7 +210,8 @@ export const summarized = internalMutation({
   returns: v.null(),
   handler: async (ctx, { threadId, attemptId, summary, through }) => {
     const thread = await ctx.db.get("assistantThreads", threadId);
-    if (thread?.reply?.attemptId === attemptId) await ctx.db.patch("assistantThreads", threadId, { summary, compactedThrough: through, compactionOwed: undefined });
+    // One handed in after Stop isn't kept: the reply it was written for won't run, and it stays owed.
+    if (thread?.reply?.attemptId === attemptId && !thread.reply.stop) await ctx.db.patch("assistantThreads", threadId, { summary, compactedThrough: through, compactionOwed: undefined });
     return null;
   },
 });
@@ -292,7 +297,8 @@ export const release = internalMutation({
     if (ended && !current.stop && compactionDue({ ...ended, window })) {
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
       const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.replies.compact, { threadId, attemptId, ...turn, through: current.order, lastInputTokens });
-      await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: { ...current, scheduledId, compacting: true } });
+      // Owed from here until a summary is kept, so one whose action dies is written by the next reply.
+      await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true } });
       return null;
     }
     await ctx.db.patch("assistantThreads", threadId, { reply: undefined, ...preview });

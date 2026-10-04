@@ -100,7 +100,8 @@ export function contextSince(args: Compacted & { agentThreadId: string; promptMe
     const { docs, whole } = await historySince(ctx, { agentThreadId: args.agentThreadId, compactedThrough: args.compactedThrough, before: args.promptMessageId });
     // Answering from part of the conversation would lose the rest without a word.
     if (!whole) throw tooLong();
-    args.onHistory({ messages: docs.length, bytes: JSON.stringify(docs).length });
+    // Bytes as Convex counts them: a character outside ASCII is two to four.
+    args.onHistory({ messages: docs.length, bytes: new TextEncoder().encode(JSON.stringify(docs)).length });
     return [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), ...inputMessages, ...inputPrompt, ...existingResponses];
   };
 }
@@ -137,11 +138,12 @@ export async function summarize(
   // A summary of part of the range would mark the rest as summarized too.
   if (!history.whole) throw tooLong();
   const docs = history.docs.filter((doc) => doc.order <= args.through);
-  const stopped = new AbortController();
-  const stopPolling = startAbortPoller({ readFlag: args.shouldStop, onAbort: () => stopped.abort() });
   const estimate = calculateCostInDollars({ inputTokens: args.lastInputTokens, outputTokens: SUMMARY_MAX_TOKENS }, pricing);
   const held = convertUsdToCredits({ usd: estimate }) || 1;
   if (!(await reserveCredits(ctx, { userId: args.senderId, chargeId: args.chargeId, credits: held }))) throw new Error("Not enough credits to summarize the conversation.");
+  // Started once nothing before the call can fail, so it's always stopped below.
+  const stopped = new AbortController();
+  const stopPolling = startAbortPoller({ readFlag: args.shouldStop, onAbort: () => stopped.abort() });
   let settled = false;
   try {
     const result = await generateText({

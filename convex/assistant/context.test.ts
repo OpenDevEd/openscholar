@@ -186,6 +186,39 @@ describe("what the assistant's model is sent", () => {
     expect(await thread()).toMatchObject({ compactionOwed: true });
     expect((await thread())?.summary).toBeUndefined();
     expect((await thread())?.reply).toBeUndefined();
+
+    // The same for a summary a reply owed and wrote before answering, handed in after that reply was stopped.
+    await t.run(async (ctx) => {
+      const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
+      const row = (await ctx.db.get("assistantThreads", threadId))!;
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "owed", senderId: row.ownerId, order: 1, startedAt: Date.now(), scheduledId, stop: true } });
+    });
+    await t.mutation(internal.assistant.replies.summarized, { threadId, attemptId: "owed", summary: "Too late", through: 0 });
+    expect(await thread()).toMatchObject({ compactionOwed: true });
+    expect((await thread())?.summary).toBeUndefined();
+  });
+
+  it("owes its summary from the moment a reply hands the chat to it, so one whose action dies is still written", async () => {
+    const t = convexTest(schema);
+    const { threadId, say, thread } = await chatOf(t);
+    mockDoStream.mockImplementation(finishingDoStream(["Answer 1"]));
+    await say("Question 1");
+    // A reply that read a lot ends, and the chat goes to a compaction.
+    const row = (await thread())!;
+    await t.run(async (ctx) => {
+      const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "long", senderId: row.ownerId, order: 0, startedAt: Date.now(), scheduledId } });
+    });
+    await t.mutation(internal.assistant.replies.release, {
+      threadId, attemptId: "long",
+      ended: { agentThreadId: row.agentThreadId, senderId: row.ownerId, modelId: null, lastInputTokens: COMPACT_AT_TOKENS + 1, messages: 2, bytes: 100 },
+    });
+    expect(await thread()).toMatchObject({ compactionOwed: true, reply: { compacting: true } });
+    // The compaction's action never runs, and the sweep clears its dead lock: the summary is still owed.
+    await t.run(async (ctx) => ctx.scheduler.cancel((await ctx.db.get("assistantThreads", threadId))!.reply!.scheduledId));
+    await t.mutation(internal.assistant.replies.sweep, {});
+    expect((await thread())?.reply).toBeUndefined();
+    expect(await thread()).toMatchObject({ compactionOwed: true });
   });
 
   it("fails a reply, saying the chat is too long, rather than answer from part of a conversation it can't read whole", async () => {
