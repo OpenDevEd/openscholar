@@ -73,6 +73,9 @@ interface PendingSearchRequest {
 
 const SEARCH_FETCH_PARAM_KEY_SET = new Set<SearchParamKey>(SEARCH_FETCH_PARAM_KEYS);
 
+/** Where a history entry keeps the search it showed, in `history.state`. */
+const ENTRY_SEARCH = 'openScholarSearch';
+
 // Module-level cache for params snapshots (avoids ref access during render)
 const paramsSnapshotByKey = new Map<string, SearchParams>();
 
@@ -132,6 +135,44 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   );
   const urlParams = local ? local.params : routeSearchParams;
   const onLocalParamsChange = local?.onParamsChange;
+
+  // Back and Forward. The address cannot say what a history entry showed: an OQL query is not in
+  // it, an account's page shows the saved search and not the address, and a search opened from the
+  // history list has a bare address. So each entry keeps the search it showed, in the browser's
+  // own history state, written as a change leaves it and read when Back or Forward lands on it.
+  // The newest entry is never left by a change, and Next rewrites the state of the entry it is
+  // on, so its search is remembered here when Back leaves it. An entry with neither changes nothing.
+  const newest = useRef<SearchParams | null>(null);
+  const shownNow = useCallback((): SearchParams | null => {
+    if (local || !searchId || !window.location.pathname.endsWith(`/${searchId}`)) return null;
+    const saved = useSearchHistoryStore.getState().getSearchResult(searchId);
+    if (!saved) return null;
+    if (account) return { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(saved), q: saved.query };
+    const address = parseSearchParamsFromUrl(new URLSearchParams(window.location.search));
+    return { ...address, q: address.field === OQL_FIELD ? saved.query : address.q };
+  }, [local, searchId, account]);
+  const keepInEntry = useCallback(() => {
+    const shown = shownNow();
+    if (!shown) return;
+    newest.current = null;
+    // The browser's own method, not `history.replaceState`: nuqs and Next both wrap that one, and
+    // nuqs drops its pending address update when anything else calls it. The address is not changed.
+    History.prototype.replaceState.call(window.history, { ...window.history.state, [ENTRY_SEARCH]: shown }, '');
+  }, [shownNow]);
+  useEffect(() => {
+    if (local || !searchId) return;
+    const takeEntry = (event: PopStateEvent) => {
+      if (!window.location.pathname.endsWith(`/${searchId}`)) return;
+      // Still the search of the entry just left: the saved search has not changed yet.
+      newest.current ??= shownNow();
+      const shown = (event.state as { [ENTRY_SEARCH]?: Partial<SearchParams> } | null)?.[ENTRY_SEARCH] ?? newest.current;
+      if (!shown) return;
+      const { count: _count, ...fields } = paramsToSearchResult({ ...DEFAULT_SEARCH_PARAMS, ...shown });
+      useSearchHistoryStore.getState().updateSearchResult(searchId, fields);
+    };
+    window.addEventListener('popstate', takeEntry);
+    return () => window.removeEventListener('popstate', takeEntry);
+  }, [local, searchId, shownNow]);
   const setUrlParams = useCallback(
     (updates: Partial<SearchParams>, options?: { scroll?: boolean }) => {
       const fromOql = (local ? local.params.field : routeSearchParams.field) === OQL_FIELD;
@@ -142,6 +183,8 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       if (onLocalParamsChange) {
         return onLocalParamsChange(switching && updates.q === undefined ? { ...updates, q: '' } : updates);
       }
+      // The entry this change leaves keeps the search as it was.
+      keepInEntry();
       if (switching && updates.q === undefined && searchId) {
         useSearchHistoryStore.getState().updateSearchResult(searchId, { query: '' });
       }
@@ -151,7 +194,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
         options,
       );
     },
-    [onLocalParamsChange, setRouteUrlParams, routeSearchParams.field, local, searchId],
+    [onLocalParamsChange, setRouteUrlParams, routeSearchParams.field, local, searchId, keepInEntry],
   );
 
   const currentParams = urlParams as SearchParams;
@@ -177,24 +220,6 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     }
   }, [searchId, updateSearchResult]);
   
-  // For an account the page shows the saved search, and the address only mirrors it. Back and
-  // Forward change the address alone, so the browser's history event is what takes it into the
-  // saved search. Going to another search or page changes the route, which loads its own.
-  useEffect(() => {
-    if (!account || local || !searchId) return;
-    const takeAddress = () => {
-      if (!window.location.pathname.endsWith(`/${searchId}`)) return;
-      const saved = getSearchResult(searchId);
-      if (!saved) return;
-      const params = parseSearchParamsFromUrl(new URLSearchParams(window.location.search));
-      const { count: _count, query, ...fields } = paramsToSearchResult(params);
-      // An OQL query is kept out of the address, so the saved one stays.
-      updateSearchResult(searchId, { ...fields, query: params.field === OQL_FIELD ? saved.query : query });
-    };
-    window.addEventListener('popstate', takeAddress);
-    return () => window.removeEventListener('popstate', takeAddress);
-  }, [account, local, searchId, getSearchResult, updateSearchResult]);
-
   // Create stable params object for debouncing
   // We serialize to string first to get stable reference
   const paramsKey = useMemo(() => {
