@@ -4,19 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>OpenScholar assistant · Identity studies</title>
+  <title>Orbit · OpenScholar assistant</title>
   <link rel="icon" href="../icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="studio.css">
 </head>
 <body>
   <header class="masthead">
     <a class="brand" href="#top"><span id="brand-mark"></span><span>OpenScholar</span></a>
-    <span class="project-label">Assistant identity studies</span>
-    <a class="quiet-link" href="#directions">Explore the marks <span aria-hidden="true">↘</span></a>
+    <span class="project-label">Orbit motion studies</span>
+    <a class="quiet-link" href="#motions">Explore the gestures <span aria-hidden="true">↘</span></a>
   </header>
   <main id="top">
     <section class="intro">
-      <div><h1>A face for the<br><span>OpenScholar assistant.</span></h1><p>Three marks built from the brand's open layers.</p></div>
+      <div><h1>Orbit, <span>in motion.</span></h1><p>Six gestures for the OpenScholar assistant.</p></div>
       <fieldset class="theme-picker"><legend>Background</legend><div class="segments" id="themes">
         <button data-theme-choice="white" aria-pressed="true">White</button>
         <button data-theme-choice="navy" aria-pressed="false">Navy</button>
@@ -27,12 +27,12 @@
 
     <section class="stage" aria-label="Selected assistant mark">
       <div class="hero-art">
-        <div class="stage-caption"><span id="hero-index">01 / Orbit</span><span id="hero-state">Thinking</span></div>
+        <div class="stage-caption"><span>Orbit</span><span><span id="hero-state">Thinking</span><span class="duration" id="motion-duration">7.2 s</span></span></div>
         <div id="hero-mark" class="hero-mark"></div>
-        <div class="stage-bottom"><span>OpenScholar <strong>assistant</strong></span><span>SVG / motion study</span></div>
+        <div class="stage-bottom"><span>OpenScholar <strong>assistant</strong></span><div class="gesture-controls"><button id="replay">Replay gesture <span aria-hidden="true">↻</span></button><button id="sequence" aria-pressed="false">Play a task</button></div></div>
       </div>
       <div class="context">
-        <h2 id="direction-name">Orbit</h2>
+        <h2 id="direction-name">Thinking</h2>
         <p id="direction-description" class="direction-description"></p>
         <div class="conversation" aria-label="Example assistant conversation">
           <div class="conversation-header"><span id="chat-mark" class="chat-mark"></span><div><strong>OpenScholar assistant</strong><span id="chat-status">Connecting the evidence</span></div></div>
@@ -46,15 +46,10 @@
       </div>
     </section>
 
-    <section class="directions section" id="directions">
-      <div class="section-heading"><h2>Three ways to say assistant</h2><span>Select a direction</span></div>
-      <div class="direction-options" id="direction-options"></div>
-    </section>
-
-    <section class="section motion-section" aria-labelledby="motion-title">
-      <div class="section-heading motion-heading"><div><h2 id="motion-title">A motion for each moment</h2><p>Select a state to try it above. Every study plays here.</p></div><div class="playback"><label for="speed">Speed</label><select id="speed"><option value="2">0.5×</option><option value="1" selected>1×</option><option value="0.667">1.5×</option></select><button id="pause" aria-pressed="false">Pause motion</button></div></div>
+    <section class="section motion-section" id="motions" aria-labelledby="motion-title">
+      <div class="section-heading motion-heading"><div><h2 id="motion-title">A gesture for each moment</h2><p>Select one to study it above, or play a whole task.</p></div><div class="playback"><label for="speed">Speed</label><select id="speed"><option value="2">0.5×</option><option value="1" selected>1×</option><option value="0.667">1.5×</option></select><button id="pause" aria-pressed="false">Pause motion</button></div></div>
       <div class="motion-options" id="motion-options"></div>
-      <p id="motion-note" class="motion-note">Completion repeats here for comparison. In the product, it would play once.</p>
+      <p id="motion-note" class="motion-note">Every gesture includes a pause. Completion repeats here for comparison; Play a task runs the six states in order.</p>
     </section>
 
     <section class="section specimen-section">
@@ -63,11 +58,11 @@
     </section>
 
     <section class="section brand-notes">
-      <div><h2>From the same open layers</h2><p>The deck's curved layers and Ubuntu typography carry through. The website mark stays intact. These are separate assistant concepts.</p><span class="source">Source: OpenScholar Branding file(1).deck, slides 6, 9, 12, 13 and 15.</span></div>
+      <div><h2>From the same open layers</h2><p>Orbit keeps the deck's three curved layers, blue palette and Ubuntu typography. Its eyes lead the movement; the ribbons follow.</p><span class="source">Source: OpenScholar Branding file(1).deck, slides 6, 9, 12, 13 and 15.</span></div>
       <div class="palette" aria-label="Brand palette"><span style="--swatch:#172554"><i></i>#172554</span><span style="--swatch:#2563eb"><i></i>#2563EB</span><span style="--swatch:#60a5fa"><i></i>#60A5FA</span><span style="--swatch:#bfdbfe"><i></i>#BFDBFE</span></div>
     </section>
   </main>
-  <footer><span>OpenScholar assistant</span><span>Identity exploration / October 2026</span><a href="Ubuntu-LICENSE.txt">Ubuntu font licence</a></footer>
+  <footer><span>Orbit / OpenScholar assistant</span><span>Motion study 02 / October 2026</span><a href="Ubuntu-LICENSE.txt">Ubuntu font licence</a></footer>
   <script src="studio.js"></script>
 </body>
 </html>
