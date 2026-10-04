@@ -923,6 +923,16 @@ export default defineSchema({
   // named `citationValidator` / `retrievalDiagnosticsValidator`
   // validators via the field object.
   // ═══════════════════════════════════════════════════════════════
+  extractionEvidenceChanges: defineTable({
+    jobId: v.id("extractionJobs"),
+    resultId: v.id("extractionResults"),
+    before: v.string(),
+    after: v.string(),
+    answerSnapshot: v.string(),
+    createdAt: v.number(),
+    revertedAt: v.optional(v.number()),
+  }).index("by_job", ["jobId"]),
+
   extractionResults: defineTable(extractionResultFields)
     .index("by_paper", ["paperId"])
     .index("by_paper_question", ["paperId", "questionKey"])

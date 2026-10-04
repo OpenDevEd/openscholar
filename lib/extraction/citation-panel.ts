@@ -8,6 +8,7 @@ export type CitationPanelPayload = {
   citationStatus?: CitationStatus;
   answerText: string | null;
   questionText: string | null;
+  abstract?: string;
 };
 
 function normalizeAnswerText(answer: unknown): string | null {
@@ -44,19 +45,18 @@ export function buildCitationPanelPayload(params: {
   answer: unknown;
   questionText: string | null;
   pdfEnabled?: boolean;
+  abstract?: string;
 }): CitationPanelPayload | null {
-  if (params.pdfEnabled === false) {
-    return null;
-  }
-
-  if (!params.citations.length) {
+  const citations = params.citations.filter(citation => params.pdfEnabled !== false || citation.source === "abstract");
+  if (!citations.length) {
     return null;
   }
 
   return {
     paperId: params.paperId,
     paperTitle: params.paperTitle,
-    citations: params.citations,
+    citations,
+    abstract: params.abstract,
     citationStatus: params.citationStatus,
     answerText: normalizeAnswerText(params.answer),
     questionText: params.questionText,

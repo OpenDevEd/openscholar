@@ -45,8 +45,8 @@ describe("yes/no extraction questions on Jev", () => {
 
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(outcomes).toMatchObject([
-      { status: "completed", questionKey: "rct", result: { answer: true, confidence: 0.9, citationStatus: "grounded" }, creditsUsed: 1 },
-      { status: "completed", questionKey: "africa", result: { answer: null, citationStatus: "insufficient_evidence" }, creditsUsed: 0 },
+      { status: "completed", questionKey: "rct", result: { answer: true, confidence: 0.9, modelConfidence: 0.9, citations: [], citationStatus: "best_effort" }, creditsUsed: 1 },
+      { status: "completed", questionKey: "africa", result: { answer: null, confidence: 0.3, modelConfidence: 0.8, citationStatus: "insufficient_evidence" }, creditsUsed: 0 },
     ]);
   });
 

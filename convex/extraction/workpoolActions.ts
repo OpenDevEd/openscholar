@@ -44,6 +44,7 @@ import {
 import { extractPdfJsTextPages } from "./pdfjs_extract";
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
 import { MAX_CITATIONS } from "../lib/listCaps";
+import { abstractEvidence } from "../../lib/extraction/source-evidence";
 import {
   isGenericArrayEntity,
   normalizeArrayEntity,
@@ -327,6 +328,7 @@ async function extractQuestionAnswer(params: {
       questionKey: question.key,
       answer: policy.answer,
       confidence: policy.confidence,
+      modelConfidence: object.confidence,
       reasoning: extracted.reasoning,
       citations,
       citationStatus: policy.citationStatus,
@@ -367,6 +369,7 @@ async function extractQuestionAnswer(params: {
 }
 
 async function extractQuestionAnswerFromAbstract(params: {
+  paperId: string;
   model: ExtractionModel;
   effort?: Effort;
   question: {
@@ -381,10 +384,11 @@ async function extractQuestionAnswerFromAbstract(params: {
   const { model, effort, question, abstract } = params;
 
   try {
+    const evidence = await abstractEvidence(params.paperId, abstract);
     const prompt = buildEnhancedExtractionPrompt(
       question as ExtractionQuestion,
-      abstract,
-      [],
+      undefined,
+      evidence.units,
     );
 
     const generated = await generateText({
@@ -400,30 +404,29 @@ async function extractQuestionAnswerFromAbstract(params: {
       question.type,
       object as StrictExtractionOutput,
     );
-    const policy = applyAbstractOnlyPolicy({
-      extracted,
-      pdfEnabled: params.pdfEnabled,
-    });
-    const reasoningPrefix =
-      policy.answer === null
-        ? "Abstract-only mode: no direct support found in the abstract."
-        : "Abstract-only mode: answer inferred from abstract content.";
-
+    const byId = new Map(evidence.units.map(unit => [unit.evidenceId, unit]));
+    const supportIds = dedupeEvidenceIds(extracted.supportEvidenceIds);
+    const rejectedEvidenceIds = supportIds.filter(id => !byId.has(id));
+    if (rejectedEvidenceIds.length) console.warn("[extractAbstractOnly] rejected evidence IDs", { paperId: params.paperId, questionKey: question.key, rejectedCount: rejectedEvidenceIds.length, rejectedEvidenceIds });
+    const selected = extracted.answer === null ? [] : supportIds.flatMap(id => byId.has(id) ? [byId.get(id)!] : []).slice(0, MAX_CITATIONS);
+    const policy = applyAbstractOnlyPolicy({ extracted, pdfEnabled: params.pdfEnabled, validatedCount: selected.length });
+    const citations: Citation[] = selected.map(unit => ({ source: "abstract", paperId: params.paperId, sourceHash: evidence.sourceHash, evidenceId: unit.evidenceId, charRange: unit.charRange, quote: unit.text, retrieval: {}, validated: true }));
 
     return {
       result: {
         questionKey: question.key,
         answer: policy.answer,
         confidence: policy.confidence,
-        reasoning: `${reasoningPrefix} ${extracted.reasoning}`.trim(),
-        citations: [],
+        modelConfidence: object.confidence,
+        reasoning: extracted.reasoning,
+        citations,
         citationStatus: policy.citationStatus,
         retrievalDiagnostics: {
           denseCandidates: 0,
           lexicalCandidates: 0,
           fusedCandidates: 0,
           rerankedCandidates: 0,
-          validatedCitations: 0,
+          validatedCitations: selected.length,
           strictNull: policy.strictNull,
         },
         pdfContentUsed: false,
@@ -927,6 +930,7 @@ async function runOneQuestionExtraction(params: {
           effort,
           question,
           abstract: abstractText,
+          paperId,
           pdfEnabled,
         },
       );
@@ -942,7 +946,7 @@ async function runOneQuestionExtraction(params: {
           lexicalCandidates: 0,
           fusedCandidates: 0,
           citationStatus: result.citationStatus,
-          selectedEvidenceIds: [],
+          selectedEvidenceIds: result.citations.map(citation => citation.evidenceId),
         }),
       );
       return {
@@ -1103,6 +1107,7 @@ export type CompletedQuestionBatchWrite = {
   result: {
     answer: ExtractionQuestionResult["answer"];
     confidence: ExtractionQuestionResult["confidence"];
+    modelConfidence?: ExtractionQuestionResult["modelConfidence"];
     reasoning: ExtractionQuestionResult["reasoning"];
     citations: ExtractionQuestionResult["citations"];
     citationStatus: ExtractionQuestionResult["citationStatus"];
@@ -1133,6 +1138,7 @@ export function toCompletedQuestionBatchWrite(
     result: {
       answer: outcome.result.answer,
       confidence: outcome.result.confidence,
+      modelConfidence: outcome.result.modelConfidence,
       reasoning: outcome.result.reasoning,
       citations: outcome.result.citations,
       citationStatus: outcome.result.citationStatus,
@@ -1308,7 +1314,7 @@ export async function runExtractQuestionWithContext({
 /**
  * Yes/no questions about one paper, answered by a decision model (Jev) in one
  * call. Jev cites nothing and gives no reasoning, so answers follow the
- * abstract-only rules: grounded when PDFs are off, best effort when they're on.
+ * abstract-only rules: a non-null answer without a citation is best effort.
  */
 export async function runDecisionQuestions({
   context,
@@ -1359,8 +1365,9 @@ export async function runDecisionQuestions({
         questionKey: question.key,
         answer,
         confidence: answer === null ? Math.min(confidence, STRICT_NULL_CONFIDENCE_CAP) : confidence,
+        modelConfidence: confidence,
         citations: [],
-        citationStatus: answer === null ? "insufficient_evidence" : context.pdfEnabled ? "best_effort" : "grounded",
+        citationStatus: answer === null ? "insufficient_evidence" : "best_effort",
         retrievalDiagnostics: {
           denseCandidates: 0, lexicalCandidates: 0, fusedCandidates: 0, rerankedCandidates: 0, validatedCitations: 0,
           strictNull: answer === null,

@@ -1,22 +1,12 @@
+import type { SourceCitation } from "./source-evidence";
+
 /** Minimal shape for extraction result fields used by citation helpers. */
 interface ExtractionResultLike {
   citations?: unknown[];
   citationStatus?: string;
 }
 
-export type CitationEvidence = {
-  evidenceId: string;
-  page: number;
-  charRange: [number, number];
-  quote: string;
-  retrieval: {
-    denseScore?: number;
-    lexicalScore?: number;
-    fusedScore?: number;
-    rerankScore?: number;
-  };
-  validated: true;
-};
+export type CitationEvidence = SourceCitation;
 
 export type CitationStatus =
   | "grounded"
@@ -24,20 +14,8 @@ export type CitationStatus =
   | "insufficient_evidence"
   | "extraction_error";
 
-export type CitationLocation = {
-  evidenceId: string;
-  page: number;
-  charRange: [number, number];
-  text: string;
-  validated: true;
-  retrieval: {
-    denseScore?: number;
-    lexicalScore?: number;
-    fusedScore?: number;
-    rerankScore?: number;
-  };
-  citationStatus?: CitationStatus;
-};
+type DisplayCitation<T> = T extends SourceCitation ? Omit<T, "quote"> & { text: string; citationStatus?: CitationStatus } : never;
+export type CitationLocation = DisplayCitation<SourceCitation>;
 
 function toCitationEvidence(candidate: unknown): CitationEvidence | null {
   if (!candidate || typeof candidate !== "object") return null;
@@ -49,16 +27,16 @@ function toCitationEvidence(candidate: unknown): CitationEvidence | null {
   const charRange = Array.isArray(c.charRange) ? c.charRange : [];
   const start = Number(charRange[0]);
   const end = Number(charRange[1]);
-  const quote = typeof c.quote === "string" ? c.quote.trim() : "";
+  const quote = typeof c.quote === "string" ? c.quote : "";
   const validated = c.validated === true;
 
   if (
     !evidenceId ||
-    !Number.isFinite(page) ||
-    !Number.isFinite(start) ||
-    !Number.isFinite(end) ||
-    end < start ||
-    !quote ||
+    (c.source !== "abstract" && (!Number.isInteger(page) || page < 1)) ||
+    !Number.isInteger(start) ||
+    !Number.isInteger(end) ||
+    start < 0 || end <= start || charRange.length !== 2 ||
+    !quote.trim() ||
     !validated
   ) {
     return null;
@@ -87,14 +65,16 @@ function toCitationEvidence(candidate: unknown): CitationEvidence | null {
         }
       : {};
 
-  return {
+  const shared = {
     evidenceId,
-    page,
-    charRange: [start, end],
+    charRange: [start, end] as [number, number],
     quote,
     retrieval,
-    validated: true,
+    validated: true as const,
   };
+  if (c.source === "abstract") return typeof c.paperId === "string" && typeof c.sourceHash === "string" && c.paperId && c.sourceHash && c.page === undefined ? { ...shared, source: "abstract", paperId: c.paperId, sourceHash: c.sourceHash } : null;
+  if (c.source !== undefined && c.source !== "pdf") return null;
+  return { ...shared, page, ...(c.source === "pdf" ? { source: "pdf" as const } : {}), ...(typeof c.paperId === "string" ? { paperId: c.paperId } : {}), ...(typeof c.sourceHash === "string" ? { sourceHash: c.sourceHash } : {}) };
 }
 
 export function getStructuredCitations(result: ExtractionResultLike | null | undefined): CitationEvidence[] {
@@ -120,32 +100,10 @@ export function getCitationStatus(result: ExtractionResultLike | null | undefine
 }
 
 export function getPrimaryCitation(result: ExtractionResultLike | null | undefined, pdfEnabled = true): CitationLocation | null {
-  if (!pdfEnabled) return null;
-  const citationStatus = getCitationStatus(result);
-  const first = getStructuredCitations(result)[0];
-  if (!first) return null;
-
-  return {
-    evidenceId: first.evidenceId,
-    page: first.page,
-    charRange: first.charRange,
-    text: first.quote,
-    validated: true,
-    retrieval: first.retrieval,
-    citationStatus,
-  };
+  return getAllCitationLocations(result, pdfEnabled)[0] ?? null;
 }
 
 export function getAllCitationLocations(result: ExtractionResultLike | null | undefined, pdfEnabled = true): CitationLocation[] {
-  if (!pdfEnabled) return [];
   const citationStatus = getCitationStatus(result);
-  return getStructuredCitations(result).map((citation) => ({
-    evidenceId: citation.evidenceId,
-    page: citation.page,
-    charRange: citation.charRange,
-    text: citation.quote,
-    validated: true,
-    retrieval: citation.retrieval,
-    citationStatus,
-  }));
+  return getStructuredCitations(result).filter(citation => pdfEnabled || citation.source === "abstract").map(({ quote, ...citation }) => ({ ...citation, text: quote, citationStatus }));
 }

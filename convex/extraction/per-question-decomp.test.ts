@@ -327,7 +327,7 @@ describe("plan-02 per-question decomposition", () => {
     );
     expect(rows).toHaveLength(1);
     expect(rows[0]?.status).toBe("completed");
-    expect(rows[0]?.citationStatus).toBe("grounded");
+    expect(rows[0]?.citationStatus).toBe("best_effort");
   });
 
   it("recordQuestionBatch skips stale-epoch persists", async () => {
@@ -405,7 +405,7 @@ describe("plan-02 per-question decomposition", () => {
         .unique(),
     );
     expect(afterSuccess?.status).toBe("completed");
-    expect(afterSuccess?.citationStatus).toBe("grounded");
+    expect(afterSuccess?.citationStatus).toBe("best_effort");
 
     // Only one result row ever exists for (paper, question).
     const rows = await t.run((ctx) =>
