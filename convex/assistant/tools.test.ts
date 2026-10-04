@@ -3,7 +3,8 @@
 // message, each run is kept as a step, and the model reads what came of it.
 import { convexTest } from "convex-test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { api, internal } from "../_generated/api";
+import { listMessages, saveMessages } from "@convex-dev/agent";
+import { api, components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
@@ -743,24 +744,21 @@ describe("the assistant's tools", () => {
 
   it("give a call left without a result its result, however long the reply it's in ran", async () => {
     const t = convexTest(schema);
-    const { say, shown } = await chatOf(t);
-    // Fifty rounds of reading, then a request the provider cuts short at its length: it names a call that never runs.
-    const list = () => ({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: (requests.length % 3) + 1 } } });
-    const cut = async () => ({
-      stream: new ReadableStream({
-        start(controller) {
-          controller.enqueue({ type: "stream-start", warnings: [] });
-          controller.enqueue({ type: "tool-call", toolCallId: "never", toolName: "library_collections_listCollections", input: JSON.stringify({ paginationOpts: { cursor: null, numItems: 5 } }) });
-          controller.enqueue({ type: "finish", finishReason: { unified: "length", raw: "length" }, usage: { inputTokens: { total: 5, noCache: 5, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 3, text: 3, reasoning: 0 } } });
-          controller.close();
-        },
-      }),
-    });
-    mockDoStream.mockImplementation(async () => (requests.length <= 50 ? calling(list())() : cut()));
+    const { say, shown, thread } = await chatOf(t);
+    mockDoStream.mockImplementationOnce(finishingDoStream(["On it."]));
     await say("Read a great deal");
-    // The exchange holds more messages than the repair reads, and the next message is still answered: the call has its result.
+    // A long reply's exchange, as its requests left it: more rounds of calls and results than the repair reads,
+    // then a request the provider cut short, whose call never ran.
+    const agentThreadId = (await thread())!.agentThreadId;
+    await t.run(async (ctx) => {
+      const prompt = (await listMessages(ctx, components.agent, { threadId: agentThreadId, paginationOpts: { cursor: null, numItems: 10 } })).page.find((doc) => doc.message?.role === "user")!;
+      const call = (id: string) => ({ role: "assistant" as const, content: [{ type: "tool-call" as const, toolCallId: id, toolName: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } }] });
+      const result = (id: string) => ({ role: "tool" as const, content: [{ type: "tool-result" as const, toolCallId: id, toolName: "library_collections_listCollections", output: { type: "json" as const, value: { page: [] } } }] });
+      for (let round = 0; round < 45; round++) await saveMessages(ctx, components.agent, { threadId: agentThreadId, promptMessageId: prompt._id, messages: [call(`c${round}`), result(`c${round}`)] });
+      await saveMessages(ctx, components.agent, { threadId: agentThreadId, promptMessageId: prompt._id, messages: [call("never")] });
+    });
+    // The next message is still answered: the call has its result, though the exchange's first message is far behind the ones read.
     requests.length = 0;
-    mockDoStream.mockReset();
     mockDoStream.mockImplementationOnce(finishingDoStream(["Here you are."]));
     await say("And now?");
     expect(outcome(0, "never")).toMatchObject({ type: "execution-denied" });
