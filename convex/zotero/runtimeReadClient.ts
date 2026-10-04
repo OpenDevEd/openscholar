@@ -250,6 +250,7 @@ export async function readRuntimeCollections(
     credential: string;
     query?: string;
     cursor?: string;
+    pageSize?: number;
   },
 ): Promise<RuntimeCollectionsPage> {
   const body = await runtimeGet(
@@ -259,7 +260,7 @@ export async function readRuntimeCollections(
     {
       query: input.query,
       cursor: input.cursor,
-      pageSize: String(RUNTIME_READ_PAGE_SIZE),
+      pageSize: String(input.pageSize ?? RUNTIME_READ_PAGE_SIZE),
     },
   );
   return readPage(body, readCollection, "collection list");
@@ -274,6 +275,7 @@ export async function readRuntimeInstitutions(
     cursor?: string;
     sort?: RuntimeInstitutionSort;
     direction?: RuntimeSortDirection;
+    pageSize?: number;
   },
 ): Promise<RuntimeInstitutionsPage> {
   const body = await runtimeGet(
@@ -285,7 +287,7 @@ export async function readRuntimeInstitutions(
       cursor: input.cursor,
       sort: input.sort,
       direction: input.direction,
-      pageSize: String(RUNTIME_READ_PAGE_SIZE),
+      pageSize: String(input.pageSize ?? RUNTIME_READ_PAGE_SIZE),
     },
   );
   return readPage(body, readInstitution, "institution list");
@@ -360,6 +362,7 @@ export async function readRuntimeReviewedPublications(
     query?: string;
     cursor?: string;
     ids?: readonly string[];
+    pageSize?: number;
   },
 ): Promise<RuntimeReviewedPublicationsPage> {
   const body = await runtimeGet(
@@ -371,11 +374,17 @@ export async function readRuntimeReviewedPublications(
       : {
           query: input.query,
           cursor: input.cursor,
-          pageSize: String(RUNTIME_READ_PAGE_SIZE),
+          pageSize: String(input.pageSize ?? RUNTIME_READ_PAGE_SIZE),
         },
   );
   return readPage(body, readReviewedPublication, "reviewed publication list");
 }
+
+/**
+ * The most questions kept from one answer. The home page has three slots
+ * (`/properties/home/properties/questions`, `maxItems`); the rest is room.
+ */
+export const RUNTIME_HOME_QUESTIONS_MAX = 10;
 
 /**
  * The questions the home page asks when the owner leaves a slot empty, one
@@ -402,7 +411,7 @@ export async function readRuntimeHomeQuestions(
       "The library's home page questions have an unexpected shape",
     );
   }
-  return questions as (string | null)[];
+  return (questions as (string | null)[]).slice(0, RUNTIME_HOME_QUESTIONS_MAX);
 }
 
 /** Asks the library to import one source now instead of at its next sweep. */

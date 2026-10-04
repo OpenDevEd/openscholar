@@ -213,10 +213,14 @@
     "zotero/libraryGroups:removeZoteroGroup": "#329",
     "zotero/mutations:disconnect": "#323",
     "zotero/queries:getConnectionStatus": "#323",
+    "zotero/runtimeReadActions:listCollections": "#329",
+    "zotero/runtimeReadActions:listInstitutions": "#329",
     "zotero/runtimeReadActions:listLibraryCollections": "#329",
+    "zotero/runtimeReadActions:listPublications": "#329",
     "zotero/runtimeReadActions:listRecordInstitutions": "#329",
     "zotero/runtimeReadActions:listReviewedPublications": "#329",
     "zotero/runtimeReadActions:readHomeQuestions": "#329",
+    "zotero/runtimeReadActions:readPublication": "#329",
     "zotero/runtimeReadActions:requestSourceRun": "#329",
     "zotero/runtimeReadActions:resolveLibraryCollections": "#329"
   }

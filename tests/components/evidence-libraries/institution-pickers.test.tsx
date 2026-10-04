@@ -15,7 +15,7 @@ vi.mock("next-intl", () => ({
     `${namespace}.${key}${values ? ` ${JSON.stringify(values)}` : ""}`,
 }));
 vi.mock("@/convex/_generated/api", () => ({
-  api: { zotero: { runtimeReadActions: { listRecordInstitutions: "listRecordInstitutions" } } },
+  api: { zotero: { runtimeReadActions: { listInstitutions: "listInstitutions" } } },
 }));
 
 import {
@@ -27,6 +27,9 @@ const libraryId = "library_1" as Id<"evidenceLibraries">;
 const ns = "evidenceLibraryInstitutions.picker";
 const pickerNs = "evidenceLibraryConfiguration.picker";
 
+/** One page as the library's reads answer it. */
+const pageOf = <Item,>(page: Item[], next: string | null = null) => ({ page, isDone: next === null, continueCursor: next ?? "" });
+
 describe("institution pickers", () => {
   beforeEach(() => {
     mocks.listInstitutions.mockReset();
@@ -34,13 +37,12 @@ describe("institution pickers", () => {
 
   it("reads nothing until the dialog opens, then picks a name from the records", async () => {
     const user = userEvent.setup();
-    mocks.listInstitutions.mockResolvedValue({
-      items: [
+    mocks.listInstitutions.mockResolvedValue(pageOf(
+      [
         { name: "University of Nairobi", count: 4 },
         { name: "Makerere University", count: 2 },
       ],
-      nextCursor: null,
-    });
+    ));
     const onChange = vi.fn();
     render(<InstitutionNamePicker libraryId={libraryId} value="" onChange={onChange} />);
     expect(mocks.listInstitutions).not.toHaveBeenCalled();
@@ -50,7 +52,7 @@ describe("institution pickers", () => {
     expect(mocks.listInstitutions).toHaveBeenCalledWith({
       libraryId,
       query: undefined,
-      cursor: undefined,
+      paginationOpts: { cursor: null, numItems: 50 },
       sort: "count",
       direction: "desc",
     });
@@ -60,10 +62,10 @@ describe("institution pickers", () => {
   it("sends the typed text and the next page to the library", async () => {
     const user = userEvent.setup();
     mocks.listInstitutions.mockImplementation(
-      async ({ query, cursor }: { query?: string; cursor?: string }) => {
-        if (query) return { items: [{ name: "Strathmore University", count: 1 }], nextCursor: null };
-        if (cursor) return { items: [{ name: "Makerere University", count: 2 }], nextCursor: null };
-        return { items: [{ name: "University of Nairobi", count: 4 }], nextCursor: "page-2" };
+      async ({ query, paginationOpts: { cursor } }: { query?: string; paginationOpts: { cursor: string | null } }) => {
+        if (query) return pageOf([{ name: "Strathmore University", count: 1 }]);
+        if (cursor) return pageOf([{ name: "Makerere University", count: 2 }]);
+        return pageOf([{ name: "University of Nairobi", count: 4 }], "page-2");
       },
     );
     render(<InstitutionNamePicker libraryId={libraryId} value="" onChange={vi.fn()} />);
@@ -76,7 +78,7 @@ describe("institution pickers", () => {
     expect(mocks.listInstitutions).toHaveBeenLastCalledWith({
       libraryId,
       query: "strath",
-      cursor: undefined,
+      paginationOpts: { cursor: null, numItems: 50 },
       sort: "count",
       direction: "desc",
     });
@@ -84,10 +86,9 @@ describe("institution pickers", () => {
 
   it("offers a typed name for an institution row only when the page has no match", async () => {
     const user = userEvent.setup();
-    mocks.listInstitutions.mockImplementation(async ({ query }: { query?: string }) => ({
-      items: query ? [] : [{ name: "University of Nairobi", count: 4 }],
-      nextCursor: null,
-    }));
+    mocks.listInstitutions.mockImplementation(async ({ query }: { query?: string }) => (pageOf(
+      query ? [] : [{ name: "University of Nairobi", count: 4 }],
+    )));
     const onChange = vi.fn();
     render(<InstitutionNamePicker libraryId={libraryId} value="" onChange={onChange} />);
     await user.click(screen.getByRole("combobox"));
@@ -100,10 +101,9 @@ describe("institution pickers", () => {
 
   it("orders by name, then turns that order around", async () => {
     const user = userEvent.setup();
-    mocks.listInstitutions.mockResolvedValue({
-      items: [{ name: "University of Nairobi", count: 4 }],
-      nextCursor: null,
-    });
+    mocks.listInstitutions.mockResolvedValue(pageOf(
+      [{ name: "University of Nairobi", count: 4 }],
+    ));
     render(<InstitutionNamePicker libraryId={libraryId} value="" onChange={vi.fn()} />);
     await user.click(screen.getByRole("combobox"));
     expect(await screen.findByText("University of Nairobi")).toBeInTheDocument();
@@ -118,7 +118,7 @@ describe("institution pickers", () => {
       expect(mocks.listInstitutions).toHaveBeenLastCalledWith({
         libraryId,
         query: undefined,
-        cursor: undefined,
+        paginationOpts: { cursor: null, numItems: 50 },
         sort: "name",
         direction: "asc",
       }),
@@ -133,7 +133,7 @@ describe("institution pickers", () => {
       expect(mocks.listInstitutions).toHaveBeenLastCalledWith({
         libraryId,
         query: undefined,
-        cursor: undefined,
+        paginationOpts: { cursor: null, numItems: 50 },
         sort: "name",
         direction: "desc",
       }),
@@ -146,7 +146,7 @@ describe("institution pickers", () => {
 
   it("explains a draft library has no names yet and lets the featured value be cleared", async () => {
     const user = userEvent.setup();
-    mocks.listInstitutions.mockResolvedValue({ reason: "not-set-up", items: [], nextCursor: null });
+    mocks.listInstitutions.mockResolvedValue({ reason: "not-set-up", ...pageOf([]) });
     const onChange = vi.fn();
     render(<FeaturedInstitutionPicker libraryId={libraryId} value="Old" onChange={onChange} />);
     const trigger = screen.getByRole("combobox");
@@ -155,10 +155,9 @@ describe("institution pickers", () => {
     expect(await screen.findByText(`${ns}.notSetUp`)).toBeInTheDocument();
     await user.keyboard("{Escape}");
 
-    mocks.listInstitutions.mockResolvedValue({
-      items: [{ name: "University of Nairobi", count: 4 }],
-      nextCursor: null,
-    });
+    mocks.listInstitutions.mockResolvedValue(pageOf(
+      [{ name: "University of Nairobi", count: 4 }],
+    ));
     await user.click(screen.getByRole("combobox"));
     await user.click(await screen.findByText(`${ns}.none`));
     expect(onChange).toHaveBeenCalledWith(undefined);

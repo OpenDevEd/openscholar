@@ -38,7 +38,7 @@ import { RichTextField } from "../rich-text-field";
 import { HAND_ENTERED_PREFIX, isHandEntered, publicName, publicPhoto } from "@/lib/evidence-libraries/configuration/home-people";
 import { Field } from "../section-card";
 import { SectionShell, type SectionProps } from "../section-shell";
-import { localPickerSource, type PickerRow, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
+import { localPickerSource, PICKER_PAGE_SIZE, type PickerRow, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
 import { IconPreview, NavbarIconPicker } from "./navbar-icon-picker";
 import { PHOTO_ACCEPT, toPersonPhoto } from "../photo-upload";
 import { useDropzone } from "react-dropzone";
@@ -825,15 +825,15 @@ function PublicationChoice({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const listReviewed = useAction(api.zotero.runtimeReadActions.listReviewedPublications);
+  const listPublications = useAction(api.zotero.runtimeReadActions.listPublications);
+  const readPublication = useAction(api.zotero.runtimeReadActions.readPublication);
   const [chosen, setChosen] = useState<PickerRow | null>(null);
   // A saved choice is only a key, so its title is asked for once.
   useEffect(() => {
     if (!value || chosen?.id === value) return;
     let current = true;
-    listReviewed({ libraryId, ids: [value] })
-      .then((page) => {
-        const found = page.items.find((item) => item.key === value);
+    readPublication({ libraryId, key: value })
+      .then((found) => {
         if (current && found) setChosen(publicationRow(found));
       })
       // The key stands in for the title when the library cannot answer.
@@ -841,11 +841,11 @@ function PublicationChoice({
     return () => {
       current = false;
     };
-  }, [listReviewed, libraryId, value, chosen?.id]);
+  }, [readPublication, libraryId, value, chosen?.id]);
   const shown = value ? (chosen?.id === value ? chosen : { id: value, title: value }) : null;
   const source: PickerSource = async ({ query, cursor }) => {
-    const page = await listReviewed({ libraryId, query: query || undefined, cursor: cursor ?? undefined });
-    return { reason: page.reason, items: page.items.map(publicationRow), nextCursor: page.nextCursor };
+    const page = await listPublications({ libraryId, query: query || undefined, paginationOpts: { cursor, numItems: PICKER_PAGE_SIZE } });
+    return { reason: page.reason, items: page.page.map(publicationRow), nextCursor: page.isDone ? null : page.continueCursor };
   };
   return (
     <RemotePickerDialog
