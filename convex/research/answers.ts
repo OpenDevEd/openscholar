@@ -194,13 +194,40 @@ export async function paperAnswers(ctx: Read, screening: Doc<"screenings">, pape
   return row ? owed(screening.removals, row.version ?? 0).reduce(without, row.answers) : [];
 }
 
-/** Puts back the model's own answer to `question` where someone changed it; nothing changes where the model gave none. */
+/** Puts back the model's own answer to `question` where someone changed it; nothing changes where the model gave none, or where its answer already stands. */
 export async function restoreModelAnswer(ctx: Write, screeningId: Id<"screenings">, paperId: string, question: string, at: number) {
   const screening = (await ctx.db.get("screenings", screeningId))!;
   const existing = await settledRow(ctx, screening, paperId);
   const answers = (existing.get(paperId)?.answers ?? []).map((value) =>
-    value.question === question && value.model ? { question, answer: value.model.answer, setBy: "model" as const, updatedAt: at, model: value.model } : value);
+    value.question === question && value.model && !(value.setBy === "model" && value.answer === value.model.answer)
+      ? { question, answer: value.model.answer, setBy: "model" as const, updatedAt: at, model: value.model }
+      : value);
   return apply(ctx, screening, [{ paperId, answers }], existing, at);
+}
+
+/** One answer of a paper as it was at `version` of its screening's answers; none where the history has none. */
+export async function answerAt(ctx: Read, screeningId: Id<"screenings">, paperId: string, question: string, version: number) {
+  return (await paperAt(ctx, screeningId, paperId, version))?.answers.find((value) => value.question === question);
+}
+
+/**
+ * Puts one answer of a paper back as it was at `version`: its value, who set it and when.
+ * The model's own answer kept beside it stays the newest one. Returns false when the history
+ * has no such answer to go back to.
+ */
+export async function restoreAnswer(ctx: Write, screeningId: Id<"screenings">, paperId: string, question: string, version: number, at: number) {
+  const then = await answerAt(ctx, screeningId, paperId, question, version);
+  if (!then) return false;
+  const screening = (await ctx.db.get("screenings", screeningId))!;
+  const existing = await settledRow(ctx, screening, paperId);
+  const answers = [...(existing.get(paperId)?.answers ?? [])];
+  const index = answers.findIndex((value) => value.question === question);
+  const model = (index >= 0 ? answers[index].model : undefined) ?? then.model;
+  const value = { ...then, ...(model ? { model } : {}) };
+  if (index >= 0) answers[index] = value;
+  else answers.push(value);
+  await apply(ctx, screening, [{ paperId, answers }], existing, at);
+  return true;
 }
 
 /** Removes one paper's answers, reading only that paper's row. */

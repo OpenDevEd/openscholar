@@ -151,33 +151,51 @@ describe("a screening job's papers", () => {
     await expect(answer("W1", "q1", false, t.withIdentity({ subject: "someone_else" }))).rejects.toThrow(/not found/i);
   });
 
-  it("returns what puts a changed answer back (#342), and refuses it once the answer has changed again", async () => {
-    const { as, jobId, job, list, answer } = await screened();
+  it("returns what puts a changed answer back (#342), with who set it, and refuses it once the answer has changed again", async () => {
+    const { t, as, jobId, job, answer } = await screened();
+    const W3 = "https://openalex.org/W3";
     const run = (undo: NonNullable<Awaited<ReturnType<typeof answer>>["undo"]>) => as.mutation(api.screening.papers.answer, undo.args);
-    const q1 = async () => (await list("excluded")).concat(await list("included"), await list("unclear")).find((row) => row.openalexId === "https://openalex.org/W3")!.answers[0];
+    const { userId, screeningId } = await t.run(async (ctx) => ({
+      userId: (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "owner")).unique())!._id,
+      screeningId: (await ctx.db.get("screeningJobs", jobId))!.screeningId,
+    }));
+    const asAssistant = (value: boolean | null) => t.mutation(internal.screening.papers.answerForAssistant, { userId, jobId, paperId: W3, questionKey: "q1", answer: value });
+    /** W3's first answer as its job shows it, and as the screening stores it. */
+    const shown = async () => (await as.query(api.screening.papers.get, { jobId, paperId: W3 }))!.answers[0];
+    const stored = () =>
+      t.run(async (ctx) => (await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId).eq("paperId", W3)).unique())!.answers.find((value) => value.question === "Randomized?")!);
 
-    // The model said W3 isn't randomized: a change to that goes back to the model's own answer.
+    // The model said W3 isn't randomized. A change to that goes back to the model's answer, as the model's.
     const changed = await answer("W3", "q1", true);
-    expect(changed.undo).toMatchObject({ path: "screening/papers:answer", args: { jobId, paperId: "https://openalex.org/W3", questionKey: "q1", answer: "model", expect: { answer: true } } });
+    expect(changed.undo).toMatchObject({ path: "screening/papers:answer", args: { jobId, paperId: W3, questionKey: "q1", answer: { asOf: expect.any(Number) }, expect: { answer: true } } });
     const back = await run(changed.undo!);
     expect(back.outcome).toBe("excluded");
     expect(await job()).toMatchObject(COUNTED);
-    expect(await q1()).toMatchObject({ answer: false, changed: false });
-    // Undoing that undo is the person's answer again, and undoing a person's answer gives it back as it was.
-    expect(back.undo?.args).toMatchObject({ answer: true });
-    await answer("W3", "q1", true);
-    const unsure = await answer("W3", "q1", null);
-    expect(unsure.undo?.args).toMatchObject({ answer: true });
-    await run(unsure.undo!);
-    expect(await q1()).toMatchObject({ answer: true, changed: true });
+    expect(await shown()).toMatchObject({ answer: false, changed: false });
+    expect(await stored()).toMatchObject({ answer: false, setBy: "model" });
+    // Putting the model's answer back when it already stands changes nothing, so the undo of that undo still goes through.
+    expect((await answer("W3", "q1", "model")).undo).toBeUndefined();
+    await run(back.undo!);
+    expect(await stored()).toMatchObject({ answer: true, setBy: "person" });
 
-    // An answer changed again since is left as it is by an older undo.
-    const first = await answer("W3", "q1", false);
-    await answer("W3", "q1", null);
+    // The assistant changes the person's answer twice. Undone newest first, each step comes back as it was,
+    // the person's answer as the person's, whoever runs the undo.
+    const first = await asAssistant(null);
+    const second = await asAssistant(false);
     await expect(run(first.undo!)).rejects.toThrow(/changed since/);
-    expect(await q1()).toMatchObject({ answer: null });
+    expect(await stored()).toMatchObject({ answer: false, setBy: "assistant" });
+    await run(second.undo!);
+    expect(await stored()).toMatchObject({ answer: null, setBy: "assistant" });
+    await t.mutation(internal.screening.papers.answerForAssistant, { userId, ...first.undo!.args });
+    expect(await stored()).toMatchObject({ answer: true, setBy: "person" });
+    expect(await shown()).toMatchObject({ answer: true, changed: true });
     // Answering what it already is has nothing to undo.
-    expect((await answer("W3", "q1", null)).undo).toBeUndefined();
+    expect((await answer("W3", "q1", true)).undo).toBeUndefined();
+
+    // W5's answer is changed on the screening after the job counted it, so the job's record and the
+    // screening's differ. One step can't put both back: a change from the job has no undo.
+    await t.run((ctx) => answerPaper(ctx, screeningId, "https://openalex.org/W5", [{ question: "Randomized?", response: false }], "person", Date.now()));
+    expect((await answer("W5", "q1", null)).undo).toBeUndefined();
   });
 
   it("counts a paper once when its answer changes before the worker reaches it", async () => {
