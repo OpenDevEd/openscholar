@@ -122,6 +122,9 @@ describe("the assistant's tools", () => {
     expect(await results()).toMatchObject([{ id: saved._id }]);
     expect(told(1, "save")).toMatchObject({ id: saved._id, undo: { path: "library/mutations:removeFromLibrary" } });
     expect(await shown()).toEqual(["user: Save that paper", "step: library/mutations:saveToLibrary done, can be undone", "assistant: Saved it."]);
+    // The reply made two requests, each an action of its own that holds and settles its own credits.
+    expect(await t.run(async (ctx) => (await ctx.db.query("billingUsage").collect()).length)).toBe(2);
+    expect(await t.run(async (ctx) => ctx.db.query("billingHolds").collect())).toEqual([]);
   });
 
   it("run a change that an action makes after reading from outside, with its write ending the step once, undo and all", async () => {
@@ -540,12 +543,13 @@ describe("the assistant's tools", () => {
     expect(await steps()).toHaveLength(MAX_CALLS);
     expect(told(1, `c${MAX_CALLS + 1}`)).toMatchObject({ error: expect.stringMatching(/at most/) });
 
-    // A round that read a great deal costs more than a reply may. The action called next isn't run, and the
-    // model is told why, so it answers. Its tools stay as they were: taking them away would void the cache.
+    // A round that read a great deal costs more than a reply may: about 2,000 credits, of a person with many more.
+    // The action called next isn't run, and the model is told why, so it answers. Its tools stay as they were:
+    // taking them away would void the cache.
     requests.length = 0;
     toolChoices.length = 0;
     mockDoStream
-      .mockImplementationOnce(calling({ ...list(1_000), read: 2_000_000_000 }))
+      .mockImplementationOnce(calling({ ...list(1_000), read: 150_000 }))
       // Looking for something else to do is refused with the rest.
       .mockImplementationOnce(calling(list(1_001), { id: "find", name: "find_action", input: { keywords: "rename collection" } }, { id: "run", name: "run_action", input: { name: "no/such:action", arguments: {} } }))
       .mockImplementationOnce(finishingDoStream(["Stopping here."]));

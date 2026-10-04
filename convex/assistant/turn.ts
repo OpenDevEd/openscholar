@@ -44,10 +44,8 @@ export type Turn = {
   /** Credits held before the reply starts. */
   credits: number;
   tools?: ToolSet;
-  /** Requests to the model one reply may make while it uses its tools. */
-  maxSteps?: number;
-  /** Hears, before each request, which one it is (from 0) and the credits the reply's requests have cost so far. */
-  onStep?: (step: { number: number; credits: number }) => void;
+  /** This request is the reply's answer: the model can't call a tool in it. */
+  answer?: boolean;
   /** The reply's rule for asking the person before a tool call runs (the AI SDK's `toolApproval`). A call it asks about ends the reply there, unanswered. */
   approval?: (options: { toolCall: { toolName: string; input: unknown } }) => unknown;
   /** The paper chat the reply is in, which its charge is recorded under. */
@@ -69,6 +67,8 @@ export type Turn = {
     /** What its requests cost, in credits, and how many it made. */
     credits: number;
     requests: number;
+    /** It ended on tool calls that all ran: their results wait to go back to the model, in the reply's next request. */
+    more: boolean;
   }) => Promise<unknown>;
   /** What the model is sent, in place of the agent's own choice of recent messages. */
   contextHandler?: ContextHandler;
@@ -159,6 +159,8 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   // The tool calls the reply asked the person about, which it ended on without running.
   const asked: Array<{ toolCallId: string; toolName: string; input: unknown }> = [];
   const stepUsages: Usage[] = [];
+  // The request called tools. They ran in it, unless the person is asked about one first.
+  let calledTools = false;
   const completedGenerations = new Set<string>();
   let finished = false;
 
@@ -199,21 +201,16 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           // Context is assembled from trusted server-owned system messages.
           allowSystemInMessages: true,
           abortSignal: abortController.signal,
-          // A reply with tools takes a step for each round of calls, up to its limit. The last
-          // step it's allowed is for its answer: it can't call a tool there, so it never ends
-          // on actions it hasn't told the person about. Only that step is forced: taking the
-          // tools away voids the provider's cache of the conversation, and a model that isn't
-          // told why can answer with nothing. Every other limit is the tools' own to refuse (`onStep`).
+          // A reply with tools makes one request to the model here. The tools it calls run in
+          // it, and their results go back to the model in the reply's next request, which is an
+          // action of its own (./run.ts), as the durable agents of other runtimes take one
+          // request a step. A reply is then as long as its work, and not as long as one
+          // action may run. The request that has to be the reply's answer can't call a tool,
+          // so a reply never ends on actions it hasn't told the person about. Only that one is
+          // forced: taking the tools away voids the provider's cache of the conversation, and a
+          // model that isn't told why can answer with nothing. Every other limit is the tools' own to refuse.
           ...(turn.tools
-            ? {
-                tools: turn.tools,
-                ...(turn.approval ? { toolApproval: turn.approval as never } : {}),
-                stopWhen: isStepCount(turn.maxSteps ?? 1),
-                prepareStep: ({ stepNumber }: { stepNumber: number }) => {
-                  turn.onStep?.({ number: stepNumber, credits: convertUsdToCredits({ usd: completedUsd }) || 0 });
-                  return turn.maxSteps && stepNumber >= turn.maxSteps - 1 ? { toolChoice: "none" as const } : undefined;
-                },
-              }
+            ? { tools: turn.tools, ...(turn.approval ? { toolApproval: turn.approval as never } : {}), stopWhen: isStepCount(1), ...(turn.answer ? { toolChoice: "none" as const } : {}) }
             : {}),
           // Retries serve no user when the stream is live — the user
           // is watching and would prefer a fast failure or a clean
@@ -227,6 +224,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
             for (const part of content) {
               if (part.type === "tool-approval-request" && !part.isAutomatic) asked.push({ toolCallId: part.toolCall.toolCallId, toolName: part.toolCall.toolName, input: part.toolCall.input });
             }
+            calledTools ||= content.some((part) => part.type === "tool-call");
             stepUsages.push(usageOf({ usage, providerMetadata }));
             const inputTokens = usage?.inputTokens ?? 0;
             const outputTokens = usage?.outputTokens ?? 0;
@@ -492,6 +490,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       asked: finished && !streamErrored && !streamAbortedByUser ? asked : [],
       credits: convertUsdToCredits({ usd: completedUsd }) || 0,
       requests: stepUsages.length,
+      more: finished && !streamErrored && !streamAbortedByUser && calledTools && asked.length === 0,
     });
   }
 }
