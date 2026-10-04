@@ -4,6 +4,7 @@
  * function built from a registry entry is missing here.
  */
 import { answersOfAction, changeAction, countSearchesAction, getSearchAction, listedSearchesAction, ratingsAction, ratingsOfAction, revisionsAction, searchHistoryAction, searchHistoryEntryAction, countShortcutsAction, listedShortcutsAction, shortcutsOfAction } from "../research/records";
+import { createAction as searchCreateAction, removeAction as searchRemoveAction, restoreAction as searchRestoreAction, resultsAction as searchResultsAction, updateAction as searchUpdateAction } from "../research/searches";
 import { setLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAction, saveToLibraryAction, setPaperInCollectionAction } from "../library/mutations";
 import { countJobsAction as extractionJobCountAction, listJobsAction as extractionJobsAction } from "../extraction/queries/jobs";
 import { countJobFailuresAction as extractionFailureCountAction } from "../extraction/queries/failures";
@@ -43,6 +44,11 @@ export const USER_ACTIONS: readonly UserAction[] = [
   listedSearchesAction,
   countSearchesAction,
   getSearchAction,
+  searchCreateAction,
+  searchUpdateAction,
+  searchRestoreAction,
+  searchRemoveAction,
+  searchResultsAction,
   revisionsAction,
   searchHistoryAction,
   searchHistoryEntryAction,

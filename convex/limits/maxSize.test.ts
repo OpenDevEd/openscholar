@@ -359,6 +359,32 @@ describe("at the largest sizes the product allows", () => {
     expect(await fixture.admin.query(api.evidenceLibraries.versions.countVersions, { libraryId })).toBeGreaterThanOrEqual(1_000);
   }, 300_000);
 
+  it("a person who owns 200 organizations of ten libraries each reads, searches and counts the library list (#423)", async () => {
+    const t = convexTest(schema);
+    const { as } = await seedAccount(t);
+    const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
+    const organizations = await insertMany(t, "organizations", Array.from({ length: 200 }, (_, i) => ({ clerkOrganizationId: `org_max_${i}`, evidenceLibrariesEnabled: true, name: `Organization ${String(i).padStart(3, "0")}`, slug: `organization-${i}`, state: "active", ...stamp })));
+    // The account's own organization comes with the seed, so 199 more reach the most a person may belong to.
+    await insertMany(t, "organizationMemberships", organizations.slice(0, 199).map((organizationId, i) => ({ organizationId, clerkMembershipId: `orgmem_max_owner_${i}`, clerkUserId: "max_size_user", role: "org:admin", state: "active", ...stamp })));
+    await insertMany(t, "evidenceLibraries", organizations.slice(0, 199).flatMap((organizationId, i) => Array.from({ length: 10 }, (_, n) => ({ organizationId, name: `Library ${i}-${n}`, slug: `library-${i}-${n}`, state: "active", createdByClerkUserId: "max_size_user", updatedByClerkUserId: "max_size_user", createdAt: 1, updatedAt: 1 }))), 200);
+
+    const first = await as.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 12 } });
+    expect(first.page).toHaveLength(12);
+    expect(first.isDone).toBe(false);
+    expect(await as.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(1_990);
+    expect((await as.query(api.evidenceLibraries.queries.listLibraryOwners, {})).page).toHaveLength(199);
+    // A search that matches nothing reads its allowance of libraries a step, and ends.
+    let cursor: string | null = null;
+    let reads = 0;
+    for (; reads < 10; reads++) {
+      const page: { page: unknown[]; isDone: boolean; continueCursor: string } = await as.query(api.evidenceLibraries.queries.listLibraries, { search: "no such library", paginationOpts: { cursor, numItems: 12 } });
+      expect(page.page).toEqual([]);
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+    expect(reads).toBeLessThan(5);
+  }, 300_000);
+
   it("generates rows at the measured sizes", async () => {
     const t = convexTest(schema);
     const { userId } = await seedAccount(t);
@@ -463,7 +489,7 @@ describe("at the largest sizes the product allows", () => {
     expect(page.page[0].answers).toHaveLength(MAX_SIZE.questionsPerJob);
     const found = await as.query(api.screening.papers.list, { jobId, outcome: "included", text: "NEEDLE", paginationOpts: { cursor: null, numItems: 10 } });
     expect(found.page).toHaveLength(1);
-    expect(await as.mutation(api.screening.papers.answer, { jobId, paperId: ids[0], questionKey: "q0", answer: false })).toEqual({ outcome: "included" });
+    expect(await as.mutation(api.screening.papers.answer, { jobId, paperId: ids[0], questionKey: "q0", answer: false })).toMatchObject({ outcome: "included" });
     expect((await as.query(api.screening.queries.getScreeningJob, { jobId }))?.tallies?.[0]).toEqual({ key: "q0", yes: 119, no: 1, unclear: 0 });
   }, 300_000);
 

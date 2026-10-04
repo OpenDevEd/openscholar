@@ -131,7 +131,7 @@ async function createActivationFixture(
     o: { id: clerkOrganizationId, rol: "org:admin" },
   });
   const created = await admin.run(async (ctx) =>
-    createEvidenceLibrarySetup(ctx, { organizationId: (await admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id,
+    createEvidenceLibrarySetup(ctx, { organizationId: ((await admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id,
       name: "Activation Library",
       slug: "activation-library",
       publicAddress: essentialSections.identity.baseUrl,

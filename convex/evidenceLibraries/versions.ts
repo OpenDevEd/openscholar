@@ -58,8 +58,6 @@ import {
 import { validateSectionPayload } from "./sectionPayload";
 import { changedSectionsValidator } from "./validators";
 
-const MAX_VERSION_ROWS = 100;
-
 type RunningBinding = Extract<
   Doc<"evidenceLibraryRuntimeBindings">,
   { state: "ready" }
@@ -799,26 +797,6 @@ export const countVersions = query({
   },
 });
 
-// The newest MAX_VERSION_ROWS operations as versions, for `listVersions`.
-export async function readEvidenceLibraryVersions(
-  ctx: QueryCtx,
-  args: { libraryId: Id<"evidenceLibraries"> },
-) {
-  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-  const operations = await ctx.db
-    .query("evidenceLibraryConfigOperations")
-    .withIndex("by_libraryId_and_createdAt", (query) => query.eq("libraryId", args.libraryId))
-    .order("desc")
-    .take(MAX_VERSION_ROWS);
-  const reads = versionReads();
-  const rows = [];
-  for (const operation of operations) {
-    const revision = await versionRevision(ctx, operation, reads);
-    if (revision) rows.push(await versionRow(ctx, access.library, operation, revision, reads));
-  }
-  return rows;
-}
-
 export const startRuntimeUpdate = mutation({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.object({
@@ -1355,9 +1333,3 @@ export async function applyEvidenceLibraryCanonicalAddress(
   }
 }
 
-/** Kept for one release, while the deployed site still calls it; `listVersionRows` and `countVersions` replace it. */
-export const listVersions = query({
-  args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.array(versionRowValidator),
-  handler: readEvidenceLibraryVersions,
-});

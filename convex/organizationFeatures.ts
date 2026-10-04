@@ -1,3 +1,4 @@
+import { paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { query, type QueryCtx, type MutationCtx } from "./_generated/server";
@@ -111,21 +112,28 @@ export const get = query({
   handler: (ctx) => readOrganizationFeatures(ctx),
 });
 
-export const libraryOrganizations = query({
+const libraryOrganizationValidator = v.object({
+  id: v.id("organizations"),
+  name: v.string(),
+  imageUrl: v.optional(v.string()),
+});
+
+/** The organizations the person may create a library in, by name. */
+const libraryOrganizationsOf = async (ctx: QueryCtx) =>
+  (await readLibraryOrganizations(ctx))
+    .map(({ organization }) => ({
+      id: organization._id,
+      name: organization.name,
+      imageUrl: organization.imageUrl,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+/**
+ * The organizations the person may create a library in, as one page: a person's organizations
+ * are read up to MAX_ORGANIZATIONS_PER_PERSON, and an account in more is refused.
+ */
+export const listLibraryOrganizations = query({
   args: {},
-  returns: v.array(
-    v.object({
-      id: v.id("organizations"),
-      name: v.string(),
-      imageUrl: v.optional(v.string()),
-    }),
-  ),
-  handler: async (ctx) =>
-    (await readLibraryOrganizations(ctx))
-      .map(({ organization }) => ({
-        id: organization._id,
-        name: organization.name,
-        imageUrl: organization.imageUrl,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name)),
+  returns: paginationResultValidator(libraryOrganizationValidator),
+  handler: async (ctx) => ({ page: await libraryOrganizationsOf(ctx), isDone: true, continueCursor: "" }),
 });

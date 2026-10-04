@@ -3524,9 +3524,9 @@ describe("custom domains", () => {
         ),
       ).resolves.toEqual({ status: "failed" });
 
-      const overviews = await fixture.admin.query(
-        api.evidenceLibraries.queries.listLibraryOverviews,
-        {},
+      const { page: overviews } = await fixture.admin.query(
+        api.evidenceLibraries.queries.listLibraries,
+        { paginationOpts: { cursor: null, numItems: 50 } },
       );
       const row = overviews.find(
         (library) => library._id === fixture.created.libraryId,

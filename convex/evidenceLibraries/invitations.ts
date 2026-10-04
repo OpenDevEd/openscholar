@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { v } from "convex/values";
+import { paginationResultValidator } from "convex/server";
 import { internal } from "../_generated/api";
-import { internalMutation, internalQuery, mutation, query } from "../lib/functions";
+import { internalMutation, internalQuery, mutation, query, type QueryCtx } from "../lib/functions";
 import { requireEvidenceLibraryAccess, readLibraryRole, readPendingLibraryInvitations } from "./access";
 import { getCurrentUser } from "../lib/auth";
 import { rateLimit } from "../lib/rateLimit";
@@ -108,17 +109,21 @@ export const change = mutation({
   },
 });
 
-export const listMine = query({
+const pendingInvitationValidator = v.object({
+  invitationId: v.id("evidenceLibraryInvitations"), libraryId: v.id("evidenceLibraries"), name: v.string(),
+  role: v.union(v.literal("editor"), v.literal("creator")),
+  organization: v.object({ id: v.id("organizations"), name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
+});
+const pendingInvitations = async (ctx: QueryCtx) => {
+  const user = await getCurrentUser(ctx);
+  return user ? await readPendingLibraryInvitations(ctx, user) : [];
+};
+
+/** The library invitations waiting for the person, as one page: an address has at most MAX_PENDING_INVITATIONS_PER_EMAIL waiting, which inviting enforces. */
+export const listInvitations = query({
   args: {},
-  returns: v.array(v.object({
-    invitationId: v.id("evidenceLibraryInvitations"), libraryId: v.id("evidenceLibraries"), name: v.string(),
-    role: v.union(v.literal("editor"), v.literal("creator")),
-    organization: v.object({ name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
-  })),
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    return user ? await readPendingLibraryInvitations(ctx, user) : [];
-  },
+  returns: paginationResultValidator(pendingInvitationValidator),
+  handler: async (ctx) => ({ page: await pendingInvitations(ctx), isDone: true, continueCursor: "" }),
 });
 
 /** Called only after Clerk confirms a verified address on the signed-in account. */

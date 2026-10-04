@@ -290,6 +290,7 @@ import type * as migrations_moveSearchHistory from "../migrations/moveSearchHist
 import type * as migrations_pagedAccountLists from "../migrations/pagedAccountLists.js";
 import type * as migrations_pagedCollections from "../migrations/pagedCollections.js";
 import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
+import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryList.js";
 import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
 import type * as migrations_pagedRecords from "../migrations/pagedRecords.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
@@ -311,6 +312,8 @@ import type * as paperSets_search from "../paperSets/search.js";
 import type * as research_answers from "../research/answers.js";
 import type * as research_recordCounts from "../research/recordCounts.js";
 import type * as research_records from "../research/records.js";
+import type * as research_searchValidators from "../research/searchValidators.js";
+import type * as research_searches from "../research/searches.js";
 import type * as screening_accounting from "../screening/accounting.js";
 import type * as screening_bookkeeping from "../screening/bookkeeping.js";
 import type * as screening_completion from "../screening/completion.js";
@@ -658,6 +661,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedAccountLists": typeof migrations_pagedAccountLists;
   "migrations/pagedCollections": typeof migrations_pagedCollections;
   "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
+  "migrations/pagedLibraryList": typeof migrations_pagedLibraryList;
   "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
   "migrations/pagedRecords": typeof migrations_pagedRecords;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
@@ -679,6 +683,8 @@ declare const fullApi: ApiFromModules<{
   "research/answers": typeof research_answers;
   "research/recordCounts": typeof research_recordCounts;
   "research/records": typeof research_records;
+  "research/searchValidators": typeof research_searchValidators;
+  "research/searches": typeof research_searches;
   "screening/accounting": typeof screening_accounting;
   "screening/bookkeeping": typeof screening_bookkeeping;
   "screening/completion": typeof screening_completion;
