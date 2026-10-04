@@ -286,6 +286,8 @@ export function toolsFor(
     if (asked >= MAX_ASKS) return { type: "denied" as const, reason: `A reply asks the person about at most ${MAX_ASKS} actions at a time. Ask about the rest once these are answered.` };
     asked++;
     calls++;
+    // Asking counts as what the request did: a model that asks for the same thing again, each time it's declined, is going round in circles too.
+    note(call.entry.path, call.input, "asked");
     return "user-approval" as const;
   };
   const resume = async (step: { stepId: Id<"assistantSteps">; toolCallId: string; path: string; input: string }) => {

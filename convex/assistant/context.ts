@@ -64,6 +64,8 @@ const SUMMARY_LEAD = "This conversation grew long, so its earlier messages were 
  * The message a reply summarized partway goes on from. The app writes it, the model reads
  * it as the person's, and the chat's page leaves it out (./replies.ts).
  */
+/** The name that message is saved under, in place of the agent's, which is what tells it from a message a person wrote, whatever theirs says. */
+export const CARRIED = "carry-on";
 export const CARRY_ON = "Continue with the next step the summary names, and don't do again what it says is done. If nothing is left to do, tell me what was done. If you're unsure how to proceed, ask me.";
 
 const SUMMARIZE =

@@ -178,8 +178,8 @@ export const compact = internalAction({
     const shouldStop = async () => (await ctx.runQuery(internal.assistant.replies.lockState, lock)) !== "writing";
     try {
       if (!(await shouldStop())) {
-        // A reply can be summarized more than once as it goes, each time through a later exchange: each summary is a charge of its own.
-        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, chargeId: `chat:${attemptId}:through:${through}:summary`, shouldStop });
+        // A reply can be summarized more than once as it goes, and one that couldn't be written is tried again after its next request: each try is a charge of its own.
+        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, chargeId: `chat:${attemptId}:through:${through}:${resume?.used.rounds ?? "end"}:summary`, shouldStop });
       }
     } catch (error) {
       console.error("[assistant] compaction failed", { threadId, error: errorToLogString(error) });

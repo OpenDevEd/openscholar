@@ -227,6 +227,11 @@ describe("what the assistant's model is sent", () => {
     expect(said(sent(4)).filter((line) => /^(user|assistant): ./.test(line))).toEqual([`user: ${CARRY_ON}`, "assistant: Answer 2", "user: Question 3"]);
     expect(JSON.stringify(sent(4))).toContain('"toolCallId":"second"');
     expect(JSON.stringify(sent(4))).not.toContain('"toolCallId":"first"');
+
+    // A person who writes those very words is still shown their message: only the app's own is left out.
+    await say(CARRY_ON);
+    const texts = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.flatMap((item) => (item.role === "user" ? [item.text] : []));
+    expect(texts.filter((text) => text === CARRY_ON)).toHaveLength(1);
   });
 
   it("owes a summary a reply couldn't write partway, lets the reply go on as it was, and stops owing it once one is written", async () => {

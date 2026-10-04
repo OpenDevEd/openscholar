@@ -694,6 +694,28 @@ describe("the assistant's tools", () => {
     expect(circling(["a", "b", "a", "b"])).toBe(false);
   });
 
+  it("stop asking the person for the same thing once they have declined it three times", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, sayUntilAsked, settled, steps, shown, thread } = await chatOf(t);
+    const other = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
+    const remove = () => calling({ id: `remove${requests.length}`, name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } })();
+    mockDoStream.mockImplementation(async (options: { toolChoice?: { type: string } }) => (options.toolChoice?.type === "none" ? finishingDoStream(["I'll leave it."])() : remove()));
+    await sayUntilAsked("Delete my old chat");
+    // Declined, and asked again, three times over.
+    for (let round = 0; round < 3; round++) {
+      const waiting = (await steps()).find((step) => step.status === "asking")!;
+      await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: waiting._id, allow: false });
+      if (round < 2) await waitFor(async () => (await steps()).some((step) => step.status === "asking"), { timeoutMs: 5_000 });
+    }
+    await settled();
+    // The fourth time it isn't asked: the model is told it's going round in circles, and the reply ends with its answer.
+    expect((await steps()).filter((step) => step.status === "declined")).toHaveLength(3);
+    expect((await thread())?.asking).toBeUndefined();
+    expect(told(4, "remove4")).toMatchObject({ error: expect.stringMatching(/same thing over again/) });
+    expect((await shown()).at(-1)).toBe("assistant: I'll leave it.");
+    expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).not.toBeNull();
+  });
+
   it("list an exchange's newest steps with its messages, and page through the ones before them", async () => {
     const t = convexTest(schema);
     const { ada, asAda, threadId, say } = await chatOf(t);

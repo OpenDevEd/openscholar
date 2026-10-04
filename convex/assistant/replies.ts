@@ -10,7 +10,7 @@
  *   messages (query)   the chat's messages, a page at a time
  *   live (query)       the reply being written: who it answers, and its text so far
  */
-import { listMessages, listStreams, type MessageDoc } from "@convex-dev/agent";
+import { listMessages, listStreams, saveMessages, type MessageDoc } from "@convex-dev/agent";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v, type Infer } from "convex/values";
 import { components, internal } from "../_generated/api";
@@ -30,7 +30,7 @@ import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
-import { CARRY_ON, compactionDue } from "./context";
+import { CARRIED, CARRY_ON, compactionDue } from "./context";
 import { detailsOf } from "./details";
 import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
@@ -298,8 +298,8 @@ export const release = internalMutation({
         // Written while the reply was under way. It goes on from the summary in an exchange of its own, which begins
         // with a message telling it to: the summary runs through the exchange it was in, message and all. Its next
         // request reads the summary, not what the last one read.
-        const { messageId, message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: resume.senderId, prompt: CARRY_ON, skipEmbeddings: true });
-        const lock = await goOn({ ...resume, promptMessageId: messageId, used: { ...resume.used, tokens: 0 } });
+        const [message] = (await saveMessages(ctx, components.agent, { threadId: thread.agentThreadId, agentName: CARRIED, messages: [{ role: "user", content: CARRY_ON }] })).messages;
+        const lock = await goOn({ ...resume, promptMessageId: message._id, used: { ...resume.used, tokens: 0 } });
         await ctx.db.patch("assistantThreads", threadId, { ...kept, reply: { ...lock, order: message.order } });
         return null;
       }
@@ -315,6 +315,7 @@ export const release = internalMutation({
     const newest = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null }, excludeToolMessages: true })).page[0];
     const written = newest?.message?.role === "assistant" && newest.order === current.order ? previewOf(newest.text ?? "") : "";
     const preview = written ? { preview: written } : {};
+    const window = ended?.modelId ? (await ctx.db.get("models", ended.modelId))?.contextLength : undefined;
     if (ended && asking?.calls.length) {
       // The chat takes no message until every call is answered, or the reply is stopped. Its summary, if one is due, waits for the reply to end.
       const now = Date.now();
@@ -334,12 +335,12 @@ export const release = internalMutation({
         ...(asking.recent.length ? { recent: asking.recent } : {}),
         askedAt: now,
       };
-      await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: undefined, asking: waiting });
+      // A conversation as long as a request should read is owed its summary: nothing compacts it while it waits.
+      await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: undefined, asking: waiting, ...(compactionDue({ ...ended, window }) ? { compactionOwed: true } : {}) });
       // Stopped as it asked: the stop found nothing running, and takes effect here.
       if (current.stop) await stopAsking(ctx, thread, waiting);
       return null;
     }
-    const window = ended?.modelId ? (await ctx.db.get("models", ended.modelId))?.contextLength : undefined;
     if (ended && next) {
       // The reply goes on, in an action of its own.
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
@@ -509,7 +510,7 @@ export const messagesAction = defineUserQuery({
       // Newest first, like the page: the steps come after the message they answer, so they're listed before it.
       const steps = (ran.get(row._id) ?? []).map((step) => shownStep(step, { userId, answering, details: details.get(step._id) })).reverse();
       // The message a reply summarized partway goes on from is the app's own (./context.ts). What the reply did in answer to it is the reply's.
-      if (role === "user" && row.text === CARRY_ON) return steps;
+      if (role === "user" && row.agentName === CARRIED) return steps;
       // A message of the reply that only called actions has no text of its own to show.
       if (role === "assistant" && !row.text && row.status === "success" && Array.isArray(row.message?.content) && row.message.content.some((part) => part.type === "tool-call")) return [];
       const error = row.status === "failed" ? parseChatError(row.error) : null;
