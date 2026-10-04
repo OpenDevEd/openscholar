@@ -185,17 +185,17 @@ describe("V3.2 evidence policy", () => {
     expect(isUsableAbstract("a".repeat(80))).toBe(true);
   });
 
-  it("normalizes array answers by deduping, splitting, and capping", () => {
+  it("preserves array spelling, Unicode, punctuation and order within the eight-item contract", () => {
     const normalized = normalizeExtractionOutputForQuestion("array", {
       answer: [
-        "GPT-4; ChatGPT",
-        "gpt-4",
-        "Machine Learning",
+        " العربية ",
+        "中文",
+        "Français; créole",
+        "English, UK",
+        "العربية",
+        "GPT-4",
         "GitHub Copilot",
         "CodeLlama",
-        "Claude",
-        "Gemini",
-        "Bard",
         "StarCoder",
         "Mistral",
       ],
@@ -204,10 +204,8 @@ describe("V3.2 evidence policy", () => {
       supportEvidenceIds: [],
     });
 
-    expect(Array.isArray(normalized.answer)).toBe(true);
-    expect((normalized.answer as string[]).length).toBeLessThanOrEqual(8);
-    expect((normalized.answer as string[]).includes("gpt-4")).toBe(true);
-    expect((normalized.answer as string[]).includes("chatgpt")).toBe(true);
+    expect(normalized.answer).toEqual(["العربية", "中文", "Français; créole", "English, UK", "GPT-4", "GitHub Copilot", "CodeLlama", "StarCoder"]);
+    expect(normalized.confidence).toBe(0.9);
   });
 
   it("reduces confidence when array answers are mostly generic terms", () => {

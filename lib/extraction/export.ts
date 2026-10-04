@@ -1,32 +1,40 @@
 import type { PaperWithResults, Question } from './filtering';
+import { PAPER_LIMIT } from './limits';
+
+export class ExtractionExportError extends Error {
+  constructor(readonly code: "exportChanged" | "excelCellLimit" | "excelRowLimit") { super(code); }
+}
 
 type ResultsPage<Item> = { page: Item[]; isDone: boolean; continueCursor: string };
 
-/**
- * Every paper of a results view, read one page per query so an export of any size stays
- * within Convex's per-query limits (#352). Pages are separate reads, so a paper whose
- * sort position or filter match changes mid-walk would be read twice or missed: the walk
- * starts again when a paper comes back twice or it ends with another number of papers
- * than the view counts, and gives up after `attempts` walks.
- */
-export async function readEveryResultsPage<Item extends { _id: string }>(
+/** Metadata and all pages belong to one saved revision, including same-count edits. */
+export async function readExtractionExport<Item extends { _id: string }, Metadata extends object>(
   readPage: (cursor: string | null) => Promise<ResultsPage<Item>>,
-  countMatching: () => Promise<number>,
-  attempts = 3,
-): Promise<Item[]> {
-  for (let attempt = 1; attempt <= attempts; attempt++) {
-    const items = await walkResultsPages(readPage);
-    if (items && items.length === (await countMatching())) return items;
+  readState: () => Promise<{ matching: number; revision: number | null }>,
+  readMetadata: () => Promise<Metadata>,
+  options: { attempts?: number; signal?: AbortSignal } = {},
+): Promise<Metadata & { papers: Item[] }> {
+  for (let attempt = 1; attempt <= (options.attempts ?? 3); attempt++) {
+    options.signal?.throwIfAborted();
+    const before = await readState();
+    if (before.revision === null) throw new ExtractionExportError("exportChanged");
+    const metadata = await readMetadata();
+    const items = await walkResultsPages(async cursor => { options.signal?.throwIfAborted(); return readPage(cursor); });
+    const after = await readState();
+    options.signal?.throwIfAborted();
+    if (items && items.length === after.matching && before.revision === after.revision) return { ...metadata, papers: items };
   }
-  throw new Error("The results kept changing while they were exported");
+  throw new ExtractionExportError("exportChanged");
 }
 
 /** A view's pages, one read each. */
 async function* resultsPages<Item>(readPage: (cursor: string | null) => Promise<ResultsPage<Item>>) {
   let cursor: string | null = null;
+  let pages = 0;
   do {
     const result = await readPage(cursor);
     yield result.page;
+    if (!result.isDone && (!result.continueCursor || result.continueCursor === cursor || ++pages > PAPER_LIMIT)) throw new ExtractionExportError("exportChanged");
     cursor = result.isDone ? null : result.continueCursor;
   } while (cursor !== null);
 }
@@ -44,307 +52,195 @@ async function walkResultsPages<Item extends { _id: string }>(readPage: (cursor:
       if (seen.has(item._id)) return null;
       seen.add(item._id);
       items.push(item);
+      if (items.length > PAPER_LIMIT) throw new ExtractionExportError("exportChanged");
     }
   }
   return items;
 }
 
-/**
- * Downloads a file with the given content
- */
-function downloadFile(content: string | Blob, filename: string, mimeType: string): void {
+/** All formats use the same saved facts. Missing historical facts stay null. */
+export interface ExportOptions {
+  includeMetadata?: boolean;
+  includeConfidence?: boolean;
+  includeReasoning?: boolean;
+  includeCitations?: boolean;
+  job?: Pick<import("@/convex/_generated/dataModel").Doc<"extractionJobs">, "_id" | "name" | "status" | "runEpoch" | "usePdfs" | "sourceType" | "serverModelId" | "serverEffort" | "decisionModelId" | "createdAt" | "updatedAt">;
+  signal?: AbortSignal;
+}
+
+export type ExtractionExport = { papers: PaperWithResults[]; questions: Question[]; job?: ExportOptions["job"] };
+
+function exportRecord(papers: PaperWithResults[], questions: Question[], options: ExportOptions) {
+  const { includeMetadata = true, includeConfidence = true, includeReasoning = true, includeCitations = true, job } = options;
+  return {
+    format: "openscholar.extraction",
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    totalPapers: papers.length,
+    job: {
+      id: job?._id ?? papers[0]?.jobId ?? null,
+      name: job?.name ?? null,
+      status: job?.status ?? null,
+      runEpoch: job?.runEpoch ?? null,
+      pdfEnabled: job?.usePdfs ?? null,
+      sourceType: job?.sourceType ?? null,
+      selectedModelId: job?.serverModelId ?? null,
+      selectedEffort: job?.serverEffort ?? null,
+      selectedDecisionModelId: job?.decisionModelId ?? null,
+      createdAt: job?.createdAt ?? null,
+      updatedAt: job?.updatedAt ?? null,
+    },
+    questions: questions.map(q => ({ key: q.key, question: q.question, type: q.type, description: q.description ?? null })),
+    papers: papers.map(paper => ({
+      id: paper._id,
+      openalexId: paper.openalexId,
+      title: paper.title,
+      doi: paper.doi ?? null,
+      year: paper.publicationYear ?? null,
+      ...(includeMetadata && {
+        authors: paper.authors ?? null,
+        authorsUnparsed: paper.authorsUnparsed ?? null,
+        abstract: paper.abstract ?? null,
+        venue: paper.venueName ?? null,
+        citedByCount: paper.citedByCount ?? null,
+        workType: paper.workType ?? null,
+        oaStatus: paper.oaStatus ?? null,
+        oaUrl: paper.oaUrl ?? null,
+        pdfUrl: paper.pdfUrl ?? null,
+        openAccess: paper.isOpenAccess ?? null,
+        pdfUsed: paper.pdfContentUsed ?? null,
+      }),
+      results: questions.map(q => {
+        const r = paper.results.find(result => result.questionKey === q.key);
+        const sources = [...new Set((r?.citations ?? []).map(c => c.source ?? "pdf"))];
+        return {
+          questionKey: q.key,
+          questionType: q.type,
+          answer: r?.answer ?? null,
+          status: r ? r.status ?? "unknown" : "missing",
+          citationStatus: r?.citationStatus ?? null,
+          source: sources.length ? sources.join("+") : r?.pdfContentUsed === true ? "pdf" : r?.pdfContentUsed === false ? "abstract" : null,
+          model: r?.model ?? null,
+          provider: r?.provider ?? null,
+          runEpoch: r?.runEpoch ?? null,
+          processedAt: r?.processedAt ?? null,
+          pdfUsed: r?.pdfContentUsed ?? null,
+          ...(includeConfidence && { confidence: r?.confidence ?? null, modelConfidence: r?.modelConfidence ?? null }),
+          ...(includeReasoning && { reasoning: r?.reasoning ?? null }),
+          ...(includeCitations && { citations: r?.citations ?? [] }),
+        };
+      }),
+    })),
+  };
+}
+
+type ExportRecord = ReturnType<typeof exportRecord>;
+type Cell = string | number;
+const yesNoUnknown = (value: boolean | null | undefined) => value == null ? "Unknown" : value ? "Yes" : "No";
+
+/** Arrays use JSON so commas, semicolons and Unicode survive a round trip. */
+export function formatAnswerForCSV(answer: string | number | boolean | string[] | null | undefined, type: string): string {
+  return String(formatAnswerForExcel(answer, type));
+}
+
+export function formatAnswerForExcel(answer: string | number | boolean | string[] | null | undefined, type: string): Cell {
+  if (answer == null) return "";
+  if (Array.isArray(answer)) return JSON.stringify(answer);
+  if (type === "boolean" && typeof answer === "boolean") return answer ? "Yes" : "No";
+  if (type === "number" && typeof answer === "number" && Number.isFinite(answer)) return answer;
+  return String(answer);
+}
+
+function wideTable(data: ExportRecord, options: ExportOptions, citationMode: "json" | "count" = "json") {
+  const { includeMetadata = true, includeConfidence = true, includeReasoning = true, includeCitations = true } = options;
+  const headers = ["Paper ID", "OpenAlex ID", "Paper Title", "DOI", "Year", "Job ID", "Run Epoch", "PDF Enabled", "Job Name", "Job Status", "Source Type", "Selected Model ID", "Selected Effort", "Selected Decision Model ID", "Export Version", "Exported At"];
+  if (includeMetadata) headers.push("Authors", "Authors (unparsed)", "Abstract", "Open Access", "PDF Used", "Venue", "Citation Count", "Work Type", "Access Status", "Open Access URL", "PDF URL");
+  for (const q of data.questions) {
+    const label = "[" + q.key + "] " + q.question;
+    headers.push(label, label + " (Type)", label + " (Status)", label + " (Evidence status)", label + " (Source)", label + " (Model)", label + " (Provider)", label + " (Run epoch)", label + " (Processed at)", label + " (PDF used)");
+    if (includeConfidence) headers.push(label + " (Confidence)", label + " (Model confidence)");
+    if (includeReasoning) headers.push(label + " (Reasoning)");
+    if (includeCitations) headers.push(label + (citationMode === "count" ? " (Citation count)" : " (Citations)"));
+  }
+  const rows: Cell[][] = data.papers.map(paper => {
+    const row: Cell[] = [paper.id, paper.openalexId, paper.title, paper.doi ?? "", paper.year ?? "", data.job.id ?? "", data.job.runEpoch ?? "", yesNoUnknown(data.job.pdfEnabled), data.job.name ?? "", data.job.status ?? "", data.job.sourceType ?? "", data.job.selectedModelId ?? "", data.job.selectedEffort ?? "", data.job.selectedDecisionModelId ?? "", data.version, data.exportedAt];
+    if (includeMetadata) row.push(paper.authors == null ? "" : JSON.stringify(paper.authors), paper.authorsUnparsed ?? "", paper.abstract ?? "", yesNoUnknown(paper.openAccess), yesNoUnknown(paper.pdfUsed), paper.venue ?? "", paper.citedByCount ?? "", paper.workType ?? "", paper.oaStatus ?? "", paper.oaUrl ?? "", paper.pdfUrl ?? "");
+    for (const r of paper.results) {
+      row.push(formatAnswerForExcel(r.answer, r.questionType), r.questionType, r.status, r.citationStatus ?? "", r.source ?? "", r.model ?? "", r.provider ?? "", r.runEpoch ?? "", r.processedAt == null ? "" : new Date(r.processedAt).toISOString(), yesNoUnknown(r.pdfUsed));
+      if (includeConfidence) row.push(r.confidence ?? "", r.modelConfidence ?? "");
+      if (includeReasoning) row.push(r.reasoning ?? "");
+      if (includeCitations) row.push(citationMode === "count" ? r.citations?.length ?? 0 : JSON.stringify(r.citations ?? []));
+    }
+    return row;
+  });
+  return { headers, rows };
+}
+
+function downloadFile(content: string | Blob, extension: string, mimeType: string, signal?: AbortSignal) {
+  signal?.throwIfAborted();
   const blob = content instanceof Blob ? content : new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = url;
-  link.download = filename;
+  link.download = "extraction-results-" + Date.now() + "." + extension;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
 
-/**
- * Formats answer for CSV export
- */
-export function formatAnswerForCSV(answer: string | number | boolean | string[] | null | undefined, type: string): string {
-  if (answer === null || answer === undefined) return '';
-
-  if (type === 'boolean') {
-    return answer ? 'Yes' : 'No';
-  }
-
-  if (Array.isArray(answer)) {
-    return answer.join('; ');
-  }
-
-  return String(answer);
+export function exportToCSV(papers: PaperWithResults[], questions: Question[], options: ExportOptions = {}): void {
+  const { headers, rows } = wideTable(exportRecord(papers, questions, options), options);
+  const csv = [headers, ...rows].map(row => row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(",")).join("\r\n");
+  downloadFile("\uFEFF" + csv, "csv", "text/csv;charset=utf-8", options.signal);
 }
 
-/**
- * Formats answer for Excel export
- */
-export function formatAnswerForExcel(answer: string | number | boolean | string[] | null | undefined, type: string): string | number {
-  if (answer === null || answer === undefined) return '';
-
-  if (type === 'boolean') {
-    return answer ? 'Yes' : 'No';
-  }
-
-  if (Array.isArray(answer)) {
-    return answer.join('; ');
-  }
-
-  if (type === 'number') {
-    return Number(answer);
-  }
-
-  return String(answer);
+export function exportToJSON(papers: PaperWithResults[], questions: Question[], options: ExportOptions = {}): void {
+  downloadFile(JSON.stringify(exportRecord(papers, questions, options), null, 2), "json", "application/json", options.signal);
 }
 
-export interface ExportOptions {
-  includeMetadata?: boolean;
-  includeConfidence?: boolean;
-  includeReasoning?: boolean;
-  includeCitations?: boolean;
-}
-
-const paperMetadataHeaders = ['Authors', 'Authors (unparsed)', 'Open Access', 'PDF Used', 'Venue', 'Citation Count', 'Work Type', 'Access Status', 'Open Access URL', 'PDF URL'];
-const paperMetadataCells = (paper: PaperWithResults): string[] => [
-  paper.authors?.join('; ') ?? '', paper.authorsUnparsed ?? '',
-  paper.isOpenAccess === undefined ? 'Unknown' : paper.isOpenAccess ? 'Yes' : 'No',
-  paper.pdfContentUsed ? 'Yes' : 'No', paper.venueName ?? '', paper.citedByCount?.toString() ?? '',
-  paper.workType ?? '', paper.oaStatus ?? '', paper.oaUrl ?? '', paper.pdfUrl ?? '',
-];
-
-/**
- * Exports papers to CSV format
- */
-export function exportToCSV(
-  papers: PaperWithResults[],
-  questions: Question[],
-  options: ExportOptions = {}
-): void {
-  const {
-    includeMetadata = true,
-    includeConfidence = true,
-  } = options;
-
-  const headers: string[] = [
-    'Paper Title',
-    'DOI',
-    'Year',
-  ];
-
-  if (includeMetadata) {
-    headers.push(...paperMetadataHeaders);
+export async function exportToExcel(papers: PaperWithResults[], questions: Question[], options: ExportOptions = {}): Promise<void> {
+  options.signal?.throwIfAborted();
+  if (options.includeCitations !== false) {
+    const keys = new Set(questions.map(q => q.key));
+    const evidenceRows = papers.reduce((total, paper) => total + paper.results.reduce((count, result) => count + (keys.has(result.questionKey) ? result.citations?.length ?? 0 : 0), 0), 0);
+    if (evidenceRows > 1_048_575) throw new ExtractionExportError("excelRowLimit");
   }
-
-  // Add question columns
-  questions.forEach(q => {
-    headers.push(q.question);
-  });
-
-  // Add confidence columns
-  if (includeConfidence) {
-    questions.forEach(q => {
-      headers.push(`${q.question} (Confidence)`);
-    });
-  }
-
-  const rows = papers.map(paper => {
-    const row: string[] = [
-      paper.title,
-      paper.doi || '',
-      paper.publicationYear?.toString() || '',
-    ];
-
-    if (includeMetadata) {
-      row.push(...paperMetadataCells(paper));
+  const data = exportRecord(papers, questions, options);
+  const { headers, rows } = wideTable(data, options, "count");
+  const mod = await import("exceljs");
+  const ExcelJS = "default" in mod ? mod.default : mod;
+  const workbook = new ExcelJS.Workbook();
+  const addSheet = (name: string, values: Cell[][]) => {
+    const sheet = workbook.addWorksheet(name);
+    for (const row of values) {
+      if (row.some(cell => typeof cell === "string" && cell.length > 32767)) throw new ExtractionExportError("excelCellLimit");
+      sheet.addRow(row);
     }
-
-    // Add answers
-    questions.forEach(q => {
-      const result = paper.results.find(r => r.questionKey === q.key);
-      const answer = result?.answer;
-      row.push(formatAnswerForCSV(answer, q.type));
-    });
-
-    // Add confidence scores
-    if (includeConfidence) {
-      questions.forEach(q => {
-        const result = paper.results.find(r => r.questionKey === q.key);
-        row.push(result?.confidence ? `${Math.round(result.confidence * 100)}%` : '');
-      });
-    }
-
-    return row;
-  });
-
-  const csv = [headers, ...rows]
-    .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-
-  downloadFile(csv, `extraction-results-${Date.now()}.csv`, 'text/csv');
-}
-
-/**
- * Exports papers to JSON format
- */
-export function exportToJSON(
-  papers: PaperWithResults[],
-  questions: Question[],
-  options: ExportOptions = {}
-): void {
-  const {
-    includeReasoning = true,
-    includeCitations = true,
-  } = options;
-
-  const data = {
-    exportedAt: new Date().toISOString(),
-    totalPapers: papers.length,
-    questions: questions.map(q => ({
-      key: q.key,
-      question: q.question,
-      type: q.type,
-      description: q.description,
-    })),
-    papers: papers.map(paper => ({
-      id: paper._id,
-      title: paper.title,
-      doi: paper.doi,
-      year: paper.publicationYear,
-      authors: paper.authors,
-      authorsUnparsed: paper.authorsUnparsed,
-      venue: paper.venueName,
-      citedByCount: paper.citedByCount,
-      workType: paper.workType,
-      oaStatus: paper.oaStatus,
-      oaUrl: paper.oaUrl,
-      pdfUrl: paper.pdfUrl,
-      openAccess: paper.isOpenAccess,
-      pdfUsed: paper.pdfContentUsed,
-      results: paper.results.map(r => ({
-        questionKey: r.questionKey,
-        answer: r.answer,
-        confidence: r.confidence,
-        ...(includeReasoning && { reasoning: r.reasoning }),
-        ...(includeCitations && {
-          citations: r.citations ?? [],
-          citationStatus: r.citationStatus,
-        }),
-      })),
-    })),
+    sheet.views = [{ state: "frozen", ySplit: 1 }];
+    return sheet;
   };
-
-  const json = JSON.stringify(data, null, 2);
-  downloadFile(json, `extraction-results-${Date.now()}.json`, 'application/json');
-}
-
-/**
- * Exports papers to Excel format using ExcelJS (dynamically imported).
- */
-export async function exportToExcel(
-  papers: PaperWithResults[],
-  questions: Question[],
-  options: ExportOptions = {}
-): Promise<void> {
-  const {
-    includeMetadata = true,
-    includeConfidence = true,
-    includeReasoning = false,
-  } = options;
-
-  // Dynamic import to keep ExcelJS (~500KB) out of the initial bundle
-  const mod = await import('exceljs');
-  const ExcelJSModule = 'default' in mod ? (mod as unknown as { default: typeof mod }).default : mod;
-  const workbook = new ExcelJSModule.Workbook();
-
-  // Sheet 1: Results
-  const resultsSheet = workbook.addWorksheet('Results');
-
-  // Build headers
-  const headers: string[] = ['Title', 'DOI', 'Year'];
-  if (includeMetadata) {
-    headers.push(...paperMetadataHeaders);
-  }
-  questions.forEach(q => {
-    headers.push(q.question);
-    if (includeConfidence) {
-      headers.push(`${q.question} (Confidence)`);
-    }
-    if (includeReasoning) {
-      headers.push(`${q.question} (Reasoning)`);
-    }
-  });
-  resultsSheet.addRow(headers);
-
-  // Add data rows
-  papers.forEach(paper => {
-    const row: (string | number | undefined)[] = [
-      paper.title,
-      paper.doi || '',
-      paper.publicationYear || '',
-    ];
-
-    if (includeMetadata) {
-      row.push(...paperMetadataCells(paper));
-    }
-
-    questions.forEach(q => {
-      const result = paper.results.find(r => r.questionKey === q.key);
-      const answer = result?.answer;
-      row.push(formatAnswerForExcel(answer, q.type));
-
-      if (includeConfidence) {
-        row.push(
-          result?.confidence
-            ? Math.round(result.confidence * 100) / 100
-            : ''
-        );
-      }
-
-      if (includeReasoning) {
-        row.push(result?.reasoning || '');
-      }
-    });
-
-    resultsSheet.addRow(row);
-  });
-
-  // Sheet 2: Questions
-  const questionsSheet = workbook.addWorksheet('Questions');
-  questionsSheet.addRow(['Key', 'Question', 'Type', 'Description']);
-  questions.forEach(q => {
-    questionsSheet.addRow([q.key, q.question, q.type, q.description || '']);
-  });
-
-  // Sheet 3: Summary statistics
-  const summarySheet = workbook.addWorksheet('Summary');
-  summarySheet.addRow(['Question', 'Average Confidence', 'Completed', 'Total Papers', 'Completion Rate']);
-  const totalPapers = papers.length;
-  questions.forEach(q => {
-    const results = papers.map(p => p.results.find(r => r.questionKey === q.key));
-    const validResults = results.filter(r => r?.confidence !== undefined);
-    const avg = validResults.reduce((sum, r) => sum + (r!.confidence || 0), 0) / (validResults.length || 1);
-    summarySheet.addRow([
-      q.question,
-      Math.round(avg * 100) / 100,
-      validResults.length,
-      totalPapers,
-      `${Math.round((validResults.length / totalPapers) * 100)}%`,
+  addSheet("Results", [headers, ...rows]);
+  addSheet("Questions", [["Key", "Question", "Type", "Description"], ...data.questions.map(q => [q.key, q.question, q.type, q.description ?? ""])]);
+  addSheet("Job", [["Field", "Value"], ...Object.entries(data.job).map(([key, value]): Cell[] => [key, value == null ? "" : typeof value === "boolean" ? yesNoUnknown(value) : value]), ["Exported at", data.exportedAt], ["Exported papers", data.totalPapers]]);
+  if (options.includeCitations !== false) {
+    addSheet("Evidence", [
+      ["Paper ID", "Question Key", "Source", "Evidence ID", "Source Hash", "Page", "Start", "End", "Quote"],
+      ...data.papers.flatMap(p => p.results.flatMap(r => (r.citations ?? []).map(c => [p.id, r.questionKey, c.source ?? "pdf", c.evidenceId, c.sourceHash ?? "", c.source === "abstract" ? "" : c.page, c.charRange[0], c.charRange[1], c.quote]))),
     ]);
-  });
-
-  // Write to buffer and trigger download
+  }
+  const summaryHeaders = ["Question Key", "Question", "Completed", "Answered", "Failed", "Missing", "Total Papers", "Completion Rate"];
+  if (options.includeConfidence !== false) summaryHeaders.push("Average Confidence");
+  addSheet("Summary", [summaryHeaders, ...data.questions.map(q => {
+    const results = data.papers.map(p => p.results.find(r => r.questionKey === q.key)!);
+    const completed = results.filter(r => r.status === "completed").length;
+    const row: Cell[] = [q.key, q.question, completed, results.filter(r => r.answer !== null).length, results.filter(r => r.status === "failed").length, results.filter(r => r.status === "missing").length, data.totalPapers, data.totalPapers ? completed / data.totalPapers : 0];
+    if (options.includeConfidence !== false) {
+      const known = results.flatMap(r => r.status === "completed" && r.confidence != null ? [r.confidence] : []);
+      row.push(known.length ? known.reduce((sum, value) => sum + value, 0) / known.length : "");
+    }
+    return row;
+  })]);
   const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  });
-  downloadFile(
-    blob,
-    `extraction-results-${Date.now()}.xlsx`,
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  );
+  downloadFile(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", options.signal);
 }

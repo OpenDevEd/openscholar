@@ -335,6 +335,8 @@ export const recordQuestionBatch = internalMutation({
   args: {
     paperId: v.id("extractionPapers"),
     expectedEpoch: v.optional(v.number()),
+    model: v.optional(v.string()),
+    provider: v.optional(v.string()),
     completed: v.array(
       v.object({
         questionKey: v.string(),
@@ -404,7 +406,7 @@ export const recordQuestionBatch = internalMutation({
         continue;
       }
 
-      const fields = buildCompletedResultFields({
+      const fields = { ...buildCompletedResultFields({
         paper,
         paperId: args.paperId,
         questionKey: item.questionKey,
@@ -412,7 +414,7 @@ export const recordQuestionBatch = internalMutation({
         creditsUsed: item.creditsUsed,
         existing,
         now,
-      });
+      }), model: args.model, provider: args.provider, runEpoch: args.expectedEpoch };
 
       if (existing) {
         await ctx.db.replace(existing._id, fields);
@@ -440,14 +442,14 @@ export const recordQuestionBatch = internalMutation({
         continue;
       }
 
-      const fields = buildFailedResultFields({
+      const fields = { ...buildFailedResultFields({
         paper,
         paperId: args.paperId,
         questionKey: item.questionKey,
         error: item.error,
         existing,
         now,
-      });
+      }), model: args.model, provider: args.provider, runEpoch: args.expectedEpoch };
 
       if (existing) {
         await ctx.db.replace(existing._id, fields);

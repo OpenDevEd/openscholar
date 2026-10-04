@@ -7,19 +7,17 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ExportDialog } from "./export-dialog";
-import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
+import type { ExtractionExport } from "@/lib/extraction/export";
 
 interface BulkActionsBarProps {
   selectedIds: Set<string>;
-  papers: PaperWithResults[];
-  questions: Question[];
+  loadExport: (signal?: AbortSignal) => Promise<ExtractionExport>;
   onClearSelection: () => void;
 }
 
 export function BulkActionsBar({
   selectedIds,
-  papers,
-  questions,
+  loadExport,
   onClearSelection,
 }: BulkActionsBarProps) {
   const t = useTranslations("extraction");
@@ -66,9 +64,8 @@ export function BulkActionsBar({
       <ExportDialog
         open={exportDialogOpen}
         onOpenChange={setExportDialogOpen}
-        loadPapers={async () => papers}
-        paperCount={papers.length}
-        questions={questions}
+        loadExport={loadExport}
+        paperCount={selectedIds.size}
         label={tc("paperCount", { count: selectedIds.size })}
       />
     </>

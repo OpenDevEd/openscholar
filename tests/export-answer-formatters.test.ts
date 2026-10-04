@@ -21,12 +21,12 @@ describe("formatAnswerForCSV", () => {
     expect(formatAnswerForCSV(false, "boolean")).toBe("No");
   });
 
-  it("joins array items with semicolon-space", () => {
-    expect(formatAnswerForCSV(["a", "b", "c"], "array")).toBe("a; b; c");
+  it("preserves array boundaries with JSON", () => {
+    expect(formatAnswerForCSV(["a", "b", "c"], "array")).toBe('["a","b","c"]');
   });
 
-  it("returns empty string for empty array (join result)", () => {
-    expect(formatAnswerForCSV([], "array")).toBe("");
+  it("distinguishes an empty array from a missing answer", () => {
+    expect(formatAnswerForCSV([], "array")).toBe("[]");
   });
 
   it("stringifies number values", () => {
@@ -59,8 +59,8 @@ describe("formatAnswerForExcel", () => {
     expect(formatAnswerForExcel(false, "boolean")).toBe("No");
   });
 
-  it("joins array items with semicolon-space", () => {
-    expect(formatAnswerForExcel(["x", "y"], "array")).toBe("x; y");
+  it("preserves array boundaries with JSON", () => {
+    expect(formatAnswerForExcel(["x", "y"], "array")).toBe('["x","y"]');
   });
 
   it("returns Number for number type (not string) -- key difference from CSV", () => {
@@ -69,10 +69,12 @@ describe("formatAnswerForExcel", () => {
     expect(typeof result).toBe("number");
   });
 
-  it("converts string to Number when type is number", () => {
-    const result = formatAnswerForExcel("42", "number");
-    expect(result).toBe(42);
-    expect(typeof result).toBe("number");
+  it("preserves saved non-numeric values without inventing a numeric zero", () => {
+    for (const value of ["", " ", "42", false]) {
+      expect(formatAnswerForExcel(value, "number")).toBe(String(value));
+      expect(formatAnswerForCSV(value, "number")).toBe(String(value));
+    }
+    expect(formatAnswerForExcel(0, "number")).toBe(0);
   });
 
   it("returns string for string type", () => {

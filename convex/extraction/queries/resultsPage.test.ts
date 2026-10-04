@@ -1,10 +1,11 @@
 import { seedOrganizationFeatures } from "../../organizationFeatures.test-support";
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { api } from "../../_generated/api";
 import type { Doc } from "../../_generated/dataModel";
 import schema from "../../schema";
-import { readEveryResultsPage } from "../../../lib/extraction/export";
+import { foldCounts } from "../counts.test-support";
+import { readExtractionExport } from "../../../lib/extraction/export";
 
 const CLERK_OWNER = "clerk_results_page_owner";
 const OWNER_IDENTITY = {
@@ -166,11 +167,11 @@ describe("listJobResults", () => {
     expect(await kept({ confidenceRange: [90, 100] })).toEqual(["Rare Search Match"]);
     expect(await kept({ statusFilters: ["has-pdf"] })).toEqual(["Rare Search Match"]);
     expect(await kept({ statusFilters: ["open-access"] })).toEqual(["Rare Search Match"]);
-    expect(await countMatching(auth, jobId, { ...DEFAULT_FILTERS, statusFilters: ["open-access"] })).toEqual({ all: 60, matching: 1 });
+    expect(await countMatching(auth, jobId, { ...DEFAULT_FILTERS, statusFilters: ["open-access"] })).toMatchObject({ all: 60, matching: 1 });
     expect(await kept({ statusFilters: ["low-confidence"] })).toEqual(["Alpha Result"]);
     expect(await kept({ questionFilters: [{ questionKey: "q1", value: true }] })).toEqual(["Rare Search Match"]);
-    expect(await countMatching(auth, jobId, { ...DEFAULT_FILTERS, confidenceRange: [90, 100] })).toEqual({ all: 60, matching: 1 });
-    expect(await countMatching(auth, jobId)).toEqual({ all: 60, matching: 60 });
+    expect(await countMatching(auth, jobId, { ...DEFAULT_FILTERS, confidenceRange: [90, 100] })).toMatchObject({ all: 60, matching: 1 });
+    expect(await countMatching(auth, jobId)).toMatchObject({ all: 60, matching: 60 });
   });
 
   it("sorts a search's matches and steps through them", async () => {
@@ -185,7 +186,7 @@ describe("listJobResults", () => {
     expect(pages.map((page) => page.length)).toEqual([40, 19]);
     expect(new Set(all.map((paper) => paper._id)).size).toBe(59);
     expect(titles(all.slice(0, 2))).toEqual(["Alpha Result", "Mike Result"]);
-    expect(await countMatching(auth, jobId, view.filters)).toEqual({ all: 60, matching: 59 });
+    expect(await countMatching(auth, jobId, view.filters)).toMatchObject({ all: 60, matching: 59 });
 
     const rare = await listResults(auth, jobId, { filters: { ...DEFAULT_FILTERS, searchQuery: "rare" } });
     expect(rare.page.map((paper) => [paper.title, paper.results.map((result) => result.answer)])).toEqual([["Rare Search Match", ["Target answer"]]]);
@@ -199,7 +200,7 @@ describe("listJobResults", () => {
     const other = t.withIdentity({ tokenIdentifier: "https://test.clerk.local|clerk_someone_else", subject: "clerk_someone_else", issuer: "https://test.clerk.local" });
 
     expect(await listResults(other, jobId)).toMatchObject({ page: [], isDone: true });
-    expect(await countMatching(other, jobId)).toEqual({ all: 0, matching: 0 });
+    expect(await countMatching(other, jobId)).toEqual({ all: 0, matching: 0, revision: -1 });
   });
 
   it("is read page by page by an export, in the view's order and filter", async () => {
@@ -209,10 +210,49 @@ describe("listJobResults", () => {
     const view = { filters: { ...DEFAULT_FILTERS, confidenceRange: [50, 100] as [number, number] }, sortBy: "title-asc" as const };
 
     const whole = await listResults(auth, jobId, { ...view, numItems: 200 });
-    const exported = await readEveryResultsPage((cursor) => listResults(auth, jobId, { ...view, cursor, numItems: 7 }), async () => (await countMatching(auth, jobId, view.filters)).matching);
+    const exported = await readExtractionExport((cursor) => listResults(auth, jobId, { ...view, cursor, numItems: 7 }), () => countMatching(auth, jobId, view.filters), async () => ({}));
 
     expect(whole.page.length).toBeGreaterThan(7);
-    expect(exported.map((paper) => paper._id)).toEqual(whole.page.map((paper) => paper._id));
+    expect(exported.papers.map((paper) => paper._id)).toEqual(whole.page.map((paper) => paper._id));
+  });
+
+  it("rereads answers and job metadata after same-count changes, including before counters fold", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithProjectionCorpus(t);
+    const auth = t.withIdentity(OWNER_IDENTITY);
+    const first = (await listResults(auth, jobId, { numItems: 1 })).page[0];
+    let changed = false;
+    const data = await readExtractionExport(async cursor => {
+      if (cursor && !changed) {
+        changed = true;
+        await t.run(async ctx => {
+          await ctx.db.insert("extractionResults", { jobId, paperId: first._id, questionKey: "q1", answer: "Corrected value", citations: [], citationStatus: "best_effort", status: "completed", processedAt: 1 });
+          await ctx.db.patch("extractionJobs", jobId, { name: "Corrected job" });
+        });
+      }
+      return listResults(auth, jobId, { cursor, numItems: 7 });
+    }, () => countMatching(auth, jobId), async () => ({ name: (await t.run(ctx => ctx.db.get("extractionJobs", jobId)))!.name }));
+    expect(data.name).toBe("Corrected job");
+    expect(data.papers).toHaveLength(60);
+    expect(data.papers.find(p => p._id === first._id)!.results[0].answer).toBe("Corrected value");
+    const before = await countMatching(auth, jobId);
+    await foldCounts(t);
+    expect(await countMatching(auth, jobId)).toEqual(before);
+  });
+
+  it("keeps counts readable but refuses a snapshot while more changes are waiting than it can count", async () => {
+    vi.useFakeTimers();
+    try {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithProjectionCorpus(t);
+    const auth = t.withIdentity(OWNER_IDENTITY);
+    await t.run(async ctx => {
+      for (let i = 0; i < 10_001; i++) await ctx.db.insert("extractionCountChanges", { jobId, queuedAt: 1n, deltas: { exportRevision: 1 } });
+    });
+    expect(await countMatching(auth, jobId)).toEqual({ all: 60, matching: 60, revision: null });
+    await expect(readExtractionExport(cursor => listResults(auth, jobId, { cursor }), () => countMatching(auth, jobId), async () => ({})))
+      .rejects.toMatchObject({ code: "exportChanged" });
+    } finally { vi.useRealTimers(); }
   });
 
   it("is read again from the start when a paper moves between pages mid-export", async () => {
@@ -223,16 +263,16 @@ describe("listJobResults", () => {
     const firstPage = await listResults(auth, jobId, view);
 
     let moved = false;
-    const exported = await readEveryResultsPage(async (cursor) => {
+    const exported = await readExtractionExport(async (cursor) => {
       if (cursor !== null && !moved) {
         // The last paper of page 1 drops to the bottom, where the walk reads it a second time.
         moved = true;
         await t.run((ctx) => ctx.db.patch(firstPage.page.at(-1)!._id, { avgConfidence: 0 }));
       }
       return listResults(auth, jobId, { ...view, cursor });
-    }, async () => (await countMatching(auth, jobId)).matching);
+    }, () => countMatching(auth, jobId), async () => ({}));
 
-    const ids = exported.map((paper) => paper._id);
+    const ids = exported.papers.map((paper) => paper._id);
     expect(moved).toBe(true);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toHaveLength(60);

@@ -54,7 +54,9 @@ export const fold = internalMutation({
         await ctx.db.patch(row._id, { counts });
         // Out of the queue before the finish check, which waits until a job has none.
         for (const change of jobChanges) await ctx.db.delete(change._id);
-        if ((counts.processed ?? 0) + (counts.failed ?? 0) >= (job.totalPapers ?? 0)) {
+        // Source setup establishes the count and handles an empty job itself.
+        // Revision-only writes can reach this worker before any papers exist.
+        if (job.mode === "extraction" && (job.totalPapers ?? 0) > 0 && (counts.processed ?? 0) + (counts.failed ?? 0) >= job.totalPapers!) {
           await ctx.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId });
         }
         continue;
@@ -65,4 +67,3 @@ export const fold = internalMutation({
     return null;
   },
 });
-

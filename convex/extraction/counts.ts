@@ -63,7 +63,7 @@ async function append(ctx: MutationCtx, jobId: Id<"extractionJobs">, deltas: Cou
 }
 
 /** Appends what a write moved between buckets, per job. */
-async function appendMove<T extends { jobId: Id<"extractionJobs"> }>(ctx: MutationCtx, before: T | null, after: T | null, bucketsOf: (doc: T) => string[]) {
+async function appendMove<T extends { jobId: Id<"extractionJobs"> }>(ctx: MutationCtx, before: T | null, after: T | null, bucketsOf: (doc: T) => string[], revisesExport = false) {
   const byJob = new Map<Id<"extractionJobs">, Counts>();
   const add = (doc: T | null, sign: number) => {
     if (!doc) return;
@@ -73,15 +73,21 @@ async function appendMove<T extends { jobId: Id<"extractionJobs"> }>(ctx: Mutati
   };
   add(before, -1);
   add(after, 1);
-  for (const [jobId, deltas] of byJob) await append(ctx, jobId, deltas);
+  for (const [jobId, deltas] of byJob) {
+    if (revisesExport) deltas.exportRevision = 1;
+    await append(ctx, jobId, deltas);
+  }
 }
 
 export const countPaperChange = (ctx: MutationCtx, change: Change<DataModel, "extractionPapers">) =>
-  appendMove(ctx, change.oldDoc, change.newDoc, paperBuckets);
+  appendMove(ctx, change.oldDoc, change.newDoc, paperBuckets, true);
 export const countResultChange = (ctx: MutationCtx, change: Change<DataModel, "extractionResults">) =>
-  appendMove(ctx, change.oldDoc, change.newDoc, resultBuckets);
+  appendMove(ctx, change.oldDoc, change.newDoc, resultBuckets, true);
 export const countPaperErrorChange = (ctx: MutationCtx, change: Change<DataModel, "extractionPaperErrors">) =>
   appendMove(ctx, change.oldDoc, change.newDoc, errorBuckets);
+
+export const reviseQuestionChange = (ctx: MutationCtx, change: Change<DataModel, "extractionQuestions">) =>
+  appendMove(ctx, change.oldDoc, change.newDoc, () => [], true);
 
 // ─── Reading and recounting ───────────────────────────────────────────
 
@@ -134,6 +140,14 @@ export async function readCounts(ctx: QueryCtx | MutationCtx, jobId: Id<"extract
 export async function countJobChange(ctx: MutationCtx, change: Change<DataModel, "extractionJobs">) {
   if (!change.oldDoc && change.newDoc) await ctx.db.insert("extractionJobCounts", { jobId: change.newDoc._id, counts: {} });
   if (change.oldDoc && !change.newDoc) await clearCounts(ctx, change.oldDoc._id);
+  if (change.oldDoc && change.newDoc?.mode === "extraction") await append(ctx, change.newDoc._id, { exportRevision: 1 });
+}
+
+/** Includes unfurled changes, so folding counters never changes the export version. */
+export async function exportRevision(ctx: QueryCtx, jobId: Id<"extractionJobs">): Promise<number | null> {
+  const pending = await waitingDeltas(ctx, jobId);
+  if (pending === null) return null;
+  return ((await countsRow(ctx, jobId))?.counts.exportRevision ?? 0) + (pending.exportRevision ?? 0);
 }
 
 /** A deleted job's counts row and waiting changes. */

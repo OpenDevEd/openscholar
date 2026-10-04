@@ -55,7 +55,7 @@ import { TableView, CardView, SplitView } from "@/components/extraction/results-
 import { SmartPagination } from "@/components/extraction/smart-pagination";
 import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
 import { ExportDialog } from "@/components/extraction/export-dialog";
-import { readEveryResultsPage } from "@/lib/extraction/export";
+import { ExtractionExportError, readExtractionExport } from "@/lib/extraction/export";
 import { RESULTS_PAGE_SIZE_MAX } from "@/lib/extraction/limits";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
@@ -143,7 +143,6 @@ export default function JobDetailPage() {
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>('default');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [confirming, setConfirming] = useState<"cancel" | "delete" | null>(null);
-  const [exportMode, setExportMode] = useState<'all' | 'selected'>('all');
   const [openAnswer, setOpenAnswer] = useState<OpenAnswer | null>(null);
   const [mobilePane, setMobilePane] = useState<"results" | "citation">("results");
   // Only the action: reading the whole store would redraw this page each time the panel collapses or expands.
@@ -222,18 +221,24 @@ export default function JobDetailPage() {
   if (resultCounts && resultCounts.matching !== lastMatching) setLastMatching(resultCounts.matching);
 
   const convex = useConvex();
-  const loadAllPapers = useCallback(
-    () =>
-      readEveryResultsPage(
+  const loadAllExport = useCallback(
+    (signal?: AbortSignal) =>
+      readExtractionExport(
         (cursor) =>
           convex.query(api.extraction.queries.listJobResults, {
             ...resultsView,
             sortBy: resultsSortBy,
             paginationOpts: { cursor, numItems: RESULTS_PAGE_SIZE_MAX },
           }),
-        async () => (await convex.query(api.extraction.queries.countJobResults, resultsView)).matching,
-      ) as Promise<PaperWithResults[]>,
-    [convex, resultsView, resultsSortBy],
+        () => convex.query(api.extraction.queries.countJobResults, resultsView),
+        async () => {
+          const details = await convex.query(api.extraction.queries.getJobDetails, { jobId });
+          if (details.status !== "ok") throw new Error("This extraction is no longer available.");
+          return { job: details.job, questions: details.questions };
+        },
+        { signal },
+      ),
+    [convex, jobId, resultsView, resultsSortBy],
   );
 
   const questions: Question[] = useMemo(() => {
@@ -268,11 +273,12 @@ export default function JobDetailPage() {
     setSelection,
   } = useSelection<string>(paperIds);
 
-  const selectedPapers = useMemo(
-    () => papersWithResults.filter(p => selectedIds.has(p._id)),
-    [papersWithResults, selectedIds]
-  );
-  const loadSelectedPapers = useCallback(async () => selectedPapers, [selectedPapers]);
+  const loadSelectedExport = useCallback(async (signal?: AbortSignal) => {
+    const data = await loadAllExport(signal);
+    const papers = data.papers.filter(paper => selectedIds.has(paper._id));
+    if (papers.length !== selectedIds.size) throw new ExtractionExportError("exportChanged");
+    return { ...data, papers };
+  }, [loadAllExport, selectedIds]);
 
   const handleTableSelectionChange = useCallback((newIds: Set<string>) => {
     setSelection(newIds);
@@ -570,7 +576,6 @@ export default function JobDetailPage() {
                       aria-label={tc("export")}
                       disabled={authoritativeFilteredPapers === 0}
                       onClick={() => {
-                        setExportMode('all');
                         setExportDialogOpen(true);
                       }}
                     >
@@ -862,8 +867,7 @@ export default function JobDetailPage() {
                 {viewMode !== 'split' && (
                   <BulkActionsBar
                     selectedIds={selectedIds}
-                    papers={selectedPapers}
-                    questions={questions}
+                    loadExport={loadSelectedExport}
                     onClearSelection={clearSelection}
                   />
                 )}
@@ -871,17 +875,12 @@ export default function JobDetailPage() {
                 <ExportDialog
                   open={exportDialogOpen}
                   onOpenChange={setExportDialogOpen}
-                  loadPapers={exportMode === 'all' ? loadAllPapers : loadSelectedPapers}
-                  paperCount={exportMode === 'all' ? authoritativeFilteredPapers : selectedPapers.length}
-                  questions={questions}
+                  loadExport={loadAllExport}
+                  paperCount={authoritativeFilteredPapers}
                   label={
-                    exportMode === 'all'
-                      ? authoritativeFilteredPapers === 1
+                    authoritativeFilteredPapers === 1
                         ? tView('filteredPapersCount', { count: authoritativeFilteredPapers })
                         : tView('filteredPapersCountPlural', { count: authoritativeFilteredPapers })
-                      : selectedIds.size === 1
-                        ? tView('selectedPapersCount', { count: selectedIds.size })
-                        : tView('selectedPapersCountPlural', { count: selectedIds.size })
                   }
                 />
               </ExtractionResultsShell>

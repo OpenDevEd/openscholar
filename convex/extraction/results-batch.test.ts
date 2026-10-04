@@ -110,6 +110,8 @@ describe("recordQuestionBatch", () => {
       {
         paperId,
         expectedEpoch: 0,
+        model: "openai/gpt-6-luna",
+        provider: "openrouter",
         completed: [
           {
             questionKey: "q1",
@@ -177,6 +179,9 @@ describe("recordQuestionBatch", () => {
       answer: true,
       confidence: 0.8,
       modelConfidence: 0.94,
+      model: "openai/gpt-6-luna",
+      provider: "openrouter",
+      runEpoch: 0,
       citations: [],
       citationStatus: "best_effort",
       status: "completed",
@@ -189,6 +194,9 @@ describe("recordQuestionBatch", () => {
       status: "failed",
       billed: false,
       attemptCount: 1,
+      model: "openai/gpt-6-luna",
+      provider: "openrouter",
+      runEpoch: 0,
     });
     expect(byQuestion.get("q3")?.lastError?.code).toBe("schema_validation");
   });
