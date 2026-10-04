@@ -56,6 +56,9 @@ export function ScreeningPage() {
   // Shown while the one picked is read: it stays dimmed and inert until then.
   const stale = Boolean(job && jobId && job._id !== jobId);
   const showsForm = !job && !waiting && !(jobId && read === undefined);
+  // Whether something has shown yet. The first screening to arrive only fades in, since the page is
+  // still rising under it; what replaces it rises as well. The form, when the page opens on it, is there from the start.
+  const [begun, setBegun] = useState(showsForm);
   // The newest screening shows only until the rail turns its page: from then on it's the one picked.
   const turn = (step: () => void) => () => {
     if (picked === null && job) setPicked(job._id);
@@ -136,24 +139,28 @@ export function ScreeningPage() {
           }
         >
           <AnimatePresence mode="popLayout" initial={false}>
-            <motion.div key={job?._id ?? "new"} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }} className={cn(stale && "pointer-events-none opacity-60")} aria-busy={stale}>
-              {job ? (
-                <JobView
-                  job={job}
-                  phase={phaseOf(job, active)}
-                  blocker={blockerOf(reading(job._id))}
-                  onRunAgain={() => openForm(job)}
-                />
-              ) : !showsForm ? null : (
-                <SetupView
-                  key={again?._id ?? searchId ?? "new"}
-                  fromSearchId={again ? (again.set?.kind === "search" ? again.set.searchId : undefined) : (searchId ?? undefined)}
-                  again={again ?? undefined}
-                  waitingFor={blockerOf(reading())?.name}
-                  onStarted={(id) => setPicked(id)}
-                />
-              )}
-            </motion.div>
+            {/* Nothing stands in while a screening is read. An empty block has no height, so it could not be
+                lifted out of the flow as it left, and held the next one a gap lower until it was gone. */}
+            {job || showsForm ? (
+              <motion.div key={job?._id ?? "new"} initial={{ opacity: 0, y: begun ? 8 : 0 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }} onAnimationStart={() => setBegun(true)} className={cn(stale && "pointer-events-none opacity-60")} aria-busy={stale}>
+                {job ? (
+                  <JobView
+                    job={job}
+                    phase={phaseOf(job, active)}
+                    blocker={blockerOf(reading(job._id))}
+                    onRunAgain={() => openForm(job)}
+                  />
+                ) : (
+                  <SetupView
+                    key={again?._id ?? searchId ?? "new"}
+                    fromSearchId={again ? (again.set?.kind === "search" ? again.set.searchId : undefined) : (searchId ?? undefined)}
+                    again={again ?? undefined}
+                    waitingFor={blockerOf(reading())?.name}
+                    onStarted={(id) => setPicked(id)}
+                  />
+                )}
+              </motion.div>
+            ) : null}
           </AnimatePresence>
         </ConfigurationLayout>
       </PageWrapper>

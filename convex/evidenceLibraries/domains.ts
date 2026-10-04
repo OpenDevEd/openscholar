@@ -30,7 +30,7 @@ import {
   evidenceLibraryDomainStateValidator,
 } from "./validators";
 import { MAX_LIBRARY_DOMAINS } from "../lib/listCaps";
-import { dnsRecordsValidator } from "./validators";
+import { dnsRecordsValidator, domainRowsValidator } from "./validators";
 
 /** One library may hold a small, fixed number of custom domains. */
 export const MAX_EVIDENCE_LIBRARY_DOMAINS = MAX_LIBRARY_DOMAINS;
@@ -43,25 +43,6 @@ const VERIFICATION_TOKEN_BYTES = 16;
  * its place, and an abandoned check expires.
  */
 export const DOMAIN_CHECK_LEASE_MS = 120_000;
-
-const domainRowValidator = v.object({
-  domainId: v.id("evidenceLibraryDomains"),
-  host: v.string(),
-  role: v.union(v.literal("primary"), v.literal("redirect")),
-  state: evidenceLibraryDomainStateValidator,
-  failure: v.optional(evidenceLibraryDomainFailureValidator),
-  attached: v.boolean(),
-  removing: v.boolean(),
-  deploymentPending: v.boolean(),
-  isApex: v.boolean(),
-  checkedAt: v.optional(v.number()),
-  suggestedWwwHost: v.optional(v.string()),
-  /** The main address the owner chose, applied by the next activation. */
-  main: v.boolean(),
-  /** Removed by the owner; goes once the next activation is live. */
-  removeOnActivate: v.boolean(),
-  records: dnsRecordsValidator,
-});
 
 const domainContextRowValidator = v.object({
   domainId: v.id("evidenceLibraryDomains"),
@@ -197,7 +178,7 @@ export const listDomains = query({
     /** The chosen main domain stopped working, so it will not be applied. */
     mainNeedsAttention: v.boolean(),
     live: v.boolean(),
-    domains: v.array(domainRowValidator),
+    domains: domainRowsValidator,
   }),
   handler: async (ctx, args) => {
     const access = await requireEvidenceLibraryAccess(

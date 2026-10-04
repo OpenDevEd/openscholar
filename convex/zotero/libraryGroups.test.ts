@@ -2,7 +2,7 @@ import { seedFeatureUser } from "../organizationFeatures.test-support";
 import { assert } from "vitest";
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { decrypt, encrypt } from "../lib/crypto";
 import { assembleEvidenceLibraryRuntimePayload } from "../evidenceLibraries/runtimeConfiguration";
 import {
@@ -144,8 +144,8 @@ describe("Evidence Library Zotero groups", () => {
     expect(readOnly.scopes).toEqual({ read: true, write: false });
     expect(readOnly.isPublic).toBe(false);
 
-    const groups = await fixture.admin.query(
-      api.zotero.libraryGroups.listLibraryZoteroGroups,
+    const { page: groups } = await fixture.admin.query(
+      api.zotero.libraryGroups.listZoteroGroups,
       { libraryId },
     );
     expect(groups.map((group) => [group.groupId, group.scopes.write])).toEqual([
@@ -175,6 +175,20 @@ describe("Evidence Library Zotero groups", () => {
     // Every Zotero page is read, not just the first 25.
     expect(mine.groups).toHaveLength(132);
     expect(mine.groups[0]).toEqual({ id: "42", name: "Climate evidence", isPublic: true, itemCount: 312 });
+  });
+
+  it("refuses one Zotero group more than a library's page of them holds", async () => {
+    const fixture = await ownerWithZotero("cap");
+    const libraryId = fixture.created.libraryId;
+    const group = (groupId: string) => ({ libraryId, groupId, name: `Group ${groupId}`, isPublic: true, itemCount: 1, scopes: { read: true, write: false } });
+    await fixture.t.run(async (ctx) => {
+      for (let i = 0; i < 100; i++) await ctx.db.insert("evidenceLibraryZoteroGroups", { ...group(String(i)), connectedByClerkUserId: fixture.clerkUserId, connectedAt: i, credentialKey: `zotero-group:${i}` });
+    });
+    const save = (groupId: string) => fixture.t.mutation(internal.zotero.libraryGroups.saveLibraryZoteroGroup, { ...group(groupId), encryptedValue: "encrypted", maskedHint: "…abcd", clerkUserId: fixture.clerkUserId });
+    await expect(save("new")).rejects.toThrow(/at most 100 Zotero groups/);
+    // One already connected can still be saved again, and the list is one full page.
+    await save("7");
+    expect(await fixture.admin.query(api.zotero.libraryGroups.listZoteroGroups, { libraryId })).toMatchObject({ isDone: true, page: { length: 100 } });
   });
 
   it("says the list stopped when Zotero's own ceiling is reached", async () => {

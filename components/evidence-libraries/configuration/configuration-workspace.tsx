@@ -305,12 +305,12 @@ function Workspace({
   // Whether an OpenRouter key is stored is not a saved row; it comes from the
   // credential store and is folded into the draft while the page renders.
   const credentials = useProtectedQuery(
-    api.evidenceLibraries.credentials.listCredentialMetadata,
+    api.evidenceLibraries.credentials.listCredentials,
     { libraryId },
   );
   const draft = withAiKey(
     edited,
-    (credentials.data ?? []).some(
+    (credentials.data?.page ?? []).some(
       (credential) => credential.credentialKey === AI_PROVIDER_CREDENTIAL_KEY,
     ),
   );

@@ -78,6 +78,9 @@ const ENTRY_SEARCH = 'openScholarSearch';
 /** What an entry keeps: the search's parameters and how many works it found. */
 type KeptSearch = SearchParams & { count: number };
 
+/** Whether the address is this search's results page, with or without a trailing slash. */
+const onSearchRoute = (searchId: string) => window.location.pathname.replace(/\/$/, '').endsWith(`/${searchId}`);
+
 /** The tab's storage, which lasts as long as its Back and Forward list; a browser may refuse it. */
 function tabStorage<T>(use: (storage: Storage) => T): T | null {
   try {
@@ -156,7 +159,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   // changes nothing.
   const newestKey = `${ENTRY_SEARCH}:newest:${searchId}`;
   const shownNow = useCallback((): KeptSearch | null => {
-    if (local || !searchId || !window.location.pathname.endsWith(`/${searchId}`)) return null;
+    if (local || !searchId || !onSearchRoute(searchId)) return null;
     const saved = useSearchHistoryStore.getState().getSearchResult(searchId);
     return saved ? { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(saved), q: saved.query, count: saved.count } : null;
   }, [local, searchId]);
@@ -174,7 +177,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   useEffect(() => {
     if (local || !searchId) return;
     const takeEntry = (event: PopStateEvent) => {
-      if (!window.location.pathname.endsWith(`/${searchId}`)) return;
+      if (!onSearchRoute(searchId)) return;
       // Still the search of the entry just left: the saved search has not changed yet.
       const leaving = shownNow();
       const newest = tabStorage((storage) => {

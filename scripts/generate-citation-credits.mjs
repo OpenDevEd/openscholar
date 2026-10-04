@@ -25,7 +25,12 @@ async function checkout(repository, commit) {
   return path.join(work, `${repository}-${commit}`);
 }
 
-const decode = (text) => text.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/\s+/g, " ").trim();
+// Numbered references first (a dash is often written &#8211;), then the five named ones, the ampersand last.
+const decode = (text) => text
+  .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+  .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+  .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&")
+  .replace(/\s+/g, " ").trim();
 const names = (info, role) => [...info.matchAll(new RegExp(`<${role}>([\\s\\S]*?)</${role}>`, "g"))]
   .map(([, person]) => person.match(/<name>([\s\S]*?)<\/name>/)?.[1])
   .filter(Boolean)
