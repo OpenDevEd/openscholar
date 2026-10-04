@@ -175,6 +175,7 @@ import type * as extraction_evidence_units from "../extraction/evidence_units.js
 import type * as extraction_expandSources from "../extraction/expandSources.js";
 import type * as extraction_index from "../extraction/index.js";
 import type * as extraction_jobCounters from "../extraction/jobCounters.js";
+import type * as extraction_jobList from "../extraction/jobList.js";
 import type * as extraction_jobSources from "../extraction/jobSources.js";
 import type * as extraction_listProjection from "../extraction/listProjection.js";
 import type * as extraction_mutations from "../extraction/mutations.js";
@@ -258,9 +259,9 @@ import type * as library_collections from "../library/collections.js";
 import type * as library_counter from "../library/counter.js";
 import type * as library_mutations from "../library/mutations.js";
 import type * as library_queries from "../library/queries.js";
+import type * as library_sortName from "../library/sortName.js";
 import type * as library_validators from "../library/validators.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
-import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
 import type * as migrations_backfillLibraryCounters from "../migrations/backfillLibraryCounters.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
@@ -270,6 +271,7 @@ import type * as migrations_expireInvitations from "../migrations/expireInvitati
 import type * as migrations_moveLibraryCounts from "../migrations/moveLibraryCounts.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
 import type * as migrations_pagedCollections from "../migrations/pagedCollections.js";
+import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
 import type * as migrations_pagedRecords from "../migrations/pagedRecords.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_removeOrphanLibraryAccess from "../migrations/removeOrphanLibraryAccess.js";
@@ -520,6 +522,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/expandSources": typeof extraction_expandSources;
   "extraction/index": typeof extraction_index;
   "extraction/jobCounters": typeof extraction_jobCounters;
+  "extraction/jobList": typeof extraction_jobList;
   "extraction/jobSources": typeof extraction_jobSources;
   "extraction/listProjection": typeof extraction_listProjection;
   "extraction/mutations": typeof extraction_mutations;
@@ -603,9 +606,9 @@ declare const fullApi: ApiFromModules<{
   "library/counter": typeof library_counter;
   "library/mutations": typeof library_mutations;
   "library/queries": typeof library_queries;
+  "library/sortName": typeof library_sortName;
   "library/validators": typeof library_validators;
   "maintenance/mutations": typeof maintenance_mutations;
-  "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
   "migrations/backfillLibraryCounters": typeof migrations_backfillLibraryCounters;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
@@ -615,6 +618,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/moveLibraryCounts": typeof migrations_moveLibraryCounts;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
   "migrations/pagedCollections": typeof migrations_pagedCollections;
+  "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
   "migrations/pagedRecords": typeof migrations_pagedRecords;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/removeOrphanLibraryAccess": typeof migrations_removeOrphanLibraryAccess;
