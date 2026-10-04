@@ -18,7 +18,10 @@ import { MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBR
 import {
   draftSectionsValidator,
   evidenceLibraryTeardownStepValidator,
+  grantedPeopleValidator,
+  organizationPeopleValidator,
   revisionSectionsValidator,
+  teamInvitationsValidator,
 } from "./validators";
 import {
   readLibraryRole,
@@ -724,13 +727,6 @@ export const getRevision = query({
   handler: readEvidenceLibraryRevision,
 });
 
-const teamPersonValidator = v.object({
-  clerkUserId: v.string(),
-  name: v.string(),
-  email: v.string(),
-  imageUrl: v.optional(v.string()),
-});
-
 /**
  * Everyone who is, or could be added to, the library's team: active members of
  * its organization and people with a library grant, each with their role.
@@ -767,11 +763,11 @@ export const listTeam = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.object({
     organizationName: v.string(),
-    owners: v.array(teamPersonValidator),
-    editors: v.array(teamPersonValidator),
-    creators: v.array(teamPersonValidator),
-    availablePeople: v.array(teamPersonValidator),
-    invitations: v.array(v.object({ invitationId: v.id("evidenceLibraryInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
+    owners: organizationPeopleValidator,
+    editors: grantedPeopleValidator,
+    creators: grantedPeopleValidator,
+    availablePeople: organizationPeopleValidator,
+    invitations: teamInvitationsValidator,
   }),
   handler: async (ctx, args) => {
     const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");

@@ -26,8 +26,8 @@ import {
 import {
   evidenceLibraryAddressStateValidator,
   runtimeContractSupportValidator,
-  runtimeReleaseChangeValidator,
-  runtimeReleaseNotesValidator,
+  runtimeReleaseChangesValidator,
+  runtimeReleasesValidator,
 } from "./validators";
 
 const CONTRACT_COMMIT = EVIDENCE_LIBRARY_CONFIG_PROVENANCE.commit;
@@ -36,8 +36,8 @@ const runtimeUpdateStateValidator = v.object({
   running: v.string(),
   latest: v.string(),
   latestImage: v.string(),
-  changes: v.array(runtimeReleaseChangeValidator),
-  releases: v.array(runtimeReleaseNotesValidator),
+  changes: runtimeReleaseChangesValidator,
+  releases: runtimeReleasesValidator,
   checkedAt: v.number(),
   contractSupport: v.optional(runtimeContractSupportValidator),
 });

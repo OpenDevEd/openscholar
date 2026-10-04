@@ -16,6 +16,7 @@ import type * as ai_actions from "../ai/actions.js";
 import type * as ai_config from "../ai/config.js";
 import type * as ai_helpers from "../ai/helpers.js";
 import type * as ai_serverModel from "../ai/serverModel.js";
+import type * as ai_validators from "../ai/validators.js";
 import type * as aiModelConfig_admin from "../aiModelConfig/admin.js";
 import type * as aiModelConfig_internal from "../aiModelConfig/internal.js";
 import type * as aiModelConfig_queries from "../aiModelConfig/queries.js";
@@ -25,6 +26,7 @@ import type * as apiKeys_mutations from "../apiKeys/mutations.js";
 import type * as apiKeys_queries from "../apiKeys/queries.js";
 import type * as assistant_access from "../assistant/access.js";
 import type * as assistant_agent from "../assistant/agent.js";
+import type * as assistant_presence from "../assistant/presence.js";
 import type * as assistant_replies from "../assistant/replies.js";
 import type * as assistant_sharing from "../assistant/sharing.js";
 import type * as assistant_threads from "../assistant/threads.js";
@@ -374,6 +376,7 @@ declare const fullApi: ApiFromModules<{
   "ai/config": typeof ai_config;
   "ai/helpers": typeof ai_helpers;
   "ai/serverModel": typeof ai_serverModel;
+  "ai/validators": typeof ai_validators;
   "aiModelConfig/admin": typeof aiModelConfig_admin;
   "aiModelConfig/internal": typeof aiModelConfig_internal;
   "aiModelConfig/queries": typeof aiModelConfig_queries;
@@ -383,6 +386,7 @@ declare const fullApi: ApiFromModules<{
   "apiKeys/queries": typeof apiKeys_queries;
   "assistant/access": typeof assistant_access;
   "assistant/agent": typeof assistant_agent;
+  "assistant/presence": typeof assistant_presence;
   "assistant/replies": typeof assistant_replies;
   "assistant/sharing": typeof assistant_sharing;
   "assistant/threads": typeof assistant_threads;
@@ -755,4 +759,5 @@ export declare const components: {
   usageAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"usageAgg">;
   listCounts: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"listCounts">;
   batchWorker: import("@convex-dev/batch-worker/_generated/component.js").ComponentApi<"batchWorker">;
+  presence: import("@convex-dev/presence/_generated/component.js").ComponentApi<"presence">;
 };
