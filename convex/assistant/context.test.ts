@@ -250,16 +250,18 @@ describe("what the assistant's model is sent", () => {
     expect(after?.compactionOwed).toBeUndefined();
   });
 
-  it("reads a partly summarized exchange whole only when it reaches the message that exchange began with", async () => {
+  it("reads a partly summarized exchange from where its summary ends, however many steps the summary covers", async () => {
     const doc = (order: number, stepOrder: number) => ({ _id: `${order}:${stepOrder}`, order, stepOrder }) as never;
-    const reading = (page: unknown[]) => ({ runQuery: async () => ({ page, isDone: false }) }) as never;
-    const at = { agentThreadId: "thread", compactedThrough: 0, compactedStep: 2 };
-    // Newest first, as it's read. The read stopped among the steps the summary covers, short of the message they answered.
-    expect((await historySince(reading([doc(2, 0), doc(1, 4), doc(1, 3), doc(1, 2)]), at)).whole).toBe(false);
-    const reached = await historySince(reading([doc(2, 0), doc(1, 4), doc(1, 3), doc(1, 2), doc(1, 1), doc(1, 0)]), at);
+    // Newest first, as it's read. The message the exchange began with is fetched by itself.
+    const reading = (page: unknown[]) => ({ runQuery: async (_: unknown, args: object) => ("messageIds" in args ? [doc(1, 0)] : { page, isDone: false }) }) as never;
+    const at = { agentThreadId: "thread", compactedThrough: 0, compactedStep: 400, compactedPrompt: "1:0" };
+    // The read stopped short of the steps the summary covers: there may be more it should have read.
+    expect((await historySince(reading([doc(2, 0), doc(1, 403), doc(1, 402)]), at)).whole).toBe(false);
+    // It reached one of them, 400 steps into a long reply and nowhere near the message that began it.
+    const reached = await historySince(reading([doc(2, 0), doc(1, 403), doc(1, 402), doc(1, 401), doc(1, 400)]), at);
     expect(reached.whole).toBe(true);
-    // What the model still reads: the message, and what came after the summarized steps.
-    expect(reached.docs.map((kept) => [kept.order, kept.stepOrder])).toEqual([[1, 0], [1, 3], [1, 4], [2, 0]]);
+    // What the model still reads: that message, then what came after the summarized steps.
+    expect(reached.docs.map((kept) => [kept.order, kept.stepOrder])).toEqual([[1, 0], [1, 401], [1, 402], [1, 403], [2, 0]]);
   });
 
   it("owes a summary that couldn't be written, and the next reply writes it before it answers", async () => {

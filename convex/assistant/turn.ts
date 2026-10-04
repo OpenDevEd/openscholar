@@ -43,6 +43,8 @@ export type Turn = {
   attemptId?: string;
   /** Credits held before the reply starts. */
   credits: number;
+  /** Asked when that hold is refused: what to hold in its place, when the person turns out to have less. */
+  lesser?: () => Promise<number | undefined>;
   tools?: ToolSet;
   /** This request is the reply's answer: the model can't call a tool in it. */
   answer?: boolean;
@@ -71,6 +73,8 @@ export type Turn = {
     more: boolean;
     /** Every one of those calls failed: none did what it was called for. */
     failed: boolean;
+    /** A digest of the tools it called, with what, and what came back: two requests that did the same have the same one. */
+    digest?: string;
   }) => Promise<unknown>;
   /** What the model is sent, in place of the agent's own choice of recent messages. */
   contextHandler?: ContextHandler;
@@ -81,6 +85,13 @@ export type Turn = {
   recordError?: (error: unknown) => Promise<unknown>;
   clearError?: () => Promise<unknown>;
 };
+
+/** A short digest of a text (FNV-1a), to tell two alike without keeping either. */
+function fnv(text: string) {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193);
+  return (hash >>> 0).toString(36);
+}
 
 export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   const { agent, threadId, promptMessageId, userId, log } = turn;
@@ -165,11 +176,17 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   // by the provider, at its length or by a filter, can name a call that never runs.
   let ranTools = false;
   let allFailed = false;
+  let digest: string | undefined;
   const completedGenerations = new Set<string>();
   let finished = false;
 
   try {
-    if (!(await reserveCredits(ctx, { userId, chargeId, credits: turn.credits }))) {
+    // The account's copy of the balance can be behind a charge just made. A hold it led to that is refused is tried again at what the person really has.
+    const lesser = async () => {
+      const credits = await turn.lesser?.();
+      return credits !== undefined && credits > 0 && credits < turn.credits && (await reserveCredits(ctx, { userId, chargeId, credits }));
+    };
+    if (!(await reserveCredits(ctx, { userId, chargeId, credits: turn.credits })) && !(await lesser())) {
       const account = await ctx.runQuery(internal.billing.accounts.forUser, { userId });
       const availableCredits = account?.balance ?? 0;
       throw createError(
@@ -233,6 +250,10 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
             ranTools = calls > 0 && results.length >= calls;
             // A tool tells the model why it failed in an `error` field of what it returns.
             allFailed = ranTools && results.every((part) => part.type === "tool-error" || (typeof part.output === "object" && part.output !== null && "error" in part.output));
+            // Without the call IDs, which a model makes up anew each time.
+            digest = ranTools
+              ? fnv(JSON.stringify(content.flatMap((part) => (part.type === "tool-call" ? [[part.toolName, part.input]] : part.type === "tool-result" ? [[part.output]] : part.type === "tool-error" ? [[String(part.error)]] : []))))
+              : undefined;
             stepUsages.push(usageOf({ usage, providerMetadata }));
             const inputTokens = usage?.inputTokens ?? 0;
             const outputTokens = usage?.outputTokens ?? 0;
@@ -500,6 +521,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       requests: stepUsages.length,
       more: finished && !streamErrored && !streamAbortedByUser && ranTools && asked.length === 0,
       failed: allFailed,
+      ...(digest ? { digest } : {}),
     });
   }
 }

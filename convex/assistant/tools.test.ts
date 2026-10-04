@@ -12,8 +12,8 @@ import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
-import { MAX_ASKS, MODEL_READS, forModel } from "./steps";
-import { DEFINITION_MAX, MAX_FAILED_ROUNDS, core, definition, found, written } from "./tools";
+import { MAX_ASKS, MODEL_READS, STEPS_SHOWN, forModel } from "./steps";
+import { DEFINITION_MAX, MAX_FAILED_ROUNDS, circling, core, definition, found, written } from "./tools";
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
@@ -657,7 +657,7 @@ describe("the assistant's tools", () => {
     requests.length = 0;
     toolChoices.length = 0;
     mockDoStream.mockReset();
-    const missing = () => calling({ id: `c${requests.length}`, name: "run_action", input: { name: "no/such:action", arguments: {} } })();
+    const missing = () => calling({ id: `c${requests.length}`, name: "run_action", input: { name: `no/such:action${requests.length}`, arguments: {} } })();
     mockDoStream.mockImplementation(async (options: { toolChoice?: { type: string } }) => (options.toolChoice?.type === "none" ? finishingDoStream(["I couldn't find a way to do that."])() : missing()));
     await say("Keep going");
     expect(requests).toHaveLength(MAX_FAILED_ROUNDS + 1);
@@ -670,19 +670,97 @@ describe("the assistant's tools", () => {
     mockDoStream.mockImplementation(async () => missing());
     await say("And again");
     expect(requests).toHaveLength(MAX_FAILED_ROUNDS + 1);
+    expect(told(MAX_FAILED_ROUNDS, `c${MAX_FAILED_ROUNDS}`)).toMatchObject({ error: expect.stringMatching(/No action is named/) });
 
-    // The same call a third time running isn't run: the model is told to use what it has.
+    // Three requests running that make the same call and get the same result: the reply is going round in
+    // circles, and its next request is its answer. A fourth identical call would have told it nothing new.
+    requests.length = 0;
+    toolChoices.length = 0;
+    mockDoStream.mockReset();
+    const same = () => calling({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } })();
+    mockDoStream.mockImplementation(async (options: { toolChoice?: { type: string } }) => (options.toolChoice?.type === "none" ? finishingDoStream(["You have no collections."])() : same()));
+    await say("Look, and look again");
+    expect(toolChoices).toEqual(["auto", "auto", "auto", "none"]);
+    expect((await shown()).at(-1)).toBe("assistant: You have no collections.");
+    // A step that lists things says how many it found.
+    expect((await t.run(async (ctx) => ctx.db.query("assistantSteps").collect())).at(-1)).toMatchObject({ path: "library/collections:listCollections", status: "done", count: 0 });
+
+    // Two requests that take turns, three times over, are the same thing.
+    expect(circling(["a", "b", "a", "b", "a", "b"])).toBe(true);
+    // A read whose result changes, such as a job's progress, is never a circle, and neither is work that varies.
+    expect(circling(["a", "a", "b"])).toBe(false);
+    expect(circling(["a", "b", "c", "a", "b", "c"])).toBe(false);
+    expect(circling(["a", "b", "a", "b"])).toBe(false);
+  });
+
+  it("list an exchange's newest steps with its messages, and page through the ones before them", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, threadId, say } = await chatOf(t);
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Done."]));
+    await say("Save them all");
+    // More changes than one page lists, as a reply with no cap on its actions can make.
+    const total = STEPS_SHOWN + 30;
+    await t.run(async (ctx) => {
+      for (let index = 0; index < total; index++) {
+        await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: `call${index}`, path: "library/mutations:saveToLibrary", input: "{}", subject: `Paper ${index}`, status: "done", undo: { path: "library/mutations:removeFromLibrary", args: "{}" }, startedAt: index, endedAt: index });
+      }
+    });
+    const withMessages = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.flatMap((item) => (item.role === "step" ? [item] : []));
+    // Newest first, like the page: the last one made is listed first, and the first thirty aren't among them.
+    expect(withMessages).toHaveLength(STEPS_SHOWN);
+    expect(withMessages[0].subject).toBe(`Paper ${total - 1}`);
+    // The ones before them are read a page at a time, each with its Undo.
+    const first = await asAda.query(api.assistant.replies.steps, { threadId, order: 0, paginationOpts: { cursor: null, numItems: STEPS_SHOWN } });
+    const rest = await asAda.query(api.assistant.replies.steps, { threadId, order: 0, paginationOpts: { cursor: first.continueCursor, numItems: STEPS_SHOWN } });
+    expect(first.page.map((step) => step.id)).toEqual(withMessages.map((step) => step.id));
+    expect(rest.page).toHaveLength(30);
+    expect(rest.page.at(-1)).toMatchObject({ subject: "Paper 0", canUndo: true });
+    expect(rest.isDone).toBe(true);
+  });
+
+  it("give a call left without a result its result, however long the reply it's in ran", async () => {
+    const t = convexTest(schema);
+    const { say, shown } = await chatOf(t);
+    // Fifty rounds of reading, then a request the provider cuts short at its length: it names a call that never runs.
+    const list = () => ({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: (requests.length % 3) + 1 } } });
+    const cut = async () => ({
+      stream: new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: "stream-start", warnings: [] });
+          controller.enqueue({ type: "tool-call", toolCallId: "never", toolName: "library_collections_listCollections", input: JSON.stringify({ paginationOpts: { cursor: null, numItems: 5 } }) });
+          controller.enqueue({ type: "finish", finishReason: { unified: "length", raw: "length" }, usage: { inputTokens: { total: 5, noCache: 5, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 3, text: 3, reasoning: 0 } } });
+          controller.close();
+        },
+      }),
+    });
+    mockDoStream.mockImplementation(async () => (requests.length <= 50 ? calling(list())() : cut()));
+    await say("Read a great deal");
+    // The exchange holds more messages than the repair reads, and the next message is still answered: the call has its result.
     requests.length = 0;
     mockDoStream.mockReset();
-    const same = (id: string) => ({ id, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } });
-    mockDoStream.mockImplementationOnce(calling(same("one"))).mockImplementationOnce(calling(same("two"))).mockImplementationOnce(calling(same("three"))).mockImplementationOnce(finishingDoStream(["Nothing there."]));
-    await say("Look, and look again");
-    expect(told(2, "two")).toMatchObject({ page: [] });
-    expect(told(3, "three")).toMatchObject({ error: expect.stringMatching(/twice in a row/) });
-    const ran = await t.run(async (ctx) => ctx.db.query("assistantSteps").collect());
-    // A step that lists things says how many it found. The one that wasn't run is kept as failed.
-    expect(ran.find((step) => step.toolCallId === "two")).toMatchObject({ path: "library/collections:listCollections", status: "done", count: 0 });
-    expect(ran.find((step) => step.toolCallId === "three")).toMatchObject({ status: "failed" });
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Here you are."]));
+    await say("And now?");
+    expect(outcome(0, "never")).toMatchObject({ type: "execution-denied" });
+    expect((await shown()).at(-1)).toBe("assistant: Here you are.");
+  });
+
+  it("hold what the person really has when the account's copy of the balance is behind a charge", async () => {
+    const t = convexTest(schema);
+    const { ada, say } = await chatOf(t);
+    // The account's copy says 1,500 credits. The billing service has 900: a charge was just made.
+    await t.run(async (ctx) => {
+      fakeAutumn.setBalance(ada, { free: 900, paid: 0 });
+      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      await ctx.db.patch("billingAccounts", account!._id, { balance: 1_500 });
+    });
+    let held: number[] = [];
+    mockDoStream.mockImplementationOnce(async () => {
+      held = await t.run(async (ctx) => (await ctx.db.query("billingHolds").collect()).map((row) => row.credits));
+      return finishingDoStream(["Here."])();
+    });
+    await say("Hello");
+    // A hold of 1,000 was refused, so the request held the 900 there are, and went ahead.
+    expect(held).toEqual([900]);
   });
 
   it("are undone by the person they ran for, once, and by no one else in the chat", async () => {

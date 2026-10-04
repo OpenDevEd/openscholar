@@ -13,7 +13,7 @@ import { assistantTools, inputSchema, runAction, toolName } from "../lib/assista
 import { readConvexErrorData } from "../lib/errors";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { ASKS_FIRST, type UserAction } from "../lib/userActions";
-import { DONE, MAX_ASKS, MODEL_READS, REPEATED, STEP_TEXT_MAX, forModel } from "./steps";
+import { DONE, MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, forModel } from "./steps";
 
 /**
  * Requests in a row whose actions all failed, after which a reply's next request is its
@@ -35,6 +35,21 @@ const FOUND_MAX = 12;
  * Why a reply's tools have stopped, as the model is told when it calls one: it then knows
  * to answer with what it has, where a model simply kept from calling tools can say nothing.
  */
+/**
+ * Whether a reply is going round in circles: its last three requests made the same calls
+ * and got the same results, or two requests have taken turns three times over. Each request
+ * is told apart by a digest of what it called and what came back (./turn.ts), so a read
+ * whose result changes, such as a job's progress, is never one. The OpenHands stuck
+ * detector reads both patterns, and opencode stops at three identical calls.
+ */
+export function circling(recent: readonly string[]) {
+  const [a, b, c, d, e, f] = recent.slice(-6).reverse();
+  if (a !== undefined && a === b && b === c) return true;
+  return recent.length >= 6 && a === c && c === e && b === d && d === f;
+}
+/** Requests whose digests a reply carries along to tell. */
+export const RECENT_REQUESTS = 6;
+export const CIRCLING = "Your last requests made the same calls and got the same results. Don't call another action. Tell the person what you found, and what you couldn't get past, so they can decide what to do.";
 export const TOO_MANY_FAILED = `Every action in your last ${MAX_FAILED_ROUNDS} requests failed. Don't call another action. Tell the person what you tried, what went wrong, and what's left, so they can decide what to do.`;
 
 /**
@@ -228,7 +243,6 @@ export function toolsFor(
     const key = allowed ? `${attemptId}:${allowed}` : `${attemptId}:${calls++}`;
     const subject = subjectOf(input);
     const stepId = allowed ?? (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}) }));
-    if (!stepId) return { error: REPEATED };
     try {
       // A change ends its step in its own transaction, so the two are saved together: a mutation, or an action whose write does. A read's step is ended here.
       const change = entry.kind === "mutation" || (entry.kind === "action" && entry.changes === true);

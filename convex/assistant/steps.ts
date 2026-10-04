@@ -25,12 +25,7 @@ export const STEP_TEXT_MAX = 16_000;
 export const STEP_RESULT_MAX = 200_000;
 /** Steps of one exchange a page of the chat lists: the newest, when a reply ran more. */
 export const STEPS_SHOWN = 150;
-/**
- * What the model is told when it calls an action a third time running with the same
- * arguments: it isn't run. A model that does that is going round in circles, which opencode
- * stops at three identical calls too.
- */
-export const REPEATED = "You have run this action with these exact arguments twice in a row. It isn't run a third time: use the result you have, or do something else.";
+
 /** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
 export const MAX_ASKS = 10;
 /**
@@ -151,17 +146,8 @@ async function failStep(ctx: MutationCtx, step: Step, error: string) {
 /** A step starts. */
 export const begin = internalMutation({
   args: { threadId: v.id("assistantThreads"), order: v.number(), userId: v.id("users"), toolCallId: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) },
-  // Null when the call isn't to run: it repeats the two before it, and is kept as a failed step.
-  returns: v.union(v.id("assistantSteps"), v.null()),
-  handler: async (ctx, args) => {
-    const last = await ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", args.threadId).eq("order", args.order)).order("desc").take(2);
-    const now = Date.now();
-    if (last.length === 2 && last.every((step) => step.path === args.path && step.input === args.input)) {
-      await ctx.db.insert("assistantSteps", { ...args, status: "failed", error: REPEATED, startedAt: now, endedAt: now });
-      return null;
-    }
-    return await ctx.db.insert("assistantSteps", { ...args, status: "running", startedAt: now });
-  },
+  returns: v.id("assistantSteps"),
+  handler: async (ctx, args) => ctx.db.insert("assistantSteps", { ...args, status: "running", startedAt: Date.now() }),
 });
 
 /** A step that read something ends with its result. A change ends its own (`endStep`). */
@@ -232,7 +218,7 @@ export async function settleAsked(ctx: MutationCtx, threadId: Id<"assistantThrea
   for (const step of await stepsAt(ctx, threadId, "running")) await failStep(ctx, step, "The reply ended while this ran, so it may or may not have finished. Check before trying it again.");
 }
 
-/** Messages of a chat's newest exchange that are read to find calls left without a result: more than a reply's rounds write. */
+/** The newest messages of a chat that are read to find calls left without a result. A call with none is among the last a reply wrote. */
 const HEAL_MESSAGES = 80;
 type Part = { type?: string; toolCallId?: string; toolName?: string };
 const partsOf = (content: unknown): Part[] => (Array.isArray(content) ? (content as Part[]) : []);
@@ -255,11 +241,12 @@ export async function healCalls(ctx: MutationCtx, agentThreadId: string) {
       if (answers !== -1) open.splice(answers, 1);
     }
   }
-  const prompt = exchange.find((doc) => doc.message?.role === "user");
-  if (!open.length || !prompt) return;
+  // The result goes at the end of the exchange, which any of its messages places it in: a long reply's first message isn't among the ones read.
+  const anchor = exchange.find((doc) => doc.message?.role === "user") ?? exchange[0];
+  if (!open.length || !anchor) return;
   await assistant.saveMessage(ctx, {
     threadId: agentThreadId,
-    promptMessageId: prompt._id,
+    promptMessageId: anchor._id,
     message: { role: "tool", content: open.map((call) => ({ type: "tool-result" as const, toolCallId: call.toolCallId!, toolName: call.toolName ?? "", output: { type: "execution-denied" as const, reason: "This was never run: the reply ended before it could be." } })) },
     skipEmbeddings: true,
   });

@@ -18,7 +18,7 @@ import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 import { COMPACT_AT_TOKENS, compactedOf, contextSince, summarize } from "./context";
 import { lockArgs, turnArgs, usedValidator } from "./replies";
-import { MAX_FAILED_ROUNDS, TOO_MANY_FAILED, askedSteps, toolsFor } from "./tools";
+import { CIRCLING, MAX_FAILED_ROUNDS, RECENT_REQUESTS, TOO_MANY_FAILED, askedSteps, circling, toolsFor } from "./tools";
 import { runTurn } from "./turn";
 
 export const reply = internalAction({
@@ -65,7 +65,7 @@ export const reply = internalAction({
         const through = read.answering - 1;
         const summary = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:before:${used.rounds}:summary`, shouldStop });
         await ctx.runMutation(internal.assistant.replies.summarized, { ...lock, summary, through });
-        read = { ...read, summary, compactedThrough: through, compactedStep: undefined, owed: false };
+        read = { ...read, summary, compactedThrough: through, compactedStep: undefined, compactedPrompt: undefined, owed: false };
       } catch (error) {
         // Still owed. The reply goes ahead if the conversation can be read whole, and fails saying so if it can't.
         console.error("[assistant] owed compaction failed", { threadId, error: errorToLogString(error) });
@@ -82,10 +82,11 @@ export const reply = internalAction({
     const least = used.rounds === 0 ? ESTIMATED_CREDITS_PER_CHAT_MESSAGE : 1;
     const cap = Math.max(least, Math.min(ASSISTANT_HOLD_CREDITS, balance ?? ASSISTANT_HOLD_CREDITS));
     // A reply makes as many requests as its work takes. One whose actions have all failed, request
-    // after request, is going round in circles: this request is its answer, and its actions are refused
-    // with the reason, so it says what went wrong.
-    const answer = (used.failed ?? 0) >= MAX_FAILED_ROUNDS;
-    const stopped = () => (answer ? TOO_MANY_FAILED : null);
+    // after request, or whose requests keep doing the same thing to the same end, is going round in
+    // circles: this request is its answer, and its actions are refused with the reason, so it says so.
+    const why = (used.failed ?? 0) >= MAX_FAILED_ROUNDS ? TOO_MANY_FAILED : circling(used.recent ?? []) ? CIRCLING : null;
+    const answer = why !== null;
+    const stopped = () => why;
     // Each action it runs is kept as a step of the exchange it's answering.
     const { tools, approval, resume, made } = toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped, made: used.calls });
     // A reply that waited for an answer carries on here: what the person allowed runs first,
@@ -110,6 +111,7 @@ export const reply = internalAction({
       // Each request holds and settles its own credits.
       attemptId: `${attemptId}:${used.rounds}`,
       credits: cap,
+      lesser: async () => (await refreshAccount(ctx, senderId).catch(() => null))?.balance,
       tools,
       approval,
       answer,
@@ -121,22 +123,23 @@ export const reply = internalAction({
         summary: read.summary,
         compactedThrough: read.compactedThrough,
         compactedStep: read.compactedStep,
+        compactedPrompt: read.compactedPrompt,
         agentThreadId,
         promptMessageId,
         onHistory: (read) => {
           history = read;
         },
       }),
-      release: ({ lastInputTokens, asked, credits, requests, more, failed }) => {
+      release: ({ lastInputTokens, asked, credits, requests, more, failed, digest }) => {
         const calls = askedSteps(asked);
-        const now = { spent: used.credits + credits, rounds: used.rounds + requests, made: made() };
+        const now = { spent: used.credits + credits, rounds: used.rounds + requests, made: made(), failed: failed ? (used.failed ?? 0) + 1 : 0 };
         return ctx.runMutation(internal.assistant.replies.release, {
           ...lock,
           // A request that failed before the model answered read nothing: what the one before it read still says how long the conversation is.
           ended: { ...turn, ...history, lastInputTokens: lastInputTokens || (used.tokens ?? 0) },
           // It waits for the person's answer, or goes on to its next request, or has ended.
           // A request that was the reply's answer ends it, whatever the model called in it.
-          ...(calls.length ? { asking: { promptMessageId, calls, ...now } } : more && !answer ? { next: { promptMessageId, ...now, tokens: lastInputTokens, failed: failed ? (used.failed ?? 0) + 1 : 0 } } : {}),
+          ...(calls.length ? { asking: { promptMessageId, calls, ...now } } : more && !answer ? { next: { promptMessageId, ...now, tokens: lastInputTokens, recent: [...(used.recent ?? []), ...(digest ? [digest] : [])].slice(-RECENT_REQUESTS) } } : {}),
         });
       },
     });

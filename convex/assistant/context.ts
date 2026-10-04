@@ -74,7 +74,7 @@ const SUMMARIZE =
  * into the exchange after it, by the agent component's step order. A reply summarized
  * while it was being written has its requests through `compactedStep` in the summary.
  */
-export type Compacted = { summary?: string; compactedThrough?: number; compactedStep?: number };
+export type Compacted = { summary?: string; compactedThrough?: number; compactedStep?: number; compactedPrompt?: string };
 
 /** Whether the model still reads a message in full. The message a summarized reply answers stays: it's step 0 of its exchange. */
 const kept = (doc: MessageDoc, { compactedThrough: through = -1, compactedStep: step }: Compacted) =>
@@ -103,14 +103,22 @@ export async function historySince(
   const exchange = read.page.find((doc) => doc._id === args.before)?.order ?? Infinity;
   const since = read.page.filter((doc) => kept(doc, args)).reverse();
   const through = args.compactedThrough ?? -1;
+  const step = args.compactedStep;
+  let docs = since.filter((doc) => doc.order < exchange);
+  // The message a partly summarized exchange began with is still read, and a long reply leaves it behind more
+  // summarized steps than one read takes. It is fetched by itself, so how long a reply ran never decides whether
+  // the conversation can be read. The exchange being answered needs none: the agent hands its message over.
+  if (step !== undefined && through + 1 < exchange && args.compactedPrompt && !docs.some((doc) => doc._id === args.compactedPrompt)) {
+    const [prompt] = await ctx.runQuery(components.agent.messages.getMessagesByIds, { messageIds: [args.compactedPrompt] });
+    if (prompt) docs = [prompt, ...docs];
+  }
   return {
-    docs: since.filter((doc) => doc.order < exchange),
+    docs,
     responses: since.filter((doc) => doc.order === exchange && doc.stepOrder > 0),
     exchange,
-    // The read got back to the summary's end: to an exchange it covers whole, or, where it runs partway into
-    // one, to the message that exchange began with, which is kept. Stopping among that exchange's
-    // summarized steps would leave its message out.
-    whole: read.isDone || read.page.some((doc) => doc.order <= through || (args.compactedStep !== undefined && doc.order === through + 1 && doc.stepOrder === 0)),
+    // The read got back to what the summary covers: an exchange it covers whole, or a step it covers of the
+    // exchange it runs into. Everything after that point is in hand.
+    whole: read.isDone || read.page.some((doc) => doc.order <= through || (step !== undefined && doc.order === through + 1 && doc.stepOrder <= step)),
   };
 }
 
@@ -122,7 +130,7 @@ const summaryMessage = (summary: string, midway = false): ModelMessage => ({ rol
  */
 export function contextSince(args: Compacted & { agentThreadId: string; promptMessageId: string; onHistory: (history: { messages: number; bytes: number }) => void }): ContextHandler {
   return async (ctx, { inputMessages, inputPrompt, existingResponses }) => {
-    const { docs, responses, exchange, whole } = await historySince(ctx, { agentThreadId: args.agentThreadId, compactedThrough: args.compactedThrough, compactedStep: args.compactedStep, before: args.promptMessageId });
+    const { docs, responses, exchange, whole } = await historySince(ctx, { agentThreadId: args.agentThreadId, compactedThrough: args.compactedThrough, compactedStep: args.compactedStep, compactedPrompt: args.compactedPrompt, before: args.promptMessageId });
     // Answering from part of the conversation would lose the rest without a word.
     if (!whole) throw tooLong();
     // What the reply has written of its own exchange counts with the history: a reply that runs long is most of
@@ -165,7 +173,7 @@ export async function summarize(
   },
 ): Promise<string> {
   const { model, modelSlug, pricing } = await resolveOpenRouterModel(ctx, args.modelId);
-  const history = await historySince(ctx, { agentThreadId: args.agentThreadId, compactedThrough: args.compactedThrough, compactedStep: args.compactedStep });
+  const history = await historySince(ctx, { agentThreadId: args.agentThreadId, compactedThrough: args.compactedThrough, compactedStep: args.compactedStep, compactedPrompt: args.compactedPrompt });
   // A summary of part of the range would mark the rest as summarized too.
   if (!history.whole) throw tooLong();
   const docs = history.docs.filter((doc) => doc.order < args.through || (doc.order === args.through && (args.step === undefined || doc.stepOrder <= args.step)));

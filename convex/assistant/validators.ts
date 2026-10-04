@@ -44,6 +44,8 @@ export const assistantAskingValidator = v.object({
   spent: v.number(),
   rounds: v.number(),
   made: v.number(),
+  /** How many of its requests in a row, up to the one that asked, had every action fail. */
+  failed: v.optional(v.number()),
   askedAt: v.number(),
 });
 
@@ -67,6 +69,8 @@ export const assistantThreadFields = {
   compactedThrough: v.optional(v.number()),
   /** How far into the exchange after that the summary runs, by the component's step order, when a reply was summarized while it was being written. */
   compactedStep: v.optional(v.number()),
+  /** The message that exchange began with, in the agent component, which the model still reads. */
+  compactedPrompt: v.optional(v.string()),
   /** A compaction was due and didn't finish, so the next reply writes the summary before it answers. */
   compactionOwed: v.optional(v.boolean()),
   /**
