@@ -2313,6 +2313,38 @@ describe("Evidence Library configuration deployment", () => {
     ).resolves.toMatchObject({ status: "running" });
   });
 
+  it("does not call a release staged by a failed rollback an unfinished update", async () => {
+    const fixture = await createReadyLibrary("failed-rollback-target");
+    const staged = { runtimeCommit: NEWER_COMMIT, runtimeImage: NEWER_RUNTIME_IMAGE };
+    await fixture.t.run(async (ctx) => {
+      const update = await ctx.db
+        .query("evidenceLibraryConfigOperations")
+        .order("desc")
+        .first();
+      const { _id, _creationTime, ...copied } = update!;
+      await ctx.db.insert("evidenceLibraryConfigOperations", {
+        ...copied,
+        kind: "rollback",
+        status: "failed",
+        idempotencyKey: "runtime-rollback:test",
+        runtimeUpdate: {
+          from: RUNTIME_COMMIT,
+          to: NEWER_COMMIT,
+          fromImage: TEST_RUNTIME_IMAGE,
+          toImage: NEWER_RUNTIME_IMAGE,
+        },
+      });
+    });
+    const read = (updateOnly: boolean) =>
+      fixture.t.query(
+        internal.evidenceLibraries.configurationDeployment.isFailedRuntimeTarget,
+        { libraryId: fixture.created.libraryId, ...staged, updateOnly },
+      );
+    // The next software update may still continue from it.
+    await expect(read(false)).resolves.toBe(true);
+    await expect(read(true)).resolves.toBe(false);
+  });
+
   it("refuses an intermediate release that is not in this library's failed update history", async () => {
     const fixture = await createReadyLibrary("runtime-update-unknown");
     await fixture.t.run(async (ctx) => {

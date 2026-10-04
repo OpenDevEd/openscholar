@@ -84,6 +84,11 @@ export const isFailedRuntimeTarget = internalQuery({
     libraryId: v.id("evidenceLibraries"),
     runtimeCommit: v.string(),
     runtimeImage: v.string(),
+    /**
+     * Only when the last failed move to this release was a software update.
+     * A failed rollback stages a release too, and updating does not undo it.
+     */
+    updateOnly: v.optional(v.boolean()),
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
@@ -96,8 +101,11 @@ export const isFailedRuntimeTarget = internalQuery({
           .eq("runtimeUpdate.to", args.runtimeCommit)
           .eq("runtimeUpdate.toImage", args.runtimeImage),
       )
+      .order("desc")
       .first();
-    return operation !== null;
+    return (
+      operation !== null && (!args.updateOnly || operation.kind === "publish")
+    );
   },
 });
 

@@ -286,7 +286,18 @@ export const runConfigurationDeployment = internalAction({
                   : prepared.targetBaseUrl,
               customDomains: prepared.customDomains,
             })
-            .catch(() => null);
+            // A conflict here is the strict read's to report. Anything else,
+            // such as Coolify not answering, must stop the deployment before
+            // it changes an address it could not check.
+            .catch((error: unknown) => {
+              if (
+                error instanceof CoolifyClientError &&
+                error.code === "COOLIFY_APPLICATION_CONFLICT"
+              ) {
+                return null;
+              }
+              throw error;
+            });
           if (
             staged &&
             staged.runtimeCommit !== prepared.runtimeCommit &&
@@ -297,6 +308,7 @@ export const runConfigurationDeployment = internalAction({
                 libraryId: args.libraryId,
                 runtimeCommit: staged.runtimeCommit,
                 runtimeImage: staged.runtimeImage,
+                updateOnly: true,
               },
             ))
           ) {
