@@ -164,18 +164,21 @@ export async function deleteLibraryUpload(
 }
 
 /**
- * The first page of the files under `prefix`, and whether the list ends with it. Null when
- * the bucket is missing.
+ * One page of what is under `prefix`, from `offset`: the names of its files, and how many
+ * entries it held. A folder (an entry whose `id` is null) or an entry without a name is
+ * counted and not named, since a delete leaves it where it is. Null when the bucket is
+ * missing.
  */
 async function listObjectPage(
   client: StorageClient,
   prefix: string,
-): Promise<{ names: string[]; isLast: boolean } | null> {
+  offset: number,
+): Promise<{ names: string[]; entries: number } | null> {
   const response = await requestObjects(client, {
     method: "POST",
     path: bucketPath(`list/${EVIDENCE_LIBRARY_UPLOAD_BUCKET}`),
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ prefix, limit: LIST_PAGE_SIZE, offset: 0 }),
+    body: JSON.stringify({ prefix, limit: LIST_PAGE_SIZE, offset }),
     allowMissingBucket: true,
   });
   if (!response) return null;
@@ -196,13 +199,12 @@ async function listObjectPage(
   }
   const names: string[] = [];
   for (const entry of payload) {
-    const name =
-      typeof entry === "object" && entry !== null && "name" in entry
-        ? entry.name
-        : null;
+    if (typeof entry !== "object" || entry === null) continue;
+    if ("id" in entry && entry.id === null) continue;
+    const name = "name" in entry ? entry.name : null;
     if (typeof name === "string" && name) names.push(name);
   }
-  return { names, isLast: payload.length < LIST_PAGE_SIZE };
+  return { names, entries: payload.length };
 }
 
 /**
@@ -223,26 +225,31 @@ export async function deleteLibraryUploads(
   const client = createStorageClient(input);
   const prefix = evidenceLibraryUploadPrefix(input.libraryId);
   let deleted = 0;
+  // The entries a delete leaves in place, which every later read steps over.
+  let kept = 0;
   let previous: string | undefined;
-  // A page is deleted before the next is read, so every read starts at the
-  // first file still there and no list of them all is ever held.
+  // A page's files are deleted before the next page is read, so every read
+  // starts at the first file still there and no list of them all is held.
   for (;;) {
     await input.onBatch?.();
-    const page = await listObjectPage(client, prefix);
-    if (!page || page.names.length === 0) return { deleted };
-    if (page.names[0] === previous) {
-      throw new StorageSetupError(
-        "STORAGE_REQUEST_FAILED",
-        "The file store kept files it was asked to delete",
+    const page = await listObjectPage(client, prefix, kept);
+    if (!page) return { deleted };
+    if (page.names.length > 0) {
+      if (page.names[0] === previous) {
+        throw new StorageSetupError(
+          "STORAGE_REQUEST_FAILED",
+          "The file store kept files it was asked to delete",
+        );
+      }
+      previous = page.names[0];
+      await input.onBatch?.();
+      await deleteObjects(
+        client,
+        page.names.map((name) => `${prefix}${name}`),
       );
+      deleted += page.names.length;
     }
-    previous = page.names[0];
-    await input.onBatch?.();
-    await deleteObjects(
-      client,
-      page.names.map((name) => `${prefix}${name}`),
-    );
-    deleted += page.names.length;
-    if (page.isLast) return { deleted };
+    kept += page.entries - page.names.length;
+    if (page.entries < LIST_PAGE_SIZE) return { deleted };
   }
 }
