@@ -40,6 +40,8 @@ const FLAG = "assistant.enabled";
 const MESSAGES_PAGE_MAX = 50;
 /** What one page of messages may read. A message can be tens of kilobytes, so a page of long ones ends early. */
 const MESSAGES_PAGE_BYTES = 1024 * 1024;
+/** The cursor the agent component's paginator gives for the end of a chat's messages. */
+const CHAT_END = "[]";
 /** Rows of a reply's stream one read returns: the agent component's own limit. */
 const DELTAS_PER_READ = 100;
 /**
@@ -480,24 +482,28 @@ async function senders(ctx: QueryCtx, rows: MessageDoc[]) {
 
 /**
  * One page of a chat's messages, with its end kept where it is. The agent component pages
- * without recording where a page ended, so a page read with no `endCursor` is the newest
- * rows whatever they are: as a reply adds rows, the ones before them drop out of it, and the
- * message it answers takes its steps along. So the newest page says where to split, and the
- * page that subscribes then reads each half to a fixed end, the newer one growing with the chat.
+ * without recording where a page ended, so a page read with no `endCursor` is so many rows
+ * from its start, whatever they are: as a reply adds rows to the newest page, the ones before
+ * them drop out of it, and the message it answers takes its steps along. So a page read with
+ * no end says where to split, and the page that subscribes then reads each half to a fixed
+ * end, the newest one growing with the chat.
  */
 async function pageOf<Opts extends { numItems: number; cursor: string | null; endCursor?: string | null }>(list: (opts: Opts) => ReturnType<typeof listMessages>, opts: Opts) {
   const end = opts.endCursor;
   if (!end) {
-    // A page after the newest starts at a fixed row and its rows don't change. One item can't be split.
-    if (opts.cursor !== null || opts.numItems < 2) return list(opts);
+    // One item can't be split.
+    if (opts.numItems < 2) return list(opts);
     const half = Math.ceil(opts.numItems / 2);
     const newer = await list({ ...opts, numItems: half });
-    // A short chat has nothing to split yet, and a half that stopped at a cap says where to split itself.
-    if (newer.isDone || newer.pageStatus) return newer;
+    // Nothing is past this half, so there's nothing to split yet.
+    if (newer.isDone) return newer;
+    // Whether the half read its share or a cap stopped it, its last row is where the split falls.
     const older = await list({ ...opts, cursor: newer.continueCursor, numItems: opts.numItems - half });
     return { ...older, page: [...newer.page, ...older.page], splitCursor: newer.continueCursor, pageStatus: "SplitRecommended" as const };
   }
-  const read = await list(opts);
+  const raw = await list(opts);
+  // The component calls an empty page the last one. A page read to a fixed end is the last only when that end is the chat's.
+  const read = { ...raw, isDone: raw.isDone && end === CHAT_END };
   // A cap stopped it short of its end. The halves it splits into end where it was to end, or the rows between would be in no page.
   if (read.pageStatus === "SplitRequired" && read.continueCursor !== end) return { ...read, continueCursor: end };
   if (read.pageStatus === "SplitRecommended") return read;
