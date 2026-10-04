@@ -101,10 +101,10 @@ export function PaperCardListSimple({
                 </span>
               </h3>
               
-              {/* Authors and journal - hidden on smallest, visible on @sm. The journal is cut first, so no author control is hidden. */}
+              {/* Authors and journal - hidden on smallest, visible on @sm. The journal gives up its room first, so an author control is cut only once the journal is down to its icon. */}
               <div className="hidden @sm/card:flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
                 {result.authorships?.length ? (
-                  <span className="max-w-full shrink-0 overflow-clip text-ellipsis whitespace-nowrap">
+                  <span className="min-w-0 overflow-clip text-ellipsis whitespace-nowrap">
                     <AuthorNames
                       authorships={result.authorships}
                       maxLength={60}
@@ -114,7 +114,7 @@ export function PaperCardListSimple({
                   </span>
                 ) : null}
                 {journal && (
-                  <span className="flex min-w-0 items-center gap-1.5 italic">
+                  <span className="flex min-w-3 shrink-[100] items-center gap-1.5 italic">
                     <BookOpen aria-hidden className="h-3 w-3 shrink-0" />
                     <span className="truncate">{journal}</span>
                   </span>

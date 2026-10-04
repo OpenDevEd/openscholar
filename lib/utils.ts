@@ -8,7 +8,7 @@ import type { SearchResult, SearchField, SearchFilters } from './types'
 import { getCountryCodesForRegions, MIN_YEAR } from './constants'
 import { buildSearchSubfilter } from './search/search-field'
 import { researchAreaFilter, sdgFilterValue } from './openalex/vocabulary'
-import { isAuthorId } from './openalex/author-filter'
+import { authorFilterValue, isAuthorId } from './openalex/author-filter'
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {
@@ -418,7 +418,9 @@ export function createSearchParameters(
     };
   }
   if (filters.funders.length) apiFilters.funders = { id: filters.funders.join('|') };
-  const authorIds = filters.authors.filter(isAuthorId);
+  // Put in the search's form again here: a saved search or the assistant can hand one over as it likes.
+  const authors = filters.authors.map(authorFilterValue).filter((author) => author !== null);
+  const authorIds = authors.filter(isAuthorId);
   if (authorIds.length) {
     apiFilters.authorships = {
       ...(apiFilters.authorships as Record<string, unknown> | undefined),
@@ -426,7 +428,7 @@ export function createSearchParameters(
     };
   }
   // An author OpenAlex has no record for is found by the name the work gives, as a phrase.
-  const authorNames = filters.authors.filter((author) => !isAuthorId(author));
+  const authorNames = authors.filter((author) => !isAuthorId(author));
   if (authorNames.length) {
     apiFilters.raw_author_name = { search: authorNames.map((name) => `"${name}"`).join('|') };
   }
