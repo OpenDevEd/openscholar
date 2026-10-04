@@ -26,7 +26,7 @@ export function stepsOfExchange(ctx: Pick<QueryCtx, "db">, threadId: Id<"assista
 
 /** A step starts. */
 export const begin = internalMutation({
-  args: { threadId: v.id("assistantThreads"), order: v.number(), userId: v.id("users"), toolCallId: v.string(), path: v.string(), input: v.string() },
+  args: { threadId: v.id("assistantThreads"), order: v.number(), userId: v.id("users"), toolCallId: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) },
   returns: v.id("assistantSteps"),
   handler: async (ctx, args) => ctx.db.insert("assistantSteps", { ...args, status: "running", startedAt: Date.now() }),
 });
@@ -36,15 +36,16 @@ export const end = internalMutation({
   args: {
     stepId: v.id("assistantSteps"),
     result: v.optional(v.string()),
+    count: v.optional(v.number()),
     error: v.optional(v.string()),
     undo: v.optional(v.object({ path: v.string(), args: v.string() })),
   },
   returns: v.null(),
-  handler: async (ctx, { stepId, result, error, undo }) => {
+  handler: async (ctx, { stepId, result, count, error, undo }) => {
     const step = await ctx.db.get("assistantSteps", stepId);
     // Its chat was deleted while it ran.
     if (!step) return null;
-    await ctx.db.patch("assistantSteps", stepId, { status: error === undefined ? "done" : "failed", ...(error === undefined ? {} : { error }), ...(undo ? { undo } : {}), endedAt: Date.now() });
+    await ctx.db.patch("assistantSteps", stepId, { status: error === undefined ? "done" : "failed", ...(error === undefined ? {} : { error }), ...(count === undefined ? {} : { count }), ...(undo ? { undo } : {}), endedAt: Date.now() });
     if (result !== undefined) await ctx.db.insert("assistantStepResults", { threadId: step.threadId, stepId, result });
     return null;
   },

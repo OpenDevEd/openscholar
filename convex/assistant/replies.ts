@@ -233,6 +233,10 @@ const stepValidator = v.object({
   order: v.number(),
   /** The action it ran, by its path in the registry. */
   action: v.string(),
+  /** What it was about: a title, a name or a query from its arguments. */
+  subject: v.optional(v.string()),
+  /** How many things it found, when its result lists any. */
+  count: v.optional(v.number()),
   /** `failed` also covers a step whose reply died while it ran. */
   status: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
   /** Why it failed, as the assistant was told. */
@@ -315,6 +319,8 @@ export const messagesAction = defineUserQuery({
           role: "step" as const,
           order: step.order,
           action: step.path,
+          ...(step.subject ? { subject: step.subject } : {}),
+          ...(step.count === undefined ? {} : { count: step.count }),
           // A step still running when its exchange isn't being answered died with its reply.
           status: step.status === "running" && answering !== step.order ? ("failed" as const) : step.status,
           ...(step.error ? { error: step.error } : {}),
