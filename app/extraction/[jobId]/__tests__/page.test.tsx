@@ -98,7 +98,7 @@ const {
       paperCount,
     }: {
       paperCount: number;
-      loadPapers: () => Promise<Array<{ _id: string }>>;
+      loadExport: () => Promise<{ papers: Array<{ _id: string }> }>;
     }) => (
       <div
         data-testid="export-dialog"
@@ -699,8 +699,9 @@ describe("JobDetailPage", () => {
     mockExtractionQueries();
 
     convexQueryMock.mockImplementation(async (_query, args: ResultsView) => {
+      if (!("filters" in args)) return extractionJobQueryResult.data;
       const rows = serverRows(args);
-      if (!args.paginationOpts) return { all: 293, matching: rows.length };
+      if (!args.paginationOpts) return { all: 293, matching: rows.length, revision: 1 };
       const start = Number(args.paginationOpts.cursor ?? 0);
       const page = rows.slice(start, start + args.paginationOpts.numItems);
       return { page, isDone: start + page.length >= rows.length, continueCursor: String(start + page.length) };
@@ -720,7 +721,7 @@ describe("JobDetailPage", () => {
       "25",
     );
     // The export reads every page of the filtered view, not the 25 rows on screen.
-    const papers = await exportDialogSpy.mock.lastCall![0].loadPapers();
+    const { papers } = await exportDialogSpy.mock.lastCall![0].loadExport();
     expect(papers.map((paper) => paper._id)).toEqual(buildPageRows(1, 293).map((paper) => paper._id));
   });
 });

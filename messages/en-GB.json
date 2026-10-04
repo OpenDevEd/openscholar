@@ -466,6 +466,9 @@
     "chatSourcesUpdatedDividerDescription": "Earlier assistant citations are historical.",
     "jobs": "jobs",
     "exportResults": "Export Results",
+    "exportChanged": "The results changed during export. Try again after processing finishes.",
+    "excelCellLimit": "A field exceeds Excel's 32,767-character limit. Choose CSV or JSON to keep the complete text.",
+    "excelRowLimit": "The evidence exceeds Excel's 1,048,576-row limit. Choose CSV or JSON to keep every citation.",
     "exportDescription": "Choose export format and options for {label}",
     "exportFormat": "Export format",
     "csvLabel": "CSV (Excel-compatible)",
@@ -1566,6 +1569,7 @@
     "nStar": "{count} Star"
   },
   "pagination": {
+    "currentPage": "Page {page}",
     "perPage": "{count} per page",
     "showingRange": "Showing {start}-{end} of {total} papers",
     "filteredFrom": "(filtered from {total})",

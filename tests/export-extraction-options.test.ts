@@ -1,208 +1,74 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mockId } from "./factories";
-import type { PaperWithResults } from "../lib/extraction/filtering";
-
-// Capture what gets passed to Blob constructor
-let capturedBlobContent: string[] = [];
-
-const mockLink = {
-  href: "",
-  download: "",
-  click: vi.fn(),
-};
-
-// Mock DOM globals before importing modules that use them
-vi.stubGlobal("URL", {
-  createObjectURL: vi.fn(() => "blob:mock-url"),
-  revokeObjectURL: vi.fn(),
-});
-
-vi.stubGlobal("document", {
-  createElement: vi.fn(() => mockLink),
-  body: {
-    appendChild: vi.fn(),
-    removeChild: vi.fn(),
-  },
-});
-
-vi.stubGlobal(
-  "Blob",
-  class MockBlob {
-    constructor(parts: string[]) {
-      capturedBlobContent = parts;
-    }
-  }
-);
-
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import Papa from "papaparse";
 import { exportToCSV, exportToJSON } from "../lib/extraction/export";
+import { exportJob, exportPapers, exportQuestions } from "./fixtures/extraction-export";
 
+let downloaded: Blob;
 beforeEach(() => {
-  capturedBlobContent = [];
-  mockLink.href = "";
-  mockLink.download = "";
-  mockLink.click.mockClear();
+  vi.stubGlobal("URL", { createObjectURL: (blob: Blob) => { downloaded = blob; return "blob:export"; }, revokeObjectURL: vi.fn() });
+  vi.stubGlobal("document", { createElement: () => ({ click() {} }), body: { appendChild() {}, removeChild() {} } });
 });
+afterEach(() => vi.unstubAllGlobals());
 
-const mockQuestions = [
-  {
-    key: "q1",
-    question: "Is this relevant?",
-    type: "boolean" as const,
-    description: "Relevance",
-  },
-  {
-    key: "q2",
-    question: "Sample size",
-    type: "number" as const,
-    description: "N",
-  },
-];
-
-const mockPapers: PaperWithResults[] = [
-  {
-    _id: mockId("extractionPapers", "1"),
-    _creationTime: 0,
-    title: "Test Paper One",
-    doi: "10.1234/test1",
-    publicationYear: 2024,
-    authors: ["Author A", "Author B"],
-    isOpenAccess: true,
-    pdfContentUsed: false,
-    results: [
-      {
-        questionKey: "q1",
-        answer: true,
-        confidence: 0.95,
-        reasoning: "High relevance",
-        citations: [{ id: "c1" }],
-        citationStatus: "grounded",
-      },
-      {
-        questionKey: "q2",
-        answer: 42,
-        confidence: 0.8,
-        reasoning: "Found in abstract",
-      },
-    ],
-  } as unknown as PaperWithResults,
-];
-
-describe("exportToCSV", () => {
-  it("default options include metadata and confidence columns", () => {
-    exportToCSV(mockPapers, mockQuestions);
-    const csv = capturedBlobContent[0];
-    const headers = csv.split("\n")[0];
-    expect(headers).toContain("Authors");
-    expect(headers).toContain("Open Access");
-    expect(headers).toContain("PDF Used");
-    expect(headers).toContain("Is this relevant? (Confidence)");
-    expect(headers).toContain("Sample size (Confidence)");
+describe("researcher export contents", () => {
+  it("CSV preserves identifiers, zero, false, Unicode arrays and exact evidence", async () => {
+    exportToCSV(exportPapers, exportQuestions, { job: exportJob });
+    const parsed = Papa.parse<Record<string, string>>(await downloaded.text(), { header: true });
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.data).toHaveLength(1);
+    const row = parsed.data[0];
+    expect(row["Paper ID"]).toBe(exportPapers[0]._id);
+    expect(row["OpenAlex ID"]).toBe("https://openalex.org/W123");
+    expect(row["Paper Title"]).toBe(exportPapers[0].title);
+    expect(row["[zero] Reported outcome"]).toBe("0");
+    expect(row["[false] Reported outcome"]).toBe("No");
+    expect(row["[zero] Reported outcome (Confidence)"]).toBe("0");
+    expect(row["[zero] Reported outcome (Model confidence)"]).toBe("0.95");
+    expect(row["[zero] Reported outcome (Reasoning)"]).toBe(exportPapers[0].results[0].reasoning);
+    expect(JSON.parse(row["[zero] Reported outcome (Citations)"])).toEqual(exportPapers[0].results[0].citations);
+    expect(JSON.parse(row["[names] Languages"])).toEqual(exportPapers[0].results[2].answer);
+    expect(JSON.parse(row.Authors)).toEqual(exportPapers[0].authors);
+    expect(row["PDF Used"]).toBe("Unknown");
+    expect(row["PDF Enabled"]).toBe("No");
+    expect(row["[zero] Reported outcome (Model)"]).toBe("openai/gpt-6-luna");
   });
 
-  it("includeMetadata: false excludes metadata columns", () => {
-    exportToCSV(mockPapers, mockQuestions, { includeMetadata: false });
-    const csv = capturedBlobContent[0];
-    expect(csv).not.toContain("Authors");
-    expect(csv).not.toContain("Open Access");
-    expect(csv).not.toContain("PDF Used");
-    expect(csv).toContain("Paper Title");
-    expect(csv).toContain("DOI");
+  it("JSON includes every question, with separate missing, null and failed results", async () => {
+    exportToJSON(exportPapers, exportQuestions, { job: exportJob });
+    const data = JSON.parse(await downloaded.text());
+    expect(data.format).toBe("openscholar.extraction");
+    expect(data.version).toBe(2);
+    expect(data.job).toMatchObject({ id: exportJob._id, runEpoch: 2, pdfEnabled: false });
+    expect(data.papers[0].results.map((r: { questionKey: string }) => r.questionKey)).toEqual(exportQuestions.map(q => q.key));
+    expect(data.papers[0].results[0]).toMatchObject({ answer: 0, confidence: 0, modelConfidence: 0.95, source: "abstract", model: "openai/gpt-6-luna", citations: exportPapers[0].results[0].citations });
+    expect(data.papers[0].results[1].answer).toBe(false);
+    expect(data.papers[0].results[2].answer).toEqual(exportPapers[0].results[2].answer);
+    expect(data.papers[0].results[3]).toMatchObject({ answer: null, status: "completed", modelConfidence: null });
+    expect(data.papers[0].results[4]).toMatchObject({ answer: null, status: "failed" });
+    expect(data.papers[0].results[5]).toMatchObject({ answer: null, status: "missing" });
+    expect(data.papers[0]).toMatchObject({ openAccess: null, pdfUsed: null });
   });
 
-  it("includeConfidence: false excludes confidence columns", () => {
-    exportToCSV(mockPapers, mockQuestions, { includeConfidence: false });
-    const csv = capturedBlobContent[0];
-    expect(csv).not.toContain("(Confidence)");
-    expect(csv).toContain("Is this relevant?");
+  it("leaves an uncited source unknown when PDF evidence was not used", async () => {
+    const papers = exportPapers.map(paper => ({ ...paper, results: paper.results.map(result => ({ ...result, citations: [], pdfContentUsed: false })) }));
+    exportToJSON(papers, exportQuestions);
+    const data = JSON.parse(await downloaded.text());
+    expect(data.papers[0].results.map((r: { source: unknown }) => r.source)).toEqual(exportQuestions.map(() => null));
   });
 
-  it("both flags false produces minimal columns", () => {
-    exportToCSV(mockPapers, mockQuestions, {
-      includeMetadata: false,
-      includeConfidence: false,
-    });
-    const csv = capturedBlobContent[0];
-    const headers = csv.split("\n")[0];
-    expect(headers).not.toContain("Authors");
-    expect(headers).not.toContain("(Confidence)");
-  });
-
-  it("formats boolean answer as Yes in CSV output", () => {
-    exportToCSV(mockPapers, mockQuestions);
-    const csv = capturedBlobContent[0];
-    const dataRow = csv.split("\n")[1];
-    expect(dataRow).toContain("Yes");
-  });
-
-  it("formats confidence as percentage", () => {
-    exportToCSV(mockPapers, mockQuestions);
-    const csv = capturedBlobContent[0];
-    expect(csv).toContain("95%");
-    expect(csv).toContain("80%");
-  });
-
-  it("uses the persisted answer for CSV output", () => {
-    exportToCSV(mockPapers, mockQuestions);
-    const csv = capturedBlobContent[0];
-    expect(csv).toContain("Yes");
-  });
-});
-
-describe("exportToJSON", () => {
-  it("default options include reasoning and citations", () => {
-    exportToJSON(mockPapers, mockQuestions);
-    const json = JSON.parse(capturedBlobContent[0]);
-    const firstResult = json.papers[0].results[0];
-    expect(firstResult.reasoning).toBe("High relevance");
-    expect(firstResult.citations).toBeDefined();
-    expect(firstResult.citationStatus).toBe("grounded");
-  });
-
-  it("includeReasoning: false excludes reasoning", () => {
-    exportToJSON(mockPapers, mockQuestions, { includeReasoning: false });
-    const json = JSON.parse(capturedBlobContent[0]);
-    const firstResult = json.papers[0].results[0];
-    expect(firstResult).not.toHaveProperty("reasoning");
-  });
-
-  it("includeCitations: false excludes citation fields", () => {
-    exportToJSON(mockPapers, mockQuestions, { includeCitations: false });
-    const json = JSON.parse(capturedBlobContent[0]);
-    const firstResult = json.papers[0].results[0];
-    expect(firstResult).not.toHaveProperty("citations");
-    expect(firstResult).not.toHaveProperty("citationStatus");
-  });
-
-  it("both false produces minimal result fields", () => {
-    exportToJSON(mockPapers, mockQuestions, {
-      includeReasoning: false,
-      includeCitations: false,
-    });
-    const json = JSON.parse(capturedBlobContent[0]);
-    const firstResult = json.papers[0].results[0];
-    expect(firstResult.questionKey).toBe("q1");
-    expect(firstResult.answer).toBeDefined();
-    expect(firstResult.confidence).toBeDefined();
-    expect(firstResult).not.toHaveProperty("reasoning");
-    expect(firstResult).not.toHaveProperty("citations");
-  });
-
-  it("includes paper metadata", () => {
-    exportToJSON(mockPapers, mockQuestions);
-    const json = JSON.parse(capturedBlobContent[0]);
-    expect(json.exportedAt).toBeDefined();
-    expect(json.totalPapers).toBe(1);
-    expect(json.questions).toHaveLength(2);
-    expect(json.papers[0].title).toBe("Test Paper One");
-    expect(json.papers[0].doi).toBe("10.1234/test1");
-    expect(json.papers[0].year).toBe(2024);
-    expect(json.papers[0].openAccess).toBe(true);
-    expect(json.papers[0].pdfUsed).toBe(false);
-  });
-
-  it("uses the persisted answer for JSON output", () => {
-    exportToJSON(mockPapers, mockQuestions);
-    const json = JSON.parse(capturedBlobContent[0]);
-    expect(json.papers[0].results[0].answer).toBe(true);
+  it.each(["csv", "json"] as const)("%s honors every exclusion option", async format => {
+    const options = { job: exportJob, includeMetadata: false, includeConfidence: false, includeReasoning: false, includeCitations: false };
+    if (format === "csv") exportToCSV(exportPapers, exportQuestions, options);
+    else exportToJSON(exportPapers, exportQuestions, options);
+    if (format === "csv") {
+      const parsed = Papa.parse(await downloaded.text(), { header: true });
+      expect(parsed.meta.fields).not.toContain("Authors");
+      expect(parsed.meta.fields?.filter(h => /\((?:Confidence|Model confidence|Reasoning|Citations)\)$/.test(h))).toEqual([]);
+    } else {
+      const data = JSON.parse(await downloaded.text());
+      expect(data.papers[0]).not.toHaveProperty("authors");
+      for (const key of ["confidence", "modelConfidence", "reasoning", "citations"]) expect(data.papers[0].results[0]).not.toHaveProperty(key);
+      expect(data.papers[0].results[0].citationStatus).toBe("grounded");
+    }
   });
 });

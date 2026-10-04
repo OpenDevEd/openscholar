@@ -524,6 +524,7 @@ export const extractionResultFields = {
   lastError: v.optional(structuredErrorValidator),
   model: v.optional(v.string()),
   provider: v.optional(v.string()),
+  runEpoch: v.optional(v.number()),
   pdfContentUsed: v.optional(v.boolean()),
   creditsUsed: v.optional(v.number()),
   processedAt: v.number(),
