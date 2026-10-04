@@ -1,6 +1,6 @@
 import { v, type Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
@@ -10,6 +10,7 @@ import { applyCommand } from "../research/records";
 import { undoCommandValidator } from "../../lib/research/records";
 import { libraryCountRow, resolveLibraryCount } from "./counter";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
+import { followed, inFollowedCollection } from "./followed";
 
 /** What the library keeps about a paper, apart from its rating. */
 const libraryPaper = v.object({
@@ -49,7 +50,7 @@ function requireRating(rating: number) {
   }
 }
 
-async function findItem(ctx: MutationCtx, userId: Id<"users">, openalexId: string) {
+async function findItem(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, openalexId: string) {
   return await ctx.db
     .query("libraryItems")
     .withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", openalexId))
@@ -125,7 +126,7 @@ function setResearchRating(ctx: MutationCtx, userId: Id<"users">, paperId: strin
 }
 
 /** The paper's rating on search cards, or null. */
-async function researchRating(ctx: MutationCtx, userId: Id<"users">, paperId: string) {
+async function researchRating(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperId: string) {
   return (await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", (q) => q.eq("userId", userId).eq("data.paperId", paperId)).unique())?.data.rating ?? null;
 }
 
@@ -150,6 +151,13 @@ export const saveToLibraryAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  // The saves that return no undo (see `run`): one whose undo would lose the rating the paper has on search cards.
+  asksFirst: async (ctx, userId, { rating, openalexId }) => {
+    const [item, onCards] = [await findItem(ctx, userId, openalexId), await researchRating(ctx, userId, openalexId)];
+    if (!item) return onCards !== null;
+    const was = item.rating ?? null;
+    return rating !== undefined && rating !== was && onCards !== was;
+  },
   run: async (ctx, userId, { rating, ...paper }, author) => {
     if (rating !== undefined) requireRating(rating);
     const before = await findItem(ctx, userId, paper.openalexId);
@@ -186,6 +194,12 @@ export const setLibraryRatingAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  // The change that returns no undo (see `run`): the library and search cards hold different ratings, and putting one back would lose the other.
+  asksFirst: async (ctx, userId, { openalexId, rating }) => {
+    const item = await findItem(ctx, userId, openalexId);
+    const was = item?.rating ?? null;
+    return item !== null && was !== rating && (await researchRating(ctx, userId, openalexId)) !== was;
+  },
   run: async (ctx, userId, { openalexId, rating, expect }, author) => {
     if (rating !== null) requireRating(rating);
     const item = await findItem(ctx, userId, openalexId);
@@ -255,6 +269,11 @@ export const removeFromLibraryAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  // The paper leaves its collections too, and a library may follow one of them.
+  asksFirst: async (ctx, userId, args) => {
+    const item = await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", args.openalexId)).unique();
+    return item !== null && (await inFollowedCollection(ctx, item._id));
+  },
   run: async (ctx, userId, args, author) => {
     const item = await findItem(ctx, userId, args.openalexId);
     if (!item) return {};
@@ -311,6 +330,11 @@ export const restoreLibraryItemAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  // The paper goes back into its collections, and a library may follow one of them.
+  asksFirst: async (ctx, _userId, { removalId }) => {
+    const removal = await ctx.db.get("libraryRemovals", removalId);
+    return removal !== null && (await Promise.all(removal.collectionIds.map((collectionId) => followed(ctx, collectionId)))).some(Boolean);
+  },
   run: async (ctx, userId, { removalId }, author) => {
     const removal = await ctx.db.get("libraryRemovals", removalId);
     // Its day is over even if the cleanup hasn't reached it yet.
@@ -358,6 +382,7 @@ export const setPaperInCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  asksFirst: (ctx, _userId, { collectionId }) => followed(ctx, collectionId),
   run: async (ctx, userId, { paper, collectionId, inCollection, assignedAt }) => {
     const collection = await ownedCollection(ctx, userId, collectionId);
     const whole = "title" in paper;

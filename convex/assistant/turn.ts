@@ -10,7 +10,7 @@
  *   release the lock, always
  */
 import { listMessages, type Agent, type ContextHandler, type ContextOptions } from "@convex-dev/agent";
-import type { ToolSet } from "ai";
+import { isStepCount, type ToolSet } from "ai";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
@@ -44,6 +44,8 @@ export type Turn = {
   /** Credits held before the reply starts. */
   credits: number;
   tools?: ToolSet;
+  /** Requests to the model one reply may make while it uses its tools. */
+  maxSteps?: number;
   /** The paper chat the reply is in, which its charge is recorded under. */
   jobId?: Id<"extractionJobs">;
   /** IDs for the log lines. */
@@ -184,7 +186,18 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           // Context is assembled from trusted server-owned system messages.
           allowSystemInMessages: true,
           abortSignal: abortController.signal,
-          ...(turn.tools ? { tools: turn.tools } : {}),
+          // A reply with tools takes a step for each round of calls, up to its limit. The last
+          // step it's allowed is for its answer: it can't call a tool there, so it never ends
+          // on actions it hasn't told the person about. It's also made to answer once its
+          // requests have cost what was held for it, so a reply spends at most one request past its hold.
+          ...(turn.tools
+            ? {
+                tools: turn.tools,
+                stopWhen: isStepCount(turn.maxSteps ?? 1),
+                prepareStep: ({ stepNumber }: { stepNumber: number }) =>
+                  (turn.maxSteps && stepNumber >= turn.maxSteps - 1) || (convertUsdToCredits({ usd: completedUsd }) || 0) >= turn.credits ? { toolChoice: "none" as const } : undefined,
+              }
+            : {}),
           // Retries serve no user when the stream is live — the user
           // is watching and would prefer a fast failure or a clean
           // abort over a ~2s wait for a retry that mid-stream can't

@@ -68,7 +68,7 @@ describe("assistant replies", () => {
       { role: "assistant", text: "Hello Ben", status: "done", model: "mock/model", mine: false },
       { role: "user", text: "Hi there", status: "done", sender: { userId: ben }, mine: false },
     ]);
-    expect((await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[1].mine).toBe(true);
+    expect((await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[1]).toMatchObject({ mine: true });
     expect(page[0].order).toBe(page[1].order);
     expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
     // The list shows the chat by what was said last.
@@ -109,7 +109,7 @@ describe("assistant replies", () => {
 
     const { page } = await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
     expect(page[0]).toMatchObject({ role: "assistant", status: "stopped" });
-    expect(page[0].text.trim()).toBe("One two three");
+    expect("text" in page[0] && page[0].text.trim()).toBe("One two three");
     expect(page[0].error).toBeUndefined();
 
     // The chat takes the next message.
@@ -143,7 +143,7 @@ describe("assistant replies", () => {
     await waitFor(async () => (await asAda.query(api.assistant.replies.live, { threadId }))?.text.includes("two") === true, { timeoutMs: 5_000 });
     const late = await stopping();
     expect(late).toMatchObject({ role: "assistant", status: "stopped" });
-    expect(late.text.trim()).toBe("One two");
+    expect("text" in late && late.text.trim()).toBe("One two");
     expect(late.error).toBeUndefined();
   });
 
@@ -305,7 +305,7 @@ describe("assistant replies", () => {
       return { agentThreadId: thread.agentThreadId, promptMessageId: messageId };
     });
 
-    await t.action(internal.assistant.replies.reply, { threadId, attemptId: "early", ...turn, senderId: ada, modelId: null });
+    await t.action(internal.assistant.run.reply, { threadId, attemptId: "early", ...turn, senderId: ada, modelId: null });
 
     expect(mockDoStream).not.toHaveBeenCalled();
     expect(await charges(t)).toEqual([]);
@@ -323,7 +323,7 @@ describe("assistant replies", () => {
     // An end cursor makes the agent component's paginator ignore `numItems`.
     const { page, isDone } = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: { cursor: null, numItems: 500, endCursor: "[]" } });
     expect(page.length).toBeLessThanOrEqual(50);
-    expect(page[0].text).toBe("Message 69");
+    expect(page[0]).toMatchObject({ text: "Message 69" });
     expect(isDone).toBe(false);
   });
 

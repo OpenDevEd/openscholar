@@ -51,6 +51,36 @@ export const assistantThreadFields = {
   updatedAt: v.number(),
 };
 
+/** One action the assistant ran in a reply (./steps.ts). */
+export const assistantStepFields = {
+  threadId: v.id("assistantThreads"),
+  /** The exchange it belongs to: the agent component's order of the message being answered. */
+  order: v.number(),
+  /** Who it ran as: the person whose message was being answered. Only they can undo it. */
+  userId: v.id("users"),
+  /** The model's ID for the call. Models reuse these, so nothing is looked up by it. */
+  toolCallId: v.string(),
+  /** The action it ran, by its path in the registry. */
+  path: v.string(),
+  /** The action's arguments, as JSON. */
+  input: v.string(),
+  /** What it was about, for its card: a title, a name or a query from its arguments. */
+  subject: v.optional(v.string()),
+  /** How many things its result lists, when it lists any. */
+  count: v.optional(v.number()),
+  status: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
+  /** Why it failed, as the model was told. */
+  error: v.optional(v.string()),
+  /** What reverses it: the action to run, and its arguments as JSON. */
+  undo: v.optional(v.object({ path: v.string(), args: v.string() })),
+  /** Set once its undo has run. */
+  undone: v.optional(v.boolean()),
+  startedAt: v.number(),
+  endedAt: v.optional(v.number()),
+};
+/** What a step's action returned, as JSON: kept apart from the step, so listing steps reads none of it. */
+export const assistantStepResultFields = { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), result: v.string() };
+
 export const assistantThreadAccessFields = {
   threadId: v.id("assistantThreads"),
   /**

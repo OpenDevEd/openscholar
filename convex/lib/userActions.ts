@@ -12,6 +12,8 @@ import { action, internalAction, internalMutation, internalQuery, mutation, quer
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireActiveUser, requireAuth } from "./auth";
+import { createError } from "./errors";
+import { endStep } from "../assistant/steps";
 
 /** Who made a change: the person themselves, or the assistant acting for them. */
 export type Author = "user" | "assistant";
@@ -50,15 +52,24 @@ export const reversedBy = <Path extends string, Args extends PropertyValidators>
 export const reversal = <Path extends string, Args extends PropertyValidators>(path: Path, args: Args) =>
   v.object({ path: v.literal(path), args: v.object(args) });
 
+/**
+ * Whether one call asks the person first although its action as a whole doesn't: the call
+ * would show outside the account, such as a change to a collection a library follows
+ * (decision 12). The assistant reads it before it runs the call.
+ */
+type AsksFirst<Args extends PropertyValidators> = { asksFirst?(ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>): Promise<boolean> };
+
 export type UserMutation<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
-  Labels<keyof Args & string> & {
+  Labels<keyof Args & string> &
+  AsksFirst<Args> & {
     kind: "mutation";
     run: (ctx: MutationCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author) => Promise<Infer<Returns>>;
   };
 
 /** A user action that calls an outside service (OpenAlex, an AI provider, Autumn), reading and writing through queries and mutations. */
 export type UserActionEntry<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
-  Labels<keyof Args & string> & {
+  Labels<keyof Args & string> &
+  AsksFirst<Args> & {
     kind: "action";
     run: (ctx: ActionCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author) => Promise<Infer<Returns>>;
   };
@@ -66,7 +77,7 @@ export type UserActionEntry<Args extends PropertyValidators, Returns extends Gen
 /** What the registry list and the assistant's tools read from an entry. */
 export type UserAction =
   | { kind: "query"; path: string; description: string; args: PropertyValidators }
-  | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators } & Labels);
+  | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators } & Labels & AsksFirst<PropertyValidators>);
 
 /** Entries are written with these so their argument and result types are inferred. */
 export const defineUserQuery = <Args extends PropertyValidators, Returns extends GenericValidator>(
@@ -89,6 +100,14 @@ function tagged<Fn extends object>(fn: Fn, path: string): Fn {
 
 const accountArg = { accountId: v.string() };
 const userArg = { userId: v.id("users") };
+/**
+ * What only the assistant's side passes a change: `stepId`, the step of the reply this call
+ * is, which the change ends in its own transaction; and `approved`, set when the person
+ * themselves asked for it, as when they press Undo.
+ */
+const changeArgs = { ...userArg, stepId: v.optional(v.id("assistantSteps")), approved: v.optional(v.boolean()) };
+/** What the assistant is told when a call asks the person first. */
+export const ASKS_FIRST = "This asks the person first, and a chat can't ask yet. Tell them what you would have done, so they can do it themselves.";
 
 /** The acting user and the action's own arguments, from an internal call. */
 function asUser<Args extends PropertyValidators>(args: ObjectType<Args & typeof userArg>) {
@@ -184,13 +203,19 @@ export function accountMutation<Args extends PropertyValidators, Returns extends
 /** The same mutation for the assistant: it runs as the sender and records the assistant as the author. */
 export function assistantMutation<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserMutation<Args, Returns>) {
   return tagged(
-    internalMutation<Args & typeof userArg, Returns, Promise<Infer<Returns>>>({
-      args: { ...entry.args, ...userArg },
+    internalMutation<Args & typeof changeArgs, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...changeArgs },
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const { userId, rest } = asUser<Args>(args);
+        const { userId, stepId, approved, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
+        const rest = own as ObjectType<Args>;
         // The sender may have been suspended or deleted since the turn began.
-        return entry.run(ctx, (await requireActiveUser(ctx, userId))._id, rest, "assistant");
+        const actingAs = (await requireActiveUser(ctx, userId))._id;
+        // Read here, in the change's own transaction: what was true before the call may not be now.
+        if (!approved && entry.asksFirst && (await entry.asksFirst(ctx, actingAs, rest))) throw createError("FORBIDDEN", ASKS_FIRST);
+        const result = await entry.run(ctx, actingAs, rest, "assistant");
+        if (stepId) await endStep(ctx, stepId, result);
+        return result;
       },
     }),
     entry.path,
