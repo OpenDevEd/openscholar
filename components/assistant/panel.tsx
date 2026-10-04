@@ -10,7 +10,7 @@ import { useSmoothText } from "@convex-dev/agent/react";
 import { insertAtTop, useConvex, useConvexAuth, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { ArrowUp, ChevronDown, CircleAlert, CircleStop, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus } from "lucide-react";
+import { ArrowUp, ChevronDown, CircleAlert, CircleStop, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";

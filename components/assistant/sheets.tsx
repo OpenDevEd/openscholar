@@ -8,7 +8,7 @@ import { useDeferredValue, useState, type ReactNode } from "react";
 import { useMutation, usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Building2, Check, ChevronLeft, Eye, Link2, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, UserRound, X } from "lucide-react";
+import { Building2, Check, ChevronLeft, Eye, Link2, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, UserRound, X } from "@/components/icons";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";

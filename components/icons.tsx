@@ -99,7 +99,7 @@ export { FolderIcon as Folder } from "@solar-icons/react/bold-duotone/folder";
 export { CircleDashedIcon as CircleDashed } from "@solar-icons/react/bold-duotone/circle-dashed";
 export { CheckCircleIcon as CheckCircle2, CheckCircleIcon as CircleCheck } from "@solar-icons/react/bold-duotone/check-circle";
 export { MedalRibbonStarIcon as Award } from "@solar-icons/react/bold-duotone/medal-ribbon-star";
-export { PenNewSquareIcon as PencilLine, PenNewSquareIcon as PenLine } from "@solar-icons/react/bold-duotone/pen-new-square";
+export { PenNewSquareIcon as PencilLine, PenNewSquareIcon as PenLine, PenNewSquareIcon as SquarePen } from "@solar-icons/react/bold-duotone/pen-new-square";
 export { PauseIcon as Pause } from "@solar-icons/react/bold-duotone/pause";
 export { PanelLeftOpenIcon as PanelLeftOpen } from "@solar-icons/react/bold-duotone/panel-left-open";
 export { MonitorIcon as Monitor } from "@solar-icons/react/bold-duotone/monitor";
@@ -152,13 +152,13 @@ export { TabletIcon as Tablet } from "@solar-icons/react/bold-duotone/tablet";
 export { TablePropertiesIcon as TableProperties } from "@solar-icons/react/bold-duotone/table-properties";
 export { TableIcon as Table2, TableIcon as Table } from "@solar-icons/react/bold-duotone/table";
 export { Sun2Icon as Sun } from "@solar-icons/react/bold-duotone/sun-2";
-export { StopCircleIcon } from "@solar-icons/react/bold-duotone/stop-circle";
+export { StopCircleIcon, StopCircleIcon as CircleStop } from "@solar-icons/react/bold-duotone/stop-circle";
 export { MinusSquareIcon as SquareMinus } from "@solar-icons/react/bold-duotone/minus-square";
 export { SortFromBottomToTopIcon as SortAsc } from "@solar-icons/react/bold-duotone/sort-from-bottom-to-top";
 export { SmartphoneIcon as Smartphone } from "@solar-icons/react/bold-duotone/smartphone";
 export { ShareIcon as Share2 } from "@solar-icons/react/bold-duotone/share";
 export { RepeatIcon as Repeat2, RepeatIcon as Repeat } from "@solar-icons/react/bold-duotone/repeat";
-export { StationIcon as RadioTower } from "@solar-icons/react/bold-duotone/station";
+export { StationIcon as RadioTower, StationIcon as Radio } from "@solar-icons/react/bold-duotone/station";
 export { Safe2Icon as PiggyBank } from "@solar-icons/react/bold-duotone/safe-2";
 export { PaperclipIcon as Paperclip } from "@solar-icons/react/bold-duotone/paperclip";
 export { PanelRightOpenIcon, PanelRightOpenIcon as PanelRightOpen } from "@solar-icons/react/bold-duotone/panel-right-open";
@@ -205,6 +205,11 @@ export { VerifiedCheckIcon as BadgeCheck } from "@solar-icons/react/bold-duotone
 export { SortHorizontalIcon as ArrowLeftRight } from "@solar-icons/react/bold-duotone/sort-horizontal";
 export { ArrowRightDownIcon as ArrowDownRight } from "@solar-icons/react/bold-duotone/arrow-right-down";
 export { WindowFrameIcon as AppWindow } from "@solar-icons/react/bold-duotone/window-frame";
+
+// The assistant's panel.
+export { DialogIcon as MessagesSquare } from "@solar-icons/react/bold-duotone/dialog";
+export { Pip2Icon as PictureInPicture2 } from "@solar-icons/react/bold-duotone/pip-2";
+export { UserPlusRoundedIcon as UserPlus } from "@solar-icons/react/bold-duotone/user-plus-rounded";
 
 // Solar has no match for these: spinners, a balance scale, a few plain shapes
 // and other companies' logos.
