@@ -785,9 +785,11 @@ describe("the assistant's tools", () => {
         await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: `c${round}`, path: "library/collections:listCollections", input: "{}", subject: `Read ${round}`, status: "done", startedAt: round, endedAt: round });
       }
     });
-    const read = (paginationOpts: { cursor: string | null; numItems: number }) => asAda.query(api.assistant.replies.messages, { threadId, paginationOpts });
+    const read = (paginationOpts: { cursor: string | null; numItems: number }) => asAda.query(api.assistant.replies.messages, { threadId, stepsAhead: true, paginationOpts });
+    // A reader that doesn't ask, as the assistant reading its own chat, gets each step once, with the message it answers.
+    expect((await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page).toEqual([]);
     const newest = await read(firstPage);
-    // The newest page holds none of the reply's messages to show, and all its steps, newest first.
+    // For the panel, the newest page holds none of the reply's messages to show, and all its steps, newest first.
     expect(newest.page.filter((item) => item.role !== "step")).toEqual([]);
     expect(newest.page.map((item) => (item.role === "step" ? item.subject : item.role))).toEqual(Array.from({ length: 30 }, (_, i) => `Read ${29 - i}`));
     // A page before it isn't the newest: it brings steps only with the message they answer, under the same IDs.
