@@ -23,7 +23,7 @@ vi.mock("@/convex/_generated/api", () => ({
   api: {
     zotero: {
       runtimeReadActions: {
-        listLibraryCollections: "listLibraryCollections",
+        listCollections: "listCollections",
         resolveLibraryCollections: "resolveLibraryCollections",
       },
     },
@@ -86,19 +86,22 @@ describe("collection order helpers", () => {
 });
 
 describe("<CollectionsField>", () => {
+
+/** One page as the library's reads answer it. */
+const pageOf = <Item,>(page: Item[], next: string | null = null) => ({ page, isDone: next === null, continueCursor: next ?? "" });
   beforeEach(() => {
     mocks.listCollections.mockReset();
     mocks.resolveCollections.mockReset();
     mocks.resolveCollections.mockResolvedValue({ items: [] });
     actions = {
-      listLibraryCollections: (args) => mocks.listCollections(args),
+      listCollections: (args) => mocks.listCollections(args),
       resolveLibraryCollections: (args) => mocks.resolveCollections(args),
     };
   });
 
   it("reads nothing until the picker opens, then asks for one page", async () => {
     const user = userEvent.setup();
-    mocks.listCollections.mockResolvedValue({ items: catalogue, nextCursor: null });
+    mocks.listCollections.mockResolvedValue(pageOf(catalogue));
     await renderField({ value: [], onChange: vi.fn() });
     expect(mocks.listCollections).not.toHaveBeenCalled();
     const table = await openPicker(user);
@@ -107,18 +110,17 @@ describe("<CollectionsField>", () => {
     expect(mocks.listCollections).toHaveBeenCalledWith({
       libraryId,
       query: undefined,
-      cursor: undefined,
+      paginationOpts: { cursor: null, numItems: 50 },
     });
   });
 
   it("sends the typed text to the library and adds what it finds", async () => {
     const user = userEvent.setup();
-    mocks.listCollections.mockImplementation(async ({ query }: { query?: string }) => ({
-      items: query
+    mocks.listCollections.mockImplementation(async ({ query }: { query?: string }) => (pageOf(
+      query
         ? [{ id: "FOUND1", title: "Amber studies", count: 4, source: "Amber group", parentId: null, hasChildren: true }]
         : catalogue,
-      nextCursor: null,
-    }));
+    )));
     const onChange = vi.fn();
     await renderField({ value: [], onChange: onChange });
     const table = await openPicker(user);
@@ -127,7 +129,7 @@ describe("<CollectionsField>", () => {
     expect(mocks.listCollections).toHaveBeenLastCalledWith({
       libraryId,
       query: "amber",
-      cursor: undefined,
+      paginationOpts: { cursor: null, numItems: 50 },
     });
     await user.click(within(table).getByRole("checkbox", { name: "Amber studies" }));
     await user.click(screen.getByRole("button", { name: `${ns}.picker.addPicked {"count":1}` }));
@@ -136,10 +138,10 @@ describe("<CollectionsField>", () => {
 
   it("loads the next page with the library's cursor", async () => {
     const user = userEvent.setup();
-    mocks.listCollections.mockImplementation(async ({ cursor }: { cursor?: string }) =>
+    mocks.listCollections.mockImplementation(async ({ paginationOpts: { cursor } }: { paginationOpts: { cursor: string | null } }) =>
       cursor
-        ? { items: catalogue.slice(2), nextCursor: null }
-        : { items: catalogue.slice(0, 2), nextCursor: "page-2" },
+        ? pageOf(catalogue.slice(2))
+        : pageOf(catalogue.slice(0, 2), "page-2"),
     );
     await renderField({ value: [], onChange: vi.fn() });
     const table = await openPicker(user);
@@ -149,13 +151,13 @@ describe("<CollectionsField>", () => {
     expect(mocks.listCollections).toHaveBeenLastCalledWith({
       libraryId,
       query: undefined,
-      cursor: "page-2",
+      paginationOpts: { cursor: "page-2", numItems: 50 },
     });
   });
 
   it("explains that a draft library has no collections yet", async () => {
     const user = userEvent.setup();
-    mocks.listCollections.mockResolvedValue({ reason: "not-set-up", items: [], nextCursor: null });
+    mocks.listCollections.mockResolvedValue({ reason: "not-set-up", ...pageOf([]) });
     await renderField({ value: [], onChange: vi.fn() });
     await user.click(screen.getByRole("button", { name: `${ns}.picker.open` }));
     expect(await screen.findByText(`${ns}.notSetUp`)).toBeInTheDocument();
@@ -163,7 +165,7 @@ describe("<CollectionsField>", () => {
 
   it("ticks several collections, hides ones already shown, and adds them in order", async () => {
     const user = userEvent.setup();
-    mocks.listCollections.mockResolvedValue({ items: catalogue, nextCursor: null });
+    mocks.listCollections.mockResolvedValue(pageOf(catalogue));
     const onChange = vi.fn();
     await renderField({ value: [{ id: "COLL0002", order: 0 }], onChange: onChange });
     const table = await openPicker(user);
@@ -184,13 +186,12 @@ describe("<CollectionsField>", () => {
 
   it("leaves out collections that have no sub-collections", async () => {
     const user = userEvent.setup();
-    mocks.listCollections.mockResolvedValue({
-      items: [
+    mocks.listCollections.mockResolvedValue(pageOf(
+      [
         ...catalogue,
         { id: "LEAF0001", title: "Loose leaf", count: 9, source: "Climate group", parentId: null, hasChildren: false },
       ],
-      nextCursor: null,
-    });
+    ));
     await renderField({ value: [], onChange: vi.fn() });
     const table = await openPicker(user);
     expect(await within(table).findByText("Climate")).toBeInTheDocument();
@@ -199,7 +200,7 @@ describe("<CollectionsField>", () => {
 
   it("filters the loaded page by source", async () => {
     const user = userEvent.setup();
-    mocks.listCollections.mockResolvedValue({ items: catalogue, nextCursor: null });
+    mocks.listCollections.mockResolvedValue(pageOf(catalogue));
     await renderField({ value: [], onChange: vi.fn() });
     const table = await openPicker(user);
     expect(await within(table).findByText("Climate")).toBeInTheDocument();
@@ -211,7 +212,7 @@ describe("<CollectionsField>", () => {
   });
 
   it("names every shown collection from the library on first render", async () => {
-    mocks.listCollections.mockResolvedValue({ items: catalogue, nextCursor: null });
+    mocks.listCollections.mockResolvedValue(pageOf(catalogue));
     mocks.resolveCollections.mockResolvedValue({
       items: [{ id: "COLL0003", title: "Water", source: "Climate group", count: 7 }],
     });
@@ -247,7 +248,7 @@ describe("<CollectionsField>", () => {
 
   it("names a collection the picker just read, without asking again", async () => {
     const user = userEvent.setup();
-    mocks.listCollections.mockResolvedValue({ items: catalogue, nextCursor: null });
+    mocks.listCollections.mockResolvedValue(pageOf(catalogue));
     const onChange = vi.fn();
     const { rerender } = await renderField({ value: [], onChange });
     const table = await openPicker(user);
@@ -265,7 +266,7 @@ describe("<CollectionsField>", () => {
 
   it("renames and removes chosen collections", async () => {
     const user = userEvent.setup();
-    mocks.listCollections.mockResolvedValue({ items: catalogue, nextCursor: null });
+    mocks.listCollections.mockResolvedValue(pageOf(catalogue));
     const onChange = vi.fn();
     const value = [{ id: "COLL0001", order: 0 }, { id: "COLL0002", order: 1 }];
     await renderField({ value, onChange });

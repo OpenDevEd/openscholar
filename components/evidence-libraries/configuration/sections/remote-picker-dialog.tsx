@@ -60,6 +60,8 @@ export type PickerSource = (input: {
   direction: PickerDirection | null;
 }) => Promise<PickerPage>;
 
+/** The rows a source is asked for at a time. */
+export const PICKER_PAGE_SIZE = 50;
 /** How long the dialog waits after a keystroke before asking the server. */
 const SEARCH_DEBOUNCE_MS = 300;
 /** The runtime read API refuses a longer search than this. */
@@ -673,7 +675,7 @@ function SortHead({
 }
 
 /** Pages an in-memory list the same way a server source does. */
-export function localPickerSource(rows: readonly PickerRow[], pageSize = 50): PickerSource {
+export function localPickerSource(rows: readonly PickerRow[], pageSize = PICKER_PAGE_SIZE): PickerSource {
   return async ({ query, cursor }) => {
     const text = query.trim().toLowerCase();
     const matching = text

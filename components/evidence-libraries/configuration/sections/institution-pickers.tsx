@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
+  PICKER_PAGE_SIZE,
   type PickerSort,
   type PickerSource,
   RemotePickerDialog,
@@ -21,14 +22,15 @@ import {
 
 type InstitutionPage = {
   reason?: "not-set-up";
-  items: { name: string; count: number }[];
-  nextCursor: string | null;
+  page: { name: string; count: number }[];
+  isDone: boolean;
+  continueCursor: string;
 };
 
 type ListAction = (args: {
   libraryId: Id<"evidenceLibraries">;
   query?: string;
-  cursor?: string;
+  paginationOpts: { cursor: string | null; numItems: number };
   sort?: "count" | "name";
   direction?: "asc" | "desc";
 }) => Promise<InstitutionPage>;
@@ -55,21 +57,21 @@ type PickerProps = {
 function InstitutionPicker({ libraryId, value, onChange, id, allowNew, allowNone }: PickerProps) {
   const t = useTranslations("evidenceLibraryInstitutions.picker");
   const listInstitutions = useAction(
-    api.zotero.runtimeReadActions.listRecordInstitutions,
+    api.zotero.runtimeReadActions.listInstitutions,
   ) as ListAction;
 
   const readPage: PickerSource = async ({ query, cursor, sort, direction }) => {
     const page = await listInstitutions({
       libraryId,
       query: query || undefined,
-      cursor: cursor ?? undefined,
+      paginationOpts: { cursor, numItems: PICKER_PAGE_SIZE },
       sort: sort === "name" ? "name" : "count",
       direction: direction ?? undefined,
     });
     return {
       reason: page.reason,
-      items: page.items.map((item) => ({ id: item.name, title: item.name, count: item.count })),
-      nextCursor: page.nextCursor,
+      items: page.page.map((item) => ({ id: item.name, title: item.name, count: item.count })),
+      nextCursor: page.isDone ? null : page.continueCursor,
     };
   };
 

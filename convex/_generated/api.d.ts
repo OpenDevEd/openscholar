@@ -350,6 +350,7 @@ import type * as zotero_mutations from "../zotero/mutations.js";
 import type * as zotero_queries from "../zotero/queries.js";
 import type * as zotero_runtimeReadActions from "../zotero/runtimeReadActions.js";
 import type * as zotero_runtimeReadClient from "../zotero/runtimeReadClient.js";
+import type * as zotero_runtimeReadValidators from "../zotero/runtimeReadValidators.js";
 import type * as zotero_runtimeReads from "../zotero/runtimeReads.js";
 import type * as zotero_sourceEntry from "../zotero/sourceEntry.js";
 
@@ -702,6 +703,7 @@ declare const fullApi: ApiFromModules<{
   "zotero/queries": typeof zotero_queries;
   "zotero/runtimeReadActions": typeof zotero_runtimeReadActions;
   "zotero/runtimeReadClient": typeof zotero_runtimeReadClient;
+  "zotero/runtimeReadValidators": typeof zotero_runtimeReadValidators;
   "zotero/runtimeReads": typeof zotero_runtimeReads;
   "zotero/sourceEntry": typeof zotero_sourceEntry;
 }>;

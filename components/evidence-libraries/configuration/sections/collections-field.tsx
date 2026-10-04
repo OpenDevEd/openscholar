@@ -14,7 +14,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { EmptyList, FieldGroup, ListRow, move, SortableList } from "../fields";
 import { type CollectionFacts, useCollectionFacts, useLearnCollections } from "./collection-facts";
-import { type PickerRow, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
+import { PICKER_PAGE_SIZE, type PickerRow, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
 
 export type CollectionEntry = {
   id: string;
@@ -25,7 +25,7 @@ export type CollectionEntry = {
 
 type CataloguePage = {
   reason?: "not-set-up";
-  items: {
+  page: {
     id: string;
     title: string;
     count: number;
@@ -33,13 +33,14 @@ type CataloguePage = {
     parentId: string | null;
     hasChildren: boolean;
   }[];
-  nextCursor: string | null;
+  isDone: boolean;
+  continueCursor: string;
 };
 
 type ListAction = (args: {
   libraryId: Id<"evidenceLibraries">;
   query?: string;
-  cursor?: string;
+  paginationOpts: { cursor: string | null; numItems: number };
 }) => Promise<CataloguePage>;
 
 export const COLLECTION_TITLE_MAX = 100;
@@ -90,7 +91,7 @@ function CollectionsBody({
   onChange: (value: CollectionEntry[]) => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.collections");
-  const listCollections = useAction(api.zotero.runtimeReadActions.listLibraryCollections) as ListAction;
+  const listCollections = useAction(api.zotero.runtimeReadActions.listCollections) as ListAction;
   const facts = useCollectionFacts();
   const learn = useLearnCollections();
   const [source, setSource] = useState<string | null>(null);
@@ -109,19 +110,19 @@ function CollectionsBody({
     const page = await listCollections({
       libraryId,
       query: query || undefined,
-      cursor: cursor ?? undefined,
+      paginationOpts: { cursor, numItems: PICKER_PAGE_SIZE },
     });
-    const leaves = page.items.filter((item) => !item.hasChildren).map((item) => item.id);
+    const leaves = page.page.filter((item) => !item.hasChildren).map((item) => item.id);
     if (leaves.length) setLeafIds((current) => new Set([...current, ...leaves]));
     return {
       reason: page.reason,
-      items: page.items.map((item) => ({
+      items: page.page.map((item) => ({
         id: item.id,
         title: item.title,
         meta: item.source,
         count: item.count,
       })),
-      nextCursor: page.nextCursor,
+      nextCursor: page.isDone ? null : page.continueCursor,
     };
   };
 
