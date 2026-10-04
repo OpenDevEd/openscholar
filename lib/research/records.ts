@@ -270,15 +270,20 @@ export function editedResponses(responses: SavedSearch["screeningResponses"], ed
   }
 }
 
+/** Fields a patch can set that a restore leaves as they are now: screening questions, whose answers have their own history, and the chats started from the search. */
+const KEPT_ON_RESTORE = ["screeningQuestions", "chatJobIdsByAccountId"] as const;
+/** Whether a change left those fields alone, so restoring the revision before it reverses all of it. */
+export const restoreReverses = (before: SavedSearch, after: SavedSearch) => KEPT_ON_RESTORE.every((key) => JSON.stringify(before[key]) === JSON.stringify(after[key]));
+
 /**
  * The search with its query and filters as they were in `then`. What stays as it is now:
  * its identity, its history (going back to an earlier query adds to it), its research
- * questions, and its screening questions and answers, which have their own history.
+ * questions, its screening questions and answers, and the chats started from it.
  */
 export function restoredSearch(search: SavedSearch, then: SavedSearch, now: string): SavedSearch {
   const next: Record<string, unknown> = { ...search };
   for (const key of Object.keys(editableFields)) {
-    if (key === "screeningQuestions") continue;
+    if ((KEPT_ON_RESTORE as readonly string[]).includes(key)) continue;
     if (key in then) next[key] = then[key as keyof SavedSearch];
     else delete next[key];
   }
@@ -334,7 +339,9 @@ export const commandValidator = v.union(
   // `history`: the earlier queries and questions of a search brought from this browser or a file.
   v.object({ kind: v.literal("createSearch"), search: searchValidator, history: v.optional(v.object(historyArrays)) }),
   v.object({ kind: v.literal("editSearch"), id: v.string(), edit: editValidator }),
-  v.object({ kind: v.literal("deleteSearch"), id: v.string() }),
+  // `expect` is the revision and time of last change the search should have now: a change
+  // since then refuses the deletion, so undoing a search's creation never deletes later work.
+  v.object({ kind: v.literal("deleteSearch"), id: v.string(), expect: v.optional(v.object({ revision: v.number(), updatedAt: v.string() })) }),
   // `expect`, on a shortcut or a rating, is what it should be now (null for none): a change
   // since then refuses this one, so undoing one change never overwrites a later one.
   v.object({ kind: v.literal("shortcut"), shorthand: v.string(), value: v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null()), expect: v.optional(v.union(v.string(), v.null())) }),
@@ -347,9 +354,11 @@ export const commandValidator = v.union(
 export type ResearchCommand = Infer<typeof commandValidator>;
 /** The commands that reverse a change: each is one of the commands above, with what the record should be now. */
 export const undoCommandValidator = v.union(
-  v.object({ kind: v.literal("deleteSearch"), id: v.string() }),
+  v.object({ kind: v.literal("deleteSearch"), id: v.string(), expect: v.object({ revision: v.number(), updatedAt: v.string() }) }),
   v.object({ kind: v.literal("editSearch"), id: v.string(), edit: v.object({ kind: v.literal("restore"), revision: v.number(), expect: v.number() }) }),
   v.object({ kind: v.literal("shortcut"), shorthand: v.string(), value: v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null()), expect: v.union(v.string(), v.null()) }),
   v.object({ kind: v.literal("rating"), paperId: v.string(), rating: v.union(v.number(), v.null()), expect: v.union(v.number(), v.null()) }),
 );
 export type UndoCommand = Infer<typeof undoCommandValidator>;
+/** The longest shortcut a change keeps for its undo, so an undo command is always small enough to store with the request's receipt. */
+export const UNDO_SHORTCUT_MAX = 10_000;

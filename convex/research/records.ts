@@ -8,7 +8,7 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Author } from "../lib/userActions";
 import { answersAmong, clearPaperAnswers, removeAnswers, screeningFor, seedAnswers, setPaperAnswers, sweepAnswers, type AnswerSource } from "./answers";
 import {
-  ANSWERED_PAPERS_MAX, applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, paperResponsesValidator, RATED_PAPERS_MAX, ratingValidator, restoredSearch, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator, undoCommandValidator,
+  ANSWERED_PAPERS_MAX, applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, paperResponsesValidator, RATED_PAPERS_MAX, ratingValidator, restoredSearch, restoreReverses, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator, UNDO_SHORTCUT_MAX, undoCommandValidator,
   type ResearchCommand, type SavedSearch, type StoredSearch, type UndoCommand,
 } from "../../lib/research/records";
 import { stream } from "convex-helpers/server/stream";
@@ -400,8 +400,9 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       await addHistory(ctx, { _id: id, userId }, "question", questions.map(questionEntry));
       // Answers carried in a new search come from an import or the assistant; neither says who gave them.
       await seedAnswers(ctx, userId, id, command.search.screeningResponses, author === "assistant" ? "assistant" : "unrecorded", Date.now());
-      await revision(ctx, (await ctx.db.get("searches", id))!, author);
-      return { kind: "deleteSearch", id: command.search.id };
+      const made = (await ctx.db.get("searches", id))!;
+      await revision(ctx, made, author);
+      return { kind: "deleteSearch", id: command.search.id, expect: { revision: made.revision, updatedAt: made.data.updatedAt } };
     }
     case "editSearch": {
       const found = await findSearch(ctx, userId, command.id);
@@ -457,7 +458,7 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       await revision(ctx, next, author);
       // A change to the query or the filters is reversed by restoring the revision before it,
       // when that revision was kept and restoring it would bring something back.
-      const reversible = edit.kind === "patch" || edit.kind === "query" || edit.kind === "restore";
+      const reversible = (edit.kind === "patch" || edit.kind === "query" || edit.kind === "restore") && restoreReverses(previous, data);
       if (!reversible || !(await revisionRow(ctx, search._id, search.revision))) return;
       const back = restoredSearch(data, previous, data.updatedAt);
       if (JSON.stringify({ ...back, queryHistoryCount: data.queryHistoryCount }) === JSON.stringify(data)) return;
@@ -466,6 +467,9 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
     case "deleteSearch": {
       const found = await findSearch(ctx, userId, command.id);
       if (!found) return;
+      if (command.expect && (found.revision !== command.expect.revision || found.data.updatedAt !== command.expect.updatedAt)) {
+        throw createError("CONFLICT", "This search has changed since then, so it was left as it is.");
+      }
       // Its history stays in its rows, with the revisions, after the search is gone.
       const search = (await moveSearchHistory(ctx, found._id)) ? (await ctx.db.get("searches", found._id))! : found;
       await revision(ctx, { ...search, revision: search.revision + 1 }, author, true);
@@ -477,8 +481,12 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       const row = await ctx.db.query("queryShortcuts").withIndex("by_user_and_shorthand", q => q.eq("userId", userId).eq("data.shorthand", command.shorthand)).unique();
       if (command.expect !== undefined && (row?.data.expansion ?? null) !== command.expect) throw createError("CONFLICT", "This shortcut has changed since then, so it was left as it is.");
       // What puts it back: the shortcut as it was, or none, as long as it's still what this change made it.
-      const undo: UndoCommand = { kind: "shortcut", shorthand: command.shorthand, value: row ? { expansion: row.data.expansion, createdAt: row.data.createdAt } : null, expect: command.value?.expansion ?? null };
-      if (command.value === null) { if (row) await ctx.db.delete("queryShortcuts", row._id); return row ? undo : undefined; }
+      // A change that changes nothing has no undo, and neither does one over a shortcut too long to keep.
+      const unchanged = row ? row.data.expansion === command.value?.expansion && row.data.createdAt === command.value.createdAt : command.value === null;
+      const undo: UndoCommand | undefined = unchanged || (row && row.data.expansion.length > UNDO_SHORTCUT_MAX)
+        ? undefined
+        : { kind: "shortcut", shorthand: command.shorthand, value: row ? { expansion: row.data.expansion, createdAt: row.data.createdAt } : null, expect: command.value?.expansion ?? null };
+      if (command.value === null) { if (row) await ctx.db.delete("queryShortcuts", row._id); return undo; }
       const data = { shorthand: command.shorthand, ...command.value };
       if (row) await ctx.db.patch("queryShortcuts", row._id, { data });
       else await ctx.db.insert("queryShortcuts", { userId, data, sortName: shortcutSortName(command.shorthand) });
@@ -500,8 +508,10 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       if (!command.paperId || (command.rating !== null && (!Number.isInteger(command.rating) || command.rating < 0 || command.rating > 5))) throw new Error("Rating must be an integer from 0 to 5.");
       const row = await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique();
       if (command.expect !== undefined && (row?.data.rating ?? null) !== command.expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
-      const undo: UndoCommand = { kind: "rating", paperId: command.paperId, rating: row?.data.rating ?? null, expect: command.rating };
-      if (command.rating === null) { if (row) await ctx.db.delete("paperRatings", row._id); return row ? undo : undefined; }
+      const before = row?.data.rating ?? null;
+      // A rating set to what it already was has nothing to undo.
+      const undo: UndoCommand | undefined = before === command.rating ? undefined : { kind: "rating", paperId: command.paperId, rating: before, expect: command.rating };
+      if (command.rating === null) { if (row) await ctx.db.delete("paperRatings", row._id); return undo; }
       const data = { paperId: command.paperId, rating: command.rating };
       if (row) await ctx.db.patch("paperRatings", row._id, { data });
       else await ctx.db.insert("paperRatings", { userId, data });
@@ -525,13 +535,13 @@ export const changeAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   retryKey: "requestId",
-  // The receipt makes a retried request apply once, from the page or from the assistant. Its
-  // undo went back with the first answer, so a retry's answer carries none.
+  // The receipt makes a retried request apply once, from the page or from the assistant. It
+  // keeps the undo, so a caller that lost the first answer gets the same one from a retry.
   run: async (ctx, userId, args, author: Author) => {
     const key = `change:${args.requestId}`;
-    if (await received(ctx, userId, key)) return {};
-    const undo = await applyCommand(ctx, userId, args.command, author);
-    await ctx.db.insert("researchReceipts", { userId, key });
+    const receipt = await received(ctx, userId, key);
+    const undo = receipt ? receipt.undo : await applyCommand(ctx, userId, args.command, author);
+    if (!receipt) await ctx.db.insert("researchReceipts", { userId, key, ...(undo ? { undo } : {}) });
     return undo ? { undo: { command: undo } } : {};
   },
 });
