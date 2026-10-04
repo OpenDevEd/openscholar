@@ -11,6 +11,7 @@ import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { storedSearchFiltersValidator } from "./validators";
+import { sourceMetadataFields } from "../lib/paperMetadata";
 import {
   mapOpenAlexWorkToPaperData,
   type OpenAlexWork,
@@ -36,10 +37,7 @@ import {
 } from "@/lib/errors/taxonomy";
 
 
-// Per-mutation chunk size for createPaperRecords. The per-paper payload
-// after the citedByCount/venueName/workType strip is roughly 1.5–2 KB
-// (title + abstract dominate), so 100 papers stays comfortably under the
-// 1 MiB single-document limit even on the upper-end of abstract size.
+// Bound each paper-writing transaction; titles and abstracts dominate its size.
 const CREATE_PAPER_CHUNK_SIZE = 100;
 
 type StoredSearchFilters = Infer<typeof storedSearchFiltersValidator>;
@@ -103,11 +101,13 @@ function toOpenAlexWork(value: unknown): OpenAlexWork {
     ? {
         oa_url: optionalString(value.open_access, "oa_url"),
         is_oa: optionalBoolean(value.open_access, "is_oa"),
+        oa_status: optionalString(value.open_access, "oa_status"),
       }
     : undefined;
 
   const primaryLocation = isRecord(value.primary_location)
     ? {
+        pdf_url: optionalString(value.primary_location, "pdf_url"),
         source: isRecord(value.primary_location.source)
           ? {
               display_name: optionalString(
@@ -143,6 +143,7 @@ function toOpenAlexWork(value: unknown): OpenAlexWork {
     open_access: openAccess,
     cited_by_count: optionalNumber(value, "cited_by_count"),
     primary_location: primaryLocation,
+    best_oa_location: isRecord(value.best_oa_location) ? { pdf_url: optionalString(value.best_oa_location, "pdf_url") } : undefined,
     type: optionalString(value, "type"),
   };
 }
@@ -227,17 +228,15 @@ export const fetchPapersFromHistory = internalAction({
   },
   returns: v.array(
     v.object({
+      ...sourceMetadataFields,
       openalexId: v.string(),
       title: v.string(),
       doi: v.optional(v.string()),
       publicationYear: v.optional(v.number()),
       abstract: v.optional(v.string()),
       authors: v.optional(v.array(v.string())),
-      pdfUrl: v.optional(v.string()),
-      isOpenAccess: v.optional(v.boolean()),
       citedByCount: v.optional(v.number()),
       venueName: v.optional(v.string()),
-      workType: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args): Promise<PaperDataOut[]> => {
@@ -287,13 +286,9 @@ export async function runFetchAndPersistPapers(
 
   const dedupedPapers = dedupeExpandedSources(expandedSources).map(
     ({ paper, sourceType, sourceId }) => {
-      // OpenAlex enrichment fields (citedByCount/venueName/workType) are
-      // populated for extractionJobSources in chat mode and are NOT
-      // persisted on extractionPapers, so strip them at the boundary.
-      const { citedByCount: _c, venueName: _v, workType: _w, ...rest } = paper;
       return {
-        ...rest,
-        storageId: rest.storageId as Id<"_storage"> | undefined,
+        ...paper,
+        storageId: paper.storageId as Id<"_storage"> | undefined,
         sourceType,
         sourceId,
       };

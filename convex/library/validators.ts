@@ -1,5 +1,5 @@
 import { v, type Infer } from "convex/values";
-import { capped } from "../lib/listCaps";
+import { capped, MAX_AUTHORS } from "../lib/listCaps";
 
 export const librarySortValidator = v.union(
   v.literal("savedAt"),
@@ -60,7 +60,10 @@ export const libraryItemFields = {
     openalexId: v.string(), // e.g. "https://openalex.org/W1234567890"
     rating: v.optional(v.number()), // 0-5; unset when the paper was saved without rating it
     title: v.string(),
-    authors: v.optional(v.string()), // Flattened: "John Doe, Jane Smith"
+    authors: v.optional(v.union(v.string(), capped(v.array(v.string()), MAX_AUTHORS))),
+    authorsUnparsed: v.optional(v.string()),
+    metadataVersion: v.optional(v.literal(2)),
+    metadataRecoveredAt: v.optional(v.number()),
     doi: v.optional(v.string()),
     abstract: v.optional(v.string()),
     publicationYear: v.optional(v.number()),
@@ -69,6 +72,8 @@ export const libraryItemFields = {
     workType: v.optional(v.string()), // OpenAlex `type` — "article" | "review" | "book-chapter" | ...
     isOpenAccess: v.optional(v.boolean()),
     oaStatus: v.optional(v.string()), // "gold" | "green" | "bronze" | "hybrid" | "closed"
+    oaUrl: v.optional(v.string()),
+    pdfUrl: v.optional(v.string()),
     paperData: v.optional(v.string()), // Full PaperResult JSON for rich card rendering
     searchableText: v.string(), // title + abstract + authors (for Phase 23 search index)
     savedAt: v.number(),

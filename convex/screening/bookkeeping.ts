@@ -116,12 +116,21 @@ export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">,
     {
       openalexId: result.openalexId,
       title: result.title,
-      authors: result.authors?.join(", "),
+      authors: result.authors,
+      authorsUnparsed: result.authorsUnparsed,
       doi: result.doi,
       abstract: result.abstract,
       publicationYear: result.publicationYear,
+      journal: result.venue,
+      citedByCount: result.citedByCount,
+      workType: result.workType,
+      isOpenAccess: result.isOpenAccess,
+      oaStatus: result.oaStatus,
+      oaUrl: result.oaUrl,
+      pdfUrl: result.pdfUrl,
     },
     result.stars ?? 0,
+    { preserveRating: true },
   );
   const collection = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
   if (collection) await addCollectionMembership(ctx, { userId: job.userId, collection, libraryItemId });

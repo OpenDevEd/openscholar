@@ -468,7 +468,7 @@ export function createSearchParameters(
  * @param work - OpenAlex Work object
  * @returns COINS-formatted string for use in title attribute of span elements
  */
-export function workToCoins(work: Work): string {
+export function workToCoins(work: Omit<Work, "open_access"> & { open_access?: { oa_url?: string } }): string {
   const params: Record<string, string> = {}
 
   // Basic OpenURL context information

@@ -37,6 +37,17 @@ async function seed(
 }
 
 describe("getJobAndFlagsInternal — effective pdfEnabled", () => {
+  it("retains an OA landing page without claiming it is a PDF, and respects PDF opt-out", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seed(t, { flag: true, usePdfs: true });
+    const write = () => t.mutation(internal.extraction.mutations.papers.createPaperRecords, { jobId, papers: [{ openalexId: "W7", title: "Source URL", oaUrl: "https://example.test/landing" }] });
+    const { paperIds } = await write();
+    const paper = await t.run(ctx => ctx.db.get("extractionPapers", paperIds[0]));
+    expect(paper).toMatchObject({ oaUrl: "https://example.test/landing", processable: true });
+    expect(paper!.pdfUrl).toBeUndefined();
+    await t.run(async ctx => { const flag = await ctx.db.query("featureFlags").withIndex("by_key", q => q.eq("key", "extraction.pdf")).unique(); await ctx.db.patch("featureFlags", flag!._id, { enabled: false }); });
+    expect(await write()).toEqual({ paperIds: [], processableCount: 0 });
+  });
   it("pdfEnabled === true only when BOTH the admin flag is on AND the job opted in", async () => {
     const t = convexTest(schema);
     const { jobId } = await seed(t, { flag: true, usePdfs: true });

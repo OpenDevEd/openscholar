@@ -12,6 +12,7 @@ import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { answerAt, answerPaper, paperAnswers, restoreAnswer, restoreModelAnswer } from "../research/answers";
 import { answerSourceValidator } from "../../lib/research/records";
+import { sourceMetadata } from "../../lib/library/paper-metadata";
 import schema from "../schema";
 import { account, answersNow, jobAnswers, shown, stood, withDeltas } from "./accounting";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
@@ -26,6 +27,7 @@ const PAGE_BYTES = 4 * 1024 * 1024;
 /** A paper as a job's list shows it. */
 async function paperOf(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, outcome: Infer<typeof screeningOutcomeValidator>) {
   return {
+    ...sourceMetadata(result),
     openalexId: result.openalexId,
     title: result.title,
     abstract: result.abstract,

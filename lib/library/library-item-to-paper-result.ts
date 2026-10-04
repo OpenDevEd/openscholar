@@ -1,58 +1,39 @@
 import type { Doc } from "@/convex/_generated/dataModel";
 import type { PaperResult } from "@/lib/types/search.types";
+import { authorMetadata, paperRecord } from "./paper-metadata";
 
-/**
- * Converts a Convex libraryItems document to a PaperResult for use with
- * PaperCard and FocusMode components.
- *
- * Rich path: if `paperData` is present and is a paper's record, parse the stored full PaperResult JSON.
- * Minimal path: construct a partial PaperResult from the 10 indexed fields
- * (legacy items saved before paperData was introduced).
- */
-export function libraryItemToPaperResult(
-  item: Doc<"libraryItems">,
-): PaperResult {
-  if (item.paperData) {
-    try {
-      const stored: unknown = JSON.parse(item.paperData);
-      // Only a record with an ID of its own is shown as stored. One without crashed the
-      // library page: the card reads `id` before anything else.
-      if (stored && typeof stored === "object" && typeof (stored as { id?: unknown }).id === "string") return stored as PaperResult;
-    } catch {
-      // Corrupted JSON — fall through to minimal path
-    }
-  }
-
-  // Minimal path: reconstruct from indexed fields
+/** Saved fields fill the card's retained OpenAlex record without inventing source facts. */
+export function libraryItemToPaperResult(item: Doc<"libraryItems">): PaperResult {
+  const raw = paperRecord(item.paperData);
+  const stored = raw && typeof raw.id === "string" ? raw as PaperResult : undefined;
+  const names = authorMetadata(item);
+  const authorships = names.authors
+    ? names.authors.map((name, index) => stored?.authorships?.[index]?.author.display_name === name
+      ? stored.authorships[index]
+      : { author: { id: "", display_name: name } })
+    : undefined;
+  const access = {
+    ...stored?.open_access,
+    ...(item.isOpenAccess !== undefined ? { is_oa: item.isOpenAccess } : {}),
+    ...(item.oaStatus ? { oa_status: item.oaStatus as NonNullable<PaperResult["open_access"]>["oa_status"] } : {}),
+    ...(item.oaUrl ? { oa_url: item.oaUrl } : {}),
+  };
   return {
+    ...stored,
     id: item.openalexId,
     title: item.title,
-    abstract: item.abstract,
-    doi: item.doi,
-    publication_year: item.publicationYear,
-    cited_by_count: item.citedByCount,
-    authorships: item.authors
-      ? item.authors.split(", ").map((name) => ({
-          author: { id: "", display_name: name },
-        }))
-      : undefined,
-    primary_location: item.journal
-      ? { source: { id: "", display_name: item.journal } }
-      : undefined,
-    open_access:
-      item.isOpenAccess !== undefined
-        ? {
-            is_oa: item.isOpenAccess,
-            oa_status:
-              (item.oaStatus as
-                | "gold"
-                | "green"
-                | "bronze"
-                | "hybrid"
-                | "closed") ?? "closed",
-            oa_url: "",
-            any_repository_has_fulltext: false,
-          }
-        : undefined,
+    abstract: item.abstract ?? stored?.abstract,
+    doi: item.doi ?? stored?.doi,
+    publication_year: item.publicationYear ?? stored?.publication_year,
+    cited_by_count: item.citedByCount ?? stored?.cited_by_count,
+    type: (item.workType as PaperResult["type"]) ?? stored?.type,
+    authorships,
+    authors_unparsed: names.authorsUnparsed,
+    primary_location: item.journal || item.pdfUrl || stored?.primary_location ? {
+      ...stored?.primary_location,
+      ...(item.journal ? { source: { ...stored?.primary_location?.source, id: stored?.primary_location?.source?.id ?? "", display_name: item.journal } } : {}),
+      ...(item.pdfUrl ? { pdf_url: item.pdfUrl } : {}),
+    } : undefined,
+    open_access: Object.keys(access).length ? access : undefined,
   };
 }

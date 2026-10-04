@@ -617,6 +617,7 @@ export function DownloadMenuCompact({
 
 interface AuthorNamesProps {
   authorships: { author: { id?: string | null; display_name: string } }[];
+  unparsed?: string;
   /** How many characters of names to show before "et al."; leave out to name every author. */
   maxLength?: number;
   /** The authors the search is filtered by, as the search keeps them (`authorValue`). */
@@ -630,9 +631,9 @@ interface AuthorNamesProps {
  * control. It keeps its click and its Enter or Space to itself, since it sits
  * inside cards that open on both.
  */
-export function AuthorNames({ authorships, maxLength = Infinity, selected, onToggleAuthor }: AuthorNamesProps) {
+export function AuthorNames({ authorships, unparsed, maxLength = Infinity, selected, onToggleAuthor }: AuthorNamesProps) {
   const tf = useTranslations("searchFilters");
-  if (authorships.length === 0) return null;
+  if (authorships.length === 0) return unparsed || null;
 
   const shown = authorsShown(authorships, maxLength);
   return (
@@ -671,19 +672,20 @@ export function AuthorNames({ authorships, maxLength = Infinity, selected, onTog
 
 export function AuthorsLine({
   authorships,
+  unparsed,
   maxLength = 200,
   className,
   selected,
   onToggleAuthor,
 }: Partial<AuthorNamesProps> & { className?: string }) {
-  if (!authorships || authorships.length === 0) return null;
+  if (!authorships?.length && !unparsed) return null;
 
   return (
     <div className={cn("flex gap-2 text-sm text-muted-foreground", className)}>
       <Users className="h-4 w-4 flex-shrink-0 mt-0.5" />
       {/* With controls it is not cut to one line: a name hidden by the cut would still take keyboard focus. */}
       <span className={cn(!onToggleAuthor && "line-clamp-1")}>
-        <AuthorNames authorships={authorships} maxLength={maxLength} selected={selected} onToggleAuthor={onToggleAuthor} />
+        <AuthorNames authorships={authorships ?? []} unparsed={unparsed} maxLength={maxLength} selected={selected} onToggleAuthor={onToggleAuthor} />
       </span>
     </div>
   );

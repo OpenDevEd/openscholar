@@ -15,6 +15,7 @@ import {
 } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { authorDisplay } from "@/lib/library/paper-metadata";
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -197,7 +198,7 @@ export function LibraryTab({ paperLimit }: { paperLimit?: number }) {
                 <div>
                   <p className="font-medium text-sm truncate">{item.title}</p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {item.authors ?? "Unknown authors"}
+                    {authorDisplay(item) || "Unknown authors"}
                     {item.publicationYear ? `, ${item.publicationYear}` : ""}
                   </p>
                   {alsoFrom && (

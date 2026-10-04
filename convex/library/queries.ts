@@ -7,6 +7,7 @@ import schema from "../schema";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { findItem } from "./mutations";
+import { authorDisplay } from "../../lib/library/paper-metadata";
 import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
 import { libraryCount } from "./counter";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
@@ -428,7 +429,7 @@ export const papersAction = defineUserQuery({
         libraryItemId: item._id,
         id: item.openalexId,
         title: short(item.title, PAPER_SHOWN.title),
-        ...(item.authors ? { authors: short(item.authors, PAPER_SHOWN.authors) } : {}),
+        ...(authorDisplay(item) ? { authors: short(authorDisplay(item), PAPER_SHOWN.authors) } : {}),
         ...(item.publicationYear == null ? {} : { year: item.publicationYear }),
         ...(item.journal ? { journal: short(item.journal, PAPER_SHOWN.journal) } : {}),
         ...(item.rating === undefined ? {} : { rating: item.rating }),

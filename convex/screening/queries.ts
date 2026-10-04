@@ -1,5 +1,7 @@
 import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
+import { sourceMetadataFields } from "../lib/paperMetadata";
+import { sourceMetadata } from "../../lib/library/paper-metadata";
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import { effortValidator } from "../aiModelConfig/validators";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -396,6 +398,9 @@ export const countUserScreeningJobs = query({
 });
 
 const screeningResultRowValidator = v.object({
+  ...sourceMetadataFields,
+  venue: v.optional(v.string()),
+  citedByCount: v.optional(v.number()),
   resultId: v.id("screeningResults"),
   openalexId: v.string(),
   title: v.string(),
@@ -432,6 +437,9 @@ export async function readScreeningResultsPage(ctx: QueryCtx, job: Doc<"screenin
       const answers = pending ? undefined : r.counted?.answers ?? models[i]?.answers;
       return {
         resultId: r._id,
+        ...sourceMetadata(r),
+        venue: r.venue,
+        citedByCount: r.citedByCount,
         openalexId: r.openalexId,
         title: r.title,
         authors: r.authors,

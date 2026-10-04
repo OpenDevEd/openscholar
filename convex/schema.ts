@@ -3,6 +3,7 @@ import { exportFormatValidator, exportSourceValidator } from "./exportValidators
 import { libraryItemFields, removedItemValidator } from "./library/validators";
 import { MAX_COLLECTIONS_PER_USER } from "./lib/queryBounds";
 import { v } from "convex/values";
+import { sourceMetadataFields } from "./lib/paperMetadata";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
   MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_METADATA_FIELDS, MAX_QUESTIONS,
@@ -763,6 +764,7 @@ export default defineSchema({
   // so a job's inputs can be reconstructed exactly after submission.
   // ═══════════════════════════════════════════════════════════════
   extractionJobSources: defineTable({
+    ...sourceMetadataFields,
     jobId: v.id("extractionJobs"),
     position: v.number(),
     bucketKey: v.string(),
@@ -780,13 +782,11 @@ export default defineSchema({
     doi: v.optional(v.string()),
     openalexId: v.optional(v.string()),
     abstract: v.optional(v.string()),
-    pdfUrl: v.optional(v.string()),
     storageId: v.optional(v.id("_storage")),
     // Per-paper signals surfaced to the chat-mode AI context. Optional
     // because non-OpenAlex sources (zotero/upload) cannot populate them.
     citedByCount: v.optional(v.number()),
     venueName: v.optional(v.string()), // primary_location.source.display_name
-    workType: v.optional(v.string()),
     // history: saved-search placeholder that expands during queue setup
     searchFilters: v.optional(storedSearchFiltersValidator),
     // zotero context (libraryType/groupId resolve the OAuth target at queue setup)
@@ -983,6 +983,7 @@ export default defineSchema({
   // SCREENING RESULTS - individual paper screening outcomes
   // ═══════════════════════════════════════════════════════════════
   screeningResults: defineTable({
+    ...sourceMetadataFields,
     jobId: v.id("screeningJobs"),
     openalexId: v.string(),
     title: v.string(),
@@ -1053,6 +1054,7 @@ export default defineSchema({
   })
     .index("by_job", ["jobId"])
     .index("by_job_openalexId", ["jobId", "openalexId"])
+    .index("by_openalexId", ["openalexId"])
     // A job's papers of one outcome, in the order the job took them.
     .index("by_job_and_outcome", ["jobId", "outcome"])
     // A job's papers the model is reading: processing, and no longer waiting for a slot.
@@ -1104,6 +1106,15 @@ export default defineSchema({
       searchField: "searchableText",
       filterFields: ["userId", "rating"],
     }),
+
+  paperMetadataChanges: defineTable({
+    table: v.union(v.literal("libraryItems"), v.literal("libraryRemovals")),
+    recordId: v.string(),
+    before: v.string(),
+    after: v.string(),
+    createdAt: v.number(),
+    revertedAt: v.optional(v.number()),
+  }).index("by_record", ["table", "recordId"]),
 
   // A paper removed from a library, with the collections it was in, kept a day so Undo
   // (the page's or the assistant's) can put it back by this record's ID.

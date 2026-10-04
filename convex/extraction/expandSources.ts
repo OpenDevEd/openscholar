@@ -1,7 +1,7 @@
 import type { BucketItemInput, JobSourceSearchFilters } from "./jobSources";
 import type { PaperData } from "./types";
 import { buildDedupeKey } from "./dedupe";
-import { splitLibraryAuthors } from "../../lib/bucket/bucketItem";
+import { authorMetadata, sourceMetadata, type PaperSourceMetadata } from "../../lib/library/paper-metadata";
 
 type SourceType = "history" | "zotero" | "manual";
 
@@ -13,10 +13,10 @@ export type ExpandedSourcePaper = {
 };
 
 /** A paper in the person's library, as `ownedLibraryItems` reads it. */
-export type LibraryPaper = {
+export type LibraryPaper = PaperSourceMetadata & {
   _id: string;
   title: string;
-  authors?: string;
+  authors?: string[] | string;
   doi?: string;
   openalexId: string;
   abstract?: string;
@@ -37,15 +37,16 @@ type ExpandSourceDeps = {
 
 /**
  * A library or collection source with the paper as the person's library holds it, not the
- * browser's copy. File references the browser sent are dropped: a library paper has none.
+ * browser's copy. Uploaded-file references are dropped; source URLs come from the owned row.
  */
 function fromLibrary(item: BucketItemInput, row: LibraryPaper): BucketItemInput {
   return {
     ...item,
-    pdfUrl: undefined,
+    ...sourceMetadata(row),
     storageId: undefined,
     title: row.title,
-    authors: splitLibraryAuthors(row.authors),
+    ...authorMetadata(row),
+    authors: authorMetadata(row).authors ?? [],
     year: row.publicationYear,
     doi: row.doi,
     openalexId: row.openalexId || undefined,
@@ -67,6 +68,7 @@ function toHistoryBucketItem(
   paper: PaperData,
 ): BucketItemInput {
   return {
+    ...sourceMetadata(paper),
     bucketKey: buildDedupeKey({
       openalexId: paper.openalexId,
       doi: paper.doi,
@@ -104,7 +106,7 @@ async function expandHistorySource(
           abstract: item.abstract,
           authors: item.authors,
           pdfUrl: item.pdfUrl,
-          isOpenAccess: false,
+          ...sourceMetadata(item),
           citedByCount: item.citedByCount,
           venueName: item.venueName,
           workType: item.workType,
@@ -160,6 +162,7 @@ async function expandZoteroSource(
     {
       bucketItem,
       paper: {
+        ...sourceMetadata(item),
         openalexId,
         title: item.title,
         doi: item.doi,
@@ -167,7 +170,6 @@ async function expandZoteroSource(
         abstract: item.abstract,
         authors: item.authors,
         pdfUrl,
-        isOpenAccess: false,
         citedByCount: item.citedByCount,
         venueName: item.venueName,
         workType: item.workType,
@@ -190,7 +192,7 @@ function expandDirectSource(item: BucketItemInput): ExpandedSourcePaper {
       authors: item.authors,
       pdfUrl: item.pdfUrl,
       storageId: item.storageId,
-      isOpenAccess: false,
+      ...sourceMetadata(item),
       citedByCount: item.citedByCount,
       venueName: item.venueName,
       workType: item.workType,
