@@ -23,14 +23,8 @@ import { JobListItem } from "./job-list-item";
 import type { ViewMode } from "@/lib/types";
 
 function createExtractionJobListItem(viewMode: ViewMode) {
-  return function ExtractionJobListItem({
-    item,
-    index,
-  }: {
-    item: ExtractionJob;
-    index: number;
-  }) {
-    return <JobListItem job={item} viewMode={viewMode} index={index} />;
+  return function ExtractionJobListItem({ item }: { item: ExtractionJob }) {
+    return <JobListItem job={item} viewMode={viewMode} />;
   };
 }
 
@@ -138,7 +132,7 @@ export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) 
         </Button>
       }
     >
-      <div className="p-4 md:p-6">
+      <div>
         {!jobs ? <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={paginatedJobs}
           viewMode={extractionViewMode}
@@ -154,6 +148,7 @@ export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) 
         {/* Pagination */}
         {totalPages > 1 && (
           <CommandCenterPagination
+            className="border-t border-border-subtle p-4"
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}

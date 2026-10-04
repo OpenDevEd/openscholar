@@ -145,8 +145,6 @@
     "showMore": "Afficher plus",
     "showLess": "Afficher moins",
     "edit": "Modifier",
-    "copy": "Copier",
-    "open": "Ouvrir",
     "reset": "Réinitialiser",
     "from": "De",
     "to": "À",
@@ -182,7 +180,6 @@
     "zToA": "Z-A",
     "question": "Question",
     "response": "Réponse",
-    "bookmark": "Favori",
     "generate": "Générer",
     "screen": "Filtrer",
     "redirecting": "Redirection...",
@@ -1192,7 +1189,6 @@
     "missingBookmarks": "Favoris manquants",
     "missingBookmarksDescription": "Vous verrez un avertissement si vous utilisez un favori qui n'existe pas.",
     "howToUseBookmarks": "Comment utiliser les favoris",
-    "enterBookmarkName": "Entrez le nom du favori (ex. ma-recherche)",
     "bookmarkExpansionPreview": "Aperçu de l'expansion du favori",
     "typeQueryToPreview": "Tapez une requête avec \"favori...\" pour voir l'aperçu de l'expansion",
     "noExpandableBookmarks": "Aucun favori extensible trouvé. Utilisez le format \"favori...\".",
@@ -1200,10 +1196,8 @@
     "expandedFrom": "Étendu à partir de \"{keyword}...\"",
     "someBookmarksNotFound": "Certains favoris n'ont pas été trouvés dans votre liste d'expansion.",
     "bookmarksHighlighted": "Les favoris sont mis en évidence lorsqu'ils sont étendus",
-    "useBookmarkFormat": "Utilisez le format \"favori...\" dans votre recherche pour étendre automatiquement.",
     "guideTip1Description": "Tapez le nom de votre favori suivi de <code>...</code> dans la zone de recherche. Par exemple : <code>(ml...)</code>",
-    "guideTip2Description": "Votre favori s'étendra automatiquement aux termes de recherche complets. Exemple : <code>ml...</code> devient <code>AI OR ML OR \"intelligence artificielle\"</code>",
-    "addedDate": "Ajouté le {date}"
+    "guideTip2Description": "Votre favori s'étendra automatiquement aux termes de recherche complets. Exemple : <code>ml...</code> devient <code>AI OR ML OR \"intelligence artificielle\"</code>"
   },
   "historyPage": {
     "description": "Voir et revisiter vos recherches précédentes",
@@ -1219,10 +1213,7 @@
     "deleteSearchEntry": "Supprimer l'entrée de recherche",
     "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cette entrée de recherche ?",
     "queryHistory": "Historique des requêtes",
-    "queryHistoryCount": "Historique des requêtes ({count})",
     "queryEvolution": "Évolution de la requête",
-    "backToCard": "Retour à la carte",
-    "current": "Actuel",
     "bookmarkNamePlaceholder": "nom-du-favori",
     "recentSearches": "Recherches récentes"
   },
@@ -1269,8 +1260,6 @@
     "creditsDescription": "Les projets, données et licences sur lesquels OpenScholar s’appuie."
   },
   "validation": {
-    "bookmarkNameRequired": "Le nom du favori est requis",
-    "bookmarkNameFormat": "Le nom du favori ne peut contenir que des lettres, des chiffres et des tirets",
     "bookmarkNameNoSpaces": "Le nom du favori ne peut pas contenir d'espaces",
     "bookmarkNameExists": "Le favori \"{name}\" existe déjà",
     "bookmarkNameEmpty": "Le nom du favori ne peut pas être vide",
@@ -1329,7 +1318,6 @@
     "focusMode": "Mode focus",
     "testQuestion": "Tester la question",
     "deleteQuestion": "Supprimer la question",
-    "useThisQuery": "Utiliser cette requête",
     "switchQuery": "Basculer",
     "queryHistory": "Historique des requêtes",
     "selectSearchScope": "Sélectionner la portée de la recherche",
@@ -2496,7 +2484,6 @@
         "done": "Terminé",
         "backToResults": "Retour aux résultats",
         "fromHistory": "Depuis mon historique de recherche",
-        "useSearch": "Utiliser cette recherche",
         "unbounded": "Ajoutez d'abord des mots-clés ou un filtre. Une recherche vide importerait tout OpenAlex.",
         "importsAll": "{count, plural, one {L'enregistrement importe # notice et la tient à jour.} other {L'enregistrement importe les # notices et les tient à jour.}}",
         "nothingImported": "Rien n'est importé avant l'enregistrement.",

@@ -145,8 +145,6 @@
     "showMore": "और दिखाएं",
     "showLess": "कम दिखाएं",
     "edit": "संपादित करें",
-    "copy": "कॉपी करें",
-    "open": "खोलें",
     "reset": "रीसेट",
     "from": "से",
     "to": "तक",
@@ -182,7 +180,6 @@
     "zToA": "Z-A",
     "question": "प्रश्न",
     "response": "प्रतिक्रिया",
-    "bookmark": "बुकमार्क",
     "generate": "जनरेट करें",
     "screen": "स्क्रीन",
     "redirecting": "रीडायरेक्ट हो रहा है...",
@@ -1192,7 +1189,6 @@
     "missingBookmarks": "गायब बुकमार्क्स",
     "missingBookmarksDescription": "यदि आप एक ऐसा बुकमार्क उपयोग करते हैं जो मौजूद नहीं है, तो आपको एक चेतावनी दिखाई देगी।",
     "howToUseBookmarks": "बुकमार्क्स का उपयोग कैसे करें",
-    "enterBookmarkName": "बुकमार्क नाम दर्ज करें (जैसे मेरी-खोज)",
     "bookmarkExpansionPreview": "बुकमार्क विस्तार पूर्वावलोकन",
     "typeQueryToPreview": "विस्तार पूर्वावलोकन देखने के लिए \"bookmark...\" के साथ क्वेरी टाइप करें",
     "noExpandableBookmarks": "कोई विस्तारणीय बुकमार्क नहीं मिला। \"bookmark...\" प्रारूप का उपयोग करें।",
@@ -1200,10 +1196,8 @@
     "expandedFrom": "\"{keyword}...\" से विस्तारित",
     "someBookmarksNotFound": "कुछ बुकमार्क आपकी विस्तार सूची में नहीं मिले।",
     "bookmarksHighlighted": "विस्तारित होने पर बुकमार्क्स हाइलाइट किए जाते हैं",
-    "useBookmarkFormat": "स्वचालित रूप से विस्तारित करने के लिए अपनी खोज में \"bookmark...\" प्रारूप का उपयोग करें।",
     "guideTip1Description": "खोज बॉक्स में अपने बुकमार्क नाम के बाद <code>...</code> टाइप करें। उदाहरण के लिए: <code>(ml...)</code>",
-    "guideTip2Description": "आपका बुकमार्क स्वचालित रूप से पूर्ण खोज शब्दों में विस्तारित हो जाएगा। उदाहरण: <code>ml...</code> <code>AI OR ML OR \"कृत्रिम बुद्धिमत्ता\"</code> हो जाता है",
-    "addedDate": "{date} को जोड़ा गया"
+    "guideTip2Description": "आपका बुकमार्क स्वचालित रूप से पूर्ण खोज शब्दों में विस्तारित हो जाएगा। उदाहरण: <code>ml...</code> <code>AI OR ML OR \"कृत्रिम बुद्धिमत्ता\"</code> हो जाता है"
   },
   "historyPage": {
     "description": "अपनी पिछली खोजें देखें और दोबारा देखें",
@@ -1219,10 +1213,7 @@
     "deleteSearchEntry": "खोज प्रविष्टि हटाएं",
     "deleteConfirm": "क्या आप वाकई इस खोज प्रविष्टि को हटाना चाहते हैं?",
     "queryHistory": "क्वेरी इतिहास",
-    "queryHistoryCount": "क्वेरी इतिहास ({count})",
     "queryEvolution": "क्वेरी विकास",
-    "backToCard": "कार्ड पर वापस जाएं",
-    "current": "वर्तमान",
     "bookmarkNamePlaceholder": "बुकमार्क-नाम",
     "recentSearches": "हाल की खोजें"
   },
@@ -1269,8 +1260,6 @@
     "creditsDescription": "वे परियोजनाएँ, डेटा और लाइसेंस जिन पर OpenScholar आधारित है।"
   },
   "validation": {
-    "bookmarkNameRequired": "बुकमार्क नाम आवश्यक है",
-    "bookmarkNameFormat": "बुकमार्क नाम केवल अक्षर, संख्याएं और डैश हो सकते हैं",
     "bookmarkNameNoSpaces": "बुकमार्क नाम में रिक्त स्थान नहीं हो सकते",
     "bookmarkNameExists": "बुकमार्क \"{name}\" पहले से मौजूद है",
     "bookmarkNameEmpty": "बुकमार्क नाम खाली नहीं हो सकता",
@@ -1329,7 +1318,6 @@
     "focusMode": "फोकस मोड",
     "testQuestion": "प्रश्न परीक्षण करें",
     "deleteQuestion": "प्रश्न हटाएं",
-    "useThisQuery": "इस क्वेरी का उपयोग करें",
     "switchQuery": "स्विच करें",
     "queryHistory": "क्वेरी इतिहास",
     "selectSearchScope": "खोज दायरा चुनें",
@@ -2496,7 +2484,6 @@
         "done": "हो गया",
         "backToResults": "परिणामों पर वापस जाएं",
         "fromHistory": "मेरे खोज इतिहास से",
-        "useSearch": "यह खोज उपयोग करें",
         "unbounded": "पहले कीवर्ड या फ़िल्टर जोड़ें। खाली खोज पूरा OpenAlex आयात कर देगी।",
         "importsAll": "{count, plural, one {सहेजने पर # रिकॉर्ड आयात होगा और अद्यतन रहेगा।} other {सहेजने पर सभी # रिकॉर्ड आयात होंगे और अद्यतन रहेंगे।}}",
         "nothingImported": "सहेजने तक कुछ भी आयात नहीं होता।",

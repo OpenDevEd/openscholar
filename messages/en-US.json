@@ -145,8 +145,6 @@
     "showMore": "Show More",
     "showLess": "Show Less",
     "edit": "Edit",
-    "copy": "Copy",
-    "open": "Open",
     "reset": "Reset",
     "from": "From",
     "to": "To",
@@ -182,7 +180,6 @@
     "zToA": "Z-A",
     "question": "Question",
     "response": "Response",
-    "bookmark": "Bookmark",
     "generate": "Generate",
     "screen": "Screen",
     "redirecting": "Redirecting...",
@@ -1182,7 +1179,6 @@
     "missingBookmarks": "Missing bookmarks",
     "missingBookmarksDescription": "You'll see a warning if you use a bookmark that doesn't exist.",
     "howToUseBookmarks": "How to use bookmarks",
-    "enterBookmarkName": "Enter bookmark name (e.g., my-search)",
     "bookmarkExpansionPreview": "Bookmark Expansion Preview",
     "typeQueryToPreview": "Type a query with \"bookmark...\" to see expansion preview",
     "noExpandableBookmarks": "No expandable bookmarks found. Use \"bookmark...\" format.",
@@ -1190,10 +1186,8 @@
     "expandedFrom": "Expanded from \"{keyword}...\"",
     "someBookmarksNotFound": "Some bookmarks were not found in your expansion list.",
     "bookmarksHighlighted": "Bookmarks are highlighted when expanded",
-    "useBookmarkFormat": "Use the format \"bookmark...\" in your search to expand automatically.",
     "guideTip1Description": "Type your bookmark name followed by <code>...</code> in the search box. For example: <code>(ml...)</code>",
-    "guideTip2Description": "Your bookmark will automatically expand to the full search terms. Example: <code>ml...</code> becomes <code>AI OR ML OR \"artificial intelligence\"</code>",
-    "addedDate": "Added {date}"
+    "guideTip2Description": "Your bookmark will automatically expand to the full search terms. Example: <code>ml...</code> becomes <code>AI OR ML OR \"artificial intelligence\"</code>"
   },
   "historyPage": {
     "description": "View and revisit your previous searches",
@@ -1209,10 +1203,7 @@
     "deleteSearchEntry": "Delete Search Entry",
     "deleteConfirm": "Are you sure you want to delete this search entry?",
     "queryHistory": "Query History",
-    "queryHistoryCount": "Query History ({count})",
     "queryEvolution": "Query Evolution",
-    "backToCard": "Back to card",
-    "current": "Current",
     "bookmarkNamePlaceholder": "bookmark-name",
     "recentSearches": "Recent Searches"
   },
@@ -1259,8 +1250,6 @@
     "creditsDescription": "The projects, data and licenses OpenScholar builds on."
   },
   "validation": {
-    "bookmarkNameRequired": "Bookmark name is required",
-    "bookmarkNameFormat": "Bookmark name can only contain letters, numbers, and dashes",
     "bookmarkNameNoSpaces": "Bookmark name cannot contain spaces",
     "bookmarkNameExists": "Bookmark \"{name}\" already exists",
     "bookmarkNameEmpty": "Bookmark name cannot be empty",
@@ -1319,7 +1308,6 @@
     "focusMode": "Focus Mode",
     "testQuestion": "Test question",
     "deleteQuestion": "Delete question",
-    "useThisQuery": "Use this query",
     "switchQuery": "Switch",
     "queryHistory": "Query History",
     "selectSearchScope": "Select search scope",
@@ -2486,7 +2474,6 @@
         "done": "Done",
         "backToResults": "Back to results",
         "fromHistory": "From my search history",
-        "useSearch": "Use this search",
         "unbounded": "Add keywords or a filter first. An empty search would import all of OpenAlex.",
         "importsAll": "{count, plural, one {Saving imports # record and keeps it up to date.} other {Saving imports all # records and keeps them up to date.}}",
         "nothingImported": "Nothing is imported until you save.",

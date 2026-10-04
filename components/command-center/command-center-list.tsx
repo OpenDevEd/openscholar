@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { SearchX, type AppIcon } from "@/components/icons";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { GRID_CLASSES } from "@/lib/constants/view-modes";
 import type { ViewMode } from "@/lib/types";
 
@@ -24,13 +23,11 @@ interface CommandCenterListProps<T> {
   // Filter state
   hasFilter: boolean;
   onClearFilter: () => void;
-  /** Replaces parts of the view mode's layout, such as its gaps. */
-  className?: string;
 }
 
 /**
  * Shared list component for command centers.
- * Handles grid layout based on view mode and empty state rendering.
+ * Lays the entries out as rows or cells across the card, and renders the empty state.
  */
 export function CommandCenterList<T>({
   items,
@@ -44,7 +41,6 @@ export function CommandCenterList<T>({
   emptyAction,
   hasFilter,
   onClearFilter,
-  className,
 }: CommandCenterListProps<T>) {
   const tc = useTranslations("common");
   // Empty state
@@ -65,7 +61,9 @@ export function CommandCenterList<T>({
   }
 
   return (
-    <div className={cn(GRID_CLASSES[viewMode], className)}>
+    // The grid's cells draw their own right and bottom lines; the outer ones are clipped away.
+    <div className="overflow-hidden">
+      <div className={GRID_CLASSES[viewMode]}>
       {items.map((item, index) => (
         <React.Fragment key={keyExtractor(item)}>
           {ItemComponent ? (
@@ -75,6 +73,7 @@ export function CommandCenterList<T>({
           )}
         </React.Fragment>
       ))}
+      </div>
     </div>
   );
 }

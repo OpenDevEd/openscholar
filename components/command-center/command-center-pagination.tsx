@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface NumberedPages {
+  className?: string;
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -21,6 +22,7 @@ interface NumberedPages {
  * (a search, whose matches aren't counted) both read "at least", until the last page.
  */
 interface SteppedPages {
+  className?: string;
   currentPage: number;
   itemLabel: string;
   steps: { canPrevious: boolean; canNext: boolean; onPrevious: () => void; onNext: () => void; offset: number; shown: number; total?: number; pageCount?: number };
@@ -81,7 +83,7 @@ export function CommandCenterPagination(props: NumberedPages | SteppedPages) {
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6">
+    <div className={cn("flex flex-col sm:flex-row items-center justify-between gap-4 pt-6", props.className)}>
       {/* Info text */}
       <p className="text-xs tabular-nums text-muted-foreground">
         {tc("showingStartEnd", { start: startItem, end: endItem, total: totalItems, label: itemLabel })}

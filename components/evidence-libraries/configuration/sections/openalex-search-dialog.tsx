@@ -194,7 +194,6 @@ function SearchWorkspace({
             // The history page itself, choosing instead of opening.
             <HistoryCommandCenter
               pick={{
-                label: t("useSearch"),
                 excludeId: search.searchId,
                 onPick: (entry) => {
                   const picked = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(entry) };

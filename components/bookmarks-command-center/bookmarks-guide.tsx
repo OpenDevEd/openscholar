@@ -40,12 +40,7 @@ export function BookmarksGuide() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ ...subtleSpring, delay: 0.2 }}
-      className={cn(
-        "mt-6",
-        "rounded-xl",
-        "border border-border-subtle",
-        "bg-inset"
-      )}
+      className="border-t border-border-subtle"
     >
       {/* Header */}
       <button
@@ -55,8 +50,7 @@ export function BookmarksGuide() {
           "flex items-center justify-between gap-3",
           "text-left",
           "hover:bg-muted transition-colors",
-          "rounded-xl",
-          isOpen && "rounded-b-none border-b border-border-subtle"
+          isOpen && "border-b border-border-subtle"
         )}
       >
         <div className="flex items-center gap-2">

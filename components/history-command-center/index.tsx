@@ -47,7 +47,7 @@ interface HistoryCommandCenterProps {
    * instead of opening it, and the import, export and clear-all tools are
    * left out.
    */
-  pick?: { label: string; onPick: (item: SearchResult) => void; excludeId?: string };
+  pick?: { onPick: (item: SearchResult) => void; excludeId?: string };
 }
 
 export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
@@ -169,14 +169,11 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     placeholder: th("searchPlaceholder"),
   };
 
-  // List views are rows across the card, like the other list pages; grid views are tiles with room around them.
-  const rows = historyViewMode === "list-simple" || historyViewMode === "list-detail";
   const list = (
-    <div className={rows ? undefined : "p-4 md:p-6"}>
+    <div>
       {!ready ? error ? <AuthStatePanel variant="sync_error_retry" onRetry={retry} /> : <ListLoading label={tc("loading")} /> : <CommandCenterList
         items={history.items}
         viewMode={historyViewMode}
-        className={rows ? "gap-0 divide-y divide-border-subtle" : undefined}
         keyExtractor={(item) => item.id}
         emptyIcon={Clock}
         emptyTitle={th("noHistoryYet")}
@@ -197,15 +194,15 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
             item={item}
             viewMode={historyViewMode}
             onSearchClick={handleSearchClick}
-            pickLabel={pick?.label}
+            choosing={Boolean(pick)}
           />
         )}
       />}
 
       {/* Pagination */}
       {ready && history.hasPages && (
-        <div className={rows ? "border-t border-border-subtle px-4 pb-4 [&>div]:pt-4" : undefined}>
         <CommandCenterPagination
+          className="border-t border-border-subtle p-4"
           currentPage={history.page}
           itemLabel={tcc("searchesLabel")}
           steps={{
@@ -219,7 +216,6 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
             pageCount: history.pageCount,
           }}
         />
-        </div>
       )}
     </div>
   );

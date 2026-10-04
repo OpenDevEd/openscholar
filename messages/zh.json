@@ -145,8 +145,6 @@
     "showMore": "显示更多",
     "showLess": "显示更少",
     "edit": "编辑",
-    "copy": "复制",
-    "open": "打开",
     "reset": "重置",
     "from": "从",
     "to": "到",
@@ -182,7 +180,6 @@
     "zToA": "Z-A",
     "question": "问题",
     "response": "响应",
-    "bookmark": "书签",
     "generate": "生成",
     "screen": "屏幕",
     "redirecting": "正在跳转...",
@@ -1192,7 +1189,6 @@
     "missingBookmarks": "缺失的书签",
     "missingBookmarksDescription": "如果您使用不存在的书签，将会看到警告。",
     "howToUseBookmarks": "如何使用书签",
-    "enterBookmarkName": "输入书签名称（例如：my-search）",
     "bookmarkExpansionPreview": "书签扩展预览",
     "typeQueryToPreview": "输入带有 \"bookmark...\" 的查询以查看扩展预览",
     "noExpandableBookmarks": "未找到可扩展的书签。使用 \"bookmark...\" 格式。",
@@ -1200,10 +1196,8 @@
     "expandedFrom": "从 \"{keyword}...\" 扩展",
     "someBookmarksNotFound": "扩展列表中未找到某些书签。",
     "bookmarksHighlighted": "书签在扩展时高亮显示",
-    "useBookmarkFormat": "在搜索中使用 \"bookmark...\" 格式以自动扩展。",
     "guideTip1Description": "在搜索框中输入您的书签名称，后跟 <code>...</code>。例如：<code>(ml...)</code>",
-    "guideTip2Description": "您的书签将自动扩展为完整的搜索词。例如：<code>ml...</code> 会变成 <code>AI OR ML OR \"artificial intelligence\"</code>",
-    "addedDate": "添加于 {date}"
+    "guideTip2Description": "您的书签将自动扩展为完整的搜索词。例如：<code>ml...</code> 会变成 <code>AI OR ML OR \"artificial intelligence\"</code>"
   },
   "historyPage": {
     "description": "查看并重访您之前的搜索",
@@ -1219,10 +1213,7 @@
     "deleteSearchEntry": "删除搜索条目",
     "deleteConfirm": "您确定要删除此搜索条目吗？",
     "queryHistory": "查询历史",
-    "queryHistoryCount": "查询历史 ({count})",
     "queryEvolution": "查询演变",
-    "backToCard": "返回卡片",
-    "current": "当前",
     "bookmarkNamePlaceholder": "书签名称",
     "recentSearches": "最近搜索"
   },
@@ -1269,8 +1260,6 @@
     "creditsDescription": "OpenScholar 所使用的项目、数据与许可。"
   },
   "validation": {
-    "bookmarkNameRequired": "书签名称是必需的",
-    "bookmarkNameFormat": "书签名称只能包含字母、数字和连字符",
     "bookmarkNameNoSpaces": "书签名称不能包含空格",
     "bookmarkNameExists": "书签 \"{name}\" 已存在",
     "bookmarkNameEmpty": "书签名称不能为空",
@@ -1329,7 +1318,6 @@
     "focusMode": "专注模式",
     "testQuestion": "测试问题",
     "deleteQuestion": "删除问题",
-    "useThisQuery": "使用此查询",
     "switchQuery": "切换",
     "queryHistory": "查询历史",
     "selectSearchScope": "选择搜索范围",
@@ -2496,7 +2484,6 @@
         "done": "完成",
         "backToResults": "返回结果",
         "fromHistory": "从我的搜索历史中选择",
-        "useSearch": "使用此搜索",
         "unbounded": "请先添加关键词或筛选条件。空搜索会导入整个 OpenAlex。",
         "importsAll": "{count, plural, other {保存后会导入全部 # 条记录并保持更新。}}",
         "nothingImported": "保存之前不会导入任何内容。",
