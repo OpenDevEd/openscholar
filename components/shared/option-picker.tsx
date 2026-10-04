@@ -65,7 +65,7 @@ export function OptionPicker({
             <ChevronDown className="size-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-96 p-0" align="start">
+        <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
           <Command shouldFilter={!onSearch}>
             <CommandInput placeholder={searchPlaceholder} onValueChange={onSearch} />
             <CommandList>

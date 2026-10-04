@@ -155,7 +155,7 @@ export function YearRangePicker({
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-4" align="start">
+      <PopoverContent className="w-(--radix-popover-trigger-width) p-4" align="start">
         <div className="space-y-4">
           {/* Toggle (search-only) */}
           {showToggle && onToggleEnabled && (

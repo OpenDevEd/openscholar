@@ -256,7 +256,7 @@ export function CitationStylePicker({
       <PopoverContent
         align="start"
         collisionPadding={16}
-        className="flex max-h-[var(--radix-popover-content-available-height)] w-96 flex-col overflow-hidden p-0"
+        className="flex max-h-[var(--radix-popover-content-available-height)] w-(--radix-popover-trigger-width) flex-col overflow-hidden p-0"
         style={{ maxWidth: "calc(100vw - 2rem)" }}
       >
         {open && (

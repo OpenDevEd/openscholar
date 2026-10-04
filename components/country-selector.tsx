@@ -355,7 +355,7 @@ export function CountrySelector({
             </div>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[400px] p-0" align="start">
+        <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
           <div className="p-4 border-b border-border">
             <h4 className="font-medium">{tf("selectRegionsOrCountries")}</h4>
             <p className="text-sm text-muted-foreground mt-1">
