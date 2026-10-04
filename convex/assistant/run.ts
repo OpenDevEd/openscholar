@@ -10,6 +10,7 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { effortValidator } from "../aiModelConfig/validators";
+import { refreshAccount } from "../billing/accounts";
 import { ASSISTANT_REPLY_CREDITS, ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
 import { errorToLogString } from "../lib/errors";
 import { internalAction } from "../lib/functions";
@@ -72,7 +73,9 @@ export const reply = internalAction({
     // that's less, down to the least a reply starts on. It holds that much, so a small
     // balance, or a reply that has used its cap and only has to answer, still gets its answer.
     const left = Math.max(0, ASSISTANT_REPLY_CREDITS - used.credits);
-    const balance = (await ctx.runQuery(internal.billing.accounts.forUser, { userId: senderId }))?.balance;
+    let balance = (await ctx.runQuery(internal.billing.accounts.forUser, { userId: senderId }))?.balance;
+    // The account's copy of the balance can be behind a top-up. When it says the reply can't have all it may use, it's read again from Autumn.
+    if (balance !== undefined && balance < left) balance = (await refreshAccount(ctx, senderId).catch(() => null))?.balance ?? balance;
     const cap = Math.max(ESTIMATED_CREDITS_PER_CHAT_MESSAGE, Math.min(left, balance ?? left));
     // Where the reply stands, heard before each of its requests. Its actions stop a round
     // before its last request and once it has cost its hold, so the request after is its answer.

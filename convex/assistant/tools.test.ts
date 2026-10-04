@@ -509,6 +509,16 @@ describe("the assistant's tools", () => {
     await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: 5_000 });
     const { page } = await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
     expect(page[0]).toMatchObject({ role: "assistant", text: "Here.", status: "done" });
+
+    // He tops up. The account's copy of his balance hasn't heard yet, and the reply reads the real one:
+    // a first request that costs more than his old balance doesn't stop its actions.
+    fakeAutumn.setBalance(ben, { free: 5_000, paid: 0 });
+    requests.length = 0;
+    const list = (id: string, read?: number) => ({ id, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } }, ...(read ? { read } : {}) });
+    mockDoStream.mockImplementationOnce(calling(list("first", 50_000))).mockImplementationOnce(calling(list("second"))).mockImplementationOnce(finishingDoStream(["Both read."]));
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "Read my collections twice" });
+    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: 5_000 });
+    expect(told(2, "second")).toMatchObject({ page: [] });
   });
 
   it("show a reply that came back with nothing, when it called no tool", async () => {
