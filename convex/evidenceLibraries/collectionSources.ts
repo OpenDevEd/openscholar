@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { paginationResultValidator } from "convex/server";
-import { MAX_COLLECTION_SOURCES_PER_LIBRARY } from "../lib/queryBounds";
+import { MAX_LIBRARY_SOURCES } from "../lib/listCaps";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   httpAction,
@@ -47,39 +47,47 @@ const collectionSourceValidator = v.object({
 });
 
 /** The collections the library follows, with their current names. */
-/** The collections a library follows: at most MAX_COLLECTION_SOURCES_PER_LIBRARY, which `connectCollectionSource` enforces. */
-async function readCollectionSources(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">) {
-  await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
-  const rows = await ctx.db
-    .query("evidenceLibraryCollectionSources")
-    .withIndex("by_libraryId_and_collectionId", (q) => q.eq("libraryId", libraryId))
-    .take(MAX_COLLECTION_SOURCES_PER_LIBRARY);
-  return await Promise.all(
-    rows.map(async (row) => {
-      const collection = await ctx.db.get("collections", row.collectionId);
-      return {
-        collectionId: row.collectionId,
-        name: collection?.name ?? null,
-        itemCount: collection?.itemCount ?? 0,
-        connectedByClerkUserId: row.connectedByClerkUserId,
-        connectedAt: row.connectedAt,
-      };
-    }),
-  );
-}
+const row = async (ctx: QueryCtx, connection: Doc<"evidenceLibraryCollectionSources">) => {
+  const collection = await ctx.db.get("collections", connection.collectionId);
+  return {
+    collectionId: connection.collectionId,
+    name: collection?.name ?? null,
+    itemCount: collection?.itemCount ?? 0,
+    connectedByClerkUserId: connection.connectedByClerkUserId,
+    connectedAt: connection.connectedAt,
+  };
+};
 
-/** The collections a library follows, as one page: a library holds no more than one page of them. */
+/**
+ * The library's connections to these collections, as one page; a collection it never
+ * connected is left out. A configuration holds at most MAX_LIBRARY_SOURCES sources, so a page
+ * asks for no more. Connections are kept when a source leaves a draft, so they are read by the
+ * sources shown and never listed whole.
+ */
 export const listCollectionSources = query({
-  args: { libraryId: v.id("evidenceLibraries") },
+  args: { libraryId: v.id("evidenceLibraries"), collectionIds: v.array(v.id("collections")) },
   returns: paginationResultValidator(collectionSourceValidator),
-  handler: async (ctx, args) => ({ page: await readCollectionSources(ctx, args.libraryId), isDone: true, continueCursor: "" }),
+  handler: async (ctx, args) => {
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    if (args.collectionIds.length > MAX_LIBRARY_SOURCES) throw createError("VALIDATION_ERROR", `Collections are read ${MAX_LIBRARY_SOURCES} at a time.`);
+    const connections = await Promise.all([...new Set(args.collectionIds)].map((collectionId) => findConnection(ctx, args.libraryId, collectionId)));
+    const page = await Promise.all(connections.flatMap((connection) => (connection ? [row(ctx, connection)] : [])));
+    return { page, isDone: true, continueCursor: "" };
+  },
 });
 
-/** Kept for one release, while the deployed site still calls it; `listCollectionSources` replaces it. */
+/** The first 100 connections a library made. Kept for one release, while the deployed site still calls it; `listCollectionSources` replaces it. */
 export const listLibraryCollectionSources = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.array(collectionSourceValidator),
-  handler: (ctx, args) => readCollectionSources(ctx, args.libraryId),
+  handler: async (ctx, args) => {
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    const rows = await ctx.db
+      .query("evidenceLibraryCollectionSources")
+      .withIndex("by_libraryId_and_collectionId", (q) => q.eq("libraryId", args.libraryId))
+      .take(100);
+    return await Promise.all(rows.map((connection) => row(ctx, connection)));
+  },
 });
 
 /**
@@ -105,16 +113,7 @@ export const connectCollectionSource = mutation({
     };
     const existing = await findConnection(ctx, args.libraryId, args.collectionId);
     if (existing) await ctx.db.replace("evidenceLibraryCollectionSources", existing._id, fields);
-    else {
-      const followed = await ctx.db
-        .query("evidenceLibraryCollectionSources")
-        .withIndex("by_libraryId_and_collectionId", (q) => q.eq("libraryId", args.libraryId))
-        .take(MAX_COLLECTION_SOURCES_PER_LIBRARY);
-      if (followed.length >= MAX_COLLECTION_SOURCES_PER_LIBRARY) {
-        throw createError("VALIDATION_ERROR", `A library follows at most ${MAX_COLLECTION_SOURCES_PER_LIBRARY} collections. Remove one to add another.`);
-      }
-      await ctx.db.insert("evidenceLibraryCollectionSources", fields);
-    }
+    else await ctx.db.insert("evidenceLibraryCollectionSources", fields);
     await writeAuditLogRecord(ctx, {
       action: "evidence_library.collection_source.connected",
       userId: access.clerkUserId,

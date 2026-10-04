@@ -49,14 +49,15 @@ export function useCollectionSources({
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const convex = useConvex();
-  const connected = useProtectedQuery(
-    api.evidenceLibraries.collectionSources.listCollectionSources,
-    { libraryId },
-  );
   const connect = useMutation(api.evidenceLibraries.collectionSources.connectCollectionSource);
   const picker = useRef<PickerHandle>(null);
   const sources = value.filter(
     (source): source is OpenScholarCollectionSourceEntry => source.provider === "openscholar",
+  );
+  // The connections of the collections shown: a library keeps every connection it ever made.
+  const connected = useProtectedQuery(
+    api.evidenceLibraries.collectionSources.listCollectionSources,
+    { libraryId, collectionIds: sources.map((source) => source.collectionId as Id<"collections">) },
   );
   const byId = new Map((connected.data?.page ?? []).map((row) => [row.collectionId as string, row]));
 
