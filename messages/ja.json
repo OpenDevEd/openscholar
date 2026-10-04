@@ -3448,6 +3448,26 @@
     "writingReply": "返信を作成中",
     "noChatsMatch": "一致するチャットはありません。",
     "noChats": "チャットはここに表示されます。",
-    "moreChats": "以前のチャット"
+    "moreChats": "以前のチャット",
+    "share": "共有",
+    "shareNamed": "{title}を共有",
+    "shareChat": "このチャットを共有",
+    "addPeople": "ユーザーまたは組織を追加",
+    "you": "あなた",
+    "owner": "所有者",
+    "canChat": "チャット可能",
+    "canView": "閲覧可能",
+    "view": "閲覧",
+    "chat": "チャット",
+    "accessOf": "{name}のアクセス権",
+    "members": "{count} 人のメンバー",
+    "membersMany": "{count} 人以上のメンバー",
+    "remove": "削除",
+    "organization": "組織",
+    "noCandidates": "組織内に一致する人がいません。",
+    "shareNote": "共有相手はこの会話を見ることができます。会話内の検索、コレクション、ライブラリのアクセス権はそれぞれのままです。チャットできる人は自分の名前でメッセージを送り、アシスタントはその人自身のアクセス権とクレジットで動作します。",
+    "copyLink": "アクセス権のある人向けのリンクをコピー",
+    "linkCopied": "リンクをコピーしました",
+    "shareFailed": "このチャットの共有設定を変更できませんでした"
   }
 }

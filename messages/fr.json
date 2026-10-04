@@ -3448,6 +3448,26 @@
     "writingReply": "Rédaction d'une réponse",
     "noChatsMatch": "Aucune discussion ne correspond.",
     "noChats": "Vos discussions apparaîtront ici.",
-    "moreChats": "Discussions plus anciennes"
+    "moreChats": "Discussions plus anciennes",
+    "share": "Partager",
+    "shareNamed": "Partager {title}",
+    "shareChat": "Partager cette discussion",
+    "addPeople": "Ajouter des personnes ou une organisation",
+    "you": "Vous",
+    "owner": "Propriétaire",
+    "canChat": "Peut discuter",
+    "canView": "Peut consulter",
+    "view": "Consulter",
+    "chat": "Discuter",
+    "accessOf": "Accès de {name}",
+    "members": "{count, plural, one {# membre} other {# membres}}",
+    "membersMany": "Plus de {count} membres",
+    "remove": "Retirer",
+    "organization": "Organisation",
+    "noCandidates": "Personne dans vos organisations ne correspond.",
+    "shareNote": "Ces personnes voient cette conversation. Les recherches, collections et bibliothèques qu'elle contient gardent leurs propres accès. Les personnes qui peuvent discuter envoient des messages en leur nom, et l'assistant agit pour elles avec leurs propres accès et crédits.",
+    "copyLink": "Copier le lien pour les personnes ayant accès",
+    "linkCopied": "Lien copié",
+    "shareFailed": "Impossible de modifier le partage de cette discussion"
   }
 }

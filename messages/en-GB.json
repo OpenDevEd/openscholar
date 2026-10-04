@@ -3440,6 +3440,26 @@
     "writingReply": "Writing a reply",
     "noChatsMatch": "No chats match.",
     "noChats": "Your chats will be listed here.",
-    "moreChats": "Earlier chats"
+    "moreChats": "Earlier chats",
+    "share": "Share",
+    "shareNamed": "Share {title}",
+    "shareChat": "Share this chat",
+    "addPeople": "Add people or an organization",
+    "you": "You",
+    "owner": "Owner",
+    "canChat": "Can chat",
+    "canView": "Can view",
+    "view": "View",
+    "chat": "Chat",
+    "accessOf": "{name}'s access",
+    "members": "{count, plural, one {# member} other {# members}}",
+    "membersMany": "{count}+ members",
+    "remove": "Remove",
+    "organization": "Organization",
+    "noCandidates": "Nobody in your organizations matches.",
+    "shareNote": "They see this conversation. Searches, collections and libraries in it keep their own access. People who can chat send messages as themselves, and the assistant acts for them with their own access and credits.",
+    "copyLink": "Copy link for people with access",
+    "linkCopied": "Link copied",
+    "shareFailed": "Couldn't change who this chat is shared with"
   }
 }

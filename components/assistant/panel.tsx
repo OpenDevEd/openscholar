@@ -11,7 +11,7 @@ import usePresence from "@convex-dev/presence/react";
 import { insertAtTop, useConvexAuth, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { ArrowUp, ChevronDown, CircleAlert, CircleStop, MessagesSquare, PictureInPicture2, Square, SquarePen } from "lucide-react";
+import { ArrowUp, ChevronDown, CircleAlert, CircleStop, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -32,7 +32,7 @@ import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "./logo-mark";
 import { IconButton, WorkingText } from "./parts";
-import { Dim, HistorySheet, SHEET_SPRING, Sheet, stackedUnder, type SheetKind } from "./sheets";
+import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, stackedUnder, type OpenSheet } from "./sheets";
 
 type ThreadId = Id<"assistantThreads">;
 type Message = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -56,8 +56,10 @@ function titleFrom(text: string) {
 export function AssistantPanel() {
   const enabled = useFeatureFlag("assistant.enabled");
   const { isAuthenticated } = useConvexAuth();
-  const [open, setOpen] = useState(false);
-  const [threadId, setThreadId] = useState<ThreadId | null>(null);
+  // A link to a chat (`?chat=`) opens the panel on it. Nothing renders before the session is known, so the server never reads this.
+  const [linked] = useState(() => (typeof window === "undefined" ? null : (new URLSearchParams(window.location.search).get("chat") as ThreadId | null)));
+  const [open, setOpen] = useState(linked !== null);
+  const [threadId, setThreadId] = useState<ThreadId | null>(linked);
   if (!enabled || !isAuthenticated) return null;
   return (
     <Lost fresh={threadId === null} onLost={() => setThreadId(null)}>
@@ -102,8 +104,9 @@ function Overlay({
   const live = useQuery(api.assistant.replies.live, threadId ? { threadId } : "skip") ?? null;
   const working = live !== null;
   // Sheets stacked over the panel, bottom first.
-  const [sheets, setSheets] = useState<SheetKind[]>([]);
+  const [sheets, setSheets] = useState<OpenSheet[]>([]);
   const depth = sheets.length;
+  const push = (sheet: OpenSheet) => setSheets((all) => [...all, sheet]);
   const pop = () => setSheets((all) => all.slice(0, -1));
   // A keyboard shortcut is an outside system: ⌘J or Ctrl+J opens and closes the panel, and Escape closes the top sheet.
   useEffect(() => {
@@ -166,25 +169,30 @@ function Overlay({
                 animate={{ opacity: 1, transition: { delay: 0.16, duration: 0.25 } }}
                 exit={{ opacity: 0, transition: { duration: 0.08 } }}
               >
-                <Chat threadId={threadId} setThreadId={setThreadId} live={live} onFold={fold} onHistory={() => setSheets((all) => [...all, "history"])} />
+                <Chat threadId={threadId} setThreadId={setThreadId} live={live} onFold={fold} onHistory={() => push({ kind: "history" })} onShare={(id, title) => push({ kind: "share", threadId: id, title })} />
               </motion.div>
               <Dim on={depth > 0} />
             </motion.div>
             <AnimatePresence>
-              {sheets.map((kind, i) => (
-                <Sheet key={`${i}-${kind}`} index={i} depth={depth - 1 - i}>
-                  <HistorySheet
-                    current={threadId}
-                    onBack={pop}
-                    onOpen={(id) => {
-                      setThreadId(id);
-                      pop();
-                    }}
-                    onNew={() => {
-                      setThreadId(null);
-                      pop();
-                    }}
-                  />
+              {sheets.map((sheet, i) => (
+                <Sheet key={`${i}-${sheet.kind}`} index={i} depth={depth - 1 - i}>
+                  {sheet.kind === "history" ? (
+                    <HistorySheet
+                      current={threadId}
+                      onBack={pop}
+                      onOpen={(id) => {
+                        setThreadId(id);
+                        pop();
+                      }}
+                      onNew={() => {
+                        setThreadId(null);
+                        pop();
+                      }}
+                      onShare={(id, title) => push({ kind: "share", threadId: id, title })}
+                    />
+                  ) : (
+                    <ShareSheet threadId={sheet.threadId} title={sheet.title} onBack={pop} />
+                  )}
                 </Sheet>
               ))}
             </AnimatePresence>
@@ -210,12 +218,14 @@ function Chat({
   live,
   onFold,
   onHistory,
+  onShare,
 }: {
   threadId: ThreadId | null;
   setThreadId: (id: ThreadId | null) => void;
   live: Live | null;
   onFold: () => void;
   onHistory: () => void;
+  onShare: (id: ThreadId, title: string) => void;
 }) {
   const t = useTranslations("assistant");
   const toast = useAppToast();
@@ -275,10 +285,20 @@ function Chat({
     setDraft("");
     composer.current?.focus();
   };
+  // Sharing a chat that hasn't started makes it first, so there's something to share.
+  const share = async () => {
+    try {
+      const id = threadId ?? (await create(model ? { modelId: model._id, ...(model.effort ? { effort: model.effort } : {}) } : {}));
+      if (!threadId) setThreadId(id);
+      onShare(id, thread?.title ?? t("newChat"));
+    } catch (error) {
+      toast.error(t("shareFailed"), getErrorMessage(error, ""));
+    }
+  };
 
   return (
     <>
-      <Header title={threadId ? (thread?.title ?? "") : t("newChat")} onHistory={onHistory} onRestart={restart} onFold={onFold} />
+      <Header title={threadId ? (thread?.title ?? "") : t("newChat")} onHistory={onHistory} onShare={share} onRestart={restart} onFold={onFold} />
       <Thread
         // A different chat starts at its own newest message.
         key={threadId ?? "new"}
@@ -450,7 +470,7 @@ function Empty() {
   );
 }
 
-function Header({ title, onHistory, onRestart, onFold }: { title: string; onHistory: () => void; onRestart: () => void; onFold: () => void }) {
+function Header({ title, onHistory, onShare, onRestart, onFold }: { title: string; onHistory: () => void; onShare: () => void; onRestart: () => void; onFold: () => void }) {
   const t = useTranslations("assistant");
   return (
     <div className="border-b border-border/50 px-4 pb-3 pt-3.5">
@@ -474,6 +494,7 @@ function Header({ title, onHistory, onRestart, onFold }: { title: string; onHist
         </div>
         <div className="flex items-center">
           <IconButton label={t("chats")} icon={<MessagesSquare className="size-4" />} onClick={onHistory} />
+          <IconButton label={t("shareChat")} icon={<UserPlus className="size-4" />} onClick={onShare} />
           <IconButton label={t("newChat")} icon={<SquarePen className="size-4" />} onClick={onRestart} />
           <IconButton label={t("foldIntoBubble")} shortcut="⌘J" icon={<PictureInPicture2 className="size-4" />} onClick={onFold} />
         </div>

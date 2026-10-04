@@ -3448,6 +3448,26 @@
     "writingReply": "正在撰写回复",
     "noChatsMatch": "没有匹配的对话。",
     "noChats": "你的对话会显示在这里。",
-    "moreChats": "更早的对话"
+    "moreChats": "更早的对话",
+    "share": "共享",
+    "shareNamed": "共享 {title}",
+    "shareChat": "共享此对话",
+    "addPeople": "添加人员或组织",
+    "you": "你",
+    "owner": "所有者",
+    "canChat": "可对话",
+    "canView": "可查看",
+    "view": "查看",
+    "chat": "对话",
+    "accessOf": "{name} 的权限",
+    "members": "{count} 位成员",
+    "membersMany": "{count}+ 位成员",
+    "remove": "移除",
+    "organization": "组织",
+    "noCandidates": "你的组织中没有匹配的人。",
+    "shareNote": "他们可以看到此对话。其中的搜索、合集和文库仍保留各自的访问权限。可对话的人以自己的身份发送消息，助手以他们自己的权限和额度为他们执行操作。",
+    "copyLink": "复制链接（仅限有权限的人）",
+    "linkCopied": "链接已复制",
+    "shareFailed": "无法更改此对话的共享设置"
   }
 }
