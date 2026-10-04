@@ -6,7 +6,7 @@ import { stream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { workUrl } from "../../lib/openalex/work-id";
+import { findItem } from "./mutations";
 import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
 import { libraryCount } from "./counter";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
@@ -473,10 +473,7 @@ export const savedPaperAction = defineUserQuery({
   args: { openalexId: v.string() },
   returns: v.union(v.object({ libraryItemId: v.id("libraryItems"), inCollection: v.boolean() }), v.null()),
   run: async (ctx, userId, args) => {
-    const item = await ctx.db
-      .query("libraryItems")
-      .withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", workUrl(args.openalexId) ?? args.openalexId))
-      .unique();
+    const item = await findItem(ctx, userId, args.openalexId);
     if (!item) return null;
     const membership = await ctx.db
       .query("libraryItemCollections")

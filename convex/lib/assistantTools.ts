@@ -67,8 +67,9 @@ export function runAction(ctx: ActionCtx, userId: Id<"users">, entry: UserAction
   const args = { ...input, ...(retryKey ? { [retryKey]: callKey } : {}), userId };
   const ref = assistantPath(entry.path);
   if (entry.kind === "query") return ctx.runQuery(makeFunctionReference<"query">(ref), args);
-  if (entry.kind === "mutation") return ctx.runMutation(makeFunctionReference<"mutation">(ref), { ...args, ...(stepId ? { stepId } : {}), ...(approved ? { approved } : {}) });
-  return ctx.runAction(makeFunctionReference<"action">(ref), args);
+  const change = { ...args, ...(stepId ? { stepId } : {}), ...(approved ? { approved } : {}) };
+  if (entry.kind === "mutation") return ctx.runMutation(makeFunctionReference<"mutation">(ref), change);
+  return ctx.runAction(makeFunctionReference<"action">(ref), entry.changes ? change : args);
 }
 
 /** One call of an action by the model. */

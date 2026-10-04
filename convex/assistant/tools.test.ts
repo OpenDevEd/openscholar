@@ -123,6 +123,27 @@ describe("the assistant's tools", () => {
     expect(await shown()).toEqual(["user: Save that paper", "step: library/mutations:saveToLibrary done, can be undone", "assistant: Saved it."]);
   });
 
+  it("run a change that an action makes after reading from outside, with its write ending the step once, undo and all", async () => {
+    const t = convexTest(schema);
+    const { ada, say, steps, results, shown } = await chatOf(t);
+    vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
+    const autumn = fakeAutumnFetch();
+    // OpenAlex answers for the paper; everything else is the billing service.
+    fetchMock.mockImplementation(async (input: string | URL, init?: RequestInit) =>
+      String(input).includes("openalex.org") ? new Response(JSON.stringify({ id: "https://openalex.org/W7", display_name: "Tutoring at scale", publication_year: 2021 }), { status: 200 }) : autumn(input as never, init as never),
+    );
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "library_papers_save", input: { id: "W7", rating: null } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    await say("Save that paper");
+    vi.unstubAllEnvs();
+
+    const [saved] = await t.run(async (ctx) => ctx.db.query("libraryItems").collect());
+    expect(saved).toMatchObject({ userId: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale" });
+    expect(await steps()).toMatchObject([{ path: "library/papers:save", status: "done", undo: { path: "library/mutations:removeFromLibrary" } }]);
+    // One result beside the step: the write ended it, and nothing ended it again.
+    expect(await results()).toEqual([expect.objectContaining({ libraryItemId: saved._id, title: "Tutoring at scale" })]);
+    expect(await shown()).toEqual(["user: Save that paper", "step: library/papers:save done, can be undone", "assistant: Saved it."]);
+  });
+
   it("reach every other action through a search and a run, and run the undo a change returned the same way", async () => {
     const t = convexTest(schema);
     const { say, steps } = await chatOf(t);

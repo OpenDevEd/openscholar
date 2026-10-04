@@ -213,9 +213,10 @@ export function toolsFor(
     const subject = subjectOf(input);
     const stepId = allowed ?? (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}) }));
     try {
-      // A change ends its step in its own transaction, so the two are saved together. A read's step is ended here.
-      const result = await runAction(ctx, userId, entry, input, key, entry.kind === "mutation" ? stepId : undefined, allowed !== undefined);
-      if (entry.kind !== "mutation") await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
+      // A change ends its step in its own transaction, so the two are saved together: a mutation, or an action whose write does. A read's step is ended here.
+      const change = entry.kind === "mutation" || (entry.kind === "action" && entry.changes === true);
+      const result = await runAction(ctx, userId, entry, input, key, change ? stepId : undefined, allowed !== undefined);
+      if (!change) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
       return forModel(result);
     } catch (error) {
       const message = messageOf(error);

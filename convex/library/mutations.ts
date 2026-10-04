@@ -5,7 +5,8 @@ import { internal } from "../_generated/api";
 import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
 import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
-import { assistantMutation, defineUserMutation, reversal, reversedBy, userMutation, type Author } from "../lib/userActions";
+import { ASKS_FIRST, assistantMutation, defineUserMutation, reversal, reversedBy, userMutation, type Author } from "../lib/userActions";
+import { endStep } from "../assistant/steps";
 import { applyCommand } from "../research/records";
 import { undoCommandValidator } from "../../lib/research/records";
 import { workUrl } from "../../lib/openalex/work-id";
@@ -54,11 +55,11 @@ function requireRating(rating: number) {
 /** A paper's ID as the library keeps it. The assistant gives the bare ID as often as the whole one, and both are the same paper. */
 export const canonical = (openalexId: string) => workUrl(openalexId) ?? openalexId;
 
-async function findItem(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, openalexId: string) {
-  return await ctx.db
-    .query("libraryItems")
-    .withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", canonical(openalexId)))
-    .unique();
+/** A person's saved paper by its ID. One saved under the ID as it was given, before the library kept one form, is still found by that. */
+export async function findItem(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, openalexId: string) {
+  const byId = (id: string) => ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", id)).unique();
+  const kept = canonical(openalexId);
+  return (await byId(kept)) ?? (kept === openalexId ? null : await byId(openalexId));
 }
 
 /**
@@ -111,6 +112,8 @@ export async function upsertLibraryItem(
     ctx.db.insert("libraryItems", {
       userId,
       ...paper,
+      // Every writer saves through here, so a paper has one row whatever form its ID came in.
+      openalexId: canonical(paper.openalexId),
       ...(rating !== undefined && { rating }),
       searchableText,
       savedAt: now,
@@ -152,7 +155,7 @@ export async function saveAsksFirst(ctx: Pick<QueryCtx, "db">, userId: Id<"users
 }
 
 /** Saves a paper, rated when a rating is given, and says what reverses it. */
-async function savePaper(ctx: MutationCtx, userId: Id<"users">, given: Infer<typeof libraryPaper>, rating: number | undefined, author: Author): Promise<{ id: Id<"libraryItems">; added: boolean; undo?: Infer<typeof saveUndo> }> {
+async function savePaper(ctx: MutationCtx, userId: Id<"users">, given: Infer<typeof libraryPaper>, rating: number | undefined, author: Author): Promise<{ id: Id<"libraryItems">; undo?: Infer<typeof saveUndo> }> {
   if (rating !== undefined) requireRating(rating);
   const paper = { ...given, openalexId: canonical(given.openalexId) };
   const before = await findItem(ctx, userId, paper.openalexId);
@@ -164,35 +167,31 @@ async function savePaper(ctx: MutationCtx, userId: Id<"users">, given: Infer<typ
   // rating the paper had on search cards: removing a paper clears that rating, and a rating
   // put back is put back in both places.
   if (!before) {
-    if (onCards !== null) return { id, added: true };
+    if (onCards !== null) return { id };
     const saved = (await ctx.db.get("libraryItems", id))!;
-    return { id, added: true, undo: { path: REMOVE, args: { openalexId: paper.openalexId, expect: { savedAt: saved.savedAt, rating: rating ?? null } } } };
+    return { id, undo: { path: REMOVE, args: { openalexId: paper.openalexId, expect: { savedAt: saved.savedAt, rating: rating ?? null } } } };
   }
   const was = before.rating ?? null;
-  if (rating === undefined || rating === was || onCards !== was) return { id, added: false };
-  return { id, added: false, undo: { path: RATE, args: { openalexId: paper.openalexId, rating: was, expect: { savedAt: before.savedAt, rating } } } };
+  if (rating === undefined || rating === was || onCards !== was) return { id };
+  return { id, undo: { path: RATE, args: { openalexId: paper.openalexId, rating: was, expect: { savedAt: before.savedAt, rating } } } };
 }
 
+export const savedByIdValidator = v.object({ libraryItemId: v.id("libraryItems"), title: v.string(), undo: v.optional(saveUndo) });
 /**
- * Saves a paper whose record an action has just read from OpenAlex (./papers.ts), and puts
- * it in a collection when one is given. One undo for both: a paper this added is removed
- * again, which takes it out of the collection too; one that was already saved goes back to
- * its rating, or leaves the collection.
+ * Saves a paper whose record an action has just read from OpenAlex (./papers.ts). The read
+ * took a moment, so whether the save asks the person first is checked again here, and the
+ * step of the reply it is ends here, with the write: saved together or not at all.
  */
-export const saveReadUndo = v.union(...saveUndo.members, reversal(IN_COLLECTION, { paper: savedPaper, collectionId: v.id("collections"), inCollection: v.boolean(), assignedAt: v.number() }));
-export const saveReadValidator = v.object({ id: v.id("libraryItems"), undo: v.optional(saveReadUndo) });
 export const saveRead = internalMutation({
-  args: { userId: v.id("users"), paper: libraryPaper, rating: v.optional(ratingArg), collectionId: v.optional(v.id("collections")), author: v.union(v.literal("user"), v.literal("assistant")) },
-  returns: saveReadValidator,
-  handler: async (ctx, { userId, paper, rating, collectionId, author }) => {
-    const collection = collectionId ? await ownedCollection(ctx, userId, collectionId) : null;
+  args: { userId: v.id("users"), paper: libraryPaper, rating: v.optional(ratingArg), author: v.union(v.literal("user"), v.literal("assistant")), stepId: v.optional(v.id("assistantSteps")), approved: v.optional(v.boolean()) },
+  returns: savedByIdValidator,
+  handler: async (ctx, { userId, paper, rating, author, stepId, approved }) => {
+    // Only the assistant asks: a person saving a paper themselves has decided.
+    if (author === "assistant" && !approved && (await saveAsksFirst(ctx, userId, paper.openalexId, rating))) throw createError("FORBIDDEN", ASKS_FIRST);
     const saved = await savePaper(ctx, userId, paper, rating, author);
-    if (!collection) return { id: saved.id, ...(saved.undo ? { undo: saved.undo } : {}) };
-    const item = (await ctx.db.get("libraryItems", saved.id))!;
-    const at = await addCollectionMembership(ctx, { userId, collection, libraryItemId: item._id });
-    if (saved.added || at === null) return { id: saved.id, ...(saved.undo ? { undo: saved.undo } : {}) };
-    // Already in the library: what this did was put it in the collection, and that's what's taken back. A rating changed with it stays.
-    return { id: saved.id, undo: { path: IN_COLLECTION, args: { paper: { openalexId: item.openalexId, savedAt: item.savedAt }, collectionId: collection._id, inCollection: false, assignedAt: at } } };
+    const result = { libraryItemId: saved.id, title: paper.title, ...(saved.undo ? { undo: saved.undo } : {}) };
+    if (stepId) await endStep(ctx, stepId, result);
+    return result;
   },
 });
 
@@ -310,7 +309,7 @@ export const removeFromLibraryAction = defineUserMutation({
   undoable: true,
   // The paper leaves its collections too, and a library may follow one of them.
   asksFirst: async (ctx, userId, args) => {
-    const item = await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", args.openalexId)).unique();
+    const item = await findItem(ctx, userId, args.openalexId);
     return item !== null && (await inFollowedCollection(ctx, item._id));
   },
   run: async (ctx, userId, args, author) => {
