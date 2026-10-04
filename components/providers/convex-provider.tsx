@@ -51,7 +51,7 @@ export function ConvexClientProvider({
   preloadedCatalog,
 }: {
   children: ReactNode;
-  preloadedFlags: Preloaded<typeof api.featureFlags.queries.getAll>;
+  preloadedFlags: Preloaded<typeof api.featureFlags.queries.list>;
   preloadedCatalog: Preloaded<typeof api.billing.catalog.get>;
 }) {
   const locale = useLocale();

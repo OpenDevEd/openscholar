@@ -15,7 +15,6 @@
       "convex/ai/actions.ts:generateBatchTranslations:.errors[]": "#425",
       "convex/ai/actions.ts:generateBatchTranslations:.results{}": "#425",
       "convex/aiModelConfig/queries.ts:presets:[]": "#424",
-      "convex/apiKeys/queries.ts:getMy:[]": "#424",
       "convex/authors/invitations.ts:listMine:[]": "#424",
       "convex/authors/members.ts:list:.invitations[]": "#424",
       "convex/authors/members.ts:list:.members[]": "#424",

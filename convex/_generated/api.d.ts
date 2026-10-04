@@ -242,6 +242,7 @@ import type * as lib_functions from "../lib/functions.js";
 import type * as lib_invitationDelivery from "../lib/invitationDelivery.js";
 import type * as lib_libraryServiceHttp from "../lib/libraryServiceHttp.js";
 import type * as lib_listCaps from "../lib/listCaps.js";
+import type * as lib_listCounts from "../lib/listCounts.js";
 import type * as lib_locks from "../lib/locks.js";
 import type * as lib_opaqueToken from "../lib/opaqueToken.js";
 import type * as lib_opaqueTokenDigest from "../lib/opaqueTokenDigest.js";
@@ -273,6 +274,7 @@ import type * as migrations_countScreeningJobs from "../migrations/countScreenin
 import type * as migrations_expireInvitations from "../migrations/expireInvitations.js";
 import type * as migrations_moveLibraryCounts from "../migrations/moveLibraryCounts.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
+import type * as migrations_pagedAccountLists from "../migrations/pagedAccountLists.js";
 import type * as migrations_pagedCollections from "../migrations/pagedCollections.js";
 import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
 import type * as migrations_pagedRecords from "../migrations/pagedRecords.js";
@@ -592,6 +594,7 @@ declare const fullApi: ApiFromModules<{
   "lib/invitationDelivery": typeof lib_invitationDelivery;
   "lib/libraryServiceHttp": typeof lib_libraryServiceHttp;
   "lib/listCaps": typeof lib_listCaps;
+  "lib/listCounts": typeof lib_listCounts;
   "lib/locks": typeof lib_locks;
   "lib/opaqueToken": typeof lib_opaqueToken;
   "lib/opaqueTokenDigest": typeof lib_opaqueTokenDigest;
@@ -623,6 +626,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/expireInvitations": typeof migrations_expireInvitations;
   "migrations/moveLibraryCounts": typeof migrations_moveLibraryCounts;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
+  "migrations/pagedAccountLists": typeof migrations_pagedAccountLists;
   "migrations/pagedCollections": typeof migrations_pagedCollections;
   "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
   "migrations/pagedRecords": typeof migrations_pagedRecords;
@@ -737,5 +741,6 @@ export declare const components: {
   agent: import("@convex-dev/agent/_generated/component.js").ComponentApi<"agent">;
   creditsAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"creditsAgg">;
   usageAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"usageAgg">;
+  listCounts: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"listCounts">;
   batchWorker: import("@convex-dev/batch-worker/_generated/component.js").ComponentApi<"batchWorker">;
 };
