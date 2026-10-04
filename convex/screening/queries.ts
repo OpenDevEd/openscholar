@@ -25,15 +25,14 @@ import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { availableCredits } from "../billing/accounts";
 import { estimateScreening } from "./estimate";
 import { countRow } from "../research/recordCounts";
-import { readScreeningProgressCounts } from "./aggregates";
-import { buildScreeningProgressSnapshot } from "./progress";
+import { buildScreeningProgressSnapshot, readScreeningProgressCounts } from "./progress";
 
 /** Most screening jobs one page lists; each one also reads its progress. */
 const MAX_LISTED_SCREENING_JOBS = 50;
 
 async function readJobProgressSnapshot(
   ctx: QueryCtx,
-  job: Pick<Doc<"screeningJobs">, "_id" | "status" | "totalPapers" | "resultCounts">,
+  job: Pick<Doc<"screeningJobs">, "_id" | "status" | "totalPapers">,
 ) {
   const counts = await readScreeningProgressCounts(ctx, job);
   return buildScreeningProgressSnapshot({

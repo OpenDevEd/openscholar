@@ -4,7 +4,7 @@ import type { Id } from "../_generated/dataModel";
 import { api } from "../_generated/api";
 import schema from "../schema";
 import { setupScreeningWorkpool } from "./workpool.test-support";
-import { createJob } from "./createJob.test-support";
+import { createJob, insertJob } from "./createJob.test-support";
 import { SCREENING_POOL_SIZE, screeningPool } from "../workpool";
 import {
   seedCreditsForTest,
@@ -43,7 +43,7 @@ async function seedScreeningJob(
 ) {
   return await t.run(async (ctx) => {
     const now = Date.now();
-    const jobId = await ctx.db.insert("screeningJobs", {
+    const jobId = await insertJob(ctx, {
       userId,
       status: overrides.status ?? "processing",
       totalPapers: overrides.totalPapers ?? 5,

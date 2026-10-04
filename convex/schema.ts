@@ -938,12 +938,11 @@ export default defineSchema({
     // Papers its search's page had already answered every question for: done on those
     // answers, without asking the model.
     reused: v.optional(v.number()),
-    // "sharded" when its progress is counted by convex/screening/resultCounts.ts; a job from
-    // before #383 reads the aggregates until migrations/recountScreeningJobs recounts it.
+    // Left by the sharded counters that once counted its papers; nothing reads it. It goes
+    // from the schema once migrations/dropScreeningResultCounts has cleared it everywhere.
     resultCounts: v.optional(v.literal("sharded")),
-    // The screening its answers go to. Required once migrations/moveScreeningJobAnswers has
-    // run on every deployment.
-    screeningId: v.optional(v.id("screenings")),
+    // The screening its answers go to.
+    screeningId: v.id("screenings"),
     // Resolved per-user server model for this bulk screening run (credits path).
     serverModelId: v.optional(v.id("models")),
     serverEffort: v.optional(effortValidator),
@@ -972,8 +971,7 @@ export default defineSchema({
       v.literal("skipped"),
     ),
     // A finished paper's answers by question key, with the model's confidence in each, waiting
-    // (`pendingAnswers`) to move to the job's screening (convex/screening/drain.ts). Results
-    // saved before #334 hold answers without the mark until migrations/moveScreeningJobAnswers.
+    // (`pendingAnswers`) to move to the job's screening (convex/screening/drain.ts).
     answers: screeningAnswersValidator,
     confidences: capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS),
     pendingAnswers: v.optional(v.literal(true)),
@@ -1032,7 +1030,6 @@ export default defineSchema({
     .index("by_job_and_outcome", ["jobId", "outcome"])
     // A job's papers the model is reading: processing, and no longer waiting for a slot.
     .index("by_job_and_status_and_waitingUser", ["jobId", "status", "waitingUser"])
-    .index("by_job_and_pendingAnswers", ["jobId", "pendingAnswers"])
     .index("by_waitingUser_and_waitingSince", ["waitingUser", "waitingSince"])
     .index("by_doneAt", ["doneAt"]),
   // How many of a person's Screen all papers are running (#335). Written by job creation and

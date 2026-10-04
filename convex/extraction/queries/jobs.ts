@@ -120,9 +120,8 @@ export const subscribeToJobProgress = query({
     const access = await resolveReadableJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
     const { job } = access;
-    // Tier B: counts now live in the sharded counter rather than on the
-    // job row. Convex query reactivity tracks the counter shards, so the
-    // subscription still re-fires on every increment.
+    // The counts live in the job's counts row, not on the job: this query reads that row, so
+    // it runs again whenever a count changes.
     const { processed, failed } = await readJobCounters(ctx, args.jobId);
 
     return ok({

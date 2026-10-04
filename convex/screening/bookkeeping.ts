@@ -17,7 +17,6 @@ import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
-import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { upsertLibraryItem } from "../library/mutations";
 import { addCollectionMembership, removeCollectionMembership } from "../library/collectionMembership";
 import { moveResultAnswers } from "./drain";
@@ -83,24 +82,11 @@ export async function progressRow(ctx: QueryCtx | MutationCtx, jobId: Id<"screen
     .unique();
 }
 
-/**
- * Counts a job's papers that are already bookkept, or finished before the worker kept its
- * progress (both have no `doneAt`). Papers still waiting are counted when their batch comes.
- */
-export async function countBookkept(ctx: QueryCtx | MutationCtx, jobId: Id<"screeningJobs">) {
-  const results = await ctx.db
-    .query("screeningResults")
-    .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .take(MAX_SCREENING_PAPERS_PER_JOB);
-  return tally(results.filter((result) => result.doneAt === undefined));
-}
-
-/**
- * A job's progress row. A job from before the worker kept one gets it counted from its
- * bookkept papers, so read it before changing what one of them counts as.
- */
-export async function progressOf(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
-  return (await progressRow(ctx, jobId)) ?? (await ctx.db.get("screeningJobProgress", await ctx.db.insert("screeningJobProgress", { jobId, ...(await countBookkept(ctx, jobId)) })))!;
+/** A job's progress row, which every job has from the moment it's made. */
+export async function progressOf(ctx: QueryCtx | MutationCtx, jobId: Id<"screeningJobs">) {
+  const row = await progressRow(ctx, jobId);
+  if (!row) throw new Error(`Screening job ${jobId} has no progress row`);
+  return row;
 }
 
 /**
@@ -182,16 +168,6 @@ export const withMoved = (progress: Pick<Doc<"screeningJobProgress">, "saved" | 
   ...(moved.removed ? { removed: Math.max(0, (progress.removed ?? 0) + moved.removed) } : {}),
 });
 
-/**
- * Gives a job its progress row, counted from its bookkept papers, when it has none, and
- * finishes it if that counts every paper: for jobs whose last papers finished before the
- * worker, which nothing else would finish.
- */
-export async function ensureProgress(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
-  await progressOf(ctx, jobId);
-  await finishIfDone(ctx, jobId);
-}
-
 /** Finishes a processing job once its progress counts every paper. */
 export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
   const job = await ctx.db.get("screeningJobs", jobId);
@@ -221,11 +197,7 @@ export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">)
   }
 }
 
-/**
- * One batch of finished papers: counts, answers, library saves, and finishing their jobs.
- * A job without progress yet is counted from all its results, so a batch counts at most one
- * such job; the others' papers wait for the next batch, and the cursor goes back to them.
- */
+/** One batch of finished papers: counts, answers, library saves, and finishing their jobs. */
 export const bookkeep = internalMutation({
   args: vMutationArgs,
   returns: vMutationReturns,
@@ -235,20 +207,11 @@ export const bookkeep = internalMutation({
     );
     const byJob = new Map<Id<"screeningJobs">, Doc<"screeningResults">[]>();
     for (const result of results) byJob.set(result.jobId, [...(byJob.get(result.jobId) ?? []), result]);
-    let recounted = false;
-    const waiting: bigint[] = [];
     // Papers of each person's that stopped running; a paper skipped before it started held no slot.
     const freed = new Map<Id<"users">, number>();
     for (const [jobId, jobResults] of byJob) {
       const job = await ctx.db.get("screeningJobs", jobId);
       if (job) {
-        if (!(await progressRow(ctx, jobId))) {
-          if (recounted) {
-            waiting.push(...jobResults.map((result) => doneAtOf(result)!));
-            continue;
-          }
-          recounted = true;
-        }
         // Answers move to the job's screening first: a paper is scored on its answers as they
         // stand there, where a person's or the assistant's answer outranks the model's.
         for (const result of jobResults) if (result.pendingAnswers) await moveResultAnswers(ctx, result);
@@ -282,7 +245,6 @@ export const bookkeep = internalMutation({
       for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
     }
     for (const [userId, finished] of freed) await startWaitingPapers(ctx, userId, finished);
-    if (waiting.length) return { cursor: waiting.reduce((min, ts) => (ts < min ? ts : min)) };
     return null;
   },
 });

@@ -2,7 +2,6 @@
 // it, saves it if it qualified, moves its answers, and finishes the job, each exactly once.
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import schema from "../schema";
@@ -88,55 +87,13 @@ describe("Screen all bookkeeping", () => {
     expect(results.filter((result) => result.pendingAnswers)).toHaveLength(0);
   });
 
-  it("counts a job that was running before the worker, from its results, and its later papers once", async () => {
-    const t = convexTest(schema);
-    setupScreeningWorkpool(t);
-    const { jobId } = await seedJob(t, 5, false);
-    // Papers that finished before the worker: no stamp, and no progress row.
-    await t.run((ctx) => finish(ctx, jobId, [{ i: 1, status: "completed", qualified: true }, { i: 2, status: "failed" }], false));
-
-    await t.run(async (ctx) => {
-      await finish(ctx, jobId, [{ i: 3, status: "completed", qualified: false }]);
-      await bookkeepLater(ctx);
-    });
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-    await t.run(async (ctx) => {
-      await finish(ctx, jobId, [{ i: 4, status: "completed", qualified: true }, { i: 5, status: "skipped" }]);
-      await bookkeepLater(ctx);
-    });
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-
-    expect(await counts(t, jobId)).toEqual({ completed: 3, skipped: 1, failed: 1, qualified: 2 });
-    expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("completed");
-  });
-
-  it("gives older jobs a progress row that agrees with the worker for papers it hasn't reached", async () => {
-    const t = convexTest(schema);
-    setupScreeningWorkpool(t);
-    const { jobId } = await seedJob(t, 3, false);
-    await t.run((ctx) => finish(ctx, jobId, [{ i: 1, status: "completed", qualified: true }], false));
-    // A paper stamped but not yet bookkept when the migration reaches the job.
-    await t.run((ctx) => finish(ctx, jobId, [{ i: 2, status: "completed", qualified: false }]));
-
-    await t.mutation(internal.migrations.moveScreeningJobProgress.run, {});
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-    expect(await counts(t, jobId)).toEqual({ completed: 1, skipped: 0, failed: 0, qualified: 1 });
-
-    await t.run((ctx) => bookkeepLater(ctx));
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-    expect(await counts(t, jobId)).toEqual({ completed: 2, skipped: 0, failed: 0, qualified: 1 });
-    expect(await t.action(internal.migrations.moveScreeningJobProgress.verify, {})).toEqual({ wrong: 0, sample: [] });
-  });
-
-  it(`bookkeeps a ${MAX_SCREENING_PAPERS_PER_JOB}-paper job within Convex's limits, counting a running job from its results`, async () => {
+  it(`bookkeeps a ${MAX_SCREENING_PAPERS_PER_JOB}-paper job within Convex's limits`, async () => {
     const t = convexTest({ schema, transactionLimits: true });
     setupScreeningWorkpool(t);
-    const { jobId } = await seedJob(t, MAX_SCREENING_PAPERS_PER_JOB, false);
-    const half = MAX_SCREENING_PAPERS_PER_JOB / 2;
+    const { jobId } = await seedJob(t, MAX_SCREENING_PAPERS_PER_JOB);
     const papers = (from: number, count: number) =>
       Array.from({ length: count }, (_, k) => ({ i: from + k, status: "completed" as const, qualified: (from + k) % 3 === 0, answered: true }));
-    for (let from = 0; from < half; from += 250) await t.run((ctx) => finish(ctx, jobId, papers(from, 250), false));
-    for (let from = half; from < MAX_SCREENING_PAPERS_PER_JOB; from += 250) {
+    for (let from = 0; from < MAX_SCREENING_PAPERS_PER_JOB; from += 250) {
       await t.run(async (ctx) => {
         await finish(ctx, jobId, papers(from, 250));
         await bookkeepLater(ctx);
@@ -149,52 +106,4 @@ describe("Screen all bookkeeping", () => {
     expect(await counts(t, jobId)).toEqual({ completed: MAX_SCREENING_PAPERS_PER_JOB, skipped: 0, failed: 0, qualified });
     expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("completed");
   }, 600_000);
-
-  it("counts several large jobs from before the worker, one per batch, within Convex's limits", async () => {
-    const t = convexTest({ schema, transactionLimits: true });
-    setupScreeningWorkpool(t);
-    const abstract = "An abstract of a long paper. ".repeat(75);
-    const jobs: Id<"screeningJobs">[] = [];
-    // Nine jobs of 1,000 papers read past 16 MiB if one batch counted them all.
-    for (let j = 0; j < 9; j++) {
-      const { jobId } = await seedJob(t, MAX_SCREENING_PAPERS_PER_JOB, false);
-      for (let from = 0; from < MAX_SCREENING_PAPERS_PER_JOB - 1; from += 333) {
-        const count = Math.min(333, MAX_SCREENING_PAPERS_PER_JOB - 1 - from);
-        await t.run((ctx) => finish(ctx, jobId, Array.from({ length: count }, (_, k) => ({ i: from + k, status: "completed" as const, qualified: false, abstract })), false));
-      }
-      jobs.push(jobId);
-    }
-    // Each job's last paper finishes after the worker took over, all in one batch.
-    await t.run(async (ctx) => {
-      for (const jobId of jobs) await finish(ctx, jobId, [{ i: MAX_SCREENING_PAPERS_PER_JOB - 1, status: "completed", qualified: true, abstract }]);
-      await bookkeepLater(ctx);
-    });
-
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-
-    for (const jobId of jobs) {
-      expect(await counts(t, jobId)).toEqual({ completed: MAX_SCREENING_PAPERS_PER_JOB, skipped: 0, failed: 0, qualified: 1 });
-      expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("completed");
-    }
-  }, 600_000);
-
-  it("finishes a job whose papers all finished before the worker, from its scheduled finalize or the migration", async () => {
-    const t = convexTest(schema);
-    setupScreeningWorkpool(t);
-    const viaFinalize = await seedJob(t, 2, false);
-    const viaMigration = await seedJob(t, 2, false);
-    for (const { jobId } of [viaFinalize, viaMigration]) {
-      await t.run((ctx) => finish(ctx, jobId, [{ i: 1, status: "completed", qualified: true }, { i: 2, status: "failed" }], false));
-    }
-
-    await t.mutation(internal.screening.mutations.finalizeScreeningJobFromAggregates, { jobId: viaFinalize.jobId });
-    expect((await t.run((ctx) => ctx.db.get("screeningJobs", viaFinalize.jobId)))?.status).toBe("completed");
-    await t.mutation(internal.migrations.moveScreeningJobProgress.run, {});
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-
-    for (const { jobId } of [viaFinalize, viaMigration]) {
-      expect(await counts(t, jobId)).toEqual({ completed: 1, skipped: 0, failed: 1, qualified: 1 });
-      expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("completed");
-    }
-  });
 });

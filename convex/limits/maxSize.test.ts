@@ -16,6 +16,7 @@ import { assertApprovedQueriesUnchanged } from "../evidenceLibraries/approvedQue
 import { isAcceptableSavedConfigurationTarget } from "../evidenceLibraries/operations";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "../extraction/queue/workpool.test-support";
+import { insertJob } from "../screening/createJob.test-support";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 
 const filters = { searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [] };
@@ -339,7 +340,7 @@ describe("at the largest sizes the product allows", () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
     const questions = Array.from({ length: MAX_SIZE.questionsPerJob }, (_, i) => ({ key: `q${i}`, question: `${text(180, i)}?` }));
-    const jobId = await t.run((ctx) => ctx.db.insert("screeningJobs", {
+    const jobId = await t.run((ctx) => insertJob(ctx, {
       userId, status: "completed", totalPapers: MAX_SCREENING_PAPERS_PER_JOB, questions,
       scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }] },
       createdAt: 1, updatedAt: 1,

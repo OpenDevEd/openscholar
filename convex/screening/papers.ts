@@ -103,7 +103,6 @@ export const answerAction = defineUserMutation({
       [job, result] = [(await ctx.db.get("screeningJobs", jobId))!, (await ctx.db.get("screeningResults", result._id))!];
     }
     const screeningId = job.screeningId;
-    if (!screeningId) throw createError("VALIDATION_ERROR", "This screening kept no answers to change");
 
     // The change goes to the job's screening, which a job on a search shares with the search's page.
     const now = Date.now();
