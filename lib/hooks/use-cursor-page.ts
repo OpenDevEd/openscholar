@@ -33,12 +33,15 @@ const MAX_READS_PER_PAGE = 5;
  * A live Convex page keeps the range it first read, so rows added inside it grow it past
  * what was asked; a grown page is read again from its start, under a new query id. A page
  * can come back empty yet not be the end, when its reads found nothing; `canNext` says so.
+ * A list that ends exactly on a full page finds that out from the empty page after it, and
+ * stops offering next there.
  */
 export function useCursorPage<Query extends PageQuery>(query: Query, args: PageArgs<Query> | "skip", pageSize: number) {
   const { canRunProtectedQueries } = useAuthReadiness();
   const key = JSON.stringify(args);
   // `starts` holds where every page after the first starts; `reads`, the current page's reads.
-  const fresh = { key, starts: [] as Start[], reads: [{ cursor: null, numItems: pageSize }] as Read[], id: 0 };
+  // `end` is the page the list was found to end on, by stepping to an empty page after it.
+  const fresh = { key, starts: [] as Start[], reads: [{ cursor: null, numItems: pageSize }] as Read[], id: 0, end: undefined as number | undefined };
   const [state, setState] = useState(fresh);
   const current = state.key === key ? state : fresh;
   if (state.key !== key) setState(fresh);
@@ -63,9 +66,10 @@ export function useCursorPage<Query extends PageQuery>(query: Query, args: PageA
     const from = read as Result<Query>[];
     const last = from[from.length - 1];
     const count = from.reduce((sum, result) => sum + result.page.length, 0);
-    if (count > pageSize || from.some((result, i) => result.page.length > reads[i].numItems)) {
-      // Live rows grew a read, or rows added to an earlier read pushed the page past its size:
-      // read it again from its start, so no row falls between it and the next page.
+    if (count > pageSize || from.some((result, i) => result.page.length > reads[i].numItems || (i + 1 < from.length && result.continueCursor !== reads[i + 1].cursor))) {
+      // Live rows grew a read, rows added to an earlier read pushed the page past its size, or a
+      // read now stops somewhere else than where the next one starts: read the page again from
+      // its start, so no row falls between two reads or shows in both.
       setState({ ...current, reads: [{ cursor: starts.at(-1)?.cursor ?? null, numItems: pageSize }], id: id + 1 });
     } else if (count < pageSize && !last.isDone && reads.length < MAX_READS_PER_PAGE) {
       setState({ ...current, reads: [...reads, { cursor: last.continueCursor, numItems: pageSize - count }] });
@@ -77,10 +81,12 @@ export function useCursorPage<Query extends PageQuery>(query: Query, args: PageA
     }
   }
 
-  const step = (nextStarts: Start[]) => setState({ ...current, starts: nextStarts, reads: [{ cursor: nextStarts.at(-1)?.cursor ?? null, numItems: pageSize }] });
-  // A page emptied by deletions steps back to the one before it.
+  const step = (nextStarts: Start[], end?: number) => setState({ ...current, starts: nextStarts, reads: [{ cursor: nextStarts.at(-1)?.cursor ?? null, numItems: pageSize }], end });
+  // An empty last page, after a list that ended on a full page or one emptied by deletions, steps
+  // back to the page before it, the list's end. ponytail: that page offers next again only once
+  // it's stepped away from, though rows may be added after it meanwhile.
   const emptied = data !== undefined && data.page.length === 0 && data.isDone && starts.length > 0;
-  if (emptied) step(starts.slice(0, -1));
+  if (emptied) step(starts.slice(0, -1), starts.length - 1);
   else if (data !== undefined && data !== shown) setShown(data);
 
   const visible = args === "skip" ? undefined : emptied ? shown : (data ?? shown);
@@ -98,7 +104,7 @@ export function useCursorPage<Query extends PageQuery>(query: Query, args: PageA
     /** Whether the list runs past one page, from the page shown, so a pager stays up while the next loads. */
     hasPages: page > 1 || (visible !== undefined && !visible.isDone),
     canPrevious: starts.length > 0,
-    canNext: data !== undefined && !data.isDone,
+    canNext: data !== undefined && !data.isDone && current.end !== starts.length,
     previous: () => step(starts.slice(0, -1)),
     next: () => {
       if (data && !data.isDone) step([...starts, { cursor: data.continueCursor, offset: data.offset + data.page.length }]);

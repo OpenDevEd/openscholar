@@ -9,7 +9,7 @@ import { seedAccount } from "../../lib/maxSize.test-support";
 import { runUntriggered } from "../../../tests/convex-test-with-limits";
 
 type Test = ReturnType<typeof convexTest>;
-type Status = "pending" | "extracting" | "completed" | "failed" | "cancelled" | "paused";
+type Status = "pending" | "indexing" | "extracting" | "completed" | "failed" | "cancelled" | "paused";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -59,6 +59,29 @@ describe("the extraction job list", () => {
       cursor = page.continueCursor;
     }
     expect(seen).toEqual(["delta cohort", "Alpha review", "beta trials", "Écoles rurales", "Charlie study", "zeta notes"]);
+  });
+
+  it("lists chats with waiting jobs and the unranked statuses together, each group newest first, across pages", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    await seedJobs(t, userId, [{ name: "waiting 1", status: "pending" }, { name: "chat" }, { name: "waiting 2", status: "pending" }, { name: "paused", status: "paused" }, { name: "indexing", status: "indexing" }, { name: "done", status: "completed" }]);
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    for (let reads = 0; reads < 10; reads++) {
+      const page: { page: Array<{ name: string }>; isDone: boolean; continueCursor: string } = await as.query(api.extraction.queries.listJobs, { sort: "status", paginationOpts: { cursor, numItems: 2 } });
+      seen.push(...page.page.map((job) => job.name));
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+    expect(seen).toEqual(["waiting 2", "chat", "waiting 1", "done", "indexing", "paused"]);
+  });
+
+  it("lists a person's jobs for the assistant acting for them, with no browser identity", async () => {
+    const t = convexTest(schema);
+    const { userId } = await seedAccount(t);
+    await seedJobs(t, userId, JOBS);
+    const page = await t.query(internal.extraction.queries.listJobsForAssistant, { userId, sort: "recent", paginationOpts: { cursor: null, numItems: 2 } });
+    expect(page.page.map((job) => job.name)).toEqual(["zeta notes", "Charlie study"]);
   });
 
   it("keeps only jobs whose name or description contains the text, in the order asked for, and shows no one else's", async () => {

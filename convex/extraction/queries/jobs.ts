@@ -11,7 +11,7 @@
 import { query, type QueryCtx } from "../../_generated/server";
 import { getDocumentSize, v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
-import { stream } from "convex-helpers/server/stream";
+import { mergedStream, stream } from "convex-helpers/server/stream";
 import schema from "../../schema";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { getCurrentUser } from "../../lib/auth";
@@ -82,10 +82,10 @@ const JOBS_PAGE_BYTES = 4 * 1024 * 1024;
 const JOBS_FILTER_ROWS = 2_000;
 
 /**
- * The order the list's status sort puts jobs in: waiting and running first, then finished,
- * then the rest. A job from before statuses were kept has none and sorts with the waiting.
+ * The groups the list's status sort puts jobs in: waiting and running first, then finished,
+ * then the rest together. A chat has no status and lists with the waiting jobs.
  */
-const STATUS_ORDER = [undefined, "pending", "downloading_pdfs", "extracting", "completed", "failed", "cancelled", "indexing", "creditsExhausted", "paused"] as const;
+const STATUS_GROUPS = [[undefined, "pending"], ["downloading_pdfs"], ["extracting"], ["completed"], ["failed"], ["cancelled"], ["indexing", "creditsExhausted", "paused"]] as const;
 
 export const jobSortValidator = v.union(v.literal("recent"), v.literal("oldest"), v.literal("name"), v.literal("status"));
 
@@ -97,7 +97,7 @@ export const listJobsAction = defineUserQuery({
   args: { paginationOpts: paginationOptsValidator, sort: jobSortValidator, text: v.optional(v.string()) },
   returns: paginationResultValidator(extractionJobValidator),
   run: async (ctx, userId, { paginationOpts, sort, text }) => {
-    await requireFeature(ctx, "extraction.enabled");
+    await requireFeature(ctx, "extraction.enabled", userId);
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, JOBS_PAGE_MAX), maximumBytesRead: JOBS_PAGE_BYTES };
     const needle = text?.trim().toLowerCase();
     // What a filtered page has read so far: the statuses of one page share one allowance.
@@ -109,22 +109,20 @@ export const listJobsAction = defineUserQuery({
       return !needle || job.name.toLowerCase().includes(needle) || (job.description?.toLowerCase().includes(needle) ?? false);
     };
     if (sort === "status") {
-      // One status after another in the list's order, each newest first. The cursor says which
-      // status the page stopped in and where. A page is at most `numItems` jobs, however many
-      // statuses it takes them from.
+      // One group of statuses after another in the list's order, each newest first. The cursor
+      // says which group the page stopped in and where. A page is at most `numItems` jobs,
+      // however many groups it takes them from.
       const from: { rank: number; after: string | null } = opts.cursor ? JSON.parse(opts.cursor) : { rank: 0, after: null };
-      const readStatus = async (rank: number, cursor: string | null, room: number) => {
-        const read = await stream(ctx.db, schema)
-          .query("extractionJobs")
-          .withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", STATUS_ORDER[rank]))
-          .order("desc")
+      const readGroup = async (rank: number, cursor: string | null, room: number) => {
+        const statuses = STATUS_GROUPS[rank].map((status) => stream(ctx.db, schema).query("extractionJobs").withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", status)).order("desc"));
+        const read = await mergedStream(statuses, ["_creationTime"])
           .filterWith(matches)
           .paginate({ cursor, numItems: room, maximumBytesRead: JOBS_PAGE_BYTES - bytes, maximumRowsRead: JOBS_FILTER_ROWS - rows });
         return { jobs: read.page, after: read.isDone ? null : read.continueCursor };
       };
       const page: Doc<"extractionJobs">[] = [];
-      for (let rank = from.rank; rank < STATUS_ORDER.length; rank++) {
-        const { jobs, after } = await readStatus(rank, rank === from.rank ? from.after : null, opts.numItems - page.length);
+      for (let rank = from.rank; rank < STATUS_GROUPS.length; rank++) {
+        const { jobs, after } = await readGroup(rank, rank === from.rank ? from.after : null, opts.numItems - page.length);
         page.push(...jobs);
         if (after !== null) return { page, isDone: false, continueCursor: JSON.stringify({ rank, after }) };
       }
