@@ -26,6 +26,12 @@ export const assistantReplyValidator = v.object({
   stop: v.optional(v.boolean()),
   /** The reply is written, and the conversation so far is being summarized before the chat takes its next message (./context.ts). */
   compacting: v.optional(v.boolean()),
+  /**
+   * The reply asked the person before running an action, and waits for their answer
+   * (./asking.ts). Nothing runs meanwhile, so the scheduled action has ended. What the reply
+   * needs to carry on is kept here: the message it answers, and the model it runs on.
+   */
+  asking: v.optional(v.object({ promptMessageId: v.string(), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator) })),
 });
 
 export const assistantThreadFields = {
@@ -60,6 +66,8 @@ export const assistantStepFields = {
   userId: v.id("users"),
   /** The model's ID for the call. Models reuse these, so nothing is looked up by it. */
   toolCallId: v.string(),
+  /** The tool the model called, on a step that asked first: its answer is written to the model under this name. */
+  tool: v.optional(v.string()),
   /** The action it ran, by its path in the registry. */
   path: v.string(),
   /** The action's arguments, as JSON. */
@@ -68,7 +76,11 @@ export const assistantStepFields = {
   subject: v.optional(v.string()),
   /** How many things its result lists, when it lists any. */
   count: v.optional(v.number()),
-  status: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
+  /**
+   * `asking`: the person is asked before it runs. `allowed`: they said yes, and the reply
+   * runs it as it carries on. `declined`: they said no, or stopped the reply.
+   */
+  status: v.union(v.literal("running"), v.literal("done"), v.literal("failed"), v.literal("asking"), v.literal("allowed"), v.literal("declined")),
   /** Why it failed, as the model was told. */
   error: v.optional(v.string()),
   /** What reverses it: the action to run, and its arguments as JSON. */

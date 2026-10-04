@@ -65,11 +65,13 @@ const calling =
     }),
   });
 
-/** What the model was told came of a call, from the request that followed it. */
-function told(request: number, toolCallId: string) {
+/** What the model was told came of a call, whole, from the request that followed it. */
+function outcome(request: number, toolCallId: string) {
   const parts = (requests[request] as Sent).flatMap((message) => (message.role === "tool" && Array.isArray(message.content) ? message.content : []));
-  return parts.find((part) => part.type === "tool-result" && part.toolCallId === toolCallId)?.output?.value;
+  return parts.find((part) => part.type === "tool-result" && part.toolCallId === toolCallId)?.output;
 }
+/** The same, as the value a call returned. */
+const told = (request: number, toolCallId: string) => outcome(request, toolCallId)?.value;
 
 async function chatOf(t: Test) {
   const who = await people(t);
@@ -80,14 +82,22 @@ async function chatOf(t: Test) {
     await who.asAda.mutation(api.assistant.replies.send, { threadId, text });
     await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: 5_000 });
   };
+  const thread = () => t.run(async (ctx) => ctx.db.get("assistantThreads", threadId));
+  /** Sends a message and waits until its reply stops to ask the person something. */
+  const sayUntilAsked = async (text: string) => {
+    await who.asAda.mutation(api.assistant.replies.send, { threadId, text });
+    await waitFor(async () => (await thread())?.reply?.asking !== undefined, { timeoutMs: 5_000 });
+  };
+  /** Waits until the chat is free again. */
+  const settled = () => waitFor(async () => !(await thread())?.reply, { timeoutMs: 5_000 });
   const steps = () => t.run(async (ctx) => ctx.db.query("assistantSteps").collect());
   const results = () => t.run(async (ctx) => (await ctx.db.query("assistantStepResults").collect()).map((row) => JSON.parse(row.result)));
   /** The chat as its page lists it, oldest first, a line per item. */
   const shown = async () =>
     (await who.asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page
-      .map((item) => ("text" in item ? `${item.role}: ${item.text}` : `step: ${item.action} ${item.status}${item.undone ? ", undone" : item.canUndo ? ", can be undone" : ""}`))
+      .map((item) => ("text" in item ? `${item.role}: ${item.text}${item.status === "stopped" ? "(stopped)" : ""}` : `step: ${item.action} ${item.status}${item.undone ? ", undone" : item.canUndo ? ", can be undone" : item.canAnswer ? ", can be answered" : ""}`))
       .reverse();
-  return { ...who, threadId, say, steps, results, shown };
+  return { ...who, threadId, say, sayUntilAsked, settled, thread, steps, results, shown };
 }
 
 describe("the assistant's tools", () => {
@@ -149,13 +159,12 @@ describe("the assistant's tools", () => {
     expect((await steps()).map((step) => [step.order, step.toolCallId, step.status])).toEqual([[0, "call_0", "done"], [1, "call_0", "done"]]);
   });
 
-  it("don't run an action that asks the person first, one that doesn't exist, one too long to be a tool, or one whose arguments don't fit, and say why", async () => {
+  it("don't run an action that doesn't exist, one too long to be a tool, or one whose arguments don't fit, and say why", async () => {
     const t = convexTest(schema);
-    const { threadId, say, steps } = await chatOf(t);
+    const { say, steps } = await chatOf(t);
     mockDoStream
       .mockImplementationOnce(
         calling(
-          { id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId } } },
           { id: "missing", name: "run_action", input: { name: "library/mutations:burn", arguments: {} } },
           // Every saved search and shortcut could be cleared through this one, and its arguments run to thousands of tokens.
           { id: "long", name: "run_action", input: { name: "research/records:change", arguments: { command: { kind: "clearSearches" } } } },
@@ -163,21 +172,18 @@ describe("the assistant's tools", () => {
         ),
       )
       .mockImplementationOnce(finishingDoStream(["I couldn't."]));
-    await say("Delete this chat");
+    await say("Clear everything");
 
-    expect(told(1, "delete")).toMatchObject({ error: expect.stringMatching(/asks the person first/) });
     expect(told(1, "missing")).toMatchObject({ error: expect.stringMatching(/No action is named/) });
     expect(told(1, "long")).toMatchObject({ error: expect.stringMatching(/No action is named/) });
     // The arguments the action takes come back with the refusal.
     expect(told(1, "unfit")).toMatchObject({ error: expect.stringMatching(/don't fit/), arguments: { type: "object" } });
-    // Nothing ran: the chat is still there, and no step was kept.
-    expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId))).not.toBeNull();
     expect(await steps()).toEqual([]);
   });
 
-  it("don't change a collection a library follows, which would show outside the account, until they can ask", async () => {
+  it("ask the person before a change that would show outside the account, and run it once they allow it", async () => {
     const t = convexTest(schema);
-    const { asAda, say, steps } = await chatOf(t);
+    const { asAda, asBen, ben, threadId, sayUntilAsked, settled, thread, steps, shown } = await chatOf(t);
     const { id: followed } = await asAda.mutation(api.library.collections.createCollection, { name: "Published" });
     const { id: own } = await asAda.mutation(api.library.collections.createCollection, { name: "Private" });
     // A library that follows the first collection.
@@ -186,24 +192,46 @@ describe("the assistant's tools", () => {
       const libraryId = await ctx.db.insert("evidenceLibraries", { organizationId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("evidenceLibraryCollectionSources", { libraryId, collectionId: followed, connectedByClerkUserId: "ada", connectedAt: 1 });
     });
-    mockDoStream
-      .mockImplementationOnce(
-        calling(
-          { id: "public", name: "library_mutations_setPaperInCollection", input: { paper: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" }, collectionId: followed, inCollection: true } },
-          { id: "private", name: "library_mutations_setPaperInCollection", input: { paper: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" }, collectionId: own, inCollection: true } },
-        ),
-      )
-      .mockImplementationOnce(finishingDoStream(["Added it to Private only."]));
-    await say("Add it to both");
+    const collected = () => t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").collect()).map((row) => row.collectionId));
+    const paper = { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" };
+    mockDoStream.mockImplementationOnce(
+      calling(
+        { id: "public", name: "library_mutations_setPaperInCollection", input: { paper, collectionId: followed, inCollection: true } },
+        { id: "private", name: "library_mutations_setPaperInCollection", input: { paper, collectionId: own, inCollection: true } },
+      ),
+    );
+    await sayUntilAsked("Add it to both");
 
-    expect(told(1, "public")).toMatchObject({ error: expect.stringMatching(/asks the person first/) });
-    expect(await steps()).toMatchObject([{ path: "library/mutations:setPaperInCollection", status: "done", input: expect.stringContaining(own) }]);
-    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").collect()).map((row) => row.collectionId))).toEqual([own]);
+    // The one nobody else sees ran at once. The other waits, and the reply holds the chat without running anything.
+    expect(await collected()).toEqual([own]);
+    expect(await shown()).toEqual(["user: Add it to both", "step: library/mutations:setPaperInCollection done, can be undone", "step: library/mutations:setPaperInCollection asking, can be answered"]);
+    expect(requests).toHaveLength(1);
+    await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "And another thing" })).rejects.toThrow(/waiting for an answer/);
+    // It would run with Ada's access, so only she can allow it.
+    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: ben }, role: "write" });
+    const asking = (await steps()).find((step) => step.status === "asking")!;
+    await expect(asBen.mutation(api.assistant.asking.answer, { threadId, stepId: asking._id, allow: true })).rejects.toThrow(/Only the person/);
+
+    mockDoStream.mockImplementationOnce(finishingDoStream(["It's in both now."]));
+    await asAda.mutation(api.assistant.asking.answer, { threadId, stepId: asking._id, allow: true });
+    await settled();
+    // It ran, as its own step, and the model read what came of it where its call left off.
+    expect(await collected()).toEqual(expect.arrayContaining([own, followed]));
+    expect(outcome(1, "public")).toMatchObject({ type: "json" });
+    expect(await shown()).toEqual([
+      "user: Add it to both",
+      "step: library/mutations:setPaperInCollection done, can be undone",
+      "step: library/mutations:setPaperInCollection done, can be undone",
+      "assistant: It's in both now.",
+    ]);
+    expect((await thread())?.reply).toBeUndefined();
+    // An answer given twice changes nothing.
+    await expect(asAda.mutation(api.assistant.asking.answer, { threadId, stepId: asking._id, allow: true })).rejects.toThrow(/already been answered/);
   });
 
-  it("ask first where a change would have no undo, and when the check and the change disagree the change itself refuses", async () => {
+  it("ask about each change that would have no undo, tell the model which the person didn't allow, and carry on once all are answered", async () => {
     const t = convexTest(schema);
-    const { ada, asAda, say, steps } = await chatOf(t);
+    const { ada, asAda, threadId, sayUntilAsked, settled, thread, steps, shown } = await chatOf(t);
     // The paper already has a rating on search cards, which removing it from the library would clear: saving it has no undo.
     await asAda.mutation(api.research.records.change, { accountId: "ada", requestId: "rated", command: { kind: "rating", paperId: "https://openalex.org/W1", rating: 4 } });
     const { id: followed } = await asAda.mutation(api.library.collections.createCollection, { name: "Published" });
@@ -212,26 +240,62 @@ describe("the assistant's tools", () => {
       const libraryId = await ctx.db.insert("evidenceLibraries", { organizationId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("evidenceLibraryCollectionSources", { libraryId, collectionId: followed, connectedByClerkUserId: "ada", connectedAt: 1 });
     });
-    mockDoStream
-      .mockImplementationOnce(
-        calling(
-          { id: "save", name: "library_mutations_saveToLibrary", input: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } },
-          // A library that follows the collection shows its name.
-          { id: "rename", name: "run_action", input: { name: "library/collections:renameCollection", arguments: { collectionId: followed, name: "Public reading" } } },
-        ),
-      )
-      .mockImplementationOnce(finishingDoStream(["Those need you."]));
-    await say("Save it and rename the collection");
-    expect(told(1, "save")).toMatchObject({ error: expect.stringMatching(/asks the person first/) });
-    expect(told(1, "rename")).toMatchObject({ error: expect.stringMatching(/asks the person first/) });
-    expect(await steps()).toEqual([]);
+    mockDoStream.mockImplementationOnce(
+      calling(
+        { id: "save", name: "library_mutations_saveToLibrary", input: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } },
+        // A library that follows the collection shows its name.
+        { id: "rename", name: "run_action", input: { name: "library/collections:renameCollection", arguments: { collectionId: followed, name: "Public reading" } } },
+      ),
+    );
+    await sayUntilAsked("Save it and rename the collection");
+    const [save, rename] = await steps();
+    expect([save, rename]).toMatchObject([
+      { path: "library/mutations:saveToLibrary", status: "asking", tool: "library_mutations_saveToLibrary", subject: "Tutoring at scale" },
+      { path: "library/collections:renameCollection", status: "asking", tool: "run_action", subject: "Public reading" },
+    ]);
+
+    // The first answer isn't the last, so the reply still waits.
+    await asAda.mutation(api.assistant.asking.answer, { threadId, stepId: rename._id, allow: false });
+    expect((await thread())?.reply?.asking).toBeDefined();
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Saved. The collection keeps its name."]));
+    await asAda.mutation(api.assistant.asking.answer, { threadId, stepId: save._id, allow: true });
+    await settled();
+    expect(outcome(1, "rename")).toMatchObject({ type: "execution-denied" });
+    expect(outcome(1, "save")).toMatchObject({ type: "json", value: { id: expect.any(String) } });
+    expect(await t.run(async (ctx) => (await ctx.db.get("collections", followed))?.name)).toBe("Published");
+    expect(await shown()).toEqual([
+      "user: Save it and rename the collection",
+      "step: library/mutations:saveToLibrary done",
+      "step: library/collections:renameCollection declined",
+      "assistant: Saved. The collection keeps its name.",
+    ]);
 
     // The change holds the same check in its own transaction, for a collection that comes to be followed between the two.
     const add = { userId: ada, paper: { openalexId: "https://openalex.org/W2", title: "Another paper" }, collectionId: followed, inCollection: true };
-    await expect(t.mutation(internal.library.mutations.setPaperInCollectionForAssistant, add)).rejects.toThrow(/asks the person first/);
+    await expect(t.mutation(internal.library.mutations.setPaperInCollectionForAssistant, add)).rejects.toThrow(/needs the person's say first/);
     // The person's own click is their approval.
     await t.mutation(internal.library.mutations.setPaperInCollectionForAssistant, { ...add, approved: true });
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").collect()).length)).toBe(1);
+  });
+
+  it("decline what a reply still asks when it's stopped, and take the next message as usual", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, say, sayUntilAsked, thread, shown } = await chatOf(t);
+    // Deleting a chat can't be undone.
+    const other = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
+    mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } }));
+    await sayUntilAsked("Delete my old chat");
+    await asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: (await thread())!.reply!.attemptId });
+
+    expect((await thread())?.reply).toBeUndefined();
+    expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).not.toBeNull();
+    expect(await shown()).toEqual(["user: Delete my old chat", "step: assistant/threads:remove declined", "assistant: (stopped)"]);
+    // The call the reply ended on has its answer, so the conversation still reads whole to the model.
+    requests.length = 0;
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Nothing was deleted."]));
+    await say("What happened?");
+    expect(outcome(0, "delete")).toMatchObject({ type: "execution-denied" });
+    expect((await shown()).at(-1)).toBe("assistant: Nothing was deleted.");
   });
 
   it("run at most so many actions in one reply, and once the reply has cost what one may, refuse the rest and say why", async () => {

@@ -17,7 +17,7 @@ import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 import { COMPACT_AT_TOKENS, compactedOf, contextSince, summarize } from "./context";
 import { lockArgs, turnArgs } from "./replies";
-import { MAX_STEPS, OUT_OF_CREDITS, OUT_OF_STEPS, toolsFor } from "./tools";
+import { MAX_STEPS, OUT_OF_CREDITS, OUT_OF_STEPS, askedSteps, forModel, toolsFor } from "./tools";
 import { runTurn } from "./turn";
 
 export const reply = internalAction({
@@ -69,6 +69,21 @@ export const reply = internalAction({
     // before its last request and once it has cost its hold, so the request after is its answer.
     let step = { number: 0, credits: 0 };
     const stopped = () => (step.number >= MAX_STEPS - 2 ? OUT_OF_STEPS : step.credits >= ASSISTANT_REPLY_CREDITS ? OUT_OF_CREDITS : null);
+    const order = read.answering ?? 0;
+    // Each action it runs is kept as a step of the exchange it's answering.
+    const { tools, approval, resume } = toolsFor(ctx, { userId: senderId, threadId, order, attemptId, stopped });
+    // A reply that waited for an answer carries on here: what the person allowed runs first,
+    // and its result goes where the model's call left off, so the model reads what came of it.
+    const allowed = await ctx.runQuery(internal.assistant.steps.allowed, { threadId, order });
+    for (const step of allowed) {
+      const output = forModel(await resume(step));
+      await assistant.saveMessage(ctx, {
+        threadId: agentThreadId,
+        promptMessageId,
+        message: { role: "tool", content: [{ type: "tool-result", toolCallId: step.toolCallId, toolName: step.tool, output: typeof output === "string" ? { type: "text", value: output } : { type: "json", value: output as never } }] },
+        skipEmbeddings: true,
+      });
+    }
     await runTurn(ctx, {
       agent: assistant,
       threadId: agentThreadId,
@@ -78,8 +93,8 @@ export const reply = internalAction({
       effort,
       attemptId,
       credits: ASSISTANT_REPLY_CREDITS,
-      // Each action it runs is kept as a step of the exchange it's answering.
-      tools: toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped }),
+      tools,
+      approval,
       maxSteps: MAX_STEPS,
       onStep: (now) => {
         step = now;
@@ -97,7 +112,10 @@ export const reply = internalAction({
           history = read;
         },
       }),
-      release: ({ lastInputTokens }) => ctx.runMutation(internal.assistant.replies.release, { ...lock, ended: { ...turn, ...history, lastInputTokens } }),
+      release: ({ lastInputTokens, asked }) => {
+        const calls = askedSteps(asked);
+        return ctx.runMutation(internal.assistant.replies.release, { ...lock, ended: { ...turn, ...history, lastInputTokens }, ...(calls.length ? { asking: { promptMessageId, calls } } : {}) });
+      },
     });
     return null;
   },

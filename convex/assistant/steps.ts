@@ -7,7 +7,10 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { internalMutation } from "../lib/functions";
+import { internalMutation, internalQuery } from "../lib/functions";
+import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
+import type { Doc } from "../_generated/dataModel";
+import { assistant } from "./agent";
 
 /** Characters of an action's arguments, of what reverses it, and of why it failed, that a step keeps. */
 export const STEP_TEXT_MAX = 16_000;
@@ -62,6 +65,25 @@ export const begin = internalMutation({
   handler: async (ctx, args) => ctx.db.insert("assistantSteps", { ...args, status: "running", startedAt: Date.now() }),
 });
 
+/** The steps of an exchange the person allowed, in the order they were asked: the reply runs them as it carries on. */
+export const allowed = internalQuery({
+  args: { threadId: v.id("assistantThreads"), order: v.number() },
+  returns: v.array(v.object({ stepId: v.id("assistantSteps"), toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string() })),
+  handler: async (ctx, { threadId, order }) =>
+    (await stepsOfExchange(ctx, threadId, order)).flatMap((step) => (step.status === "allowed" && step.tool ? [{ stepId: step._id, toolCallId: step.toolCallId, tool: step.tool, path: step.path, input: step.input }] : [])),
+});
+
+/** An allowed step starts to run. False when it isn't one any more, so it never runs twice. */
+export const resume = internalMutation({
+  args: { stepId: v.id("assistantSteps") },
+  returns: v.boolean(),
+  handler: async (ctx, { stepId }) => {
+    if ((await ctx.db.get("assistantSteps", stepId))?.status !== "allowed") return false;
+    await ctx.db.patch("assistantSteps", stepId, { status: "running", startedAt: Date.now() });
+    return true;
+  },
+});
+
 /** A step that read something ends with its result. A change ends its own (`endStep`). */
 export const read = internalMutation({
   // `result` is what the action returned, as JSON.
@@ -82,6 +104,44 @@ export const failed = internalMutation({
     return null;
   },
 });
+
+/**
+ * Tells the model the person didn't allow these calls: each gets its result, since a call
+ * left without one would make the conversation unreadable to the provider. The steps show
+ * as declined.
+ */
+export async function declineSteps(ctx: MutationCtx, agentThreadId: string, promptMessageId: string, steps: Doc<"assistantSteps">[]) {
+  if (!steps.length) return;
+  await assistant.saveMessage(ctx, {
+    threadId: agentThreadId,
+    promptMessageId,
+    message: {
+      role: "tool",
+      content: steps.map((step) => ({ type: "tool-result" as const, toolCallId: step.toolCallId, toolName: step.tool ?? "", output: { type: "execution-denied" as const, reason: "The person didn't allow this. Don't try it again unless they ask." } })),
+    },
+    skipEmbeddings: true,
+  });
+  for (const step of steps) await ctx.db.patch("assistantSteps", step._id, { status: "declined", endedAt: Date.now() });
+}
+
+/**
+ * Stops a reply that waits for an answer. Nothing is running, so it ends here: what it
+ * still asks is declined, the chat shows it as stopped, and the chat is free again.
+ */
+export async function stopAsking(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
+  const waiting = thread.reply?.asking;
+  if (!thread.reply || !waiting) return;
+  const steps = await stepsOfExchange(ctx, thread._id, thread.reply.order);
+  await declineSteps(ctx, thread.agentThreadId, waiting.promptMessageId, steps.filter((step) => step.status === "asking" || step.status === "allowed"));
+  await assistant.saveMessage(ctx, {
+    threadId: thread.agentThreadId,
+    promptMessageId: waiting.promptMessageId,
+    message: { role: "assistant", content: "" },
+    metadata: { status: "failed", error: ABORT_ERROR_STRING },
+    skipEmbeddings: true,
+  });
+  await ctx.db.patch("assistantThreads", thread._id, { reply: undefined });
+}
 
 /** Deletes a deleted chat's steps and their results, a batch at a time, until none are left. */
 export const forget = internalMutation({

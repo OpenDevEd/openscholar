@@ -14,7 +14,7 @@ import { listMessages, listStreams, type MessageDoc } from "@convex-dev/agent";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { effortValidator } from "../aiModelConfig/validators";
@@ -29,7 +29,7 @@ import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extract
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { compactionDue } from "./context";
-import { stepsOfExchange } from "./steps";
+import { stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 
 const FLAG = "assistant.enabled";
@@ -60,7 +60,9 @@ export const send = mutation({
       throw createError("VALIDATION_ERROR", `A message can be at most ${CHAT_PROMPT_MAX_CHARS.toLocaleString("en")} characters.`);
     }
     const { thread } = await requireThread(ctx, userId, threadId, "write");
-    if (await writing(ctx, thread.reply)) throw createError("CONFLICT", "The assistant is still replying in this chat.");
+    if (await writing(ctx, thread.reply)) {
+      throw createError("CONFLICT", thread.reply?.asking ? "The assistant is waiting for an answer in this chat. Answer it, or stop the reply." : "The assistant is still replying in this chat.");
+    }
     // Twice the limit, so locks whose action died can't hide live ones behind them. The dead
     // ones found are released here, which keeps the next count honest too.
     const mine = await ctx.db
@@ -69,6 +71,8 @@ export const send = mutation({
       .take(CHAT_CONCURRENCY_LIMIT * 2);
     let stillWriting = 0;
     for (const other of mine) {
+      // One that waits for an answer runs nothing, so it doesn't count.
+      if (other.reply?.asking) continue;
       if (await writing(ctx, other.reply)) stillWriting++;
       else await ctx.db.patch("assistantThreads", other._id, { reply: undefined });
     }
@@ -147,7 +151,10 @@ export const stop = mutation({
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId, "write");
     // A reply that has ended, or a later one, isn't this Stop's to stop.
-    if (thread.reply?.attemptId === attemptId) await ctx.db.patch("assistantThreads", threadId, { reply: { ...thread.reply, stop: true } });
+    if (thread.reply?.attemptId !== attemptId) return null;
+    // One that waits for an answer has nothing running to hear the stop, so it ends here.
+    if (thread.reply.asking) await stopAsking(ctx, thread);
+    else await ctx.db.patch("assistantThreads", threadId, { reply: { ...thread.reply, stop: true } });
     return null;
   },
 });
@@ -173,9 +180,16 @@ export const release = internalMutation({
     ...lockArgs,
     ended: v.optional(v.object({ ...turnArgs, lastInputTokens: v.number(), messages: v.number(), bytes: v.number() })),
     summarized: v.optional(v.object({ summary: v.string(), through: v.number() })),
+    // The reply ended on calls it asks the person about (./asking.ts): the message it answers, and each call as the step that waits.
+    asking: v.optional(
+      v.object({
+        promptMessageId: v.string(),
+        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) })),
+      }),
+    ),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, ended, summarized }) => {
+  handler: async (ctx, { threadId, attemptId, ended, summarized, asking }) => {
     const thread = await ctx.db.get("assistantThreads", threadId);
     if (thread?.reply?.attemptId !== attemptId) return null;
     const current = thread.reply;
@@ -191,6 +205,16 @@ export const release = internalMutation({
     const newest = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null }, excludeToolMessages: true })).page[0];
     const written = newest?.message?.role === "assistant" && newest.order === current.order ? previewOf(newest.text ?? "") : "";
     const preview = written ? { preview: written } : {};
+    if (ended && asking?.calls.length) {
+      // It holds the chat until every call is answered, or it's stopped. Its summary, if one is due, waits for the reply to end.
+      const now = Date.now();
+      for (const call of asking.calls) await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, ...call, status: "asking", startedAt: now });
+      const waiting = { ...thread, reply: { ...current, asking: { promptMessageId: asking.promptMessageId, modelId: ended.modelId, ...(ended.effort ? { effort: ended.effort } : {}) } } };
+      // Stopped as it asked: the stop found nothing running, and takes effect here.
+      if (current.stop) await stopAsking(ctx, waiting);
+      else await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: waiting.reply });
+      return null;
+    }
     const window = ended?.modelId ? (await ctx.db.get("models", ended.modelId))?.contextLength : undefined;
     // A stopped reply is left alone: whoever stopped it is waiting to write.
     if (ended && !current.stop && compactionDue({ ...ended, window })) {
@@ -237,8 +261,10 @@ const stepValidator = v.object({
   subject: v.optional(v.string()),
   /** How many things it found, when its result lists any. */
   count: v.optional(v.number()),
-  /** `failed` also covers a step whose reply died while it ran. */
-  status: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
+  /** `failed` also covers a step whose reply died while it ran. `asking`: the person is asked before it runs. `declined`: they said no, or stopped the reply. */
+  status: v.union(v.literal("running"), v.literal("done"), v.literal("failed"), v.literal("asking"), v.literal("declined")),
+  /** Whether the person reading can answer it (./asking.ts): it asks, and it would run for them. */
+  canAnswer: v.boolean(),
   /** Why it failed, as the assistant was told. */
   error: v.optional(v.string()),
   /** Whether the person reading can undo it (./undo.ts): it returned what reverses it (#342), it was done for them, and it isn't undone yet. */
@@ -271,6 +297,17 @@ const messageValidator = v.object({
   model: v.optional(v.string()),
   at: v.number(),
 });
+
+/**
+ * A step's status as the chat shows it. One the person allowed is running. One still running,
+ * or still asking, when its exchange isn't being answered ended with its reply.
+ */
+function shownStatus(status: Doc<"assistantSteps">["status"], answering: boolean) {
+  if (status === "allowed") return answering ? ("running" as const) : ("failed" as const);
+  if (status === "running" && !answering) return "failed" as const;
+  if (status === "asking" && !answering) return "declined" as const;
+  return status;
+}
 
 /** Who sent a message, for the people a page of messages names. */
 async function senders(ctx: QueryCtx, rows: MessageDoc[]) {
@@ -321,8 +358,8 @@ export const messagesAction = defineUserQuery({
           action: step.path,
           ...(step.subject ? { subject: step.subject } : {}),
           ...(step.count === undefined ? {} : { count: step.count }),
-          // A step still running when its exchange isn't being answered died with its reply.
-          status: step.status === "running" && answering !== step.order ? ("failed" as const) : step.status,
+          status: shownStatus(step.status, answering === step.order),
+          canAnswer: step.status === "asking" && answering === step.order && step.userId === userId,
           ...(step.error ? { error: step.error } : {}),
           canUndo: step.undo !== undefined && step.userId === userId && step.undone !== true,
           undone: step.undone === true,
@@ -403,6 +440,8 @@ export const live = query({
       stopping: v.boolean(),
       /** The reply is written, and the chat is summarizing the conversation so far before it takes the next message. */
       compacting: v.boolean(),
+      /** The reply waits for the person to answer what it asked. Stop ends it. */
+      asking: v.boolean(),
       text: v.string(),
     }),
   ),
@@ -427,6 +466,7 @@ export const live = query({
       startedAt: current.startedAt,
       stopping: current.stop === true,
       compacting: current.compacting === true,
+      asking: current.asking !== undefined,
       text: stream ? await textSoFar(ctx, thread.agentThreadId, stream.streamId) : "",
     };
   },
