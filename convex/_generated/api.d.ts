@@ -16,6 +16,7 @@ import type * as ai_actions from "../ai/actions.js";
 import type * as ai_config from "../ai/config.js";
 import type * as ai_helpers from "../ai/helpers.js";
 import type * as ai_serverModel from "../ai/serverModel.js";
+import type * as ai_validators from "../ai/validators.js";
 import type * as aiModelConfig_admin from "../aiModelConfig/admin.js";
 import type * as aiModelConfig_internal from "../aiModelConfig/internal.js";
 import type * as aiModelConfig_queries from "../aiModelConfig/queries.js";
@@ -368,6 +369,7 @@ declare const fullApi: ApiFromModules<{
   "ai/config": typeof ai_config;
   "ai/helpers": typeof ai_helpers;
   "ai/serverModel": typeof ai_serverModel;
+  "ai/validators": typeof ai_validators;
   "aiModelConfig/admin": typeof aiModelConfig_admin;
   "aiModelConfig/internal": typeof aiModelConfig_internal;
   "aiModelConfig/queries": typeof aiModelConfig_queries;
