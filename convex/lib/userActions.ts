@@ -107,7 +107,7 @@ const userArg = { userId: v.id("users") };
  */
 const changeArgs = { ...userArg, stepId: v.optional(v.id("assistantSteps")), approved: v.optional(v.boolean()) };
 /** What the assistant is told when a call asks the person first. */
-export const ASKS_FIRST = "This asks the person first, and a chat can't ask yet. Tell them what you would have done, so they can do it themselves.";
+export const ASKS_FIRST = "This needs the person's say first, and it can't be asked for here. Tell them what you would have done, so they can do it themselves.";
 
 /** The acting user and the action's own arguments, from an internal call. */
 function asUser<Args extends PropertyValidators>(args: ObjectType<Args & typeof userArg>) {

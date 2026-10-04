@@ -48,6 +48,8 @@ export type Turn = {
   maxSteps?: number;
   /** Hears, before each request, which one it is (from 0) and the credits the reply's requests have cost so far. */
   onStep?: (step: { number: number; credits: number }) => void;
+  /** The reply's rule for asking the person before a tool call runs (the AI SDK's `toolApproval`). A call it asks about ends the reply there, unanswered. */
+  approval?: (options: { toolCall: { toolName: string; input: unknown } }) => unknown;
   /** The paper chat the reply is in, which its charge is recorded under. */
   jobId?: Id<"extractionJobs">;
   /** IDs for the log lines. */
@@ -60,7 +62,14 @@ export type Turn = {
    * Releases the reply's lock. Runs whether the reply finished, failed or was stopped, with
    * the input tokens the provider reported for the reply's last request (0 when none finished).
    */
-  release: (outcome: { lastInputTokens: number }) => Promise<unknown>;
+  release: (outcome: {
+    lastInputTokens: number;
+    /** The tool calls the reply ended on, which wait for the person's answer. */
+    asked: Array<{ toolCallId: string; toolName: string; input: unknown }>;
+    /** What its requests cost, in credits, and how many it made. */
+    credits: number;
+    requests: number;
+  }) => Promise<unknown>;
   /** What the model is sent, in place of the agent's own choice of recent messages. */
   contextHandler?: ContextHandler;
   contextOptions?: ContextOptions;
@@ -147,6 +156,8 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   // its OpenRouter generation record.
   let completedUsd = 0;
   let completedTokens = 0;
+  // The tool calls the reply asked the person about, which it ended on without running.
+  const asked: Array<{ toolCallId: string; toolName: string; input: unknown }> = [];
   const stepUsages: Usage[] = [];
   const completedGenerations = new Set<string>();
   let finished = false;
@@ -196,6 +207,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           ...(turn.tools
             ? {
                 tools: turn.tools,
+                ...(turn.approval ? { toolApproval: turn.approval as never } : {}),
                 stopWhen: isStepCount(turn.maxSteps ?? 1),
                 prepareStep: ({ stepNumber }: { stepNumber: number }) => {
                   turn.onStep?.({ number: stepNumber, credits: convertUsdToCredits({ usd: completedUsd }) || 0 });
@@ -211,7 +223,10 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           // Claude caches the context and earlier turns; the thread id keeps
           // every turn on the same upstream host so that cache stays warm.
           providerOptions: callOptions(model, { cache: turn.cache ?? true, sessionId: threadId, effort: turn.effort }),
-          onStepEnd: async ({ usage, providerMetadata }) => {
+          onStepEnd: async ({ usage, providerMetadata, content }) => {
+            for (const part of content) {
+              if (part.type === "tool-approval-request" && !part.isAutomatic) asked.push({ toolCallId: part.toolCall.toolCallId, toolName: part.toolCall.toolName, input: part.toolCall.input });
+            }
             stepUsages.push(usageOf({ usage, providerMetadata }));
             const inputTokens = usage?.inputTokens ?? 0;
             const outputTokens = usage?.outputTokens ?? 0;
@@ -466,7 +481,13 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
     // current per-thread lock, but defence in depth). See plan § 3
     // placement notes.
     await stopAbortPoller();
-    await turn.release({ lastInputTokens: stepUsages.at(-1)?.inputTokens ?? 0 });
+    // A reply that failed or was stopped keeps none of its last message, so nothing in it waits for an answer.
+    await turn.release({
+      lastInputTokens: stepUsages.at(-1)?.inputTokens ?? 0,
+      asked: finished && !streamErrored && !streamAbortedByUser ? asked : [],
+      credits: convertUsdToCredits({ usd: completedUsd }) || 0,
+      requests: stepUsages.length,
+    });
   }
 }
 
