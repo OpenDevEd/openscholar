@@ -305,6 +305,12 @@ jobs:
             exit 1
           fi
           npx convex deploy --yes
+          # Each run reserves a library, and an organization holds 200 at most: the test
+          # backend starts every run with none. Its only libraries are the ones runs made.
+          : > "$RUNNER_TEMP/no-rows.jsonl"
+          for table in evidenceLibraries evidenceLibraryConfigDrafts evidenceLibraryConfigRevisions evidenceLibraryConfigSections evidenceLibraryConfigOperations evidenceLibraryRuntimeBindings; do
+            npx convex import --table "$table" --replace --yes "$RUNNER_TEMP/no-rows.jsonl"
+          done
 
       - name: Run auth and citation E2E
         if: steps.auth-environment.outputs.available == 'true'
