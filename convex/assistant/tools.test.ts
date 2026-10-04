@@ -3,7 +3,8 @@
 // message, each run is kept as a step, and the model reads what came of it.
 import { convexTest } from "convex-test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { api, internal } from "../_generated/api";
+import { listMessages, saveMessages } from "@convex-dev/agent";
+import { api, components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
@@ -12,8 +13,8 @@ import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
-import { MAX_ASKS, MODEL_READS, forModel } from "./steps";
-import { DEFINITION_MAX, MAX_CALLS, MAX_STEPS, core, definition, found, written } from "./tools";
+import { MAX_ASKS, MODEL_READS, STEPS_SHOWN, forModel } from "./steps";
+import { DEFINITION_MAX, MAX_FAILED_ROUNDS, circling, core, definition, found, written } from "./tools";
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
@@ -452,25 +453,26 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId: theirs })))).toEqual([{ name: "collection", value: theirs }]);
   });
 
-  it("keep one reply to its requests through a pause: carrying on gets what's left of them", async () => {
+  it("carry a reply on through a pause, for as many requests as its work takes", async () => {
     const t = convexTest(schema);
     const { asAda, threadId, sayUntilAsked, settled, steps, thread } = await chatOf(t);
     const other = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
-    const list = () => ({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } });
-    // Rounds of reading, then a round that asks: all but two of the reply's requests.
-    const before = MAX_STEPS - 2;
+    // No three calls in a row alike: the same call a third time running isn't run.
+    const list = () => ({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: (requests.length % 3) + 1 } } });
+    // More rounds of reading than a reply was once held to, then a round that asks.
+    const before = 30;
     mockDoStream.mockImplementation(async () => (requests.length < before ? calling(list())() : calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } })()));
     await sayUntilAsked("Read around, then delete my old chat");
     expect((await thread())?.asking).toMatchObject({ rounds: before, made: before });
+    expect((await steps()).filter((step) => step.status === "done")).toHaveLength(before - 1);
 
-    // Carrying on, the model keeps calling. Its actions have stopped, and its second request is made to answer.
+    // Carrying on, it reads some more, and answers when it's done. No request is made its answer for it.
     toolChoices.length = 0;
-    mockDoStream.mockImplementation(async (options: { toolChoice?: { type: string } }) => (options.toolChoice?.type === "none" ? finishingDoStream(["Deleted. That's all I could do in one reply."])() : calling(list())()));
+    mockDoStream.mockImplementation(async () => (requests.length < before + 4 ? calling(list())() : finishingDoStream(["Deleted, and read the rest."])()));
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: true });
     await settled();
-    expect(requests).toHaveLength(MAX_STEPS);
-    expect(toolChoices).toEqual(["auto", "none"]);
-    expect(told(MAX_STEPS - 1, `c${MAX_STEPS - 1}`)).toMatchObject({ error: expect.stringMatching(/as many rounds/) });
+    expect(requests).toHaveLength(before + 4);
+    expect(toolChoices).toEqual(["auto", "auto", "auto", "auto"]);
     expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).toBeNull();
   });
 
@@ -494,11 +496,11 @@ describe("the assistant's tools", () => {
     await t.run(async (ctx) => ctx.scheduler.cancel(reply.scheduledId));
   });
 
-  it("ask about a few actions at a time, and carry on within what's left of one reply's rounds and credits", async () => {
+  it("ask about a few actions at a time, and carry on from the answers with the person's credits still to spend", async () => {
     const t = convexTest(schema);
     const { asAda, threadId, sayUntilAsked, settled, steps, thread } = await chatOf(t);
     const chats = await Promise.all(Array.from({ length: MAX_ASKS + 1 }, (_, index) => asAda.mutation(api.assistant.threads.create, { title: `Chat ${index}` })));
-    // One round that asks about more than a person would read. Its request reads enough to cost more than one reply may.
+    // One round that asks about more than a person would read. Its request reads enough to cost more than one request holds.
     mockDoStream.mockImplementationOnce(calling(...chats.map((chat, index) => ({ id: `rename${index}`, name: "run_action", input: { name: "assistant/threads:rename", arguments: { threadId: chat, title: `Renamed ${index}` } }, ...(index ? {} : { read: 100_000 }) }))));
     await sayUntilAsked("Rename them all");
     const asked = await steps();
@@ -514,35 +516,30 @@ describe("the assistant's tools", () => {
     expect(outcome(1, `rename${MAX_ASKS}`)).toMatchObject({ type: "execution-denied" });
     expect(await t.run(async (ctx) => (await ctx.db.get("assistantThreads", chats[0]))?.title)).toBe("Renamed 0");
     expect(await t.run(async (ctx) => (await ctx.db.get("assistantThreads", chats[MAX_ASKS]))?.title)).toBe(`Chat ${MAX_ASKS}`);
-    // The reply had already cost what one may before it asked, so what it calls next isn't run.
-    expect(told(2, "more")).toMatchObject({ error: expect.stringMatching(/spent the credits/) });
+    // What the reply had cost before it asked holds nothing back: what it calls next runs.
+    expect(told(2, "more")).toMatchObject({ page: [] });
   });
 
-  it("run at most so many actions in one reply, and once the reply has cost what one may, refuse the rest and say why", async () => {
+  it("run as many actions as a reply's work takes, and go on past what one request holds", async () => {
     const t = convexTest(schema);
     const { say, steps, shown } = await chatOf(t);
-    const list = (index: number) => ({ id: `c${index}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } });
-    // One round that calls more actions than a reply may run.
-    mockDoStream.mockImplementationOnce(calling(...Array.from({ length: MAX_CALLS + 2 }, (_, index) => list(index)))).mockImplementationOnce(finishingDoStream(["That's all I could run."]));
+    const list = (index: number, read?: number) => ({ id: `c${index}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: (index % 3) + 1 } }, ...(read ? { read } : {}) });
+    // More actions in one round than a reply was once held to in all: every one of them runs.
+    mockDoStream.mockImplementationOnce(calling(...Array.from({ length: 120 }, (_, index) => list(index)))).mockImplementationOnce(finishingDoStream(["Looked at all of it."]));
     await say("Look at everything");
-    expect(await steps()).toHaveLength(MAX_CALLS);
-    expect(told(1, `c${MAX_CALLS + 1}`)).toMatchObject({ error: expect.stringMatching(/at most/) });
+    expect((await steps()).filter((step) => step.status === "done")).toHaveLength(120);
 
-    // A round that read a great deal costs more than a reply may: about 2,000 credits, of a person with many more.
-    // The action called next isn't run, and the model is told why, so it answers. Its tools stay as they were:
-    // taking them away would void the cache.
+    // A round that read a great deal costs about 2,000 credits, twice what a request holds. The person has many
+    // more, so the action called next runs, and no request is made the reply's answer for it.
     requests.length = 0;
     toolChoices.length = 0;
-    mockDoStream
-      .mockImplementationOnce(calling({ ...list(1_000), read: 150_000 }))
-      // Looking for something else to do is refused with the rest.
-      .mockImplementationOnce(calling(list(1_001), { id: "find", name: "find_action", input: { keywords: "rename collection" } }, { id: "run", name: "run_action", input: { name: "no/such:action", arguments: {} } }))
-      .mockImplementationOnce(finishingDoStream(["Stopping here."]));
+    mockDoStream.mockImplementationOnce(calling(list(1_000, 150_000))).mockImplementationOnce(calling(list(1_001))).mockImplementationOnce(finishingDoStream(["Done."]));
     await say("Look again");
-    for (const id of ["c1001", "find", "run"]) expect(told(2, id)).toMatchObject({ error: expect.stringMatching(/spent the credits/) });
-    expect(await steps()).toHaveLength(MAX_CALLS + 1);
+    expect(told(2, "c1001")).toMatchObject({ page: [] });
     expect(toolChoices).toEqual(["auto", "auto", "auto"]);
-    expect((await shown()).at(-1)).toBe("assistant: Stopping here.");
+    expect((await shown()).at(-1)).toBe("assistant: Done.");
+    // Each request settled what it cost, and nothing is left held.
+    expect(await t.run(async (ctx) => ctx.db.query("billingHolds").collect())).toEqual([]);
   });
 
   it("go on to a reply's next request on what the person has left, send back only calls that ran, and keep what a request read when the next one fails", async () => {
@@ -647,7 +644,7 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => ctx.db.query("libraryItems").collect())).toEqual([]);
   });
 
-  it("show a step whose reply died as failed, not as running for ever, and keep the last request of a reply for its answer", async () => {
+  it("show a step whose reply died as failed, not as running for ever, and stop a reply that goes round in circles", async () => {
     const t = convexTest(schema);
     const { ada, asAda, threadId, say, shown } = await chatOf(t);
     // A step whose action is still running, as the page reads it mid-reply.
@@ -657,20 +654,134 @@ describe("the assistant's tools", () => {
     // Its reply is over without ending it: the step shows as failed, not as running for ever.
     expect((await shown())[1]).toBe("step: library/mutations:saveToLibrary failed");
 
-    // A reply that keeps calling tools is told to stop a round before its last request, which is made to answer.
+    // A reply whose every action fails, request after request, is told so after so many of them: its actions are
+    // refused with the reason. One that calls an action again gets a request that is its answer.
     requests.length = 0;
     toolChoices.length = 0;
     mockDoStream.mockReset();
-    mockDoStream.mockImplementation(async (options: { toolChoice?: { type: string } }) =>
-      options.toolChoice?.type === "none" ? finishingDoStream(["Here is what I did."])() : calling({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } })(),
-    );
+    const missing = () => calling({ id: `c${requests.length}`, name: "run_action", input: { name: `no/such:action${requests.length}`, arguments: {} } })();
+    mockDoStream.mockImplementation(async (options: { toolChoice?: { type: string } }) => (options.toolChoice?.type === "none" ? finishingDoStream(["I couldn't find a way to do that."])() : missing()));
     await say("Keep going");
-    expect(requests).toHaveLength(MAX_STEPS);
-    expect(told(MAX_STEPS - 1, `c${MAX_STEPS - 1}`)).toMatchObject({ error: expect.stringMatching(/as many rounds/) });
+    expect(toolChoices).toEqual([...Array.from({ length: MAX_FAILED_ROUNDS + 1 }, () => "auto"), "none"]);
+    expect(told(MAX_FAILED_ROUNDS + 1, `c${MAX_FAILED_ROUNDS + 1}`)).toMatchObject({ error: expect.stringMatching(/Every action in your last/) });
+    expect((await shown()).at(-1)).toBe("assistant: I couldn't find a way to do that.");
+
+    // A model that calls an action in that request all the same gets it refused, and the reply ends there.
+    requests.length = 0;
+    mockDoStream.mockReset();
+    mockDoStream.mockImplementation(async () => missing());
+    await say("And again");
+    expect(requests).toHaveLength(MAX_FAILED_ROUNDS + 2);
+
+    // Three requests running that make the same call and get the same result: the reply is going round in
+    // circles. A fourth identical call isn't run, and the model is told why. The request after is its answer.
+    requests.length = 0;
+    toolChoices.length = 0;
+    mockDoStream.mockReset();
+    const same = () => calling({ id: `same${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } })();
+    mockDoStream.mockImplementation(async (options: { toolChoice?: { type: string } }) => (options.toolChoice?.type === "none" ? finishingDoStream(["You have no collections."])() : same()));
+    await say("Look, and look again");
+    expect(toolChoices).toEqual(["auto", "auto", "auto", "auto", "none"]);
+    expect(told(4, "same4")).toMatchObject({ error: expect.stringMatching(/same thing over again/) });
+    expect((await shown()).at(-1)).toBe("assistant: You have no collections.");
     // A step that lists things says how many it found.
-    expect((await t.run(async (ctx) => ctx.db.query("assistantSteps").collect())).at(-1)).toMatchObject({ path: "library/collections:listCollections", count: 0 });
-    expect(toolChoices.at(-1)).toBe("none");
-    expect((await shown()).at(-1)).toBe("assistant: Here is what I did.");
+    expect((await t.run(async (ctx) => ctx.db.query("assistantSteps").collect())).at(-1)).toMatchObject({ path: "library/collections:listCollections", status: "done", count: 0 });
+
+    // Two requests that take turns, three times over, are the same thing.
+    expect(circling(["a", "b", "a", "b", "a", "b"])).toBe(true);
+    // A read whose result changes, such as a job's progress, is never a circle, and neither is work that varies.
+    expect(circling(["a", "a", "b"])).toBe(false);
+    expect(circling(["a", "b", "c", "a", "b", "c"])).toBe(false);
+    expect(circling(["a", "b", "a", "b"])).toBe(false);
+  });
+
+  it("stop asking the person for the same thing once they have declined it three times", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, sayUntilAsked, settled, steps, shown, thread } = await chatOf(t);
+    const other = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
+    const remove = () => calling({ id: `remove${requests.length}`, name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } })();
+    mockDoStream.mockImplementation(async (options: { toolChoice?: { type: string } }) => (options.toolChoice?.type === "none" ? finishingDoStream(["I'll leave it."])() : remove()));
+    await sayUntilAsked("Delete my old chat");
+    // Declined, and asked again, three times over.
+    for (let round = 0; round < 3; round++) {
+      const waiting = (await steps()).find((step) => step.status === "asking")!;
+      await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: waiting._id, allow: false });
+      if (round < 2) await waitFor(async () => (await steps()).some((step) => step.status === "asking"), { timeoutMs: 5_000 });
+    }
+    await settled();
+    // The fourth time it isn't asked: the model is told it's going round in circles, and the reply ends with its answer.
+    expect((await steps()).filter((step) => step.status === "declined")).toHaveLength(3);
+    expect((await thread())?.asking).toBeUndefined();
+    expect(told(4, "remove4")).toMatchObject({ error: expect.stringMatching(/same thing over again/) });
+    expect((await shown()).at(-1)).toBe("assistant: I'll leave it.");
+    expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).not.toBeNull();
+  });
+
+  it("list an exchange's newest steps with its messages, and page through the ones before them", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, threadId, say } = await chatOf(t);
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Done."]));
+    await say("Save them all");
+    // More changes than one page lists, as a reply with no cap on its actions can make.
+    const total = STEPS_SHOWN + 30;
+    await t.run(async (ctx) => {
+      for (let index = 0; index < total; index++) {
+        await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: `call${index}`, path: "library/mutations:saveToLibrary", input: "{}", subject: `Paper ${index}`, status: "done", undo: { path: "library/mutations:removeFromLibrary", args: "{}" }, startedAt: index, endedAt: index });
+      }
+    });
+    const withMessages = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.flatMap((item) => (item.role === "step" ? [item] : []));
+    // Newest first, like the page: the last one made is listed first, and the first thirty aren't among them.
+    expect(withMessages).toHaveLength(STEPS_SHOWN);
+    expect(withMessages[0].subject).toBe(`Paper ${total - 1}`);
+    // The ones before them are read a page at a time, each with its Undo.
+    const first = await asAda.query(api.assistant.replies.steps, { threadId, order: 0, paginationOpts: { cursor: null, numItems: STEPS_SHOWN } });
+    const rest = await asAda.query(api.assistant.replies.steps, { threadId, order: 0, paginationOpts: { cursor: first.continueCursor, numItems: STEPS_SHOWN } });
+    expect(first.page.map((step) => step.id)).toEqual(withMessages.map((step) => step.id));
+    expect(rest.page).toHaveLength(30);
+    expect(rest.page.at(-1)).toMatchObject({ subject: "Paper 0", canUndo: true });
+    expect(rest.isDone).toBe(true);
+  });
+
+  it("give a call left without a result its result, however long the reply it's in ran", async () => {
+    const t = convexTest(schema);
+    const { say, shown, thread } = await chatOf(t);
+    mockDoStream.mockImplementationOnce(finishingDoStream(["On it."]));
+    await say("Read a great deal");
+    // A long reply's exchange, as its requests left it: more rounds of calls and results than the repair reads,
+    // then a request the provider cut short, whose call never ran.
+    const agentThreadId = (await thread())!.agentThreadId;
+    await t.run(async (ctx) => {
+      const prompt = (await listMessages(ctx, components.agent, { threadId: agentThreadId, paginationOpts: { cursor: null, numItems: 10 } })).page.find((doc) => doc.message?.role === "user")!;
+      const call = (id: string) => ({ role: "assistant" as const, content: [{ type: "tool-call" as const, toolCallId: id, toolName: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } }] });
+      const result = (id: string) => ({ role: "tool" as const, content: [{ type: "tool-result" as const, toolCallId: id, toolName: "library_collections_listCollections", output: { type: "json" as const, value: { page: [] } } }] });
+      for (let round = 0; round < 45; round++) await saveMessages(ctx, components.agent, { threadId: agentThreadId, promptMessageId: prompt._id, messages: [call(`c${round}`), result(`c${round}`)] });
+      await saveMessages(ctx, components.agent, { threadId: agentThreadId, promptMessageId: prompt._id, messages: [call("never")] });
+    });
+    // The next message is still answered: the call has its result, though the exchange's first message is far behind the ones read.
+    requests.length = 0;
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Here you are."]));
+    await say("And now?");
+    expect(outcome(0, "never")).toMatchObject({ type: "execution-denied" });
+    expect((await shown()).at(-1)).toBe("assistant: Here you are.");
+  });
+
+  it("hold what the person really has when the account's copy of the balance is behind a charge", async () => {
+    const t = convexTest(schema);
+    const { ada, say } = await chatOf(t);
+    // The account's copy says 1,500 credits. The billing service has 900: a charge was just made.
+    await t.run(async (ctx) => {
+      fakeAutumn.setBalance(ada, { free: 900, paid: 0 });
+      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      await ctx.db.patch("billingAccounts", account!._id, { balance: 1_500 });
+    });
+    let held: number[] = [];
+    mockDoStream.mockImplementationOnce(async () => {
+      held = await t.run(async (ctx) => (await ctx.db.query("billingHolds").collect()).map((row) => row.credits));
+      return finishingDoStream(["Here."])();
+    });
+    await say("Hello");
+    // A hold of 1,000 was refused, so the request held the 900 there are, and went ahead.
+    expect(held).toEqual([900]);
   });
 
   it("are undone by the person they ran for, once, and by no one else in the chat", async () => {
