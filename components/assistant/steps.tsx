@@ -238,7 +238,12 @@ function RunMap({ threadId, steps }: { threadId: Id<"assistantThreads">; steps: 
             const working = step.status === "running";
             const faded = step.undone || step.status === "failed" || step.status === "declined";
             const state = step.status === "asking" ? t("steps.waiting") : step.status === "allowed" ? t("steps.allowed") : step.status === "declined" ? t("steps.declined") : null;
-            const title = t(`steps.${words}.${working || step.status === "failed" ? "doing" : "did"}`);
+            // A step that waits for an answer, or was allowed or not, hasn't happened: it's named as what was asked, not as done.
+            const asked = `steps.${words}.ask` as "steps.other.ask";
+            const title =
+              step.status === "asking" || step.status === "allowed" || step.status === "declined"
+                ? t.has(asked) ? t(asked) : t("steps.other.ask")
+                : t(`steps.${words}.${working || step.status === "failed" ? "doing" : "did"}`);
             return (
               <motion.div
                 key={step.id}
