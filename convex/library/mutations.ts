@@ -209,7 +209,10 @@ export const saveToLibraryAction = defineUserMutation({
   undoable: true,
   // The saves that return no undo (see `run`): one whose undo would lose the rating the paper has on search cards.
   asksFirst: (ctx, userId, { rating, openalexId }) => saveAsksFirst(ctx, userId, openalexId, rating),
-  run: async (ctx, userId, { rating, ...paper }, author) => {
+  run: async (ctx, userId, { rating, ...given }, author) => {
+    // `paperData` is the record a results card holds, which the library page shows the paper from. The
+    // assistant has no such record and made one up, which that page couldn't read: its saves keep none.
+    const paper = author === "assistant" ? { ...given, paperData: undefined } : given;
     const { id, undo } = await savePaper(ctx, userId, paper, rating, author);
     return { id, ...(undo ? { undo } : {}) };
   },

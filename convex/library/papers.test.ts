@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 
 let requests: URL[] = [];
@@ -75,6 +75,13 @@ describe("saving a paper by its ID", () => {
     // A new paper saved straight into a collection is undone by removing it, which takes it out of the collection too.
     expect((await ada.action(save, { id: "W8", collectionId })).undo).toMatchObject({ path: "library/mutations:removeFromLibrary" });
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").take(5)).length)).toBe(2);
+
+    // The save the page uses takes a paper's whole record. From the assistant, the card's own record isn't kept: it made one up, and the library page couldn't read it.
+    await t.mutation(internal.library.mutations.saveToLibraryForAssistant, { userId, openalexId: "W9", title: "Made up", paperData: JSON.stringify({ title: "No ID here" }) });
+    const madeUp = (await items()).find((row) => row.title === "Made up")!;
+    expect(madeUp).toMatchObject({ openalexId: "https://openalex.org/W9" });
+    expect(madeUp.paperData).toBeUndefined();
+    await ada.mutation(api.library.mutations.removeFromLibrary, { openalexId: "W9" });
 
     // What isn't a paper's ID, a paper OpenAlex doesn't have, and a rating off the scale are refused, and save nothing.
     await expect(ada.action(save, { id: "the third one" })).rejects.toThrow(/saved by its ID/);
