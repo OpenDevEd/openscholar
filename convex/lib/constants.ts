@@ -27,13 +27,12 @@ export const ESTIMATED_CREDITS_PER_QUERY = 2;
 export const ESTIMATED_CREDITS_PER_CHAT_MESSAGE = 200;
 
 /**
- * Credits held before an assistant reply, and the most its requests may cost before its
- * tools stop running (#326). A person with fewer holds what they have, down to a chat
- * message's hold. The reply then settles to what it really cost. Measured on
- * 2026-10-04 with Claude Sonnet 5.5: a reply's first request costs about 300 when the
- * fixed tool list isn't cached yet, and a request that reads it from cache about 30.
+ * Credits one request of an assistant reply holds before it's made. A person with fewer
+ * holds what they have. The request then settles to what it really cost. It isn't a cap on
+ * a reply: a reply makes as many requests as its work takes, each with a hold of its own,
+ * for as long as the person has credits.
  */
-export const ASSISTANT_REPLY_CREDITS = 1_000;
+export const ASSISTANT_HOLD_CREDITS = 1_000;
 
 /**
  * Replies the assistant writes for one person at once. A deployment runs so many actions at
