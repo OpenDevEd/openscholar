@@ -49,16 +49,17 @@ export function useCollectionSources({
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const convex = useConvex();
-  const connected = useProtectedQuery(
-    api.evidenceLibraries.collectionSources.listLibraryCollectionSources,
-    { libraryId },
-  );
   const connect = useMutation(api.evidenceLibraries.collectionSources.connectCollectionSource);
   const picker = useRef<PickerHandle>(null);
   const sources = value.filter(
     (source): source is OpenScholarCollectionSourceEntry => source.provider === "openscholar",
   );
-  const byId = new Map((connected.data ?? []).map((row) => [row.collectionId as string, row]));
+  // The connections of the collections shown: a library keeps every connection it ever made.
+  const connected = useProtectedQuery(
+    api.evidenceLibraries.collectionSources.listCollectionSources,
+    { libraryId, collectionIds: sources.map((source) => source.collectionId) },
+  );
+  const byId = new Map((connected.data?.page ?? []).map((row) => [row.collectionId as string, row]));
 
   const readMine: PickerSource = async ({ query, cursor }) => {
     const page = await convex.query(api.library.collections.listCollections, {

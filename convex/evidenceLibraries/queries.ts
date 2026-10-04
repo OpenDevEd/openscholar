@@ -16,8 +16,9 @@ import {
 import { createError } from "../lib/errors";
 import { MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
 import {
+  draftSectionsValidator,
   evidenceLibraryTeardownStepValidator,
-  sectionPayloadValidator,
+  revisionSectionsValidator,
 } from "./validators";
 import {
   readLibraryRole,
@@ -36,7 +37,6 @@ import {
   evidenceLibraryPublicOperationFields,
   currentOwnerConfigurationVersionValidator,
   ownerConfigurationVersionValidator,
-  sectionKeyValidator,
   toPublicEvidenceLibraryOperation,
 } from "./validators";
 import {
@@ -686,15 +686,7 @@ export const getDraft = query({
     hasUnpublishedChanges: v.boolean(),
     /** Where the library answers now, or null before it first runs. */
     liveAddress: v.union(v.string(), v.null()),
-    sections: v.array(
-      v.object({
-        sectionKey: sectionKeyValidator,
-        payload: sectionPayloadValidator,
-        payloadByteLength: v.number(),
-        contractProvenance: configProvenanceValidator,
-        updatedAt: v.number(),
-      }),
-    ),
+    sections: draftSectionsValidator,
   })),
   handler: async (ctx, args) => {
     const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
@@ -727,15 +719,7 @@ export const getRevision = query({
       createdByClerkUserId: v.string(),
       createdAt: v.number(),
     }),
-    sections: v.array(
-      v.object({
-        sectionKey: sectionKeyValidator,
-        payload: sectionPayloadValidator,
-        payloadByteLength: v.number(),
-        contractProvenance: configProvenanceValidator,
-        createdAt: v.number(),
-      }),
-    ),
+    sections: revisionSectionsValidator,
   }),
   handler: readEvidenceLibraryRevision,
 });
