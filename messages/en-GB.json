@@ -973,6 +973,7 @@
     "authorsUnavailable": "Authors could not be loaded. Try again.",
     "filterByAuthor": "Only works by {name}",
     "authorByName": "Any author with this name",
+    "authorsAndNames": "A work needs one of the OpenAlex authors and one of the typed names.",
     "minCitations": "Minimum citations",
     "anyNumber": "Any number",
     "atLeastCitations": "{count, plural, one {At least # citation} other {At least # citations}}",

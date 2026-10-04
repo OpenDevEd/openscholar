@@ -18,12 +18,17 @@ export function AuthorFilter({ selected, onChange }: { selected: string[]; onCha
     const name = authorFilterValue(query);
     return name && !isAuthorId(name) ? { id: name, name, detail: tf("authorByName") } : null;
   };
+  // OpenAlex widens within each kind and narrows across the two, which the chips alone don't show.
+  const mixed = selected.some(isAuthorId) && selected.some((author) => !isAuthorId(author));
   return (
-    <OpenAlexLookupFilter
-      selected={selected}
-      onChange={onChange}
-      lookup={{ ...AUTHORS, typed }}
-      labels={{ label: tf("authors"), placeholder: tf("anyAuthor"), searchPlaceholder: tf("searchAuthors"), typeToSearch: tf("typeToSearchAuthors"), unavailable: tf("authorsUnavailable") }}
-    />
+    <div className="space-y-2">
+      <OpenAlexLookupFilter
+        selected={selected}
+        onChange={onChange}
+        lookup={{ ...AUTHORS, typed }}
+        labels={{ label: tf("authors"), placeholder: tf("anyAuthor"), searchPlaceholder: tf("searchAuthors"), typeToSearch: tf("typeToSearchAuthors"), unavailable: tf("authorsUnavailable") }}
+      />
+      {mixed && <p className="text-xs text-subtle-foreground">{tf("authorsAndNames")}</p>}
+    </div>
   );
 }

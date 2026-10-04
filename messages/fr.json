@@ -983,6 +983,7 @@
     "authorsUnavailable": "Impossible de charger les auteurs. Réessayez.",
     "filterByAuthor": "Uniquement les travaux de {name}",
     "authorByName": "Tout auteur portant ce nom",
+    "authorsAndNames": "Un travail doit avoir l'un des auteurs OpenAlex et l'un des noms saisis.",
     "minCitations": "Citations minimum",
     "anyNumber": "Aucun minimum",
     "atLeastCitations": "{count, plural, one {Au moins # citation} other {Au moins # citations}}",
