@@ -23,8 +23,14 @@ import { assistant } from "./agent";
 export const STEP_TEXT_MAX = 16_000;
 /** Characters of an action's result that are kept, well inside one document. */
 export const STEP_RESULT_MAX = 200_000;
-/** Steps of one exchange a page of the chat shows. A reply takes few; this bounds a runaway one. */
+/** Steps of one exchange a page of the chat lists: the newest, when a reply ran more. */
 export const STEPS_SHOWN = 150;
+/**
+ * What the model is told when it calls an action a third time running with the same
+ * arguments: it isn't run. A model that does that is going round in circles, which opencode
+ * stops at three identical calls too.
+ */
+export const REPEATED = "You have run this action with these exact arguments twice in a row. It isn't run a third time: use the result you have, or do something else.";
 /** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
 export const MAX_ASKS = 10;
 /**
@@ -39,9 +45,13 @@ const FORGET_STEPS = 100;
 
 type Step = Doc<"assistantSteps">;
 
-/** An exchange's steps, in the order they ran. */
-export function stepsOfExchange(ctx: Pick<QueryCtx, "db">, threadId: Id<"assistantThreads">, order: number) {
-  return ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).eq("order", order)).take(STEPS_SHOWN);
+/**
+ * An exchange's steps, in the order they ran. A reply runs as many as its work takes; of
+ * more than a page lists, these are the newest, so a step that waits for the person is
+ * always among them.
+ */
+export async function stepsOfExchange(ctx: Pick<QueryCtx, "db">, threadId: Id<"assistantThreads">, order: number) {
+  return (await ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).eq("order", order)).order("desc").take(STEPS_SHOWN)).reverse();
 }
 
 /** A chat's steps at one status. Only steps a reply asked about are ever many at once, and those are bounded. */
@@ -141,8 +151,17 @@ async function failStep(ctx: MutationCtx, step: Step, error: string) {
 /** A step starts. */
 export const begin = internalMutation({
   args: { threadId: v.id("assistantThreads"), order: v.number(), userId: v.id("users"), toolCallId: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) },
-  returns: v.id("assistantSteps"),
-  handler: async (ctx, args) => ctx.db.insert("assistantSteps", { ...args, status: "running", startedAt: Date.now() }),
+  // Null when the call isn't to run: it repeats the two before it, and is kept as a failed step.
+  returns: v.union(v.id("assistantSteps"), v.null()),
+  handler: async (ctx, args) => {
+    const last = await ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", args.threadId).eq("order", args.order)).order("desc").take(2);
+    const now = Date.now();
+    if (last.length === 2 && last.every((step) => step.path === args.path && step.input === args.input)) {
+      await ctx.db.insert("assistantSteps", { ...args, status: "failed", error: REPEATED, startedAt: now, endedAt: now });
+      return null;
+    }
+    return await ctx.db.insert("assistantSteps", { ...args, status: "running", startedAt: now });
+  },
 });
 
 /** A step that read something ends with its result. A change ends its own (`endStep`). */

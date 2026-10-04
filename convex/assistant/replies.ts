@@ -183,8 +183,12 @@ export const lockArgs = { threadId: v.id("assistantThreads"), attemptId: v.strin
 
 export const turnArgs = { agentThreadId: v.string(), senderId: v.id("users"), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator) };
 
-/** What a reply has used of one reply's credits and rounds, and the actions it has called, in its requests so far, with the input tokens the last of them read. */
-export const usedValidator = v.object({ credits: v.number(), rounds: v.number(), calls: v.number(), tokens: v.optional(v.number()) });
+/**
+ * Where a reply stands after its requests so far: the credits they cost, how many they were,
+ * the actions they called, the input tokens the last of them read, and how many of them in a
+ * row had every action fail.
+ */
+export const usedValidator = v.object({ credits: v.number(), rounds: v.number(), calls: v.number(), tokens: v.optional(v.number()), failed: v.optional(v.number()) });
 /** What a reply's next request starts from: whose it is, the message it answers, and what the reply has used. */
 const resumeValidator = v.object({ ...turnArgs, promptMessageId: v.string(), used: usedValidator });
 
@@ -262,7 +266,7 @@ export const release = internalMutation({
     // The compaction ran while a reply was under way: the reply goes on from here.
     resume: v.optional(resumeValidator),
     // The reply ended on calls it asks the person about (./steps.ts): the message it answers, each call as the step
-    // that waits, and what the reply has used of one reply's credits and rounds so far.
+    // that waits, and what the reply's requests have cost and called so far.
     asking: v.optional(
       v.object({
         promptMessageId: v.string(),
@@ -274,7 +278,7 @@ export const release = internalMutation({
     ),
     // The reply's request ended on actions that ran (./turn.ts): their results go back to the model in
     // its next request, with what the reply has used so far.
-    next: v.optional(v.object({ promptMessageId: v.string(), spent: v.number(), rounds: v.number(), made: v.number(), tokens: v.number() })),
+    next: v.optional(v.object({ promptMessageId: v.string(), spent: v.number(), rounds: v.number(), made: v.number(), tokens: v.number(), failed: v.number() })),
   },
   returns: v.null(),
   handler: async (ctx, { threadId, attemptId, ended, summarized, asking, next, resume }) => {
@@ -336,7 +340,7 @@ export const release = internalMutation({
     if (ended && next) {
       // The reply goes on, in an action of its own.
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
-      const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens } };
+      const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens, failed: next.failed } };
       // A conversation as long as a request should read is summarized first, through what the reply
       // has written, and the reply goes on from the summary (./context.ts).
       const last = !current.stop && compactionDue({ ...ended, window }) ? (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null }, statuses: ["success"] })).page[0] : undefined;

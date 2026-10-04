@@ -69,6 +69,8 @@ export type Turn = {
     requests: number;
     /** It ended on tool calls that all ran: their results wait to go back to the model, in the reply's next request. */
     more: boolean;
+    /** Every one of those calls failed: none did what it was called for. */
+    failed: boolean;
   }) => Promise<unknown>;
   /** What the model is sent, in place of the agent's own choice of recent messages. */
   contextHandler?: ContextHandler;
@@ -162,6 +164,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   // The request called tools, and every call has its result: they ran. A request cut short
   // by the provider, at its length or by a filter, can name a call that never runs.
   let ranTools = false;
+  let allFailed = false;
   const completedGenerations = new Set<string>();
   let finished = false;
 
@@ -226,7 +229,10 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
               if (part.type === "tool-approval-request" && !part.isAutomatic) asked.push({ toolCallId: part.toolCall.toolCallId, toolName: part.toolCall.toolName, input: part.toolCall.input });
             }
             const calls = content.filter((part) => part.type === "tool-call").length;
-            ranTools = calls > 0 && content.filter((part) => part.type === "tool-result" || part.type === "tool-error").length >= calls;
+            const results = content.filter((part) => part.type === "tool-result" || part.type === "tool-error");
+            ranTools = calls > 0 && results.length >= calls;
+            // A tool tells the model why it failed in an `error` field of what it returns.
+            allFailed = ranTools && results.every((part) => part.type === "tool-error" || (typeof part.output === "object" && part.output !== null && "error" in part.output));
             stepUsages.push(usageOf({ usage, providerMetadata }));
             const inputTokens = usage?.inputTokens ?? 0;
             const outputTokens = usage?.outputTokens ?? 0;
@@ -493,6 +499,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       credits: convertUsdToCredits({ usd: completedUsd }) || 0,
       requests: stepUsages.length,
       more: finished && !streamErrored && !streamAbortedByUser && ranTools && asked.length === 0,
+      failed: allFailed,
     });
   }
 }

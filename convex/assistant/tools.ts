@@ -13,14 +13,15 @@ import { assistantTools, inputSchema, runAction, toolName } from "../lib/assista
 import { readConvexErrorData } from "../lib/errors";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { ASKS_FIRST, type UserAction } from "../lib/userActions";
-import { DONE, MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, forModel } from "./steps";
+import { DONE, MAX_ASKS, MODEL_READS, REPEATED, STEP_TEXT_MAX, forModel } from "./steps";
 
 /**
- * Requests to the model one reply may make. The last is kept for its answer (./turn.ts).
- * What a reply spends is held to its credits; this stops one that goes round in circles.
- * At 12, a literature review that searched, read, saved ten papers and filed them ran out.
+ * Requests in a row whose actions all failed, after which a reply's next request is its
+ * answer (./turn.ts). Nothing else holds a reply to a number of requests or of actions:
+ * its work decides that, and the person's credits pay for it. This stops one that goes
+ * round in circles, as Cline ends a run at six mistakes in a row.
  */
-export const MAX_STEPS = 20;
+export const MAX_FAILED_ROUNDS = 6;
 /**
  * Characters of the description and arguments of an action that is a tool of its own,
  * about 1,000 tokens (#326): every request carries them. A longer action is reached
@@ -29,16 +30,12 @@ export const MAX_STEPS = 20;
 export const DEFINITION_MAX = 4_000;
 /** Actions one search returns. As many are returned whole as the model reads at once (./steps.ts). */
 const FOUND_MAX = 12;
-/** Actions one reply may run, however many it calls at once: every one of them shows on the chat's page (./steps.ts). At 40, the same review saved five of its ten papers. */
-export const MAX_CALLS = 100;
 
 /**
  * Why a reply's tools have stopped, as the model is told when it calls one: it then knows
  * to answer with what it has, where a model simply kept from calling tools can say nothing.
  */
-const WRAP_UP = "Don't call another action. Tell the person what you did and what's left, so they can ask for it.";
-export const OUT_OF_STEPS = `This reply has taken as many rounds of actions as one reply may. ${WRAP_UP}`;
-export const OUT_OF_CREDITS = `This reply has spent the credits one reply may. ${WRAP_UP}`;
+export const TOO_MANY_FAILED = `Every action in your last ${MAX_FAILED_ROUNDS} requests failed. Don't call another action. Tell the person what you tried, what went wrong, and what's left, so they can decide what to do.`;
 
 /**
  * The actions that are tools of their own, in this order. Changing the list resets every
@@ -202,8 +199,7 @@ export function found(keywords: string) {
  * is kept as a step of exchange `order`. `attemptId` names this run of the reply: with a
  * count of its calls it makes each call's own key, since models reuse their call IDs.
  * `stopped` says why the reply's actions have stopped, once they have. `made` is how many
- * calls the reply had made before it asked the person something, when it carries on from
- * their answer: one reply's calls are counted through every pause, so they all fit the chat's page.
+ * calls the reply had made in its requests before this one: each call's key counts on from there.
  *
  * `approval` is the reply's rule for asking first, which pauses it at a call the person is
  * asked about. `resume` runs a step they then allowed; its outcome is written to the model
@@ -225,7 +221,6 @@ export function toolsFor(
     if (!allowed) {
       const why = stopped();
       if (why) return { error: why };
-      if (calls >= MAX_CALLS) return { error: `A reply runs at most ${MAX_CALLS} actions, and this one has. Say what's left, so the person can ask for it.` };
       // One that asks first only gets here allowed. The rest is refused: an action that spends credits, or a call nothing asked about.
       if (!runsWithoutAsking(entry)) return { error: ASKS_FIRST };
     }
@@ -233,6 +228,7 @@ export function toolsFor(
     const key = allowed ? `${attemptId}:${allowed}` : `${attemptId}:${calls++}`;
     const subject = subjectOf(input);
     const stepId = allowed ?? (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}) }));
+    if (!stepId) return { error: REPEATED };
     try {
       // A change ends its step in its own transaction, so the two are saved together: a mutation, or an action whose write does. A read's step is ended here.
       const change = entry.kind === "mutation" || (entry.kind === "action" && entry.changes === true);
@@ -254,7 +250,7 @@ export function toolsFor(
     entry.kind !== "query" && !entry.spendsCredits && (!runsWithoutAsking(entry) || (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) })));
   const approval = async ({ toolCall }: { toolCall: { toolName: string; input: unknown } }) => {
     // A call the reply's limits refuse anyway isn't worth asking about.
-    if (stopped() || calls >= MAX_CALLS) return undefined;
+    if (stopped()) return undefined;
     const call = called(toolCall.toolName, toolCall.input);
     if (!call || !(await asks(call.entry, call.input))) return undefined;
     // Its arguments wait on its step for the answer, so they have to fit there.
