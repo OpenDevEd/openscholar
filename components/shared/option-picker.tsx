@@ -124,36 +124,25 @@ function OptionList({ options, selected, searchPlaceholder, emptyText, onSearch,
   onSearch?: (value: string) => void;
   onToggle: (id: string) => void;
 }) {
-  const list = useRef<HTMLDivElement>(null);
-  const [text, setText] = useState("");
-  // The row the keyboard is on, and the search it was reached in.
-  const [active, setActive] = useState({ text: "", value: "" });
   // A long list (every country) opens with its first rows, and React adds the rest when it is free.
-  const shown = useDeferredValue(options, options.slice(0, FIRST_ROWS));
-  // When the caller searches, the rows change after cmdk has picked its current row, so it kept
-  // one that was gone: Enter chose nothing, and the list stayed scrolled where it was. Each
-  // search starts on its first row instead.
-  const first = shown[0] ? rowValue(shown[0]) : "";
-  const current = active.text === text && shown.some((option) => rowValue(option) === active.value) ? active.value : first;
+  // Only the opening is put off: after it, rows change in step with the search, which is what lets
+  // the list settle on the first row of each new search.
+  const complete = useDeferredValue(true, false);
+  const list = useRef<HTMLDivElement>(null);
   return (
-    <Command
-      shouldFilter={!onSearch}
-      {...(onSearch ? { value: current, onValueChange: (value: string) => setActive({ text, value }) } : {})}
-    >
+    <Command shouldFilter={!onSearch}>
       <CommandInput
         placeholder={searchPlaceholder}
-        onValueChange={
-          onSearch &&
-          ((next) => {
-            setText(next);
-            onSearch(next);
-            list.current?.scrollTo({ top: 0 });
-          })
-        }
+        onValueChange={(text) => {
+          onSearch?.(text);
+          // A new search is read from its first row. cmdk moves to that row but scrolls to the one it
+          // was on before, so the list is put back at the top once it has done so.
+          requestAnimationFrame(() => list.current?.scrollTo({ top: 0 }));
+        }}
       />
       <CommandList ref={list}>
         <CommandEmpty>{emptyText}</CommandEmpty>
-        <OptionRows options={shown} selected={selected} onToggle={onToggle} />
+        <OptionRows options={complete ? options : options.slice(0, FIRST_ROWS)} selected={selected} onToggle={onToggle} />
       </CommandList>
     </Command>
   );

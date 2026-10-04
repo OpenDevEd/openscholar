@@ -40,8 +40,10 @@ export function OpenAlexLookupFilter({
     keepPreviousData: true,
   });
   const savedNames = lookup.useNames(selected);
-  const typed = query ? lookup.typed?.(query) : null;
-  const options = query ? [...(typed ? [typed] : []), ...(results.data ?? [])] : [];
+  // The typed option follows the keys, not the debounce, so Enter picks what the box says.
+  const text = search.trim();
+  const typed = text ? lookup.typed?.(text) : null;
+  const options = [...(typed ? [typed] : []), ...(query ? (results.data ?? []) : [])];
   const names = {
     ...savedNames,
     ...Object.fromEntries(options.map((option) => [option.id, option.name])),
