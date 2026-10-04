@@ -40,6 +40,12 @@ describe("presets", () => {
     await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "fast", task: "chat", modelId: flash });
 
     expect(await runsOn("chat")).toEqual({ modelId: sonnet, effort: "high" });
+    // What the settings map reads: each preset's pick per task, and nothing where none is set.
+    const picks = await user.query(api.aiModelConfig.queries.presetPicks, {});
+    const chat = (preset: "cheap" | "fast" | "balanced") => picks[preset].find((pick) => pick.task === "chat");
+    expect(chat("balanced")).toMatchObject({ model: { _id: sonnet, modelId: "anthropic/sonnet" }, effort: "high" });
+    expect(chat("fast")).toMatchObject({ model: { _id: flash }, effort: null });
+    expect(chat("cheap")).toEqual({ task: "chat", model: null, effort: null });
     await user.mutation(api.userAiConfig.mutations.choose, { choice: "fast" });
     expect(await runsOn("chat")).toEqual({ modelId: flash });
     // Fast has no screening pick, so screening falls back to Balanced's (none either).

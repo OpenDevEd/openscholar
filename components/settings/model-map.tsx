@@ -504,10 +504,10 @@ export function PresetSwitch<T extends PresetKey | "custom">({
 
 /** What each preset runs a task on, from the preset maps; undefined while loading. */
 export function usePresetModels() {
-  const presets = useQuery(api.aiModelConfig.queries.presets, {});
+  const presets = useQuery(api.aiModelConfig.queries.presetPicks, {});
   if (!presets) return undefined;
   return (preset: PresetKey, task: AiTask): PickedModel | null => {
-    const pick = presets.find((p) => p.preset === preset)?.tasks.find((r) => r.task === task);
+    const pick = presets[preset].find((r) => r.task === task);
     return pick?.model ? toMapModel(pick.model, pick.effort) : null;
   };
 }

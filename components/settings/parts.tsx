@@ -162,6 +162,8 @@ export type StepPager = {
   list: { page: number; offset: number; items: unknown[]; hasPages: boolean; isStale: boolean; canPrevious: boolean; canNext: boolean; previous: () => void; next: () => void };
   size: number;
   total?: number;
+  /** The total shown is an earlier view's, still waiting for this one's. */
+  counting?: boolean;
 };
 
 /**
@@ -181,17 +183,12 @@ export function Paged({
   children: ReactNode;
 }) {
   const multi = "list" in pager ? pager.list.hasPages : pager.pages > 1;
-  const stale = "list" in pager && pager.list.isStale;
+  // The rows or the total are an earlier view's: both stay up, dimmed and inert, until this view's arrive.
+  const stale = "list" in pager && (pager.list.isStale || pager.counting === true);
   return (
-    <div>
-      <div
-        // `rowHeight` counts a row with its divider: a page has one divider fewer, inside the box's two borders.
-        style={multi ? { minHeight: pager.size * rowHeight + 1 } : undefined}
-        className={cn(stale && "pointer-events-none opacity-60")}
-        aria-busy={stale || undefined}
-      >
-        {children}
-      </div>
+    <div className={cn(stale && "opacity-60")} aria-busy={stale || undefined} inert={stale || undefined}>
+      {/* `rowHeight` counts a row with its divider: a page has one divider fewer, inside the box's two borders. */}
+      <div style={multi ? { minHeight: pager.size * rowHeight + 1 } : undefined}>{children}</div>
       {!multi ? null : "list" in pager ? (
         <CommandCenterPagination
           currentPage={pager.list.page}

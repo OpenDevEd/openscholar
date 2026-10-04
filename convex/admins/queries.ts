@@ -1,14 +1,13 @@
 import { v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { stream } from "convex-helpers/server/stream";
-import type { Doc, Id } from "../_generated/dataModel";
-import { query, type QueryCtx } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
+import { query } from "../_generated/server";
 import schema from "../schema";
 import { getCurrentUser } from "../lib/auth";
-import { createError } from "../lib/errors";
 import { ADMIN_LIST, countOf } from "../lib/listCounts";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
-import { isAdmin, normalizeEmail, requireAdmin } from "./access";
+import { isAdmin, normalizeEmail, requireAdmin, requireAdminUser } from "./access";
 
 /** Admins are a handful of people; the list is read whole. */
 const MAX_ADMINS = 500;
@@ -97,10 +96,6 @@ export const candidates = query({
 /** Most rows one page of admins or candidates holds, and the rows one read of it takes. */
 const PAGE_MAX = 50;
 const ROWS_READ = 1_000;
-
-async function requireAdminUser(ctx: QueryCtx, userId: Id<"users">) {
-  if (!(await isAdmin(ctx, userId))) throw createError("FORBIDDEN", "Admins only");
-}
 
 /** A person's name and picture, as far as they have them. */
 function shown(user: Doc<"users"> | null) {
