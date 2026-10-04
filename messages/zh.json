@@ -3475,6 +3475,9 @@
       "undoFailed": "无法撤销",
       "interrupted": "回复在这一步完成前已结束",
       "found": "项",
+      "declined": "未允许",
+      "waiting": "等待回答",
+      "allowed": "已允许",
       "searches": {
         "doing": "正在查看你的检索",
         "did": "已查看你的检索",
@@ -3493,22 +3496,26 @@
       "newSearch": {
         "doing": "正在创建检索",
         "did": "已创建检索",
-        "where": "已保存的检索"
+        "where": "已保存的检索",
+        "ask": "创建检索"
       },
       "changeSearch": {
         "doing": "正在修改检索",
         "did": "已修改检索",
-        "where": "已保存的检索"
+        "where": "已保存的检索",
+        "ask": "修改检索"
       },
       "restoreSearch": {
         "doing": "正在放回检索",
         "did": "已放回检索",
-        "where": "已保存的检索"
+        "where": "已保存的检索",
+        "ask": "放回检索"
       },
       "removeSearch": {
         "doing": "正在移除检索",
         "did": "已移除检索",
-        "where": "已保存的检索"
+        "where": "已保存的检索",
+        "ask": "移除检索"
       },
       "results": {
         "doing": "正在读取检索结果",
@@ -3533,27 +3540,32 @@
       "save": {
         "doing": "正在保存论文",
         "did": "已保存论文",
-        "where": "文献库"
+        "where": "文献库",
+        "ask": "保存论文"
       },
       "rate": {
         "doing": "正在为论文评分",
         "did": "已为论文评分",
-        "where": "文献库"
+        "where": "文献库",
+        "ask": "为论文评分"
       },
       "remove": {
         "doing": "正在移除论文",
         "did": "已移除论文",
-        "where": "文献库"
+        "where": "文献库",
+        "ask": "移除论文"
       },
       "restore": {
         "doing": "正在放回论文",
         "did": "已放回论文",
-        "where": "文献库"
+        "where": "文献库",
+        "ask": "放回论文"
       },
       "collect": {
         "doing": "正在更新合集",
         "did": "已更新合集",
-        "where": "合集"
+        "where": "合集",
+        "ask": "更改合集"
       },
       "collections": {
         "doing": "正在查看你的合集",
@@ -3568,12 +3580,14 @@
       "newCollection": {
         "doing": "正在创建合集",
         "did": "已创建合集",
-        "where": "合集"
+        "where": "合集",
+        "ask": "创建合集"
       },
       "renameCollection": {
         "doing": "正在重命名合集",
         "did": "已重命名合集",
-        "where": "合集"
+        "where": "合集",
+        "ask": "重命名合集"
       },
       "screening": {
         "doing": "正在读取筛选",
@@ -3585,10 +3599,76 @@
         "did": "已查看你的提取",
         "where": "提取"
       },
+      "deleteCollection": {
+        "doing": "正在删除合集",
+        "did": "已删除合集",
+        "where": "合集",
+        "ask": "删除合集"
+      },
+      "shareChat": {
+        "doing": "正在共享对话",
+        "did": "已共享对话",
+        "where": "对话",
+        "ask": "共享对话"
+      },
+      "unshareChat": {
+        "doing": "正在停止共享对话",
+        "did": "已停止共享对话",
+        "where": "对话",
+        "ask": "停止共享对话"
+      },
+      "deleteChat": {
+        "doing": "正在删除对话",
+        "did": "已删除对话",
+        "where": "对话",
+        "ask": "删除对话"
+      },
+      "newChat": {
+        "doing": "正在开始对话",
+        "did": "已开始对话",
+        "where": "对话",
+        "ask": "开始对话"
+      },
+      "renameChat": {
+        "doing": "正在重命名对话",
+        "did": "已重命名对话",
+        "where": "对话",
+        "ask": "重命名对话"
+      },
+      "chatModel": {
+        "doing": "正在更改对话的模型",
+        "did": "已更改对话的模型",
+        "where": "对话",
+        "ask": "更改对话的模型"
+      },
+      "answer": {
+        "doing": "正在更改筛选答案",
+        "did": "已更改筛选答案",
+        "where": "筛选",
+        "ask": "更改筛选答案"
+      },
       "other": {
         "doing": "正在你的账户中处理",
         "did": "已在你的账户中处理",
-        "where": "你的账户"
+        "where": "你的账户",
+        "ask": "在你的账户中执行操作"
+      }
+    },
+    "asks": {
+      "allow": "允许一次",
+      "notNow": "暂不",
+      "decline": "不执行",
+      "why": "此操作无法撤销，或会在你的账户之外显示。每次都会询问。",
+      "failed": "无法发送你的回答",
+      "names": {
+        "thread": "对话",
+        "collection": "合集",
+        "user": "成员",
+        "organization": "组织",
+        "role": "权限",
+        "name": "名称",
+        "title": "标题",
+        "model": "模型"
       }
     }
   }
