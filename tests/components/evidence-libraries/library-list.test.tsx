@@ -8,12 +8,16 @@ import { renderWithTooltip } from "../../helpers/render-with-tooltip";
 const mocks = vi.hoisted(() => ({ query: vi.fn(), respond: vi.fn(), restart: vi.fn() }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("convex/react", () => ({ useMutation: () => mocks.restart, useAction: () => mocks.respond }));
-vi.mock("@/convex/_generated/api", () => ({ api: { organizationFeatures: {libraryOrganizations: "organizations"}, evidenceLibraries: {
+vi.mock("@/convex/_generated/api", () => ({ api: { organizationFeatures: {listLibraryOrganizations: "organizations"}, evidenceLibraries: {
   teardown: { restartDevelopmentTeardown: "restart" },
   queries: { listLibraryOverviews: "libraries" },
-  invitations: { listMine: "invitations" }, invitationActions: { respond: "respond" },
+  invitations: { listInvitations: "invitations" }, invitationActions: { respond: "respond" },
 } } }));
-vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: (name: string) => mocks.query(name) }));
+// Organizations and invitations arrive as one page each; the tests give their rows.
+vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: (name: string) => {
+  const result = mocks.query(name);
+  return name === "libraries" || !result?.data ? result : { ...result, data: { page: result.data, isDone: true, continueCursor: "" } };
+} }));
 import { LibraryList } from "@/components/evidence-libraries/library-list";
 const render = (ui: ReactElement, searchParams = "") => renderWithTooltip(<NuqsTestingAdapter searchParams={searchParams}>{ui}</NuqsTestingAdapter>);
 const libraries = ["owner", "editor", "creator"].map(role => ({ _id: role, name: `${role} library`, role, status: "active", publicAddress: `https://${role}.example.org`, organization: { name: `${role} organization` } }));

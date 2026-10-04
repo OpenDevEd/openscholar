@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { v } from "convex/values";
+import { paginationResultValidator } from "convex/server";
 import { internal } from "../_generated/api";
-import { internalMutation, internalQuery, mutation, query } from "../lib/functions";
+import { internalMutation, internalQuery, mutation, query, type QueryCtx } from "../lib/functions";
 import { requireEvidenceLibraryAccess, readLibraryRole, readPendingLibraryInvitations } from "./access";
 import { getCurrentUser } from "../lib/auth";
 import { rateLimit } from "../lib/rateLimit";
@@ -108,17 +109,28 @@ export const change = mutation({
   },
 });
 
+const pendingInvitationValidator = v.object({
+  invitationId: v.id("evidenceLibraryInvitations"), libraryId: v.id("evidenceLibraries"), name: v.string(),
+  role: v.union(v.literal("editor"), v.literal("creator")),
+  organization: v.object({ name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
+});
+const pendingInvitations = async (ctx: QueryCtx) => {
+  const user = await getCurrentUser(ctx);
+  return user ? await readPendingLibraryInvitations(ctx, user) : [];
+};
+
+/** The library invitations waiting for the person, as one page: an address has at most MAX_PENDING_INVITATIONS_PER_EMAIL waiting, which inviting enforces. */
+export const listInvitations = query({
+  args: {},
+  returns: paginationResultValidator(pendingInvitationValidator),
+  handler: async (ctx) => ({ page: await pendingInvitations(ctx), isDone: true, continueCursor: "" }),
+});
+
+/** Kept for one release, while the deployed site still calls it; `listInvitations` replaces it. */
 export const listMine = query({
   args: {},
-  returns: v.array(v.object({
-    invitationId: v.id("evidenceLibraryInvitations"), libraryId: v.id("evidenceLibraries"), name: v.string(),
-    role: v.union(v.literal("editor"), v.literal("creator")),
-    organization: v.object({ name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
-  })),
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    return user ? await readPendingLibraryInvitations(ctx, user) : [];
-  },
+  returns: v.array(pendingInvitationValidator),
+  handler: pendingInvitations,
 });
 
 /** Called only after Clerk confirms a verified address on the signed-in account. */

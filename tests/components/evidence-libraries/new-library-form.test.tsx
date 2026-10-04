@@ -29,7 +29,7 @@ vi.mock("sonner", () => ({
 }));
 vi.mock("@/convex/_generated/api", () => ({
   api: {
-    organizationFeatures: {libraryOrganizations: "libraryOrganizations"},
+    organizationFeatures: {listLibraryOrganizations: "listLibraryOrganizations"},
     evidenceLibraries: {
       addressActions: {
         checkAddress: "checkAddress",
@@ -79,7 +79,7 @@ describe("<NewLibraryForm>", () => {
     mocks.organization.mockReset();
     mocks.push.mockReset();
     mocks.query.mockReset();
-    mocks.query.mockReturnValue({ data: [{id: "org_1", name: "Climate Team"}], isReady: true });
+    mocks.query.mockReturnValue({ data: { page: [{id: "org_1", name: "Climate Team"}], isDone: true, continueCursor: "" }, isReady: true });
     mocks.reserveAddress.mockReset();
   });
 
@@ -266,7 +266,7 @@ describe("<NewLibraryForm>", () => {
 
   it("does not offer the form to an editor", () => {
     mocks.organization.mockReturnValue({ ...owner, membership: { role: "org:member" } });
-    mocks.query.mockReturnValue({ data: [], isReady: true });
+    mocks.query.mockReturnValue({ data: { page: [], isDone: true, continueCursor: "" }, isReady: true });
 
     render(<NewLibraryForm />);
 
@@ -276,7 +276,7 @@ describe("<NewLibraryForm>", () => {
 
   it("shows one plain panel instead of the form when the organisation is not switched on", () => {
     mocks.organization.mockReturnValue(owner);
-    mocks.query.mockReturnValue({ data: [], isReady: true });
+    mocks.query.mockReturnValue({ data: { page: [], isDone: true, continueCursor: "" }, isReady: true });
 
     render(<NewLibraryForm />);
 

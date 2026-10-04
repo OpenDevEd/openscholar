@@ -94,18 +94,18 @@ function LibraryTile() {
  */
 export function LibraryList({ pending = false, preloadedOrganizations }: {
   pending?: boolean;
-  preloadedOrganizations?: Preloaded<typeof api.organizationFeatures.libraryOrganizations>;
+  preloadedOrganizations?: Preloaded<typeof api.organizationFeatures.listLibraryOrganizations>;
 }) {
   const owner = useLibraryOrganizationChoice(preloadedOrganizations);
   const overviews = useProtectedQuery(api.evidenceLibraries.queries.listLibraryOverviews, pending ? "skip" : {});
-  const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listMine, pending ? "skip" : {});
+  const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listInvitations, pending ? "skip" : {});
   const respond = useAction(api.evidenceLibraries.invitationActions.respond);
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
   const [retrying, setRetrying] = useState<string | null>(null);
   const roles = { owner: "Owner", editor: "Editor", creator: "Creator" } as const;
   const libraries: Library[] = [
     ...(overviews.data ?? []).map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, faviconUrl: library.faviconUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, operation: library.operation, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) })),
-    ...(invitations.data ?? []).map(invitation => ({ id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: roles[invitation.role], organization: invitation.organization.name, organizationImageUrl: invitation.organization.imageUrl, address: "", pending: true })),
+    ...(invitations.data?.page ?? []).map(invitation => ({ id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: roles[invitation.role], organization: invitation.organization.name, organizationImageUrl: invitation.organization.imageUrl, address: "", pending: true })),
   ];
   const [view, setView] = useQueryState("view", parseAsStringLiteral(["libraries", "invitations"]).withDefault("libraries"));
   const [organization, setOrganization] = useState("all");

@@ -41,7 +41,7 @@ export async function reserveLibraryAddressByName(
   name: string,
   organizationId?: Id<"organizations">,
 ) {
-  const selectedOrganizationId = organizationId ?? (await as.query(api.organizationFeatures.libraryOrganizations, {}))[0]?.id;
+  const selectedOrganizationId = organizationId ?? ((await as.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]?.id;
   if (!selectedOrganizationId) throw new Error("No eligible test organization");
   const state = await as.query(
     internal.evidenceLibraries.queries.readAddressCandidates,

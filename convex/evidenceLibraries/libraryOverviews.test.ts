@@ -25,7 +25,7 @@ describe("library overviews", () => {
     await expect(
       fixture.admin.query(
         internal.evidenceLibraries.queries.readAddressCandidates,
-        { organizationId: (await fixture.admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id, name: "Climate Evidence" },
+        { organizationId: ((await fixture.admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id, name: "Climate Evidence" },
       ),
     ).resolves.toEqual({
       status: "name-taken",
@@ -34,7 +34,7 @@ describe("library overviews", () => {
     await expect(
       fixture.admin.query(
         internal.evidenceLibraries.queries.readAddressCandidates,
-        { organizationId: (await fixture.admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id, name: "   " },
+        { organizationId: ((await fixture.admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id, name: "   " },
       ),
     ).rejects.toThrow(/VALIDATION_ERROR/);
   });
