@@ -18,6 +18,10 @@ export const ResearchContext = createContext<ResearchStores | null>(null);
 export const SessionContext = createContext<{ session: ResearchSession | null; phase: "initializing" | "authenticated" | "anonymous" | "sync_error" }>({ session: null, phase: "anonymous" });
 let active: ResearchStores | null = null;
 
+export class ResearchAccountChangedError extends Error {
+  constructor() { super("Your account changed. Try again."); }
+}
+
 /** Imperative export/search helpers use the same account as React subscribers. */
 export function activateResearch(stores: ResearchStores | null) {
   active = stores;

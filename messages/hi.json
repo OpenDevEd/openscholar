@@ -879,6 +879,7 @@
     "downloadFailedDescription": "{format} डाउनलोड नहीं कर सके। कृपया पुनः प्रयास करें।",
     "uploadFailed": "अपलोड विफल",
     "uploadFailedDescription": "{format} अपलोड नहीं कर सके। कृपया पुनः प्रयास करें।",
+    "accountChanged": "आपका खाता बदल गया है। फिर से कोशिश करें।",
     "copyFailedDescription": "क्लिपबोर्ड पर कॉपी नहीं कर सके। कृपया पुनः प्रयास करें।",
     "validationFailed": "सत्यापन विफल",
     "entityCreated": "{entity} बनाया गया",

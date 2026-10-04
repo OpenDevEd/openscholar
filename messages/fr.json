@@ -879,6 +879,7 @@
     "downloadFailedDescription": "Impossible de télécharger {format}. Veuillez réessayer.",
     "uploadFailed": "Échec du téléversement",
     "uploadFailedDescription": "Impossible de téléverser {format}. Veuillez réessayer.",
+    "accountChanged": "Votre compte a changé. Réessayez.",
     "copyFailedDescription": "Impossible de copier dans le presse-papiers. Veuillez réessayer.",
     "validationFailed": "Échec de la validation",
     "entityCreated": "{entity} créé",

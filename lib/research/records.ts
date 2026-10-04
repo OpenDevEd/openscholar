@@ -157,7 +157,10 @@ export function importSearchRecord(row: Record<string, unknown>, id?: string): S
     const spec: unknown = typeof row.spec === "string" ? JSON.parse(row.spec) : row.spec;
     if (!spec || typeof spec !== "object" || Array.isArray(spec)) throw new Error("Invalid search specification");
     if (!("query" in spec) || typeof spec.query !== "string" || typeof row.search_query !== "string" || typeof row.export_id !== "string") throw new Error("Invalid search export record");
-    record = { ...spec, query: row.search_query, count: row.count, field: row.field, importSource: { id: row.export_id, query: spec.query, resolvedQuery: row.search_query, resolution: "at_export" } };
+    record = { ...spec, query: row.search_query,
+      count: row.count === "" || row.count == null ? ("count" in spec ? spec.count : undefined) : row.count,
+      field: row.field === "" || row.field == null ? ("field" in spec ? spec.field : undefined) : row.field,
+      importSource: { id: row.export_id, query: spec.query, resolvedQuery: row.search_query, resolution: "at_export" } };
   }
   const now = new Date().toISOString();
   const query = record.search_query ?? record.query;
@@ -173,8 +176,8 @@ export function importSearchRecord(row: Record<string, unknown>, id?: string): S
   if (!validate(historyArrays.questionHistory, questionHistory)) throw new Error("Invalid question history");
   const identity = [row.export_id, row.__importId, record.id].find(value => typeof value === "string" && value.length > 0);
   const imported = {
-    field, screeningQuestions: [], screeningResponses: {}, createdAt: now, updatedAt: now,
-    ...known, ...historySummary(queryHistory, questionHistory), queryHistory, questionHistory, id: id ?? (typeof identity === "string" ? `import:${identity}` : crypto.randomUUID()), query, count,
+    screeningQuestions: [], screeningResponses: {}, createdAt: now, updatedAt: now,
+    ...known, ...historySummary(queryHistory, questionHistory), queryHistory, questionHistory, id: id ?? (typeof identity === "string" ? `import:${identity}` : crypto.randomUUID()), query, field, count,
   } as SearchResult;
   const saved = serializeSearch(imported);
   validate(searchValidator, saved, { throw: true });
