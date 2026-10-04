@@ -106,7 +106,7 @@ export default function ModelListPage() {
               ]}
             />
           </div>
-          <Paged pager={{ list: models, size: PER_PAGE, total: summary?.total }} rowHeight={61} label={t("models")}>
+          <Paged pager={{ list: models, size: PER_PAGE, total: summary?.total, counting: counted === undefined }} rowHeight={61} label={t("models")}>
             <ul className={LIST}>
               {models.items.map((m) => (
                 <li key={m._id} className={cn("flex items-center gap-3 p-3 transition-opacity", !m.on && "opacity-50")}>
