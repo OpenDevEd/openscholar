@@ -564,10 +564,15 @@ async function persistAssistantAbortSentinel(
   // is no longer "pending" (component/messages.ts:380-385). Idempotent
   // vs. the agent library's own listener: whichever fires second
   // sees status !== pending and no-ops.
-  await ctx.runMutation(components.agent.messages.finalizeMessage, {
-    messageId: target._id as never,
-    result: { status: "failed", error: ABORT_ERROR_STRING },
-  });
+  await ctx
+    .runMutation(components.agent.messages.finalizeMessage, {
+      messageId: target._id as never,
+      result: { status: "failed", error: ABORT_ERROR_STRING },
+    })
+    // It throws when the stream it replays holds an error chunk. The patch below still marks the row.
+    .catch((err) => {
+      console.error("[chat] failed to finalize a stopped reply", { threadId, err: errorToLogString(err) });
+    });
   // A row the agent had already failed with the runtime's own abort error keeps that error
   // through finalizeMessage, so the sentinel is written over it.
   await ctx.runMutation(components.agent.messages.updateMessage, {
