@@ -24,10 +24,12 @@ async function unrecorded(ctx: QueryCtx, operation: Doc<"evidenceLibraryConfigOp
   return await ctx.db.get("evidenceLibraryConfigRevisions", operation.revisionId!);
 }
 
-// A small batch: each version reads its configuration and the one before it, up to 768 KiB each.
+// One at a time: an operation keeps its deployment's encrypted configuration, so its row can
+// be near the 1 MiB a document may hold and is read again by the patch and its triggers, and
+// each version reads its configuration and the one before it, up to 768 KiB each.
 export const operations = migrations.define({
   table: "evidenceLibraryConfigOperations",
-  batchSize: 5,
+  batchSize: 1,
   migrateOne: async (ctx, operation) => {
     const revision = await unrecorded(ctx, operation);
     if (revision) return { changedSections: await readChangedSections(ctx, revision) };
@@ -42,6 +44,7 @@ export const verifyPage = internalQuery({
   returns: v.object({ wrong: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
   handler: async (ctx, { cursor }) => {
     const page = await ctx.db.query("evidenceLibraryConfigOperations").paginate({ cursor, numItems: 50, maximumBytesRead: 4 * 1024 * 1024 });
+    // Only a revision's own row is read here, never its sections.
     const revisions = await Promise.all(page.page.map((operation) => unrecorded(ctx, operation)));
     return { wrong: revisions.filter((revision) => revision !== null).length, isDone: page.isDone, continueCursor: page.continueCursor };
   },

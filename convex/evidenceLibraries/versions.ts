@@ -762,9 +762,15 @@ async function versionRow(
   };
 }
 
-/** Most versions one page holds, and the operations one read of it passes over looking for them. */
+/**
+ * Most versions one page holds, and the operations one read of it passes over looking for them.
+ * ponytail: an operation keeps its deployment's encrypted configuration, so its row can be near
+ * the 1 MiB a document may hold, and a read may take 16 MiB: 14 rows is what fits. A page that
+ * meets more than four operations that aren't versions comes back short, with more to show.
+ * Keeping the saved configuration off the operation row would let a read pass over many more.
+ */
 const VERSIONS_PAGE_MAX = 10;
-const VERSION_ROWS_READ = 500;
+const VERSION_ROWS_READ = 14;
 
 /** One row per setup, publish or software update, newest first, a page at a time. */
 export const listVersionRows = query({
