@@ -787,32 +787,35 @@ export function SpendingSheet({
           </Zone>
 
           <Zone label="Jobs that spend credits">
-            <div className="space-y-2.5">
-              <Segmented
-                fill
-                label="Before a job spends credits"
-                value={allowance.on ? "allow" : "ask"}
-                onChange={(v) => onAllowance({ ...allowance, on: v === "allow" })}
-                options={[
-                  { id: "ask", label: "Ask every time", icon: CircleHelp },
-                  { id: "allow", label: "Allow without asking", icon: CircleCheck },
-                ]}
-              />
-              {/* The limit opens under the switch: the frame grows, its content laid out at full size.
-                  It stays in the page, so while it closes it can't be picked and turn allowing back on.
-                  Its gap to the list is inside it, so a closed row adds none. */}
-              <motion.div
-                inert={!allowance.on}
-                initial={false}
-                animate={allowance.on ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }}
-                transition={{ duration: 0.3, ease: EASE }}
-                className="!my-0 overflow-hidden"
-              >
-                <div className="pb-2.5">
-                  <LimitPicker label="Most one job may hold without asking" listed={JOB_CAPS} value={allowance.cap} onChange={(cap) => onAllowance({ ...allowance, cap })} />
-                </div>
-              </motion.div>
-              <ul className={LIST}>
+            {/* One box, as the reply's is: the switch and its limit, and under a hairline the jobs they decide for, edge to edge. */}
+            <div className="overflow-hidden rounded-2xl border border-border/60 bg-muted/20">
+              <div className="p-3">
+                <Segmented
+                  fill
+                  label="Before a job spends credits"
+                  value={allowance.on ? "allow" : "ask"}
+                  onChange={(v) => onAllowance({ ...allowance, on: v === "allow" })}
+                  options={[
+                    { id: "ask", label: "Ask every time", icon: CircleHelp },
+                    { id: "allow", label: "Allow without asking", icon: CircleCheck },
+                  ]}
+                />
+                {/* The limit opens under the switch: the frame grows, its content laid out at full size.
+                    It stays in the page, so while it closes it can't be picked and turn allowing back on.
+                    Its gap to the switch is inside it, so a closed row adds none. */}
+                <motion.div
+                  inert={!allowance.on}
+                  initial={false}
+                  animate={allowance.on ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: EASE }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-3">
+                    <LimitPicker label="Most one job may hold without asking" listed={JOB_CAPS} value={allowance.cap} onChange={(cap) => onAllowance({ ...allowance, cap })} />
+                  </div>
+                </motion.div>
+              </div>
+              <ul className="divide-y divide-border/40 border-t border-border/40">
                 {jobs.map((job) => {
                   const runs = allowance.on && (allowance.cap === null || (job.credits ?? 0) <= allowance.cap);
                   return (
