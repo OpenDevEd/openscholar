@@ -27,6 +27,14 @@ const FOUND_MAX = 6;
 export const MAX_CALLS = 40;
 
 /**
+ * Why a reply's tools have stopped, as the model is told when it calls one: it then knows
+ * to answer with what it has, where a model simply kept from calling tools can say nothing.
+ */
+const WRAP_UP = "Don't call another action. Tell the person what you did and what's left, so they can ask for it.";
+export const OUT_OF_STEPS = `This reply has taken as many rounds of actions as one reply may. ${WRAP_UP}`;
+export const OUT_OF_CREDITS = `This reply has spent the credits one reply may. ${WRAP_UP}`;
+
+/**
  * The actions that are tools of their own, in this order. Changing the list resets every
  * chat's cache once, so it changes on purpose, in a pull request of its own.
  */
@@ -127,8 +135,12 @@ export function found(keywords: string) {
  * The assistant's tools for one reply. `userId` is who it acts as, and each action it runs
  * is kept as a step of exchange `order`. `attemptId` names this run of the reply: with a
  * count of its calls it makes each call's own key, since models reuse their call IDs.
+ * `stopped` says why the reply's actions have stopped, once they have.
  */
-export function toolsFor(ctx: ActionCtx, { userId, threadId, order, attemptId }: { userId: Id<"users">; threadId: Id<"assistantThreads">; order: number; attemptId: string }): ToolSet {
+export function toolsFor(
+  ctx: ActionCtx,
+  { userId, threadId, order, attemptId, stopped }: { userId: Id<"users">; threadId: Id<"assistantThreads">; order: number; attemptId: string; stopped: () => string | null },
+): ToolSet {
   let calls = 0;
   /**
    * Runs one call: unless it asks first, it's kept as a step from when it starts to how it
@@ -136,6 +148,8 @@ export function toolsFor(ctx: ActionCtx, { userId, threadId, order, attemptId }:
    * message, so it can say what went wrong or try something else.
    */
   const call = async (entry: UserAction, input: Record<string, unknown>, toolCallId: string) => {
+    const why = stopped();
+    if (why) return { error: why };
     if (calls >= MAX_CALLS) return { error: `A reply runs at most ${MAX_CALLS} actions, and this one has. Say what's left, so the person can ask for it.` };
     const key = `${attemptId}:${calls++}`;
     if (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) })) return { error: ASKS_FIRST };
@@ -159,12 +173,15 @@ export function toolsFor(ctx: ActionCtx, { userId, threadId, order, attemptId }:
         "Finds what else you can do in the person's account: every action that has no tool of its own, by keywords from what you want to do, such as \"rename collection\" or \"extraction results\". " +
         "Returns each match's name, what it does and the arguments it takes. Run one with run_action.",
       inputSchema: z.object({ keywords: z.string() }),
-      execute: async ({ keywords }) => forModel(found(keywords)),
+      // Looking for more to do is refused with the rest once the reply's actions have stopped, or it could go on asking.
+      execute: async ({ keywords }) => (stopped() ? { error: stopped() } : forModel(found(keywords))),
     }),
     run_action: tool({
       description: "Runs an action find_action returned, by its name, with its arguments. An undo in a result is run the same way: the action it names, with its arguments.",
       inputSchema: z.object({ name: z.string(), arguments: z.record(z.string(), z.unknown()) }),
       execute: async ({ name, arguments: given }, { toolCallId }) => {
+        const why = stopped();
+        if (why) return { error: why };
         const entry = entryAt(name);
         if (!entry) return { error: `No action is named ${cut(name, 200)}. Look one up with find_action.` };
         if (!runsWithoutAsking(entry)) return { error: ASKS_FIRST };

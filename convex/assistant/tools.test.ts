@@ -234,9 +234,9 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").collect()).length)).toBe(1);
   });
 
-  it("run at most so many actions in one reply, and stop calling tools once the reply has cost what was held for it", async () => {
+  it("run at most so many actions in one reply, and once the reply has cost what one may, refuse the rest and say why", async () => {
     const t = convexTest(schema);
-    const { say, steps } = await chatOf(t);
+    const { say, steps, shown } = await chatOf(t);
     const list = (index: number) => ({ id: `c${index}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } });
     // One round that calls more actions than a reply may run.
     mockDoStream.mockImplementationOnce(calling(...Array.from({ length: MAX_CALLS + 2 }, (_, index) => list(index)))).mockImplementationOnce(finishingDoStream(["That's all I could run."]));
@@ -244,11 +244,33 @@ describe("the assistant's tools", () => {
     expect(await steps()).toHaveLength(MAX_CALLS);
     expect(told(1, `c${MAX_CALLS + 1}`)).toMatchObject({ error: expect.stringMatching(/at most/) });
 
-    // A round that read a great deal costs more than the reply's hold: the next request can't call a tool.
+    // A round that read a great deal costs more than a reply may. The action called next isn't run, and the
+    // model is told why, so it answers. Its tools stay as they were: taking them away would void the cache.
+    requests.length = 0;
     toolChoices.length = 0;
-    mockDoStream.mockImplementationOnce(calling({ ...list(0), read: 2_000_000_000 })).mockImplementationOnce(finishingDoStream(["Stopping here."]));
+    mockDoStream
+      .mockImplementationOnce(calling({ ...list(100), read: 2_000_000_000 }))
+      // Looking for something else to do is refused with the rest.
+      .mockImplementationOnce(calling(list(101), { id: "find", name: "find_action", input: { keywords: "rename collection" } }, { id: "run", name: "run_action", input: { name: "no/such:action", arguments: {} } }))
+      .mockImplementationOnce(finishingDoStream(["Stopping here."]));
     await say("Look again");
-    expect(toolChoices).toEqual(["auto", "none"]);
+    for (const id of ["c101", "find", "run"]) expect(told(2, id)).toMatchObject({ error: expect.stringMatching(/spent the credits/) });
+    expect(await steps()).toHaveLength(MAX_CALLS + 1);
+    expect(toolChoices).toEqual(["auto", "auto", "auto"]);
+    expect((await shown()).at(-1)).toBe("assistant: Stopping here.");
+  });
+
+  it("hold what the person has when that's less than a reply may cost, so a small balance still gets an answer", async () => {
+    const t = convexTest(schema);
+    const { asBen, ben } = await chatOf(t);
+    // What a new free account starts with: half of what a reply may cost.
+    await t.run(async (ctx) => seedCreditsForTest(ctx, { userId: ben, free: 500 }));
+    const threadId = await asBen.mutation(api.assistant.threads.create, { title: "First chat" });
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Here."]));
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "Hello" });
+    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: 5_000 });
+    const { page } = await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
+    expect(page[0]).toMatchObject({ role: "assistant", text: "Here.", status: "done" });
   });
 
   it("show a reply that came back with nothing, when it called no tool", async () => {
@@ -285,7 +307,7 @@ describe("the assistant's tools", () => {
     // Its reply is over without ending it: the step shows as failed, not as running for ever.
     expect((await shown())[1]).toBe("step: library/mutations:saveToLibrary failed");
 
-    // A reply that keeps calling tools is made to answer on its last request.
+    // A reply that keeps calling tools is told to stop a round before its last request, which is made to answer.
     requests.length = 0;
     toolChoices.length = 0;
     mockDoStream.mockReset();
@@ -294,6 +316,7 @@ describe("the assistant's tools", () => {
     );
     await say("Keep going");
     expect(requests).toHaveLength(MAX_STEPS);
+    expect(told(MAX_STEPS - 1, `c${MAX_STEPS - 1}`)).toMatchObject({ error: expect.stringMatching(/as many rounds/) });
     // A step that lists things says how many it found.
     expect((await t.run(async (ctx) => ctx.db.query("assistantSteps").collect())).at(-1)).toMatchObject({ path: "library/collections:listCollections", count: 0 });
     expect(toolChoices.at(-1)).toBe("none");
