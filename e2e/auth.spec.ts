@@ -76,6 +76,44 @@ test("an imported search keeps its identity, filters and questions after reopen,
   }
 });
 
+test("a search delete confirmation refuses an account change without losing the search", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/history");
+  await clerk.loaded({ page });
+  await expect.poll(() => page.evaluate(() => Boolean(window.Clerk.session))).toBe(true);
+  const marker = `delete-account-change-${crypto.randomUUID()}`;
+  const id = `import:${marker}`;
+  const { token, accountId, sessionId } = await page.evaluate(async () => ({
+    token: (await window.Clerk.session!.getToken({ template: "convex" }))!,
+    accountId: window.Clerk.session!.user.id,
+    sessionId: window.Clerk.session!.id,
+  }));
+  const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  client.setAuth(token);
+  try {
+    await page.getByRole("button", { name: "Download as JSON", exact: true }).click();
+    const chooser = page.waitForEvent("filechooser");
+    await page.getByRole("menuitem", { name: "Upload JSON", exact: true }).click();
+    await (await chooser).setFiles({ name: "search.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify([{ format_version: 1, export_id: marker, search_query: marker, spec: { query: marker } }])) });
+    await expect.poll(() => client.query(api.research.records.getSearch, { accountId, id })).toMatchObject({ id });
+    await expect(page.getByRole("button", { name: marker, exact: true })).toBeVisible();
+    await page.getByRole("textbox", { name: "Search your history...", exact: true }).fill(marker);
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog).toBeVisible();
+    await page.evaluate(() => window.Clerk.setActive({ session: null }));
+    await expect.poll(() => page.evaluate(() => window.Clerk.session)).toBeNull();
+    await dialog.getByRole("button", { name: "Delete", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByText("Your account changed. Try again.", { exact: true })).toBeVisible();
+    await page.evaluate(session => window.Clerk.setActive({ session }), sessionId);
+    client.setAuth((await page.evaluate(() => window.Clerk.session!.getToken({ template: "convex" })))!);
+    expect(await client.query(api.research.records.getSearch, { accountId, id })).toMatchObject({ id, query: marker });
+  } finally {
+    await client.mutation(api.research.records.change, { accountId, requestId: crypto.randomUUID(), command: { kind: "deleteSearch", id } });
+  }
+});
+
 for (const kind of ["history", "bookmarks"] as const) {
   test(`${kind} import refuses a file selected before the account changed`, async ({ page }) => {
     await page.goto(`/${kind}`);

@@ -59,6 +59,10 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
       confirmText: tc("delete"),
       cancelText: tc("cancel"),
       onConfirm: () => {
+        if (useSearchHistoryStore.getState().removeSearchResult !== removeSearchResult) {
+          toast.validation.failed(tToast("accountChanged"));
+          return;
+        }
         removeSearchResult(item.id);
       },
     });
