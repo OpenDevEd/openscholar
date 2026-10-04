@@ -91,7 +91,6 @@ export function SearchCommandCenter({
         mode={mode}
         searchId={searchId}
         currentQuery={currentQuery}
-        allowEmpty={queryOnly}
         isLoading={isLoading}
         isValidating={isValidating}
       />

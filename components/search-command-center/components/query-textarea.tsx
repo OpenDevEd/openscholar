@@ -17,7 +17,6 @@ interface QueryTextareaProps {
   placeholder?: string;
   disabled?: boolean;
   busy?: boolean;
-  allowEmpty?: boolean;
   /** Briefly tints the field green after the query was rewritten. */
   flash?: boolean;
 }
@@ -32,12 +31,11 @@ export function QueryTextarea({
   placeholder,
   disabled = false,
   busy = false,
-  allowEmpty = false,
   flash = false,
 }: QueryTextareaProps) {
   const t = useTranslations();
   const th = useTranslations("home");
-  const canSubmit = !disabled && !busy && (allowEmpty || Boolean(value.trim()));
+  const canSubmit = !disabled && !busy;
   return (
     <form
       onSubmit={(event) => {
