@@ -44,6 +44,7 @@ const CORE_PATHS = [
   "research/searches:create",
   "research/searches:update",
   "research/searches:results",
+  "research/lookup:find",
   "research/records:searchHistory",
   "research/records:listedShortcuts",
   "research/records:ratingsOf",
@@ -124,10 +125,11 @@ export function askedSteps(requests: Asked[]) {
   });
 }
 
-/** What a call is about, for its step's card: a title, a name or a query among its arguments. */
+/** What a call is about, for its step's card: a title, a name or a query among its arguments, or the query a change gives a search. */
 function subjectOf(input: Record<string, unknown>) {
   const paper = input.paper && typeof input.paper === "object" ? (input.paper as Record<string, unknown>) : {};
-  const named = [input.title, paper.title, input.name, input.query, input.search].find((value) => typeof value === "string" && value.trim() !== "");
+  const requeried = Array.isArray(input.changes) ? input.changes.find((change) => change?.setting === "query")?.value : undefined;
+  const named = [input.title, paper.title, input.name, input.query, input.search, requeried].find((value) => typeof value === "string" && value.trim() !== "");
   return typeof named === "string" ? cut(named.trim(), 200) : undefined;
 }
 
