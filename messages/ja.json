@@ -3408,6 +3408,14 @@
     "placeholder": "アシスタントに質問する",
     "readOnly": "このチャットは閲覧できますが、書き込みはできません",
     "messageLabel": "アシスタントへのメッセージ",
+    "sees": "{view}を表示中",
+    "views": {
+      "results": "検索結果",
+      "extractionJob": "抽出ジョブ",
+      "librarySettings": "ライブラリ設定",
+      "authors": "著者",
+      "page": "このページ"
+    },
     "send": "送信",
     "stop": "停止",
     "thinking": "考え中",

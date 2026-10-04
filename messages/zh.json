@@ -3408,6 +3408,14 @@
     "placeholder": "向助手提问",
     "readOnly": "你可以阅读此对话，但不能在其中发言",
     "messageLabel": "给助手发消息",
+    "sees": "可见{view}",
+    "views": {
+      "results": "检索结果",
+      "extractionJob": "提取任务",
+      "librarySettings": "文献库设置",
+      "authors": "作者",
+      "page": "此页面"
+    },
     "send": "发送",
     "stop": "停止",
     "thinking": "思考中",

@@ -3398,6 +3398,14 @@
     "placeholder": "Ask the assistant",
     "readOnly": "You can read this chat, but not write in it",
     "messageLabel": "Message the assistant",
+    "sees": "Sees {view}",
+    "views": {
+      "results": "Search results",
+      "extractionJob": "Extraction job",
+      "librarySettings": "Library settings",
+      "authors": "Authors",
+      "page": "this page"
+    },
     "send": "Send",
     "stop": "Stop",
     "thinking": "Thinking",

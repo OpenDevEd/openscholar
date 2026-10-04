@@ -3408,6 +3408,14 @@
     "placeholder": "सहायक से पूछें",
     "readOnly": "आप यह चैट पढ़ सकते हैं, पर इसमें लिख नहीं सकते",
     "messageLabel": "सहायक को संदेश",
+    "sees": "{view} देख रहा है",
+    "views": {
+      "results": "खोज परिणाम",
+      "extractionJob": "एक्सट्रैक्शन जॉब",
+      "librarySettings": "लाइब्रेरी सेटिंग्स",
+      "authors": "लेखक",
+      "page": "यह पेज"
+    },
     "send": "भेजें",
     "stop": "रोकें",
     "thinking": "सोच रहा है",
