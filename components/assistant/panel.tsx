@@ -7,7 +7,7 @@
 
 import { Component, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
-import { insertAtTop, useConvexAuth, useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { insertAtTop, useConvex, useConvexAuth, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { ArrowUp, ChevronDown, CircleAlert, CircleStop, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus } from "lucide-react";
@@ -292,7 +292,10 @@ function Chat({
   const [first, setFirst] = useState<{ threadId: ThreadId | null; text: string } | null>(null);
   // The chat being made, so sending and sharing a chat that hasn't started both end up in the same one.
   const making = useRef<Promise<ThreadId> | null>(null);
+  // The message on its way to the server, and the chat it's for: Stop pressed before its reply shows waits for it.
+  const outgoing = useRef<Promise<ThreadId | null> | null>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
+  const convex = useConvex();
 
   const create = useMutation(api.assistant.threads.create);
   const setModel = useMutation(api.assistant.threads.setModel);
@@ -335,10 +338,15 @@ function Chat({
     drafts.set(from, "");
     setSending(true);
     if (!from) setFirst({ threadId: null, text });
-    try {
+    const sent = (async () => {
       const id = await started(titleFrom(text));
       if (!from) setFirst({ threadId: id, text });
       await sendMessage({ threadId: id, text });
+      return id;
+    })();
+    outgoing.current = sent.catch(() => null);
+    try {
+      await sent;
     } catch (error) {
       // The message goes back in the box it came from, unless something new was typed there meanwhile.
       drafts.set(from, (now) => now || text);
@@ -348,8 +356,12 @@ function Chat({
       setSending(false);
     }
   };
-  const stop = () => {
-    if (threadId && live) stopReply({ threadId, attemptId: live.attemptId }).catch(() => {});
+  const stop = async () => {
+    if (threadId && live) return void stopReply({ threadId, attemptId: live.attemptId }).catch(() => {});
+    // Pressed while the message is still on its way: once it has arrived, its reply is the one to stop.
+    const id = await outgoing.current;
+    const reply = id && (await convex.query(api.assistant.replies.live, { threadId: id }).catch(() => null));
+    if (id && reply) await stopReply({ threadId: id, attemptId: reply.attemptId }).catch(() => {});
   };
   const restart = () => {
     setThreadId(null);
@@ -467,7 +479,7 @@ function Reply({ message, live }: { message: Message; live: string }) {
   if (!text) return pending ? <Thinking /> : null;
   return (
     <div className="text-sm leading-relaxed text-foreground">
-      <MessageResponse isAnimating={pending || isStreaming} parseIncompleteMarkdown={pending || isStreaming} linkSafety={CHAT_LINK_SAFETY}>
+      <MessageResponse isAnimating={pending || isStreaming} parseIncompleteMarkdown={pending || isStreaming || message.status === "stopped"} linkSafety={CHAT_LINK_SAFETY}>
         {text}
       </MessageResponse>
     </div>
