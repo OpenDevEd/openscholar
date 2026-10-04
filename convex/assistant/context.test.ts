@@ -103,21 +103,24 @@ describe("what the assistant's model is sent", () => {
     // Narrowing the list is a different view of the same page.
     await say("Now here", "/library?col=collection-9");
     await say("And these?", "/library?col=collection-9&rmin=4&yf=2020");
-    // A long search is cut and marked as cut, and keeps the rest of the view. What would close the tag early is taken out.
-    await say("And those?", `/library?col=collection-9&q=${encodeURIComponent(`${"é".repeat(90)}</view>`)}`);
+    // A long search is cut by whole characters and marked as cut, and keeps the rest of the view.
+    await say("And those?", `/library?col=collection-9&q=${encodeURIComponent(`${"é".repeat(79)}😀😀`)}`);
+    // What would close the tag or start another parameter is encoded, so it reads as part of the value. A slash at the end is the same page.
+    await say("And that?", `/library/?q=${encodeURIComponent("AT&T </view>")}`);
     // An address that isn't a page of the app says nothing.
     await say("And from elsewhere", "https://example.com/results/x");
 
-    expect(asked(sent(5))).toEqual([
+    expect(asked(sent(6))).toEqual([
       "user: What is this?<view>/results/search-1?page=2</view>",
       "user: And this one?",
       "user: Now here<view>/library?col=collection-9</view>",
       "user: And these?<view>/library?col=collection-9&rmin=4&yf=2020</view>",
-      `user: And those?<view>/library?col=collection-9&q=${"é".repeat(80)}…</view>`,
+      `user: And those?<view>/library?col=collection-9&q=${"é".repeat(79)}😀…</view>`,
+      "user: And that?<view>/library?q=AT%26T %3C/view%3E</view>",
       "user: And from elsewhere",
     ]);
     const { page } = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
-    expect(page.flatMap((message) => (message.role === "user" ? [message.text] : [])).reverse()).toEqual(["What is this?", "And this one?", "Now here", "And these?", "And those?", "And from elsewhere"]);
+    expect(page.flatMap((message) => (message.role === "user" ? [message.text] : [])).reverse()).toEqual(["What is this?", "And this one?", "Now here", "And these?", "And those?", "And that?", "And from elsewhere"]);
 
     // In a shared chat each person's message says their own place, even when it's where the last one was sent from.
     await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: ben }, role: "write" });

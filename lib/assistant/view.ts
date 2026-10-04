@@ -26,13 +26,15 @@ const PATH_MAX = 200;
 const VALUE_MAX = 80;
 
 /**
- * A parameter's value as the model reads it: without what would break out of the view's
- * tag or its list of parameters, and ending in an ellipsis when it was cut short, so the
- * start of a long search isn't read as the whole of it.
+ * A parameter's value as the model reads it. What would break out of the view's tag or
+ * its list of parameters is percent-encoded, so two different values never read the same.
+ * One cut short, by whole characters, ends in an ellipsis, so the start of a long search
+ * isn't read as the whole of it.
  */
 function shown(value: string) {
-  const plain = value.replace(/[<>&\s]+/g, " ").trim();
-  return plain.length > VALUE_MAX ? `${plain.slice(0, VALUE_MAX)}…` : plain;
+  const characters = [...value];
+  const kept = characters.length > VALUE_MAX ? `${characters.slice(0, VALUE_MAX).join("")}…` : value;
+  return kept.replace(/[<>&%\n\r\t]/g, encodeURIComponent);
 }
 
 /** A page's address as a view: its path and the parameters kept for that page. Null for one that isn't a page of the app. */
@@ -45,12 +47,14 @@ export function viewOf(address: string): string | null {
     return null;
   }
   if (url.pathname.length > PATH_MAX) return null;
-  const kept = KEPT.find(([page]) => page.test(url.pathname))?.[1] ?? [];
+  // A page's address is the same with a slash at its end.
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  const kept = KEPT.find(([page]) => page.test(path))?.[1] ?? [];
   const parameters = kept.flatMap((key) => {
     const value = url.searchParams.get(key);
     return value ? [`${key}=${shown(value)}`] : [];
   });
-  return `${url.pathname}${parameters.length ? `?${parameters.join("&")}` : ""}`;
+  return `${path}${parameters.length ? `?${parameters.join("&")}` : ""}`;
 }
 
 /** A view as the model reads it, after what the person typed. */
