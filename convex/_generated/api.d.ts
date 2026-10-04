@@ -16,6 +16,7 @@ import type * as ai_actions from "../ai/actions.js";
 import type * as ai_config from "../ai/config.js";
 import type * as ai_helpers from "../ai/helpers.js";
 import type * as ai_serverModel from "../ai/serverModel.js";
+import type * as ai_validators from "../ai/validators.js";
 import type * as aiModelConfig_admin from "../aiModelConfig/admin.js";
 import type * as aiModelConfig_internal from "../aiModelConfig/internal.js";
 import type * as aiModelConfig_queries from "../aiModelConfig/queries.js";
@@ -289,6 +290,7 @@ import type * as migrations_removeOrphanLibraryAccess from "../migrations/remove
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
+import type * as migrations_versionChangedSections from "../migrations/versionChangedSections.js";
 import type * as models_admin from "../models/admin.js";
 import type * as models_catalog from "../models/catalog.js";
 import type * as models_mutations from "../models/mutations.js";
@@ -375,6 +377,7 @@ declare const fullApi: ApiFromModules<{
   "ai/config": typeof ai_config;
   "ai/helpers": typeof ai_helpers;
   "ai/serverModel": typeof ai_serverModel;
+  "ai/validators": typeof ai_validators;
   "aiModelConfig/admin": typeof aiModelConfig_admin;
   "aiModelConfig/internal": typeof aiModelConfig_internal;
   "aiModelConfig/queries": typeof aiModelConfig_queries;
@@ -648,6 +651,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
+  "migrations/versionChangedSections": typeof migrations_versionChangedSections;
   "models/admin": typeof models_admin;
   "models/catalog": typeof models_catalog;
   "models/mutations": typeof models_mutations;

@@ -10,7 +10,7 @@ import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/bill
 import schema from "../schema";
 import { assistant } from "./agent";
 import { people } from "./assistant.test-support";
-import { finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, waitFor } from "./turn.test-support";
+import { erroringOnAbortDoStream, finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, waitFor } from "./turn.test-support";
 
 const { mockDoStream, modelIdsSeen, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), modelIdsSeen: [] as unknown[], fetchMock: vi.fn() }));
 vi.stubGlobal("fetch", fetchMock);
@@ -116,6 +116,34 @@ describe("assistant replies", () => {
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Thanks" });
     await ended(t, threadId);
     expect((await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[0]).toMatchObject({ text: "Done", status: "done" });
+  });
+
+  it("show as stopped when the runtime reports the stop as an error, before the first word or after", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await sharedChat(t);
+    const stopping = async () => {
+      const running = await waitFor(async () => (await chat(t, threadId))?.reply !== undefined).then(async () => (await chat(t, threadId))!.reply!);
+      await asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: running.attemptId });
+      await ended(t, threadId);
+      return (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[0];
+    };
+
+    // Stopped while the model was still thinking: the request itself fails.
+    mockDoStream.mockImplementation(erroringOnAbortDoStream([], 0));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Think hard" });
+    await waitFor(() => mockDoStream.mock.calls.length === 1);
+    const early = await stopping();
+    expect(early).toMatchObject({ role: "assistant", status: "stopped", text: "" });
+    expect(early.error).toBeUndefined();
+
+    // Stopped mid-reply: the stream fails, and what was written is kept.
+    mockDoStream.mockImplementation(erroringOnAbortDoStream(["One ", "two "], 300));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Count" });
+    await waitFor(async () => (await asAda.query(api.assistant.replies.live, { threadId }))?.text.includes("two") === true, { timeoutMs: 5_000 });
+    const late = await stopping();
+    expect(late).toMatchObject({ role: "assistant", status: "stopped" });
+    expect(late.text.trim()).toBe("One two");
+    expect(late.error).toBeUndefined();
   });
 
   it("can't be asked for by someone who only reads the chat", async () => {
