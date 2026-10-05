@@ -937,6 +937,7 @@ describe("the assistant's tools", () => {
     // A deleted chat's limit goes with it.
     await asAda.mutation(api.assistant.threads.remove, { threadId: second });
     await waitFor(async () => (await t.run(async (ctx) => ctx.db.query("assistantLimits").collect())).every((row) => row.threadId !== second), { timeoutMs: 5_000 });
+  });
 
   it("bring a long reply's steps with the chat's newest page, though the message it answers is pages back", async () => {
     const t = convexTest(schema);
