@@ -17,7 +17,8 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Check, ChevronDown, CircleAlert, Coins, Compass, FileText, FolderPlus, Hash, LibraryBig, ListChecks, MessagesSquare, Plus, Search, TableProperties, Undo2, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, Check, ChevronDown, CircleAlert, Coins, Compass, Plus, Undo2, X, type AppIcon } from "@/components/icons";
+import { RECORD_KINDS } from "@/components/record-kinds";
 import { AnimatedNumber } from "@/components/screening/parts";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -35,18 +36,18 @@ import { WorkingText } from "./parts";
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
 export type StepItem = Extract<Item, { role: "step" }>;
 
-/** One tint per kind of work, the way the model map gives each provider one. */
+/** Each kind's icon, the same as everywhere in the app, and its colour, which only the assistant uses (components/record-kinds.ts). `other` is an action on no one record. */
 export const KIND = {
-  search: { icon: Search, tint: "#60a5fa" },
-  paper: { icon: FileText, tint: "#eab308" },
-  collection: { icon: FolderPlus, tint: "#2dd4bf" },
-  screening: { icon: ListChecks, tint: "#a78bfa" },
-  extraction: { icon: TableProperties, tint: "#fb923c" },
-  chat: { icon: MessagesSquare, tint: "#f472b6" },
-  library: { icon: LibraryBig, tint: "#f472b6" },
-  topic: { icon: Hash, tint: "#818cf8" },
-  other: { icon: Compass, tint: "#94a3b8" },
-} satisfies Record<string, { icon: AppIcon; tint: string }>;
+  search: RECORD_KINDS.search,
+  paper: RECORD_KINDS.paper,
+  collection: RECORD_KINDS.collection,
+  screening: RECORD_KINDS.screening,
+  extraction: RECORD_KINDS.extraction,
+  chat: RECORD_KINDS.chat,
+  library: RECORD_KINDS.library,
+  topic: RECORD_KINDS.topic,
+  other: { icon: Compass, tint: "var(--muted-foreground)" },
+} satisfies Record<Kind, { icon: AppIcon; tint: string }>;
 
 const CARD = 56;
 const GAP = 8;

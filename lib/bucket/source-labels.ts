@@ -1,4 +1,5 @@
-import { Clock, FolderOpen, Library, Upload, ListChecks, type AppIcon } from "@/components/icons";
+import { Upload, type AppIcon } from "@/components/icons";
+import { RECORD_KINDS } from "@/components/record-kinds";
 import type { ComponentType } from "react";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import type { BucketSource } from "@/lib/bucket/bucketItem";
@@ -31,12 +32,12 @@ export const SOURCE_COLOR_VAR: Record<BucketSource, string> = {
   upload: "--chart-5",
 };
 
-/** Each source's icon, coloured by `SOURCE_COLOR_VAR`, the way chat sources are shown. */
+/** Each source's icon, coloured by `SOURCE_COLOR_VAR`, the way chat sources are shown. A kind of record has its icon everywhere (components/record-kinds.ts). */
 export const SOURCE_ICON: Record<BucketSource, AppIcon | ComponentType<{ className?: string }>> = {
-  screening: ListChecks,
-  history: Clock,
-  library: Library,
-  collection: FolderOpen,
+  screening: RECORD_KINDS.screening.icon,
+  history: RECORD_KINDS.search.icon,
+  library: RECORD_KINDS.savedPapers.icon,
+  collection: RECORD_KINDS.collection.icon,
   zotero: ZoteroIcon,
   upload: Upload,
 };

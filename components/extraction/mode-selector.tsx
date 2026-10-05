@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { FileText, MessageSquare } from "@/components/icons";
+import { RECORD_KINDS } from "@/components/record-kinds";
 import { useTranslations } from "next-intl";
 import type { JobMode } from "@/lib/store/extraction";
 
@@ -15,8 +15,8 @@ export function ModeSelector({ value, onChange, disabled }: ModeSelectorProps) {
   const t = useTranslations("extraction");
 
   const options = [
-    { id: "extraction" as const, icon: FileText, titleKey: "modeExtractionTitle" as const, descKey: "modeExtractionDescription" as const },
-    { id: "chat" as const, icon: MessageSquare, titleKey: "modeChatTitle" as const, descKey: "modeChatDescription" as const },
+    { id: "extraction" as const, icon: RECORD_KINDS.extraction.icon, titleKey: "modeExtractionTitle" as const, descKey: "modeExtractionDescription" as const },
+    { id: "chat" as const, icon: RECORD_KINDS.chat.icon, titleKey: "modeChatTitle" as const, descKey: "modeChatDescription" as const },
   ];
 
   return (

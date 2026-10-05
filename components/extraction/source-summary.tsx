@@ -2,14 +2,8 @@
 
 import { useMemo, type ComponentType, type SVGProps } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import {
-  BookOpen,
-  FileUp,
-  Folder,
-  Layers,
-  Search,
-  ListChecks,
-} from "@/components/icons";
+import { FileUp, Layers } from "@/components/icons";
+import { RECORD_KINDS } from "@/components/record-kinds";
 import { useTranslations } from "next-intl";
 
 import { useBucketStore } from "@/lib/store/bucket";
@@ -28,11 +22,12 @@ const SOURCE_KEYS: BucketSource[] = [
   "upload",
 ];
 
+/** A kind of record has its icon everywhere (components/record-kinds.ts). */
 const SOURCE_ICONS: Record<BucketSource, ComponentType<SVGProps<SVGSVGElement>>> = {
-  screening: ListChecks,
-  history: Search,
-  library: BookOpen,
-  collection: Folder,
+  screening: RECORD_KINDS.screening.icon,
+  history: RECORD_KINDS.search.icon,
+  library: RECORD_KINDS.savedPapers.icon,
+  collection: RECORD_KINDS.collection.icon,
   zotero: ZoteroIcon,
   upload: FileUp,
 };
