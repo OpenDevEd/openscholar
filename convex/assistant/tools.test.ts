@@ -1022,6 +1022,10 @@ describe("the assistant's tools", () => {
     expect(said).toContain('"TPD reading"');
     // A missing argument is said on the error's own line, and any other error is left to its own words.
     expect(misfit("Uncaught ArgumentValidationError: Object is missing the required field `id`. Consider wrapping the field validator in `v.optional(...)` if this is expected.")).toContain("required field `id`");
+    // So is a field it doesn't take inside another argument, with the argument it is in.
+    const nested = misfit('Uncaught ArgumentValidationError: Object contains extra field `colour` that is not in the validator.\nPath: .paper\nObject: {colour: "red", title: "Tutoring"}\nValidator: v.object({title: v.string()})');
+    expect(nested).toContain("extra field `colour`");
+    expect(nested).toContain("paper");
     expect(misfit("Uncaught Error: something else")).toBeNull();
   });
 

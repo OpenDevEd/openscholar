@@ -197,8 +197,9 @@ export function misfit(text: string) {
   if (!text.includes("ArgumentValidationError")) return null;
   const line = (label: string) => text.match(new RegExp(`^\\s*${label}: (.*)$`, "m"))?.[1]?.trim();
   const [path, value, takes] = [line("Path"), line("Value"), line("Validator")];
-  // A missing or an unknown argument is said whole on the error's own line.
-  if (!path || !takes) return cut(`These arguments don't fit: ${text.split("\n").find((part) => part.includes("ArgumentValidationError"))!.replace(/^.*ArgumentValidationError: /, "")}`, 300);
+  const said = text.split("\n").find((part) => part.includes("ArgumentValidationError"))!.replace(/^.*ArgumentValidationError: /, "");
+  // A missing or an unknown field is said whole on the error's own line, which names it. Inside another argument, that one is named too.
+  if (!path || !takes || !said.startsWith("Value does not match validator")) return cut(`These arguments don't fit${path ? `, in ${path.replace(/^\./, "")}` : ""}: ${said}`, 400);
   return cut(`The argument ${path.replace(/^\./, "")} doesn't fit: it takes ${takes}${value ? `, and got ${value}` : ""}.${takes.startsWith("v.id(") ? " An ID is one a result gave you, never a name." : ""}`, 400);
 }
 

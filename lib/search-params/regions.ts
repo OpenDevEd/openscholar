@@ -66,6 +66,12 @@ export const URL_CODE_TO_INTERNAL: Record<string, string> = Object.fromEntries(
 );
 
 /**
+ * A country whose code is also a continent's link code (Afghanistan AF, Armenia AM, American
+ * Samoa AS) carries this in a link, or it would come back as the continent.
+ */
+const COUNTRY_SUFFIX = '_ISO';
+
+/**
  * Encode an array of region IDs and country codes into a compact URL string
  * Converts internal IDs (like 'africa') to URL codes (like 'AF')
  */
@@ -87,7 +93,7 @@ export function encodeRegions(selectedItems: string[]): string {
     // Check if it's a country code (2 letters)
     const upperItem = item.toUpperCase();
     if (upperItem.length === 2 && COUNTRIES[upperItem]) {
-      result.push(upperItem);
+      result.push(URL_CODE_TO_INTERNAL[upperItem] ? upperItem + COUNTRY_SUFFIX : upperItem);
       continue;
     }
     
@@ -118,9 +124,10 @@ export function decodeRegions(encoded: string): string[] {
       continue;
     }
     
-    // Check if it's a valid country code
-    if (trimmed.length === 2 && COUNTRIES[trimmed]) {
-      result.push(trimmed);
+    // Check if it's a valid country code, with or without the suffix that tells it from a continent
+    const country = trimmed.endsWith(COUNTRY_SUFFIX) ? trimmed.slice(0, -COUNTRY_SUFFIX.length) : trimmed;
+    if (country.length === 2 && COUNTRIES[country]) {
+      result.push(country);
       continue;
     }
     
