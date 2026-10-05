@@ -39,9 +39,20 @@ function storage() {
   }
 }
 
+/** Writes the place to the tab. A browser can refuse: it then lasts until the page is left. */
+function keep(now: Place) {
+  try {
+    storage()?.setItem(KEY, JSON.stringify(now));
+  } catch {
+    // Kept for this page only.
+  }
+}
+
 /** The panel's place as an outside store, for `useSyncExternalStore`: read from the tab once a page load, and written back on every change. */
 export const panelPlace = {
   subscribe(listener: () => void) {
+    // A place that came from a link is the tab's from here on: leaving for a checkout page and coming back finds the chat.
+    if (!listeners.size) keep(panelPlace.get());
     listeners.add(listener);
     return () => void listeners.delete(listener);
   },
@@ -50,11 +61,7 @@ export const panelPlace = {
   onServer: () => FOLDED,
   set(update: (now: Place) => Place) {
     place = update(panelPlace.get());
-    try {
-      storage()?.setItem(KEY, JSON.stringify(place));
-    } catch {
-      // Kept for this page only.
-    }
+    keep(place);
     for (const listener of listeners) listener();
   },
 };
