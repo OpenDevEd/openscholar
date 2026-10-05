@@ -13,6 +13,8 @@ import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 const PAGE_SIZE = 200;
 /** How long one page may take before the request fails, as the results page's reads do. */
 const PAGE_TIMEOUT_MS = 12_000;
+/** How much of OpenAlex's reason for refusing a search is passed on. Its own run to about 350 characters. */
+const REASON_SHOWN = 500;
 /**
  * The sort under which numbered pages list works in the results page's (cursor) order.
  * Measured on 2026-10-02 for "climate adaptation": the first 1,000 works matched in every
@@ -39,6 +41,23 @@ export type SearchSnapshot = Infer<typeof searchSnapshotValidator>;
 
 type Page = { page: number } | { cursor: string };
 
+/**
+ * The error for an answer that isn't the papers. A 400 is a search OpenAlex won't take, and it
+ * says why ("Wildcards (* or ?) do not work inside this quoted phrase"). Whoever wrote the search,
+ * a person or the assistant, gets those words: asking again for the same search changes nothing.
+ */
+async function refused(response: Response, doing: "return" | "count", what: string) {
+  const body = await response.text().catch(() => "");
+  console.error(`[paperSets] OpenAlex ${what} failed: ${response.status} ${body.slice(0, 500)}`);
+  let reason: unknown;
+  try {
+    reason = response.status === 400 ? (JSON.parse(body) as { message?: unknown }).message : undefined;
+  } catch {
+    // Not the answer OpenAlex gives for a search it won't take.
+  }
+  return createError("VALIDATION_ERROR", typeof reason === "string" && reason ? `OpenAlex didn't take this search: ${reason.slice(0, REASON_SHOWN)}` : `OpenAlex couldn't ${doing} these papers (${response.status}). Try again in a moment.`);
+}
+
 /** One page of the search, by number or cursor. An OQL search goes in a POST body: it outgrows the URL limit. */
 async function readPage<Work>(request: SearchRequest, at: Page, select: string, size = PAGE_SIZE): Promise<{ works: Work[]; nextCursor: string | null; total: number }> {
   const parameters = {
@@ -60,11 +79,7 @@ async function readPage<Work>(request: SearchRequest, at: Page, select: string, 
     console.error(`[paperSets] OpenAlex page ${JSON.stringify(at)} didn't answer`, error);
     throw createError("VALIDATION_ERROR", "OpenAlex didn't return these papers in time. Try again in a moment.");
   }
-  if (!response.ok) {
-    const detail = (await response.text().catch(() => "")).slice(0, 500);
-    console.error(`[paperSets] OpenAlex page ${JSON.stringify(at)} failed: ${response.status} ${detail}`);
-    throw createError("VALIDATION_ERROR", `OpenAlex couldn't return these papers (${response.status}). Try again in a moment.`);
-  }
+  if (!response.ok) throw await refused(response, "return", `page ${JSON.stringify(at)}`);
   const body = (await response.json()) as { results?: Work[]; meta?: { next_cursor?: string | null; count?: number } };
   return { works: body.results ?? [], nextCursor: body.meta?.next_cursor || null, total: body.meta?.count ?? 0 };
 }
@@ -204,10 +219,7 @@ export async function groupSearch(request: SearchRequest, by: string, spend: (pa
     console.error(`[paperSets] OpenAlex count by ${by} didn't answer`, error);
     throw createError("VALIDATION_ERROR", "OpenAlex didn't count these papers in time. Try again in a moment.");
   }
-  if (!response.ok) {
-    console.error(`[paperSets] OpenAlex count by ${by} failed: ${response.status} ${(await response.text().catch(() => "")).slice(0, 500)}`);
-    throw createError("VALIDATION_ERROR", `OpenAlex couldn't count these papers (${response.status}). Try again in a moment.`);
-  }
+  if (!response.ok) throw await refused(response, "count", `count by ${by}`);
   const body = (await response.json()) as { meta?: { count?: unknown }; group_by?: Array<{ key?: unknown; key_display_name?: unknown; count?: unknown }> };
   const groups = (Array.isArray(body.group_by) ? body.group_by : []).flatMap(({ key, key_display_name: name, count }) =>
     typeof key === "string" && typeof count === "number" ? [{ key, name: typeof name === "string" && name ? name : key, count }] : [],
