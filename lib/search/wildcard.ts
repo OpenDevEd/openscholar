@@ -31,3 +31,12 @@ export function hasWildcardInQuotedPhrase(query: string): boolean {
   const phrases = query.match(/"[^"]*"/g) ?? [];
   return phrases.some((p) => p.includes("*") || p.includes("?"));
 }
+
+/**
+ * A query with the question marks taken out of its quoted phrases. OpenAlex reads `?` as a
+ * wildcard and takes none inside a phrase, so a paper's title quoted with its own question
+ * mark ("Food for Thought?") is refused. A quoted phrase that ends a word in `?` is a title,
+ * not a pattern, so the mark goes. One outside quotes stays: there it is a wildcard OpenAlex
+ * takes (see {@link hasUnquotedWildcard}).
+ */
+export const withoutQuotedQuestionMarks = (query: string) => query.replace(/"[^"]*"/g, (phrase) => phrase.replace(/\?/g, ""));
