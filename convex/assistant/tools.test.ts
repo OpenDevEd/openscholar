@@ -486,6 +486,8 @@ describe("the assistant's tools", () => {
     await say("Screen them again");
     expect(await jobs()).toBe(2);
     expect((await steps()).filter((step) => step.path === "screening/start:screen").map((step) => [step.status, step.credits])).toEqual([["done", 14], ["done", 14]]);
+    // Each job may spend what she let it hold, asked or allowed, and stops there.
+    expect(await t.run(async (ctx) => (await ctx.db.query("screeningJobs").collect()).map((job) => job.spendCap))).toEqual([14, 14]);
     // The Spending sheet lists them under the settings that decide for them.
     const listed = await asAda.query(api.assistant.spending.jobs, { threadId, paginationOpts: { cursor: null, numItems: 1 } });
     expect(listed).toMatchObject({ page: [{ action: "screening/start:screen", credits: 14 }], isDone: false });

@@ -80,6 +80,13 @@ export const screenPaperAction = internalAction({
       return emptyResult;
     }
 
+    // A job the assistant started with the person's say stops once its papers have cost what they approved (#328).
+    // Papers already on their way finish, so it can end a paper or two past the figure, never further.
+    if (job.spendCap !== undefined && (job.spent ?? 0) >= job.spendCap) {
+      await ctx.runMutation(internal.screening.mutations.markScreeningJobCreditsExhausted, { jobId: args.jobId, capped: true });
+      return emptyResult;
+    }
+
     // 3. Idempotency guard: skip if already completed (prevents double-billing on retry)
     if (result.status === "completed") {
       console.log(

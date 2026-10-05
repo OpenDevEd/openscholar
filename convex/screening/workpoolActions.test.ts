@@ -60,6 +60,27 @@ describe("charging a Screen all paper", () => {
     expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("creditsExhausted");
   });
 
+  it("stops a job at the most it may spend, when it has one, without asking the model again", async () => {
+    fakeAutumn.reset();
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    const t = convexTest(schema);
+    const { userId, jobId, first, second } = await seed(t);
+    // The assistant started it with the person's yes to 3 credits.
+    await t.run(async (ctx) => ctx.db.patch("screeningJobs", jobId, { spendCap: 3 }));
+    const counted = (credits: number) => t.run(async (ctx) => ctx.db.patch("screeningJobProgress", (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique())!._id, { credits }));
+
+    // Under it, a paper runs and is charged as any other.
+    await counted(2);
+    await t.action(internal.screening.workpoolActions.screenPaperAction, { jobId, resultId: first });
+    expect(fakeAutumn.balance(userId)).toBe(99);
+    // Once its papers have cost that much, the next one isn't run, and the job says where it stopped.
+    await counted(3);
+    const calls = fakeAutumn.calls.length;
+    await t.action(internal.screening.workpoolActions.screenPaperAction, { jobId, resultId: second });
+    expect(fakeAutumn.calls).toHaveLength(calls);
+    expect(await t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ status: "creditsExhausted", capped: true });
+  });
+
   it("fails the paper when the job's model was retired since, as before", async () => {
     fakeAutumn.reset();
     vi.stubGlobal("fetch", fakeAutumnFetch());

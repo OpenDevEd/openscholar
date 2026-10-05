@@ -76,6 +76,8 @@ export const createScreeningJobForUser = internalMutation({
     // The job that follows another in one request: it takes that job's place in the request
     // even when the person can no longer pay for it, so the page shows where the request stopped.
     chained: v.optional(v.boolean()),
+    // The most it may spend, when the assistant starts it with the person's say (#328).
+    spendCap: v.optional(v.number()),
   },
   returns: v.object({ jobId: v.id("screeningJobs") }),
   handler: async (ctx, { userId, author, papers, set, saveTo, prune, chained, answered = 0, ...args }) => {
@@ -306,7 +308,8 @@ export const endScreeningWork = internalMutation({
  * No-op when the job is already terminal or missing.
  */
 export const markScreeningJobCreditsExhausted = internalMutation({
-  args: { jobId: v.id("screeningJobs") },
+  // `capped`: it stopped at the most it may spend, not because the credits ran out.
+  args: { jobId: v.id("screeningJobs"), capped: v.optional(v.boolean()) },
   returns: v.null(),
   handler: async (ctx, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
@@ -316,6 +319,7 @@ export const markScreeningJobCreditsExhausted = internalMutation({
 
     await ctx.db.patch("screeningJobs", args.jobId, {
       status: "creditsExhausted",
+      ...(args.capped ? { capped: true as const } : {}),
       updatedAt: Date.now(),
     });
     await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId: args.jobId, cursor: null });

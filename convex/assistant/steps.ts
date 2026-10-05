@@ -216,8 +216,9 @@ export const failed = internalMutation({
 /** The steps the person allowed, in the order they were asked: the reply runs them as it carries on. */
 export const allowed = internalQuery({
   args: { threadId: v.id("assistantThreads") },
-  returns: v.array(v.object({ stepId: v.id("assistantSteps"), toolCallId: v.string(), path: v.string(), input: v.string() })),
-  handler: async (ctx, { threadId }) => (await stepsAt(ctx, threadId, "allowed")).map((step) => ({ stepId: step._id, toolCallId: step.toolCallId, path: step.path, input: step.input })),
+  returns: v.array(v.object({ stepId: v.id("assistantSteps"), toolCallId: v.string(), path: v.string(), input: v.string(), credits: v.optional(v.number()) })),
+  handler: async (ctx, { threadId }) =>
+    (await stepsAt(ctx, threadId, "allowed")).map((step) => ({ stepId: step._id, toolCallId: step.toolCallId, path: step.path, input: step.input, ...(step.credits === undefined ? {} : { credits: step.credits }) })),
 });
 
 /**
