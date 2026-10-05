@@ -6,6 +6,7 @@ import type { Doc } from "../../_generated/dataModel";
 import schema from "../../schema";
 import { foldCounts } from "../counts.test-support";
 import { readExtractionExport } from "../../../lib/extraction/export";
+import { recomputePaperListProjection } from "../listProjection";
 
 const CLERK_OWNER = "clerk_results_page_owner";
 const OWNER_IDENTITY = {
@@ -133,6 +134,36 @@ const countMatching = (auth: ReturnType<ReturnType<typeof convexTest>["withIdent
   auth.query(api.extraction.queries.countJobResults, { jobId: jobId as never, filters, includeRevision: true });
 
 describe("listJobResults", () => {
+  it("searches Unicode titles and answers and keeps Unicode answer filters narrow", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithProjectionCorpus(t);
+    const auth = t.withIdentity(OWNER_IDENTITY);
+    const first = (await listResults(auth, jobId, { numItems: 1 })).page[0];
+    await t.run(async (ctx) => {
+      await ctx.db.patch("extractionPapers", first._id, {
+        title: "مدارس المغرب التأثير データ 학교교육 éducation", authors: ["山田太郎"], abstract: "शिक्षा",
+      });
+      await ctx.db.insert("extractionResults", {
+        jobId, paperId: first._id, questionKey: "q1", answer: "学校教育",
+        citations: [], citationStatus: "best_effort", status: "completed", processedAt: 1,
+      });
+      await recomputePaperListProjection(ctx, first._id);
+    });
+    for (const searchQuery of ["مدارس", "التأثير", "データ", "학교교육", "éducation", "山田太郎", "शिक्षा", "学校教育"]) {
+      const filters = { ...DEFAULT_FILTERS, searchQuery };
+      expect((await listResults(auth, jobId, { filters })).page.map(paper => paper._id)).toEqual([first._id]);
+      expect(await countMatching(auth, jobId, filters)).toMatchObject({ matching: 1 });
+    }
+    for (const [value, expected] of [["学校教育", [first._id]], ["大学", []], ["+", []]] as const) {
+      const filters = { ...DEFAULT_FILTERS, questionFilters: [{ questionKey: "q1", value }] };
+      expect((await listResults(auth, jobId, { filters })).page.map(paper => paper._id)).toEqual(expected);
+      expect(await countMatching(auth, jobId, filters)).toMatchObject({ matching: expected.length });
+    }
+    const filters = { ...DEFAULT_FILTERS, searchQuery: "✓" };
+    expect((await listResults(auth, jobId, { filters })).page).toEqual([]);
+    expect(await countMatching(auth, jobId, filters)).toMatchObject({ matching: 0 });
+  });
+
   it("reads only selected papers and treats an empty selection as empty", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedJobWithProjectionCorpus(t);

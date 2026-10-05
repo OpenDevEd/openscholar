@@ -26,6 +26,7 @@ import {
 } from "./_shared";
 import {
   buildQuestionAnswerToken,
+  normalizeProjectionText,
 } from "../listProjection";
 
 function normalizePageSize(value: number) {
@@ -52,14 +53,16 @@ function normalizeResultsFilters(filters: ResultsPageFilters) {
     filters.confidenceRange,
   );
 
+  const searchQuery = normalizeProjectionText(filters.searchQuery);
   return {
-    searchQuery: filters.searchQuery.trim(),
+    searchQuery,
+    emptySearch: Boolean(filters.searchQuery.trim()) && !searchQuery,
     confidenceRange: [minConfidence / 100, maxConfidence / 100] as const,
     statusFilters: [...new Set(filters.statusFilters)],
-    questionFilters: filters.questionFilters.flatMap((filter) => {
-      const token = buildQuestionAnswerToken(filter.questionKey, filter.value);
-      return token ? [{ questionKey: filter.questionKey, token }] : [];
-    }),
+    questionFilters: filters.questionFilters.map((filter) => ({
+      questionKey: filter.questionKey,
+      token: buildQuestionAnswerToken(filter.questionKey, filter.value),
+    })),
   };
 }
 
@@ -127,11 +130,11 @@ function matchesStatusFilters(
 
 function matchesQuestionFilters(
   paper: Doc<"extractionPapers">,
-  questionFilters: ReadonlyArray<{ questionKey: string; token: string }>,
+  questionFilters: ReadonlyArray<{ questionKey: string; token: string | null }>,
 ) {
   if (questionFilters.length === 0) return true;
   const tokenSet = new Set(paper.questionAnswerTokens ?? []);
-  return questionFilters.every((filter) => tokenSet.has(filter.token));
+  return questionFilters.every((filter) => filter.token !== null && tokenSet.has(filter.token));
 }
 
 function matchesProjectionFilters(
@@ -164,6 +167,9 @@ async function readFilteredJobPapers(
   },
 ) {
   const jobId = args.job._id;
+  if (args.filters.emptySearch) {
+    return { totalAll: args.job.totalPapers ?? 0, totalFiltered: 0, filteredPapers: [] };
+  }
   // A search reads only its matches: reading every paper as well would take a
   // 1,000-paper job's page of 200 past the 16 MiB a query may read. The job's
   // processable paper count, set when its papers were saved, stands in for the total.
@@ -307,7 +313,7 @@ export const listJobResultsAction = defineUserQuery({
     const numItems = normalizePageSize(args.paginationOpts.numItems);
     const { cursor } = args.paginationOpts;
 
-    if (filters.searchQuery || args.selectedPaperIds !== undefined) {
+    if (filters.searchQuery || filters.emptySearch || args.selectedPaperIds !== undefined) {
       // A search reads its matches by relevance, at most PAPER_LIMIT of them, so they are
       // sorted here and the cursor is how many came before.
       const { filteredPapers } = await readFilteredJobPapers(ctx, { job, filters, sortBy: args.sortBy, limit: PAPER_LIMIT, selectedPaperIds: args.selectedPaperIds });

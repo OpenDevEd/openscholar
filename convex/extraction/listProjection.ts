@@ -20,9 +20,10 @@ export function normalizeProjectionText(value: string | null | undefined): strin
   return value
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
+    .normalize("NFC")
     .trim()
     .toLowerCase()
-    .replace(/[^\w\s%.-]/g, " ")
+    .replace(/[^\p{L}\p{M}\p{N}_\s%.-]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -35,10 +36,14 @@ function answerTextForSearch(answer: ProjectionAnswer): string {
   return String(answer);
 }
 
+function truncateSearchText(value: string, maxLength: number): string {
+  return value.slice(0, maxLength).replace(/[\uD800-\uDBFF]$/u, "").trim();
+}
+
 function buildSearchPart(answer: ProjectionAnswer): string | undefined {
-  const normalized = normalizeProjectionText(answerTextForSearch(answer))
-    .slice(0, SEARCH_TEXT_DEFAULT_PART_MAX)
-    .trim();
+  const normalized = truncateSearchText(
+    normalizeProjectionText(answerTextForSearch(answer)), SEARCH_TEXT_DEFAULT_PART_MAX,
+  );
   return normalized || undefined;
 }
 
@@ -84,7 +89,7 @@ function buildSearchText(args: {
     value: string | null | undefined,
     maxPartLength = SEARCH_TEXT_DEFAULT_PART_MAX,
   ) => {
-    const normalized = normalizeProjectionText(value).slice(0, maxPartLength).trim();
+    const normalized = truncateSearchText(normalizeProjectionText(value), maxPartLength);
     if (!normalized || seen.has(normalized)) return;
 
     const separatorLength = parts.length > 0 ? 1 : 0;
@@ -92,7 +97,7 @@ function buildSearchText(args: {
     if (nextTotal > SEARCH_TEXT_MAX_CHARS) {
       const remaining = SEARCH_TEXT_MAX_CHARS - totalChars - separatorLength;
       if (remaining <= 0) return;
-      const clipped = normalized.slice(0, remaining).trim();
+      const clipped = truncateSearchText(normalized, remaining);
       if (!clipped || seen.has(clipped)) return;
       parts.push(clipped);
       totalChars += separatorLength + clipped.length;
@@ -151,6 +156,22 @@ function toQuestionState(
   return { questionKey, token, searchPart };
 }
 
+export function paperSearchProjection(
+  paper: Doc<"extractionPapers">,
+  results: Pick<Doc<"extractionResults">, "questionKey" | "answer">[],
+) {
+  const questionStates = results.flatMap((result) => {
+    const state = toQuestionState(result.questionKey, result.answer);
+    return state ? [state] : [];
+  });
+  questionStates.sort((a, b) => a.questionKey.localeCompare(b.questionKey));
+  return {
+    sortTitle: normalizeProjectionText(paper.title),
+    questionAnswerTokens: questionStates.flatMap((state) => state.token ? [state.token] : []),
+    searchText: buildSearchText({ paper, questionStates }),
+  };
+}
+
 /**
  * Tier C: the denormalized search/list fields on extractionPapers are
  * rebuilt from the per-question extractionResults rows. Per-question
@@ -181,12 +202,6 @@ export async function recomputePaperListProjection(
     .withIndex("by_paper", (q) => q.eq("paperId", paperId))
     .take(MAX_QUESTIONS_PER_JOB);
 
-  const questionStates = results.flatMap((result) => {
-    const state = toQuestionState(result.questionKey, result.answer);
-    return state ? [state] : [];
-  });
-  questionStates.sort((a, b) => a.questionKey.localeCompare(b.questionKey));
-
   const confidenceSum = results.reduce(
     (sum, result) => sum + confidenceContribution(result.confidence),
     0,
@@ -197,10 +212,6 @@ export async function recomputePaperListProjection(
 
   const resultCount = results.length;
   const avgConfidence = resultCount > 0 ? confidenceSum / resultCount : 0;
-  const questionAnswerTokens = questionStates.flatMap((s) =>
-    s.token ? [s.token] : [],
-  );
-
   const hasPaperError =
     paper.status === "download_failed" ||
     paper.status === "indexing_failed" ||
@@ -208,13 +219,11 @@ export async function recomputePaperListProjection(
     paper.lastError !== undefined;
 
   await ctx.db.patch("extractionPapers", paperId, {
-    sortTitle: normalizeProjectionText(paper.title),
+    ...paperSearchProjection(paper, results),
     avgConfidence,
     hasErrors: hasPaperError || errorQuestionKeys.length > 0,
     hasPdfSource: Boolean(
       paper.pdfUrl || paper.storageId || paper.ragEntryId || paper.isIndexed,
     ),
-    questionAnswerTokens,
-    searchText: buildSearchText({ paper, questionStates }),
   });
 }

@@ -6,7 +6,19 @@ import schema from "../schema";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
-import { recomputePaperListProjection } from "./listProjection";
+import { normalizeProjectionText, recomputePaperListProjection } from "./listProjection";
+
+it.each([
+  ["مدارس المغرب", "مدارس المغرب"],
+  ["学校教育", "学校教育"],
+  ["शिक्षा", "शिक्षा"],
+  ["أحمد التأثير إلى القرآن", "أحمد التأثير إلى القرآن"],
+  ["データ がっこう", "データ がっこう"],
+  ["학교교육", "학교교육"],
+  ["Café ０ 12.5%", "cafe 0 12.5%"],
+])("keeps searchable letters and numbers in %s", (input, expected) => {
+  expect(normalizeProjectionText(input)).toBe(expected);
+});
 
 const CLERK_OWNER = "clerk_list_projection";
 
@@ -84,6 +96,49 @@ async function seedProjectionFixture(t: ReturnType<typeof convexTest>): Promise<
 }
 
 describe("paper list projection write maintenance", () => {
+  it("does not cut an astral letter in half at search field limits", async () => {
+    const t = convexTest(schema);
+    const { paperId, jobId } = await seedProjectionFixture(t);
+    await t.run(async ctx => {
+      await ctx.db.patch("extractionPapers", paperId, { title: "a".repeat(399) + "𠮷", authors: [], abstract: "" });
+      await ctx.db.insert("extractionResults", {
+        jobId, paperId, questionKey: "q1", answer: "b".repeat(239) + "𠮷",
+        citations: [], citationStatus: "best_effort", status: "completed", processedAt: 1,
+      });
+      await recomputePaperListProjection(ctx, paperId);
+    });
+    const paper = await t.run(ctx => ctx.db.get("extractionPapers", paperId));
+    expect(paper?.searchText).toBe(`${"a".repeat(399)} oa list-projection ${"b".repeat(239)}`);
+    expect(paper?.questionAnswerTokens).toEqual([`q1::${"b".repeat(239)}𠮷`]);
+  });
+
+  it("rebuilds old search fields without changing research data and is safe to repeat", async () => {
+    const t = convexTest(schema);
+    const { paperId, jobId } = await seedProjectionFixture(t);
+    const resultId = await t.run(async (ctx) => {
+      await ctx.db.patch("extractionPapers", paperId, {
+        title: "مدارس المغرب", authors: ["山田太郎"], abstract: "शिक्षा",
+        sortTitle: "", searchText: "oa list-projection", questionAnswerTokens: [],
+        avgConfidence: 0.73, hasErrors: false, hasPdfSource: false,
+      });
+      return ctx.db.insert("extractionResults", {
+        jobId, paperId, questionKey: "q1", answer: "学校教育", citations: [],
+        citationStatus: "best_effort", confidence: 0.73, reasoning: "Saved reasoning",
+        status: "completed", processedAt: 123, creditsUsed: 7,
+      });
+    });
+    const before = await t.run(ctx => ctx.db.get("extractionPapers", paperId));
+    const answer = await t.run(ctx => ctx.db.get("extractionResults", resultId));
+    await t.mutation(internal.migrations.extractionSearch.papers, { cursor: null, dryRun: true });
+    expect(await t.run(ctx => ctx.db.get("extractionPapers", paperId))).toEqual(before);
+    await t.mutation(internal.migrations.extractionSearch.papers, { cursor: null, dryRun: false });
+    const after = await t.run(ctx => ctx.db.get("extractionPapers", paperId));
+    expect(after).toEqual({ ...before, sortTitle: "مدارس المغرب", searchText: "مدارس المغرب oa list-projection 山田太郎 शिक्षा 学校教育", questionAnswerTokens: ["q1::学校教育"] });
+    expect(await t.run(ctx => ctx.db.get("extractionResults", resultId))).toEqual(answer);
+    await t.mutation(internal.migrations.extractionSearch.papers, { cursor: null, dryRun: false });
+    expect(await t.run(ctx => ctx.db.get("extractionPapers", paperId))).toEqual(after);
+  });
+
   // Tier C: result writes no longer patch the paper row. The denormalized projection fields
   // (avgConfidence, questionAnswerTokens, searchText, hasErrors) are
   // rebuilt from the per-question result rows by
