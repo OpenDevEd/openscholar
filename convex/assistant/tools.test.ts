@@ -445,7 +445,7 @@ describe("the assistant's tools", () => {
 
   it("show the person what a call acts on and what it changes before anything else about it", async () => {
     const t = convexTest(schema);
-    const { ada, asAda } = await chatOf(t);
+    const { ada, asAda, threadId } = await chatOf(t);
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
     const paper = Object.fromEntries(Array.from({ length: 14 }, (_, index) => [`field${index}`, `value ${index}`]));
     const details = await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ paper, collectionId, inCollection: false, note: null })));
@@ -455,6 +455,11 @@ describe("the assistant's tools", () => {
     // A collection that isn't hers stays an ID.
     const theirs = await t.run(async (ctx) => ctx.db.insert("collections", { ...(await ctx.db.get("collections", collectionId))!, _id: undefined, _creationTime: undefined, userId: (await ctx.db.query("users").collect()).find((user) => user._id !== ada)!._id, name: "Private to someone else" } as never));
     expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId: theirs })))).toEqual([{ name: "collection", value: theirs }]);
+    // A collection named by its ID and again by the name the call expects it to have is one line.
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId, name: "Trials" })))).toEqual([{ name: "collection", value: "Trials" }]);
+    // Two records that share a name are both said: who a chat is shared with is never left out.
+    await asAda.mutation(api.assistant.threads.rename, { threadId, title: "Trials" });
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ threadId, collectionId })))).toEqual([{ name: "thread", value: "Trials" }, { name: "collection", value: "Trials" }]);
   });
 
   it("name a step after the saved paper or the collection its call gave only the ID of", async () => {

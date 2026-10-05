@@ -60,7 +60,8 @@ export function viewOf(address: string): string | null {
 
 /**
  * The app's note to the model, after what the person typed: the page they're on, when it's
- * a page of the app, and the date. Without the date a model takes "the past year" from when
- * it was trained.
+ * a page of the app, the date, and the chat. Without the date a model takes "the past year"
+ * from when it was trained. Without the chat's ID, "share this chat" made it look through
+ * the person's chats for one with a matching title.
  */
-export const notePart = ({ page, today }: { page?: string; today: string }) => `<app_context>${page === undefined ? "" : `page: ${page}; `}today: ${today}</app_context>`;
+export const notePart = ({ page, today, chat }: { page?: string; today: string; chat: string }) => `<app_context>${page === undefined ? "" : `page: ${page}; `}today: ${today}; chat: ${chat}</app_context>`;

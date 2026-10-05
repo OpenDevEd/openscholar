@@ -143,8 +143,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">{t.has(title) ? t(title) : t("steps.other.ask")}</p>
           <ul className="mt-1.5 space-y-1 text-sm text-muted-foreground">
-            {/* A collection named by its ID and again by the name the call expects to find reads as one line. */}
-            {(step.details ?? []).filter((detail, i, all) => all.findIndex((other) => other.value === detail.value) === i).map((detail, i) => (
+            {(step.details ?? []).map((detail, i) => (
               <li key={i} className="flex gap-2">
                 <span className="shrink-0 text-foreground/50">{(NAMED as readonly string[]).includes(detail.name) ? t(`asks.names.${detail.name as (typeof NAMED)[number]}`) : detail.name}</span>
                 <span className="min-w-0 break-words">{detail.value}</span>

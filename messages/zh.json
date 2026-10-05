@@ -3754,6 +3754,23 @@
         "did": "已在你的账户中处理",
         "where": "你的账户",
         "ask": "在你的账户中执行操作"
+      },
+      "startExtraction": {
+        "doing": "正在开始提取",
+        "did": "已开始提取",
+        "where": "提取",
+        "ask": "开始提取"
+      },
+      "copyExtraction": {
+        "doing": "正在复制提取",
+        "did": "已复制提取",
+        "where": "提取",
+        "ask": "复制提取"
+      },
+      "sharePeople": {
+        "doing": "正在查找可共享的人",
+        "did": "已查找可共享的人",
+        "where": "对话"
       }
     },
     "asks": {

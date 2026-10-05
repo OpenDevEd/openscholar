@@ -1,7 +1,7 @@
 export type Kind = "search" | "paper" | "collection" | "screening" | "extraction" | "chat" | "other";
 
 /** The words for a kind of step: `assistant.steps.<words>` in the messages. */
-type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "chats" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "other";
+type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "chats" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "other";
 
 /** Each action's kind of work and the words for it; one that isn't here shows as work in the account. */
 const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }> = {
@@ -82,7 +82,9 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "assistant/replies:messages": { kind: "chat", words: "readChat" },
   "assistant/replies:steps": { kind: "chat", words: "readChat" },
   "assistant/sharing:listAccess": { kind: "chat", words: "chatAccess" },
-  "assistant/sharing:candidates": { kind: "chat", words: "chatAccess" },
+  "assistant/sharing:candidates": { kind: "chat", words: "sharePeople" },
+  "extraction/mutations:startJob": { kind: "extraction", words: "startExtraction" },
+  "extraction/mutations:duplicateJob": { kind: "extraction", words: "copyExtraction" },
   "billing/usage:countCharges": { kind: "other", words: "credits" },
   "wallet/queries:listKeys": { kind: "other", words: "keys" },
   "wallet/queries:countKeys": { kind: "other", words: "keys" },

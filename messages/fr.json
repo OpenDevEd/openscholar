@@ -3754,6 +3754,23 @@
         "did": "Travail effectué dans votre compte",
         "where": "Votre compte",
         "ask": "Exécuter une action dans votre compte"
+      },
+      "startExtraction": {
+        "doing": "Lancement d'une extraction",
+        "did": "Extraction lancée",
+        "where": "Extraction",
+        "ask": "Lancer une extraction"
+      },
+      "copyExtraction": {
+        "doing": "Copie d'une extraction",
+        "did": "Extraction copiée",
+        "where": "Extraction",
+        "ask": "Copier une extraction"
+      },
+      "sharePeople": {
+        "doing": "Recherche de personnes avec qui partager",
+        "did": "Personnes avec qui partager recherchées",
+        "where": "Conversations"
       }
     },
     "asks": {

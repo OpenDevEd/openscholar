@@ -130,7 +130,7 @@ export const send = mutation({
     const { messageId, message } = await assistant.saveMessage(ctx, {
       threadId: thread.agentThreadId,
       userId,
-      ...(moved ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: notePart({ page: view ?? undefined, today }) }] } } : { prompt: text }),
+      ...(moved ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: notePart({ page: view ?? undefined, today, chat: threadId }) }] } } : { prompt: text }),
       skipEmbeddings: true,
     });
     const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
@@ -150,6 +150,7 @@ export const send = mutation({
       ...(cap === undefined ? {} : { used: { credits: 0, rounds: 0, calls: 0, cap } }),
     });
     // A chat made before it had a message, to share it or to set what it may spend, is named by its first.
+    // ponytail: told apart by its title alone, so a chat renamed to exactly the default before its first message is named over. A flag on the chat for "named by hand" if that ever matters.
     const title = thread.preview === undefined && thread.title === NEW_CHAT_TITLE ? titleFrom(text) : "";
     await ctx.db.patch("assistantThreads", threadId, { ...(title ? { title } : {}), preview: previewOf(text), ...(moved ? { view: { ...((view ?? said?.address) === undefined ? {} : { address: view ?? said?.address }), day: today, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId, spent: 0, ...(cap === undefined ? {} : { cap }) } });
     return null;

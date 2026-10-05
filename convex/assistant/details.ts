@@ -82,11 +82,16 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
   // The call's own arguments come before the fields inside them, so what it acts on and what
   // it changes are shown even when a paper it carries has more fields than fit.
   const leaves = plain(args).sort(([a], [b]) => a.length - b.length);
-  const details: Array<{ name: string; value: string }> = [];
+  const details: Array<{ name: string; value: string; record: boolean }> = [];
   for (const [path, value] of leaves.slice(0, ASKED_DETAILS_MAX)) {
     // A name that can't be read, such as someone in more organizations than are read at once, stays an ID.
-    const shown = typeof value === "string" ? ((await named(value).catch(() => null)) ?? value) : String(value);
-    details.push({ name: nameOf(path), value: shown.length > VALUE_MAX ? `${shown.slice(0, VALUE_MAX)}…` : shown });
+    const record = typeof value === "string" ? await named(value).catch(() => null) : null;
+    const shown = record ?? String(value);
+    details.push({ name: nameOf(path), value: shown.length > VALUE_MAX ? `${shown.slice(0, VALUE_MAX)}…` : shown, record: record !== null });
   }
-  return details;
+  // A call can name a record by its ID and again by the name it expects it to have, so that it
+  // fails on one renamed since. The record's own name says both, so the typed one isn't
+  // repeated. Two records with one name, a chat and the organization it's shared with, are both said.
+  const records = new Set(details.flatMap((detail) => (detail.record ? [detail.value] : [])));
+  return details.flatMap(({ record, ...detail }) => (record || !records.has(detail.value) ? [detail] : []));
 }

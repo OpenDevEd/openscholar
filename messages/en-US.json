@@ -3744,6 +3744,23 @@
         "did": "Worked in your account",
         "where": "Your account",
         "ask": "Run an action in your account"
+      },
+      "startExtraction": {
+        "doing": "Starting an extraction",
+        "did": "Started an extraction",
+        "where": "Extraction",
+        "ask": "Start an extraction"
+      },
+      "copyExtraction": {
+        "doing": "Copying an extraction",
+        "did": "Copied an extraction",
+        "where": "Extraction",
+        "ask": "Copy an extraction"
+      },
+      "sharePeople": {
+        "doing": "Looking for people to share with",
+        "did": "Looked for people to share with",
+        "where": "Chats"
       }
     },
     "asks": {
