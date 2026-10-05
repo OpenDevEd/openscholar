@@ -178,10 +178,12 @@ export const answer = mutation({
     // It would run with their access, on their records, so the answer is theirs alone.
     if (step.userId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can allow this.");
     let left = (await stepsAt(ctx, threadId, "asking")).filter((other) => other._id !== stepId);
+    // A yes to a call that holds more than the person has starts nothing: it waits while they add credits, as its card says.
+    const balance = allow && step.credits !== undefined ? await availableCredits(ctx, userId) : 0;
+    if (allow && step.credits !== undefined && step.credits > balance) throw createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
     if (allow && always && step.credits !== undefined) {
       // As opencode's "always" does for a session: the rule is kept, and what else waits that it now covers is allowed with it.
       const allowance = await allowAlways(ctx, threadId, userId, step.credits);
-      const balance = await availableCredits(ctx, userId);
       const covered = left.filter((other) => other.credits !== undefined && covers(allowance, other.credits, balance));
       for (const other of covered) await ctx.db.patch("assistantSteps", other._id, { status: "allowed" });
       left = left.filter((other) => !covered.includes(other));

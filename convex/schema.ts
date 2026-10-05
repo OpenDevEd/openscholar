@@ -211,7 +211,9 @@ export default defineSchema({
   assistantSteps: defineTable(assistantStepFields)
     // The steps that wait for the person, or for the reply to run them (convex/assistant/steps.ts).
     .index("by_thread_and_status", ["threadId", "status"]).index("by_thread_and_order", ["threadId", "order"])
-    .index("by_thread_order_status", ["threadId", "order", "status"]),
+    .index("by_thread_order_status", ["threadId", "order", "status"])
+    // A person's steps in a chat that hold credits, by how much (convex/assistant/spending.ts).
+    .index("by_thread_user_credits", ["threadId", "userId", "credits"]),
   assistantStepResults: defineTable(assistantStepResultFields).index("by_step", ["stepId"]).index("by_thread", ["threadId"]),
   // What each person lets the assistant spend in a chat, and each person's own record (convex/assistant/spending.ts).
   assistantLimits: defineTable(assistantLimitFields).index("by_thread_and_user", ["threadId", "userId"]).index("by_user", ["userId"]),
