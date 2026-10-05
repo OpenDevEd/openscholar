@@ -222,23 +222,28 @@ export default function JobDetailPage() {
 
   const convex = useConvex();
   const loadExport = useCallback(
-    (signal?: AbortSignal, selectedPaperIds?: Id<"extractionPapers">[]) =>
-      readExtractionExport(
+    (signal?: AbortSignal, selectedPaperIds?: Id<"extractionPapers">[]) => {
+      const exportView = selectedPaperIds === undefined ? resultsView : {
+        jobId,
+        filters: { ...defaultFilters, statusFilters: [], questionFilters: [] },
+      };
+      return readExtractionExport(
         (cursor) =>
           convex.query(api.extraction.queries.listJobResults, {
-            ...resultsView,
+            ...exportView,
             selectedPaperIds,
             sortBy: resultsSortBy,
             paginationOpts: { cursor, numItems: RESULTS_PAGE_SIZE_MAX },
           }),
-        () => convex.query(api.extraction.queries.countJobResults, { ...resultsView, selectedPaperIds, includeRevision: true }),
+        () => convex.query(api.extraction.queries.countJobResults, { ...exportView, selectedPaperIds, includeRevision: true }),
         async () => {
           const details = await convex.query(api.extraction.queries.getJobDetails, { jobId });
           if (details.status !== "ok") throw new Error("This extraction is no longer available.");
           return { job: details.job, questions: details.questions };
         },
         { signal },
-      ),
+      );
+    },
     [convex, jobId, resultsView, resultsSortBy],
   );
   const loadAllExport = useCallback((signal?: AbortSignal) => loadExport(signal), [loadExport]);
