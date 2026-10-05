@@ -650,7 +650,7 @@ export function toolsFor(
     }),
     change_papers: tool({
       description:
-        "Makes one change to many papers in one go, without reading them first. `papers` is the set: what a query finds ({kind: \"query\", query, and any filter research_papers_search takes, such as minCitations}), a saved search's results ({kind: \"search\", searchId}), " +
+        "Makes one change to many papers in one go, without reading them first. `papers` is the set: what a query finds ({kind: \"query\", query, filters}, where filters are the settings research_papers_search takes, such as {minCitations: 11}), a saved search's results ({kind: \"search\", searchId}), " +
         "a collection ({kind: \"collection\", collectionId}), every saved paper ({kind: \"saved\"}), a screening's included papers ({kind: \"screening\", jobId}), or papers you name ({kind: \"ids\", ids}). " +
         `\`first\` and \`last\` say which of the set, counting from 1. Left out, it is the whole set, up to ${PAPERS_MAX.toLocaleString("en")} papers. ` +
         "`do` is what happens to each paper: \"save\" to the library (with `collectionId`, into that collection too), \"collect\" into `collectionId`, \"uncollect\" out of `collectionId`, \"remove\" from the library, or \"rate\" with `rating`. " +

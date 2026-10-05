@@ -8,10 +8,8 @@ import { z } from "zod";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
-import { inputSchema } from "../lib/assistantTools";
 import { createError } from "../lib/errors";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
-import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { heldPapers } from "../paperSets/held";
 import { readSearchWorks } from "../paperSets/openalex";
 import { SCREENING_FIELDS, checkRange, keptByRating, searchPapers, spender, toPaper, type SavedSearchRequest, type SearchPaper, type Work } from "../paperSets/search";
@@ -22,23 +20,20 @@ export const PAPERS_MAX = MAX_SCREENING_PAPERS_PER_JOB;
 /** Papers OpenAlex is asked for by ID in one request: its filter takes this many values. */
 const IDS_A_REQUEST = 50;
 
-const SEARCH = "research/papers:search";
 const SAVE = "library/mutations:saveToLibrary";
 const IN_COLLECTION = "library/mutations:setPaperInCollection";
 const REMOVE = "library/mutations:removeFromLibrary";
 const RATE = "library/mutations:setLibraryRating";
 
-/** A query and its filters, as research/papers:search takes them, without the page. */
-const querySchema = () => {
-  const { page: _page, ...fields } = inputSchema(USER_ACTIONS.find((entry) => entry.path === SEARCH)!).shape as Record<string, z.ZodType>;
-  return z.object(fields);
-};
-
-/** What change_papers is given. Made when the tools are, since it reads the registry. */
+/**
+ * What change_papers is given. A query's filters are named by the tool that searches, not
+ * spelled out again here: every request carries every tool, and thirty settings twice over
+ * is a thousand tokens of each (#326). The search checks them when the set is read.
+ */
 export const changePapersSchema = () =>
   z.object({
     papers: z.union([
-      querySchema().extend({ kind: z.literal("query") }),
+      z.object({ kind: z.literal("query"), query: z.string().nullish(), filters: z.record(z.string(), z.unknown()).nullish() }),
       z.object({ kind: z.literal("search"), searchId: z.string() }),
       z.object({ kind: z.literal("collection"), collectionId: z.string() }),
       z.object({ kind: z.literal("saved") }),
@@ -51,9 +46,9 @@ export const changePapersSchema = () =>
     collectionId: z.string().nullish(),
     rating: z.number().nullish(),
   });
-/** A set of papers, as change_papers names it. A query comes with the filters research/papers:search takes, whatever they are. */
+/** A set of papers, as change_papers names it. A query comes with the filters research/papers:search takes. */
 export type PaperSet =
-  | ({ kind: "query"; query?: string | null } & Record<string, unknown>)
+  | { kind: "query"; query?: string | null; filters?: Record<string, unknown> | null }
   | { kind: "search"; searchId: string }
   | { kind: "collection"; collectionId: string }
   | { kind: "saved" }
@@ -90,9 +85,8 @@ export async function papersOf(ctx: ActionCtx, userId: Id<"users">, { papers: se
   const last = end ?? first + PAPERS_MAX - 1;
   checkRange(first, last);
   if (set.kind === "query") {
-    const { kind: _kind, query, ...settings } = set;
     // Typed here: the generated API's types depend on this module, so inference would loop.
-    const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, query: query ?? undefined, settings: settings as never });
+    const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, query: set.query ?? undefined, settings: (set.filters ?? {}) as never });
     if (!found.request) throw invalid("This query isn't one OpenAlex can read. Check its brackets and quotes.");
     const works = await readSearchWorks<Work>(found.request, { first, last, select: SCREENING_FIELDS }, spender(ctx, found.clerkId));
     return keptByRating(ctx, userId, works.map(toPaper), found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined);

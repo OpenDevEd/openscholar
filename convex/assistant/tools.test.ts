@@ -355,10 +355,13 @@ describe("the assistant's tools", () => {
     const { asAda, threadId, say, sayUntilAsked, settled, steps } = await chatOf(t);
     vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
     const autumn = fakeAutumnFetch();
+    /** The filter of each request OpenAlex got. */
+    const read: string[] = [];
     // OpenAlex answers a page of a search that has thirty papers; everything else is the billing service.
     fetchMock.mockImplementation(async (input: string | URL, init?: RequestInit) => {
       if (!String(input).includes("openalex.org")) return autumn(input as never, init as never);
       const url = new URL(String(input));
+      read.push(url.searchParams.get("filter") ?? "");
       const [page, size] = [url.searchParams.has("cursor") ? 1 : Number(url.searchParams.get("page")), Number(url.searchParams.get("per-page"))];
       const from = (page - 1) * size;
       const paper = (n: number | string) => ({ id: `https://openalex.org/W${n}`, display_name: `Paper ${n}`, publication_year: 2021, cited_by_count: 40 });
@@ -371,9 +374,11 @@ describe("the assistant's tools", () => {
     const held = () => t.run(async (ctx) => ({ saved: (await ctx.db.query("libraryItems").collect()).length, collected: (await ctx.db.query("libraryItemCollections").collect()).length }));
 
     // The set is read before Ada is asked, so she's asked about the papers it holds: how many, where they go, and the first by title.
-    mockDoStream.mockImplementationOnce(calling({ id: "found", name: "change_papers", input: { papers: { kind: "query", query: "tutoring", minCitations: 11 }, first: 1, last: 30, do: "save", collectionId } }));
+    mockDoStream.mockImplementationOnce(calling({ id: "found", name: "change_papers", input: { papers: { kind: "query", query: "tutoring", filters: { minCitations: 11 } }, first: 1, last: 30, do: "save", collectionId } }));
     await sayUntilAsked("Save the ones with more than 10 citations to luna test");
     expect(await held()).toEqual({ saved: 0, collected: 0 });
+    // The set is the query with its filter, as the search itself would read it.
+    expect(read.some((filter) => filter.includes("cited_by_count:>10"))).toBe(true);
     const [asked] = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
     expect(asked).toMatchObject({ action: "library/mutations:saveToLibrary", status: "asking", batch: 30, details: [{ name: "collection", value: "luna test" }], each: [1, 2, 3, 4, 5].map((n) => [{ name: "title", value: `Paper ${n}` }]) });
 
