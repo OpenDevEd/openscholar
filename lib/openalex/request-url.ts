@@ -44,3 +44,17 @@ export function openAlexUrl(path: string, parameters: Record<string, string | un
   if (process.env.OPENALEX_CONTACT_EMAIL) url.searchParams.set("mailto", process.env.OPENALEX_CONTACT_EMAIL);
   return url;
 }
+
+/**
+ * The headers a request to `url` needs beside its key: Cloudflare Access's service token, when the
+ * URL is the OpenScholar API's and `OPENSCHOLAR_API_ACCESS_CLIENT_ID` and
+ * `OPENSCHOLAR_API_ACCESS_CLIENT_SECRET` are set, since Access lets through only requests that carry
+ * one. None for OpenAlex, which must never see the token. Server side only, since it reads the secret.
+ */
+export function openAlexHeaders(url: URL | string): Record<string, string> {
+  const root = process.env.OPENSCHOLAR_API_URL;
+  const id = process.env.OPENSCHOLAR_API_ACCESS_CLIENT_ID;
+  const secret = process.env.OPENSCHOLAR_API_ACCESS_CLIENT_SECRET;
+  if (!root || !id || !secret || new URL(url).origin !== new URL(root).origin) return {};
+  return { "CF-Access-Client-Id": id, "CF-Access-Client-Secret": secret };
+}

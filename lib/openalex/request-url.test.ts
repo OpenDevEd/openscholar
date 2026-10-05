@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { openAlexUrl } from "./request-url";
+import { openAlexHeaders, openAlexUrl } from "./request-url";
 
 function withKeys(openScholarApi: string) {
   vi.stubEnv("OPENSCHOLAR_API_URL", openScholarApi);
@@ -47,3 +47,36 @@ describe("openAlexUrl", () => {
     expect(asked).toEqual(Array(5).fill(["https://api.openalex.org", "openalex-key", "team@example.org"]));
   });
 });
+
+describe("openAlexHeaders", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  function withToken(openScholarApi: string, id: string, secret: string) {
+    vi.stubEnv("OPENSCHOLAR_API_URL", openScholarApi);
+    vi.stubEnv("OPENSCHOLAR_API_ACCESS_CLIENT_ID", id);
+    vi.stubEnv("OPENSCHOLAR_API_ACCESS_CLIENT_SECRET", secret);
+  }
+
+  it("gives the OpenScholar API's requests Cloudflare Access's service token", () => {
+    withToken("https://search-api.example.org", "client-id.access", "client-secret");
+    expect(openAlexHeaders(openAlexUrl("works", { search: "kelp" }))).toEqual({
+      "CF-Access-Client-Id": "client-id.access",
+      "CF-Access-Client-Secret": "client-secret",
+    });
+    expect(openAlexHeaders("https://search-api.example.org/")).toEqual({
+      "CF-Access-Client-Id": "client-id.access",
+      "CF-Access-Client-Secret": "client-secret",
+    });
+  });
+
+  it("never gives the token to OpenAlex, nor sends a token that is not set", () => {
+    withToken("https://search-api.example.org", "client-id.access", "client-secret");
+    expect(openAlexHeaders(openAlexUrl("topics/T10745"))).toEqual({});
+    expect(openAlexHeaders("https://api.openalex.org/works")).toEqual({});
+    withToken("https://search-api.example.org", "", "");
+    expect(openAlexHeaders(openAlexUrl("works"))).toEqual({});
+    withToken("", "client-id.access", "client-secret");
+    expect(openAlexHeaders(openAlexUrl("works"))).toEqual({});
+  });
+});
+
