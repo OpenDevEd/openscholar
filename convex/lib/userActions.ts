@@ -67,10 +67,19 @@ type AsksFirst<Args extends PropertyValidators> = { asksFirst?(ctx: QueryCtx, us
  */
 type Estimates<Args extends PropertyValidators> = { estimate?(ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>): Promise<number> };
 
+/**
+ * What of a call's arguments the person is shown when they're asked about it, for an action
+ * whose arguments, one by one, don't read as what it does: a screening is its papers and its
+ * questions to them, not the points each answer scores. IDs stay IDs here, and are shown by
+ * the name of what they name (convex/assistant/details.ts).
+ */
+type Shows<Args extends PropertyValidators> = { shown?(args: ObjectType<Args>): Record<string, unknown> };
+
 export type UserMutation<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
   Labels<keyof Args & string> &
   AsksFirst<Args> &
-  Estimates<Args> & {
+  Estimates<Args> &
+  Shows<Args> & {
     kind: "mutation";
     run: (ctx: MutationCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author) => Promise<Infer<Returns>>;
   };
@@ -87,7 +96,8 @@ export type ChangeCall = { stepId?: Id<"assistantSteps">; approved: boolean };
 export type UserActionEntry<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
   Labels<keyof Args & string> &
   AsksFirst<Args> &
-  Estimates<Args> & {
+  Estimates<Args> &
+  Shows<Args> & {
     kind: "action";
     /** It writes, after reading from outside: its write ends the step and rechecks approval (see ChangeCall). One without this only reads. */
     changes?: true;
@@ -97,7 +107,7 @@ export type UserActionEntry<Args extends PropertyValidators, Returns extends Gen
 /** What the registry list and the assistant's tools read from an entry. */
 export type UserAction =
   | { kind: "query"; path: string; description: string; args: PropertyValidators }
-  | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators; changes?: true } & Labels & AsksFirst<PropertyValidators> & Estimates<PropertyValidators>);
+  | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators; changes?: true } & Labels & AsksFirst<PropertyValidators> & Estimates<PropertyValidators> & Shows<PropertyValidators>);
 
 /** Entries are written with these so their argument and result types are inferred. */
 export const defineUserQuery = <Args extends PropertyValidators, Returns extends GenericValidator>(

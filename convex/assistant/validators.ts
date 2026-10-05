@@ -150,6 +150,8 @@ export const assistantStepFields = {
   count: v.optional(v.number()),
   /** On a call that spends credits: the most it holds (#328), which the person is shown when they're asked. */
   credits: v.optional(v.number()),
+  /** On a step that asked first, for an action that says what to show of its arguments: that, as JSON, which the person is asked about in their place. */
+  shown: v.optional(v.string()),
   /**
    * `asking`: the person is asked before it runs. `allowed`: they said yes, and the reply
    * runs it as it carries on. `declined`: they said no, or stopped the reply.

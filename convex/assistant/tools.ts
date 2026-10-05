@@ -144,7 +144,9 @@ export function askedSteps(requests: Asked[], held: (path: string, input: unknow
     const subject = call && subjectOf(call.input);
     // What a call that spends credits holds at most goes with its step, for the person asked.
     const credits = call ? held(call.entry.path, call.input) : undefined;
-    return { toolCallId, tool, path: call?.entry.path ?? tool, input: cut(JSON.stringify(call?.input ?? input ?? {}), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(credits === undefined ? {} : { credits }) };
+    // What the person is asked about, where the action says: its arguments don't all read as what it does.
+    const shown = call && call.entry.kind !== "query" && call.entry.shown ? cut(JSON.stringify(call.entry.shown(call.input)), STEP_TEXT_MAX) : undefined;
+    return { toolCallId, tool, path: call?.entry.path ?? tool, input: cut(JSON.stringify(call?.input ?? input ?? {}), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(credits === undefined ? {} : { credits }), ...(shown ? { shown } : {}) };
   });
 }
 

@@ -349,7 +349,7 @@ export const release = internalMutation({
     asking: v.optional(
       v.object({
         promptMessageId: v.string(),
-        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()) })),
+        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()) })),
         spent: v.number(),
         rounds: v.number(),
         made: v.number(),
@@ -687,7 +687,7 @@ export const messagesAction = defineUserQuery({
     // What each call that waits for this person would do.
     const reader = thread.asking?.senderId === userId ? await ctx.db.get("users", userId) : null;
     const mine = reader ? await stepsAt(ctx, threadId, "asking") : [];
-    const details = new Map(await Promise.all(mine.map(async (step) => [step._id, await detailsOf(ctx, reader!, step.input)] as const)));
+    const details = new Map(await Promise.all(mine.map(async (step) => [step._id, await detailsOf(ctx, reader!, step.shown ?? step.input)] as const)));
     const page = read.page.flatMap((row) => {
       const role = row.message?.role;
       // Newest first, like the page: the steps come after the message they answer, so they're listed before it.
