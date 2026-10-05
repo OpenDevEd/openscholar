@@ -3556,25 +3556,29 @@
         "doing": "正在创建检索",
         "did": "已创建检索",
         "where": "已保存的检索",
-        "ask": "创建检索"
+        "ask": "创建检索",
+        "askMany": "创建 {count, number} 个检索"
       },
       "changeSearch": {
         "doing": "正在修改检索",
         "did": "已修改检索",
         "where": "已保存的检索",
-        "ask": "修改检索"
+        "ask": "修改检索",
+        "askMany": "修改 {count, number} 个检索"
       },
       "restoreSearch": {
         "doing": "正在放回检索",
         "did": "已放回检索",
         "where": "已保存的检索",
-        "ask": "放回检索"
+        "ask": "放回检索",
+        "askMany": "放回 {count, number} 个检索"
       },
       "removeSearch": {
         "doing": "正在移除检索",
         "did": "已移除检索",
         "where": "已保存的检索",
-        "ask": "移除检索"
+        "ask": "移除检索",
+        "askMany": "移除 {count, number} 个检索"
       },
       "results": {
         "doing": "正在读取检索结果",
@@ -3620,31 +3624,36 @@
         "doing": "正在保存论文",
         "did": "已保存论文",
         "where": "文献库",
-        "ask": "保存论文"
+        "ask": "保存论文",
+        "askMany": "保存 {count, number} 篇论文"
       },
       "rate": {
         "doing": "正在为论文评分",
         "did": "已为论文评分",
         "where": "文献库",
-        "ask": "为论文评分"
+        "ask": "为论文评分",
+        "askMany": "为 {count, number} 篇论文评分"
       },
       "remove": {
         "doing": "正在移除论文",
         "did": "已移除论文",
         "where": "文献库",
-        "ask": "移除论文"
+        "ask": "移除论文",
+        "askMany": "移除 {count, number} 篇论文"
       },
       "restore": {
         "doing": "正在放回论文",
         "did": "已放回论文",
         "where": "文献库",
-        "ask": "放回论文"
+        "ask": "放回论文",
+        "askMany": "放回 {count, number} 篇论文"
       },
       "collect": {
         "doing": "正在更新合集",
         "did": "已更新合集",
         "where": "合集",
-        "ask": "更改合集"
+        "ask": "更改合集",
+        "askMany": "对合集做 {count, number} 处更改"
       },
       "collections": {
         "doing": "正在查看你的合集",
@@ -3660,13 +3669,15 @@
         "doing": "正在创建合集",
         "did": "已创建合集",
         "where": "合集",
-        "ask": "创建合集"
+        "ask": "创建合集",
+        "askMany": "创建 {count, number} 个合集"
       },
       "renameCollection": {
         "doing": "正在重命名合集",
         "did": "已重命名合集",
         "where": "合集",
-        "ask": "重命名合集"
+        "ask": "重命名合集",
+        "askMany": "重命名 {count, number} 个合集"
       },
       "screening": {
         "doing": "正在读取筛选",
@@ -3706,25 +3717,29 @@
         "doing": "正在开始对话",
         "did": "已开始对话",
         "where": "对话",
-        "ask": "开始对话"
+        "ask": "开始对话",
+        "askMany": "开始 {count, number} 个对话"
       },
       "renameChat": {
         "doing": "正在重命名对话",
         "did": "已重命名对话",
         "where": "对话",
-        "ask": "重命名对话"
+        "ask": "重命名对话",
+        "askMany": "重命名 {count, number} 个对话"
       },
       "chatModel": {
         "doing": "正在更改对话的模型",
         "did": "已更改对话的模型",
         "where": "对话",
-        "ask": "更改对话的模型"
+        "ask": "更改对话的模型",
+        "askMany": "更改 {count, number} 个对话的模型"
       },
       "answer": {
         "doing": "正在更改筛选答案",
         "did": "已更改筛选答案",
         "where": "筛选",
-        "ask": "更改筛选答案"
+        "ask": "更改筛选答案",
+        "askMany": "更改 {count, number} 个筛选答案"
       },
       "chats": {
         "doing": "正在查看你的对话",
@@ -3782,7 +3797,8 @@
         "doing": "正在更改书签",
         "did": "已更改书签",
         "where": "书签",
-        "ask": "更改书签"
+        "ask": "更改书签",
+        "askMany": "更改 {count, number} 个书签"
       },
       "clearBookmarks": {
         "doing": "正在移除你的全部书签",
@@ -3794,7 +3810,8 @@
         "doing": "正在你的账户中处理",
         "did": "已在你的账户中处理",
         "where": "你的账户",
-        "ask": "在你的账户中执行操作"
+        "ask": "在你的账户中执行操作",
+        "askMany": "在你的账户中执行 {count, number} 项操作"
       },
       "startExtraction": {
         "doing": "正在开始提取",
@@ -3819,6 +3836,8 @@
       "notNow": "暂不",
       "decline": "不执行",
       "why": "此操作无法撤销，或会在你的账户之外显示。每次都会询问。",
+      "whyMany": "此操作会一次更改多条记录，因此会先询问。",
+      "more": "另外 {count, number} 项",
       "failed": "无法发送你的回答",
       "unnamed": "未命名",
       "upTo": "最多 {credits, number} 积分",

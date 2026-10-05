@@ -152,6 +152,8 @@ export const assistantStepFields = {
   credits: v.optional(v.number()),
   /** On a step that asked first, for an action that says what to show of its arguments: that, as JSON, which the person is asked about in their place. */
   shown: v.optional(v.string()),
+  /** On a step that asks about a bulk change: how many changes it is. Its `input` is the list of each one's arguments, and each runs as a step of its own. */
+  batch: v.optional(v.number()),
   /**
    * `asking`: the person is asked before it runs. `allowed`: they said yes, and the reply
    * runs it as it carries on. `declined`: they said no, or stopped the reply.
@@ -169,6 +171,9 @@ export const assistantStepFields = {
 /** Arguments of a call the assistant asks about that the person asked is shown (./details.ts). */
 export const ASKED_DETAILS_MAX = 12;
 export const askedDetailsValidator = capped(v.optional(v.array(v.object({ name: v.string(), value: v.string() }))), ASKED_DETAILS_MAX);
+/** Of the records a bulk change is made to, how many the person asked is shown by name (./details.ts). */
+export const ASKED_EACH_MAX = 5;
+export const askedEachValidator = capped(v.optional(v.array(v.string())), ASKED_EACH_MAX);
 /** What a step's action returned, as JSON: kept apart from the step, so listing steps reads none of it. */
 export const assistantStepResultFields = { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), result: v.string() };
 

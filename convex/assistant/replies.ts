@@ -34,11 +34,11 @@ import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
-import { detailsOf } from "./details";
+import { bulkOf, detailsOf } from "./details";
 import { allowAlways, carriedOn, covers, noteReply, pausedAt, replyLimitOf } from "./spending";
 import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
-import { askedDetailsValidator, assistantPausedValidator } from "./validators";
+import { askedDetailsValidator, askedEachValidator, assistantPausedValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
 const MESSAGES_PAGE_MAX = 50;
@@ -351,7 +351,7 @@ export const release = internalMutation({
     asking: v.optional(
       v.object({
         promptMessageId: v.string(),
-        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()) })),
+        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()), batch: v.optional(v.number()) })),
         spent: v.number(),
         rounds: v.number(),
         made: v.number(),
@@ -560,6 +560,9 @@ const stepValidator = v.object({
   canAnswer: v.boolean(),
   /** What it would do, for the person who can answer it: its arguments, with the records they name by name (./details.ts). */
   details: askedDetailsValidator,
+  /** On a step that asks about a bulk change: how many changes it is, and for the person who can answer it, the first of the records they're made to. */
+  batch: v.optional(v.number()),
+  each: askedEachValidator,
   /** Why it failed, as the assistant was told. */
   error: v.optional(v.string()),
   /** Whether the person reading can undo it (./undo.ts): it returned what reverses it (#342), it was done for them, and it isn't undone yet. */
@@ -689,11 +692,13 @@ export const messagesAction = defineUserQuery({
     // What each call that waits for this person would do.
     const reader = thread.asking?.senderId === userId ? await ctx.db.get("users", userId) : null;
     const mine = reader ? await stepsAt(ctx, threadId, "asking") : [];
-    const details = new Map(await Promise.all(mine.map(async (step) => [step._id, await detailsOf(ctx, reader!, step.shown ?? step.input)] as const)));
+    const details = new Map(
+      await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: await detailsOf(ctx, reader!, step.shown ?? step.input) } : await bulkOf(ctx, reader!, step.input)] as const)),
+    );
     const page = read.page.flatMap((row) => {
       const role = row.message?.role;
       // Newest first, like the page: the steps come after the message they answer, so they're listed before it.
-      const steps = (ran.get(row._id) ?? []).map((step) => shownStep(step, { userId, answering, details: details.get(step._id) })).reverse();
+      const steps = (ran.get(row._id) ?? []).map((step) => shownStep(step, { userId, answering, asked: details.get(step._id) })).reverse();
       // A row that isn't a message to show still brings the steps it carries.
       if (role !== "user" && role !== "assistant") return steps;
       // The message a reply summarized partway goes on from is the app's own (./context.ts). What the reply did in answer to it is the reply's.
@@ -750,8 +755,11 @@ function variantOf(step: Doc<"assistantSteps">) {
   }
 }
 
-/** A step as the chat's page shows it. `details` is what a call that waits for this person would do. */
-function shownStep(step: Doc<"assistantSteps">, { userId, answering, details }: { userId: Id<"users">; answering: number | undefined; details?: Infer<typeof askedDetailsValidator> }) {
+/** A step as the chat's page shows it. `asked` is what a call that waits for this person would do. */
+function shownStep(
+  step: Doc<"assistantSteps">,
+  { userId, answering, asked }: { userId: Id<"users">; answering: number | undefined; asked?: { details: NonNullable<Infer<typeof askedDetailsValidator>>; each?: string[] } },
+) {
   return {
     id: step._id,
     role: "step" as const,
@@ -762,8 +770,9 @@ function shownStep(step: Doc<"assistantSteps">, { userId, answering, details }: 
     ...(step.count === undefined ? {} : { count: step.count }),
     ...(step.credits === undefined ? {} : { credits: step.credits }),
     status: shownStatus(step.status, answering === step.order),
-    canAnswer: details !== undefined,
-    ...(details !== undefined ? { details } : {}),
+    ...(step.batch === undefined ? {} : { batch: step.batch }),
+    canAnswer: asked !== undefined,
+    ...(asked ? { details: asked.details, ...(asked.each ? { each: asked.each } : {}) } : {}),
     ...(step.error ? { error: step.error } : {}),
     canUndo: step.undo !== undefined && step.userId === userId && step.undone !== true,
     undone: step.undone === true,

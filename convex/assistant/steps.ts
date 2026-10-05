@@ -31,6 +31,12 @@ export { STEPS_SHOWN };
 /** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
 export const MAX_ASKS = 10;
 /**
+ * Changes of one kind a reply makes without asking. More is a bulk change: it goes in one
+ * call that lists every one, and the person is asked once before any of it runs (./tools.ts,
+ * `run_many`). As opencode asks once for a patch, with every file it touches.
+ */
+export const BULK = 10;
+/**
  * Characters of anything a tool hands the model, about 4,000 tokens (#326). A step keeps the
  * rest of a result. Room for a page of ten papers with enough of each abstract to say what
  * the paper studied: at half this, a page carried a sentence of each.
@@ -170,7 +176,7 @@ export const begin = internalMutation({
  * saved paper's title, or else the collection's name. A paper it is about to save isn't
  * theirs yet, and gets its title from what the call returns (`namedBy`).
  */
-async function aboutOf(ctx: Pick<MutationCtx, "db">, userId: Id<"users">, input: string) {
+export async function aboutOf(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, input: string) {
   let args: Record<string, unknown>;
   try {
     args = JSON.parse(input) as Record<string, unknown>;
@@ -216,9 +222,16 @@ export const failed = internalMutation({
 /** The steps the person allowed, in the order they were asked: the reply runs them as it carries on. */
 export const allowed = internalQuery({
   args: { threadId: v.id("assistantThreads") },
-  returns: v.array(v.object({ stepId: v.id("assistantSteps"), toolCallId: v.string(), path: v.string(), input: v.string(), credits: v.optional(v.number()) })),
+  returns: v.array(v.object({ stepId: v.id("assistantSteps"), toolCallId: v.string(), path: v.string(), input: v.string(), credits: v.optional(v.number()), batch: v.optional(v.number()) })),
   handler: async (ctx, { threadId }) =>
-    (await stepsAt(ctx, threadId, "allowed")).map((step) => ({ stepId: step._id, toolCallId: step.toolCallId, path: step.path, input: step.input, ...(step.credits === undefined ? {} : { credits: step.credits }) })),
+    (await stepsAt(ctx, threadId, "allowed")).map((step) => ({
+      stepId: step._id,
+      toolCallId: step.toolCallId,
+      path: step.path,
+      input: step.input,
+      ...(step.credits === undefined ? {} : { credits: step.credits }),
+      ...(step.batch === undefined ? {} : { batch: step.batch }),
+    })),
 });
 
 /**

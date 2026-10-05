@@ -116,10 +116,23 @@ export type Waiting = { kind: Kind; title: string; credits: number };
 export const AddCredits = createContext<(waiting: Waiting) => void>(() => {});
 
 /**
+ * What a step that asks would do, as its card's title: one change, or for a bulk change how
+ * many. Only the kinds of action that can ask have the words for it.
+ */
+function useAskTitle() {
+  const t = useTranslations("assistant");
+  return (words: string, batch?: number) => {
+    const own = `steps.${words}.${batch === undefined ? "ask" : "askMany"}` as "steps.other.askMany";
+    return t(t.has(own) ? own : batch === undefined ? "steps.other.ask" : "steps.other.askMany", { count: batch ?? 1 });
+  };
+}
+
+/**
  * Asks before a change that can't be undone or that shows outside the account: what it
  * would do, with the records it names, then Allow once or Not now. One that spends credits
  * (#328) asks with the most it holds against the person's balance, and can be allowed for
- * the rest of the chat. The mock's approval card.
+ * the rest of the chat. A bulk change asks once for all of it, with the first of the records
+ * it's made to and how many more there are. The mock's approval card.
  */
 function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; step: StepItem }) {
   const t = useTranslations("assistant");
@@ -128,10 +141,9 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
   // Pressed once: the buttons rest until the chat shows the answer, or says it couldn't be sent.
   const [sent, setSent] = useState(false);
   const { kind, words } = viewOf(step.action, step.variant);
-  // Only the kinds of action that can ask have the words for it.
-  const title = `steps.${words}.ask` as "steps.other.ask";
   const addCredits = useContext(AddCredits);
-  const heading = t.has(title) ? t(title) : t("steps.other.ask");
+  const heading = useAskTitle()(words, step.batch);
+  const each = step.each ?? [];
   const say = (allow: boolean, always?: boolean) => {
     setSent(true);
     answer({ threadId, stepId: step.id as Id<"assistantSteps">, allow, ...(always ? { always } : {}) }).catch((error) => {
@@ -151,7 +163,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
         <KindTile kind={kind} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">{heading}</p>
-          <ul className="mt-1.5 space-y-1 text-sm text-muted-foreground">
+          <ul className="mt-1.5 space-y-1 text-sm text-muted-foreground empty:hidden">
             {(step.details ?? []).map((detail, i) => (
               <li key={i} className="flex gap-2">
                 <span className="shrink-0 text-foreground/50">{(NAMED as readonly string[]).includes(detail.name) ? t(`asks.names.${detail.name as (typeof NAMED)[number]}`) : detail.name}</span>
@@ -160,6 +172,16 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
               </li>
             ))}
           </ul>
+          {each.length ? (
+            <ol className="mt-1.5 space-y-1 text-sm text-muted-foreground">
+              {each.map((name, i) => (
+                <li key={i} className="truncate">
+                  {name || t("asks.unnamed")}
+                </li>
+              ))}
+              {step.batch !== undefined && step.batch > each.length ? <li className="text-foreground/50">{t("asks.more", { count: step.batch - each.length })}</li> : null}
+            </ol>
+          ) : null}
         </div>
         <TooltipHint label={t("asks.decline")}>
           <button
@@ -175,7 +197,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
       </div>
       {step.credits === undefined ? (
         <>
-          <p className="px-4 pb-4 text-xs text-muted-foreground">{t("asks.why")}</p>
+          <p className="px-4 pb-4 text-xs text-muted-foreground">{t(step.batch === undefined ? "asks.why" : "asks.whyMany")}</p>
           <div className="grid grid-cols-[1fr_auto] gap-2 border-t border-primary/15 p-3">
             <Button className="h-9" disabled={sent} onClick={() => say(true)}>
               {t("asks.allow")}
@@ -266,6 +288,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   const reduceMotion = useReducedMotion();
   const undo = useMutation(api.assistant.undo.run);
   const toast = useAppToast();
+  const askTitle = useAskTitle();
   const height = ORIGIN + steps.length * (CARD + GAP) - GAP;
   const y = (i: number) => ORIGIN + i * (CARD + GAP) + CARD / 2;
   return (
@@ -312,10 +335,10 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
             const faded = step.undone || step.status === "failed" || step.status === "declined";
             const state = step.status === "asking" ? t("steps.waiting") : step.status === "allowed" ? t("steps.allowed") : step.status === "declined" ? t("steps.declined") : null;
             // A step that waits for an answer, or was allowed or not, hasn't happened: it's named as what was asked, not as done.
-            const asked = `steps.${words}.ask` as "steps.other.ask";
+            // So is a bulk change the person allowed, to the end: each of its changes is a step of its own below it, named as done.
             const title =
-              step.status === "asking" || step.status === "allowed" || step.status === "declined"
-                ? t.has(asked) ? t(asked) : t("steps.other.ask")
+              step.batch !== undefined || step.status === "asking" || step.status === "allowed" || step.status === "declined"
+                ? askTitle(words, step.batch)
                 : t(`steps.${words}.${working || step.status === "failed" ? "doing" : "did"}`);
             return (
               <motion.div

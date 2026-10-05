@@ -12,7 +12,8 @@ import { readMemberOrganizations } from "../organizationFeatures";
 import { findSearch } from "../research/records";
 import { currentSearch } from "../../lib/research/records";
 import { personName, principalsOf, roleAmong } from "./access";
-import { ASKED_DETAILS_MAX } from "./validators";
+import { aboutOf } from "./steps";
+import { ASKED_DETAILS_MAX, ASKED_EACH_MAX } from "./validators";
 
 /** A saved search's ID: the one the page made for it. */
 const SEARCH_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -108,4 +109,31 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
   // repeated. Two records with one name, a chat and the organization it's shared with, are both said.
   const records = new Set(details.flatMap((detail) => (detail.record ? [detail.value] : [])));
   return details.flatMap(({ record, within, key, ...detail }) => ((record || !records.has(detail.value)) && !(key === "kind" && told.has(within)) ? [detail] : []));
+}
+
+/**
+ * What a bulk change the assistant asks about would do (./steps.ts `BULK`): what every one of
+ * its changes is given alike, as `detailsOf` says it, and the first of the records they're
+ * made to, each by its name where the reader can see it.
+ */
+export async function bulkOf(ctx: QueryCtx, reader: Doc<"users">, input: string) {
+  let each: Record<string, unknown>[];
+  try {
+    each = JSON.parse(input) as Record<string, unknown>[];
+  } catch {
+    // A list too long to keep whole was refused before it could be asked about.
+    return { details: [], each: [] };
+  }
+  const [first = {}] = each;
+  const shared = Object.fromEntries(Object.entries(first).filter(([key, value]) => each.length > 1 && each.every((item) => JSON.stringify(item[key]) === JSON.stringify(value))));
+  const names = await Promise.all(
+    each.slice(0, ASKED_EACH_MAX).map(async (item) => {
+      const own = JSON.stringify(Object.fromEntries(Object.entries(item).filter(([key]) => !(key in shared))));
+      const about = await aboutOf(ctx, reader._id, own);
+      if (about) return about;
+      const said = await detailsOf(ctx, reader, own);
+      return (said.find((detail) => ["title", "name", "query"].includes(detail.name)) ?? said[0])?.value ?? "";
+    }),
+  );
+  return { details: await detailsOf(ctx, reader, JSON.stringify(shared)), each: names };
 }

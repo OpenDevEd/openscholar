@@ -17,7 +17,7 @@ import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
 import { allowAlways, carriedOn, pausedAt } from "./spending";
 import { MAX_ASKS, MODEL_READS, STEPS_SHOWN, forModel } from "./steps";
-import { DEFINITION_MAX, MAX_FAILED_ROUNDS, circling, core, definition, found, written } from "./tools";
+import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, circling, core, definition, found, written } from "./tools";
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
@@ -260,6 +260,50 @@ describe("the assistant's tools", () => {
     expect((await thread())?.reply).toBeUndefined();
     // An answer given twice changes nothing.
     await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking._id, allow: true })).rejects.toThrow(/already been answered/);
+  });
+
+  it("ask once before a change to many records, with the list, run every one when the person allows it, and refuse more than ten of a kind made one by one", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, say, sayUntilAsked, settled, steps } = await chatOf(t);
+    const work = (n: number) => ({ openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}` });
+    for (let n = 1; n <= 12; n++) await asAda.mutation(api.library.mutations.saveToLibrary, work(n));
+    const saved = () => t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map((item) => item.title).sort());
+
+    // Twelve removals in one call: nothing is removed, and Ada is asked once, with how many and the first of them by title.
+    mockDoStream.mockImplementationOnce(
+      calling({ id: "all", name: "run_many", input: { name: "library/mutations:removeFromLibrary", each: Array.from({ length: 12 }, (_, i) => ({ openalexId: work(i + 1).openalexId })) } }),
+    );
+    await sayUntilAsked("Remove everything in my library");
+    expect(await saved()).toHaveLength(12);
+    const waiting = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
+    expect(waiting).toHaveLength(1);
+    expect(waiting[0]).toMatchObject({ action: "library/mutations:removeFromLibrary", status: "asking", canAnswer: true, batch: 12, each: ["Trial 1", "Trial 2", "Trial 3", "Trial 4", "Trial 5"] });
+
+    // Her yes runs every one, each a step of its own that she can undo, and the model reads what all of them came to.
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Your library is empty now."]));
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: true });
+    await settled();
+    expect(await saved()).toEqual([]);
+    const ran = await steps();
+    expect(ran.filter((step) => step.batch === undefined && step.status === "done" && step.undo)).toHaveLength(12);
+    expect(ran.find((step) => step.batch === 12)).toMatchObject({ status: "done" });
+    expect((told(1, "all") as { results: unknown[] }).results).toHaveLength(12);
+
+    // Made one by one, the eleventh change of a kind in a reply is refused, and the model is told to put the rest in one call.
+    mockDoStream
+      .mockImplementationOnce(calling(...Array.from({ length: 11 }, (_, i) => ({ id: `s${i}`, name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: work(101 + i) } }))))
+      .mockImplementationOnce(finishingDoStream(["Saved ten."]));
+    await say("Save these eleven");
+    expect(await saved()).toHaveLength(10);
+    const refused = Array.from({ length: 11 }, (_, i) => told(3, `s${i}`)).filter((value) => (value as { error?: string }).error === BULK_FIRST);
+    expect(refused).toHaveLength(1);
+
+    // A few changes in one call run at once, as they would one by one.
+    mockDoStream
+      .mockImplementationOnce(calling({ id: "few", name: "run_many", input: { name: "library_mutations_setLibraryRating", each: [101, 102, 103].map((n) => ({ openalexId: work(n).openalexId, rating: 4 })) } }))
+      .mockImplementationOnce(finishingDoStream(["Rated three."]));
+    await say("Rate the first three 4 stars");
+    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).filter((item) => item.rating === 4).length)).toBe(3);
   });
 
   it("tell the model a change that returns nothing was made, make again a write that collided, and keep a reply going past arguments the asking check can't read", async () => {
@@ -1213,8 +1257,8 @@ describe("the assistant's tools", () => {
 
     expect(toolsSent).toHaveLength(2);
     expect(toolsSent[1]).toEqual(toolsSent[0]);
-    expect(toolsSent[0].slice(-2)).toEqual(["find_action", "run_action"]);
-    expect(toolsSent[0]).toHaveLength(core().length + 2);
+    expect(toolsSent[0].slice(-3)).toEqual(["find_action", "run_action", "run_many"]);
+    expect(toolsSent[0]).toHaveLength(core().length + 3);
     // About 1,000 tokens at most for a tool's description and arguments (#326).
     for (const entry of core()) expect(JSON.stringify(definition(entry)).length, entry.path).toBeLessThanOrEqual(DEFINITION_MAX);
   });
