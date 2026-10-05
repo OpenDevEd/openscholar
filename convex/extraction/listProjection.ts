@@ -1,11 +1,11 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { MAX_QUESTIONS_PER_JOB } from "./validators";
+import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 
 const SEARCH_TEXT_MAX_CHARS = 6000;
 const SEARCH_TEXT_DEFAULT_PART_MAX = 240;
 const SEARCH_TEXT_ABSTRACT_MAX = 1200;
-const QUESTION_ANSWER_TOKEN_DELIMITER = "::";
 
 type ProjectionAnswer = Doc<"extractionResults">["answer"];
 
@@ -19,10 +19,11 @@ export function normalizeProjectionText(value: string | null | undefined): strin
   if (typeof value !== "string") return "";
   return value
     .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/(\p{Script=Latin})[\u0300-\u036f]+/gu, "$1")
+    .normalize("NFC")
     .trim()
     .toLowerCase()
-    .replace(/[^\w\s%.-]/g, " ")
+    .replace(/[^\p{L}\p{M}\p{N}_\s%.-]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -35,10 +36,14 @@ function answerTextForSearch(answer: ProjectionAnswer): string {
   return String(answer);
 }
 
+function truncateSearchText(value: string, maxLength: number): string {
+  return value.slice(0, maxLength).replace(/[\uD800-\uDBFF]$/u, "").trim();
+}
+
 function buildSearchPart(answer: ProjectionAnswer): string | undefined {
-  const normalized = normalizeProjectionText(answerTextForSearch(answer))
-    .slice(0, SEARCH_TEXT_DEFAULT_PART_MAX)
-    .trim();
+  const normalized = truncateSearchText(
+    normalizeProjectionText(answerTextForSearch(answer)), SEARCH_TEXT_DEFAULT_PART_MAX,
+  );
   return normalized || undefined;
 }
 
@@ -62,13 +67,13 @@ function normalizeAnswerForQuestionFilter(answer: ProjectionAnswer): string | nu
   return normalized || null;
 }
 
-export function buildQuestionAnswerToken(
+export async function buildQuestionAnswerToken(
   questionKey: string,
   answer: ProjectionAnswer,
-): string | null {
+): Promise<string | null> {
   const normalized = normalizeAnswerForQuestionFilter(answer);
   if (!normalized) return null;
-  return `${questionKey}${QUESTION_ANSWER_TOKEN_DELIMITER}${normalized}`;
+  return digestOpaqueToken(JSON.stringify([questionKey, normalized]));
 }
 
 function buildSearchText(args: {
@@ -84,7 +89,7 @@ function buildSearchText(args: {
     value: string | null | undefined,
     maxPartLength = SEARCH_TEXT_DEFAULT_PART_MAX,
   ) => {
-    const normalized = normalizeProjectionText(value).slice(0, maxPartLength).trim();
+    const normalized = truncateSearchText(normalizeProjectionText(value), maxPartLength);
     if (!normalized || seen.has(normalized)) return;
 
     const separatorLength = parts.length > 0 ? 1 : 0;
@@ -92,7 +97,7 @@ function buildSearchText(args: {
     if (nextTotal > SEARCH_TEXT_MAX_CHARS) {
       const remaining = SEARCH_TEXT_MAX_CHARS - totalChars - separatorLength;
       if (remaining <= 0) return;
-      const clipped = normalized.slice(0, remaining).trim();
+      const clipped = truncateSearchText(normalized, remaining);
       if (!clipped || seen.has(clipped)) return;
       parts.push(clipped);
       totalChars += separatorLength + clipped.length;
@@ -141,14 +146,28 @@ function confidenceContribution(confidence: number | undefined): number {
     : 0;
 }
 
-function toQuestionState(
+async function toQuestionState(
   questionKey: string,
   answer: ProjectionAnswer,
-): ProjectionQuestionState | null {
-  const token = buildQuestionAnswerToken(questionKey, answer) ?? undefined;
+): Promise<ProjectionQuestionState | null> {
+  const token = await buildQuestionAnswerToken(questionKey, answer) ?? undefined;
   const searchPart = buildSearchPart(answer);
   if (!token && !searchPart) return null;
   return { questionKey, token, searchPart };
+}
+
+export async function paperSearchProjection(
+  paper: Doc<"extractionPapers">,
+  results: Pick<Doc<"extractionResults">, "questionKey" | "answer">[],
+) {
+  const states = await Promise.all(results.map(result => toQuestionState(result.questionKey, result.answer)));
+  const questionStates = states.filter((state): state is ProjectionQuestionState => state !== null);
+  questionStates.sort((a, b) => a.questionKey.localeCompare(b.questionKey));
+  return {
+    sortTitle: normalizeProjectionText(paper.title),
+    questionAnswerTokens: questionStates.flatMap((state) => state.token ? [state.token] : []),
+    searchText: buildSearchText({ paper, questionStates }),
+  };
 }
 
 /**
@@ -181,12 +200,6 @@ export async function recomputePaperListProjection(
     .withIndex("by_paper", (q) => q.eq("paperId", paperId))
     .take(MAX_QUESTIONS_PER_JOB);
 
-  const questionStates = results.flatMap((result) => {
-    const state = toQuestionState(result.questionKey, result.answer);
-    return state ? [state] : [];
-  });
-  questionStates.sort((a, b) => a.questionKey.localeCompare(b.questionKey));
-
   const confidenceSum = results.reduce(
     (sum, result) => sum + confidenceContribution(result.confidence),
     0,
@@ -197,10 +210,6 @@ export async function recomputePaperListProjection(
 
   const resultCount = results.length;
   const avgConfidence = resultCount > 0 ? confidenceSum / resultCount : 0;
-  const questionAnswerTokens = questionStates.flatMap((s) =>
-    s.token ? [s.token] : [],
-  );
-
   const hasPaperError =
     paper.status === "download_failed" ||
     paper.status === "indexing_failed" ||
@@ -208,13 +217,11 @@ export async function recomputePaperListProjection(
     paper.lastError !== undefined;
 
   await ctx.db.patch("extractionPapers", paperId, {
-    sortTitle: normalizeProjectionText(paper.title),
+    ...await paperSearchProjection(paper, results),
     avgConfidence,
     hasErrors: hasPaperError || errorQuestionKeys.length > 0,
     hasPdfSource: Boolean(
       paper.pdfUrl || paper.storageId || paper.ragEntryId || paper.isIndexed,
     ),
-    questionAnswerTokens,
-    searchText: buildSearchText({ paper, questionStates }),
   });
 }
