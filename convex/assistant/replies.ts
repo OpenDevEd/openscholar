@@ -28,17 +28,17 @@ import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { NEW_CHAT_TITLE, titleFrom } from "../../lib/assistant/title";
 import { notePart, viewOf } from "../../lib/assistant/view";
-import { viewOf as actionView } from "../../lib/assistant/actions";
+import { hasVariants, variantIn, viewOf as actionView } from "../../lib/assistant/actions";
 import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
-import { detailsOf } from "./details";
+import { bulkOf, detailsOf } from "./details";
 import { allowAlways, carriedOn, covers, noteReply, pausedAt, replyLimitOf } from "./spending";
 import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
-import { askedDetailsValidator, assistantPausedValidator } from "./validators";
+import { askedDetailsValidator, askedEachValidator, assistantPausedValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
 const MESSAGES_PAGE_MAX = 50;
@@ -218,7 +218,7 @@ async function goOnFrom(ctx: MutationCtx, thread: Doc<"assistantThreads">, waiti
     senderId: waiting.senderId,
     modelId: waiting.modelId,
     effort: waiting.effort,
-    used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made, ...(waiting.failed ? { failed: waiting.failed } : {}), ...(waiting.recent ? { recent: waiting.recent } : {}), ...limits },
+    used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made, ...(waiting.failed ? { failed: waiting.failed } : {}), ...(waiting.recent ? { recent: waiting.recent } : {}), ...(waiting.changes ? { changes: waiting.changes } : {}), ...limits },
   });
   await ctx.db.patch("assistantThreads", thread._id, {
     asking: undefined,
@@ -266,6 +266,8 @@ export const usedValidator = v.object({
   tokens: v.optional(v.number()),
   failed: v.optional(v.number()),
   recent: v.optional(v.array(v.string())),
+  /** How many changes it has called for unasked, by what they change (./tools.ts `kindOf`). */
+  changes: v.optional(v.record(v.string(), v.number())),
   told: v.optional(v.string()),
   cap: v.optional(v.number()),
   lap: v.optional(v.number()),
@@ -351,12 +353,13 @@ export const release = internalMutation({
     asking: v.optional(
       v.object({
         promptMessageId: v.string(),
-        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()) })),
+        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()), batch: v.optional(v.number()), variant: v.optional(v.string()) })),
         spent: v.number(),
         rounds: v.number(),
         made: v.number(),
         failed: v.number(),
         recent: v.array(v.string()),
+        changes: v.optional(v.record(v.string(), v.number())),
         cap: v.optional(v.number()),
         lap: v.optional(v.number()),
       }),
@@ -372,6 +375,7 @@ export const release = internalMutation({
         tokens: v.number(),
         failed: v.number(),
         recent: v.array(v.string()),
+        changes: v.optional(v.record(v.string(), v.number())),
         told: v.optional(v.string()),
         cap: v.optional(v.number()),
         lap: v.optional(v.number()),
@@ -408,6 +412,7 @@ export const release = internalMutation({
       made: used.calls,
       ...(used.failed ? { failed: used.failed } : {}),
       ...(used.recent?.length ? { recent: used.recent } : {}),
+      ...(used.changes ? { changes: used.changes } : {}),
       ...(used.cap === undefined ? {} : { cap: used.cap }),
       ...(used.lap === undefined ? {} : { lap: used.lap }),
       paused,
@@ -462,6 +467,7 @@ export const release = internalMutation({
         made: asking.made,
         ...(asking.failed ? { failed: asking.failed } : {}),
         ...(asking.recent.length ? { recent: asking.recent } : {}),
+        ...(asking.changes ? { changes: asking.changes } : {}),
         ...(asking.cap === undefined ? {} : { cap: asking.cap }),
         ...(asking.lap === undefined ? {} : { lap: asking.lap }),
         askedAt: now,
@@ -476,7 +482,7 @@ export const release = internalMutation({
       // The reply goes on, in an action of its own.
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
       const limits = { ...(next.cap === undefined ? {} : { cap: next.cap }), ...(next.lap === undefined ? {} : { lap: next.lap }) };
-      const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens, failed: next.failed, recent: next.recent, ...(next.told ? { told: next.told } : {}), ...limits } };
+      const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens, failed: next.failed, recent: next.recent, ...(next.changes ? { changes: next.changes } : {}), ...(next.told ? { told: next.told } : {}), ...limits } };
       // A conversation as long as a request should read is summarized first, through what the reply
       // has written, and the reply goes on from the summary (./context.ts). A limit it has reached too
       // is asked about once the summary is written.
@@ -560,6 +566,9 @@ const stepValidator = v.object({
   canAnswer: v.boolean(),
   /** What it would do, for the person who can answer it: its arguments, with the records they name by name (./details.ts). */
   details: askedDetailsValidator,
+  /** On a step that asks about a bulk change: how many changes it is, and for the person who can answer it, the first of them, each as what it alone is given. */
+  batch: v.optional(v.number()),
+  each: askedEachValidator,
   /** Why it failed, as the assistant was told. */
   error: v.optional(v.string()),
   /** Whether the person reading can undo it (./undo.ts): it returned what reverses it (#342), it was done for them, and it isn't undone yet. */
@@ -689,11 +698,13 @@ export const messagesAction = defineUserQuery({
     // What each call that waits for this person would do.
     const reader = thread.asking?.senderId === userId ? await ctx.db.get("users", userId) : null;
     const mine = reader ? await stepsAt(ctx, threadId, "asking") : [];
-    const details = new Map(await Promise.all(mine.map(async (step) => [step._id, await detailsOf(ctx, reader!, step.shown ?? step.input)] as const)));
+    const details = new Map(
+      await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: await detailsOf(ctx, reader!, step.shown ?? step.input) } : await bulkOf(ctx, reader!, step)] as const)),
+    );
     const page = read.page.flatMap((row) => {
       const role = row.message?.role;
       // Newest first, like the page: the steps come after the message they answer, so they're listed before it.
-      const steps = (ran.get(row._id) ?? []).map((step) => shownStep(step, { userId, answering, details: details.get(step._id) })).reverse();
+      const steps = (ran.get(row._id) ?? []).map((step) => shownStep(step, { userId, answering, asked: details.get(step._id) })).reverse();
       // A row that isn't a message to show still brings the steps it carries.
       if (role !== "user" && role !== "assistant") return steps;
       // The message a reply summarized partway goes on from is the app's own (./context.ts). What the reply did in answer to it is the reply's.
@@ -738,27 +749,28 @@ export const messagesAction = defineUserQuery({
 });
 export const messages = userQuery(messagesAction);
 
-/** The actions that put a paper in a collection or take it out, by one argument. */
-const PLACES = new Set(["library/papers:collect", "library/mutations:setPaperInCollection"]);
 /**
  * Which of its several jobs a step's action did: the kind of change made to the person's
  * research records, or which way a paper moved between the library and a collection.
  */
 function variantOf(step: Doc<"assistantSteps">) {
-  if (step.path !== "research/records:change" && !PLACES.has(step.path)) return {};
+  // A bulk change keeps which job all its changes do: what it was given doesn't say it one by one.
+  if (step.variant) return { variant: step.variant };
+  if (!hasVariants(step.path)) return {};
   try {
-    const args = JSON.parse(step.input) as { command?: { kind?: unknown }; inCollection?: unknown };
-    if (PLACES.has(step.path)) return typeof args.inCollection === "boolean" ? { variant: args.inCollection ? "in" : "out" } : {};
-    const kind = args.command?.kind;
-    return typeof kind === "string" ? { variant: kind } : {};
+    const variant = variantIn(step.path, JSON.parse(step.input));
+    return variant ? { variant } : {};
   } catch {
     // Arguments too long to keep whole were cut, and don't parse.
     return {};
   }
 }
 
-/** A step as the chat's page shows it. `details` is what a call that waits for this person would do. */
-function shownStep(step: Doc<"assistantSteps">, { userId, answering, details }: { userId: Id<"users">; answering: number | undefined; details?: Infer<typeof askedDetailsValidator> }) {
+/** A step as the chat's page shows it. `asked` is what a call that waits for this person would do. */
+function shownStep(
+  step: Doc<"assistantSteps">,
+  { userId, answering, asked }: { userId: Id<"users">; answering: number | undefined; asked?: { details: NonNullable<Infer<typeof askedDetailsValidator>>; each?: NonNullable<Infer<typeof askedEachValidator>> } },
+) {
   return {
     id: step._id,
     role: "step" as const,
@@ -769,8 +781,9 @@ function shownStep(step: Doc<"assistantSteps">, { userId, answering, details }: 
     ...(step.count === undefined ? {} : { count: step.count }),
     ...(step.credits === undefined ? {} : { credits: step.credits }),
     status: shownStatus(step.status, answering === step.order),
-    canAnswer: details !== undefined,
-    ...(details !== undefined ? { details } : {}),
+    ...(step.batch === undefined ? {} : { batch: step.batch }),
+    canAnswer: asked !== undefined,
+    ...(asked ? { details: asked.details, ...(asked.each ? { each: asked.each } : {}) } : {}),
     ...(step.error ? { error: step.error } : {}),
     canUndo: step.undo !== undefined && step.userId === userId && step.undone !== true,
     undone: step.undone === true,

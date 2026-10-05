@@ -51,7 +51,7 @@ export type Turn = {
   /** This request is the reply's answer: the model can't call a tool in it. */
   answer?: boolean;
   /** The reply's rule for asking the person before a tool call runs (the AI SDK's `toolApproval`). A call it asks about ends the reply there, unanswered. */
-  approval?: (options: { toolCall: { toolName: string; input: unknown } }) => unknown;
+  approval?: (options: { toolCall: { toolCallId: string; toolName: string; input: unknown } }) => unknown;
   /** The paper chat the reply is in, which its charge is recorded under. */
   jobId?: Id<"extractionJobs">;
   /** IDs for the log lines. */

@@ -1,7 +1,7 @@
 export type Kind = "search" | "paper" | "collection" | "screening" | "extraction" | "chat" | "other";
 
 /** The words for a kind of step: `assistant.steps.<words>` in the messages. */
-type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "chats" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "collectIn" | "collectOut" | "plan" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "other";
+type Words = "undoBulk" | "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "chats" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "collectIn" | "collectOut" | "plan" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "other";
 
 /** Each action's kind of work and the words for it; one that isn't here shows as work in the account. */
 const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }> = {
@@ -47,6 +47,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "assistant/sharing:grant": { kind: "chat", words: "shareChat" },
   "assistant/sharing:revoke": { kind: "chat", words: "unshareChat" },
   "assistant/threads:remove": { kind: "chat", words: "deleteChat" },
+  "assistant/batches:undo": { kind: "other", words: "undoBulk" },
   "assistant/threads:create": { kind: "chat", words: "newChat" },
   "assistant/threads:rename": { kind: "chat", words: "renameChat" },
   "assistant/threads:setModel": { kind: "chat", words: "chatModel" },
@@ -102,5 +103,21 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
 };
 /** Every action with words of its own, for the test that none the assistant can run is left without. */
 export const WORDED = new Set(Object.keys(ACTIONS));
+/** The actions that put a paper in a collection or take it out, by one argument. */
+const PLACES = new Set(["library/papers:collect", "library/mutations:setPaperInCollection"]);
+/** Whether an action does one of several jobs, which its arguments say. */
+export const hasVariants = (action: string) => action === "research/records:change" || PLACES.has(action);
+/**
+ * Which of its several jobs a call of an action does, from its arguments: the kind of change
+ * made to the person's research records, or which way a paper moves between the library and
+ * a collection.
+ */
+export function variantIn(action: string, input: unknown) {
+  if (!input || typeof input !== "object") return undefined;
+  const args = input as { command?: { kind?: unknown }; inCollection?: unknown };
+  if (PLACES.has(action)) return typeof args.inCollection === "boolean" ? (args.inCollection ? "in" : "out") : undefined;
+  const kind = action === "research/records:change" ? args.command?.kind : undefined;
+  return typeof kind === "string" ? kind : undefined;
+}
 /** `variant`: which of its several jobs the action did, for one that has more than one. */
 export const viewOf = (action: string, variant?: string): { kind: Kind; words: Words; searching?: boolean } => (variant ? ACTIONS[`${action}#${variant}`] : undefined) ?? ACTIONS[action] ?? { kind: "other", words: "other" };

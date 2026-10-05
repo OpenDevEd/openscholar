@@ -205,6 +205,38 @@ async function savePaper(ctx: MutationCtx, userId: Id<"users">, given: Infer<typ
 }
 
 export const savedByIdValidator = v.object({ libraryItemId: v.id("libraryItems"), title: v.string(), undo: v.optional(saveUndo) });
+
+/**
+ * Saves a paper, with a rating, into a collection, or both, in one write, and says what takes
+ * all of it back. Asked to save eight papers into a collection, the assistant otherwise made
+ * sixteen calls, after eight that failed because the papers weren't saved yet.
+ */
+async function saveInto(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  { paper, rating, collectionId }: { paper: Infer<typeof libraryPaper>; rating?: number; collectionId?: Id<"collections"> },
+  author: "user" | "assistant",
+) {
+  const before = await findItem(ctx, userId, paper.openalexId);
+  // One reversal has to take back everything a call did. A saved paper given a collection and a rating that changes anything,
+  // in the library or on search cards, would be two changes with one undo between them.
+  if (before && collectionId !== undefined && rating !== undefined && (rating !== (before.rating ?? null) || rating !== (await researchRating(ctx, userId, canonical(paper.openalexId))))) {
+    throw createError("VALIDATION_ERROR", "This paper is already saved. Rate it with library/mutations:setLibraryRating and put it in the collection with library/papers:collect, one change at a time, so each can be undone.");
+  }
+  const saved = await savePaper(ctx, userId, paper, rating, author);
+  const placed = collectionId === undefined ? undefined : await setPaperInCollectionAction.run(ctx, userId, { paper: { openalexId: canonical(paper.openalexId) }, collectionId, inCollection: true }, author);
+  // What takes back all of it. A paper that was saved already leaves the collection again, or gets back the rating this changed.
+  // A paper this added is removed again, with the place it was given, while that place is still the one it has. One added
+  // with no undo of its own (see `savePaper`) has none for its place either: half an undo would be marked as the whole.
+  const undo = before
+    ? (placed?.undo ?? saved.undo)
+    : saved.undo?.path === REMOVE && placed?.undo
+      ? { path: REMOVE, args: { ...saved.undo.args, expect: { ...saved.undo.args.expect, collectionId: placed.undo.args.collectionId, assignedAt: placed.undo.args.assignedAt } } }
+      : placed
+        ? undefined
+        : saved.undo;
+  return { id: saved.id, undo };
+}
 /**
  * Saves a paper whose record an action has just read from OpenAlex (./papers.ts). The read
  * took a moment, so whether the save asks the person first is checked again here, and the
@@ -220,25 +252,8 @@ export const saveRead = internalMutation({
   handler: async (ctx, { userId, paper, rating, collectionId, author, stepId, approved }) => {
     // Only the assistant asks: a person saving a paper themselves has decided. A collection a library follows shows the paper outside the account.
     if (author === "assistant" && !approved && ((await saveAsksFirst(ctx, userId, paper.openalexId, rating)) || (collectionId !== undefined && (await followed(ctx, collectionId))))) throw createError("FORBIDDEN", ASKS_FIRST);
-    const before = await findItem(ctx, userId, paper.openalexId);
-    // One reversal has to take back everything a call did. A saved paper given a collection and a rating that changes anything,
-    // in the library or on search cards, would be two changes with one undo between them.
-    if (before && collectionId !== undefined && rating !== undefined && (rating !== (before.rating ?? null) || rating !== (await researchRating(ctx, userId, canonical(paper.openalexId))))) {
-      throw createError("VALIDATION_ERROR", "This paper is already saved. Rate it with library/mutations:setLibraryRating and put it in the collection with library/papers:collect, one change at a time, so each can be undone.");
-    }
-    const saved = await savePaper(ctx, userId, paper, rating, author);
-    const placed = collectionId === undefined ? undefined : await setPaperInCollectionAction.run(ctx, userId, { paper: { openalexId: canonical(paper.openalexId) }, collectionId, inCollection: true }, author);
-    // What takes back all of it. A paper that was saved already leaves the collection again, or gets back the rating this changed.
-    // A paper this added is removed again, with the place it was given, while that place is still the one it has. One added
-    // with no undo of its own (see `savePaper`) has none for its place either: half an undo would be marked as the whole.
-    const undo = before
-      ? (placed?.undo ?? saved.undo)
-      : saved.undo?.path === REMOVE && placed?.undo
-        ? { path: REMOVE, args: { ...saved.undo.args, expect: { ...saved.undo.args.expect, collectionId: placed.undo.args.collectionId, assignedAt: placed.undo.args.assignedAt } } }
-        : placed
-          ? undefined
-          : saved.undo;
-    const result = { libraryItemId: saved.id, title: paper.title, ...(undo ? { undo } : {}) };
+    const { id, undo } = await saveInto(ctx, userId, { paper, rating, collectionId }, author);
+    const result = { libraryItemId: id, title: paper.title, ...(undo ? { undo } : {}) };
     if (stepId) await endStep(ctx, stepId, result);
     return result;
   },
@@ -247,21 +262,22 @@ export const saveRead = internalMutation({
 export const saveToLibraryAction = defineUserMutation({
   path: "library/mutations:saveToLibrary",
   description:
-    "Saves a paper to the person's library from its whole record, as a results card has it, with or without a rating from 0 to 5. To save a paper by its ID alone, use library/papers:save. Saving a paper that's already there updates its rating when one is given and otherwise keeps it. " +
+    "Saves a paper to the person's library from its whole record, as a results card has it, with or without a rating from 0 to 5, and with `collectionId` into that collection of theirs in the same write. To save a paper by its ID alone, use library/papers:save. Saving a paper that's already there updates its rating when one is given and otherwise keeps it. " +
     "A save that added the paper or changed its rating returns `undo`: the action to run and the arguments to run it with to put things back. It is refused if the paper changed again in between. " +
     "A save has no undo when the paper carried a different rating on search cards, which undoing would lose.",
-  args: { ...libraryPaper.fields, rating: v.optional(ratingArg) },
+  args: { ...libraryPaper.fields, rating: v.optional(ratingArg), collectionId: v.optional(v.id("collections")) },
   returns: v.object({ id: v.id("libraryItems"), undo: v.optional(saveUndo) }),
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
   // The saves that return no undo (see `run`): one whose undo would lose the rating the paper has on search cards.
-  asksFirst: (ctx, userId, { rating, openalexId }) => saveAsksFirst(ctx, userId, openalexId, rating),
-  run: async (ctx, userId, { rating, ...given }, author) => {
+  // And one into a collection a library follows, which shows the paper outside the account.
+  asksFirst: async (ctx, userId, { rating, openalexId, collectionId }) => (await saveAsksFirst(ctx, userId, openalexId, rating)) || (collectionId !== undefined && (await followed(ctx, collectionId))),
+  run: async (ctx, userId, { rating, collectionId, ...given }, author) => {
     // `paperData` is the record a results card holds, which the library page shows the paper from. The
     // assistant has no such record and made one up, which that page couldn't read: its saves keep none.
     const paper = author === "assistant" ? { ...given, paperData: undefined } : given;
-    const { id, undo } = await savePaper(ctx, userId, paper, rating, author);
+    const { id, undo } = await saveInto(ctx, userId, { paper, rating, collectionId }, author);
     return { id, ...(undo ? { undo } : {}) };
   },
 });

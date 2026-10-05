@@ -110,16 +110,36 @@ export function Steps({
 /** Names of a call's arguments the card says in the person's language; any other shows as the action names it. */
 const NAMED = ["thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune"] as const;
 
+/** Arguments that are a setting turned on or off. */
+const SWITCHES = new Set(["prune", "inCollection", "usePdfs", "openAccessOnly", "withAbstractOnly", "reviewsOnly", "includeRetracted", "ratedOnly"]);
+
 /** What the credits a card's top-up is for: the call that waits, as the Add credits sheet names it. */
 export type Waiting = { kind: Kind; title: string; credits: number };
 /** Opens the Add credits sheet over the panel, for a call that waits on a balance too low for it. */
 export const AddCredits = createContext<(waiting: Waiting) => void>(() => {});
 
 /**
+ * A step's title. One that waits for an answer, or was allowed or not, hasn't happened: it's
+ * named as what was asked, then as what it's doing, then as what it did. A bulk change is one
+ * step, and says how many: how many it's for until it's done, then how many it made. A kind
+ * of action with no words of its own for a form takes the general ones.
+ */
+function useStepTitle() {
+  const t = useTranslations("assistant");
+  return (words: string, step: Pick<StepItem, "status" | "batch" | "count">) => {
+    const form = step.status === "asking" || step.status === "allowed" || step.status === "declined" ? "ask" : step.status === "running" || step.status === "failed" ? "doing" : "did";
+    const many = step.batch === undefined ? "" : "Many";
+    const own = `steps.${words}.${form}${many}` as "steps.other.askMany";
+    return t(t.has(own) ? own : (`steps.other.${form}${many}` as "steps.other.askMany"), { count: (form === "did" ? step.count : undefined) ?? step.batch ?? 1 });
+  };
+}
+
+/**
  * Asks before a change that can't be undone or that shows outside the account: what it
  * would do, with the records it names, then Allow once or Not now. One that spends credits
  * (#328) asks with the most it holds against the person's balance, and can be allowed for
- * the rest of the chat. The mock's approval card.
+ * the rest of the chat. A bulk change asks once for all of it, with the first of the records
+ * it's made to and how many more there are. The mock's approval card.
  */
 function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; step: StepItem }) {
   const t = useTranslations("assistant");
@@ -128,10 +148,14 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
   // Pressed once: the buttons rest until the chat shows the answer, or says it couldn't be sent.
   const [sent, setSent] = useState(false);
   const { kind, words } = viewOf(step.action, step.variant);
-  // Only the kinds of action that can ask have the words for it.
-  const title = `steps.${words}.ask` as "steps.other.ask";
   const addCredits = useContext(AddCredits);
-  const heading = t.has(title) ? t(title) : t("steps.other.ask");
+  const common = useTranslations("common");
+  const heading = useStepTitle()(words, step);
+  /** A value as the card says it: a setting that is on or off as yes or no, not as the action writes it. A name that happens to read "true" stays as typed. */
+  const said = ({ name, value }: { name: string; value: string }) => (SWITCHES.has(name) && (value === "true" || value === "false") ? common(value === "true" ? "yes" : "no") : value);
+  const each = step.each ?? [];
+  /** An argument's name in the person's language, where the card has one; any other shows as the action names it. */
+  const named = (name: string) => ((NAMED as readonly string[]).includes(name) ? t(`asks.names.${name as (typeof NAMED)[number]}`) : name);
   const say = (allow: boolean, always?: boolean) => {
     setSent(true);
     answer({ threadId, stepId: step.id as Id<"assistantSteps">, allow, ...(always ? { always } : {}) }).catch((error) => {
@@ -151,15 +175,32 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
         <KindTile kind={kind} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">{heading}</p>
-          <ul className="mt-1.5 space-y-1 text-sm text-muted-foreground">
+          <ul className="mt-1.5 space-y-1 text-sm text-muted-foreground empty:hidden">
             {(step.details ?? []).map((detail, i) => (
               <li key={i} className="flex gap-2">
-                <span className="shrink-0 text-foreground/50">{(NAMED as readonly string[]).includes(detail.name) ? t(`asks.names.${detail.name as (typeof NAMED)[number]}`) : detail.name}</span>
+                <span className="shrink-0 text-foreground/50">{named(detail.name)}</span>
                 {/* What someone may do in a shared chat, in the Share sheet's own words. A record with nothing to call it by, such as a search saved with filters alone, says so. */}
-                <span className="min-w-0 break-words">{detail.name === "role" && (detail.value === "read" || detail.value === "write") ? t(detail.value === "read" ? "canView" : "canChat") : detail.value || t("asks.unnamed")}</span>
+                <span className="min-w-0 break-words">{detail.name === "role" && (detail.value === "read" || detail.value === "write") ? t(detail.value === "read" ? "canView" : "canChat") : said(detail) || t("asks.unnamed")}</span>
               </li>
             ))}
           </ul>
+          {each.length ? (
+            <ol className="mt-1.5 space-y-1 text-sm text-muted-foreground">
+              {/* Each change: the record it's made to, then what it alone gives it, such as a new name. */}
+              {each.map(([record, ...given], i) => (
+                <li key={i} className="flex min-w-0 gap-2">
+                  <span className="min-w-0 truncate">{record?.value || t("asks.unnamed")}</span>
+                  {given.map((detail) => (
+                    <span key={detail.name} className="flex min-w-0 max-w-[50%] shrink-0 gap-1">
+                      <span className="shrink-0 text-foreground/50">{named(detail.name)}</span>
+                      <span className="truncate">{said(detail)}</span>
+                    </span>
+                  ))}
+                </li>
+              ))}
+              {step.batch !== undefined && step.batch > each.length ? <li className="text-foreground/50">{t("asks.more", { count: step.batch - each.length })}</li> : null}
+            </ol>
+          ) : null}
         </div>
         <TooltipHint label={t("asks.decline")}>
           <button
@@ -175,7 +216,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
       </div>
       {step.credits === undefined ? (
         <>
-          <p className="px-4 pb-4 text-xs text-muted-foreground">{t("asks.why")}</p>
+          <p className="px-4 pb-4 text-xs text-muted-foreground">{t(step.batch === undefined ? "asks.why" : "asks.whyMany")}</p>
           <div className="grid grid-cols-[1fr_auto] gap-2 border-t border-primary/15 p-3">
             <Button className="h-9" disabled={sent} onClick={() => say(true)}>
               {t("asks.allow")}
@@ -266,6 +307,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   const reduceMotion = useReducedMotion();
   const undo = useMutation(api.assistant.undo.run);
   const toast = useAppToast();
+  const stepTitle = useStepTitle();
   const height = ORIGIN + steps.length * (CARD + GAP) - GAP;
   const y = (i: number) => ORIGIN + i * (CARD + GAP) + CARD / 2;
   return (
@@ -311,12 +353,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
             const working = step.status === "running";
             const faded = step.undone || step.status === "failed" || step.status === "declined";
             const state = step.status === "asking" ? t("steps.waiting") : step.status === "allowed" ? t("steps.allowed") : step.status === "declined" ? t("steps.declined") : null;
-            // A step that waits for an answer, or was allowed or not, hasn't happened: it's named as what was asked, not as done.
-            const asked = `steps.${words}.ask` as "steps.other.ask";
-            const title =
-              step.status === "asking" || step.status === "allowed" || step.status === "declined"
-                ? t.has(asked) ? t(asked) : t("steps.other.ask")
-                : t(`steps.${words}.${working || step.status === "failed" ? "doing" : "did"}`);
+            const title = stepTitle(words, step);
             return (
               <motion.div
                 key={step.id}
@@ -331,7 +368,8 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <p className={cn("truncate text-sm font-semibold", step.undone && "line-through decoration-muted-foreground/60")}>{working ? <WorkingText>{title}</WorkingText> : title}</p>
                     <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-muted-foreground">
-                      {step.status === "failed" ? (
+                      {/* Why it failed. Under a bulk change that was undone, what couldn't be put back, if anything. */}
+                      {(step.status === "failed" && !step.undone) || (step.undone && step.error) ? (
                         <span className="truncate">{step.error ?? t("steps.interrupted")}</span>
                       ) : state ? (
                         <>
@@ -340,14 +378,16 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                         </>
                       ) : (
                         <>
-                          {step.count !== undefined ? <Fact value={step.count}>{t("steps.found")}</Fact> : null}
+                          {/* A bulk change's title says how many it made. */}
+                          {step.batch === undefined && step.count !== undefined ? <Fact value={step.count}>{t("steps.found")}</Fact> : null}
                           {step.subject ? <span className="truncate">{step.subject}</span> : null}
-                          {step.count === undefined && !step.subject ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
+                          {(step.batch !== undefined || step.count === undefined) && !step.subject ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
                         </>
                       )}
                     </div>
                   </div>
-                  {step.status === "failed" ? (
+                  {/* A bulk change that ended partway made some of its changes: those can still be undone. */}
+                  {step.status === "failed" && !step.canUndo ? (
                     <CircleAlert className="size-4 shrink-0 text-destructive" aria-label={t("steps.failed")} />
                   ) : step.canUndo ? (
                     <button

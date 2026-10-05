@@ -3556,25 +3556,37 @@
         "doing": "検索を作成しています",
         "did": "検索を作成しました",
         "where": "保存した検索",
-        "ask": "検索を作成"
+        "ask": "検索を作成",
+        "askMany": "{count, number} 件の検索を作成",
+        "doingMany": "{count, number} 件の検索を作成しています",
+        "didMany": "{count, number} 件の検索を作成しました"
       },
       "changeSearch": {
         "doing": "検索を変更しています",
         "did": "検索を変更しました",
         "where": "保存した検索",
-        "ask": "検索を変更"
+        "ask": "検索を変更",
+        "askMany": "{count, number} 件の検索を変更",
+        "doingMany": "{count, number} 件の検索を変更しています",
+        "didMany": "{count, number} 件の検索を変更しました"
       },
       "restoreSearch": {
         "doing": "検索を戻しています",
         "did": "検索を戻しました",
         "where": "保存した検索",
-        "ask": "検索を戻す"
+        "ask": "検索を戻す",
+        "askMany": "{count, number} 件の検索を戻す",
+        "doingMany": "{count, number} 件の検索を戻しています",
+        "didMany": "{count, number} 件の検索を戻しました"
       },
       "removeSearch": {
         "doing": "検索を削除しています",
         "did": "検索を削除しました",
         "where": "保存した検索",
-        "ask": "検索を削除"
+        "ask": "検索を削除",
+        "askMany": "{count, number} 件の検索を削除",
+        "doingMany": "{count, number} 件の検索を削除しています",
+        "didMany": "{count, number} 件の検索を削除しました"
       },
       "results": {
         "doing": "検索結果を読んでいます",
@@ -3620,31 +3632,46 @@
         "doing": "論文を保存しています",
         "did": "論文を保存しました",
         "where": "ライブラリ",
-        "ask": "論文を保存"
+        "ask": "論文を保存",
+        "askMany": "{count, number} 件の論文を保存",
+        "doingMany": "{count, number} 件の論文を保存しています",
+        "didMany": "{count, number} 件の論文を保存しました"
       },
       "rate": {
         "doing": "論文を評価しています",
         "did": "論文を評価しました",
         "where": "ライブラリ",
-        "ask": "論文を評価"
+        "ask": "論文を評価",
+        "askMany": "{count, number} 件の論文を評価",
+        "doingMany": "{count, number} 件の論文を評価しています",
+        "didMany": "{count, number} 件の論文を評価しました"
       },
       "remove": {
         "doing": "論文を削除しています",
         "did": "論文を削除しました",
         "where": "ライブラリ",
-        "ask": "論文を削除"
+        "ask": "論文を削除",
+        "askMany": "{count, number} 件の論文を削除",
+        "doingMany": "{count, number} 件の論文を削除しています",
+        "didMany": "{count, number} 件の論文を削除しました"
       },
       "restore": {
         "doing": "論文を戻しています",
         "did": "論文を戻しました",
         "where": "ライブラリ",
-        "ask": "論文を戻す"
+        "ask": "論文を戻す",
+        "askMany": "{count, number} 件の論文を戻す",
+        "doingMany": "{count, number} 件の論文を戻しています",
+        "didMany": "{count, number} 件の論文を戻しました"
       },
       "collect": {
         "doing": "コレクションを更新しています",
         "did": "コレクションを更新しました",
         "where": "コレクション",
-        "ask": "コレクションを変更"
+        "ask": "コレクションを変更",
+        "askMany": "コレクションを {count, number} 件変更",
+        "doingMany": "コレクションを {count, number} 件変更しています",
+        "didMany": "コレクションを {count, number} 件変更しました"
       },
       "collections": {
         "doing": "コレクションを確認しています",
@@ -3660,13 +3687,19 @@
         "doing": "コレクションを作成しています",
         "did": "コレクションを作成しました",
         "where": "コレクション",
-        "ask": "コレクションを作成"
+        "ask": "コレクションを作成",
+        "askMany": "{count, number} 件のコレクションを作成",
+        "doingMany": "{count, number} 件のコレクションを作成しています",
+        "didMany": "{count, number} 件のコレクションを作成しました"
       },
       "renameCollection": {
         "doing": "コレクションの名前を変更しています",
         "did": "コレクションの名前を変更しました",
         "where": "コレクション",
-        "ask": "コレクションの名前を変更"
+        "ask": "コレクションの名前を変更",
+        "askMany": "{count, number} 件のコレクションの名前を変更",
+        "doingMany": "{count, number} 件のコレクションの名前を変更しています",
+        "didMany": "{count, number} 件のコレクションの名前を変更しました"
       },
       "screening": {
         "doing": "スクリーニングを読んでいます",
@@ -3706,25 +3739,37 @@
         "doing": "チャットを開始しています",
         "did": "チャットを開始しました",
         "where": "チャット",
-        "ask": "チャットを開始"
+        "ask": "チャットを開始",
+        "askMany": "{count, number} 件のチャットを開始",
+        "doingMany": "{count, number} 件のチャットを開始しています",
+        "didMany": "{count, number} 件のチャットを開始しました"
       },
       "renameChat": {
         "doing": "チャットの名前を変更しています",
         "did": "チャットの名前を変更しました",
         "where": "チャット",
-        "ask": "チャットの名前を変更"
+        "ask": "チャットの名前を変更",
+        "askMany": "{count, number} 件のチャットの名前を変更",
+        "doingMany": "{count, number} 件のチャットの名前を変更しています",
+        "didMany": "{count, number} 件のチャットの名前を変更しました"
       },
       "chatModel": {
         "doing": "チャットのモデルを変更しています",
         "did": "チャットのモデルを変更しました",
         "where": "チャット",
-        "ask": "チャットのモデルを変更"
+        "ask": "チャットのモデルを変更",
+        "askMany": "{count, number} 件のチャットのモデルを変更",
+        "doingMany": "{count, number} 件のチャットのモデルを変更しています",
+        "didMany": "{count, number} 件のチャットのモデルを変更しました"
       },
       "answer": {
         "doing": "スクリーニングの回答を変更しています",
         "did": "スクリーニングの回答を変更しました",
         "where": "スクリーニング",
-        "ask": "スクリーニングの回答を変更"
+        "ask": "スクリーニングの回答を変更",
+        "askMany": "スクリーニングの回答を {count, number} 件変更",
+        "doingMany": "スクリーニングの回答を {count, number} 件変更しています",
+        "didMany": "スクリーニングの回答を {count, number} 件変更しました"
       },
       "chats": {
         "doing": "チャットを確認しています",
@@ -3776,25 +3821,37 @@
         "doing": "すべての検索を削除しています",
         "did": "すべての検索を削除しました",
         "where": "保存した検索",
-        "ask": "すべての検索を削除"
+        "ask": "すべての検索を削除",
+        "askMany": "すべての検索を削除",
+        "doingMany": "すべての検索を削除しています",
+        "didMany": "すべての検索を削除しました"
       },
       "bookmark": {
         "doing": "ブックマークを変更しています",
         "did": "ブックマークを変更しました",
         "where": "ブックマーク",
-        "ask": "ブックマークを変更"
+        "ask": "ブックマークを変更",
+        "askMany": "{count, number} 件のブックマークを変更",
+        "doingMany": "{count, number} 件のブックマークを変更しています",
+        "didMany": "{count, number} 件のブックマークを変更しました"
       },
       "clearBookmarks": {
         "doing": "すべてのブックマークを削除しています",
         "did": "すべてのブックマークを削除しました",
         "where": "ブックマーク",
-        "ask": "すべてのブックマークを削除"
+        "ask": "すべてのブックマークを削除",
+        "askMany": "すべてのブックマークを削除",
+        "doingMany": "すべてのブックマークを削除しています",
+        "didMany": "すべてのブックマークを削除しました"
       },
       "other": {
         "doing": "アカウントで作業しています",
         "did": "アカウントで作業しました",
         "where": "あなたのアカウント",
-        "ask": "アカウントで操作を実行"
+        "ask": "アカウントで操作を実行",
+        "askMany": "アカウントで {count, number} 件の操作を実行",
+        "doingMany": "アカウントで {count, number} 件の操作を実行しています",
+        "didMany": "アカウントで {count, number} 件の操作を実行しました"
       },
       "startExtraction": {
         "doing": "抽出を開始しています",
@@ -3817,18 +3874,30 @@
         "doing": "論文をコレクションに追加しています",
         "did": "論文をコレクションに追加しました",
         "where": "コレクション",
-        "ask": "論文をコレクションに追加"
+        "ask": "論文をコレクションに追加",
+        "askMany": "{count, number} 件の論文をコレクションに追加",
+        "doingMany": "{count, number} 件の論文をコレクションに追加しています",
+        "didMany": "{count, number} 件の論文をコレクションに追加しました"
       },
       "collectOut": {
         "doing": "論文をコレクションから外しています",
         "did": "論文をコレクションから外しました",
         "where": "コレクション",
-        "ask": "論文をコレクションから外す"
+        "ask": "論文をコレクションから外す",
+        "askMany": "{count, number} 件の論文をコレクションから外す",
+        "doingMany": "{count, number} 件の論文をコレクションから外しています",
+        "didMany": "{count, number} 件の論文をコレクションから外しました"
       },
       "plan": {
         "doing": "プランを確認しています",
         "did": "プランを確認しました",
         "where": "請求"
+      },
+      "undoBulk": {
+        "doing": "一括変更を元に戻しています",
+        "did": "一括変更を元に戻しました",
+        "where": "あなたのアカウント",
+        "ask": "一括変更を元に戻す"
       }
     },
     "asks": {
@@ -3836,6 +3905,8 @@
       "notNow": "今はしない",
       "decline": "実行しない",
       "why": "この操作は元に戻せないか、アカウントの外に表示されます。毎回確認します。",
+      "whyMany": "一度に多くのレコードを変更するため、先に確認します。",
+      "more": "ほか {count, number} 件",
       "failed": "回答を送信できませんでした",
       "unnamed": "名前なし",
       "upTo": "最大 {credits, number} クレジット",

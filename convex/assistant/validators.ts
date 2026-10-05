@@ -34,6 +34,8 @@ export const assistantReplyValidator = v.object({
 /** Why a reply paused: it reached the credits its sender lets a reply spend, or the requests a reply makes before it asks. */
 export const assistantPausedValidator = v.union(v.literal("credits"), v.literal("requests"));
 
+/** A reply's changes so far, by what they change: one entry for each kind of record the panel has a tile for (lib/assistant/actions.ts `Kind`), which are seven. */
+export const assistantChangesValidator = capped(v.optional(v.record(v.string(), v.number())), 20);
 /** Requests whose digests a reply carries along, to tell when it is going round in circles (./tools.ts). */
 export const RECENT_REQUESTS = 6;
 
@@ -57,6 +59,8 @@ export const assistantAskingValidator = v.object({
   /** How many of its requests in a row, up to the one that asked, had every action fail, and the digests of what its last few did (./tools.ts). */
   failed: v.optional(v.number()),
   recent: capped(v.optional(v.array(v.string())), RECENT_REQUESTS),
+  /** How many changes it has called for unasked, by what they change, for telling a bulk change (./tools.ts `kindOf`). */
+  changes: assistantChangesValidator,
   /** The credits it pauses at, when its sender set a limit, and the requests it pauses at. */
   cap: v.optional(v.number()),
   lap: v.optional(v.number()),
@@ -153,6 +157,17 @@ export const assistantStepFields = {
   /** On a step that asked first, for an action that says what to show of its arguments: that, as JSON, which the person is asked about in their place. */
   shown: v.optional(v.string()),
   /**
+   * On a bulk change (./bulk.ts): how many changes it is. One step for all of them, however
+   * many: `count` is how many were made, and what reverses each is kept beside the step
+   * (`assistantStepUndos`). `input` is what the tool was given, for the reply to run it from
+   * once the person allows it.
+   */
+  batch: v.optional(v.number()),
+  /** Which of its several jobs its action does (lib/assistant/actions.ts), where its arguments don't say it one by one: a bulk change. */
+  variant: v.optional(v.string()),
+  /** Set while a bulk change's undo is putting its changes back (./bulk.ts): what would undo it is the reversal's to read until it's done. */
+  reverting: v.optional(v.boolean()),
+  /**
    * `asking`: the person is asked before it runs. `allowed`: they said yes, and the reply
    * runs it as it carries on. `declined`: they said no, or stopped the reply.
    */
@@ -169,6 +184,12 @@ export const assistantStepFields = {
 /** Arguments of a call the assistant asks about that the person asked is shown (./details.ts). */
 export const ASKED_DETAILS_MAX = 12;
 export const askedDetailsValidator = capped(v.optional(v.array(v.object({ name: v.string(), value: v.string() }))), ASKED_DETAILS_MAX);
+/** Of the changes a bulk change makes, how many the person asked is shown, and how much of each (./details.ts). */
+export const ASKED_EACH_MAX = 5;
+export const ASKED_EACH_DETAILS_MAX = 3;
+export const askedEachValidator = capped(v.optional(v.array(capped(v.array(v.object({ name: v.string(), value: v.string() })), ASKED_EACH_DETAILS_MAX))), ASKED_EACH_MAX);
+/** What reverses one change of a bulk change: the action to run, and its arguments as JSON. A row each, so undoing a thousand reads a few at a time. A change with no undo has a row with no action. */
+export const assistantStepUndoFields = { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), path: v.string(), args: v.string() };
 /** What a step's action returned, as JSON: kept apart from the step, so listing steps reads none of it. */
 export const assistantStepResultFields = { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), result: v.string() };
 

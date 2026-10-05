@@ -58,7 +58,7 @@ import { authorContentFields, authorProfileInvitationFields } from "./authors/va
 
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
-import { assistantLimitFields, assistantSpenderFields, assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields } from "./assistant/validators";
+import { assistantLimitFields, assistantSpenderFields, assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantStepUndoFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
@@ -215,6 +215,8 @@ export default defineSchema({
     // A person's steps in a chat that hold credits, by how much (convex/assistant/spending.ts).
     .index("by_thread_user_credits", ["threadId", "userId", "credits"]),
   assistantStepResults: defineTable(assistantStepResultFields).index("by_step", ["stepId"]).index("by_thread", ["threadId"]),
+  // What reverses each change of a bulk change (convex/assistant/bulk.ts).
+  assistantStepUndos: defineTable(assistantStepUndoFields).index("by_step", ["stepId"]),
   // What each person lets the assistant spend in a chat, and each person's own record (convex/assistant/spending.ts).
   assistantLimits: defineTable(assistantLimitFields).index("by_thread_and_user", ["threadId", "userId"]).index("by_user", ["userId"]),
   assistantSpenders: defineTable(assistantSpenderFields).index("by_user", ["userId"]),

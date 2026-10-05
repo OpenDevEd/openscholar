@@ -31,6 +31,17 @@ export { STEPS_SHOWN };
 /** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
 export const MAX_ASKS = 10;
 /**
+ * Changes a reply makes to one kind of record (papers, searches, collections) without asking,
+ * whichever actions make them. More is a bulk change: it goes in one call, the person is
+ * asked once before any of it runs, and it is one step with one undo (./bulk.ts). As opencode
+ * asks once for a patch, with every file it touches.
+ */
+export const BULK = 10;
+/** The action that undoes a bulk change (./batches.ts): a bulk step's `undo`, and what its result names as its undo to the model. */
+export const UNDO_BULK = "assistant/batches:undo";
+/** Of what would undo a deleted chat's bulk changes, how much one batch deletes. */
+const FORGET_UNDOS = 200;
+/**
  * Characters of anything a tool hands the model, about 4,000 tokens (#326). A step keeps the
  * rest of a result. Room for a page of ten papers with enough of each abstract to say what
  * the paper studied: at half this, a page carried a sentence of each.
@@ -106,11 +117,11 @@ export function namedBy(result: unknown) {
   return typeof named === "string" ? cut(named.trim(), 200) : undefined;
 }
 
-/** How many things a result lists: its page's rows, or its own when it's a list. */
+/** How many things a result lists: its page's rows, or its own when it's a list. For a bulk change, how many changes it made. */
 export function countOf(result: unknown) {
   if (Array.isArray(result)) return result.length;
-  const page = result && typeof result === "object" ? (result as { page?: unknown }).page : undefined;
-  return Array.isArray(page) ? page.length : undefined;
+  const { page, made } = result && typeof result === "object" ? (result as { page?: unknown; made?: unknown }) : {};
+  return Array.isArray(page) ? page.length : typeof made === "number" ? made : undefined;
 }
 
 type Output = { type: "json"; value: unknown } | { type: "text"; value: string } | { type: "execution-denied"; reason: string };
@@ -157,7 +168,18 @@ async function failStep(ctx: MutationCtx, step: Step, error: string) {
 
 /** A step starts. */
 export const begin = internalMutation({
-  args: { threadId: v.id("assistantThreads"), order: v.number(), userId: v.id("users"), toolCallId: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()) },
+  args: {
+    threadId: v.id("assistantThreads"),
+    order: v.number(),
+    userId: v.id("users"),
+    toolCallId: v.string(),
+    path: v.string(),
+    input: v.string(),
+    subject: v.optional(v.string()),
+    credits: v.optional(v.number()),
+    batch: v.optional(v.number()),
+    variant: v.optional(v.string()),
+  },
   returns: v.id("assistantSteps"),
   handler: async (ctx, args) => {
     const subject = args.subject ?? (await aboutOf(ctx, args.userId, args.input));
@@ -165,12 +187,20 @@ export const begin = internalMutation({
   },
 });
 
+/** What a call given these arguments is about (`aboutOf`), for a tool that names its step before it has one. */
+export const about = internalQuery({
+  // `input` is the arguments, as JSON.
+  args: { userId: v.id("users"), input: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { userId, input }) => (await aboutOf(ctx, userId, input)) ?? null,
+});
+
 /**
  * What a call is about when its arguments name one of the person's records by ID alone: the
  * saved paper's title, or else the collection's name. A paper it is about to save isn't
  * theirs yet, and gets its title from what the call returns (`namedBy`).
  */
-async function aboutOf(ctx: Pick<MutationCtx, "db">, userId: Id<"users">, input: string) {
+async function aboutOf(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, input: string) {
   let args: Record<string, unknown>;
   try {
     args = JSON.parse(input) as Record<string, unknown>;
@@ -218,9 +248,17 @@ export const failed = internalMutation({
 /** The steps the person allowed, in the order they were asked: the reply runs them as it carries on. */
 export const allowed = internalQuery({
   args: { threadId: v.id("assistantThreads") },
-  returns: v.array(v.object({ stepId: v.id("assistantSteps"), toolCallId: v.string(), path: v.string(), input: v.string(), credits: v.optional(v.number()) })),
+  returns: v.array(v.object({ stepId: v.id("assistantSteps"), toolCallId: v.string(), path: v.string(), input: v.string(), credits: v.optional(v.number()), batch: v.optional(v.number()), tool: v.optional(v.string()) })),
   handler: async (ctx, { threadId }) =>
-    (await stepsAt(ctx, threadId, "allowed")).map((step) => ({ stepId: step._id, toolCallId: step.toolCallId, path: step.path, input: step.input, ...(step.credits === undefined ? {} : { credits: step.credits }) })),
+    (await stepsAt(ctx, threadId, "allowed")).map((step) => ({
+      stepId: step._id,
+      toolCallId: step.toolCallId,
+      path: step.path,
+      input: step.input,
+      ...(step.credits === undefined ? {} : { credits: step.credits }),
+      // A bulk change is run from the tool it was asked with.
+      ...(step.batch === undefined ? {} : { batch: step.batch, ...(step.tool ? { tool: step.tool } : {}) }),
+    })),
 });
 
 /**
@@ -321,12 +359,29 @@ export const forget = internalMutation({
   handler: async (ctx, { threadId }) => {
     const results = await ctx.db.query("assistantStepResults").withIndex("by_thread", (q) => q.eq("threadId", threadId)).take(FORGET_RESULTS);
     for (const row of results) await ctx.db.delete("assistantStepResults", row._id);
+
     // Steps go once their results are gone, so a batch never reads large rows and small ones together.
     const steps = results.length === FORGET_RESULTS ? [] : await ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId)).take(FORGET_STEPS);
-    for (const step of steps) await ctx.db.delete("assistantSteps", step._id);
+    // A bulk change's step takes what would have undone it along: the changes themselves stay made. One whose undo the
+    // person pressed keeps its rows, which that undo reads until it has put everything back (./bulk.ts).
+    let room = FORGET_UNDOS;
+    let undosLeft = false;
+    for (const step of steps) {
+      if (step.batch !== undefined && !step.reverting) {
+        const undos = await ctx.db.query("assistantStepUndos").withIndex("by_step", (q) => q.eq("stepId", step._id)).take(room);
+        for (const row of undos) await ctx.db.delete("assistantStepUndos", row._id);
+        room -= undos.length;
+        // It may have more: it goes with the next batch.
+        if (room === 0) {
+          undosLeft = true;
+          break;
+        }
+      }
+      await ctx.db.delete("assistantSteps", step._id);
+    }
     // What people let the assistant spend in it goes too (./spending.ts).
     const limitsLeft = await forgetLimits(ctx, threadId);
-    if (results.length === FORGET_RESULTS || steps.length === FORGET_STEPS || limitsLeft) await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId });
+    if (results.length === FORGET_RESULTS || undosLeft || steps.length === FORGET_STEPS || limitsLeft) await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId });
     return null;
   },
 });
