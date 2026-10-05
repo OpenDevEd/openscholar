@@ -5,7 +5,7 @@
  * The changes go a chunk a transaction. Each is the action's own mutation, run inside the
  * chunk's, so it does exactly what one call of it does, fails alone, and leaves what reverses
  * it in the same transaction as the change. Undoing the step runs those back, newest first,
- * a few a transaction, each transaction scheduling the next as it commits: an undo the person
+ * one a transaction, each transaction scheduling the next as it commits: an undo the person
  * pressed is finished whatever else happens. Apart from ./batches.ts, which the registry
  * loads, because this loads the registry.
  */
@@ -26,8 +26,6 @@ import { UNDO_BULK, undoOf } from "./steps";
  */
 export const CHUNK = 25;
 
-/** Reversals one transaction runs. Few, so a reversal that reads a lot still fits, and the next start on a fresh transaction. */
-const REVERT = 5;
 /** Convex's words for a transaction that has read or written all it may. */
 const FULL = /too many|limit:|too large/i;
 /** Whether a change failed for want of room in its transaction: the changes before it used the room. Alone, in a fresh one, it may fit. */
@@ -42,9 +40,9 @@ const mutationAt = (path: string) => {
  * Makes one chunk of a bulk change's changes, as `userId`. `items` is what each is given, as
  * JSON. `approved`: the person was asked about the bulk change and said yes. `key` names the
  * chunk, and with a change's place in it fills the action's retry key. Returns how many of
- * them it got through (`took`), how many of those were made, how many couldn't be, and why
- * the first of those couldn't. A change the transaction had no room left for ends the chunk
- * there, to be the first of the next.
+ * them it got through (`took`), how many of those were made, how many of the made can be
+ * undone, how many couldn't be made, and why the first of those couldn't. A change the
+ * transaction had no room left for ends the chunk there, to be the first of the next.
  *
  * The step says how many it has made, and holds its undo, from its first change on: a reply
  * that dies between two chunks leaves a step that tells the truth and can still be undone.
@@ -53,13 +51,13 @@ const mutationAt = (path: string) => {
  */
 export const apply = internalMutation({
   args: { userId: v.id("users"), stepId: v.id("assistantSteps"), path: v.string(), items: v.string(), approved: v.boolean(), key: v.string() },
-  returns: v.object({ took: v.number(), made: v.number(), failed: v.number(), why: v.optional(v.string()) }),
+  returns: v.object({ took: v.number(), made: v.number(), reversible: v.number(), failed: v.number(), why: v.optional(v.string()) }),
   handler: async (ctx, { userId, stepId, path, items, approved, key }) => {
     const step = await ctx.db.get("assistantSteps", stepId);
     const action = mutationAt(path);
     const each = (JSON.parse(items) as Record<string, unknown>[]).slice(0, CHUNK);
     // Its chat was deleted while it ran, or the step has ended since: nothing more is changed.
-    if (!step || step.status !== "running" || step.undone || !action) return { took: each.length, made: 0, failed: each.length, why: "This couldn't be run any more." };
+    if (!step || step.status !== "running" || step.undone || !action) return { took: each.length, made: 0, reversible: 0, failed: each.length, why: "This couldn't be run any more." };
     let [took, made, failed, reversible] = [0, 0, 0, 0];
     let why: string | undefined;
     for (const [at, item] of each.entries()) {
@@ -80,45 +78,54 @@ export const apply = internalMutation({
     }
     // Undo is offered once there's a change it can take back.
     if (made) await ctx.db.patch("assistantSteps", stepId, { count: (step.count ?? 0) + made, ...(reversible || step.undo ? { undo: { path: UNDO_BULK, args: JSON.stringify({ change: stepId }) } } : {}) });
-    return { took, made, failed, ...(why ? { why } : {}) };
+    return { took, made, reversible, failed, ...(why ? { why } : {}) };
   },
 });
 
 /**
- * Reverses the newest of a bulk change's changes, and schedules itself for the rest in the
- * same transaction, so a reversal once begun can't lose its place. A change that was itself
- * changed since refuses its undo, as it would alone, and stays as it is; so does one that had
- * no undo. `reversed`, `refused` and `why` are what the transactions before this one came to.
- * When none is left, the step says what couldn't be put back, where the person pressed Undo.
+ * Reverses the newest of a bulk change's changes, and schedules what follows in the same
+ * transaction, so a reversal once begun can't lose its place. One a transaction, and run
+ * last in it: a reversal that reads all a transaction may, and fails, has still left its
+ * row deleted and the next one scheduled. A change that was itself changed since refuses
+ * its undo, as it would alone, and stays as it is; so does one that had no undo.
+ * `reversed`, `refused` and `why` are what the transactions before this one came to.
  */
 export const revert = internalMutation({
   args: { userId: v.id("users"), stepId: v.id("assistantSteps"), reversed: v.number(), refused: v.number(), why: v.optional(v.string()) },
   returns: v.null(),
   handler: async (ctx, { userId, stepId, ...before }) => {
     let { reversed, refused, why } = before;
-    const left = () => ctx.db.query("assistantStepUndos").withIndex("by_step", (q) => q.eq("stepId", stepId)).order("desc");
-    for (const [at, row] of (await left().take(REVERT)).entries()) {
+    // The newest, and whether another follows it: read before the reversal, which may leave no room to read after.
+    const [row, next] = await ctx.db.query("assistantStepUndos").withIndex("by_step", (q) => q.eq("stepId", stepId)).order("desc").take(2);
+    if (row) {
+      await ctx.db.delete("assistantStepUndos", row._id);
       const action = mutationAt(row.path);
       try {
         if (!action) throw createError("CONFLICT", "This change has no undo.");
         await ctx.runMutation(action.ref, { ...JSON.parse(row.args), ...(action.entry.retryKey ? { [action.entry.retryKey]: `undo:${row._id}` } : {}), userId, approved: true });
         reversed += 1;
       } catch (error) {
-        // The reversals before it left it no room: it's the first of the next transaction.
-        if (at > 0 && outOfRoom(error)) break;
         refused += 1;
         why ??= messageOf(error);
       }
-      await ctx.db.delete("assistantStepUndos", row._id);
     }
-    if (await left().first()) {
-      await ctx.scheduler.runAfter(0, internal.assistant.bulk.revert, { userId, stepId, reversed, refused, ...(why ? { why } : {}) });
-      return null;
-    }
-    // Its chat may have been deleted meanwhile: the changes are put back all the same, with no step left to say so on.
+    const outcome = { stepId, reversed, refused, ...(why ? { why } : {}) };
+    if (next) await ctx.scheduler.runAfter(0, internal.assistant.bulk.revert, { userId, ...outcome });
+    else await ctx.scheduler.runAfter(0, internal.assistant.bulk.reverted, outcome);
+    return null;
+  },
+});
+
+/** What undoing a bulk change came to, kept on its step: what couldn't be put back is said there, where the person pressed Undo. */
+export const reverted = internalMutation({
+  args: { stepId: v.id("assistantSteps"), reversed: v.number(), refused: v.number(), why: v.optional(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, { stepId, reversed, refused, why }) => {
+    // Its chat may have been deleted meanwhile: the changes were put back all the same, with no step left to say so on.
     if (!(await ctx.db.get("assistantSteps", stepId))) return null;
     const many = reversed ? `${refused.toLocaleString("en")} of these couldn't be put back` : "None of these could be put back";
-    await ctx.db.patch("assistantSteps", stepId, { reverting: undefined, ...(refused ? { error: `${many}. ${why ?? ""}`.trim() } : {}) });
+    // Whatever it said of how it ended is replaced: an undone step says how its undo went.
+    await ctx.db.patch("assistantSteps", stepId, { reverting: undefined, error: refused ? `${many}. ${why ?? ""}`.trim() : undefined });
     return null;
   },
 });

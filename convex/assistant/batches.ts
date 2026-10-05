@@ -26,8 +26,9 @@ export const undoAction = defineUserMutation({
     if (!step || step.userId !== userId || step.batch === undefined) throw createError("NOT_FOUND", "That bulk change isn't one of yours.");
     if (step.status === "running") {
       // One still running is undone once it has ended. One whose reply died partway is ended here, as the chat's next message would end it.
+      // A reply that waits for an answer hasn't died: its questions are the person's to answer first.
       const thread = await ctx.db.get("assistantThreads", step.threadId);
-      if (!thread || (await writing(ctx, thread.reply))) throw createError("CONFLICT", "This is still running. Undo it once it has ended.");
+      if (!thread || thread.asking || (await writing(ctx, thread.reply))) throw createError("CONFLICT", "This is still running. Undo it once it has ended.");
       await settleAsked(ctx, step.threadId);
       step = (await ctx.db.get("assistantSteps", change))!;
     }

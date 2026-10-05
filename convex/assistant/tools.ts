@@ -503,7 +503,7 @@ export function toolsFor(
         ...(variant ? { variant } : {}),
       }));
     const key = asked ? `${attemptId}:${asked}` : `${attemptId}:${calls++}`;
-    let [made, failed, tried, size] = [0, 0, 0, CHUNK];
+    let [made, reversible, failed, tried, size] = [0, 0, 0, 0, CHUNK];
     let stopped = false;
     // Why changes couldn't be made: the first reason of each chunk that had one.
     const why: string[] = [];
@@ -515,8 +515,9 @@ export function toolsFor(
       const chunk = items.slice(tried, tried + size);
       try {
         // Typed here: the generated API's types depend on this module, so inference would loop.
-        const done: { took: number; made: number; failed: number; why?: string } = await written(() => ctx.runMutation(internal.assistant.bulk.apply, { userId, stepId, path: entry.path, items: JSON.stringify(chunk), approved: asked !== undefined, key: `${key}:${tried}` }));
+        const done: { took: number; made: number; reversible: number; failed: number; why?: string } = await written(() => ctx.runMutation(internal.assistant.bulk.apply, { userId, stepId, path: entry.path, items: JSON.stringify(chunk), approved: asked !== undefined, key: `${key}:${tried}` }));
         made += done.made;
+        reversible += done.reversible;
         failed += done.failed;
         if (done.why) why.push(done.why);
         // It stops short when its transaction is full: the next chunk starts where it stopped.
@@ -545,7 +546,9 @@ export function toolsFor(
       // A few reasons say why; a model that reads hundreds of them reads nothing else.
       ...(failed ? { failed, why: [...new Set(why)].slice(0, 5) } : {}),
       ...(stopped ? { stopped: `The person stopped the reply: ${items.length - tried} of these weren't made.` } : {}),
-      undo: { path: UNDO_BULK, args: { change: stepId } },
+      // Some changes have no undo of their own, and an undo of the step leaves them as they are.
+      ...(made > reversible ? { noUndo: made - reversible } : {}),
+      ...(reversible ? { undo: { path: UNDO_BULK, args: { change: stepId } } } : {}),
     };
     await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result) });
     note(entry.path, items.length, "made");

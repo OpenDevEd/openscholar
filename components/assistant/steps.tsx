@@ -368,8 +368,8 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <p className={cn("truncate text-sm font-semibold", step.undone && "line-through decoration-muted-foreground/60")}>{working ? <WorkingText>{title}</WorkingText> : title}</p>
                     <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-muted-foreground">
-                      {/* Why it failed. Under a bulk change that was undone, what couldn't be put back. */}
-                      {step.status === "failed" || (step.undone && step.error) ? (
+                      {/* Why it failed. Under a bulk change that was undone, what couldn't be put back, if anything. */}
+                      {(step.status === "failed" && !step.undone) || (step.undone && step.error) ? (
                         <span className="truncate">{step.error ?? t("steps.interrupted")}</span>
                       ) : state ? (
                         <>
