@@ -81,7 +81,7 @@ const startArgs = {
  * hold already has the credits, so the balance isn't checked again, and the job's papers
  * are charged under it.
  */
-export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: ObjectType<typeof startArgs>, spend?: { hold: string; cap: number; scale: number }): Promise<{ jobId: Id<"extractionJobs"> }> {
+export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: ObjectType<typeof startArgs>, spend?: { hold: string; cap: number; scale: number }, chatStep?: Id<"assistantSteps">): Promise<{ jobId: Id<"extractionJobs"> }> {
   await requireFeature(ctx, "extraction.enabled", userId);
   if (args.mode === "extraction") {
     await requireFeature(ctx, "extraction.start", userId);
@@ -186,6 +186,7 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
           ...stamp,
           ...(estimate !== undefined && { estimatedCredits: estimate }),
           ...(spend ? { spendHold: spend.hold, spendCap: spend.cap, spendScale: spend.scale } : {}),
+          ...(chatStep ? { chatStep } : {}),
         }
       : {
           messageCount: 0,

@@ -139,7 +139,7 @@ async function chatOf(t: Test) {
   /** The chat as its page lists it, oldest first, a line per item. */
   const shown = async () =>
     (await who.asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page
-      .map((item) => ("text" in item ? `${item.role}: ${item.text}${item.status === "stopped" ? "(stopped)" : ""}` : `step: ${item.action} ${item.status}${item.undone ? ", undone" : item.canUndo ? ", can be undone" : item.canAnswer ? ", can be answered" : ""}`))
+      .map((item) => (item.role === "event" ? `event: ${item.ended.map((ended) => ended.kind + " " + ended.status).join(", ")}` : "text" in item ? `${item.role}: ${item.text}${item.status === "stopped" ? "(stopped)" : ""}` : `step: ${item.action} ${item.status}${item.undone ? ", undone" : item.canUndo ? ", can be undone" : item.canAnswer ? ", can be answered" : ""}`))
       .reverse();
   return { ...who, threadId, say, sayUntilAsked, settled, stop, thread, steps, results, shown };
 }

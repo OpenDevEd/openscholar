@@ -3978,6 +3978,42 @@
         "collection": "संग्रह",
         "paper": "सहेजा गया पेपर"
       }
+    },
+    "jobs": {
+      "credits": "<n>{count}</n> क्रेडिट",
+      "of": "{total} में से {done}",
+      "included": "शामिल",
+      "excluded": "बाहर",
+      "unclear": "अस्पष्ट",
+      "open": "खोलें",
+      "question": "प्रश्न",
+      "missing": "नहीं बताया गया",
+      "titleOnly": "केवल शीर्षक",
+      "more": "इसके पेज पर {count} और शोध-पत्र",
+      "finished": "पूरा हुआ",
+      "cancelled": "रद्द किया गया",
+      "stopped": "रुका",
+      "failed": "विफल",
+      "cancelFailed": "काम रद्द नहीं हो सका",
+      "screening": {
+        "waiting": "{count} शोध-पत्रों की स्क्रीनिंग की प्रतीक्षा",
+        "waitingFor": "आपके दूसरे शोध-पत्रों के पूरे होने की प्रतीक्षा",
+        "running": "{count} शोध-पत्रों की स्क्रीनिंग",
+        "done": "{count} शोध-पत्रों की स्क्रीनिंग हुई",
+        "cancelled": "{total} में से {done} पर रद्द",
+        "stopped": "{total} में से {done} पर रुका",
+        "failed": "स्क्रीनिंग विफल रही",
+        "cancel": "स्क्रीनिंग रद्द करें"
+      },
+      "extraction": {
+        "running": "{count} शोध-पत्रों से निकाला जा रहा है",
+        "done": "{count} शोध-पत्रों से निकाला गया",
+        "cancelled": "{total} में से {done} शोध-पत्रों पर रद्द",
+        "stopped": "{total} में से {done} शोध-पत्रों पर रुका",
+        "failed": "एक्सट्रैक्शन विफल रहा",
+        "cancel": "एक्सट्रैक्शन रद्द करें"
+      },
+      "ended": "{kind, select, screening {आपकी स्क्रीनिंग} other {आपका एक्सट्रैक्शन}} {status, select, completed {पूरा हुआ} creditsExhausted {आपके दिए क्रेडिट पर रुका} cancelled {रद्द हुआ} other {विफल रहा}}"
     }
   }
 }

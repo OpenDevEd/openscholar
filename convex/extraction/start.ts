@@ -8,7 +8,7 @@ import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { internalMutation, internalQuery, type ActionCtx, type QueryCtx } from "../lib/functions";
-import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
+import { assistantAction, defineUserAction, userAction, type ChangeCall } from "../lib/userActions";
 import { createError } from "../lib/errors";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { extractionStamp } from "../ai/serverModel";
@@ -158,12 +158,12 @@ async function sourcesOf(ctx: ActionCtx, userId: Id<"users">, { set, first, last
 
 /** Starts the job from the sources the action read, as the page's start does, with the hold it's charged under when it has one. */
 export const begin = internalMutation({
-  args: { userId: v.id("users"), name: v.string(), bucketItems: v.array(bucketItemInputValidator), questions: v.array(questionInputValidator), usePdfs: v.boolean(), spend: v.optional(v.object({ hold: v.string(), cap: v.number() })) },
+  args: { userId: v.id("users"), name: v.string(), bucketItems: v.array(bucketItemInputValidator), questions: v.array(questionInputValidator), usePdfs: v.boolean(), spend: v.optional(v.object({ hold: v.string(), cap: v.number() })), chatStep: v.optional(v.id("assistantSteps")) },
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  handler: async (ctx, { userId, spend, ...args }) => {
+  handler: async (ctx, { userId, spend, chatStep, ...args }) => {
     await checkPdfs(ctx, args.usePdfs);
     // The job keeps the price its figure was worked out at, read in the transaction that stamps its models: its papers are measured against the figure at that price, whatever the person picks later.
-    return await startJobFor(ctx, userId, { ...args, mode: "extraction" }, spend && { ...spend, scale: await scaleOf(ctx, userId, args.questions) });
+    return await startJobFor(ctx, userId, { ...args, mode: "extraction" }, spend && { ...spend, scale: await scaleOf(ctx, userId, args.questions) }, chatStep);
   },
 });
 
@@ -189,10 +189,12 @@ export const settleHold = internalMutation({
  * Reads the set's sources and starts the job. With the figure the person approved, it is
  * held first (billing/charge.ts `startHeld`).
  */
-async function start(ctx: ActionCtx, userId: Id<"users">, { name, questions, usePdfs, ...range }: { name: string; set: PaperSet; first: number; last: number; questions: Array<Infer<typeof askedValidator>>; usePdfs?: boolean }, cap?: number): Promise<{ jobId: Id<"extractionJobs"> }> {
+async function start(ctx: ActionCtx, userId: Id<"users">, { name, questions, usePdfs, ...range }: { name: string; set: PaperSet; first: number; last: number; questions: Array<Infer<typeof askedValidator>>; usePdfs?: boolean }, call?: ChangeCall): Promise<{ jobId: Id<"extractionJobs"> }> {
+  const cap = call?.credits;
   if (!questions.length) throw invalid("Give at least one question to answer for each paper.");
   if (questions.length > MAX_QUESTIONS_PER_JOB) throw invalid(`An extraction takes up to ${MAX_QUESTIONS_PER_JOB} questions.`);
-  const job = { userId, name, bucketItems: await sourcesOf(ctx, userId, range), questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true };
+  // A job the assistant started keeps the step it started from, so its chat hears when it ends.
+  const job = { userId, name, bucketItems: await sourcesOf(ctx, userId, range), questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true, ...(call?.stepId ? { chatStep: call.stepId } : {}) };
   if (cap === undefined) return await ctx.runMutation(internal.extraction.start.begin, job);
   // What was approved is what the job holds now, or more: the papers or the model may have changed since the person was asked, and a job that holds more than they said yes to is asked about again.
   const now: number = await ctx.runQuery(internal.extraction.start.figure, { userId, name, questions, ...(usePdfs === undefined ? {} : { usePdfs }), ...range });
@@ -221,7 +223,7 @@ export const extractAction = defineUserAction({
     ...(usePdfs ? { usePdfs } : {}),
   }),
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  run: (ctx, userId, args, _author, call): Promise<{ jobId: Id<"extractionJobs"> }> => start(ctx, userId, args, call?.credits),
+  run: (ctx, userId, args, _author, call): Promise<{ jobId: Id<"extractionJobs"> }> => start(ctx, userId, args, call),
 });
 export const extract = userAction(extractAction);
 export const extractForAssistant = assistantAction(extractAction);

@@ -133,6 +133,7 @@ export { AddFolderIcon as FolderPlus } from "@solar-icons/react/bold-duotone/add
 export { RemoveFolderIcon as FolderMinus } from "@solar-icons/react/bold-duotone/remove-folder";
 export { SpeedometerMiddleIcon as Gauge } from "@solar-icons/react/bold-duotone/speedometer-middle";
 export { HourglassIcon as Hourglass } from "@solar-icons/react/bold-duotone/hourglass";
+export { TextSquareIcon as Type } from "@solar-icons/react/bold-duotone/text-square";
 export { StopIcon as Square } from "@solar-icons/react/bold-duotone/stop";
 export { FileSendIcon as FileUp } from "@solar-icons/react/bold-duotone/file-send";
 export { CameraIcon as Camera } from "@solar-icons/react/bold-duotone/camera";

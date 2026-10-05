@@ -3,6 +3,7 @@
     "apiKeys/actions:encryptAndSave": "User API keys never reach the assistant (plan decision 5).",
     "apiKeys/mutations:markUsed": "User API keys never reach the assistant (plan decision 5).",
     "apiKeys/mutations:remove": "User API keys never reach the assistant (plan decision 5).",
+    "assistant/jobs:card": "A job's live card in the chat that started it. The assistant reads the same job through screening/queries:getScreeningJob and extraction/queries:listJobResults.",
     "assistant/presence:heartbeat": "The browser's own signal that a chat is still open in it.",
     "assistant/presence:leave": "The panel closing a chat, so its room drops the person at once.",
     "assistant/replies:answer": "The person's answer to a call the assistant asked about. Only the person asked can give it.",
