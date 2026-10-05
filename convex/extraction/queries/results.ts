@@ -5,7 +5,7 @@
  */
 
 import type { QueryCtx } from "../../_generated/server";
-import { getDocumentSize, v, type Infer } from "convex/values";
+import { compareValues, getDocumentSize, v, type Infer } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { QueryStream, stream } from "convex-helpers/server/stream";
 import schema from "../../schema";
@@ -26,6 +26,7 @@ import {
 } from "./_shared";
 import {
   buildQuestionAnswerToken,
+  normalizeProjectionText,
 } from "../listProjection";
 
 function normalizePageSize(value: number) {
@@ -35,7 +36,7 @@ function normalizePageSize(value: number) {
 
 type ResultsPageFilters = Infer<typeof resultsPageFiltersValidator>;
 type ResultsSortBy = Infer<typeof resultsSortByValidator>;
-type NormalizedResultsFilters = ReturnType<typeof normalizeResultsFilters>;
+type NormalizedResultsFilters = Awaited<ReturnType<typeof normalizeResultsFilters>>;
 
 function normalizeConfidenceRange(range: ResultsPageFilters["confidenceRange"]) {
   const min = Number.isFinite(range[0]) ? range[0] : 0;
@@ -47,19 +48,21 @@ function normalizeConfidenceRange(range: ResultsPageFilters["confidenceRange"]) 
     : ([normalizedMax, normalizedMin] as const);
 }
 
-function normalizeResultsFilters(filters: ResultsPageFilters) {
+async function normalizeResultsFilters(filters: ResultsPageFilters) {
   const [minConfidence, maxConfidence] = normalizeConfidenceRange(
     filters.confidenceRange,
   );
 
+  const searchQuery = normalizeProjectionText(filters.searchQuery);
   return {
-    searchQuery: filters.searchQuery.trim(),
+    searchQuery,
+    emptySearch: Boolean(filters.searchQuery.trim()) && !searchQuery,
     confidenceRange: [minConfidence / 100, maxConfidence / 100] as const,
     statusFilters: [...new Set(filters.statusFilters)],
-    questionFilters: filters.questionFilters.flatMap((filter) => {
-      const token = buildQuestionAnswerToken(filter.questionKey, filter.value);
-      return token ? [{ questionKey: filter.questionKey, token }] : [];
-    }),
+    questionFilters: await Promise.all(filters.questionFilters.map(async (filter) => ({
+      questionKey: filter.questionKey,
+      token: await buildQuestionAnswerToken(filter.questionKey, filter.value),
+    }))),
   };
 }
 
@@ -127,11 +130,11 @@ function matchesStatusFilters(
 
 function matchesQuestionFilters(
   paper: Doc<"extractionPapers">,
-  questionFilters: ReadonlyArray<{ questionKey: string; token: string }>,
+  questionFilters: ReadonlyArray<{ questionKey: string; token: string | null }>,
 ) {
   if (questionFilters.length === 0) return true;
   const tokenSet = new Set(paper.questionAnswerTokens ?? []);
-  return questionFilters.every((filter) => tokenSet.has(filter.token));
+  return questionFilters.every((filter) => filter.token !== null && tokenSet.has(filter.token));
 }
 
 function matchesProjectionFilters(
@@ -164,6 +167,9 @@ async function readFilteredJobPapers(
   },
 ) {
   const jobId = args.job._id;
+  if (args.filters.emptySearch) {
+    return { totalAll: args.job.totalPapers ?? 0, totalFiltered: 0, filteredPapers: [] };
+  }
   // A search reads only its matches: reading every paper as well would take a
   // 1,000-paper job's page of 200 past the 16 MiB a query may read. The job's
   // processable paper count, set when its papers were saved, stands in for the total.
@@ -181,7 +187,7 @@ async function readFilteredJobPapers(
     : args.selectedPaperIds !== undefined
     ? (await Promise.all([...new Set(args.selectedPaperIds)].map(id => ctx.db.get(id))))
         .filter((paper): paper is Doc<"extractionPapers"> => paper !== null && paper.jobId === jobId && paper.processable === true)
-        .sort((a, b) => a._creationTime - b._creationTime || a._id.localeCompare(b._id))
+        .sort((a, b) => compareValues([a._creationTime, a._id], [b._creationTime, b._id]))
     : await ctx.db
         .query("extractionPapers")
         .withIndex("by_job_processable", (q) =>
@@ -261,21 +267,13 @@ function sortFilteredPapers(
     return papers;
   }
 
-  const sorted = [...papers];
-  if (sortBy === "title-asc") {
-    return sorted.sort((a, b) => getPaperSortTitle(a).localeCompare(getPaperSortTitle(b)));
-  }
-  if (sortBy === "title-desc") {
-    return sorted.sort((a, b) => getPaperSortTitle(b).localeCompare(getPaperSortTitle(a)));
-  }
-  if (sortBy === "confidence-high") {
-    return sorted.sort(
-      (a, b) => getPaperAvgConfidence(b) - getPaperAvgConfidence(a),
-    );
-  }
-  return sorted.sort(
-    (a, b) => getPaperAvgConfidence(a) - getPaperAvgConfidence(b),
-  );
+  const key = (paper: Doc<"extractionPapers">) => [
+    sortBy.startsWith("title-") ? getPaperSortTitle(paper) : getPaperAvgConfidence(paper),
+    paper._creationTime,
+    paper._id,
+  ];
+  const direction = sortBy === "title-desc" || sortBy === "confidence-high" ? -1 : 1;
+  return [...papers].sort((a, b) => direction * compareValues(key(a), key(b)));
 }
 
 /** Target bytes per page, including joined answers and their saved quotations. */
@@ -303,11 +301,11 @@ export const listJobResultsAction = defineUserQuery({
     const job = await ownJob(ctx, userId, args.jobId);
     if (!job) return { page: [], isDone: true, continueCursor: "" };
     await requireFeature(ctx, "extraction.enabled", userId);
-    const filters = normalizeResultsFilters(args.filters);
+    const filters = await normalizeResultsFilters(args.filters);
     const numItems = normalizePageSize(args.paginationOpts.numItems);
     const { cursor } = args.paginationOpts;
 
-    if (filters.searchQuery || args.selectedPaperIds !== undefined) {
+    if (filters.searchQuery || filters.emptySearch || args.selectedPaperIds !== undefined) {
       // A search reads its matches by relevance, at most PAPER_LIMIT of them, so they are
       // sorted here and the cursor is how many came before.
       const { filteredPapers } = await readFilteredJobPapers(ctx, { job, filters, sortBy: args.sortBy, limit: PAPER_LIMIT, selectedPaperIds: args.selectedPaperIds });
@@ -342,7 +340,7 @@ export const countJobResultsAction = defineUserQuery({
     const job = await ownJob(ctx, userId, args.jobId);
     if (!job) return { all: 0, matching: 0, revision: -1 };
     await requireFeature(ctx, "extraction.enabled", userId);
-    const { totalAll, totalFiltered } = await readFilteredJobPapers(ctx, { job, filters: normalizeResultsFilters(args.filters), sortBy: "default", limit: PAPER_LIMIT, selectedPaperIds: args.selectedPaperIds });
+    const { totalAll, totalFiltered } = await readFilteredJobPapers(ctx, { job, filters: await normalizeResultsFilters(args.filters), sortBy: "default", limit: PAPER_LIMIT, selectedPaperIds: args.selectedPaperIds });
     return { all: totalAll, matching: totalFiltered, revision: args.includeRevision ? await exportRevision(ctx, job._id) : null };
   },
 });

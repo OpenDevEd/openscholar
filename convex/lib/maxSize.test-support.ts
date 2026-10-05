@@ -4,6 +4,7 @@
  * on 2026-09-30; the content is synthetic.
  */
 import type { convexTest } from "convex-test";
+import { createHash } from "node:crypto";
 import type { Id, TableNames } from "../_generated/dataModel";
 import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
@@ -66,7 +67,7 @@ export async function seedExtractionJob(t: Test, userId: Id<"users">, { papers =
   const paperIds = await insertMany(t, "extractionPapers", Array.from({ length: papers }, (_, i) => ({
     jobId, openalexId: `W${i}`, title: text(120, i), sortTitle: text(120, i), abstract: text(1_800, i), authors: [text(40, i), text(40, i + 1)],
     publicationYear: 2000 + (i % 25), status: "completed", sourceType: "history", sourceId: `W${i}`, processable: true,
-    searchText: text(1_500, i), questionAnswerTokens: keys.map((key) => `${key}::${text(8, i)}`), avgConfidence: 0.8, hasErrors: false, hasPdfSource: false, isOpenAccess: false, completedAt: 1,
+    searchText: text(1_500, i), questionAnswerTokens: keys.map((key, q) => createHash("sha256").update(JSON.stringify([key, text(120, i + q).trim()])).digest("hex")), avgConfidence: 0.8, hasErrors: false, hasPdfSource: false, isOpenAccess: false, completedAt: 1,
   })));
   await insertMany(t, "extractionResults", paperIds.flatMap((paperId, p) => keys.map((questionKey, q) => ({
     jobId, paperId, questionKey, answer: text(120, p + q), reasoning: text(500, p + q), confidence: 0.8,

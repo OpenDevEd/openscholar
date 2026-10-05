@@ -1102,6 +1102,8 @@ export default defineSchema({
     tallies: screeningTalliesValidator,
     // Credits its counted papers cost.
     credits: v.optional(v.number()),
+    // In a job with a spending limit, papers started and not counted yet (screening/slots.ts).
+    running: v.optional(v.number()),
     // Papers it saved for the first time, and papers it took from the collection it read
     // that are still out of it.
     saved: v.optional(v.number()),

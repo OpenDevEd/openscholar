@@ -99,6 +99,8 @@ async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   const add = tally(results);
   const credits = results.reduce((sum, result) => sum + (result.creditsUsed ?? 0), 0);
   await ctx.db.patch("screeningJobProgress", row._id, {
+    // Papers of a job with a spending limit stop being held at the estimate once they're counted at what they cost (./slots.ts).
+    ...(row.running ? { running: Math.max(0, row.running - results.filter((result) => result.workId !== undefined).length) } : {}),
     completed: row.completed + add.completed,
     skipped: row.skipped + add.skipped,
     failed: row.failed + add.failed,
@@ -217,7 +219,8 @@ export const bookkeep = internalMutation({
     );
     const byJob = new Map<Id<"screeningJobs">, Doc<"screeningResults">[]>();
     for (const result of results) byJob.set(result.jobId, [...(byJob.get(result.jobId) ?? []), result]);
-    // Papers of each person's that stopped running; a paper skipped before it started held no slot.
+    // Papers of each person's that stopped running. A paper skipped before it started held no slot, but its
+    // person is still listed: with it out of the queue, the papers that waited behind it can start.
     const freed = new Map<Id<"users">, number>();
     for (const [jobId, jobResults] of byJob) {
       const job = await ctx.db.get("screeningJobs", jobId);
@@ -248,8 +251,7 @@ export const bookkeep = internalMutation({
         }
         await countFinished(ctx, current, jobResults, deltas, moved);
         await finishIfDone(ctx, jobId);
-        const started = jobResults.filter((result) => result.workId !== undefined).length;
-        if (started) freed.set(job.userId, (freed.get(job.userId) ?? 0) + started);
+        freed.set(job.userId, (freed.get(job.userId) ?? 0) + jobResults.filter((result) => result.workId !== undefined).length);
       }
       // Bookkept, or its job is gone: out of the queue.
       for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });

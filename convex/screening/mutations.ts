@@ -174,13 +174,14 @@ async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers
       createdAt,
       ...(done
         ? { status: "completed" as const, completedAt: createdAt, answersVersion: screening.version, doneAt: ctx.db.vars.commitTs }
-        : { status: "processing" as const, waitingUser: job.userId, waitingSince: createdAt }),
+        : job.capped
+          ? // The job reached the most it may spend while its papers were still being made: the rest are never read.
+            { status: "skipped" as const, completedAt: createdAt, doneAt: ctx.db.vars.commitTs }
+          : { status: "processing" as const, waitingUser: job.userId, waitingSince: createdAt }),
     });
   }
-  if (reused.size) {
-    await ctx.db.patch("screeningJobs", job._id, { reused: (job.reused ?? 0) + reused.size });
-    await bookkeepLater(ctx);
-  }
+  if (reused.size) await ctx.db.patch("screeningJobs", job._id, { reused: (job.reused ?? 0) + reused.size });
+  if (reused.size || job.capped) await bookkeepLater(ctx);
   await startWaitingPapers(ctx, job.userId);
   if (papers.length > CREATE_BATCH) {
     await ctx.scheduler.runAfter(0, internal.screening.mutations.createScreeningResults, { jobId: job._id, papers: papers.slice(CREATE_BATCH), createdAt });

@@ -291,6 +291,7 @@ import type * as migrations_countBillingUsage from "../migrations/countBillingUs
 import type * as migrations_countScreeningJobs from "../migrations/countScreeningJobs.js";
 import type * as migrations_expireInvitations from "../migrations/expireInvitations.js";
 import type * as migrations_extractionEvidence from "../migrations/extractionEvidence.js";
+import type * as migrations_extractionSearch from "../migrations/extractionSearch.js";
 import type * as migrations_moveLibraryCounts from "../migrations/moveLibraryCounts.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
 import type * as migrations_pagedAccountLists from "../migrations/pagedAccountLists.js";
@@ -672,6 +673,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/countScreeningJobs": typeof migrations_countScreeningJobs;
   "migrations/expireInvitations": typeof migrations_expireInvitations;
   "migrations/extractionEvidence": typeof migrations_extractionEvidence;
+  "migrations/extractionSearch": typeof migrations_extractionSearch;
   "migrations/moveLibraryCounts": typeof migrations_moveLibraryCounts;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
   "migrations/pagedAccountLists": typeof migrations_pagedAccountLists;
