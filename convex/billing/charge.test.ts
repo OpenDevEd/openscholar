@@ -352,7 +352,11 @@ describe("holding and charging", () => {
 });
 
 describe("an approved job's hold", () => {
-  beforeEach(() => fakeAutumn.reset());
+  beforeEach(() => {
+    fakeAutumn.reset();
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    vi.useFakeTimers();
+  });
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
@@ -362,15 +366,24 @@ describe("an approved job's hold", () => {
   const usage = { kind: "extraction" as const, description: "Extraction" };
   const record = (t: ReturnType<typeof convexTest>, userId: Id<"users">, n: number, credits: number) =>
     t.mutation(internal.billing.charge.recordUnder, { userId, chargeId: `paper:${n}`, credits, ...usage, under: "job:1", createdAt: Date.now() });
-  const settle = (t: ReturnType<typeof convexTest>, attempt = 0) => t.action(internal.billing.charge.settleSpent, { chargeId: "job:1", attempt });
+  /** Settles the hold as its job's end does, and lets the confirm it schedules run: not the takeover, a quarter of an hour on. */
+  const settle = async (t: ReturnType<typeof convexTest>, attempt = 0) => {
+    await t.mutation(internal.billing.charge.settleSpent, { chargeId: "job:1", attempt });
+    vi.advanceTimersByTime(1_000);
+    await t.finishInProgressScheduledFunctions();
+  };
   const spent = (t: ReturnType<typeof convexTest>) => t.run(async (ctx) => (await ctx.db.query("billingUsage").collect()).map((row) => row.credits));
   const holds = (t: ReturnType<typeof convexTest>) => t.run((ctx) => ctx.db.query("billingHolds").collect());
-  /** The settlings the hold has coming. */
+  /** What the hold has scheduled and not yet run, by function. */
   const coming = (t: ReturnType<typeof convexTest>) =>
-    t.run(async (ctx) => (await ctx.db.system.query("_scheduled_functions").collect()).filter((fn) => fn.name.includes("settleSpent") && fn.state.kind === "pending").length);
+    t.run(async (ctx) =>
+      (await ctx.db.system.query("_scheduled_functions").collect())
+        .filter((fn) => fn.state.kind === "pending")
+        .map((fn) => fn.name.split(":").at(-1)!)
+        .filter((name) => name === "settleSpent" || name === "confirmSpent"),
+    );
 
   it("charges nothing for its items, then confirms once with their sum", async () => {
-    vi.stubGlobal("fetch", fakeAutumnFetch());
     const t = convexTest(schema);
     const { userId } = await seedChat(t, 1_000);
     await hold(t, userId, "job:1", 200, true);
@@ -388,16 +401,11 @@ describe("an approved job's hold", () => {
     expect(fakeAutumn.balance(userId)).toBe(880);
     expect(fakeAutumn.locks.size).toBe(0);
     expect(await holds(t)).toEqual([]);
-
-    // The hold is settled: nothing more is recorded under it, and settling again finds nothing to do.
-    expect(await record(t, userId, 3, 25)).toBe(false);
-    await settle(t);
-    expect(calls("balances.finalize")).toHaveLength(1);
-    expect(fakeAutumn.balance(userId)).toBe(880);
+    // Settled, it has nothing more coming: its takeover went with it.
+    expect(await coming(t)).toEqual([]);
   });
 
   it("is never confirmed for more than it holds, whatever its items came to", async () => {
-    vi.stubGlobal("fetch", fakeAutumnFetch());
     const t = convexTest(schema);
     const { userId } = await seedChat(t, 1_000);
     // Approved up to 100. Two items that were expected to fit cost 80 and 70.
@@ -413,8 +421,6 @@ describe("an approved job's hold", () => {
   });
 
   it("is given back whole when nothing was spent, and is settled with what was spent if it's still standing at its expiry", async () => {
-    vi.stubGlobal("fetch", fakeAutumnFetch());
-    vi.useFakeTimers();
     const t = convexTest(schema);
     const { userId } = await seedChat(t, 1_000);
     await hold(t, userId, "job:1", 200, true);
@@ -430,61 +436,53 @@ describe("an approved job's hold", () => {
     expect(fakeAutumn.locks.size).toBe(0);
   });
 
-  it("is settled by one run at a time, and an item that ends meanwhile is charged by itself once the hold is settled", async () => {
-    vi.stubGlobal("fetch", fakeAutumnFetch());
+  it("is settled once however often its job ends, and nothing that ends after that is charged", async () => {
     const t = convexTest(schema);
-    const { userId } = await seedChat(t, 200);
-    // The whole balance is held: until the hold is confirmed, nothing else can be charged from it.
+    const { userId } = await seedChat(t, 1_000);
     await hold(t, userId, "job:1", 200, true);
     await record(t, userId, 0, 60);
 
-    // The job ended twice over (stopped, then cancelled): the first call settles, the second does nothing.
-    expect(await t.mutation(internal.billing.charge.beginSpent, { chargeId: "job:1", attempt: 0 })).not.toBeNull();
-    expect(await t.mutation(internal.billing.charge.beginSpent, { chargeId: "job:1", attempt: 0 })).toBeNull();
+    // The job ended twice over (stopped, then cancelled): one confirm is scheduled, with the takeover behind it.
+    await t.mutation(internal.billing.charge.settleSpent, { chargeId: "job:1", attempt: 0 });
+    await t.mutation(internal.billing.charge.settleSpent, { chargeId: "job:1", attempt: 0 });
+    expect((await coming(t)).sort()).toEqual(["confirmSpent", "settleSpent"]);
 
-    // A paper ends while the hold is being confirmed. It isn't charged from a balance the hold still has.
+    // A paper that ends now isn't recorded under the hold, and isn't charged by itself either: the job costs what its one confirm takes.
     expect(await record(t, userId, 1, 90)).toBe(false);
-    const late = { userId, chargeId: "paper:1", credits: 90, usage, under: "job:1" };
-    await t.action(internal.billing.charge.settleLate, { ...late, attempt: 0 });
+    vi.advanceTimersByTime(1_000);
+    await t.finishInProgressScheduledFunctions();
+    expect(await spent(t)).toEqual([60]);
     expect(calls("balances.track")).toHaveLength(0);
-
-    // The settling run carries on and confirms what was spent under the hold, which gives the rest back.
-    await settle(t, 1);
-    expect(fakeAutumn.balance(userId)).toBe(140);
-    await t.action(internal.billing.charge.settleLate, { ...late, attempt: 1 });
-    expect(fakeAutumn.balance(userId)).toBe(50);
-    expect(await spent(t)).toEqual([60, 90]);
+    expect(fakeAutumn.balance(userId)).toBe(940);
   });
 
-  it("has one settling coming at any time: after its job ends, and again after a settling that failed, which charges once", async () => {
-    vi.stubGlobal("fetch", fakeAutumnFetch());
-    vi.useFakeTimers();
+  it("has one settling coming at any time: after its job ends, and again after a confirm that failed, which charges once", async () => {
     const t = convexTest(schema);
     const { userId } = await seedChat(t, 1_000);
     await hold(t, userId, "job:1", 200, true);
     await record(t, userId, 0, 60);
     // Its expiry, a day away.
-    expect(await coming(t)).toBe(1);
+    expect(await coming(t)).toEqual(["settleSpent"]);
 
-    // The job stopped, and was cancelled before its hold was settled: one settling, a little after, for the papers still running.
-    await t.mutation(internal.billing.charge.laterSpent, { chargeId: "job:1", attempt: 0, delay: 300_000 });
-    await t.mutation(internal.billing.charge.laterSpent, { chargeId: "job:1", attempt: 0, delay: 300_000 });
-    expect(await coming(t)).toBe(1);
-    // A paper that ends in that time is still recorded under the hold.
+    // The job stopped, and was cancelled before its hold was settled: one settling, a little after.
+    await t.mutation(internal.billing.charge.laterSpent, { chargeId: "job:1", attempt: 0, delay: 30_000 });
+    await t.mutation(internal.billing.charge.laterSpent, { chargeId: "job:1", attempt: 0, delay: 30_000 });
+    expect(await coming(t)).toEqual(["settleSpent"]);
+    // A paper whose cost is recorded in that time is still under the hold.
     expect(await record(t, userId, 1, 20)).toBe(true);
 
     // Autumn refuses the confirm: the hold stays, with its next try coming and nothing else.
     fakeAutumn.failNext = "balances.finalize";
     await settle(t);
     expect(await holds(t)).toHaveLength(1);
-    expect(await coming(t)).toBe(1);
+    expect(await coming(t)).toEqual(["settleSpent"]);
     expect(fakeAutumn.locks.size).toBe(1);
 
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(fakeAutumn.balance(userId)).toBe(920);
     expect(fakeAutumn.locks.size).toBe(0);
     expect(await holds(t)).toEqual([]);
-    expect(await coming(t)).toBe(0);
+    expect(await coming(t)).toEqual([]);
   });
 });
 

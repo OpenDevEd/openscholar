@@ -35,6 +35,11 @@ const extractArgs = { name: v.string(), set: paperSetValidator, first: v.number(
 
 /** Library papers looked up in one read. */
 const ITEMS_A_READ = 200;
+/** How often an ended job is looked at again while a paper of it is still being read, and for how long at most: longer than a paper's worker can run. */
+const RUNNING_CHECK_MS = 15_000;
+const RUNNING_WAIT_MS = 12 * 60_000;
+/** How long after its last paper stopped being read a job's hold is settled: the paper's cost is recorded a moment after its row says it's done. */
+const SETTLE_AFTER_MS = 30_000;
 
 const invalid = (message: string) => createError("VALIDATION_ERROR", message);
 
@@ -138,6 +143,24 @@ export const begin = internalMutation({
 });
 
 /**
+ * Settles the hold of a job that has ended (../lib/triggers.ts), once none of its papers is
+ * still being read: one read when the job stopped or was cancelled is recorded under the
+ * hold when it ends, and every charge of the job goes through the hold's one confirm. A job
+ * the person has carried on meanwhile left the hold behind, and it is settled as it stands.
+ */
+export const settleHold = internalMutation({
+  args: { jobId: v.id("extractionJobs"), hold: v.string(), waited: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { jobId, hold, waited }) => {
+    const job = await ctx.db.get("extractionJobs", jobId);
+    const reading = job?.spendHold === hold && (await ctx.db.query("extractionPaperQueue").withIndex("by_job_and_status", (q) => q.eq("jobId", jobId).eq("status", "running")).first()) !== null;
+    if (reading && waited < RUNNING_WAIT_MS) await ctx.scheduler.runAfter(RUNNING_CHECK_MS, internal.extraction.start.settleHold, { jobId, hold, waited: waited + RUNNING_CHECK_MS });
+    else await ctx.scheduler.runAfter(0, internal.billing.charge.laterSpent, { chargeId: hold, attempt: 0, delay: SETTLE_AFTER_MS });
+    return null;
+  },
+});
+
+/**
  * Reads the set's sources and starts the job. With the figure the person approved, it is
  * held first: a balance that can't cover it starts nothing, and a job that can't start
  * gives it back.
@@ -148,11 +171,11 @@ async function start(ctx: ActionCtx, userId: Id<"users">, { name, questions, use
   const job = { userId, name, bucketItems: await sourcesOf(ctx, userId, range), questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true };
   if (cap === undefined) return await ctx.runMutation(internal.extraction.start.begin, job);
   const hold = `extraction-job:${crypto.randomUUID()}`;
-  if (!(await holdSpend(ctx, { userId, chargeId: hold, credits: cap }))) throw createError("INSUFFICIENT_CREDITS", `This extraction holds up to ${cap.toLocaleString("en")} credits, more than the balance has.`);
   try {
+    if (!(await holdSpend(ctx, { userId, chargeId: hold, credits: cap }))) throw createError("INSUFFICIENT_CREDITS", `This extraction holds up to ${cap.toLocaleString("en")} credits, more than the balance has.`);
     return await ctx.runMutation(internal.extraction.start.begin, { ...job, spend: { hold, cap } });
   } catch (error) {
-    // Given back by a function that tries again if Autumn doesn't answer: there's no job to settle it.
+    // Whatever was held is given back by a function that tries again if Autumn doesn't answer: there's no job to settle it. That covers a hold Autumn took and never answered for.
     await ctx.scheduler.runAfter(0, internal.billing.charge.releaseLock, { userId, chargeId: hold, attempt: 0 });
     throw error;
   }

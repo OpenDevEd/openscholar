@@ -5,7 +5,8 @@
  * `./functions.ts` apply them, and so does `t.run` in tests (tests/convex-test-with-limits.ts).
  */
 import { Triggers } from "convex-helpers/server/triggers";
-import type { DataModel } from "../_generated/dataModel";
+import { makeFunctionReference } from "convex/server";
+import type { DataModel, Id } from "../_generated/dataModel";
 import { settleEndedJob } from "../billing/spend";
 import { countJobChange, countPaperChange, countPaperErrorChange, countResultChange, reviseQuestionChange } from "../extraction/counts";
 import { nameJob } from "../extraction/jobList";
@@ -18,7 +19,8 @@ export const triggers = new Triggers<DataModel>();
 triggers.register("extractionJobs", countJobChange);
 triggers.register("extractionJobs", nameJob);
 triggers.register("extractionJobs", countChange("extractionJobs"));
-triggers.register("extractionJobs", settleEndedJob);
+// Named by its path: the module that defines it is built with these triggers.
+triggers.register("extractionJobs", settleEndedJob<Id<"extractionJobs">>(makeFunctionReference("extraction/start:settleHold")));
 triggers.register("extractionResults", countResultChange);
 triggers.register("extractionQuestions", reviseQuestionChange);
 triggers.register("extractionPaperErrors", countPaperErrorChange);

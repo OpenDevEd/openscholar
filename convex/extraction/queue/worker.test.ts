@@ -394,6 +394,35 @@ describe("extraction paper queue worker", () => {
     vi.useRealTimers();
   });
 
+  it("settles an ended job's hold only once none of its papers is still being read, so each is recorded under it", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema);
+    const { userId, jobId, queueId } = await seedAlreadyAnsweredPaper(t, { credits: 1_000, answered: false });
+    await t.mutation(internal.billing.charge.hold, { userId, chargeId: "extraction-job:1", credits: 50, expiresAt: Date.now() + 86_400_000, spend: true });
+    await fetch("https://autumn.test/v1/balances.check", { method: "POST", body: JSON.stringify({ customer_id: userId, feature_id: "credits", required_balance: 50, lock: { enabled: true, lock_id: "extraction-job:1", expires_at: Date.now() + 86_400_000 } }) });
+    // Cancelled while its one paper is being read.
+    await t.run(async (ctx) => {
+      await ctx.db.patch(jobId, { spendHold: "extraction-job:1", spendCap: 50, status: "cancelled" });
+      await ctx.db.patch(queueId, { status: "running" });
+    });
+    const recorded = (n: number) => t.mutation(internal.billing.charge.recordUnder, { userId, chargeId: `paper:${n}`, credits: 4, kind: "extraction", description: "Extraction", under: "extraction-job:1", createdAt: Date.now() });
+
+    await t.mutation(internal.extraction.start.settleHold, { jobId, hold: "extraction-job:1", waited: 0 });
+    vi.advanceTimersByTime(60_000);
+    await t.finishInProgressScheduledFunctions();
+    // A minute on the paper is still being read: the hold still takes its cost.
+    expect(await recorded(1)).toBe(true);
+    expect(fakeAutumn.locks.size).toBe(1);
+
+    // The paper ends. The hold is settled a moment later, for what was recorded under it.
+    await t.run((ctx) => ctx.db.patch(queueId, { status: "completed" }));
+    await t.finishAllScheduledFunctions(vi.runOnlyPendingTimers.bind(vi));
+    expect(fakeAutumn.locks.size).toBe(0);
+    expect(fakeAutumn.balance(userId)).toBe(996);
+    expect(await recorded(2)).toBe(false);
+    vi.useRealTimers();
+  });
+
   it("stops a job whose hold no longer stands, as one that outlasted it, and doesn't charge its papers past what was approved", async () => {
     const t = convexTest(schema);
     const { userId, jobId, queueId } = await seedAlreadyAnsweredPaper(t, { credits: 1_000, answered: false });

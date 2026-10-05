@@ -112,4 +112,12 @@ describe("<CreditsExhaustedBanner>", () => {
     fireEvent.click(screen.getByRole("button", { name: /creditsExhausted.resume/i }));
     expect(onResume).toHaveBeenCalledTimes(1);
   });
+
+  it("still offers a top-up for such a job when the balance can't carry it on", () => {
+    // Its figure was the whole balance: Resume can't go on, so buying credits is the way forward.
+    setBalance(0, false, 1);
+    render(<CreditsExhaustedBanner allowed={40} onResume={vi.fn()} />);
+    expect(screen.getByRole("button", { name: /buyCredits/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /creditsExhausted.resume/i })).toBeDisabled();
+  });
 });
