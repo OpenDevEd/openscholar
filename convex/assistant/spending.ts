@@ -15,10 +15,12 @@
  * session, with Roo Code's ceiling on it.
  *
  *   get (query)       the person's limits in a chat, what their new chats start with, and what their last replies cost
+ *   jobs (query)      their calls in the chat that held credits, a page at a time
  *   setReplyLimit     sets or lifts a reply's
  *   setAllowance      whether jobs run without asking, and the most one may hold
  *   setForNewChats    whether the chats they start begin with this chat's
  */
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -33,9 +35,8 @@ import { RECENT_REPLIES, recentCostsValidator } from "./validators";
 const FLAG = "assistant.enabled";
 /** The largest limit a person can set: fifteen digits, which a number holds exactly. */
 export const REPLY_LIMIT_MAX = 999_999_999_999_999;
-/** Jobs the Spending sheet lists under the settings that decide for them, and the steps of the chat looked through for them. */
-const JOBS_LISTED = 5;
-const JOB_STEPS_READ = 200;
+/** Jobs one page of the Spending sheet's list holds at most. */
+const JOBS_PAGE_MAX = 50;
 /** Rows of a deleted chat, or of a purged account, that one batch deletes. */
 const FORGET_LIMITS = 100;
 
@@ -168,8 +169,6 @@ export const get = query({
     replyLimit: v.union(v.number(), v.null()),
     /** Jobs that spend credits run without asking: the most one may hold, null being any amount. Null when each one asks. */
     allowance: v.union(v.null(), v.object({ cap: v.union(v.number(), v.null()) })),
-    /** The person's newest calls in this chat that held credits, newest first: the action, what it was about, and the most it held. */
-    jobs: v.array(v.object({ action: v.string(), subject: v.optional(v.string()), credits: v.number() })),
     /**
      * What the chats the person starts begin with, null being no limit; absent until they choose.
      * A chat whose limit this equals is one new chats take theirs from: changing it there changes this.
@@ -183,13 +182,29 @@ export const get = query({
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);
     const [limit, spender] = await Promise.all([limitOf(ctx, threadId, userId), spenderOf(ctx, userId)]);
-    // ponytail: found among the chat's newest steps, so a job from before them isn't listed. An index on the steps that hold credits when chats outgrow that.
-    const steps = await ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId)).order("desc").take(JOB_STEPS_READ);
-    const jobs = steps
-      .filter((step) => step.userId === userId && step.credits !== undefined)
-      .slice(0, JOBS_LISTED)
-      .map((step) => ({ action: step.path, ...(step.subject ? { subject: step.subject } : {}), credits: step.credits! }));
-    return { replyLimit: limit?.replyLimit ?? null, allowance: limit?.jobs ? { cap: limit.jobs.cap ?? null } : null, jobs, ...(spender?.newChats === undefined ? {} : { newChats: spender.newChats.replyLimit ?? null }), recent: (spender?.recent ?? []).map((entry) => entry.credits) };
+    return { replyLimit: limit?.replyLimit ?? null, allowance: limit?.jobs ? { cap: limit.jobs.cap ?? null } : null, ...(spender?.newChats === undefined ? {} : { newChats: spender.newChats.replyLimit ?? null }), recent: (spender?.recent ?? []).map((entry) => entry.credits) };
+  },
+});
+
+/**
+ * The person's calls in this chat that held credits, the largest hold first, a page at a
+ * time: what the Spending sheet's settings for jobs decide for, each shown as one that
+ * would run or would ask.
+ */
+export const jobs = query({
+  args: { threadId: v.id("assistantThreads"), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(v.object({ id: v.id("assistantSteps"), action: v.string(), subject: v.optional(v.string()), credits: v.number() })),
+  handler: async (ctx, { threadId, paginationOpts }) => {
+    const userId = (await requireAuth(ctx))._id;
+    await requireFeature(ctx, FLAG, userId);
+    await requireThread(ctx, userId, threadId);
+    const read = await ctx.db
+      .query("assistantSteps")
+      // Only a step that holds credits has a number here.
+      .withIndex("by_thread_user_credits", (q) => q.eq("threadId", threadId).eq("userId", userId).gte("credits", 0))
+      .order("desc")
+      .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, JOBS_PAGE_MAX) });
+    return { ...read, page: read.page.map((step) => ({ id: step._id, action: step.path, ...(step.subject ? { subject: step.subject } : {}), credits: step.credits! })) };
   },
 });
 
