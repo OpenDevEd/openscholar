@@ -457,6 +457,12 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId: theirs })))).toEqual([{ name: "collection", value: theirs }]);
     // A collection named by its ID and again by the name the call expects it to have is one line.
     expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId, name: "Trials" })))).toEqual([{ name: "collection", value: "Trials" }]);
+    // What an undo expects the record to be, and which kind of record an ID beside it names, aren't part of what's asked.
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ threadId, principal: { kind: "user", userId: ada }, role: "read", expect: { answer: true, by: "model", at: 7 } })))).toEqual([
+      { name: "thread", value: "Reading trials" },
+      { name: "role", value: "read" },
+      { name: "user", value: expect.any(String) },
+    ]);
     // A saved search is shown by its query, and one saved with filters alone by nothing, never by its ID.
     const { id: asked } = await asAda.mutation(api.research.searches.create, { query: "tutoring trials" });
     const { id: filtered } = await asAda.mutation(api.research.searches.create, { fromYear: 2020, toYear: 2024 });

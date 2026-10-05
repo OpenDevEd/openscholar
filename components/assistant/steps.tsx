@@ -146,8 +146,8 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
             {(step.details ?? []).map((detail, i) => (
               <li key={i} className="flex gap-2">
                 <span className="shrink-0 text-foreground/50">{(NAMED as readonly string[]).includes(detail.name) ? t(`asks.names.${detail.name as (typeof NAMED)[number]}`) : detail.name}</span>
-                {/* A record with nothing to call it by, such as a search saved with filters alone. */}
-                <span className="min-w-0 break-words">{detail.value || t("asks.unnamed")}</span>
+                {/* What someone may do in a shared chat, in the Share sheet's own words. A record with nothing to call it by, such as a search saved with filters alone, says so. */}
+                <span className="min-w-0 break-words">{detail.name === "role" && (detail.value === "read" || detail.value === "write") ? t(detail.value === "read" ? "canView" : "canChat") : detail.value || t("asks.unnamed")}</span>
               </li>
             ))}
           </ul>
