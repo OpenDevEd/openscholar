@@ -1,4 +1,4 @@
-import { EvidenceLibrariesIcon, ExtractionIcon, FileText, FolderOpen, LibraryIcon, ListChecks, MessagesSquare, Search, TopicsIcon, type AppIcon } from "@/components/icons";
+import { EvidenceLibrariesIcon, ExtractionIcon, FileText, Folder, LibraryIcon, ListChecks, MessagesSquare, Search, TopicsIcon, type AppIcon } from "@/components/icons";
 
 /**
  * Each kind of record's icon, the same wherever it shows: the sidebar's where the sidebar
@@ -9,7 +9,7 @@ import { EvidenceLibrariesIcon, ExtractionIcon, FileText, FolderOpen, LibraryIco
  */
 export const RECORD_KINDS = {
   search: { icon: Search, tint: "var(--kind-search)" },
-  collection: { icon: FolderOpen, tint: "var(--kind-collection)" },
+  collection: { icon: Folder, tint: "var(--kind-collection)" },
   paper: { icon: FileText, tint: "var(--kind-paper)" },
   savedPapers: { icon: LibraryIcon, tint: "var(--kind-paper)" },
   screening: { icon: ListChecks, tint: "var(--kind-screening)" },
