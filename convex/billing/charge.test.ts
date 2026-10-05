@@ -401,8 +401,11 @@ describe("an approved job's hold", () => {
     expect(fakeAutumn.balance(userId)).toBe(880);
     expect(fakeAutumn.locks.size).toBe(0);
     expect(await holds(t)).toEqual([]);
-    // Settled, it has nothing more coming: its takeover went with it.
+    // Settled, it has nothing more coming: its takeover went with it. What was kept beside it for the sum is cleared away.
     expect(await coming(t)).toEqual([]);
+    vi.advanceTimersByTime(1_000);
+    await t.finishInProgressScheduledFunctions();
+    expect(await t.run((ctx) => ctx.db.query("billingHoldItems").collect())).toEqual([]);
   });
 
   it("is never confirmed for more than it holds, whatever its items came to", async () => {
@@ -418,6 +421,8 @@ describe("an approved job's hold", () => {
     expect(calls("balances.finalize").map((call) => call.body)).toEqual([{ lock_id: "job:1", action: "confirm", override_value: 100 }]);
     expect(calls("balances.track")).toHaveLength(0);
     expect(fakeAutumn.balance(userId)).toBe(900);
+    // The ledger says what they paid: the 50 they weren't charged is taken back off in a row of its own.
+    expect(await spent(t)).toEqual([80, 70, -50]);
   });
 
   it("is given back whole when nothing was spent, and is settled with what was spent if it's still standing at its expiry", async () => {
@@ -427,6 +432,9 @@ describe("an approved job's hold", () => {
     await settle(t);
     expect(fakeAutumn.balance(userId)).toBe(1_000);
     expect(fakeAutumn.locks.size).toBe(0);
+    // The settled hold finishes clearing up before the next one, which this test gives the same name.
+    vi.advanceTimersByTime(1_000);
+    await t.finishInProgressScheduledFunctions();
 
     // A job that never ends: its hold isn't released with its items uncharged.
     await hold(t, userId, "job:1", 200, true);

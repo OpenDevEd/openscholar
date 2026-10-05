@@ -10,7 +10,7 @@
 import { seedOrganizationFeatures } from "../../organizationFeatures.test-support";
 import { convexTest } from "convex-test";
 import { describe, it, expect, vi } from "vitest";
-import { api } from "../../_generated/api";
+import { api, internal } from "../../_generated/api";
 import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
 import {
@@ -163,6 +163,27 @@ describe("resumeExtraction — happy paths", () => {
     expect(job).toMatchObject({ status: "extracting" });
     expect(job?.spendCap).toBeUndefined();
     expect(job?.spendHold).toBeUndefined();
+  });
+
+  it("makes a job wait to be carried on while the hold it was approved with is still being settled", async () => {
+    const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
+    const userId = await seedUserAndCredits(t, { paid: 100_000 });
+    const jobId = await seedJob(t, userId, { jobStatus: "creditsExhausted", usePdfs: false, questions: 5 });
+    await t.run((ctx) => ctx.db.patch(jobId, { spendHold: "extraction-job:1", spendCap: 50 }));
+    // The hold still has the credits the job's next papers would hold, and its last papers are being recorded under it.
+    await t.mutation(internal.billing.charge.hold, { userId, chargeId: "extraction-job:1", credits: 50, expiresAt: Date.now() + 86_400_000, spend: true });
+    const resume = () => t.withIdentity(OWNER_IDENTITY).mutation(api.extraction.mutations.resume.resumeExtraction, { jobId });
+
+    await expect(resume()).rejects.toThrow(/still being settled/);
+    expect(await t.run((ctx) => ctx.db.get(jobId))).toMatchObject({ status: "creditsExhausted", spendCap: 50 });
+
+    // Settled, the hold is gone, and the job carries on by its papers' own holds.
+    await t.run(async (ctx) => {
+      for (const held of await ctx.db.query("billingHolds").collect()) await ctx.db.delete(held._id);
+    });
+    await resume();
+    expect(await t.run((ctx) => ctx.db.get(jobId))).toMatchObject({ status: "extracting" });
   });
 
   it("resumes 'creditsExhausted' to 'extracting' when balance covers the estimate", async () => {

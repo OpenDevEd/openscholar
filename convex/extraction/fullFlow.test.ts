@@ -348,16 +348,19 @@ describe("extraction full flow with mocked provider I/O", () => {
       papers: await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect(),
       usage: await ctx.db.query("billingUsage").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect(),
       holds: await ctx.db.query("billingHolds").collect(),
+      items: await ctx.db.query("billingHoldItems").collect(),
     }));
     expect(state.job).toMatchObject({ status: "completed", spendCap: 20 });
     expect(state.papers.map((paper) => paper.status)).toEqual(["completed", "completed"]);
-    // Each paper is on the ledger, under the job's hold. Autumn was charged once, for both, when the job ended.
-    expect(state.usage.map((row) => ({ credits: row.credits, under: row.under }))).toEqual([1, 2].map(() => ({ credits: EXPECTED_ACTUAL_CREDITS, under: state.job!.spendHold })));
+    // Each paper is on the ledger. Autumn was charged once, for both, when the job ended.
+    expect(state.usage.map((row) => row.credits)).toEqual([EXPECTED_ACTUAL_CREDITS, EXPECTED_ACTUAL_CREDITS]);
     expect(calls("balances.check")).toHaveLength(1);
     expect(calls("balances.track")).toHaveLength(0);
     expect(calls("balances.finalize").map((call) => call.body)).toEqual([{ lock_id: state.job!.spendHold, action: "confirm", override_value: 2 * EXPECTED_ACTUAL_CREDITS }]);
     expect(fakeAutumn.balance(userId)).toBe(STARTING_CREDITS - 2 * EXPECTED_ACTUAL_CREDITS);
     expect(fakeAutumn.locks.size).toBe(0);
+    // The hold is forgotten, with what was kept beside it for its sum.
     expect(state.holds).toEqual([]);
+    expect(state.items).toEqual([]);
   });
 });

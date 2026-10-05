@@ -72,8 +72,6 @@ export const billingUsageFields = {
   reasoningTokens: v.optional(v.number()),
   /** Set on refund reversals. */
   stripeChargeId: v.optional(v.string()),
-  /** The hold of the approved job this was spent under (./charge.ts): Autumn was charged for it with that hold's one confirm, which is the sum of these, and not by itself. */
-  under: v.optional(v.string()),
   createdAt: v.number(),
 };
 

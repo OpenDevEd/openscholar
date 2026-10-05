@@ -550,8 +550,7 @@ export default defineSchema({
     // `by_job` stays for the chat's tests, which go with chat mode (#325); the charge list reads `by_job_and_createdAt`.
     .index("by_job", ["jobId"])
     .index("by_job_and_createdAt", ["jobId", "createdAt"])
-    .index("by_stripe_charge", ["stripeChargeId"])
-    .index("by_under", ["under"]),
+    .index("by_stripe_charge", ["stripeChargeId"]),
   billingHolds: defineTable({
     userId: v.id("users"),
     chargeId: v.string(),
@@ -565,6 +564,9 @@ export default defineSchema({
     // separately, so a retry finishes that path instead of confirming again.
     rest: v.optional(v.literal(true)),
   }).index("by_charge", ["chargeId"]),
+  // What each item of an approved job cost, kept beside the job's hold until the hold is confirmed with their
+  // sum (convex/billing/charge.ts). Its own table, so the usage ledger needs no index for it.
+  billingHoldItems: defineTable({ under: v.string(), chargeId: v.string(), credits: v.number() }).index("by_under", ["under"]),
 
   // Retired billing tables: credits, creditTransactions, subscriptions,
   // billingCustomers, stripeEventLogs, and chatGenerationUsages. Only

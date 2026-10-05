@@ -46,6 +46,7 @@ import {
 } from "../../../lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { estimateRetryCredits } from "../../../lib/extraction/cost-estimate";
+import { approvalLeft } from "../../billing/spend";
 import { availableCredits as readAvailableCredits } from "../../billing/accounts";
 import { isResultRetryableFailure } from "../../../lib/extraction/retry-summary";
 import { readResultCounts } from "../resultCounts";
@@ -208,9 +209,8 @@ export const retryFailedQuestions = mutation({
       completedAt: undefined,
       pausedAt: undefined,
       pausedFromStatus: undefined,
-      // The job had ended, so the hold it was approved under was settled: what's run again holds its own.
-      spendHold: undefined,
-      spendCap: undefined,
+      // The job had ended, so the hold it was approved under is settled, or about to be: what's run again holds its own.
+      ...(await approvalLeft(ctx, job)),
       updatedAt: Date.now(),
     });
     await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch });

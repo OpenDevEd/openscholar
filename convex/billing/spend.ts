@@ -5,6 +5,7 @@
  */
 import type { FunctionReference } from "convex/server";
 import type { MutationCtx } from "../_generated/server";
+import { createError } from "../lib/errors";
 
 /**
  * A job stops spending when it's done, failed or cancelled, and when it stops for credits:
@@ -15,15 +16,19 @@ const ENDED = new Set(["completed", "failed", "cancelled", "creditsExhausted"]);
 type Job = { _id: string; status?: string; spendHold?: string };
 
 /**
- * What a job the person carries on keeps of its approval, as a patch: nothing once it has
- * stopped for credits or its hold no longer takes items. Its items then hold their own, as
- * in a job started from the page.
+ * What a job the person carries on keeps of its approval, as a patch. Paused with its hold
+ * still taking items, all of it: it goes on under the hold. With the hold settled, nothing:
+ * its items hold their own, as in a job started from the page. In between, the hold still
+ * has the credits those items would hold and the job's last items are being recorded under
+ * it, so the job waits for that: it throws.
  */
 export async function approvalLeft(ctx: MutationCtx, job: Pick<Job, "status" | "spendHold">) {
   if (job.spendHold === undefined) return {};
   const hold = job.spendHold;
-  const row = job.status === "creditsExhausted" ? null : await ctx.db.query("billingHolds").withIndex("by_charge", (q) => q.eq("chargeId", hold)).unique();
-  return row && !row.settling ? {} : { spendHold: undefined, spendCap: undefined };
+  const row = await ctx.db.query("billingHolds").withIndex("by_charge", (q) => q.eq("chargeId", hold)).unique();
+  if (!row) return { spendHold: undefined, spendCap: undefined };
+  if (!row.settling && job.status !== "creditsExhausted") return {};
+  throw createError("CONFLICT", "The credits this job was approved with are still being settled. Try again in a minute.");
 }
 
 /**
