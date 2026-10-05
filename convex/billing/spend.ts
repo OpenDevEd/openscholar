@@ -26,7 +26,7 @@ export async function approvalLeft(ctx: MutationCtx, job: Pick<Job, "status" | "
   if (job.spendHold === undefined) return {};
   const hold = job.spendHold;
   const row = await ctx.db.query("billingHolds").withIndex("by_charge", (q) => q.eq("chargeId", hold)).unique();
-  if (!row) return { spendHold: undefined, spendCap: undefined };
+  if (!row) return { spendHold: undefined, spendCap: undefined, spendScale: undefined };
   if (!row.settling && job.status !== "creditsExhausted") return {};
   throw createError("CONFLICT", "The credits this job was approved with are still being settled. Try again in a minute.");
 }
