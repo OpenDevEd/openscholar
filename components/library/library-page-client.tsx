@@ -442,9 +442,13 @@ export function LibraryPageClient() {
               isSavedDateActive={params.sf !== null || params.st !== null}
               yearRange={[params.yf ?? MIN_YEAR, params.yt ?? new Date().getFullYear()]}
               onYearRangeChange={(range) => {
-                const currentYear = new Date().getFullYear();
-                const isDefault = range[0] === MIN_YEAR && range[1] === currentYear;
-                setParams({ yf: isDefault ? null : range[0], yt: isDefault ? null : range[1] });
+                setParams({ yf: range[0], yt: range[1] });
+              }}
+              onYearToggleEnabled={(enabled) => {
+                setParams({
+                  yf: enabled ? params.yf ?? MIN_YEAR : null,
+                  yt: enabled ? params.yt ?? new Date().getFullYear() : null,
+                });
               }}
               isYearActive={params.yf !== null || params.yt !== null}
               publicationDateRange={publicationDateRange}
