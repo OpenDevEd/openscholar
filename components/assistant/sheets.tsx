@@ -718,11 +718,11 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
                   transition={{ type: "spring", stiffness: 260, damping: 30 }}
                 />
               </div>
-              {/* The line keeps its height when there's nothing to say yet. */}
-              <p className="mt-2 flex h-4 items-center gap-1.5 px-1 text-xs text-muted-foreground">
+              {/* The line keeps its room when there's nothing to say yet, and takes a second one in a narrow panel. */}
+              <p className="mt-2 flex min-h-4 items-start gap-1.5 px-1 text-xs text-muted-foreground">
                 {recent.length ? (
                   <>
-                    <CirclePause className={cn("size-3.5", paused ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground/60")} />
+                    <CirclePause className={cn("mt-px size-3.5 shrink-0", paused ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground/60")} />
                     <span className="tabular-nums">{t("wouldPause", { paused, count: recent.length })}</span>
                   </>
                 ) : null}

@@ -99,12 +99,13 @@ export function Segmented<T extends string>({
       aria-label={label}
       className={cn(
         "relative bg-inset p-1",
-        stacked ? "rounded-[1.375rem]" : "rounded-full",
+        // A row that takes a second line where its labels don't fit on one keeps the same corners on both.
+        stacked || fill === "labels" ? "rounded-[1.375rem]" : "rounded-full",
         // Equal segments in one row, two by two on narrow screens.
         fill === true
           ? "@container/segments grid w-full auto-cols-fr grid-flow-col @max-[34rem]/configuration:grid-flow-row @max-[34rem]/configuration:grid-cols-2 @max-[34rem]/configuration:rounded-3xl"
           : fill
-            ? "flex w-full"
+            ? "flex w-full flex-wrap"
             : "inline-flex shrink-0",
         className,
       )}
@@ -136,7 +137,8 @@ export function Segmented<T extends string>({
               stacked ? "rounded-2xl" : "rounded-full",
               stacked ? "px-4 py-2.5 text-sm" : size === "lg" ? "h-11 px-4 text-sm" : size === "md" ? "h-9 px-4 text-sm" : "h-8 px-3 text-xs",
               fill === true && "min-w-0 justify-center @min-[40rem]/segments:justify-between",
-              fill === "labels" && "flex-1 justify-center",
+              // Each segment starts from its label's width and they share what is left over. Where the row is too narrow for them all, the last ones go to a second line: no label is cut.
+              fill === "labels" && "flex-auto justify-center",
               stacked && "flex-col items-stretch justify-center gap-2 @min-[40rem]/segments:justify-center",
               on ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
