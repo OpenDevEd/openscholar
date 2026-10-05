@@ -28,7 +28,7 @@ import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { NEW_CHAT_TITLE, titleFrom } from "../../lib/assistant/title";
 import { notePart, viewOf } from "../../lib/assistant/view";
-import { variantIn, viewOf as actionView } from "../../lib/assistant/actions";
+import { hasVariants, variantIn, viewOf as actionView } from "../../lib/assistant/actions";
 import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { personName, requireThread, touchThread } from "./access";
@@ -749,9 +749,12 @@ export const messagesAction = defineUserQuery({
 });
 export const messages = userQuery(messagesAction);
 
-/** The kind of change a step made to the person's research records, the one action that makes several kinds. */
+/**
+ * Which of its several jobs a step's action did: the kind of change made to the person's
+ * research records, or which way a paper moved between the library and a collection.
+ */
 function variantOf(step: Doc<"assistantSteps">) {
-  if (step.path !== "research/records:change") return {};
+  if (!hasVariants(step.path)) return {};
   try {
     const input = JSON.parse(step.input);
     // A bulk change is all of one kind (./tools.ts `batched`), so its first change says which.

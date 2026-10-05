@@ -3831,6 +3831,25 @@
         "doing": "正在查找可共享的人",
         "did": "已查找可共享的人",
         "where": "对话"
+      },
+      "collectIn": {
+        "doing": "正在将论文加入合集",
+        "did": "已将论文加入合集",
+        "where": "合集",
+        "ask": "将论文加入合集",
+        "askMany": "将 {count, number} 篇论文加入合集"
+      },
+      "collectOut": {
+        "doing": "正在将论文移出合集",
+        "did": "已将论文移出合集",
+        "where": "合集",
+        "ask": "将论文移出合集",
+        "askMany": "将 {count, number} 篇论文移出合集"
+      },
+      "plan": {
+        "doing": "正在查看你的方案",
+        "did": "已查看你的方案",
+        "where": "账单"
       }
     },
     "asks": {

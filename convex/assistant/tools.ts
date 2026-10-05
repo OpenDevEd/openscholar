@@ -246,9 +246,28 @@ function subjectOf(input: Record<string, unknown>) {
 const messageOf = (error: unknown) => {
   const told = readConvexErrorData(error)?.message;
   if (told) return cut(told, MODEL_READS / 4);
+  const raw = error instanceof Error ? error.message : String(error);
+  const fit = misfit(raw);
+  if (fit) return fit;
   console.error("[assistant] an action failed with an error it didn't write", error);
-  return cut((error instanceof Error ? error.message : String(error)).split("\n")[0].replace(/^(?:\[Request ID: \w+\] Server Error\s*)?(?:Uncaught \w*Error: )?/, ""), 300);
+  return cut(raw.split("\n")[0].replace(/^(?:\[Request ID: \w+\] Server Error\s*)?(?:Uncaught \w*Error: )?/, ""), 300);
 };
+
+/**
+ * What Convex says of an argument that doesn't fit, as the model can act on it: which
+ * argument, what it takes and what it got. Its first line alone, "Value does not match
+ * validator", named none of them: given a collection's name where its ID goes, the model
+ * was told nothing it could correct. Null for any other error.
+ */
+export function misfit(text: string) {
+  if (!text.includes("ArgumentValidationError")) return null;
+  const line = (label: string) => text.match(new RegExp(`^\\s*${label}: (.*)$`, "m"))?.[1]?.trim();
+  const [path, value, takes] = [line("Path"), line("Value"), line("Validator")];
+  const said = text.split("\n").find((part) => part.includes("ArgumentValidationError"))!.replace(/^.*ArgumentValidationError: /, "");
+  // A missing or an unknown field is said whole on the error's own line, which names it. Inside another argument, that one is named too.
+  if (!path || !takes || !said.startsWith("Value does not match validator")) return cut(`These arguments don't fit${path ? `, in ${path.replace(/^\./, "")}` : ""}: ${said}`, 400);
+  return cut(`The argument ${path.replace(/^\./, "")} doesn't fit: it takes ${takes}${value ? `, and got ${value}` : ""}.${takes.startsWith("v.id(") ? " An ID is one a result gave you, never a name." : ""}`, 400);
+}
 
 /**
  * The actions whose name or description hold the most of these words, best first; an action

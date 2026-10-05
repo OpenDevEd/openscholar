@@ -90,6 +90,27 @@ describe("charge pages", () => {
     expect(await me.query(api.billing.usage.balance, {})).toEqual({ credits: 500 });
   });
 
+  it("says which plan the person is on, by its name, with what it includes and when it renews", async () => {
+    const { t, userId, me } = await setup();
+    // No account yet: no plan to speak of.
+    expect(await me.query(api.billing.usage.plan, {})).toBeNull();
+    await t.run(async (ctx) => {
+      await ctx.db.insert("billingCatalog", {
+        plans: [
+          { id: "pro", name: "Researcher", addOn: false, autoEnable: false, price: { amount: 19, interval: "month" }, credits: { included: 20_000, interval: "month" }, features: ["extraction"], popular: true },
+          { id: "free", name: "Free", addOn: false, autoEnable: true, features: [], popular: false },
+        ],
+        features: [],
+        syncedAt: 1,
+      });
+      await ctx.db.insert("billingAccounts", { userId, plan: "pro", pastDue: false, balance: 500, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: 1, renewsAt: 2_000, features: ["extraction"], changesAt: 3_000, nextPlan: "free" });
+    });
+    expect(await me.query(api.billing.usage.plan, {})).toEqual({ name: "Researcher", price: { amount: 19, interval: "month" }, credits: { included: 20_000, interval: "month" }, features: ["extraction"], pastDue: false, renewsAt: 2_000, endsAt: 3_000, nextPlan: "Free" });
+    // A plan the catalog no longer lists goes by its ID.
+    await t.run(async (ctx) => ctx.db.patch("billingAccounts", (await ctx.db.query("billingAccounts").first())!._id, { plan: "legacy", nextPlan: undefined, changesAt: undefined }));
+    expect(await me.query(api.billing.usage.plan, {})).toMatchObject({ name: "legacy", pastDue: false });
+  });
+
   it("totals each day's spending by kind, leaving refunds out", async () => {
     const { t, userId, me } = await setup();
     const DAY = 86_400_000;

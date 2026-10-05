@@ -3831,6 +3831,25 @@
         "doing": "Recherche de personnes avec qui partager",
         "did": "Personnes avec qui partager recherchées",
         "where": "Conversations"
+      },
+      "collectIn": {
+        "doing": "Ajout d'un article à une collection",
+        "did": "Article ajouté à une collection",
+        "where": "Collections",
+        "ask": "Ajouter un article à une collection",
+        "askMany": "Ajouter {count, plural, one {# article} other {# articles}} à une collection"
+      },
+      "collectOut": {
+        "doing": "Retrait d'un article d'une collection",
+        "did": "Article retiré d'une collection",
+        "where": "Collections",
+        "ask": "Retirer un article d'une collection",
+        "askMany": "Retirer {count, plural, one {# article} other {# articles}} d'une collection"
+      },
+      "plan": {
+        "doing": "Vérification de votre offre",
+        "did": "Offre vérifiée",
+        "where": "Facturation"
       }
     },
     "asks": {

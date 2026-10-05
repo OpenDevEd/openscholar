@@ -54,6 +54,12 @@ describe("encodeRegions edge cases", () => {
     expect(encodeRegions(["nonexistent_region"])).toBe("");
   });
 
+  it("keeps a country whose code is a continent's link code apart from the continent", () => {
+    // Afghanistan, Armenia and American Samoa came back from a link as Africa, the Americas and Asia.
+    const places = ["AF", "AM", "AS", "africa", "US"];
+    expect(decodeRegions(encodeRegions(places))).toEqual(places);
+  });
+
   it("handles case insensitive internal IDs", () => {
     expect(encodeRegions(["AFRICA"])).toBe("AF");
   });

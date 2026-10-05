@@ -192,7 +192,9 @@ async function aboutOf(ctx: Pick<MutationCtx, "db">, userId: Id<"users">, input:
   const openalexId = paper ? workUrl(paper) : null;
   if (openalexId) {
     const item = await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", openalexId)).first();
-    if (item?.title) return cut(item.title, 200);
+    // A call about a paper is named after the paper. One it is about to save isn't theirs yet, and is named by the
+    // title its result gives, not by the collection it goes into.
+    return item?.title ? cut(item.title, 200) : undefined;
   }
   const collectionId = typeof args.collectionId === "string" ? ctx.db.normalizeId("collections", args.collectionId) : null;
   const collection = collectionId ? await ctx.db.get("collections", collectionId) : null;

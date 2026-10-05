@@ -57,6 +57,7 @@ const work = (number: number, long: string) => ({
   open_access: { is_oa: true, oa_url: `https://example.org/paper-${number}.pdf` },
   funders: [{ id: "https://openalex.org/F4320332161", display_name: "Wellcome Trust" }],
   publication_year: 2020,
+  publication_date: "2020-03-14",
   cited_by_count: 12,
   abstract_inverted_index: Object.fromEntries(Array.from({ length: 120 }, (_, word) => [`word${word}`, [word]])),
   // OpenAlex has no record for the third author: a paper names them, and that's all.
@@ -181,7 +182,7 @@ describe("the assistant's search tools", () => {
     expect(page).toMatchObject({ total: 57, page: 6, pages: 6 });
     expect(page.papers.map((paper) => paper.id)).toEqual(Array.from({ length: 7 }, (_, i) => `https://openalex.org/W${51 + i}`));
     // Its first authors come with their IDs, which the `authors` filter takes.
-    expect(page.papers[0]).toMatchObject({ title: "Paper 51", authors: [{ name: "Ada Lovelace", id: "A1" }, { name: "Alan Turing", id: "A2" }, { name: "Grace Hopper" }], moreAuthors: 1, year: 2020, venue: "A journal", citations: 12 });
+    expect(page.papers[0]).toMatchObject({ title: "Paper 51", authors: [{ name: "Ada Lovelace", id: "A1" }, { name: "Alan Turing", id: "A2" }, { name: "Grace Hopper" }], moreAuthors: 1, year: 2020, published: "2020-03-14", venue: "A journal", citations: 12 });
     // An abstract is cut, so ten papers stay short enough for the model to read at once.
     expect(page.papers[0].abstract!.length).toBeLessThanOrEqual(601);
     expect(page.papers[0]).toMatchObject({ countries: ["KE", "US"], type: "article", doi: "10.1234/paper.51", openAccess: true });
@@ -334,7 +335,7 @@ describe("the assistant's search tools", () => {
 
     // One paper, whole: every author with where they work, and all of its abstract.
     const paper = await alice.action(get, { id: "https://openalex.org/W7" });
-    expect(paper).toMatchObject({ id: "https://openalex.org/W7", doi: "10.1234/paper.7", type: "article", language: "en", openAccess: true, link: "https://example.org/paper-7.pdf", year: 2020, citations: 12, funders: [{ name: "Wellcome Trust", id: "F4320332161" }] });
+    expect(paper).toMatchObject({ id: "https://openalex.org/W7", doi: "10.1234/paper.7", type: "article", language: "en", openAccess: true, link: "https://example.org/paper-7.pdf", year: 2020, published: "2020-03-14", citations: 12, funders: [{ name: "Wellcome Trust", id: "F4320332161" }] });
     expect(paper.authors[0]).toEqual({ name: `Ada Lovelace${"y".repeat(40)}`, id: "A1", institutions: ["University of Nairobi (KE)"] });
     expect(paper.abstract!.split(" ")).toHaveLength(120);
     // By its DOI too, and one OpenAlex doesn't have says so.
@@ -382,6 +383,19 @@ describe("the assistant's search tools", () => {
       // A region of the page's own keeps its name as the page has it, hyphen and all.
       selectedRegions: ["caribbean", "central_america", "south_america", "south-eastern_asia"],
     });
+  });
+
+  it("take the World Bank's income groups as places, by the countries in them", async () => {
+    const { make, search } = await setup();
+    const { id } = await make({ query: "tutoring", about: ["Low income"], authorsIn: ["lower_middle_income"] });
+    const saved = await search(id);
+    // Afghanistan and Uganda are low income, Kenya and India lower middle, and no country is in both.
+    expect(saved?.selectedCountryFocus).toEqual(expect.arrayContaining(["AF", "UG"]));
+    expect(saved?.selectedRegions).toEqual(expect.arrayContaining(["KE", "IN"]));
+    expect(saved?.selectedCountryFocus?.filter((code: string) => saved.selectedRegions?.includes(code))).toEqual([]);
+    // Low and lower-middle income fit one search together. With upper-middle they are more places than a search holds, and it says what to do.
+    expect((await search((await make({ query: "tutoring", about: ["low_income", "lower_middle_income"] })).id))?.selectedCountryFocus).toHaveLength(72);
+    await expect(make({ query: "tutoring", about: ["low_income", "lower_middle_income", "upper_middle_income"] })).rejects.toThrow(/two goes/);
   });
 
   it("count a search again when its query or filters change, and record a count as whoever's read made it", async () => {

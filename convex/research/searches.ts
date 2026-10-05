@@ -7,6 +7,7 @@
 import { v, type GenericValidator, type Infer, type ObjectType } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
+import { MAX_FILTER_VALUES } from "../lib/listCaps";
 import { assistantAction, assistantMutation, defineUserAction, defineUserMutation, reversedBy, userAction, userMutation } from "../lib/userActions";
 import { internalAction, internalMutation, internalQuery, type ActionCtx } from "../lib/functions";
 import { countSearch, PAGE_ORDERED_SORT, readSearchPage } from "../paperSets/openalex";
@@ -83,14 +84,30 @@ const REGIONS = (function names(region: Region): string[] {
 const AUTHOR_COUNTRIES_MAX = 100;
 
 /**
+ * The World Bank's income groups, country by country, as its API listed them on 2026-10-05
+ * (api.worldbank.org/v2/country). It revises them every July, so they are read again then.
+ * Researchers ask for "low- and middle-income countries" by that name, and neither the page
+ * nor OpenAlex has a region for it. A search keeps a group as its countries, and holds
+ * `MAX_FILTER_VALUES` places: low and lower-middle income fit one search together, and the
+ * three below high income don't.
+ */
+const INCOME_GROUPS = {
+  low_income: ["AF", "BF", "BI", "CD", "CF", "ER", "ET", "GM", "GW", "KP", "LR", "MG", "ML", "MW", "MZ", "NE", "RW", "SD", "SL", "SO", "SS", "SY", "TD", "UG", "YE"],
+  lower_middle_income: ["AO", "BD", "BJ", "BO", "BT", "CG", "CI", "CM", "DJ", "EG", "GH", "GN", "HN", "HT", "IN", "KE", "KG", "KH", "KI", "KM", "LA", "LB", "LS", "MA", "MM", "MR", "NA", "NG", "NI", "NP", "PG", "PK", "PS", "SB", "SN", "ST", "SZ", "TG", "TJ", "TL", "TN", "TZ", "UZ", "VE", "VU", "ZM", "ZW"],
+  upper_middle_income: ["AL", "AM", "AR", "AZ", "BA", "BR", "BW", "BY", "BZ", "CN", "CO", "CU", "CV", "DM", "DO", "DZ", "EC", "FJ", "FM", "GA", "GD", "GE", "GQ", "GT", "ID", "IQ", "IR", "JM", "JO", "KZ", "LC", "LK", "LY", "MD", "ME", "MH", "MK", "MN", "MU", "MV", "MX", "MY", "PE", "PH", "PY", "RS", "SR", "SV", "TH", "TM", "TO", "TR", "TV", "UA", "VC", "VN", "WS", "XK", "ZA"],
+  high_income: ["AD", "AE", "AG", "AS", "AT", "AU", "AW", "BB", "BE", "BG", "BH", "BM", "BN", "BS", "CA", "CH", "CL", "CR", "CW", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FO", "FR", "GB", "GI", "GL", "GR", "GU", "GY", "HK", "HR", "HU", "IE", "IL", "IM", "IS", "IT", "JP", "KN", "KR", "KW", "KY", "LI", "LT", "LU", "LV", "MC", "MF", "MO", "MP", "MT", "NC", "NL", "NO", "NR", "NZ", "OM", "PA", "PF", "PL", "PR", "PT", "PW", "QA", "RO", "RU", "SA", "SC", "SE", "SG", "SI", "SK", "SM", "SX", "TC", "TT", "US", "UY", "VG", "VI"],
+} as const;
+
+/**
  * Names people use for a part of the world the page has no one region for, as the page's own
- * regions. By the United Nations' regions, as the page's are: Sudan is in northern Africa
+ * regions, or as the countries in it. By the United Nations' regions, as the page's are: Sudan is in northern Africa
  * there, and so outside this sub-Saharan Africa.
  */
 const REGION_GROUPS: Record<string, readonly string[]> = {
   sub_saharan_africa: ["eastern_africa", "middle_africa", "southern_africa", "western_africa"],
   latin_america: ["caribbean", "central_america", "south_america"],
   latin_america_and_the_caribbean: ["caribbean", "central_america", "south_america"],
+  ...INCOME_GROUPS,
 };
 
 /** Places as the saved search keeps them: a region by its name on the page, a country by its two-letter code. */
@@ -174,6 +191,10 @@ function savedFields(settings: Settings, current?: SavedSearch) {
     const values = given === null ? [] : [...new Set(checked(given))];
     if (setting === "authorsIn" && getCountryCodesForRegions(values).isLimitExceeded) {
       invalid(`\`authorsIn\` reaches at most ${AUTHOR_COUNTRIES_MAX} countries at once. Give smaller regions, or countries.`);
+    }
+    // Said here, in words that say what to do: the search's own cap would refuse it with only a count.
+    if ((setting === "authorsIn" || setting === "about") && values.length > MAX_FILTER_VALUES) {
+      invalid(`\`${setting}\` takes at most ${MAX_FILTER_VALUES} countries and regions at once, and an income group counts as each of its countries. Search the groups in two goes: low_income with lower_middle_income, then upper_middle_income.`);
     }
     fields[field] = values;
   }
@@ -440,6 +461,7 @@ function shownPaper(work: Work, paper: SearchPaper) {
     ...(authors.length > AUTHORS_SHOWN ? { moreAuthors: authors.length - AUTHORS_SHOWN } : {}),
     ...(countries.length ? { countries: countries.slice(0, COUNTRIES_SHOWN) } : {}),
     ...(paper.publicationYear === undefined ? {} : { year: paper.publicationYear }),
+    ...(work.publication_date ? { published: work.publication_date } : {}),
     ...(paper.venue ? { venue: short(paper.venue, SHOWN.venue) } : {}),
     ...(work.type ? { type: work.type } : {}),
     ...(paper.doi ? { doi: paper.doi.replace(/^https?:\/\/doi\.org\//, "") } : {}),

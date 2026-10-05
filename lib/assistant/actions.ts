@@ -1,7 +1,7 @@
 export type Kind = "search" | "paper" | "collection" | "screening" | "extraction" | "chat" | "other";
 
 /** The words for a kind of step: `assistant.steps.<words>` in the messages. */
-type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "chats" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "other";
+type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "chats" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "collectIn" | "collectOut" | "plan" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "other";
 
 /** Each action's kind of work and the words for it; one that isn't here shows as work in the account. */
 const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }> = {
@@ -33,9 +33,12 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "library/mutations:setLibraryRating": { kind: "paper", words: "rate" },
   "library/mutations:removeFromLibrary": { kind: "paper", words: "remove" },
   "library/mutations:restoreLibraryItem": { kind: "paper", words: "restore" },
+  // Into a collection or out of it: `#` and which way the call moved the paper.
   "library/mutations:setPaperInCollection": { kind: "collection", words: "collect" },
-  "library/collections:addToCollection": { kind: "collection", words: "collect" },
-  "library/collections:removeFromCollection": { kind: "collection", words: "collect" },
+  "library/mutations:setPaperInCollection#in": { kind: "collection", words: "collectIn" },
+  "library/mutations:setPaperInCollection#out": { kind: "collection", words: "collectOut" },
+  "library/collections:addToCollection": { kind: "collection", words: "collectIn" },
+  "library/collections:removeFromCollection": { kind: "collection", words: "collectOut" },
   "library/collections:listCollections": { kind: "collection", words: "collections" },
   "library/collections:getCollection": { kind: "collection", words: "collection" },
   "library/collections:createCollection": { kind: "collection", words: "newCollection" },
@@ -56,6 +59,9 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "extraction/queries:countJobResults": { kind: "extraction", words: "extractionResults" },
   "extraction/queries:countJobFailures": { kind: "extraction", words: "extractionResults" },
   "library/papers:collect": { kind: "collection", words: "collect" },
+  "library/papers:collect#in": { kind: "collection", words: "collectIn" },
+  "library/papers:collect#out": { kind: "collection", words: "collectOut" },
+  "billing/usage:plan": { kind: "other", words: "plan" },
   "library/collections:countCollections": { kind: "collection", words: "collections" },
   // One action for every change to the person's research records: `#` and the kind of change it made (research/records:change).
   "research/records:change": { kind: "search", words: "changeSearch" },
@@ -96,9 +102,20 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
 };
 /** Every action with words of its own, for the test that none the assistant can run is left without. */
 export const WORDED = new Set(Object.keys(ACTIONS));
-/** Which of its several jobs a call of an action does, from its arguments: the kind of change `research/records:change` makes. */
+/** The actions that put a paper in a collection or take it out, by one argument. */
+const PLACES = new Set(["library/papers:collect", "library/mutations:setPaperInCollection"]);
+/** Whether an action does one of several jobs, which its arguments say. */
+export const hasVariants = (action: string) => action === "research/records:change" || PLACES.has(action);
+/**
+ * Which of its several jobs a call of an action does, from its arguments: the kind of change
+ * made to the person's research records, or which way a paper moves between the library and
+ * a collection.
+ */
 export function variantIn(action: string, input: unknown) {
-  const kind = action === "research/records:change" && input && typeof input === "object" ? (input as { command?: { kind?: unknown } }).command?.kind : undefined;
+  if (!input || typeof input !== "object") return undefined;
+  const args = input as { command?: { kind?: unknown }; inCollection?: unknown };
+  if (PLACES.has(action)) return typeof args.inCollection === "boolean" ? (args.inCollection ? "in" : "out") : undefined;
+  const kind = action === "research/records:change" ? args.command?.kind : undefined;
   return typeof kind === "string" ? kind : undefined;
 }
 /** `variant`: which of its several jobs the action did, for one that has more than one. */

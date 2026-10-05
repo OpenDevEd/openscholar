@@ -76,7 +76,7 @@ export const changesValidator = v.array(
 /** What the settings mean, for the description of each tool that takes them. A value one doesn't take is refused with the ones it does. */
 export const SETTINGS =
   "The time span is whole years (`fromYear`, `toYear`) or exact days (`fromDate`, `toDate`, as YYYY-MM-DD), not both. " +
-  "`authorsIn` is where the authors' institutions are and `about` is where the paper is about: each a list of two-letter country codes or regions, such as africa, sub_saharan_africa, western_africa, southern_asia, latin_america or europe. " +
+  "`authorsIn` is where the authors' institutions are and `about` is where the paper is about: each a list of two-letter country codes or regions, such as africa, sub_saharan_africa, western_africa, southern_asia, latin_america or europe, or the World Bank's income groups: low_income, lower_middle_income, upper_middle_income and high_income. Low- and middle-income countries are the first three, which are too many for one search: search low_income with lower_middle_income, then upper_middle_income. " +
   "`types` and `institutionTypes` are OpenAlex's, such as article, preprint, book-chapter, and education, government. `languages` are ISO 639 codes. `sdgs` are goal numbers, 1 to 17. " +
   "`authors` are author IDs from a result or from research/lookup:find, or names as papers print them. `funders` and `researchAreas` are IDs from research/lookup:find. " +
   "`citationsOf`, `referencesOf` and `relatedTo` each take one paper's ID: the papers that cite that paper, the papers in its own reference list, and papers related to it. " +
@@ -128,6 +128,8 @@ const paperValidator = v.object({
   /** The countries its authors' institutions are in, as two-letter codes. */
   countries: capped(v.optional(v.array(v.string())), COUNTRIES_SHOWN),
   year: v.optional(v.number()),
+  /** The day it was published, as OpenAlex has it: YYYY-MM-DD. */
+  published: v.optional(v.string()),
   venue: v.optional(v.string()),
   /** What kind of work it is: article, preprint, book-chapter and so on. */
   type: v.optional(v.string()),
@@ -150,6 +152,7 @@ export const paperRecordValidator = v.object({
   authors: capped(v.array(v.object({ name: v.string(), id: v.optional(v.string()), institutions: capped(v.optional(v.array(v.string())), INSTITUTIONS_LISTED) })), AUTHORS_LISTED),
   moreAuthors: v.optional(v.number()),
   year: v.optional(v.number()),
+  published: v.optional(v.string()),
   venue: v.optional(v.string()),
   type: v.optional(v.string()),
   language: v.optional(v.string()),
