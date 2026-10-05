@@ -46,8 +46,9 @@ const savedPaper = v.object({ openalexId: v.string(), savedAt: v.optional(v.numb
 const ratingAsLeft = v.object({
   savedAt: v.number(),
   rating: ratingOrNone,
-  /** On the undo of a save that put the paper in a collection: that collection, the one place the paper may still have. */
+  /** On the undo of a save that put the paper in a collection: that place, the one the paper may still have, by its collection and when it was given. */
   collectionId: v.optional(v.id("collections")),
+  assignedAt: v.optional(v.number()),
 });
 
 const REMOVE = "library/mutations:removeFromLibrary" as const;
@@ -219,11 +220,23 @@ export const saveRead = internalMutation({
   handler: async (ctx, { userId, paper, rating, collectionId, author, stepId, approved }) => {
     // Only the assistant asks: a person saving a paper themselves has decided. A collection a library follows shows the paper outside the account.
     if (author === "assistant" && !approved && ((await saveAsksFirst(ctx, userId, paper.openalexId, rating)) || (collectionId !== undefined && (await followed(ctx, collectionId))))) throw createError("FORBIDDEN", ASKS_FIRST);
+    const before = await findItem(ctx, userId, paper.openalexId);
+    // One reversal has to take back everything a call did. A saved paper given a new rating and a collection would be two changes with one undo between them.
+    if (before && collectionId !== undefined && rating !== undefined && rating !== (before.rating ?? null)) {
+      throw createError("VALIDATION_ERROR", "This paper is already saved. Rate it with library/mutations:setLibraryRating and put it in the collection with library/papers:collect, one change at a time, so each can be undone.");
+    }
     const saved = await savePaper(ctx, userId, paper, rating, author);
     const placed = collectionId === undefined ? undefined : await setPaperInCollectionAction.run(ctx, userId, { paper: { openalexId: canonical(paper.openalexId) }, collectionId, inCollection: true }, author);
-    // What reverses it all. A paper this added is removed again, its place in the collection with it. One that was
-    // saved already leaves the collection, and when it was there too, a rating this changed goes back.
-    const undo = saved.undo?.path === REMOVE && collectionId !== undefined ? { path: REMOVE, args: { ...saved.undo.args, expect: { ...saved.undo.args.expect, collectionId } } } : (placed?.undo ?? saved.undo);
+    // What takes back all of it. A paper that was saved already leaves the collection again, or gets back the rating this changed.
+    // A paper this added is removed again, with the place it was given, while that place is still the one it has. One added
+    // with no undo of its own (see `savePaper`) has none for its place either: half an undo would be marked as the whole.
+    const undo = before
+      ? (placed?.undo ?? saved.undo)
+      : saved.undo?.path === REMOVE && placed?.undo
+        ? { path: REMOVE, args: { ...saved.undo.args, expect: { ...saved.undo.args.expect, collectionId: placed.undo.args.collectionId, assignedAt: placed.undo.args.assignedAt } } }
+        : placed
+          ? undefined
+          : saved.undo;
     const result = { libraryItemId: saved.id, title: paper.title, ...(undo ? { undo } : {}) };
     if (stepId) await endStep(ctx, stepId, result);
     return result;
@@ -354,8 +367,8 @@ export const removeFromLibraryAction = defineUserMutation({
     // Undoing a save leaves a paper that isn't as the save left it: the same save, with that
     // rating in the library and on search cards, in no collection. Refusing here takes back
     // the removals above with the rest of the transaction.
-    // The collection the save being undone put it in is part of that save: any other place is a change since.
-    const elsewhere = collectionIds.some((collectionId) => collectionId !== args.expect?.collectionId);
+    // The place the save being undone gave it is part of that save. Any other place, or that one given again since, is a change since.
+    const elsewhere = collectionIds.some((collectionId, index) => collectionId !== args.expect?.collectionId || assignedAts[index] !== args.expect?.assignedAt);
     if (args.expect && (item.savedAt !== args.expect.savedAt || (item.rating ?? null) !== args.expect.rating || (await researchRating(ctx, userId, item.openalexId)) !== args.expect.rating || elsewhere)) {
       throw createError("CONFLICT", "This paper has changed since then, so it was left in the library.");
     }
