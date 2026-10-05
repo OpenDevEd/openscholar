@@ -366,10 +366,11 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   const undo = useMutation(api.assistant.undo.run);
   const toast = useAppToast();
   const stepTitle = useStepTitle();
-  // The folded runs the person opened, each by its first step.
+  // The folded runs the person opened, each by a step of it: by its first when it was opened, which stays in the run when earlier steps load in front of it.
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
+  const isOpen = (run: StepItem[]) => run.length > 1 && run.some((one) => opened.has(one.id));
   const runs = runsOf(steps);
-  const heights = runs.map((run) => CARD + (run.length > 1 && opened.has(run[0].id) ? run.length * LINE + LINES_END : 0));
+  const heights = runs.map((run) => CARD + (isOpen(run) ? run.length * LINE + LINES_END : 0));
   const tops = heights.map((_, i) => heights.slice(0, i).reduce((top, above) => top + above + GAP, ORIGIN));
   const height = runs.length ? tops.at(-1)! + heights.at(-1)! : 0;
   const y = (i: number) => tops[i] + CARD / 2;
@@ -422,7 +423,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
             const state = step.status === "asking" ? t("steps.waiting") : step.status === "allowed" ? t("steps.allowed") : step.status === "declined" ? t("steps.declined") : null;
             const title = stepTitle(words, step);
             const folded = run.length > 1;
-            const open = folded && opened.has(run[0].id);
+            const open = isOpen(run);
             const lines = run.map((one) => one.subject ?? t(`steps.${words}.where`));
             return (
               <motion.div
@@ -469,7 +470,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                           type="button"
                           aria-label={t(open ? "steps.fold" : "steps.unfold")}
                           aria-expanded={open}
-                          onClick={() => setOpened((all) => new Set(open ? [...all].filter((id) => id !== run[0].id) : [...all, run[0].id]))}
+                          onClick={() => setOpened((all) => (open ? new Set([...all].filter((id) => !run.some((one) => one.id === id))) : new Set([...all, run[0].id])))}
                           className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
                           <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
