@@ -678,7 +678,6 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
   const cap = allowance ? allowance.cap : kept;
   const runs = (credits: number) => allowance !== null && (allowance.cap === null || credits <= allowance.cap);
   const ta = useTranslations("assistant");
-  const format = useFormatter();
   return (
     <>
       <SheetHeader title={t("title")} detail={title} onBack={onBack} />
