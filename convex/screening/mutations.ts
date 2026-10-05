@@ -70,7 +70,7 @@ type JobSetup = ObjectType<typeof jobSetup>;
  * Makes a job's row for `user`, with its progress row: finds the screening its answers go to,
  * names it after its set, and stamps it with the model Screen all runs on.
  */
-async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, saveTo, prune, ...args }: JobSetup, state: Pick<Doc<"screeningJobs">, "status" | "totalPapers" | "reading">) {
+async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, saveTo, prune, ...args }: JobSetup, state: Pick<Doc<"screeningJobs">, "status" | "totalPapers" | "reading" | "newCollection">) {
   if (prune && set?.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
 
   // The screening its answers go to, and the set's name as the page shows it.
@@ -177,10 +177,13 @@ const READ_LIMIT_MS = 15 * 60_000;
 export const openScreeningJob = internalMutation({
   args: { userId: v.id("users"), papers: v.number(), ...jobSetup, first: v.number(), last: v.number(), snapshot: searchSnapshotValidator },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, { userId, papers, ...setup }) => {
+  handler: async (ctx, { userId, papers, saveTo, ...setup }) => {
     const user = await requireActiveUser(ctx, userId);
     if (setup.set?.kind !== "search") throw createError("VALIDATION_ERROR", "Only a search's papers are read after its job is made");
-    const jobId = await insertJob(ctx, user, setup, { status: "processing", totalPapers: papers, reading: true });
+    // A new collection is made with the papers, so a job that never gets any leaves none behind.
+    const later = saveTo?.kind === "new" ? saveTo.name.trim() : undefined;
+    if (later === "") throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
+    const jobId = await insertJob(ctx, user, { ...setup, ...(later ? {} : { saveTo }) }, { status: "processing", totalPapers: papers, reading: true, ...(later ? { newCollection: later } : {}) });
     const { set, first, last, through = last, questions, snapshot } = setup;
     await ctx.scheduler.runAfter(0, internal.screening.start.read, { jobId, userId, searchId: set.searchId, first, through, questions, snapshot });
     await ctx.scheduler.runAfter(READ_LIMIT_MS, internal.screening.mutations.failScreeningRead, { jobId, reason: "Its papers took too long to read. Run it again." });
@@ -211,7 +214,8 @@ export const fillScreeningJob = internalMutation({
     await requireActiveUser(ctx, reading.userId);
     const { affordable } = await affords(ctx, reading.userId, papers.length - answered);
     const now = Date.now();
-    await ctx.db.patch("screeningJobs", jobId, { reading: undefined, totalPapers: papers.length, first, last, through, resume, updatedAt: now, ...(affordable ? {} : { status: "creditsExhausted" as const }) });
+    const made = affordable && reading.newCollection ? { targetCollectionId: await newCollection(ctx, reading.userId, reading.newCollection), newCollection: undefined } : {};
+    await ctx.db.patch("screeningJobs", jobId, { reading: undefined, totalPapers: papers.length, first, last, through, resume, updatedAt: now, ...made, ...(affordable ? {} : { status: "creditsExhausted" as const }) });
     if (affordable) await createResults(ctx, (await ctx.db.get("screeningJobs", jobId))!, papers, now);
     return null;
   },

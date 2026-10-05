@@ -985,6 +985,8 @@ export default defineSchema({
     reading: v.optional(v.literal(true)),
     // Why it failed, when it couldn't get its papers, in words for the person.
     failure: v.optional(v.string()),
+    // The name of the new collection its included papers go to, which is made once it has its papers.
+    newCollection: v.optional(v.string()),
     // Its included papers aren't saved anywhere.
     unsaved: v.optional(v.literal(true)),
     // Papers that end excluded or failed leave the collection it read (`set`).
