@@ -169,6 +169,8 @@ export const paperRecordValidator = v.object({
 export const resultsValidator = v.object({
   /** How many results the search has in all. */
   total: v.number(),
+  /** Set when the search keeps only papers the person rated: `total` counts the papers before that filter, and how many pass it isn't known. */
+  totalIgnoresRatings: v.optional(v.literal(true)),
   page: v.number(),
   pages: v.number(),
   papers: capped(v.array(paperValidator), RESULTS_PAGE),

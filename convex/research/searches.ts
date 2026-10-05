@@ -509,7 +509,7 @@ export async function readPage(ctx: ActionCtx, userId: Id<"users">, found: Saved
   const { works, total } = await readSearchPage<Work>(found.request, { page, size: RESULTS_PAGE, select: ASSISTANT_FIELDS }, spender(ctx, found.clerkId));
   const papers = await keptByRating(ctx, userId, works.map(toPaper), found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined);
   const read = new Map(works.map((work) => [work.id, work]));
-  return { total, page, pages: Math.min(Math.ceil(total / RESULTS_PAGE), lastPage), papers: papers.map((paper) => shownPaper(read.get(paper.openalexId)!, paper)) };
+  return { total, ...(found.ratingRange ? { totalIgnoresRatings: true as const } : {}), page, pages: Math.min(Math.ceil(total / RESULTS_PAGE), lastPage), papers: papers.map((paper) => shownPaper(read.get(paper.openalexId)!, paper)) };
 }
 
 /**

@@ -577,6 +577,9 @@ describe("assistant replies", () => {
       await endStep(ctx, search, { total: 260, page: 2, pages: 13, papers: [] });
       const count = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "count", path: "research/papers:count", input: JSON.stringify({ query: "tutoring", by: "year" }), subject: "tutoring" });
       await endStep(ctx, count, { total: 1840, groups: [{ name: "2024", count: 200 }] });
+      // Kept to the papers the person rated: its total is before that filter, so it says no number.
+      const rated = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "rated", path: "research/papers:search", input: JSON.stringify({ query: "phonics", ratedOnly: true }), subject: "phonics" });
+      await endStep(ctx, rated, { total: 3, totalIgnoresRatings: true, page: 1, pages: 1, papers: [] });
       await ctx.db.insert("assistantSteps", { ...step, status: "done", endedAt: 1, toolCallId: "collection", path: "library/collections:create", input: JSON.stringify({ name: "Trials" }), subject: "Trials" });
     });
 
@@ -584,9 +587,10 @@ describe("assistant replies", () => {
     expect(Object.fromEntries(steps.map((step) => [step.subject, "href" in step ? step.href : null]))).toEqual({
       '"machine learning"': "/results?q=%22machine+learning%22&yf=2020&yt=2024&mincite=11",
       tutoring: "/results?q=tutoring",
+      phonics: "/results?q=phonics&rated=true",
       Trials: null,
     });
-    expect(Object.fromEntries(steps.map((step) => [step.subject, step.count ?? null]))).toEqual({ '"machine learning"': 260, tutoring: 1840, Trials: null });
+    expect(Object.fromEntries(steps.map((step) => [step.subject, step.count ?? null]))).toEqual({ '"machine learning"': 260, tutoring: 1840, phonics: null, Trials: null });
   });
 });
 

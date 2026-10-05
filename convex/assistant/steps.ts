@@ -119,12 +119,13 @@ export function namedBy(result: unknown) {
 
 /**
  * How many things a result lists: its page's rows, or its own when it's a list. For a bulk
- * change, how many changes it made. For a search or a count, how many papers match in all.
+ * change, how many changes it made. For a search or a count, how many papers match in all:
+ * none for a search kept to the papers the person rated, whose total is before that filter.
  */
 export function countOf(result: unknown) {
   if (Array.isArray(result)) return result.length;
-  const { page, made, total } = result && typeof result === "object" ? (result as { page?: unknown; made?: unknown; total?: unknown }) : {};
-  return Array.isArray(page) ? page.length : typeof made === "number" ? made : typeof total === "number" ? total : undefined;
+  const { page, made, total, totalIgnoresRatings } = result && typeof result === "object" ? (result as { page?: unknown; made?: unknown; total?: unknown; totalIgnoresRatings?: unknown }) : {};
+  return Array.isArray(page) ? page.length : typeof made === "number" ? made : typeof total === "number" && !totalIgnoresRatings ? total : undefined;
 }
 
 type Output = { type: "json"; value: unknown } | { type: "text"; value: string } | { type: "execution-denied"; reason: string };
