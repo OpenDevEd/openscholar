@@ -3401,5 +3401,302 @@
     "source": "Artificial Analysis 智能指数",
     "back": "返回模型列表",
     "default": "默认"
+  },
+  "assistant": {
+    "label": "OpenScholar 助手",
+    "open": "打开助手",
+    "fold": "收起助手",
+    "foldHint": "收起",
+    "foldIntoBubble": "收起为气泡",
+    "newChat": "新对话",
+    "emptyTitle": "在这里随便问",
+    "emptyBody": "我可以查看你的检索、文献库、合集、筛选和提取，创建和修改检索并读取其结果，并为你保存、评分和归类论文。我还不能启动任务。",
+    "placeholder": "向助手提问",
+    "readOnly": "你可以阅读此对话，但不能在其中发言",
+    "messageLabel": "给助手发消息",
+    "sees": "可见{view}",
+    "views": {
+      "results": "检索结果",
+      "extractionJob": "提取任务",
+      "librarySettings": "文献库设置",
+      "authors": "作者",
+      "page": "此页面"
+    },
+    "send": "发送",
+    "stop": "停止",
+    "thinking": "思考中",
+    "summarizing": "正在总结目前的对话",
+    "stopped": "此回复已被停止",
+    "failed": "回复未完成。请重新发送你的消息。",
+    "tooLong": "此对话已超出助手可读取的长度。请开始新对话以继续。",
+    "interrupted": "此回复在完成前中断了",
+    "earlier": "更早的消息",
+    "model": "模型",
+    "sendFailed": "无法发送你的消息",
+    "modelFailed": "无法更改模型",
+    "chats": "对话",
+    "back": "返回",
+    "happeningNow": "{count} 个进行中",
+    "searchChats": "搜索对话",
+    "whichChats": "显示哪些对话",
+    "scopeAll": "全部",
+    "scopeMine": "我的",
+    "scopeShared": "与我共享",
+    "groupNow": "进行中",
+    "groupToday": "今天",
+    "groupEarlier": "更早",
+    "openNow": "当前打开",
+    "here": "{names}在这里",
+    "someone": "有人",
+    "everyoneIn": "{organization} 的所有人",
+    "writingReply": "正在撰写回复",
+    "noChatsMatch": "没有匹配的对话。",
+    "noChats": "你的对话会显示在这里。",
+    "moreChats": "更早的对话",
+    "share": "共享",
+    "shareNamed": "共享 {title}",
+    "shareChat": "共享此对话",
+    "addPeople": "添加人员或组织",
+    "you": "你",
+    "owner": "所有者",
+    "canChat": "可对话",
+    "canView": "可查看",
+    "view": "查看",
+    "chat": "对话",
+    "accessOf": "{name} 的权限",
+    "members": "{count} 位成员",
+    "membersMany": "{count}+ 位成员",
+    "remove": "移除",
+    "organization": "组织",
+    "noCandidates": "你的组织中没有匹配的人。",
+    "shareNote": "他们可以看到此对话。其中的搜索、合集和文库仍保留各自的访问权限。可对话的人以自己的身份发送消息，助手以他们自己的权限和额度为他们执行操作。",
+    "copyLink": "复制链接（仅限有权限的人）",
+    "linkCopied": "链接已复制",
+    "shareFailed": "无法更改此对话的共享设置",
+    "morePeople": "更多人员",
+    "steps": {
+      "undo": "撤销",
+      "done": "完成",
+      "failed": "失败",
+      "undoFailed": "无法撤销",
+      "earlier": "更早的步骤",
+      "interrupted": "回复在这一步完成前已结束",
+      "found": "项",
+      "declined": "未允许",
+      "waiting": "等待回答",
+      "allowed": "已允许",
+      "searches": {
+        "doing": "正在查看你的检索",
+        "did": "已查看你的检索",
+        "where": "已保存的检索"
+      },
+      "search": {
+        "doing": "正在读取检索",
+        "did": "已读取检索",
+        "where": "已保存的检索"
+      },
+      "searchHistory": {
+        "doing": "正在读取检索历史",
+        "did": "已读取检索历史",
+        "where": "已保存的检索"
+      },
+      "newSearch": {
+        "doing": "正在创建检索",
+        "did": "已创建检索",
+        "where": "已保存的检索",
+        "ask": "创建检索"
+      },
+      "changeSearch": {
+        "doing": "正在修改检索",
+        "did": "已修改检索",
+        "where": "已保存的检索",
+        "ask": "修改检索"
+      },
+      "restoreSearch": {
+        "doing": "正在放回检索",
+        "did": "已放回检索",
+        "where": "已保存的检索",
+        "ask": "放回检索"
+      },
+      "removeSearch": {
+        "doing": "正在移除检索",
+        "did": "已移除检索",
+        "where": "已保存的检索",
+        "ask": "移除检索"
+      },
+      "results": {
+        "doing": "正在读取检索结果",
+        "did": "已读取检索结果",
+        "where": "已保存的检索"
+      },
+      "lookup": {
+        "doing": "正在查找名称",
+        "did": "已查找名称",
+        "where": "检索筛选条件"
+      },
+      "lookPapers": {
+        "doing": "正在查找论文",
+        "did": "已查找论文",
+        "where": "OpenAlex"
+      },
+      "readPaper": {
+        "doing": "正在读取论文",
+        "did": "已读取论文",
+        "where": "OpenAlex"
+      },
+      "credits": {
+        "doing": "正在检查你的积分",
+        "did": "已检查你的积分",
+        "where": "账单"
+      },
+      "bookmarks": {
+        "doing": "正在查看你的书签",
+        "did": "已查看你的书签",
+        "where": "书签"
+      },
+      "ratings": {
+        "doing": "正在检查你的评分",
+        "did": "已检查你的评分",
+        "where": "评分"
+      },
+      "saved": {
+        "doing": "正在检查你的文献库",
+        "did": "已检查你的文献库",
+        "where": "文献库"
+      },
+      "save": {
+        "doing": "正在保存论文",
+        "did": "已保存论文",
+        "where": "文献库",
+        "ask": "保存论文"
+      },
+      "rate": {
+        "doing": "正在为论文评分",
+        "did": "已为论文评分",
+        "where": "文献库",
+        "ask": "为论文评分"
+      },
+      "remove": {
+        "doing": "正在移除论文",
+        "did": "已移除论文",
+        "where": "文献库",
+        "ask": "移除论文"
+      },
+      "restore": {
+        "doing": "正在放回论文",
+        "did": "已放回论文",
+        "where": "文献库",
+        "ask": "放回论文"
+      },
+      "collect": {
+        "doing": "正在更新合集",
+        "did": "已更新合集",
+        "where": "合集",
+        "ask": "更改合集"
+      },
+      "collections": {
+        "doing": "正在查看你的合集",
+        "did": "已查看你的合集",
+        "where": "合集"
+      },
+      "collection": {
+        "doing": "正在读取合集",
+        "did": "已读取合集",
+        "where": "合集"
+      },
+      "newCollection": {
+        "doing": "正在创建合集",
+        "did": "已创建合集",
+        "where": "合集",
+        "ask": "创建合集"
+      },
+      "renameCollection": {
+        "doing": "正在重命名合集",
+        "did": "已重命名合集",
+        "where": "合集",
+        "ask": "重命名合集"
+      },
+      "screening": {
+        "doing": "正在读取筛选",
+        "did": "已读取筛选",
+        "where": "筛选"
+      },
+      "extractions": {
+        "doing": "正在查看你的提取",
+        "did": "已查看你的提取",
+        "where": "提取"
+      },
+      "deleteCollection": {
+        "doing": "正在删除合集",
+        "did": "已删除合集",
+        "where": "合集",
+        "ask": "删除合集"
+      },
+      "shareChat": {
+        "doing": "正在共享对话",
+        "did": "已共享对话",
+        "where": "对话",
+        "ask": "共享对话"
+      },
+      "unshareChat": {
+        "doing": "正在停止共享对话",
+        "did": "已停止共享对话",
+        "where": "对话",
+        "ask": "停止共享对话"
+      },
+      "deleteChat": {
+        "doing": "正在删除对话",
+        "did": "已删除对话",
+        "where": "对话",
+        "ask": "删除对话"
+      },
+      "newChat": {
+        "doing": "正在开始对话",
+        "did": "已开始对话",
+        "where": "对话",
+        "ask": "开始对话"
+      },
+      "renameChat": {
+        "doing": "正在重命名对话",
+        "did": "已重命名对话",
+        "where": "对话",
+        "ask": "重命名对话"
+      },
+      "chatModel": {
+        "doing": "正在更改对话的模型",
+        "did": "已更改对话的模型",
+        "where": "对话",
+        "ask": "更改对话的模型"
+      },
+      "answer": {
+        "doing": "正在更改筛选答案",
+        "did": "已更改筛选答案",
+        "where": "筛选",
+        "ask": "更改筛选答案"
+      },
+      "other": {
+        "doing": "正在你的账户中处理",
+        "did": "已在你的账户中处理",
+        "where": "你的账户",
+        "ask": "在你的账户中执行操作"
+      }
+    },
+    "asks": {
+      "allow": "允许一次",
+      "notNow": "暂不",
+      "decline": "不执行",
+      "why": "此操作无法撤销，或会在你的账户之外显示。每次都会询问。",
+      "failed": "无法发送你的回答",
+      "names": {
+        "thread": "对话",
+        "collection": "合集",
+        "user": "成员",
+        "organization": "组织",
+        "role": "权限",
+        "name": "名称",
+        "title": "标题",
+        "model": "模型"
+      }
+    }
   }
 }
