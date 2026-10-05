@@ -3935,6 +3935,8 @@
         "question": "问题",
         "saveTo": "纳入的论文存入",
         "prune": "排除的论文移出",
+        "rating": "评分",
+        "change": "更改",
         "usePdfs": "全文"
       }
     },

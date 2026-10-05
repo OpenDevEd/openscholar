@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
 import { BookMarked, Check, CircleHelp, FolderOpen, ListChecks, Search, Star, TriangleAlert, X, type AppIcon } from "@/components/icons";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { OUTCOMES, type Answer, type Outcome, type PaperSet, type Phase } from "@/lib/screening/setup";
 
@@ -102,9 +103,20 @@ export function ProgressRing({ value, max, phase }: { value: number; max: number
 export function Chip({ icon: Icon, children, className }: { icon?: AppIcon; children: ReactNode; className?: string }) {
   return (
     <span className={cn("inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md bg-foreground/[0.06] px-2 text-xs tabular-nums text-muted-foreground", className)}>
-      {Icon ? <Icon className="size-3.5" /> : null}
+      {Icon ? <Icon className="size-3.5 shrink-0" /> : null}
       {children}
     </span>
+  );
+}
+
+/** A chip that names something of any length: it takes the room it has, and shows the whole of what's cut off. */
+export function ClippedChip({ children, className, ...chip }: { icon?: AppIcon; children: ReactNode; className?: string }) {
+  return (
+    <Chip {...chip} className={cn("min-w-0 max-w-full shrink", className)}>
+      <TooltipHint label={children} onlyWhenClipped>
+        <span className="truncate">{children}</span>
+      </TooltipHint>
+    </Chip>
   );
 }
 

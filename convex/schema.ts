@@ -982,7 +982,7 @@ export default defineSchema({
     // The last paper of the whole request when one job can't hold it: the job for the next
     // papers starts when this one completes.
     through: v.optional(v.number()),
-    // Where a collection, the saved papers or a job's papers go on after this job's (./paperSets/held.ts).
+    // Where a collection, the saved papers or a job's papers go on after this job's (./paperSets/held.ts), or a search's cursor pages do (./paperSets/openalex.ts).
     resume: v.optional(v.string()),
     // The search as it was when the request began, which its later jobs read their papers from.
     snapshot: v.optional(searchSnapshotValidator),

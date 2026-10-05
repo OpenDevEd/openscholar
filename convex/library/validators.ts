@@ -45,6 +45,7 @@ export const libraryPapersValidator = v.object({
         year: v.optional(v.number()),
         journal: v.optional(v.string()),
         rating: v.optional(v.number()),
+        inCollection: v.boolean(),
         savedOn: v.string(),
       }),
     ),

@@ -3925,6 +3925,8 @@
         "question": "Question",
         "saveTo": "Included go to",
         "prune": "Excluded leave it",
+        "rating": "Rating",
+        "change": "Changes",
         "usePdfs": "Full texts"
       }
     },

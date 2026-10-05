@@ -27,7 +27,7 @@ import { ANSWERS, OUTCOMES, answerOf, doneOf, maxScore, questionsOf, valueOf, ty
 import { useSearchHistoryStore } from "@/lib/store";
 import { getErrorMessage, useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { ANSWER, AnimatedNumber, AnswerMark, Chip, Meter, OUTCOME, OutcomeBar, ProgressRing, SOURCE_ICON, Stars } from "./parts";
+import { ANSWER, AnimatedNumber, AnswerMark, Chip, ClippedChip, Meter, OUTCOME, OutcomeBar, ProgressRing, SOURCE_ICON, Stars } from "./parts";
 
 /** The chip on a paper about to move to another outcome, in that outcome's colour. */
 const MOVING: Record<Outcome, string> = {
@@ -209,10 +209,10 @@ export function JobView({
             ) : job.failure ? (
               <p className="flex items-start gap-1.5 self-center text-xs font-medium text-destructive"><CircleX className="mt-0.5 size-3.5 shrink-0" /><span>{job.failure}</span></p>
             ) : (
-              <div className="flex flex-wrap items-center gap-1.5 self-center">
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5 self-center">
                 {/* A job from before these were kept counts them from its outcomes. */}
-                {savedTo ? <Chip icon={FolderPlus} className="text-foreground">{t.rich("savedTo", { count: job.saved ?? counts.included, name: savedTo, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</Chip> : null}
-                {pruned ? <Chip icon={FolderMinus} className="text-foreground">{t.rich("removedFrom", { count: job.removed ?? counts.excluded + counts.failed, name: pruned, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</Chip> : null}
+                {savedTo ? <ClippedChip icon={FolderPlus} className="text-foreground">{t.rich("savedTo", { count: job.saved ?? counts.included, name: savedTo, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</ClippedChip> : null}
+                {pruned ? <ClippedChip icon={FolderMinus} className="text-foreground">{t.rich("removedFrom", { count: job.removed ?? counts.excluded + counts.failed, name: pruned, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</ClippedChip> : null}
                 {!savedTo && !pruned ? <Chip icon={Ban}>{t("noCollectionChanged")}</Chip> : null}
               </div>
             )}
@@ -230,8 +230,8 @@ export function JobView({
           </div>
           {active && (savedTo || pruned) ? (
             <div className="flex flex-wrap items-center gap-1.5 border-t border-border-subtle pt-4">
-              {savedTo ? <Chip icon={FolderPlus}>{t("savesTo", { name: savedTo })}</Chip> : null}
-              {pruned ? <Chip icon={FolderMinus}>{t("removesFrom", { name: pruned })}</Chip> : null}
+              {savedTo ? <ClippedChip icon={FolderPlus}>{t("savesTo", { name: savedTo })}</ClippedChip> : null}
+              {pruned ? <ClippedChip icon={FolderMinus}>{t("removesFrom", { name: pruned })}</ClippedChip> : null}
             </div>
           ) : null}
         </div>

@@ -107,6 +107,17 @@ const REGION_GROUPS: Record<string, readonly string[]> = {
   sub_saharan_africa: ["eastern_africa", "middle_africa", "southern_africa", "western_africa"],
   latin_america: ["caribbean", "central_america", "south_america"],
   latin_america_and_the_caribbean: ["caribbean", "central_america", "south_america"],
+  // The page's regions as people say them. It names them the United Nations' way: eastern, southern, middle.
+  east_africa: ["eastern_africa"],
+  west_africa: ["western_africa"],
+  north_africa: ["northern_africa"],
+  central_africa: ["middle_africa"],
+  east_asia: ["eastern_asia"],
+  south_asia: ["southern_asia"],
+  west_asia: ["western_asia"],
+  southeast_asia: ["south-eastern_asia"],
+  south_east_asia: ["south-eastern_asia"],
+  south_eastern_asia: ["south-eastern_asia"],
   ...INCOME_GROUPS,
 };
 

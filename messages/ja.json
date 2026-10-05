@@ -3935,6 +3935,8 @@
         "question": "質問",
         "saveTo": "採用した論文の保存先",
         "prune": "除外した論文を外す",
+        "rating": "評価",
+        "change": "変更",
         "usePdfs": "全文"
       }
     },

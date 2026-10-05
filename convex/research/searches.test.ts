@@ -383,6 +383,9 @@ describe("the assistant's search tools", () => {
       // A region of the page's own keeps its name as the page has it, hyphen and all.
       selectedRegions: ["caribbean", "central_america", "south_america", "south-eastern_asia"],
     });
+    // A region as people say it is the page's region: it names them eastern, southern and middle.
+    const said = await make({ query: "tutoring", about: ["East Asia", "South Asia", "central africa"], authorsIn: ["Southeast Asia", "south_eastern_asia", "West Africa"] });
+    expect(await search(said.id)).toMatchObject({ selectedCountryFocus: ["eastern_asia", "southern_asia", "middle_africa"], selectedRegions: ["south-eastern_asia", "western_africa"] });
   });
 
   it("take the World Bank's income groups as places, by the countries in them", async () => {
