@@ -3892,6 +3892,11 @@
         "did": "Undid a bulk change",
         "where": "Your account",
         "ask": "Undo a bulk change"
+      },
+      "findRecords": {
+        "doing": "Finding it in your account",
+        "did": "Found it in your account",
+        "where": "Your account"
       }
     },
     "asks": {

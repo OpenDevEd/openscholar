@@ -3902,6 +3902,11 @@
         "did": "Modification groupée annulée",
         "where": "Votre compte",
         "ask": "Annuler une modification groupée"
+      },
+      "findRecords": {
+        "doing": "Recherche dans votre compte",
+        "did": "Trouvé dans votre compte",
+        "where": "Votre compte"
       }
     },
     "asks": {
