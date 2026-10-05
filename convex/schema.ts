@@ -1008,6 +1008,8 @@ export default defineSchema({
     serverEffort: v.optional(effortValidator),
     // The most it may spend, on a job the assistant started with the person's say (#328): its papers stop once it has.
     spendCap: v.optional(v.number()),
+    // The hold that figure is kept in (convex/billing/charge.ts): its papers are charged under it, and it is confirmed once, with what they cost, when the job has ended.
+    spendHold: v.optional(v.string()),
     // Set once it has: its papers that haven't started are skipped, those running finish and are kept, and it ends as one that stopped at its limit.
     capped: v.optional(v.literal(true)),
     createdAt: v.number(),

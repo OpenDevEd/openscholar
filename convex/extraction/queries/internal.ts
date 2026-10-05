@@ -14,6 +14,7 @@
 import { internalQuery } from "../../_generated/server";
 import { v } from "convex/values";
 import { getFlag } from "../../featureFlags/guard";
+import { holdOpen } from "../../billing/spend";
 import { userValidator } from "../../lib/validators";
 import { getProcessableFlags } from "../content";
 import { readJobSources } from "../jobSources";
@@ -49,8 +50,7 @@ export const approvalOf = internalQuery({
   args: { jobId: v.id("extractionJobs"), hold: v.string() },
   returns: v.object({ open: v.boolean(), spent: v.number() }),
   handler: async (ctx, { jobId, hold }) => {
-    const row = await ctx.db.query("billingHolds").withIndex("by_charge", (q) => q.eq("chargeId", hold)).unique();
-    return { open: row?.spend === true && !row.settling, spent: await creditsAgg.sum(ctx, { namespace: jobId }) };
+    return { open: await holdOpen(ctx, hold), spent: await creditsAgg.sum(ctx, { namespace: jobId }) };
   },
 });
 

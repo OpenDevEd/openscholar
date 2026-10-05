@@ -114,4 +114,63 @@ describe("charging a Screen all paper", () => {
     await expect(t.action(internal.screening.workpoolActions.screenPaperAction, { jobId, resultId: first })).rejects.toThrow(/VALIDATION_ERROR/);
     expect(fakeAutumn.calls).toHaveLength(0);
   });
+
+  it("holds the figure a screening started from a chat was approved up to, records its papers under it, and confirms it once with their sum", async () => {
+    fakeAutumn.reset();
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    vi.useFakeTimers();
+    const t = convexTest(schema);
+    setupScreeningWorkpool(t);
+    const { userId, collectionId } = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", { clerkId: "clerk_held", email: "held@test.local", state: "active", createdAt: 1, updatedAt: 1 });
+      await seedCreditsForTest(ctx, { userId, free: 100 });
+      const collectionId = await ctx.db.insert("collections", { userId, name: "Trials", itemCount: 2, createdAt: 1, updatedAt: 1 });
+      for (const n of [1, 2]) {
+        const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
+        await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: n });
+      }
+      return { userId, collectionId };
+    });
+    const calls = (path: string) => fakeAutumn.calls.filter((call) => call.path === path);
+
+    // As the assistant runs it once the person has said yes to "up to 10 credits".
+    const { jobId } = await t.action(internal.screening.start.screenForAssistant, {
+      userId, approved: true, approvedCredits: 10,
+      set: { kind: "collection", collectionId }, first: 1, last: 2,
+      questions: [{ key: "q1", question: "Is this relevant?" }],
+      scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] },
+      saveTo: { kind: "none" },
+    });
+    // The figure is held, and nothing else.
+    expect(calls("balances.check").map((call) => (call.body as { required_balance: number }).required_balance)).toEqual([10]);
+
+    for (let second = 0; second < 120; second += 1) {
+      vi.advanceTimersByTime(1_000);
+      await t.finishInProgressScheduledFunctions();
+    }
+
+    const job = await t.run((ctx) => ctx.db.get("screeningJobs", jobId));
+    expect(job).toMatchObject({ status: "completed", spendCap: 10 });
+    // Each paper is on the ledger. Autumn was charged once, for both, when the job ended, and the hold is gone.
+    expect(await t.run(async (ctx) => (await ctx.db.query("billingUsage").collect()).map((row) => row.credits))).toEqual([1, 1]);
+    expect(calls("balances.track")).toHaveLength(0);
+    expect(calls("balances.finalize").map((call) => call.body)).toEqual([{ lock_id: job!.spendHold, action: "confirm", override_value: 2 }]);
+    expect(fakeAutumn.balance(userId)).toBe(98);
+    expect(await t.run((ctx) => ctx.db.query("billingHolds").collect())).toEqual([]);
+    vi.useRealTimers();
+  });
+
+  it("charges a held job's paper by itself once the hold no longer takes papers, still within the figure", async () => {
+    fakeAutumn.reset();
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    const t = convexTest(schema);
+    const { userId, jobId, first } = await seed(t);
+    // Its hold was settled at its expiry, a day on, while the job still ran.
+    await t.run(async (ctx) => ctx.db.patch("screeningJobs", jobId, { spendCap: 10, spendHold: "screening-job:gone" }));
+
+    await t.action(internal.screening.workpoolActions.screenPaperAction, { jobId, resultId: first });
+
+    expect(fakeAutumn.calls.map((call) => call.path).filter((path) => path.startsWith("balances."))).toEqual(["balances.track"]);
+    expect(fakeAutumn.balance(userId)).toBe(99);
+  });
 });

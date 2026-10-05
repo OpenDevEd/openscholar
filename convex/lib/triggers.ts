@@ -29,6 +29,7 @@ triggers.register("evidenceLibraryConfigSections", recordRevisionApprovedQueries
 triggers.register("searches", countChange("searches"));
 triggers.register("queryShortcuts", countChange("queryShortcuts"));
 triggers.register("screeningJobs", countChange("screeningJobs"));
+triggers.register("screeningJobs", settleEndedJob<Id<"screeningJobs">>(makeFunctionReference("screening/start:settleHold")));
 triggers.register("walletKeys", countList(walletKeyList));
 triggers.register("admins", countList(() => ADMIN_LIST));
 triggers.register("evidenceLibraryConfigOperations", countList(libraryVersionList));

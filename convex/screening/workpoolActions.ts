@@ -124,6 +124,8 @@ export const screenPaperAction = internalAction({
           chargeId: `screening:${args.resultId}:${crypto.randomUUID()}`,
           estimate: Math.ceil(ESTIMATED_CREDITS_PER_PAPER),
           hold: false,
+          // A job the person approved up to a figure holds it once: its papers are charged under that hold.
+          ...(job.spendHold ? { under: job.spendHold } : {}),
           balance: context.balance,
           clerkId: context.clerkId,
           kind: "screening",
