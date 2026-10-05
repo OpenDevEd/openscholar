@@ -2,7 +2,7 @@
 // The assistant's tools (#327): a reply runs registered actions as the person who sent the
 // message, each run is kept as a step, and the model reads what came of it.
 import { convexTest } from "convex-test";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listMessages, saveMessages } from "@convex-dev/agent";
 import { api, components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -13,6 +13,7 @@ import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { screeningHold } from "../screening/estimate";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
+import { screeningPool } from "../workpool";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
 import { allowAlways, carriedOn, pausedAt } from "./spending";
@@ -26,7 +27,6 @@ type Part = { type: string; text?: string; toolCallId?: string; output?: { type?
 type Sent = Array<{ role: string; content: string | Part[] }>;
 
 const { mockDoStream, requests, toolsSent, toolChoices, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), requests: [] as unknown[], toolsSent: [] as string[][], toolChoices: [] as string[], fetchMock: vi.fn() }));
-vi.stubGlobal("fetch", fetchMock);
 
 // The model every reply runs on, in place of OpenRouter. It keeps each request it is sent.
 vi.mock("../chat/provider", async () => {
@@ -48,7 +48,17 @@ vi.mock("../chat/provider", async () => {
   };
 });
 
+type Test = ReturnType<typeof convexTest>;
+const instances = new Set<Test>();
+const maxParallelism = screeningPool.options.maxParallelism;
+// Native timers preserve the action context in the model's stream callbacks.
+// Wait for due work without advancing future sweeps or lease expiry.
+const drain = (t: Test) => t.finishAllScheduledFunctions(() => {});
+
 beforeEach(() => {
+  // This suite proves the assistant starts screening jobs. Screening owns their workers' tests.
+  screeningPool.options.maxParallelism = 0;
+  vi.stubGlobal("fetch", fetchMock);
   mockDoStream.mockReset();
   requests.length = 0;
   toolsSent.length = 0;
@@ -58,7 +68,30 @@ beforeEach(() => {
   fetchMock.mockImplementation(fakeAutumnFetch());
 });
 
-type Test = ReturnType<typeof convexTest>;
+afterEach(async () => {
+  try {
+    for (const t of instances) {
+      // A failed assertion must not leave a reply consuming the next test's model responses.
+      await t.run(async (ctx) => {
+        for (const thread of await ctx.db.query("assistantThreads").collect()) {
+          if (thread.reply) await ctx.db.patch("assistantThreads", thread._id, { reply: { ...thread.reply, stop: true } });
+        }
+      });
+      await drain(t);
+      await t.run(async (ctx) => {
+        for (const scheduled of await ctx.db.system.query("_scheduled_functions").collect()) {
+          if (scheduled.state.kind === "pending") await ctx.scheduler.cancel(scheduled._id);
+        }
+      });
+    }
+  } finally {
+    instances.clear();
+    screeningPool.options.maxParallelism = maxParallelism;
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  }
+});
+
 const firstPage = { cursor: null, numItems: 20 };
 
 /** What the model was told came of a call, whole, from the request that followed it. */
@@ -70,22 +103,37 @@ function outcome(request: number, toolCallId: string) {
 const told = (request: number, toolCallId: string) => outcome(request, toolCallId)?.value;
 
 async function chatOf(t: Test) {
+  instances.add(t);
   const who = await people(t);
   await t.run(async (ctx) => seedCreditsForTest(ctx, { userId: who.ada, free: 100_000 }));
   const threadId = await who.asAda.mutation(api.assistant.threads.create, { title: "Reading trials" });
+  const thread = () => t.run(async (ctx) => ctx.db.get("assistantThreads", threadId));
+  const finished = async () => {
+    // A reply schedules its next request as it ends the current one. Keep joining
+    // until the reply itself ends; an idle scheduler turn can fall between requests.
+    do {
+      await drain(t);
+    } while ((await thread())?.reply);
+  };
   /** Sends a message and waits until its reply is written. */
   const say = async (text: string) => {
     await who.asAda.mutation(api.assistant.replies.send, { threadId, text });
-    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: 5_000 });
+    await finished();
+    expect((await thread())?.reply).toBeUndefined();
   };
-  const thread = () => t.run(async (ctx) => ctx.db.get("assistantThreads", threadId));
   /** Sends a message and waits until its reply stops to ask the person something. */
   const sayUntilAsked = async (text: string) => {
     await who.asAda.mutation(api.assistant.replies.send, { threadId, text });
-    await waitFor(async () => (await thread())?.asking !== undefined, { timeoutMs: 5_000 });
+    await finished();
+    expect((await thread())?.asking).toBeDefined();
   };
   /** Waits until the chat is free again. */
-  const settled = () => waitFor(async () => !(await thread())?.reply && !(await thread())?.asking, { timeoutMs: 5_000 });
+  const settled = async () => {
+    await finished();
+    const chat = await thread();
+    expect(chat?.reply).toBeUndefined();
+    expect(chat?.asking).toBeUndefined();
+  };
   /** Stops the reply being written, or waiting, as the panel does. */
   const stop = async () => who.asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: (await who.asAda.query(api.assistant.replies.live, { threadId }))!.attemptId });
   const steps = () => t.run(async (ctx) => ctx.db.query("assistantSteps").collect());
