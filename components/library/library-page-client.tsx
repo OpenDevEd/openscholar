@@ -410,7 +410,6 @@ export function LibraryPageClient() {
       <ScreeningContext.Provider value={{}}>
         <ServerRatingsContext.Provider value={serverRatingsMap}>
         <FocusMode
-          key={isFocusModeOpen ? "open" : "closed"}
           isOpen={isFocusModeOpen}
           onClose={() => useUIStore.getState().setIsFocusModeOpen(false)}
           papers={paperResults}

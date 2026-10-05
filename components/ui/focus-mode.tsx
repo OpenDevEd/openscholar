@@ -26,6 +26,7 @@ import { useSavePaper } from "@/components/library/save-control";
 import { useRatePaper } from "@/components/rating-selector";
 import { FocusModeSettings } from "@/components/focus-mode/focus-mode-settings";
 import type { PaperResult } from "@/lib/types";
+import { FocusModeClose } from "@/components/focus-mode/close-context";
 
 interface FocusModeProps {
   isOpen: boolean;
@@ -42,9 +43,16 @@ export function FocusMode({
   onDownloadItem,
   onDownloadEssentialItem,
 }: FocusModeProps) {
-  const { focusModeIndex: currentIndex, setFocusModeIndex: setCurrentIndex } =
-    useUIStore();
+  const { focusModeIndex, setFocusModeIndex: setCurrentIndex } = useUIStore();
+  // One paper, such as one a chat names, is read on its own: the index the page's list keeps is for that list.
+  const currentIndex = papers.length === 1 ? 0 : focusModeIndex;
   const [showSettings, setShowSettings] = useState(false);
+  // It stays mounted while closed, so it can slide out: each opening starts on the paper, not on the settings left open.
+  const [openedBefore, setOpenedBefore] = useState(isOpen);
+  if (isOpen !== openedBefore) {
+    setOpenedBefore(isOpen);
+    if (isOpen) setShowSettings(false);
+  }
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(
     null
   );
@@ -428,8 +436,11 @@ export function FocusMode({
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent
         side="right"
+        // The header closes it with a button of its own row.
+        showCloseButton={false}
         className="w-full sm:max-w-none p-0 overflow-hidden !outline-none"
       >
+        <FocusModeClose.Provider value={onClose}>
         <div className="flex flex-col h-full">
           {/* Compact Header */}
           <FocusModeHeader
@@ -537,6 +548,7 @@ export function FocusMode({
             )}
           </div>
         </div>
+        </FocusModeClose.Provider>
       </SheetContent>
     </Sheet>
   );

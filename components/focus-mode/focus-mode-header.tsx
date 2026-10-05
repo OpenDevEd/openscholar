@@ -2,6 +2,7 @@ import { CitationControl } from "@/components/citation-control";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import {
+  SheetClose,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -13,6 +14,7 @@ import {
   ExternalLink,
   Settings,
   Loader2,
+  X,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { DownloadMenu } from "@/components/download-menu";
@@ -65,16 +67,17 @@ export function FocusModeHeader({
   return (
     <SheetHeader className="flex-shrink-0 p-3 border-b">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between w-full gap-2 md:gap-0">
-        {/* First row: Focus Mode title + rating */}
+        {/* First row: where the paper is in its list, and the rating */}
         <div className="flex items-center justify-between md:justify-start gap-3">
-          <div className="flex items-center gap-3">
-            <SheetTitle className="text-lg">{tAccessibility('focusMode')}</SheetTitle>
+          {/* Named for screen readers only: the row shows the paper's controls. Out of the flow, so it takes no gap. */}
+          <SheetTitle className="sr-only">{tAccessibility('focusMode')}</SheetTitle>
+          {totalPapers > 1 ? (
             <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
               {currentIndex + 1} / {totalPapers}
             </div>
-          </div>
+          ) : null}
           {/* Star rating buttons - hidden on mobile */}
-          <div className="hidden md:flex items-center gap-0.5 mr-8 md:mr-0">
+          <div className="hidden md:flex items-center gap-0.5">
             <div className="flex items-center gap-1">
               <button
                 onClick={() =>
@@ -205,35 +208,40 @@ export function FocusModeHeader({
               S
             </span>
           </div>
-          <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
-          <div className="order-2 ml-auto flex items-center gap-1 md:order-none md:ml-0">
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onGoToPrevious}
-                disabled={currentIndex === 0}
-              >
-                <ChevronLeft className="h-3 w-3" />
-              </Button>
-              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                &larr;
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onGoToNext}
-                disabled={currentIndex === totalPapers - 1}
-              >
-                <ChevronRight className="h-3 w-3" />
-              </Button>
-              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                &rarr;
-              </span>
-            </div>
-          </div>
+          {/* One paper has nothing to step to. */}
+          {totalPapers > 1 ? (
+            <>
+              <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
+              <div className="order-2 ml-auto flex items-center gap-1 md:order-none md:ml-0">
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onGoToPrevious}
+                    disabled={currentIndex === 0}
+                  >
+                    <ChevronLeft className="h-3 w-3" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                    &larr;
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onGoToNext}
+                    disabled={currentIndex === totalPapers - 1}
+                  >
+                    <ChevronRight className="h-3 w-3" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                    &rarr;
+                  </span>
+                </div>
+              </div>
+            </>
+          ) : null}
           <div className="order-3 basis-full md:hidden" />
           <div className="order-5 w-px h-4 bg-border mx-1 md:order-none"></div>
           <div className="order-6 flex items-center gap-1 md:order-none">
@@ -264,6 +272,18 @@ export function FocusModeHeader({
               />
               <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                 D
+              </span>
+            </div>
+            <div className="w-px h-4 bg-border mx-1"></div>
+            {/* Closes as the rest of the row acts: an outline button with its key beside it. */}
+            <div className="flex items-center gap-1">
+              <SheetClose asChild>
+                <Button variant="outline" size="sm" aria-label={tAccessibility("closeDialog")}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </SheetClose>
+              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                Esc
               </span>
             </div>
           </div>
