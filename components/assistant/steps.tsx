@@ -237,16 +237,19 @@ function Spending({ credits, sent, onAllow, onAlways, onDecline, onAddCredits }:
       </div>
       {/* The two sets of buttons share one cell and cross-fade, so the card keeps its height. */}
       <div className="grid border-t border-primary/15 p-3 [&>*]:col-start-1 [&>*]:row-start-1">
-        <motion.div initial={false} animate={{ opacity: short ? 0 : 1, scale: short ? 0.98 : 1 }} transition={{ duration: 0.25, ease: EASE }} inert={short} className="grid grid-cols-2 gap-2">
-          <Button className="h-9" disabled={sent} onClick={onAllow}>
+        {/* Two equal buttons side by side. In a language where one doesn't fit its half, each takes a line of its own: a yes is never cut short.
+            Neither can be pressed until the balance is read, since a yes the balance can't cover is refused. */}
+        <motion.div initial={false} animate={{ opacity: short ? 0 : 1, scale: short ? 0.98 : 1 }} transition={{ duration: 0.25, ease: EASE }} inert={short} className="flex flex-wrap gap-2">
+          <Button className="h-9 min-w-max flex-[1_1_calc(50%-0.25rem)]" disabled={sent || !known} onClick={onAllow}>
             {t("allow")}
           </Button>
-          <Button className="h-9" variant="secondary" disabled={sent} onClick={onAlways}>
+          <Button className="h-9 min-w-max flex-[1_1_calc(50%-0.25rem)]" variant="secondary" disabled={sent || !known} onClick={onAlways}>
             {t("always")}
           </Button>
         </motion.div>
         <motion.div initial={false} animate={{ opacity: short ? 1 : 0, scale: short ? 1 : 0.98 }} transition={{ duration: 0.25, ease: EASE }} inert={!short} className="grid grid-cols-[1fr_auto] gap-2">
-          <Button className="h-9 gap-1.5" onClick={onAddCredits}>
+          {/* Answered already, it has nothing left to add credits for. */}
+          <Button className="h-9 gap-1.5" disabled={sent} onClick={onAddCredits}>
             <Plus className="size-4" /> {t("addCredits")}
           </Button>
           <Button className="h-9 px-4" variant="secondary" disabled={sent} onClick={onDecline}>

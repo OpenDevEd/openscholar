@@ -6,7 +6,7 @@
 
 import { useDeferredValue, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { useAction, useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Eye, Link2, Loader2, Lock, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, UserRound, X } from "@/components/icons";
@@ -547,6 +547,9 @@ type Limit = number | null;
 const REPLY_LIMITS = [10, 15, 25, 50] as const;
 /** Digits a person's own limit can have: what the server takes, and a number holds exactly. */
 const CUSTOM_DIGITS = 15;
+/** Jobs the Spending sheet lists at first, and with each "More jobs". */
+const JOBS_FIRST = 5;
+const JOBS_MORE = 20;
 /** Replies the chart has room for: what the server keeps (convex/assistant/validators.ts). */
 const CHART_REPLIES = 12;
 
@@ -676,7 +679,11 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
   // What one job may hold, kept while every job asks, so allowing them again starts from it.
   const [kept, setKept] = useState<Limit>(ASSISTANT_JOB_CAPS[0]);
   const cap = allowance ? allowance.cap : kept;
-  const runs = (credits: number) => allowance !== null && (allowance.cap === null || credits <= allowance.cap);
+  // The chat's calls that held credits, the largest first, more of them when the person asks.
+  const jobs = usePaginatedQuery(api.assistant.spending.jobs, { threadId }, { initialNumItems: JOBS_FIRST });
+  const account = useQuery(api.billing.accounts.mine, {});
+  // The server's rule (convex/assistant/spending.ts): allowed, within what one may hold, and covered by the balance.
+  const runs = (credits: number) => allowance !== null && (allowance.cap === null || credits <= allowance.cap) && credits <= Math.floor(account?.balance ?? 0);
   const ta = useTranslations("assistant");
   return (
     <>
@@ -778,11 +785,11 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
                 </motion.div>
               </div>
               <ul className="divide-y divide-border/40 border-t border-border/40">
-                {(spending?.jobs ?? []).map((job, i) => {
+                {jobs.results.map((job) => {
                   const { kind, words } = viewOf(job.action);
                   const name = `steps.${words}.ask` as "steps.other.ask";
                   return (
-                    <li key={i} className="flex items-center gap-3 px-3 py-2.5">
+                    <li key={job.id} className="flex items-center gap-3 px-3 py-2.5">
                       <KindTile kind={kind} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{job.subject ?? (ta.has(name) ? ta(name) : ta("steps.other.ask"))}</span>
@@ -792,6 +799,13 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
                     </li>
                   );
                 })}
+                {jobs.status === "CanLoadMore" || jobs.status === "LoadingMore" ? (
+                  <li>
+                    <button type="button" disabled={jobs.status === "LoadingMore"} onClick={() => jobs.loadMore(JOBS_MORE)} className="flex w-full items-center justify-center px-3 py-2.5 text-xs font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:opacity-60">
+                      {t("moreJobs")}
+                    </button>
+                  </li>
+                ) : null}
                 <li className="flex items-center gap-3 px-3 py-2.5">
                   <KindTile kind="other" />
                   <span className="min-w-0 flex-1">
@@ -834,41 +848,27 @@ function JobRule({ runs }: { runs: boolean }) {
   );
 }
 
+/** A purchase of credits from the panel: the bundle being bought, the last one bought since the sheet opened, and the way to buy one. */
+export type Purchase = { buying: number | null; bought: number | null; buy: (credits: number) => void };
+
 /**
  * Adds credits without leaving the chat, for a call that waits on a balance too low for it
  * (#328): the balance and how far short it is, the call that waits, and the bundles the
  * account can buy. A purchase that needs a checkout page goes to it, and the tab comes back
  * to this chat. The mock's Add credits sheet.
  */
-export function TopUpSheet({ waiting, onBack }: { waiting: Waiting; onBack: () => void }) {
+export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /** The purchase under way and the last one made, which the panel keeps: a sheet closed and opened again finds a purchase still on its way, and can't start a second. */ purchase: Purchase; onBack: () => void }) {
   const t = useTranslations("assistant.topUp");
   const format = useFormatter();
-  const toast = useAppToast();
   const router = useRouter();
   const account = useQuery(api.billing.accounts.mine, {});
-  const buyCredits = useAction(api.billing.actions.buyCredits);
   const topUps = useFeatureFlag("credits.topups");
   const catalog = useBillingCatalog();
   const bundles = catalog && topUps ? topUpBundles(catalog) : [];
-  const [buying, setBuying] = useState<number | null>(null);
-  const [bought, setBought] = useState<number | null>(null);
+  const { buying, bought, buy } = purchase;
   const balance = Math.floor(account?.balance ?? 0);
   const need = Math.max(0, waiting.credits - balance);
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", trailingZeroDisplay: "stripIfInteger" });
-  const buy = async (credits: number) => {
-    if (buying !== null) return;
-    setBuying(credits);
-    try {
-      const { url } = await buyCredits({ credits });
-      // A purchase that needs a card goes to checkout, and comes back to this chat.
-      if (url) return void (window.location.href = url);
-      setBought(credits);
-    } catch (error) {
-      toast.error(t("failed"), getErrorMessage(error, ""));
-    } finally {
-      setBuying(null);
-    }
-  };
   return (
     <>
       <SheetHeader title={t("title")} detail={t("detail")} onBack={onBack} />

@@ -3485,7 +3485,8 @@
       "runs": "Runs",
       "asks": "Asks",
       "publishing": "Publishing a library",
-      "publishingDetail": "Visitors see it at once"
+      "publishingDetail": "Visitors see it at once",
+      "moreJobs": "More jobs"
     },
     "meter": {
       "reply": "This reply",

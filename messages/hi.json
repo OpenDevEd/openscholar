@@ -3493,7 +3493,8 @@
       "runs": "चलता है",
       "asks": "पूछता है",
       "publishing": "लाइब्रेरी प्रकाशित करना",
-      "publishingDetail": "आगंतुक इसे तुरंत देखते हैं"
+      "publishingDetail": "आगंतुक इसे तुरंत देखते हैं",
+      "moreJobs": "और जॉब"
     },
     "meter": {
       "reply": "यह जवाब",

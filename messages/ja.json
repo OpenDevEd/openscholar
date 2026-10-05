@@ -3493,7 +3493,8 @@
       "runs": "実行",
       "asks": "確認",
       "publishing": "ライブラリの公開",
-      "publishingDetail": "訪問者にすぐ表示されます"
+      "publishingDetail": "訪問者にすぐ表示されます",
+      "moreJobs": "さらに表示"
     },
     "meter": {
       "reply": "この返信",

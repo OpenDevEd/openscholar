@@ -3493,7 +3493,8 @@
       "runs": "S'exécute",
       "asks": "Demande",
       "publishing": "Publier une bibliothèque",
-      "publishingDetail": "Les visiteurs la voient aussitôt"
+      "publishingDetail": "Les visiteurs la voient aussitôt",
+      "moreJobs": "Plus de tâches"
     },
     "meter": {
       "reply": "Cette réponse",

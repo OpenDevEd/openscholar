@@ -3493,7 +3493,8 @@
       "runs": "运行",
       "asks": "询问",
       "publishing": "发布文献库",
-      "publishingDetail": "访客会立即看到"
+      "publishingDetail": "访客会立即看到",
+      "moreJobs": "更多任务"
     },
     "meter": {
       "reply": "本次回复",

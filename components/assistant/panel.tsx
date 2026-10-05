@@ -7,7 +7,7 @@
 
 import { Component, useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
-import { insertAtTop, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { insertAtTop, useAction, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import Link from "next/link";
@@ -42,7 +42,7 @@ import { observeActivity, restingObservation, type Activity, type OrbitMotion } 
 import { panelPlace } from "@/lib/assistant/place";
 import { AddCredits, Steps, type StepItem } from "./steps";
 import { IconButton, WorkingText } from "./parts";
-import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet } from "./sheets";
+import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
 
 type ThreadId = Id<"assistantThreads">;
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -159,6 +159,28 @@ function Overlay({
   const [sheets, setSheets] = useState<OpenSheet[]>([]);
   const depth = sheets.length;
   const push = (sheet: OpenSheet) => setSheets((all) => [...all, sheet]);
+  // A purchase of credits belongs to the panel, not to the sheet that started it: the sheet can be closed and opened
+  // again while the purchase is on its way, and a second one started then would charge the card twice.
+  const buyCredits = useAction(api.billing.actions.buyCredits);
+  const toast = useAppToast();
+  const [buying, setBuying] = useState<number | null>(null);
+  const [bought, setBought] = useState<number | null>(null);
+  const purchase: Purchase = {
+    buying,
+    bought,
+    buy: (credits) => {
+      if (buying !== null) return;
+      setBuying(credits);
+      buyCredits({ credits })
+        .then(({ url }) => {
+          // A purchase that needs a card goes to checkout, and the tab comes back to this chat.
+          if (url) window.location.href = url;
+          else setBought(credits);
+        })
+        .catch((error) => toast.error(t("topUp.failed"), getErrorMessage(error, "")))
+        .finally(() => setBuying(null));
+    },
+  };
   const pop = () => setSheets((all) => all.slice(0, -1));
   // A keyboard shortcut is an outside system: ⌘J or Ctrl+J opens and closes the panel, and Escape closes the top sheet.
   useEffect(() => {
@@ -228,7 +250,13 @@ function Overlay({
                 exit={{ opacity: 0, transition: { duration: 0.08 } }}
               >
                 {/* A call that waits on a balance too low for it opens Add credits from its card, never twice on top of itself. */}
-                <AddCredits value={(waiting) => setSheets((all) => (all.at(-1)?.kind === "topUp" ? all : [...all, { kind: "topUp", waiting }]))}>
+                <AddCredits
+                  value={(waiting) => {
+                    // What an earlier visit to the sheet bought has landed by now.
+                    if (buying === null) setBought(null);
+                    setSheets((all) => (all.at(-1)?.kind === "topUp" ? all : [...all, { kind: "topUp", waiting }]));
+                  }}
+                >
                 <Chat
                   threadId={threadId}
                   setThreadId={setThreadId}
@@ -267,7 +295,7 @@ function Overlay({
                   ) : sheet.kind === "share" ? (
                     <ShareSheet threadId={sheet.threadId} title={sheet.title} role={sheet.role} onBack={pop} />
                   ) : sheet.kind === "topUp" ? (
-                    <TopUpSheet waiting={sheet.waiting} onBack={pop} />
+                    <TopUpSheet waiting={sheet.waiting} purchase={purchase} onBack={pop} />
                   ) : (
                     <SpendingSheet threadId={sheet.threadId} title={sheet.title} onBack={pop} />
                   )}
