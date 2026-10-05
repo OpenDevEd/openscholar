@@ -253,13 +253,69 @@ describe("Screen all on a saved search, read on the server", () => {
     requests = [];
     await t.action(internal.screening.start.next, { jobId, first: 1_001 });
 
-    expect(requests.length).toBeGreaterThan(0);
-    for (const { url } of requests) {
+    // It carries on from the page after the first job's last, without reading the search from its start again.
+    expect(pages().map(({ url }) => url.searchParams.get("cursor"))).toEqual(["6", "7", "8", "9", "10"]);
+    for (const { url } of asked()) {
       expect(url.searchParams.get("sort")).toBe("cited_by_count:desc");
       expect(url.searchParams.get("filter")).toContain("randomized controlled trial");
     }
     const jobs = await t.run((ctx) => ctx.db.query("screeningJobs").order("asc").take(5));
     expect(jobs[1]).toMatchObject({ first: 1_001, last: 2_000, through: 2_500, totalPapers: 1_000, snapshot: { request: { sort: "cited_by_count:desc" } } });
+  });
+
+  it("carries a request on from the middle of a page, by cursor whatever the search's sort", async () => {
+    total = 2_500;
+    const { t, screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    const firstOf = async (jobId: Id<"screeningJobs">) => (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1)))[0]?.openalexId;
+
+    // Papers 150 to 1,149: the first job stops 149 papers into the sixth page.
+    const { jobId, made } = await screen({ first: 150, last: 2_400 });
+    expect(made).toMatchObject({ first: 150, last: 1_149, through: 2_400, totalPapers: 1_000 });
+    expect(await firstOf(jobId)).toBe("https://openalex.org/W150");
+    expect(pages().map(({ url }) => [url.searchParams.get("page"), url.searchParams.get("cursor")])).toEqual([[null, "*"], [null, "2"], [null, "3"], [null, "4"], [null, "5"], [null, "6"]]);
+
+    await t.run((ctx) => ctx.db.patch("screeningJobs", jobId, { status: "completed" }));
+    requests = [];
+    await t.action(internal.screening.start.next, { jobId, first: 1_150 });
+
+    // The job after it takes the sixth page's other papers first, then the pages after it: 1,150 to 2,149.
+    expect(pages().map(({ url }) => url.searchParams.get("cursor"))).toEqual(["6", "7", "8", "9", "10", "11"]);
+    const [, second] = await t.run((ctx) => ctx.db.query("screeningJobs").order("asc").take(5));
+    expect(second).toMatchObject({ first: 1_150, last: 2_149, through: 2_400, totalPapers: 1_000 });
+    expect(await firstOf(second._id)).toBe("https://openalex.org/W1150");
+
+    // And the one after that starts at paper 2,150, where the second stopped.
+    await t.run((ctx) => ctx.db.patch("screeningJobs", second._id, { status: "completed" }));
+    await t.action(internal.screening.start.next, { jobId: second._id, first: 2_150 });
+    const [, , third] = await t.run((ctx) => ctx.db.query("screeningJobs").order("asc").take(5));
+    expect(third).toMatchObject({ first: 2_150, last: 2_400, totalPapers: 251 });
+    expect(await firstOf(third._id)).toBe("https://openalex.org/W2150");
+  });
+
+  it("reads past the search's 10,000th paper by cursor, where OpenAlex has no numbered pages", async () => {
+    total = 10_400;
+    const { t, screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
+
+    const { jobId, made } = await screen({ first: 10_001, last: 10_100 });
+
+    expect(made).toMatchObject({ status: "processing", totalPapers: 100 });
+    expect(pages().every(({ url }) => url.searchParams.get("page") === null && url.searchParams.get("cursor") !== null)).toBe(true);
+    const [firstResult] = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1));
+    expect(firstResult?.openalexId).toBe("https://openalex.org/W10001");
+  });
+
+  it("holds a paper OpenAlex returns twice in one read once", async () => {
+    const { screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    const work = (i: number) => ({ id: `https://openalex.org/W${i}`, display_name: `Paper ${i}` });
+
+    // The count's answer, then a page that repeats its first work.
+    refusals = [
+      new Response(JSON.stringify({ meta: { count: 900 }, results: [work(1)] })),
+      new Response(JSON.stringify({ meta: { count: 900 }, results: [work(1), work(2), work(1)] })),
+    ];
+    const { made } = await screen({ first: 1, last: 3 });
+
+    expect(made).toMatchObject({ status: "processing", totalPapers: 2 });
   });
 
   it("ends a job as failed, with why, when its papers can't be read", async () => {

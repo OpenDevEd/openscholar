@@ -19,7 +19,7 @@ import { paramsToBucketSearchFilters } from "../../lib/chat/params-to-bucket-fil
 import { isRatingFilterActive } from "../../lib/utils";
 import { expandShortcuts, shortcutNames } from "../../lib/query-shortcuts";
 import { ratingsAmong, shortcutExpansions } from "../research/records";
-import { readSearchWorks, searchRequestValidator, type SearchSnapshot } from "./openalex";
+import { readSearchRun, searchRequestValidator, type SearchSnapshot } from "./openalex";
 
 /** The fields a screening paper keeps. */
 export const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships,cited_by_count,primary_location,best_oa_location,type,open_access";
@@ -156,22 +156,27 @@ export function snapshotOf(found: SavedSearchRequest): SearchSnapshot {
  * page's order, kept to its rating filter. Spends one OpenAlex request per page read.
  * `ended`: the search has no results past these. Given `snapshot`, the papers of the search
  * as it was then, whatever has been edited since: a request's later jobs read the same
- * search its first job did.
+ * search its first job did. `run`: whether the request goes on after these papers, and where
+ * the job before them stopped; `resume` is then where the job after them starts (./openalex.ts).
  */
 export async function searchPapers(
   ctx: ActionCtx,
   userId: Id<"users">,
   { searchId, first, last }: { searchId: string; first: number; last: number },
   snapshot?: SearchSnapshot,
-): Promise<{ papers: SearchPaper[]; ended: boolean; snapshot: SearchSnapshot }> {
+  run: { resume?: string; goesOn: boolean } = { goesOn: false },
+): Promise<{ papers: SearchPaper[]; ended: boolean; snapshot: SearchSnapshot; resume?: string }> {
   checkRange(first, last);
   // Typed here: the generated API's types depend on this module, so inference would loop.
   const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId });
   const taken = snapshot ?? snapshotOf(found);
   const { request, rating } = taken;
 
-  const works = await readSearchWorks<Work>(request, { first, last, select: SCREENING_FIELDS }, spender(ctx, found.clerkId));
-  return { papers: await keptByRating(ctx, userId, works.map(toPaper), rating), ended: works.length < last - first + 1, snapshot: taken };
+  const { works, ended, resume } = await readSearchRun<Work>(request, { first, last, select: SCREENING_FIELDS, ...run }, spender(ctx, found.clerkId));
+  // OpenAlex can return a work twice in one read: a job holds it once, or it is screened and paid for twice.
+  const ids = new Set<string>();
+  const papers = works.map(toPaper).filter((paper) => !ids.has(paper.openalexId) && ids.add(paper.openalexId));
+  return { papers: await keptByRating(ctx, userId, papers, rating), ended, snapshot: taken, ...(resume ? { resume } : {}) };
 }
 
 /** The papers a search's rating filter keeps, as its results page does: those the person rated within it. Every paper, when it has none. */

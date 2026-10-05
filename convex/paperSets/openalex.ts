@@ -30,6 +30,8 @@ const PAGE_GAP_MS = 250;
  * ties differently on the two paths and can't sort by `id`. Other sorts read cursor pages.
  */
 export const PAGE_ORDERED_SORT = "relevance_score:desc";
+/** How far into a search OpenAlex pages by number. Past it: "Cursor pagination is required for records beyond 10,000". */
+const PAGED_MAX = 10_000;
 
 /** A search's request as the results page makes it (lib/openalex/works-query.ts), with its sort. */
 export const searchRequestValidator = v.object({
@@ -99,19 +101,52 @@ async function readPage<Work>(request: SearchRequest, at: Page, select: string, 
 
 const limited = () => createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
 
+/** A place in a search's cursor pages: the cursor of a page, and how many of its works come before the place. */
+type Place = { cursor: string; taken: number };
+
 /**
- * The search's cursor pages, one after another from the start, each spent for just before
- * it's asked, so a search that runs out early spends only the pages it had.
+ * The search's cursor pages, one after another from `from`, each spent for just before it's
+ * asked, so a search that runs out early spends only the pages it had. A page tells the place
+ * `after` so many of its works: in it, at the start of the next, or nowhere once the search is over.
  */
-async function* cursorPages<Work>(request: SearchRequest, select: string, spend: (pages: number) => Promise<boolean>) {
-  let cursor: string | null = "*";
+async function* cursorPages<Work>(request: SearchRequest, select: string, spend: (pages: number) => Promise<boolean>, from: string) {
+  let cursor: string | null = from;
   while (cursor) {
     if (!(await spend(1))) throw limited();
+    const at: string = cursor;
     const page: { works: Work[]; nextCursor: string | null; total: number } = await readPage<Work>(request, { cursor }, select);
-    yield page;
+    const after = (used: number): Place | null => (used < page.works.length ? { cursor: at, taken: used } : page.nextCursor ? { cursor: page.nextCursor, taken: 0 } : null);
+    yield { works: page.works, total: page.total, after };
     cursor = page.nextCursor;
   }
 }
+
+/** The search's first work but `skipped`. */
+const fromStart = (skipped: number): Place => ({ cursor: "*", taken: skipped });
+/** A place as a job keeps it, for the job after it. A cursor is base64, so it holds no colon. */
+const kept = (place: Place) => `${place.taken}:${place.cursor}`;
+const placeOf = (resume: string): Place => ({ taken: Number(resume.slice(0, resume.indexOf(":"))), cursor: resume.slice(resume.indexOf(":") + 1) });
+
+/**
+ * Up to `count` works from a place in the search's cursor pages, the place after them (null
+ * when the search has no more), and how many works the search has in all.
+ */
+async function readFrom<Work>(request: SearchRequest, at: Place, count: number, select: string, spend: (pages: number) => Promise<boolean>): Promise<{ works: Work[]; after: Place | null; total: number }> {
+  const works: Work[] = [];
+  let [toSkip, total] = [at.taken, 0];
+  for await (const page of cursorPages<Work>(request, select, spend, at.cursor)) {
+    total = page.total;
+    const skipped = Math.min(toSkip, page.works.length);
+    const taken = page.works.slice(skipped, skipped + count - works.length);
+    works.push(...taken);
+    toSkip -= skipped;
+    if (works.length >= count) return { works, total, after: page.after(skipped + taken.length) };
+  }
+  return { works, total, after: null };
+}
+
+/** Whether works up to `last` can come by numbered page, in the results page's order. */
+const numbered = (request: SearchRequest, last: number) => request.sort === PAGE_ORDERED_SORT && last <= PAGED_MAX;
 
 /**
  * Works `first` to `last` (counting from 1), how many works came before the first one
@@ -126,7 +161,7 @@ async function readWorks<Work>(
   select: string,
   spend: (pages: number) => Promise<boolean>,
 ): Promise<{ works: Work[]; offset: number; total: number }> {
-  if (request.sort === PAGE_ORDERED_SORT) {
+  if (numbered(request, last)) {
     const firstPage = Math.floor((first - 1) / PAGE_SIZE) + 1;
     const pages = Array.from({ length: Math.ceil(last / PAGE_SIZE) - firstPage + 1 }, (_, i) => firstPage + i);
     if (!(await spend(pages.length))) throw limited();
@@ -138,14 +173,8 @@ async function readWorks<Work>(
     );
     return { works: read.flatMap((page) => page.works), offset: (firstPage - 1) * PAGE_SIZE, total: read[0]?.total ?? 0 };
   }
-  const works: Work[] = [];
-  let [seen, total] = [0, 0];
-  for await (const page of cursorPages<Work>(request, select, spend)) {
-    total = page.total;
-    works.push(...page.works.slice(Math.max(0, first - 1 - seen), Math.max(0, last - seen)));
-    seen += page.works.length;
-    if (seen >= last) break;
-  }
+  // ponytail: a range that starts deep in the search walks every page before it, one request each. A place kept per search would save that.
+  const { works, total } = await readFrom<Work>(request, fromStart(first - 1), last - first + 1, select, spend);
   return { works, offset: first - 1, total };
 }
 
@@ -268,4 +297,26 @@ export async function readSearchWorks<Work>(
   }
   const { works, offset } = await readWorks<Work>(request, first, last, select, spend);
   return works.slice(first - 1 - offset, last - offset);
+}
+
+/**
+ * Works `first` to `last` of the search for one job of a request, and whether the search
+ * `ended` with them. A request that `goesOn` after them is read by cursor, and so is one that
+ * carries on from the job before (`resume`): each job then starts where the last stopped,
+ * however far the request goes and whatever OpenAlex's order does between reads, and the
+ * place after these works comes back as `resume`. A job alone reads as `readSearchWorks` does.
+ */
+export async function readSearchRun<Work>(
+  request: SearchRequest,
+  { first, last, select, resume, goesOn }: { first: number; last: number; select: string; resume?: string; goesOn: boolean },
+  spend: (pages: number) => Promise<boolean>,
+): Promise<{ works: Work[]; ended: boolean; resume?: string }> {
+  const asked = last - first + 1;
+  if (!resume && !goesOn) {
+    const works = await readSearchWorks<Work>(request, { first, last, select }, spend);
+    return { works, ended: works.length < asked };
+  }
+  contact();
+  const { works, after } = await readFrom<Work>(request, resume ? placeOf(resume) : fromStart(first - 1), asked, select, spend);
+  return { works, ended: !after, ...(after ? { resume: kept(after) } : {}) };
 }
