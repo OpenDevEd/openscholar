@@ -679,10 +679,23 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
   }
   return (
     <>
-      {/* Inline, as a link is: a button is a box of its own by default, and a long title then dropped under its list number as one block. */}
-      <button type="button" className={cn(look, "inline text-left")} onClick={() => setAsking(true)}>
+      {/* A link, so it wraps as text does: a button is one box, and a title too long for the line dropped under its list number whole.
+          Any click on it, a new-tab one too, asks first. */}
+      <a
+        href={href}
+        rel="noreferrer"
+        className={look}
+        onClick={(event) => {
+          event.preventDefault();
+          setAsking(true);
+        }}
+        onAuxClick={(event) => {
+          event.preventDefault();
+          setAsking(true);
+        }}
+      >
         {children}
-      </button>
+      </a>
       <LinkSafetyDialog
         isOpen={asking}
         url={href ?? ""}
