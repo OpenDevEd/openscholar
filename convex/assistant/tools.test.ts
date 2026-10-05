@@ -15,7 +15,7 @@ import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
 import { carriedOn, pausedAt } from "./spending";
 import { MAX_ASKS, MODEL_READS, STEPS_SHOWN, forModel } from "./steps";
-import { DEFINITION_MAX, MAX_FAILED_ROUNDS, circling, core, definition, found, written } from "./tools";
+import { DEFINITION_MAX, MAX_FAILED_ROUNDS, circling, core, definition, found, misfit, written } from "./tools";
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
@@ -1012,6 +1012,17 @@ describe("the assistant's tools", () => {
     expect(stepIds).toHaveLength(60);
     expect(new Set(stepIds).size).toBe(30);
     expect(all.filter((item) => item.role !== "step").map((item) => `${item.role}: ${"text" in item ? item.text : ""}`)).toEqual(["assistant: All read.", "user: Read a great deal"]);
+  });
+
+  it("tell the model which argument doesn't fit, what it takes and what it got", () => {
+    // As Convex words it when a collection's name is given where its ID goes.
+    const said = misfit('[Request ID: 1a2b] Server Error\nUncaught ArgumentValidationError: Value does not match validator.\nPath: .collectionId\nValue: "TPD reading"\nValidator: v.id("collections")\n\n    at async handler (../convex/library/papers.ts:39:4)');
+    expect(said).toContain("collectionId");
+    expect(said).toContain('v.id("collections")');
+    expect(said).toContain('"TPD reading"');
+    // A missing argument is said on the error's own line, and any other error is left to its own words.
+    expect(misfit("Uncaught ArgumentValidationError: Object is missing the required field `id`. Consider wrapping the field validator in `v.optional(...)` if this is expected.")).toContain("required field `id`");
+    expect(misfit("Uncaught Error: something else")).toBeNull();
   });
 
   it("say which kind of change a step made to the person's research records, the one action that makes several", async () => {
