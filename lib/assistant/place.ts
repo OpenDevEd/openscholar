@@ -4,30 +4,38 @@
  * conversation instead of an empty new chat. Another tab starts on its own.
  */
 export type Place = { open: boolean; threadId: string | null };
+/**
+ * What the tab keeps: its place, and the chat link it has followed. A link stays in the
+ * address after the person has gone on to another chat, so it opens its chat once in a tab,
+ * and from then on the tab's own place stands.
+ */
+type Kept = Place & { link?: string };
 
 const KEY = "openscholar.assistant.panel";
-const FOLDED: Place = { open: false, threadId: null };
+const FOLDED: Kept = { open: false, threadId: null };
 
 /**
- * The place a page starts at: the chat its address links to (`?chat=`), opened; else what
- * the tab kept. Anything else in storage, written by an older version or by hand, is no place.
+ * The place a page starts at: the chat its address links to (`?chat=`), opened, the first
+ * time this tab sees that link; else what the tab kept. Anything else in storage, written
+ * by an older version or by hand, is no place.
  */
-export function placeFrom(search: string, stored: string | null): Place {
+export function placeFrom(search: string, stored: string | null): Kept {
   const linked = new URLSearchParams(search).get("chat");
-  if (linked) return { open: true, threadId: linked };
+  let kept: Kept | null = null;
   try {
-    const kept: unknown = JSON.parse(stored ?? "null");
-    if (kept && typeof kept === "object") {
-      const { open, threadId } = kept as Record<string, unknown>;
-      if (typeof open === "boolean" && (threadId === null || typeof threadId === "string")) return { open, threadId };
+    const read: unknown = JSON.parse(stored ?? "null");
+    if (read && typeof read === "object") {
+      const { open, threadId, link } = read as Record<string, unknown>;
+      if (typeof open === "boolean" && (threadId === null || typeof threadId === "string")) kept = { open, threadId, ...(typeof link === "string" ? { link } : {}) };
     }
   } catch {
     // Not JSON: no place.
   }
-  return FOLDED;
+  if (linked && kept?.link !== linked) return { open: true, threadId: linked, link: linked };
+  return kept ?? FOLDED;
 }
 
-let place: Place | undefined;
+let place: Kept | undefined;
 const listeners = new Set<() => void>();
 
 /** The tab's storage, which a browser can refuse (blocked, or full). The place then lasts until the page is left. */
@@ -40,7 +48,7 @@ function storage() {
 }
 
 /** Writes the place to the tab. A browser can refuse: it then lasts until the page is left. */
-function keep(now: Place) {
+function keep(now: Kept) {
   try {
     storage()?.setItem(KEY, JSON.stringify(now));
   } catch {
@@ -56,11 +64,12 @@ export const panelPlace = {
     listeners.add(listener);
     return () => void listeners.delete(listener);
   },
-  get: () => (place ??= placeFrom(window.location.search, storage()?.getItem(KEY) ?? null)),
+  get: (): Place => (place ??= placeFrom(window.location.search, storage()?.getItem(KEY) ?? null)),
   /** The server renders no panel. */
-  onServer: () => FOLDED,
+  onServer: (): Place => FOLDED,
   set(update: (now: Place) => Place) {
-    place = update(panelPlace.get());
+    const { link } = (place ??= placeFrom(window.location.search, storage()?.getItem(KEY) ?? null));
+    place = { ...update(place), ...(link === undefined ? {} : { link }) };
     keep(place);
     for (const listener of listeners) listener();
   },

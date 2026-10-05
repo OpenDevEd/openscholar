@@ -221,8 +221,9 @@ export const saveRead = internalMutation({
     // Only the assistant asks: a person saving a paper themselves has decided. A collection a library follows shows the paper outside the account.
     if (author === "assistant" && !approved && ((await saveAsksFirst(ctx, userId, paper.openalexId, rating)) || (collectionId !== undefined && (await followed(ctx, collectionId))))) throw createError("FORBIDDEN", ASKS_FIRST);
     const before = await findItem(ctx, userId, paper.openalexId);
-    // One reversal has to take back everything a call did. A saved paper given a new rating and a collection would be two changes with one undo between them.
-    if (before && collectionId !== undefined && rating !== undefined && rating !== (before.rating ?? null)) {
+    // One reversal has to take back everything a call did. A saved paper given a collection and a rating that changes anything,
+    // in the library or on search cards, would be two changes with one undo between them.
+    if (before && collectionId !== undefined && rating !== undefined && (rating !== (before.rating ?? null) || rating !== (await researchRating(ctx, userId, canonical(paper.openalexId))))) {
       throw createError("VALIDATION_ERROR", "This paper is already saved. Rate it with library/mutations:setLibraryRating and put it in the collection with library/papers:collect, one change at a time, so each can be undone.");
     }
     const saved = await savePaper(ctx, userId, paper, rating, author);
@@ -367,8 +368,10 @@ export const removeFromLibraryAction = defineUserMutation({
     // Undoing a save leaves a paper that isn't as the save left it: the same save, with that
     // rating in the library and on search cards, in no collection. Refusing here takes back
     // the removals above with the rest of the transaction.
-    // The place the save being undone gave it is part of that save. Any other place, or that one given again since, is a change since.
-    const elsewhere = collectionIds.some((collectionId, index) => collectionId !== args.expect?.collectionId || assignedAts[index] !== args.expect?.assignedAt);
+    // The paper's places have to be as the save being undone left them: none, or the one it gave. Another place, that one
+    // given again since, or that one taken away since, is a change the person made after it.
+    const asSaved = args.expect?.collectionId === undefined ? collectionIds.length === 0 : collectionIds.length === 1 && collectionIds[0] === args.expect.collectionId && assignedAts[0] === args.expect.assignedAt;
+    const elsewhere = !asSaved;
     if (args.expect && (item.savedAt !== args.expect.savedAt || (item.rating ?? null) !== args.expect.rating || (await researchRating(ctx, userId, item.openalexId)) !== args.expect.rating || elsewhere)) {
       throw createError("CONFLICT", "This paper has changed since then, so it was left in the library.");
     }
