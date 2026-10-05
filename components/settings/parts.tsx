@@ -136,7 +136,8 @@ export function Segmented<T extends string>({
               stacked ? "rounded-2xl" : "rounded-full",
               stacked ? "px-4 py-2.5 text-sm" : size === "lg" ? "h-11 px-4 text-sm" : size === "md" ? "h-9 px-4 text-sm" : "h-8 px-3 text-xs",
               fill === true && "min-w-0 justify-center @min-[40rem]/segments:justify-between",
-              fill === "labels" && "flex-1 justify-center",
+              // Each segment starts from its label's width and they share what is left over, so a short label's spare room goes to a long one before any is cut.
+              fill === "labels" && "min-w-0 flex-auto justify-center",
               stacked && "flex-col items-stretch justify-center gap-2 @min-[40rem]/segments:justify-center",
               on ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
