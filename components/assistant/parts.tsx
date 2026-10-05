@@ -32,7 +32,7 @@ export function IconButton({ label, shortcut, icon, onClick, small }: { label: s
         type="button"
         aria-label={label}
         onClick={onClick}
-        className={cn("flex items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground", small ? "size-7" : "size-8")}
+        className={cn("flex shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground", small ? "size-7" : "size-8")}
       >
         {icon}
       </button>

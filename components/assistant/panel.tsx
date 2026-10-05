@@ -977,13 +977,14 @@ function ReplyMeter({ meter, onCarryOn, onSpending }: { meter: Meter; onCarryOn:
           {t.rich(meter.cap === null ? "spent" : "spentOf", { spent: meter.spent, cap: meter.cap ?? 0, n: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}
         </span>
       </motion.button>
-      <motion.div initial={false} animate={{ opacity: paused ? 1 : 0 }} inert={!paused} className="flex items-center gap-2 pl-1">
+      {/* In a narrow panel, or with a long number, the sentence gives way first and then the button's words: both controls stay in reach. */}
+      <motion.div initial={false} animate={{ opacity: paused ? 1 : 0 }} inert={!paused} className="flex min-w-0 items-center gap-2 pl-1">
         <CirclePause className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-        <span className="whitespace-nowrap font-medium text-amber-700 dark:text-amber-400">
+        <span className="min-w-0 shrink-[4] truncate font-medium text-amber-700 dark:text-amber-400">
           {pause}
         </span>
-        <Button size="sm" variant="secondary" className="h-7 rounded-full px-3" onClick={onCarryOn}>
-          {meter.paused === "requests" || meter.limit === null ? t("carryOn") : t("allowMore", { limit: meter.limit })}
+        <Button size="sm" variant="secondary" className="h-7 min-w-0 rounded-full px-3" onClick={onCarryOn}>
+          <span className="truncate">{meter.paused === "requests" || meter.limit === null ? t("carryOn") : t("allowMore", { limit: meter.limit })}</span>
         </Button>
         <IconButton small label={t("change")} icon={<Gauge className="size-3.5" />} onClick={onSpending} />
       </motion.div>
