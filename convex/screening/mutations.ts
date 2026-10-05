@@ -164,6 +164,12 @@ export const createScreeningJobForUser = internalMutation({
 });
 
 /**
+ * How long a job may wait for its papers. An action runs for ten minutes at most, and one cut
+ * short by the backend stopping records nothing: past this, the job never got its papers.
+ */
+const READ_LIMIT_MS = 15 * 60_000;
+
+/**
  * Makes a job on a search before its papers are read, so the person has it at once: OpenAlex
  * can take seconds over them, or refuse them. `papers` is the most it may get. They follow
  * (`screening/start:read`), and the job is `reading` until they do.
@@ -177,6 +183,7 @@ export const openScreeningJob = internalMutation({
     const jobId = await insertJob(ctx, user, setup, { status: "processing", totalPapers: papers, reading: true });
     const { set, first, last, through = last, questions, snapshot } = setup;
     await ctx.scheduler.runAfter(0, internal.screening.start.read, { jobId, userId, searchId: set.searchId, first, through, questions, snapshot });
+    await ctx.scheduler.runAfter(READ_LIMIT_MS, internal.screening.mutations.failScreeningRead, { jobId, reason: "Its papers took too long to read. Run it again." });
     return { jobId };
   },
 });
@@ -199,6 +206,8 @@ export const fillScreeningJob = internalMutation({
   handler: async (ctx, { jobId, papers, answered, first, last, through }) => {
     const reading = await ctx.db.get("screeningJobs", jobId);
     if (!reading?.reading || reading.status !== "processing") return null;
+    // The person may have been suspended while the papers were read.
+    await requireActiveUser(ctx, reading.userId);
     const { affordable } = await affords(ctx, reading.userId, papers.length - answered);
     const now = Date.now();
     await ctx.db.patch("screeningJobs", jobId, { reading: undefined, totalPapers: papers.length, first, last, through, updatedAt: now, ...(affordable ? {} : { status: "creditsExhausted" as const }) });

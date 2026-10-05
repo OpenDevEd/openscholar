@@ -120,6 +120,10 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(created.results[0]).toMatchObject({ title: "Paper 150", abstract: "Tutoring works", authors: ["Ada Lovelace"], publicationYear: 2020 });
     // A request to count the search, and one for each page.
     expect(created.limits.find((row) => row.name === "openalex-day")?.value).toBe(20_000 - 4);
+
+    // The check that ends a job whose papers never came leaves this one alone.
+    await t.mutation(internal.screening.mutations.failScreeningRead, { jobId, reason: "Its papers took too long to read." });
+    expect(await read(jobId)).toMatchObject({ status: "processing", totalPapers: 301 });
   });
 
   it("reads an explicit sort's cursor pages in order from the start, as the results page lists them", async () => {
@@ -282,6 +286,16 @@ describe("Screen all on a saved search, read on the server", () => {
     await t.finishInProgressScheduledFunctions();
 
     expect((await read(jobId))?.status).toBe("cancelled");
+    expect(await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1))).toHaveLength(0);
+  });
+
+  it("gives no papers to a job whose person was suspended while they were read", async () => {
+    const { t, userId, alice, settled } = await setup({ ...search, sortBy: "relevance_score:desc" });
+
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 450, ...job, saveTo: { kind: "none" } });
+    await t.run((ctx) => ctx.db.patch("users", userId, { state: "suspended" }));
+
+    expect(await settled(jobId)).toMatchObject({ status: "failed", failure: expect.stringMatching(/suspended/i) });
     expect(await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1))).toHaveLength(0);
   });
 
