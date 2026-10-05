@@ -7,7 +7,7 @@ import type { Infer } from "convex/values";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import { openAlexFetch, openAlexReason } from "../../lib/openalex/fetch";
-import { openAlexUrl, worksAskOpenAlex } from "../../lib/openalex/request-url";
+import { openAlexHeaders, openAlexUrl, worksAskOpenAlex } from "../../lib/openalex/request-url";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 
 /** OpenAlex's largest page. */
@@ -236,9 +236,10 @@ export async function autocomplete(entity: "authors" | "funders", text: string, 
 export async function readWork<Work>(id: string, select: string, spend: (pages: number) => Promise<boolean>): Promise<Work | null> {
   contact();
   if (!(await spend(1))) throw limited();
+  const url = openAlexUrl(`works/${id}`, { select });
   let response: Response;
   try {
-    response = await fetch(openAlexUrl(`works/${id}`, { select }), { signal: AbortSignal.timeout(PAGE_TIMEOUT_MS) });
+    response = await fetch(url, { headers: openAlexHeaders(url), signal: AbortSignal.timeout(PAGE_TIMEOUT_MS) });
   } catch (error) {
     console.error(`[paperSets] OpenAlex work ${id} didn't answer`, error);
     throw createError("VALIDATION_ERROR", "OpenAlex didn't return this paper in time. Try again in a moment.");
