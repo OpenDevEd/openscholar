@@ -2,6 +2,7 @@ import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { internalAction, internalMutation, type ActionCtx } from "../lib/functions";
+import type { ChangeCall } from "../lib/userActions";
 import { startHeld } from "../billing/charge";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { createError, readConvexErrorData } from "../lib/errors";
@@ -68,7 +69,8 @@ async function jobPapers(ctx: ActionCtx, userId: Id<"users">, { set, first, thro
  * that. One request first counts the search, so a query OpenAlex won't take, or a range past
  * the search's last paper, is refused here. Papers the account holds are read at once.
  */
-async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assistant", { set, first, last: through, ...config }: Config & { set: PaperSet; first: number; last: number }, spendCap?: number): Promise<{ jobId: Id<"screeningJobs"> }> {
+async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assistant", { set, first, last: through, ...config }: Config & { set: PaperSet; first: number; last: number }, call?: ChangeCall): Promise<{ jobId: Id<"screeningJobs"> }> {
+  const spendCap = call?.credits;
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(through) || first < 1 || through < first) {
     throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   }
@@ -78,8 +80,10 @@ async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assi
   }
   // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
   type Made = { jobId: Id<"screeningJobs"> };
-  const approved = (make: (spend: { spendCap?: number; spendHold?: string }) => Promise<Made>): Promise<Made> =>
-    spendCap === undefined ? make({}) : startHeld(ctx, { userId, credits: spendCap, kind: "screening" }, (spendHold) => make({ spendCap, spendHold }));
+  // A job the assistant started keeps the step it started from, so its chat hears when it ends.
+  const step = call?.from ? { chatStep: call.from } : {};
+  const approved = (make: (spend: { spendCap?: number; spendHold?: string; chatStep?: Id<"assistantSteps"> }) => Promise<Made>): Promise<Made> =>
+    spendCap === undefined ? make(step) : startHeld(ctx, { userId, credits: spendCap, kind: "screening" }, (spendHold) => make({ spendCap, spendHold, ...step }));
   if (set.kind === "search") {
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: set.searchId });
@@ -200,7 +204,7 @@ export const screenAction = defineUserAction({
     ...(prune ? { prune } : {}),
   }),
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  run: (ctx, userId, args, author, call): Promise<{ jobId: Id<"screeningJobs"> }> => start(ctx, userId, author, args, call?.credits),
+  run: (ctx, userId, args, author, call): Promise<{ jobId: Id<"screeningJobs"> }> => start(ctx, userId, author, args, call),
 });
 export const screen = userAction(screenAction);
 export const screenForAssistant = assistantAction(screenAction);

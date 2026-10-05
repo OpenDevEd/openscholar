@@ -11,7 +11,7 @@ import { createError } from "../lib/errors";
  * A job stops spending when it's done, failed or cancelled, and when it stops for credits:
  * under a hold that is the figure it was allowed. Carried on after that, its items pay their own way.
  */
-const ENDED = new Set(["completed", "failed", "cancelled", "creditsExhausted"]);
+export const ENDED = new Set(["completed", "failed", "cancelled", "creditsExhausted"]);
 
 type Job = { _id: string; status?: string; spendHold?: string };
 

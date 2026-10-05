@@ -3968,6 +3968,43 @@
         "collection": "collection",
         "paper": "saved paper"
       }
+    },
+    "jobs": {
+      "credits": "<n>{count}</n> credits",
+      "of": "{done} of {total}",
+      "included": "included",
+      "excluded": "excluded",
+      "unclear": "unclear",
+      "open": "Open",
+      "question": "Question",
+      "missing": "Not reported",
+      "noAnswer": "No answer",
+      "titleOnly": "Title only",
+      "more": "{count, plural, one {# more paper} other {# more papers}} on its page",
+      "finished": "Finished",
+      "cancelled": "Cancelled",
+      "stopped": "Stopped",
+      "failed": "Failed",
+      "cancelFailed": "Couldn't cancel the job",
+      "screening": {
+        "waiting": "Waiting to screen {count, plural, one {# paper} other {# papers}}",
+        "waitingFor": "Waiting for your other papers to finish",
+        "running": "Screening {count, plural, one {# paper} other {# papers}}",
+        "done": "Screened {count, plural, one {# paper} other {# papers}}",
+        "cancelled": "Cancelled at {done} of {total}",
+        "stopped": "Stopped at {done} of {total}",
+        "failed": "The screening failed",
+        "cancel": "Cancel the screening"
+      },
+      "extraction": {
+        "running": "Extracting from {count, plural, one {# paper} other {# papers}}",
+        "done": "Extracted from {count, plural, one {# paper} other {# papers}}",
+        "cancelled": "Cancelled at {done} of {total} papers",
+        "stopped": "Stopped at {done} of {total} papers",
+        "failed": "The extraction failed",
+        "cancel": "Cancel the extraction"
+      },
+      "ended": "{kind, select, screening {Your screening} other {Your extraction}} {status, select, completed {finished} creditsExhausted {stopped at the credits you allowed} cancelled {was cancelled} other {failed}}"
     }
   }
 }

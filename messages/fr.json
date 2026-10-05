@@ -3978,6 +3978,43 @@
         "collection": "collection",
         "paper": "article enregistré"
       }
+    },
+    "jobs": {
+      "credits": "<n>{count}</n> crédits",
+      "of": "{done} sur {total}",
+      "included": "inclus",
+      "excluded": "exclus",
+      "unclear": "incertains",
+      "open": "Ouvrir",
+      "question": "Question",
+      "missing": "Non indiqué",
+      "noAnswer": "Pas de réponse",
+      "titleOnly": "Titre seul",
+      "more": "{count, plural, one {# autre article} other {# autres articles}} sur sa page",
+      "finished": "Terminé",
+      "cancelled": "Annulé",
+      "stopped": "Arrêté",
+      "failed": "Échec",
+      "cancelFailed": "Impossible d'annuler la tâche",
+      "screening": {
+        "waiting": "En attente pour trier {count, plural, one {# article} other {# articles}}",
+        "waitingFor": "En attente de la fin de vos autres articles",
+        "running": "Tri de {count, plural, one {# article} other {# articles}}",
+        "done": "{count, plural, one {# article trié} other {# articles triés}}",
+        "cancelled": "Annulé à {done} sur {total}",
+        "stopped": "Arrêté à {done} sur {total}",
+        "failed": "Le tri a échoué",
+        "cancel": "Annuler le tri"
+      },
+      "extraction": {
+        "running": "Extraction de {count, plural, one {# article} other {# articles}}",
+        "done": "Extrait de {count, plural, one {# article} other {# articles}}",
+        "cancelled": "Annulé à {done} sur {total} articles",
+        "stopped": "Arrêté à {done} sur {total} articles",
+        "failed": "L'extraction a échoué",
+        "cancel": "Annuler l'extraction"
+      },
+      "ended": "{kind, select, screening {Votre tri} other {Votre extraction}} {status, select, completed {est terminé} creditsExhausted {s'est arrêté aux crédits autorisés} cancelled {a été annulé} other {a échoué}}"
     }
   }
 }

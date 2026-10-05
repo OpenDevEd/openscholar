@@ -383,9 +383,11 @@ export const forget = internalMutation({
       }
       await ctx.db.delete("assistantSteps", step._id);
     }
-    // What people let the assistant spend in it goes too (./spending.ts).
+    // What people let the assistant spend in it goes too (./spending.ts), and the ends of the jobs it started (./jobs.ts).
     const limitsLeft = await forgetLimits(ctx, threadId);
-    if (results.length === FORGET_RESULTS || undosLeft || steps.length === FORGET_STEPS || limitsLeft) await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId });
+    const ends = await ctx.db.query("assistantJobEnds").withIndex("by_thread_and_pending", (q) => q.eq("threadId", threadId)).take(FORGET_STEPS);
+    for (const end of ends) await ctx.db.delete("assistantJobEnds", end._id);
+    if (results.length === FORGET_RESULTS || undosLeft || steps.length === FORGET_STEPS || limitsLeft || ends.length === FORGET_STEPS) await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId });
     return null;
   },
 });

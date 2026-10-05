@@ -29,6 +29,7 @@ import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { viewOf, type Kind } from "@/lib/assistant/actions";
 import { OrbitMark } from "./orbit-mark";
+import { JOB_STARTS, JobCard } from "./job-cards";
 import { WorkingText } from "./parts";
 
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -176,6 +177,12 @@ export function Steps({
           <ApprovalCard key={step.id} threadId={threadId} step={step} />
         ))}
       </AnimatePresence>
+      {/* Each job the reply started, live, under its map. */}
+      {steps
+        .filter((step) => JOB_STARTS.has(step.action) && step.status === "done")
+        .map((step) => (
+          <JobCard key={`job:${step.id}`} threadId={threadId} stepId={step.id} kind={step.action === "screening/start:screen" ? "screening" : "extraction"} />
+        ))}
     </div>
   );
 }

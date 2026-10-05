@@ -3978,6 +3978,43 @@
         "collection": "合集",
         "paper": "已保存的论文"
       }
+    },
+    "jobs": {
+      "credits": "<n>{count}</n> 积分",
+      "of": "{total} 篇中的 {done} 篇",
+      "included": "纳入",
+      "excluded": "排除",
+      "unclear": "不确定",
+      "open": "打开",
+      "question": "问题",
+      "missing": "未报告",
+      "noAnswer": "无答案",
+      "titleOnly": "仅标题",
+      "more": "其页面上还有 {count} 篇论文",
+      "finished": "已完成",
+      "cancelled": "已取消",
+      "stopped": "已停止",
+      "failed": "失败",
+      "cancelFailed": "无法取消任务",
+      "screening": {
+        "waiting": "等待筛选 {count} 篇论文",
+        "waitingFor": "正在等待你的其他论文完成",
+        "running": "正在筛选 {count} 篇论文",
+        "done": "已筛选 {count} 篇论文",
+        "cancelled": "在 {total} 篇中的第 {done} 篇时取消",
+        "stopped": "在 {total} 篇中的第 {done} 篇时停止",
+        "failed": "筛选失败",
+        "cancel": "取消筛选"
+      },
+      "extraction": {
+        "running": "正在从 {count} 篇论文中提取",
+        "done": "已从 {count} 篇论文中提取",
+        "cancelled": "在 {total} 篇论文中的第 {done} 篇时取消",
+        "stopped": "在 {total} 篇论文中的第 {done} 篇时停止",
+        "failed": "提取失败",
+        "cancel": "取消提取"
+      },
+      "ended": "{kind, select, screening {你的筛选} other {你的提取}}{status, select, completed {已完成} creditsExhausted {已在你允许的积分处停止} cancelled {已取消} other {失败}}"
     }
   }
 }
