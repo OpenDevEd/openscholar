@@ -738,11 +738,18 @@ export const messagesAction = defineUserQuery({
 });
 export const messages = userQuery(messagesAction);
 
-/** The kind of change a step made to the person's research records, the one action that makes several kinds. */
+/** The actions that put a paper in a collection or take it out, by one argument. */
+const PLACES = new Set(["library/papers:collect", "library/mutations:setPaperInCollection"]);
+/**
+ * Which of its several jobs a step's action did: the kind of change made to the person's
+ * research records, or which way a paper moved between the library and a collection.
+ */
 function variantOf(step: Doc<"assistantSteps">) {
-  if (step.path !== "research/records:change") return {};
+  if (step.path !== "research/records:change" && !PLACES.has(step.path)) return {};
   try {
-    const kind = (JSON.parse(step.input) as { command?: { kind?: unknown } }).command?.kind;
+    const args = JSON.parse(step.input) as { command?: { kind?: unknown }; inCollection?: unknown };
+    if (PLACES.has(step.path)) return typeof args.inCollection === "boolean" ? { variant: args.inCollection ? "in" : "out" } : {};
+    const kind = args.command?.kind;
     return typeof kind === "string" ? { variant: kind } : {};
   } catch {
     // Arguments too long to keep whole were cut, and don't parse.

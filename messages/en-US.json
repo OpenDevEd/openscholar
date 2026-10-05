@@ -3802,6 +3802,23 @@
         "doing": "Looking for people to share with",
         "did": "Looked for people to share with",
         "where": "Chats"
+      },
+      "collectIn": {
+        "doing": "Putting a paper in a collection",
+        "did": "Put a paper in a collection",
+        "where": "Collections",
+        "ask": "Put a paper in a collection"
+      },
+      "collectOut": {
+        "doing": "Taking a paper out of a collection",
+        "did": "Took a paper out of a collection",
+        "where": "Collections",
+        "ask": "Take a paper out of a collection"
+      },
+      "plan": {
+        "doing": "Checking your plan",
+        "did": "Checked your plan",
+        "where": "Billing"
       }
     },
     "asks": {

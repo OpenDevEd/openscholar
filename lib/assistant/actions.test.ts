@@ -13,6 +13,9 @@ describe("the words for what the assistant did", () => {
   it("are those of the job done, for the action that changes research records in several ways", () => {
     expect(viewOf("research/records:change", "rating")).toMatchObject({ kind: "paper", words: "rate" });
     expect(viewOf("research/records:change", "createSearch").words).toBe("newSearch");
+    // Into a collection and out of it are two things to have done.
+    expect(viewOf("library/papers:collect", "in").words).toBe("collectIn");
+    expect(viewOf("library/papers:collect", "out").words).toBe("collectOut");
     // A kind it doesn't know reads as a change to a search, not as nothing.
     expect(viewOf("research/records:change", "somethingNew").words).toBe("changeSearch");
   });

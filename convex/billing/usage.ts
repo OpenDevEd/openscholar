@@ -3,10 +3,12 @@ import { paginationOptsValidator, paginationResultValidator } from "convex/serve
 import { internalMutation, type QueryCtx } from "../lib/functions";
 import type { Id } from "../_generated/dataModel";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
-import { usageKindValidator } from "./validators";
+import { billingAccountSnapshotValidator, usageKindValidator } from "./validators";
+import { readCatalog } from "./catalog";
+import { findPlan } from "../../lib/billing/catalog";
 import { jobSpace, spendSpace, usageAgg, userSpace } from "./usageLog";
 import { insertUsage } from "./ledger";
-import { availableCredits } from "./accounts";
+import { availableCredits, readAccount } from "./accounts";
 
 /**
  * Claims a Stripe charge's refunded total for reversal, one caller at a time.
@@ -142,6 +144,46 @@ export const balanceAction = defineUserQuery({
 });
 export const balance = userQuery(balanceAction);
 export const balanceForAssistant = assistantQuery(balanceAction);
+
+export const planAction = defineUserQuery({
+  path: "billing/usage:plan",
+  description:
+    "Says which plan the person is on, as last read from the billing service: its name, what it costs, the credits it includes each period, the features it grants, whether a payment is past due, and when it renews or ends (times in milliseconds), with the plan that follows it. Null when they have no plan.",
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      name: v.string(),
+      price: v.optional(v.object({ amount: v.number(), interval: v.string() })),
+      credits: v.optional(v.object({ included: v.number(), interval: v.string() })),
+      features: billingAccountSnapshotValidator.fields.features,
+      pastDue: v.boolean(),
+      renewsAt: v.optional(v.number()),
+      endsAt: v.optional(v.number()),
+      nextPlan: v.optional(v.string()),
+    }),
+  ),
+  run: async (ctx, userId) => {
+    const account = await readAccount(ctx, userId);
+    if (!account?.plan) return null;
+    const catalog = await readCatalog(ctx);
+    // A plan the catalog no longer lists is still the person's: it goes by its ID.
+    const named = (id: string) => (catalog && findPlan(catalog, id)?.name) || id;
+    const plan = catalog ? findPlan(catalog, account.plan) : undefined;
+    return {
+      name: named(account.plan),
+      ...(plan?.price ? { price: plan.price } : {}),
+      ...(plan?.credits ? { credits: { included: plan.credits.included, interval: plan.credits.interval } } : {}),
+      ...(account.features ? { features: account.features } : {}),
+      pastDue: account.pastDue,
+      ...(account.renewsAt === undefined ? {} : { renewsAt: account.renewsAt }),
+      ...(account.changesAt === undefined ? {} : { endsAt: account.changesAt }),
+      ...(account.nextPlan ? { nextPlan: named(account.nextPlan) } : {}),
+    };
+  },
+});
+export const plan = userQuery(planAction);
+export const planForAssistant = assistantQuery(planAction);
 
 export const spendingAction = defineUserQuery({
   path: "billing/usage:spending",

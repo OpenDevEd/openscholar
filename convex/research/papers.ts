@@ -18,7 +18,7 @@ export const searchAction = defineUserAction({
   path: "research/papers:search",
   description:
     "Searches OpenAlex for papers by a query, filters, or both, and saves nothing. Use it to look papers up, to answer a question about papers, or to try a query: the person's saved searches stay as they are, and nothing changes on their page. " +
-    `Returns ${RESULTS_PAGE} papers a page, each with its ID, title, first authors with their IDs, the countries they work in, year, venue, type, DOI, whether it's open access, citations and the start of its abstract, and how many papers match in all. ` +
+    `Returns ${RESULTS_PAGE} papers a page, each with its ID, title, first authors with their IDs, the countries they work in, year, the day it was published, venue, type, DOI, whether it's open access, citations and the start of its abstract, and how many papers match in all. ` +
     "The query is keywords, with AND, OR, NOT and quoted phrases. A quoted phrase holds no ? or *, which OpenAlex reads as wildcards: leave a title's question mark out. " +
     SETTINGS +
     " Each page read counts against the person's OpenAlex allowance.",
@@ -133,6 +133,7 @@ export const getAction = defineUserAction({
       authors: authors.slice(0, AUTHORS_LISTED),
       ...(authors.length > AUTHORS_LISTED ? { moreAuthors: authors.length - AUTHORS_LISTED } : {}),
       ...(paper.publicationYear === undefined ? {} : { year: paper.publicationYear }),
+      ...(work.publication_date ? { published: work.publication_date } : {}),
       ...(paper.venue ? { venue: paper.venue } : {}),
       ...(work.type ? { type: work.type } : {}),
       ...(work.language ? { language: work.language } : {}),
