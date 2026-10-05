@@ -81,7 +81,7 @@ async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assi
   // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
   type Made = { jobId: Id<"screeningJobs"> };
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
-  const step = call?.stepId ? { chatStep: call.stepId } : {};
+  const step = call?.from ? { chatStep: call.from } : {};
   const approved = (make: (spend: { spendCap?: number; spendHold?: string; chatStep?: Id<"assistantSteps"> }) => Promise<Made>): Promise<Made> =>
     spendCap === undefined ? make(step) : startHeld(ctx, { userId, credits: spendCap, kind: "screening" }, (spendHold) => make({ spendCap, spendHold, ...step }));
   if (set.kind === "search") {

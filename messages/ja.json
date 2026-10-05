@@ -3988,6 +3988,7 @@
       "open": "開く",
       "question": "質問",
       "missing": "記載なし",
+      "noAnswer": "回答なし",
       "titleOnly": "タイトルのみ",
       "more": "残り {count} 件はページで",
       "finished": "完了",

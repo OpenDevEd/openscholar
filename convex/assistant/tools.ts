@@ -141,10 +141,11 @@ const CHANGE_PAPERS = "change_papers";
 const changesSomething = (entry: UserAction) => entry.kind === "mutation" || (entry.kind === "action" && entry.changes === true);
 /**
  * Whether many of an action's changes can go in one bulk change: a mutation, since a bulk
- * change runs it inside its own (./bulk.ts), that alone would run without asking. One that
- * asks every time is asked about one by one.
+ * change runs it inside its own (./bulk.ts), that spends no credits. One that would ask alone
+ * makes the bulk change ask once, for all of it (`asksPlan`), as a person decided a bulk change
+ * should; one that spends credits is asked about with its own estimate, one call at a time.
  */
-const bulkable = (entry: UserAction) => entry.kind === "mutation" && runsWithoutAsking(entry);
+const bulkable = (entry: UserAction) => entry.kind === "mutation" && !entry.spendsCredits;
 /** What a reply is told at a change past `BULK` of its kind: the rest go in one call, which asks. */
 export const BULK_FIRST = `You've made ${BULK} changes of this kind in this reply, and more than that is a bulk change the person is asked about first. Make all that is left in one call: change_papers for papers, run_many for anything else. They're asked once, and it is one change with one undo.`;
 
@@ -209,7 +210,7 @@ export function batched(input: unknown): { entry: UserAction; each: Record<strin
   const entry = typeof name === "string" ? namedAs(name) : undefined;
   if (!entry) return { error: `No action is named ${cut(String(name), 200)}. Look one up with find_action.` };
   if (!bulkable(entry))
-    return { error: entry.kind === "action" ? "run_many can't run this action many times in one go. To save, collect, rate or remove many papers, use change_papers." : "run_many makes changes that run without asking. This action reads, or asks every time: run it with its own tool or run_action, once for each." };
+    return { error: entry.kind === "action" ? "run_many can't run this action many times in one go. To save, collect, rate or remove many papers, use change_papers." : "run_many can't run an action that reads, or that spends credits: run it with its own tool or run_action, once for each." };
   if (!Array.isArray(each) || !each.length) return { error: '"each" is empty: give one set of arguments for each change.' };
   const parsed = each.map((given) => inputSchema(entry).safeParse(given));
   const wrong = parsed.findIndex((item) => !item.success);
@@ -403,7 +404,7 @@ export function toolsFor(
       // A change ends its step in its own transaction, so the two are saved together. A read's step is ended here.
       const change = changesSomething(entry);
       // What the person let it hold goes with a call that spends credits: the figure they said yes to, or the one their allowance covered.
-      const result = await written(() => runAction(ctx, userId, entry, input, key, change ? stepId : undefined, approved, allowed ? approvedFor : within?.credits));
+      const result = await written(() => runAction(ctx, userId, entry, input, key, stepId, approved, allowed ? approvedFor : within?.credits));
       if (!change) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
       note(entry.path, input, change ? "made" : result);
       // A change that returns nothing says it was made. A read that returns nothing found nothing.
@@ -478,6 +479,8 @@ export function toolsFor(
    * reply has made, it's more than `BULK`, or one of its changes would ask alone.
    */
   const asksPlan = async ({ entry, items }: Plan) => {
+    // A change that asks every time asks once here, for all of them.
+    if (!runsWithoutAsking(entry)) return true;
     if ((changes.get(kindOf(entry, items[0])) ?? 0) + items.length > BULK) return true;
     if (entry.kind === "query" || !entry.asksFirst) return false;
     for (const input of items) if (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) })) return true;

@@ -4,12 +4,12 @@
 // an extraction fills each paper's answers as they're read. Each reads the job's own progress
 // (convex/assistant/jobs.ts) and keeps one size from its first frame, whatever arrives.
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { Ban, Check, CircleAlert, CircleHelp, Coins, ExternalLink, Hourglass, Type, X } from "@/components/icons";
 import { Segmented } from "@/components/settings/parts";
 import { EASE } from "@/components/settings/model-map";
@@ -32,19 +32,47 @@ export const JOB_STARTS = new Set(["screening/start:screen", "extraction/start:e
 const SCREENING_H = 118;
 const RUNNING = new Set(["processing", "pending", "downloading_pdfs", "indexing", "extracting"]);
 
+/** An extraction's frame until its progress arrives: its header and question row. */
+const EXTRACTION_H = 120;
+
 /** A job's card, by the step that started it. */
 export function JobCard({ threadId, stepId, kind }: { threadId: Id<"assistantThreads">; stepId: string; kind: "screening" | "extraction" }) {
   const read = useQuery(api.assistant.jobs.card, { threadId, stepId: stepId as Id<"assistantSteps"> });
   return (
     <motion.div initial={{ opacity: 0, scale: 0.97, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }}>
-      {read === undefined ? (
-        // Its frame, at its size, until the job's progress arrives.
-        <div className="rounded-2xl border border-border/60 bg-muted/40" style={kind === "screening" ? { height: SCREENING_H } : { height: 72 }} />
-      ) : read === null ? null : read.card.kind === "screening" ? (
-        <ScreeningCard job={read.card} canCancel={read.canCancel} />
-      ) : (
-        <ExtractionCard job={read.card} canCancel={read.canCancel} />
-      )}
+      <Grows from={kind === "screening" ? SCREENING_H : EXTRACTION_H}>
+        {read === undefined ? (
+          // Its frame until the job's progress arrives.
+          <div className="rounded-2xl border border-border/60 bg-muted/40" style={{ height: kind === "screening" ? SCREENING_H : EXTRACTION_H }} />
+        ) : read === null ? null : read.card.kind === "screening" ? (
+          <ScreeningCard job={read.card} canCancel={read.canCancel} />
+        ) : (
+          <ExtractionCard job={read.card} canCancel={read.canCancel} />
+        )}
+      </Grows>
+    </motion.div>
+  );
+}
+
+/**
+ * A frame that takes its content's height by animating to it, so a card whose size is only
+ * known once its job is read grows into it instead of pushing the chat below it at once.
+ */
+function Grows({ from, children }: { from: number; children: ReactNode }) {
+  const inner = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(from);
+  const reduceMotion = useReducedMotion();
+  // A ResizeObserver: the content's height changes as the job's rows arrive.
+  useEffect(() => {
+    const element = inner.current;
+    if (!element) return;
+    const observer = new ResizeObserver(() => setHeight(element.offsetHeight));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <motion.div className="overflow-hidden" initial={false} animate={{ height }} transition={reduceMotion ? { duration: 0 } : { duration: 0.35, ease: EASE }}>
+      <div ref={inner}>{children}</div>
     </motion.div>
   );
 }
@@ -146,7 +174,8 @@ function ScreeningCard({ job, canCancel }: { job: Screening; canCancel: boolean 
           <motion.span className="h-full bg-amber-400" initial={false} animate={{ width: seg(job.unclear) }} transition={{ duration: 0.3, ease: EASE }} />
         </motion.div>
       </div>
-      <div className="mt-2.5 grid text-xs text-muted-foreground [&>*]:col-start-1 [&>*]:row-start-1">
+      <div className="mt-2.5 flex items-center gap-4 text-xs text-muted-foreground">
+      <div className="grid min-w-0 flex-1 [&>*]:col-start-1 [&>*]:row-start-1">
         <motion.div {...fade(queued)} inert={!queued} className="flex min-w-0 items-center gap-2">
           <Hourglass className="size-3 shrink-0" />
           <span className="min-w-0 truncate">{job.waiting?.label ?? t("screening.waitingFor")}</span>
@@ -158,10 +187,11 @@ function ScreeningCard({ job, canCancel }: { job: Screening; canCancel: boolean 
           <span className="flex items-center gap-1"><Check className="size-3 text-emerald-600" /> <span className="tabular-nums">{job.included}</span> {t("included")}</span>
           <span className="flex items-center gap-1"><X className="size-3" /> <span className="tabular-nums">{job.excluded}</span> {t("excluded")}</span>
           <span className="flex items-center gap-1"><CircleHelp className="size-3 text-amber-600" /> <span className="tabular-nums">{job.unclear}</span> {t("unclear")}</span>
-          <Link href={`/screening?job=${job.jobId}`} className="ml-auto flex items-center gap-1 font-medium text-foreground/80 hover:text-foreground">
-            {t("open")} <ExternalLink className="size-3" />
-          </Link>
         </motion.div>
+      </div>
+        <Link href={`/screening?job=${job.jobId}`} className="flex shrink-0 items-center gap-1 font-medium text-foreground/80 hover:text-foreground">
+          {t("open")} <ExternalLink className="size-3" />
+        </Link>
       </div>
     </div>
   );
@@ -217,9 +247,10 @@ function ExtractionCard({ job, canCancel }: { job: Extraction; canCancel: boolea
               </span>
               <div className="min-w-0 flex-1">
                 {/* Every question's answer shares one cell; only the picked one shows. */}
-                <div className="grid text-sm leading-snug [&>*]:col-start-1 [&>*]:row-start-1">
+                <div className="grid h-[2lh] text-sm leading-snug [&>*]:col-start-1 [&>*]:row-start-1">
                   {job.questions.map((asked) => {
-                    const answer = row.answers[asked.key];
+                    // Over, with no answer to this question: it isn't coming.
+                    const answer = row.answers[asked.key] ?? (running ? undefined : { text: "", missing: true, none: true });
                     const on = asked.key === question;
                     return (
                       <div key={asked.key} className="relative" aria-hidden={!on}>
@@ -227,9 +258,9 @@ function ExtractionCard({ job, canCancel }: { job: Extraction; canCancel: boolea
                           initial={false}
                           animate={{ opacity: on && answer ? 1 : 0, y: on && answer ? 0 : 3 }}
                           transition={{ duration: 0.25, ease: EASE }}
-                          className={cn("block [overflow-wrap:anywhere]", answer?.missing ? "italic text-muted-foreground" : "font-medium text-foreground")}
+                          className={cn("line-clamp-2 [overflow-wrap:anywhere]", answer?.missing ? "italic text-muted-foreground" : "font-medium text-foreground")}
                         >
-                          {answer ? (answer.missing ? t("missing") : answer.text) : " "}
+                          {answer ? (answer.missing ? t("none" in answer ? "noAnswer" : "missing") : answer.text) : " "}
                         </motion.span>
                         <motion.span aria-hidden initial={false} animate={{ opacity: on && !answer ? 1 : 0 }} transition={{ duration: 0.15 }} className="absolute left-0 top-1 h-3 w-3/5 rounded-full bg-foreground/[0.07]" />
                       </div>

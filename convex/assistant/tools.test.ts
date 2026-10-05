@@ -379,6 +379,10 @@ describe("the assistant's tools", () => {
     expect(change([rating, { ...rating, requestId: "r2" }])).toHaveProperty("each");
     expect(change([rating, { requestId: "r3", command: { kind: "clearShortcuts" } }])).toHaveProperty("error");
     expect(change([edit("patch", { fields: { query: "tutoring" }, clear: [] }), edit("clearResponses", { paperId: "W1" })])).toHaveProperty("error");
+    // A change that asks every time can be a batch too, asked about once; one that spends credits, or only reads, can't.
+    const answer = { jobId: "j1", paperId: "W1", questionKey: "q1", answer: true };
+    expect(batched({ name: "screening/papers:answer", each: [answer, { ...answer, paperId: "W2" }] })).toHaveProperty("each");
+    expect(batched({ name: "library/collections:listCollections", each: [{}] })).toHaveProperty("error");
 
     // A few changes in one call run at once, as one step too.
     mockDoStream
@@ -745,6 +749,9 @@ describe("the assistant's tools", () => {
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: true, always: true });
     await settled();
     expect(await jobs()).toBe(1);
+    // The job keeps the step that started it, so its chat hears when it ends.
+    const started = (await steps()).find((step) => step.path === "screening/start:screen" && step.status === "done")!;
+    expect(await t.run(async (ctx) => (await ctx.db.query("screeningJobs").first())?.chatStep)).toBe(started._id);
     expect(await limits()).toEqual({ replyLimit: null, allowance: { cap: 100 } });
     // A chat she starts takes it too, while her new chats take this chat's limits.
     await asAda.mutation(api.assistant.spending.setForNewChats, { threadId, on: true });

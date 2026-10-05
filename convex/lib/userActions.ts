@@ -90,7 +90,14 @@ export type UserMutation<Args extends PropertyValidators, Returns extends Generi
  * hands both to the mutation that writes, which checks `asksFirst` again unless approved and
  * ends the step, in the write's own transaction, as a change that is a mutation does.
  */
-export type ChangeCall = { stepId?: Id<"assistantSteps">; approved: boolean; /** On a call that spends credits: the most the person let it hold, by a yes to its question or by what they allow in the chat (#328). */ credits?: number };
+export type ChangeCall = {
+  stepId?: Id<"assistantSteps">;
+  /** The step of the reply this call is, on any action: a job it starts keeps it, so its chat hears when the job ends (#328). */
+  from?: Id<"assistantSteps">;
+  approved: boolean;
+  /** On a call that spends credits: the most the person let it hold, by a yes to its question or by what they allow in the chat (#328). */
+  credits?: number;
+};
 
 /** A user action that calls an outside service (OpenAlex, an AI provider, Autumn), reading and writing through queries and mutations. */
 export type UserActionEntry<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
@@ -132,10 +139,11 @@ const accountArg = { accountId: v.string() };
 const userArg = { userId: v.id("users") };
 /**
  * What only the assistant's side passes a change: `stepId`, the step of the reply this call
- * is, which the change ends in its own transaction; and `approved`, set when the person
- * themselves asked for it, as when they press Undo.
+ * is, which the change ends in its own transaction; `fromStep`, that step on an action that
+ * doesn't end it; and `approved`, set when the person themselves asked for it, as when they
+ * press Undo.
  */
-const changeArgs = { ...userArg, stepId: v.optional(v.id("assistantSteps")), approved: v.optional(v.boolean()), approvedCredits: v.optional(v.number()) };
+const changeArgs = { ...userArg, stepId: v.optional(v.id("assistantSteps")), fromStep: v.optional(v.id("assistantSteps")), approved: v.optional(v.boolean()), approvedCredits: v.optional(v.number()) };
 /** What the assistant is told when a call asks the person first. */
 export const ASKS_FIRST = "This needs the person's say first, and it can't be asked for here. Tell them what you would have done, so they can do it themselves.";
 
@@ -279,10 +287,11 @@ export function assistantAction<Args extends PropertyValidators, Returns extends
       args: { ...entry.args, ...changeArgs },
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const { userId, stepId, approved, approvedCredits, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
+        const { userId, stepId, fromStep, approved, approvedCredits, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
         // The sender may have been suspended or deleted since the turn began.
         const user: Doc<"users"> = await ctx.runQuery(internal.users.internal.getActiveUser, { userId });
-        return entry.run(ctx, user._id, own as ObjectType<Args>, "assistant", { ...(stepId ? { stepId } : {}), approved: approved === true, ...(approvedCredits === undefined ? {} : { credits: approvedCredits }) });
+        const from = stepId ?? fromStep;
+        return entry.run(ctx, user._id, own as ObjectType<Args>, "assistant", { ...(stepId ? { stepId } : {}), ...(from ? { from } : {}), approved: approved === true, ...(approvedCredits === undefined ? {} : { credits: approvedCredits }) });
       },
     }),
     entry.path,

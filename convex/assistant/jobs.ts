@@ -14,6 +14,7 @@ import { requireAuth } from "../lib/auth";
 import { internalMutation, query } from "../lib/functions";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { getScreeningJobAction } from "../screening/queries";
+import { readJobCounters } from "../extraction/jobCounters";
 import { formatAnswerForDisplay } from "../../lib/extraction/analysis";
 import { requireThread } from "./access";
 import { extractionCardValidator, JOB_CARD_ROWS, JOBS_TOLD_AT_ONCE, screeningCardValidator } from "./validators";
@@ -83,8 +84,8 @@ async function screeningAhead(ctx: QueryCtx, userId: Id<"users">, waiting: Id<"s
 async function extractionFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"extractionJobs">): Promise<Infer<typeof extractionCardValidator> | null> {
   const job = await ctx.db.get("extractionJobs", jobId);
   if (!job || job.userId !== userId) return null;
-  const [counts, credits, questions, papers] = await Promise.all([
-    ctx.db.query("extractionJobCounts").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique(),
+  const [counters, credits, questions, papers] = await Promise.all([
+    readJobCounters(ctx, jobId),
     creditsAgg.sum(ctx, { namespace: jobId }),
     ctx.db.query("extractionQuestions").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(MAX_QUESTIONS_PER_JOB),
     ctx.db.query("extractionPapers").withIndex("by_job_processable", (q) => q.eq("jobId", jobId).eq("processable", true)).take(JOB_CARD_ROWS),
@@ -111,8 +112,9 @@ async function extractionFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"ex
     status: job.status ?? "pending",
     name: job.name,
     total: job.totalPapers ?? 0,
-    done: counts?.counts.completed ?? job.processedPapers ?? 0,
-    failed: job.failedPapers ?? 0,
+    // Papers, as the job's page counts them: its counts row has each answer too.
+    done: counters.processed,
+    failed: counters.failed,
     credits,
     ...(job.spendCap === undefined ? {} : { cap: job.spendCap }),
     ...(job.error?.message && job.status !== "completed" ? { stopped: job.error.message } : {}),
@@ -170,6 +172,8 @@ export const deliver = internalMutation({
     const allowed = await requireThread(ctx, userId, threadId, "write").then(() => requireFeature(ctx, FLAG, userId)).then(() => true, () => false);
     if (!allowed) {
       for (const end of ends) await ctx.db.patch("assistantJobEnds", end._id, { pending: undefined });
+      // Anyone else's that waited are told next.
+      await ctx.scheduler.runAfter(0, internal.assistant.jobs.deliver, { threadId });
       return null;
     }
     try {

@@ -3988,6 +3988,7 @@
       "open": "Ouvrir",
       "question": "Question",
       "missing": "Non indiqué",
+      "noAnswer": "Pas de réponse",
       "titleOnly": "Titre seul",
       "more": "{count, plural, one {# autre article} other {# autres articles}} sur sa page",
       "finished": "Terminé",

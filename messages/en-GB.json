@@ -3980,6 +3980,7 @@
       "open": "Open",
       "question": "Question",
       "missing": "Not reported",
+      "noAnswer": "No answer",
       "titleOnly": "Title only",
       "more": "{count, plural, one {# more paper} other {# more papers}} on its page",
       "finished": "Finished",

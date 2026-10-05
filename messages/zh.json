@@ -3988,6 +3988,7 @@
       "open": "打开",
       "question": "问题",
       "missing": "未报告",
+      "noAnswer": "无答案",
       "titleOnly": "仅标题",
       "more": "其页面上还有 {count} 篇论文",
       "finished": "已完成",

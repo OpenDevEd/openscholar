@@ -194,7 +194,7 @@ async function start(ctx: ActionCtx, userId: Id<"users">, { name, questions, use
   if (!questions.length) throw invalid("Give at least one question to answer for each paper.");
   if (questions.length > MAX_QUESTIONS_PER_JOB) throw invalid(`An extraction takes up to ${MAX_QUESTIONS_PER_JOB} questions.`);
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
-  const job = { userId, name, bucketItems: await sourcesOf(ctx, userId, range), questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true, ...(call?.stepId ? { chatStep: call.stepId } : {}) };
+  const job = { userId, name, bucketItems: await sourcesOf(ctx, userId, range), questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true, ...(call?.from ? { chatStep: call.from } : {}) };
   if (cap === undefined) return await ctx.runMutation(internal.extraction.start.begin, job);
   // What was approved is what the job holds now, or more: the papers or the model may have changed since the person was asked, and a job that holds more than they said yes to is asked about again.
   const now: number = await ctx.runQuery(internal.extraction.start.figure, { userId, name, questions, ...(usePdfs === undefined ? {} : { usePdfs }), ...range });
