@@ -99,6 +99,8 @@ export const assistantSpenderFields = {
 /** What a person's last replies cost, oldest first, as the Spending sheet reads them. */
 export const recentCostsValidator = capped(v.array(v.number()), RECENT_REPLIES);
 
+/** Undone changes a chat keeps to tell the model of: the latest. A bulk change is one of them, however many it made. */
+export const UNDONE_TOLD = 20;
 export const assistantThreadFields = {
   ownerId: v.id("users"),
   title: v.string(),
@@ -125,6 +127,15 @@ export const assistantThreadFields = {
    * doesn't say it again while the model still reads that one.
    */
   view: v.optional(v.object({ address: v.optional(v.string()), day: v.optional(v.string()), userId: v.id("users"), order: v.number() })),
+  /**
+   * Changes of the assistant's that people took back with Undo and the model hasn't been told
+   * of: whose it was, and which step. A person's next message tells the model of theirs (the
+   * changes were to their own records): it only knows what its own calls came to, and made an
+   * undone change again when it found it gone. `undoneMore` counts those that no longer fit,
+   * for each person whose they were.
+   */
+  undone: capped(v.optional(v.array(v.object({ userId: v.id("users"), stepId: v.id("assistantSteps") }))), UNDONE_TOLD),
+  undoneMore: capped(v.optional(v.array(v.object({ userId: v.id("users"), count: v.number() }))), UNDONE_TOLD),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
