@@ -50,9 +50,13 @@ async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"scr
   const job = await getScreeningJobAction.run(ctx, userId, { jobId });
   if (!job) return null;
   const done = job.outcomes.included + job.outcomes.unclear + job.outcomes.excluded + job.outcomes.failed;
-  // Nothing of it read or being read while another of the person's screenings is: its papers wait for that one's (#335).
-  // With none ahead of it, it's starting, not waiting.
-  const ahead = job.status === "processing" && !job.reading && done === 0 && job.running === 0 ? await screeningAhead(ctx, userId, jobId) : null;
+  // Its papers wait in the person's queue (#335) while their others hold the slots: the queue says so, and the screening
+  // ahead of it, when one is being read, names what it waits for. Nothing read and nothing queued is a job starting.
+  const queued =
+    job.status === "processing" && done === 0 && job.running === 0
+      ? (await ctx.db.query("screeningResults").withIndex("by_job_and_status_and_waitingUser", (q) => q.eq("jobId", jobId).eq("status", "processing").eq("waitingUser", userId)).first()) !== null
+      : false;
+  const ahead = queued ? ((await screeningAhead(ctx, userId, jobId)) ?? { done: 0, total: 0 }) : null;
   return {
     kind: "screening",
     jobId,

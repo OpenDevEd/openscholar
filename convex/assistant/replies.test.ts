@@ -671,6 +671,11 @@ describe("a job a reply started", () => {
     // Everyone in the chat sees its card; only Ada, whose job it is, can cancel it.
     expect(await asBen.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ card: { kind: "screening", jobId, status: "processing", total: 2, cap: 23 }, mine: false });
     expect(await asAda.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ mine: true });
+    // Starting, it isn't waiting; a paper of it in Ada's queue, behind her other papers, is.
+    expect((await asAda.query(api.assistant.jobs.card, { threadId, stepId }))!.card).not.toHaveProperty("waiting");
+    const queued = await t.run((ctx) => ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", title: "Trial 1", status: "processing", waitingUser: ada, createdAt: 1 }));
+    expect((await asAda.query(api.assistant.jobs.card, { threadId, stepId }))!.card).toMatchObject({ waiting: { done: 0, total: 0 } });
+    await t.run((ctx) => ctx.db.delete("screeningResults", queued));
 
     // Ben's reply is being written when the job stops at its credits: the end waits for the chat.
     mockDoStream.mockImplementationOnce(hangingDoStream());
