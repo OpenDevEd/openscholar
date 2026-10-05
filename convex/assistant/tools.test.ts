@@ -11,10 +11,11 @@ import schema from "../schema";
 import { inputSchema } from "../lib/assistantTools";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
+import { screeningHold } from "../screening/estimate";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
-import { carriedOn, pausedAt } from "./spending";
+import { allowAlways, carriedOn, pausedAt } from "./spending";
 import { MAX_ASKS, MODEL_READS, STEPS_SHOWN, forModel } from "./steps";
 import { DEFINITION_MAX, MAX_FAILED_ROUNDS, circling, core, definition, found, written } from "./tools";
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
@@ -492,6 +493,20 @@ describe("the assistant's tools", () => {
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: false });
     await settled();
     expect(await jobs()).toBe(2);
+
+    // "Always" keeps a limit of hers that already covers the job, her own number included, raises one that doesn't to the smallest listed that does, and past the largest listed there is none.
+    const always = (cap: number, credits: number) =>
+      t.run(async (ctx) => {
+        const userId = (await ctx.db.get("assistantThreads", threadId))!.ownerId;
+        await ctx.db.patch("assistantLimits", (await ctx.db.query("assistantLimits").withIndex("by_thread_and_user", (q) => q.eq("threadId", threadId).eq("userId", userId)).unique())!._id, { jobs: { cap } });
+        return allowAlways(ctx, threadId, userId, credits);
+      });
+    expect(await always(1_500, 14)).toEqual({ cap: 1_500 });
+    expect(await always(10, 14)).toEqual({ cap: 100 });
+    expect(await always(300, 400)).toEqual({ cap: 1_000 });
+    expect(await always(300, 5_000)).toEqual({});
+    // A search's papers are OpenAlex's to count, so its hold is for the whole range asked for, whatever count the account last saw.
+    expect(await t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100 }))).toBe(450);
 
     // Asked before every job again, and an action that spends credits with no estimate to ask with isn't run at all.
     await asAda.mutation(api.assistant.spending.setAllowance, { threadId, allowance: null });

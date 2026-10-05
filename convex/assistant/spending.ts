@@ -77,15 +77,14 @@ async function setLimits(ctx: MutationCtx, threadId: Id<"assistantThreads">, use
 
 /**
  * "Always allow in this chat", said to a call that holds `credits`: from now on jobs run
- * without asking up to the smallest listed limit that covers this one, or the person's own
- * where that is higher. Past the largest listed limit there is none. One already allowed
- * with no limit stays so.
+ * without asking up to the smallest listed limit that covers this one. Past the largest
+ * listed limit there is none. A limit the person already has that covers it stays as it
+ * is, their own number included.
  */
 export async function allowAlways(ctx: MutationCtx, threadId: Id<"assistantThreads">, userId: Id<"users">, credits: number) {
   const { jobs } = await setLimits(ctx, threadId, userId, (now) => {
-    if (now.jobs && now.jobs.cap === undefined) return now;
-    const needed = Math.max(credits, now.jobs?.cap ?? 0);
-    const cap = ASSISTANT_JOB_CAPS.find((listed) => listed >= needed);
+    if (now.jobs && (now.jobs.cap === undefined || now.jobs.cap >= credits)) return now;
+    const cap = ASSISTANT_JOB_CAPS.find((listed) => listed >= credits);
     return { ...now, jobs: cap === undefined ? {} : { cap } };
   });
   return jobs;
