@@ -128,16 +128,27 @@ export const send = mutation({
     const today = new Date(now).toISOString().slice(0, 10);
     const said = thread.view && thread.view.userId === userId && thread.view.order > (thread.compactedThrough ?? -1) && thread.compactionOwed !== true ? thread.view : undefined;
     const moved = (view !== null && view !== said?.address) || today !== said?.day;
+    // Changes of the assistant's this person took back with Undo since the model was last told (./undo.ts). They were
+    // changes to this person's own records, so someone else's undos wait for a message of theirs.
+    const mine = (thread.undone ?? []).filter((entry) => entry.userId === userId);
+    const others = (thread.undone ?? []).filter((entry) => entry.userId !== userId);
+    const undone: string[] = [];
+    for (const { stepId } of mine) {
+      const step = await ctx.db.get("assistantSteps", stepId);
+      // What the change was, how many it made, what it was about, and whether a bulk one is still being put back.
+      if (step) undone.push([step.variant ? `${step.path}#${step.variant}` : step.path, step.batch === undefined ? null : `${step.count ?? step.batch} changes`, step.subject, step.reverting ? "still being put back" : null].filter(Boolean).join(", "));
+    }
+    if (mine.length && thread.undoneMore) undone.push(`and ${thread.undoneMore} changes before these`);
     const { messageId, message } = await assistant.saveMessage(ctx, {
       threadId: thread.agentThreadId,
       userId,
-      // What was undone since the last message goes with this one, whether or not the place changed.
-      ...(moved || thread.undone?.length
-        ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: notePart({ page: view ?? undefined, today, chat: threadId, undone: thread.undone }) }] } }
+      // What this person undid goes with their message, whether or not the place changed.
+      ...(moved || undone.length
+        ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: notePart({ page: view ?? undefined, today, chat: threadId, undone }) }] } }
         : { prompt: text }),
       skipEmbeddings: true,
     });
-    if (thread.undone?.length) await ctx.db.patch("assistantThreads", threadId, { undone: undefined });
+    if (mine.length) await ctx.db.patch("assistantThreads", threadId, { undone: others.length ? others : undefined, undoneMore: undefined });
     const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
     await touchThread(ctx, threadId, now);
     // What the sender lets a reply spend here, if they set a limit (./spending.ts). Taken with the message, like its model.

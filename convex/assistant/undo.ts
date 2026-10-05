@@ -30,9 +30,10 @@ export const run = mutation({
     // The reversing action refuses on its own when the record has changed since (its `expect`).
     await ctx.runMutation(makeFunctionReference<"mutation">(assistantPath(entry.path)), { ...JSON.parse(step.undo.args), ...(entry.retryKey ? { [entry.retryKey]: `undo:${stepId}` } : {}), userId, approved: true });
     await ctx.db.patch("assistantSteps", stepId, { undone: true });
-    // The assistant is told with the next message (./replies.ts): what the change was, how many it made, and what it was about.
-    const what = [step.variant ? `${step.path}#${step.variant}` : step.path, step.batch === undefined ? null : `${step.count ?? step.batch} changes`, step.subject].filter(Boolean).join(", ");
-    await ctx.db.patch("assistantThreads", threadId, { undone: [...(thread.undone ?? []), what].slice(-UNDONE_TOLD) });
+    // The assistant is told with this person's next message (./replies.ts). Past what the chat keeps, the earliest are counted, not forgotten.
+    const undone = [...(thread.undone ?? []), { userId, stepId }];
+    const over = Math.max(0, undone.length - UNDONE_TOLD);
+    await ctx.db.patch("assistantThreads", threadId, { undone: undone.slice(over), ...(over ? { undoneMore: (thread.undoneMore ?? 0) + over } : {}) });
     return null;
   },
 });

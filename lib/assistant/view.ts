@@ -32,11 +32,13 @@ const VALUE_MAX = 80;
  * One cut short, by whole characters, ends in an ellipsis, so the start of a long search
  * isn't read as the whole of it.
  */
-function shown(value: string) {
+function shown(value: string, max = VALUE_MAX) {
   const characters = [...value];
-  const kept = characters.length > VALUE_MAX ? `${characters.slice(0, VALUE_MAX).join("")}…` : value;
-  return kept.replace(/[<>&%;\n\r\t]/g, encodeURIComponent);
+  const kept = characters.length > max ? `${characters.slice(0, max).join("")}…` : value;
+  return kept.replace(/[<>&%;|\n\r\t]/g, encodeURIComponent);
 }
+/** Characters of one undone change, as the note says it: an action's name and a record's. */
+const UNDONE_MAX = 300;
 
 /** Any address, to resolve a path against as a browser would. */
 const SITE = "https://openscholar.invalid";
@@ -81,5 +83,5 @@ export function viewOf(address: string): string | null {
  * from when it was trained. Without the chat's ID, "share this chat" made it look through
  * the person's chats for one with a matching title.
  */
-export const notePart = ({ page, today, chat, undone }: { page?: string; today: string; chat: string; /** Changes of the assistant's undone with Undo since the last message. */ undone?: string[] }) =>
-  `<app_context>${page === undefined ? "" : `page: ${page}; `}today: ${today}; chat: ${chat}${undone?.length ? `; undone: ${undone.join(" | ")}` : ""}</app_context>`;
+export const notePart = ({ page, today, chat, undone }: { page?: string; today: string; chat: string; /** Changes of the assistant's the person undid and the model hasn't been told of. A record's name is theirs to choose, so each is encoded like a page's parameters. */ undone?: string[] }) =>
+  `<app_context>${page === undefined ? "" : `page: ${page}; `}today: ${today}; chat: ${chat}${undone?.length ? `; undone: ${undone.map((change) => shown(change, UNDONE_MAX)).join(" | ")}` : ""}</app_context>`;
