@@ -93,6 +93,16 @@ describe("classifyUnknownError — ConvexError fingerprints", () => {
     expect(classifyUnknownError(err).code).toBe("insufficient_credits");
   });
 
+  it("reads no provider failure into the app's own words about a request, which can quote the person's text", () => {
+    const err = new ConvexError({
+      code: "VALIDATION_ERROR",
+      message: 'OpenAlex didn\'t take this search: Wildcards (* or ?) do not work inside this quoted phrase: "Content moderation?".',
+    });
+    const result = classifyUnknownError(err);
+    expect(result.code).toBe("unknown");
+    expect(result.message).toContain("Content moderation?");
+  });
+
   it("R6: ConvexError with INSUFFICIENT_CREDITS: prefix in data.message → insufficient_credits", () => {
     const err = new ConvexError({ message: "INSUFFICIENT_CREDITS: need 50" });
     const result = classifyUnknownError(err);
