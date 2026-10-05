@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./test";
 import { clerk } from "@clerk/testing/playwright";
 import { ConvexHttpClient } from "convex/browser";
 import { readFile } from "node:fs/promises";

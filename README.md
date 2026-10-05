@@ -180,6 +180,13 @@ It's designed for systematic reviews and complex queries, not just keyword match
   - `E2E_CLERK_USER_PASSWORD`
   - Optional: `E2E_BASE_URL` (defaults to `http://localhost:3000`)
 
+Playwright starts a fresh server with Next's test proxy enabled and does not reuse
+a running preview. For another port, set both `E2E_BASE_URL` and
+`PLAYWRIGHT_WEB_SERVER_COMMAND`, for example `http://localhost:3478` and
+`npm run build && npm run start -- --hostname localhost --port 3478`.
+E2E specs import `test` and `expect` from `e2e/test.ts` so every test initializes
+the proxy. Responses stay real unless a spec supplies a network fixture.
+
 - CI workflow:
   - `.github/workflows/ci.yml` runs:
     - `unit-and-build` (`npm run test`, `npm run build`)

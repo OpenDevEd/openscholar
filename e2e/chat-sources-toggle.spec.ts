@@ -18,7 +18,7 @@
  * Reduced-motion is asserted by `emulateMedia` in the keyboard-only
  * walkthrough — the panel root must expose `data-motion-disabled="true"`.
  */
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./test";
 import { clerk } from "@clerk/testing/playwright";
 
 const SAVED_SEARCH_ID = "e2e-sources-toggle-saved-search";

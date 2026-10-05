@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: process.env.NEXT_BUILD_SKIP_VERIFIED_TYPES === "1",
   },
   experimental: {
+    testProxy: process.env.PLAYWRIGHT_TEST_PROXY === "1",
     optimizePackageImports: ["lucide-react"],
     turbopackFileSystemCacheForBuild: true,
   },

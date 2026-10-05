@@ -174,9 +174,13 @@ describe("<ConfigurationWorkspace>", () => {
         expect(analytics.getByText("problems.posthog")).toBeInTheDocument();
         expect(analytics.queryByLabelText("analytics.uiHostLabel")).not.toBeInTheDocument();
 
-        await user.type(analytics.getByLabelText("analytics.hostLabel"), "https://eu.i.posthog.com");
-        await user.type(analytics.getByLabelText("analytics.keyLabel"), "phc_12345678901234567890");
-        await user.type(analytics.getByLabelText("analytics.uiHostLabel"), "not-an-address");
+        // This checks field visibility and validation after editing, not individual keystrokes.
+        await user.click(analytics.getByLabelText("analytics.hostLabel"));
+        await user.paste("https://eu.i.posthog.com");
+        await user.click(analytics.getByLabelText("analytics.keyLabel"));
+        await user.paste("phc_12345678901234567890");
+        await user.click(analytics.getByLabelText("analytics.uiHostLabel"));
+        await user.paste("not-an-address");
         expect(analytics.getByText("problems.posthogUiHost")).toBeInTheDocument();
         expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
 
@@ -185,7 +189,8 @@ describe("<ConfigurationWorkspace>", () => {
         await user.clear(analytics.getByLabelText("analytics.hostLabel"));
         expect(analytics.queryByLabelText("analytics.uiHostLabel")).not.toBeInTheDocument();
         expect(analytics.queryByText("problems.posthogUiHost")).not.toBeInTheDocument();
-        await user.type(analytics.getByLabelText("analytics.hostLabel"), "https://eu.i.posthog.com");
+        await user.click(analytics.getByLabelText("analytics.hostLabel"));
+        await user.paste("https://eu.i.posthog.com");
         expect(analytics.getByLabelText("analytics.uiHostLabel")).toHaveValue("");
       },
     );

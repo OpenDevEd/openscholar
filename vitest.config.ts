@@ -1,9 +1,16 @@
 import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react";
 import path from "path";
 
+const domTests = [
+  "tests/hooks/**/*.test.{ts,tsx}",
+  "tests/components/**/*.test.tsx",
+  "tests/a11y/**/*.test.tsx",
+  "app/**/__tests__/**/*.test.tsx",
+  "tests/*.test.tsx",
+];
+
 export default defineConfig({
-  plugins: [react()],
+  oxc: { jsx: { runtime: "automatic" } },
   resolve: {
     alias: [
       { find: "@", replacement: path.resolve(__dirname, ".") },
@@ -12,18 +19,10 @@ export default defineConfig({
     ],
   },
   test: {
-    environment: "node",
-    environmentMatchGlobs: [
-      // Convex function tests need edge-runtime (convex-test requirement)
-      ["convex/**/*.test.ts", "edge-runtime"],
-      // React hook/component tests need jsdom for DOM APIs
-      ["tests/hooks/**/*.test.ts", "jsdom"],
-      ["tests/hooks/**/*.test.tsx", "jsdom"],
-      ["tests/components/**/*.test.tsx", "jsdom"],
-      ["tests/a11y/**/*.test.tsx", "jsdom"],
-      ["app/**/__tests__/**/*.test.tsx", "jsdom"],
-      // tsx test files at tests root level use jsdom
-      ["tests/*.test.tsx", "jsdom"],
+    projects: [
+      { test: { name: "convex", environment: "edge-runtime", include: ["convex/**/*.test.ts"] } },
+      { test: { name: "dom", environment: "jsdom", include: domTests } },
+      { test: { name: "node", environment: "node", include: ["tests/**/*.test.{ts,tsx}", "lib/**/*.test.ts"], exclude: [...domTests, "tests/live-billing/**"] } },
     ],
     server: {
       deps: {
@@ -31,14 +30,6 @@ export default defineConfig({
         inline: ["convex-test"],
       },
     },
-    include: [
-      "tests/**/*.test.ts",
-      "tests/**/*.test.tsx",
-      "convex/**/*.test.ts",
-      "lib/**/*.test.ts",
-      "app/**/__tests__/**/*.test.tsx",
-    ],
-    exclude: ["tests/live-billing/**/*.test.ts"],
     setupFiles: ["./tests/setup.ts"],
     // CI runs these beside three Next.js builds on the same machine. A jsdom
     // test that takes a second or two alone, such as rendering 950 bucket
