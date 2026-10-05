@@ -1850,7 +1850,8 @@
       "completed": "完了",
       "cancelled": "キャンセル済み",
       "failed": "失敗",
-      "creditsExhausted": "クレジット切れ"
+      "creditsExhausted": "クレジット切れ",
+      "capped": "上限で停止"
     },
     "outcome": {
       "included": "採用",

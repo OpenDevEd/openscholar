@@ -116,7 +116,8 @@ export function JobView({
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex items-center gap-2.5">
             <h2 className="truncate text-xl font-semibold tracking-tight">{name}</h2>
-            <StatusChip tone={TONE[phase]} icon={phase === "waiting" ? Hourglass : "tone"}>{t(`phase.${phase}`)}</StatusChip>
+            {/* One that stopped at the most it may spend still has credits to its name: it says so, not "Out of credits". */}
+            <StatusChip tone={TONE[phase]} icon={phase === "waiting" ? Hourglass : "tone"}>{phase === "creditsExhausted" && job.capped ? t("phase.capped") : t(`phase.${phase}`)}</StatusChip>
           </div>
           {/* One line of facts and, for a search, its filters: it scrolls sideways under a fading edge. */}
           <div className="min-w-0 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">

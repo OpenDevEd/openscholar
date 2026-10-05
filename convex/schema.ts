@@ -993,7 +993,7 @@ export default defineSchema({
     serverEffort: v.optional(effortValidator),
     // The most it may spend, on a job the assistant started with the person's say (#328): its papers stop once it has.
     spendCap: v.optional(v.number()),
-    // Set on one that stopped there, to tell it from one whose credits ran out.
+    // Set once it has: its papers that haven't started are skipped, those running finish and are kept, and it ends as one that stopped at its limit.
     capped: v.optional(v.literal(true)),
     createdAt: v.number(),
     updatedAt: v.number(),
