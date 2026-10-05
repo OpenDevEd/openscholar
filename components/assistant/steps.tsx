@@ -268,13 +268,13 @@ function Spending({ credits, sent, onAllow, onAlways, onDecline, onAddCredits }:
       </div>
       {/* The two sets of buttons share one cell and cross-fade, so the card keeps its height. */}
       <div className="grid border-t border-primary/15 p-3 [&>*]:col-start-1 [&>*]:row-start-1">
-        {/* Two equal buttons side by side. In a language where one doesn't fit its half, each takes a line of its own: a yes is never cut short.
+        {/* Two equal buttons side by side, with little padding so the English pair fits the panel. In a language where one doesn't fit its half, each takes a line of its own: a yes is never cut short.
             Neither can be pressed until the balance is read, since a yes the balance can't cover is refused. */}
         <motion.div initial={false} animate={{ opacity: short ? 0 : 1, scale: short ? 0.98 : 1 }} transition={{ duration: 0.25, ease: EASE }} inert={short} className="flex flex-wrap gap-2">
-          <Button className="h-9 min-w-max flex-[1_1_calc(50%-0.25rem)]" disabled={sent || !known} onClick={onAllow}>
+          <Button className="h-9 min-w-max flex-[1_1_calc(50%-0.25rem)] px-2" disabled={sent || !known} onClick={onAllow}>
             {t("allow")}
           </Button>
-          <Button className="h-9 min-w-max flex-[1_1_calc(50%-0.25rem)]" variant="secondary" disabled={sent || !known} onClick={onAlways}>
+          <Button className="h-9 min-w-max flex-[1_1_calc(50%-0.25rem)] px-2" variant="secondary" disabled={sent || !known} onClick={onAlways}>
             {t("always")}
           </Button>
         </motion.div>
