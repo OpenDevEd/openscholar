@@ -1,3 +1,5 @@
+import { topicHref } from "../topics/links";
+
 /**
  * Where a person is in the app when they send the assistant a message (#327): the page's
  * path, and the parameters of its address that say what it shows. The assistant reads it
@@ -85,3 +87,27 @@ export function viewOf(address: string): string | null {
  */
 export const notePart = ({ page, today, chat, undone }: { page?: string; today: string; chat: string; /** Changes of the assistant's the person undid and the model hasn't been told of. A record's name is theirs to choose, so each is encoded like a page's parameters. */ undone?: string[] }) =>
   `<app_context>${page === undefined ? "" : `page: ${page}; `}today: ${today}; chat: ${chat}${undone?.length ? `; undone: ${undone.map((change) => shown(change, UNDONE_MAX)).join(" | ")}` : ""}</app_context>`;
+
+/** The record a reply's link is to, for the chip it shows as. `page` is the app's own page for one linked outside it. */
+export type LinkedRecord = { kind: "search" | "collection" | "paper" | "extraction" | "screening" | "library" | "topic" | "chat"; paperId?: string; page?: string };
+
+/** What a link in a reply points at: one record of the app's, a paper on OpenAlex, or null for any other page or site. */
+export function recordOf(address: string): LinkedRecord | null {
+  const paper = /^https:\/\/openalex\.org\/(?:works\/)?(W\d+)$/i.exec(address)?.[1];
+  if (paper) return { kind: "paper", paperId: paper.toUpperCase() };
+  // A topic on OpenAlex has its page here too.
+  const topic = /^https:\/\/openalex\.org\/(T[1-9]\d*)$/i.exec(address)?.[1];
+  if (topic) return { kind: "topic", page: topicHref(topic.toUpperCase(), "") };
+  if (!inApp(address)) return null;
+  const url = new URL(address, SITE);
+  const path = url.pathname.replace(/\/+$/, "");
+  const has = (key: string) => Boolean(url.searchParams.get(key));
+  if (has("chat")) return { kind: "chat" };
+  if (/^\/results\/[^/]+$/.test(path)) return { kind: "search" };
+  if (path === "/library" && has("col")) return { kind: "collection" };
+  if (/^\/extraction\/[^/]+$/.test(path) && path !== "/extraction/new") return { kind: "extraction" };
+  if (path === "/screening" && has("job")) return { kind: "screening" };
+  if (/^\/evidence-libraries\/[^/]+(\/.*)?$/.test(path)) return { kind: "library" };
+  if (/^\/topics\/[^/]+$/.test(path)) return { kind: "topic" };
+  return null;
+}

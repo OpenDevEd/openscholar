@@ -4,7 +4,7 @@
 // way to give the assistant access: it can already reach everything they can. Picking a record
 // writes "@name" into the message, highlighted, and the sent message shows it as a chip.
 
-import { useId, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import { useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
@@ -28,15 +28,25 @@ export function MessageText({ text }: { text: string }) {
 }
 
 function MentionChip({ mention }: { mention: Mention }) {
-  const { icon: Icon, tint } = KIND[mention.kind];
+  return <RecordChip kind={mention.kind}>{mention.label}</RecordChip>;
+}
+
+/** A record's chip look: its kind's tint and icon. A link or button passes its own element. */
+// The text is the tint drawn toward the text colour, so a light tint such as a paper's yellow still reads on white.
+export const recordChipStyle = (tint: string) => ({ "--tint": tint, color: `color-mix(in oklab, ${tint} 72%, var(--foreground))` }) as CSSProperties;
+export const RECORD_CHIP =
+  "mx-px rounded-md px-1 py-0.5 font-medium [box-decoration-break:clone] bg-[color-mix(in_oklab,var(--tint)_16%,transparent)]";
+
+/**
+ * A record named in the chat: one picked with @, or one a reply links to. Inline, not a box,
+ * so a long name wraps with the sentence and each line keeps its tint.
+ */
+export function RecordChip({ kind, children }: { kind: keyof typeof KIND; children: ReactNode }) {
+  const { icon: Icon, tint } = KIND[kind];
   return (
-    // Inline, not a box, so a long name wraps with the sentence and each line keeps its tint.
-    <span
-      className="mx-px rounded-md px-1 py-0.5 font-medium [box-decoration-break:clone]"
-      style={{ backgroundColor: `color-mix(in oklab, ${tint} 16%, transparent)`, color: tint }}
-    >
+    <span className={RECORD_CHIP} style={recordChipStyle(tint)}>
       <Icon className="mr-1 inline size-3 -translate-y-px" />
-      {mention.label}
+      {children}
     </span>
   );
 }

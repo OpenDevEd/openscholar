@@ -12,7 +12,7 @@ import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUp, ChevronDown, CircleAlert, CirclePause, CircleStop, Coins, Eye, Gauge, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus, X } from "@/components/icons";
+import { ArrowUp, ChevronDown, CircleAlert, CirclePause, CircleStop, Coins, ExternalLink, Eye, Gauge, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus, X } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -34,15 +34,22 @@ import { stripProviderPrefix } from "@/lib/chat/model-display";
 import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { titleFrom } from "@/lib/assistant/title";
 import { stillNamed, withTokens, type Mention } from "@/lib/assistant/mentions";
-import { MentionComposer, MessageText } from "./mentions";
-import { inApp } from "@/lib/assistant/view";
+import { MentionComposer, MessageText, RECORD_CHIP, recordChipStyle } from "./mentions";
+import { inApp, recordOf } from "@/lib/assistant/view";
+import useSWR, { preload } from "swr";
+import { readWork } from "@/app/actions/topics";
+import { unlessLimited } from "@/lib/openalex/limited";
+import { useRatedPapers } from "@/lib/research/reads";
+import { FocusMode } from "@/components/ui/focus-mode";
+import { downloadLibraryEssentialItem, downloadLibraryItem } from "@/lib/library/download-handlers";
+import type { PaperResult } from "@/lib/types";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { OrbitMark, type OrbitClock } from "./orbit-mark";
 import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
 import { panelPlace } from "@/lib/assistant/place";
-import { AddCredits, Steps, type StepItem } from "./steps";
+import { AddCredits, KIND, Steps, type StepItem } from "./steps";
 import { IconButton, WorkingText } from "./parts";
 import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
 
@@ -685,31 +692,82 @@ function Reply({ message, live, acting }: { message: Message; live: string; acti
 /** The address Streamdown gives a link whose own is still streaming in. */
 const UNFINISHED_LINK = "streamdown:incomplete-link";
 
+/** A chip for any link that isn't to one record: the muted tint, and the arrow of a page outside the app. */
+const LINK_TINT = "var(--muted-foreground)";
+const CHIP_LINK = `${RECORD_CHIP} wrap-anywhere transition-colors hover:bg-[color-mix(in_oklab,var(--tint)_28%,transparent)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--tint)]`;
+const workKey = (paperId: string) => ["work", paperId] as const;
+const readWorkOf = ([, paperId]: ReturnType<typeof workKey>) => unlessLimited(readWork(paperId));
+
 /**
- * A link in a reply. One to a page of the app, a saved search or a collection, opens it here,
- * in this tab, and the panel stays up with its chat. Any other address was written by the
- * model, so the person sees where it goes and says yes first, as in the paper chat.
+ * A link in a reply, as a chip. One to a record shows its kind's tint and icon, as a record
+ * picked with @ does: a saved search, collection, job, library, topic or chat opens its page
+ * here, in this tab, with the panel still up, and a paper opens in focus mode on its own. Any
+ * other page of the app opens the same way, as a plain chip; an address outside the app was
+ * written by the model, so the person sees where it goes and says yes first.
  */
 function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) {
   const [asking, setAsking] = useState(false);
-  const look = "wrap-anywhere font-medium text-primary underline";
-  // Its address hasn't arrived yet: it has its look already, so the text doesn't shift when it does, and nothing to open.
-  if (href === UNFINISHED_LINK) return <span className={look}>{children}</span>;
-  if (href && inApp(href)) {
+  // The paper focus mode is on, and whether it's open: it stays mounted once read, so it slides out when closed.
+  const [reading, setReading] = useState<{ paperId: string; open: boolean } | null>(null);
+  // Its address hasn't arrived yet: a chip already, with room for its icon, so nothing moves when it does.
+  if (!href || href === UNFINISHED_LINK) {
     return (
-      <Link href={href} className={look}>
+      <span className={`${RECORD_CHIP} wrap-anywhere`} style={recordChipStyle(LINK_TINT)}>
+        <span className="mr-1 inline-block size-3" />
         {children}
+      </span>
+    );
+  }
+  const record = recordOf(href);
+  const { icon: Icon, tint } = record ? KIND[record.kind] : { icon: ExternalLink, tint: LINK_TINT };
+  const inside = (
+    <>
+      <Icon className="mr-1 inline size-3 -translate-y-px" />
+      {children}
+    </>
+  );
+  if (record?.paperId) {
+    const paperId = record.paperId;
+    return (
+      <>
+        <a
+          href={href}
+          className={CHIP_LINK}
+          style={recordChipStyle(tint)}
+          // Read while the pointer is on it, so focus mode opens on the click.
+          onPointerEnter={() => void preload(workKey(paperId), readWorkOf).catch(() => {})}
+          onClick={(event) => {
+            event.preventDefault();
+            setReading({ paperId, open: true });
+          }}
+          onAuxClick={(event) => {
+            // The middle button opens it here too: a paper has no page of the app's to open in a new tab.
+            if (event.button !== 1) return;
+            event.preventDefault();
+            setReading({ paperId, open: true });
+          }}
+        >
+          {inside}
+        </a>
+        {reading ? <PaperFocus paperId={reading.paperId} open={reading.open} href={href} onClose={() => setReading({ ...reading, open: false })} /> : null}
+      </>
+    );
+  }
+  if (record?.page || inApp(href)) {
+    return (
+      <Link href={record?.page ?? href} className={CHIP_LINK} style={recordChipStyle(tint)}>
+        {inside}
       </Link>
     );
   }
   return (
     <>
-      {/* A link, so it wraps as text does: a button is one box, and a title too long for the line dropped under its list number whole.
-          Any click on it, a new-tab one too, asks first. */}
+      {/* A link, so it wraps as text does. Any click on it, a new-tab one too, asks first. */}
       <a
         href={href}
         rel="noreferrer"
-        className={look}
+        className={CHIP_LINK}
+        style={recordChipStyle(tint)}
         onClick={(event) => {
           event.preventDefault();
           setAsking(true);
@@ -721,11 +779,11 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
           setAsking(true);
         }}
       >
-        {children}
+        {inside}
       </a>
       <LinkSafetyDialog
         isOpen={asking}
-        url={href ?? ""}
+        url={href}
         onClose={() => setAsking(false)}
         onConfirm={() => {
           window.open(href, "_blank", "noreferrer");
@@ -734,6 +792,32 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
       />
     </>
   );
+}
+
+/**
+ * Focus mode on the one paper a reply links to, with no list to step through. It opens once
+ * the paper and the person's rating of it are read, so it opens whole. A paper OpenAlex can't
+ * give falls back to asking before opening its OpenAlex page.
+ */
+function PaperFocus({ paperId, open, href, onClose }: { paperId: string; open: boolean; href: string; onClose: () => void }) {
+  const { data, error } = useSWR(workKey(paperId), readWorkOf, { revalidateOnFocus: false });
+  const rated = useRatedPapers(data ? [data as PaperResult] : []);
+  if (error !== undefined || data === null) {
+    return (
+      <LinkSafetyDialog
+        isOpen={open}
+        url={href}
+        onClose={onClose}
+        onConfirm={() => {
+          window.open(href, "_blank", "noreferrer");
+          onClose();
+        }}
+      />
+    );
+  }
+  const paper = rated.papers[0];
+  if (!paper || rated.loading) return null;
+  return <FocusMode isOpen={open} onClose={onClose} papers={[paper]} onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />;
 }
 /** One object for every reply, so a reply's text isn't rendered again for a new one. */
 const REPLY_PARTS = { a: ReplyLink };

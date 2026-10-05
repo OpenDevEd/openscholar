@@ -63,6 +63,7 @@
     "app/actions/topic-publications:readTopicPublications": "#327",
     "app/actions/topics:readTopic": "#327",
     "app/actions/topics:readTopicWorks": "#327",
+    "app/actions/topics:readWork": "#327",
     "authors/invitationActions:invite": "#323",
     "authors/invitationActions:respond": "#323",
     "authors/invitations:cancel": "#323",
