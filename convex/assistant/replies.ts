@@ -266,7 +266,7 @@ export const usedValidator = v.object({
   tokens: v.optional(v.number()),
   failed: v.optional(v.number()),
   recent: v.optional(v.array(v.string())),
-  /** How many changes of each kind it has called for unasked (./tools.ts `kindOf`). */
+  /** How many changes it has called for unasked, by what they change (./tools.ts `kindOf`). */
   changes: v.optional(v.record(v.string(), v.number())),
   told: v.optional(v.string()),
   cap: v.optional(v.number()),

@@ -3781,7 +3781,8 @@
         "doing": "Removing all your searches",
         "did": "Removed all your searches",
         "where": "Saved searches",
-        "ask": "Remove all your searches"
+        "ask": "Remove all your searches",
+        "askMany": "Remove all your searches"
       },
       "bookmark": {
         "doing": "Changing a bookmark",
@@ -3794,7 +3795,8 @@
         "doing": "Removing all your bookmarks",
         "did": "Removed all your bookmarks",
         "where": "Bookmarks",
-        "ask": "Remove all your bookmarks"
+        "ask": "Remove all your bookmarks",
+        "askMany": "Remove all your bookmarks"
       },
       "other": {
         "doing": "Working in your account",

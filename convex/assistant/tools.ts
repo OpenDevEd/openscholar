@@ -141,18 +141,33 @@ const bulkable = (entry: UserAction) => changesSomething(entry) && runsWithoutAs
 export const BULK_FIRST = `You've made ${BULK} changes of this kind in this reply, and more than that is a bulk change the person is asked about first. Put every one that is left in a single run_many call: they're asked once, with the whole list.`;
 
 /**
- * The kind of change a call makes, as the person reads it on its card: saving a paper is one
- * kind whichever action saves it, and the one action that changes research records makes
- * several. A reply's changes are counted by it, and a batch is all of one.
+ * What a call changes, for counting a reply's changes: papers, searches, collections, chats,
+ * screenings or extractions, as its card's tile says (lib/assistant/actions.ts). Broad on
+ * purpose: several actions rate a paper or put a search back, and each would have its own
+ * count if they were told apart any finer.
  */
-export const kindOf = (entry: UserAction, input: unknown) => viewOf(entry.path, variantIn(entry.path, input)).words;
+export const kindOf = (entry: UserAction, input: unknown) => viewOf(entry.path, variantIn(entry.path, input)).kind;
+
+/** Every `kind` among a call's arguments, with where it is: what tells one job of an action with several from another, however deep it sits. */
+function jobs(value: unknown, path = ""): string[] {
+  if (!value || typeof value !== "object") return [];
+  return Object.entries(value).flatMap(([key, inner]) => (key === "kind" && typeof inner === "string" ? [`${path}:${inner}`] : jobs(inner, `${path}.${key}`)));
+}
+/**
+ * Whether two calls of an action make the same change to different records: the same words on
+ * the card, and the same job at every level of their arguments. A batch is all one such change,
+ * so its card can say what it does: an edit that clears a search's answers is never asked about
+ * as one of several ordinary edits.
+ */
+const sameChange = (entry: UserAction, a: unknown, b: unknown) =>
+  viewOf(entry.path, variantIn(entry.path, a)).words === viewOf(entry.path, variantIn(entry.path, b)).words && jobs(a).sort().join() === jobs(b).sort().join();
 
 /** The action a run_many call names: by its name, or by the name of its tool. */
 const namedAs = (name: string) => entryAt(name) ?? core().find((entry) => toolName(entry.path) === name);
 /**
  * The batch a run_many call is for: its action, and each change's arguments. Null when it
- * names no action, lists nothing, any arguments don't fit, or its changes aren't all of one
- * kind: the person is asked about a batch as one kind of change.
+ * names no action, lists nothing, any arguments don't fit, or its changes aren't all the same
+ * change (`sameChange`): the person is asked about a batch as one.
  */
 export function batched(tool: string, input: unknown): { entry: UserAction; each: Record<string, unknown>[] } | null {
   if (tool !== RUN_MANY || !input || typeof input !== "object") return null;
@@ -162,7 +177,7 @@ export function batched(tool: string, input: unknown): { entry: UserAction; each
   const parsed = each.map((given) => inputSchema(entry).safeParse(given));
   if (!parsed.every((item) => item.success)) return null;
   const items = parsed.map((item) => item.data as Record<string, unknown>);
-  return items.every((item) => kindOf(entry, item) === kindOf(entry, items[0])) ? { entry, each: items } : null;
+  return items.every((item) => sameChange(entry, item, items[0])) ? { entry, each: items } : null;
 }
 
 /** A tool call the reply asked the person about. */
@@ -175,9 +190,10 @@ export type Asked = { toolCallId: string; toolName: string; input: unknown };
 export function askedSteps(requests: Asked[], held: (path: string, input: unknown) => number | undefined = () => undefined) {
   return requests.map(({ toolCallId, toolName: tool, input }) => {
     // A bulk change waits as one step: the list of what each change is given, and how many there are.
+    // A batch of one is that one change, and is asked about as it would be alone.
     const many = batched(tool, input);
-    if (many) return { toolCallId, tool, path: many.entry.path, input: cut(JSON.stringify(many.each), STEP_TEXT_MAX), batch: many.each.length };
-    const call = called(tool, input);
+    if (many && many.each.length > 1) return { toolCallId, tool, path: many.entry.path, input: cut(JSON.stringify(many.each), STEP_TEXT_MAX), batch: many.each.length };
+    const call = many ? { entry: many.entry, input: many.each[0] } : called(tool, input);
     const subject = call && subjectOf(call.input);
     // What a call that spends credits holds at most goes with its step, for the person asked.
     const credits = call ? held(call.entry.path, call.input) : undefined;
@@ -489,7 +505,7 @@ export function toolsFor(
                 : !each.length
                   ? '"each" is empty: give one set of arguments for each change.'
                   : !many
-                    ? "These changes aren't all of one kind. Make one run_many call for each kind of change, so the person is asked about each."
+                    ? "These aren't all the same change. Make one run_many call for each, so the person is asked about each."
                     : // Asked about before it got here, unless what the reply has made since tipped it over.
                     (await asksMany(many))
                     ? ASKS_FIRST

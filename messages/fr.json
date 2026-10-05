@@ -3791,7 +3791,8 @@
         "doing": "Retrait de toutes vos recherches",
         "did": "Toutes vos recherches retirées",
         "where": "Recherches enregistrées",
-        "ask": "Retirer toutes vos recherches"
+        "ask": "Retirer toutes vos recherches",
+        "askMany": "Retirer toutes vos recherches"
       },
       "bookmark": {
         "doing": "Modification d'un favori",
@@ -3804,7 +3805,8 @@
         "doing": "Retrait de tous vos favoris",
         "did": "Tous vos favoris retirés",
         "where": "Favoris",
-        "ask": "Retirer tous vos favoris"
+        "ask": "Retirer tous vos favoris",
+        "askMany": "Retirer tous vos favoris"
       },
       "other": {
         "doing": "Travail dans votre compte",

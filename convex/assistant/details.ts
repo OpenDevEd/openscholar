@@ -17,6 +17,10 @@ import { ASKED_DETAILS_MAX, ASKED_EACH_DETAILS_MAX, ASKED_EACH_MAX } from "./val
 
 /** A saved search's ID: the one the page made for it. */
 const SEARCH_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Arguments that name a paper by its OpenAlex ID. */
+const PAPER_KEYS = new Set(["id", "openalexId", "paperId"]);
+/** What a `kind` beside a record's ID says when it only names the sort of record, which the record's own line already does. */
+const REFERENCE_KINDS = new Set(["user", "organization"]);
 /** Characters of one argument's value. */
 const VALUE_MAX = 200;
 /** How deep an argument's own fields are listed. */
@@ -44,15 +48,16 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
   }
   const mine = await readMemberOrganizations(ctx, reader);
   /** The name of the record an ID names, when the reader can already see it. */
-  const named = async (id: string): Promise<string | null> => {
+  const named = async (id: string, key: string): Promise<string | null> => {
     // A saved search has the ID its page gave it, not a document's. It is the reader's own or it isn't found.
     if (SEARCH_ID.test(id)) {
       const search = await findSearch(ctx, reader._id, id);
       // One saved with filters alone has no query to show: it is named as such, never by its ID.
       return search ? currentSearch(search.data).query : null;
     }
-    // A paper by its OpenAlex ID is shown by its title when it's one the reader has saved.
-    const work = workUrl(id);
+    // A paper by its OpenAlex ID is shown by its title when it's one the reader has saved. Only where the
+    // argument is a paper's ID: a name or a title that reads like one is shown as it was typed.
+    const work = PAPER_KEYS.has(key) ? workUrl(id) : null;
     if (work) return (await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", reader._id).eq("openalexId", work)).first())?.title ?? null;
     const threadId = ctx.db.normalizeId("assistantThreads", id);
     if (threadId) return (await roleAmong(ctx, threadId, await principalsOf(ctx, reader))) ? ((await ctx.db.get("assistantThreads", threadId))?.title ?? null) : null;
@@ -101,19 +106,20 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
   const details: Array<{ name: string; value: string; record: boolean; within: string; key: string }> = [];
   for (const [path, value] of leaves.slice(0, ASKED_DETAILS_MAX)) {
     // A name that can't be read, such as someone in more organizations than are read at once, stays an ID.
-    const record = typeof value === "string" ? await named(value).catch(() => null) : null;
+    const record = typeof value === "string" ? await named(value, path.at(-1) ?? "").catch(() => null) : null;
     const shown = record ?? String(value);
     // A saved paper is shown by its title, so that is what its line is called, not the ID the call gave.
-    const title = record !== null && typeof value === "string" && workUrl(value) !== null;
+    const title = record !== null && typeof value === "string" && PAPER_KEYS.has(path.at(-1) ?? "") && workUrl(value) !== null;
     details.push({ name: title ? "title" : nameOf(path), value: shown.length > VALUE_MAX ? `${shown.slice(0, VALUE_MAX)}…` : shown, record: record !== null, within: path.slice(0, -1).join("."), key: path.at(-1) ?? "" });
   }
   // Which kind of thing an ID beside it names ("user", "organization") is said by the record's own line.
+  // Any other `kind` says what the call does, and stays.
   const told = new Set(details.flatMap((detail) => (detail.record ? [detail.within] : [])));
   // A call can name a record by its ID and again by the name it expects it to have, so that it
   // fails on one renamed since. The record's own name says both, so the typed one isn't
   // repeated. Two records with one name, a chat and the organization it's shared with, are both said.
   const records = new Set(details.flatMap((detail) => (detail.record ? [detail.value] : [])));
-  return details.flatMap(({ record, within, key, ...detail }) => ((record || !records.has(detail.value)) && !(key === "kind" && told.has(within)) ? [detail] : []));
+  return details.flatMap(({ record, within, key, ...detail }) => ((record || !records.has(detail.value)) && !(key === "kind" && told.has(within) && REFERENCE_KINDS.has(detail.value)) ? [detail] : []));
 }
 
 /**

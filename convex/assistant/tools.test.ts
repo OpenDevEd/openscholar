@@ -17,7 +17,7 @@ import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
 import { allowAlways, carriedOn, pausedAt } from "./spending";
 import { MAX_ASKS, MODEL_READS, STEPS_SHOWN, forModel } from "./steps";
-import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, batched, circling, core, definition, found, kindOf, written } from "./tools";
+import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, askedSteps, batched, circling, core, definition, found, kindOf, written } from "./tools";
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
@@ -264,10 +264,14 @@ describe("the assistant's tools", () => {
 
   it("ask once before a change to many records, with the list, run every one when the person allows it, and refuse more than ten of a kind made one by one", async () => {
     const t = convexTest(schema);
-    const { asAda, threadId, say, sayUntilAsked, settled, steps } = await chatOf(t);
+    const { ada, asAda, threadId, say, sayUntilAsked, settled, steps } = await chatOf(t);
     const work = (n: number) => ({ openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}` });
     for (let n = 1; n <= 12; n++) await asAda.mutation(api.library.mutations.saveToLibrary, work(n));
     const saved = () => t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map((item) => item.title).sort());
+    // On a card, a saved paper's ID reads as its title. A title or a name typed to look like an ID stays as typed, and what a call does to a record is always said.
+    const said = (args: unknown) => t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify(args)));
+    expect(await said({ title: "W1", openalexId: work(1).openalexId })).toEqual([{ name: "title", value: "W1" }, { name: "title", value: "Trial 1" }]);
+    expect(await said({ command: { kind: "editSearch", edit: { kind: "clearResponses", paperId: work(1).openalexId } } })).toContainEqual({ name: "kind", value: "clearResponses" });
 
     // Twelve removals in one call: nothing is removed, and Ada is asked once, with how many and the first of them by title.
     mockDoStream.mockImplementationOnce(
@@ -300,12 +304,20 @@ describe("the assistant's tools", () => {
     const refused = Array.from({ length: 11 }, (_, i) => told(3, `s${i}`)).filter((value) => (value as { error?: string }).error === BULK_FIRST);
     expect(refused).toHaveLength(1);
     expect(told(4, "later")).toEqual({ error: BULK_FIRST });
-    // A kind of change is one kind whichever action makes it, and a batch is all of one kind, so its card can say what it does.
+    // Changes are counted by what they change, whichever action makes them: a rating set through a save counts with the ratings.
     const action = (path: string) => USER_ACTIONS.find((entry) => entry.path === path)!;
-    expect(kindOf(action("library/papers:save"), {})).toBe(kindOf(action("library/mutations:saveToLibrary"), {}));
+    expect(kindOf(action("library/mutations:setLibraryRating"), {})).toBe(kindOf(action("library/mutations:saveToLibrary"), {}));
+    expect(kindOf(action("research/searches:restore"), {})).toBe(kindOf(action("research/records:change"), { command: { kind: "editSearch" } }));
+    // A batch is one change made to many records, so its card can say what it does: not two jobs of one action, at any depth.
     const rating = { requestId: "r1", command: { kind: "rating", paperId: "W1", rating: 5 } };
     expect(batched("run_many", { name: "research/records:change", each: [rating, { ...rating, requestId: "r2" }] })).not.toBeNull();
     expect(batched("run_many", { name: "research/records:change", each: [rating, { requestId: "r3", command: { kind: "clearShortcuts" } }] })).toBeNull();
+    const edit = (kind: string, more: object) => ({ requestId: kind, command: { kind: "editSearch", id: "s1", edit: { kind, ...more } } });
+    expect(batched("run_many", { name: "research/records:change", each: [edit("patch", { fields: { query: "tutoring" }, clear: [] }), edit("clearResponses", { paperId: "W1" })] })).toBeNull();
+    // A batch of one is that one change, asked about as it would be alone.
+    const [one] = askedSteps([{ toolCallId: "one", toolName: "run_many", input: { name: "library/mutations:removeFromLibrary", each: [{ openalexId: work(1).openalexId }] } }]);
+    expect(one).toMatchObject({ path: "library/mutations:removeFromLibrary", input: JSON.stringify({ openalexId: work(1).openalexId }) });
+    expect(one).not.toHaveProperty("batch");
 
     // A few changes in one call run at once, as they would one by one.
     mockDoStream

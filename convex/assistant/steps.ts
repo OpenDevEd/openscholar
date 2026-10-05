@@ -31,7 +31,8 @@ export { STEPS_SHOWN };
 /** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
 export const MAX_ASKS = 10;
 /**
- * Changes of one kind a reply makes without asking, whichever actions make them. More is a
+ * Changes a reply makes to one kind of record (papers, searches, collections) without asking,
+ * whichever actions make them. More is a
  * bulk change: it goes in one call that lists every one, and the person is asked once before
  * any of it runs (./tools.ts, `run_many`). As opencode asks once for a patch, with every
  * file it touches.

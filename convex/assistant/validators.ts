@@ -34,8 +34,8 @@ export const assistantReplyValidator = v.object({
 /** Why a reply paused: it reached the credits its sender lets a reply spend, or the requests a reply makes before it asks. */
 export const assistantPausedValidator = v.union(v.literal("credits"), v.literal("requests"));
 
-/** A reply's changes so far, by kind: one entry for each kind of change the panel has words for (lib/assistant/actions.ts), which are a few dozen. */
-export const assistantChangesValidator = capped(v.optional(v.record(v.string(), v.number())), 100);
+/** A reply's changes so far, by what they change: one entry for each kind of record the panel has a tile for (lib/assistant/actions.ts `Kind`), which are seven. */
+export const assistantChangesValidator = capped(v.optional(v.record(v.string(), v.number())), 20);
 /** Requests whose digests a reply carries along, to tell when it is going round in circles (./tools.ts). */
 export const RECENT_REQUESTS = 6;
 
@@ -59,7 +59,7 @@ export const assistantAskingValidator = v.object({
   /** How many of its requests in a row, up to the one that asked, had every action fail, and the digests of what its last few did (./tools.ts). */
   failed: v.optional(v.number()),
   recent: capped(v.optional(v.array(v.string())), RECENT_REQUESTS),
-  /** How many changes of each kind it has called for unasked, for telling a bulk change (./tools.ts `kindOf`). */
+  /** How many changes it has called for unasked, by what they change, for telling a bulk change (./tools.ts `kindOf`). */
   changes: assistantChangesValidator,
   /** The credits it pauses at, when its sender set a limit, and the requests it pauses at. */
   cap: v.optional(v.number()),
