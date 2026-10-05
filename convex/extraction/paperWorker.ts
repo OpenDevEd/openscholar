@@ -15,7 +15,7 @@ import { resolveOpenRouterModel } from "../chat/provider";
 import { reserveCredits, settleUnder, tokenDetails } from "../billing/charge";
 import { aggregateUsage } from "../../lib/ai/core/cost";
 import type { Usage } from "../../lib/ai/core/types";
-import { estimatePaperCredits } from "../../lib/extraction/cost-estimate";
+import { estimatePaperCredits, priceScale } from "../../lib/extraction/cost-estimate";
 import {
   batchSkipReasonToWorkerSkipReason,
   captureCompletedQuestionTracking,
@@ -352,9 +352,12 @@ async function reservePaperCredits(
           jobId: job._id,
         })
       : (queueRow.questionKeys?.length ?? 0);
+  // A job approved up to a figure was estimated on its own model's price (./start.ts), and its papers are measured against the figure the same way.
+  const model = job.spendHold && job.serverModelId ? await ctx.runQuery(internal.models.queries.getById, { modelId: job.serverModelId }) : null;
   const reserved = estimatePaperCredits({
     questionCount,
     pdf: args.pdfEnabled && Boolean(paper.pdfUrl || paper.oaUrl || paper.storageId),
+    scale: priceScale(model && { input: model.inputPricePerMillion, output: model.outputPricePerMillion }),
   });
   const reservation = {
     chargeId: `extraction:${queueRow._id}:${crypto.randomUUID()}`,

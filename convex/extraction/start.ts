@@ -10,6 +10,7 @@ import type { Id } from "../_generated/dataModel";
 import { internalMutation, internalQuery, type ActionCtx, type QueryCtx } from "../lib/functions";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { createError } from "../lib/errors";
+import { resolveTaskPick } from "../ai/serverModel";
 import { getFlag } from "../featureFlags/guard";
 import { holdSpend } from "../billing/charge";
 import { heldPapers } from "../paperSets/held";
@@ -20,7 +21,7 @@ import { paperSetValidator } from "../screening/validators";
 import { currentSearch } from "../../lib/research/records";
 import { isRatingFilterActive } from "../../lib/utils";
 import { buildDedupeKey } from "../../lib/bucket/dedupe";
-import { estimatePaperCredits } from "../../lib/extraction/cost-estimate";
+import { estimatePaperCredits, priceScale } from "../../lib/extraction/cost-estimate";
 import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { startJobFor } from "./mutations/jobs";
 import { checkScreeningSelection } from "./sources/screening";
@@ -58,12 +59,16 @@ async function papersOf(ctx: QueryCtx, userId: Id<"users">, { set, first, last }
 }
 
 /**
- * The most an extraction of these papers holds: every paper at its worst case, as each paper
- * holds its own in a job started from the page (../../lib/extraction/cost-estimate.ts).
+ * The most an extraction of these papers holds: every paper at its worst case, on the model
+ * the person's extractions run on. The figures were measured on a small model, and a job on
+ * Claude Sonnet cost twelve times them: the approval would have been for a twelfth of the job.
  */
 async function extractionHold(ctx: QueryCtx, userId: Id<"users">, { questions, usePdfs, ...range }: { set: PaperSet; first: number; last: number; questions: unknown[]; usePdfs?: boolean }) {
   await checkPdfs(ctx, usePdfs);
-  return (await papersOf(ctx, userId, range)) * estimatePaperCredits({ questionCount: questions.length, pdf: usePdfs === true });
+  const pick = await resolveTaskPick(ctx, userId, "extraction");
+  const model = pick ? await ctx.db.get("models", pick.modelId) : null;
+  const scale = priceScale(model && { input: model.inputPricePerMillion, output: model.outputPricePerMillion });
+  return (await papersOf(ctx, userId, range)) * estimatePaperCredits({ questionCount: questions.length, pdf: usePdfs === true, scale });
 }
 
 /** A saved search as an extraction's source: its query, for the source's name, and the request its results page makes. */
