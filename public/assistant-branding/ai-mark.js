@@ -78,13 +78,35 @@ function translateBody(scale, id) {
  * The markup inside one mark's 128 by 128 viewBox and the data attributes ai-mark.css keys on.
  * `id` must be unique in the document: it prefixes the mark's mask and path ids.
  */
-export function aiMarkParts(size, { shape = "ai", variant = "orbit", tone = "text", id }) {
+export function aiMarkParts(size, { shape = "ai", variant = "orbit", id }) {
   const scale = size < 28 ? "compact" : "full";
   return {
     body: shape === "translate" ? translateBody(scale, id) : aiBody(drawings[scale], variant, id),
-    attributes: { "data-shape": shape, ...(shape === "ai" && { "data-variant": variant }), "data-scale": scale, "data-tone": tone },
+    attributes: { "data-shape": shape, ...(shape === "ai" && { "data-variant": variant }), "data-scale": scale },
   };
 }
+
+// A page of screening answers can start or stop a thousand marks in one frame. Asking each mark for its
+// animations is quadratic in Chromium, so marks queue the question and one document.getAnimations() per
+// frame answers them all. The last request a mark makes in a frame wins.
+const queued = new Map();
+function withAnimations(svg, callback) {
+  if (!queued.size) requestAnimationFrame(answerQueued);
+  queued.set(svg, callback);
+}
+function answerQueued() {
+  const jobs = new Map(queued);
+  queued.clear();
+  const running = new Map();
+  for (const animation of document.getAnimations()) {
+    const svg = animation.effect?.target?.closest?.("svg.ai-mark");
+    if (jobs.has(svg)) (running.get(svg) ?? running.set(svg, []).get(svg)).push(animation);
+  }
+  for (const [svg, callback] of jobs) callback(running.get(svg) ?? []);
+}
+const settle = (svg, gesture, animations) => Promise.all(animations.map((animation) => animation.finished)).then(() => {
+  if (svg.dataset.play === gesture) svg.removeAttribute("data-play");
+}, () => {});
 
 // Load and hover play once. Hover waits for a running gesture instead of cutting it off.
 export function play(svg, gesture) {
@@ -92,24 +114,24 @@ export function play(svg, gesture) {
   if (gesture === "hover" && svg.dataset.play) return;
   if (gesture === "loop" && svg.dataset.play === "loop") {
     // Work started again before the loop settled: keep the cycle that is playing.
-    svg.getAnimations({ subtree: true }).forEach((animation) => animation.effect.updateTiming({ iterations: Infinity }));
+    withAnimations(svg, (animations) => animations.forEach((animation) => animation.effect.updateTiming({ iterations: Infinity })));
     return;
   }
-  svg.removeAttribute("data-play");
-  svg.getBoundingClientRect();
+  // A new gesture starts its own animations. Only replaying the one already set needs a style flush to restart.
+  if (svg.dataset.play === gesture) {
+    svg.removeAttribute("data-play");
+    svg.getBoundingClientRect();
+  }
   svg.dataset.play = gesture;
-  const running = svg.getAnimations({ subtree: true });
-  Promise.all(running.map((animation) => animation.finished)).then(() => {
-    if (svg.dataset.play === gesture) svg.removeAttribute("data-play");
-  }, () => {});
+  if (gesture !== "loop") withAnimations(svg, (animations) => svg.dataset.play === gesture && settle(svg, gesture, animations));
 }
 
 // A loop finishes the cycle it is in and settles at rest instead of snapping back.
 export function stop(svg) {
   if (svg.dataset.play !== "loop") return;
-  const running = svg.getAnimations({ subtree: true });
-  for (const animation of running) animation.effect.updateTiming({ iterations: (animation.effect.getComputedTiming().currentIteration ?? 0) + 1 });
-  Promise.all(running.map((animation) => animation.finished)).then(() => {
-    if (running.every((animation) => animation.playState === "finished")) svg.removeAttribute("data-play");
-  }, () => {});
+  withAnimations(svg, (animations) => {
+    if (svg.dataset.play !== "loop") return;
+    for (const animation of animations) animation.effect.updateTiming({ iterations: (animation.effect.getComputedTiming().currentIteration ?? 0) + 1 });
+    settle(svg, "loop", animations);
+  });
 }

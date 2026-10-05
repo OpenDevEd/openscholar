@@ -116,7 +116,7 @@ export function TranslationToggle({
         return (
           <TooltipHint label={tc("translating")}>
             <div role="img" aria-label={tc("translating")} className="flex items-center justify-center p-1.5 rounded-md bg-info/10">
-              <TranslateIcon working size={12} className="h-3 w-3 text-info" />
+              <TranslateIcon working size={12} className="h-3 w-3" />
             </div>
           </TooltipHint>
         );
@@ -149,7 +149,7 @@ export function TranslationToggle({
     <div className="flex items-center gap-2 mb-2">
       {isTranslating && (
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <TranslateIcon working size={12} className="h-3 w-3 text-primary" />
+          <TranslateIcon working size={12} className="h-3 w-3" />
           <span>{tc("translating")}</span>
         </div>
       )}

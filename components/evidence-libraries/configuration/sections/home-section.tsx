@@ -334,8 +334,7 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
                   {(id) => (
                     <div className="relative">
                       <AiIcon
-                        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                        aria-hidden
+                        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
                       />
                       <Input
                         id={id}

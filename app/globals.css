@@ -357,9 +357,16 @@
   .bg-segment { --icon-surface: var(--segment); }
   .bg-segment-active,
   [class*="[state=active]:bg-segment-active"][data-state="active"] { --icon-surface: var(--segment-active); }
+  /* On a primary fill the logo and the AI mark turn the fill's foreground, like the logo on the deck's blue. */
   .bg-primary, .hover\:bg-primary:hover,
   [class*="[state=checked]:bg-primary"][data-state="checked"],
-  [class*="[state=active]:bg-primary"][data-state="active"] { --icon-surface: var(--primary); }
+  [class*="[state=active]:bg-primary"][data-state="active"] {
+    --icon-surface: var(--primary);
+    --logo-a: var(--primary-foreground);
+    --logo-b: var(--primary-foreground);
+    --logo-c: var(--primary-foreground);
+    --brand-ink: var(--primary-foreground);
+  }
   .bg-destructive, .hover\:bg-destructive:hover { --icon-surface: var(--destructive); }
   .bg-success { --icon-surface: var(--success); }
   .bg-warning { --icon-surface: var(--warning); }

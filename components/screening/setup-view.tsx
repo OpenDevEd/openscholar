@@ -387,7 +387,7 @@ export function SetupView({
               ) : null}
               {kind === "search" ? (
                 <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={generate} disabled={generating || !canGenerate || !source}>
-                  <AiIcon working={generating} className="text-primary" />{t("generate")}
+                  <AiIcon working={generating} />{t("generate")}
                 </Button>
               ) : null}
             </span>

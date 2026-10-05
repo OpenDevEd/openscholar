@@ -15,17 +15,12 @@
 }
 .ai-mark .part { transform-box: view-box; transform-origin: 64px 64px; fill: currentColor; color: var(--base); }
 .ai-mark .draw { stroke-dasharray: 1; }
-.ai-mark[data-tone="brand"] .ring-top { --base: var(--logo-a, #60a5fa); }
-.ai-mark[data-tone="brand"] .ring-mid { --base: var(--logo-c, #bfdbfe); }
-.ai-mark[data-tone="brand"] .ring-bottom { --base: var(--logo-b, #2563eb); }
-.ai-mark[data-tone="brand"] .star { --base: var(--logo-ink, #172554); }
-/* Text colour follows the control. The layers step back as solid mixes with the surface, like the app's
-   two-tone icons; without a surface colour they fall back to see-through. */
-.ai-mark[data-tone="text"] { --mark-surface: var(--icon-surface, var(--card, transparent)); }
-.ai-mark[data-tone="text"] .part { --base: currentColor; }
-.ai-mark[data-tone="text"] .ring-top { --base: color-mix(in oklab, currentColor 55%, var(--mark-surface)); }
-.ai-mark[data-tone="text"] .ring-mid { --base: color-mix(in oklab, currentColor 30%, var(--mark-surface)); }
-.ai-mark[data-tone="text"] .ring-bottom { --base: color-mix(in oklab, currentColor 85%, var(--mark-surface)); }
+/* The logo's colours, from the app's tokens: three blues for the layers and the wordmark ink for the star.
+   A surface that needs another treatment, such as a primary fill, overrides the tokens. */
+.ai-mark .ring-top { --base: var(--logo-a); }
+.ai-mark .ring-mid { --base: var(--logo-c); }
+.ai-mark .ring-bottom { --base: var(--logo-b); }
+.ai-mark .star { --base: var(--brand-ink); }
 
 @keyframes ai-mark-fade-in { from { opacity: 0; } }
 @keyframes ai-mark-star-in { from { transform: scale(.25) rotate(-90deg); } }
@@ -106,10 +101,9 @@
 
 /* Translation: the star in a globe behind a letter tile. The globe turns into place, turns a third on hover and
    spins while translating; the tile flips to 文 and back on hover, and through A, अ, あ and 文 while translating. */
-.ai-mark[data-tone="brand"] :is(.meridian, .equator) { --base: var(--logo-c, #bfdbfe); }
-.ai-mark[data-tone="brand"][data-scale="compact"] :is(.meridian, .equator) { --base: var(--logo-a, #60a5fa); }
-.ai-mark[data-tone="brand"] .tile-face { --base: var(--logo-b, #2563eb); }
-.ai-mark[data-tone="text"] :is(.meridian, .equator) { --base: color-mix(in oklab, currentColor 40%, var(--mark-surface)); }
+.ai-mark :is(.meridian, .equator) { --base: var(--logo-c); }
+.ai-mark[data-scale="compact"] :is(.meridian, .equator) { --base: var(--logo-a); }
+.ai-mark .tile-face { --base: var(--logo-b); }
 /* Seen from the front, a meridian at longitude L is a half ellipse sin(L) wide; it fades at the edge and hides behind. */
 .ai-mark .meridian { transform: scaleX(sin(calc(var(--lon) + var(--at)))); opacity: clamp(0, cos(calc(var(--lon) + var(--at))) * 4 - .6, 1); }
 .ai-mark .tile { transform-box: fill-box; transform-origin: center; }

@@ -54,7 +54,7 @@ export function NowProcessing({ jobId }: NowProcessingProps) {
       data-paper-id={data.paperId}
       className="inline-flex items-center gap-2 rounded-md bg-inset px-3 py-1.5 text-xs text-muted-foreground"
     >
-      <AiIcon working size={14} className="h-3.5 w-3.5 text-primary" />
+      <AiIcon working size={14} className="h-3.5 w-3.5" />
       <span className="font-medium text-foreground">
         {t("prefix")}
       </span>
