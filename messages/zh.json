@@ -3487,11 +3487,11 @@
     },
     "meter": {
       "reply": "本次回复",
-      "spent": "<n>{spent}</n> 积分",
-      "spentOf": "<n>{spent}</n> / {cap} 积分",
-      "paused": "已在 {spent} 积分处暂停",
-      "pausedRequests": "已在 {count} 次请求后暂停",
-      "allowMore": "再允许 {limit}",
+      "spent": "<n>{spent, number}</n> 积分",
+      "spentOf": "<n>{spent, number}</n> / {cap, number} 积分",
+      "paused": "已在 {spent, number} 积分处暂停",
+      "pausedRequests": "已在 {count, number} 次请求后暂停",
+      "allowMore": "再允许 {limit, number}",
       "carryOn": "继续",
       "change": "更改上限",
       "failed": "无法继续回复"

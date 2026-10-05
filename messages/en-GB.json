@@ -3464,7 +3464,7 @@
     "spendingSheet": {
       "title": "Spending",
       "eachReply": "Each reply",
-      "limit": "credits, then it pauses and asks",
+      "limit": "{count, plural, one {credit} other {credits}}, then it pauses and asks",
       "noLimit": "No limit",
       "noLimitDetail": "it runs while you have credits",
       "wouldPause": "{count, plural, one {{paused, plural, =0 {Your last reply wouldn't have paused} other {Your last reply would have paused}}} other {{paused} of your last # replies would have paused}}",
@@ -3472,18 +3472,18 @@
       "upTo": "Up to",
       "custom": "Custom",
       "own": "{label}, your own number",
-      "credits": "credits",
+      "credits": "{count, plural, one {credit} other {credits}}",
       "forNewChats": "Use these for my new chats",
       "yours": "These are yours in this chat. People you share it with set their own, and spend their own credits.",
       "failed": "Couldn't change the limit"
     },
     "meter": {
       "reply": "This reply",
-      "spent": "<n>{spent}</n> credits",
-      "spentOf": "<n>{spent}</n> of {cap} credits",
-      "paused": "Paused at {spent} credits",
-      "pausedRequests": "Paused after {count} requests",
-      "allowMore": "Allow {limit} more",
+      "spent": "<n>{spent, number}</n> {spent, plural, one {credit} other {credits}}",
+      "spentOf": "<n>{spent, number}</n> of {cap, plural, one {# credit} other {# credits}}",
+      "paused": "Paused at {spent, plural, one {# credit} other {# credits}}",
+      "pausedRequests": "Paused after {count, number} requests",
+      "allowMore": "Allow {limit, number} more",
       "carryOn": "Carry on",
       "change": "Change the limit",
       "failed": "Couldn't carry the reply on"

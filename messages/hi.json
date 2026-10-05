@@ -3487,11 +3487,11 @@
     },
     "meter": {
       "reply": "यह जवाब",
-      "spent": "<n>{spent}</n> क्रेडिट",
-      "spentOf": "{cap} में से <n>{spent}</n> क्रेडिट",
-      "paused": "{spent} क्रेडिट पर रुका",
-      "pausedRequests": "{count} अनुरोधों के बाद रुका",
-      "allowMore": "{limit} और की अनुमति दें",
+      "spent": "<n>{spent, number}</n> क्रेडिट",
+      "spentOf": "{cap, number} में से <n>{spent, number}</n> क्रेडिट",
+      "paused": "{spent, number} क्रेडिट पर रुका",
+      "pausedRequests": "{count, number} अनुरोधों के बाद रुका",
+      "allowMore": "{limit, number} और की अनुमति दें",
       "carryOn": "जारी रखें",
       "change": "सीमा बदलें",
       "failed": "जवाब जारी नहीं रखा जा सका"

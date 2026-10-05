@@ -12,7 +12,7 @@ import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { usePathname } from "next/navigation";
 import { ArrowUp, ChevronDown, CircleAlert, CirclePause, CircleStop, Coins, Eye, Gauge, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus } from "@/components/icons";
-import { useFormatter, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ASSISTANT_REQUESTS_BEFORE_ASKING } from "@/convex/lib/constants";
@@ -67,7 +67,7 @@ const NEW = "new";
 const LOOP_MS = 2_000;
 
 /** What is typed and not yet sent, a draft per chat, so one chat's never lands in another. */
-type Drafts = { of: (id: ThreadId | null) => string; set: (id: ThreadId | null, text: string | ((now: string) => string)) => void };
+type Drafts = { of: (id: ThreadId | null) => string; set: (id: ThreadId | null, text: string | ((now: string) => string)) => void; adopt: (id: ThreadId) => void };
 
 /** A new chat is named after its first message's first line, cut between characters, never inside one. */
 function titleFrom(text: string) {
@@ -89,6 +89,8 @@ export function AssistantPanel() {
   const drafts: Drafts = {
     of: (id) => typed[id ?? NEW] ?? "",
     set: (id, text) => setTyped((all) => ({ ...all, [id ?? NEW]: typeof text === "function" ? text(all[id ?? NEW] ?? "") : text })),
+    // What was typed before the chat existed goes with it into the chat it became: one made to share it or to set its limits, with its first message still in the box.
+    adopt: (id) => setTyped(({ [NEW]: text, ...rest }) => (text ? { ...rest, [id]: rest[id] || text } : rest)),
   };
   return (
     <Lost onLost={() => setThreadId(null)}>
@@ -339,6 +341,7 @@ function Chat({
   // What the person lets a reply spend here: the meter's "allow more" is by it, and the Spending sheet opens with it in hand.
   const spending = useQuery(api.assistant.spending.get, threadId ? { threadId } : "skip");
   const carryOn = useMutation(api.assistant.replies.carryOn);
+  const carrying = useRef(false);
   const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.messages, threadId ? { threadId, stepsAhead: true } : "skip", { initialNumItems: FIRST_MESSAGES });
   const presetModel = usePresetModels();
   // The model picked before the chat exists; once it does, the chat keeps its own.
@@ -382,6 +385,7 @@ function Chat({
     if (threadId) return Promise.resolve(threadId);
     making.current ??= create({ ...(title ? { title } : {}), ...(model ? { modelId: model._id, ...(model.effort ? { effort: model.effort } : {}) } : {}) })
       .then((id) => {
+        drafts.adopt(id);
         setBorn(id);
         setThreadId(id);
         return id;
@@ -474,7 +478,16 @@ function Chat({
       />
       <Footer composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel}
         meter={meter}
-        onCarryOn={() => (threadId ? void carryOn({ threadId }).catch((error) => toast.error(t("meter.failed"), getErrorMessage(error, ""))) : undefined)}
+        onCarryOn={() => {
+          // Pressed twice, it carries on once: the second would find nothing paused and say it failed.
+          if (!threadId || carrying.current) return;
+          carrying.current = true;
+          void carryOn({ threadId })
+            .catch((error) => toast.error(t("meter.failed"), getErrorMessage(error, "")))
+            .finally(() => {
+              carrying.current = false;
+            });
+        }}
         onSpending={spend}
       />
     </>
@@ -929,11 +942,15 @@ type Meter = { spent: number; cap: number | null; paused: Live["paused"]; limit:
  */
 function ReplyMeter({ meter, onCarryOn, onSpending }: { meter: Meter; onCarryOn: () => void; onSpending: () => void }) {
   const t = useTranslations("assistant.meter");
-  const format = useFormatter();
   const paused = meter.paused !== null;
+  const pause = meter.paused === "requests" ? t("pausedRequests", { count: ASSISTANT_REQUESTS_BEFORE_ASKING }) : t("paused", { spent: meter.spent });
   // One cell: the meter and the pause cross-fade, so the row never changes size.
   return (
     <div className="grid h-8 items-center text-xs [&>*]:col-start-1 [&>*]:row-start-1">
+      {/* Said when the reply pauses. The panel's own status doesn't change for one that was already waiting on an answer. */}
+      <span className="sr-only" role="status">
+        {paused ? pause : ""}
+      </span>
       <motion.button
         type="button"
         onClick={onSpending}
@@ -955,16 +972,16 @@ function ReplyMeter({ meter, onCarryOn, onSpending }: { meter: Meter; onCarryOn:
           </span>
         )}
         <span className="tabular-nums text-muted-foreground">
-          {t.rich(meter.cap === null ? "spent" : "spentOf", { spent: format.number(meter.spent), cap: format.number(meter.cap ?? 0), n: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}
+          {t.rich(meter.cap === null ? "spent" : "spentOf", { spent: meter.spent, cap: meter.cap ?? 0, n: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}
         </span>
       </motion.button>
       <motion.div initial={false} animate={{ opacity: paused ? 1 : 0 }} inert={!paused} className="flex items-center gap-2 pl-1">
         <CirclePause className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
         <span className="whitespace-nowrap font-medium text-amber-700 dark:text-amber-400">
-          {meter.paused === "requests" ? t("pausedRequests", { count: format.number(ASSISTANT_REQUESTS_BEFORE_ASKING) }) : t("paused", { spent: format.number(meter.spent) })}
+          {pause}
         </span>
         <Button size="sm" variant="secondary" className="h-7 rounded-full px-3" onClick={onCarryOn}>
-          {meter.paused === "requests" || meter.limit === null ? t("carryOn") : t("allowMore", { limit: format.number(meter.limit) })}
+          {meter.paused === "requests" || meter.limit === null ? t("carryOn") : t("allowMore", { limit: meter.limit })}
         </Button>
         <IconButton small label={t("change")} icon={<Gauge className="size-3.5" />} onClick={onSpending} />
       </motion.div>

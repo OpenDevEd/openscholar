@@ -546,13 +546,16 @@ const CHART_REPLIES = 12;
 function LimitPicker({ label, listed, value, onChange }: { label: string; listed: readonly number[]; value: Limit; onChange: (limit: Limit) => void }) {
   const t = useTranslations("assistant.spendingSheet");
   const format = useFormatter();
-  // Custom is on while the limit is the person's own number, even one that matches a listed limit.
-  const [custom, setCustom] = useState(value !== null && !listed.includes(value));
-  // The person's own number, kept while another limit is picked, and what its field holds as it's typed in.
+  // Custom was picked, or its field typed in: it stays on for a number that matches a listed limit.
+  const [chosen, setChosen] = useState(value !== null && !listed.includes(value));
+  // A limit that isn't listed is the person's own wherever it came from, a change here that didn't save included.
+  const custom = value !== null && (chosen || !listed.includes(value));
+  // The person's own number, kept while another limit is picked.
   const [own, setOwn] = useState(value ?? listed[0]!);
-  const [typed, setTyped] = useState(String(own));
+  // What the field holds while it's typed in. Left alone, it shows the limit in force.
+  const [typed, setTyped] = useState<string | null>(null);
+  const number = value !== null && custom ? value : own;
   const field = useRef<HTMLInputElement>(null);
-  const open = custom && value !== null;
   return (
     <div>
       <div className="flex items-center gap-3 pl-1">
@@ -565,14 +568,14 @@ function LimitPicker({ label, listed, value, onChange }: { label: string; listed
             onChange={(picked) => {
               if (picked === "none") return onChange(null);
               if (picked !== "custom") {
-                setCustom(false);
+                setChosen(false);
                 return onChange(Number(picked));
               }
               // Custom starts from the limit in force, or from the person's last own number when there's none.
               const start = value ?? own;
-              setCustom(true);
+              setChosen(true);
               setOwn(start);
-              setTyped(String(start));
+              setTyped(null);
               onChange(start);
               // The field takes the keyboard once it's open, its number selected to type over.
               requestAnimationFrame(() => field.current?.select());
@@ -582,31 +585,37 @@ function LimitPicker({ label, listed, value, onChange }: { label: string; listed
         </div>
       </div>
       {/* The field opens under the row: the frame grows, its content laid out at full size, and its gap is inside it. */}
-      <motion.div inert={!open} initial={false} animate={open ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
+      <motion.div inert={!custom} initial={false} animate={custom ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
         <label className="mt-2 flex h-9 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
           <Coins className="size-3.5 text-muted-foreground" />
           <input
             ref={field}
             inputMode="numeric"
-            value={typed}
+            value={typed ?? String(number)}
             onChange={(e) => {
-              const digits = e.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, CUSTOM_DIGITS);
+              const digits = e.target.value.replace(/^0+/, "");
+              // Whole numbers only, as they were typed: "1.5" pasted in isn't read as 15, and a number too long isn't cut into another.
+              if (!/^\d*$/.test(digits) || digits.length > CUSTOM_DIGITS) return;
+              setChosen(true);
               setTyped(digits);
               if (!digits) return;
               setOwn(Number(digits));
               onChange(Number(digits));
             }}
-            // Left empty, it goes back to the number in force.
-            onBlur={() => setTyped(String(own))}
+            // Left, it shows the number in force: what was typed if it saved, the limit as it was if it didn't.
+            onBlur={() => setTyped(null)}
             aria-label={t("own", { label })}
             className="min-w-0 flex-1 bg-transparent tabular-nums outline-none"
           />
-          <span className="shrink-0 text-xs text-muted-foreground">{t("credits")}</span>
+          <span className="shrink-0 text-xs text-muted-foreground">{t("credits", { count: number })}</span>
         </label>
       </motion.div>
     </div>
   );
 }
+
+/** New chats start with this chat's limit, and go on taking it as it changes here: the server's rule (convex/assistant/spending.ts). */
+const takenByNewChats = (now: { replyLimit: Limit; newChats?: Limit }) => now.newChats !== undefined && now.newChats === now.replyLimit;
 
 /**
  * What the person lets the assistant spend in this chat (#346): how many credits a reply
@@ -621,11 +630,13 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
   // A pick shows at once, ahead of the server's copy.
   const setLimit = useMutation(api.assistant.spending.setReplyLimit).withOptimisticUpdate((store, args) => {
     const now = store.getQuery(api.assistant.spending.get, { threadId: args.threadId });
-    if (now) store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, { ...now, replyLimit: args.limit });
+    if (now) store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, { ...now, replyLimit: args.limit, ...(takenByNewChats(now) ? { newChats: args.limit } : {}) });
   });
   const setForNewChats = useMutation(api.assistant.spending.setForNewChats).withOptimisticUpdate((store, args) => {
     const now = store.getQuery(api.assistant.spending.get, { threadId: args.threadId });
-    if (now) store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, { ...now, forNewChats: args.on });
+    if (!now) return;
+    const { newChats: _was, ...rest } = now;
+    store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, args.on ? { ...rest, newChats: now.replyLimit } : rest);
   });
   const failed = (error: unknown) => toast.error(t("failed"), getErrorMessage(error, ""));
   const limit = spending?.replyLimit ?? null;
@@ -651,7 +662,7 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
                   <span className="text-3xl font-semibold tracking-tight">
                     <AnimatedNumber value={shown} />
                   </span>
-                  <span className="min-w-0 truncate text-sm text-muted-foreground">{t("limit")}</span>
+                  <span className="min-w-0 truncate text-sm text-muted-foreground">{t("limit", { count: shown })}</span>
                 </motion.div>
                 <motion.div initial={false} animate={{ opacity: limit === null ? 1 : 0 }} aria-hidden={limit !== null} className="flex min-w-0 items-baseline gap-2">
                   <span className="whitespace-nowrap text-3xl font-semibold tracking-tight">{t("noLimit")}</span>
@@ -705,7 +716,7 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
           <div className={LIST}>
             <label className="flex cursor-pointer items-center gap-3 px-3 py-3">
               <span className="min-w-0 flex-1 text-sm font-medium">{t("forNewChats")}</span>
-              <Switch checked={spending?.forNewChats ?? false} onCheckedChange={(on) => setForNewChats({ threadId, on }).catch(failed)} />
+              <Switch checked={spending !== undefined && takenByNewChats(spending)} onCheckedChange={(on) => setForNewChats({ threadId, on }).catch(failed)} />
             </label>
           </div>
           <p className="px-2 text-xs leading-relaxed text-muted-foreground">{t("yours")}</p>

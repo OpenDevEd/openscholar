@@ -3487,11 +3487,11 @@
     },
     "meter": {
       "reply": "この返信",
-      "spent": "<n>{spent}</n> クレジット",
-      "spentOf": "<n>{spent}</n> / {cap} クレジット",
-      "paused": "{spent} クレジットで一時停止",
-      "pausedRequests": "{count} 回のリクエスト後に一時停止",
-      "allowMore": "あと {limit} 許可",
+      "spent": "<n>{spent, number}</n> クレジット",
+      "spentOf": "<n>{spent, number}</n> / {cap, number} クレジット",
+      "paused": "{spent, number} クレジットで一時停止",
+      "pausedRequests": "{count, number} 回のリクエスト後に一時停止",
+      "allowMore": "あと {limit, number} 許可",
       "carryOn": "続ける",
       "change": "上限を変更",
       "failed": "返信を再開できませんでした"
