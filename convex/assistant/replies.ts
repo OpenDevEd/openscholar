@@ -43,6 +43,8 @@ const MESSAGES_PAGE_MAX = 50;
 const MESSAGES_PAGE_BYTES = 1024 * 1024;
 /** The cursor the agent component's paginator gives for the end of a chat's messages. */
 const CHAT_END = "[]";
+/** Rows `outcome` reads to find the newest message that isn't an action's result. */
+const OUTCOME_ROWS = 4;
 /** Rows of a reply's stream one read returns: the agent component's own limit. */
 const DELTAS_PER_READ = 100;
 /**
@@ -646,9 +648,14 @@ async function textSoFar(ctx: QueryCtx, agentThreadId: string, streamId: string)
       for (const part of delta.parts) {
         // One stream runs through every step of a reply. Each step's text becomes a message of
         // its own once the step ends, so only the step being written is still live.
-        if (part?.type === "start-step") { text = ""; writing = false; }
-        else if (part?.type === "text-delta" && typeof part.delta === "string") { text += part.delta; writing = true; }
-        else if (part?.type === "tool-call" || part?.type === "finish-step" || part?.type === "reasoning-start") writing = false;
+        if (part?.type === "start-step") {
+          text = "";
+          writing = false;
+        } else if (part?.type === "text-delta" && typeof part.delta === "string") {
+          text += part.delta;
+          writing = true;
+          // It has gone on from its text to a call's arguments, to reasoning, or to the end of the step.
+        } else if (typeof part?.type === "string" && (part.type.startsWith("tool-") || part.type === "finish-step" || part.type === "reasoning-start")) writing = false;
       }
       cursor = delta.end;
     }
@@ -750,8 +757,11 @@ export const outcome = query({
     const userId: Id<"users"> = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
-    const newest = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null, maximumRowsRead: 1, maximumBytesRead: MESSAGES_PAGE_BYTES }, excludeToolMessages: true })).page[0];
-    // A message with no reply to it: the reply failed before it wrote anything.
+    // The newest message a person or the assistant wrote. A reply's last can also hold a call, and results come after
+    // the call they answer, so a few rows are read and the results passed over.
+    const rows = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: OUTCOME_ROWS, cursor: null, maximumRowsRead: OUTCOME_ROWS, maximumBytesRead: MESSAGES_PAGE_BYTES } })).page;
+    const newest = rows.find((row) => row.message?.role === "assistant" || row.message?.role === "user");
+    // A message with no reply to it: the reply failed before it wrote anything. So did one that was summarized and never carried on.
     if (newest?.message?.role === "user") return { phase: "failed" as const, order: newest.order };
     if (newest?.message?.role !== "assistant") return { phase: "idle" as const, order: null };
     const stopped = newest.status === "failed" && parseChatError(newest.error)?.class === "aborted";
