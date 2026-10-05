@@ -8,7 +8,7 @@ import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { findItem } from "./mutations";
 import { authorDisplay } from "../../lib/library/paper-metadata";
-import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
+import { MAX_COLLECTION_MEMBERS, MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import { collectionCount, libraryCount } from "./counter";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { LIBRARY_SEARCH_RESULTS_MAX as SEARCH_RESULTS_MAX } from "../../lib/library/limits";
@@ -402,7 +402,9 @@ function viewOf(given: ObjectType<typeof narrowing>) {
 
 /** Whether a saved paper is in a collection that still exists. A deleted collection's places go after it, in batches, and aren't one. */
 async function inCollection(ctx: QueryCtx, libraryItemId: Id<"libraryItems">) {
-  for await (const place of ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", libraryItemId))) {
+  // A paper is in at most as many collections as a person has.
+  const places = await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", libraryItemId)).take(MAX_COLLECTIONS_PER_USER);
+  for (const place of places) {
     if (await ctx.db.get("collections", place.collectionId)) return true;
   }
   return false;
