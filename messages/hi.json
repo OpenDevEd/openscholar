@@ -1847,6 +1847,7 @@
     "phase": {
       "running": "चल रही है",
       "waiting": "प्रतीक्षा में",
+      "reading": "लेख लाए जा रहे हैं",
       "completed": "पूरी हुई",
       "cancelled": "रद्द",
       "failed": "विफल",
@@ -1883,6 +1884,7 @@
     "progress": "प्रगति",
     "beingRead": "<n></n> पढ़े जा रहे हैं",
     "startsAfter": "{name} के बाद शुरू होगी",
+    "gettingPapers": "OpenAlex से लेख लाए जा रहे हैं",
     "ofTotal": "{total, number} में से {done, number}",
     "yourSlots": "आपके लेख स्लॉट",
     "slotsInUse": "{limit} में से {running} स्लॉट उपयोग में",

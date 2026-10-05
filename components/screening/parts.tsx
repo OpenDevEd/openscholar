@@ -68,7 +68,7 @@ export function ProgressRing({ value, max, phase }: { value: number; max: number
   const c = 2 * Math.PI * r;
   const f = max ? value / max : 0;
   const stroke =
-    phase === "completed" ? "stroke-success" : phase === "running" ? "stroke-primary" : phase === "waiting" ? "stroke-warning" : phase === "cancelled" ? "stroke-muted-foreground/50" : "stroke-destructive";
+    phase === "completed" ? "stroke-success" : phase === "running" || phase === "reading" ? "stroke-primary" : phase === "waiting" ? "stroke-warning" : phase === "cancelled" ? "stroke-muted-foreground/50" : "stroke-destructive";
   return (
     <span className="relative inline-flex size-14 shrink-0" role="img" aria-label={t("screenedOf", { done: value, total: max })}>
       <svg viewBox={`0 0 ${size} ${size}`} className="size-full -rotate-90">
