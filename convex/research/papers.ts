@@ -19,7 +19,7 @@ export const searchAction = defineUserAction({
   description:
     "Searches OpenAlex for papers by a query, filters, or both, and saves nothing. Use it to look papers up, to answer a question about papers, or to try a query: the person's saved searches stay as they are, and nothing changes on their page. " +
     `Returns ${RESULTS_PAGE} papers a page, each with its ID, title, first authors with their IDs, the countries they work in, year, venue, type, DOI, whether it's open access, citations and the start of its abstract, and how many papers match in all. ` +
-    "The query is keywords, with AND, OR, NOT and quoted phrases. " +
+    "The query is keywords, with AND, OR, NOT and quoted phrases. A quoted phrase holds no ? or *, which OpenAlex reads as wildcards: leave a title's question mark out. " +
     SETTINGS +
     " Each page read counts against the person's OpenAlex allowance.",
   args: { query: v.optional(v.string()), ...searchSettings, page: pageValidator },

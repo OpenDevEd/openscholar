@@ -812,7 +812,7 @@ describe("the assistant's tools", () => {
     // A limit is a whole number of credits from 1.
     for (const limit of [0, 1.5, -3]) await expect(asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit })).rejects.toThrow(/whole number/);
     await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
-    expect(await asAda.query(api.assistant.spending.get, { threadId })).toEqual({ replyLimit: 1, forNewChats: false, recent: [] });
+    expect(await asAda.query(api.assistant.spending.get, { threadId })).toEqual({ replyLimit: 1, recent: [] });
     // It is hers alone: Ben, in the same chat, has none.
     expect((await asBen.query(api.assistant.spending.get, { threadId })).replyLimit).toBeNull();
 
@@ -951,24 +951,27 @@ describe("the assistant's tools", () => {
   it("start a person's new chats on the limit they chose for them, keep it in step while they change it, and forget a deleted chat's", async () => {
     const t = convexTest(schema);
     const { asAda, threadId } = await chatOf(t);
-    const limitIn = async (chat: Id<"assistantThreads">) => asAda.query(api.assistant.spending.get, { threadId: chat });
+    const limitIn = async (chat: Id<"assistantThreads">) => {
+      const { recent: _recent, ...limits } = await asAda.query(api.assistant.spending.get, { threadId: chat });
+      return limits;
+    };
     const started = () => asAda.mutation(api.assistant.threads.create, { title: "Another" });
     await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 25 });
     // Until she says so, a new chat has no limit.
-    expect(await limitIn(await started())).toMatchObject({ replyLimit: null, forNewChats: false });
+    expect(await limitIn(await started())).toEqual({ replyLimit: null });
     await asAda.mutation(api.assistant.spending.setForNewChats, { threadId, on: true });
-    expect(await limitIn(threadId)).toMatchObject({ replyLimit: 25, forNewChats: true });
+    expect(await limitIn(threadId)).toEqual({ replyLimit: 25, newChats: 25 });
     const second = await started();
-    expect(await limitIn(second)).toMatchObject({ replyLimit: 25, forNewChats: true });
+    expect(await limitIn(second)).toEqual({ replyLimit: 25, newChats: 25 });
     // Changing it where new chats take it from changes what they start with. A chat already started keeps its own.
     await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 50 });
     expect(await limitIn(await started())).toMatchObject({ replyLimit: 50 });
-    expect(await limitIn(second)).toMatchObject({ replyLimit: 25, forNewChats: false });
+    expect(await limitIn(second)).toEqual({ replyLimit: 25, newChats: 50 });
     // Lifted there, new chats start with none.
     await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: null });
-    expect(await limitIn(await started())).toMatchObject({ replyLimit: null, forNewChats: true });
+    expect(await limitIn(await started())).toEqual({ replyLimit: null, newChats: null });
     await asAda.mutation(api.assistant.spending.setForNewChats, { threadId, on: false });
-    expect(await limitIn(threadId)).toMatchObject({ replyLimit: null, forNewChats: false });
+    expect(await limitIn(threadId)).toEqual({ replyLimit: null });
     // A deleted chat's limit goes with it.
     await asAda.mutation(api.assistant.threads.remove, { threadId: second });
     await waitFor(async () => (await t.run(async (ctx) => ctx.db.query("assistantLimits").collect())).every((row) => row.threadId !== second), { timeoutMs: 5_000 });

@@ -149,6 +149,17 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(requests).toHaveLength(0);
   });
 
+  it("says why OpenAlex won't take a search, and keeps a failing server's answer to itself", async () => {
+    const { alice } = await setup();
+    const start = () => alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } });
+
+    openAlex.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Invalid query parameters error.", message: "Wildcards (* or ?) do not work inside this quoted phrase." }), { status: 400 }));
+    await expect(start()).rejects.toThrow(/Wildcards \(\* or \?\) do not work inside this quoted phrase/);
+
+    openAlex.mockResolvedValueOnce(new Response(JSON.stringify({ message: "upstream connect error" }), { status: 503 }));
+    await expect(start()).rejects.toThrow(/^(?!.*upstream connect error).*503/s);
+  });
+
   it("ends a request where the search's results end, however far it was asked to go", async () => {
     const { t, alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
 

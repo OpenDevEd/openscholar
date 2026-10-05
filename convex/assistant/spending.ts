@@ -10,7 +10,7 @@
  * carry on, as Goose does at its turn limit: a reply that keeps finding something new to
  * do isn't caught by the rules for one going round in circles (./tools.ts).
  *
- *   get (query)       the person's limit in a chat, whether their new chats take it, and what their last replies cost
+ *   get (query)       the person's limit in a chat, what their new chats start with, and what their last replies cost
  *   setReplyLimit     sets or lifts it
  *   setForNewChats    whether the chats they start begin with this chat's
  */
@@ -114,8 +114,11 @@ export const get = query({
   returns: v.object({
     /** Credits a reply may spend before it pauses; null is no limit. */
     replyLimit: v.union(v.number(), v.null()),
-    /** The chats the person starts begin with this chat's. */
-    forNewChats: v.boolean(),
+    /**
+     * What the chats the person starts begin with, null being no limit; absent until they choose.
+     * A chat whose limit this equals is one new chats take theirs from: changing it there changes this.
+     */
+    newChats: v.optional(v.union(v.number(), v.null())),
     /** What their last replies cost, oldest first. */
     recent: recentCostsValidator,
   }),
@@ -124,7 +127,7 @@ export const get = query({
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);
     const [limit, spender] = await Promise.all([limitOf(ctx, threadId, userId), spenderOf(ctx, userId)]);
-    return { replyLimit: limit?.replyLimit ?? null, forNewChats: spender?.newChats !== undefined && spender.newChats.replyLimit === limit?.replyLimit, recent: (spender?.recent ?? []).map((entry) => entry.credits) };
+    return { replyLimit: limit?.replyLimit ?? null, ...(spender?.newChats === undefined ? {} : { newChats: spender.newChats.replyLimit ?? null }), recent: (spender?.recent ?? []).map((entry) => entry.credits) };
   },
 });
 
