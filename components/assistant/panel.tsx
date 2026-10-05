@@ -31,6 +31,7 @@ import type { Effort } from "@/lib/ai/core/call-options";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
 import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { titleFrom } from "@/lib/assistant/title";
+import { inApp } from "@/lib/assistant/view";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
@@ -585,7 +586,7 @@ function Reply({ message, live, acting }: { message: Message; live: string; acti
 function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) {
   const [asking, setAsking] = useState(false);
   const look = "wrap-anywhere font-medium text-primary underline";
-  if (href?.startsWith("/") && !href.startsWith("//")) {
+  if (href && inApp(href)) {
     return (
       <Link href={href} className={look}>
         {children}

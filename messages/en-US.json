@@ -3769,6 +3769,7 @@
       "decline": "Don't do this",
       "why": "This can't be undone, or it shows outside your account. It asks every time.",
       "failed": "Couldn't send your answer",
+      "unnamed": "No name",
       "names": {
         "thread": "Chat",
         "collection": "Collection",
