@@ -15,6 +15,7 @@ import {
 } from 'nuqs';
 import { encodeRegions, decodeRegions } from './regions';
 import { authorFilterValue } from '../openalex/author-filter';
+import { institutionId, sourceId } from '../openalex/ids';
 
 /**
  * Custom parser for region arrays with smart encoding
@@ -55,12 +56,19 @@ export const parseAsRegions = createParser({
  * - itype: types of the authors' institutions
  * - funder: OpenAlex funder ids
  * - author: OpenAlex author ids, or author names OpenAlex has no record for
+ * - journal: OpenAlex source ids, the paper's main venue
+ * - inst: OpenAlex institution ids, child institutions included
+ * - design: study designs
+ * - top10: only papers in the top 10% of their field by citations
+ * - venue: only papers in a journal, conference or book series
  * - mincite: minimum number of citations
  * - abs: only works with an abstract
  * - retracted: include retracted works, which are left out by default
  * - lang: language filter
  */
 const parseAsAuthor = createParser({ parse: authorFilterValue, serialize: String });
+const parseAsSource = createParser({ parse: (value) => sourceId(value) ?? null, serialize: String });
+const parseAsInstitution = createParser({ parse: (value) => institutionId(value) ?? null, serialize: String });
 
 export const searchParamsParsers = {
   // Core search
@@ -104,6 +112,11 @@ export const searchParamsParsers = {
   itype: parseAsArrayOf(parseAsString).withDefault([]),
   funder: parseAsArrayOf(parseAsString).withDefault([]),
   author: parseAsArrayOf(parseAsAuthor).withDefault([]),
+  journal: parseAsArrayOf(parseAsSource).withDefault([]),
+  inst: parseAsArrayOf(parseAsInstitution).withDefault([]),
+  design: parseAsArrayOf(parseAsString).withDefault([]),
+  top10: parseAsBoolean.withDefault(false),
+  venue: parseAsBoolean.withDefault(false),
   mincite: parseAsInteger,
   abs: parseAsBoolean.withDefault(false),
   retracted: parseAsBoolean.withDefault(false),
@@ -142,6 +155,11 @@ export type ParsedSearchParams = {
   itype: string[];
   funder: string[];
   author: string[];
+  journal: string[];
+  inst: string[];
+  design: string[];
+  top10: boolean;
+  venue: boolean;
   mincite: number | null;
   abs: boolean;
   retracted: boolean;
@@ -211,6 +229,11 @@ export function parseSearchParamsFromUrl(
     itype: parseListParam(searchParams, 'itype'),
     funder: parseListParam(searchParams, 'funder'),
     author: parseListParam(searchParams, 'author').map(authorFilterValue).filter((author) => author !== null),
+    journal: parseListParam(searchParams, 'journal').map(sourceId).filter((id) => id !== undefined),
+    inst: parseListParam(searchParams, 'inst').map(institutionId).filter((id) => id !== undefined),
+    design: parseListParam(searchParams, 'design'),
+    top10: searchParams.get('top10') === 'true',
+    venue: searchParams.get('venue') === 'true',
     mincite: parseIntegerParam(searchParams, 'mincite', null),
     abs: searchParams.get('abs') === 'true',
     retracted: searchParams.get('retracted') === 'true',
@@ -263,6 +286,11 @@ export const DEFAULT_SEARCH_PARAMS: ParsedSearchParams = {
   itype: [],
   funder: [],
   author: [],
+  journal: [],
+  inst: [],
+  design: [],
+  top10: false,
+  venue: false,
   mincite: null,
   abs: false,
   retracted: false,

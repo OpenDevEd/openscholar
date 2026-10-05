@@ -1,14 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { searchAuthors } from "@/app/actions/openalex-authors";
 import { HelpCircle } from "@/components/icons";
 import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { authorFilterValue, isAuthorId } from "@/lib/openalex/author-filter";
 import { rememberAuthorNames, useAuthorNames } from "@/lib/openalex/use-author-names";
 
-const AUTHORS = { key: "author", search: searchAuthors, useNames: useAuthorNames, remember: rememberAuthorNames };
+const AUTHORS = { entity: "authors" as const, useNames: useAuthorNames, remember: rememberAuthorNames };
 
 /**
  * Authors from OpenAlex's autocomplete, and the name typed itself: many authors on a work,

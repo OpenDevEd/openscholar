@@ -120,6 +120,9 @@ function cloneSearchParams(params: SearchParams): SearchParams {
     itype: [...params.itype],
     funder: [...params.funder],
     author: [...params.author],
+    journal: [...params.journal],
+    inst: [...params.inst],
+    design: [...params.design],
   };
 }
 
@@ -266,6 +269,11 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       itype: urlParams.itype,
       funder: urlParams.funder,
       author: urlParams.author,
+      journal: urlParams.journal,
+      inst: urlParams.inst,
+      design: urlParams.design,
+      top10: urlParams.top10,
+      venue: urlParams.venue,
       mincite: urlParams.mincite,
       abs: urlParams.abs,
       retracted: urlParams.retracted,
@@ -305,6 +313,11 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     urlParams.itype,
     urlParams.funder,
     urlParams.author,
+    urlParams.journal,
+    urlParams.inst,
+    urlParams.design,
+    urlParams.top10,
+    urlParams.venue,
     urlParams.mincite,
     urlParams.abs,
     urlParams.retracted,
@@ -340,6 +353,9 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
           itype: parsedParams.itype ? [...parsedParams.itype] : [],
           funder: parsedParams.funder ? [...parsedParams.funder] : [],
           author: parsedParams.author ? [...parsedParams.author] : [],
+          journal: parsedParams.journal ? [...parsedParams.journal] : [],
+          inst: parsedParams.inst ? [...parsedParams.inst] : [],
+          design: parsedParams.design ? [...parsedParams.design] : [],
           page: DEFAULT_SEARCH_PARAMS.page,
           rmin: DEFAULT_SEARCH_PARAMS.rmin,
           rmax: DEFAULT_SEARCH_PARAMS.rmax,
@@ -406,6 +422,11 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       institutionTypes: params.itype,
       funders: params.funder,
       authors: params.author,
+      journals: params.journal,
+      institutions: params.inst,
+      studyDesigns: params.design,
+      topCitedOnly: params.top10,
+      venuesOnly: params.venue,
       minCitations: params.mincite,
       hasAbstract: params.abs,
       includeRetracted: params.retracted,
@@ -557,6 +578,11 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     currentParams.itype,
     currentParams.funder,
     currentParams.author,
+    currentParams.journal,
+    currentParams.inst,
+    currentParams.design,
+    currentParams.top10,
+    currentParams.venue,
     currentParams.mincite,
     currentParams.abs,
     currentParams.retracted,
@@ -727,6 +753,11 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     if ('itype' in updates) storeUpdates.institutionTypes = updates.itype;
     if ('funder' in updates) storeUpdates.funders = updates.funder;
     if ('author' in updates) storeUpdates.authors = updates.author;
+    if ('journal' in updates) storeUpdates.journals = updates.journal;
+    if ('inst' in updates) storeUpdates.institutions = updates.inst;
+    if ('design' in updates) storeUpdates.studyDesigns = updates.design;
+    if ('top10' in updates) storeUpdates.topCitedOnly = updates.top10;
+    if ('venue' in updates) storeUpdates.venuesOnly = updates.venue;
     if ('mincite' in updates) storeUpdates.minCitations = updates.mincite ?? undefined;
     if ('abs' in updates) storeUpdates.hasAbstract = updates.abs;
     if ('retracted' in updates) storeUpdates.includeRetracted = updates.retracted;
@@ -763,6 +794,11 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       itype: [],
       funder: [],
       author: [],
+      journal: [],
+      inst: [],
+      design: [],
+      top10: false,
+      venue: false,
       mincite: null,
       abs: false,
       retracted: false,
@@ -790,6 +826,11 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       institutionTypes: [],
       funders: [],
       authors: [],
+      journals: [],
+      institutions: [],
+      studyDesigns: [],
+      topCitedOnly: false,
+      venuesOnly: false,
       minCitations: undefined,
       hasAbstract: false,
       includeRetracted: false,
@@ -840,6 +881,11 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     institutionTypes: urlParams.itype,
     funders: urlParams.funder,
     authors: urlParams.author,
+    journals: urlParams.journal,
+    institutions: urlParams.inst,
+    studyDesigns: urlParams.design,
+    topCitedOnly: urlParams.top10,
+    venuesOnly: urlParams.venue,
     minCitations: urlParams.mincite,
     hasAbstract: urlParams.abs,
     includeRetracted: urlParams.retracted,

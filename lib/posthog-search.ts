@@ -40,6 +40,11 @@ const SEARCH_PARAM_KEYS: SearchParamKey[] = [
   "itype",
   "funder",
   "author",
+  "journal",
+  "inst",
+  "design",
+  "top10",
+  "venue",
   "mincite",
   "abs",
   "retracted",
@@ -69,6 +74,11 @@ export const SEARCH_FETCH_PARAM_KEYS: SearchParamKey[] = [
   "itype",
   "funder",
   "author",
+  "journal",
+  "inst",
+  "design",
+  "top10",
+  "venue",
   "mincite",
   "abs",
   "retracted",
@@ -110,6 +120,11 @@ function getActiveFilterKeys(params: SearchParams): string[] {
   if (params.itype.length > 0) activeKeys.push("institution_types");
   if (params.funder.length > 0) activeKeys.push("funders");
   if (params.author.length > 0) activeKeys.push("authors");
+  if (params.journal.length > 0) activeKeys.push("journals");
+  if (params.inst.length > 0) activeKeys.push("institutions");
+  if (params.design.length > 0) activeKeys.push("study_designs");
+  if (params.top10) activeKeys.push("top_cited");
+  if (params.venue) activeKeys.push("venues_only");
   if (params.mincite !== null) activeKeys.push("min_citations");
   if (params.abs) activeKeys.push("has_abstract");
   if (params.retracted) activeKeys.push("include_retracted");
@@ -154,6 +169,11 @@ export interface SearchFilterSnapshot {
   institution_types: string[];
   funders: string[];
   authors: string[];
+  journals: string[];
+  institutions: string[];
+  study_designs: string[];
+  top_cited_only: boolean;
+  venues_only: boolean;
   min_citations: number | null;
   has_abstract: boolean;
   include_retracted: boolean;
@@ -261,6 +281,11 @@ export function buildSearchFilterSnapshot(
     institution_types: params.itype,
     funders: params.funder,
     authors: params.author,
+    journals: params.journal,
+    institutions: params.inst,
+    study_designs: params.design,
+    top_cited_only: params.top10,
+    venues_only: params.venue,
     min_citations: params.mincite,
     has_abstract: params.abs,
     include_retracted: params.retracted,
@@ -279,7 +304,7 @@ export function getChangedParamKeys(
 
   const changed: SearchParamKey[] = [];
   for (const key of SEARCH_PARAM_KEYS) {
-    if (key === "reg" || key === "focus" || key === "area" || key === "sdg" || key === "type" || key === "wlang" || key === "itype" || key === "funder" || key === "author") {
+    if (key === "reg" || key === "focus" || key === "area" || key === "sdg" || key === "type" || key === "wlang" || key === "itype" || key === "funder" || key === "author" || key === "journal" || key === "inst" || key === "design") {
       if (!arraysEqualStable(previous[key], current[key])) {
         changed.push(key);
       }

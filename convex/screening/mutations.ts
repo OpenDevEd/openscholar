@@ -64,6 +64,8 @@ const jobSetup = {
   // The most it may spend, when the assistant starts it with the person's say (#328), and the hold that figure is kept in.
   spendCap: v.optional(v.number()),
   spendHold: v.optional(v.string()),
+  // The step of the assistant's reply that started it: its chat hears when it ends (../assistant/jobs.ts).
+  chatStep: v.optional(v.id("assistantSteps")),
 };
 type JobSetup = ObjectType<typeof jobSetup>;
 

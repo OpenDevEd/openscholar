@@ -24,7 +24,7 @@ import {
   FilterSectionType,
 } from "./filter-types";
 import { SECTION_TITLES, FILTER_ICONS, SORT_OPTIONS } from "./filter-config";
-import { INSTITUTION_TYPES, SDGS, WORK_TYPES } from "@/lib/openalex/vocabulary";
+import { INSTITUTION_TYPES, SDGS, STUDY_DESIGNS, WORK_TYPES } from "@/lib/openalex/vocabulary";
 
 /** Translation function for filter strings (from useTranslations("searchFilters")) */
 export type FilterT = {
@@ -138,6 +138,11 @@ export function hasActiveFiltersFromResult(result: {
   institutionTypes?: string[];
   funders?: string[];
   authors?: string[];
+  journals?: string[];
+  institutions?: string[];
+  studyDesigns?: string[];
+  topCitedOnly?: boolean;
+  venuesOnly?: boolean;
   minCitations?: number | null;
   hasAbstract?: boolean;
   includeRetracted?: boolean;
@@ -161,6 +166,11 @@ export function hasActiveFiltersFromResult(result: {
     result.institutionTypes?.length ||
     result.funders?.length ||
     result.authors?.length ||
+    result.journals?.length ||
+    result.institutions?.length ||
+    result.studyDesigns?.length ||
+    result.topCitedOnly ||
+    result.venuesOnly ||
     result.minCitations ||
     result.hasAbstract ||
     result.includeRetracted
@@ -214,6 +224,8 @@ export type FilterNames = {
   researchAreas?: Record<string, string>;
   funders?: Record<string, string>;
   authors?: Record<string, string>;
+  journals?: Record<string, string>;
+  institutions?: Record<string, string>;
   place?: (codeOrRegionId: string) => string;
   language?: (code: string) => string;
 };
@@ -411,6 +423,29 @@ export function buildFilterData(
         t ? t("authors") : "Authors"
       )
     );
+  }
+  if (params.journals?.length) {
+    contentItems.push(
+      createFilterItem("journal", "journal", params.journals.map((id) => names.journals?.[id] ?? id).join(", "), t ? t("journals") : "Journals")
+    );
+  }
+  if (params.institutions?.length) {
+    contentItems.push(
+      createFilterItem("institution", "institution", params.institutions.map((id) => names.institutions?.[id] ?? id).join(", "), t ? t("institutions") : "Institutions")
+    );
+  }
+  if (params.studyDesigns?.length) {
+    contentItems.push(
+      createFilterItem("studyDesign", "studyDesign", namesOf(params.studyDesigns, STUDY_DESIGNS), t ? t("studyDesign") : "Study design")
+    );
+  }
+  if (params.topCitedOnly) {
+    const label = t ? t("onlyTopCited") : "Top 10% in their field";
+    contentItems.push(createFilterItem("topCited", "topCited", label, label));
+  }
+  if (params.venuesOnly) {
+    const label = t ? t("onlyVenues") : "Journals, conferences and book series";
+    contentItems.push(createFilterItem("venuesOnly", "venuesOnly", label, label));
   }
   if (params.minCitations) {
     const label = t ? t("atLeastCitations", { count: params.minCitations }) : `At least ${params.minCitations} citations`;

@@ -7,7 +7,7 @@ import { DateRange } from "react-day-picker";
 import type { SearchResult, SearchField, SearchFilters } from './types'
 import { getCountryCodesForRegions, MIN_YEAR } from './constants'
 import { buildSearchSubfilter } from './search/search-field'
-import { researchAreaFilter, sdgFilterValue } from './openalex/vocabulary'
+import { researchAreaFilter, sdgFilterValue, studyDesignFilterValue, VENUE_TYPES } from './openalex/vocabulary'
 import { authorFilterValue, isAuthorId } from './openalex/author-filter'
 import { parseImportFile } from './import'
 
@@ -35,6 +35,11 @@ export const DEFAULT_FILTERS = {
   institutionTypes: [] as string[],
   funders: [] as string[],
   authors: [] as string[],
+  journals: [] as string[],
+  institutions: [] as string[],
+  studyDesigns: [] as string[],
+  topCitedOnly: false,
+  venuesOnly: false,
   minCitations: null as number | null,
   hasAbstract: false,
   includeRetracted: false,
@@ -64,6 +69,11 @@ export function clearedFilterUpdates() {
     institutionTypes: [],
     funders: [],
     authors: [],
+    journals: [],
+    institutions: [],
+    studyDesigns: [],
+    topCitedOnly: DEFAULT_FILTERS.topCitedOnly,
+    venuesOnly: DEFAULT_FILTERS.venuesOnly,
     minCitations: DEFAULT_FILTERS.minCitations,
     hasAbstract: DEFAULT_FILTERS.hasAbstract,
     includeRetracted: DEFAULT_FILTERS.includeRetracted,
@@ -97,6 +107,11 @@ export function createDefaultFilters(): SearchFilters {
     institutionTypes: [],
     funders: [],
     authors: [],
+    journals: [],
+    institutions: [],
+    studyDesigns: [],
+    topCitedOnly: DEFAULT_FILTERS.topCitedOnly,
+    venuesOnly: DEFAULT_FILTERS.venuesOnly,
     minCitations: DEFAULT_FILTERS.minCitations,
     hasAbstract: DEFAULT_FILTERS.hasAbstract,
     includeRetracted: DEFAULT_FILTERS.includeRetracted,
@@ -433,6 +448,23 @@ export function createSearchParameters(
   if (authorNames.length) {
     apiFilters.raw_author_name = { search: authorNames.map((name) => `"${name}"`).join('|') };
   }
+  if (filters.journals.length) apiFilters.primary_location = { source: { id: filters.journals.join('|') } };
+  if (filters.venuesOnly) {
+    const location = apiFilters.primary_location as { source?: Record<string, unknown> } | undefined;
+    apiFilters.primary_location = { ...location, source: { ...location?.source, type: VENUE_TYPES } };
+  }
+  // By lineage, so a university matches the papers of its departments, labs and hospitals too.
+  if (filters.institutions.length) {
+    apiFilters.authorships = {
+      ...(apiFilters.authorships as Record<string, unknown> | undefined),
+      institutions: {
+        ...((apiFilters.authorships as { institutions?: Record<string, unknown> } | undefined)?.institutions),
+        lineage: filters.institutions.join('|'),
+      },
+    };
+  }
+  if (filters.studyDesigns.length) apiFilters.study_designs = { id: studyDesignFilterValue(filters.studyDesigns) };
+  if (filters.topCitedOnly) apiFilters.citation_normalized_percentile = { is_in_top_10_percent: true };
   // OpenAlex takes "more than", so at least N is more than N - 1.
   if (filters.minCitations) apiFilters.cited_by_count = `>${filters.minCitations - 1}`;
   if (filters.hasAbstract) apiFilters.has_abstract = true;

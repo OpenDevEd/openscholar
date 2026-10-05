@@ -59,8 +59,9 @@ export function inputSchema(entry: UserAction) {
 
 /**
  * Runs an action as `userId`. `callKey` names this call and fills the action's retry key, so
- * the same call tried again applies once. A change given `stepId` ends that step itself, in
- * its own transaction. `approved`: the person was asked about this call and said yes.
+ * the same call tried again applies once. `stepId` is the step this call is: a change ends it
+ * itself, in its own transaction, and an action that doesn't change anything is told it as
+ * `fromStep`, for a job it starts to keep. `approved`: the person was asked about this call and said yes.
  * `credits`: the most they let a call that spends credits hold, which goes with it.
  */
 export function runAction(ctx: ActionCtx, userId: Id<"users">, entry: UserAction, input: Record<string, unknown>, callKey: string, stepId?: Id<"assistantSteps">, approved = false, credits?: number): Promise<unknown> {
@@ -70,7 +71,7 @@ export function runAction(ctx: ActionCtx, userId: Id<"users">, entry: UserAction
   if (entry.kind === "query") return ctx.runQuery(makeFunctionReference<"query">(ref), args);
   const change = { ...args, ...(stepId ? { stepId } : {}), ...(approved ? { approved } : {}) };
   if (entry.kind === "mutation") return ctx.runMutation(makeFunctionReference<"mutation">(ref), change);
-  return ctx.runAction(makeFunctionReference<"action">(ref), entry.changes ? change : args);
+  return ctx.runAction(makeFunctionReference<"action">(ref), entry.changes ? change : { ...args, ...(stepId ? { fromStep: stepId } : {}) });
 }
 
 /** One call of an action by the model. */

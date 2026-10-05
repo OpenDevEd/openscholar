@@ -58,7 +58,7 @@ import { authorContentFields, authorProfileInvitationFields } from "./authors/va
 
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
-import { assistantLimitFields, assistantSpenderFields, assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantStepUndoFields } from "./assistant/validators";
+import { assistantLimitFields, assistantSpenderFields, assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantStepUndoFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
@@ -215,6 +215,8 @@ export default defineSchema({
     // A person's steps in a chat that hold credits, by how much (convex/assistant/spending.ts).
     .index("by_thread_user_credits", ["threadId", "userId", "credits"]),
   assistantStepResults: defineTable(assistantStepResultFields).index("by_step", ["stepId"]).index("by_thread", ["threadId"]),
+  // Jobs replies started that have ended, each told to its chat once (convex/assistant/jobs.ts).
+  assistantJobEnds: defineTable(assistantJobEndFields).index("by_job", ["jobId"]).index("by_thread_and_pending", ["threadId", "pending"]).index("by_thread_and_order", ["threadId", "order"]),
   // What reverses each change of a bulk change (convex/assistant/bulk.ts).
   assistantStepUndos: defineTable(assistantStepUndoFields).index("by_step", ["stepId"]),
   // What each person lets the assistant spend in a chat, and each person's own record (convex/assistant/spending.ts).
@@ -1012,6 +1014,8 @@ export default defineSchema({
     spendHold: v.optional(v.string()),
     // Set once it has: its papers that haven't started are skipped, those running finish and are kept, and it ends as one that stopped at its limit.
     capped: v.optional(v.literal(true)),
+    // The step of the assistant's reply that started it (#328): its chat hears when it ends (convex/assistant/jobs.ts).
+    chatStep: v.optional(v.id("assistantSteps")),
     createdAt: v.number(),
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),

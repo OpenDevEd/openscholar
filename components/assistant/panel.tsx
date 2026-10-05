@@ -49,13 +49,15 @@ import { cn } from "@/lib/utils";
 import { OrbitMark, type OrbitClock } from "./orbit-mark";
 import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
 import { panelPlace } from "@/lib/assistant/place";
-import { AddCredits, KIND, Steps, type StepItem } from "./steps";
+import { AddCredits, KIND, KindTile, Steps, type StepItem } from "./steps";
 import { IconButton, WorkingText } from "./parts";
 import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
 
 type ThreadId = Id<"assistantThreads">;
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
-type Message = Exclude<Item, StepItem>;
+/** The app's row telling the chat jobs its replies started have ended; the reply to it is the readout. */
+type JobsEnded = Extract<Item, { role: "event" }>;
+type Message = Exclude<Item, StepItem | JobsEnded>;
 type Live = NonNullable<FunctionReturnType<typeof api.assistant.replies.live>>;
 /** A message on its way, and the chat it's for: a new chat has no ID until it's made. */
 type Sending = { threadId: ThreadId | null };
@@ -619,7 +621,8 @@ function Thread({
   // A message still on its way has none yet, and the reply's first row has the same one.
   let asked: number | null = null;
   for (const m of rows) {
-    if (m.role === "user") {
+    // A job's end starts an exchange as a message does: the reply to it is the readout.
+    if (m.role === "user" || m.role === "event") {
       asked = m.id.startsWith(SENDING) ? null : m.order;
       reply = null;
       continue;
@@ -655,6 +658,7 @@ function Thread({
         ) : null}
         {rows.flatMap((m) => {
           if (m.role === "user") return [<UserBubble key={m.id} message={m} />];
+          if (m.role === "event") return [<JobsEndedRow key={m.id} event={m} />];
           const { reply, place } = replies.get(m)!;
           // A reply's map is drawn above the rest of it, wherever the page holds its steps: the newest page brings
           // them with one of the reply's own rows when the message it answers is on a page before.
@@ -823,6 +827,21 @@ function PaperFocus({ paperId, open, href, onClose }: { paperId: string; open: b
 const REPLY_PARTS = { a: ReplyLink };
 
 /** Under a reply that was stopped. */
+/** Where the chat heard that jobs it started ended: one line each, before the assistant's readout. */
+function JobsEndedRow({ event }: { event: JobsEnded }) {
+  const t = useTranslations("assistant.jobs");
+  return (
+    <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }} className="space-y-1">
+      {event.ended.map((ended) => (
+        <div key={ended.jobId} className="flex h-8 items-center gap-2 text-xs text-muted-foreground">
+          <KindTile kind={ended.kind} size="sm" />
+          {t("ended", { kind: ended.kind, status: ended.status })}
+        </div>
+      ))}
+    </motion.div>
+  );
+}
+
 function StoppedRow() {
   const t = useTranslations("assistant");
   return (

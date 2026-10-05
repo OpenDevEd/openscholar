@@ -138,6 +138,11 @@ export interface SearchFilters {
   institutionTypes: string[];
   funders: string[];
   authors: string[];
+  journals: string[];
+  institutions: string[];
+  studyDesigns: string[];
+  topCitedOnly: boolean;
+  venuesOnly: boolean;
   minCitations: number | null;
   hasAbstract: boolean;
   /** Retracted works are left out unless this is set. */
@@ -188,6 +193,11 @@ export interface SearchResult {
   institutionTypes?: string[];
   funders?: string[];
   authors?: string[];
+  journals?: string[];
+  institutions?: string[];
+  studyDesigns?: string[];
+  topCitedOnly?: boolean;
+  venuesOnly?: boolean;
   minCitations?: number;
   hasAbstract?: boolean;
   includeRetracted?: boolean;
