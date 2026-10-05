@@ -10,11 +10,14 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
 import { assistantTools, inputSchema, runAction, toolName } from "../lib/assistantTools";
-import { readConvexErrorData } from "../lib/errors";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { ASKS_FIRST, type UserAction } from "../lib/userActions";
 import { variantIn, viewOf } from "../../lib/assistant/actions";
+import { CHUNK } from "./bulk";
+import { COLLIDED, messageOf } from "./failures";
+import { PAPERS_MAX, changeOf, changePapersSchema, papersOf, type ChangePapers } from "./paperChanges";
 import { BULK, DONE, MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, forModel } from "./steps";
+import { ASKED_EACH_MAX } from "./validators";
 
 /**
  * Requests in a row whose actions all failed, after which a reply's next request is its
@@ -132,13 +135,20 @@ export function called(tool: string, input: unknown): { entry: UserAction; input
 }
 const RUN_ACTION = "run_action";
 const RUN_MANY = "run_many";
+const CHANGE_PAPERS = "change_papers";
+/** The action that undoes a bulk change (./batches.ts), which its result names as its `undo`. */
+const UNDO_BULK = "assistant/batches:undo";
 
 /** Whether an action changes something, and so ends its step in its own transaction: a mutation, or an action whose write does. */
 const changesSomething = (entry: UserAction) => entry.kind === "mutation" || (entry.kind === "action" && entry.changes === true);
-/** Whether many of an action's changes can go in one call: each alone would run without asking. One that asks every time is asked about one by one. */
-const bulkable = (entry: UserAction) => changesSomething(entry) && runsWithoutAsking(entry);
+/**
+ * Whether many of an action's changes can go in one bulk change: a mutation, since a bulk
+ * change runs it inside its own (./bulk.ts), that alone would run without asking. One that
+ * asks every time is asked about one by one.
+ */
+const bulkable = (entry: UserAction) => entry.kind === "mutation" && runsWithoutAsking(entry);
 /** What a reply is told at a change past `BULK` of its kind: the rest go in one call, which asks. */
-export const BULK_FIRST = `You've made ${BULK} changes of this kind in this reply, and more than that is a bulk change the person is asked about first. Put every one that is left in a single run_many call: they're asked once, with the whole list.`;
+export const BULK_FIRST = `You've made ${BULK} changes of this kind in this reply, and more than that is a bulk change the person is asked about first. Make all that is left in one call: change_papers for papers, run_many for anything else. They're asked once, and it is one change with one undo.`;
 
 /**
  * What a call changes, for counting a reply's changes: papers, searches, collections, chats,
@@ -172,20 +182,37 @@ export const NO_ESTIMATE =
 
 /** The action a run_many call names: by its name, or by the name of its tool. */
 const namedAs = (name: string) => entryAt(name) ?? core().find((entry) => toolName(entry.path) === name);
+
 /**
- * The batch a run_many call is for: its action, and each change's arguments. Null when it
- * names no action, lists nothing, any arguments don't fit, or its changes aren't all the same
- * change (`sameChange`): the person is asked about a batch as one.
+ * A bulk change, ready to run: one action, and what each of its changes is given. `kept` is
+ * what waits on its step while the person is asked, and what the reply runs it from once they
+ * allow it. `shown` is what its card says in place of its arguments, for one over a set of
+ * papers. `about` is what its changes are all given alike, which names the step.
  */
-export function batched(tool: string, input: unknown): { entry: UserAction; each: Record<string, unknown>[] } | null {
-  if (tool !== RUN_MANY || !input || typeof input !== "object") return null;
-  const { name, each } = input as { name?: unknown; each?: unknown };
+export type Plan = { tool: string; entry: UserAction; items: Record<string, unknown>[]; kept: string; shown?: string; variant?: string; about: string; subject?: string };
+
+/** What every change of a batch is given alike. */
+const shared = (items: Record<string, unknown>[]) => Object.fromEntries(Object.entries(items[0] ?? {}).filter(([key, value]) => items.length > 1 && items.every((item) => JSON.stringify(item[key]) === JSON.stringify(value))));
+
+/**
+ * The batch a run_many call is for: its action, and each change's arguments. A reason
+ * instead when it names no action or one a bulk change can't run, lists nothing, any
+ * arguments don't fit, or its changes aren't all the same change (`sameChange`): the person
+ * is asked about a batch as one.
+ */
+export function batched(input: unknown): { entry: UserAction; each: Record<string, unknown>[] } | { error: string; entry?: UserAction; misfit?: true } {
+  const { name, each } = (input && typeof input === "object" ? input : {}) as { name?: unknown; each?: unknown };
   const entry = typeof name === "string" ? namedAs(name) : undefined;
-  if (!entry || !Array.isArray(each) || !each.length) return null;
+  if (!entry) return { error: `No action is named ${cut(String(name), 200)}. Look one up with find_action.` };
+  if (!bulkable(entry))
+    return { error: entry.kind === "action" ? "run_many can't run this action many times in one go. To save, collect, rate or remove many papers, use change_papers." : "run_many makes changes that run without asking. This action reads, or asks every time: run it with its own tool or run_action, once for each." };
+  if (!Array.isArray(each) || !each.length) return { error: '"each" is empty: give one set of arguments for each change.' };
   const parsed = each.map((given) => inputSchema(entry).safeParse(given));
-  if (!parsed.every((item) => item.success)) return null;
+  const wrong = parsed.findIndex((item) => !item.success);
+  if (wrong !== -1) return { error: `The arguments of change ${wrong + 1} don't fit: ${cut(z.prettifyError(parsed[wrong].error!), 1_000)}`, entry, misfit: true };
   const items = parsed.map((item) => item.data as Record<string, unknown>);
-  return items.every((item) => sameChange(entry, item, items[0])) ? { entry, each: items } : null;
+  if (!items.every((item) => sameChange(entry, item, items[0]))) return { error: "These aren't all the same change. Make one run_many call for each, so the person is asked about each." };
+  return { entry, each: items };
 }
 
 /** A tool call the reply asked the person about. */
@@ -195,13 +222,23 @@ export type Asked = { toolCallId: string; toolName: string; input: unknown };
  * becomes a step, since every one needs its result written: a call that names no action
  * any more waits under its tool's name, and fails when it's run.
  */
-export function askedSteps(requests: Asked[], held: (path: string, input: unknown) => number | undefined = () => undefined) {
+export function askedSteps(requests: Asked[], held: (path: string, input: unknown) => number | undefined = () => undefined, planned: (toolCallId: string) => Plan | undefined = () => undefined) {
   return requests.map(({ toolCallId, toolName: tool, input }) => {
-    // A bulk change waits as one step: the list of what each change is given, and how many there are.
-    // A batch of one is that one change, and is asked about as it would be alone.
-    const many = batched(tool, input);
-    if (many && many.each.length > 1) return { toolCallId, tool, path: many.entry.path, input: cut(JSON.stringify(many.each), STEP_TEXT_MAX), batch: many.each.length };
-    const call = many ? { entry: many.entry, input: many.each[0] } : called(tool, input);
+    // A bulk change waits as one step: how many changes it is, what the reply runs it from, and what its card says.
+    const plan = planned(toolCallId);
+    if (plan) {
+      return {
+        toolCallId,
+        tool,
+        path: plan.entry.path,
+        input: plan.kept,
+        batch: plan.items.length,
+        ...(plan.subject ? { subject: plan.subject } : {}),
+        ...(plan.shown ? { shown: plan.shown } : {}),
+        ...(plan.variant ? { variant: plan.variant } : {}),
+      };
+    }
+    const call = called(tool, input);
     const subject = call && subjectOf(call.input);
     // What a call that spends credits holds at most goes with its step, for the person asked.
     const credits = call ? held(call.entry.path, call.input) : undefined;
@@ -224,7 +261,7 @@ export async function written<T>(run: () => Promise<T>): Promise<T> {
     try {
       return await run();
     } catch (error) {
-      if (tries >= WRITE_TRIES || !/changed while this mutation was being run/.test(String(error))) throw error;
+      if (tries >= WRITE_TRIES || !COLLIDED.test(String(error))) throw error;
       await new Promise((resolve) => setTimeout(resolve, Math.random() * 300 * tries));
     }
   }
@@ -236,37 +273,6 @@ function subjectOf(input: Record<string, unknown>) {
   const requeried = Array.isArray(input.changes) ? input.changes.find((change) => change?.setting === "query")?.value : undefined;
   const named = [input.title, paper.title, input.name, input.query, input.search, requeried].find((value) => typeof value === "string" && value.trim() !== "");
   return typeof named === "string" ? cut(named.trim(), 200) : undefined;
-}
-
-/**
- * An error as the model should read it, and as the step shows it to the person: the action's
- * own message. One the action didn't write (a crash, a limit of the runtime) is cut to its
- * first line, without the runtime's prefix and the trace of where it was thrown.
- */
-const messageOf = (error: unknown) => {
-  const told = readConvexErrorData(error)?.message;
-  if (told) return cut(told, MODEL_READS / 4);
-  const raw = error instanceof Error ? error.message : String(error);
-  const fit = misfit(raw);
-  if (fit) return fit;
-  console.error("[assistant] an action failed with an error it didn't write", error);
-  return cut(raw.split("\n")[0].replace(/^(?:\[Request ID: \w+\] Server Error\s*)?(?:Uncaught \w*Error: )?/, ""), 300);
-};
-
-/**
- * What Convex says of an argument that doesn't fit, as the model can act on it: which
- * argument, what it takes and what it got. Its first line alone, "Value does not match
- * validator", named none of them: given a collection's name where its ID goes, the model
- * was told nothing it could correct. Null for any other error.
- */
-export function misfit(text: string) {
-  if (!text.includes("ArgumentValidationError")) return null;
-  const line = (label: string) => text.match(new RegExp(`^\\s*${label}: (.*)$`, "m"))?.[1]?.trim();
-  const [path, value, takes] = [line("Path"), line("Value"), line("Validator")];
-  const said = text.split("\n").find((part) => part.includes("ArgumentValidationError"))!.replace(/^.*ArgumentValidationError: /, "");
-  // A missing or an unknown field is said whole on the error's own line, which names it. Inside another argument, that one is named too.
-  if (!path || !takes || !said.startsWith("Value does not match validator")) return cut(`These arguments don't fit${path ? `, in ${path.replace(/^\./, "")}` : ""}: ${said}`, 400);
-  return cut(`The argument ${path.replace(/^\./, "")} doesn't fit: it takes ${takes}${value ? `, and got ${value}` : ""}.${takes.startsWith("v.id(") ? " An ID is one a result gave you, never a name." : ""}`, 400);
 }
 
 /**
@@ -361,11 +367,10 @@ export function toolsFor(
    * Runs one call, kept as a step from when it starts to how it ended. The model reads the
    * short form of the result, and an action's failure as its message, so it can say what
    * went wrong or try something else. `allowed` is the step of a call the person was asked
-   * about and said yes to: it runs whatever the reply's limits are. `inBatch` is one change
-   * of a bulk change they said yes to, which is allowed the same and is a step of its own.
+   * about and said yes to: it runs whatever the reply's limits are.
    */
-  const call = async (entry: UserAction, input: Record<string, unknown>, toolCallId: string, allowed?: Id<"assistantSteps">, approvedFor?: number, inBatch = false) => {
-    const approved = inBatch || allowed !== undefined;
+  const call = async (entry: UserAction, input: Record<string, unknown>, toolCallId: string, allowed?: Id<"assistantSteps">, approvedFor?: number) => {
+    const approved = allowed !== undefined;
     // A call that spends credits and wasn't asked about runs only when the person's allowance covers what it holds.
     const within = approved || entry.kind === "query" || !entry.spendsCredits ? undefined : holds.get(sameCall(entry.path, input));
     if (!approved) {
@@ -417,67 +422,168 @@ export function toolsFor(
     }
     return !runsWithoutAsking(entry) || (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) }));
   };
+  // The bulk changes this request's calls planned, by call: planned once, when a call is checked for asking, and run or kept from there.
+  const plans = new Map<string, Promise<Plan | { error: string; arguments?: unknown }>>();
+  const planned = new Map<string, Plan>();
   /**
-   * Whether the person is asked before a batch of changes runs: with the changes of its kind
-   * the reply has made, it's more than `BULK`, or one of its changes would ask alone.
+   * A call of run_many or change_papers as the bulk change it is. A set of papers is read
+   * here, before anyone is asked: the person is asked about the papers it holds now, and
+   * those are the ones changed (#341). A reason instead when it can't be planned.
    */
-  const asksMany = async ({ entry, each }: { entry: UserAction; each: Record<string, unknown>[] }) => {
-    // One that can't go in a batch is refused when it runs: there's nothing to ask.
-    if (!bulkable(entry)) return false;
-    if ((changes.get(kindOf(entry, each[0])) ?? 0) + each.length > BULK) return true;
+  const planOf = (toolCallId: string, toolName: string, input: unknown) => {
+    const made = plans.get(toolCallId);
+    if (made) return made;
+    const plan = (async (): Promise<Plan | { error: string; arguments?: unknown }> => {
+      try {
+        let found: { entry: UserAction; items: Record<string, unknown>[]; kept: string; about: Record<string, unknown>; shown?: string };
+        if (toolName === RUN_MANY) {
+          const batch = batched(input);
+          if ("error" in batch) return { error: batch.error, ...(batch.misfit && batch.entry ? { arguments: definition(batch.entry).arguments } : {}) };
+          found = { entry: batch.entry, items: batch.each, kept: JSON.stringify(batch.each), about: shared(batch.each) };
+        } else {
+          const given = input as ChangePapers;
+          const papers = await papersOf(ctx, userId, given);
+          if (!papers.length) return { error: "There are no papers there: the set holds none in that range." };
+          const change = changeOf(given, papers);
+          const entry = entryAt(change.path)!;
+          // What it was asked with, and the papers it found: the reply runs it from these once the person allows it, on those papers and no others.
+          const kept = JSON.stringify({ given, ids: papers.map((paper) => paper.openalexId.split("/").at(-1)) });
+          found = { entry, items: change.items, kept, about: change.shared, shown: JSON.stringify({ shared: change.shared, each: papers.slice(0, ASKED_EACH_MAX).map((paper) => cut(paper.title, 200)) }) };
+        }
+        const about = JSON.stringify(found.about);
+        const subject = await ctx.runQuery(internal.assistant.steps.about, { userId, input: about });
+        const variant = variantIn(found.entry.path, found.items[0]);
+        const ready: Plan = { tool: toolName, entry: found.entry, items: found.items, kept: found.kept, about, ...(found.shown ? { shown: found.shown } : {}), ...(variant ? { variant } : {}), ...(subject ? { subject } : {}) };
+        planned.set(toolCallId, ready);
+        return ready;
+      } catch (error) {
+        return { error: messageOf(error) };
+      }
+    })();
+    plans.set(toolCallId, plan);
+    return plan;
+  };
+  /**
+   * Whether the person is asked before a bulk change runs: with the changes of its kind the
+   * reply has made, it's more than `BULK`, or one of its changes would ask alone.
+   */
+  const asksPlan = async ({ entry, items }: Plan) => {
+    if ((changes.get(kindOf(entry, items[0])) ?? 0) + items.length > BULK) return true;
     if (entry.kind === "query" || !entry.asksFirst) return false;
-    for (const input of each) if (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) })) return true;
+    for (const input of items) if (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) })) return true;
     return false;
   };
   /**
-   * Runs a batch's changes one after another, each a step of its own with its own undo.
-   * `allowed`: the person said yes to the batch. A Stop ends it between two changes: what ran
-   * stays, and the rest isn't made. Its `error` says so, or that none of them could be made,
-   * which counts as a failed call like any other.
+   * Runs a bulk change as one step, a chunk of its changes a transaction (./bulk.ts). `asked`
+   * is its step when the person was asked about it and said yes. A Stop ends it between two
+   * chunks: what was made stays, and is what the step says and undoes. One that made
+   * nothing fails, with why the first of its changes couldn't be made.
    */
-  const runMany = async (entry: UserAction, each: Record<string, unknown>[], toolCallId: string, allowed = false) => {
-    const results: unknown[] = [];
-    for (const [i, input] of each.entries()) {
-      if (await halted()) break;
-      results.push(await call(entry, input, `${toolCallId}:${i}`, undefined, undefined, allowed));
+  const runPlan = async ({ entry, items, variant, subject }: Plan, toolCallId: string, asked?: Id<"assistantSteps">) => {
+    const stepId =
+      asked ??
+      (await ctx.runMutation(internal.assistant.steps.begin, {
+        threadId,
+        order,
+        userId,
+        toolCallId,
+        path: entry.path,
+        // The first of them say what kind of change it is; all of them would not fit.
+        input: cut(JSON.stringify(items.slice(0, 1)), STEP_TEXT_MAX),
+        batch: items.length,
+        ...(subject ? { subject } : {}),
+        ...(variant ? { variant } : {}),
+      }));
+    const key = asked ? `${attemptId}:${asked}` : `${attemptId}:${calls++}`;
+    let made = 0;
+    let failed = 0;
+    let tried = 0;
+    // Why changes couldn't be made: the first reason of each chunk that had one.
+    const why: string[] = [];
+    try {
+      for (; tried < items.length && !(await halted()); tried += CHUNK) {
+        const chunk = items.slice(tried, tried + CHUNK);
+        // Typed here: the generated API's types depend on this module, so inference would loop.
+        const done: { made: number; failed: number; why?: string } = await written(() => ctx.runMutation(internal.assistant.bulk.apply, { userId, stepId, path: entry.path, items: JSON.stringify(chunk), approved: asked !== undefined, key: `${key}:${tried}` }));
+        made += done.made;
+        failed += done.failed;
+        if (done.why) why.push(done.why);
+      }
+    } catch (error) {
+      // A chunk that couldn't run at all made none of its changes.
+      failed += Math.min(CHUNK, items.length - tried);
+      why.push(messageOf(error));
     }
-    const failed = results.flatMap((result) => (result && typeof result === "object" && "error" in result ? [String(result.error)] : []));
-    const made = results.length - failed.length;
-    const error =
-      results.length < each.length
-        ? `The person stopped the reply after ${made} of these ${each.length} changes were made. The rest weren't.`
-        : made === 0
-          ? `None of these ${each.length} changes were made. The first failed with: ${failed[0]}`
-          : undefined;
-    return { ...(error ? { error } : {}), results };
+    const left = Math.max(0, items.length - made - failed);
+    if (made === 0) {
+      const error = why[0] ?? "The person stopped the reply before any of these were made.";
+      await ctx.runMutation(internal.assistant.steps.failed, { stepId, error });
+      note(entry.path, items.length, { error });
+      return { error: `None of these ${items.length} changes were made. ${error}` };
+    }
+    const result = {
+      made,
+      // A few reasons say why; a model that reads hundreds of them reads nothing else.
+      ...(failed ? { failed, why: [...new Set(why)].slice(0, 5) } : {}),
+      ...(left ? { stopped: `The person stopped the reply: ${left} of these weren't made.` } : {}),
+      undo: { path: UNDO_BULK, args: { change: stepId } },
+    };
+    await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result) });
+    note(entry.path, items.length, "made");
+    return forModel(result);
   };
-  const approval = async ({ toolCall }: { toolCall: { toolName: string; input: unknown } }) => {
+  /** Runs a call of run_many or change_papers that didn't have to ask. */
+  const bulk = async (toolName: string, input: unknown, toolCallId: string) => {
+    const refused = stopped();
+    const plan = refused ? { error: refused } : await planOf(toolCallId, toolName, input);
+    if ("error" in plan) {
+      note(toolName, input, { error: plan.error });
+      return forModel(plan);
+    }
+    // Asked about before it got here, unless what the reply has made since tipped it over.
+    if (await asksPlan(plan)) return { error: ASKS_FIRST };
+    const kind = kindOf(plan.entry, plan.items[0]);
+    changes.set(kind, (changes.get(kind) ?? 0) + plan.items.length);
+    return runPlan(plan, toolCallId);
+  };
+  const approval = async ({ toolCall }: { toolCall: { toolCallId: string; toolName: string; input: unknown } }) => {
     // A call the reply's limits refuse anyway isn't worth asking about.
     if (stopped()) return undefined;
-    const many = batched(toolCall.toolName, toolCall.input);
+    const many = toolCall.toolName === RUN_MANY || toolCall.toolName === CHANGE_PAPERS ? await planOf(toolCall.toolCallId, toolCall.toolName, toolCall.input) : null;
+    // One that can't be planned says why when it's run.
+    if (many && ("error" in many || !(await asksPlan(many)))) return undefined;
     const call = many ? null : called(toolCall.toolName, toolCall.input);
-    if (many ? !(await asksMany(many)) : !call || !(await asks(call.entry, call.input))) return undefined;
+    if (!many && (!call || !(await asks(call.entry, call.input)))) return undefined;
     // What it's given waits on its step for the answer, so it has to fit there.
-    if (JSON.stringify(many ? many.each : call!.input).length > STEP_TEXT_MAX)
-      return { type: "denied" as const, reason: many ? "The list is too long to ask the person about in one go. Split it into shorter run_many calls." : "Its arguments are too long to ask the person about." };
+    if ((many ? many.kept : JSON.stringify(call!.input)).length > STEP_TEXT_MAX)
+      return { type: "denied" as const, reason: many ? "That is too many to ask the person about in one go. Make it in two calls, each with half of them." : "Its arguments are too long to ask the person about." };
     if (asked >= MAX_ASKS) return { type: "denied" as const, reason: `A reply asks the person about at most ${MAX_ASKS} actions at a time. Ask about the rest once these are answered.` };
     asked++;
     calls++;
     // Asking counts as what the request did: a model that asks for the same thing again, each time it's declined, is going round in circles too.
-    note(many ? RUN_MANY : call!.entry.path, many ? [many.entry.path, many.each] : call!.input, "asked");
+    note(many ? toolCall.toolName : call!.entry.path, many ? many.kept : call!.input, "asked");
     return "user-approval" as const;
   };
-  const resume = async (step: { stepId: Id<"assistantSteps">; toolCallId: string; path: string; input: string; credits?: number; batch?: number }) => {
+  /** The bulk change a step the person allowed is, from what it kept. One over a set of papers reads the set again, for the papers' records, and changes only the ones they were asked about. */
+  const kept = async (step: { toolCallId: string; input: string }): Promise<Plan | { error: string }> => {
+    const { given, ids } = JSON.parse(step.input) as { given: ChangePapers; ids: string[] };
+    const plan = await planOf(step.toolCallId, CHANGE_PAPERS, given);
+    if ("error" in plan) return plan;
+    const approved = new Set(ids);
+    const at = (item: Record<string, unknown>) => String((item.paper as { openalexId?: unknown } | undefined)?.openalexId ?? item.openalexId).split("/").at(-1)!;
+    return { ...plan, items: plan.items.filter((item) => approved.has(at(item))) };
+  };
+  const resume = async (step: { stepId: Id<"assistantSteps">; toolCallId: string; path: string; input: string; credits?: number; batch?: number; tool?: string }) => {
     // Claimed once, for this reply: one that died after this and is tried again doesn't run it a second time, and a stopped one runs nothing more.
     if (!(await ctx.runMutation(internal.assistant.steps.resume, { stepId: step.stepId, attemptId }))) return false;
     const entry = entryAt(step.path);
     if (!entry) await ctx.runMutation(internal.assistant.steps.failed, { stepId: step.stepId, error: "This action can't be run any more." });
     else if (step.batch === undefined) await call(entry, JSON.parse(step.input), step.toolCallId, step.stepId, step.credits);
     else {
-      // A bulk change the person allowed: its step ends with what every change came to, or as failed when it was stopped partway or none could be made.
-      const outcome = await runMany(entry, JSON.parse(step.input), step.toolCallId, true);
-      if (outcome.error) await ctx.runMutation(internal.assistant.steps.failed, { stepId: step.stepId, error: outcome.error });
-      else await ctx.runMutation(internal.assistant.steps.read, { stepId: step.stepId, result: JSON.stringify(outcome) });
+      // A bulk change the person allowed: the same step, run from what it kept.
+      const plan: Plan | { error: string } = step.tool === CHANGE_PAPERS ? await kept(step) : { tool: RUN_MANY, entry, items: JSON.parse(step.input), kept: step.input, about: "{}" };
+      if ("error" in plan) await ctx.runMutation(internal.assistant.steps.failed, { stepId: step.stepId, error: plan.error });
+      else await runPlan(plan, step.toolCallId, step.stepId);
     }
     return true;
   };
@@ -514,36 +620,21 @@ export function toolsFor(
     }),
     run_many: tool({
       description:
-        `Makes the same kind of change to many records in one go: one action, run once for each set of arguments in "each". Use it whenever there are more than ${BULK} changes of one kind to make, such as removing 30 papers or rating every paper in a collection. ` +
-        'The person is asked once, with the whole list, before any of it runs, so list every change and make none of them one by one first. "name" is an action\'s name as find_action gives it, or the name of one of your tools.',
+        `Makes the same change to many records in one go: one action, run once for each set of arguments in "each". Use it for more than ${BULK} changes of one kind to anything but papers, such as renaming or removing many searches. ` +
+        'It is one change, with one undo. More than that many and the person is asked once, with the whole list, before any of it runs, so list every change and make none of them one by one first. "name" is an action\'s name as find_action gives it, or the name of one of your tools. For papers, use change_papers.',
       inputSchema: z.object({ name: z.string(), each: z.array(z.record(z.string(), z.unknown())) }),
-      execute: async ({ name, each }, { toolCallId }) => {
-        const entry = namedAs(name);
-        const many = batched(RUN_MANY, { name, each });
-        const misfit = entry && !many ? each.map((given, i) => ({ i, parsed: inputSchema(entry).safeParse(given) })).find(({ parsed }) => !parsed.success) : undefined;
-        const refused =
-          stopped() ??
-          (!entry
-            ? `No action is named ${cut(name, 200)}. Look one up with find_action.`
-            : !bulkable(entry)
-              ? "run_many makes changes that run without asking. This action reads, or asks every time: run it with its own tool or run_action, once for each."
-              : misfit
-                ? `The arguments of change ${misfit.i + 1} don't fit: ${cut(z.prettifyError(misfit.parsed.error!), 1_000)}`
-                : !each.length
-                  ? '"each" is empty: give one set of arguments for each change.'
-                  : !many
-                    ? "These aren't all the same change. Make one run_many call for each, so the person is asked about each."
-                    : // Asked about before it got here, unless what the reply has made since tipped it over.
-                    (await asksMany(many))
-                    ? ASKS_FIRST
-                    : null);
-        if (refused || !many) {
-          note(RUN_MANY, [name, each], { error: refused });
-          return entry && misfit && !stopped() ? forModel({ error: refused, arguments: definition(entry).arguments }) : { error: refused };
-        }
-        return forModel(await runMany(many.entry, many.each, toolCallId));
-      },
+      execute: (input, { toolCallId }) => bulk(RUN_MANY, input, toolCallId),
+    }),
+    change_papers: tool({
+      description:
+        "Makes one change to many papers in one go, without reading them first. `papers` is the set: what a query finds ({kind: \"query\", query, and any filter research_papers_search takes, such as minCitations}), a saved search's results ({kind: \"search\", searchId}), " +
+        "a collection ({kind: \"collection\", collectionId}), every saved paper ({kind: \"saved\"}), a screening's included papers ({kind: \"screening\", jobId}), or papers you name ({kind: \"ids\", ids}). " +
+        `\`first\` and \`last\` say which of the set, counting from 1, up to ${PAPERS_MAX.toLocaleString("en")} papers; a list of IDs needs neither. Count the set first (research_papers_count for a query), so they cover what you mean. ` +
+        "`do` is what happens to each paper: \"save\" to the library (with `collectionId`, into that collection too), \"collect\" into `collectionId`, \"uncollect\" out of `collectionId`, \"remove\" from the library, or \"rate\" with `rating`. " +
+        `It is one change, with one undo. More than ${BULK} papers and the person is asked once, with how many and the first titles. Use it whenever a change is to more than a few papers: never read a set page by page to change its papers one by one.`,
+      inputSchema: changePapersSchema(),
+      execute: (input, { toolCallId }) => bulk(CHANGE_PAPERS, input, toolCallId),
     }),
   };
-  return { tools, approval, resume, made: () => calls, changes: () => Object.fromEntries(changes), digest: () => (did.length ? fnv(did.slice().sort().join("\n")) : undefined), held: (path: string, input: unknown) => holds.get(sameCall(path, input))?.credits };
+  return { tools, approval, resume, planned: (toolCallId: string) => planned.get(toolCallId), made: () => calls, changes: () => Object.fromEntries(changes), digest: () => (did.length ? fnv(did.slice().sort().join("\n")) : undefined), held: (path: string, input: unknown) => holds.get(sameCall(path, input))?.credits };
 }

@@ -127,9 +127,14 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
  * its changes is given alike, as `detailsOf` says it, then the first of its changes, each as
  * what it alone is given: the record it's made to, and what it gives that record.
  */
-export async function bulkOf(ctx: QueryCtx, reader: Doc<"users">, input: string) {
+export async function bulkOf(ctx: QueryCtx, reader: Doc<"users">, { input, shown }: { input: string; shown?: string }) {
   let each: Record<string, unknown>[];
   try {
+    // One over a set of papers says what it shows: what its changes share, and the first papers by title, which the reader may not have saved yet.
+    if (shown) {
+      const said = JSON.parse(shown) as { shared: Record<string, unknown>; each: string[] };
+      return { details: await detailsOf(ctx, reader, JSON.stringify(said.shared)), each: said.each.slice(0, ASKED_EACH_MAX).map((title) => [{ name: "title", value: title }]) };
+    }
     each = JSON.parse(input) as Record<string, unknown>[];
   } catch {
     // A list too long to keep whole was refused before it could be asked about.

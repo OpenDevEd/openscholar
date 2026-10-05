@@ -156,8 +156,15 @@ export const assistantStepFields = {
   credits: v.optional(v.number()),
   /** On a step that asked first, for an action that says what to show of its arguments: that, as JSON, which the person is asked about in their place. */
   shown: v.optional(v.string()),
-  /** On a step that asks about a bulk change: how many changes it is. Its `input` is the list of each one's arguments, and each runs as a step of its own. */
+  /**
+   * On a bulk change (./bulk.ts): how many changes it is. One step for all of them, however
+   * many: `count` is how many were made, and what reverses each is kept beside the step
+   * (`assistantStepUndos`). `input` is what the tool was given, for the reply to run it from
+   * once the person allows it.
+   */
   batch: v.optional(v.number()),
+  /** Which of its several jobs its action does (lib/assistant/actions.ts), where its arguments don't say it one by one: a bulk change. */
+  variant: v.optional(v.string()),
   /**
    * `asking`: the person is asked before it runs. `allowed`: they said yes, and the reply
    * runs it as it carries on. `declined`: they said no, or stopped the reply.
@@ -179,6 +186,8 @@ export const askedDetailsValidator = capped(v.optional(v.array(v.object({ name: 
 export const ASKED_EACH_MAX = 5;
 export const ASKED_EACH_DETAILS_MAX = 3;
 export const askedEachValidator = capped(v.optional(v.array(capped(v.array(v.object({ name: v.string(), value: v.string() })), ASKED_EACH_DETAILS_MAX))), ASKED_EACH_MAX);
+/** What reverses one change of a bulk change: the action to run, and its arguments as JSON. A row each, so undoing a thousand reads a few at a time. */
+export const assistantStepUndoFields = { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), path: v.string(), args: v.string() };
 /** What a step's action returned, as JSON: kept apart from the step, so listing steps reads none of it. */
 export const assistantStepResultFields = { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), result: v.string() };
 

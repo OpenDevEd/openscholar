@@ -3557,28 +3557,36 @@
         "did": "已创建检索",
         "where": "已保存的检索",
         "ask": "创建检索",
-        "askMany": "创建 {count, number} 个检索"
+        "askMany": "创建 {count, number} 个检索",
+        "doingMany": "正在创建 {count, number} 个检索",
+        "didMany": "已创建 {count, number} 个检索"
       },
       "changeSearch": {
         "doing": "正在修改检索",
         "did": "已修改检索",
         "where": "已保存的检索",
         "ask": "修改检索",
-        "askMany": "修改 {count, number} 个检索"
+        "askMany": "修改 {count, number} 个检索",
+        "doingMany": "正在修改 {count, number} 个检索",
+        "didMany": "已修改 {count, number} 个检索"
       },
       "restoreSearch": {
         "doing": "正在放回检索",
         "did": "已放回检索",
         "where": "已保存的检索",
         "ask": "放回检索",
-        "askMany": "放回 {count, number} 个检索"
+        "askMany": "放回 {count, number} 个检索",
+        "doingMany": "正在放回 {count, number} 个检索",
+        "didMany": "已放回 {count, number} 个检索"
       },
       "removeSearch": {
         "doing": "正在移除检索",
         "did": "已移除检索",
         "where": "已保存的检索",
         "ask": "移除检索",
-        "askMany": "移除 {count, number} 个检索"
+        "askMany": "移除 {count, number} 个检索",
+        "doingMany": "正在移除 {count, number} 个检索",
+        "didMany": "已移除 {count, number} 个检索"
       },
       "results": {
         "doing": "正在读取检索结果",
@@ -3625,35 +3633,45 @@
         "did": "已保存论文",
         "where": "文献库",
         "ask": "保存论文",
-        "askMany": "保存 {count, number} 篇论文"
+        "askMany": "保存 {count, number} 篇论文",
+        "doingMany": "正在保存 {count, number} 篇论文",
+        "didMany": "已保存 {count, number} 篇论文"
       },
       "rate": {
         "doing": "正在为论文评分",
         "did": "已为论文评分",
         "where": "文献库",
         "ask": "为论文评分",
-        "askMany": "为 {count, number} 篇论文评分"
+        "askMany": "为 {count, number} 篇论文评分",
+        "doingMany": "正在为 {count, number} 篇论文评分",
+        "didMany": "已为 {count, number} 篇论文评分"
       },
       "remove": {
         "doing": "正在移除论文",
         "did": "已移除论文",
         "where": "文献库",
         "ask": "移除论文",
-        "askMany": "移除 {count, number} 篇论文"
+        "askMany": "移除 {count, number} 篇论文",
+        "doingMany": "正在移除 {count, number} 篇论文",
+        "didMany": "已移除 {count, number} 篇论文"
       },
       "restore": {
         "doing": "正在放回论文",
         "did": "已放回论文",
         "where": "文献库",
         "ask": "放回论文",
-        "askMany": "放回 {count, number} 篇论文"
+        "askMany": "放回 {count, number} 篇论文",
+        "doingMany": "正在放回 {count, number} 篇论文",
+        "didMany": "已放回 {count, number} 篇论文"
       },
       "collect": {
         "doing": "正在更新合集",
         "did": "已更新合集",
         "where": "合集",
         "ask": "更改合集",
-        "askMany": "对合集做 {count, number} 处更改"
+        "askMany": "对合集做 {count, number} 处更改",
+        "doingMany": "正在对合集做 {count, number} 处更改",
+        "didMany": "已对合集做 {count, number} 处更改"
       },
       "collections": {
         "doing": "正在查看你的合集",
@@ -3670,14 +3688,18 @@
         "did": "已创建合集",
         "where": "合集",
         "ask": "创建合集",
-        "askMany": "创建 {count, number} 个合集"
+        "askMany": "创建 {count, number} 个合集",
+        "doingMany": "正在创建 {count, number} 个合集",
+        "didMany": "已创建 {count, number} 个合集"
       },
       "renameCollection": {
         "doing": "正在重命名合集",
         "did": "已重命名合集",
         "where": "合集",
         "ask": "重命名合集",
-        "askMany": "重命名 {count, number} 个合集"
+        "askMany": "重命名 {count, number} 个合集",
+        "doingMany": "正在重命名 {count, number} 个合集",
+        "didMany": "已重命名 {count, number} 个合集"
       },
       "screening": {
         "doing": "正在读取筛选",
@@ -3718,28 +3740,36 @@
         "did": "已开始对话",
         "where": "对话",
         "ask": "开始对话",
-        "askMany": "开始 {count, number} 个对话"
+        "askMany": "开始 {count, number} 个对话",
+        "doingMany": "正在开始 {count, number} 个对话",
+        "didMany": "已开始 {count, number} 个对话"
       },
       "renameChat": {
         "doing": "正在重命名对话",
         "did": "已重命名对话",
         "where": "对话",
         "ask": "重命名对话",
-        "askMany": "重命名 {count, number} 个对话"
+        "askMany": "重命名 {count, number} 个对话",
+        "doingMany": "正在重命名 {count, number} 个对话",
+        "didMany": "已重命名 {count, number} 个对话"
       },
       "chatModel": {
         "doing": "正在更改对话的模型",
         "did": "已更改对话的模型",
         "where": "对话",
         "ask": "更改对话的模型",
-        "askMany": "更改 {count, number} 个对话的模型"
+        "askMany": "更改 {count, number} 个对话的模型",
+        "doingMany": "正在更改 {count, number} 个对话的模型",
+        "didMany": "已更改 {count, number} 个对话的模型"
       },
       "answer": {
         "doing": "正在更改筛选答案",
         "did": "已更改筛选答案",
         "where": "筛选",
         "ask": "更改筛选答案",
-        "askMany": "更改 {count, number} 个筛选答案"
+        "askMany": "更改 {count, number} 个筛选答案",
+        "doingMany": "正在更改 {count, number} 个筛选答案",
+        "didMany": "已更改 {count, number} 个筛选答案"
       },
       "chats": {
         "doing": "正在查看你的对话",
@@ -3792,28 +3822,36 @@
         "did": "已移除你的全部检索",
         "where": "已保存的检索",
         "ask": "移除你的全部检索",
-        "askMany": "移除你的全部检索"
+        "askMany": "移除你的全部检索",
+        "doingMany": "正在移除你的全部检索",
+        "didMany": "已移除你的全部检索"
       },
       "bookmark": {
         "doing": "正在更改书签",
         "did": "已更改书签",
         "where": "书签",
         "ask": "更改书签",
-        "askMany": "更改 {count, number} 个书签"
+        "askMany": "更改 {count, number} 个书签",
+        "doingMany": "正在更改 {count, number} 个书签",
+        "didMany": "已更改 {count, number} 个书签"
       },
       "clearBookmarks": {
         "doing": "正在移除你的全部书签",
         "did": "已移除你的全部书签",
         "where": "书签",
         "ask": "移除你的全部书签",
-        "askMany": "移除你的全部书签"
+        "askMany": "移除你的全部书签",
+        "doingMany": "正在移除你的全部书签",
+        "didMany": "已移除你的全部书签"
       },
       "other": {
         "doing": "正在你的账户中处理",
         "did": "已在你的账户中处理",
         "where": "你的账户",
         "ask": "在你的账户中执行操作",
-        "askMany": "在你的账户中执行 {count, number} 项操作"
+        "askMany": "在你的账户中执行 {count, number} 项操作",
+        "doingMany": "正在你的账户中执行 {count, number} 项操作",
+        "didMany": "已在你的账户中执行 {count, number} 项操作"
       },
       "startExtraction": {
         "doing": "正在开始提取",
@@ -3837,19 +3875,29 @@
         "did": "已将论文加入合集",
         "where": "合集",
         "ask": "将论文加入合集",
-        "askMany": "将 {count, number} 篇论文加入合集"
+        "askMany": "将 {count, number} 篇论文加入合集",
+        "doingMany": "正在将 {count, number} 篇论文加入合集",
+        "didMany": "已将 {count, number} 篇论文加入合集"
       },
       "collectOut": {
         "doing": "正在将论文移出合集",
         "did": "已将论文移出合集",
         "where": "合集",
         "ask": "将论文移出合集",
-        "askMany": "将 {count, number} 篇论文移出合集"
+        "askMany": "将 {count, number} 篇论文移出合集",
+        "doingMany": "正在将 {count, number} 篇论文移出合集",
+        "didMany": "已将 {count, number} 篇论文移出合集"
       },
       "plan": {
         "doing": "正在查看你的方案",
         "did": "已查看你的方案",
         "where": "账单"
+      },
+      "undoBulk": {
+        "doing": "正在撤销批量更改",
+        "did": "已撤销批量更改",
+        "where": "你的账户",
+        "ask": "撤销批量更改"
       }
     },
     "asks": {

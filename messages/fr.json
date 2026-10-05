@@ -3557,28 +3557,36 @@
         "did": "Recherche créée",
         "where": "Recherches enregistrées",
         "ask": "Créer une recherche",
-        "askMany": "Créer {count, plural, one {# recherche} other {# recherches}}"
+        "askMany": "Créer {count, plural, one {# recherche} other {# recherches}}",
+        "doingMany": "Création de {count, plural, one {# recherche} other {# recherches}}",
+        "didMany": "{count, plural, one {# recherche créée} other {# recherches créées}}"
       },
       "changeSearch": {
         "doing": "Modification d'une recherche",
         "did": "Recherche modifiée",
         "where": "Recherches enregistrées",
         "ask": "Modifier une recherche",
-        "askMany": "Modifier {count, plural, one {# recherche} other {# recherches}}"
+        "askMany": "Modifier {count, plural, one {# recherche} other {# recherches}}",
+        "doingMany": "Modification de {count, plural, one {# recherche} other {# recherches}}",
+        "didMany": "{count, plural, one {# recherche modifiée} other {# recherches modifiées}}"
       },
       "restoreSearch": {
         "doing": "Remise en place d'une recherche",
         "did": "Recherche remise en place",
         "where": "Recherches enregistrées",
         "ask": "Remettre une recherche en place",
-        "askMany": "Remettre {count, plural, one {# recherche} other {# recherches}} en place"
+        "askMany": "Remettre {count, plural, one {# recherche} other {# recherches}} en place",
+        "doingMany": "Remise en place de {count, plural, one {# recherche} other {# recherches}}",
+        "didMany": "{count, plural, one {# recherche remise en place} other {# recherches remises en place}}"
       },
       "removeSearch": {
         "doing": "Retrait d'une recherche",
         "did": "Recherche retirée",
         "where": "Recherches enregistrées",
         "ask": "Retirer une recherche",
-        "askMany": "Retirer {count, plural, one {# recherche} other {# recherches}}"
+        "askMany": "Retirer {count, plural, one {# recherche} other {# recherches}}",
+        "doingMany": "Retrait de {count, plural, one {# recherche} other {# recherches}}",
+        "didMany": "{count, plural, one {# recherche retirée} other {# recherches retirées}}"
       },
       "results": {
         "doing": "Lecture des résultats d'une recherche",
@@ -3625,35 +3633,45 @@
         "did": "Article enregistré",
         "where": "Bibliothèque",
         "ask": "Enregistrer un article",
-        "askMany": "Enregistrer {count, plural, one {# article} other {# articles}}"
+        "askMany": "Enregistrer {count, plural, one {# article} other {# articles}}",
+        "doingMany": "Enregistrement de {count, plural, one {# article} other {# articles}}",
+        "didMany": "{count, plural, one {# article enregistré} other {# articles enregistrés}}"
       },
       "rate": {
         "doing": "Notation d'un article",
         "did": "Article noté",
         "where": "Bibliothèque",
         "ask": "Noter un article",
-        "askMany": "Noter {count, plural, one {# article} other {# articles}}"
+        "askMany": "Noter {count, plural, one {# article} other {# articles}}",
+        "doingMany": "Notation de {count, plural, one {# article} other {# articles}}",
+        "didMany": "{count, plural, one {# article noté} other {# articles notés}}"
       },
       "remove": {
         "doing": "Retrait d'un article",
         "did": "Article retiré",
         "where": "Bibliothèque",
         "ask": "Retirer un article",
-        "askMany": "Retirer {count, plural, one {# article} other {# articles}}"
+        "askMany": "Retirer {count, plural, one {# article} other {# articles}}",
+        "doingMany": "Retrait de {count, plural, one {# article} other {# articles}}",
+        "didMany": "{count, plural, one {# article retiré} other {# articles retirés}}"
       },
       "restore": {
         "doing": "Remise en place d'un article",
         "did": "Article remis en place",
         "where": "Bibliothèque",
         "ask": "Remettre un article en place",
-        "askMany": "Remettre {count, plural, one {# article} other {# articles}} en place"
+        "askMany": "Remettre {count, plural, one {# article} other {# articles}} en place",
+        "doingMany": "Remise en place de {count, plural, one {# article} other {# articles}}",
+        "didMany": "{count, plural, one {# article remis en place} other {# articles remis en place}}"
       },
       "collect": {
         "doing": "Mise à jour d'une collection",
         "did": "Collection mise à jour",
         "where": "Collections",
         "ask": "Modifier une collection",
-        "askMany": "Faire {count, plural, one {# modification} other {# modifications}} dans vos collections"
+        "askMany": "Faire {count, plural, one {# modification} other {# modifications}} dans vos collections",
+        "doingMany": "{count, plural, one {# modification} other {# modifications}} en cours dans vos collections",
+        "didMany": "{count, plural, one {# modification faite} other {# modifications faites}} dans vos collections"
       },
       "collections": {
         "doing": "Parcours de vos collections",
@@ -3670,14 +3688,18 @@
         "did": "Collection créée",
         "where": "Collections",
         "ask": "Créer une collection",
-        "askMany": "Créer {count, plural, one {# collection} other {# collections}}"
+        "askMany": "Créer {count, plural, one {# collection} other {# collections}}",
+        "doingMany": "Création de {count, plural, one {# collection} other {# collections}}",
+        "didMany": "{count, plural, one {# collection créée} other {# collections créées}}"
       },
       "renameCollection": {
         "doing": "Renommage d'une collection",
         "did": "Collection renommée",
         "where": "Collections",
         "ask": "Renommer une collection",
-        "askMany": "Renommer {count, plural, one {# collection} other {# collections}}"
+        "askMany": "Renommer {count, plural, one {# collection} other {# collections}}",
+        "doingMany": "Renommage de {count, plural, one {# collection} other {# collections}}",
+        "didMany": "{count, plural, one {# collection renommée} other {# collections renommées}}"
       },
       "screening": {
         "doing": "Lecture d'une sélection",
@@ -3718,28 +3740,36 @@
         "did": "Conversation créée",
         "where": "Conversations",
         "ask": "Créer une conversation",
-        "askMany": "Créer {count, plural, one {# conversation} other {# conversations}}"
+        "askMany": "Créer {count, plural, one {# conversation} other {# conversations}}",
+        "doingMany": "Création de {count, plural, one {# conversation} other {# conversations}}",
+        "didMany": "{count, plural, one {# conversation créée} other {# conversations créées}}"
       },
       "renameChat": {
         "doing": "Renommage d'une conversation",
         "did": "Conversation renommée",
         "where": "Conversations",
         "ask": "Renommer une conversation",
-        "askMany": "Renommer {count, plural, one {# conversation} other {# conversations}}"
+        "askMany": "Renommer {count, plural, one {# conversation} other {# conversations}}",
+        "doingMany": "Renommage de {count, plural, one {# conversation} other {# conversations}}",
+        "didMany": "{count, plural, one {# conversation renommée} other {# conversations renommées}}"
       },
       "chatModel": {
         "doing": "Changement du modèle d'une conversation",
         "did": "Modèle de la conversation changé",
         "where": "Conversations",
         "ask": "Changer le modèle d'une conversation",
-        "askMany": "Changer le modèle de {count, plural, one {# conversation} other {# conversations}}"
+        "askMany": "Changer le modèle de {count, plural, one {# conversation} other {# conversations}}",
+        "doingMany": "Changement du modèle de {count, plural, one {# conversation} other {# conversations}}",
+        "didMany": "Modèle changé pour {count, plural, one {# conversation} other {# conversations}}"
       },
       "answer": {
         "doing": "Modification d'une réponse de sélection",
         "did": "Réponse de sélection modifiée",
         "where": "Sélection",
         "ask": "Modifier une réponse de sélection",
-        "askMany": "Modifier {count, plural, one {# réponse de sélection} other {# réponses de sélection}}"
+        "askMany": "Modifier {count, plural, one {# réponse de sélection} other {# réponses de sélection}}",
+        "doingMany": "Modification de {count, plural, one {# réponse de sélection} other {# réponses de sélection}}",
+        "didMany": "{count, plural, one {# réponse de sélection modifiée} other {# réponses de sélection modifiées}}"
       },
       "chats": {
         "doing": "Parcours de vos conversations",
@@ -3792,28 +3822,36 @@
         "did": "Toutes vos recherches retirées",
         "where": "Recherches enregistrées",
         "ask": "Retirer toutes vos recherches",
-        "askMany": "Retirer toutes vos recherches"
+        "askMany": "Retirer toutes vos recherches",
+        "doingMany": "Retrait de toutes vos recherches",
+        "didMany": "Toutes vos recherches retirées"
       },
       "bookmark": {
         "doing": "Modification d'un favori",
         "did": "Favori modifié",
         "where": "Favoris",
         "ask": "Modifier un favori",
-        "askMany": "Modifier {count, plural, one {# favori} other {# favoris}}"
+        "askMany": "Modifier {count, plural, one {# favori} other {# favoris}}",
+        "doingMany": "Modification de {count, plural, one {# favori} other {# favoris}}",
+        "didMany": "{count, plural, one {# favori modifié} other {# favoris modifiés}}"
       },
       "clearBookmarks": {
         "doing": "Retrait de tous vos favoris",
         "did": "Tous vos favoris retirés",
         "where": "Favoris",
         "ask": "Retirer tous vos favoris",
-        "askMany": "Retirer tous vos favoris"
+        "askMany": "Retirer tous vos favoris",
+        "doingMany": "Retrait de tous vos favoris",
+        "didMany": "Tous vos favoris retirés"
       },
       "other": {
         "doing": "Travail dans votre compte",
         "did": "Travail effectué dans votre compte",
         "where": "Votre compte",
         "ask": "Exécuter une action dans votre compte",
-        "askMany": "Exécuter {count, plural, one {# action} other {# actions}} dans votre compte"
+        "askMany": "Exécuter {count, plural, one {# action} other {# actions}} dans votre compte",
+        "doingMany": "Exécution de {count, plural, one {# action} other {# actions}} dans votre compte",
+        "didMany": "{count, plural, one {# action exécutée} other {# actions exécutées}} dans votre compte"
       },
       "startExtraction": {
         "doing": "Lancement d'une extraction",
@@ -3837,19 +3875,29 @@
         "did": "Article ajouté à une collection",
         "where": "Collections",
         "ask": "Ajouter un article à une collection",
-        "askMany": "Ajouter {count, plural, one {# article} other {# articles}} à une collection"
+        "askMany": "Ajouter {count, plural, one {# article} other {# articles}} à une collection",
+        "doingMany": "Ajout de {count, plural, one {# article} other {# articles}} à une collection",
+        "didMany": "{count, plural, one {# article ajouté} other {# articles ajoutés}} à une collection"
       },
       "collectOut": {
         "doing": "Retrait d'un article d'une collection",
         "did": "Article retiré d'une collection",
         "where": "Collections",
         "ask": "Retirer un article d'une collection",
-        "askMany": "Retirer {count, plural, one {# article} other {# articles}} d'une collection"
+        "askMany": "Retirer {count, plural, one {# article} other {# articles}} d'une collection",
+        "doingMany": "Retrait de {count, plural, one {# article} other {# articles}} d'une collection",
+        "didMany": "{count, plural, one {# article retiré} other {# articles retirés}} d'une collection"
       },
       "plan": {
         "doing": "Vérification de votre offre",
         "did": "Offre vérifiée",
         "where": "Facturation"
+      },
+      "undoBulk": {
+        "doing": "Annulation d'une modification groupée",
+        "did": "Modification groupée annulée",
+        "where": "Votre compte",
+        "ask": "Annuler une modification groupée"
       }
     },
     "asks": {

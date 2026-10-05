@@ -94,7 +94,7 @@ export const reply = internalAction({
     const answer = used.told !== undefined;
     const stopped = () => why;
     // Each action it runs is kept as a step of the exchange it's answering.
-    const { tools, approval, resume, made, changes, digest, held } = toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped, halted: shouldStop, made: used.calls, changed: used.changes });
+    const { tools, approval, resume, planned, made, changes, digest, held } = toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped, halted: shouldStop, made: used.calls, changed: used.changes });
     // A reply that waited for an answer carries on here: what the person allowed runs first,
     // and each result is written where the model's call left off. A Stop ends it between two.
     const allowed = await ctx.runQuery(internal.assistant.steps.allowed, { threadId });
@@ -136,7 +136,7 @@ export const reply = internalAction({
         },
       }),
       release: ({ lastInputTokens, asked, credits, requests, more, failed }) => {
-        const calls = askedSteps(asked, held);
+        const calls = askedSteps(asked, held, planned);
         const changed = changes();
         const now = {
           spent: used.credits + credits,

@@ -3549,28 +3549,36 @@
         "did": "Made a search",
         "where": "Saved searches",
         "ask": "Make a search",
-        "askMany": "Make {count, plural, one {# search} other {# searches}}"
+        "askMany": "Make {count, plural, one {# search} other {# searches}}",
+        "doingMany": "Making {count, plural, one {# search} other {# searches}}",
+        "didMany": "Made {count, plural, one {# search} other {# searches}}"
       },
       "changeSearch": {
         "doing": "Changing a search",
         "did": "Changed a search",
         "where": "Saved searches",
         "ask": "Change a search",
-        "askMany": "Change {count, plural, one {# search} other {# searches}}"
+        "askMany": "Change {count, plural, one {# search} other {# searches}}",
+        "doingMany": "Changing {count, plural, one {# search} other {# searches}}",
+        "didMany": "Changed {count, plural, one {# search} other {# searches}}"
       },
       "restoreSearch": {
         "doing": "Putting a search back",
         "did": "Put a search back",
         "where": "Saved searches",
         "ask": "Put a search back",
-        "askMany": "Put {count, plural, one {# search} other {# searches}} back"
+        "askMany": "Put {count, plural, one {# search} other {# searches}} back",
+        "doingMany": "Putting {count, plural, one {# search} other {# searches}} back",
+        "didMany": "Put {count, plural, one {# search} other {# searches}} back"
       },
       "removeSearch": {
         "doing": "Removing a search",
         "did": "Removed a search",
         "where": "Saved searches",
         "ask": "Remove a search",
-        "askMany": "Remove {count, plural, one {# search} other {# searches}}"
+        "askMany": "Remove {count, plural, one {# search} other {# searches}}",
+        "doingMany": "Removing {count, plural, one {# search} other {# searches}}",
+        "didMany": "Removed {count, plural, one {# search} other {# searches}}"
       },
       "results": {
         "doing": "Reading a search's results",
@@ -3617,35 +3625,45 @@
         "did": "Saved a paper",
         "where": "Library",
         "ask": "Save a paper",
-        "askMany": "Save {count, plural, one {# paper} other {# papers}}"
+        "askMany": "Save {count, plural, one {# paper} other {# papers}}",
+        "doingMany": "Saving {count, plural, one {# paper} other {# papers}}",
+        "didMany": "Saved {count, plural, one {# paper} other {# papers}}"
       },
       "rate": {
         "doing": "Rating a paper",
         "did": "Rated a paper",
         "where": "Library",
         "ask": "Rate a paper",
-        "askMany": "Rate {count, plural, one {# paper} other {# papers}}"
+        "askMany": "Rate {count, plural, one {# paper} other {# papers}}",
+        "doingMany": "Rating {count, plural, one {# paper} other {# papers}}",
+        "didMany": "Rated {count, plural, one {# paper} other {# papers}}"
       },
       "remove": {
         "doing": "Removing a paper",
         "did": "Removed a paper",
         "where": "Library",
         "ask": "Remove a paper",
-        "askMany": "Remove {count, plural, one {# paper} other {# papers}}"
+        "askMany": "Remove {count, plural, one {# paper} other {# papers}}",
+        "doingMany": "Removing {count, plural, one {# paper} other {# papers}}",
+        "didMany": "Removed {count, plural, one {# paper} other {# papers}}"
       },
       "restore": {
         "doing": "Putting a paper back",
         "did": "Put a paper back",
         "where": "Library",
         "ask": "Put a paper back",
-        "askMany": "Put {count, plural, one {# paper} other {# papers}} back"
+        "askMany": "Put {count, plural, one {# paper} other {# papers}} back",
+        "doingMany": "Putting {count, plural, one {# paper} other {# papers}} back",
+        "didMany": "Put {count, plural, one {# paper} other {# papers}} back"
       },
       "collect": {
         "doing": "Updating a collection",
         "did": "Updated a collection",
         "where": "Collections",
         "ask": "Change a collection",
-        "askMany": "Make {count, plural, one {# change} other {# changes}} to your collections"
+        "askMany": "Make {count, plural, one {# change} other {# changes}} to your collections",
+        "doingMany": "Making {count, plural, one {# change} other {# changes}} to your collections",
+        "didMany": "Made {count, plural, one {# change} other {# changes}} to your collections"
       },
       "collections": {
         "doing": "Looking through your collections",
@@ -3662,14 +3680,18 @@
         "did": "Made a collection",
         "where": "Collections",
         "ask": "Make a collection",
-        "askMany": "Make {count, plural, one {# collection} other {# collections}}"
+        "askMany": "Make {count, plural, one {# collection} other {# collections}}",
+        "doingMany": "Making {count, plural, one {# collection} other {# collections}}",
+        "didMany": "Made {count, plural, one {# collection} other {# collections}}"
       },
       "renameCollection": {
         "doing": "Renaming a collection",
         "did": "Renamed a collection",
         "where": "Collections",
         "ask": "Rename a collection",
-        "askMany": "Rename {count, plural, one {# collection} other {# collections}}"
+        "askMany": "Rename {count, plural, one {# collection} other {# collections}}",
+        "doingMany": "Renaming {count, plural, one {# collection} other {# collections}}",
+        "didMany": "Renamed {count, plural, one {# collection} other {# collections}}"
       },
       "screening": {
         "doing": "Reading a screening",
@@ -3710,28 +3732,36 @@
         "did": "Started a chat",
         "where": "Chats",
         "ask": "Start a chat",
-        "askMany": "Start {count, plural, one {# chat} other {# chats}}"
+        "askMany": "Start {count, plural, one {# chat} other {# chats}}",
+        "doingMany": "Starting {count, plural, one {# chat} other {# chats}}",
+        "didMany": "Started {count, plural, one {# chat} other {# chats}}"
       },
       "renameChat": {
         "doing": "Renaming a chat",
         "did": "Renamed a chat",
         "where": "Chats",
         "ask": "Rename a chat",
-        "askMany": "Rename {count, plural, one {# chat} other {# chats}}"
+        "askMany": "Rename {count, plural, one {# chat} other {# chats}}",
+        "doingMany": "Renaming {count, plural, one {# chat} other {# chats}}",
+        "didMany": "Renamed {count, plural, one {# chat} other {# chats}}"
       },
       "chatModel": {
         "doing": "Changing a chat's model",
         "did": "Changed a chat's model",
         "where": "Chats",
         "ask": "Change a chat's model",
-        "askMany": "Change the model of {count, plural, one {# chat} other {# chats}}"
+        "askMany": "Change the model of {count, plural, one {# chat} other {# chats}}",
+        "doingMany": "Changing the model of {count, plural, one {# chat} other {# chats}}",
+        "didMany": "Changed the model of {count, plural, one {# chat} other {# chats}}"
       },
       "answer": {
         "doing": "Changing a screening answer",
         "did": "Changed a screening answer",
         "where": "Screening",
         "ask": "Change a screening answer",
-        "askMany": "Change {count, plural, one {# screening answer} other {# screening answers}}"
+        "askMany": "Change {count, plural, one {# screening answer} other {# screening answers}}",
+        "doingMany": "Changing {count, plural, one {# screening answer} other {# screening answers}}",
+        "didMany": "Changed {count, plural, one {# screening answer} other {# screening answers}}"
       },
       "chats": {
         "doing": "Looking through your chats",
@@ -3784,28 +3814,36 @@
         "did": "Removed all your searches",
         "where": "Saved searches",
         "ask": "Remove all your searches",
-        "askMany": "Remove all your searches"
+        "askMany": "Remove all your searches",
+        "doingMany": "Removing all your searches",
+        "didMany": "Removed all your searches"
       },
       "bookmark": {
         "doing": "Changing a bookmark",
         "did": "Changed a bookmark",
         "where": "Bookmarks",
         "ask": "Change a bookmark",
-        "askMany": "Change {count, plural, one {# bookmark} other {# bookmarks}}"
+        "askMany": "Change {count, plural, one {# bookmark} other {# bookmarks}}",
+        "doingMany": "Changing {count, plural, one {# bookmark} other {# bookmarks}}",
+        "didMany": "Changed {count, plural, one {# bookmark} other {# bookmarks}}"
       },
       "clearBookmarks": {
         "doing": "Removing all your bookmarks",
         "did": "Removed all your bookmarks",
         "where": "Bookmarks",
         "ask": "Remove all your bookmarks",
-        "askMany": "Remove all your bookmarks"
+        "askMany": "Remove all your bookmarks",
+        "doingMany": "Removing all your bookmarks",
+        "didMany": "Removed all your bookmarks"
       },
       "other": {
         "doing": "Working in your account",
         "did": "Worked in your account",
         "where": "Your account",
         "ask": "Run an action in your account",
-        "askMany": "Run {count, plural, one {# action} other {# actions}} in your account"
+        "askMany": "Run {count, plural, one {# action} other {# actions}} in your account",
+        "doingMany": "Running {count, plural, one {# action} other {# actions}} in your account",
+        "didMany": "Ran {count, plural, one {# action} other {# actions}} in your account"
       },
       "startExtraction": {
         "doing": "Starting an extraction",
@@ -3829,19 +3867,29 @@
         "did": "Put a paper in a collection",
         "where": "Collections",
         "ask": "Put a paper in a collection",
-        "askMany": "Put {count, plural, one {# paper} other {# papers}} in a collection"
+        "askMany": "Put {count, plural, one {# paper} other {# papers}} in a collection",
+        "doingMany": "Putting {count, plural, one {# paper} other {# papers}} in a collection",
+        "didMany": "Put {count, plural, one {# paper} other {# papers}} in a collection"
       },
       "collectOut": {
         "doing": "Taking a paper out of a collection",
         "did": "Took a paper out of a collection",
         "where": "Collections",
         "ask": "Take a paper out of a collection",
-        "askMany": "Take {count, plural, one {# paper} other {# papers}} out of a collection"
+        "askMany": "Take {count, plural, one {# paper} other {# papers}} out of a collection",
+        "doingMany": "Taking {count, plural, one {# paper} other {# papers}} out of a collection",
+        "didMany": "Took {count, plural, one {# paper} other {# papers}} out of a collection"
       },
       "plan": {
         "doing": "Checking your plan",
         "did": "Checked your plan",
         "where": "Billing"
+      },
+      "undoBulk": {
+        "doing": "Undoing a bulk change",
+        "did": "Undid a bulk change",
+        "where": "Your account",
+        "ask": "Undo a bulk change"
       }
     },
     "asks": {

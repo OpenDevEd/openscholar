@@ -17,7 +17,8 @@ import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
 import { allowAlways, carriedOn, pausedAt } from "./spending";
 import { MAX_ASKS, MODEL_READS, STEPS_SHOWN, forModel } from "./steps";
-import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, NO_ESTIMATE, askedSteps, batched, circling, core, definition, found, kindOf, misfit, written } from "./tools";
+import { misfit } from "./failures";
+import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, NO_ESTIMATE, batched, circling, core, definition, found, kindOf, written } from "./tools";
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
@@ -262,12 +263,13 @@ describe("the assistant's tools", () => {
     await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking._id, allow: true })).rejects.toThrow(/already been answered/);
   });
 
-  it("ask once before a change to many records, with the list, run every one when the person allows it, and refuse more than ten of a kind made one by one", async () => {
+  it("make a change to many records as one step with one undo, ask once before one of more than ten, and refuse more than ten of a kind made one by one", async () => {
     const t = convexTest(schema);
     const { ada, asAda, threadId, say, sayUntilAsked, settled, steps } = await chatOf(t);
     const work = (n: number) => ({ openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}` });
     for (let n = 1; n <= 12; n++) await asAda.mutation(api.library.mutations.saveToLibrary, work(n));
     const saved = () => t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map((item) => item.title).sort());
+    const undos = () => t.run(async (ctx) => (await ctx.db.query("assistantStepUndos").collect()).length);
     // On a card, a saved paper's ID reads as its title. A title or a name typed to look like an ID stays as typed, and what a call does to a record is always said.
     const said = (args: unknown) => t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify(args)));
     expect(await said({ title: "W1", openalexId: work(1).openalexId })).toEqual([{ name: "title", value: "W1" }, { name: "title", value: "Trial 1" }]);
@@ -283,24 +285,32 @@ describe("the assistant's tools", () => {
     expect(waiting).toHaveLength(1);
     expect(waiting[0]).toMatchObject({ action: "library/mutations:removeFromLibrary", status: "asking", canAnswer: true, batch: 12, each: [1, 2, 3, 4, 5].map((n) => [{ name: "title", value: `Trial ${n}` }]) });
 
-    // Her yes runs every one, each a step of its own that she can undo, and the model reads what all of them came to.
+    // Her yes makes all twelve as that one step, which says how many it made, and the model reads the same.
     mockDoStream.mockImplementationOnce(finishingDoStream(["Your library is empty now."]));
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: true });
     await settled();
     expect(await saved()).toEqual([]);
-    const ran = await steps();
-    expect(ran.filter((step) => step.batch === undefined && step.status === "done" && step.undo)).toHaveLength(12);
-    expect(ran.find((step) => step.batch === 12)).toMatchObject({ status: "done" });
-    expect((told(1, "all") as { results: unknown[] }).results).toHaveLength(12);
+    const [removal, ...others] = await steps();
+    expect(others).toEqual([]);
+    expect(removal).toMatchObject({ status: "done", batch: 12, count: 12, undo: { path: "assistant/batches:undo" } });
+    expect(told(1, "all")).toMatchObject({ made: 12, undo: { path: "assistant/batches:undo", args: { change: removal._id } } });
+    expect(told(1, "all")).not.toHaveProperty("failed");
+    // One Undo puts all twelve back, and nothing is left to undo it twice with.
+    expect(await undos()).toBe(12);
+    await asAda.mutation(api.assistant.undo.run, { threadId, stepId: removal._id });
+    await waitFor(async () => (await saved()).length === 12, { timeoutMs: 5_000 });
+    expect(await undos()).toBe(0);
+    expect((await steps())[0]).toMatchObject({ undone: true });
+    await expect(asAda.mutation(api.assistant.undo.run, { threadId, stepId: removal._id })).rejects.toThrow(/nothing left to undo/);
 
-    // Made one by one, the eleventh change of a kind in a reply is refused, and the model is told to put the rest in one call.
+    // Made one by one, the eleventh change of a kind in a reply is refused, and the model is told to make the rest in one call.
     // The count is the reply's, not one request's: a twelfth in its next request is refused too.
     mockDoStream
       .mockImplementationOnce(calling(...Array.from({ length: 11 }, (_, i) => ({ id: `s${i}`, name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: work(101 + i) } }))))
       .mockImplementationOnce(calling({ id: "later", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: work(112) } }))
       .mockImplementationOnce(finishingDoStream(["Saved ten."]));
     await say("Save these twelve");
-    expect(await saved()).toHaveLength(10);
+    expect(await saved()).toHaveLength(22);
     const refused = Array.from({ length: 11 }, (_, i) => told(3, `s${i}`)).filter((value) => (value as { error?: string }).error === BULK_FIRST);
     expect(refused).toHaveLength(1);
     expect(told(4, "later")).toEqual({ error: BULK_FIRST });
@@ -310,28 +320,69 @@ describe("the assistant's tools", () => {
     expect(kindOf(action("research/searches:restore"), {})).toBe(kindOf(action("research/records:change"), { command: { kind: "editSearch" } }));
     // A batch is one change made to many records, so its card can say what it does: not two jobs of one action, at any depth.
     const rating = { requestId: "r1", command: { kind: "rating", paperId: "W1", rating: 5 } };
-    expect(batched("run_many", { name: "research/records:change", each: [rating, { ...rating, requestId: "r2" }] })).not.toBeNull();
-    expect(batched("run_many", { name: "research/records:change", each: [rating, { requestId: "r3", command: { kind: "clearShortcuts" } }] })).toBeNull();
     const edit = (kind: string, more: object) => ({ requestId: kind, command: { kind: "editSearch", id: "s1", edit: { kind, ...more } } });
-    expect(batched("run_many", { name: "research/records:change", each: [edit("patch", { fields: { query: "tutoring" }, clear: [] }), edit("clearResponses", { paperId: "W1" })] })).toBeNull();
-    // A batch of one is that one change, asked about as it would be alone.
-    const [one] = askedSteps([{ toolCallId: "one", toolName: "run_many", input: { name: "library/mutations:removeFromLibrary", each: [{ openalexId: work(1).openalexId }] } }]);
-    expect(one).toMatchObject({ path: "library/mutations:removeFromLibrary", input: JSON.stringify({ openalexId: work(1).openalexId }) });
-    expect(one).not.toHaveProperty("batch");
+    const change = (each: unknown[]) => batched({ name: "research/records:change", each });
+    expect(change([rating, { ...rating, requestId: "r2" }])).toHaveProperty("each");
+    expect(change([rating, { requestId: "r3", command: { kind: "clearShortcuts" } }])).toHaveProperty("error");
+    expect(change([edit("patch", { fields: { query: "tutoring" }, clear: [] }), edit("clearResponses", { paperId: "W1" })])).toHaveProperty("error");
 
-    // A few changes in one call run at once, as they would one by one.
+    // A few changes in one call run at once, as one step too.
     mockDoStream
       .mockImplementationOnce(calling({ id: "few", name: "run_many", input: { name: "library_mutations_setLibraryRating", each: [101, 102, 103].map((n) => ({ openalexId: work(n).openalexId, rating: 4 })) } }))
       .mockImplementationOnce(finishingDoStream(["Rated three."]));
     await say("Rate the first three 4 stars");
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).filter((item) => item.rating === 4).length)).toBe(3);
+    expect((await steps()).at(-1)).toMatchObject({ path: "library/mutations:setLibraryRating", status: "done", batch: 3, count: 3 });
 
-    // One whose changes all fail says so as a failed call does, with what each came to.
+    // One whose changes all fail is a failed step, and says why the first one couldn't be made.
     mockDoStream
       .mockImplementationOnce(calling({ id: "none", name: "run_many", input: { name: "library/mutations:setLibraryRating", each: [901, 902].map((n) => ({ openalexId: work(n).openalexId, rating: 2 })) } }))
       .mockImplementationOnce(finishingDoStream(["Those aren't in your library."]));
     await say("Rate two I never saved");
-    expect(told(8, "none")).toMatchObject({ error: expect.stringContaining("None of these 2"), results: [{ error: expect.any(String) }, { error: expect.any(String) }] });
+    expect(told(8, "none")).toMatchObject({ error: expect.stringContaining("None of these 2") });
+    expect((await steps()).at(-1)).toMatchObject({ status: "failed", batch: 2 });
+  });
+
+  it("change the papers of a set without reading them: what a query finds goes into a collection as one step, asked about with its first titles", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, say, sayUntilAsked, settled, steps } = await chatOf(t);
+    vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
+    const autumn = fakeAutumnFetch();
+    // OpenAlex answers a page of a search that has fifteen papers; everything else is the billing service.
+    fetchMock.mockImplementation(async (input: string | URL, init?: RequestInit) => {
+      if (!String(input).includes("openalex.org")) return autumn(input as never, init as never);
+      const url = new URL(String(input));
+      const [page, size] = [url.searchParams.has("cursor") ? 1 : Number(url.searchParams.get("page")), Number(url.searchParams.get("per-page"))];
+      const from = (page - 1) * size;
+      const results = Array.from({ length: Math.max(0, Math.min(size, 15 - from)) }, (_, i) => ({ id: `https://openalex.org/W${from + i + 1}`, display_name: `Paper ${from + i + 1}`, publication_year: 2021, cited_by_count: 40 }));
+      return new Response(JSON.stringify({ meta: { count: 15 }, results }), { status: 200 });
+    });
+    const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "luna test" });
+    const held = () => t.run(async (ctx) => ({ saved: (await ctx.db.query("libraryItems").collect()).length, collected: (await ctx.db.query("libraryItemCollections").collect()).length }));
+
+    // The set is read before Ada is asked, so she's asked about the papers it holds: how many, where they go, and the first by title.
+    mockDoStream.mockImplementationOnce(calling({ id: "found", name: "change_papers", input: { papers: { kind: "query", query: "tutoring", minCitations: 11 }, first: 1, last: 15, do: "save", collectionId } }));
+    await sayUntilAsked("Save the ones with more than 10 citations to luna test");
+    expect(await held()).toEqual({ saved: 0, collected: 0 });
+    const [asked] = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
+    expect(asked).toMatchObject({ action: "library/mutations:setPaperInCollection", variant: "in", status: "asking", batch: 15, details: [{ name: "collection", value: "luna test" }], each: [1, 2, 3, 4, 5].map((n) => [{ name: "title", value: `Paper ${n}` }]) });
+
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Saved all fifteen."]));
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps())[0]._id, allow: true });
+    await settled();
+    expect(await held()).toEqual({ saved: 15, collected: 15 });
+    // One step for the fifteen, named after the collection they went into.
+    expect(await steps()).toMatchObject([{ status: "done", batch: 15, count: 15, subject: "luna test", variant: "in" }]);
+    expect(told(1, "found")).toMatchObject({ made: 15 });
+
+    // A few papers of a collection are taken out the same way, unasked: they stay saved.
+    mockDoStream
+      .mockImplementationOnce(calling({ id: "out", name: "change_papers", input: { papers: { kind: "collection", collectionId }, first: 1, last: 3, do: "uncollect", collectionId } }))
+      .mockImplementationOnce(finishingDoStream(["Took three out."]));
+    await say("Take the newest three out again");
+    expect(await held()).toEqual({ saved: 15, collected: 12 });
+    expect((await steps()).at(-1)).toMatchObject({ status: "done", batch: 3, count: 3, variant: "out" });
+    vi.unstubAllEnvs();
   });
 
   it("tell the model a change that returns nothing was made, make again a write that collided, and keep a reply going past arguments the asking check can't read", async () => {
@@ -1302,8 +1353,8 @@ describe("the assistant's tools", () => {
 
     expect(toolsSent).toHaveLength(2);
     expect(toolsSent[1]).toEqual(toolsSent[0]);
-    expect(toolsSent[0].slice(-3)).toEqual(["find_action", "run_action", "run_many"]);
-    expect(toolsSent[0]).toHaveLength(core().length + 3);
+    expect(toolsSent[0].slice(-4)).toEqual(["find_action", "run_action", "run_many", "change_papers"]);
+    expect(toolsSent[0]).toHaveLength(core().length + 4);
     // About 1,000 tokens at most for a tool's description and arguments (#326).
     for (const entry of core()) expect(JSON.stringify(definition(entry)).length, entry.path).toBeLessThanOrEqual(DEFINITION_MAX);
   });

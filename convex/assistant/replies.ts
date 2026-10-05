@@ -353,7 +353,7 @@ export const release = internalMutation({
     asking: v.optional(
       v.object({
         promptMessageId: v.string(),
-        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()), batch: v.optional(v.number()) })),
+        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()), batch: v.optional(v.number()), variant: v.optional(v.string()) })),
         spent: v.number(),
         rounds: v.number(),
         made: v.number(),
@@ -699,7 +699,7 @@ export const messagesAction = defineUserQuery({
     const reader = thread.asking?.senderId === userId ? await ctx.db.get("users", userId) : null;
     const mine = reader ? await stepsAt(ctx, threadId, "asking") : [];
     const details = new Map(
-      await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: await detailsOf(ctx, reader!, step.shown ?? step.input) } : await bulkOf(ctx, reader!, step.input)] as const)),
+      await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: await detailsOf(ctx, reader!, step.shown ?? step.input) } : await bulkOf(ctx, reader!, step)] as const)),
     );
     const page = read.page.flatMap((row) => {
       const role = row.message?.role;
@@ -754,11 +754,11 @@ export const messages = userQuery(messagesAction);
  * research records, or which way a paper moved between the library and a collection.
  */
 function variantOf(step: Doc<"assistantSteps">) {
+  // A bulk change keeps which job all its changes do: what it was given doesn't say it one by one.
+  if (step.variant) return { variant: step.variant };
   if (!hasVariants(step.path)) return {};
   try {
-    const input = JSON.parse(step.input);
-    // A bulk change is all of one kind (./tools.ts `batched`), so its first change says which.
-    const variant = variantIn(step.path, step.batch === undefined ? input : input[0]);
+    const variant = variantIn(step.path, JSON.parse(step.input));
     return variant ? { variant } : {};
   } catch {
     // Arguments too long to keep whole were cut, and don't parse.

@@ -116,14 +116,18 @@ export type Waiting = { kind: Kind; title: string; credits: number };
 export const AddCredits = createContext<(waiting: Waiting) => void>(() => {});
 
 /**
- * What a step that asks would do, as its card's title: one change, or for a bulk change how
- * many. Only the kinds of action that can ask have the words for it.
+ * A step's title. One that waits for an answer, or was allowed or not, hasn't happened: it's
+ * named as what was asked, then as what it's doing, then as what it did. A bulk change is one
+ * step, and says how many: how many it's for until it's done, then how many it made. A kind
+ * of action with no words of its own for a form takes the general ones.
  */
-function useAskTitle() {
+function useStepTitle() {
   const t = useTranslations("assistant");
-  return (words: string, batch?: number) => {
-    const own = `steps.${words}.${batch === undefined ? "ask" : "askMany"}` as "steps.other.askMany";
-    return t(t.has(own) ? own : batch === undefined ? "steps.other.ask" : "steps.other.askMany", { count: batch ?? 1 });
+  return (words: string, step: Pick<StepItem, "status" | "batch" | "count">) => {
+    const form = step.status === "asking" || step.status === "allowed" || step.status === "declined" ? "ask" : step.status === "running" || step.status === "failed" ? "doing" : "did";
+    const many = step.batch === undefined ? "" : "Many";
+    const own = `steps.${words}.${form}${many}` as "steps.other.askMany";
+    return t(t.has(own) ? own : (`steps.other.${form}${many}` as "steps.other.askMany"), { count: (form === "did" ? step.count : undefined) ?? step.batch ?? 1 });
   };
 }
 
@@ -143,7 +147,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
   const { kind, words } = viewOf(step.action, step.variant);
   const addCredits = useContext(AddCredits);
   const common = useTranslations("common");
-  const heading = useAskTitle()(words, step.batch);
+  const heading = useStepTitle()(words, step);
   /** A value as the card says it: a setting that is on or off as yes or no, not as the action writes it. */
   const said = (value: string) => (value === "true" ? common("yes") : value === "false" ? common("no") : value);
   const each = step.each ?? [];
@@ -300,7 +304,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   const reduceMotion = useReducedMotion();
   const undo = useMutation(api.assistant.undo.run);
   const toast = useAppToast();
-  const askTitle = useAskTitle();
+  const stepTitle = useStepTitle();
   const height = ORIGIN + steps.length * (CARD + GAP) - GAP;
   const y = (i: number) => ORIGIN + i * (CARD + GAP) + CARD / 2;
   return (
@@ -346,12 +350,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
             const working = step.status === "running";
             const faded = step.undone || step.status === "failed" || step.status === "declined";
             const state = step.status === "asking" ? t("steps.waiting") : step.status === "allowed" ? t("steps.allowed") : step.status === "declined" ? t("steps.declined") : null;
-            // A step that waits for an answer, or was allowed or not, hasn't happened: it's named as what was asked, not as done.
-            // So is a bulk change the person allowed, to the end: each of its changes is a step of its own below it, named as done.
-            const title =
-              step.batch !== undefined || step.status === "asking" || step.status === "allowed" || step.status === "declined"
-                ? askTitle(words, step.batch)
-                : t(`steps.${words}.${working || step.status === "failed" ? "doing" : "did"}`);
+            const title = stepTitle(words, step);
             return (
               <motion.div
                 key={step.id}
@@ -375,9 +374,10 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                         </>
                       ) : (
                         <>
-                          {step.count !== undefined ? <Fact value={step.count}>{t("steps.found")}</Fact> : null}
+                          {/* A bulk change's title says how many it made. */}
+                          {step.batch === undefined && step.count !== undefined ? <Fact value={step.count}>{t("steps.found")}</Fact> : null}
                           {step.subject ? <span className="truncate">{step.subject}</span> : null}
-                          {step.count === undefined && !step.subject ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
+                          {(step.batch !== undefined || step.count === undefined) && !step.subject ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
                         </>
                       )}
                     </div>
