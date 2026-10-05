@@ -27,6 +27,23 @@ describe("fetchWorksPage", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it("asks the OpenScholar API with Access's service token, and takes its redirect as a refusal, not a place to go", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "https://search-api.example.org");
+    vi.stubEnv("OPENSCHOLAR_API_ACCESS_CLIENT_ID", "client-id.access");
+    vi.stubEnv("OPENSCHOLAR_API_ACCESS_CLIENT_SECRET", "client-secret");
+    const fetchMock = answering({ status: 302, body: "" });
+    expect(await fetchWorksPage({ perPage: 1 })).toEqual({ ok: false, status: 302, message: "Search request failed (302)" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.origin).toBe("https://search-api.example.org");
+    expect(Object.fromEntries(new Headers(init.headers).entries())).toEqual({
+      "cf-access-client-id": "client-id.access",
+      "cf-access-client-secret": "client-secret",
+    });
+    expect(init.redirect).toBe("manual");
+    vi.unstubAllEnvs();
+  });
+
   it("stops after five tries with the last answer's reason, and never asks again after a refusal", async () => {
     vi.useFakeTimers();
     const busy = answering(...Array.from({ length: 5 }, () => ({ status: 503, body: { message: "busy" } })));

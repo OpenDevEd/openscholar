@@ -27,7 +27,7 @@ function useOpenScholarApi() {
 const allowed = async () => true;
 
 describe("readWork", () => {
-  it("reads one work from the OpenScholar API with Access's service token", async () => {
+  it("reads one work from the OpenScholar API with Access's service token, following none of its redirects", async () => {
     useOpenScholarApi();
 
     expect(await readWork("W7", "id", allowed)).toEqual({ id: "https://openalex.org/W7" });
@@ -37,5 +37,6 @@ describe("readWork", () => {
       "cf-access-client-id": "client-id.access",
       "cf-access-client-secret": "client-secret",
     });
+    expect(sent[0]?.init?.redirect).toBe("manual");
   });
 });

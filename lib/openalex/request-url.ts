@@ -46,15 +46,25 @@ export function openAlexUrl(path: string, parameters: Record<string, string | un
 }
 
 /**
- * The headers a request to `url` needs beside its key: Cloudflare Access's service token, when the
- * URL is the OpenScholar API's and `OPENSCHOLAR_API_ACCESS_CLIENT_ID` and
- * `OPENSCHOLAR_API_ACCESS_CLIENT_SECRET` are set, since Access lets through only requests that carry
- * one. None for OpenAlex, which must never see the token. Server side only, since it reads the secret.
+ * Cloudflare Access's service token as its two headers, when `OPENSCHOLAR_API_ACCESS_CLIENT_ID` and
+ * `OPENSCHOLAR_API_ACCESS_CLIENT_SECRET` are set: Access lets through only requests that carry one.
  */
-export function openAlexHeaders(url: URL | string): Record<string, string> {
-  const root = process.env.OPENSCHOLAR_API_URL;
+function accessToken(): Record<string, string> {
   const id = process.env.OPENSCHOLAR_API_ACCESS_CLIENT_ID;
   const secret = process.env.OPENSCHOLAR_API_ACCESS_CLIENT_SECRET;
-  if (!root || !id || !secret || new URL(url).origin !== new URL(root).origin) return {};
-  return { "CF-Access-Client-Id": id, "CF-Access-Client-Secret": secret };
+  return id && secret ? { "CF-Access-Client-Id": id, "CF-Access-Client-Secret": secret } : {};
+}
+
+/**
+ * What a request to `url` needs beside its key, to spread into fetch's options. For the OpenScholar
+ * API: Access's service token, and no redirect followed. fetch carries these headers on to wherever
+ * a redirect points, another origin included, and the API itself never redirects, so a redirect
+ * comes back as the 3xx it is, which callers refuse as not ok. For OpenAlex: nothing, since it must
+ * never see the token, and its redirects (a merged work's) are followed as before. Server side
+ * only, since it reads the secret.
+ */
+export function openAlexInit(url: URL | string): { headers: Record<string, string>; redirect?: RequestRedirect } {
+  const root = process.env.OPENSCHOLAR_API_URL;
+  if (!root || new URL(url).origin !== new URL(root).origin) return { headers: {} };
+  return { headers: accessToken(), redirect: "manual" };
 }

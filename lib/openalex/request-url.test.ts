@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { openAlexHeaders, openAlexUrl } from "./request-url";
+import { openAlexInit, openAlexUrl } from "./request-url";
 
 function withKeys(openScholarApi: string) {
   vi.stubEnv("OPENSCHOLAR_API_URL", openScholarApi);
@@ -48,7 +48,7 @@ describe("openAlexUrl", () => {
   });
 });
 
-describe("openAlexHeaders", () => {
+describe("openAlexInit", () => {
   afterEach(() => vi.unstubAllEnvs());
 
   function withToken(openScholarApi: string, id: string, secret: string) {
@@ -57,26 +57,21 @@ describe("openAlexHeaders", () => {
     vi.stubEnv("OPENSCHOLAR_API_ACCESS_CLIENT_SECRET", secret);
   }
 
-  it("gives the OpenScholar API's requests Cloudflare Access's service token", () => {
+  const token = { "CF-Access-Client-Id": "client-id.access", "CF-Access-Client-Secret": "client-secret" };
+
+  it("gives the OpenScholar API's requests Cloudflare Access's service token, and follows none of its redirects", () => {
     withToken("https://search-api.example.org", "client-id.access", "client-secret");
-    expect(openAlexHeaders(openAlexUrl("works", { search: "kelp" }))).toEqual({
-      "CF-Access-Client-Id": "client-id.access",
-      "CF-Access-Client-Secret": "client-secret",
-    });
-    expect(openAlexHeaders("https://search-api.example.org/")).toEqual({
-      "CF-Access-Client-Id": "client-id.access",
-      "CF-Access-Client-Secret": "client-secret",
-    });
+    expect(openAlexInit(openAlexUrl("works", { search: "kelp" }))).toEqual({ headers: token, redirect: "manual" });
+    expect(openAlexInit("https://search-api.example.org/")).toEqual({ headers: token, redirect: "manual" });
+    withToken("https://search-api.example.org", "", "");
+    expect(openAlexInit(openAlexUrl("works"))).toEqual({ headers: {}, redirect: "manual" });
   });
 
-  it("never gives the token to OpenAlex, nor sends a token that is not set", () => {
+  it("never gives the token to OpenAlex, whose redirects are followed as before", () => {
     withToken("https://search-api.example.org", "client-id.access", "client-secret");
-    expect(openAlexHeaders(openAlexUrl("topics/T10745"))).toEqual({});
-    expect(openAlexHeaders("https://api.openalex.org/works")).toEqual({});
-    withToken("https://search-api.example.org", "", "");
-    expect(openAlexHeaders(openAlexUrl("works"))).toEqual({});
+    expect(openAlexInit(openAlexUrl("topics/T10745"))).toEqual({ headers: {} });
+    expect(openAlexInit("https://api.openalex.org/works")).toEqual({ headers: {} });
     withToken("", "client-id.access", "client-secret");
-    expect(openAlexHeaders(openAlexUrl("works"))).toEqual({});
+    expect(openAlexInit(openAlexUrl("works"))).toEqual({ headers: {} });
   });
 });
-
