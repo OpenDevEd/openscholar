@@ -515,20 +515,22 @@ export function toolsFor(
       const chunk = items.slice(tried, tried + size);
       try {
         // Typed here: the generated API's types depend on this module, so inference would loop.
-        const done: { made: number; failed: number; why?: string } = await written(() => ctx.runMutation(internal.assistant.bulk.apply, { userId, stepId, path: entry.path, items: JSON.stringify(chunk), approved: asked !== undefined, key: `${key}:${tried}` }));
+        const done: { took: number; made: number; failed: number; why?: string } = await written(() => ctx.runMutation(internal.assistant.bulk.apply, { userId, stepId, path: entry.path, items: JSON.stringify(chunk), approved: asked !== undefined, key: `${key}:${tried}` }));
         made += done.made;
         failed += done.failed;
         if (done.why) why.push(done.why);
+        // It stops short when its transaction is full: the next chunk starts where it stopped.
+        tried += done.took;
       } catch (error) {
-        // A chunk that doesn't fit one transaction changed nothing: it's tried again at half the size. One change that doesn't fit alone is counted as failed.
+        // A chunk that failed whole changed nothing: it's tried again at half the size. One change that fails alone is counted as failed.
         if (size > 1) {
           size = Math.ceil(size / 2);
           continue;
         }
         failed += 1;
         why.push(messageOf(error));
+        tried += 1;
       }
-      tried += chunk.length;
     }
     if (made === 0) {
       const error = !items.length
@@ -557,13 +559,14 @@ export function toolsFor(
       note(toolName, input, { error: plan.error });
       return forModel(plan);
     }
-    // Asked about before it got here, unless what the reply has made since tipped it over.
-    if (await asksPlan(plan)) return { error: ASKS_FIRST };
-    // Counted here with nothing awaited between the check and the count: two small ones that arrived together don't both pass as the first.
     const kind = kindOf(plan.entry, plan.items[0]);
-    const now = (changes.get(kind) ?? 0) + plan.items.length;
-    if (now > BULK) return { error: BULK_FIRST };
-    changes.set(kind, now);
+    const over = () => (changes.get(kind) ?? 0) + plan.items.length > BULK;
+    // Asked about before it got here, unless what the reply has made since tipped it over: then it's told how to ask, on its next call.
+    if (over()) return { error: BULK_FIRST };
+    if (await asksPlan(plan)) return { error: over() ? BULK_FIRST : ASKS_FIRST };
+    // Counted here with nothing awaited between the check and the count: two small ones that arrived together don't both pass as the first.
+    if (over()) return { error: BULK_FIRST };
+    changes.set(kind, (changes.get(kind) ?? 0) + plan.items.length);
     return runPlan(plan, toolCallId);
   };
   const approval = async ({ toolCall }: { toolCall: { toolCallId: string; toolName: string; input: unknown } }) => {

@@ -165,6 +165,8 @@ export const assistantStepFields = {
   batch: v.optional(v.number()),
   /** Which of its several jobs its action does (lib/assistant/actions.ts), where its arguments don't say it one by one: a bulk change. */
   variant: v.optional(v.string()),
+  /** Set while a bulk change's undo is putting its changes back (./bulk.ts): what would undo it is the reversal's to read until it's done. */
+  reverting: v.optional(v.boolean()),
   /**
    * `asking`: the person is asked before it runs. `allowed`: they said yes, and the reply
    * runs it as it carries on. `declined`: they said no, or stopped the reply.
@@ -186,7 +188,7 @@ export const askedDetailsValidator = capped(v.optional(v.array(v.object({ name: 
 export const ASKED_EACH_MAX = 5;
 export const ASKED_EACH_DETAILS_MAX = 3;
 export const askedEachValidator = capped(v.optional(v.array(capped(v.array(v.object({ name: v.string(), value: v.string() })), ASKED_EACH_DETAILS_MAX))), ASKED_EACH_MAX);
-/** What reverses one change of a bulk change: the action to run, and its arguments as JSON. A row each, so undoing a thousand reads a few at a time. */
+/** What reverses one change of a bulk change: the action to run, and its arguments as JSON. A row each, so undoing a thousand reads a few at a time. A change with no undo has a row with no action. */
 export const assistantStepUndoFields = { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), path: v.string(), args: v.string() };
 /** What a step's action returned, as JSON: kept apart from the step, so listing steps reads none of it. */
 export const assistantStepResultFields = { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), result: v.string() };

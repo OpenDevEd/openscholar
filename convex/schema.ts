@@ -216,7 +216,7 @@ export default defineSchema({
     .index("by_thread_user_credits", ["threadId", "userId", "credits"]),
   assistantStepResults: defineTable(assistantStepResultFields).index("by_step", ["stepId"]).index("by_thread", ["threadId"]),
   // What reverses each change of a bulk change (convex/assistant/bulk.ts).
-  assistantStepUndos: defineTable(assistantStepUndoFields).index("by_step", ["stepId"]).index("by_thread", ["threadId"]),
+  assistantStepUndos: defineTable(assistantStepUndoFields).index("by_step", ["stepId"]),
   // What each person lets the assistant spend in a chat, and each person's own record (convex/assistant/spending.ts).
   assistantLimits: defineTable(assistantLimitFields).index("by_thread_and_user", ["threadId", "userId"]).index("by_user", ["userId"]),
   assistantSpenders: defineTable(assistantSpenderFields).index("by_user", ["userId"]),

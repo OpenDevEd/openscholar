@@ -355,7 +355,7 @@ describe("the assistant's tools", () => {
     const { asAda, threadId, say, sayUntilAsked, settled, steps } = await chatOf(t);
     vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
     const autumn = fakeAutumnFetch();
-    // OpenAlex answers a page of a search that has fifteen papers; everything else is the billing service.
+    // OpenAlex answers a page of a search that has thirty papers; everything else is the billing service.
     fetchMock.mockImplementation(async (input: string | URL, init?: RequestInit) => {
       if (!String(input).includes("openalex.org")) return autumn(input as never, init as never);
       const url = new URL(String(input));
@@ -364,36 +364,36 @@ describe("the assistant's tools", () => {
       const paper = (n: number | string) => ({ id: `https://openalex.org/W${n}`, display_name: `Paper ${n}`, publication_year: 2021, cited_by_count: 40 });
       // Papers asked for by ID come back as those papers.
       const named = url.searchParams.get("filter")?.match(/openalex:([W\d|]+)/)?.[1].split("|");
-      const results = named ? (page === 1 ? named.map((id) => paper(id.slice(1))) : []) : Array.from({ length: Math.max(0, Math.min(size, 15 - from)) }, (_, i) => paper(from + i + 1));
-      return new Response(JSON.stringify({ meta: { count: named?.length ?? 15 }, results }), { status: 200 });
+      const results = named ? (page === 1 ? named.map((id) => paper(id.slice(1))) : []) : Array.from({ length: Math.max(0, Math.min(size, 30 - from)) }, (_, i) => paper(from + i + 1));
+      return new Response(JSON.stringify({ meta: { count: named?.length ?? 30 }, results }), { status: 200 });
     });
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "luna test" });
     const held = () => t.run(async (ctx) => ({ saved: (await ctx.db.query("libraryItems").collect()).length, collected: (await ctx.db.query("libraryItemCollections").collect()).length }));
 
     // The set is read before Ada is asked, so she's asked about the papers it holds: how many, where they go, and the first by title.
-    mockDoStream.mockImplementationOnce(calling({ id: "found", name: "change_papers", input: { papers: { kind: "query", query: "tutoring", minCitations: 11 }, first: 1, last: 15, do: "save", collectionId } }));
+    mockDoStream.mockImplementationOnce(calling({ id: "found", name: "change_papers", input: { papers: { kind: "query", query: "tutoring", minCitations: 11 }, first: 1, last: 30, do: "save", collectionId } }));
     await sayUntilAsked("Save the ones with more than 10 citations to luna test");
     expect(await held()).toEqual({ saved: 0, collected: 0 });
     const [asked] = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
-    expect(asked).toMatchObject({ action: "library/mutations:saveToLibrary", status: "asking", batch: 15, details: [{ name: "collection", value: "luna test" }], each: [1, 2, 3, 4, 5].map((n) => [{ name: "title", value: `Paper ${n}` }]) });
+    expect(asked).toMatchObject({ action: "library/mutations:saveToLibrary", status: "asking", batch: 30, details: [{ name: "collection", value: "luna test" }], each: [1, 2, 3, 4, 5].map((n) => [{ name: "title", value: `Paper ${n}` }]) });
 
-    mockDoStream.mockImplementationOnce(finishingDoStream(["Saved all fifteen."]));
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Saved all thirty."]));
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps())[0]._id, allow: true });
     await settled();
-    expect(await held()).toEqual({ saved: 15, collected: 15 });
-    // One step for the fifteen, named after the collection they went into.
-    expect(await steps()).toMatchObject([{ status: "done", batch: 15, count: 15, subject: "luna test" }]);
-    expect(told(1, "found")).toMatchObject({ made: 15 });
+    expect(await held()).toEqual({ saved: 30, collected: 30 });
+    // One step for the thirty, more than one transaction holds, named after the collection they went into.
+    expect(await steps()).toMatchObject([{ status: "done", batch: 30, count: 30, subject: "luna test" }]);
+    expect(told(1, "found")).toMatchObject({ made: 30 });
 
     // A few papers of a collection are taken out the same way, unasked: they stay saved.
     mockDoStream
       .mockImplementationOnce(calling({ id: "out", name: "change_papers", input: { papers: { kind: "collection", collectionId }, first: 1, last: 3, do: "uncollect", collectionId } }))
       .mockImplementationOnce(finishingDoStream(["Took three out."]));
     await say("Take the newest three out again");
-    expect(await held()).toEqual({ saved: 15, collected: 12 });
+    expect(await held()).toEqual({ saved: 30, collected: 27 });
     expect((await steps()).at(-1)).toMatchObject({ status: "done", batch: 3, count: 3, variant: "out" });
 
-    // One Undo of the fifteen takes back the saves and their places. The three taken out since were changed, so they stay saved, and the step says so.
+    // One Undo of the thirty takes back the saves and their places. The three taken out since were changed, so they stay saved, and the step says so.
     const [saving] = await steps();
     await asAda.mutation(api.assistant.undo.run, { threadId, stepId: saving._id });
     await waitFor(async () => (await steps())[0].error !== undefined, { timeoutMs: 5_000 });

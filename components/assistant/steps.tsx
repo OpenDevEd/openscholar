@@ -110,6 +110,9 @@ export function Steps({
 /** Names of a call's arguments the card says in the person's language; any other shows as the action names it. */
 const NAMED = ["thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune"] as const;
 
+/** Arguments that are a setting turned on or off. */
+const SWITCHES = new Set(["prune", "inCollection", "usePdfs", "openAccessOnly", "withAbstractOnly", "reviewsOnly", "includeRetracted", "ratedOnly"]);
+
 /** What the credits a card's top-up is for: the call that waits, as the Add credits sheet names it. */
 export type Waiting = { kind: Kind; title: string; credits: number };
 /** Opens the Add credits sheet over the panel, for a call that waits on a balance too low for it. */
@@ -148,8 +151,8 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
   const addCredits = useContext(AddCredits);
   const common = useTranslations("common");
   const heading = useStepTitle()(words, step);
-  /** A value as the card says it: a setting that is on or off as yes or no, not as the action writes it. */
-  const said = (value: string) => (value === "true" ? common("yes") : value === "false" ? common("no") : value);
+  /** A value as the card says it: a setting that is on or off as yes or no, not as the action writes it. A name that happens to read "true" stays as typed. */
+  const said = ({ name, value }: { name: string; value: string }) => (SWITCHES.has(name) && (value === "true" || value === "false") ? common(value === "true" ? "yes" : "no") : value);
   const each = step.each ?? [];
   /** An argument's name in the person's language, where the card has one; any other shows as the action names it. */
   const named = (name: string) => ((NAMED as readonly string[]).includes(name) ? t(`asks.names.${name as (typeof NAMED)[number]}`) : name);
@@ -177,7 +180,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
               <li key={i} className="flex gap-2">
                 <span className="shrink-0 text-foreground/50">{named(detail.name)}</span>
                 {/* What someone may do in a shared chat, in the Share sheet's own words. A record with nothing to call it by, such as a search saved with filters alone, says so. */}
-                <span className="min-w-0 break-words">{detail.name === "role" && (detail.value === "read" || detail.value === "write") ? t(detail.value === "read" ? "canView" : "canChat") : said(detail.value) || t("asks.unnamed")}</span>
+                <span className="min-w-0 break-words">{detail.name === "role" && (detail.value === "read" || detail.value === "write") ? t(detail.value === "read" ? "canView" : "canChat") : said(detail) || t("asks.unnamed")}</span>
               </li>
             ))}
           </ul>
@@ -190,7 +193,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
                   {given.map((detail) => (
                     <span key={detail.name} className="flex min-w-0 max-w-[50%] shrink-0 gap-1">
                       <span className="shrink-0 text-foreground/50">{named(detail.name)}</span>
-                      <span className="truncate">{said(detail.value)}</span>
+                      <span className="truncate">{said(detail)}</span>
                     </span>
                   ))}
                 </li>

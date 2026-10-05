@@ -39,8 +39,8 @@ export const MAX_ASKS = 10;
 export const BULK = 10;
 /** The action that undoes a bulk change (./batches.ts): a bulk step's `undo`, and what its result names as its undo to the model. */
 export const UNDO_BULK = "assistant/batches:undo";
-/** How long what would undo a deleted chat's bulk changes is kept: long enough for an Undo pressed just before to finish. */
-const UNDOS_LINGER_MS = 60_000;
+/** Of what would undo a deleted chat's bulk changes, how much one batch deletes. */
+const FORGET_UNDOS = 200;
 /**
  * Characters of anything a tool hands the model, about 4,000 tokens (#326). A step keeps the
  * rest of a result. Room for a page of ten papers with enough of each abstract to say what
@@ -362,24 +362,26 @@ export const forget = internalMutation({
 
     // Steps go once their results are gone, so a batch never reads large rows and small ones together.
     const steps = results.length === FORGET_RESULTS ? [] : await ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId)).take(FORGET_STEPS);
-    for (const step of steps) await ctx.db.delete("assistantSteps", step._id);
+    // A bulk change's step takes what would have undone it along: the changes themselves stay made. One whose undo the
+    // person pressed keeps its rows, which that undo reads until it has put everything back (./bulk.ts).
+    let room = FORGET_UNDOS;
+    let undosLeft = false;
+    for (const step of steps) {
+      if (step.batch !== undefined && !step.reverting) {
+        const undos = await ctx.db.query("assistantStepUndos").withIndex("by_step", (q) => q.eq("stepId", step._id)).take(room);
+        for (const row of undos) await ctx.db.delete("assistantStepUndos", row._id);
+        room -= undos.length;
+        // It may have more: it goes with the next batch.
+        if (room === 0) {
+          undosLeft = true;
+          break;
+        }
+      }
+      await ctx.db.delete("assistantSteps", step._id);
+    }
     // What people let the assistant spend in it goes too (./spending.ts).
     const limitsLeft = await forgetLimits(ctx, threadId);
-    if (results.length === FORGET_RESULTS || steps.length === FORGET_STEPS || limitsLeft) await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId });
-    // What would have undone its bulk changes goes last, and a little later: an Undo the person pressed just before deleting the chat reads them as it runs.
-    else await ctx.scheduler.runAfter(UNDOS_LINGER_MS, internal.assistant.steps.forgetUndos, { threadId });
-    return null;
-  },
-});
-
-/** Deletes what would have undone a deleted chat's bulk changes, a batch at a time. The changes themselves stay made. */
-export const forgetUndos = internalMutation({
-  args: { threadId: v.id("assistantThreads") },
-  returns: v.null(),
-  handler: async (ctx, { threadId }) => {
-    const undos = await ctx.db.query("assistantStepUndos").withIndex("by_thread", (q) => q.eq("threadId", threadId)).take(FORGET_STEPS);
-    for (const row of undos) await ctx.db.delete("assistantStepUndos", row._id);
-    if (undos.length === FORGET_STEPS) await ctx.scheduler.runAfter(0, internal.assistant.steps.forgetUndos, { threadId });
+    if (results.length === FORGET_RESULTS || undosLeft || steps.length === FORGET_STEPS || limitsLeft) await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId });
     return null;
   },
 });

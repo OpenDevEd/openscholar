@@ -6,7 +6,8 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import { assistantMutation, defineUserMutation, userMutation } from "../lib/userActions";
-import { UNDO_BULK } from "./steps";
+import { UNDO_BULK, settleAsked } from "./steps";
+import { writing } from "./threads";
 
 export const undoAction = defineUserMutation({
   path: UNDO_BULK,
@@ -20,14 +21,20 @@ export const undoAction = defineUserMutation({
   // Undoing has no undo of its own.
   undoable: false,
   run: async (ctx, userId, { change }) => {
-    const step = await ctx.db.get("assistantSteps", change);
+    let step = await ctx.db.get("assistantSteps", change);
     // It changed that person's records, and the undo would act on whoever runs it.
     if (!step || step.userId !== userId || step.batch === undefined) throw createError("NOT_FOUND", "That bulk change isn't one of yours.");
-    // One that hasn't run, or made nothing, has nothing to take back. One still running is undone once it has ended.
-    if (step.status === "running") throw createError("CONFLICT", "This is still running. Undo it once it has ended.");
+    if (step.status === "running") {
+      // One still running is undone once it has ended. One whose reply died partway is ended here, as the chat's next message would end it.
+      const thread = await ctx.db.get("assistantThreads", step.threadId);
+      if (!thread || (await writing(ctx, thread.reply))) throw createError("CONFLICT", "This is still running. Undo it once it has ended.");
+      await settleAsked(ctx, step.threadId);
+      step = (await ctx.db.get("assistantSteps", change))!;
+    }
+    // One that hasn't run, or made nothing it can take back, has nothing to undo.
     if (step.undone || step.undo?.path !== UNDO_BULK) throw createError("CONFLICT", "There's nothing left to undo here.");
-    await ctx.db.patch("assistantSteps", change, { undone: true });
-    await ctx.scheduler.runAfter(0, internal.assistant.bulk.revert, { userId, stepId: change });
+    await ctx.db.patch("assistantSteps", change, { undone: true, reverting: true });
+    await ctx.scheduler.runAfter(0, internal.assistant.bulk.revert, { userId, stepId: change, reversed: 0, refused: 0 });
     return null;
   },
 });
