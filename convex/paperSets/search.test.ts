@@ -31,6 +31,7 @@ const instances: ReturnType<typeof convexTest>[] = [];
 const maxParallelism = screeningPool.options.maxParallelism;
 /** OpenAlex's pages of papers wait for this before they answer. */
 let held: Promise<void> | undefined;
+let releaseHeld: (() => void) | undefined;
 /** OpenAlex, answering each page with up to 200 works numbered from the page's start, until the search runs out; a cursor is the next page's number. */
 const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
   const url = new URL(String(input));
@@ -58,6 +59,7 @@ beforeEach(() => {
   requests = [];
   refusals = [];
   held = undefined;
+  releaseHeld = undefined;
   total = 900;
   vi.stubEnv("OPENALEX_API_KEY", "platform-key");
   vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
@@ -65,6 +67,7 @@ beforeEach(() => {
 });
 afterEach(async () => {
   try {
+    releaseHeld?.();
     for (const t of instances.splice(0)) await t.finishInProgressScheduledFunctions();
   } finally {
     vi.clearAllTimers();
@@ -385,13 +388,12 @@ describe("Screen all on a saved search, read on the server", () => {
     total = 2_500;
     const { t, alice, read } = await setup({ ...search, sortBy: "relevance_score:desc", onlyRatedPapers: true, ratingRange: [3, 5] });
 
-    let answer = () => {};
-    held = new Promise((resolve) => (answer = resolve));
+    held = new Promise((resolve) => (releaseHeld = resolve));
     const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 2_500, ...job, saveTo: { kind: "none" } });
     // Cancelled while OpenAlex is still answering the first stretch's pages.
     await vi.waitFor(() => expect(pages().length).toBeGreaterThan(0), { timeout: 10_000, interval: 20 });
     await alice.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
-    answer();
+    releaseHeld!();
     await vi.waitFor(async () => expect(await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect()).then((rows) => rows.filter((row) => row.name.includes("start:read") && row.state.kind !== "success" && row.state.kind !== "failed"))).toHaveLength(0), { timeout: 10_000, interval: 50 });
 
     // The first 1,000 papers' pages, and none of the 1,500 after them.
