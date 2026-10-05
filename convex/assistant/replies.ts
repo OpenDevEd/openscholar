@@ -25,6 +25,7 @@ import { internalMutation, internalQuery, mutation, query } from "../lib/functio
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
+import { NEW_CHAT_TITLE, titleFrom } from "../../lib/assistant/title";
 import { notePart, viewOf } from "../../lib/assistant/view";
 import { viewOf as actionView } from "../../lib/assistant/actions";
 import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
@@ -137,7 +138,9 @@ export const send = mutation({
       // An effort the catalog has since dropped runs at the model's default.
       effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
     });
-    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), ...(moved ? { view: { ...((view ?? said?.address) === undefined ? {} : { address: view ?? said?.address }), day: today, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
+    // A chat made before it had a message, to share it or to set what it may spend, is named by its first.
+    const title = thread.preview === undefined && thread.title === NEW_CHAT_TITLE ? titleFrom(text) : "";
+    await ctx.db.patch("assistantThreads", threadId, { ...(title ? { title } : {}), preview: previewOf(text), ...(moved ? { view: { ...((view ?? said?.address) === undefined ? {} : { address: view ?? said?.address }), day: today, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
     return null;
   },
 });

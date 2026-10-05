@@ -456,6 +456,22 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId: theirs })))).toEqual([{ name: "collection", value: theirs }]);
   });
 
+  it("name a step after the saved paper or the collection its call gave only the ID of", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, say, steps } = await chatOf(t);
+    const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
+    await t.run(async (ctx) => {
+      await ctx.db.insert("libraryItems", { userId: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale", paperData: "{}", savedAt: 1, updatedAt: 1, searchableText: "tutoring at scale" });
+    });
+    mockDoStream
+      // The paper by its short ID, as results give it, and a collection of hers.
+      .mockImplementationOnce(calling({ id: "collect", name: "run_action", input: { name: "library/papers:collect", arguments: { id: "W7", collectionId, inCollection: true } } }))
+      .mockImplementationOnce(calling({ id: "open", name: "run_action", input: { name: "library/collections:getCollection", arguments: { collectionId } } }))
+      .mockImplementationOnce(finishingDoStream(["Done."]));
+    await say("Put that paper in Trials");
+    expect((await steps()).map((step) => [step.path, step.subject])).toEqual([["library/papers:collect", "Tutoring at scale"], ["library/collections:getCollection", "Trials"]]);
+  });
+
   it("carry a reply on through a pause, for as many requests as its work takes", async () => {
     const t = convexTest(schema);
     const { asAda, threadId, sayUntilAsked, settled, steps, thread } = await chatOf(t);

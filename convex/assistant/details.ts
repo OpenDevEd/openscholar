@@ -9,9 +9,13 @@
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { readMemberOrganizations } from "../organizationFeatures";
+import { findSearch } from "../research/records";
+import { currentSearch } from "../../lib/research/records";
 import { personName, principalsOf, roleAmong } from "./access";
 import { ASKED_DETAILS_MAX } from "./validators";
 
+/** A saved search's ID: the one the page made for it. */
+const SEARCH_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Characters of one argument's value. */
 const VALUE_MAX = 200;
 /** How deep an argument's own fields are listed. */
@@ -40,6 +44,11 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
   const mine = await readMemberOrganizations(ctx, reader);
   /** The name of the record an ID names, when the reader can already see it. */
   const named = async (id: string): Promise<string | null> => {
+    // A saved search has the ID its page gave it, not a document's. It is the reader's own or it isn't found.
+    if (SEARCH_ID.test(id)) {
+      const search = await findSearch(ctx, reader._id, id);
+      return search ? currentSearch(search.data).query || null : null;
+    }
     const threadId = ctx.db.normalizeId("assistantThreads", id);
     if (threadId) return (await roleAmong(ctx, threadId, await principalsOf(ctx, reader))) ? ((await ctx.db.get("assistantThreads", threadId))?.title ?? null) : null;
     const collectionId = ctx.db.normalizeId("collections", id);

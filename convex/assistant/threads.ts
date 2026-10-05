@@ -17,6 +17,7 @@ import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery,
 import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import schema from "../schema";
 import type { Effort } from "../../lib/ai/core/call-options";
+import { NEW_CHAT_TITLE } from "../../lib/assistant/title";
 import { accessRows, best, deleteThread, personName, principalOf, principalsOf, requireThread, userPrincipal, type AssistantRole } from "./access";
 import { viewers } from "./presence";
 import { ASSISTANT_MEMBERS_SHOWN, assistantMembersValidator, assistantRoleValidator } from "./validators";
@@ -138,7 +139,7 @@ export const createAction = defineUserMutation({
   undoable: false,
   run: async (ctx, userId, args) => {
     await requireFeature(ctx, FLAG, userId);
-    const title = titled(args.title) || "New chat";
+    const title = titled(args.title) || NEW_CHAT_TITLE;
     if (args.modelId) await pickable(ctx, args.modelId, args.effort);
     else if (args.effort) throw createError("VALIDATION_ERROR", "Pick a model to set its reasoning effort.");
     const now = Date.now();

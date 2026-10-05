@@ -17,6 +17,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { STEPS_SHOWN } from "../../lib/assistant/steps";
+import { workUrl } from "../../lib/openalex/work-id";
 import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 
@@ -157,8 +158,37 @@ async function failStep(ctx: MutationCtx, step: Step, error: string) {
 export const begin = internalMutation({
   args: { threadId: v.id("assistantThreads"), order: v.number(), userId: v.id("users"), toolCallId: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) },
   returns: v.id("assistantSteps"),
-  handler: async (ctx, args) => ctx.db.insert("assistantSteps", { ...args, status: "running", startedAt: Date.now() }),
+  handler: async (ctx, args) => {
+    const subject = args.subject ?? (await aboutOf(ctx, args.userId, args.input));
+    return ctx.db.insert("assistantSteps", { ...args, ...(subject ? { subject } : {}), status: "running", startedAt: Date.now() });
+  },
 });
+
+/**
+ * What a call is about when its arguments name one of the person's records by ID alone: the
+ * saved paper's title, or else the collection's name. A paper it is about to save isn't
+ * theirs yet, and gets its title from what the call returns (`namedBy`).
+ */
+async function aboutOf(ctx: Pick<MutationCtx, "db">, userId: Id<"users">, input: string) {
+  let args: Record<string, unknown>;
+  try {
+    args = JSON.parse(input) as Record<string, unknown>;
+  } catch {
+    // Arguments too long to keep whole were cut, and don't parse.
+    return undefined;
+  }
+  if (!args || typeof args !== "object") return undefined;
+  const command = args.command && typeof args.command === "object" ? (args.command as Record<string, unknown>) : {};
+  const paper = [args.id, args.openalexId, args.paperId, command.paperId].find((value): value is string => typeof value === "string");
+  const openalexId = paper ? workUrl(paper) : null;
+  if (openalexId) {
+    const item = await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", openalexId)).first();
+    if (item?.title) return cut(item.title, 200);
+  }
+  const collectionId = typeof args.collectionId === "string" ? ctx.db.normalizeId("collections", args.collectionId) : null;
+  const collection = collectionId ? await ctx.db.get("collections", collectionId) : null;
+  return collection?.userId === userId ? cut(collection.name, 200) : undefined;
+}
 
 /** A step that read something ends with its result. A change ends its own (`endStep`). */
 export const read = internalMutation({
