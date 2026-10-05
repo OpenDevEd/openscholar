@@ -26,6 +26,7 @@ import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { notePart, viewOf } from "../../lib/assistant/view";
+import { viewOf as actionView } from "../../lib/assistant/actions";
 import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { personName, requireThread, touchThread } from "./access";
@@ -634,9 +635,10 @@ export const steps = userQuery(stepsAction);
 export const stepsForAssistant = assistantQuery(stepsAction);
 export const messagesForAssistant = assistantQuery(messagesAction);
 
-/** The text a reply's stream holds so far. */
+/** The text and visible activity of the current model step. */
 async function textSoFar(ctx: QueryCtx, agentThreadId: string, streamId: string) {
   let text = "";
+  let writing = false;
   let cursor = 0;
   for (let reads = 0; reads < LIVE_READS; reads++) {
     const deltas = await ctx.runQuery(components.agent.streams.listDeltas, { threadId: agentThreadId, cursors: [{ streamId, cursor }] });
@@ -644,15 +646,25 @@ async function textSoFar(ctx: QueryCtx, agentThreadId: string, streamId: string)
       for (const part of delta.parts) {
         // One stream runs through every step of a reply. Each step's text becomes a message of
         // its own once the step ends, so only the step being written is still live.
-        if (part?.type === "start-step") text = "";
-        else if (part?.type === "text-delta" && typeof part.delta === "string") text += part.delta;
+        if (part?.type === "start-step") { text = ""; writing = false; }
+        else if (part?.type === "text-delta" && typeof part.delta === "string") { text += part.delta; writing = true; }
+        else if (part?.type === "tool-call" || part?.type === "finish-step" || part?.type === "reasoning-start") writing = false;
       }
       cursor = delta.end;
     }
     if (deltas.length < DELTAS_PER_READ) break;
   }
-  return text;
+  return { text, writing };
 }
+
+/**
+ * What the assistant is doing in a chat, or how its last reply ended, for its mark to show
+ * (lib/assistant/activity.ts). `order` is the exchange it is about, when there is one.
+ */
+const activityValidator = v.object({
+  phase: v.union(v.literal("idle"), v.literal("thinking"), v.literal("searching"), v.literal("writing"), v.literal("waiting"), v.literal("stopping"), v.literal("complete"), v.literal("failed"), v.literal("stopped")),
+  order: v.union(v.number(), v.null()),
+});
 
 export const live = query({
   args: { threadId: v.id("assistantThreads") },
@@ -673,6 +685,8 @@ export const live = query({
       /** The reply waits for the person to answer what it asked. Stop ends it. */
       asking: v.boolean(),
       text: v.string(),
+      /** What it is doing now: thinking, searching, writing, waiting for the person, or stopping. */
+      activity: activityValidator,
     }),
   ),
   handler: async (ctx, { threadId }) => {
@@ -681,7 +695,17 @@ export const live = query({
     const { thread } = await requireThread(ctx, userId, threadId);
     // A reply that waits for an answer isn't being written, and Stop ends it.
     if (thread.asking) {
-      return { attemptId: waitingAttempt(thread.asking), senderId: thread.asking.senderId, order: thread.asking.order, startedAt: thread.asking.askedAt, stopping: false, compacting: false, asking: true, text: "" };
+      return {
+        attemptId: waitingAttempt(thread.asking),
+        senderId: thread.asking.senderId,
+        order: thread.asking.order,
+        startedAt: thread.asking.askedAt,
+        stopping: false,
+        compacting: false,
+        asking: true,
+        text: "",
+        activity: { phase: "waiting" as const, order: thread.asking.order },
+      };
     }
     const current = thread.reply;
     if (!current || !(await writing(ctx, current))) return null;
@@ -694,6 +718,13 @@ export const live = query({
       includeStatuses: ["streaming", "aborted"],
     });
     const stream = streams.find((candidate) => candidate.order === current.order);
+    const output = stream ? await textSoFar(ctx, thread.agentThreadId, stream.streamId) : { text: "", writing: false };
+    const running = await ctx.db
+      .query("assistantSteps")
+      .withIndex("by_thread_order_status", (q) => q.eq("threadId", threadId).eq("order", current.order).eq("status", "running"))
+      .take(STEPS_SHOWN);
+    const searching = running.some((step) => actionView(step.path).searching);
+    const phase = current.stop ? ("stopping" as const) : current.compacting ? ("thinking" as const) : searching ? ("searching" as const) : running.length ? ("thinking" as const) : output.writing ? ("writing" as const) : ("thinking" as const);
     return {
       attemptId: current.attemptId,
       senderId: current.senderId,
@@ -702,7 +733,28 @@ export const live = query({
       stopping: current.stop === true,
       compacting: current.compacting === true,
       asking: false,
-      text: stream ? await textSoFar(ctx, thread.agentThreadId, stream.streamId) : "",
+      text: output.text,
+      activity: { phase, order: current.order },
     };
+  },
+});
+
+/**
+ * How a chat's last reply ended, for the assistant's mark while none is being written: it
+ * reads one message, not the conversation. `live` says what a reply at work is doing.
+ */
+export const outcome = query({
+  args: { threadId: v.id("assistantThreads") },
+  returns: activityValidator,
+  handler: async (ctx, { threadId }) => {
+    const userId: Id<"users"> = (await requireAuth(ctx))._id;
+    await requireFeature(ctx, FLAG, userId);
+    const { thread } = await requireThread(ctx, userId, threadId);
+    const newest = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null, maximumRowsRead: 1, maximumBytesRead: MESSAGES_PAGE_BYTES }, excludeToolMessages: true })).page[0];
+    // A message with no reply to it: the reply failed before it wrote anything.
+    if (newest?.message?.role === "user") return { phase: "failed" as const, order: newest.order };
+    if (newest?.message?.role !== "assistant") return { phase: "idle" as const, order: null };
+    const stopped = newest.status === "failed" && parseChatError(newest.error)?.class === "aborted";
+    return { phase: stopped ? ("stopped" as const) : newest.status === "success" && newest.text?.trim() ? ("complete" as const) : ("failed" as const), order: newest.order };
   },
 });
