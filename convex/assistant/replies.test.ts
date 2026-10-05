@@ -561,6 +561,28 @@ describe("assistant replies", () => {
     await expect(asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).rejects.toThrow(/disabled/);
     await expect(asAda.query(api.assistant.replies.live, { threadId })).rejects.toThrow(/disabled/);
   });
+
+  it("link a query the reply looked up to its results, with its filters, as a new search", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await sharedChat(t);
+    mockDoStream.mockImplementation(finishingDoStream(["Found some"]));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Look these up" });
+    await ended(t, threadId);
+    const order = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.at(-1)!.order;
+    await t.run(async (ctx) => {
+      const step = { threadId, order, userId: ada, status: "done" as const, startedAt: 1, endedAt: 1 };
+      await ctx.db.insert("assistantSteps", { ...step, toolCallId: "search", path: "research/papers:search", input: JSON.stringify({ query: '"machine learning"', minCitations: 11, fromYear: 2020, toYear: 2024, page: 2 }), subject: '"machine learning"' });
+      await ctx.db.insert("assistantSteps", { ...step, toolCallId: "count", path: "research/papers:count", input: JSON.stringify({ query: "tutoring", by: "year" }), subject: "tutoring" });
+      await ctx.db.insert("assistantSteps", { ...step, toolCallId: "collection", path: "library/collections:create", input: JSON.stringify({ name: "Trials" }), subject: "Trials" });
+    });
+
+    const steps = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
+    expect(Object.fromEntries(steps.map((step) => [step.subject, "href" in step ? step.href : null]))).toEqual({
+      '"machine learning"': "/results?q=%22machine+learning%22&yf=2020&yt=2024&mincite=11",
+      tutoring: "/results?q=tutoring",
+      Trials: null,
+    });
+  });
 });
 
 function mockModel(t: Test, slug = "mock/model") {

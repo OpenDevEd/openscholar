@@ -16,7 +16,9 @@ import { COUNTRY_HIERARCHY, getCountryCodesForRegions, MIN_YEAR } from "../../li
 import { withoutQuotedQuestionMarks } from "../../lib/search/wildcard";
 import { authorFilterValue } from "../../lib/openalex/author-filter";
 import { INSTITUTION_TYPES, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
-import { currentSearch, type SavedSearch, type UndoCommand } from "../../lib/research/records";
+import { currentSearch, restoreSearch, type SavedSearch, type UndoCommand } from "../../lib/research/records";
+import { buildShareableUrl } from "../../lib/search-params";
+import { searchResultToParams } from "../../lib/search-params/converters";
 import { applyCommand, findSearch, revisionRow } from "./records";
 import { AUTHORS_SHOWN, changesValidator, COUNTRIES_SHOWN, LAST_PAGE, LAST_PAGE_FROM_START, pageValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 import type { Id } from "../_generated/dataModel";
@@ -46,6 +48,18 @@ const NARROWS = ["authors", "funders", "researchAreas", "selectedRegions", "sele
 // A citation minimum of none is no filter: the request leaves it out.
 const off = (value: unknown) => value === undefined || value === false || value === 0 || value === "" || (Array.isArray(value) && !value.length);
 const narrowed = (search: Partial<SavedSearch>) => Boolean(search.query?.trim()) || NARROWS.some((field) => !off(search[field]));
+
+/**
+ * The results page a query and settings open as a new search: a link with no search ID, which
+ * the page makes a search of, as a shared link does. None for settings that make no search.
+ */
+export function searchHref(query: string | undefined, settings: Settings): string | undefined {
+  try {
+    return buildShareableUrl("", searchResultToParams(restoreSearch(newSearch("link", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings))));
+  } catch {
+    return undefined;
+  }
+}
 
 /** A search from a query and settings, as one is first saved. */
 function newSearch(id: string, query: string | undefined, settings: Settings): SavedSearch {

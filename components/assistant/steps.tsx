@@ -5,6 +5,7 @@
 // asks the person about first shows under the map as the mock's approval card.
 
 import { createContext, useContext, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -46,6 +47,19 @@ const ORIGIN = 28;
 const LINE = 28;
 /** Room under a folded run's lines. */
 const LINES_END = 8;
+
+/**
+ * What a step was about, as its card shows it. A query it looked up opens that query's
+ * results in this tab, as a new search, and the panel stays up with its chat.
+ */
+function Subject({ text, href, className = "truncate" }: { text: string; href?: string; className?: string }) {
+  if (!href) return <span className={className}>{text}</span>;
+  return (
+    <Link href={href} className={cn(className, "underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground")}>
+      {text}
+    </Link>
+  );
+}
 
 /** A tinted icon square; the tile of the model cards, one size down. */
 export function KindTile({ kind, working }: { kind: Kind; working?: boolean }) {
@@ -429,18 +443,18 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                         ) : state ? (
                           <>
                             <Fact>{state}</Fact>
-                            {step.subject ? <span className="truncate">{step.subject}</span> : null}
+                            {step.subject ? <Subject text={step.subject} href={step.href} /> : null}
                           </>
                         ) : folded ? (
                           <>
                             <Fact value={run.length}>{t("steps.times", { count: run.length })}</Fact>
-                            <span className="truncate">{step.subject ?? t(`steps.${words}.where`)}</span>
+                            {step.subject ? <Subject text={step.subject} href={step.href} /> : <span className="truncate">{t(`steps.${words}.where`)}</span>}
                           </>
                         ) : (
                           <>
                             {/* A bulk change's title says how many it made. */}
                             {step.batch === undefined && step.count !== undefined ? <Fact value={step.count}>{t("steps.found")}</Fact> : null}
-                            {step.subject ? <span className="truncate">{step.subject}</span> : null}
+                            {step.subject ? <Subject text={step.subject} href={step.href} /> : null}
                             {(step.batch !== undefined || step.count === undefined) && !step.subject ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
                           </>
                         )}
@@ -478,7 +492,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                     <ol inert={!open} className="pl-[60px] pr-3 text-xs text-muted-foreground">
                       {run.map((one, at) => (
                         <li key={one.id} className="flex items-center gap-2" style={{ height: LINE }}>
-                          <span className="min-w-0 flex-1 truncate">{shared ? `… ${lines[at].slice(shared)}` : lines[at]}</span>
+                          <Subject text={shared ? `… ${lines[at].slice(shared)}` : lines[at]} href={one.subject ? one.href : undefined} className="mr-auto min-w-0 truncate" />
                           {one.count !== undefined ? (
                             <span className="shrink-0 tabular-nums">
                               <span className="font-semibold text-foreground/90">{one.count}</span> {t("steps.found")}
