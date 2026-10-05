@@ -1,8 +1,8 @@
 const variants = [
-  { id: "gather", name: "Gather", load: "The layers swing into place, then the star turns in.", hover: "A quarter turn of the star, the layers lean back.", loop: "The star steps round a quarter turn at a time while the layers lean." },
-  { id: "twinkle", name: "Twinkle", load: "The layers rise in, the star twinkles, a glint flashes.", hover: "The star twinkles again with a fresh glint.", loop: "A steady twinkle, with a glint on every beat." },
-  { id: "focus", name: "Focus", load: "The layers close in on the star like an aperture.", hover: "The aperture opens, then refocuses on a turning star.", loop: "The aperture breathes in and out round a turning star." },
-  { id: "spin", name: "Spin", load: "The layers spin in at different speeds.", hover: "One full turn of the layers against the star.", loop: "Each layer orbits at its own speed, the star turns slowly back." },
+  { id: "gather", name: "Gather", load: "The layers sweep round into place, then the star springs in.", hover: "The star springs a quarter turn and the layers recoil.", loop: "That beat, repeated: a turn of the star, a recoil of the layers." },
+  { id: "draw", name: "Draw", load: "Each ribbon is drawn along its circle, then the star springs in.", hover: "A soft light runs once round the ribbons.", loop: "The light keeps circling the ribbons, the star pulses each lap." },
+  { id: "focus", name: "Focus", load: "The layers close in like an iris as the star turns into focus.", hover: "The iris opens as the star tightens.", loop: "The iris breathes round a star that turns a quarter each beat." },
+  { id: "orbit", name: "Orbit", load: "The layers spiral out into place.", hover: "The layers go round once against the star.", loop: "The outer layers circle, the inner one turns the other way." },
 ];
 const byId = (id) => document.getElementById(id);
 let selected = "gather";
