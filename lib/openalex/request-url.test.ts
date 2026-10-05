@@ -67,6 +67,23 @@ describe("openAlexInit", () => {
     expect(openAlexInit(openAlexUrl("works"))).toEqual({ headers: {}, redirect: "manual" });
   });
 
+  it("refuses a token a header can't carry, naming the setting but never quoting it", () => {
+    withToken("https://search-api.example.org", "client-id.access", "s3cr3t\nvalue");
+    const refusal = (() => {
+      try {
+        openAlexInit(openAlexUrl("works"));
+      } catch (error) {
+        return String(error);
+      }
+    })();
+    expect(refusal).toMatch(/OPENSCHOLAR_API_ACCESS_CLIENT_SECRET/);
+    expect(refusal).not.toMatch(/s3cr3t/);
+    withToken("https://search-api.example.org", "client id.access", "client-secret");
+    expect(() => openAlexInit(openAlexUrl("works"))).toThrow(/OPENSCHOLAR_API_ACCESS_CLIENT_ID/);
+    // OpenAlex's requests never read the token, so a broken one doesn't stop them.
+    expect(openAlexInit("https://api.openalex.org/works")).toEqual({ headers: {} });
+  });
+
   it("never gives the token to OpenAlex, whose redirects are followed as before", () => {
     withToken("https://search-api.example.org", "client-id.access", "client-secret");
     expect(openAlexInit(openAlexUrl("topics/T10745"))).toEqual({ headers: {} });

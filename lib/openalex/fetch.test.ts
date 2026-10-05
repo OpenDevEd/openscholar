@@ -30,6 +30,20 @@ describe("openAlexFetch", () => {
     expect(redirect(fetch)).toBe("manual");
   });
 
+  it("refuses a malformed token before asking, without quoting it", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "https://search-api.example.org");
+    vi.stubEnv("OPENSCHOLAR_API_ACCESS_CLIENT_ID", "client-id.access");
+    vi.stubEnv("OPENSCHOLAR_API_ACCESS_CLIENT_SECRET", "s3cr3t\nvalue");
+    const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
+    const refusal = await openAlexFetch("https://search-api.example.org/works?search=kelp").then(
+      () => "",
+      (error: unknown) => String(error),
+    );
+    expect(refusal).toMatch(/OPENSCHOLAR_API_ACCESS_CLIENT_SECRET/);
+    expect(refusal).not.toMatch(/s3cr3t/);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("sends OpenAlex no token, and follows its redirects as before", async () => {
     vi.stubEnv("OPENSCHOLAR_API_URL", "https://search-api.example.org");
     vi.stubEnv("OPENSCHOLAR_API_ACCESS_CLIENT_ID", "client-id.access");

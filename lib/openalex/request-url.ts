@@ -46,13 +46,23 @@ export function openAlexUrl(path: string, parameters: Record<string, string | un
 }
 
 /**
+ * What a service token's halves are made of: visible ASCII. Anything else, such as a line break pasted
+ * into the middle of one, makes fetch throw an error that quotes the whole value, and callers log it.
+ */
+const TOKEN_VALUE = /^[\x21-\x7e]+$/;
+
+/**
  * Cloudflare Access's service token as its two headers, when `OPENSCHOLAR_API_ACCESS_CLIENT_ID` and
  * `OPENSCHOLAR_API_ACCESS_CLIENT_SECRET` are set: Access lets through only requests that carry one.
+ * Throws, naming the setting but never quoting it, when a half isn't made of `TOKEN_VALUE`.
  */
 function accessToken(): Record<string, string> {
   const id = process.env.OPENSCHOLAR_API_ACCESS_CLIENT_ID;
   const secret = process.env.OPENSCHOLAR_API_ACCESS_CLIENT_SECRET;
-  return id && secret ? { "CF-Access-Client-Id": id, "CF-Access-Client-Secret": secret } : {};
+  if (!id || !secret) return {};
+  if (!TOKEN_VALUE.test(id)) throw new Error("OPENSCHOLAR_API_ACCESS_CLIENT_ID has a character a header can't carry, such as a space or a line break. Set it again.");
+  if (!TOKEN_VALUE.test(secret)) throw new Error("OPENSCHOLAR_API_ACCESS_CLIENT_SECRET has a character a header can't carry, such as a space or a line break. Set it again.");
+  return { "CF-Access-Client-Id": id, "CF-Access-Client-Secret": secret };
 }
 
 /**
