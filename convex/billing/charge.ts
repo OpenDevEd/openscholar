@@ -454,7 +454,11 @@ export const recordUnder = internalMutation({
 export async function settleUnder(ctx: ActionCtx, { under, estimate, ...args }: SettleArgs & { under?: string; estimate?: number }): Promise<boolean> {
   if (under === undefined) return await settleCredits(ctx, args);
   const { usage, ...charge } = args;
-  const recorded = await retryOnConflict(() => ctx.runMutation(internal.billing.charge.recordUnder, { ...charge, ...usage, under, estimate: estimate ?? 0, createdAt: Date.now() }));
+  // One that can't be written under the hold, for all its tries against the other items' writes, isn't lost: it is charged by itself once the hold is settled.
+  const recorded = await retryOnConflict(() => ctx.runMutation(internal.billing.charge.recordUnder, { ...charge, ...usage, under, estimate: estimate ?? 0, createdAt: Date.now() })).catch((error) => {
+    console.error(`[billing] recording ${args.chargeId} under ${under} failed; charging it by itself later`, error);
+    return "settling" as const;
+  });
   if (recorded === "recorded" || args.credits <= 0) return true;
   if (recorded === "gone") return await settleCredits(ctx, args);
   await ctx.scheduler.runAfter(RETRY_DELAYS_MS[0], internal.billing.charge.settleLate, { ...args, under, attempt: 1 });
