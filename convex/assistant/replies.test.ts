@@ -11,6 +11,7 @@ import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/bill
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import schema from "../schema";
 import { SERVER_MODEL_SLUG } from "../ai/config";
+import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 import { people } from "./assistant.test-support";
 import { erroringOnAbortDoStream, finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, waitFor } from "./turn.test-support";
@@ -99,6 +100,7 @@ describe("assistant replies", () => {
     expect((await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[1]).toMatchObject({ mine: true });
     expect(page[0].order).toBe(page[1].order);
     expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
+    expect(await asAda.query(api.assistant.replies.outcome, { threadId })).toEqual({ phase: "complete", order: page[0].order });
     // The list shows the chat by what was said last.
     expect((await asAda.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage })).page[0]).toMatchObject({ preview: "Hello Ben", writing: false });
     expect((await asAda.query(api.assistant.threads.list, { scope: "all", text: "hello b", paginationOpts: firstPage })).page).toHaveLength(1);
@@ -125,6 +127,7 @@ describe("assistant replies", () => {
     // Ben watches it arrive.
     await waitFor(async () => (await asBen.query(api.assistant.replies.live, { threadId }))?.text.includes("three") === true, { timeoutMs: 5_000 });
     const live = await asBen.query(api.assistant.replies.live, { threadId });
+    expect(live!.activity).toEqual({ phase: "writing", order: live!.order });
     expect(live).toMatchObject({ senderId: ada, stopping: false, text: "One two three " });
     const writing = await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
     expect(writing.page[0]).toMatchObject({ role: "assistant", status: "pending", order: live!.order });
@@ -137,6 +140,8 @@ describe("assistant replies", () => {
 
     const { page } = await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
     expect(page[0]).toMatchObject({ role: "assistant", status: "stopped" });
+    expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
+    expect(await asAda.query(api.assistant.replies.outcome, { threadId })).toEqual({ phase: "stopped", order: live!.order });
     expect("text" in page[0] && page[0].text.trim()).toBe("One two three");
     expect(page[0].error).toBeUndefined();
 
@@ -317,12 +322,27 @@ describe("assistant replies", () => {
     await expect(asBen.mutation(api.assistant.replies.send, { threadId, text: "Me too" })).rejects.toThrow(/still replying/);
     await t.mutation(internal.assistant.replies.sweep, {});
     expect((await chat(t, threadId))?.reply?.attemptId).toBe("waiting");
-    expect(await asAda.query(api.assistant.replies.live, { threadId })).toMatchObject({ attemptId: "waiting", text: "" });
+    expect(await asAda.query(api.assistant.replies.live, { threadId })).toMatchObject({ attemptId: "waiting", text: "", activity: { phase: "thinking" } });
     expect(await newest()).toMatchObject({ role: "assistant", status: "pending" });
+
+    // Only a running search in this exchange changes the gesture. A stale tool from an older exchange does not.
+    const order = (await chat(t, threadId))!.reply!.order;
+    const step = await t.run(async (ctx) => {
+      const fields = { threadId, userId: ada, toolCallId: "search", path: "research/papers:search", input: "{}", status: "running" as const, startedAt: 1 };
+      await ctx.db.insert("assistantSteps", { ...fields, order: order - 1 });
+      return ctx.db.insert("assistantSteps", { ...fields, order });
+    });
+    expect((await asAda.query(api.assistant.replies.live, { threadId }))!.activity).toEqual({ phase: "searching", order });
+    // A later non-search tool can run alongside the search without hiding it.
+    await t.run(async (ctx) => ctx.db.insert("assistantSteps", { threadId, order, userId: ada, toolCallId: "collection", path: "library/collections:create", input: "{}", status: "running", startedAt: 2 }));
+    expect((await asAda.query(api.assistant.replies.live, { threadId }))!.activity).toEqual({ phase: "searching", order });
+    await t.run(async (ctx) => ctx.db.patch("assistantSteps", step, { status: "done" }));
+    expect((await asAda.query(api.assistant.replies.live, { threadId }))!.activity).toEqual({ phase: "thinking", order });
 
     // Its action is gone without releasing the lock: the reply shows as failed at once, and the sweep clears the lock.
     await t.run(async (ctx) => ctx.scheduler.cancel(scheduledId));
     expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
+    expect(await asAda.query(api.assistant.replies.outcome, { threadId })).toEqual({ phase: "failed", order });
     expect(await newest()).toMatchObject({ role: "assistant", status: "failed" });
     await t.mutation(internal.assistant.replies.sweep, {});
     expect((await chat(t, threadId))?.reply).toBeUndefined();
@@ -331,6 +351,45 @@ describe("assistant replies", () => {
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Me too" });
     await ended(t, threadId);
     expect(await newest()).toMatchObject({ text: "Ok", status: "done" });
+  });
+
+  it("say a reply was stopped when its last message holds a call as well as text", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await sharedChat(t);
+    const order = await t.run(async (ctx) => {
+      const thread = (await ctx.db.get("assistantThreads", threadId))!;
+      const { messageId, message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: "Find them", skipEmbeddings: true });
+      // Stopped as it called an action: what it had written is kept, with the call, under the stop's marker.
+      await assistant.saveMessage(ctx, {
+        threadId: thread.agentThreadId,
+        promptMessageId: messageId,
+        message: { role: "assistant", content: [{ type: "text", text: "Looking." }, { type: "tool-call", toolCallId: "search", toolName: "run_action", input: {} }] },
+        metadata: { status: "failed", error: ABORT_ERROR_STRING },
+        skipEmbeddings: true,
+      });
+      return message.order;
+    });
+    expect(await asAda.query(api.assistant.replies.outcome, { threadId })).toEqual({ phase: "stopped", order });
+  });
+
+  it("report failure when the reply dies before saving its first assistant message", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await sharedChat(t);
+    expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
+    expect(await asAda.query(api.assistant.replies.outcome, { threadId })).toEqual({ phase: "idle", order: null });
+    const { scheduledId, order } = await t.run(async (ctx) => {
+      const thread = (await ctx.db.get("assistantThreads", threadId))!;
+      const { message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: "Hi", skipEmbeddings: true });
+      const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "early-failure", senderId: ada, order: message.order, startedAt: 1, scheduledId } });
+      return { scheduledId, order: message.order };
+    });
+    expect((await asAda.query(api.assistant.replies.live, { threadId }))!.activity).toEqual({ phase: "thinking", order });
+    await t.run(async (ctx) => ctx.scheduler.cancel(scheduledId));
+    expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
+    expect(await asAda.query(api.assistant.replies.outcome, { threadId })).toEqual({ phase: "failed", order });
+    await t.mutation(internal.assistant.replies.sweep, {});
+    expect(await asAda.query(api.assistant.replies.outcome, { threadId })).toEqual({ phase: "failed", order });
   });
 
   it("stopped before their action starts call no model and charge nothing", async () => {

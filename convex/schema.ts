@@ -209,7 +209,8 @@ export default defineSchema({
   // The actions a chat's replies ran, each found by the model's ID for the call.
   assistantSteps: defineTable(assistantStepFields)
     // The steps that wait for the person, or for the reply to run them (convex/assistant/steps.ts).
-    .index("by_thread_and_status", ["threadId", "status"]).index("by_thread_and_order", ["threadId", "order"]),
+    .index("by_thread_and_status", ["threadId", "status"]).index("by_thread_and_order", ["threadId", "order"])
+    .index("by_thread_order_status", ["threadId", "order", "status"]),
   assistantStepResults: defineTable(assistantStepResultFields).index("by_step", ["stepId"]).index("by_thread", ["threadId"]),
   assistantThreadAccess: defineTable(assistantThreadAccessFields)
     // A person's chats, newest first, through each of their principals.
