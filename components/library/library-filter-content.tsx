@@ -20,7 +20,6 @@ import { PageStepper } from "@/components/shared/page-stepper";
 import { DateRangePicker, type DatePreset } from "@/components/shared/date-range-picker";
 import { PublicationTimeframeFilter } from "@/components/shared/publication-timeframe-filter";
 import { RatingRangePicker } from "@/components/rating-range-picker";
-import { MIN_YEAR } from "@/lib/constants";
 import type { LibrarySortCombined } from "@/lib/library/search-params";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
@@ -56,6 +55,7 @@ interface LibraryFilterContentProps {
   isSavedDateActive: boolean;
   yearRange: [number, number];
   onYearRangeChange: (range: [number, number]) => void;
+  onYearToggleEnabled: (enabled: boolean) => void;
   isYearActive: boolean;
   publicationDateRange: DateRange | undefined;
   onPublicationDateRangeChange: (range: DateRange | undefined) => void;
@@ -77,6 +77,7 @@ export function LibraryFilterContent({
   isSavedDateActive,
   yearRange,
   onYearRangeChange,
+  onYearToggleEnabled,
   isYearActive,
   publicationDateRange,
   onPublicationDateRangeChange,
@@ -140,6 +141,7 @@ export function LibraryFilterContent({
       <PublicationTimeframeSection
         yearRange={yearRange}
         onYearRangeChange={onYearRangeChange}
+        onYearToggleEnabled={onYearToggleEnabled}
         isYearActive={isYearActive}
         publicationDateRange={publicationDateRange}
         onPublicationDateRangeChange={onPublicationDateRangeChange}
@@ -214,6 +216,7 @@ export function LibraryFilterContent({
 function PublicationTimeframeSection({
   yearRange,
   onYearRangeChange,
+  onYearToggleEnabled,
   isYearActive,
   publicationDateRange,
   onPublicationDateRangeChange,
@@ -221,6 +224,7 @@ function PublicationTimeframeSection({
 }: {
   yearRange: [number, number];
   onYearRangeChange: (range: [number, number]) => void;
+  onYearToggleEnabled: (enabled: boolean) => void;
   isYearActive: boolean;
   publicationDateRange: DateRange | undefined;
   onPublicationDateRangeChange: (range: DateRange | undefined) => void;
@@ -235,7 +239,7 @@ function PublicationTimeframeSection({
     if (filterType === "date") {
       onPublicationDateRangeChange(undefined);
     } else {
-      onYearRangeChange([MIN_YEAR, new Date().getFullYear()]);
+      onYearToggleEnabled(false);
     }
   };
 
@@ -252,11 +256,7 @@ function PublicationTimeframeSection({
         yearRange={yearRange}
         onYearRangeChange={onYearRangeChange}
         isYearEnabled={isYearActive}
-        onYearToggleEnabled={(enabled) => {
-          if (!enabled) {
-            onYearRangeChange([MIN_YEAR, new Date().getFullYear()]);
-          }
-        }}
+        onYearToggleEnabled={onYearToggleEnabled}
         dateRange={publicationDateRange}
         onDateRangeChange={onPublicationDateRangeChange}
         isActive={isActive}

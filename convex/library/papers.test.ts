@@ -62,12 +62,31 @@ describe("saving a paper by its ID", () => {
     await ada.mutation(api.library.mutations.setPaperInCollection, placed.undo!.args as never);
     expect(await held()).toEqual({ papers: 1, places: [] });
 
+    // Taken out of the collection and put back since, its place is a later change, which the save's undo leaves alone.
+    await ada.mutation(api.library.mutations.removeFromLibrary, { openalexId: "W7" });
+    const first = await ada.action(save, { id: "W7", collectionId });
+    await ada.mutation(api.library.mutations.setPaperInCollection, { paper: { openalexId: "https://openalex.org/W7" }, collectionId, inCollection: false });
+    // A place is told apart by when it was given, to the millisecond.
+    await new Promise((resolve) => setTimeout(resolve, 3));
+    await ada.mutation(api.library.mutations.setPaperInCollection, { paper: { openalexId: "https://openalex.org/W7" }, collectionId, inCollection: true });
+    await expect(ada.mutation(api.library.mutations.removeFromLibrary, first.undo!.args as never)).rejects.toThrow(/changed since/);
+    expect(await held()).toEqual({ papers: 1, places: [collectionId] });
+
+    // A saved paper given a new rating and a collection in one call would be two changes with one undo: nothing is written.
+    await expect(ada.action(save, { id: "W7", rating: 5, collectionId: other })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
+    expect(await held()).toEqual({ papers: 1, places: [collectionId] });
+    // A paper whose save has no undo, since it would lose the rating it has on search cards, has none for its place either.
+    const userId = (await t.run(async (ctx) => ctx.db.query("users").first()))!._id;
+    await t.run(async (ctx) => ctx.db.insert("paperRatings", { userId, data: { paperId: "https://openalex.org/W8", rating: 3 } }));
+    expect(await ada.action(save, { id: "W8", collectionId })).not.toHaveProperty("undo");
+
     // Put somewhere else since it was saved, the paper has changed: the save's undo leaves it.
     await ada.mutation(api.library.mutations.removeFromLibrary, { openalexId: "W7" });
     const again = await ada.action(save, { id: "W7", collectionId });
     await ada.mutation(api.library.mutations.setPaperInCollection, { paper: { openalexId: "https://openalex.org/W7" }, collectionId: other, inCollection: true });
     await expect(ada.mutation(api.library.mutations.removeFromLibrary, again.undo!.args as never)).rejects.toThrow(/changed since/);
-    expect((await held()).papers).toBe(1);
+    // Both papers are still there: this one, and the one saved from a card.
+    expect((await held()).papers).toBe(2);
   });
 
   it("reads the paper from OpenAlex and saves it as the results page would, under one ID however it's written", async () => {

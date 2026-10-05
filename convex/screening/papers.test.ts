@@ -238,6 +238,14 @@ describe("a screening job's papers", () => {
     const back = await run(changed.undo!);
     expect(back.outcome).toBe("included");
     expect(await job()).toMatchObject(COUNTED);
+
+    // Asked for by its short ID, as the assistant often gives it, the answer changed is the one the job keeps, and its undo names the paper as the job does.
+    const short = await t.mutation(internal.screening.papers.answerForAssistant, { userId, jobId, paperId: "W1", questionKey: "q2", answer: false });
+    expect(short.undo).toMatchObject({ args: { paperId: W1, expect: { answer: false } } });
+    expect(await stored()).toMatchObject({ answer: false });
+    expect((await as.query(api.screening.papers.get, { jobId, paperId: "W1" }))!.answers[1]).toMatchObject({ answer: false });
+    await run(short.undo!);
+    expect(await job()).toMatchObject(COUNTED);
     expect(await shown()).toMatchObject({ answer: true, changed: false });
     expect(await stored()).toMatchObject({ answer: true, setBy: "model" });
     // Putting the model's answer back when it already stands changes nothing, so the undo of that undo still goes through.
