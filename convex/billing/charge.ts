@@ -27,6 +27,7 @@ import { autumn, AutumnError } from "./autumn";
 import { requestRefresh, zeroCachedBalance } from "./accounts";
 import { billingUsageFields, usageKindValidator } from "./validators";
 import { insertUsage } from "./ledger";
+import { createError } from "../lib/errors";
 import type { Usage } from "../../lib/ai/core/types";
 
 /** Long enough for any single chat turn, paper, or batch we run. */
@@ -404,6 +405,31 @@ export const recordUsage = internalMutation({
  */
 export const holdSpend = (ctx: ActionCtx, args: { userId: Id<"users">; chargeId: string; credits: number }) =>
   reserveCredits(ctx, { ...args, holdMs: SPEND_HOLD_MS, spend: true });
+
+/** How long after a hold request that never answered its hold is settled: longer than the request can still be on its way. */
+const UNANSWERED_HOLD_MS = 5 * 60_000;
+
+/**
+ * Starts a job the person approved up to `credits`: holds them under a name of the job's own,
+ * then makes the job with `make`, which keeps the name. A balance that can't cover them makes
+ * nothing. A job that can't be made gives the hold back, through a function that tries again
+ * if Autumn doesn't answer. A hold request that fails without an answer may have been taken,
+ * or may yet be: its hold is settled a few minutes on, with nothing spent under it.
+ */
+export async function startHeld<T>(ctx: ActionCtx, { userId, credits, kind }: { userId: Id<"users">; credits: number; kind: string }, make: (hold: string) => Promise<T>): Promise<T> {
+  const hold = `${kind}-job:${crypto.randomUUID()}`;
+  const held = await holdSpend(ctx, { userId, chargeId: hold, credits }).catch(async (error) => {
+    await ctx.runMutation(internal.billing.charge.laterSpent, { chargeId: hold, attempt: 0, delay: UNANSWERED_HOLD_MS });
+    throw error;
+  });
+  if (!held) throw createError("INSUFFICIENT_CREDITS", `This holds up to ${credits.toLocaleString("en")} credits, more than the balance has.`);
+  try {
+    return await make(hold);
+  } catch (error) {
+    await ctx.scheduler.runAfter(0, internal.billing.charge.releaseLock, { userId, chargeId: hold, attempt: 0 });
+    throw error;
+  }
+}
 
 /**
  * Writes an item's cost to the ledger under its job's hold, charging nothing. False when the

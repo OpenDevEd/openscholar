@@ -32,7 +32,7 @@ import {
 import { ESTIMATED_CREDITS_PER_QUERY } from "../lib/constants";
 import { createError } from "../lib/errors";
 import { creditsForUsage } from "../../lib/pricing";
-import { reserveCredits, releaseCredits, settleCredits, tokenDetails } from "../billing/charge";
+import { reserveCredits, releaseCredits, settleUnder, tokenDetails } from "../billing/charge";
 import type { Effort } from "../../lib/ai/core/call-options";
 import type { UsageKind } from "../billing/validators";
 import type { AiTask } from "../../lib/ai/tasks";
@@ -193,6 +193,12 @@ export type CreditTarget = {
    * cost is charged after with one `track`, as Firecrawl bills each page of a crawl.
    */
   hold?: boolean;
+  /**
+   * The hold of the approved job this work belongs to (billing/charge.ts): the job holds what
+   * the person approved, so the work runs whatever the balance reads, and its cost is recorded
+   * under the hold with no charge of its own.
+   */
+  under?: string;
   /** The cached balance and the person's Clerk id, when the caller read them already. */
   balance?: number;
   clerkId?: string;
@@ -210,9 +216,10 @@ export async function withCredits<T>(
   work: () => Promise<{ result: T; usage: Usage }>,
 ): Promise<{ result: T; credits: number; usage: Usage }> {
   const allowed =
-    target.hold === false
+    target.under !== undefined ||
+    (target.hold === false
       ? (target.balance ?? (await ctx.runQuery(internal.billing.accounts.forUser, { userId: target.userId }))?.balance ?? 0) > 0
-      : await reserveCredits(ctx, { userId: target.userId, chargeId: target.chargeId, credits: target.estimate });
+      : await reserveCredits(ctx, { userId: target.userId, chargeId: target.chargeId, credits: target.estimate }));
   if (!allowed) {
     throw createError(
       "AI_INSUFFICIENT_CREDITS",
@@ -227,7 +234,7 @@ export async function withCredits<T>(
     throw error;
   }
   const credits = creditsForUsage(outcome.usage, pricing);
-  const settled = await settleCredits(ctx, {
+  const settled = await settleUnder(ctx, {
     userId: target.userId,
     chargeId: target.chargeId,
     credits,
@@ -238,9 +245,10 @@ export async function withCredits<T>(
       model: target.model,
       ...tokenDetails(outcome.usage),
     },
+    ...(target.under === undefined ? {} : { under: target.under }),
   });
   // Unheld work runs on the cached balance; while its charges can't reach Autumn, it stops.
-  if (!settled && target.hold === false) await ctx.runMutation(internal.billing.accounts.zeroBalance, { userId: target.userId });
+  if (!settled && target.hold === false && target.under === undefined) await ctx.runMutation(internal.billing.accounts.zeroBalance, { userId: target.userId });
   return { result: outcome.result, credits, usage: outcome.usage };
 }
 

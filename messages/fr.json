@@ -3427,7 +3427,7 @@
     "newChat": "Nouvelle discussion",
     "emptyTitle": "Posez vos questions ici",
     "emptyBody": "Je peux parcourir vos recherches, votre bibliothèque, vos collections, vos sélections et vos extractions, créer et modifier des recherches et lire leurs résultats, et enregistrer, noter et classer des articles pour vous. Je ne peux pas encore lancer une tâche.",
-    "placeholder": "Écrire à l'assistant",
+    "placeholder": "Écrivez, ou tapez @ pour désigner un élément",
     "readOnly": "Vous pouvez lire cette discussion, mais pas y écrire",
     "messageLabel": "Écrire à l'assistant",
     "sees": "Voit {view}",
@@ -3905,6 +3905,11 @@
         "did": "Modification groupée annulée",
         "where": "Votre compte",
         "ask": "Annuler une modification groupée"
+      },
+      "findRecords": {
+        "doing": "Recherche dans votre compte",
+        "did": "Trouvé dans votre compte",
+        "where": "Votre compte"
       }
     },
     "asks": {
@@ -3961,6 +3966,18 @@
       "upTo": "Jusqu'à {cap, number} par tâche",
       "stop": "Redemander avant de dépenser des crédits",
       "failed": "Impossible de le modifier"
+    },
+    "mentions": {
+      "label": "Désigner un élément",
+      "none": "Rien dans votre compte ne correspond à « {query} »",
+      "search": "Recherche, {count, plural, one {# résultat} other {# résultats}}",
+      "collection": "Collection, {count, plural, one {# article} other {# articles}}",
+      "paper": "Article enregistré",
+      "kinds": {
+        "search": "recherche",
+        "collection": "collection",
+        "paper": "article enregistré"
+      }
     }
   }
 }

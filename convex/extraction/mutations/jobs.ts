@@ -77,10 +77,11 @@ const startArgs = {
 
 /**
  * Starts a job from its sources. `spend` is the hold of a job the person approved up to a
- * figure (#328), and that figure (./start.ts): the hold already has the credits, so the
- * balance isn't checked again, and the job's papers are charged under it.
+ * figure (#328), that figure, and the price scale it was worked out at (../start.ts): the
+ * hold already has the credits, so the balance isn't checked again, and the job's papers
+ * are charged under it.
  */
-export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: ObjectType<typeof startArgs>, spend?: { hold: string; cap: number }): Promise<{ jobId: Id<"extractionJobs"> }> {
+export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: ObjectType<typeof startArgs>, spend?: { hold: string; cap: number; scale: number }): Promise<{ jobId: Id<"extractionJobs"> }> {
   await requireFeature(ctx, "extraction.enabled", userId);
   if (args.mode === "extraction") {
     await requireFeature(ctx, "extraction.start", userId);
@@ -184,7 +185,7 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
           usePdfs: args.usePdfs ?? false,
           ...stamp,
           ...(estimate !== undefined && { estimatedCredits: estimate }),
-          ...(spend ? { spendHold: spend.hold, spendCap: spend.cap } : {}),
+          ...(spend ? { spendHold: spend.hold, spendCap: spend.cap, spendScale: spend.scale } : {}),
         }
       : {
           messageCount: 0,

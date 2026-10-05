@@ -14,7 +14,7 @@ import { collectionSortName } from "./sortName";
 /** Most collections one page holds. */
 const COLLECTIONS_PAGE_MAX = 50;
 /** Convex's full text search takes at most 16 terms. */
-const SEARCH_TERMS_MAX = 16;
+export const SEARCH_TERMS_MAX = 16;
 
 export function collectionCountRow(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) {
   return ctx.db.query("collectionCounts").withIndex("by_user", (q) => q.eq("userId", userId)).unique();

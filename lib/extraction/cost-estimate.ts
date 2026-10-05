@@ -47,12 +47,32 @@ export const EXTRACTION_COST_CONSTANTS = {
   PDF_Q_CREDIT_HIGH: 50,
 } as const;
 
-/** Credits held before one paper runs: every question at the high rate, plus indexing for a PDF. */
-export function estimatePaperCredits(args: { questionCount: number; pdf: boolean }): number {
+/**
+ * The model price the per-question figures hold at, in USD per million tokens: a small
+ * model's. Measured again on 2026-10-05: GPT-6 Luna at this price cost 3 to 5 credits an
+ * abstract question, and Claude Sonnet 5.5 at twenty times the price cost 49 to 65.
+ */
+const MEASURED_AT = { input: 0.1, output: 0.5 };
+
+/**
+ * How many times the per-question figures a job's questions cost on its model: the model's
+ * price over the price they were measured at, and never less than once.
+ */
+export function priceScale(pricing: { input: number; output: number } | null | undefined): number {
+  return pricing ? Math.max(1, pricing.input / MEASURED_AT.input, pricing.output / MEASURED_AT.output) : 1;
+}
+
+/**
+ * Credits held before one paper runs: every question at the high rate, plus indexing for a
+ * PDF. `scale` is the job's model against the small one the rates were measured on
+ * (`priceScale`); without it the rates are that model's.
+ */
+export function estimatePaperCredits(args: { questionCount: number; pdf: boolean; scale?: number }): number {
   const c = EXTRACTION_COST_CONSTANTS;
+  const scale = args.scale ?? 1;
   return args.pdf
-    ? Math.ceil(c.INDEX_PDF_CREDIT) + args.questionCount * c.PDF_Q_CREDIT_HIGH
-    : args.questionCount * c.ABSTRACT_Q_CREDIT_HIGH;
+    ? Math.ceil(c.INDEX_PDF_CREDIT) + Math.ceil(args.questionCount * c.PDF_Q_CREDIT_HIGH * scale)
+    : Math.ceil(args.questionCount * c.ABSTRACT_Q_CREDIT_HIGH * scale);
 }
 
 export function estimateExtractionCredits(

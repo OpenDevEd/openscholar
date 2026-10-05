@@ -4,7 +4,7 @@
  * person's credits. This module holds no Convex functions, so the triggers can load it.
  */
 import type { FunctionReference } from "convex/server";
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 
 /**
@@ -14,6 +14,12 @@ import { createError } from "../lib/errors";
 const ENDED = new Set(["completed", "failed", "cancelled", "creditsExhausted"]);
 
 type Job = { _id: string; status?: string; spendHold?: string };
+
+/** Whether a job's hold still takes its items: one settled, or settling, at the job's end or when it expired, takes none. */
+export async function holdOpen(ctx: QueryCtx, hold: string) {
+  const row = await ctx.db.query("billingHolds").withIndex("by_charge", (q) => q.eq("chargeId", hold)).unique();
+  return row?.spend === true && !row.settling;
+}
 
 /**
  * What a job the person carries on keeps of its approval, as a patch. Paused with its hold
@@ -26,7 +32,7 @@ export async function approvalLeft(ctx: MutationCtx, job: Pick<Job, "status" | "
   if (job.spendHold === undefined) return {};
   const hold = job.spendHold;
   const row = await ctx.db.query("billingHolds").withIndex("by_charge", (q) => q.eq("chargeId", hold)).unique();
-  if (!row) return { spendHold: undefined, spendCap: undefined };
+  if (!row) return { spendHold: undefined, spendCap: undefined, spendScale: undefined };
   if (!row.settling && job.status !== "creditsExhausted") return {};
   throw createError("CONFLICT", "The credits this job was approved with are still being settled. Try again in a minute.");
 }

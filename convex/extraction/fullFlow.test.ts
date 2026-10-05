@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { SERVER_MODEL_SLUG } from "../ai/config";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "./queue/workpool.test-support";
 
@@ -331,6 +332,15 @@ describe("extraction full flow with mocked provider I/O", () => {
     expect(await t.run((ctx) => ctx.db.query("billingHolds").collect())).toEqual([]);
     expect(fakeAutumn.locks.size).toBe(0);
     fakeAutumn.calls.length = 0;
+
+    // On a model twenty times the price of the one the rates were measured on, the same job holds twenty times as much. The server's default stands in for a model the person picked.
+    const dear = await t.run((ctx) => ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "A dear model", provider: "test", inputPricePerMillion: 2, outputPricePerMillion: 10, costMarkup: 1.3, isServed: false, sortOrder: 1, supportedParameters: [], syncedAt: 1, createdAt: 1, updatedAt: 1 }));
+    const { userId: _asker, approved: _approved, ...request } = asked;
+    expect(await t.query(internal.extraction.start.figure, { userId, ...request })).toBe(400);
+    // Approved on the cheap model, the job isn't started on the dear one for the old figure: the person is asked again.
+    await expect(t.action(internal.extraction.start.extractForAssistant, { ...asked, approvedCredits: 20 })).rejects.toThrow(/more than the 20 approved/);
+    expect(fakeAutumn.calls).toEqual([]);
+    await t.run((ctx) => ctx.db.delete(dear));
 
     // As the assistant runs it once the person has said yes to "up to 20 credits": two papers, two questions, five a question at most.
     const { jobId } = await t.action(internal.extraction.start.extractForAssistant, { ...asked, approvedCredits: 20 });

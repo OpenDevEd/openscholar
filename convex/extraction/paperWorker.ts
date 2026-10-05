@@ -355,6 +355,8 @@ async function reservePaperCredits(
   const reserved = estimatePaperCredits({
     questionCount,
     pdf: args.pdfEnabled && Boolean(paper.pdfUrl || paper.oaUrl || paper.storageId),
+    // A job approved up to a figure measures its papers against it at the price the figure was worked out at (./start.ts).
+    scale: job.spendScale,
   });
   const reservation = {
     chargeId: `extraction:${queueRow._id}:${crypto.randomUUID()}`,

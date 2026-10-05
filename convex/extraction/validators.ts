@@ -290,10 +290,12 @@ export const extractionJobFields = {
   /**
    * On a job the person approved up to a figure (#328): the hold that figure is kept in
    * (convex/billing/charge.ts), under which its papers are charged, and the figure itself,
-   * past which it reads no more papers. Carried on by the person, it has no figure any more.
+   * past which it reads no more papers. Carried on by the person, it has neither any more.
    */
   spendHold: v.optional(v.string()),
   spendCap: v.optional(v.number()),
+  /** With them: how many times the measured rates a question of the job costs on the models it runs on, as its figure was worked out (../extraction/start.ts). */
+  spendScale: v.optional(v.number()),
 };
 
 export const extractionJobValidator = v.object({

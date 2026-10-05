@@ -1,7 +1,8 @@
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { internalAction, type ActionCtx } from "../lib/functions";
+import { internalAction, internalMutation, type ActionCtx } from "../lib/functions";
+import { startHeld } from "../billing/charge";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { createError, readConvexErrorData } from "../lib/errors";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
@@ -75,6 +76,10 @@ async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assi
   if (spendCap !== undefined && through > jobEnd(first, through)) {
     throw createError("VALIDATION_ERROR", `A screening started here takes up to ${MAX_SCREENING_PAPERS_PER_JOB.toLocaleString("en")} papers. Screen papers ${first} to ${jobEnd(first, through)} first, then the rest.`);
   }
+  // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
+  type Made = { jobId: Id<"screeningJobs"> };
+  const approved = (make: (spend: { spendCap?: number; spendHold?: string }) => Promise<Made>): Promise<Made> =>
+    spendCap === undefined ? make({}) : startHeld(ctx, { userId, credits: spendCap, kind: "screening" }, (spendHold) => make({ spendCap, spendHold }));
   if (set.kind === "search") {
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: set.searchId });
@@ -84,20 +89,45 @@ async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assi
     // No further than the search goes: papers past its last are never asked for.
     const end = Math.min(through, total);
     const last = jobEnd(first, end, true);
-    return await ctx.runMutation(internal.screening.mutations.openScreeningJob, {
-      userId, author, set, first, last, snapshot, ...config,
-      papers: last - first + 1,
-      ...(end > last ? { through: end } : {}),
-      ...(spendCap === undefined ? {} : { spendCap }),
-    });
+    return await approved((spend) =>
+      ctx.runMutation(internal.screening.mutations.openScreeningJob, {
+        userId, author, set, first, last, snapshot, ...config,
+        papers: last - first + 1,
+        ...(end > last ? { through: end } : {}),
+        ...spend,
+      }),
+    );
   }
   for (let from = first; from <= through; from = jobEnd(from, through) + 1) {
     const { papers, ended, range } = await jobPapers(ctx, userId, { set, first: from, through }, config.questions);
-    if (papers.length) return await ctx.runMutation(internal.screening.mutations.createScreeningJobForUser, { userId, author, papers, ...range, ...config, ...(spendCap === undefined ? {} : { spendCap }) });
+    if (papers.length) return await approved((spend) => ctx.runMutation(internal.screening.mutations.createScreeningJobForUser, { userId, author, papers, ...range, ...config, ...spend }));
     if (ended) break;
   }
   throw createError("VALIDATION_ERROR", "There are no papers in that range");
 }
+
+/** How often an ended job is looked at again while a paper of it is still being read, and for how long at most: longer than a paper's worker can run. */
+const RUNNING_CHECK_MS = 15_000;
+const RUNNING_WAIT_MS = 12 * 60_000;
+/** How long after its last paper stopped being read a job's hold is settled: the paper's cost is recorded a moment after it's counted as done. */
+const SETTLE_AFTER_MS = 30_000;
+
+/**
+ * Settles the hold of a job that has ended (../lib/triggers.ts), once none of its papers is
+ * still being read: one read when the job stopped or was cancelled is recorded under the
+ * hold when it ends, and every charge of the job goes through the hold's one confirm
+ * (../billing/charge.ts).
+ */
+export const settleHold = internalMutation({
+  args: { jobId: v.id("screeningJobs"), hold: v.string(), waited: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { jobId, hold, waited }) => {
+    const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique();
+    if ((progress?.running ?? 0) > 0 && waited < RUNNING_WAIT_MS) await ctx.scheduler.runAfter(RUNNING_CHECK_MS, internal.screening.start.settleHold, { jobId, hold, waited: waited + RUNNING_CHECK_MS });
+    else await ctx.scheduler.runAfter(0, internal.billing.charge.laterSpent, { chargeId: hold, attempt: 0, delay: SETTLE_AFTER_MS });
+    return null;
+  },
+});
 
 /**
  * Reads the papers of a job made on a search and gives them to it. The search's rating filter

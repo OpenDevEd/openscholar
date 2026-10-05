@@ -29,6 +29,7 @@ import { countKeysAction as walletKeyCountAction, listKeysAction as walletKeysAc
 import type { UserAction } from "./userActions";
 import { startJobAction as extractionStartAction, duplicateJobAction as extractionDuplicateAction } from "../extraction/mutations/jobs";
 import { extractAction } from "../extraction/start";
+import { findAction as mentionFindAction } from "../assistant/mentions";
 
 export const USER_ACTIONS: readonly UserAction[] = [
   extractionStartAction,
@@ -41,6 +42,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   chatRemoveAction,
   chatMessagesAction,
   chatStepsAction,
+  mentionFindAction,
   bulkUndoAction,
   chatAccessAction,
   chatCandidatesAction,
