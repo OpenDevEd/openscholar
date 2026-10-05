@@ -203,10 +203,11 @@ export const fillScreeningJob = internalMutation({
     first: v.number(),
     last: v.number(),
     through: v.optional(v.number()),
+    resume: v.optional(v.string()),
     answered: v.number(),
   },
   returns: v.null(),
-  handler: async (ctx, { jobId, papers, answered, first, last, through }) => {
+  handler: async (ctx, { jobId, papers, answered, first, last, through, resume }) => {
     const reading = await ctx.db.get("screeningJobs", jobId);
     if (!reading?.reading || reading.status !== "processing") return null;
     // The person may have been suspended while the papers were read.
@@ -214,7 +215,7 @@ export const fillScreeningJob = internalMutation({
     const { affordable } = await affords(ctx, reading.userId, papers.length - answered);
     const now = Date.now();
     const made = affordable && reading.newCollection ? { targetCollectionId: await newCollection(ctx, reading.userId, reading.newCollection), newCollection: undefined } : {};
-    await ctx.db.patch("screeningJobs", jobId, { reading: undefined, totalPapers: papers.length, first, last, through, updatedAt: now, ...made, ...(affordable ? {} : { status: "creditsExhausted" as const }) });
+    await ctx.db.patch("screeningJobs", jobId, { reading: undefined, totalPapers: papers.length, first, last, through, resume, updatedAt: now, ...made, ...(affordable ? {} : { status: "creditsExhausted" as const }) });
     if (affordable) await createResults(ctx, (await ctx.db.get("screeningJobs", jobId))!, papers, now);
     return null;
   },

@@ -1371,6 +1371,11 @@ describe("the library as the assistant reads it", () => {
       await ctx.db.patch("libraryItems", phones!._id, { rating: undefined });
       const id = await ctx.db.insert("collections", { userId: user!._id, name: "Chapter 2", itemCount: 2, createdAt: 1, updatedAt: 1 });
       for (const item of [tutoring!, phones!]) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: id, libraryItemId: item._id, assignedAt: 1 });
+      // A place in a collection deleted since, not yet cleared away, isn't one.
+      const gone = await ctx.db.insert("collections", { userId: user!._id, name: "Deleted", itemCount: 1, createdAt: 1, updatedAt: 1 });
+      const feeding = await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", user!._id).eq("openalexId", "https://openalex.org/W3")).unique();
+      await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: gone, libraryItemId: feeding!._id, assignedAt: 1 });
+      await ctx.db.delete("collections", gone);
       return id;
     });
 
@@ -1379,7 +1384,9 @@ describe("the library as the assistant reads it", () => {
     expect(all.total).toBe(3);
     expect(all.next).toBeUndefined();
     expect(all.papers.map((paper) => paper.title)).toEqual(["School feeding", "Phones and literacy", "Tutoring at scale"]);
-    expect(all.papers[2]).toEqual({ libraryItemId: tutoring!._id, id: "https://openalex.org/W1", title: "Tutoring at scale", authors: "Ada Okafor", year: 2020, journal: "Journal of Trials", rating: 5, savedOn: "2026-09-01" });
+    expect(all.papers[2]).toEqual({ libraryItemId: tutoring!._id, id: "https://openalex.org/W1", title: "Tutoring at scale", authors: "Ada Okafor", year: 2020, journal: "Journal of Trials", rating: 5, inCollection: true, savedOn: "2026-09-01" });
+    // Which papers are in no collection shows on the list itself.
+    expect(all.papers.map((paper) => paper.inCollection)).toEqual([false, true, true]);
     // A model that fills in every argument sends null or false for what it doesn't mean: that reads as left out.
     expect((await papers({ search: null, collectionId: null, rated: null, minRating: null, maxRating: null, yearFrom: null, yearTo: null, sort: null, ascending: false, cursor: null })).total).toBe(3);
 

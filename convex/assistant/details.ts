@@ -61,6 +61,13 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
     if (work) return (await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", reader._id).eq("openalexId", work)).first())?.title ?? null;
     const threadId = ctx.db.normalizeId("assistantThreads", id);
     if (threadId) return (await roleAmong(ctx, threadId, await principalsOf(ctx, reader))) ? ((await ctx.db.get("assistantThreads", threadId))?.title ?? null) : null;
+    // A change the assistant made, which undoing one names by its step: how many changes it was and what they were about, to someone who reads its chat.
+    // Only where the argument is that change: a title that reads like a step's ID is shown as it was typed.
+    const stepId = key === "change" ? ctx.db.normalizeId("assistantSteps", id) : null;
+    if (stepId) {
+      const step = await ctx.db.get("assistantSteps", stepId);
+      return step && (await roleAmong(ctx, step.threadId, await principalsOf(ctx, reader))) ? [step.count ?? step.batch, step.subject].filter((part) => part !== undefined).join(", ") : null;
+    }
     const collectionId = ctx.db.normalizeId("collections", id);
     if (collectionId) {
       const collection = await ctx.db.get("collections", collectionId);
