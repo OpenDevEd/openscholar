@@ -14,6 +14,7 @@ import { readLibraryPage } from "../library/queries";
 import { paperSetValidator, screeningPaperInputValidator } from "../screening/validators";
 import { checkRange, type SearchPaper } from "./search";
 import { authorMetadata, sourceMetadata } from "../../lib/library/paper-metadata";
+import { screeningRevision } from "../screening/accounting";
 
 type PaperSet = Infer<typeof paperSetValidator>;
 export type HeldSet = Exclude<PaperSet, { kind: "search" }>;
@@ -42,14 +43,17 @@ const fromResult = (paper: Doc<"screeningResults">): SearchPaper => ({
 
 /** One page of a held set's papers, in its order. Another person's collection or job reads as not found. */
 export const page = internalQuery({
-  args: { userId: v.id("users"), set: paperSetValidator, cursor: v.union(v.string(), v.null()), numItems: v.number() },
+  args: { userId: v.id("users"), set: paperSetValidator, cursor: v.union(v.string(), v.null()), numItems: v.number(), revision: v.optional(v.string()) },
   returns: v.object({ page: v.array(screeningPaperInputValidator), isDone: v.boolean(), continueCursor: v.string() }),
-  handler: async (ctx, { userId, set, cursor, numItems }) => {
+  handler: async (ctx, { userId, set, cursor, numItems, revision }) => {
     if (set.kind === "search") throw new Error("A search's papers are read from OpenAlex (./search.ts)");
     const opts = { cursor, numItems: Math.min(numItems, PAGE), maximumBytesRead: PAGE_BYTES };
     if (set.kind === "screening") {
       const job = await ctx.db.get("screeningJobs", set.jobId);
       if (!job || job.userId !== userId) throw createError("NOT_FOUND", "Screening not found");
+      if (revision !== undefined && revision !== await screeningRevision(ctx, job)) {
+        throw createError("CONFLICT", "Screening decisions changed. Remove this source and select it again to review the current Included papers.");
+      }
       const read = await ctx.db
         .query("screeningResults")
         .withIndex("by_job_and_outcome", (q) => q.eq("jobId", set.jobId).eq("outcome", "included"))
@@ -64,10 +68,10 @@ export const page = internalQuery({
 });
 
 /** The set's pages from `cursor` on, each of at most `size()` papers, with where the set goes on after it (`after`, missing on the last). */
-async function* pages(ctx: ActionCtx, userId: Id<"users">, set: HeldSet, cursor: string | null, size: () => number) {
+async function* pages(ctx: ActionCtx, userId: Id<"users">, set: HeldSet, cursor: string | null, size: () => number, revision?: string) {
   for (;;) {
     // Typed here: the generated API's types depend on this module, so inference would loop.
-    const read: { page: SearchPaper[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.paperSets.held.page, { userId, set, cursor, numItems: size() });
+    const read: { page: SearchPaper[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.paperSets.held.page, { userId, set, cursor, numItems: size(), revision });
     yield { papers: read.page, after: read.isDone ? undefined : read.continueCursor };
     if (read.isDone) return;
     cursor = read.continueCursor;
@@ -82,12 +86,12 @@ async function* pages(ctx: ActionCtx, userId: Id<"users">, set: HeldSet, cursor:
  * to come. Pages end exactly where the skipped papers end and where the range ends, and
  * only the range is kept: never more than one job's papers.
  */
-export async function heldPapers(ctx: ActionCtx, userId: Id<"users">, set: HeldSet, { first, last }: { first: number; last: number }, resume?: string): Promise<{ papers: SearchPaper[]; resume?: string }> {
+export async function heldPapers(ctx: ActionCtx, userId: Id<"users">, set: HeldSet, { first, last }: { first: number; last: number }, resume?: string, revision?: string): Promise<{ papers: SearchPaper[]; resume?: string }> {
   checkRange(first, last);
   const papers: SearchPaper[] = [];
   let skip = resume === undefined ? first - 1 : 0;
   const want = last - first + 1;
-  for await (const read of pages(ctx, userId, set, resume ?? null, () => skip || want - papers.length)) {
+  for await (const read of pages(ctx, userId, set, resume ?? null, () => skip || want - papers.length, revision)) {
     if (skip) skip -= read.papers.length;
     else papers.push(...read.papers);
     if (papers.length >= want) return { papers, ...(read.after === undefined ? {} : { resume: read.after }) };

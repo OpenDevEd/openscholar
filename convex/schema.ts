@@ -17,6 +17,7 @@ import {
   extractionJobFields,
   extractionPaperErrorFields,
   extractionPaperFields,
+  screeningSelectionValidator,
   extractionPaperQueueFields,
   extractionQuestionFields,
   extractionResultFields,
@@ -57,7 +58,7 @@ import { authorContentFields, authorProfileInvitationFields } from "./authors/va
 
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
-import { assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields } from "./assistant/validators";
+import { assistantLimitFields, assistantSpenderFields, assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
@@ -212,6 +213,9 @@ export default defineSchema({
     .index("by_thread_and_status", ["threadId", "status"]).index("by_thread_and_order", ["threadId", "order"])
     .index("by_thread_order_status", ["threadId", "order", "status"]),
   assistantStepResults: defineTable(assistantStepResultFields).index("by_step", ["stepId"]).index("by_thread", ["threadId"]),
+  // What each person lets the assistant spend in a chat, and each person's own record (convex/assistant/spending.ts).
+  assistantLimits: defineTable(assistantLimitFields).index("by_thread_and_user", ["threadId", "userId"]).index("by_user", ["userId"]),
+  assistantSpenders: defineTable(assistantSpenderFields).index("by_user", ["userId"]),
   assistantThreadAccess: defineTable(assistantThreadAccessFields)
     // A person's chats, newest first, through each of their principals.
     .index("by_principal_and_lastMessageAt", ["principal", "lastMessageAt"])
@@ -770,6 +774,7 @@ export default defineSchema({
     position: v.number(),
     bucketKey: v.string(),
     source: v.union(
+      v.literal("screening"),
       v.literal("history"),
       v.literal("library"),
       v.literal("collection"),
@@ -777,6 +782,7 @@ export default defineSchema({
       v.literal("upload"),
     ),
     sourceRefId: v.string(),
+    screeningSelection: v.optional(screeningSelectionValidator),
     title: v.string(),
     authors: capped(v.array(v.string()), MAX_AUTHORS),
     year: v.optional(v.number()),

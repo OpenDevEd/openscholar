@@ -9,6 +9,7 @@ import { buildDedupeKey } from "./dedupe";
 import { authorMetadata, sourceMetadata, type PaperSourceMetadata } from "../library/paper-metadata";
 
 export type BucketSource =
+  | "screening"
   | "history"
   | "library"
   | "collection"
@@ -21,6 +22,7 @@ export type BucketItem = PaperSourceMetadata & {
   bucketKey: string;
   source: BucketSource;
   sourceRefId: string;
+  screeningSelection?: { jobId: Id<"screeningJobs">; revision: string; count: number };
   sourceMeta?: Record<string, unknown>;
   title: string;
   authors: string[];

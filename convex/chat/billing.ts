@@ -168,6 +168,8 @@ export const settleFromOpenRouter = internalAction({
     generationId: v.string(),
     /** Cost already known outside this generation: its earlier steps. */
     extraUsd: v.number(),
+    /** The assistant reply the request was part of, whose cost its sender's record keeps (convex/assistant/spending.ts). */
+    reply: v.optional(v.string()),
     /** Token details of the steps that finished before this one; absent on retries scheduled before it existed. */
     earlierTokens: v.optional(v.object({ cacheReadTokens: v.number(), cacheWriteTokens: v.number(), reasoningTokens: v.number() })),
     attempt: v.number(),
@@ -208,6 +210,9 @@ export const settleFromOpenRouter = internalAction({
         reasoningTokens: earlier.reasoningTokens + (result.kind === "ok" ? result.generation.reasoningTokens : 0),
       },
     });
+    // The reply reported what its finished steps cost when it ended. The rest of this charge is added to it now.
+    const late = convertUsdToCredits({ usd }) - convertUsdToCredits({ usd: args.extraUsd });
+    if (args.reply && late > 0) await ctx.runMutation(internal.assistant.spending.settledLate, { userId: args.userId, reply: args.reply, credits: late });
     return null;
   },
 });

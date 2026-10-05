@@ -13,6 +13,7 @@ import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
+import { carriedOn, pausedAt } from "./spending";
 import { MAX_ASKS, MODEL_READS, STEPS_SHOWN, forModel } from "./steps";
 import { DEFINITION_MAX, MAX_FAILED_ROUNDS, circling, core, definition, found, written } from "./tools";
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
@@ -769,6 +770,175 @@ describe("the assistant's tools", () => {
     // The message that called an action isn't the reply's last, and the page says so; its answer is.
     const said = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.flatMap((item) => (item.role === "assistant" ? [[item.text, item.acted === true]] : []));
     expect(said).toEqual([["Saving the first two.", true], ["All saved.", false]]);
+  });
+
+  it("pause a reply at the credits its sender lets one spend, carry it on for as much again from where it stands, and keep what it cost among their last", async () => {
+    const t = convexTest(schema);
+    const { ada, ben, asAda, asBen, threadId, thread, settled } = await chatOf(t);
+    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: ben }, role: "write" });
+    // A limit is a whole number of credits from 1.
+    for (const limit of [0, 1.5, -3]) await expect(asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit })).rejects.toThrow(/whole number/);
+    await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
+    expect(await asAda.query(api.assistant.spending.get, { threadId })).toEqual({ replyLimit: 1, forNewChats: false, recent: [] });
+    // It is hers alone: Ben, in the same chat, has none.
+    expect((await asBen.query(api.assistant.spending.get, { threadId })).replyLimit).toBeNull();
+
+    const list = () => ({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: (requests.length % 3) + 1 } } });
+    // Five requests that each read something, and a sixth that answers.
+    const rounds = 6;
+    mockDoStream.mockImplementation(async () => (requests.length < rounds ? calling(list())() : finishingDoStream(["That's all of them."])()));
+    /** Waits until the reply has paused, or has ended. */
+    const rested = () => waitFor(async () => !(await thread())?.reply, { timeoutMs: 5_000 });
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Read all my collections" });
+    await rested();
+    const first = (await thread())!.asking!;
+    // It stopped with more to do, at or past what she allowed, and nothing is running.
+    expect(first).toMatchObject({ paused: "credits", cap: 1 });
+    expect(first.spent).toBeGreaterThanOrEqual(1);
+    expect(requests.length).toBeLessThan(rounds);
+    expect(await asAda.query(api.assistant.replies.live, { threadId })).toMatchObject({ asking: true, paused: "credits", spent: first.spent, cap: 1 });
+    // What it has cost is hers to see, and carrying it on is hers to do.
+    const seenByBen = await asBen.query(api.assistant.replies.live, { threadId });
+    expect(seenByBen).toMatchObject({ paused: "credits" });
+    expect(seenByBen).not.toHaveProperty("spent");
+    await expect(asBen.mutation(api.assistant.replies.carryOn, { threadId })).rejects.toThrow(/Only the person/);
+    // The chat takes no message meanwhile.
+    await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "And?" })).rejects.toThrow(/paused/);
+
+    // Each time it's carried on it may spend as much again, counted from where it stands.
+    let pauses = 0;
+    for (; pauses < 20 && (await thread())?.asking; pauses++) {
+      const waiting = (await thread())!.asking!;
+      await asAda.mutation(api.assistant.replies.carryOn, { threadId });
+      expect((await thread())?.reply).toMatchObject({ spent: waiting.spent, cap: waiting.spent + 1 });
+      await rested();
+    }
+    await settled();
+    expect(pauses).toBeGreaterThan(0);
+    // It made every request once, through all its pauses, and answered.
+    expect(requests).toHaveLength(rounds);
+    await expect(asAda.mutation(api.assistant.replies.carryOn, { threadId })).rejects.toThrow(/isn't paused/);
+    // What it cost in all is the newest of her last replies.
+    const paid = (await t.run(async (ctx) => ctx.db.query("billingUsage").collect())).filter((charge) => charge.userId === ada).reduce((sum, charge) => sum + charge.credits, 0);
+    expect((await asAda.query(api.assistant.spending.get, { threadId })).recent).toEqual([paid]);
+    // A request stopped partway is settled after its reply has ended. What it cost is added to that reply, whichever is recorded first.
+    const [{ reply }] = (await t.run(async (ctx) => ctx.db.query("assistantSpenders").collect()))[0].recent;
+    await t.mutation(internal.assistant.spending.settledLate, { userId: ada, reply, credits: 4 });
+    await t.mutation(internal.assistant.spending.settledLate, { userId: ada, reply: "a reply not recorded yet", credits: 7 });
+    expect((await asAda.query(api.assistant.spending.get, { threadId })).recent).toEqual([paid + 4, 7]);
+  });
+
+  it.each([true, false])("hold a reply that asked with its limit already reached until it's carried on, when the answer is %s", async (allow) => {
+    const t = convexTest(schema);
+    const { ada, asAda, threadId, thread, steps, settled } = await chatOf(t);
+    const other = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
+    await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
+    mockDoStream
+      .mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } }))
+      .mockImplementationOnce(finishingDoStream(["Done."]));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Delete my old chat" });
+    await waitFor(async () => (await thread())?.asking !== undefined, { timeoutMs: 5_000 });
+    // The request that asked cost what she allowed, as she was charged for it.
+    const paid = (await t.run(async (ctx) => ctx.db.query("billingUsage").collect())).filter((charge) => charge.userId === ada).reduce((sum, charge) => sum + charge.credits, 0);
+    expect((await thread())!.asking!.spent).toBe(paid);
+    expect(paid).toBeGreaterThanOrEqual(1);
+    // As many replies of hers as one person has at once are being written elsewhere. Her answer is still taken: it starts none.
+    await t.run(async (ctx) => {
+      for (let n = 0; n < ASSISTANT_REPLIES_AT_ONCE; n++) {
+        const scheduledId = await ctx.scheduler.runAfter(60_000, internal.assistant.replies.sweep, {});
+        await ctx.db.insert("assistantThreads", { ownerId: ada, title: "Busy", agentThreadId: `busy${n}`, lastMessageAt: 1, createdAt: 1, updatedAt: 1, reply: { attemptId: `busy${n}`, senderId: ada, order: 0, startedAt: 1, scheduledId } });
+      }
+    });
+    // Answering the question isn't agreeing to more credits: the reply waits to be carried on, with the answer kept.
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow });
+    expect(await thread()).toMatchObject({ asking: { paused: "credits" } });
+    expect((await thread())?.reply).toBeUndefined();
+    expect(requests).toHaveLength(1);
+    expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).not.toBeNull();
+    // Carrying it on does start one, so it waits its turn.
+    await expect(asAda.mutation(api.assistant.replies.carryOn, { threadId })).rejects.toThrow(/already writing/);
+    await t.run(async (ctx) => {
+      for (const busy of await ctx.db.query("assistantThreads").collect()) if (busy.title === "Busy") await ctx.db.delete("assistantThreads", busy._id);
+    });
+    // Carried on, it runs what she allowed, or is told she didn't allow it, and answers.
+    await asAda.mutation(api.assistant.replies.carryOn, { threadId });
+    await settled();
+    expect((await t.run(async (ctx) => ctx.db.get("assistantThreads", other))) === null).toBe(allow);
+    expect(requests).toHaveLength(2);
+  });
+
+  it("keep nothing for a sender whose account is gone when their paused reply is stopped", async () => {
+    const t = convexTest(schema);
+    const { ada, ben, asAda, asBen, threadId, thread } = await chatOf(t);
+    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: ben }, role: "write" });
+    await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
+    mockDoStream.mockImplementation(async () => calling({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: (requests.length % 3) + 1 } } })());
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Read all my collections" });
+    await waitFor(async () => (await thread())?.asking?.paused !== undefined, { timeoutMs: 5_000 });
+    // Her account is purged, record and all, while her reply waits in a chat Ben can write in.
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query("assistantSpenders").collect()) await ctx.db.delete("assistantSpenders", row._id);
+      await ctx.db.delete("users", ada);
+    });
+    await asBen.mutation(api.assistant.replies.stop, { threadId, attemptId: (await asBen.query(api.assistant.replies.live, { threadId }))!.attemptId });
+    expect((await thread())?.asking).toBeUndefined();
+    expect(await t.run(async (ctx) => ctx.db.query("assistantSpenders").collect())).toEqual([]);
+  });
+
+  it("end a paused reply when it's stopped, and take the next message", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, say, thread, stop, shown } = await chatOf(t);
+    await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
+    mockDoStream.mockImplementation(async () => calling({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: (requests.length % 3) + 1 } } })());
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Read all my collections" });
+    await waitFor(async () => (await thread())?.asking?.paused !== undefined, { timeoutMs: 5_000 });
+    const spent = (await thread())!.asking!.spent;
+    await stop();
+    expect((await thread())?.reply).toBeUndefined();
+    expect((await thread())?.asking).toBeUndefined();
+    expect((await shown()).at(-1)).toBe("assistant: (stopped)");
+    expect((await asAda.query(api.assistant.spending.get, { threadId })).recent).toEqual([spent]);
+    mockDoStream.mockImplementation(finishingDoStream(["Here."]));
+    await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: null });
+    await say("Just tell me");
+    expect((await shown()).at(-1)).toBe("assistant: Here.");
+  });
+
+  it("pause a reply after a thousand requests whatever they cost, and give it a thousand more when it's carried on", () => {
+    expect(pausedAt({ spent: 3, rounds: 999 })).toBeNull();
+    expect(pausedAt({ spent: 3, rounds: 1_000 })).toBe("requests");
+    // The credit limit it had stays as it was.
+    expect(carriedOn({ spent: 3, rounds: 1_000, paused: "requests", cap: 50 }, 50)).toEqual({ cap: 50, lap: 2_000 });
+    expect(pausedAt({ spent: 3, rounds: 1_000, cap: 50, lap: 2_000 })).toBeNull();
+    // At a credit limit: as much again from where it stands, or none when the limit was lifted while it waited.
+    expect(carriedOn({ spent: 12, rounds: 4, paused: "credits", cap: 10, lap: 2_000 }, 10)).toEqual({ cap: 22, lap: 2_000 });
+    expect(carriedOn({ spent: 12, rounds: 4, paused: "credits", cap: 10 }, undefined)).toEqual({});
+  });
+
+  it("start a person's new chats on the limit they chose for them, keep it in step while they change it, and forget a deleted chat's", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await chatOf(t);
+    const limitIn = async (chat: Id<"assistantThreads">) => asAda.query(api.assistant.spending.get, { threadId: chat });
+    const started = () => asAda.mutation(api.assistant.threads.create, { title: "Another" });
+    await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 25 });
+    // Until she says so, a new chat has no limit.
+    expect(await limitIn(await started())).toMatchObject({ replyLimit: null, forNewChats: false });
+    await asAda.mutation(api.assistant.spending.setForNewChats, { threadId, on: true });
+    expect(await limitIn(threadId)).toMatchObject({ replyLimit: 25, forNewChats: true });
+    const second = await started();
+    expect(await limitIn(second)).toMatchObject({ replyLimit: 25, forNewChats: true });
+    // Changing it where new chats take it from changes what they start with. A chat already started keeps its own.
+    await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 50 });
+    expect(await limitIn(await started())).toMatchObject({ replyLimit: 50 });
+    expect(await limitIn(second)).toMatchObject({ replyLimit: 25, forNewChats: false });
+    // Lifted there, new chats start with none.
+    await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: null });
+    expect(await limitIn(await started())).toMatchObject({ replyLimit: null, forNewChats: true });
+    await asAda.mutation(api.assistant.spending.setForNewChats, { threadId, on: false });
+    expect(await limitIn(threadId)).toMatchObject({ replyLimit: null, forNewChats: false });
+    // A deleted chat's limit goes with it.
+    await asAda.mutation(api.assistant.threads.remove, { threadId: second });
+    await waitFor(async () => (await t.run(async (ctx) => ctx.db.query("assistantLimits").collect())).every((row) => row.threadId !== second), { timeoutMs: 5_000 });
   });
 
   it("bring a long reply's steps with the chat's newest page, though the message it answers is pages back", async () => {

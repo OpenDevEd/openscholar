@@ -654,7 +654,7 @@
     "nameYourJobDescription": "为此任务提供一个描述性名称，以便稍后识别。",
     "jobName": "任务名称",
     "jobNamePlaceholder": "例如：2024 年综述的 RCT 数据提取",
-    "combineSources": "合并来自历史记录、Zotero 或手动条目的来源。",
+    "combineSources": "选择并组合论文来源。",
     "whatDataPoints": "您要从每篇论文中提取哪些数据点？",
     "startExtraction": "开始提取",
     "confidenceHighLow": "置信度 高-低",

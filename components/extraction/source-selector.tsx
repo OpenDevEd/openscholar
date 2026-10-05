@@ -11,10 +11,12 @@ import { LibraryTab } from "./bucket/tabs/library-tab";
 import { BulkPdfUpload } from "./bucket/bulk-pdf-upload";
 import { useExtractionStore } from "@/lib/store/extraction";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { ScreeningSelector } from "./screening-selector";
 
 const SOURCE_TABS = [
   "history",
   "library",
+  "screening",
   "zotero",
   "upload",
 ] as const;
@@ -32,6 +34,7 @@ export function SourceSelector({ paperLimit }: { paperLimit: number }) {
 
   const pdfCapabilityEnabled = useFeatureFlag("extraction.pdf");
   const usePdfs = useExtractionStore((s) => s.draftJob.usePdfs);
+  const screeningEnabled = useExtractionStore((s) => s.draftJob.mode === "extraction");
   // PDF upload only makes sense when the capability is on AND the user has
   // opted into PDFs for this job. Chat mode forces `usePdfs` to false, so
   // this naturally hides the tab there too.
@@ -42,10 +45,11 @@ export function SourceSelector({ paperLimit }: { paperLimit: number }) {
   }, [uploadEnabled, tab, setTab]);
 
   return (
-    <Tabs value={tab} onValueChange={(v) => setTab(v as SourceTab)} className="w-full">
-      <TabsList className="mb-4">
+    <Tabs value={tab === "screening" && !screeningEnabled ? "history" : tab} onValueChange={(v) => setTab(v as SourceTab)} className="w-full">
+      <TabsList className="mb-4 max-w-full justify-start overflow-x-auto">
         <TabsTrigger value="history">{tc("searchHistory")}</TabsTrigger>
         <TabsTrigger value="library">Library</TabsTrigger>
+        {screeningEnabled && <TabsTrigger value="screening">Screening</TabsTrigger>}
         <TabsTrigger value="zotero"><ZoteroIcon className="size-4 shrink-0" aria-hidden />{t("zotero")}</TabsTrigger>
         {uploadEnabled && <TabsTrigger value="upload">Upload</TabsTrigger>}
       </TabsList>
@@ -55,6 +59,9 @@ export function SourceSelector({ paperLimit }: { paperLimit: number }) {
       <TabsContent value="library">
         <LibraryTab paperLimit={paperLimit} />
       </TabsContent>
+      {screeningEnabled && <TabsContent value="screening">
+        <ScreeningSelector paperLimit={paperLimit} />
+      </TabsContent>}
       <TabsContent value="zotero">
         <ZoteroSelector paperLimit={paperLimit} />
       </TabsContent>

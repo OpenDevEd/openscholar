@@ -654,7 +654,7 @@
     "nameYourJobDescription": "後で識別しやすいように、このジョブにわかりやすい名前を付けてください。",
     "jobName": "ジョブ名",
     "jobNamePlaceholder": "例：2024年レビュー用RCTデータ抽出",
-    "combineSources": "履歴、Zotero、または手動エントリからソースを結合。",
+    "combineSources": "論文のソースを選択して組み合わせます。",
     "whatDataPoints": "各論文からどのデータポイントを抽出しますか？",
     "startExtraction": "抽出を開始",
     "confidenceHighLow": "信頼度 高→低",

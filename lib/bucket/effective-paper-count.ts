@@ -23,7 +23,8 @@
  */
 
 export type EffectiveCountItem = {
-  source: "history" | "library" | "collection" | "zotero" | "upload";
+  source: "history" | "library" | "collection" | "zotero" | "upload" | "screening";
+  screeningSelection?: { count: number };
   searchFilters?: { limit?: number } & Record<string, unknown>;
 };
 
@@ -36,6 +37,7 @@ export function paperCountForItem(
   item: EffectiveCountItem,
   pullCap: number,
 ): number {
+  if (item.source === "screening") return item.screeningSelection?.count ?? 0;
   if (item.source !== "history" || !item.searchFilters) return 1;
   const raw = item.searchFilters.limit;
   if (raw === undefined) return pullCap;

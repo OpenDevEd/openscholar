@@ -13,8 +13,10 @@
 
 export {
   startJob,
+  startJobForAssistant,
   cancelExtraction,
   duplicateJob,
+  duplicateJobForAssistant,
   deleteExtraction,
 } from "./mutations/jobs";
 
