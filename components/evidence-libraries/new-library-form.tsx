@@ -204,7 +204,7 @@ function OwnerForm({ organizationId, organizationPicker }: {
   }
 
   return (
-    <LibraryPageShell kind="library"
+    <LibraryPageShell
       title={t("title")}
       backHref="/evidence-libraries"
       backLabel={t("backToLibraries")}

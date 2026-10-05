@@ -53,7 +53,6 @@ import {
   AuthorsIcon,
   EvidenceLibrariesIcon,
 } from "@/components/icons";
-import { RECORD_KINDS, type RecordKind } from "@/components/record-kinds";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -87,8 +86,6 @@ interface NavItemProps {
   onClick?: () => void;
   index?: number;
   customTooltipContent?: React.ReactNode;
-  /** The kind of record the page lists: its icon takes that kind's colour, as it has everywhere. */
-  kind?: RecordKind;
 }
 
 function NavItem({
@@ -101,7 +98,6 @@ function NavItem({
   onClick,
   index = 0,
   customTooltipContent,
-  kind,
 }: NavItemProps) {
   const content = (
     <Link
@@ -132,15 +128,11 @@ function NavItem({
       >
         <Icon
           className={cn(
-            "h-5 w-5 flex-shrink-0 transition-[color,opacity] duration-200",
-            kind
-              ? isActive ? "drop-shadow-sm" : "opacity-80 group-hover:opacity-100"
-              : isActive
-                ? "text-sidebar-primary drop-shadow-sm"
-                // A page that lists no kind of record stays neutral: colour says which kind, and the brand blue says where you are.
-                : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground",
+            "h-5 w-5 flex-shrink-0 transition-colors duration-200",
+            isActive
+              ? "text-sidebar-primary drop-shadow-sm"
+              : "text-sidebar-primary/65 group-hover:text-sidebar-primary",
           )}
-          style={kind ? { color: RECORD_KINDS[kind].tint } : undefined}
         />
         {/* Badge overlay when collapsed */}
         {isCollapsed && badge !== undefined && badge > 0 && (
@@ -447,7 +439,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <NavItem
             href="/library"
             icon={LibraryIcon}
-            kind="savedPapers"
             label={tc("library")}
             isActive={currentPageValue === "library"}
             isCollapsed={isCollapsed && !isMobile}
@@ -474,7 +465,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <NavItem
             href="/history"
             icon={HistoryIcon}
-            kind="search"
             label={tc("history")}
             isActive={currentPageValue === "history"}
             isCollapsed={isCollapsed && !isMobile}
@@ -486,7 +476,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             <NavItem
               href="/extraction"
               icon={ExtractionIcon}
-            kind="extraction"
               label={tc("extraction")}
               isActive={currentPageValue === "extraction"}
               isCollapsed={isCollapsed && !isMobile}
@@ -495,7 +484,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             />
           )}
 
-          <NavItem href="/topics" icon={TopicsIcon} kind="topic" label="Topics" isActive={currentPageValue === "topics"} isCollapsed={isCollapsed && !isMobile} onClick={handleNavClick} index={5} />
+          <NavItem href="/topics" icon={TopicsIcon} label="Topics" isActive={currentPageValue === "topics"} isCollapsed={isCollapsed && !isMobile} onClick={handleNavClick} index={5} />
 
           {organizationFeatures?.authors && <NavItem
             href="/authors"
@@ -511,7 +500,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             <NavItem
               href="/evidence-libraries"
               icon={EvidenceLibrariesIcon}
-            kind="library"
               label={tc("evidenceLibraries")}
               isActive={currentPageValue === "evidence-libraries"}
               isCollapsed={isCollapsed && !isMobile}

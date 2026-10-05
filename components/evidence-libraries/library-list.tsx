@@ -135,7 +135,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   const filtered = Boolean(text) || organization !== "all";
   const loading = overviews.isLoading || !invitations.data || !owners.data || libraryCount.data === undefined || !owner.isReady;
   return (
-    <LibraryPageShell kind="library"
+    <LibraryPageShell
       title="Evidence libraries"
       actions={owner.organizations.length > 0 &&
         <Button asChild size="sm" className={BAR_ACTION}>

@@ -100,7 +100,7 @@ export function SetupProgressView({
   }
 
   return (
-    <LibraryPageShell kind="library"
+    <LibraryPageShell
       title={setup.identity.name}
       image={setup.faviconUrl}
       backHref="/evidence-libraries"

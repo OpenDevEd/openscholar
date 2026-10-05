@@ -24,16 +24,15 @@ export const BUCKET_SOURCE_LABELS: Record<BucketSource, string> = {
  * chroma keeps them legible in dark mode without overrides.
  */
 export const SOURCE_COLOR_VAR: Record<BucketSource, string> = {
-  // A source that is a kind of record has that kind's colour (components/record-kinds.ts).
-  screening: "--kind-screening",
-  history: "--kind-search",
-  library: "--kind-paper",
-  collection: "--kind-collection",
+  screening: "--chart-3",
+  history: "--chart-1",
+  library: "--chart-2",
+  collection: "--chart-3",
   zotero: "--chart-4",
   upload: "--chart-5",
 };
 
-/** Each source's icon, coloured by `SOURCE_COLOR_VAR`, the way chat sources are shown. */
+/** Each source's icon, coloured by `SOURCE_COLOR_VAR`, the way chat sources are shown. A kind of record has its icon everywhere (components/record-kinds.ts). */
 export const SOURCE_ICON: Record<BucketSource, AppIcon | ComponentType<{ className?: string }>> = {
   screening: RECORD_KINDS.screening.icon,
   history: RECORD_KINDS.search.icon,

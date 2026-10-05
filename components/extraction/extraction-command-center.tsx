@@ -65,7 +65,7 @@ export function ExtractionCommandCenter() {
   };
 
   return (
-    <LibraryPageShell kind="extraction"
+    <LibraryPageShell
       icon={ExtractionIcon}
       title={tc("extraction")}
       tabs={<ViewModeSwitch value={extractionViewMode} onChange={setExtractionViewMode} />}

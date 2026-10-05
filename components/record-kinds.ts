@@ -1,11 +1,11 @@
 import { EvidenceLibrariesIcon, ExtractionIcon, FileText, FolderOpen, LibraryIcon, ListChecks, MessagesSquare, Search, TopicsIcon, type AppIcon } from "@/components/icons";
 
 /**
- * One look for each kind of record, wherever it shows: the sidebar, page headers, the
- * sources of a screening or an extraction, and the assistant's cards, chips and @ picker.
- * The icon is the sidebar's where the sidebar has one. The colour is a token in
- * app/globals.css, stepped for each theme. A chat is the assistant's own, so it keeps the
- * muted colour and is told apart by its icon.
+ * Each kind of record's icon, the same wherever it shows: the sidebar's where the sidebar
+ * has one, then the sources of a screening or an extraction and the assistant. `tint` is
+ * the assistant's alone (its step cards, chips and @ picker): a token in app/globals.css,
+ * stepped for each theme. A chat is the assistant's own, so it keeps the muted colour and
+ * is told apart by its icon.
  */
 export const RECORD_KINDS = {
   search: { icon: Search, tint: "var(--kind-search)" },

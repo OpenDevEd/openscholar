@@ -85,7 +85,7 @@ export function ScreeningPage() {
       <PageWrapper>
         <ConfigurationLayout
           header={
-            <PanelHeader kind="screening" icon={ListChecks} title={t("title")}>
+            <PanelHeader icon={ListChecks} title={t("title")}>
               <Button size="sm" className={BAR_ACTION} onClick={() => openForm(null)}>
                 <Plus /><span className={BAR_LABEL}>{t("newScreening")}</span>
               </Button>

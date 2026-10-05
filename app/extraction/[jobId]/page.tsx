@@ -546,7 +546,7 @@ export default function JobDetailPage() {
         }
         rightColumn={
           <PageWrapper>
-            <LibraryPageShell kind="extraction"
+            <LibraryPageShell
               icon={ExtractionIcon}
               title={job.name}
               backHref="/extraction"
