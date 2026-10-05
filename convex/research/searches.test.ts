@@ -384,6 +384,19 @@ describe("the assistant's search tools", () => {
     });
   });
 
+  it("take the World Bank's income groups as places, by the countries in them", async () => {
+    const { make, search } = await setup();
+    const { id } = await make({ query: "tutoring", about: ["Low income"], authorsIn: ["lower_middle_income"] });
+    const saved = await search(id);
+    // Afghanistan and Uganda are low income, Kenya and India lower middle, and no country is in both.
+    expect(saved?.selectedCountryFocus).toEqual(expect.arrayContaining(["AF", "UG"]));
+    expect(saved?.selectedRegions).toEqual(expect.arrayContaining(["KE", "IN"]));
+    expect(saved?.selectedCountryFocus?.filter((code: string) => saved.selectedRegions?.includes(code))).toEqual([]);
+    // Low and lower-middle income fit one search together. With upper-middle they are more places than a search holds, and it says what to do.
+    expect((await search((await make({ query: "tutoring", about: ["low_income", "lower_middle_income"] })).id))?.selectedCountryFocus).toHaveLength(72);
+    await expect(make({ query: "tutoring", about: ["low_income", "lower_middle_income", "upper_middle_income"] })).rejects.toThrow(/two goes/);
+  });
+
   it("count a search again when its query or filters change, and record a count as whoever's read made it", async () => {
     const { t, alice, make, edit, results, search } = await setup();
     const { id } = await make({ query: "tutoring" });
