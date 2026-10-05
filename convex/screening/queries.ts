@@ -500,6 +500,9 @@ export const paperContext = internalQuery({
         totalPapers: v.number(),
         questions: screeningQuestionsValidator,
         serverEffort: v.optional(effortValidator),
+        // The most it may spend, and what its counted papers have cost so far, on a job that has a limit.
+        spendCap: v.optional(v.number()),
+        spent: v.optional(v.number()),
       }),
       paper: v.object({ title: v.string(), abstract: v.optional(v.string()), status: screeningResultStatusValidator }),
       clerkId: v.string(),
@@ -518,7 +521,15 @@ export const paperContext = internalQuery({
     ]);
     if (!user) return null;
     return {
-      job: { userId: job.userId, status: job.status, totalPapers: job.totalPapers, questions: job.questions, serverEffort: job.serverEffort },
+      job: {
+        userId: job.userId,
+        status: job.status,
+        totalPapers: job.totalPapers,
+        questions: job.questions,
+        serverEffort: job.serverEffort,
+        // Only a job with a limit reads what it has spent: every other paper is spared the read.
+        ...(job.spendCap === undefined ? {} : { spendCap: job.spendCap, spent: (await progressRow(ctx, jobId))?.credits ?? 0 }),
+      },
       paper: { title: paper.title, abstract: paper.abstract, status: paper.status },
       clerkId: user.clerkId,
       balance,

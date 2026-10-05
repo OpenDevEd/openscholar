@@ -260,7 +260,7 @@ export function toolsFor(
    * went wrong or try something else. `allowed` is the step of a call the person was asked
    * about and said yes to: it runs whatever the reply's limits are.
    */
-  const call = async (entry: UserAction, input: Record<string, unknown>, toolCallId: string, allowed?: Id<"assistantSteps">) => {
+  const call = async (entry: UserAction, input: Record<string, unknown>, toolCallId: string, allowed?: Id<"assistantSteps">, approvedFor?: number) => {
     // A call that spends credits and wasn't asked about runs only when the person's allowance covers what it holds.
     const within = allowed || entry.kind === "query" || !entry.spendsCredits ? undefined : holds.get(sameCall(entry.path, input));
     if (!allowed) {
@@ -280,7 +280,8 @@ export function toolsFor(
     try {
       // A change ends its step in its own transaction, so the two are saved together: a mutation, or an action whose write does. A read's step is ended here.
       const change = entry.kind === "mutation" || (entry.kind === "action" && entry.changes === true);
-      const result = await written(() => runAction(ctx, userId, entry, input, key, change ? stepId : undefined, allowed !== undefined));
+      // What the person let it hold goes with a call that spends credits: the figure they said yes to, or the one their allowance covered.
+      const result = await written(() => runAction(ctx, userId, entry, input, key, change ? stepId : undefined, allowed !== undefined, allowed ? approvedFor : within?.credits));
       if (!change) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
       note(entry.path, input, change ? "made" : result);
       // A change that returns nothing says it was made. A read that returns nothing found nothing.
@@ -319,11 +320,11 @@ export function toolsFor(
     note(call.entry.path, call.input, "asked");
     return "user-approval" as const;
   };
-  const resume = async (step: { stepId: Id<"assistantSteps">; toolCallId: string; path: string; input: string }) => {
+  const resume = async (step: { stepId: Id<"assistantSteps">; toolCallId: string; path: string; input: string; credits?: number }) => {
     // Claimed once, for this reply: one that died after this and is tried again doesn't run it a second time, and a stopped one runs nothing more.
     if (!(await ctx.runMutation(internal.assistant.steps.resume, { stepId: step.stepId, attemptId }))) return false;
     const entry = entryAt(step.path);
-    if (entry) await call(entry, JSON.parse(step.input), step.toolCallId, step.stepId);
+    if (entry) await call(entry, JSON.parse(step.input), step.toolCallId, step.stepId, step.credits);
     else await ctx.runMutation(internal.assistant.steps.failed, { stepId: step.stepId, error: "This action can't be run any more." });
     return true;
   };

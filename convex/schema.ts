@@ -991,6 +991,10 @@ export default defineSchema({
     // Resolved per-user server model for this bulk screening run (credits path).
     serverModelId: v.optional(v.id("models")),
     serverEffort: v.optional(effortValidator),
+    // The most it may spend, on a job the assistant started with the person's say (#328): its papers stop once it has.
+    spendCap: v.optional(v.number()),
+    // Set on one that stopped there, to tell it from one whose credits ran out.
+    capped: v.optional(v.literal(true)),
     createdAt: v.number(),
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),
