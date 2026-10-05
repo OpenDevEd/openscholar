@@ -365,7 +365,8 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <p className={cn("truncate text-sm font-semibold", step.undone && "line-through decoration-muted-foreground/60")}>{working ? <WorkingText>{title}</WorkingText> : title}</p>
                     <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-muted-foreground">
-                      {step.status === "failed" ? (
+                      {/* Why it failed. Under a bulk change that was undone, what couldn't be put back. */}
+                      {step.status === "failed" || (step.undone && step.error) ? (
                         <span className="truncate">{step.error ?? t("steps.interrupted")}</span>
                       ) : state ? (
                         <>
@@ -382,7 +383,8 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                       )}
                     </div>
                   </div>
-                  {step.status === "failed" ? (
+                  {/* A bulk change that ended partway made some of its changes: those can still be undone. */}
+                  {step.status === "failed" && !step.canUndo ? (
                     <CircleAlert className="size-4 shrink-0 text-destructive" aria-label={t("steps.failed")} />
                   ) : step.canUndo ? (
                     <button

@@ -341,6 +341,13 @@ describe("the assistant's tools", () => {
     await say("Rate two I never saved");
     expect(told(8, "none")).toMatchObject({ error: expect.stringContaining("None of these 2") });
     expect((await steps()).at(-1)).toMatchObject({ status: "failed", batch: 2 });
+
+    // Two small ones in one request are counted as they arrive: twelve changes between them, so the second is sent back to ask.
+    const rate = (id: string, from: number) => ({ id, name: "run_many", input: { name: "library/mutations:setLibraryRating", each: Array.from({ length: 6 }, (_, i) => ({ openalexId: work(from + i).openalexId, rating: 5 })) } });
+    mockDoStream.mockImplementationOnce(calling(rate("a", 1), rate("b", 7))).mockImplementationOnce(finishingDoStream(["Rated six."]));
+    await say("Rate these twelve 5 stars");
+    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).filter((item) => item.rating === 5).length)).toBe(6);
+    expect([told(10, "a"), told(10, "b")]).toContainEqual({ error: BULK_FIRST });
   });
 
   it("change the papers of a set without reading them: what a query finds goes into a collection as one step, asked about with its first titles", async () => {
@@ -354,8 +361,11 @@ describe("the assistant's tools", () => {
       const url = new URL(String(input));
       const [page, size] = [url.searchParams.has("cursor") ? 1 : Number(url.searchParams.get("page")), Number(url.searchParams.get("per-page"))];
       const from = (page - 1) * size;
-      const results = Array.from({ length: Math.max(0, Math.min(size, 15 - from)) }, (_, i) => ({ id: `https://openalex.org/W${from + i + 1}`, display_name: `Paper ${from + i + 1}`, publication_year: 2021, cited_by_count: 40 }));
-      return new Response(JSON.stringify({ meta: { count: 15 }, results }), { status: 200 });
+      const paper = (n: number | string) => ({ id: `https://openalex.org/W${n}`, display_name: `Paper ${n}`, publication_year: 2021, cited_by_count: 40 });
+      // Papers asked for by ID come back as those papers.
+      const named = url.searchParams.get("filter")?.match(/openalex:([W\d|]+)/)?.[1].split("|");
+      const results = named ? (page === 1 ? named.map((id) => paper(id.slice(1))) : []) : Array.from({ length: Math.max(0, Math.min(size, 15 - from)) }, (_, i) => paper(from + i + 1));
+      return new Response(JSON.stringify({ meta: { count: named?.length ?? 15 }, results }), { status: 200 });
     });
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "luna test" });
     const held = () => t.run(async (ctx) => ({ saved: (await ctx.db.query("libraryItems").collect()).length, collected: (await ctx.db.query("libraryItemCollections").collect()).length }));
@@ -365,14 +375,14 @@ describe("the assistant's tools", () => {
     await sayUntilAsked("Save the ones with more than 10 citations to luna test");
     expect(await held()).toEqual({ saved: 0, collected: 0 });
     const [asked] = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
-    expect(asked).toMatchObject({ action: "library/mutations:setPaperInCollection", variant: "in", status: "asking", batch: 15, details: [{ name: "collection", value: "luna test" }], each: [1, 2, 3, 4, 5].map((n) => [{ name: "title", value: `Paper ${n}` }]) });
+    expect(asked).toMatchObject({ action: "library/mutations:saveToLibrary", status: "asking", batch: 15, details: [{ name: "collection", value: "luna test" }], each: [1, 2, 3, 4, 5].map((n) => [{ name: "title", value: `Paper ${n}` }]) });
 
     mockDoStream.mockImplementationOnce(finishingDoStream(["Saved all fifteen."]));
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps())[0]._id, allow: true });
     await settled();
     expect(await held()).toEqual({ saved: 15, collected: 15 });
     // One step for the fifteen, named after the collection they went into.
-    expect(await steps()).toMatchObject([{ status: "done", batch: 15, count: 15, subject: "luna test", variant: "in" }]);
+    expect(await steps()).toMatchObject([{ status: "done", batch: 15, count: 15, subject: "luna test" }]);
     expect(told(1, "found")).toMatchObject({ made: 15 });
 
     // A few papers of a collection are taken out the same way, unasked: they stay saved.
@@ -382,6 +392,21 @@ describe("the assistant's tools", () => {
     await say("Take the newest three out again");
     expect(await held()).toEqual({ saved: 15, collected: 12 });
     expect((await steps()).at(-1)).toMatchObject({ status: "done", batch: 3, count: 3, variant: "out" });
+
+    // One Undo of the fifteen takes back the saves and their places. The three taken out since were changed, so they stay saved, and the step says so.
+    const [saving] = await steps();
+    await asAda.mutation(api.assistant.undo.run, { threadId, stepId: saving._id });
+    await waitFor(async () => (await steps())[0].error !== undefined, { timeoutMs: 5_000 });
+    expect(await held()).toEqual({ saved: 3, collected: 0 });
+    expect((await steps())[0]).toMatchObject({ undone: true, error: expect.stringMatching(/^3 of these couldn't be put back/) });
+
+    // Papers named by ID are a set too, read from OpenAlex by those IDs.
+    mockDoStream
+      .mockImplementationOnce(calling({ id: "named", name: "change_papers", input: { papers: { kind: "ids", ids: ["W101", "https://openalex.org/W102", "W101"] }, do: "save" } }))
+      .mockImplementationOnce(finishingDoStream(["Saved both."]));
+    await say("Save these two");
+    expect(await held()).toEqual({ saved: 5, collected: 0 });
+    expect((await steps()).at(-1)).toMatchObject({ path: "library/mutations:saveToLibrary", status: "done", batch: 2, count: 2 });
     vi.unstubAllEnvs();
   });
 

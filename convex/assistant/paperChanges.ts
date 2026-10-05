@@ -76,7 +76,9 @@ export async function papersOf(ctx: ActionCtx, userId: Id<"users">, { papers: se
     if (!ids.length) throw invalid("None of these is a paper's ID, such as W2741809807.");
     if (ids.length > PAPERS_MAX) throw invalid(`One call changes up to ${PAPERS_MAX.toLocaleString("en")} papers.`);
     // Typed here: the generated API's types depend on this module, so inference would loop.
-    const { clerkId }: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, settings: {} });
+    const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
+    if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
+    const { clerkId } = person;
     const found: Work[] = [];
     for (let from = 0; from < ids.length; from += IDS_A_REQUEST) {
       const some = ids.slice(from, from + IDS_A_REQUEST);
@@ -108,14 +110,14 @@ const record = ({ venue, ...paper }: SearchPaper) => ({ ...paper, ...(venue ? { 
  * what every call is given alike, which is what its card says of the change once.
  */
 export function changeOf({ do: what, collectionId, rating }: Pick<ChangePapers, "do" | "collectionId" | "rating">, papers: SearchPaper[]): { path: string; items: Record<string, unknown>[]; shared: Record<string, unknown> } {
-  const into = what === "collect" || (what === "save" && collectionId != null);
-  if ((into || what === "uncollect") && collectionId == null) throw invalid("Say which collection: `collectionId`.");
+  if ((what === "collect" || what === "uncollect") && collectionId == null) throw invalid("Say which collection: `collectionId`.");
   if (what === "rate" && rating == null) throw invalid("Say the rating to give them: `rating`, from 0 to 5.");
-  if (into && rating != null) throw invalid("Put them in the collection first, then rate them in a second call with `do: \"rate\"`.");
-  if (into || what === "uncollect") {
-    return { path: IN_COLLECTION, items: papers.map((paper) => ({ paper: into ? record(paper) : { openalexId: paper.openalexId }, collectionId, inCollection: into })), shared: { collectionId } };
+  // Into a collection is a save with the collection: one write, and one reversal that takes a paper it added back out of the library too.
+  if (what === "save" || what === "collect") {
+    const given = { ...(collectionId == null ? {} : { collectionId }), ...(rating == null ? {} : { rating }) };
+    return { path: SAVE, items: papers.map((paper) => ({ ...record(paper), ...given })), shared: given };
   }
-  if (what === "save") return { path: SAVE, items: papers.map((paper) => ({ ...record(paper), ...(rating == null ? {} : { rating }) })), shared: rating == null ? {} : { rating } };
+  if (what === "uncollect") return { path: IN_COLLECTION, items: papers.map((paper) => ({ paper: { openalexId: paper.openalexId }, collectionId, inCollection: false })), shared: { collectionId } };
   if (what === "rate") return { path: RATE, items: papers.map((paper) => ({ openalexId: paper.openalexId, rating })), shared: { rating } };
   return { path: REMOVE, items: papers.map((paper) => ({ openalexId: paper.openalexId })), shared: {} };
 }
