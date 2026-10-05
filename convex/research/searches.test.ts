@@ -29,7 +29,7 @@ const openAlex = vi.fn(async (input: string | URL) => {
           ? [["https://openalex.org/A1", "Ada Okafor", 9], ["https://openalex.org/A2", "Ben Mwangi", 4]]
           : by === "primary_topic.field.id"
             ? [["https://openalex.org/fields/33", "Social Sciences", 50]]
-            : by === "authorships.institutions.id"
+            : by === "authorships.institutions.lineage"
               ? Array.from({ length: 120 }, (_, at) => [`https://openalex.org/I${at}`, `Institution ${at}`, 200 - at])
               : [["https://openalex.org/languages/en", "English", 50], ["https://openalex.org/languages/fr", "French", 7]];
     return new Response(JSON.stringify({ meta: { count: 57 }, group_by: groups.map(([key, name, count]) => ({ key, key_display_name: name, count })) }), { status: 200 });

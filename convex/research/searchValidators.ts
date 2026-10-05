@@ -106,7 +106,8 @@ export const GROUPINGS = {
   openAccess: "open_access.is_oa",
   country: "authorships.countries",
   author: "authorships.author.id",
-  institution: "authorships.institutions.id",
+  // By lineage, as the institutions filter matches: a group counts its departments, labs and hospitals too.
+  institution: "authorships.institutions.lineage",
   funder: "funders.id",
   journal: "primary_location.source.id",
   field: "primary_topic.field.id",
