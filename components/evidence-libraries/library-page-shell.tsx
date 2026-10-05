@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { PanelHeader } from "./configuration/panel-header";
 import { ListLoading } from "./list-controls";
 import { EvidenceLibrariesIcon, type AppIcon } from "@/components/icons";
+import type { RecordKind } from "@/components/record-kinds";
 
 /**
  * The page frame shared by the library, topic, author, history and bookmark
@@ -29,9 +30,12 @@ export function LibraryPageShell({
   intro,
   filtersInCard = false,
   allowOverflow = false,
+  kind,
   children,
 }: {
   icon?: AppIcon | null;
+  /** The kind of record the page lists, for its icon's colour. */
+  kind?: RecordKind;
   image?: string | null;
   title: string;
   backHref?: string;
@@ -60,6 +64,7 @@ export function LibraryPageShell({
       <StickyPageHeader>
         <PanelHeader
           icon={icon}
+          kind={kind}
           image={image}
           title={title}
           backHref={backHref}

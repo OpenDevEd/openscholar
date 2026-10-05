@@ -77,6 +77,17 @@
   --destructive: oklch(0.55 0.22 27);
   --destructive-foreground: oklch(1 0 0);
 
+  /* Kinds of record, one colour each wherever a record shows: the sidebar, page headers,
+     sources and the assistant (components/record-kinds.ts). The dataviz palette's steps,
+     in its order; every kind also has its own icon, so colour is never alone. */
+  --kind-search: #2a78d6;
+  --kind-extraction: #eb6834;
+  --kind-collection: #1baf7a;
+  --kind-paper: #eda100;
+  --kind-library: #e87ba4;
+  --kind-topic: #008300;
+  --kind-screening: #4a3aa7;
+
   /* Charts */
   --chart-1: var(--primary);
   --chart-2: oklch(0.65 0.15 200);
@@ -145,6 +156,14 @@
 /* Dark: true black for OLED screens. As in the brand guidelines' black
    version, the logo and every brand-coloured control are white and grey. */
 .dark {
+  /* The same kinds, stepped for the dark surface. */
+  --kind-search: #3987e5;
+  --kind-extraction: #d95926;
+  --kind-collection: #199e70;
+  --kind-paper: #c98500;
+  --kind-library: #d55181;
+  --kind-topic: #008300;
+  --kind-screening: #9085e9;
   --primary: #fafafa;
   --primary-bright: #ffffff;
   --primary-deep: #a3a3a3;

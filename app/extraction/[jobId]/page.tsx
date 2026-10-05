@@ -28,7 +28,7 @@ import {
   MoreHorizontal,
   ListChecks,
   SearchX,
-  DocumentIcon,
+  ExtractionIcon,
 } from "@/components/icons";
 import posthog from "posthog-js";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -546,8 +546,8 @@ export default function JobDetailPage() {
         }
         rightColumn={
           <PageWrapper>
-            <LibraryPageShell
-              icon={DocumentIcon}
+            <LibraryPageShell kind="extraction"
+              icon={ExtractionIcon}
               title={job.name}
               backHref="/extraction"
               backLabel={tError("backToJobs")}

@@ -1,23 +1,14 @@
 "use client";
 
-import { useMemo, type ComponentType, type SVGProps } from "react";
+import { useMemo } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import {
-  BookOpen,
-  FileUp,
-  Folder,
-  Layers,
-  Search,
-  ListChecks,
-} from "@/components/icons";
+import { Layers } from "@/components/icons";
 import { useTranslations } from "next-intl";
 
 import { useBucketStore } from "@/lib/store/bucket";
-import { BUCKET_SOURCE_LABELS } from "@/lib/bucket/source-labels";
+import { BUCKET_SOURCE_LABELS, SOURCE_COLOR_VAR, SOURCE_ICON } from "@/lib/bucket/source-labels";
 import type { BucketSource } from "@/lib/bucket/bucketItem";
 import { AnimatedCount } from "./bucket/animated-count";
-import { ZoteroIcon } from "@/components/icons/zotero-icon";
-import { cn } from "@/lib/utils";
 
 const SOURCE_KEYS: BucketSource[] = [
   "screening",
@@ -27,35 +18,6 @@ const SOURCE_KEYS: BucketSource[] = [
   "zotero",
   "upload",
 ];
-
-const SOURCE_ICONS: Record<BucketSource, ComponentType<SVGProps<SVGSVGElement>>> = {
-  screening: ListChecks,
-  history: Search,
-  library: BookOpen,
-  collection: Folder,
-  zotero: ZoteroIcon,
-  upload: FileUp,
-};
-
-// Static class strings so Tailwind's JIT captures all 10 at build time.
-// Dynamic `bg-chart-${n}` would be purged.
-const CHIP_TINT: Record<BucketSource, string> = {
-  screening: "bg-chart-3/10 border-chart-3/30",
-  history: "bg-chart-1/10 border-chart-1/30",
-  library: "bg-chart-2/10 border-chart-2/30",
-  collection: "bg-chart-3/10 border-chart-3/30",
-  zotero: "bg-chart-4/10 border-chart-4/30",
-  upload: "bg-chart-5/10 border-chart-5/30",
-};
-
-const ICON_TINT: Record<BucketSource, string> = {
-  screening: "text-chart-3",
-  history: "text-chart-1",
-  library: "text-chart-2",
-  collection: "text-chart-3",
-  zotero: "text-chart-4",
-  upload: "text-chart-5",
-};
 
 export function SourceSummary() {
   const t = useTranslations("extraction");
@@ -122,7 +84,9 @@ export function SourceSummary() {
       <div className="flex flex-wrap items-center gap-1.5">
         <AnimatePresence mode="popLayout" initial={false}>
           {active.map((source) => {
-            const Icon = SOURCE_ICONS[source];
+            const Icon = SOURCE_ICON[source];
+            // Its kind's colour (lib/bucket/source-labels.ts): a soft fill and border, and the icon in full.
+            const tint = `var(${SOURCE_COLOR_VAR[source]})`;
             return (
               <motion.span
                 key={source}
@@ -144,15 +108,10 @@ export function SourceSummary() {
                   damping: 32,
                   mass: 0.6,
                 }}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs",
-                  CHIP_TINT[source],
-                )}
+                className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs"
+                style={{ backgroundColor: `color-mix(in oklab, ${tint} 10%, transparent)`, borderColor: `color-mix(in oklab, ${tint} 30%, transparent)` }}
               >
-                <Icon
-                  aria-hidden="true"
-                  className={cn("size-3", ICON_TINT[source])}
-                />
+                <Icon aria-hidden="true" className="size-3" style={{ color: tint }} />
                 <AnimatedCount
                   value={counts[source]}
                   total={counts[source]}

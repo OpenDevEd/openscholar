@@ -461,7 +461,7 @@ function Workspace({
     <FileUploadsProvider libraryId={libraryId}>
       <ConfigurationLayout
         header={<>
-            <PanelHeader
+            <PanelHeader kind="library"
               icon={EvidenceLibrariesIcon}
               image={draft.identity.assets.favicon || null}
               title={draft.identity.name || t("untitled")}

@@ -239,7 +239,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
   };
 
   return (
-    <LibraryPageShell
+    <LibraryPageShell kind="extraction"
       icon={ExtractionIcon}
       title={t("newJobTitle")}
       backHref="/extraction"

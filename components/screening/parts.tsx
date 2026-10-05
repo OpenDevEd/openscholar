@@ -4,7 +4,8 @@
 import { useEffect, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
-import { BookMarked, Check, CircleHelp, FolderOpen, ListChecks, Search, Star, TriangleAlert, X, type AppIcon } from "@/components/icons";
+import { Check, CircleHelp, Star, TriangleAlert, X, type AppIcon } from "@/components/icons";
+import { RECORD_KINDS } from "@/components/record-kinds";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { OUTCOMES, type Answer, type Outcome, type PaperSet, type Phase } from "@/lib/screening/setup";
@@ -22,7 +23,8 @@ export const ANSWER: Record<Answer, { icon: AppIcon; className: string }> = {
   unclear: { icon: CircleHelp, className: "bg-warning/12 ink-warning" },
 };
 
-export const SOURCE_ICON: Record<PaperSet["kind"], AppIcon> = { search: Search, collection: FolderOpen, saved: BookMarked, screening: ListChecks };
+/** Where a screening's papers came from, each with its kind's icon (components/record-kinds.ts). */
+export const SOURCE_ICON: Record<PaperSet["kind"], AppIcon> = { search: RECORD_KINDS.search.icon, collection: RECORD_KINDS.collection.icon, saved: RECORD_KINDS.savedPapers.icon, screening: RECORD_KINDS.screening.icon };
 
 /** One answer as a small square with its sign; `label` names its question. */
 export function AnswerMark({ answer, changed, label }: { answer: Answer; changed?: boolean; label: string }) {

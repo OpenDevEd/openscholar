@@ -46,7 +46,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
   const total = works.data?.[0]?.meta.count ?? 0;
   const isFocusModeOpen = useUIStore(state => state.isFocusModeOpen);
 
-  return <LibraryPageShell icon={TopicsIcon} title={topic.name} backHref="/topics" backLabel={t("back")} actions={<>
+  return <LibraryPageShell kind="topic" icon={TopicsIcon} title={topic.name} backHref="/topics" backLabel={t("back")} actions={<>
     <Button variant="outline" size="sm" className={BAR_ACTION} onClick={async () => {
       try { await navigator.clipboard.writeText(location.href); toast.success(t("linkCopied")); }
       catch { toast.error(t("copyFailed")); }

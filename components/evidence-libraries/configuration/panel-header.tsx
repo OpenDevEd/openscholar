@@ -1,6 +1,8 @@
 "use client";
 
 import { ChevronLeft, type AppIcon } from "@/components/icons";
+import { cn } from "@/lib/utils";
+import { RECORD_KINDS, type RecordKind } from "@/components/record-kinds";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -26,9 +28,12 @@ export function PanelHeader({
   tabs,
   filters,
   children,
+  kind,
 }: {
   /** Null while the page is still loading and its kind is not known yet. */
   icon: AppIcon | null;
+  /** The kind of record the page lists: the icon takes that kind's colour, as it has in the sidebar. */
+  kind?: RecordKind;
   /** A library page: its favicon, or null for the OpenScholar one. Leave undefined for the icon. */
   image?: string | null;
   title: string;
@@ -44,7 +49,7 @@ export function PanelHeader({
   /** Actions. */
   children?: ReactNode;
 }) {
-  const icon = Icon ? <Icon aria-hidden className="size-4.5 shrink-0 text-primary" /> : null;
+  const icon = Icon ? <Icon aria-hidden className={cn("size-4.5 shrink-0", !kind && "text-primary")} style={kind ? { color: RECORD_KINDS[kind].tint } : undefined} /> : null;
   return (
     <div className="flex h-16 items-center gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-2 @3xl:flex-initial">
