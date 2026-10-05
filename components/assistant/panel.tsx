@@ -5,15 +5,14 @@
 // This is the chat itself. The run map, the cards, the sheets, the @ picker and the
 // spending controls arrive with the issues that build what they show.
 
-import { Component, useEffect, useEffectEvent, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Component, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
-import { insertAtTop, useConvex, useConvexAuth, useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { insertAtTop, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { usePathname } from "next/navigation";
 import { ArrowUp, ChevronDown, CircleAlert, CircleStop, Eye, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus } from "@/components/icons";
 import { useTranslations } from "next-intl";
-import { useStickToBottomContext } from "use-stick-to-bottom";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Conversation, ConversationContent } from "@/components/ai-elements/conversation";
@@ -22,6 +21,7 @@ import { CHAT_LINK_SAFETY } from "@/components/extraction/chat/link-safety-dialo
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { EffortMeter } from "@/components/models/meters";
 import { ModelPicker } from "@/components/models/model-picker";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { EASE, effortOf, toMapModel, usePresetModels, type PickedModel, type PresetPick } from "@/components/settings/model-map";
 import { EDGE_FADE } from "@/components/ui/scroll-area";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -41,15 +41,15 @@ type ThreadId = Id<"assistantThreads">;
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
 type Message = Exclude<Item, StepItem>;
 type Live = NonNullable<FunctionReturnType<typeof api.assistant.replies.live>>;
-/** One reply as the thread draws it: the exchange of the message it answers, its steps, and how many messages of it are placed. */
-type Run = { order: number; steps: StepItem[]; said: number };
+/** One reply as the thread draws it: the exchange of the message it answers, the first thing of it on the page, its steps, and how many messages of it are placed. */
+type Run = { order: number; head: Item; steps: StepItem[]; said: number };
 
 const PANEL_W = 440;
 /** How far the chips above the composer hang over the thread: half their height. */
 const CHIP_HANG = 16;
 const SHELL_SPRING = { type: "spring" as const, stiffness: 380, damping: 36, mass: 0.9 };
 const FIRST_MESSAGES = 30;
-/** How far above the thread's top edge the messages before these start to load, so they're there before the person scrolls to them. */
+/** How near the thread's top the person scrolls before the messages before these load, so they're there by the time they get to them. */
 const LOAD_AHEAD = 1200;
 const TITLE_MAX = 60;
 /** The ID of a message shown ahead of the server's copy of it. */
@@ -72,14 +72,15 @@ function titleFrom(text: string) {
 
 export function AssistantPanel() {
   const enabled = useFeatureFlag("assistant.enabled");
-  const { isAuthenticated } = useConvexAuth();
+  // Signed in, and the account's own record made: the chat's reads fail before it is, and a failed read loses a linked chat.
+  const { canRunProtectedQueries } = useAuthReadiness();
   // A link to a chat (`?chat=`) opens the panel on it. Nothing renders before the session is known, so the server never reads this.
   const [linked] = useState(() => (typeof window === "undefined" ? null : (new URLSearchParams(window.location.search).get("chat") as ThreadId | null)));
   const [open, setOpen] = useState(linked !== null);
   const [threadId, setThreadId] = useState<ThreadId | null>(linked);
   // Kept here, above the panel, so folding it away keeps what was typed.
   const [typed, setTyped] = useState<Record<string, string>>({});
-  if (!enabled || !isAuthenticated) return null;
+  if (!enabled || !canRunProtectedQueries) return null;
   const drafts: Drafts = {
     of: (id) => typed[id ?? NEW] ?? "",
     set: (id, text) => setTyped((all) => ({ ...all, [id ?? NEW]: typeof text === "function" ? text(all[id ?? NEW] ?? "") : text })),
@@ -167,7 +168,8 @@ function Overlay({
             // Measure only when the panel opens or folds, never on other re-renders.
             layoutDependency={open}
             transition={SHELL_SPRING}
-            className="fixed bottom-3 right-3 top-3 z-40 max-w-[calc(100vw-1.5rem)] sm:bottom-4 sm:right-4 sm:top-4"
+            // On a phone it starts under the app's top bar, which sits above it.
+            className="fixed bottom-3 right-3 top-[4.25rem] z-40 max-w-[calc(100vw-1.5rem)] sm:bottom-4 sm:right-4 md:top-4"
             style={{ width: PANEL_W, borderRadius: 18 }}
             aria-label={t("label")}
           >
@@ -292,7 +294,7 @@ function Chat({
   const t = useTranslations("assistant");
   const toast = useAppToast();
   const thread = useQuery(api.assistant.threads.get, threadId ? { threadId } : "skip");
-  const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.messages, threadId ? { threadId } : "skip", { initialNumItems: FIRST_MESSAGES });
+  const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.messages, threadId ? { threadId, stepsAhead: true } : "skip", { initialNumItems: FIRST_MESSAGES });
   const presetModel = usePresetModels();
   // The model picked before the chat exists; once it does, the chat keeps its own.
   const [picked, setPicked] = useState<PickedModel | null>(null);
@@ -352,8 +354,11 @@ function Chat({
     drafts.set(from, "");
     setSending(true);
     if (!from) setFirst({ threadId: null, text });
+    // The chat the message ends up in: a new chat has its ID once it's made.
+    let into = from;
     const sent = (async () => {
       const id = await started(titleFrom(text));
+      into = id;
       if (!from) setFirst({ threadId: id, text });
       // Where it's sent from goes with it, so "this" and "here" mean the page the person is on.
       await sendMessage({ threadId: id, text, view: window.location.pathname + window.location.search });
@@ -363,8 +368,8 @@ function Chat({
     try {
       await sent;
     } catch (error) {
-      // The message goes back in the box it came from, unless something new was typed there meanwhile.
-      drafts.set(from, (now) => now || text);
+      // The message goes back in the box of its chat, unless something new was typed there meanwhile.
+      drafts.set(into, (now) => now || text);
       setFirst(null);
       toast.error(t("sendFailed"), getErrorMessage(error, ""));
     } finally {
@@ -450,24 +455,19 @@ function Thread({
   live: Live | null;
   /** No chat yet: the empty state shows. */
   fresh: boolean;
-  /** Loads the messages before these, when there are any. `first`: the chat's first page hasn't arrived, so nothing of it shows yet. */
+  /** Loads the messages before these, when there are any. `first`: the chat's first page hasn't arrived, so no reply shows as at work yet. */
   older: (() => void) | "loading" | "first" | null;
 }) {
-  // An open chat's first pages arrive one after another. The thread shows once they fill it, not a part at a time.
-  const [filled, setFilled] = useState(false);
+  const t = useTranslations("assistant");
   // What the reply being written has said so far. A message of it that also ran actions isn't its last.
   const said = live ? messages.filter((m): m is Message => m.role === "assistant" && m.order === live.order) : [];
   // A reply at work with no message being written: its action is starting, or it is between two of its requests.
   // It gets its row now, and each message takes that same row as it arrives, so "Thinking" is one row throughout and never starts over.
   const waiting = live !== null && !live.asking && said.every((m) => m.status === "done" && m.acted);
-  const all: Item[] = waiting && older !== "first" ? [...messages, { id: `${SENDING}reply`, role: "assistant", order: live.order, text: "", status: "pending", mine: false, at: 0 }] : messages;
-  // While earlier messages remain, the thread starts at a person's message: a reply shows whole, never from partway in,
-  // so nothing of it is rebuilt when the page before it loads.
-  const start = older ? all.findIndex((m) => m.role === "user") : 0;
-  const rows = start < 0 ? [] : all.slice(start);
+  const rows: Item[] = waiting && older !== "first" ? [...messages, { id: `${SENDING}reply`, role: "assistant", order: live.order, text: "", status: "pending", mine: false, at: 0 }] : messages;
   // A reply is everything from one person's message to the next. One that was summarized partway carries on in a later
-  // exchange, whose opening message the app wrote and the page leaves out, so its steps are still one map, drawn where the
-  // first of them stands, and its messages are told apart by their place in the whole of it.
+  // exchange, whose opening message the app wrote and the page leaves out, so its steps are still one map and its
+  // messages are told apart by their place in the whole of it.
   const replies = new Map<Item, { reply: Run; place: number }>();
   let reply: Run | null = null;
   // The exchange of the message being answered, which names the reply through every exchange it carries on in.
@@ -479,76 +479,53 @@ function Thread({
       reply = null;
       continue;
     }
-    reply ??= { order: asked ?? m.order, steps: [], said: 0 };
+    reply ??= { order: asked ?? m.order, head: m, steps: [], said: 0 };
     if (m.role === "step") reply.steps.push(m);
     replies.set(m, { reply, place: m.role === "step" ? 0 : reply.said++ });
   }
+  const loading = older === "loading";
   return (
     // Both edges fade. The bottom one is clear under the hanging chips, then fades the usual
     // distance; the content's bottom padding keeps the last message clear of both.
     <Conversation
       className="min-h-0 flex-1"
       style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${CHIP_HANG + EDGE_FADE}px), transparent calc(100% - ${CHIP_HANG}px))` }}
+      // The messages before these load as the person scrolls back towards them, as the app's other lists do.
+      // The scroller is the conversation's first element; a table or a code block scrolling inside a reply isn't it.
+      onScrollCapture={(event) => {
+        if (typeof older === "function" && event.target === event.currentTarget.firstElementChild && event.currentTarget.firstElementChild.scrollTop < LOAD_AHEAD) older();
+      }}
     >
-      <ConversationContent
-        // Hidden at once, shown with a fade: the transition belongs to the shown state only.
-        className={cn("gap-5 overflow-x-clip px-4 pt-4", older && !filled ? "pointer-events-none opacity-0" : "transition-opacity duration-200")}
-        style={{ paddingBottom: CHIP_HANG + EDGE_FADE + 8 }}
-      >
+      <ConversationContent className="gap-5 overflow-x-clip px-4 pt-4" style={{ paddingBottom: CHIP_HANG + EDGE_FADE + 8 }}>
         {fresh ? <Empty /> : null}
-        {older && older !== "first" ? <Earlier older={older} onFilled={() => setFilled(true)} /> : null}
-        {rows.map((m) => {
-          if (m.role === "user") return <UserBubble key={m.id} message={m} />;
+        {typeof older === "function" || loading ? (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={loading ? undefined : older}
+            className="flex h-7 items-center self-center rounded-full px-2.5 text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground disabled:opacity-50"
+          >
+            {t("earlier")}
+          </button>
+        ) : null}
+        {rows.flatMap((m) => {
+          if (m.role === "user") return [<UserBubble key={m.id} message={m} />];
           const { reply, place } = replies.get(m)!;
-          if (m.role === "step") return reply.steps[0] === m && threadId ? <Steps key={`steps:${reply.order}`} threadId={threadId} steps={reply.steps} /> : null;
-          return (
+          // A reply's map is drawn above the rest of it, wherever the page holds its steps: the newest page brings
+          // them with one of the reply's own rows when the message it answers is on a page before.
+          const map = reply.head === m && reply.steps.length && threadId ? [<Steps key={`steps:${reply.order}`} threadId={threadId} steps={reply.steps} />] : [];
+          if (m.role === "step") return map;
+          return [
+            ...map,
             <div key={`reply:${reply.order}:${place}`} className="space-y-3">
               <Reply message={m} live={live?.order === m.order ? live.text : ""} acting={reply.steps.some((step) => step.status === "running")} />
               {m.status === "stopped" ? <StoppedRow /> : null}
               {m.status === "failed" ? <FailedRow error={m.error} /> : null}
-            </div>
-          );
+            </div>,
+          ];
         })}
       </ConversationContent>
     </Conversation>
-  );
-}
-
-/**
- * The messages before these. They load when the button comes into view as well as when it's
- * pressed, so a page that shows little, like the end of a long reply, fills the thread by itself.
- */
-function Earlier({ older, onFilled }: { older: (() => void) | "loading"; onFilled: () => void }) {
-  const t = useTranslations("assistant");
-  const { scrollRef } = useStickToBottomContext();
-  const button = useRef<HTMLButtonElement>(null);
-  const loading = older === "loading";
-  const seen = useEffectEvent((near: boolean, inView: boolean) => {
-    // The thread is full once the button is out of view. The messages before it go on loading while it's near.
-    if (!inView) onFilled();
-    if (near && older !== "loading") older();
-  });
-  // An observer is an outside system: it says whether the button is in view, or about to be, again each time a page has loaded.
-  useEffect(() => {
-    if (loading || !button.current) return;
-    const observer = new IntersectionObserver(
-      // The root's bounds reach LOAD_AHEAD above the thread's top edge, which is where the view itself starts.
-      ([entry]) => seen(entry!.isIntersecting, entry!.isIntersecting && entry!.boundingClientRect.bottom > (entry!.rootBounds?.top ?? 0) + LOAD_AHEAD),
-      { root: scrollRef.current, rootMargin: `${LOAD_AHEAD}px 0px 0px` },
-    );
-    observer.observe(button.current);
-    return () => observer.disconnect();
-  }, [loading, scrollRef]);
-  return (
-    <button
-      ref={button}
-      type="button"
-      disabled={loading}
-      onClick={loading ? undefined : older}
-      className="flex h-7 items-center self-center rounded-full px-2.5 text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground disabled:opacity-50"
-    >
-      {t("earlier")}
-    </button>
   );
 }
 
@@ -682,10 +659,13 @@ function ModelPill({
   model,
   onChange,
   presetModel,
+  readOnly,
 }: {
   model: PickedModel | null;
   onChange: (model: PickedModel, effort: Effort | undefined) => void;
   presetModel: ReturnType<typeof usePresetModels>;
+  /** Someone who only reads the chat sees its model and can't change it. */
+  readOnly: boolean;
 }) {
   const t = useTranslations("assistant");
   const tm = useTranslations("settingsAi");
@@ -697,6 +677,22 @@ function ModelPill({
     : [];
   const effort = model ? effortOf(model) : null;
   const Brand = getModelIcon(model?.id ?? "");
+  const name = model ? stripProviderPrefix(model.name) : "";
+  const label = (
+    <>
+      <Brand className="size-3.5 shrink-0 text-foreground/80" />
+      <TooltipHint label={name} onlyWhenClipped>
+        <span className="min-w-0 truncate">{name}</span>
+      </TooltipHint>
+      {model?.reasoningEfforts && effort ? (
+        <span className="shrink-0">
+          <EffortMeter levels={model.reasoningEfforts} level={effort} filled="bg-current" small />
+        </span>
+      ) : null}
+    </>
+  );
+  // The same pill, with nothing to open.
+  if (readOnly) return <span className={cn("ml-auto flex h-8 min-w-0 items-center gap-2 px-2.5 text-xs font-medium text-muted-foreground transition-opacity", !model && "opacity-0")}>{label}</span>;
   return (
     <ModelPicker
       align="end"
@@ -710,21 +706,13 @@ function ModelPill({
         // Right-aligned, so while the model loads nothing beside it moves when it fills in.
         <button
           type="button"
-          aria-label={model ? [stripProviderPrefix(model.name), effort && tm(`efforts.${effort}`)].filter(Boolean).join(", ") : t("model")}
+          aria-label={model ? [name, effort && tm(`efforts.${effort}`)].filter(Boolean).join(", ") : t("model")}
           className={cn(
             "ml-auto flex h-8 min-w-0 items-center gap-2 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground",
             !model && "pointer-events-none opacity-0",
           )}
         >
-          <Brand className="size-3.5 shrink-0 text-foreground/80" />
-          <TooltipHint label={model ? stripProviderPrefix(model.name) : ""} onlyWhenClipped>
-            <span className="min-w-0 truncate">{model ? stripProviderPrefix(model.name) : ""}</span>
-          </TooltipHint>
-          {model?.reasoningEfforts && effort ? (
-            <span className="shrink-0">
-              <EffortMeter levels={model.reasoningEfforts} level={effort} filled="bg-current" small />
-            </span>
-          ) : null}
+          {label}
           <ChevronDown className="size-3 shrink-0 opacity-60" />
         </button>
       }
@@ -810,7 +798,7 @@ function Footer({
           <span className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground">
             <Eye className="size-3" /> {t("sees", { view })}
           </span>
-          <ModelPill model={model} onChange={onModel} presetModel={presetModel} />
+          <ModelPill model={model} onChange={onModel} presetModel={presetModel} readOnly={!canWrite} />
           {/* The span keeps the hint reachable while the button is disabled. */}
           <TooltipHint label={!canWrite ? t("readOnly") : busy ? t("stop") : t("send")}>
             <span className="flex shrink-0" tabIndex={canWrite ? undefined : 0}>
