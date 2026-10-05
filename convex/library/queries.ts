@@ -9,7 +9,7 @@ import { createError } from "../lib/errors";
 import { findItem } from "./mutations";
 import { authorDisplay } from "../../lib/library/paper-metadata";
 import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
-import { libraryCount } from "./counter";
+import { collectionCount, libraryCount } from "./counter";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { LIBRARY_SEARCH_RESULTS_MAX as SEARCH_RESULTS_MAX } from "../../lib/library/limits";
 import { libraryFilterFields, libraryPapersValidator, librarySortOrderValidator, librarySortValidator, PAPERS_PAGE, type LibraryView } from "./validators";
@@ -348,8 +348,7 @@ async function countLibraryView(ctx: QueryCtx, user: Doc<"users">, args: Omit<Li
   if (args.collectionId && !hasFilters) {
     const collection = await ctx.db.get("collections", args.collectionId);
     if (collection?.userId !== user._id) return { count: 0, capped: false };
-    // A collection saved before counts were kept is counted until migrations/backfillLibraryCounters runs.
-    return { count: collection.itemCount ?? (await loadCollectionItemIds(ctx, user._id, args.collectionId))!.size, capped: false };
+    return { count: await collectionCount(ctx, collection), capped: false };
   }
 
   const collectionItemIds = await loadCollectionItemIds(ctx, user._id, args.collectionId);

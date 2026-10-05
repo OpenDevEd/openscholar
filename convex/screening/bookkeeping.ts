@@ -99,6 +99,8 @@ async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   const add = tally(results);
   const credits = results.reduce((sum, result) => sum + (result.creditsUsed ?? 0), 0);
   await ctx.db.patch("screeningJobProgress", row._id, {
+    // Papers of a job with a spending limit stop being held at the estimate once they're counted at what they cost (./slots.ts).
+    ...(row.running ? { running: Math.max(0, row.running - results.filter((result) => result.workId !== undefined).length) } : {}),
     completed: row.completed + add.completed,
     skipped: row.skipped + add.skipped,
     failed: row.failed + add.failed,

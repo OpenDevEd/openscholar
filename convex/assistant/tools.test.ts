@@ -530,6 +530,17 @@ describe("the assistant's tools", () => {
     expect(await always(300, 5_000)).toEqual({});
     // A search's papers are OpenAlex's to count, so its hold is for the whole range asked for, whatever count the account last saw.
     expect(await t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100 }))).toBe(450);
+    // A collection saved before counts were kept is counted from its papers, not taken for an empty one that would cost nothing.
+    const uncounted = await t.run(async (ctx) => {
+      const userId = (await ctx.db.get("assistantThreads", threadId))!.ownerId;
+      const collectionId = await ctx.db.insert("collections", { userId, name: "Saved long ago", createdAt: 1, updatedAt: 1 });
+      for (const openalexId of ["W91", "W92", "W93"]) {
+        const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId, title: openalexId, searchableText: openalexId, rating: 0, savedAt: 1, updatedAt: 1 });
+        await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: 1 });
+      }
+      return screeningHold(ctx, userId, { set: { kind: "collection", collectionId }, first: 1, last: 100 });
+    });
+    expect(uncounted).toBe(14);
 
     // Asked before every job again, and an action that spends credits with no estimate to ask with isn't run at all.
     await asAda.mutation(api.assistant.spending.setAllowance, { threadId, allowance: null });
