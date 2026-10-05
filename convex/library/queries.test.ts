@@ -1371,6 +1371,11 @@ describe("the library as the assistant reads it", () => {
       await ctx.db.patch("libraryItems", phones!._id, { rating: undefined });
       const id = await ctx.db.insert("collections", { userId: user!._id, name: "Chapter 2", itemCount: 2, createdAt: 1, updatedAt: 1 });
       for (const item of [tutoring!, phones!]) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: id, libraryItemId: item._id, assignedAt: 1 });
+      // A place in a collection deleted since, not yet cleared away, isn't one.
+      const gone = await ctx.db.insert("collections", { userId: user!._id, name: "Deleted", itemCount: 1, createdAt: 1, updatedAt: 1 });
+      const feeding = await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", user!._id).eq("openalexId", "https://openalex.org/W3")).unique();
+      await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: gone, libraryItemId: feeding!._id, assignedAt: 1 });
+      await ctx.db.delete("collections", gone);
       return id;
     });
 

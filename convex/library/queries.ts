@@ -400,6 +400,14 @@ function viewOf(given: ObjectType<typeof narrowing>) {
   return view;
 }
 
+/** Whether a saved paper is in a collection that still exists. A deleted collection's places go after it, in batches, and aren't one. */
+async function inCollection(ctx: QueryCtx, libraryItemId: Id<"libraryItems">) {
+  for await (const place of ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", libraryItemId))) {
+    if (await ctx.db.get("collections", place.collectionId)) return true;
+  }
+  return false;
+}
+
 export const papersAction = defineUserQuery({
   path: "library/queries:papers",
   description:
@@ -423,7 +431,7 @@ export const papersAction = defineUserQuery({
     // A narrowed view is counted by reading it, which a page of it leaves no room for in one read: its count is its own action.
     const kept = view.searchText === undefined && !hasNonCollectionLibraryFilters(view);
     // Asked paper by paper, finding the ones in no collection took a library of sixty a hundred reads.
-    const collected = await Promise.all(read.page.map(async (item) => (await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", item._id)).first()) !== null));
+    const collected = await Promise.all(read.page.map((item) => inCollection(ctx, item._id)));
     return {
       ...(kept ? { total: (await countLibraryView(ctx, user, view)).count } : {}),
       papers: read.page.map((item, at) => ({
@@ -478,11 +486,7 @@ export const savedPaperAction = defineUserQuery({
   run: async (ctx, userId, args) => {
     const item = await findItem(ctx, userId, args.openalexId);
     if (!item) return null;
-    const membership = await ctx.db
-      .query("libraryItemCollections")
-      .withIndex("by_item", (q) => q.eq("libraryItemId", item._id))
-      .first();
-    return { libraryItemId: item._id, inCollection: membership !== null };
+    return { libraryItemId: item._id, inCollection: await inCollection(ctx, item._id) };
   },
 });
 export const savedPaper = userQuery(savedPaperAction);
