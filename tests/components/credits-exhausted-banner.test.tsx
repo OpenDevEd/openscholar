@@ -102,4 +102,14 @@ describe("<CreditsExhaustedBanner>", () => {
     fireEvent.click(cancelBtn);
     expect(onCancelRemaining).toHaveBeenCalledTimes(1);
   });
+
+  it("offers Resume and no top-up for a job that stopped at the credits it was allowed", () => {
+    setBalance(100, true, 1);
+    const onResume = vi.fn();
+    render(<CreditsExhaustedBanner allowed={40} onResume={onResume} />);
+    // The balance isn't what stopped it, so there's nothing to buy first.
+    expect(screen.queryByRole("button", { name: /buyCredits/i })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /creditsExhausted.resume/i }));
+    expect(onResume).toHaveBeenCalledTimes(1);
+  });
 });
