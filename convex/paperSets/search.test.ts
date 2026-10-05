@@ -24,9 +24,12 @@ type Request = { url: URL; init?: RequestInit };
 let requests: Request[] = [];
 /** How many works the search has. */
 let total = 900;
+/** Answers OpenAlex gives its next requests in place of works. The model's requests share the stub, and never take one. */
+let refusals: Response[] = [];
 /** OpenAlex, answering each page with up to 200 works numbered from the page's start, until the search runs out; a cursor is the next page's number. */
 const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
   const url = new URL(String(input));
+  if (url.hostname === "api.openalex.org" && refusals.length) return refusals.shift()!;
   requests.push({ url, init });
   const cursor = url.searchParams.get("cursor");
   const page = cursor === null ? Number(url.searchParams.get("page")) : cursor === "*" ? 1 : Number(cursor);
@@ -43,6 +46,7 @@ const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
 
 beforeEach(() => {
   requests = [];
+  refusals = [];
   total = 900;
   vi.stubEnv("OPENALEX_API_KEY", "platform-key");
   vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
@@ -178,26 +182,26 @@ describe("Screen all on a saved search, read on the server", () => {
     const { alice } = await setup();
     const start = () => alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } });
 
-    openAlex.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Invalid query parameters error.", message: "Wildcards (* or ?) do not work inside this quoted phrase." }), { status: 400 }));
+    refusals = [new Response(JSON.stringify({ error: "Invalid query parameters error.", message: "Wildcards (* or ?) do not work inside this quoted phrase." }), { status: 400 })];
     await expect(start()).rejects.toThrow(/Wildcards \(\* or \?\) do not work inside this quoted phrase/);
 
     // An OQL search's reason is in its validation errors.
-    openAlex.mockResolvedValueOnce(new Response(JSON.stringify({ validation: { valid: false, errors: [{ type: "parse_error", message: "expected a condition" }] } }), { status: 400 }));
+    refusals = [new Response(JSON.stringify({ validation: { valid: false, errors: [{ type: "parse_error", message: "expected a condition" }] } }), { status: 400 })];
     await expect(start()).rejects.toThrow(/expected a condition/);
 
-    openAlex.mockResolvedValueOnce(new Response(JSON.stringify({ message: "upstream connect error" }), { status: 503 }));
+    refusals = [new Response(JSON.stringify({ message: "upstream connect error" }), { status: 503 })];
     await expect(start()).rejects.toThrow(/^(?!.*upstream connect error).*503/s);
   });
 
   it("names the query when OpenAlex fails on a bracket without its pair", async () => {
     const { alice } = await setup({ ...search, query: "(tutoring OR tutor" });
 
-    openAlex.mockResolvedValueOnce(new Response("<!doctype html><title>500 Internal Server Error</title>", { status: 500 }));
+    refusals = [new Response("<!doctype html><title>500 Internal Server Error</title>", { status: 500 })];
     await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/brackets/);
 
     // A bracket inside a quoted phrase isn't one: that failure is the server's, and asking again may work.
     const { alice: quoting } = await setup({ ...search, id: "local-quoted", query: '"phase (one" AND tutoring' });
-    openAlex.mockResolvedValueOnce(new Response("<!doctype html><title>500 Internal Server Error</title>", { status: 500 }));
+    refusals = [new Response("<!doctype html><title>500 Internal Server Error</title>", { status: 500 })];
     await expect(quoting.action(api.screening.start.screen, { set: { kind: "search", searchId: "local-quoted" }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/^(?!.*brackets).*500/s);
   });
 
@@ -207,16 +211,16 @@ describe("Screen all on a saved search, read on the server", () => {
     const throttled = (wait: string) => new Response(JSON.stringify({ error: "Rate limit exceeded", reason: "broad_boolean_query" }), { status: 429, headers: { "Retry-After": wait } });
 
     // The count, then two of the pages.
-    openAlex.mockResolvedValueOnce(throttled("0"));
+    refusals = [throttled("0")];
     const { jobId } = await start(450);
-    openAlex.mockResolvedValueOnce(throttled("0")).mockResolvedValueOnce(throttled("0"));
+    refusals = [throttled("0"), throttled("0")];
     expect(await settled(jobId)).toMatchObject({ status: "processing", totalPapers: 450 });
 
     // The day's budget: OpenAlex says to wait until it resets.
-    const asked = openAlex.mock.calls.length;
-    openAlex.mockResolvedValueOnce(throttled("57776"));
+    refusals = [throttled("57776"), throttled("0")];
     await expect(start(10)).rejects.toThrow(/429/);
-    expect(openAlex.mock.calls.length).toBe(asked + 1);
+    // It wasn't asked again: the answer after it is still waiting.
+    expect(refusals).toHaveLength(1);
   });
 
   it("ends a request where the search's results end, however far it was asked to go", async () => {
@@ -260,7 +264,7 @@ describe("Screen all on a saved search, read on the server", () => {
 
     // The search counted, and then OpenAlex fails on its papers.
     const failing = await start();
-    openAlex.mockResolvedValueOnce(new Response(JSON.stringify({ message: "upstream connect error" }), { status: 503 }));
+    refusals = [new Response(JSON.stringify({ message: "upstream connect error" }), { status: 503 })];
     expect(await settled(failing.jobId)).toMatchObject({ status: "failed", failure: expect.stringMatching(/503/) });
 
     // Every paper is outside the search's rating filter.
