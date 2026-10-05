@@ -47,7 +47,8 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
     // A saved search has the ID its page gave it, not a document's. It is the reader's own or it isn't found.
     if (SEARCH_ID.test(id)) {
       const search = await findSearch(ctx, reader._id, id);
-      return search ? currentSearch(search.data).query || null : null;
+      // One saved with filters alone has no query to show: it is named as such, never by its ID.
+      return search ? currentSearch(search.data).query : null;
     }
     const threadId = ctx.db.normalizeId("assistantThreads", id);
     if (threadId) return (await roleAmong(ctx, threadId, await principalsOf(ctx, reader))) ? ((await ctx.db.get("assistantThreads", threadId))?.title ?? null) : null;

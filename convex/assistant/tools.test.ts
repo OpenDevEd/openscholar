@@ -457,6 +457,11 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId: theirs })))).toEqual([{ name: "collection", value: theirs }]);
     // A collection named by its ID and again by the name the call expects it to have is one line.
     expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId, name: "Trials" })))).toEqual([{ name: "collection", value: "Trials" }]);
+    // A saved search is shown by its query, and one saved with filters alone by nothing, never by its ID.
+    const { id: asked } = await asAda.mutation(api.research.searches.create, { query: "tutoring trials" });
+    const { id: filtered } = await asAda.mutation(api.research.searches.create, { fromYear: 2020, toYear: 2024 });
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ id: asked })))).toEqual([{ name: "id", value: "tutoring trials" }]);
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ id: filtered })))).toEqual([{ name: "id", value: "" }]);
     // Two records that share a name are both said: who a chat is shared with is never left out.
     await asAda.mutation(api.assistant.threads.rename, { threadId, title: "Trials" });
     expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ threadId, collectionId })))).toEqual([{ name: "thread", value: "Trials" }, { name: "collection", value: "Trials" }]);
