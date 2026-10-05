@@ -21,6 +21,9 @@ it("downloads the production workbook with complete results, evidence and job me
   const value = (name: string) => sheet.getRow(2).getCell(headers.indexOf(name)).value;
   expect(sheet.rowCount).toBe(2);
   expect(value("Paper ID")).toBe(exportPapers[0]._id);
+  expect(value("Paper Source Type")).toBe("screening");
+  expect(value("Paper Source ID")).toBe("screening-origin");
+  expect(value("Screening Decision Revision")).toBe("2:completed:3");
   expect(value("[zero] Reported outcome")).toBe(0);
   expect(value("[zero] Reported outcome (Confidence)")).toBe(0);
   expect(value("[zero] Reported outcome (Model confidence)")).toBe(0.95);

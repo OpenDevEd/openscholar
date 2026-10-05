@@ -49,6 +49,20 @@ function Harness({
 }
 
 describe("<SelectableList>", () => {
+  it("keeps disabled sources out of pointer, keyboard and range selections", () => {
+    const onToggle = vi.fn();
+    const onToggleRange = vi.fn();
+    render(<SelectableList items={rows} keyOf={r => r.id} isSelected={() => false} isDisabled={r => r.id === "b"} onToggle={onToggle} onToggleRange={onToggleRange} renderRow={r => r.title} />);
+    const disabled = screen.getByRole("button", { name: "Beta" });
+    expect(disabled.getAttribute("aria-disabled")).toBe("true");
+    expect(within(disabled).getByRole("checkbox")).toBeDisabled();
+    fireEvent.click(disabled);
+    fireEvent.keyDown(disabled, { key: "Enter" });
+    expect(onToggle).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gamma" }), { shiftKey: true });
+    expect(onToggleRange).toHaveBeenCalledWith([rows[0], rows[2]], true);
+  });
   it("renders a checkbox per row plus a header checkbox", () => {
     render(<Harness />);
     const checkboxes = screen.getAllByRole("checkbox");

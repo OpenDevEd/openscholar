@@ -12,6 +12,7 @@ export type PaperRowData = AuthorsPreviewInput & {
   title: string;
   source: BucketSource;
   status?: BucketItemStatus;
+  paperCount?: number;
 };
 
 interface BucketPaperRowProps {
@@ -57,7 +58,7 @@ export function BucketPaperRow({
       <div className="flex items-center gap-2">
         <SourceChip source={paper.source} />
         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-          {authorsPreview(paper)}
+          {paper.source === "screening" ? `${paper.paperCount ?? 0} Included papers` : authorsPreview(paper)}
           {status !== "ready" && (
             <>
               {status === "uploading" && (

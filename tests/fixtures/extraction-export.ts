@@ -20,6 +20,7 @@ const common = { _creationTime: 1, jobId: exportJob._id, paperId, citations: [],
 export const exportPapers: PaperWithResults[] = [{
   _id: paperId, _creationTime: 1, jobId: exportJob._id, openalexId: "https://openalex.org/W123", title: 'Trial, "تعليم"\nSecond line', doi: "10.1234/qa", publicationYear: 2024,
   authors: ["García, Ana", "المكتبة الوطنية", "王明"], status: "completed",
+  sourceType: "screening", sourceId: "screening-origin", screeningRevision: "2:completed:3",
   results: [
     { ...common, _id: mockId("extractionResults", "zero"), questionKey: "zero", answer: 0, confidence: 0, modelConfidence: 0.95, reasoning: 'The text says "No adverse events".\nZero is reported.', citationStatus: "grounded", citations: [{ source: "abstract", paperId, sourceHash: "a".repeat(64), evidenceId: "abstract-fixture", quote, charRange: [0, quote.length], retrieval: {}, validated: true }] },
     { ...common, _id: mockId("extractionResults", "false"), questionKey: "false", answer: false, confidence: 1, model: "typesafe/jev-1.13" },

@@ -22,6 +22,7 @@ import { spender } from "../paperSets/search";
 import { dedupeExpandedSources, expandJobSources, readLibraryInBatches } from "./expandSources";
 import { LIBRARY_READ_BATCH } from "./queries/internal";
 import { OLD_SEARCH_MESSAGE } from "./jobSources";
+import { heldPapers } from "../paperSets/held";
 import { createError } from "../lib/errors";
 import {
   EXTRACTION_PAPER_CONCURRENCY,
@@ -262,6 +263,13 @@ export async function runFetchAndPersistPapers(
 
   let cachedZoteroUserId: string | undefined;
   const expandedSources = await expandJobSources(bucketItems, {
+    readScreening: async (selection) => {
+      const count: number = await ctx.runQuery(internal.extraction.sources.screening.check, { userId: job.userId, jobId: selection.jobId, revision: selection.revision });
+      const { papers, resume } = await heldPapers(ctx, job.userId, { kind: "screening", jobId: selection.jobId }, { first: 1, last: count }, undefined, selection.revision);
+      const extra = resume ? await ctx.runQuery(internal.paperSets.held.page, { userId: job.userId, set: { kind: "screening", jobId: selection.jobId }, revision: selection.revision, cursor: resume, numItems: 1 }) : null;
+      if (papers.length !== count || extra?.page.length) throw createError("CONFLICT", "Screening inputs changed. Select the screening again before starting extraction.");
+      return papers.map(({ venue, ...paper }) => ({ ...paper, venueName: venue }));
+    },
     fetchPapersFromHistory: (searchFilters) => runFetchPapersFromHistory(ctx, job.userId, searchFilters),
     readLibraryItems: (ids) =>
       readLibraryInBatches(ids, LIBRARY_READ_BATCH, (batch) => ctx.runQuery(internal.extraction.queries.internal.ownedLibraryItems, { userId: job.userId, ids: batch })),
@@ -284,16 +292,26 @@ export async function runFetchAndPersistPapers(
     throw createError("VALIDATION_ERROR", "No sources selected");
   }
 
+  // Check again after the other sources finish, before saving any extraction input.
+  for (const item of bucketItems) {
+    if (item.source === "screening" && item.screeningSelection) {
+      await ctx.runQuery(internal.extraction.sources.screening.check, { userId: job.userId, jobId: item.screeningSelection.jobId, revision: item.screeningSelection.revision });
+    }
+  }
+
   const dedupedPapers = dedupeExpandedSources(expandedSources).map(
-    ({ paper, sourceType, sourceId }) => {
+    ({ paper, sourceType, sourceId, screeningRevision }) => {
       return {
         ...paper,
         storageId: paper.storageId as Id<"_storage"> | undefined,
         sourceType,
         sourceId,
+        screeningRevision,
       };
     },
   );
+
+  if (dedupedPapers.length > PAPER_LIMIT) throw createError("VALIDATION_ERROR", `An extraction can hold up to ${PAPER_LIMIT} papers.`);
 
   console.log(
     `[fetchAndPersistPapers] Fetched ${expandedSources.length} papers (${dedupedPapers.length} deduped); persisting in chunks of ${CREATE_PAPER_CHUNK_SIZE}`,

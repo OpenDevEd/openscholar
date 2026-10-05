@@ -13,6 +13,8 @@ import { createError } from "../lib/errors";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { sourceMetadata, type PaperSourceMetadata } from "../../lib/library/paper-metadata";
+import type { BucketSource } from "../../lib/bucket/bucketItem";
+export type { BucketSource } from "../../lib/bucket/bucketItem";
 
 export type JobSourceSearchFilters = NonNullable<
   Doc<"extractionJobSources">["searchFilters"]
@@ -20,13 +22,6 @@ export type JobSourceSearchFilters = NonNullable<
 
 export const OLD_SEARCH_MESSAGE =
   "This search was saved before chat and extraction kept its exact request. Add it again from your search history.";
-
-export type BucketSource =
-  | "history"
-  | "library"
-  | "collection"
-  | "zotero"
-  | "upload";
 
 /**
  * Server-side BucketItem shape. Mirrors `lib/bucket/bucketItem.ts::BucketItem`
@@ -36,6 +31,7 @@ export type BucketItemInput = PaperSourceMetadata & {
   bucketKey: string;
   source: BucketSource;
   sourceRefId: string;
+  screeningSelection?: Doc<"extractionJobSources">["screeningSelection"];
   title: string;
   authors: string[];
   year?: number;
@@ -67,6 +63,7 @@ export function rowFromBucketItem(
     bucketKey: item.bucketKey,
     source: item.source,
     sourceRefId: item.sourceRefId,
+    screeningSelection: item.screeningSelection,
     title: item.title,
     // A source stores its first authors; OpenAlex lists stop at 100 anyway (#426).
     authors: item.authors.slice(0, MAX_AUTHORS),
@@ -88,12 +85,13 @@ export function rowFromBucketItem(
   };
 }
 
-function bucketItemFromRow(row: Doc<"extractionJobSources">): BucketItemInput {
+export function bucketItemFromRow(row: Doc<"extractionJobSources">): BucketItemInput {
   return {
     ...sourceMetadata(row),
     bucketKey: row.bucketKey,
     source: row.source,
     sourceRefId: row.sourceRefId,
+    screeningSelection: row.screeningSelection,
     title: row.title,
     authors: row.authors,
     year: row.year,

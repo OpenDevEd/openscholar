@@ -90,6 +90,7 @@ type BucketState = {
  * items with no identifiers fall into the null bucket.
  */
 function weakDedupeKey(item: BucketItem): string | null {
+  if (item.source === "screening") return null;
   const meta = item.sourceMeta as
     | { isSavedSearch?: boolean }
     | undefined;

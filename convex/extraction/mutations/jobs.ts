@@ -15,7 +15,6 @@
  */
 
 import { mutation } from "../../lib/functions";
-import { sourceMetadata } from "../../../lib/library/paper-metadata";
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
@@ -44,23 +43,33 @@ import {
 } from "../../../lib/extraction/cost-estimate";
 import { cancelPaperQueueRowsForJobTx } from "../queue/mutations";
 import { refillPerson } from "../queue/dispatcher";
+import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
+import { checkScreeningSelection } from "../sources/screening";
+import { bucketItemFromRow } from "../jobSources";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
-): "history" | "zotero" | "manual" | "mixed" {
-  const kinds = new Set<"history" | "zotero" | "manual">();
+): "history" | "zotero" | "manual" | "screening" | "mixed" {
+  const kinds = new Set<"history" | "zotero" | "manual" | "screening">();
   for (const item of items) {
     if (item.source === "history") kinds.add("history");
     else if (item.source === "zotero") kinds.add("zotero");
+    else if (item.source === "screening") kinds.add("screening");
     else kinds.add("manual");
   }
   if (kinds.size >= 2) return "mixed";
   if (kinds.has("history")) return "history";
   if (kinds.has("zotero")) return "zotero";
+  if (kinds.has("screening")) return "screening";
   return "manual";
 }
 
-export const startJob = mutation({
+export const startJobAction = defineUserMutation({
+  path: "extraction/mutations:startJob",
+  description: "Start extraction or a source chat from selected sources. Screening sources use the owned job's current Included papers and require its decision revision. Extraction saves those papers unchanged by later screening edits. At most 1,000 papers per job.",
+  spendsCredits: true,
+  outsideEffect: false,
+  undoable: false,
   args: {
     name: v.string(),
     mode: v.union(v.literal("extraction"), v.literal("chat")),
@@ -72,22 +81,34 @@ export const startJob = mutation({
     chatModelId: v.optional(v.id("models")),
   },
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
-    await requireFeature(ctx, "extraction.enabled");
-    const user = await requireAuth(ctx);
+  run: async (ctx, userId, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
+    await requireFeature(ctx, "extraction.enabled", userId);
     if (args.mode === "extraction") {
-      await requireFeature(ctx, "extraction.start", user._id);
+      await requireFeature(ctx, "extraction.start", userId);
     } else {
-      await requireFeature(ctx, "extraction.chat", user._id);
+      await requireFeature(ctx, "extraction.chat", userId);
     }
     await rateLimit(ctx, {
       name: "start-extraction",
-      key: user._id,
+      key: userId,
       throws: true,
     });
 
     // Shared: bucket validation + source persistence.
-    const deduped = dedupeBucketItems(args.bucketItems);
+    if (args.bucketItems.length > PAPER_LIMIT) throw createError("VALIDATION_ERROR", `An extraction can hold up to ${PAPER_LIMIT} sources.`);
+    const deduped = dedupeBucketItems(args.bucketItems.map(item => item.source === "screening" && item.screeningSelection
+      ? { ...item, bucketKey: `screening:${item.screeningSelection.jobId}` }
+      : item));
+    for (const item of deduped) {
+      if (item.source !== "screening") continue;
+      if (args.mode !== "extraction") throw createError("VALIDATION_ERROR", "Screening sources are only available for extraction. Remove this source to start a chat.");
+      if (!item.screeningSelection) {
+        throw createError("VALIDATION_ERROR", "Select a screening job and its decision revision for extraction.");
+      }
+      const selection = item.screeningSelection;
+      selection.count = await checkScreeningSelection(ctx, userId, selection.jobId, selection.revision);
+      item.sourceRefId = selection.jobId;
+    }
     const bucketLimits = assertBucketWithinLimits(deduped);
     const sourceType = deriveSourceType(deduped);
 
@@ -124,7 +145,7 @@ export const startJob = mutation({
       });
 
       if (estimate.high > 0) {
-        const totalAvailable = await readAvailableCredits(ctx, user._id);
+        const totalAvailable = await readAvailableCredits(ctx, userId);
         if (totalAvailable < estimate.high) {
           throw createError(
             "INSUFFICIENT_CREDITS",
@@ -143,14 +164,14 @@ export const startJob = mutation({
     const chatPick =
       args.mode !== "chat" ? null
       : args.chatModelId !== undefined ? { modelId: args.chatModelId }
-      : await resolveTaskPick(ctx, user._id, "chat");
+      : await resolveTaskPick(ctx, userId, "chat");
 
     // Stamp what extraction runs on (credits path), read back at run by paperWorker.
-    const stamp = args.mode === "extraction" ? await extractionStamp(ctx, user._id) : {};
+    const stamp = args.mode === "extraction" ? await extractionStamp(ctx, userId) : {};
 
     const now = Date.now();
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
-      userId: user._id,
+      userId,
       mode: args.mode,
       name: args.name,
       sourceType,
@@ -209,27 +230,34 @@ export const startJob = mutation({
   },
 });
 
-export const duplicateJob = mutation({
+export const startJob = userMutation(startJobAction);
+export const startJobForAssistant = assistantMutation(startJobAction);
+
+export const duplicateJobAction = defineUserMutation({
+  path: "extraction/mutations:duplicateJob",
+  description: "Duplicate a job's questions and sources. Screening sources must still have the saved decision revision; if decisions changed, select the screening again in a new extraction.",
+  spendsCredits: true,
+  outsideEffect: false,
+  undoable: false,
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
-    await requireFeature(ctx, "extraction.enabled");
-    const user = await requireAuth(ctx);
+  run: async (ctx, userId, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
+    await requireFeature(ctx, "extraction.enabled", userId);
 
     const oldJob = await ctx.db.get("extractionJobs", args.jobId);
-    if (!oldJob || oldJob.userId !== user._id) {
+    if (!oldJob || oldJob.userId !== userId) {
       throw createError("NOT_FOUND", "Job not found");
     }
 
     // Feature gate + rate limit, branched by mode.
     if (oldJob.mode === "chat") {
-      await requireFeature(ctx, "extraction.chat", user._id);
+      await requireFeature(ctx, "extraction.chat", userId);
     } else {
-      await requireFeature(ctx, "extraction.start", user._id);
+      await requireFeature(ctx, "extraction.start", userId);
     }
     await rateLimit(ctx, {
       name: "start-extraction",
-      key: user._id,
+      key: userId,
       throws: true,
     });
 
@@ -240,35 +268,17 @@ export const duplicateJob = mutation({
       .query("extractionJobSources")
       .withIndex("by_job_and_position", (q) => q.eq("jobId", args.jobId))
       .take(PAPER_LIMIT * 2);
-    const bucketItems: BucketItemInput[] = oldSourceRows.map((row) => ({
-      ...sourceMetadata(row),
-      citedByCount: row.citedByCount,
-      venueName: row.venueName,
-      bucketKey: row.bucketKey,
-      source: row.source,
-      sourceRefId: row.sourceRefId,
-      title: row.title,
-      authors: row.authors,
-      year: row.year,
-      doi: row.doi,
-      openalexId: row.openalexId,
-      abstract: row.abstract,
-      pdfUrl: row.pdfUrl,
-      storageId: row.storageId,
-      searchFilters: row.searchFilters,
-      libraryType: row.libraryType,
-      groupId: row.groupId,
-      zoteroUserId: row.zoteroUserId,
-      collectionKey: row.collectionKey,
-      includeDescendants: row.includeDescendants,
-    }));
+    const bucketItems = oldSourceRows.map(bucketItemFromRow);
+    for (const item of bucketItems) {
+      if (item.source === "screening" && item.screeningSelection) await checkScreeningSelection(ctx, userId, item.screeningSelection.jobId, item.screeningSelection.revision);
+    }
     assertBucketWithinLimits(bucketItems);
 
     const now = Date.now();
 
     if (oldJob.mode === "chat") {
       const newJobId = await ctx.db.insert("extractionJobs", {
-        userId: user._id,
+        userId,
         mode: "chat" as const,
         name: `${oldJob.name} (Copy)`,
         sourceType: oldJob.sourceType,
@@ -320,9 +330,9 @@ export const duplicateJob = mutation({
       .order("asc")
       .take(MAX_QUESTIONS_PER_JOB);
 
-    const dupStamp = await extractionStamp(ctx, user._id);
+    const dupStamp = await extractionStamp(ctx, userId);
     const newJobId = await ctx.db.insert("extractionJobs", {
-      userId: user._id,
+      userId,
       mode: "extraction" as const,
       name: `${oldJob.name} (Copy)`,
       sourceType: oldJob.sourceType,
@@ -358,6 +368,9 @@ export const duplicateJob = mutation({
     return { jobId: newJobId };
   },
 });
+
+export const duplicateJob = userMutation(duplicateJobAction);
+export const duplicateJobForAssistant = assistantMutation(duplicateJobAction);
 
 export const cancelExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },

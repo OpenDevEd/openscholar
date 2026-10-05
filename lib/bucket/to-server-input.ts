@@ -19,6 +19,7 @@ export type BucketItemServerInput = PaperSourceMetadata & {
   bucketKey: string;
   source: BucketItem["source"];
   sourceRefId: string;
+  screeningSelection?: BucketItem["screeningSelection"];
   title: string;
   authors: string[];
   year?: number;
@@ -56,6 +57,7 @@ export function bucketItemToServerInput(
     bucketKey: item.bucketKey,
     source: item.source,
     sourceRefId: item.sourceRefId,
+    screeningSelection: item.screeningSelection,
     title: item.title,
     authors: item.authors,
     year: item.year,

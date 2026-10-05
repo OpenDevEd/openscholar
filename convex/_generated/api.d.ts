@@ -226,6 +226,7 @@ import type * as extraction_queue_release from "../extraction/queue/release.js";
 import type * as extraction_queue_status from "../extraction/queue/status.js";
 import type * as extraction_resultCounts from "../extraction/resultCounts.js";
 import type * as extraction_sources_library from "../extraction/sources/library.js";
+import type * as extraction_sources_screening from "../extraction/sources/screening.js";
 import type * as extraction_stateMachine from "../extraction/stateMachine.js";
 import type * as extraction_tests_fixtures from "../extraction/tests/fixtures.js";
 import type * as extraction_tests_runners from "../extraction/tests/runners.js";
@@ -605,6 +606,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/queue/status": typeof extraction_queue_status;
   "extraction/resultCounts": typeof extraction_resultCounts;
   "extraction/sources/library": typeof extraction_sources_library;
+  "extraction/sources/screening": typeof extraction_sources_screening;
   "extraction/stateMachine": typeof extraction_stateMachine;
   "extraction/tests/fixtures": typeof extraction_tests_fixtures;
   "extraction/tests/runners": typeof extraction_tests_runners;

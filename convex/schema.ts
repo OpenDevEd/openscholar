@@ -17,6 +17,7 @@ import {
   extractionJobFields,
   extractionPaperErrorFields,
   extractionPaperFields,
+  screeningSelectionValidator,
   extractionPaperQueueFields,
   extractionQuestionFields,
   extractionResultFields,
@@ -770,6 +771,7 @@ export default defineSchema({
     position: v.number(),
     bucketKey: v.string(),
     source: v.union(
+      v.literal("screening"),
       v.literal("history"),
       v.literal("library"),
       v.literal("collection"),
@@ -777,6 +779,7 @@ export default defineSchema({
       v.literal("upload"),
     ),
     sourceRefId: v.string(),
+    screeningSelection: v.optional(screeningSelectionValidator),
     title: v.string(),
     authors: capped(v.array(v.string()), MAX_AUTHORS),
     year: v.optional(v.number()),

@@ -654,7 +654,7 @@
     "nameYourJobDescription": "Donnez à cette tâche un nom descriptif pour vous aider à l'identifier plus tard.",
     "jobName": "Nom de la tâche",
     "jobNamePlaceholder": "ex. Extraction de données RCT pour Revue 2024",
-    "combineSources": "Combinez les sources de l'historique, Zotero ou les entrées manuelles.",
+    "combineSources": "Choisissez et combinez les sources d'articles.",
     "whatDataPoints": "Quels points de données souhaitez-vous extraire de chaque article ?",
     "startExtraction": "Démarrer l'extraction",
     "confidenceHighLow": "Confiance Élevée-Basse",
