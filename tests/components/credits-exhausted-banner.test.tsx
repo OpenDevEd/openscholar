@@ -103,21 +103,17 @@ describe("<CreditsExhaustedBanner>", () => {
     expect(onCancelRemaining).toHaveBeenCalledTimes(1);
   });
 
-  it("offers Resume and no top-up for a job that stopped at the credits it was allowed", () => {
+  it("offers both ways on for a job that stopped at the credits it was allowed: carrying on, and a top-up if its figure was the whole balance", () => {
     setBalance(100, true, 1);
     const onResume = vi.fn();
-    render(<CreditsExhaustedBanner allowed={40} onResume={onResume} />);
-    // The balance isn't what stopped it, so there's nothing to buy first.
-    expect(screen.queryByRole("button", { name: /buyCredits/i })).toBeNull();
+    const { rerender } = render(<CreditsExhaustedBanner allowed={40} onResume={onResume} />);
     fireEvent.click(screen.getByRole("button", { name: /creditsExhausted.resume/i }));
     expect(onResume).toHaveBeenCalledTimes(1);
-  });
-
-  it("still offers a top-up for such a job when the balance can't carry it on", () => {
-    // Its figure was the whole balance: Resume can't go on, so buying credits is the way forward.
-    setBalance(0, false, 1);
-    render(<CreditsExhaustedBanner allowed={40} onResume={vi.fn()} />);
     expect(screen.getByRole("button", { name: /buyCredits/i })).toBeInTheDocument();
+
+    setBalance(0, false, 1);
+    rerender(<CreditsExhaustedBanner allowed={40} onResume={onResume} />);
     expect(screen.getByRole("button", { name: /creditsExhausted.resume/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /buyCredits/i })).toBeInTheDocument();
   });
 });

@@ -318,6 +318,18 @@ describe("extraction full flow with mocked provider I/O", () => {
     vi.advanceTimersByTime(1_000);
     await t.finishInProgressScheduledFunctions();
     expect(fakeAutumn.locks.size).toBe(0);
+
+    // Autumn doesn't answer the hold: nothing starts, and the hold is settled a few minutes on, whether or not Autumn took it.
+    fakeAutumn.failNext = "balances.check";
+    await expect(t.action(internal.extraction.start.extractForAssistant, { ...asked, approvedCredits: 20 })).rejects.toThrow();
+    expect(await t.run((ctx) => ctx.db.query("extractionJobs").collect())).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.query("billingHolds").collect())).toHaveLength(1);
+    for (let second = 0; second < 400; second += 1) {
+      vi.advanceTimersByTime(1_000);
+      await t.finishInProgressScheduledFunctions();
+    }
+    expect(await t.run((ctx) => ctx.db.query("billingHolds").collect())).toEqual([]);
+    expect(fakeAutumn.locks.size).toBe(0);
     fakeAutumn.calls.length = 0;
 
     // As the assistant runs it once the person has said yes to "up to 20 credits": two papers, two questions, five a question at most.

@@ -124,18 +124,17 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* A job stopped at its own figure can go on with the balance it has: there's nothing to buy first, unless that balance is empty too. */}
-          {props.allowed === undefined || !hasEnough ? (
-            <Button
-              size="sm"
-              onClick={() => router.push("/settings/billing#topup-section")}
-            >
-              {tc("buyCredits")}
-            </Button>
-          ) : null}
+          {/* A job stopped at its own figure usually has the balance to go on, so Resume leads there. */}
           <Button
             size="sm"
-            variant={props.allowed === undefined || !hasEnough ? "outline" : "default"}
+            variant={props.allowed === undefined ? "default" : "outline"}
+            onClick={() => router.push("/settings/billing#topup-section")}
+          >
+            {tc("buyCredits")}
+          </Button>
+          <Button
+            size="sm"
+            variant={props.allowed === undefined ? "outline" : "default"}
             data-action="resume"
             disabled={!canResume}
             onClick={props.onResume}

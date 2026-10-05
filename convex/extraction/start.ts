@@ -40,6 +40,8 @@ const RUNNING_CHECK_MS = 15_000;
 const RUNNING_WAIT_MS = 12 * 60_000;
 /** How long after its last paper stopped being read a job's hold is settled: the paper's cost is recorded a moment after its row says it's done. */
 const SETTLE_AFTER_MS = 30_000;
+/** How long after a hold request that never answered its hold is settled: longer than the request can still be on its way. */
+const UNANSWERED_HOLD_MS = 5 * 60_000;
 
 const invalid = (message: string) => createError("VALIDATION_ERROR", message);
 
@@ -171,11 +173,16 @@ async function start(ctx: ActionCtx, userId: Id<"users">, { name, questions, use
   const job = { userId, name, bucketItems: await sourcesOf(ctx, userId, range), questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true };
   if (cap === undefined) return await ctx.runMutation(internal.extraction.start.begin, job);
   const hold = `extraction-job:${crypto.randomUUID()}`;
+  const held = await holdSpend(ctx, { userId, chargeId: hold, credits: cap }).catch(async (error) => {
+    // Autumn may have taken the hold and not answered, or may yet take it: it is settled a few minutes on, with nothing spent under it, once that request has ended either way.
+    await ctx.runMutation(internal.billing.charge.laterSpent, { chargeId: hold, attempt: 0, delay: UNANSWERED_HOLD_MS });
+    throw error;
+  });
+  if (!held) throw createError("INSUFFICIENT_CREDITS", `This extraction holds up to ${cap.toLocaleString("en")} credits, more than the balance has.`);
   try {
-    if (!(await holdSpend(ctx, { userId, chargeId: hold, credits: cap }))) throw createError("INSUFFICIENT_CREDITS", `This extraction holds up to ${cap.toLocaleString("en")} credits, more than the balance has.`);
     return await ctx.runMutation(internal.extraction.start.begin, { ...job, spend: { hold, cap } });
   } catch (error) {
-    // Whatever was held is given back by a function that tries again if Autumn doesn't answer: there's no job to settle it. That covers a hold Autumn took and never answered for.
+    // Given back by a function that tries again if Autumn doesn't answer: there's no job to settle it.
     await ctx.scheduler.runAfter(0, internal.billing.charge.releaseLock, { userId, chargeId: hold, attempt: 0 });
     throw error;
   }
