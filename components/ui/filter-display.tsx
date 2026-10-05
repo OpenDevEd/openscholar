@@ -19,12 +19,15 @@ export function FilterChips({
   filters,
   size = "default",
   singleLine = false,
+  valuesOnly = false,
   className,
 }: {
   filters: FilterParams;
   size?: "default" | "compact";
   /** One row that scrolls sideways, for rows that share the line with actions. */
   singleLine?: boolean;
+  /** Each chip's value beside its icon, its name said only to screen readers: for a line read at a glance, where the full card is a hover away. */
+  valuesOnly?: boolean;
   className?: string;
 }) {
   const t = useTranslations("searchFilters");
@@ -59,14 +62,14 @@ export function FilterChips({
     >
       {items.map((item) => (
         <li key={item.key} className={singleLine ? "shrink-0" : "min-w-0 max-w-full"}>
-          <FilterChip item={item} compact={size === "compact"} singleLine={singleLine} />
+          <FilterChip item={item} compact={size === "compact"} singleLine={singleLine} valuesOnly={valuesOnly} />
         </li>
       ))}
     </ul>
   );
 }
 
-function FilterChip({ item, compact, singleLine }: { item: FilterItem; compact: boolean; singleLine: boolean }) {
+function FilterChip({ item, compact, singleLine, valuesOnly }: { item: FilterItem; compact: boolean; singleLine: boolean; valuesOnly: boolean }) {
   const Icon = item.icon;
   return (
     <Badge
@@ -79,7 +82,7 @@ function FilterChip({ item, compact, singleLine }: { item: FilterItem; compact: 
     >
       <Icon className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
       <span className="min-w-0 [overflow-wrap:anywhere]">
-        {item.label !== item.displayValue ? <span className="text-muted-foreground">{item.label} </span> : null}
+        {item.label !== item.displayValue ? <span className={valuesOnly ? "sr-only" : "text-muted-foreground"}>{item.label} </span> : null}
         {item.ratingRange ? <RatingStars range={item.ratingRange} label={item.displayValue} /> : item.displayValue}
       </span>
       {item.countryCodes?.length ? (

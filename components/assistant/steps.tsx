@@ -4,9 +4,12 @@
 // top, a tinted curve out to each step's card, one card per action it ran. An action it
 // asks the person about first shows under the map as the mock's approval card.
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { SearchHoverCard } from "@/components/search-tooltip-content";
+import { FilterChips } from "@/components/ui/filter-display";
+import type { FilterParams } from "@/lib/filters";
+import { differences } from "@/lib/assistant/run-filters";
 import { readSharedOql } from "@/lib/search-params";
 import { paramsToSearchResult } from "@/lib/search-params/converters";
 import { parseSearchParamsFromUrl } from "@/lib/search-params/parsers";
@@ -67,16 +70,48 @@ function searchOf(href: string) {
  * results in this tab, as a new search, and the panel stays up with its chat. Hovered, it
  * shows the search's card out to the left, over the page, as the sidebar's history does.
  */
-function Subject({ text, step, className = "truncate" }: { text: string; step: Pick<StepItem, "id" | "href" | "count" | "at">; className?: string }) {
+function Subject({ text, step, chips, className = "truncate" }: { text: string; step: Pick<StepItem, "id" | "href" | "count" | "at">; /** The settings that tell this search from the others on its card, as chips after its query. */ chips?: FilterParams; className?: string }) {
   if (!step.href) return <span className={className}>{text}</span>;
   const search = searchOf(step.href);
   const at = new Date(step.at).toISOString();
+  const underlined = "underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground";
   return (
     <SearchHoverCard side="left" delay={300} id={step.id} query={search.query} count={step.count} filters={search} createdAt={at} updatedAt={at}>
-      <Link href={step.href} className={cn(className, "underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground")}>
-        {text}
-      </Link>
+      {chips ? (
+        <Link href={step.href} className={cn(className, "group flex items-center gap-1.5")}>
+          {text ? <span className={cn("min-w-0 truncate", underlined)}>{text}</span> : null}
+          <ChipRow narrow={Boolean(text)}>
+            <FilterChips filters={chips} size="compact" singleLine valuesOnly />
+          </ChipRow>
+        </Link>
+      ) : (
+        <Link href={step.href} className={cn(className, underlined)}>
+          {text}
+        </Link>
+      )}
     </SearchHoverCard>
+  );
+}
+
+/**
+ * A row of chips on one line, faded at its end only while they run past it: the search's
+ * card shows them all. Beside a query it takes at most part of the line.
+ */
+function ChipRow({ narrow, children }: { narrow: boolean; children: ReactNode }) {
+  const row = useRef<HTMLSpanElement>(null);
+  const [clipped, setClipped] = useState(false);
+  // A ResizeObserver: the row's width changes with the panel's and with the query beside it.
+  useEffect(() => {
+    const element = row.current;
+    if (!element) return;
+    const observer = new ResizeObserver(() => setClipped(element.scrollWidth > element.clientWidth));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <span ref={row} className={cn("min-w-0 shrink-0 overflow-hidden transition-colors group-hover:[&_[data-slot=badge]]:text-foreground", narrow ? "max-w-[60%]" : "max-w-full", clipped && "mask-r-from-[calc(100%-1.5rem)]")}>
+      {children}
+    </span>
   );
 }
 
@@ -427,6 +462,9 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
             const folded = run.length > 1;
             const open = isOpen(run);
             const lines = run.map((one) => one.subject ?? t(`steps.${words}.where`));
+            // What tells a run of searches apart: each one's settings the others don't share.
+            const searches = folded ? run.map((one) => (one.href ? searchOf(one.href) : null)) : [];
+            const told = folded && searches.every((search) => search !== null) ? differences(searches as NonNullable<(typeof searches)[number]>[]) : null;
             return (
               <motion.div
                 key={run[0].id}
@@ -497,7 +535,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                     <ol inert={!open} className="pl-[60px] pr-3 text-xs text-muted-foreground">
                       {run.map((one, at) => (
                         <li key={one.id} className="flex items-center gap-2" style={{ height: LINE }}>
-                          <Subject text={lines[at]} step={one} className="mr-auto min-w-0 truncate" />
+                          <Subject text={told?.sameQuery && told.filters[at] ? "" : lines[at]} chips={told?.filters[at]} step={one} className="mr-auto min-w-0 truncate" />
                           {one.count !== undefined ? (
                             <span className="shrink-0 tabular-nums">
                               <span className="font-semibold text-foreground/90">{counted(one.count)}</span> {t("steps.found")}
