@@ -400,14 +400,17 @@ function viewOf(given: ObjectType<typeof narrowing>) {
   return view;
 }
 
-/** Whether a saved paper is in a collection that still exists. A deleted collection's places go after it, in batches, and aren't one. */
-async function inCollection(ctx: QueryCtx, libraryItemId: Id<"libraryItems">) {
+/**
+ * Whether each of these saved papers is in a collection that still exists. A deleted
+ * collection's places go after it, in batches, and aren't one: they're told from the rest by
+ * the person's collections, read once, not by a read for each place.
+ */
+async function inCollection(ctx: QueryCtx, userId: Id<"users">, libraryItemIds: Id<"libraryItems">[]) {
+  const mine = new Set((await ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", userId)).take(MAX_COLLECTIONS_PER_USER)).map((collection) => collection._id));
   // A paper is in at most as many collections as a person has.
-  const places = await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", libraryItemId)).take(MAX_COLLECTIONS_PER_USER);
-  for (const place of places) {
-    if (await ctx.db.get("collections", place.collectionId)) return true;
-  }
-  return false;
+  return await Promise.all(
+    libraryItemIds.map(async (libraryItemId) => (await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", libraryItemId)).take(MAX_COLLECTIONS_PER_USER)).some((place) => mine.has(place.collectionId))),
+  );
 }
 
 export const papersAction = defineUserQuery({
@@ -433,7 +436,7 @@ export const papersAction = defineUserQuery({
     // A narrowed view is counted by reading it, which a page of it leaves no room for in one read: its count is its own action.
     const kept = view.searchText === undefined && !hasNonCollectionLibraryFilters(view);
     // Asked paper by paper, finding the ones in no collection took a library of sixty a hundred reads.
-    const collected = await Promise.all(read.page.map((item) => inCollection(ctx, item._id)));
+    const collected = await inCollection(ctx, userId, read.page.map((item) => item._id));
     return {
       ...(kept ? { total: (await countLibraryView(ctx, user, view)).count } : {}),
       papers: read.page.map((item, at) => ({
@@ -488,7 +491,7 @@ export const savedPaperAction = defineUserQuery({
   run: async (ctx, userId, args) => {
     const item = await findItem(ctx, userId, args.openalexId);
     if (!item) return null;
-    return { libraryItemId: item._id, inCollection: await inCollection(ctx, item._id) };
+    return { libraryItemId: item._id, inCollection: (await inCollection(ctx, userId, [item._id]))[0] };
   },
 });
 export const savedPaper = userQuery(savedPaperAction);
