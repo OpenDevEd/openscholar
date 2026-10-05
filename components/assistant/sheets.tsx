@@ -5,10 +5,11 @@
 // edge peeks out, and dims. Each layer is its own card; nothing sits behind them.
 
 import { useDeferredValue, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Building2, Check, ChevronLeft, CirclePause, Coins, Eye, Link2, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, UserRound, X } from "@/components/icons";
+import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Eye, Link2, Loader2, Lock, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, UserRound, X } from "@/components/icons";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -18,13 +19,23 @@ import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
+import { ASSISTANT_JOB_CAPS } from "@/convex/lib/constants";
+import { viewOf } from "@/lib/assistant/actions";
+import { topUpBundles } from "@/lib/billing/catalog";
+import { useBillingCatalog } from "@/lib/billing/catalog-provider";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { OrbitMark } from "./orbit-mark";
 import { IconButton, WorkingText } from "./parts";
+import { KindTile, type Waiting } from "./steps";
 
 /** A sheet open over the panel. */
-export type OpenSheet = { kind: "history" } | { kind: "share"; threadId: Id<"assistantThreads">; title: string; role: Role } | { kind: "spending"; threadId: Id<"assistantThreads">; title: string };
+export type OpenSheet =
+  | { kind: "history" }
+  | { kind: "share"; threadId: Id<"assistantThreads">; title: string; role: Role }
+  | { kind: "spending"; threadId: Id<"assistantThreads">; title: string }
+  | { kind: "topUp"; waiting: Waiting };
 type Role = "owner" | "write" | "read";
 
 export const SHEET_SPRING = { type: "spring" as const, stiffness: 300, damping: 32, mass: 0.9 };
@@ -536,6 +547,9 @@ type Limit = number | null;
 const REPLY_LIMITS = [10, 15, 25, 50] as const;
 /** Digits a person's own limit can have: what the server takes, and a number holds exactly. */
 const CUSTOM_DIGITS = 15;
+/** Jobs the Spending sheet lists at first, and with each "More jobs". */
+const JOBS_FIRST = 5;
+const JOBS_MORE = 20;
 /** Replies the chart has room for: what the server keeps (convex/assistant/validators.ts). */
 const CHART_REPLIES = 12;
 
@@ -614,8 +628,17 @@ function LimitPicker({ label, listed, value, onChange }: { label: string; listed
   );
 }
 
-/** New chats start with this chat's limit, and go on taking it as it changes here: the server's rule (convex/assistant/spending.ts). */
-const takenByNewChats = (now: { replyLimit: Limit; newChats?: Limit }) => now.newChats !== undefined && now.newChats === now.replyLimit;
+/** What jobs that spend credits may hold without asking; null when each one asks. */
+type Allowance = { cap: Limit } | null;
+type Limits = { replyLimit: Limit; allowance: Allowance };
+const sameAllowance = (a: Allowance, b: Allowance) => (a === null) === (b === null) && a?.cap === b?.cap;
+/** New chats start with this chat's limits, and go on taking them as they change here: the server's rule (convex/assistant/spending.ts). */
+const takenByNewChats = (now: Limits & { newChats?: Limits }) => now.newChats !== undefined && now.newChats.replyLimit === now.replyLimit && sameAllowance(now.newChats.allowance, now.allowance);
+/** A change to this chat's limits, as it shows at once: new chats that take them take the change too. */
+export const changed = <Read extends Limits & { newChats?: Limits }>(now: Read, change: Partial<Limits>): Read => {
+  const next = { ...now, ...change };
+  return takenByNewChats(now) ? { ...next, newChats: { replyLimit: next.replyLimit, allowance: next.allowance } } : next;
+};
 
 /**
  * What the person lets the assistant spend in this chat (#346): how many credits a reply
@@ -630,13 +653,17 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
   // A pick shows at once, ahead of the server's copy.
   const setLimit = useMutation(api.assistant.spending.setReplyLimit).withOptimisticUpdate((store, args) => {
     const now = store.getQuery(api.assistant.spending.get, { threadId: args.threadId });
-    if (now) store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, { ...now, replyLimit: args.limit, ...(takenByNewChats(now) ? { newChats: args.limit } : {}) });
+    if (now) store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, changed(now, { replyLimit: args.limit }));
+  });
+  const setAllowance = useMutation(api.assistant.spending.setAllowance).withOptimisticUpdate((store, args) => {
+    const now = store.getQuery(api.assistant.spending.get, { threadId: args.threadId });
+    if (now) store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, changed(now, { allowance: args.allowance }));
   });
   const setForNewChats = useMutation(api.assistant.spending.setForNewChats).withOptimisticUpdate((store, args) => {
     const now = store.getQuery(api.assistant.spending.get, { threadId: args.threadId });
     if (!now) return;
     const { newChats: _was, ...rest } = now;
-    store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, args.on ? { ...rest, newChats: now.replyLimit } : rest);
+    store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, args.on ? { ...rest, newChats: { replyLimit: now.replyLimit, allowance: now.allowance } } : rest);
   });
   const failed = (error: unknown) => toast.error(t("failed"), getErrorMessage(error, ""));
   const limit = spending?.replyLimit ?? null;
@@ -648,6 +675,16 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
   const shown = limit ?? number;
   // The chart's top: just above the largest reply, so a higher limit sits on its top edge.
   const top = Math.max(...recent, 1) * 1.15;
+  const allowance = spending?.allowance ?? null;
+  // What one job may hold, kept while every job asks, so allowing them again starts from it.
+  const [kept, setKept] = useState<Limit>(ASSISTANT_JOB_CAPS[0]);
+  const cap = allowance ? allowance.cap : kept;
+  // The chat's calls that held credits, the largest first, more of them when the person asks.
+  const jobs = usePaginatedQuery(api.assistant.spending.jobs, { threadId }, { initialNumItems: JOBS_FIRST });
+  const account = useQuery(api.billing.accounts.mine, {});
+  // The server's rule (convex/assistant/spending.ts): allowed, within what one may hold, and covered by the balance.
+  const runs = (credits: number) => allowance !== null && (allowance.cap === null || credits <= allowance.cap) && credits <= Math.floor(account?.balance ?? 0);
+  const ta = useTranslations("assistant");
   return (
     <>
       <SheetHeader title={t("title")} detail={title} onBack={onBack} />
@@ -713,6 +750,76 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
             </div>
           </Zone>
 
+          <Zone label={t("jobs")}>
+            {/* One box, as the reply's is: the switch and its limit, and under a hairline the jobs they decide for, edge to edge. */}
+            <div className="overflow-hidden rounded-2xl border border-border/60 bg-muted/20">
+              <div className="p-3">
+                <Segmented
+                  fill
+                  label={t("beforeJob")}
+                  value={allowance ? "allow" : "ask"}
+                  onChange={(picked) => {
+                    if (allowance) setKept(allowance.cap);
+                    setAllowance({ threadId, allowance: picked === "allow" ? { cap } : null }).catch(failed);
+                  }}
+                  options={[
+                    { id: "ask", label: t("askEveryTime"), icon: CircleHelp },
+                    { id: "allow", label: t("allowWithoutAsking"), icon: CircleCheck },
+                  ]}
+                />
+                {/* The limit opens under the switch: the frame grows, its content laid out at full size. It stays in the
+                    page, so while it closes it can't be picked and turn allowing back on. Its gap to the switch is inside it. */}
+                <motion.div inert={!allowance} initial={false} animate={allowance ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
+                  <div className="pt-3">
+                    <LimitPicker
+                      key={spending === undefined ? "loading" : "known"}
+                      label={t("jobPickerLabel")}
+                      listed={ASSISTANT_JOB_CAPS}
+                      value={cap}
+                      onChange={(next) => {
+                        setKept(next);
+                        setAllowance({ threadId, allowance: { cap: next } }).catch(failed);
+                      }}
+                    />
+                  </div>
+                </motion.div>
+              </div>
+              <ul className="divide-y divide-border/40 border-t border-border/40">
+                {jobs.results.map((job) => {
+                  const { kind, words } = viewOf(job.action);
+                  const name = `steps.${words}.ask` as "steps.other.ask";
+                  return (
+                    <li key={job.id} className="flex items-center gap-3 px-3 py-2.5">
+                      <KindTile kind={kind} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{job.subject ?? (ta.has(name) ? ta(name) : ta("steps.other.ask"))}</span>
+                        <span className="block text-xs tabular-nums text-muted-foreground">{t("holds", { credits: job.credits })}</span>
+                      </span>
+                      <JobRule runs={runs(job.credits)} />
+                    </li>
+                  );
+                })}
+                {jobs.status === "CanLoadMore" || jobs.status === "LoadingMore" ? (
+                  <li>
+                    <button type="button" disabled={jobs.status === "LoadingMore"} onClick={() => jobs.loadMore(JOBS_MORE)} className="flex w-full items-center justify-center px-3 py-2.5 text-xs font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:opacity-60">
+                      {t("moreJobs")}
+                    </button>
+                  </li>
+                ) : null}
+                <li className="flex items-center gap-3 px-3 py-2.5">
+                  <KindTile kind="other" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{t("publishing")}</span>
+                    <span className="block text-xs text-muted-foreground">{t("publishingDetail")}</span>
+                  </span>
+                  <span className="flex w-20 shrink-0 items-center justify-end gap-1.5 text-xs text-muted-foreground">
+                    <Lock className="size-3.5" /> {t("asks")}
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </Zone>
+
           <div className={LIST}>
             <label className="flex cursor-pointer items-center gap-3 px-3 py-3">
               <span className="min-w-0 flex-1 text-sm font-medium">{t("forNewChats")}</span>
@@ -720,6 +827,116 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
             </label>
           </div>
           <p className="px-2 text-xs leading-relaxed text-muted-foreground">{t("yours")}</p>
+        </div>
+      </ScrollArea>
+    </>
+  );
+}
+
+/** Whether a job runs without asking. Both labels hold one cell, so the row never reflows. */
+function JobRule({ runs }: { runs: boolean }) {
+  const t = useTranslations("assistant.spendingSheet");
+  return (
+    <span className="grid w-20 shrink-0 text-xs [&>*]:col-start-1 [&>*]:row-start-1 [&>*]:justify-end">
+      <motion.span initial={false} animate={{ opacity: runs ? 1 : 0 }} aria-hidden={!runs} className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+        <CircleCheck className="size-3.5" /> {t("runs")}
+      </motion.span>
+      <motion.span initial={false} animate={{ opacity: runs ? 0 : 1 }} aria-hidden={runs} className="flex items-center gap-1.5 text-muted-foreground">
+        <CircleHelp className="size-3.5" /> {t("asks")}
+      </motion.span>
+    </span>
+  );
+}
+
+/** A purchase of credits from the panel: the bundle being bought, the last one bought since the sheet opened, and the way to buy one. */
+export type Purchase = { buying: number | null; bought: number | null; buy: (credits: number) => void };
+
+/**
+ * Adds credits without leaving the chat, for a call that waits on a balance too low for it
+ * (#328): the balance and how far short it is, the call that waits, and the bundles the
+ * account can buy. A purchase that needs a checkout page goes to it, and the tab comes back
+ * to this chat. The mock's Add credits sheet.
+ */
+export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /** The purchase under way and the last one made, which the panel keeps: a sheet closed and opened again finds a purchase still on its way, and can't start a second. */ purchase: Purchase; onBack: () => void }) {
+  const t = useTranslations("assistant.topUp");
+  const format = useFormatter();
+  const router = useRouter();
+  const account = useQuery(api.billing.accounts.mine, {});
+  const topUps = useFeatureFlag("credits.topups");
+  const catalog = useBillingCatalog();
+  const bundles = catalog && topUps ? topUpBundles(catalog) : [];
+  const { buying, bought, buy } = purchase;
+  const balance = Math.floor(account?.balance ?? 0);
+  const need = Math.max(0, waiting.credits - balance);
+  const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", trailingZeroDisplay: "stripIfInteger" });
+  return (
+    <>
+      <SheetHeader title={t("title")} detail={t("detail")} onBack={onBack} />
+      <ScrollArea shades className="min-h-0 flex-1">
+        {/* Laid out from the first frame at its size; what it says shows once the balance is known. */}
+        <div inert={account === undefined} className={cn("space-y-5 px-4 py-5 transition-opacity duration-200", account === undefined && "opacity-0")}>
+          <div>
+            <p className="text-4xl font-semibold tracking-tight">
+              <AnimatedNumber value={balance} />
+            </p>
+            <div className="mt-1 flex h-5 items-center text-sm text-muted-foreground">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {bought ? (
+                  <motion.span key="added" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, ease: EASE }} className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+                    <Check className="size-4" /> {t("added", { credits: bought })}
+                  </motion.span>
+                ) : (
+                  <motion.span key="need" exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2, ease: EASE }}>
+                    {t.rich(need > 0 ? "short" : "enough", { need, s: (chunks) => <span className="font-medium text-amber-600 dark:text-amber-400">{chunks}</span> })}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-2xl bg-muted/40 px-3 py-2.5">
+            <KindTile kind={waiting.kind} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">{waiting.title}</span>
+              <span className="block text-xs text-muted-foreground">{t("waiting")}</span>
+            </span>
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{t("upTo", { credits: waiting.credits })}</span>
+          </div>
+          {bundles.length ? (
+            <div className="rounded-2xl border border-border/60 bg-muted/20 p-1.5">
+              {bundles.map((bundle, i) => (
+                <motion.button
+                  key={bundle.credits}
+                  type="button"
+                  disabled={buying !== null}
+                  onClick={() => buy(bundle.credits)}
+                  aria-label={t("buy", { credits: bundle.credits, price: money(bundle.amount) })}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, ease: EASE, delay: 0.08 + i * 0.05 }}
+                  className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted/60 disabled:hover:bg-transparent"
+                >
+                  <span className="flex-1 text-sm font-semibold tabular-nums">+{format.number(bundle.credits)}</span>
+                  <span className="text-sm tabular-nums text-muted-foreground">{money(bundle.amount)}</span>
+                  <span className="flex size-4 items-center justify-center">
+                    {buying === bundle.credits ? (
+                      <Loader2 className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" />
+                    ) : bought === bundle.credits ? (
+                      <Check className="size-4 text-emerald-500" />
+                    ) : (
+                      <ArrowRight className="size-4 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
+                    )}
+                  </span>
+                </motion.button>
+              ))}
+            </div>
+          ) : (
+            // An account that can't buy bundles here adds credits with its plan.
+            <button type="button" onClick={() => router.push("/settings/billing")} className="group flex w-full items-center gap-3 rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-muted/60">
+              <span className="flex-1">{t("plans")}</span>
+              <ArrowRight className="size-4 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
+            </button>
+          )}
+          <p className="px-1 text-xs leading-relaxed text-muted-foreground">{t("note")}</p>
         </div>
       </ScrollArea>
     </>

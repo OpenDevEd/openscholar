@@ -3484,7 +3484,18 @@
       "credits": "クレジット",
       "forNewChats": "新しいチャットにもこの設定を使う",
       "yours": "これはこのチャットでのあなたの設定です。共有相手はそれぞれ自分の設定を持ち、自分のクレジットを使います。",
-      "failed": "上限を変更できませんでした"
+      "failed": "上限を変更できませんでした",
+      "jobs": "クレジットを使うジョブ",
+      "beforeJob": "ジョブがクレジットを使う前に",
+      "askEveryTime": "毎回確認",
+      "allowWithoutAsking": "確認なしで許可",
+      "jobPickerLabel": "確認なしで 1 ジョブが確保できる上限",
+      "holds": "最大 {credits, number} クレジットを確保",
+      "runs": "実行",
+      "asks": "確認",
+      "publishing": "ライブラリの公開",
+      "publishingDetail": "訪問者にすぐ表示されます",
+      "moreJobs": "さらに表示"
     },
     "meter": {
       "reply": "この返信",
@@ -3810,6 +3821,11 @@
       "why": "この操作は元に戻せないか、アカウントの外に表示されます。毎回確認します。",
       "failed": "回答を送信できませんでした",
       "unnamed": "名前なし",
+      "upTo": "最大 {credits, number} クレジット",
+      "short": "{credits, number} 不足",
+      "left": "残り <n></n>",
+      "always": "このチャットでは常に許可",
+      "addCredits": "クレジットを追加",
       "names": {
         "thread": "チャット",
         "collection": "コレクション",
@@ -3818,8 +3834,35 @@
         "role": "アクセス",
         "name": "名前",
         "title": "タイトル",
-        "model": "モデル"
+        "model": "モデル",
+        "search": "検索",
+        "screening": "スクリーニング",
+        "papers": "論文",
+        "first": "開始位置",
+        "last": "終了位置",
+        "question": "質問",
+        "saveTo": "採用した論文の保存先",
+        "prune": "除外した論文を外す"
       }
+    },
+    "topUp": {
+      "title": "クレジットを追加",
+      "detail": "チャットを離れずに",
+      "short": "クレジット、<s>{need, number} 不足</s>",
+      "enough": "クレジット",
+      "added": "{credits, number} クレジットを追加しました",
+      "waiting": "チャットで待機中",
+      "upTo": "最大 {credits, number} クレジット",
+      "buy": "{price} で {credits, number} クレジットを追加",
+      "plans": "プランを見る",
+      "note": "アシスタントは使用前に引き続き確認します。",
+      "failed": "クレジットを追加できませんでした"
+    },
+    "allowance": {
+      "any": "クレジット使用を許可中",
+      "upTo": "1 ジョブ最大 {cap, number}",
+      "stop": "クレジット使用前に再び確認する",
+      "failed": "変更できませんでした"
     }
   }
 }

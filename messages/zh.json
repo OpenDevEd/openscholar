@@ -3484,7 +3484,18 @@
       "credits": "积分",
       "forNewChats": "我的新对话也使用这些设置",
       "yours": "这些是你在此对话中的设置。与你共享此对话的人各自设置，并花费各自的积分。",
-      "failed": "无法更改上限"
+      "failed": "无法更改上限",
+      "jobs": "使用积分的任务",
+      "beforeJob": "任务使用积分之前",
+      "askEveryTime": "每次询问",
+      "allowWithoutAsking": "无需询问即可运行",
+      "jobPickerLabel": "无需询问时单项任务最多可预留",
+      "holds": "最多预留 {credits, number} 积分",
+      "runs": "运行",
+      "asks": "询问",
+      "publishing": "发布文献库",
+      "publishingDetail": "访客会立即看到",
+      "moreJobs": "更多任务"
     },
     "meter": {
       "reply": "本次回复",
@@ -3810,6 +3821,11 @@
       "why": "此操作无法撤销，或会在你的账户之外显示。每次都会询问。",
       "failed": "无法发送你的回答",
       "unnamed": "未命名",
+      "upTo": "最多 {credits, number} 积分",
+      "short": "还差 {credits, number}",
+      "left": "剩余 <n></n>",
+      "always": "在此对话中始终允许",
+      "addCredits": "添加积分",
       "names": {
         "thread": "对话",
         "collection": "合集",
@@ -3818,8 +3834,35 @@
         "role": "权限",
         "name": "名称",
         "title": "标题",
-        "model": "模型"
+        "model": "模型",
+        "search": "搜索",
+        "screening": "筛选",
+        "papers": "论文",
+        "first": "从第几篇",
+        "last": "到第几篇",
+        "question": "问题",
+        "saveTo": "纳入的论文存入",
+        "prune": "排除的论文移出"
       }
+    },
+    "topUp": {
+      "title": "添加积分",
+      "detail": "无需离开对话",
+      "short": "积分，<s>还差 {need, number}</s>",
+      "enough": "积分",
+      "added": "已添加 {credits, number} 积分",
+      "waiting": "正在对话中等待",
+      "upTo": "最多 {credits, number} 积分",
+      "buy": "以 {price} 添加 {credits, number} 积分",
+      "plans": "查看方案",
+      "note": "助手在使用积分前仍会询问。",
+      "failed": "无法添加积分"
+    },
+    "allowance": {
+      "any": "已允许使用积分",
+      "upTo": "每项任务最多 {cap, number}",
+      "stop": "使用积分前再次询问",
+      "failed": "无法更改"
     }
   }
 }

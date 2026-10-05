@@ -170,10 +170,10 @@ export const get = query({
     /** Jobs that spend credits run without asking: the most one may hold, null being any amount. Null when each one asks. */
     allowance: v.union(v.null(), v.object({ cap: v.union(v.number(), v.null()) })),
     /**
-     * What the chats the person starts begin with, null being no limit; absent until they choose.
-     * A chat whose limit this equals is one new chats take theirs from: changing it there changes this.
+     * What the chats the person starts begin with; absent until they choose. A chat whose limits
+     * these equal is one new chats take theirs from: changing them there changes these.
      */
-    newChats: v.optional(v.union(v.number(), v.null())),
+    newChats: v.optional(v.object({ replyLimit: v.union(v.number(), v.null()), allowance: v.union(v.null(), v.object({ cap: v.union(v.number(), v.null()) })) })),
     /** What their last replies cost, oldest first. */
     recent: recentCostsValidator,
   }),
@@ -182,7 +182,7 @@ export const get = query({
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);
     const [limit, spender] = await Promise.all([limitOf(ctx, threadId, userId), spenderOf(ctx, userId)]);
-    return { replyLimit: limit?.replyLimit ?? null, allowance: limit?.jobs ? { cap: limit.jobs.cap ?? null } : null, ...(spender?.newChats === undefined ? {} : { newChats: spender.newChats.replyLimit ?? null }), recent: (spender?.recent ?? []).map((entry) => entry.credits) };
+    return { replyLimit: limit?.replyLimit ?? null, allowance: limit?.jobs ? { cap: limit.jobs.cap ?? null } : null, ...(spender?.newChats === undefined ? {} : { newChats: { replyLimit: spender.newChats.replyLimit ?? null, allowance: spender.newChats.jobs ? { cap: spender.newChats.jobs.cap ?? null } : null } }), recent: (spender?.recent ?? []).map((entry) => entry.credits) };
   },
 });
 
