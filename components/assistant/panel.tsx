@@ -144,7 +144,8 @@ function Overlay({
   const [focused, setFocused] = useState(false);
   const clock = useRef<OrbitClock>(null);
   const working = sending || (live !== null && !live.asking && !live.stopping);
-  const resting: OrbitMotion = focused ? "listening" : "idle";
+  // The box that was typed in goes with the panel when it folds, by the button or the shortcut, and tells no one it lost the keyboard.
+  const resting: OrbitMotion = focused && open ? "listening" : "idle";
   const orbit: OrbitMotion = sending ? "thinking"
     : activity.phase === "waiting" ? "listening"
     : activity.phase === "stopping" || activity.phase === "stopped" || activity.phase === "failed" ? "still"
