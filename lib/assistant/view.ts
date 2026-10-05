@@ -81,4 +81,5 @@ export function viewOf(address: string): string | null {
  * from when it was trained. Without the chat's ID, "share this chat" made it look through
  * the person's chats for one with a matching title.
  */
-export const notePart = ({ page, today, chat }: { page?: string; today: string; chat: string }) => `<app_context>${page === undefined ? "" : `page: ${page}; `}today: ${today}; chat: ${chat}</app_context>`;
+export const notePart = ({ page, today, chat, undone }: { page?: string; today: string; chat: string; /** Changes of the assistant's undone with Undo since the last message. */ undone?: string[] }) =>
+  `<app_context>${page === undefined ? "" : `page: ${page}; `}today: ${today}; chat: ${chat}${undone?.length ? `; undone: ${undone.join(" | ")}` : ""}</app_context>`;

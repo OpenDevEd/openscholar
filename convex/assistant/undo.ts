@@ -11,6 +11,7 @@ import { mutation } from "../lib/functions";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { assistantPath } from "../lib/userActions";
 import { requireThread } from "./access";
+import { UNDONE_TOLD } from "./validators";
 
 export const run = mutation({
   args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps") },
@@ -18,7 +19,7 @@ export const run = mutation({
   handler: async (ctx, { threadId, stepId }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, "assistant.enabled", userId);
-    await requireThread(ctx, userId, threadId);
+    const { thread } = await requireThread(ctx, userId, threadId);
     const step = await ctx.db.get("assistantSteps", stepId);
     if (!step || step.threadId !== threadId) throw createError("NOT_FOUND", "That step isn't in this chat.");
     // It changed that person's records, and the undo would act on whoever runs it.
@@ -29,6 +30,9 @@ export const run = mutation({
     // The reversing action refuses on its own when the record has changed since (its `expect`).
     await ctx.runMutation(makeFunctionReference<"mutation">(assistantPath(entry.path)), { ...JSON.parse(step.undo.args), ...(entry.retryKey ? { [entry.retryKey]: `undo:${stepId}` } : {}), userId, approved: true });
     await ctx.db.patch("assistantSteps", stepId, { undone: true });
+    // The assistant is told with the next message (./replies.ts): what the change was, how many it made, and what it was about.
+    const what = [step.variant ? `${step.path}#${step.variant}` : step.path, step.batch === undefined ? null : `${step.count ?? step.batch} changes`, step.subject].filter(Boolean).join(", ");
+    await ctx.db.patch("assistantThreads", threadId, { undone: [...(thread.undone ?? []), what].slice(-UNDONE_TOLD) });
     return null;
   },
 });

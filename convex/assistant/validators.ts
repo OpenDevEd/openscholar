@@ -99,6 +99,8 @@ export const assistantSpenderFields = {
 /** What a person's last replies cost, oldest first, as the Spending sheet reads them. */
 export const recentCostsValidator = capped(v.array(v.number()), RECENT_REPLIES);
 
+/** Undone changes one message's note tells the model of: the latest. */
+export const UNDONE_TOLD = 10;
 export const assistantThreadFields = {
   ownerId: v.id("users"),
   title: v.string(),
@@ -125,6 +127,12 @@ export const assistantThreadFields = {
    * doesn't say it again while the model still reads that one.
    */
   view: v.optional(v.object({ address: v.optional(v.string()), day: v.optional(v.string()), userId: v.id("users"), order: v.number() })),
+  /**
+   * Changes of the assistant's that someone took back with Undo since the chat's last message,
+   * each as the action it was and what it was about. The next message's note tells the model:
+   * it only knows what its own calls came to, and made an undone change again when it found it gone.
+   */
+  undone: capped(v.optional(v.array(v.string())), UNDONE_TOLD),
   createdAt: v.number(),
   updatedAt: v.number(),
 };

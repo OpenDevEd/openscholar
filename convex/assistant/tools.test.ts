@@ -311,6 +311,9 @@ describe("the assistant's tools", () => {
       .mockImplementationOnce(finishingDoStream(["Saved ten."]));
     await say("Save these twelve");
     expect(await saved()).toHaveLength(22);
+    // The model is told, with this message, that she took the removal back: it only knows what its own calls came to.
+    expect(JSON.stringify((requests[2] as Sent).at(-1))).toContain("undone: library/mutations:removeFromLibrary, 12 changes</app_context>");
+    expect((await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.undone).toBeUndefined();
     const refused = Array.from({ length: 11 }, (_, i) => told(3, `s${i}`)).filter((value) => (value as { error?: string }).error === BULK_FIRST);
     expect(refused).toHaveLength(1);
     expect(told(4, "later")).toEqual({ error: BULK_FIRST });

@@ -131,9 +131,13 @@ export const send = mutation({
     const { messageId, message } = await assistant.saveMessage(ctx, {
       threadId: thread.agentThreadId,
       userId,
-      ...(moved ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: notePart({ page: view ?? undefined, today, chat: threadId }) }] } } : { prompt: text }),
+      // What was undone since the last message goes with this one, whether or not the place changed.
+      ...(moved || thread.undone?.length
+        ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: notePart({ page: view ?? undefined, today, chat: threadId, undone: thread.undone }) }] } }
+        : { prompt: text }),
       skipEmbeddings: true,
     });
+    if (thread.undone?.length) await ctx.db.patch("assistantThreads", threadId, { undone: undefined });
     const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
     await touchThread(ctx, threadId, now);
     // What the sender lets a reply spend here, if they set a limit (./spending.ts). Taken with the message, like its model.
