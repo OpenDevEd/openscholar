@@ -5,6 +5,7 @@
 import { v } from "convex/values";
 import { effortValidator } from "../aiModelConfig/validators";
 import { capped } from "../lib/listCaps";
+import { MENTION_KINDS } from "../../lib/assistant/mentions";
 
 /** What someone may do in a chat: the owner also shares, renames and deletes it; `write` sends messages; `read` only reads. */
 export const assistantRoleValidator = v.union(v.literal("owner"), v.literal("write"), v.literal("read"));
@@ -230,3 +231,11 @@ export const assistantMembersValidator = capped(v.array(v.object({ userId: v.id(
 
 /** Someone a chat's owner could share it with: one of their organizations, or a person in one. */
 export const assistantCandidateValidator = v.object({ principal: assistantPrincipalValidator, name: v.string(), email: v.optional(v.string()) });
+
+/** Records of each kind @ finds at once (./mentions.ts); the picker shows six. */
+export const MENTIONS_EACH = 4;
+/** What @ in the composer can point at: the ID its own tools take, and a search's results or a collection's papers. */
+export const mentionablesValidator = capped(
+  v.array(v.object({ kind: v.union(...MENTION_KINDS.map((kind) => v.literal(kind))), id: v.string(), label: v.string(), count: v.optional(v.number()) })),
+  MENTIONS_EACH * MENTION_KINDS.length,
+);

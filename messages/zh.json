@@ -3427,7 +3427,7 @@
     "newChat": "新对话",
     "emptyTitle": "在这里随便问",
     "emptyBody": "我可以查看你的检索、文献库、合集、筛选和提取，创建和修改检索并读取其结果，并为你保存、评分和归类论文。我还不能启动任务。",
-    "placeholder": "向助手提问",
+    "placeholder": "提问，或输入 @ 指定某项内容",
     "readOnly": "你可以阅读此对话，但不能在其中发言",
     "messageLabel": "给助手发消息",
     "sees": "可见{view}",
@@ -3958,6 +3958,13 @@
       "upTo": "每项任务最多 {cap, number}",
       "stop": "使用积分前再次询问",
       "failed": "无法更改"
+    },
+    "mentions": {
+      "label": "指定某项内容",
+      "none": "你的账户中没有与“{query}”匹配的内容",
+      "search": "搜索，{count, plural, other {# 条结果}}",
+      "collection": "合集，{count, plural, other {# 篇论文}}",
+      "paper": "已保存的论文"
     }
   }
 }

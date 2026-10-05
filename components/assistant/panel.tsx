@@ -2,8 +2,8 @@
 
 // The research assistant (#324, #346): a panel that hovers above every page of the app
 // and folds into a launcher. The mock on branch mock/research-assistant is its spec.
-// This is the chat itself. The run map, the cards, the sheets, the @ picker and the
-// spending controls arrive with the issues that build what they show.
+// This is the chat itself. The run map, the cards, the sheets and the spending controls
+// arrive with the issues that build what they show; the @ picker is ./mentions.tsx.
 
 import { Component, useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
@@ -33,6 +33,8 @@ import type { Effort } from "@/lib/ai/core/call-options";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
 import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { titleFrom } from "@/lib/assistant/title";
+import { withTokens, type Mention } from "@/lib/assistant/mentions";
+import { MentionComposer, MessageText } from "./mentions";
 import { inApp } from "@/lib/assistant/view";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
@@ -70,7 +72,16 @@ const NEW = "new";
 const LOOP_MS = 2_000;
 
 /** What is typed and not yet sent, a draft per chat, so one chat's never lands in another. */
-type Drafts = { of: (id: ThreadId | null) => string; set: (id: ThreadId | null, text: string | ((now: string) => string)) => void; adopt: (id: ThreadId) => void };
+type Drafts = {
+  of: (id: ThreadId | null) => string;
+  set: (id: ThreadId | null, text: string | ((now: string) => string)) => void;
+  adopt: (id: ThreadId) => void;
+  /** The records picked with @ in a chat's draft (./mentions.tsx). */
+  picks: (id: ThreadId | null) => Mention[];
+  pick: (id: ThreadId | null, mention: Mention) => void;
+};
+/** Records a chat's draft keeps picked, the latest. */
+const MENTIONS_KEPT = 20;
 
 const setOpen = (update: (open: boolean) => boolean) => panelPlace.set((now) => ({ ...now, open: update(now.open) }));
 const setThreadId = (threadId: ThreadId | null) => panelPlace.set((now) => ({ ...now, threadId }));
@@ -83,12 +94,20 @@ export function AssistantPanel() {
   const place = useSyncExternalStore(panelPlace.subscribe, panelPlace.get, panelPlace.onServer);
   // Kept here, above the panel, so folding it away keeps what was typed.
   const [typed, setTyped] = useState<Record<string, string>>({});
+  const [picked, setPicked] = useState<Record<string, Mention[]>>({});
   if (!enabled || !canRunProtectedQueries) return null;
   const drafts: Drafts = {
     of: (id) => typed[id ?? NEW] ?? "",
     set: (id, text) => setTyped((all) => ({ ...all, [id ?? NEW]: typeof text === "function" ? text(all[id ?? NEW] ?? "") : text })),
     // What was typed before the chat existed goes with it into the chat it became: one made to share it or to set its limits, with its first message still in the box.
-    adopt: (id) => setTyped(({ [NEW]: text, ...rest }) => (text ? { ...rest, [id]: rest[id] || text } : rest)),
+    adopt: (id) => {
+      setTyped(({ [NEW]: text, ...rest }) => (text ? { ...rest, [id]: rest[id] || text } : rest));
+      setPicked(({ [NEW]: mine, ...rest }) => (mine ? { ...rest, [id]: [...(rest[id] ?? []), ...mine] } : rest));
+    },
+    picks: (id) => picked[id ?? NEW] ?? [],
+    // A chat keeps the records picked in it, so a draft put back after a failed send still draws them.
+    pick: (id, mention) =>
+      setPicked((all) => ({ ...all, [id ?? NEW]: [...(all[id ?? NEW] ?? []).filter((m) => m.kind !== mention.kind || m.id !== mention.id), mention].slice(-MENTIONS_KEPT) })),
   };
   return (
     <Lost onLost={() => setThreadId(null)}>
@@ -432,8 +451,10 @@ function Chat({
     return making.current;
   };
   const send = async () => {
-    const text = draft.trim();
-    if (!text || busy || !canWrite) return;
+    const typed = draft.trim();
+    if (!typed || busy || !canWrite) return;
+    // Each record picked with @ goes as its token, which the model reads its ID from.
+    const text = withTokens(typed, drafts.picks(threadId));
     const from = threadId;
     drafts.set(from, "");
     // This send's own mark, so that finishing it doesn't clear a later one in another chat.
@@ -443,7 +464,7 @@ function Chat({
     // The chat the message ends up in: a new chat has its ID once it's made.
     let into = from;
     const sent = (async () => {
-      const id = await started(titleFrom(text));
+      const id = await started(titleFrom(typed));
       into = id;
       const before = mine;
       mine = { threadId: id };
@@ -458,7 +479,7 @@ function Chat({
       await sent;
     } catch (error) {
       // The message goes back in the box of its chat, unless something new was typed there meanwhile.
-      drafts.set(into, (now) => now || text);
+      drafts.set(into, (now) => now || typed);
       setFirst(null);
       toast.error(t("sendFailed"), getErrorMessage(error, ""));
     } finally {
@@ -512,7 +533,7 @@ function Chat({
         // An open chat's first page is still on its way, unless it's the chat this message just started.
         older={threadId && status === "LoadingFirstPage" && !sent.length ? "first" : status === "CanLoadMore" ? () => loadMore(FIRST_MESSAGES) : status === "LoadingMore" ? "loading" : null}
       />
-      <Footer composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel}
+      <Footer composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} picked={drafts.picks(threadId)} onPick={(mention) => drafts.pick(threadId, mention)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel}
         meter={meter}
         allowance={spending?.allowance ?? null}
         onStopAllowance={() => (threadId ? void setAllowance({ threadId, allowance: null }).catch((error) => toast.error(t("allowance.failed"), getErrorMessage(error, ""))) : undefined)}
@@ -756,7 +777,9 @@ function UserBubble({ message }: { message: Message }) {
       className="ml-10 self-end"
     >
       {!message.mine && message.sender?.name ? <p className="mb-1 pr-1 text-right text-2xs text-muted-foreground">{message.sender.name}</p> : null}
-      <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-primary/10 px-4 py-2.5 text-sm leading-6">{message.text}</div>
+      <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-primary/10 px-4 py-2.5 text-sm leading-6">
+        <MessageText text={message.text} />
+      </div>
     </motion.div>
   );
 }
@@ -917,6 +940,8 @@ function Footer({
   composer,
   draft,
   setDraft,
+  picked,
+  onPick,
   busy,
   summarizing,
   canWrite,
@@ -935,6 +960,8 @@ function Footer({
   composer: RefObject<HTMLTextAreaElement | null>;
   draft: string;
   setDraft: (text: string) => void;
+  picked: readonly Mention[];
+  onPick: (mention: Mention) => void;
   /** A reply is being written, here or for someone else in the chat. */
   busy: boolean;
   /** The reply is written and the chat is summarizing itself before it takes the next message: the box says so. */
@@ -996,23 +1023,16 @@ function Footer({
         </div>
       </div>
       <div className="rounded-2xl border border-border/60 bg-background shadow-xs focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
-        <textarea
-          ref={composer}
-          value={draft}
+        <MentionComposer
+          composer={composer}
+          draft={draft}
+          setDraft={setDraft}
+          picked={picked}
+          onPick={onPick}
+          onSend={onSend}
+          onFocusChange={onComposerFocus}
           disabled={!canWrite}
-          onChange={(e) => setDraft(e.target.value)}
-          onFocus={() => onComposerFocus(true)}
-          onBlur={() => onComposerFocus(false)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              onSend();
-            }
-          }}
-          rows={2}
           placeholder={!canWrite ? t("readOnly") : summarizing ? t("summarizing") : t("placeholder")}
-          aria-label={t("messageLabel")}
-          className="relative block w-full resize-none bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground"
         />
         <div className="flex items-center gap-2 px-2 pb-2">
           <span className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground">
