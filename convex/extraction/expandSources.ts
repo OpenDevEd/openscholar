@@ -257,7 +257,9 @@ export function dedupeExpandedSources(
       title: item.paper.title,
       year: item.paper.publicationYear,
     });
-    if (!deduped.has(key)) {
+    // An Included snapshot keeps the screened metadata and decision provenance.
+    const existing = deduped.get(key);
+    if (!existing || (item.sourceType === "screening" && existing.sourceType !== "screening")) {
       deduped.set(key, item);
     }
   }

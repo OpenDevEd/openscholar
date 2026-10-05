@@ -96,10 +96,13 @@ export const startJobAction = defineUserMutation({
 
     // Shared: bucket validation + source persistence.
     if (args.bucketItems.length > PAPER_LIMIT) throw createError("VALIDATION_ERROR", `An extraction can hold up to ${PAPER_LIMIT} sources.`);
-    const deduped = dedupeBucketItems(args.bucketItems);
+    const deduped = dedupeBucketItems(args.bucketItems.map(item => item.source === "screening" && item.screeningSelection
+      ? { ...item, bucketKey: `screening:${item.screeningSelection.jobId}` }
+      : item));
     for (const item of deduped) {
       if (item.source !== "screening") continue;
-      if (args.mode !== "extraction" || !item.screeningSelection) {
+      if (args.mode !== "extraction") throw createError("VALIDATION_ERROR", "Screening sources are only available for extraction. Remove this source to start a chat.");
+      if (!item.screeningSelection) {
         throw createError("VALIDATION_ERROR", "Select a screening job and its decision revision for extraction.");
       }
       const selection = item.screeningSelection;

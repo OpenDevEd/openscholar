@@ -7,11 +7,12 @@ beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
 describe("extraction from Included screening papers", () => {
-  it("saves server metadata and the decision revision, deduplicates overlaps and freezes existing input through exclusion and undo", async () => {
+  it.each([false, true])("saves screening metadata and revision through overlaps, exclusion and undo, library first: %s", async (libraryFirst) => {
     const { t, as, userId, jobId, selection, start, snapshot, papers } = await screeningInputs();
     const libraryId = await t.run(ctx => ctx.db.insert("libraryItems", { userId, openalexId: "https://openalex.org/W0", title: "Separately saved paper", rating: 4, searchableText: "saved paper", savedAt: 1, updatedAt: 1 }));
     const source = await selection();
-    const first = await start([source, { source: "library", bucketKey: "library:W0", sourceRefId: libraryId, title: "Overlap", authors: [] }]);
+    const inputs = [source, { source: "library" as const, bucketKey: "library:W0", sourceRefId: libraryId, title: "Overlap", authors: [] }];
+    const first = await start(libraryFirst ? inputs.reverse() : inputs);
     expect(await snapshot(first.jobId)).toMatchObject({ totalPapers: 2, processableCount: 2 });
     const frozen = await papers(first.jobId);
     expect(frozen.map(p => p.openalexId)).toEqual(["https://openalex.org/W0", "https://openalex.org/W1"]);
@@ -69,5 +70,21 @@ describe("extraction from Included screening papers", () => {
     });
     await expect(full.start()).rejects.toThrow(/includes 1001/);
     expect(await full.t.run(ctx => ctx.db.query("extractionJobs").take(1))).toEqual([]);
+  });
+
+  it("counts one screening once even if a caller supplies different bucket keys", async () => {
+    const { t, selection, start } = await screeningInputs(600);
+    const source = await selection();
+    const created = await start([{ ...source, bucketKey: "a" }, { ...source, bucketKey: "b" }]);
+    const sources = await t.run(ctx => ctx.db.query("extractionJobSources").withIndex("by_job_and_position", q => q.eq("jobId", created.jobId)).take(3));
+    expect(sources).toHaveLength(1);
+    expect(sources[0].screeningSelection?.count).toBe(600);
+  });
+
+  it("refuses capture while a screening is processing", async () => {
+    const { t, jobId, start } = await screeningInputs();
+    await t.run(ctx => ctx.db.patch("screeningJobs", jobId, { status: "processing" }));
+    await expect(start()).rejects.toThrow(/still processing/);
+    expect(await t.run(ctx => ctx.db.query("extractionJobs").take(1))).toEqual([]);
   });
 });
