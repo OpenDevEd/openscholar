@@ -821,27 +821,42 @@ describe("the assistant's tools", () => {
     expect((await asAda.query(api.assistant.spending.get, { threadId })).recent).toEqual([paid]);
   });
 
-  it("hold a reply that asked with its limit already reached until it's carried on, whatever the answer", async () => {
+  it.each([true, false])("hold a reply that asked with its limit already reached until it's carried on, when the answer is %s", async (allow) => {
     const t = convexTest(schema);
-    const { asAda, threadId, thread, steps, settled } = await chatOf(t);
+    const { ada, asAda, threadId, thread, steps, settled } = await chatOf(t);
     const other = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
     await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
     mockDoStream
       .mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } }))
-      .mockImplementationOnce(finishingDoStream(["Deleted."]));
+      .mockImplementationOnce(finishingDoStream(["Done."]));
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Delete my old chat" });
     await waitFor(async () => (await thread())?.asking !== undefined, { timeoutMs: 5_000 });
-    // The request that asked cost what she allowed. Saying yes to the action isn't saying yes to more credits.
-    expect((await thread())!.asking!.spent).toBeGreaterThanOrEqual(1);
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: true });
+    // The request that asked cost what she allowed, as she was charged for it.
+    const paid = (await t.run(async (ctx) => ctx.db.query("billingUsage").collect())).filter((charge) => charge.userId === ada).reduce((sum, charge) => sum + charge.credits, 0);
+    expect((await thread())!.asking!.spent).toBe(paid);
+    expect(paid).toBeGreaterThanOrEqual(1);
+    // As many replies of hers as one person has at once are being written elsewhere. Her answer is still taken: it starts none.
+    await t.run(async (ctx) => {
+      for (let n = 0; n < ASSISTANT_REPLIES_AT_ONCE; n++) {
+        const scheduledId = await ctx.scheduler.runAfter(60_000, internal.assistant.replies.sweep, {});
+        await ctx.db.insert("assistantThreads", { ownerId: ada, title: "Busy", agentThreadId: `busy${n}`, lastMessageAt: 1, createdAt: 1, updatedAt: 1, reply: { attemptId: `busy${n}`, senderId: ada, order: 0, startedAt: 1, scheduledId } });
+      }
+    });
+    // Answering the question isn't agreeing to more credits: the reply waits to be carried on, with the answer kept.
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow });
     expect(await thread()).toMatchObject({ asking: { paused: "credits" } });
     expect((await thread())?.reply).toBeUndefined();
     expect(requests).toHaveLength(1);
     expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).not.toBeNull();
-    // Carried on, it runs what she allowed and answers.
+    // Carrying it on does start one, so it waits its turn.
+    await expect(asAda.mutation(api.assistant.replies.carryOn, { threadId })).rejects.toThrow(/already writing/);
+    await t.run(async (ctx) => {
+      for (const busy of await ctx.db.query("assistantThreads").collect()) if (busy.title === "Busy") await ctx.db.delete("assistantThreads", busy._id);
+    });
+    // Carried on, it runs what she allowed, or is told she didn't allow it, and answers.
     await asAda.mutation(api.assistant.replies.carryOn, { threadId });
     await settled();
-    expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).toBeNull();
+    expect((await t.run(async (ctx) => ctx.db.get("assistantThreads", other))) === null).toBe(allow);
     expect(requests).toHaveLength(2);
   });
 

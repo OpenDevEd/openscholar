@@ -240,6 +240,32 @@ describe("what the assistant's model is sent", () => {
     expect(texts.filter((text) => text === CARRY_ON)).toHaveLength(1);
   });
 
+  it("is summarized before a reply asks about a spending limit it has reached, with the summary's cost counted", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, threadId, say, thread } = await chatOf(t);
+    await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
+    // The reply's first request reads a lot and calls an action, so it is due a summary and has more to do, past her limit.
+    mockDoStream
+      .mockImplementationOnce(callingDoStream({ id: "first", name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } }, read: COMPACT_AT_TOKENS + 1 }))
+      .mockImplementationOnce(finishingDoStream(["Answer"]));
+    mockDoGenerate.mockImplementation(summaryOf("Decisions\nNone."));
+    await say("Question");
+    // The summary is written, the reply stands in the exchange it carries on in, and what it has spent counts the summary.
+    const charged = (await t.run(async (ctx) => ctx.db.query("billingUsage").collect())).filter((charge) => charge.userId === ada);
+    expect(charged.map((charge) => charge.description)).toEqual(["Chat message", "Conversation summary"]);
+    expect(await thread()).toMatchObject({
+      summary: expect.stringContaining("Decisions"),
+      compactedThrough: 0,
+      asking: { paused: "credits", order: 1, spent: charged.reduce((sum, charge) => sum + charge.credits, 0) },
+    });
+    expect(requests).toHaveLength(2);
+    // Carried on, it answers from the summary.
+    await asAda.mutation(api.assistant.replies.carryOn, { threadId });
+    await waitFor(async () => !(await thread())?.reply && !(await thread())?.asking, { timeoutMs: 5_000 });
+    const { page } = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
+    expect(page[0]).toMatchObject({ role: "assistant", text: "Answer", status: "done" });
+  });
+
   it("owes a summary a reply couldn't write partway, lets the reply go on as it was, and stops owing it once one is written", async () => {
     const t = convexTest(schema);
     const { say, thread } = await chatOf(t);

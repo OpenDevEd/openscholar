@@ -140,7 +140,8 @@ export function compactionDue(reply: { lastInputTokens: number; window?: number;
  * own model, reading the same instructions, summary and history its last reply read, so
  * the provider serves them from cache. It has its own hold and its own line in the usage
  * ledger, charged to the person whose reply made it due. Returns what it cost with it: a
- * summary written while a reply is under way counts towards what the reply has spent.
+ * summary written while a reply is under way counts towards what the reply has spent. One
+ * the model left empty was charged too, and comes back empty for its caller to refuse.
  */
 export async function summarize(
   ctx: ActionCtx,
@@ -190,9 +191,7 @@ export async function summarize(
       usage: { kind: "chat", description: "Conversation summary", model: modelSlug, ...tokenDetails(usage), costUsd: usd },
     });
     settled = true;
-    const summary = result.text.trim();
-    if (!summary) throw new Error("The model wrote an empty summary.");
-    return { summary, credits };
+    return { summary: result.text.trim(), credits };
   } finally {
     await stopPolling();
     if (!settled) await releaseCredits(ctx, { userId: args.senderId, chargeId: args.chargeId }).catch(() => {});

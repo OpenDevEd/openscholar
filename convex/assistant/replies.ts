@@ -169,15 +169,15 @@ export const answer = mutation({
     // It would run with their access, on their records, so the answer is theirs alone.
     if (step.userId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can allow this.");
     const left = (await stepsAt(ctx, threadId, "asking")).filter((other) => other._id !== stepId);
+    // It asked with its limit already reached: the last answer starts nothing, and the reply waits to be carried on.
+    const paused = left.length ? null : pausedAt(waiting);
     // The answer that lets the reply carry on starts a reply, so it's held to how many a person has at once, before anything changes.
-    if (!left.length) await admit(ctx, waiting.senderId);
+    if (!left.length && !paused) await admit(ctx, waiting.senderId);
     if (allow) await ctx.db.patch("assistantSteps", stepId, { status: "allowed" });
     else await declineSteps(ctx, [step]);
     // Calls it asked about together are answered one by one. The reply carries on after the last.
     if (left.length) return null;
-    // It asked with its limit already reached. The answers are kept, and it waits to be carried on before it runs them:
-    // answering a question isn't agreeing to spend more.
-    const paused = pausedAt(waiting);
+    // The answers are kept, and it runs what was allowed once it's carried on: answering a question isn't agreeing to spend more.
     if (paused) {
       await ctx.db.patch("assistantThreads", threadId, { asking: { ...waiting, paused } });
       return null;
@@ -464,7 +464,8 @@ export const release = internalMutation({
       if (!current.stop && compactionDue({ ...ended, window })) {
         const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, through: current.order, lastInputTokens, resume: from });
         // Owed from here until a summary is kept, so one that is stopped, or whose action dies, is written by the next reply.
-        await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true } });
+        // The lock holds what the reply has cost so far, for its sender's record if the compaction's action dies.
+        await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true, spent: next.spent } });
         return null;
       }
       // It waits to be carried on, as a reply that asked about an action waits for its answer.
@@ -486,7 +487,8 @@ export const release = internalMutation({
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
       const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, through: current.order, lastInputTokens });
       // Owed from here until a summary is kept, so one whose action dies is written by the next reply.
-      await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true } });
+      // The reply's cost is recorded above: the lock holds none of it, so it isn't recorded again if this action dies.
+      await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true, spent: 0 } });
       return null;
     }
     await ctx.db.patch("assistantThreads", threadId, { reply: undefined, ...preview });

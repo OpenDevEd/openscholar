@@ -65,10 +65,11 @@ export const reply = internalAction({
       try {
         const through = read.answering - 1;
         const { summary, credits } = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:before:${used.rounds}:summary`, shouldStop });
+        // What it cost counts towards what the reply has spent, written or not.
+        used = { ...used, credits: used.credits + credits };
+        if (!summary) throw new Error("The model wrote an empty summary.");
         await ctx.runMutation(internal.assistant.replies.summarized, { ...lock, summary, through });
         read = { ...read, summary, compactedThrough: through, owed: false };
-        // What it cost counts towards what the reply has spent.
-        used = { ...used, credits: used.credits + credits };
       } catch (error) {
         // Still owed. The reply goes ahead if the conversation can be read whole, and fails saying so if it can't.
         console.error("[assistant] owed compaction failed", { threadId, error: errorToLogString(error) });
@@ -187,9 +188,10 @@ export const compact = internalAction({
     } catch (error) {
       console.error("[assistant] compaction failed", { threadId, error: errorToLogString(error) });
     }
-    // One written while the reply is under way counts towards what the reply has spent.
+    if (written && !written.summary) console.error("[assistant] compaction failed", { threadId, error: "The model wrote an empty summary." });
+    // One made while the reply is under way counts towards what the reply has spent, whether or not it was written.
     const from = resume && written ? { ...resume, used: { ...resume.used, credits: resume.used.credits + written.credits } } : resume;
-    await ctx.runMutation(internal.assistant.replies.release, { ...lock, ...(written ? { summarized: { summary: written.summary, through } } : {}), ...(from ? { resume: from } : {}) });
+    await ctx.runMutation(internal.assistant.replies.release, { ...lock, ...(written?.summary ? { summarized: { summary: written.summary, through } } : {}), ...(from ? { resume: from } : {}) });
     return null;
   },
 });
