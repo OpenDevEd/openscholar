@@ -466,6 +466,9 @@
     "chatSourcesUpdatedDividerDescription": "之前的助手引用为历史引用。",
     "jobs": "任务",
     "exportResults": "导出结果",
+    "exportChanged": "导出期间结果发生了变化。请在处理完成后重试。",
+    "excelCellLimit": "某个字段超过了 Excel 的 32,767 字符限制。请选择 CSV 或 JSON 以保留完整文本。",
+    "excelRowLimit": "引用证据超过了 Excel 的 1,048,576 行限制。请选择 CSV 或 JSON 以保留所有引用。",
     "exportDescription": "为 {label} 选择导出格式和选项",
     "exportFormat": "导出格式",
     "csvLabel": "CSV（Excel 兼容）",
@@ -1574,6 +1577,7 @@
     "nStar": "{count} 星"
   },
   "pagination": {
+    "currentPage": "第 {page} 页",
     "perPage": "每页 {count} 条",
     "showingRange": "显示第 {start}-{end} 条，共 {total} 篇论文",
     "filteredFrom": "（从 {total} 篇中筛选）",

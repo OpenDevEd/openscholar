@@ -466,6 +466,9 @@
     "chatSourcesUpdatedDividerDescription": "以前のアシスタント引用は履歴として扱われます。",
     "jobs": "ジョブ",
     "exportResults": "結果をエクスポート",
+    "exportChanged": "エクスポート中に結果が変更されました。処理が完了してから再試行してください。",
+    "excelCellLimit": "Excelの1セルあたり32,767文字の上限を超える項目があります。全文を保存するにはCSVまたはJSONを選んでください。",
+    "excelRowLimit": "引用がExcelの1,048,576行の上限を超えています。すべての引用を保存するにはCSVまたはJSONを選んでください。",
     "exportDescription": "{label} のエクスポート形式とオプションを選択",
     "exportFormat": "エクスポート形式",
     "csvLabel": "CSV（Excel対応）",
@@ -1574,6 +1577,7 @@
     "nStar": "{count} つ星"
   },
   "pagination": {
+    "currentPage": "ページ {page}",
     "perPage": "1ページあたり {count} 件",
     "showingRange": "{total} 論文中 {start}-{end} 件を表示",
     "filteredFrom": "（{total} 件からフィルター）",

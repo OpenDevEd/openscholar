@@ -466,6 +466,9 @@
     "chatSourcesUpdatedDividerDescription": "पहले के सहायक उद्धरण ऐतिहासिक हैं।",
     "jobs": "जॉब्स",
     "exportResults": "परिणाम निर्यात करें",
+    "exportChanged": "निर्यात के दौरान परिणाम बदल गए। प्रक्रिया पूरी होने के बाद फिर से प्रयास करें।",
+    "excelCellLimit": "एक फ़ील्ड Excel की 32,767 वर्ण सीमा से बड़ी है। पूरा पाठ रखने के लिए CSV या JSON चुनें।",
+    "excelRowLimit": "साक्ष्य Excel की 1,048,576 पंक्तियों की सीमा से अधिक हैं। सभी उद्धरण रखने के लिए CSV या JSON चुनें।",
     "exportDescription": "{label} के लिए निर्यात प्रारूप और विकल्प चुनें",
     "exportFormat": "निर्यात प्रारूप",
     "csvLabel": "CSV (Excel-संगत)",
@@ -1574,6 +1577,7 @@
     "nStar": "{count} स्टार"
   },
   "pagination": {
+    "currentPage": "पृष्ठ {page}",
     "perPage": "{count} प्रति पेज",
     "showingRange": "{total} पेपर में से {start}-{end} दिखा रहे हैं",
     "filteredFrom": "({total} से फ़िल्टर किया गया)",

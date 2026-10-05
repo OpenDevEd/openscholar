@@ -50,7 +50,6 @@ export function SmartPagination({
 }: SmartPaginationProps) {
   const t = useTranslations('pagination');
   const endIdx = offset + displayedCount;
-  const pageCount = Math.max(currentPage, Math.ceil(filteredCount / pageSize));
 
   return (
     <div className={cn("flex flex-col items-center justify-between gap-3 border-t border-border-subtle px-4 py-3 sm:flex-row md:px-6", stale && "pointer-events-none opacity-60")}>
@@ -71,7 +70,7 @@ export function SmartPagination({
             <span className="sr-only">{t("previousPage")}</span>
           </Button>
           <span className="min-w-16 text-center text-xs tabular-nums text-muted-foreground">
-            {currentPage} / {pageCount}
+            {t("currentPage", { page: currentPage })}
           </span>
           <Button variant="outline" size="icon" className="size-8" onClick={onNext} disabled={!canNext}>
             <ChevronRight className="h-4 w-4" />

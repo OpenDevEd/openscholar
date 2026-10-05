@@ -16,7 +16,7 @@ export async function foldCounts(t: ReturnType<typeof convexTest>) {
   }
 }
 
-const nonZero = (counts: Counts) => JSON.stringify(Object.fromEntries(Object.entries(counts).filter(([, n]) => n !== 0).sort()));
+const nonZero = (counts: Counts) => JSON.stringify(Object.fromEntries(Object.entries(counts).filter(([key, n]) => key !== "exportRevision" && n !== 0).sort()));
 
 /**
  * The jobs whose counts row, with the changes still waiting for the worker, differs from a

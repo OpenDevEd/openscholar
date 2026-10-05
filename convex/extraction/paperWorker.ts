@@ -232,6 +232,8 @@ async function runQuestionBatch(
     {
       paperId: context.paper._id,
       expectedEpoch,
+      model: modelSlug,
+      provider: "openrouter",
       completed: completed.map(toCompletedQuestionBatchWrite),
       failed: failed.map((outcome) => ({
         questionKey: outcome.questionKey,

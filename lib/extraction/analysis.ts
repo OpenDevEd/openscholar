@@ -133,7 +133,7 @@ export function normalizeArrayEntity(value: string): string {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ")
-    .replace(/[^\w\s%.-]/g, "");
+    .replace(/[^\p{L}\p{N}\p{M}_\s%.-]/gu, "");
 }
 
 /** @deprecated kept as alias — use `normalizeArrayEntity`. */

@@ -466,6 +466,9 @@
     "chatSourcesUpdatedDividerDescription": "Les citations précédentes de l'assistant sont historiques.",
     "jobs": "tâches",
     "exportResults": "Exporter les résultats",
+    "exportChanged": "Les résultats ont changé pendant l’exportation. Réessayez une fois le traitement terminé.",
+    "excelCellLimit": "Un champ dépasse la limite de 32 767 caractères d’Excel. Choisissez CSV ou JSON pour conserver le texte complet.",
+    "excelRowLimit": "Les citations dépassent la limite de 1 048 576 lignes d’Excel. Choisissez CSV ou JSON pour toutes les conserver.",
     "exportDescription": "Choisissez le format d'exportation et les options pour {label}",
     "exportFormat": "Format d'exportation",
     "csvLabel": "CSV (compatible Excel)",
@@ -1574,6 +1577,7 @@
     "nStar": "{count} étoile"
   },
   "pagination": {
+    "currentPage": "Page {page}",
     "perPage": "{count} par page",
     "showingRange": "Affichage de {start}-{end} sur {total} articles",
     "filteredFrom": "(filtré depuis {total})",
