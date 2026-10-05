@@ -34,7 +34,7 @@ import { getErrorMessage, useAppToast } from "@/lib/toast";
 import type { SearchResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { jobName } from "./job-view";
-import { ANSWER, AnimatedNumber, Chip, Meter, SOURCE_ICON } from "./parts";
+import { ANSWER, AnimatedNumber, Chip, ClippedChip, Meter, SOURCE_ICON } from "./parts";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
 const TINT = {
@@ -600,11 +600,7 @@ export function SetupView({
           <div className="flex flex-wrap items-center gap-1.5">
             {slots ? <Chip icon={Gauge}>{t("atATime", { limit: slots.limit })}</Chip> : null}
             {waitingFor ? (
-              <Chip icon={Hourglass} className="max-w-56">
-                <TooltipHint label={t("after", { name: waitingFor })} onlyWhenClipped>
-                  <span className="truncate">{t("after", { name: waitingFor })}</span>
-                </TooltipHint>
-              </Chip>
+              <ClippedChip icon={Hourglass} className="max-w-56">{t("after", { name: waitingFor })}</ClippedChip>
             ) : null}
           </div>
           {/* A search's papers can cost less than the estimate: its page's answers are reused and its rating filter drops papers. The server checks what's left. */}
