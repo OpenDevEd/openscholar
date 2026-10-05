@@ -3419,7 +3419,7 @@
     "newChat": "New chat",
     "emptyTitle": "Ask about anything here",
     "emptyBody": "I can look through your searches, library, collections, screenings and extractions, make and change searches and read their results, and save, rate and collect papers for you. I can't start a job yet.",
-    "placeholder": "Ask the assistant",
+    "placeholder": "Ask, or type @ to point at something",
     "readOnly": "You can read this chat, but not write in it",
     "messageLabel": "Message the assistant",
     "sees": "Sees {view}",
@@ -3894,6 +3894,11 @@
         "did": "Undid a bulk change",
         "where": "Your account",
         "ask": "Undo a bulk change"
+      },
+      "findRecords": {
+        "doing": "Finding it in your account",
+        "did": "Found it in your account",
+        "where": "Your account"
       }
     },
     "asks": {
@@ -3950,6 +3955,18 @@
       "upTo": "Up to {cap, number} a job",
       "stop": "Ask before spending credits again",
       "failed": "Couldn't change it"
+    },
+    "mentions": {
+      "label": "Point at something",
+      "none": "Nothing in your account matches “{query}”",
+      "search": "Search, {count, plural, one {# result} other {# results}}",
+      "collection": "Collection, {count, plural, one {# paper} other {# papers}}",
+      "paper": "Saved paper",
+      "kinds": {
+        "search": "search",
+        "collection": "collection",
+        "paper": "saved paper"
+      }
     }
   }
 }

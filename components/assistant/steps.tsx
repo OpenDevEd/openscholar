@@ -27,7 +27,7 @@ type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][nu
 export type StepItem = Extract<Item, { role: "step" }>;
 
 /** One tint per kind of work, the way the model map gives each provider one. */
-const KIND = {
+export const KIND = {
   search: { icon: Search, tint: "#60a5fa" },
   paper: { icon: FileText, tint: "#eab308" },
   collection: { icon: FolderPlus, tint: "#2dd4bf" },
@@ -44,17 +44,17 @@ const GUTTER = 36;
 const ORIGIN = 28;
 
 /** A tinted icon square; the tile of the model cards, one size down. */
-export function KindTile({ kind, working }: { kind: Kind; working?: boolean }) {
+export function KindTile({ kind, size = "md", working }: { kind: Kind; size?: "sm" | "md"; working?: boolean }) {
   const { icon: Icon, tint } = KIND[kind];
   const reduceMotion = useReducedMotion();
   return (
     <motion.span
       animate={working && !reduceMotion ? { scale: [1, 1.08, 1] } : { scale: 1 }}
       transition={working ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.2 }}
-      className="flex size-9 shrink-0 items-center justify-center rounded-xl"
+      className={cn("flex shrink-0 items-center justify-center", size === "sm" ? "size-5 rounded-md" : "size-9 rounded-xl")}
       style={{ backgroundColor: `color-mix(in oklab, ${tint} 18%, transparent)`, color: tint }}
     >
-      <Icon className="size-4" />
+      <Icon className={size === "sm" ? "size-3" : "size-4"} />
     </motion.span>
   );
 }
