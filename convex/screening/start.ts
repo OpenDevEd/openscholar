@@ -6,7 +6,7 @@ import { assistantAction, defineUserAction, userAction } from "../lib/userAction
 import { createError, readConvexErrorData } from "../lib/errors";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { heldPapers } from "../paperSets/held";
-import { countSearch, searchSnapshotValidator, type SearchSnapshot } from "../paperSets/openalex";
+import { countSearch, PAGE_SIZE, searchSnapshotValidator, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest } from "../paperSets/search";
 import { screeningHold } from "./estimate";
 import { paperSetValidator, saveToValidator, screeningQuestionValidator, screeningScoringConfigValidator } from "./validators";
@@ -22,8 +22,16 @@ type Config = { questions: Infer<typeof jobArgs.questions>; scoringConfig: Infer
 /** Papers one count of already-answered papers reads (`screening/queries:answeredCount`). */
 const ANSWERED_CHUNK = 250;
 
-/** The last paper of the job that starts at `first`, in a request that ends at `through`. */
-const jobEnd = (first: number, through: number) => Math.min(through, first + MAX_SCREENING_PAPERS_PER_JOB - 1);
+/**
+ * The last paper of the job that starts at `first`, in a request that ends at `through`. A
+ * search's job that another follows (`paged`) ends with one of the search's pages, so the next
+ * starts on a new page: OpenAlex can return a page in another order when it's asked for again,
+ * and taking up partway through one would then skip papers or repeat them.
+ */
+const jobEnd = (first: number, through: number, paged = false) => {
+  const most = first + MAX_SCREENING_PAPERS_PER_JOB - 1;
+  return through <= most ? through : paged ? Math.floor(most / PAGE_SIZE) * PAGE_SIZE : most;
+};
 
 /**
  * What the job for a request's papers from `first` takes: its papers, in the set's fixed
@@ -35,13 +43,13 @@ const jobEnd = (first: number, through: number) => Math.min(through, first + MAX
  * the papers its page already answers is counted too, for the credit check.
  */
 async function jobPapers(ctx: ActionCtx, userId: Id<"users">, { set, first, through, resume, snapshot }: { set: PaperSet; first: number; through: number; resume?: string; snapshot?: SearchSnapshot }, questions: Config["questions"]) {
-  const last = jobEnd(first, through);
+  const last = jobEnd(first, through, set.kind === "search");
   if (set.kind !== "search") {
     const read = await heldPapers(ctx, userId, set, { first, last }, resume);
     return { papers: read.papers, ended: !read.resume, range: { set, first, last, ...(through > last && read.resume ? { through, resume: read.resume } : {}) } };
   }
   const searchId = set.searchId;
-  const { papers, ended, snapshot: taken } = await searchPapers(ctx, userId, { searchId, first, last }, snapshot);
+  const { papers, ended, snapshot: taken, resume: after } = await searchPapers(ctx, userId, { searchId, first, last }, snapshot, { resume, goesOn: through > last });
   let answered = 0;
   const asked = questions.map((q) => q.question);
   for (let from = 0; from < papers.length; from += ANSWERED_CHUNK) {
@@ -50,7 +58,7 @@ async function jobPapers(ctx: ActionCtx, userId: Id<"users">, { set, first, thro
     const count: number = await ctx.runQuery(internal.screening.queries.answeredCount, { userId, searchId, questions: asked, paperIds });
     answered += count;
   }
-  return { papers, ended, range: { set, first, last, answered, snapshot: taken, ...(through > last && !ended ? { through } : {}) } };
+  return { papers, ended, range: { set, first, last, answered, snapshot: taken, ...(through > last && !ended ? { through, resume: after } : {}) } };
 }
 
 /**
@@ -75,7 +83,7 @@ async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assi
     if (first > total) throw createError("VALIDATION_ERROR", "There are no papers in that range");
     // No further than the search goes: papers past its last are never asked for.
     const end = Math.min(through, total);
-    const last = jobEnd(first, end);
+    const last = jobEnd(first, end, true);
     return await ctx.runMutation(internal.screening.mutations.openScreeningJob, {
       userId, author, set, first, last, snapshot, ...config,
       papers: last - first + 1,
@@ -110,16 +118,19 @@ export const read = internalAction({
   returns: v.null(),
   handler: async (ctx, { jobId, userId, searchId, first, through, questions, snapshot }) => {
     try {
-      for (let from = first; from <= through; from = jobEnd(from, through) + 1) {
-        const { papers, ended, range } = await jobPapers(ctx, userId, { set: { kind: "search", searchId }, first: from, through, snapshot }, questions);
+      // Where the stretch before stopped, once one has been read.
+      let resume: string | undefined;
+      for (let from = first; from <= through; from = jobEnd(from, through, true) + 1) {
+        const { papers, ended, range } = await jobPapers(ctx, userId, { set: { kind: "search", searchId }, first: from, through, snapshot, resume }, questions);
         if (papers.length) {
-          await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, first: range.first, last: range.last, answered: "answered" in range ? range.answered : 0, ...("through" in range ? { through: range.through } : {}) });
+          await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, first: range.first, last: range.last, answered: "answered" in range ? range.answered : 0, ...("through" in range ? { through: range.through, resume: range.resume } : {}) });
           return null;
         }
         if (ended) break;
         // Cancelled meanwhile: the stretches after this one aren't read for nothing.
         const waits: boolean = await ctx.runQuery(internal.screening.queries.awaitsPapers, { jobId });
         if (!waits) return null;
+        resume = range.resume;
       }
       throw createError("VALIDATION_ERROR", "None of these papers match the search's rating filter");
     } catch (error) {
@@ -172,17 +183,19 @@ export const screenForAssistant = assistantAction(screenAction);
  * next one's place.
  */
 export const next = internalAction({
-  args: { jobId: v.id("screeningJobs"), first: v.number() },
+  // `resume`: where a stretch with no papers stopped, when the job is looked for past one.
+  args: { jobId: v.id("screeningJobs"), first: v.number(), resume: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx, { jobId, first }) => {
+  handler: async (ctx, { jobId, first, resume: past }) => {
     const job = await ctx.runQuery(internal.screening.queries.requestJob, { jobId });
     if (!job) return null;
-    const { userId, set, through, resume, snapshot, label, ...config } = job;
-    const last = jobEnd(first, through);
+    const { userId, set, through, resume: left, snapshot, label, ...config } = job;
+    const resume = past ?? left;
+    const last = jobEnd(first, through, set.kind === "search");
     try {
       const { papers, ended, range } = await jobPapers(ctx, userId, { set, first, through, resume, snapshot }, config.questions);
       if (papers.length) await ctx.runMutation(internal.screening.mutations.createScreeningJobForUser, { userId, author: "user", papers, chained: true, ...range, ...config });
-      else if (!ended && through > last) await ctx.scheduler.runAfter(0, internal.screening.start.next, { jobId, first: last + 1 });
+      else if (!ended && through > last) await ctx.scheduler.runAfter(0, internal.screening.start.next, { jobId, first: last + 1, ...(range.resume ? { resume: range.resume } : {}) });
     } catch (error) {
       console.error(`[screening] The job after ${jobId} couldn't start`, error);
       const { questions, scoringConfig } = config;
