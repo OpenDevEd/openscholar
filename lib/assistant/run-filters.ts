@@ -1,4 +1,4 @@
-import type { FilterParams } from "@/lib/filters";
+import { countActiveFilters, type FilterParams } from "@/lib/filters";
 
 /**
  * Settings that make one chip between them: a year or date range with the switches that say
@@ -9,32 +9,32 @@ const GROUPS: Array<Array<keyof FilterParams>> = [
   ["yearRange", "dateRange", "filterType", "isYearRangeEnabled"],
   ["ratingRange", "onlyRatedPapers"],
 ];
-
-/** Switches that make no chip of their own: they only say which range is on. */
-const SWITCHES = new Set<keyof FilterParams>(["filterType", "isYearRangeEnabled"]);
+/** Settings whose order means something: a range's two ends. Every other list is a set of picks. */
+const RANGES = new Set<keyof FilterParams>(["yearRange", "ratingRange"]);
 
 type Search = FilterParams & { query: string };
+
+/** A setting as it's compared: a list of picks in any order is the same list. */
+const compared = (key: keyof FilterParams, value: unknown) => (Array.isArray(value) && !RANGES.has(key) ? [...value].map(String).sort() : (value ?? null));
 
 /**
  * What tells a run of searches apart, for a line each: whether they all ran the same query, and
  * each one's settings that aren't the same in all of them. A setting every search shares says
- * nothing about one of them, so it's left to the search's card. None for a search that differs
- * only by leaving out what the others set.
+ * nothing about one of them, so it's left to the search's card. None for a search whose own
+ * differing settings make no chip: it leaves out what the others set, or keeps a default.
  */
 export function differences(searches: Search[]): { sameQuery: boolean; filters: Array<FilterParams | undefined> } {
-  const keys = [...new Set(searches.flatMap((search) => Object.keys(search) as Array<keyof Search>))].filter((key) => key !== "query");
+  const keys = [...new Set(searches.flatMap((search) => Object.keys(search) as Array<keyof Search>))].filter((key): key is keyof FilterParams => key !== "query");
   const grouped = new Set(GROUPS.flat());
-  const groups = [...GROUPS, ...keys.filter((key) => !grouped.has(key as keyof FilterParams)).map((key) => [key as keyof FilterParams])];
-  const shown = (group: Array<keyof FilterParams>) => searches.map((search) => JSON.stringify(group.map((key) => search[key] ?? null)));
+  const groups = [...GROUPS, ...keys.filter((key) => !grouped.has(key)).map((key) => [key])];
+  const shown = (group: Array<keyof FilterParams>) => searches.map((search) => JSON.stringify(group.map((key) => compared(key, search[key]))));
   const differing = groups.filter((group) => new Set(shown(group)).size > 1).flat();
   return {
     sameQuery: new Set(searches.map((search) => search.query.trim())).size === 1,
     filters: searches.map((search) => {
-      const own = differing.filter((key) => !unset(search[key]));
-      return own.some((key) => !SWITCHES.has(key)) ? (Object.fromEntries(own.map((key) => [key, search[key]])) as FilterParams) : undefined;
+      const own = Object.fromEntries(differing.map((key) => [key, search[key]])) as FilterParams;
+      // The chips' own builder says whether any would show.
+      return countActiveFilters(own) > 0 ? own : undefined;
     }),
   };
 }
-
-/** A setting left at nothing: no chip comes of it. */
-const unset = (value: unknown) => value === undefined || value === null || value === false || value === "" || (Array.isArray(value) && !value.length);

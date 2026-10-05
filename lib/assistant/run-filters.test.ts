@@ -28,4 +28,13 @@ describe("what tells a run of searches apart", () => {
     // A switch alone makes no chip, so a line with only that says its query instead.
     expect(differences([{ query: "x", filterType: "date" }, { query: "x", filterType: "year" }]).filters).toEqual([undefined, undefined]);
   });
+
+  it("gives a search kept at a default no chips, keeps an inactive range inactive, and reads picks in any order as the same", () => {
+    // Searched in titles against the default fields: only the title search has a chip.
+    expect(differences([{ query: "x", field: "title" }, { query: "x", field: "title_and_abstract" }]).filters).toEqual([{ field: "title" }, undefined]);
+    // A rating range with "rated only" off is no filter, whatever its ends.
+    expect(differences([{ query: "x", ratingRange: [2, 5], onlyRatedPapers: false }, { query: "x" }]).filters).toEqual([undefined, undefined]);
+    // The same countries in another order are no difference: only the citation minimum tells them apart.
+    expect(differences([{ query: "x", selectedCountryFocus: ["KE", "GH"], minCitations: 5 }, { query: "x", selectedCountryFocus: ["GH", "KE"] }]).filters).toEqual([{ minCitations: 5 }, undefined]);
+  });
 });
