@@ -42,8 +42,9 @@ export function FocusMode({
   onDownloadItem,
   onDownloadEssentialItem,
 }: FocusModeProps) {
-  const { focusModeIndex: currentIndex, setFocusModeIndex: setCurrentIndex } =
-    useUIStore();
+  const { focusModeIndex, setFocusModeIndex: setCurrentIndex } = useUIStore();
+  // One paper, such as one a chat names, is read on its own: the index the page's list keeps is for that list.
+  const currentIndex = papers.length === 1 ? 0 : focusModeIndex;
   const [showSettings, setShowSettings] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(
     null
