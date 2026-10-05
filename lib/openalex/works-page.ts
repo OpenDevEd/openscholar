@@ -1,4 +1,5 @@
 import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
+import { openAlexHeaders } from "./request-url";
 import type { SearchParameters, Works } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { withinTimeLimit } from "./time-limit";
 import { worksPageSchema } from "./work-schema";
@@ -42,7 +43,7 @@ async function askWithRetries(url: URL, signal: AbortSignal): Promise<Response |
   for (let attempt = 1; ; attempt++) {
     let response: Response;
     try {
-      response = await fetch(url, { signal });
+      response = await fetch(url, { signal, headers: openAlexHeaders(url) });
     } catch (error) {
       if (!signal.aborted) console.error("Works request failed:", error);
       return null;

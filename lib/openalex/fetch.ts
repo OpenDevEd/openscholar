@@ -1,3 +1,5 @@
+import { openAlexHeaders } from "./request-url";
+
 /** How long a search or a count may take before it fails, as the results page's reads do. */
 export const OPENALEX_TIMEOUT_MS = 12_000;
 /** Times a request OpenAlex throttles is made in all. */
@@ -13,11 +15,13 @@ const RETRY_SPREAD_MS = 300;
  * search on OpenScholar's key, whoever sent that one, so spacing one's own requests doesn't
  * prevent it. OpenAlex says how long to wait: 1 s for that limit. Measured on 2026-10-05,
  * five pages of a 19-operator search all refused at once came back within three tries each.
- * Each try gets its own `timeoutMs`.
+ * Each try gets its own `timeoutMs`. A request to the OpenScholar API carries Access's service token.
  */
 export async function openAlexFetch(url: URL | string, { timeoutMs, ...init }: RequestInit & { timeoutMs?: number } = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  for (const [name, value] of Object.entries(openAlexHeaders(url))) headers.set(name, value);
   for (let tries = 1; ; tries += 1) {
-    const response = await fetch(url, { ...init, ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}) });
+    const response = await fetch(url, { ...init, headers, ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}) });
     const wait = Number(response.headers.get("retry-after"));
     if (response.status !== 429 || tries === TRIES || !(wait <= RETRY_WAIT_MAX_S)) return response;
     await response.body?.cancel();

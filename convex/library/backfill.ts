@@ -3,7 +3,7 @@
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { openAlexUrl } from "../../lib/openalex/request-url";
+import { openAlexUrl, openAlexHeaders } from "../../lib/openalex/request-url";
 import { shortWorkId } from "../../lib/openalex/work-id";
 
 const BATCH_SIZE = 25;
@@ -39,7 +39,8 @@ export const backfillPaperData = internalAction({
           ? item.openalexId.split("/").pop()!
           : item.openalexId;
 
-        const response = await fetch(openAlexUrl(`works/${workId}`));
+        const workUrl = openAlexUrl(`works/${workId}`);
+        const response = await fetch(workUrl, { headers: openAlexHeaders(workUrl) });
 
         if (!response.ok) {
           console.warn(

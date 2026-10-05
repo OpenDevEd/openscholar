@@ -3,6 +3,7 @@ import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/uti
 import type { SearchParameters } from "@sickrin/openalex-sdk/dist/src/types/work";
 import type { PaperResult } from "@/lib/types/search.types";
 import { workSchema } from "./work-schema";
+import { openAlexHeaders } from "./request-url";
 import { worksUrl } from "./works-url";
 
 /** A cursor page of works, each checked as the search checks its own, SDG scores included. */
@@ -17,7 +18,7 @@ const responseSchema = z.object({
  */
 export async function readOpenAlexWorks(parameters: SearchParameters & {cursor: string}) {
   const url = worksUrl(parameters, { cursor: parameters.cursor, "per-page": String(parameters.perPage ?? 10) });
-  const response = await fetch(url, {signal: AbortSignal.timeout(12000), next: {revalidate: 60}});
+  const response = await fetch(url, {signal: AbortSignal.timeout(12000), next: {revalidate: 60}, headers: openAlexHeaders(url)});
   if (!response.ok) throw new Error(`OpenAlex publications unavailable: ${response.status}`);
   const parsed = responseSchema.parse(await response.json());
   return {
