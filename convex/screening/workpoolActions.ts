@@ -30,6 +30,8 @@ type ScreeningActionResult = {
   confidence: number;
   // What the paper cost in credits; none when the model wasn't asked.
   credits?: number;
+  // The paper wasn't read: its job had spent what it may by the time it came up.
+  capped?: boolean;
 };
 
 /**
@@ -55,6 +57,7 @@ export const screenPaperAction = internalAction({
     confidences: v.record(v.string(), v.number()),
     confidence: v.number(),
     credits: v.optional(v.number()),
+    capped: v.optional(v.boolean()),
   }),
   handler: async (ctx, args): Promise<ScreeningActionResult> => {
     const emptyResult: ScreeningActionResult = {
@@ -78,6 +81,14 @@ export const screenPaperAction = internalAction({
         `[screenPaperAction] Job ${args.jobId} is ${job.status}, skipping paper ${args.resultId}`
       );
       return emptyResult;
+    }
+
+    // A job the assistant started with the person's say reads no more papers once the ones counted have cost what
+    // they approved (#328). Its papers start only while it has room for them at the estimate (./slots.ts), so this
+    // stops one whose papers cost more than that: those already being read finish and are kept, the rest aren't read.
+    if (job.spendCap !== undefined && (job.capped || (job.spent ?? 0) >= job.spendCap)) {
+      if (!job.capped) await ctx.runMutation(internal.screening.mutations.capScreeningJob, { jobId: args.jobId });
+      return { ...emptyResult, capped: true };
     }
 
     // 3. Idempotency guard: skip if already completed (prevents double-billing on retry)
