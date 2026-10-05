@@ -61,8 +61,9 @@ const jobSetup = {
   // Missing: included papers are saved to the library alone, as jobs from before the screening page were.
   saveTo: v.optional(saveToValidator),
   prune: v.optional(v.boolean()),
-  // The most it may spend, when the assistant starts it with the person's say (#328).
+  // The most it may spend, when the assistant starts it with the person's say (#328), and the hold that figure is kept in.
   spendCap: v.optional(v.number()),
+  spendHold: v.optional(v.string()),
 };
 type JobSetup = ObjectType<typeof jobSetup>;
 
@@ -151,8 +152,8 @@ export const createScreeningJobForUser = internalMutation({
     if (papers.length > MAX_SCREENING_PAPERS_PER_JOB) {
       throw createError("VALIDATION_ERROR", `Cannot screen more than ${MAX_SCREENING_PAPERS_PER_JOB} papers per job`);
     }
-    // Papers the search's page already answered keep their answers and cost nothing.
-    const { affordable, estimate, available } = await affords(ctx, user._id, papers.length - answered);
+    // Papers the search's page already answered keep their answers and cost nothing. A job with a hold has its credits already: the balance is what the hold left.
+    const { affordable, estimate, available } = setup.spendHold ? { affordable: true, estimate: 0, available: 0 } : await affords(ctx, user._id, papers.length - answered);
     if (!affordable && !chained) {
       throw createError("INSUFFICIENT_CREDITS", `Need ~${estimate} credits for ${papers.length} papers but only have ${available}`);
     }
@@ -212,7 +213,7 @@ export const fillScreeningJob = internalMutation({
     if (!reading?.reading || reading.status !== "processing") return null;
     // The person may have been suspended while the papers were read.
     await requireActiveUser(ctx, reading.userId);
-    const { affordable } = await affords(ctx, reading.userId, papers.length - answered);
+    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.userId, papers.length - answered)).affordable;
     const now = Date.now();
     const made = affordable && reading.newCollection ? { targetCollectionId: await newCollection(ctx, reading.userId, reading.newCollection), newCollection: undefined } : {};
     await ctx.db.patch("screeningJobs", jobId, { reading: undefined, totalPapers: papers.length, first, last, through, resume, updatedAt: now, ...made, ...(affordable ? {} : { status: "creditsExhausted" as const }) });

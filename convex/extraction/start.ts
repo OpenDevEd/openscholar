@@ -13,7 +13,7 @@ import { createError } from "../lib/errors";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { extractionStamp } from "../ai/serverModel";
 import { getFlag } from "../featureFlags/guard";
-import { holdSpend } from "../billing/charge";
+import { startHeld } from "../billing/charge";
 import { heldPapers } from "../paperSets/held";
 import { filtersOf } from "../paperSets/search";
 import { screeningRevision } from "../screening/accounting";
@@ -42,8 +42,6 @@ const RUNNING_CHECK_MS = 15_000;
 const RUNNING_WAIT_MS = 12 * 60_000;
 /** How long after its last paper stopped being read a job's hold is settled: the paper's cost is recorded a moment after its row says it's done. */
 const SETTLE_AFTER_MS = 30_000;
-/** How long after a hold request that never answered its hold is settled: longer than the request can still be on its way. */
-const UNANSWERED_HOLD_MS = 5 * 60_000;
 
 const invalid = (message: string) => createError("VALIDATION_ERROR", message);
 
@@ -189,8 +187,7 @@ export const settleHold = internalMutation({
 
 /**
  * Reads the set's sources and starts the job. With the figure the person approved, it is
- * held first: a balance that can't cover it starts nothing, and a job that can't start
- * gives it back.
+ * held first (billing/charge.ts `startHeld`).
  */
 async function start(ctx: ActionCtx, userId: Id<"users">, { name, questions, usePdfs, ...range }: { name: string; set: PaperSet; first: number; last: number; questions: Array<Infer<typeof askedValidator>>; usePdfs?: boolean }, cap?: number): Promise<{ jobId: Id<"extractionJobs"> }> {
   if (!questions.length) throw invalid("Give at least one question to answer for each paper.");
@@ -200,20 +197,7 @@ async function start(ctx: ActionCtx, userId: Id<"users">, { name, questions, use
   // What was approved is what the job holds now, or more: the papers or the model may have changed since the person was asked, and a job that holds more than they said yes to is asked about again.
   const now: number = await ctx.runQuery(internal.extraction.start.figure, { userId, name, questions, ...(usePdfs === undefined ? {} : { usePdfs }), ...range });
   if (now > cap) throw invalid(`This extraction now holds up to ${Math.ceil(now).toLocaleString("en")} credits, more than the ${cap.toLocaleString("en")} approved: its papers or the model it runs on changed since. Call it again, and the person is asked with the new figure.`);
-  const hold = `extraction-job:${crypto.randomUUID()}`;
-  const held = await holdSpend(ctx, { userId, chargeId: hold, credits: cap }).catch(async (error) => {
-    // Autumn may have taken the hold and not answered, or may yet take it: it is settled a few minutes on, with nothing spent under it, once that request has ended either way.
-    await ctx.runMutation(internal.billing.charge.laterSpent, { chargeId: hold, attempt: 0, delay: UNANSWERED_HOLD_MS });
-    throw error;
-  });
-  if (!held) throw createError("INSUFFICIENT_CREDITS", `This extraction holds up to ${cap.toLocaleString("en")} credits, more than the balance has.`);
-  try {
-    return await ctx.runMutation(internal.extraction.start.begin, { ...job, spend: { hold, cap } });
-  } catch (error) {
-    // Given back by a function that tries again if Autumn doesn't answer: there's no job to settle it.
-    await ctx.scheduler.runAfter(0, internal.billing.charge.releaseLock, { userId, chargeId: hold, attempt: 0 });
-    throw error;
-  }
+  return await startHeld(ctx, { userId, credits: cap, kind: "extraction" }, (hold) => ctx.runMutation(internal.extraction.start.begin, { ...job, spend: { hold, cap } }));
 }
 
 export const extractAction = defineUserAction({
