@@ -19,7 +19,7 @@ import client from "@/lib/openalex";
 import { createSearchParameters } from "@/lib/utils";
 import type { SearchFilters } from "@/lib/types";
 import { OQL_FIELD, worksOql } from "./oql";
-import { openAlexFetch } from "./fetch";
+import { OPENALEX_TIMEOUT_MS, openAlexFetch } from "./fetch";
 import { fetchOqlWorks } from "./oql-works";
 import { openAlexUrl } from "./request-url";
 import type { OpenAlexWorksQuery } from "./search-params";
@@ -58,7 +58,7 @@ async function fetchOpenAlexQueryCount(
     if (!result.ok) throw new Error(`OpenAlex API error: ${result.message}`);
     return { count: result.data.meta.count };
   }
-  const response = await openAlexFetch(openAlexUrl("works", { filter: query.filter || undefined, search: query.search || undefined, "per-page": "1", select: "id" }));
+  const response = await openAlexFetch(openAlexUrl("works", { filter: query.filter || undefined, search: query.search || undefined, "per-page": "1", select: "id" }), { timeoutMs: OPENALEX_TIMEOUT_MS });
   if (!response.ok) throw new Error(`OpenAlex API error: ${response.status}`);
   const body = (await response.json()) as { meta: { count: number } };
   return { count: body.meta.count };
@@ -68,6 +68,7 @@ async function fetchOpenAlexQueryCount(
  * How far apart a list's counts are asked for: OpenAlex refuses searches with more than 5
  * boolean operators that arrive together. Measured on 2026-10-05, five counts of one were
  * refused 3 times in 5 at once and 1 time in 15 at 0.1 s apart, which the retry takes up.
+ * Counts overlap, so each has a timeout: a list never waits on OpenAlex for longer than one.
  */
 const COUNT_GAP_MS = 100;
 
