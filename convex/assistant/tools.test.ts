@@ -1018,9 +1018,11 @@ describe("the assistant's tools", () => {
       await ctx.db.insert("assistantSteps", { ...step, input: JSON.stringify({ requestId: "r1", command: { kind: "rating", paperId: "W1", rating: 5 } }) });
       // Arguments too long to keep whole were cut, and don't parse: the step still shows, as the action alone.
       await ctx.db.insert("assistantSteps", { ...step, toolCallId: "cut", input: '{"requestId":"r2","command":{"kind":"createSea' });
+      // Into a collection and out of it are one action, told apart by which way the paper moved.
+      await ctx.db.insert("assistantSteps", { ...step, toolCallId: "out", path: "library/papers:collect", input: JSON.stringify({ id: "W1", collectionId: "c", inCollection: false }) });
     });
     const page = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.flatMap((item) => (item.role === "step" ? [item] : []));
-    expect(page.map((item) => [item.action, item.variant])).toEqual([["research/records:change", undefined], ["research/records:change", "rating"]]);
+    expect(page.map((item) => [item.action, item.variant])).toEqual([["library/papers:collect", "out"], ["research/records:change", undefined], ["research/records:change", "rating"]]);
   });
 
   it("give a call left without a result its result, however long the reply it's in ran", async () => {
