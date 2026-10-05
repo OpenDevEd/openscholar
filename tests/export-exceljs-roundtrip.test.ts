@@ -1,87 +1,84 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import ExcelJS from "exceljs";
+import { exportToExcel } from "../lib/extraction/export";
+import { exportJob, exportPapers, exportQuestions } from "./fixtures/extraction-export";
 
-describe('ExcelJS round-trip export', () => {
-  it('generates valid XLSX with correct Results sheet headers and data', async () => {
-    const mod = await import('exceljs');
-    const ExcelJSModule = 'default' in mod ? (mod as unknown as { default: typeof mod }).default : mod;
+let downloaded: Blob;
+const click = vi.fn();
+beforeEach(() => {
+  click.mockClear();
+  vi.stubGlobal("URL", { createObjectURL: (blob: Blob) => { downloaded = blob; return "blob:export"; }, revokeObjectURL: vi.fn() });
+  vi.stubGlobal("document", { createElement: () => ({ click }), body: { appendChild() {}, removeChild() {} } });
+});
+afterEach(() => vi.unstubAllGlobals());
 
-    // Generate workbook using same pattern as exportToExcel
-    const workbook = new ExcelJSModule.Workbook();
-    const resultsSheet = workbook.addWorksheet('Results');
-    resultsSheet.addRow(['Title', 'DOI', 'Year', 'Authors', 'Open Access', 'PDF Used']);
-    resultsSheet.addRow(['Test Paper One', '10.1234/test', 2024, 'Smith; Jones', 'Yes', 'No']);
-    resultsSheet.addRow(['Second Paper', '', 2023, '', 'No', 'Yes']);
+it("downloads the production workbook with complete results, evidence and job metadata", async () => {
+  await exportToExcel(exportPapers, exportQuestions, { job: exportJob });
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await downloaded.arrayBuffer());
+  const sheet = workbook.getWorksheet("Results")!;
+  const headers = sheet.getRow(1).values as string[];
+  const value = (name: string) => sheet.getRow(2).getCell(headers.indexOf(name)).value;
+  expect(sheet.rowCount).toBe(2);
+  expect(value("Paper ID")).toBe(exportPapers[0]._id);
+  expect(value("[zero] Reported outcome")).toBe(0);
+  expect(value("[zero] Reported outcome (Confidence)")).toBe(0);
+  expect(value("[zero] Reported outcome (Model confidence)")).toBe(0.95);
+  expect(value("[false] Reported outcome")).toBe("No");
+  expect(JSON.parse(String(value("[names] Languages")))).toEqual(exportPapers[0].results[2].answer);
+  const evidence = workbook.getWorksheet("Evidence")!;
+  expect(evidence.rowCount).toBe(2);
+  expect(evidence.getRow(2).values).toEqual([undefined, exportPapers[0]._id, "zero", "abstract", "abstract-fixture", "a".repeat(64), "", 0, 32, "No adverse events were reported."]);
+  expect(workbook.getWorksheet("Questions")!.rowCount).toBe(7);
+  expect(workbook.getWorksheet("Job")!.getRow(2).values).toContain(exportJob._id);
+  const summary = workbook.getWorksheet("Summary")!;
+  const summaryHeaders = summary.getRow(1).values as string[];
+  expect(summary.getRow(2).getCell(summaryHeaders.indexOf("Completed")).value).toBe(1);
+  expect(summary.getRow(2).getCell(summaryHeaders.indexOf("Average Confidence")).value).toBe(0);
+});
 
-    // Write to buffer and parse back
-    const buffer = await workbook.xlsx.writeBuffer();
-    const parsed = new ExcelJSModule.Workbook();
-    await parsed.xlsx.load(buffer);
+it("omits optional workbook contents and stops a canceled download after encoding", async () => {
+  await exportToExcel(exportPapers, exportQuestions, { job: exportJob, includeMetadata: false, includeConfidence: false, includeReasoning: false, includeCitations: false });
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await downloaded.arrayBuffer());
+  expect(workbook.getWorksheet("Evidence")).toBeUndefined();
+  const headers = workbook.getWorksheet("Results")!.getRow(1).values as string[];
+  expect(headers).not.toContain("Authors");
+  expect(headers.filter(h => /\((?:Confidence|Model confidence|Reasoning|Citations)\)$/.test(h))).toEqual([]);
+  click.mockClear();
+  const controller = new AbortController();
+  const pending = exportToExcel(exportPapers, exportQuestions, { signal: controller.signal });
+  controller.abort();
+  await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  expect(click).not.toHaveBeenCalled();
+});
 
-    // Assert Results sheet
-    const sheet = parsed.getWorksheet('Results');
-    expect(sheet).toBeDefined();
-    expect(sheet!.rowCount).toBe(3); // header + 2 data rows
+it("keeps long citation lists in the Evidence sheet instead of overflowing a Results cell", async () => {
+  const result = exportPapers[0].results[0];
+  const citations = Array.from({ length: 50 }, (_, i) => ({ ...result.citations[0], evidenceId: `evidence-${i}`, quote: "تعليم ".repeat(150) }));
+  const papers = [{ ...exportPapers[0], results: [{ ...result, citations }] }];
+  await exportToExcel(papers, [exportQuestions[0]]);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await downloaded.arrayBuffer());
+  const evidence = workbook.getWorksheet("Evidence")!;
+  expect(evidence.rowCount).toBe(51);
+  for (let i = 0; i < citations.length; i++) {
+    expect(evidence.getRow(i + 2).getCell(4).value).toBe(citations[i].evidenceId);
+    expect(evidence.getRow(i + 2).getCell(9).value).toBe(citations[i].quote);
+  }
+});
 
-    // Assert headers
-    const headerRow = sheet!.getRow(1);
-    expect(headerRow.getCell(1).value).toBe('Title');
-    expect(headerRow.getCell(2).value).toBe('DOI');
-    expect(headerRow.getCell(3).value).toBe('Year');
+it("refuses an oversized Excel field without downloading truncated text", async () => {
+  const papers = [{ ...exportPapers[0], title: "ع".repeat(32768) }];
+  await expect(exportToExcel(papers, exportQuestions)).rejects.toMatchObject({ code: "excelCellLimit" });
+  expect(click).not.toHaveBeenCalled();
+});
 
-    // Assert data row 1
-    const dataRow1 = sheet!.getRow(2);
-    expect(dataRow1.getCell(1).value).toBe('Test Paper One');
-    expect(dataRow1.getCell(2).value).toBe('10.1234/test');
-    expect(dataRow1.getCell(3).value).toBe(2024);
-    expect(dataRow1.getCell(4).value).toBe('Smith; Jones');
-
-    // Assert data row 2 (empty DOI should round-trip as null for empty string)
-    const dataRow2 = sheet!.getRow(3);
-    expect(dataRow2.getCell(1).value).toBe('Second Paper');
-    // Empty strings in ExcelJS may round-trip as null
-    expect(dataRow2.getCell(2).value).toBeOneOf(['', null]);
-    expect(dataRow2.getCell(3).value).toBe(2023);
-  });
-
-  it('generates valid Questions and Summary sheets', async () => {
-    const mod = await import('exceljs');
-    const ExcelJSModule = 'default' in mod ? (mod as unknown as { default: typeof mod }).default : mod;
-
-    const workbook = new ExcelJSModule.Workbook();
-
-    // Questions sheet
-    const questionsSheet = workbook.addWorksheet('Questions');
-    questionsSheet.addRow(['Key', 'Question', 'Type', 'Description']);
-    questionsSheet.addRow(['q1', 'What is the sample size?', 'number', 'Total participants']);
-
-    // Summary sheet
-    const summarySheet = workbook.addWorksheet('Summary');
-    summarySheet.addRow(['Question', 'Average Confidence', 'Completed', 'Total Papers', 'Completion Rate']);
-    summarySheet.addRow(['What is the sample size?', 0.85, 8, 10, '80%']);
-
-    // Write and parse back
-    const buffer = await workbook.xlsx.writeBuffer();
-    const parsed = new ExcelJSModule.Workbook();
-    await parsed.xlsx.load(buffer);
-
-    // Assert Questions sheet
-    const qSheet = parsed.getWorksheet('Questions');
-    expect(qSheet).toBeDefined();
-    expect(qSheet!.getRow(1).getCell(1).value).toBe('Key');
-    expect(qSheet!.getRow(2).getCell(1).value).toBe('q1');
-    expect(qSheet!.getRow(2).getCell(2).value).toBe('What is the sample size?');
-    expect(qSheet!.getRow(2).getCell(3).value).toBe('number');
-    expect(qSheet!.getRow(2).getCell(4).value).toBe('Total participants');
-
-    // Assert Summary sheet
-    const sSheet = parsed.getWorksheet('Summary');
-    expect(sSheet).toBeDefined();
-    expect(sSheet!.getRow(1).getCell(1).value).toBe('Question');
-    expect(sSheet!.getRow(1).getCell(2).value).toBe('Average Confidence');
-    expect(sSheet!.getRow(2).getCell(1).value).toBe('What is the sample size?');
-    expect(sSheet!.getRow(2).getCell(2).value).toBe(0.85);
-    expect(sSheet!.getRow(2).getCell(3).value).toBe(8);
-    expect(sSheet!.getRow(2).getCell(4).value).toBe(10);
-    expect(sSheet!.getRow(2).getCell(5).value).toBe('80%');
-  });
+it("refuses more evidence than an Excel sheet can hold before building the workbook", async () => {
+  const result = exportPapers[0].results[0];
+  const results = Array.from({ length: 21 }, (_, i) => ({ ...result, questionKey: `q${i}`, citations: Array(50).fill(result.citations[0]) }));
+  const questions = results.map(r => ({ ...exportQuestions[0], key: r.questionKey }));
+  const papers = Array(1000).fill({ ...exportPapers[0], results });
+  await expect(exportToExcel(papers, questions)).rejects.toMatchObject({ code: "excelRowLimit" });
+  expect(click).not.toHaveBeenCalled();
 });

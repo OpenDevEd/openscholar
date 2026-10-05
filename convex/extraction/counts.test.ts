@@ -7,6 +7,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { readJobCounters } from "./jobCounters";
 import { readResultCounts } from "./resultCounts";
+import { exportRevision } from "./counts";
 
 // The worker schedules its runs on whichever timers are active when counts change.
 beforeEach(() => vi.useFakeTimers());
@@ -23,6 +24,44 @@ const counts = (t: ReturnType<typeof convexTest>, jobId: Id<"extractionJobs">) =
   t.run(async (ctx) => ({ papers: await readJobCounters(ctx, jobId), results: await readResultCounts(ctx, jobId) }));
 
 describe("extraction counts", () => {
+  it("revises exported job data once without queueing the derived sort-name write", async () => {
+    const t = convexTest(schema);
+    const jobId = await seedJob(t, 0);
+    expect(await t.run(ctx => exportRevision(ctx, jobId))).toBe(0);
+    await t.run(ctx => ctx.db.patch(jobId, { name: "Renamed" }));
+    expect(await t.run(ctx => exportRevision(ctx, jobId))).toBe(1);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await t.run(ctx => exportRevision(ctx, jobId))).toBe(1);
+  });
+
+  it("does not queue export revisions for chat updates", async () => {
+    const t = convexTest(schema);
+    const extractionId = await seedJob(t, 0);
+    const chatId = await t.run(async ctx => {
+      const extraction = (await ctx.db.get(extractionId))!;
+      return ctx.db.insert("extractionJobs", { userId: extraction.userId, mode: "chat", name: "Chat", createdAt: 1, updatedAt: 1 });
+    });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    await t.run(ctx => ctx.db.patch(chatId, { name: "Updated chat" }));
+    expect(await t.run(ctx => ctx.db.query("extractionCountChanges").withIndex("by_job", q => q.eq("jobId", chatId)).collect())).toEqual([]);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await t.run(ctx => ctx.db.get(chatId)))?.status).toBeUndefined();
+  });
+
+  it("does not finish a job while source setup has not established its paper count", async () => {
+    const t = convexTest(schema);
+    const jobId = await seedJob(t, 0);
+    await t.run(async ctx => {
+      await ctx.db.patch("extractionJobs", jobId, { status: "pending" });
+      await ctx.db.insert("extractionQuestions", { jobId, key: "q1", question: "Reported outcome?", type: "string", order: 0, createdAt: 1 });
+    });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("pending");
+    await t.run(ctx => ctx.db.patch("extractionJobs", jobId, { status: "downloading_pdfs" }));
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.status).toBe("downloading_pdfs");
+  });
+
   it("are exact before the worker folds them and after, and the job finishes once from the fold", async () => {
     const t = convexTest(schema);
     const jobId = await seedJob(t, 2);

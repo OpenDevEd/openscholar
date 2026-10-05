@@ -466,6 +466,9 @@
     "chatSourcesUpdatedDividerDescription": "Les citations précédentes de l'assistant sont historiques.",
     "jobs": "tâches",
     "exportResults": "Exporter les résultats",
+    "exportChanged": "Les résultats ont changé pendant l’exportation. Réessayez une fois le traitement terminé.",
+    "excelCellLimit": "Un champ dépasse la limite de 32 767 caractères d’Excel. Choisissez CSV ou JSON pour conserver le texte complet.",
+    "excelRowLimit": "Les citations dépassent la limite de 1 048 576 lignes d’Excel. Choisissez CSV ou JSON pour toutes les conserver.",
     "exportDescription": "Choisissez le format d'exportation et les options pour {label}",
     "exportFormat": "Format d'exportation",
     "csvLabel": "CSV (compatible Excel)",
@@ -1574,6 +1577,7 @@
     "nStar": "{count} étoile"
   },
   "pagination": {
+    "currentPage": "Page {page}",
     "perPage": "{count} par page",
     "showingRange": "Affichage de {start}-{end} sur {total} articles",
     "filteredFrom": "(filtré depuis {total})",
@@ -3397,5 +3401,302 @@
     "source": "Indice d'intelligence par Artificial Analysis",
     "back": "Retour aux modèles",
     "default": "Par défaut"
+  },
+  "assistant": {
+    "label": "Assistant OpenScholar",
+    "open": "Ouvrir l'assistant",
+    "fold": "Replier l'assistant",
+    "foldHint": "Replier",
+    "foldIntoBubble": "Réduire en bulle",
+    "newChat": "Nouvelle discussion",
+    "emptyTitle": "Posez vos questions ici",
+    "emptyBody": "Je peux parcourir vos recherches, votre bibliothèque, vos collections, vos sélections et vos extractions, créer et modifier des recherches et lire leurs résultats, et enregistrer, noter et classer des articles pour vous. Je ne peux pas encore lancer une tâche.",
+    "placeholder": "Écrire à l'assistant",
+    "readOnly": "Vous pouvez lire cette discussion, mais pas y écrire",
+    "messageLabel": "Écrire à l'assistant",
+    "sees": "Voit {view}",
+    "views": {
+      "results": "Résultats de recherche",
+      "extractionJob": "Tâche d'extraction",
+      "librarySettings": "Paramètres de la bibliothèque",
+      "authors": "Auteurs",
+      "page": "cette page"
+    },
+    "send": "Envoyer",
+    "stop": "Arrêter",
+    "thinking": "Réflexion",
+    "summarizing": "Résumé de la conversation jusqu'ici",
+    "stopped": "Cette réponse a été arrêtée",
+    "failed": "La réponse ne s'est pas terminée. Renvoyez votre message pour réessayer.",
+    "tooLong": "Cette discussion dépasse ce que l'assistant peut lire. Commencez une nouvelle discussion pour continuer.",
+    "interrupted": "Cette réponse a été interrompue avant la fin",
+    "earlier": "Messages précédents",
+    "model": "Modèle",
+    "sendFailed": "Impossible d'envoyer votre message",
+    "modelFailed": "Impossible de changer de modèle",
+    "chats": "Discussions",
+    "back": "Retour",
+    "happeningNow": "{count} en cours",
+    "searchChats": "Rechercher des discussions",
+    "whichChats": "Quelles discussions",
+    "scopeAll": "Toutes",
+    "scopeMine": "Les miennes",
+    "scopeShared": "Partagées avec moi",
+    "groupNow": "En cours",
+    "groupToday": "Aujourd'hui",
+    "groupEarlier": "Plus tôt",
+    "openNow": "Ouverte",
+    "here": "{count, plural, one {{names} est là} other {{names} sont là}}",
+    "someone": "Quelqu'un",
+    "everyoneIn": "Tout le monde chez {organization}",
+    "writingReply": "Rédaction d'une réponse",
+    "noChatsMatch": "Aucune discussion ne correspond.",
+    "noChats": "Vos discussions apparaîtront ici.",
+    "moreChats": "Discussions plus anciennes",
+    "share": "Partager",
+    "shareNamed": "Partager {title}",
+    "shareChat": "Partager cette discussion",
+    "addPeople": "Ajouter des personnes ou une organisation",
+    "you": "Vous",
+    "owner": "Propriétaire",
+    "canChat": "Peut discuter",
+    "canView": "Peut consulter",
+    "view": "Consulter",
+    "chat": "Discuter",
+    "accessOf": "Accès de {name}",
+    "members": "{count, plural, one {# membre} other {# membres}}",
+    "membersMany": "Plus de {count} membres",
+    "remove": "Retirer",
+    "organization": "Organisation",
+    "noCandidates": "Personne dans vos organisations ne correspond.",
+    "shareNote": "Ces personnes voient cette conversation. Les recherches, collections et bibliothèques qu'elle contient gardent leurs propres accès. Les personnes qui peuvent discuter envoient des messages en leur nom, et l'assistant agit pour elles avec leurs propres accès et crédits.",
+    "copyLink": "Copier le lien pour les personnes ayant accès",
+    "linkCopied": "Lien copié",
+    "shareFailed": "Impossible de modifier le partage de cette discussion",
+    "morePeople": "Plus de personnes",
+    "steps": {
+      "undo": "Annuler",
+      "done": "Terminé",
+      "failed": "Échec",
+      "undoFailed": "Impossible d'annuler",
+      "earlier": "Étapes précédentes",
+      "interrupted": "La réponse s'est terminée avant la fin de cette étape",
+      "found": "trouvés",
+      "declined": "Non autorisé",
+      "waiting": "En attente d'une réponse",
+      "allowed": "Autorisé",
+      "searches": {
+        "doing": "Parcours de vos recherches",
+        "did": "Recherches parcourues",
+        "where": "Recherches enregistrées"
+      },
+      "search": {
+        "doing": "Lecture d'une recherche",
+        "did": "Recherche lue",
+        "where": "Recherches enregistrées"
+      },
+      "searchHistory": {
+        "doing": "Lecture de l'historique d'une recherche",
+        "did": "Historique de la recherche lu",
+        "where": "Recherches enregistrées"
+      },
+      "newSearch": {
+        "doing": "Création d'une recherche",
+        "did": "Recherche créée",
+        "where": "Recherches enregistrées",
+        "ask": "Créer une recherche"
+      },
+      "changeSearch": {
+        "doing": "Modification d'une recherche",
+        "did": "Recherche modifiée",
+        "where": "Recherches enregistrées",
+        "ask": "Modifier une recherche"
+      },
+      "restoreSearch": {
+        "doing": "Remise en place d'une recherche",
+        "did": "Recherche remise en place",
+        "where": "Recherches enregistrées",
+        "ask": "Remettre une recherche en place"
+      },
+      "removeSearch": {
+        "doing": "Retrait d'une recherche",
+        "did": "Recherche retirée",
+        "where": "Recherches enregistrées",
+        "ask": "Retirer une recherche"
+      },
+      "results": {
+        "doing": "Lecture des résultats d'une recherche",
+        "did": "Résultats d'une recherche lus",
+        "where": "Recherches enregistrées"
+      },
+      "lookup": {
+        "doing": "Recherche d'un nom",
+        "did": "Nom recherché",
+        "where": "Filtres de recherche"
+      },
+      "lookPapers": {
+        "doing": "Recherche d'articles",
+        "did": "Articles recherchés",
+        "where": "OpenAlex"
+      },
+      "readPaper": {
+        "doing": "Lecture d'un article",
+        "did": "Article lu",
+        "where": "OpenAlex"
+      },
+      "credits": {
+        "doing": "Vérification de vos crédits",
+        "did": "Crédits vérifiés",
+        "where": "Facturation"
+      },
+      "bookmarks": {
+        "doing": "Parcours de vos favoris",
+        "did": "Favoris parcourus",
+        "where": "Favoris"
+      },
+      "ratings": {
+        "doing": "Vérification de vos notes",
+        "did": "Notes vérifiées",
+        "where": "Notes"
+      },
+      "saved": {
+        "doing": "Vérification de votre bibliothèque",
+        "did": "Bibliothèque vérifiée",
+        "where": "Bibliothèque"
+      },
+      "save": {
+        "doing": "Enregistrement d'un article",
+        "did": "Article enregistré",
+        "where": "Bibliothèque",
+        "ask": "Enregistrer un article"
+      },
+      "rate": {
+        "doing": "Notation d'un article",
+        "did": "Article noté",
+        "where": "Bibliothèque",
+        "ask": "Noter un article"
+      },
+      "remove": {
+        "doing": "Retrait d'un article",
+        "did": "Article retiré",
+        "where": "Bibliothèque",
+        "ask": "Retirer un article"
+      },
+      "restore": {
+        "doing": "Remise en place d'un article",
+        "did": "Article remis en place",
+        "where": "Bibliothèque",
+        "ask": "Remettre un article en place"
+      },
+      "collect": {
+        "doing": "Mise à jour d'une collection",
+        "did": "Collection mise à jour",
+        "where": "Collections",
+        "ask": "Modifier une collection"
+      },
+      "collections": {
+        "doing": "Parcours de vos collections",
+        "did": "Collections parcourues",
+        "where": "Collections"
+      },
+      "collection": {
+        "doing": "Lecture d'une collection",
+        "did": "Collection lue",
+        "where": "Collections"
+      },
+      "newCollection": {
+        "doing": "Création d'une collection",
+        "did": "Collection créée",
+        "where": "Collections",
+        "ask": "Créer une collection"
+      },
+      "renameCollection": {
+        "doing": "Renommage d'une collection",
+        "did": "Collection renommée",
+        "where": "Collections",
+        "ask": "Renommer une collection"
+      },
+      "screening": {
+        "doing": "Lecture d'une sélection",
+        "did": "Sélection lue",
+        "where": "Sélection"
+      },
+      "extractions": {
+        "doing": "Parcours de vos extractions",
+        "did": "Extractions parcourues",
+        "where": "Extraction"
+      },
+      "deleteCollection": {
+        "doing": "Suppression d'une collection",
+        "did": "Collection supprimée",
+        "where": "Collections",
+        "ask": "Supprimer une collection"
+      },
+      "shareChat": {
+        "doing": "Partage d'une conversation",
+        "did": "Conversation partagée",
+        "where": "Conversations",
+        "ask": "Partager une conversation"
+      },
+      "unshareChat": {
+        "doing": "Arrêt du partage d'une conversation",
+        "did": "Partage arrêté",
+        "where": "Conversations",
+        "ask": "Arrêter le partage d'une conversation"
+      },
+      "deleteChat": {
+        "doing": "Suppression d'une conversation",
+        "did": "Conversation supprimée",
+        "where": "Conversations",
+        "ask": "Supprimer une conversation"
+      },
+      "newChat": {
+        "doing": "Création d'une conversation",
+        "did": "Conversation créée",
+        "where": "Conversations",
+        "ask": "Créer une conversation"
+      },
+      "renameChat": {
+        "doing": "Renommage d'une conversation",
+        "did": "Conversation renommée",
+        "where": "Conversations",
+        "ask": "Renommer une conversation"
+      },
+      "chatModel": {
+        "doing": "Changement du modèle d'une conversation",
+        "did": "Modèle de la conversation changé",
+        "where": "Conversations",
+        "ask": "Changer le modèle d'une conversation"
+      },
+      "answer": {
+        "doing": "Modification d'une réponse de sélection",
+        "did": "Réponse de sélection modifiée",
+        "where": "Sélection",
+        "ask": "Modifier une réponse de sélection"
+      },
+      "other": {
+        "doing": "Travail dans votre compte",
+        "did": "Travail effectué dans votre compte",
+        "where": "Votre compte",
+        "ask": "Exécuter une action dans votre compte"
+      }
+    },
+    "asks": {
+      "allow": "Autoriser une fois",
+      "notNow": "Pas maintenant",
+      "decline": "Ne pas le faire",
+      "why": "Cette action est irréversible ou visible en dehors de votre compte. La question est posée à chaque fois.",
+      "failed": "Impossible d'envoyer votre réponse",
+      "names": {
+        "thread": "Conversation",
+        "collection": "Collection",
+        "user": "Personne",
+        "organization": "Organisation",
+        "role": "Accès",
+        "name": "Nom",
+        "title": "Titre",
+        "model": "Modèle"
+      }
+    }
   }
 }

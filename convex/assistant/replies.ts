@@ -640,10 +640,11 @@ async function pageOf<Opts extends { numItems: number; cursor: string | null; en
 
 export const messagesAction = defineUserQuery({
   path: "assistant/replies:messages",
-  description: "Reads an assistant chat's messages, newest first, a page at a time: what each person wrote, what the assistant replied, and each action it ran on the way.",
-  args: { threadId: v.id("assistantThreads"), paginationOpts: paginationOptsValidator },
+  description:
+    "Reads an assistant chat's messages, newest first, a page at a time: what each person wrote, what the assistant replied, and each action it ran on the way. An exchange's actions come with the message they answer. With `stepsAhead`, the newest page also brings the actions of a reply whose message is on an earlier page, and they come again with that message.",
+  args: { threadId: v.id("assistantThreads"), stepsAhead: v.optional(v.boolean()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(v.union(messageValidator, stepValidator)),
-  run: async (ctx, userId, { threadId, paginationOpts }) => {
+  run: async (ctx, userId, { threadId, stepsAhead, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
     // The caps bound a page whatever the caller asks for: with an `endCursor`, `numItems` alone doesn't.
@@ -653,7 +654,13 @@ export const messagesAction = defineUserQuery({
     const sentBy = await senders(ctx, read.page);
     // Each exchange's steps come with the message it answers, which a page holds once.
     const asked = read.page.filter((row) => row.message?.role === "user");
-    const ran = new Map(await Promise.all(asked.map(async (row) => [row._id, await stepsOfExchange(ctx, threadId, row.order)] as const)));
+    // For a reader that asks (`stepsAhead`, the panel), the newest page also brings the steps of an exchange whose
+    // message is on a page before it: a long reply's rows fill pages of their own, and its steps would otherwise wait
+    // for the person to load back to where it began. They come with the oldest of its rows here, and again with its
+    // message when that page loads, under the same IDs, which is why a reader has to ask.
+    const begun = new Set(asked.map((row) => row.order));
+    const cut = stepsAhead && paginationOpts.cursor === null ? [...new Map(read.page.filter((row) => !begun.has(row.order)).map((row) => [row.order, row])).values()] : [];
+    const ran = new Map(await Promise.all([...asked, ...cut].map(async (row) => [row._id, await stepsOfExchange(ctx, threadId, row.order)] as const)));
     // The exchange being answered now, or waiting for the person's answer. A lock whose action died isn't one.
     const answering = (await writing(ctx, thread.reply)) ? thread.reply?.order : thread.asking?.order;
     // What each call that waits for this person would do.
@@ -662,20 +669,22 @@ export const messagesAction = defineUserQuery({
     const details = new Map(await Promise.all(mine.map(async (step) => [step._id, await detailsOf(ctx, reader!, step.input)] as const)));
     const page = read.page.flatMap((row) => {
       const role = row.message?.role;
-      if (role !== "user" && role !== "assistant") return [];
       // Newest first, like the page: the steps come after the message they answer, so they're listed before it.
       const steps = (ran.get(row._id) ?? []).map((step) => shownStep(step, { userId, answering, details: details.get(step._id) })).reverse();
+      // A row that isn't a message to show still brings the steps it carries.
+      if (role !== "user" && role !== "assistant") return steps;
       // The message a reply summarized partway goes on from is the app's own (./context.ts). What the reply did in answer to it is the reply's.
       if (role === "user" && row.agentName === CARRIED) return steps;
       // A message of the reply that only called actions has no text of its own to show.
-      if (role === "assistant" && !row.text && row.status === "success" && Array.isArray(row.message?.content) && row.message.content.some((part) => part.type === "tool-call")) return [];
+      if (role === "assistant" && !row.text && row.status === "success" && Array.isArray(row.message?.content) && row.message.content.some((part) => part.type === "tool-call")) return steps;
       const error = row.status === "failed" ? parseChatError(row.error) : null;
       const stopped = error?.class === "aborted";
       // A reply still pending that the chat isn't writing died with its action.
       const pending = row.status === "pending" && answering === row.order;
       const sender = role === "user" && row.userId ? sentBy.get(row.userId) : undefined;
       return [
-        ...steps,
+        // Steps brought by a row of the reply itself were run before it was written, so they're listed after it.
+        ...(role === "user" ? steps : []),
         {
           id: row._id,
           role,
@@ -698,6 +707,7 @@ export const messagesAction = defineUserQuery({
           ...(role === "assistant" && row.tool ? { acted: true } : {}),
           at: row._creationTime,
         },
+        ...(role === "user" ? [] : steps),
       ];
     });
     return { ...read, page };

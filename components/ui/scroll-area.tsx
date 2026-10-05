@@ -5,11 +5,37 @@ import { ScrollArea as ScrollAreaPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/** How far content fades at an edge that has more to scroll; the same fade as the assistant's thread. */
+export const EDGE_FADE = 18
+
 function ScrollArea({
   className,
   children,
+  shades = false,
   ...props
-}: React.ComponentProps<typeof ScrollAreaPrimitive.Root>) {
+}: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
+  /** Fades the content out at an edge that has more to scroll. */
+  shades?: boolean
+}) {
+  const viewport = React.useRef<HTMLDivElement>(null)
+  const content = React.useRef<HTMLDivElement>(null)
+  const [edges, setEdges] = React.useState({ top: false, bottom: false })
+  const measure = React.useCallback(() => {
+    const el = viewport.current
+    if (!el) return
+    const top = el.scrollTop > 1
+    const bottom = el.scrollTop + el.clientHeight < el.scrollHeight - 1
+    setEdges((e) => (e.top === top && e.bottom === bottom ? e : { top, bottom }))
+  }, [])
+  // The content's size is an outside system: rows arrive, filters change it, the window resizes.
+  React.useEffect(() => {
+    if (!shades) return
+    const observer = new ResizeObserver(measure)
+    if (viewport.current) observer.observe(viewport.current)
+    if (content.current) observer.observe(content.current)
+    measure()
+    return () => observer.disconnect()
+  }, [shades, measure])
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
@@ -17,10 +43,23 @@ function ScrollArea({
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
+        ref={viewport}
         data-slot="scroll-area-viewport"
-        className="focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1"
+        onScroll={shades ? measure : undefined}
+        style={
+          shades
+            ? {
+                maskImage: `linear-gradient(to bottom, transparent, black ${edges.top ? EDGE_FADE : 0}px, black calc(100% - ${edges.bottom ? EDGE_FADE : 0}px), transparent)`,
+              }
+            : undefined
+        }
+        className={cn(
+          "focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1",
+          // Radix lays its content out as a table, which lets long text grow instead of truncating.
+          shades && "[&>div]:!block"
+        )}
       >
-        {children}
+        {shades ? <div ref={content}>{children}</div> : children}
       </ScrollAreaPrimitive.Viewport>
       <ScrollBar />
       <ScrollAreaPrimitive.Corner />

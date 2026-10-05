@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileSpreadsheet, FileJson, Loader2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +14,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { exportToCSV, exportToJSON, exportToExcel } from "@/lib/extraction/export";
-import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
+import { ExtractionExportError, exportToCSV, exportToJSON, exportToExcel } from "@/lib/extraction/export";
+import type { ExtractionExport } from "@/lib/extraction/export";
 import { useTranslations } from "next-intl";
 import { useAppToast } from "@/lib/toast";
 
@@ -23,18 +23,16 @@ interface ExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Read when the user exports, so opening the dialog reads nothing. */
-  loadPapers: () => Promise<PaperWithResults[]>;
+  loadExport: (signal?: AbortSignal) => Promise<ExtractionExport>;
   paperCount: number;
-  questions: Question[];
   label?: string;
 }
 
 export function ExportDialog({
   open,
   onOpenChange,
-  loadPapers,
+  loadExport,
   paperCount,
-  questions,
   label,
 }: ExportDialogProps) {
   const t = useTranslations("extraction");
@@ -44,10 +42,14 @@ export function ExportDialog({
   // Each export gets a number; closing the dialog moves it on, so a canceled export's
   // papers, arriving later, are dropped instead of downloaded.
   const exportRun = useRef(0);
+  const download = useRef<AbortController | null>(null);
+  // Cancel the browser download if navigation unmounts its dialog.
+  useEffect(() => () => download.current?.abort(), []);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
       exportRun.current++;
+      download.current?.abort();
       setIsLoading(false);
     }
     onOpenChange(next);
@@ -56,38 +58,43 @@ export function ExportDialog({
   const [format, setFormat] = useState<"csv" | "json" | "excel">("csv");
   const [includeMetadata, setIncludeMetadata] = useState(true);
   const [includeConfidence, setIncludeConfidence] = useState(true);
-  const [includeReasoning, setIncludeReasoning] = useState(false);
-  const [includeCitations, setIncludeCitations] = useState(false);
+  const [includeReasoning, setIncludeReasoning] = useState(true);
+  const [includeCitations, setIncludeCitations] = useState(true);
 
   const handleExport = async () => {
     if (isLoading || paperCount === 0) return;
 
+    const controller = new AbortController();
+    download.current = controller;
     const options = {
       includeMetadata,
       includeConfidence,
       includeReasoning,
       includeCitations,
+      signal: controller.signal,
     };
 
     const run = ++exportRun.current;
     setIsLoading(true);
     try {
-      const papers = await loadPapers();
-      if (run !== exportRun.current) return;
+      const { papers, questions, job } = await loadExport(controller.signal);
+      if (controller.signal.aborted || run !== exportRun.current) return;
       if (format === "csv") {
-        exportToCSV(papers, questions, options);
+        exportToCSV(papers, questions, { ...options, job });
       } else if (format === "json") {
-        exportToJSON(papers, questions, options);
+        exportToJSON(papers, questions, { ...options, job });
       } else {
-        await exportToExcel(papers, questions, options);
+        await exportToExcel(papers, questions, { ...options, job });
       }
+      if (run !== exportRun.current) return;
       handleOpenChange(false);
     } catch (error) {
-      if (run !== exportRun.current) return;
+      if (controller.signal.aborted || run !== exportRun.current) return;
       console.error("[Extraction] Failed to export results:", error);
-      toast.io.downloadFailed(t(`${format}Label`));
+      if (error instanceof ExtractionExportError) toast.error(t("exportResults"), t(error.code));
+      else toast.io.downloadFailed(t(`${format}Label`));
     } finally {
-      if (run === exportRun.current) setIsLoading(false);
+      if (!controller.signal.aborted && run === exportRun.current) setIsLoading(false);
     }
   };
 
@@ -175,8 +182,6 @@ export function ExportDialog({
                   {t("confidenceScores")}
                 </Label>
               </div>
-              {format === "json" && (
-                <>
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="export-reasoning"
@@ -207,8 +212,6 @@ export function ExportDialog({
                       {t("citationText")}
                     </Label>
                   </div>
-                </>
-              )}
             </div>
           </div>
         </div>
@@ -216,14 +219,15 @@ export function ExportDialog({
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             {tc("cancel")}
           </Button>
-          <Button disabled={isLoading || paperCount === 0} onClick={handleExport}>
-            {isLoading ? (
-              <>
+          <Button className="grid" disabled={isLoading || paperCount === 0} onClick={handleExport}>
+            <span className="col-start-1 row-start-1" style={{ visibility: isLoading ? "hidden" : "visible" }}>
+              {t("exportButton", { label: displayLabel })}
+            </span>
+            {isLoading && (
+              <span className="col-start-1 row-start-1 flex items-center justify-center">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 {tc("loading")}
-              </>
-            ) : (
-              t("exportButton", { label: displayLabel })
+              </span>
             )}
           </Button>
         </DialogFooter>

@@ -7,10 +7,7 @@
  * lib/ where both the default-runtime and node-runtime can consume them.
  */
 
-import {
-  isGenericArrayEntity,
-  splitArrayFragments,
-} from "./analysis";
+import { isGenericArrayEntity } from "./analysis";
 import type { SourceCitation } from "./source-evidence";
 
 export type CitationStatus =
@@ -100,13 +97,11 @@ export function sanitizeArrayAnswer(
   const values = Array.isArray(answer) ? answer : [answer];
   const normalized = new Set<string>();
   for (const value of values) {
-    for (const token of splitArrayFragments(String(value))) {
-      normalized.add(token);
-    }
+    const text = String(value).trim();
+    if (text) normalized.add(text);
   }
 
   const cleaned = Array.from(normalized)
-    .sort()
     .slice(0, ARRAY_ANSWER_MAX_ITEMS);
   if (cleaned.length === 0) {
     return { answer: null, genericShare: 0 };
