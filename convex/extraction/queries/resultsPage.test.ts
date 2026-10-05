@@ -6,7 +6,7 @@ import type { Doc } from "../../_generated/dataModel";
 import schema from "../../schema";
 import { foldCounts } from "../counts.test-support";
 import { readExtractionExport } from "../../../lib/extraction/export";
-import { recomputePaperListProjection } from "../listProjection";
+import { buildQuestionAnswerToken, recomputePaperListProjection } from "../listProjection";
 
 const CLERK_OWNER = "clerk_results_page_owner";
 const OWNER_IDENTITY = {
@@ -78,7 +78,7 @@ async function seedJobWithProjectionCorpus(t: ReturnType<typeof convexTest>) {
           i === 30 ? 0.15 : i === 40 ? 0.75 : i === 52 ? 0.95 : 0.58,
         hasErrors: false,
         hasPdfSource: i === 52,
-        questionAnswerTokens: i === 52 ? ["q1::yes"] : [],
+        questionAnswerTokens: i === 52 ? [(await buildQuestionAnswerToken("q1", "yes"))!] : [],
         searchText:
           i === 52
             ? "rare search match target answer"
@@ -134,6 +134,50 @@ const countMatching = (auth: ReturnType<ReturnType<typeof convexTest>["withIdent
   auth.query(api.extraction.queries.countJobResults, { jobId: jobId as never, filters, includeRevision: true });
 
 describe("listJobResults", () => {
+  it("distinguishes Cyrillic answers and long answers with the same prefix", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithProjectionCorpus(t);
+    const auth = t.withIdentity(OWNER_IDENTITY);
+    const papers = (await listResults(auth, jobId, { numItems: 4 })).page;
+    const answers = ["мой", "мои", "学".repeat(10_000) + "甲", "学".repeat(10_000) + "乙"];
+    await t.run(async ctx => {
+      for (const [i, paper] of papers.entries()) {
+        await ctx.db.insert("extractionResults", {
+          jobId, paperId: paper._id, questionKey: "q1", answer: answers[i],
+          citations: [], citationStatus: "best_effort", status: "completed", processedAt: 1,
+        });
+        await recomputePaperListProjection(ctx, paper._id);
+      }
+    });
+    for (const [i, value] of answers.entries()) {
+      const filters = { ...DEFAULT_FILTERS, questionFilters: [{ questionKey: "q1", value }] };
+      expect((await listResults(auth, jobId, { filters })).page.map(p => p._id)).toEqual([papers[i]._id]);
+      expect(await countMatching(auth, jobId, filters)).toMatchObject({ matching: 1 });
+    }
+  });
+
+  it("keeps Unicode title and confidence order consistent in searched and selected views", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithProjectionCorpus(t);
+    const auth = t.withIdentity(OWNER_IDENTITY);
+    const papers = (await listResults(auth, jobId, { numItems: 4 })).page;
+    const selectedPaperIds = papers.map(p => p._id).reverse();
+    await t.run(async ctx => {
+      for (const [i, paper] of papers.entries()) {
+        await ctx.db.patch("extractionPapers", paper._id, {
+          title: ["あー", "あい", "duplicate", "duplicate"][i],
+          abstract: "sharedsort",
+        });
+        await recomputePaperListProjection(ctx, paper._id);
+      }
+    });
+    for (const sortBy of ["title-asc", "title-desc", "confidence-high", "confidence-low"] as const) {
+      const expected = (await everyPage(auth, jobId, { sortBy })).flat().filter(p => selectedPaperIds.includes(p._id)).map(p => p._id);
+      expect((await listResults(auth, jobId, { sortBy, selectedPaperIds })).page.map(p => p._id)).toEqual(expected);
+      expect((await listResults(auth, jobId, { sortBy, filters: { ...DEFAULT_FILTERS, searchQuery: "sharedsort" } })).page.map(p => p._id)).toEqual(expected);
+    }
+  });
+
   it("searches Unicode titles and answers and keeps Unicode answer filters narrow", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedJobWithProjectionCorpus(t);

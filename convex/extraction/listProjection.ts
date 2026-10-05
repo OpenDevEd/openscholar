@@ -1,11 +1,11 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { MAX_QUESTIONS_PER_JOB } from "./validators";
+import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 
 const SEARCH_TEXT_MAX_CHARS = 6000;
 const SEARCH_TEXT_DEFAULT_PART_MAX = 240;
 const SEARCH_TEXT_ABSTRACT_MAX = 1200;
-const QUESTION_ANSWER_TOKEN_DELIMITER = "::";
 
 type ProjectionAnswer = Doc<"extractionResults">["answer"];
 
@@ -19,7 +19,7 @@ export function normalizeProjectionText(value: string | null | undefined): strin
   if (typeof value !== "string") return "";
   return value
     .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/(\p{Script=Latin})[\u0300-\u036f]+/gu, "$1")
     .normalize("NFC")
     .trim()
     .toLowerCase()
@@ -67,13 +67,13 @@ function normalizeAnswerForQuestionFilter(answer: ProjectionAnswer): string | nu
   return normalized || null;
 }
 
-export function buildQuestionAnswerToken(
+export async function buildQuestionAnswerToken(
   questionKey: string,
   answer: ProjectionAnswer,
-): string | null {
+): Promise<string | null> {
   const normalized = normalizeAnswerForQuestionFilter(answer);
   if (!normalized) return null;
-  return `${questionKey}${QUESTION_ANSWER_TOKEN_DELIMITER}${normalized}`;
+  return digestOpaqueToken(JSON.stringify([questionKey, normalized]));
 }
 
 function buildSearchText(args: {
@@ -146,24 +146,22 @@ function confidenceContribution(confidence: number | undefined): number {
     : 0;
 }
 
-function toQuestionState(
+async function toQuestionState(
   questionKey: string,
   answer: ProjectionAnswer,
-): ProjectionQuestionState | null {
-  const token = buildQuestionAnswerToken(questionKey, answer) ?? undefined;
+): Promise<ProjectionQuestionState | null> {
+  const token = await buildQuestionAnswerToken(questionKey, answer) ?? undefined;
   const searchPart = buildSearchPart(answer);
   if (!token && !searchPart) return null;
   return { questionKey, token, searchPart };
 }
 
-export function paperSearchProjection(
+export async function paperSearchProjection(
   paper: Doc<"extractionPapers">,
   results: Pick<Doc<"extractionResults">, "questionKey" | "answer">[],
 ) {
-  const questionStates = results.flatMap((result) => {
-    const state = toQuestionState(result.questionKey, result.answer);
-    return state ? [state] : [];
-  });
+  const states = await Promise.all(results.map(result => toQuestionState(result.questionKey, result.answer)));
+  const questionStates = states.filter((state): state is ProjectionQuestionState => state !== null);
   questionStates.sort((a, b) => a.questionKey.localeCompare(b.questionKey));
   return {
     sortTitle: normalizeProjectionText(paper.title),
@@ -219,7 +217,7 @@ export async function recomputePaperListProjection(
     paper.lastError !== undefined;
 
   await ctx.db.patch("extractionPapers", paperId, {
-    ...paperSearchProjection(paper, results),
+    ...await paperSearchProjection(paper, results),
     avgConfidence,
     hasErrors: hasPaperError || errorQuestionKeys.length > 0,
     hasPdfSource: Boolean(

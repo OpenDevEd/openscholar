@@ -16,7 +16,7 @@ export const papers = migrations.define({
     const results = await ctx.db.query("extractionResults")
       .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
       .take(MAX_QUESTIONS_PER_JOB);
-    const projection = paperSearchProjection(paper, results);
+    const projection = await paperSearchProjection(paper, results);
     if (paper.sortTitle === projection.sortTitle &&
         paper.searchText === projection.searchText &&
         JSON.stringify(paper.questionAnswerTokens) === JSON.stringify(projection.questionAnswerTokens)) return;

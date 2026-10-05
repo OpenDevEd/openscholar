@@ -1,4 +1,6 @@
 import { convexTest } from "convex-test";
+import { createHash } from "node:crypto";
+import { getDocumentSize } from "convex/values";
 import { describe, expect, it } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -8,6 +10,8 @@ import {
 } from "../billing/billing.test-support";
 import { normalizeProjectionText, recomputePaperListProjection } from "./listProjection";
 
+const answerToken = (key: string, answer: string) => createHash("sha256").update(JSON.stringify([key, answer])).digest("hex");
+
 it.each([
   ["مدارس المغرب", "مدارس المغرب"],
   ["学校教育", "学校教育"],
@@ -15,6 +19,7 @@ it.each([
   ["أحمد التأثير إلى القرآن", "أحمد التأثير إلى القرآن"],
   ["データ がっこう", "データ がっこう"],
   ["학교교육", "학교교육"],
+  ["мой мои йод ёлка", "мой мои йод ёлка"],
   ["Café ０ 12.5%", "cafe 0 12.5%"],
 ])("keeps searchable letters and numbers in %s", (input, expected) => {
   expect(normalizeProjectionText(input)).toBe(expected);
@@ -96,6 +101,24 @@ async function seedProjectionFixture(t: ReturnType<typeof convexTest>): Promise<
 }
 
 describe("paper list projection write maintenance", () => {
+  it("keeps fifty long Unicode answers within the paper document limit", async () => {
+    const t = convexTest(schema);
+    const { paperId, jobId } = await seedProjectionFixture(t);
+    await t.run(async ctx => {
+      for (let i = 0; i < 50; i++) {
+        await ctx.db.insert("extractionResults", {
+          jobId, paperId, questionKey: `q${i}`, answer: "学".repeat(10_000) + i,
+          citations: [], citationStatus: "best_effort", status: "completed", processedAt: 1,
+        });
+      }
+      await recomputePaperListProjection(ctx, paperId);
+    });
+    const paper = await t.run(ctx => ctx.db.get("extractionPapers", paperId));
+    expect(paper?.questionAnswerTokens).toHaveLength(50);
+    expect(new Set(paper?.questionAnswerTokens).size).toBe(50);
+    expect(getDocumentSize(paper!)).toBeLessThan(1_048_576);
+  });
+
   it("does not cut an astral letter in half at search field limits", async () => {
     const t = convexTest(schema);
     const { paperId, jobId } = await seedProjectionFixture(t);
@@ -109,7 +132,7 @@ describe("paper list projection write maintenance", () => {
     });
     const paper = await t.run(ctx => ctx.db.get("extractionPapers", paperId));
     expect(paper?.searchText).toBe(`${"a".repeat(399)} oa list-projection ${"b".repeat(239)}`);
-    expect(paper?.questionAnswerTokens).toEqual([`q1::${"b".repeat(239)}𠮷`]);
+    expect(paper?.questionAnswerTokens).toEqual([answerToken("q1", `${"b".repeat(239)}𠮷`)]);
   });
 
   it("rebuilds old search fields without changing research data and is safe to repeat", async () => {
@@ -133,7 +156,7 @@ describe("paper list projection write maintenance", () => {
     expect(await t.run(ctx => ctx.db.get("extractionPapers", paperId))).toEqual(before);
     await t.mutation(internal.migrations.extractionSearch.papers, { cursor: null, dryRun: false });
     const after = await t.run(ctx => ctx.db.get("extractionPapers", paperId));
-    expect(after).toEqual({ ...before, sortTitle: "مدارس المغرب", searchText: "مدارس المغرب oa list-projection 山田太郎 शिक्षा 学校教育", questionAnswerTokens: ["q1::学校教育"] });
+    expect(after).toEqual({ ...before, sortTitle: "مدارس المغرب", searchText: "مدارس المغرب oa list-projection 山田太郎 शिक्षा 学校教育", questionAnswerTokens: [answerToken("q1", "学校教育")] });
     expect(await t.run(ctx => ctx.db.get("extractionResults", resultId))).toEqual(answer);
     await t.mutation(internal.migrations.extractionSearch.papers, { cursor: null, dryRun: false });
     expect(await t.run(ctx => ctx.db.get("extractionPapers", paperId))).toEqual(after);
@@ -173,7 +196,7 @@ describe("paper list projection write maintenance", () => {
 
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(paper?.avgConfidence).toBe(0.75);
-    expect(paper?.questionAnswerTokens).toEqual(["q1::cafe au lait"]);
+    expect(paper?.questionAnswerTokens).toEqual([answerToken("q1", "cafe au lait")]);
     expect(paper?.searchText).toContain("the cafe trial");
     expect(paper?.searchText).toContain("cafe au lait");
     expect(paper?.hasPdfSource).toBe(true);
@@ -247,8 +270,8 @@ describe("paper list projection write maintenance", () => {
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(paper?.avgConfidence).toBeCloseTo(0.65);
     expect(paper?.questionAnswerTokens).toEqual([
-      "q1::original outcome",
-      "q2::secondary outcome",
+      answerToken("q1", "original outcome"),
+      answerToken("q2", "secondary outcome"),
     ]);
     expect(paper?.searchText).toContain("original outcome");
     expect(paper?.searchText).toContain("secondary outcome");
