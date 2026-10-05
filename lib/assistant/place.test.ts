@@ -7,8 +7,17 @@ describe("where a page's assistant panel starts", () => {
     expect(placeFrom("?page=2", JSON.stringify({ open: false, threadId: null }))).toEqual({ open: false, threadId: null });
   });
 
-  it("is the chat the address links to, opened, whatever the tab kept", () => {
-    expect(placeFrom("?chat=chat-2", JSON.stringify({ open: false, threadId: "chat-1" }))).toEqual({ open: true, threadId: "chat-2" });
+  it("is the chat the address links to, opened, the first time the tab sees that link", () => {
+    expect(placeFrom("?chat=chat-2", JSON.stringify({ open: false, threadId: "chat-1" }))).toEqual({ open: true, threadId: "chat-2", link: "chat-2" });
+    expect(placeFrom("?chat=chat-2", null)).toEqual({ open: true, threadId: "chat-2", link: "chat-2" });
+  });
+
+  it("is where the person went since, when the link is still in the address on a reload", () => {
+    // Opened by the link, then on to another chat, or folded away: the link doesn't take the place back.
+    expect(placeFrom("?chat=chat-2", JSON.stringify({ open: true, threadId: "chat-3", link: "chat-2" }))).toEqual({ open: true, threadId: "chat-3", link: "chat-2" });
+    expect(placeFrom("?chat=chat-2", JSON.stringify({ open: false, threadId: null, link: "chat-2" }))).toEqual({ open: false, threadId: null, link: "chat-2" });
+    // Another link is new to the tab, and opens its chat.
+    expect(placeFrom("?chat=chat-4", JSON.stringify({ open: true, threadId: "chat-3", link: "chat-2" }))).toEqual({ open: true, threadId: "chat-4", link: "chat-4" });
   });
 
   it("is folded on a new chat when the tab kept nothing it can read", () => {

@@ -80,6 +80,18 @@ describe("saving a paper by its ID", () => {
     await t.run(async (ctx) => ctx.db.insert("paperRatings", { userId, data: { paperId: "https://openalex.org/W8", rating: 3 } }));
     expect(await ada.action(save, { id: "W8", collectionId })).not.toHaveProperty("undo");
 
+    // Taken out of the collection since and left out, the paper is no longer as the save left it either.
+    await ada.mutation(api.library.mutations.removeFromLibrary, { openalexId: "W7" });
+    const taken = await ada.action(save, { id: "W7", collectionId });
+    await ada.mutation(api.library.mutations.setPaperInCollection, { paper: { openalexId: "https://openalex.org/W7" }, collectionId, inCollection: false });
+    await expect(ada.mutation(api.library.mutations.removeFromLibrary, taken.undo!.args as never)).rejects.toThrow(/changed since/);
+    // A rating that would change only what the paper has on search cards is a second change too.
+    await t.run(async (ctx) => ctx.db.insert("paperRatings", { userId, data: { paperId: "https://openalex.org/W7", rating: 3 } }));
+    await t.run(async (ctx) => ctx.db.patch("libraryItems", (await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", "https://openalex.org/W7")).unique())!._id, { rating: 5 }));
+    await expect(ada.action(save, { id: "W7", rating: 5, collectionId: other })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
+    await t.run(async (ctx) => { for (const row of await ctx.db.query("paperRatings").take(10)) if (row.data.paperId === "https://openalex.org/W7") await ctx.db.delete("paperRatings", row._id); });
+    await t.run(async (ctx) => ctx.db.patch("libraryItems", (await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", "https://openalex.org/W7")).unique())!._id, { rating: undefined }));
+
     // Put somewhere else since it was saved, the paper has changed: the save's undo leaves it.
     await ada.mutation(api.library.mutations.removeFromLibrary, { openalexId: "W7" });
     const again = await ada.action(save, { id: "W7", collectionId });
