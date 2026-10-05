@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { readWork } from "./openalex";
+import { autocomplete, readWork } from "./openalex";
 
 type Sent = { url: URL; init?: RequestInit };
 let sent: Sent[] = [];
@@ -38,5 +38,16 @@ describe("readWork", () => {
       "cf-access-client-secret": "client-secret",
     });
     expect(sent[0]?.init?.redirect).toBe("manual");
+  });
+});
+
+describe("autocomplete", () => {
+  it("still needs OpenAlex's contact email when the OpenScholar API answers works, since OpenAlex alone answers autocomplete", async () => {
+    useOpenScholarApi();
+    vi.stubEnv("OPENALEX_CONTACT_EMAIL", "");
+
+    await expect(autocomplete("authors", "ada", allowed)).rejects.toThrow(/OPENALEX_CONTACT_EMAIL/);
+
+    expect(sent).toHaveLength(0);
   });
 });

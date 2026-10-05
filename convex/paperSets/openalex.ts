@@ -178,9 +178,14 @@ async function readWorks<Work>(
   return { works, offset: first - 1, total };
 }
 
-// OpenAlex's polite pool needs a contact address; the OpenScholar API, when it answers works instead, needs none.
+// OpenAlex's polite pool needs a contact address.
+const openAlexContact = () => {
+  if (!process.env.OPENALEX_CONTACT_EMAIL) throw new Error("OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.");
+};
+
+// A works request's: the OpenScholar API, when it answers works instead of OpenAlex, needs none.
 const contact = () => {
-  if (worksAskOpenAlex() && !process.env.OPENALEX_CONTACT_EMAIL) throw new Error("OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.");
+  if (worksAskOpenAlex()) openAlexContact();
 };
 
 /**
@@ -213,7 +218,8 @@ export async function readSearchPage<Work>(
  * same request from the Next server, and can't be loaded here.
  */
 export async function autocomplete(entity: "authors" | "funders", text: string, spend: (pages: number) => Promise<boolean>): Promise<Array<{ id: string; name: string; detail?: string }>> {
-  contact();
+  // OpenAlex alone answers autocomplete, whoever answers works.
+  openAlexContact();
   if (!(await spend(1))) throw limited();
   let response: Response;
   try {
