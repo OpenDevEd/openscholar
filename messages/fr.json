@@ -3932,7 +3932,9 @@
         "last": "Jusqu'à l'article",
         "question": "Question",
         "saveTo": "Les inclus vont dans",
-        "prune": "Les exclus en sortent"
+        "prune": "Les exclus en sortent",
+        "rating": "Note",
+        "change": "Modifications"
       }
     },
     "topUp": {

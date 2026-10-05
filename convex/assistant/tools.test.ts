@@ -356,6 +356,13 @@ describe("the assistant's tools", () => {
     await say("Rate these twelve 5 stars");
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).filter((item) => item.rating === 5).length)).toBe(6);
     expect([told(10, "a"), told(10, "b")]).toContainEqual({ error: BULK_FIRST });
+
+    // Asked to undo a bulk change in words, the assistant asks first, and the card names the change by how many it was, never by its ID.
+    const few = (await steps()).find((step) => step.toolCallId === "few")!;
+    mockDoStream.mockImplementationOnce(calling({ id: "back", name: "run_action", input: { name: "assistant/batches:undo", arguments: { change: few._id } } }));
+    await sayUntilAsked("Undo those three ratings");
+    const asked = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step" && item.canAnswer);
+    expect(asked).toMatchObject([{ action: "assistant/batches:undo", details: [{ name: "change", value: "3" }] }]);
   });
 
   it("tell the assistant what a person undid with that person's next message, and not with someone else's", async () => {
