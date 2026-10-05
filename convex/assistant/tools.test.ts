@@ -2,7 +2,7 @@
 // The assistant's tools (#327): a reply runs registered actions as the person who sent the
 // message, each run is kept as a step, and the model reads what came of it.
 import { convexTest } from "convex-test";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listMessages, saveMessages } from "@convex-dev/agent";
 import { api, components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -13,6 +13,7 @@ import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { screeningHold } from "../screening/estimate";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
+import { screeningPool } from "../workpool";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
 import { allowAlways, carriedOn, pausedAt } from "./spending";
@@ -26,7 +27,6 @@ type Part = { type: string; text?: string; toolCallId?: string; output?: { type?
 type Sent = Array<{ role: string; content: string | Part[] }>;
 
 const { mockDoStream, requests, toolsSent, toolChoices, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), requests: [] as unknown[], toolsSent: [] as string[][], toolChoices: [] as string[], fetchMock: vi.fn() }));
-vi.stubGlobal("fetch", fetchMock);
 
 // The model every reply runs on, in place of OpenRouter. It keeps each request it is sent.
 vi.mock("../chat/provider", async () => {
@@ -48,7 +48,23 @@ vi.mock("../chat/provider", async () => {
   };
 });
 
+type Test = ReturnType<typeof convexTest>;
+const instances = new Set<Test>();
+const maxParallelism = screeningPool.options.maxParallelism;
+// Native timers preserve the action context in the model's stream callbacks.
+// Wait for due work without advancing future sweeps or lease expiry.
+const drain = (t: Test) => t.finishAllScheduledFunctions(() => {});
+const finishReply = (t: Test, threadId: Id<"assistantThreads">) =>
+  // Join chained requests, but yield and fail if an action leaves its reply stuck.
+  waitFor(async () => {
+    await drain(t);
+    return !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply;
+  }, { timeoutMs: 15_000 });
+
 beforeEach(() => {
+  // This suite proves the assistant starts screening jobs. Screening owns their workers' tests.
+  screeningPool.options.maxParallelism = 0;
+  vi.stubGlobal("fetch", fetchMock);
   mockDoStream.mockReset();
   requests.length = 0;
   toolsSent.length = 0;
@@ -58,10 +74,31 @@ beforeEach(() => {
   fetchMock.mockImplementation(fakeAutumnFetch());
 });
 
-type Test = ReturnType<typeof convexTest>;
+afterEach(async () => {
+  try {
+    for (const t of instances) {
+      // A failed assertion must not leave a reply consuming the next test's model responses.
+      await t.run(async (ctx) => {
+        for (const thread of await ctx.db.query("assistantThreads").collect()) {
+          if (thread.reply) await ctx.db.patch("assistantThreads", thread._id, { reply: { ...thread.reply, stop: true } });
+        }
+      });
+      await drain(t);
+      await t.run(async (ctx) => {
+        for (const scheduled of await ctx.db.system.query("_scheduled_functions").collect()) {
+          if (scheduled.state.kind === "pending") await ctx.scheduler.cancel(scheduled._id);
+        }
+      });
+    }
+  } finally {
+    instances.clear();
+    screeningPool.options.maxParallelism = maxParallelism;
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  }
+});
+
 const firstPage = { cursor: null, numItems: 20 };
-/** How long a test waits for a reply to end or to ask: under the 15 seconds a test may take, and well over what a reply takes when the runner's cores are shared between test files. */
-const REPLY_WAIT_MS = 12_000;
 
 /** What the model was told came of a call, whole, from the request that followed it. */
 function outcome(request: number, toolCallId: string) {
@@ -72,22 +109,29 @@ function outcome(request: number, toolCallId: string) {
 const told = (request: number, toolCallId: string) => outcome(request, toolCallId)?.value;
 
 async function chatOf(t: Test) {
+  instances.add(t);
   const who = await people(t);
   await t.run(async (ctx) => seedCreditsForTest(ctx, { userId: who.ada, free: 100_000 }));
   const threadId = await who.asAda.mutation(api.assistant.threads.create, { title: "Reading trials" });
+  const thread = () => t.run(async (ctx) => ctx.db.get("assistantThreads", threadId));
+  const finished = () => finishReply(t, threadId);
   /** Sends a message and waits until its reply is written. */
   const say = async (text: string) => {
     await who.asAda.mutation(api.assistant.replies.send, { threadId, text });
-    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: REPLY_WAIT_MS });
+    await finished();
   };
-  const thread = () => t.run(async (ctx) => ctx.db.get("assistantThreads", threadId));
   /** Sends a message and waits until its reply stops to ask the person something. */
   const sayUntilAsked = async (text: string) => {
     await who.asAda.mutation(api.assistant.replies.send, { threadId, text });
-    await waitFor(async () => (await thread())?.asking !== undefined, { timeoutMs: REPLY_WAIT_MS });
+    await finished();
+    expect((await thread())?.asking).toBeDefined();
   };
   /** Waits until the chat is free again. */
-  const settled = () => waitFor(async () => !(await thread())?.reply && !(await thread())?.asking, { timeoutMs: REPLY_WAIT_MS });
+  const settled = async () => {
+    await finished();
+    const chat = await thread();
+    expect(chat?.asking).toBeUndefined();
+  };
   /** Stops the reply being written, or waiting, as the panel does. */
   const stop = async () => who.asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: (await who.asAda.query(api.assistant.replies.live, { threadId }))!.attemptId });
   const steps = () => t.run(async (ctx) => ctx.db.query("assistantSteps").collect());
@@ -301,7 +345,7 @@ describe("the assistant's tools", () => {
     // One Undo puts all twelve back, and nothing is left to undo it twice with.
     expect(await undos()).toBe(12);
     await asAda.mutation(api.assistant.undo.run, { threadId, stepId: removal._id });
-    await waitFor(async () => (await saved()).length === 12 && (await steps())[0].reverting !== true, { timeoutMs: REPLY_WAIT_MS });
+    await waitFor(async () => (await saved()).length === 12 && (await steps())[0].reverting !== true, { timeoutMs: 5_000 });
     expect(await undos()).toBe(0);
     expect((await steps())[0]).toMatchObject({ undone: true });
     await expect(asAda.mutation(api.assistant.undo.run, { threadId, stepId: removal._id })).rejects.toThrow(/nothing left to undo/);
@@ -381,7 +425,7 @@ describe("the assistant's tools", () => {
     // Ben's message says nothing of it: the change was to Ada's library, and it's hers to hear of.
     mockDoStream.mockImplementationOnce(finishingDoStream(["Hello Ben."]));
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Hello" });
-    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: REPLY_WAIT_MS });
+    await finishReply(t, threadId);
     expect(lastSent()).not.toContain("undone:");
     expect(await waiting()).toBe(1);
 
@@ -395,11 +439,11 @@ describe("the assistant's tools", () => {
     await t.run(async (ctx) => ctx.db.patch("assistantThreads", threadId, { undone: Array.from({ length: 20 }, () => ({ userId: saved.userId, stepId: saved._id })) }));
     mockDoStream.mockImplementationOnce(calling({ id: "bens", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W2", title: "Reading camps" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Save this one for me" });
-    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: REPLY_WAIT_MS });
+    await finishReply(t, threadId);
     await asBen.mutation(api.assistant.undo.run, { threadId, stepId: (await steps()).at(-1)!._id });
     mockDoStream.mockImplementationOnce(finishingDoStream(["It's out again."]));
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Is mine saved?" });
-    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: REPLY_WAIT_MS });
+    await finishReply(t, threadId);
     expect(lastSent()).toContain("undone: library/mutations:saveToLibrary, Reading camps</app_context>");
     mockDoStream.mockImplementationOnce(finishingDoStream(["Those are all out."]));
     await say("And mine?");
@@ -457,7 +501,7 @@ describe("the assistant's tools", () => {
     // One Undo of the thirty takes back the saves and their places. The three taken out since were changed, so they stay saved, and the step says so.
     const [saving] = await steps();
     await asAda.mutation(api.assistant.undo.run, { threadId, stepId: saving._id });
-    await waitFor(async () => (await steps())[0].error !== undefined, { timeoutMs: REPLY_WAIT_MS });
+    await waitFor(async () => (await steps())[0].error !== undefined, { timeoutMs: 5_000 });
     expect(await held()).toEqual({ saved: 3, collected: 0 });
     expect((await steps())[0]).toMatchObject({ undone: true, error: expect.stringMatching(/^3 of these couldn't be put back/) });
 
@@ -587,7 +631,7 @@ describe("the assistant's tools", () => {
     // The last answer starts the reply again. Stop, pressed on the waiting reply, arrives just after it: it stops the reply all the same.
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: two._id, allow: true });
     await asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: waiting });
-    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: REPLY_WAIT_MS });
+    await finishReply(t, threadId);
 
     // Neither chat was deleted, and both calls show as not run.
     expect(await t.run(async (ctx) => Promise.all([first, second].map((id) => ctx.db.get("assistantThreads", id))))).not.toContain(null);
@@ -615,8 +659,8 @@ describe("the assistant's tools", () => {
     expect((await steps())[0].status).toBe("asking");
     for (const id of others) {
       await asAda.mutation(api.assistant.replies.stop, { threadId: id, attemptId: (await t.run(async (ctx) => ctx.db.get("assistantThreads", id)))!.reply!.attemptId });
-      await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", id)))?.reply, { timeoutMs: REPLY_WAIT_MS });
     }
+    for (const id of others) await finishReply(t, id);
 
     // A reply that died after it started the call, as its lock's sweep would leave it: the step still running, the chat free.
     await t.run(async (ctx) => {
@@ -913,7 +957,7 @@ describe("the assistant's tools", () => {
       const threadId = await asBen.mutation(api.assistant.threads.create, { title: `Chat with ${free}` });
       const say = async (text: string) => {
         await asBen.mutation(api.assistant.replies.send, { threadId, text });
-        await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: REPLY_WAIT_MS });
+        await finishReply(t, threadId);
       };
       const newest = async () => (await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[0];
       return { threadId, say, newest };
@@ -963,7 +1007,7 @@ describe("the assistant's tools", () => {
     const threadId = await asBen.mutation(api.assistant.threads.create, { title: "First chat" });
     mockDoStream.mockImplementationOnce(finishingDoStream(["Here."]));
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Hello" });
-    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: REPLY_WAIT_MS });
+    await finishReply(t, threadId);
     const { page } = await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
     expect(page[0]).toMatchObject({ role: "assistant", text: "Here.", status: "done" });
 
@@ -974,7 +1018,7 @@ describe("the assistant's tools", () => {
     const list = (id: string, read?: number) => ({ id, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } }, ...(read ? { read } : {}) });
     mockDoStream.mockImplementationOnce(calling(list("first", 50_000))).mockImplementationOnce(calling(list("second"))).mockImplementationOnce(finishingDoStream(["Both read."]));
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Read my collections twice" });
-    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: REPLY_WAIT_MS });
+    await finishReply(t, threadId);
     expect(told(2, "second")).toMatchObject({ page: [] });
   });
 
@@ -1008,7 +1052,7 @@ describe("the assistant's tools", () => {
     // A step whose action is still running, as the page reads it mid-reply.
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Save that paper" }).catch(() => {});
     await t.mutation(internal.assistant.steps.begin, { threadId, order: 0, userId: ada, toolCallId: "save", path: "library/mutations:saveToLibrary", input: "{}" });
-    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: REPLY_WAIT_MS }).catch(() => {});
+    await finishReply(t, threadId);
     // Its reply is over without ending it: the step shows as failed, not as running for ever.
     expect((await shown())[1]).toBe("step: library/mutations:saveToLibrary failed");
 
@@ -1064,7 +1108,10 @@ describe("the assistant's tools", () => {
     for (let round = 0; round < 3; round++) {
       const waiting = (await steps()).find((step) => step.status === "asking")!;
       await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: waiting._id, allow: false });
-      if (round < 2) await waitFor(async () => (await steps()).some((step) => step.status === "asking"), { timeoutMs: REPLY_WAIT_MS });
+      if (round < 2) {
+        await finishReply(t, threadId);
+        expect((await steps()).some((step) => step.status === "asking")).toBe(true);
+      }
     }
     await settled();
     // The fourth time it isn't asked: the model is told it's going round in circles, and the reply ends with its answer.
@@ -1143,7 +1190,7 @@ describe("the assistant's tools", () => {
     const rounds = 6;
     mockDoStream.mockImplementation(async () => (requests.length < rounds ? calling(list())() : finishingDoStream(["That's all of them."])()));
     /** Waits until the reply has paused, or has ended. */
-    const rested = () => waitFor(async () => !(await thread())?.reply, { timeoutMs: REPLY_WAIT_MS });
+    const rested = () => finishReply(t, threadId);
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Read all my collections" });
     await rested();
     const first = (await thread())!.asking!;
@@ -1192,7 +1239,8 @@ describe("the assistant's tools", () => {
       .mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } }))
       .mockImplementationOnce(finishingDoStream(["Done."]));
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Delete my old chat" });
-    await waitFor(async () => (await thread())?.asking !== undefined, { timeoutMs: REPLY_WAIT_MS });
+    await finishReply(t, threadId);
+    expect((await thread())?.asking).toBeDefined();
     // The request that asked cost what she allowed, as she was charged for it.
     const paid = (await t.run(async (ctx) => ctx.db.query("billingUsage").collect())).filter((charge) => charge.userId === ada).reduce((sum, charge) => sum + charge.credits, 0);
     expect((await thread())!.asking!.spent).toBe(paid);
@@ -1229,7 +1277,8 @@ describe("the assistant's tools", () => {
     await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
     mockDoStream.mockImplementation(async () => calling({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: (requests.length % 3) + 1 } } })());
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Read all my collections" });
-    await waitFor(async () => (await thread())?.asking?.paused !== undefined, { timeoutMs: REPLY_WAIT_MS });
+    await finishReply(t, threadId);
+    expect((await thread())?.asking?.paused).toBeDefined();
     // Her account is purged, record and all, while her reply waits in a chat Ben can write in.
     await t.run(async (ctx) => {
       for (const row of await ctx.db.query("assistantSpenders").collect()) await ctx.db.delete("assistantSpenders", row._id);
@@ -1246,7 +1295,8 @@ describe("the assistant's tools", () => {
     await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
     mockDoStream.mockImplementation(async () => calling({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: (requests.length % 3) + 1 } } })());
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Read all my collections" });
-    await waitFor(async () => (await thread())?.asking?.paused !== undefined, { timeoutMs: REPLY_WAIT_MS });
+    await finishReply(t, threadId);
+    expect((await thread())?.asking?.paused).toBeDefined();
     const spent = (await thread())!.asking!.spent;
     await stop();
     expect((await thread())?.reply).toBeUndefined();
@@ -1296,7 +1346,7 @@ describe("the assistant's tools", () => {
     expect(await limitIn(threadId)).toEqual({ replyLimit: null });
     // A deleted chat's limit goes with it.
     await asAda.mutation(api.assistant.threads.remove, { threadId: second });
-    await waitFor(async () => (await t.run(async (ctx) => ctx.db.query("assistantLimits").collect())).every((row) => row.threadId !== second), { timeoutMs: REPLY_WAIT_MS });
+    await waitFor(async () => (await t.run(async (ctx) => ctx.db.query("assistantLimits").collect())).every((row) => row.threadId !== second), { timeoutMs: 5_000 });
   });
 
   it("bring a long reply's steps with the chat's newest page, though the message it answers is pages back", async () => {
@@ -1437,7 +1487,7 @@ describe("the assistant's tools", () => {
     await t.run(async (ctx) => seedCreditsForTest(ctx, { userId: ben, free: 100_000 }));
     const other = await asBen.mutation(api.assistant.threads.create, { title: "Another chat" });
     await asBen.mutation(api.assistant.replies.send, { threadId: other, text: "Hello" });
-    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", other)))?.reply, { timeoutMs: REPLY_WAIT_MS });
+    await finishReply(t, other);
 
     expect(toolsSent).toHaveLength(2);
     expect(toolsSent[1]).toEqual(toolsSent[0]);
@@ -1500,6 +1550,6 @@ describe("the assistant's tools", () => {
     await say("Save that paper");
     expect(await steps()).toHaveLength(1);
     await asAda.mutation(api.assistant.threads.remove, { threadId: threadId as Id<"assistantThreads"> });
-    await waitFor(async () => (await steps()).length === 0 && (await results()).length === 0, { timeoutMs: REPLY_WAIT_MS });
+    await waitFor(async () => (await steps()).length === 0 && (await results()).length === 0, { timeoutMs: 5_000 });
   });
 });
