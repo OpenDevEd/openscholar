@@ -679,7 +679,8 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
   }
   return (
     <>
-      <button type="button" className={cn(look, "text-left")} onClick={() => setAsking(true)}>
+      {/* Inline, as a link is: a button is a box of its own by default, and a long title then dropped under its list number as one block. */}
+      <button type="button" className={cn(look, "inline text-left")} onClick={() => setAsking(true)}>
         {children}
       </button>
       <LinkSafetyDialog
