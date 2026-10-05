@@ -1837,6 +1837,7 @@
     "phase": {
       "running": "Running",
       "waiting": "Waiting",
+      "reading": "Getting papers",
       "completed": "Done",
       "cancelled": "Canceled",
       "failed": "Failed",
@@ -1873,6 +1874,7 @@
     "progress": "Progress",
     "beingRead": "<n></n> being read",
     "startsAfter": "Starts after {name}",
+    "gettingPapers": "Getting papers from OpenAlex",
     "ofTotal": "{done, number} of {total, number}",
     "yourSlots": "Your paper slots",
     "slotsInUse": "{running} of {limit} slots in use",

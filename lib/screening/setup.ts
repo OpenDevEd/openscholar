@@ -43,10 +43,14 @@ export function questionsOf({ questions, scoringConfig }: Pick<Job, "questions" 
   });
 }
 
-/** How a job reads on the page. A processing job with no paper being read waits while another of the person's jobs has the slots. */
-export type Phase = "running" | "waiting" | JobRow["status"];
-export function phaseOf(job: Pick<JobRow, "_id" | "status" | "running">, active: Array<Pick<JobRow, "_id" | "running">>): Exclude<Phase, "processing"> {
+/**
+ * How a job reads on the page. A processing job whose papers haven't come from its search yet is
+ * getting them. One with no paper being read waits while another of the person's jobs has the slots.
+ */
+export type Phase = "running" | "waiting" | "reading" | JobRow["status"];
+export function phaseOf(job: Pick<JobRow, "_id" | "status" | "running" | "reading">, active: Array<Pick<JobRow, "_id" | "running">>): Exclude<Phase, "processing"> {
   if (job.status !== "processing") return job.status;
+  if (job.reading) return "reading";
   return job.running === 0 && active.some((other) => other._id !== job._id && other.running > 0) ? "waiting" : "running";
 }
 
