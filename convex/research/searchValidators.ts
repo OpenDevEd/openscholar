@@ -128,6 +128,8 @@ const paperValidator = v.object({
   /** The countries its authors' institutions are in, as two-letter codes. */
   countries: capped(v.optional(v.array(v.string())), COUNTRIES_SHOWN),
   year: v.optional(v.number()),
+  /** The day it was published, as OpenAlex has it: YYYY-MM-DD. */
+  published: v.optional(v.string()),
   venue: v.optional(v.string()),
   /** What kind of work it is: article, preprint, book-chapter and so on. */
   type: v.optional(v.string()),
@@ -150,6 +152,7 @@ export const paperRecordValidator = v.object({
   authors: capped(v.array(v.object({ name: v.string(), id: v.optional(v.string()), institutions: capped(v.optional(v.array(v.string())), INSTITUTIONS_LISTED) })), AUTHORS_LISTED),
   moreAuthors: v.optional(v.number()),
   year: v.optional(v.number()),
+  published: v.optional(v.string()),
   venue: v.optional(v.string()),
   type: v.optional(v.string()),
   language: v.optional(v.string()),

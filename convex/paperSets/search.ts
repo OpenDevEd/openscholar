@@ -24,7 +24,7 @@ import { readSearchWorks, searchRequestValidator, type SearchSnapshot } from "./
 /** The fields a screening paper keeps. */
 export const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships,cited_by_count,primary_location,best_oa_location,type,open_access";
 /** The fields the assistant reads of a paper: those, and what kind of work it is and whether it's free to read. */
-export const ASSISTANT_FIELDS = `${SCREENING_FIELDS},language`;
+export const ASSISTANT_FIELDS = `${SCREENING_FIELDS},language,publication_date`;
 
 export type SearchPaper = Infer<typeof screeningPaperInputValidator>;
 
@@ -104,6 +104,7 @@ export type Work = {
   title?: string | null;
   doi?: string | null;
   publication_year?: number | null;
+  publication_date?: string | null;
   abstract_inverted_index?: Record<string, number[]> | null;
   authorships?: Array<{ author?: { id?: string | null; display_name?: string | null } | null; institutions?: Array<{ display_name?: string | null; country_code?: string | null }> | null }> | null;
   cited_by_count?: number | null;

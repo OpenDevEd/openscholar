@@ -461,6 +461,7 @@ function shownPaper(work: Work, paper: SearchPaper) {
     ...(authors.length > AUTHORS_SHOWN ? { moreAuthors: authors.length - AUTHORS_SHOWN } : {}),
     ...(countries.length ? { countries: countries.slice(0, COUNTRIES_SHOWN) } : {}),
     ...(paper.publicationYear === undefined ? {} : { year: paper.publicationYear }),
+    ...(work.publication_date ? { published: work.publication_date } : {}),
     ...(paper.venue ? { venue: short(paper.venue, SHOWN.venue) } : {}),
     ...(work.type ? { type: work.type } : {}),
     ...(paper.doi ? { doi: paper.doi.replace(/^https?:\/\/doi\.org\//, "") } : {}),
