@@ -20,7 +20,7 @@
 .ai-mark[data-tone="brand"] .ring-bottom { --base: var(--logo-b, #2563eb); }
 .ai-mark[data-tone="brand"] .star { --base: var(--logo-ink, #172554); }
 /* Text colour follows the control, with the layers stepped back. */
-.ai-mark[data-tone="text"] .part { --base: currentColor; }
+.ai-mark[data-tone="text"] :is(.part, .glyph) { --base: currentColor; }
 .ai-mark[data-tone="text"] .ring-top { fill-opacity: .55; }
 .ai-mark[data-tone="text"] .ring-mid { fill-opacity: .3; }
 .ai-mark[data-tone="text"] .ring-bottom { fill-opacity: .85; }
@@ -102,41 +102,70 @@
 @keyframes full-turn { to { transform: rotate(360deg); } }
 @keyframes full-turn-back { to { transform: rotate(-360deg); } }
 
-/* Translation marks. Exchange: two arrows trade places round the star. Hover swaps them with a spring
-   while the star flips; translating keeps them swapping. Globe: the star sits in a globe that turns into
-   place, turns a third on hover and spins while translating. */
-.ai-mark .turn { transform-box: view-box; transform-origin: 64px 64px; }
-.ai-mark[data-tone="brand"] .tail { stop-color: var(--logo-a, #60a5fa); }
-.ai-mark[data-tone="brand"] .head { stop-color: var(--logo-b, #2563eb); }
-.ai-mark[data-tone="text"] .tail { stop-color: currentColor; stop-opacity: .45; }
-.ai-mark[data-tone="text"] .head { stop-color: currentColor; }
+/* Translation marks: the star in a globe that turns into place, turns a third on hover and spins while
+   translating. speech gives the globe a bubble tail. letter puts a tile in front that flips through the
+   app's scripts; scripts flips the star itself through them and back. */
 .ai-mark[data-tone="brand"] :is(.meridian, .equator) { --base: var(--logo-c, #bfdbfe); }
 .ai-mark[data-tone="brand"][data-scale="compact"] :is(.meridian, .equator) { --base: var(--logo-a, #60a5fa); }
+.ai-mark[data-tone="brand"] .tile-face { --base: var(--logo-b, #2563eb); }
+.ai-mark[data-tone="brand"] .glyph { --base: var(--logo-ink, #172554); }
+/* Glyphs carry their own placement transform, so they stay out of .part and its rotation centre. */
+.ai-mark .glyph { fill: currentColor; color: var(--base); }
 .ai-mark[data-tone="text"] :is(.meridian, .equator) { fill-opacity: .4; }
 /* Seen from the front, a meridian at longitude L is a half ellipse sin(L) wide; it fades at the edge and hides behind. */
 .ai-mark .meridian { transform: scaleX(sin(calc(var(--lon) + var(--at)))); opacity: clamp(0, cos(calc(var(--lon) + var(--at))) * 4 - .6, 1); }
+.ai-mark .tile { transform-box: fill-box; transform-origin: center; }
+.ai-mark .center { transform-box: view-box; transform-origin: 64px 64px; }
+/* One script at a time: A on the letter tile at rest, none over the star. */
+.ai-mark .script { opacity: 0; }
+.ai-mark[data-shape="letter"] .script-0 { opacity: 1; }
 
-.ai-mark[data-shape="exchange"][data-play="load"] .arrow { animation: fade-in 200ms linear both, exchange-in 1000ms var(--out) both; }
-.ai-mark[data-shape="exchange"][data-play="load"] .star { animation: fade-in 160ms linear 380ms both, star-in 720ms var(--spring) 380ms both; }
-.ai-mark[data-shape="exchange"][data-play="hover"] .arrow { animation: half-turn 900ms var(--spring); }
-.ai-mark[data-shape="exchange"][data-play="hover"] .star { animation: flip 560ms cubic-bezier(.65, 0, .35, 1) 100ms; }
-.ai-mark[data-shape="exchange"][data-play="loop"] .arrow { animation: half-turn 1.3s cubic-bezier(.65, 0, .35, 1) infinite; }
-.ai-mark[data-shape="exchange"][data-play="loop"] .star { animation: flip-beat 1.3s ease-in-out infinite; }
-@keyframes exchange-in { from { transform: rotate(-200deg) scale(.6); } }
-@keyframes half-turn { to { transform: rotate(180deg); } }
-@keyframes flip { to { transform: scaleX(-1); } }
-@keyframes flip-beat { 35%, 100% { transform: scaleX(-1); } }
-
-.ai-mark[data-shape="globe"][data-play="load"] { animation: globe-in 1100ms var(--settle) both; }
-.ai-mark[data-shape="globe"][data-play="load"] .ring-top { animation: fade-in 120ms linear both, gather-in 900ms var(--settle) both; }
-.ai-mark[data-shape="globe"][data-play="load"] .ring-bottom { animation: fade-in 120ms linear 60ms both, gather-in 900ms var(--settle) 60ms both; }
-.ai-mark[data-shape="globe"][data-play="load"] :is(.meridian, .equator) { animation: fade-in 320ms linear 120ms both; }
-.ai-mark[data-shape="globe"][data-play="load"] .star { animation: fade-in 160ms linear 380ms both, star-in 720ms var(--spring) 380ms both; }
-.ai-mark[data-shape="globe"][data-play="hover"] { animation: globe-turn 1000ms var(--spring); }
-.ai-mark[data-shape="globe"][data-play="hover"] .star { animation: pulse 760ms var(--impulse) 80ms; }
-.ai-mark[data-shape="globe"][data-play="loop"] { animation: globe-spin .8s linear infinite; }
+.ai-mark[data-globe][data-play="load"] { animation: globe-in 1100ms var(--settle) both; }
+.ai-mark[data-globe][data-play="load"] .ring-top { animation: fade-in 120ms linear both, gather-in 900ms var(--settle) both; }
+.ai-mark[data-globe][data-play="load"] .ring-bottom { animation: fade-in 120ms linear 60ms both, gather-in 900ms var(--settle) 60ms both; }
+.ai-mark[data-globe][data-play="load"] :is(.meridian, .equator) { animation: fade-in 320ms linear 120ms both; }
+.ai-mark[data-globe][data-play="load"] .star { animation: fade-in 160ms linear 380ms both, star-in 720ms var(--spring) 380ms both; }
+.ai-mark[data-shape="letter"][data-play="load"] .tile { animation: fade-in 160ms linear 300ms both, tile-in 720ms var(--spring) 300ms both; }
+.ai-mark[data-globe][data-play="hover"] { animation: globe-turn 1000ms var(--spring); }
+.ai-mark[data-globe][data-play="hover"] .star { animation: pulse 760ms var(--impulse) 80ms; }
+.ai-mark[data-globe][data-play="loop"] { animation: globe-spin .8s linear infinite; }
 @keyframes globe-in { from { --lon: -120deg; } }
 @keyframes globe-turn { to { --lon: 120deg; } }
 @keyframes globe-spin { to { --lon: 60deg; } }
+@keyframes tile-in { from { transform: scale(.4) rotate(-12deg); } }
 
-@media (prefers-reduced-motion: reduce) { .ai-mark, .ai-mark .part, .ai-mark .turn, .ai-mark .draw, .ai-mark .glow { animation: none !important; } }
+/* Hover flips once to 文 and back. */
+.ai-mark[data-shape="letter"][data-play="hover"] .tile, .ai-mark[data-shape="scripts"][data-play="hover"] .center { animation: flip-there-and-back 900ms ease-in-out; }
+.ai-mark[data-shape="letter"][data-play="hover"] .script-0, .ai-mark[data-shape="scripts"][data-play="hover"] .star { animation: shown-outside 900ms linear; }
+.ai-mark[data-shape="letter"][data-play="hover"] .script-3, .ai-mark[data-shape="scripts"][data-play="hover"] .script-3 { animation: shown-inside 900ms linear; }
+@keyframes flip-there-and-back { 20% { transform: scaleX(0); } 40%, 60% { transform: none; } 80% { transform: scaleX(0); } }
+@keyframes shown-outside { 0%, 19.9% { opacity: 1; } 20%, 79.9% { opacity: 0; } 80%, 100% { opacity: 1; } }
+@keyframes shown-inside { 0%, 19.9% { opacity: 0; } 20%, 79.9% { opacity: 1; } 80%, 100% { opacity: 0; } }
+
+/* Translating: the tile flips A, अ, あ, 文 and back to A each cycle, each glyph swapping in at the edge-on moment. */
+.ai-mark[data-shape="letter"][data-play="loop"] .tile { animation: tile-flips 2.4s ease-in-out infinite; }
+.ai-mark[data-shape="letter"][data-play="loop"] .script-0 { animation: letter-0 2.4s linear infinite; }
+.ai-mark[data-shape="letter"][data-play="loop"] .script-1 { animation: letter-1 2.4s linear infinite; }
+.ai-mark[data-shape="letter"][data-play="loop"] .script-2 { animation: letter-2 2.4s linear infinite; }
+.ai-mark[data-shape="letter"][data-play="loop"] .script-3 { animation: letter-3 2.4s linear infinite; }
+@keyframes tile-flips { 5%, 30%, 55%, 80% { transform: scaleX(0); } 10%, 25%, 35%, 50%, 60%, 75%, 85% { transform: none; } }
+@keyframes letter-0 { 0%, 4.9% { opacity: 1; } 5%, 79.9% { opacity: 0; } 80%, 100% { opacity: 1; } }
+@keyframes letter-1 { 0%, 4.9% { opacity: 0; } 5%, 29.9% { opacity: 1; } 30%, 100% { opacity: 0; } }
+@keyframes letter-2 { 0%, 29.9% { opacity: 0; } 30%, 54.9% { opacity: 1; } 55%, 100% { opacity: 0; } }
+@keyframes letter-3 { 0%, 54.9% { opacity: 0; } 55%, 79.9% { opacity: 1; } 80%, 100% { opacity: 0; } }
+
+/* Translating: the star flips to A, अ, あ, 文 and back to the star each cycle. */
+.ai-mark[data-shape="scripts"][data-play="loop"] .center { animation: center-flips 3s ease-in-out infinite; }
+.ai-mark[data-shape="scripts"][data-play="loop"] .star { animation: center-star 3s linear infinite; }
+.ai-mark[data-shape="scripts"][data-play="loop"] .script-0 { animation: center-0 3s linear infinite; }
+.ai-mark[data-shape="scripts"][data-play="loop"] .script-1 { animation: center-1 3s linear infinite; }
+.ai-mark[data-shape="scripts"][data-play="loop"] .script-2 { animation: center-2 3s linear infinite; }
+.ai-mark[data-shape="scripts"][data-play="loop"] .script-3 { animation: center-3 3s linear infinite; }
+@keyframes center-flips { 4%, 24%, 44%, 64%, 84% { transform: scaleX(0); } 8%, 20%, 28%, 40%, 48%, 60%, 68%, 80%, 88% { transform: none; } }
+@keyframes center-star { 0%, 3.9% { opacity: 1; } 4%, 83.9% { opacity: 0; } 84%, 100% { opacity: 1; } }
+@keyframes center-0 { 0%, 3.9% { opacity: 0; } 4%, 23.9% { opacity: 1; } 24%, 100% { opacity: 0; } }
+@keyframes center-1 { 0%, 23.9% { opacity: 0; } 24%, 43.9% { opacity: 1; } 44%, 100% { opacity: 0; } }
+@keyframes center-2 { 0%, 43.9% { opacity: 0; } 44%, 63.9% { opacity: 1; } 64%, 100% { opacity: 0; } }
+@keyframes center-3 { 0%, 63.9% { opacity: 0; } 64%, 83.9% { opacity: 1; } 84%, 100% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) { .ai-mark, .ai-mark .part, .ai-mark .tile, .ai-mark .center, .ai-mark .script, .ai-mark .draw, .ai-mark .glow { animation: none !important; } }

@@ -5,7 +5,7 @@ const variants = [
   { id: "orbit", name: "Orbit", load: "The layers spiral out into place.", hover: "The layers go round once against the star.", loop: "The outer layers circle, the inner one turns the other way." },
 ];
 const byId = (id) => document.getElementById(id);
-let selected = "gather";
+let selected = "orbit";
 let tone = "brand";
 let looping = true;
 
@@ -103,8 +103,10 @@ byId("generate").addEventListener("click", () => {
 // Translation: each card runs ready (load, then hover), translating and translated on repeat.
 // Pressing Translate jumps the card to translating, or back to ready once it has translated.
 const translations = [
-  { id: "exchange", name: "Exchange", detail: "Two arrows trade places round the star. Hover swaps them as the star flips; translating keeps them swapping." },
-  { id: "globe", name: "Globe", detail: "The star inside a globe. It turns into place, turns a third on hover and spins while translating. Its lines fade below 20px." },
+  { id: "globe", name: "Globe", detail: "The star inside a globe. It turns into place, turns a third on hover and spins while translating." },
+  { id: "speech", name: "Speech globe", detail: "The globe's bottom layer ends in a speech-bubble tail, so it reads as talk, not just the world." },
+  { id: "letter", name: "Lettered globe", detail: "An A tile in front of the globe. Hover flips it to 文 and back; translating flips it through A, अ, あ and 文, the app's own scripts." },
+  { id: "scripts", name: "Speaking scripts", detail: "The speech globe, with the star itself flipping through A, अ, あ and 文 while translating and back to the star when done." },
 ];
 const phaseLength = { load: 1500, hover: 1500, translating: 2700, translated: 1800 };
 const nextPhase = { load: "hover", hover: "translating", translating: "translated", translated: "load" };
