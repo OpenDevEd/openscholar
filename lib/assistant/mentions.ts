@@ -29,6 +29,12 @@ export function mentionSegments(text: string): Array<string | Mention> {
   return out;
 }
 
+/** A sent message as plain text: each record it points at as `@name`. */
+export const plainMentions = (text: string) =>
+  mentionSegments(text)
+    .map((part) => (typeof part === "string" ? part : `@${part.label}`))
+    .join("");
+
 /**
  * Splits a draft into plain runs and the picked records it still names as `@name`. Longest
  * name first, so a name that contains another still matches whole. A name edited after it

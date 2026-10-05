@@ -6,6 +6,7 @@
  */
 import { v } from "convex/values";
 import { requireFeature } from "../featureFlags/guard";
+import { SEARCH_TERMS_MAX } from "../library/collections";
 import { readLibraryPage } from "../library/queries";
 import { listedSearchesAction } from "../research/records";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
@@ -32,16 +33,19 @@ export const findAction = defineUserQuery({
           listedSearchesAction.run(ctx, userId, { paginationOpts: first, sort: "recent", text: needle }).then(({ page }) => page)
         : ctx.db.query("searches").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)).order("desc").take(EACH).then((rows) => rows.map(({ data }) => data)),
       (needle
-        ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", needle).eq("userId", userId))
+        ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", needle.split(/\s+/).slice(0, SEARCH_TERMS_MAX).join(" ")).eq("userId", userId))
         : ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", userId))
       ).take(EACH),
       readLibraryPage(ctx, userId, { ...(needle ? { searchText: needle } : {}), sortBy: "savedAt", sortOrder: "desc" }, first),
     ]);
-    return [
-      ...searches.slice(0, EACH).map((search) => ({ kind: "search" as const, id: search.id, label: search.query, count: search.count })),
-      ...collections.map((collection) => ({ kind: "collection" as const, id: collection._id, label: collection.name, count: collection.itemCount ?? 0 })),
-      ...papers.page.slice(0, EACH).map((item) => ({ kind: "paper" as const, id: item.openalexId, label: item.title })),
-    ];
+    const groups = [
+      // A search found by its filters alone has no query: it's named by its question, or left out when it has neither.
+      searches.slice(0, EACH).map((search) => ({ kind: "search" as const, id: search.id, label: search.query.trim() || (search.questionText ?? "").trim(), count: search.count })),
+      collections.map((collection) => ({ kind: "collection" as const, id: collection._id, label: collection.name, count: collection.itemCount ?? 0 })),
+      papers.page.slice(0, EACH).map((item) => ({ kind: "paper" as const, id: item.openalexId, label: item.title })),
+    ].map((group) => group.filter((record) => record.label.trim()));
+    // A kind at a time, round and round, so the picker's first few hold every kind that matched.
+    return Array.from({ length: EACH }, (_, at) => groups.flatMap((group) => group[at] ?? [])).flat();
   },
 });
 export const find = userQuery(findAction);

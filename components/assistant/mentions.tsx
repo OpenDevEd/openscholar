@@ -4,7 +4,7 @@
 // way to give the assistant access: it can already reach everything they can. Picking a record
 // writes "@name" into the message, highlighted, and the sent message shows it as a chip.
 
-import { useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import { useId, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
@@ -75,13 +75,15 @@ export function MentionComposer({
   const [dismissed, setDismissed] = useState<number | null>(null);
   const [focused, setFocused] = useState(false);
   const mirror = useRef<HTMLDivElement>(null);
+  const listId = useId();
   // Read while the box has focus, so the list is there the moment @ is typed.
   const asked = menu?.query.trim() ?? "";
   const found = useQuery(api.assistant.mentions.find, focused && !disabled ? { text: asked } : "skip");
   // What the last answer found stays up, dimmed and inert, while the next one loads, so the list doesn't empty between keys.
   const [kept, setKept] = useState<{ text: string; found: Found[] } | null>(null);
   if (found !== undefined && (found !== kept?.found || asked !== kept.text)) setKept({ text: asked, found });
-  const stale = kept !== null && kept.text !== asked;
+  // Until the answer for what's typed arrives, the first one included, nothing can be picked.
+  const stale = menu !== null && kept?.text !== asked;
   const options = menu && kept ? kept.found.slice(0, SHOWN) : [];
 
   const track = (text: string, caret: number) => {
@@ -97,8 +99,10 @@ export function MentionComposer({
     const record = { kind: found.kind, id: found.id, label: found.label.replace(/\s+/g, " ").trim() };
     // Each name in a draft stands for one record: a second record of the same name is told apart by its kind.
     const mention = { ...record, label: uniqueLabel(record, t(`mentions.kinds.${found.kind}`), picked) };
-    const caret = box.selectionStart;
-    const text = `${draft.slice(0, menu.start)}@${mention.label} ${draft.slice(caret)}`;
+    // The whole name being typed goes, the part after the caret too.
+    const tail = draft.slice(box.selectionEnd);
+    const rest = tail.slice(/^\S*/.exec(tail)![0].length);
+    const text = `${draft.slice(0, menu.start)}@${mention.label}${rest.startsWith(" ") ? "" : " "}${rest}`;
     const end = menu.start + mention.label.length + 2;
     onPick(mention);
     setDraft(text);
@@ -148,6 +152,7 @@ export function MentionComposer({
         {menu && kept ? (
           <motion.div
             key="menu"
+            id={listId}
             role="listbox"
             aria-label={t("mentions.label")}
             initial={{ opacity: 0, y: 6, scale: 0.98 }}
@@ -161,6 +166,7 @@ export function MentionComposer({
               options.map((option, i) => (
                 <button
                   key={`${option.kind}:${option.id}`}
+                  id={`${listId}-${i}`}
                   type="button"
                   role="option"
                   aria-selected={i === active}
@@ -227,6 +233,11 @@ export function MentionComposer({
           rows={2}
           placeholder={placeholder}
           aria-label={t("messageLabel")}
+          // Focus stays in the box while the picker is open: these say which option the arrow keys are on.
+          aria-haspopup="listbox"
+          aria-autocomplete="list"
+          aria-controls={menu && kept ? listId : undefined}
+          aria-activedescendant={menu && options.length && !stale ? `${listId}-${Math.min(active, options.length - 1)}` : undefined}
           className="relative block w-full resize-none bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground"
         />
       </div>

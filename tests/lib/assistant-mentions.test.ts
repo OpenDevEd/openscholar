@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { draftSegments, mentionSegments, openMention, stillNamed, uniqueLabel, withTokens, type Mention } from "@/lib/assistant/mentions";
+import { titleFrom } from "@/lib/assistant/title";
 
 const coaching: Mention = { kind: "collection", id: "k1", label: "Teacher coaching" };
 const coachingCost: Mention = { kind: "search", id: "s-9", label: "Teacher coaching (cost) [Kenya]?" };
@@ -36,5 +37,11 @@ describe("assistant mentions", () => {
     expect(openMention("ask @teach", 10, [])).toEqual({ start: 4, query: "teach" });
     expect(openMention("mail me@home", 12, [])).toBeNull();
     expect(openMention("@Teacher coaching", 17, [coaching])).toBeNull();
+  });
+});
+
+describe("a chat named by its first message", () => {
+  it("is named with each record as @name, never the token", () => {
+    expect(titleFrom("compare @[Teacher coaching](collection:k1) with this")).toBe("compare @Teacher coaching with this");
   });
 });

@@ -79,6 +79,8 @@ type Drafts = {
   /** The records picked with @ in a chat's draft (./mentions.tsx). */
   picks: (id: ThreadId | null) => Mention[];
   pick: (id: ThreadId | null, mention: Mention) => void;
+  /** Lets go of the picks a message was sent with, once it's in. */
+  unpick: (id: ThreadId | null, sent: readonly Mention[]) => void;
 };
 
 const setOpen = (update: (open: boolean) => boolean) => panelPlace.set((now) => ({ ...now, open: update(now.open) }));
@@ -103,9 +105,11 @@ export function AssistantPanel() {
       setPicked(({ [NEW]: mine, ...rest }) => (mine ? { ...rest, [id]: [...(rest[id] ?? []), ...mine] } : rest));
     },
     picks: (id) => picked[id ?? NEW] ?? [],
-    // A pick keeps the earlier ones its draft still names. Sending keeps them all, so a draft put back after a failed send still draws them.
+    // A pick keeps the earlier ones its draft still names. A failed send keeps them, so the draft put back still draws them.
     pick: (id, mention) =>
       setPicked((all) => ({ ...all, [id ?? NEW]: [...stillNamed(typed[id ?? NEW] ?? "", all[id ?? NEW] ?? []).filter((m) => m.kind !== mention.kind || m.id !== mention.id), mention] })),
+    // By the picks themselves: one made again for the next draft is a new pick, and stays.
+    unpick: (id, sent) => setPicked((all) => ({ ...all, [id ?? NEW]: (all[id ?? NEW] ?? []).filter((m) => !sent.includes(m)) })),
   };
   return (
     <Lost onLost={() => setThreadId(null)}>
@@ -452,7 +456,8 @@ function Chat({
     const typed = draft.trim();
     if (!typed || busy || !canWrite) return;
     // Each record picked with @ goes as its token, which the model reads its ID from.
-    const text = withTokens(typed, drafts.picks(threadId));
+    const sentPicks = stillNamed(typed, drafts.picks(threadId));
+    const text = withTokens(typed, sentPicks);
     const from = threadId;
     drafts.set(from, "");
     // This send's own mark, so that finishing it doesn't clear a later one in another chat.
@@ -475,6 +480,7 @@ function Chat({
     outgoing.current = sent.catch(() => null);
     try {
       await sent;
+      drafts.unpick(into, sentPicks);
     } catch (error) {
       // The message goes back in the box of its chat, unless something new was typed there meanwhile.
       drafts.set(into, (now) => now || typed);
