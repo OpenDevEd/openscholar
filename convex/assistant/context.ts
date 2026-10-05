@@ -76,6 +76,8 @@ const SUMMARIZE =
   "Write a summary of this conversation that can replace every message above, so the conversation can carry on from the summary alone. " +
   "Use exactly these headings, in this order, and write \"None\" under a heading with nothing to say: " +
   "Decisions. The person's preferences. Records worked on, each by its ID. Open jobs. Unfinished requests. Next step. Last exchanges. " +
+  "Under Unfinished requests, write only what the person's most recent message asked for that isn't done yet, with that message quoted word for word. " +
+  "A request from an earlier message that was answered is finished, also when the answer was that it can't be done or the person said no: leave it out, and never make it the next step. " +
   "Under Last exchanges, write the last few exchanges as plain text, who said what. " +
   "Keep every decision and preference from an earlier summary unless the person changed it. " +
   "Don't call a tool, and don't address the person: write only the summary.";

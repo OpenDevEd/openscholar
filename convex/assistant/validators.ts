@@ -65,6 +65,9 @@ export const assistantAskingValidator = v.object({
   askedAt: v.number(),
 });
 
+/** What a person lets jobs that spend credits hold without asking. */
+export const assistantAllowanceValidator = v.object({ cap: v.optional(v.number()) });
+
 /** Replies whose cost a person's record keeps, for the Spending sheet's chart. */
 export const RECENT_REPLIES = 12;
 
@@ -74,13 +77,15 @@ export const assistantLimitFields = {
   userId: v.id("users"),
   /** Credits a reply may spend before it pauses and asks. With none, a reply has no limit. */
   replyLimit: v.optional(v.number()),
+  /** Set while jobs that spend credits run in this chat without asking (#328): the most one may hold, or any amount with no `cap`. */
+  jobs: v.optional(assistantAllowanceValidator),
 };
 
 /** A person's own record with the assistant: what the chats they start take, and what their last replies cost. */
 export const assistantSpenderFields = {
   userId: v.id("users"),
   /** Set while "Use these for my new chats" is on: the limits a chat they start begins with. */
-  newChats: v.optional(v.object({ replyLimit: v.optional(v.number()) })),
+  newChats: v.optional(v.object({ replyLimit: v.optional(v.number()), jobs: v.optional(assistantAllowanceValidator) })),
   /**
    * What their last replies cost in credits, oldest first. Each is under its reply's name, so a
    * charge settled after the reply ended (convex/chat/billing.ts) is added to the right one.
@@ -143,6 +148,8 @@ export const assistantStepFields = {
   subject: v.optional(v.string()),
   /** How many things its result lists, when it lists any. */
   count: v.optional(v.number()),
+  /** On a call that spends credits: the most it holds (#328), which the person is shown when they're asked. */
+  credits: v.optional(v.number()),
   /**
    * `asking`: the person is asked before it runs. `allowed`: they said yes, and the reply
    * runs it as it carries on. `declined`: they said no, or stopped the reply.

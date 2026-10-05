@@ -114,7 +114,7 @@ describe("what the assistant's model is sent", () => {
 
     // The note says the page and the date. A message from the same page on the same day needs none.
     const today = new Date().toISOString().slice(0, 10);
-    const note = (page: string) => `<app_context>page: ${page}; today: ${today}</app_context>`;
+    const note = (page: string) => `<app_context>page: ${page}; today: ${today}; chat: ${threadId}</app_context>`;
     expect(asked(sent(6))).toEqual([
       `user: What is this?${note("/results/search-1?page=2")}`,
       "user: And this one?",
@@ -154,7 +154,7 @@ describe("what the assistant's model is sent", () => {
     const fresh = await asAda.mutation(api.assistant.threads.create, {});
     await asAda.mutation(api.assistant.replies.send, { threadId: fresh, text: "Hello" });
     await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", fresh)))?.reply, { timeoutMs: 5_000 });
-    expect(asked(requests.at(-1) as Sent)).toEqual([`user: Hello<app_context>today: ${today}</app_context>`]);
+    expect(asked(requests.at(-1) as Sent)).toEqual([`user: Hello<app_context>today: ${today}; chat: ${fresh}</app_context>`]);
   });
 
   it("is a summary and what came after it, once a reply has read a lot", async () => {

@@ -18,6 +18,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { effortValidator } from "../aiModelConfig/validators";
+import { availableCredits } from "../billing/accounts";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -25,6 +26,7 @@ import { internalMutation, internalQuery, mutation, query } from "../lib/functio
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
+import { NEW_CHAT_TITLE, titleFrom } from "../../lib/assistant/title";
 import { notePart, viewOf } from "../../lib/assistant/view";
 import { viewOf as actionView } from "../../lib/assistant/actions";
 import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
@@ -33,7 +35,7 @@ import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
 import { detailsOf } from "./details";
-import { carriedOn, noteReply, pausedAt, replyLimitOf } from "./spending";
+import { allowAlways, carriedOn, covers, noteReply, pausedAt, replyLimitOf } from "./spending";
 import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 import { askedDetailsValidator, assistantPausedValidator } from "./validators";
@@ -129,7 +131,7 @@ export const send = mutation({
     const { messageId, message } = await assistant.saveMessage(ctx, {
       threadId: thread.agentThreadId,
       userId,
-      ...(moved ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: notePart({ page: view ?? undefined, today }) }] } } : { prompt: text }),
+      ...(moved ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: notePart({ page: view ?? undefined, today, chat: threadId }) }] } } : { prompt: text }),
       skipEmbeddings: true,
     });
     const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
@@ -148,7 +150,10 @@ export const send = mutation({
       effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
       ...(cap === undefined ? {} : { used: { credits: 0, rounds: 0, calls: 0, cap } }),
     });
-    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), ...(moved ? { view: { ...((view ?? said?.address) === undefined ? {} : { address: view ?? said?.address }), day: today, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId, spent: 0, ...(cap === undefined ? {} : { cap }) } });
+    // A chat made before it had a message, to share it or to set what it may spend, is named by its first.
+    // ponytail: told apart by its title alone, so a chat renamed to exactly the default before its first message is named over. A flag on the chat for "named by hand" if that ever matters.
+    const title = thread.preview === undefined && thread.title === NEW_CHAT_TITLE ? titleFrom(text) : "";
+    await ctx.db.patch("assistantThreads", threadId, { ...(title ? { title } : {}), preview: previewOf(text), ...(moved ? { view: { ...((view ?? said?.address) === undefined ? {} : { address: view ?? said?.address }), day: today, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId, spent: 0, ...(cap === undefined ? {} : { cap }) } });
     return null;
   },
 });
@@ -159,9 +164,10 @@ const waitingAttempt = (waiting: { order: number; askedAt: number }) => `${waiti
 
 /** The person's answer to a call the assistant asked about (./steps.ts): run it, or don't. */
 export const answer = mutation({
-  args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), allow: v.boolean() },
+  // `always`, with a yes to a call that spends credits: jobs that hold no more run in this chat without asking from now on (./spending.ts).
+  args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), allow: v.boolean(), always: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { threadId, stepId, allow }) => {
+  handler: async (ctx, { threadId, stepId, allow, always }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId, "write");
@@ -171,7 +177,15 @@ export const answer = mutation({
     if (!waiting || step.order !== waiting.order || step.status !== "asking") throw createError("CONFLICT", "This has already been answered.");
     // It would run with their access, on their records, so the answer is theirs alone.
     if (step.userId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can allow this.");
-    const left = (await stepsAt(ctx, threadId, "asking")).filter((other) => other._id !== stepId);
+    let left = (await stepsAt(ctx, threadId, "asking")).filter((other) => other._id !== stepId);
+    if (allow && always && step.credits !== undefined) {
+      // As opencode's "always" does for a session: the rule is kept, and what else waits that it now covers is allowed with it.
+      const allowance = await allowAlways(ctx, threadId, userId, step.credits);
+      const balance = await availableCredits(ctx, userId);
+      const covered = left.filter((other) => other.credits !== undefined && covers(allowance, other.credits, balance));
+      for (const other of covered) await ctx.db.patch("assistantSteps", other._id, { status: "allowed" });
+      left = left.filter((other) => !covered.includes(other));
+    }
     // It asked with its limit already reached: the last answer starts nothing, and the reply waits to be carried on.
     const paused = left.length ? null : pausedAt(waiting);
     // The answer that lets the reply carry on starts a reply, so it's held to how many a person has at once, before anything changes.
@@ -335,7 +349,7 @@ export const release = internalMutation({
     asking: v.optional(
       v.object({
         promptMessageId: v.string(),
-        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) })),
+        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()) })),
         spent: v.number(),
         rounds: v.number(),
         made: v.number(),
@@ -527,10 +541,14 @@ const stepValidator = v.object({
   order: v.number(),
   /** The action it ran, by its path in the registry. */
   action: v.string(),
-  /** What it was about: a title, a name or a query from its arguments. */
+  /** Which of its several jobs the action did, for one that has more than one (lib/assistant/actions.ts). */
+  variant: v.optional(v.string()),
+  /** What it was about: a title, a name or a query from its arguments, or the title or name of what it returned. */
   subject: v.optional(v.string()),
   /** How many things it found, when its result lists any. */
   count: v.optional(v.number()),
+  /** The most it holds, on a call that spends credits (#328). */
+  credits: v.optional(v.number()),
   /**
    * `failed` also covers a step whose reply died while it ran. `asking`: the person is asked before it runs.
    * `allowed`: they said yes, and it runs once the reply carries on. `declined`: they said no, or stopped the reply.
@@ -718,6 +736,18 @@ export const messagesAction = defineUserQuery({
 });
 export const messages = userQuery(messagesAction);
 
+/** The kind of change a step made to the person's research records, the one action that makes several kinds. */
+function variantOf(step: Doc<"assistantSteps">) {
+  if (step.path !== "research/records:change") return {};
+  try {
+    const kind = (JSON.parse(step.input) as { command?: { kind?: unknown } }).command?.kind;
+    return typeof kind === "string" ? { variant: kind } : {};
+  } catch {
+    // Arguments too long to keep whole were cut, and don't parse.
+    return {};
+  }
+}
+
 /** A step as the chat's page shows it. `details` is what a call that waits for this person would do. */
 function shownStep(step: Doc<"assistantSteps">, { userId, answering, details }: { userId: Id<"users">; answering: number | undefined; details?: Infer<typeof askedDetailsValidator> }) {
   return {
@@ -725,8 +755,10 @@ function shownStep(step: Doc<"assistantSteps">, { userId, answering, details }: 
     role: "step" as const,
     order: step.order,
     action: step.path,
+    ...variantOf(step),
     ...(step.subject ? { subject: step.subject } : {}),
     ...(step.count === undefined ? {} : { count: step.count }),
+    ...(step.credits === undefined ? {} : { credits: step.credits }),
     status: shownStatus(step.status, answering === step.order),
     canAnswer: details !== undefined,
     ...(details !== undefined ? { details } : {}),

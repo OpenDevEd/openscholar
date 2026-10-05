@@ -156,7 +156,8 @@ export const candidatesAction = defineUserQuery({
   path: "assistant/sharing:candidates",
   description:
     "Suggests who the person could share an assistant chat with, a page at a time: the organizations they belong to, then the people in them. " +
-    "Given `text`, only those whose name or email contains it. A page can be short while more remain, since it only looks through so many members at once.",
+    "Given `text`, only those whose name or email contains it. A page can be short while more remain, since it only looks through so many members at once. " +
+    "A chat can only be shared inside the person's organizations: with no `text`, an empty first page means they belong to none, so there is nobody to share with until they join or create one.",
   args: { text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(assistantCandidateValidator),
   run: async (ctx, userId, { text, paginationOpts }) => {

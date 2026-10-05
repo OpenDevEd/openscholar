@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hasUnquotedWildcard, hasWildcardInQuotedPhrase } from "./wildcard";
+import { hasUnquotedWildcard, hasWildcardInQuotedPhrase, withoutQuotedQuestionMarks } from "./wildcard";
 
 describe("hasUnquotedWildcard", () => {
   it("detects a trailing * outside quotes", () => {
@@ -74,5 +74,18 @@ describe("hasWildcardInQuotedPhrase", () => {
     expect(hasWildcardInQuotedPhrase("")).toBe(false);
     // @ts-expect-error exercising the runtime guard
     expect(hasWildcardInQuotedPhrase(null)).toBe(false);
+  });
+});
+
+describe("withoutQuotedQuestionMarks", () => {
+  it("takes the mark out of a title quoted with it, which OpenAlex would read as a wildcard and refuse", () => {
+    const query = withoutQuotedQuestionMarks('"Food for Thought?" Aurino AND "What works? A review"');
+    expect(query).toBe('"Food for Thought" Aurino AND "What works A review"');
+    expect(hasWildcardInQuotedPhrase(query)).toBe(false);
+  });
+
+  it("leaves a wildcard outside quotes, and a star inside them, as they were typed", () => {
+    expect(withoutQuotedQuestionMarks('wom?n "school feeding" educat*')).toBe('wom?n "school feeding" educat*');
+    expect(withoutQuotedQuestionMarks('"smart* phone"')).toBe('"smart* phone"');
   });
 });

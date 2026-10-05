@@ -11,6 +11,7 @@ import schema from "../schema";
 import { inputSchema } from "../lib/assistantTools";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
+import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
 import { carriedOn, pausedAt } from "./spending";
@@ -129,7 +130,8 @@ describe("the assistant's tools", () => {
 
     const [saved] = await t.run(async (ctx) => ctx.db.query("libraryItems").collect());
     expect(saved).toMatchObject({ userId: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale" });
-    expect(await steps()).toMatchObject([{ path: "library/papers:save", status: "done", undo: { path: "library/mutations:removeFromLibrary" } }]);
+    // The call named the paper by its ID alone, so the step is about the paper it came back with.
+    expect(await steps()).toMatchObject([{ path: "library/papers:save", status: "done", subject: "Tutoring at scale", undo: { path: "library/mutations:removeFromLibrary" } }]);
     // One result beside the step: the write ended it, and nothing ended it again.
     expect(await results()).toEqual([expect.objectContaining({ libraryItemId: saved._id, title: "Tutoring at scale" })]);
     expect(await shown()).toEqual(["user: Save that paper", "step: library/papers:save done, can be undone", "assistant: Saved it."]);
@@ -442,9 +444,70 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).not.toBeNull();
   });
 
+  it("ask before an action that spends credits, with the most it holds, and run it unasked once the person allows that much in the chat", async () => {
+    const t = convexTest(schema);
+    setupScreeningWorkpool(t);
+    const { asAda, threadId, say, sayUntilAsked, settled, steps } = await chatOf(t);
+    const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
+    for (const n of [1, 2, 3]) await asAda.mutation(api.library.mutations.setPaperInCollection, { paper: { openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, abstract: "A trial of tutoring." }, collectionId, inCollection: true });
+    const screen = (id: string, last = 3) => ({
+      id,
+      name: "run_action",
+      input: { name: "screening/start:screen", arguments: { set: { kind: "collection", collectionId }, first: 1, last, questions: [{ key: "q1", question: "Is this a trial?" }], scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] }, saveTo: { kind: "none" } } },
+    });
+    const jobs = () => t.run(async (ctx) => (await ctx.db.query("screeningJobs").collect()).length);
+    const limits = async () => {
+      const { recent: _recent, ...read } = await asAda.query(api.assistant.spending.get, { threadId });
+      return read;
+    };
+
+    // Nothing starts until she says so. She is shown the most it holds: every paper the collection has, however far the call said to go.
+    mockDoStream.mockImplementationOnce(calling(screen("first", 500)));
+    await sayUntilAsked("Screen my trials");
+    expect(await jobs()).toBe(0);
+    const asked = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step" && item.status === "asking");
+    expect(asked).toMatchObject({ action: "screening/start:screen", canAnswer: true, credits: 14 });
+
+    // "Always allow in this chat": it runs, and from now on jobs that hold no more than the smallest listed limit covering it run without asking.
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Screening them now."]));
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: true, always: true });
+    await settled();
+    expect(await jobs()).toBe(1);
+    expect(await limits()).toEqual({ replyLimit: null, allowance: { cap: 100 } });
+    // A chat she starts takes it too, while her new chats take this chat's limits.
+    await asAda.mutation(api.assistant.spending.setForNewChats, { threadId, on: true });
+    const next = await asAda.mutation(api.assistant.threads.create, { title: "Another" });
+    expect(await asAda.query(api.assistant.spending.get, { threadId: next })).toMatchObject({ allowance: { cap: 100 }, newChats: null });
+    await asAda.mutation(api.assistant.spending.setForNewChats, { threadId, on: false });
+    mockDoStream.mockImplementationOnce(calling(screen("second"))).mockImplementationOnce(finishingDoStream(["And again."]));
+    await say("Screen them again");
+    expect(await jobs()).toBe(2);
+    expect((await steps()).filter((step) => step.path === "screening/start:screen").map((step) => [step.status, step.credits])).toEqual([["done", 14], ["done", 14]]);
+
+    // One that holds more than she allowed asks, and a no starts nothing.
+    await asAda.mutation(api.assistant.spending.setAllowance, { threadId, allowance: { cap: 10 } });
+    mockDoStream.mockImplementationOnce(calling(screen("third")));
+    await sayUntilAsked("And once more");
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Left as it is."]));
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: false });
+    await settled();
+    expect(await jobs()).toBe(2);
+
+    // Asked before every job again, and an action that spends credits with no estimate to ask with isn't run at all.
+    await asAda.mutation(api.assistant.spending.setAllowance, { threadId, allowance: null });
+    expect(await limits()).toEqual({ replyLimit: null, allowance: null });
+    requests.length = 0;
+    mockDoStream
+      .mockImplementationOnce(calling({ id: "extract", name: "run_action", input: { name: "extraction/mutations:startJob", arguments: { name: "Sizes", mode: "extraction", bucketItems: [], questions: [] } } }))
+      .mockImplementationOnce(finishingDoStream(["I can't start that here."]));
+    await say("Extract the sample sizes");
+    expect(told(1, "extract")).toMatchObject({ error: expect.stringMatching(/can't be asked for here/) });
+    expect(await t.run(async (ctx) => (await ctx.db.query("extractionJobs").collect()).length)).toBe(0);
+  });
+
   it("show the person what a call acts on and what it changes before anything else about it", async () => {
     const t = convexTest(schema);
-    const { ada, asAda } = await chatOf(t);
+    const { ada, asAda, threadId } = await chatOf(t);
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
     const paper = Object.fromEntries(Array.from({ length: 14 }, (_, index) => [`field${index}`, `value ${index}`]));
     const details = await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ paper, collectionId, inCollection: false, note: null })));
@@ -454,6 +517,33 @@ describe("the assistant's tools", () => {
     // A collection that isn't hers stays an ID.
     const theirs = await t.run(async (ctx) => ctx.db.insert("collections", { ...(await ctx.db.get("collections", collectionId))!, _id: undefined, _creationTime: undefined, userId: (await ctx.db.query("users").collect()).find((user) => user._id !== ada)!._id, name: "Private to someone else" } as never));
     expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId: theirs })))).toEqual([{ name: "collection", value: theirs }]);
+    // A collection named by its ID and again by the name the call expects it to have is one line.
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId, name: "Trials" })))).toEqual([{ name: "collection", value: "Trials" }]);
+    // What an undo expects the record to be, and which kind of record an ID beside it names, aren't part of what's asked.
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ threadId, principal: { kind: "user", userId: ada }, role: "read", expect: { answer: true, by: "model", at: 7 } })))).toEqual([
+      { name: "thread", value: "Reading trials" },
+      { name: "role", value: "read" },
+      { name: "user", value: expect.any(String) },
+    ]);
+    // Two records that share a name are both said: who a chat is shared with is never left out.
+    await asAda.mutation(api.assistant.threads.rename, { threadId, title: "Trials" });
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ threadId, collectionId })))).toEqual([{ name: "thread", value: "Trials" }, { name: "collection", value: "Trials" }]);
+  });
+
+  it("name a step after the saved paper or the collection its call gave only the ID of", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, say, steps } = await chatOf(t);
+    const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
+    await t.run(async (ctx) => {
+      await ctx.db.insert("libraryItems", { userId: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale", paperData: "{}", savedAt: 1, updatedAt: 1, searchableText: "tutoring at scale" });
+    });
+    mockDoStream
+      // The paper by its short ID, as results give it, and a collection of hers.
+      .mockImplementationOnce(calling({ id: "collect", name: "run_action", input: { name: "library/papers:collect", arguments: { id: "W7", collectionId, inCollection: true } } }))
+      .mockImplementationOnce(calling({ id: "open", name: "run_action", input: { name: "library/collections:getCollection", arguments: { collectionId } } }))
+      .mockImplementationOnce(finishingDoStream(["Done."]));
+    await say("Put that paper in Trials");
+    expect((await steps()).map((step) => [step.path, step.subject])).toEqual([["library/papers:collect", "Tutoring at scale"], ["library/collections:getCollection", "Trials"]]);
   });
 
   it("carry a reply on through a pause, for as many requests as its work takes", async () => {
@@ -779,7 +869,7 @@ describe("the assistant's tools", () => {
     // A limit is a whole number of credits from 1.
     for (const limit of [0, 1.5, -3]) await expect(asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit })).rejects.toThrow(/whole number/);
     await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
-    expect(await asAda.query(api.assistant.spending.get, { threadId })).toEqual({ replyLimit: 1, recent: [] });
+    expect(await asAda.query(api.assistant.spending.get, { threadId })).toEqual({ replyLimit: 1, allowance: null, recent: [] });
     // It is hers alone: Ben, in the same chat, has none.
     expect((await asBen.query(api.assistant.spending.get, { threadId })).replyLimit).toBeNull();
 
@@ -919,7 +1009,7 @@ describe("the assistant's tools", () => {
     const t = convexTest(schema);
     const { asAda, threadId } = await chatOf(t);
     const limitIn = async (chat: Id<"assistantThreads">) => {
-      const { recent: _recent, ...limits } = await asAda.query(api.assistant.spending.get, { threadId: chat });
+      const { recent: _recent, allowance: _allowance, ...limits } = await asAda.query(api.assistant.spending.get, { threadId: chat });
       return limits;
     };
     const started = () => asAda.mutation(api.assistant.threads.create, { title: "Another" });
@@ -979,6 +1069,21 @@ describe("the assistant's tools", () => {
     expect(stepIds).toHaveLength(60);
     expect(new Set(stepIds).size).toBe(30);
     expect(all.filter((item) => item.role !== "step").map((item) => `${item.role}: ${"text" in item ? item.text : ""}`)).toEqual(["assistant: All read.", "user: Read a great deal"]);
+  });
+
+  it("say which kind of change a step made to the person's research records, the one action that makes several", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, threadId, say } = await chatOf(t);
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Rated."]));
+    await say("Rate that paper");
+    await t.run(async (ctx) => {
+      const step = { threadId, order: 0, userId: ada, toolCallId: "rate", path: "research/records:change", status: "done" as const, startedAt: 1, endedAt: 1 };
+      await ctx.db.insert("assistantSteps", { ...step, input: JSON.stringify({ requestId: "r1", command: { kind: "rating", paperId: "W1", rating: 5 } }) });
+      // Arguments too long to keep whole were cut, and don't parse: the step still shows, as the action alone.
+      await ctx.db.insert("assistantSteps", { ...step, toolCallId: "cut", input: '{"requestId":"r2","command":{"kind":"createSea' });
+    });
+    const page = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.flatMap((item) => (item.role === "step" ? [item] : []));
+    expect(page.map((item) => [item.action, item.variant])).toEqual([["research/records:change", undefined], ["research/records:change", "rating"]]);
   });
 
   it("give a call left without a result its result, however long the reply it's in ran", async () => {

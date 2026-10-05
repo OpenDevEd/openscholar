@@ -529,6 +529,27 @@ describe("assistant replies", () => {
     expect(heavy.page).toHaveLength(1);
   });
 
+  it("name a chat that was made before it had a message by its first one", async () => {
+    const t = convexTest(schema);
+    const { asAda } = await sharedChat(t);
+    mockDoStream.mockImplementation(finishingDoStream(["Hello"]));
+    // Made with no title, as the panel makes one to share it or to set what it may spend.
+    const untitled = await asAda.mutation(api.assistant.threads.create, {});
+    expect((await chat(t, untitled))?.title).toBe("New chat");
+    await asAda.mutation(api.assistant.replies.send, { threadId: untitled, text: "Which trials of school feeding measured learning?\nIn sub-Saharan Africa." });
+    await ended(t, untitled);
+    expect((await chat(t, untitled))?.title).toBe("Which trials of school feeding measured learning?");
+    // Its next message leaves the name alone, and so does a first message in a chat that was given one.
+    await asAda.mutation(api.assistant.replies.send, { threadId: untitled, text: "And attendance?" });
+    await ended(t, untitled);
+    expect((await chat(t, untitled))?.title).toBe("Which trials of school feeding measured learning?");
+    const named = await asAda.mutation(api.assistant.threads.create, { title: "New chat" });
+    await asAda.mutation(api.assistant.threads.rename, { threadId: named, title: "School feeding" });
+    await asAda.mutation(api.assistant.replies.send, { threadId: named, text: "Hello" });
+    await ended(t, named);
+    expect((await chat(t, named))?.title).toBe("School feeding");
+  });
+
   it("are refused while the assistant is switched off", async () => {
     const t = convexTest(schema);
     const { asAda, threadId } = await sharedChat(t);

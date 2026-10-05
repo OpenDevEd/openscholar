@@ -3714,11 +3714,92 @@
         "where": "Sélection",
         "ask": "Modifier une réponse de sélection"
       },
+      "chats": {
+        "doing": "Parcours de vos conversations",
+        "did": "Conversations parcourues",
+        "where": "Conversations"
+      },
+      "readChat": {
+        "doing": "Lecture d'une conversation",
+        "did": "Conversation lue",
+        "where": "Conversations"
+      },
+      "chatAccess": {
+        "doing": "Vérification des accès d'une conversation",
+        "did": "Accès d'une conversation vérifiés",
+        "where": "Conversations"
+      },
+      "admins": {
+        "doing": "Consultation des administrateurs",
+        "did": "Administrateurs consultés",
+        "where": "Administration"
+      },
+      "models": {
+        "doing": "Consultation des modèles",
+        "did": "Modèles consultés",
+        "where": "Modèles"
+      },
+      "keys": {
+        "doing": "Consultation de vos clés API",
+        "did": "Clés API consultées",
+        "where": "Clés API"
+      },
+      "startScreening": {
+        "doing": "Lancement d'une sélection",
+        "did": "Sélection lancée",
+        "where": "Sélection",
+        "ask": "Lancer une sélection"
+      },
+      "screeningEstimate": {
+        "doing": "Estimation du coût d'une sélection",
+        "did": "Coût d'une sélection estimé",
+        "where": "Sélection"
+      },
+      "extractionResults": {
+        "doing": "Lecture des résultats d'une extraction",
+        "did": "Résultats d'une extraction lus",
+        "where": "Extraction"
+      },
+      "clearSearches": {
+        "doing": "Retrait de toutes vos recherches",
+        "did": "Toutes vos recherches retirées",
+        "where": "Recherches enregistrées",
+        "ask": "Retirer toutes vos recherches"
+      },
+      "bookmark": {
+        "doing": "Modification d'un favori",
+        "did": "Favori modifié",
+        "where": "Favoris",
+        "ask": "Modifier un favori"
+      },
+      "clearBookmarks": {
+        "doing": "Retrait de tous vos favoris",
+        "did": "Tous vos favoris retirés",
+        "where": "Favoris",
+        "ask": "Retirer tous vos favoris"
+      },
       "other": {
         "doing": "Travail dans votre compte",
         "did": "Travail effectué dans votre compte",
         "where": "Votre compte",
         "ask": "Exécuter une action dans votre compte"
+      },
+      "startExtraction": {
+        "doing": "Lancement d'une extraction",
+        "did": "Extraction lancée",
+        "where": "Extraction",
+        "ask": "Lancer une extraction"
+      },
+      "copyExtraction": {
+        "doing": "Copie d'une extraction",
+        "did": "Extraction copiée",
+        "where": "Extraction",
+        "ask": "Copier une extraction"
+      },
+      "sharePeople": {
+        "doing": "Recherche de personnes avec qui partager",
+        "did": "Personnes avec qui partager recherchées",
+        "where": "Conversations"
       }
     },
     "asks": {

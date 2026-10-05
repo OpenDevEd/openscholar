@@ -1,7 +1,7 @@
 export type Kind = "search" | "paper" | "collection" | "screening" | "extraction" | "chat" | "other";
 
 /** The words for a kind of step: `assistant.steps.<words>` in the messages. */
-type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "other";
+type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "chats" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "other";
 
 /** Each action's kind of work and the words for it; one that isn't here shows as work in the account. */
 const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }> = {
@@ -51,5 +51,50 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "screening/papers:list": { kind: "screening", words: "screening" },
   "screening/papers:get": { kind: "screening", words: "screening" },
   "extraction/queries:listJobs": { kind: "extraction", words: "extractions" },
+  "extraction/queries:countJobs": { kind: "extraction", words: "extractions" },
+  "extraction/queries:listJobResults": { kind: "extraction", words: "extractionResults" },
+  "extraction/queries:countJobResults": { kind: "extraction", words: "extractionResults" },
+  "extraction/queries:countJobFailures": { kind: "extraction", words: "extractionResults" },
+  "library/papers:collect": { kind: "collection", words: "collect" },
+  "library/collections:countCollections": { kind: "collection", words: "collections" },
+  // One action for every change to the person's research records: `#` and the kind of change it made (research/records:change).
+  "research/records:change": { kind: "search", words: "changeSearch" },
+  "research/records:change#createSearch": { kind: "search", words: "newSearch" },
+  "research/records:change#editSearch": { kind: "search", words: "changeSearch" },
+  "research/records:change#deleteSearch": { kind: "search", words: "removeSearch" },
+  "research/records:change#clearSearches": { kind: "search", words: "clearSearches" },
+  "research/records:change#shortcut": { kind: "search", words: "bookmark" },
+  "research/records:change#clearShortcuts": { kind: "search", words: "clearBookmarks" },
+  "research/records:change#rating": { kind: "paper", words: "rate" },
+  "research/records:revisions": { kind: "search", words: "searchHistory" },
+  "research/records:searchHistoryEntry": { kind: "search", words: "searchHistory" },
+  "research/records:shortcutsOf": { kind: "search", words: "bookmarks" },
+  "research/records:countShortcuts": { kind: "search", words: "bookmarks" },
+  "research/records:ratings": { kind: "paper", words: "ratings" },
+  "research/records:answersOf": { kind: "screening", words: "screening" },
+  "screening/queries:getScreeningJob": { kind: "screening", words: "screening" },
+  "screening/queries:listScreeningResults": { kind: "screening", words: "screening" },
+  "screening/queries:slots": { kind: "screening", words: "screening" },
+  "screening/queries:estimate": { kind: "screening", words: "screeningEstimate" },
+  "screening/start:screen": { kind: "screening", words: "startScreening" },
+  "assistant/threads:list": { kind: "chat", words: "chats" },
+  "assistant/threads:get": { kind: "chat", words: "readChat" },
+  "assistant/replies:messages": { kind: "chat", words: "readChat" },
+  "assistant/replies:steps": { kind: "chat", words: "readChat" },
+  "assistant/sharing:listAccess": { kind: "chat", words: "chatAccess" },
+  "assistant/sharing:candidates": { kind: "chat", words: "sharePeople" },
+  "extraction/mutations:startJob": { kind: "extraction", words: "startExtraction" },
+  "extraction/mutations:duplicateJob": { kind: "extraction", words: "copyExtraction" },
+  "billing/usage:countCharges": { kind: "other", words: "credits" },
+  "wallet/queries:listKeys": { kind: "other", words: "keys" },
+  "wallet/queries:countKeys": { kind: "other", words: "keys" },
+  "models/admin:listModels": { kind: "other", words: "models" },
+  "models/admin:summary": { kind: "other", words: "models" },
+  "admins/queries:listAdmins": { kind: "other", words: "admins" },
+  "admins/queries:countAdmins": { kind: "other", words: "admins" },
+  "admins/queries:listCandidates": { kind: "other", words: "admins" },
 };
-export const viewOf = (action: string): { kind: Kind; words: Words; searching?: boolean } => ACTIONS[action] ?? { kind: "other", words: "other" };
+/** Every action with words of its own, for the test that none the assistant can run is left without. */
+export const WORDED = new Set(Object.keys(ACTIONS));
+/** `variant`: which of its several jobs the action did, for one that has more than one. */
+export const viewOf = (action: string, variant?: string): { kind: Kind; words: Words; searching?: boolean } => (variant ? ACTIONS[`${action}#${variant}`] : undefined) ?? ACTIONS[action] ?? { kind: "other", words: "other" };
