@@ -326,6 +326,23 @@ function runsOf(steps: StepItem[]) {
   return runs;
 }
 
+/**
+ * How much of their start a run's lines share, to a whole word: a run of searches is one
+ * query with a different last clause each time, and a line cut at its end would show the
+ * same words as the next. Nothing when the lines share little, or one of them is all of it.
+ */
+function sharedStart(lines: string[]) {
+  const [first, ...rest] = lines;
+  let end = first.length;
+  for (const line of rest) {
+    let at = 0;
+    while (at < end && line[at] === first[at]) at += 1;
+    end = at;
+  }
+  const from = first.lastIndexOf(" ", end - 1) + 1;
+  return from >= 24 && lines.every((line) => line.length > from) ? from : 0;
+}
+
 function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">; steps: StepItem[]; /** Loads the steps before these, when the reply ran more. */ earlier: (() => void) | "loading" | null }) {
   const t = useTranslations("assistant");
   const reduceMotion = useReducedMotion();
@@ -340,13 +357,14 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   const height = runs.length ? tops.at(-1)! + heights.at(-1)! : 0;
   const y = (i: number) => tops[i] + CARD / 2;
   const curve = (i: number) => `M 12 22 C 12 ${22 + (y(i) - 22) * 0.75}, 16 ${y(i)}, ${GUTTER} ${y(i)}`;
-  const slide = reduceMotion ? { duration: 0 } : { duration: 0.3, ease: EASE };
+  // One pace for the map's frame, its cards and its curves, so a run that opens never runs over what's under it.
+  const slide = reduceMotion ? { duration: 0 } : { duration: 0.45, ease: EASE };
   return (
     <motion.div
       className="relative grid grid-cols-[36px_1fr]"
       initial={false}
       animate={{ height: Math.max(0, height) }}
-      transition={reduceMotion ? { duration: 0 } : { duration: 0.45, ease: EASE }}
+      transition={slide}
     >
       <span className="absolute left-0.5 top-0 flex size-5 items-center justify-center rounded-md bg-primary/10">
         <OrbitMark size={14} />
@@ -388,6 +406,8 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
             const title = stepTitle(words, step);
             const folded = run.length > 1;
             const open = folded && opened.has(run[0].id);
+            const lines = run.map((one) => one.subject ?? t(`steps.${words}.where`));
+            const shared = folded ? sharedStart(lines) : 0;
             return (
               <motion.div
                 key={run[0].id}
@@ -456,9 +476,9 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                   {folded ? (
                     // Each step of the run as a line, under the card's text: what it was about, and how many it found.
                     <ol inert={!open} className="pl-[60px] pr-3 text-xs text-muted-foreground">
-                      {run.map((one) => (
+                      {run.map((one, at) => (
                         <li key={one.id} className="flex items-center gap-2" style={{ height: LINE }}>
-                          <span className="min-w-0 flex-1 truncate">{one.subject ?? t(`steps.${words}.where`)}</span>
+                          <span className="min-w-0 flex-1 truncate">{shared ? `… ${lines[at].slice(shared)}` : lines[at]}</span>
                           {one.count !== undefined ? (
                             <span className="shrink-0 tabular-nums">
                               <span className="font-semibold text-foreground/90">{one.count}</span> {t("steps.found")}
