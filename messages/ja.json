@@ -3401,5 +3401,302 @@
     "source": "Artificial Analysis の Intelligence Index",
     "back": "モデル一覧に戻る",
     "default": "デフォルト"
+  },
+  "assistant": {
+    "label": "OpenScholar アシスタント",
+    "open": "アシスタントを開く",
+    "fold": "アシスタントをたたむ",
+    "foldHint": "たたむ",
+    "foldIntoBubble": "バブルにたたむ",
+    "newChat": "新しいチャット",
+    "emptyTitle": "ここで何でも聞いてください",
+    "emptyBody": "検索、ライブラリ、コレクション、スクリーニング、抽出を確認し、検索の作成と変更、検索結果の読み取り、論文の保存、評価、コレクションへの追加ができます。ジョブの開始はまだできません。",
+    "placeholder": "アシスタントに質問する",
+    "readOnly": "このチャットは閲覧できますが、書き込みはできません",
+    "messageLabel": "アシスタントへのメッセージ",
+    "sees": "{view}を表示中",
+    "views": {
+      "results": "検索結果",
+      "extractionJob": "抽出ジョブ",
+      "librarySettings": "ライブラリ設定",
+      "authors": "著者",
+      "page": "このページ"
+    },
+    "send": "送信",
+    "stop": "停止",
+    "thinking": "考え中",
+    "summarizing": "これまでの会話を要約中",
+    "stopped": "この返信は停止されました",
+    "failed": "返信が完了しませんでした。もう一度メッセージを送信してください。",
+    "tooLong": "このチャットはアシスタントが読める長さを超えました。新しいチャットを始めて続けてください。",
+    "interrupted": "この返信は完了前に中断されました",
+    "earlier": "以前のメッセージ",
+    "model": "モデル",
+    "sendFailed": "メッセージを送信できませんでした",
+    "modelFailed": "モデルを変更できませんでした",
+    "chats": "チャット",
+    "back": "戻る",
+    "happeningNow": "{count} 件が進行中",
+    "searchChats": "チャットを検索",
+    "whichChats": "表示するチャット",
+    "scopeAll": "すべて",
+    "scopeMine": "自分のチャット",
+    "scopeShared": "共有されたチャット",
+    "groupNow": "進行中",
+    "groupToday": "今日",
+    "groupEarlier": "以前",
+    "openNow": "表示中",
+    "here": "{names}が参加中",
+    "someone": "だれか",
+    "everyoneIn": "{organization} の全員",
+    "writingReply": "返信を作成中",
+    "noChatsMatch": "一致するチャットはありません。",
+    "noChats": "チャットはここに表示されます。",
+    "moreChats": "以前のチャット",
+    "share": "共有",
+    "shareNamed": "{title}を共有",
+    "shareChat": "このチャットを共有",
+    "addPeople": "ユーザーまたは組織を追加",
+    "you": "あなた",
+    "owner": "所有者",
+    "canChat": "チャット可能",
+    "canView": "閲覧可能",
+    "view": "閲覧",
+    "chat": "チャット",
+    "accessOf": "{name}のアクセス権",
+    "members": "{count} 人のメンバー",
+    "membersMany": "{count} 人以上のメンバー",
+    "remove": "削除",
+    "organization": "組織",
+    "noCandidates": "組織内に一致する人がいません。",
+    "shareNote": "共有相手はこの会話を見ることができます。会話内の検索、コレクション、ライブラリのアクセス権はそれぞれのままです。チャットできる人は自分の名前でメッセージを送り、アシスタントはその人自身のアクセス権とクレジットで動作します。",
+    "copyLink": "アクセス権のある人向けのリンクをコピー",
+    "linkCopied": "リンクをコピーしました",
+    "shareFailed": "このチャットの共有設定を変更できませんでした",
+    "morePeople": "さらに表示",
+    "steps": {
+      "undo": "元に戻す",
+      "done": "完了",
+      "failed": "失敗",
+      "undoFailed": "元に戻せませんでした",
+      "earlier": "以前のステップ",
+      "interrupted": "この処理が終わる前に返信が終了しました",
+      "found": "件",
+      "declined": "許可されませんでした",
+      "waiting": "回答を待っています",
+      "allowed": "許可済み",
+      "searches": {
+        "doing": "検索を確認しています",
+        "did": "検索を確認しました",
+        "where": "保存した検索"
+      },
+      "search": {
+        "doing": "検索を読んでいます",
+        "did": "検索を読みました",
+        "where": "保存した検索"
+      },
+      "searchHistory": {
+        "doing": "検索の履歴を読んでいます",
+        "did": "検索の履歴を読みました",
+        "where": "保存した検索"
+      },
+      "newSearch": {
+        "doing": "検索を作成しています",
+        "did": "検索を作成しました",
+        "where": "保存した検索",
+        "ask": "検索を作成"
+      },
+      "changeSearch": {
+        "doing": "検索を変更しています",
+        "did": "検索を変更しました",
+        "where": "保存した検索",
+        "ask": "検索を変更"
+      },
+      "restoreSearch": {
+        "doing": "検索を戻しています",
+        "did": "検索を戻しました",
+        "where": "保存した検索",
+        "ask": "検索を戻す"
+      },
+      "removeSearch": {
+        "doing": "検索を削除しています",
+        "did": "検索を削除しました",
+        "where": "保存した検索",
+        "ask": "検索を削除"
+      },
+      "results": {
+        "doing": "検索結果を読んでいます",
+        "did": "検索結果を読みました",
+        "where": "保存した検索"
+      },
+      "lookup": {
+        "doing": "名前を調べています",
+        "did": "名前を調べました",
+        "where": "検索フィルター"
+      },
+      "lookPapers": {
+        "doing": "論文を検索しています",
+        "did": "論文を検索しました",
+        "where": "OpenAlex"
+      },
+      "readPaper": {
+        "doing": "論文を読んでいます",
+        "did": "論文を読みました",
+        "where": "OpenAlex"
+      },
+      "credits": {
+        "doing": "クレジットを確認しています",
+        "did": "クレジットを確認しました",
+        "where": "請求"
+      },
+      "bookmarks": {
+        "doing": "ブックマークを確認しています",
+        "did": "ブックマークを確認しました",
+        "where": "ブックマーク"
+      },
+      "ratings": {
+        "doing": "評価を確認しています",
+        "did": "評価を確認しました",
+        "where": "評価"
+      },
+      "saved": {
+        "doing": "ライブラリを確認しています",
+        "did": "ライブラリを確認しました",
+        "where": "ライブラリ"
+      },
+      "save": {
+        "doing": "論文を保存しています",
+        "did": "論文を保存しました",
+        "where": "ライブラリ",
+        "ask": "論文を保存"
+      },
+      "rate": {
+        "doing": "論文を評価しています",
+        "did": "論文を評価しました",
+        "where": "ライブラリ",
+        "ask": "論文を評価"
+      },
+      "remove": {
+        "doing": "論文を削除しています",
+        "did": "論文を削除しました",
+        "where": "ライブラリ",
+        "ask": "論文を削除"
+      },
+      "restore": {
+        "doing": "論文を戻しています",
+        "did": "論文を戻しました",
+        "where": "ライブラリ",
+        "ask": "論文を戻す"
+      },
+      "collect": {
+        "doing": "コレクションを更新しています",
+        "did": "コレクションを更新しました",
+        "where": "コレクション",
+        "ask": "コレクションを変更"
+      },
+      "collections": {
+        "doing": "コレクションを確認しています",
+        "did": "コレクションを確認しました",
+        "where": "コレクション"
+      },
+      "collection": {
+        "doing": "コレクションを読んでいます",
+        "did": "コレクションを読みました",
+        "where": "コレクション"
+      },
+      "newCollection": {
+        "doing": "コレクションを作成しています",
+        "did": "コレクションを作成しました",
+        "where": "コレクション",
+        "ask": "コレクションを作成"
+      },
+      "renameCollection": {
+        "doing": "コレクションの名前を変更しています",
+        "did": "コレクションの名前を変更しました",
+        "where": "コレクション",
+        "ask": "コレクションの名前を変更"
+      },
+      "screening": {
+        "doing": "スクリーニングを読んでいます",
+        "did": "スクリーニングを読みました",
+        "where": "スクリーニング"
+      },
+      "extractions": {
+        "doing": "抽出を確認しています",
+        "did": "抽出を確認しました",
+        "where": "抽出"
+      },
+      "deleteCollection": {
+        "doing": "コレクションを削除しています",
+        "did": "コレクションを削除しました",
+        "where": "コレクション",
+        "ask": "コレクションを削除"
+      },
+      "shareChat": {
+        "doing": "チャットを共有しています",
+        "did": "チャットを共有しました",
+        "where": "チャット",
+        "ask": "チャットを共有"
+      },
+      "unshareChat": {
+        "doing": "チャットの共有を解除しています",
+        "did": "チャットの共有を解除しました",
+        "where": "チャット",
+        "ask": "チャットの共有を解除"
+      },
+      "deleteChat": {
+        "doing": "チャットを削除しています",
+        "did": "チャットを削除しました",
+        "where": "チャット",
+        "ask": "チャットを削除"
+      },
+      "newChat": {
+        "doing": "チャットを開始しています",
+        "did": "チャットを開始しました",
+        "where": "チャット",
+        "ask": "チャットを開始"
+      },
+      "renameChat": {
+        "doing": "チャットの名前を変更しています",
+        "did": "チャットの名前を変更しました",
+        "where": "チャット",
+        "ask": "チャットの名前を変更"
+      },
+      "chatModel": {
+        "doing": "チャットのモデルを変更しています",
+        "did": "チャットのモデルを変更しました",
+        "where": "チャット",
+        "ask": "チャットのモデルを変更"
+      },
+      "answer": {
+        "doing": "スクリーニングの回答を変更しています",
+        "did": "スクリーニングの回答を変更しました",
+        "where": "スクリーニング",
+        "ask": "スクリーニングの回答を変更"
+      },
+      "other": {
+        "doing": "アカウントで作業しています",
+        "did": "アカウントで作業しました",
+        "where": "あなたのアカウント",
+        "ask": "アカウントで操作を実行"
+      }
+    },
+    "asks": {
+      "allow": "今回だけ許可",
+      "notNow": "今はしない",
+      "decline": "実行しない",
+      "why": "この操作は元に戻せないか、アカウントの外に表示されます。毎回確認します。",
+      "failed": "回答を送信できませんでした",
+      "names": {
+        "thread": "チャット",
+        "collection": "コレクション",
+        "user": "ユーザー",
+        "organization": "組織",
+        "role": "アクセス",
+        "name": "名前",
+        "title": "タイトル",
+        "model": "モデル"
+      }
+    }
   }
 }

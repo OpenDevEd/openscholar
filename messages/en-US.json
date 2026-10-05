@@ -3391,5 +3391,302 @@
     "source": "Intelligence Index by Artificial Analysis",
     "back": "Back to models",
     "default": "Default"
+  },
+  "assistant": {
+    "label": "OpenScholar assistant",
+    "open": "Open the assistant",
+    "fold": "Fold the assistant away",
+    "foldHint": "Fold away",
+    "foldIntoBubble": "Fold into a bubble",
+    "newChat": "New chat",
+    "emptyTitle": "Ask about anything here",
+    "emptyBody": "I can look through your searches, library, collections, screenings and extractions, make and change searches and read their results, and save, rate and collect papers for you. I can't start a job yet.",
+    "placeholder": "Ask the assistant",
+    "readOnly": "You can read this chat, but not write in it",
+    "messageLabel": "Message the assistant",
+    "sees": "Sees {view}",
+    "views": {
+      "results": "Search results",
+      "extractionJob": "Extraction job",
+      "librarySettings": "Library settings",
+      "authors": "Authors",
+      "page": "this page"
+    },
+    "send": "Send",
+    "stop": "Stop",
+    "thinking": "Thinking",
+    "summarizing": "Summarizing the conversation so far",
+    "stopped": "This reply was stopped",
+    "failed": "The reply didn't finish. Send your message again to retry.",
+    "tooLong": "This chat has grown past what the assistant can read. Start a new chat to carry on.",
+    "interrupted": "This reply was interrupted before it finished",
+    "earlier": "Earlier messages",
+    "model": "Model",
+    "sendFailed": "Couldn't send your message",
+    "modelFailed": "Couldn't change the model",
+    "chats": "Chats",
+    "back": "Back",
+    "happeningNow": "{count} happening now",
+    "searchChats": "Search chats",
+    "whichChats": "Which chats",
+    "scopeAll": "All",
+    "scopeMine": "Mine",
+    "scopeShared": "Shared with me",
+    "groupNow": "Happening now",
+    "groupToday": "Today",
+    "groupEarlier": "Earlier",
+    "openNow": "Open now",
+    "here": "{count, plural, one {{names} is here} other {{names} are here}}",
+    "someone": "Someone",
+    "everyoneIn": "Everyone in {organization}",
+    "writingReply": "Writing a reply",
+    "noChatsMatch": "No chats match.",
+    "noChats": "Your chats will be listed here.",
+    "moreChats": "Earlier chats",
+    "share": "Share",
+    "shareNamed": "Share {title}",
+    "shareChat": "Share this chat",
+    "addPeople": "Add people or an organization",
+    "you": "You",
+    "owner": "Owner",
+    "canChat": "Can chat",
+    "canView": "Can view",
+    "view": "View",
+    "chat": "Chat",
+    "accessOf": "{name}'s access",
+    "members": "{count, plural, one {# member} other {# members}}",
+    "membersMany": "{count}+ members",
+    "remove": "Remove",
+    "organization": "Organization",
+    "noCandidates": "Nobody in your organizations matches.",
+    "shareNote": "They see this conversation. Searches, collections and libraries in it keep their own access. People who can chat send messages as themselves, and the assistant acts for them with their own access and credits.",
+    "copyLink": "Copy link for people with access",
+    "linkCopied": "Link copied",
+    "shareFailed": "Couldn't change who this chat is shared with",
+    "morePeople": "More people",
+    "steps": {
+      "undo": "Undo",
+      "done": "Done",
+      "failed": "Failed",
+      "undoFailed": "Couldn't undo that",
+      "earlier": "Earlier steps",
+      "interrupted": "The reply ended before this finished",
+      "found": "found",
+      "declined": "Not allowed",
+      "waiting": "Waiting for an answer",
+      "allowed": "Allowed",
+      "searches": {
+        "doing": "Looking through your searches",
+        "did": "Looked through your searches",
+        "where": "Saved searches"
+      },
+      "search": {
+        "doing": "Reading a search",
+        "did": "Read a search",
+        "where": "Saved searches"
+      },
+      "searchHistory": {
+        "doing": "Reading a search's history",
+        "did": "Read a search's history",
+        "where": "Saved searches"
+      },
+      "newSearch": {
+        "doing": "Making a search",
+        "did": "Made a search",
+        "where": "Saved searches",
+        "ask": "Make a search"
+      },
+      "changeSearch": {
+        "doing": "Changing a search",
+        "did": "Changed a search",
+        "where": "Saved searches",
+        "ask": "Change a search"
+      },
+      "restoreSearch": {
+        "doing": "Putting a search back",
+        "did": "Put a search back",
+        "where": "Saved searches",
+        "ask": "Put a search back"
+      },
+      "removeSearch": {
+        "doing": "Removing a search",
+        "did": "Removed a search",
+        "where": "Saved searches",
+        "ask": "Remove a search"
+      },
+      "results": {
+        "doing": "Reading a search's results",
+        "did": "Read a search's results",
+        "where": "Saved searches"
+      },
+      "lookup": {
+        "doing": "Looking up a name",
+        "did": "Looked up a name",
+        "where": "Search filters"
+      },
+      "lookPapers": {
+        "doing": "Looking papers up",
+        "did": "Looked papers up",
+        "where": "OpenAlex"
+      },
+      "readPaper": {
+        "doing": "Reading a paper",
+        "did": "Read a paper",
+        "where": "OpenAlex"
+      },
+      "credits": {
+        "doing": "Checking your credits",
+        "did": "Checked your credits",
+        "where": "Billing"
+      },
+      "bookmarks": {
+        "doing": "Looking through your bookmarks",
+        "did": "Looked through your bookmarks",
+        "where": "Bookmarks"
+      },
+      "ratings": {
+        "doing": "Checking your ratings",
+        "did": "Checked your ratings",
+        "where": "Ratings"
+      },
+      "saved": {
+        "doing": "Checking your library",
+        "did": "Checked your library",
+        "where": "Library"
+      },
+      "save": {
+        "doing": "Saving a paper",
+        "did": "Saved a paper",
+        "where": "Library",
+        "ask": "Save a paper"
+      },
+      "rate": {
+        "doing": "Rating a paper",
+        "did": "Rated a paper",
+        "where": "Library",
+        "ask": "Rate a paper"
+      },
+      "remove": {
+        "doing": "Removing a paper",
+        "did": "Removed a paper",
+        "where": "Library",
+        "ask": "Remove a paper"
+      },
+      "restore": {
+        "doing": "Putting a paper back",
+        "did": "Put a paper back",
+        "where": "Library",
+        "ask": "Put a paper back"
+      },
+      "collect": {
+        "doing": "Updating a collection",
+        "did": "Updated a collection",
+        "where": "Collections",
+        "ask": "Change a collection"
+      },
+      "collections": {
+        "doing": "Looking through your collections",
+        "did": "Looked through your collections",
+        "where": "Collections"
+      },
+      "collection": {
+        "doing": "Reading a collection",
+        "did": "Read a collection",
+        "where": "Collections"
+      },
+      "newCollection": {
+        "doing": "Making a collection",
+        "did": "Made a collection",
+        "where": "Collections",
+        "ask": "Make a collection"
+      },
+      "renameCollection": {
+        "doing": "Renaming a collection",
+        "did": "Renamed a collection",
+        "where": "Collections",
+        "ask": "Rename a collection"
+      },
+      "screening": {
+        "doing": "Reading a screening",
+        "did": "Read a screening",
+        "where": "Screening"
+      },
+      "extractions": {
+        "doing": "Looking through your extractions",
+        "did": "Looked through your extractions",
+        "where": "Extraction"
+      },
+      "deleteCollection": {
+        "doing": "Deleting a collection",
+        "did": "Deleted a collection",
+        "where": "Collections",
+        "ask": "Delete a collection"
+      },
+      "shareChat": {
+        "doing": "Sharing a chat",
+        "did": "Shared a chat",
+        "where": "Chats",
+        "ask": "Share a chat"
+      },
+      "unshareChat": {
+        "doing": "Ending a chat's sharing",
+        "did": "Stopped sharing a chat",
+        "where": "Chats",
+        "ask": "Stop sharing a chat"
+      },
+      "deleteChat": {
+        "doing": "Deleting a chat",
+        "did": "Deleted a chat",
+        "where": "Chats",
+        "ask": "Delete a chat"
+      },
+      "newChat": {
+        "doing": "Starting a chat",
+        "did": "Started a chat",
+        "where": "Chats",
+        "ask": "Start a chat"
+      },
+      "renameChat": {
+        "doing": "Renaming a chat",
+        "did": "Renamed a chat",
+        "where": "Chats",
+        "ask": "Rename a chat"
+      },
+      "chatModel": {
+        "doing": "Changing a chat's model",
+        "did": "Changed a chat's model",
+        "where": "Chats",
+        "ask": "Change a chat's model"
+      },
+      "answer": {
+        "doing": "Changing a screening answer",
+        "did": "Changed a screening answer",
+        "where": "Screening",
+        "ask": "Change a screening answer"
+      },
+      "other": {
+        "doing": "Working in your account",
+        "did": "Worked in your account",
+        "where": "Your account",
+        "ask": "Run an action in your account"
+      }
+    },
+    "asks": {
+      "allow": "Allow once",
+      "notNow": "Not now",
+      "decline": "Don't do this",
+      "why": "This can't be undone, or it shows outside your account. It asks every time.",
+      "failed": "Couldn't send your answer",
+      "names": {
+        "thread": "Chat",
+        "collection": "Collection",
+        "user": "Person",
+        "organization": "Organization",
+        "role": "Access",
+        "name": "Name",
+        "title": "Title",
+        "model": "Model"
+      }
+    }
   }
 }
