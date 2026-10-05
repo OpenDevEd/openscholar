@@ -9,7 +9,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["tests/perf/**/*.bench.ts"],
+    benchmark: { include: ["tests/perf/**/*.bench.ts"] },
     globals: false,
   },
 });

@@ -4,6 +4,7 @@ import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
+import { screeningPool } from "../workpool";
 import { OQL_FIELD } from "../../lib/openalex/oql";
 import type { SavedSearch } from "../../lib/research/records";
 
@@ -23,12 +24,15 @@ type Request = { url: URL; init?: RequestInit };
 let requests: Request[] = [];
 /** How many works the search has. */
 let total = 900;
-/** Answers OpenAlex gives its next requests in place of works. The model's requests share the stub, and never take one. */
+/** Answers OpenAlex gives its next requests in place of works. */
 let refusals: Response[] = [];
+const instances: ReturnType<typeof convexTest>[] = [];
+const maxParallelism = screeningPool.options.maxParallelism;
 /** OpenAlex, answering each page with up to 200 works numbered from the page's start, until the search runs out; a cursor is the next page's number. */
 const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
   const url = new URL(String(input));
-  if (url.hostname === "api.openalex.org" && refusals.length) return refusals.shift()!;
+  if (url.hostname !== "api.openalex.org") throw new Error(`Unexpected request to ${url.hostname}`);
+  if (refusals.length) return refusals.shift()!;
   requests.push({ url, init });
   const cursor = url.searchParams.get("cursor");
   const page = cursor === null ? Number(url.searchParams.get("page")) : cursor === "*" ? 1 : Number(cursor);
@@ -44,6 +48,9 @@ const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
 });
 
 beforeEach(() => {
+  // Starting a job is under test here; its scheduled screening runs belong to their own tests.
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  screeningPool.options.maxParallelism = 0;
   requests = [];
   refusals = [];
   total = 900;
@@ -51,13 +58,21 @@ beforeEach(() => {
   vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
   vi.stubGlobal("fetch", openAlex);
 });
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.unstubAllGlobals();
+afterEach(async () => {
+  try {
+    for (const t of instances.splice(0)) await t.finishInProgressScheduledFunctions();
+  } finally {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    screeningPool.options.maxParallelism = maxParallelism;
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  }
 });
 
 async function setup(saved: SavedSearch = search, ratings: Array<{ paperId: string; rating: number }> = []) {
   const t = convexTest(schema);
+  instances.push(t);
   setupScreeningWorkpool(t);
   const userId = await t.run(async (ctx) => {
     const id = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "alice", email: "alice@example.com", state: "active", createdAt: 1, updatedAt: 1 });
@@ -207,8 +222,7 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(made?.through).toBeUndefined();
     expect(made?.snapshot).toMatchObject({ request: { sort: "relevance_score:desc" } });
     await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1_001, last: 1_000_000, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/None of these papers/);
-    // The first job's papers are being screened by now, and the model's requests go through the same stub.
-    expect(requests.filter(({ url }) => url.hostname === "api.openalex.org").length).toBeLessThan(15);
+    expect(requests.length).toBeLessThan(15);
   });
 
   it("reads a request's later papers from the search as it was when the request began", async () => {
@@ -247,7 +261,9 @@ describe("counting OpenAlex requests from an action", () => {
     const collision = new Error('Documents read from or written to the "rateLimits" table changed while this mutation was being run and on every subsequent retry.');
     // Two collisions, then it counts: the caller never sees them.
     const runMutation = vi.fn().mockRejectedValueOnce(collision).mockRejectedValueOnce(collision).mockResolvedValueOnce(true);
-    expect(await spender({ runMutation } as never, "clerk_1")(3)).toBe(true);
+    const spending = spender({ runMutation } as never, "clerk_1")(3);
+    await vi.runAllTimersAsync();
+    expect(await spending).toBe(true);
     expect(runMutation).toHaveBeenCalledTimes(3);
     expect(runMutation.mock.calls[2][1]).toEqual({ clerkId: "clerk_1", count: 3 });
     // An allowance that's used up is an answer, not a collision.
@@ -258,7 +274,9 @@ describe("counting OpenAlex requests from an action", () => {
     expect(broken).toHaveBeenCalledTimes(1);
     // A counter that never frees up fails after a bounded number of tries.
     const stuck = vi.fn().mockRejectedValue(collision);
-    await expect(spender({ runMutation: stuck } as never, "clerk_1")(1)).rejects.toThrow(/changed while this mutation/);
+    const rejected = expect(spender({ runMutation: stuck } as never, "clerk_1")(1)).rejects.toThrow(/changed while this mutation/);
+    await vi.runAllTimersAsync();
+    await rejected;
     expect(stuck).toHaveBeenCalledTimes(6);
   }, 20_000);
 });
