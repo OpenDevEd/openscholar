@@ -117,11 +117,14 @@ export function namedBy(result: unknown) {
   return typeof named === "string" ? cut(named.trim(), 200) : undefined;
 }
 
-/** How many things a result lists: its page's rows, or its own when it's a list. For a bulk change, how many changes it made. */
+/**
+ * How many things a result lists: its page's rows, or its own when it's a list. For a bulk
+ * change, how many changes it made. For a search or a count, how many papers match in all.
+ */
 export function countOf(result: unknown) {
   if (Array.isArray(result)) return result.length;
-  const { page, made } = result && typeof result === "object" ? (result as { page?: unknown; made?: unknown }) : {};
-  return Array.isArray(page) ? page.length : typeof made === "number" ? made : undefined;
+  const { page, made, total } = result && typeof result === "object" ? (result as { page?: unknown; made?: unknown; total?: unknown }) : {};
+  return Array.isArray(page) ? page.length : typeof made === "number" ? made : typeof total === "number" ? total : undefined;
 }
 
 type Output = { type: "json"; value: unknown } | { type: "text"; value: string } | { type: "execution-denied"; reason: string };

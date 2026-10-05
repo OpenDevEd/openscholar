@@ -6,7 +6,7 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -359,6 +359,9 @@ function sharedStart(lines: string[]) {
 
 function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">; steps: StepItem[]; /** Loads the steps before these, when the reply ran more. */ earlier: (() => void) | "loading" | null }) {
   const t = useTranslations("assistant");
+  const format = useFormatter();
+  // A count as the search history writes one: compact past a thousand, so a broad query's 329.5M fits its line.
+  const counted = (count: number) => format.number(count, count >= 1000 ? { notation: "compact", maximumFractionDigits: 1 } : undefined);
   const reduceMotion = useReducedMotion();
   const undo = useMutation(api.assistant.undo.run);
   const toast = useAppToast();
@@ -453,7 +456,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                         ) : (
                           <>
                             {/* A bulk change's title says how many it made. */}
-                            {step.batch === undefined && step.count !== undefined ? <Fact value={step.count}>{t("steps.found")}</Fact> : null}
+                            {step.batch === undefined && step.count !== undefined ? <Fact value={counted(step.count)}>{t("steps.found")}</Fact> : null}
                             {step.subject ? <Subject text={step.subject} href={step.href} /> : null}
                             {(step.batch !== undefined || step.count === undefined) && !step.subject ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
                           </>
@@ -495,7 +498,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                           <Subject text={shared ? `… ${lines[at].slice(shared)}` : lines[at]} href={one.subject ? one.href : undefined} className="mr-auto min-w-0 truncate" />
                           {one.count !== undefined ? (
                             <span className="shrink-0 tabular-nums">
-                              <span className="font-semibold text-foreground/90">{one.count}</span> {t("steps.found")}
+                              <span className="font-semibold text-foreground/90">{counted(one.count)}</span> {t("steps.found")}
                             </span>
                           ) : null}
                         </li>
