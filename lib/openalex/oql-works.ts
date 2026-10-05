@@ -1,6 +1,7 @@
 import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
 import type { Work, Works } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { describeQueryError, type QueryErrorDetail } from "@/lib/search/search-error";
+import { OPENALEX_TIMEOUT_MS, openAlexFetch, openAlexReason } from "./fetch";
 import { openAlexUrl } from "./request-url";
 
 type OqlResponse = Works & {
@@ -26,7 +27,8 @@ export async function fetchOqlWorks(
 
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await openAlexFetch(url, {
+      timeoutMs: OPENALEX_TIMEOUT_MS,
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ oql }),
@@ -40,7 +42,7 @@ export async function fetchOqlWorks(
   if (!response.ok || !body) {
     const errors = body?.validation?.errors ?? [];
     console.error("OpenAlex OQL error:", response.status, JSON.stringify(body)?.slice(0, 1000));
-    const message = errors[0]?.message ?? body?.message ?? body?.error ?? `Search request failed (${response.status})`;
+    const message = openAlexReason(body) ?? body?.error ?? `Search request failed (${response.status})`;
     return {
       ok: false,
       status: response.status,

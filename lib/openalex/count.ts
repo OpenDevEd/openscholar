@@ -19,6 +19,7 @@ import client from "@/lib/openalex";
 import { createSearchParameters } from "@/lib/utils";
 import type { SearchFilters } from "@/lib/types";
 import { OQL_FIELD, worksOql } from "./oql";
+import { OPENALEX_TIMEOUT_MS, openAlexFetch } from "./fetch";
 import { fetchOqlWorks } from "./oql-works";
 import { openAlexUrl } from "./request-url";
 import type { OpenAlexWorksQuery } from "./search-params";
@@ -57,32 +58,33 @@ async function fetchOpenAlexQueryCount(
     if (!result.ok) throw new Error(`OpenAlex API error: ${result.message}`);
     return { count: result.data.meta.count };
   }
-  const response = await fetch(openAlexUrl("works", { filter: query.filter || undefined, search: query.search || undefined, "per-page": "1", select: "id" }));
+  const response = await openAlexFetch(openAlexUrl("works", { filter: query.filter || undefined, search: query.search || undefined, "per-page": "1", select: "id" }), { timeoutMs: OPENALEX_TIMEOUT_MS });
   if (!response.ok) throw new Error(`OpenAlex API error: ${response.status}`);
   const body = (await response.json()) as { meta: { count: number } };
   return { count: body.meta.count };
 }
 
-/** OpenAlex requests one list of counts makes at once. */
-const COUNT_BATCH = 5;
+/**
+ * How far apart a list's counts are asked for: OpenAlex refuses searches with more than 5
+ * boolean operators that arrive together. Measured on 2026-10-05, five counts of one were
+ * refused 3 times in 5 at once and 1 time in 15 at 0.1 s apart, which the retry takes up.
+ * Counts overlap, so each has a timeout: a list never waits on OpenAlex for longer than one.
+ */
+const COUNT_GAP_MS = 100;
 
 /** Counts for several stored requests; a count that fails is null so the others still show. */
 export async function fetchOpenAlexQueryCounts(
   queries: readonly OpenAlexWorksQuery[],
 ): Promise<(number | null)[]> {
-  const counts: (number | null)[] = [];
-  for (let start = 0; start < queries.length; start += COUNT_BATCH) {
-    const batch = await Promise.all(
-      queries.slice(start, start + COUNT_BATCH).map(async (query) => {
-        try {
-          return (await fetchOpenAlexQueryCount(query)).count;
-        } catch (error) {
-          console.warn("OpenAlex count failed:", error instanceof Error ? error.message : error);
-          return null;
-        }
-      }),
-    );
-    counts.push(...batch);
-  }
-  return counts;
+  return Promise.all(
+    queries.map(async (query, i) => {
+      await new Promise((resolve) => setTimeout(resolve, i * COUNT_GAP_MS));
+      try {
+        return (await fetchOpenAlexQueryCount(query)).count;
+      } catch (error) {
+        console.warn("OpenAlex count failed:", error instanceof Error ? error.message : error);
+        return null;
+      }
+    }),
+  );
 }

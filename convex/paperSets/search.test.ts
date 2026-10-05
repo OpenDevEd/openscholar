@@ -23,9 +23,12 @@ type Request = { url: URL; init?: RequestInit };
 let requests: Request[] = [];
 /** How many works the search has. */
 let total = 900;
+/** Answers OpenAlex gives its next requests in place of works. The model's requests share the stub, and never take one. */
+let refusals: Response[] = [];
 /** OpenAlex, answering each page with up to 200 works numbered from the page's start, until the search runs out; a cursor is the next page's number. */
 const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
   const url = new URL(String(input));
+  if (url.hostname === "api.openalex.org" && refusals.length) return refusals.shift()!;
   requests.push({ url, init });
   const cursor = url.searchParams.get("cursor");
   const page = cursor === null ? Number(url.searchParams.get("page")) : cursor === "*" ? 1 : Number(cursor);
@@ -42,6 +45,7 @@ const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
 
 beforeEach(() => {
   requests = [];
+  refusals = [];
   total = 900;
   vi.stubEnv("OPENALEX_API_KEY", "platform-key");
   vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
@@ -66,7 +70,7 @@ async function setup(saved: SavedSearch = search, ratings: Array<{ paperId: stri
 }
 
 describe("Screen all on a saved search, read on the server", () => {
-  it("reads the range from the results page's request, one parallel page each, with the key and only the fields it keeps", async () => {
+  it("reads the range from the results page's request, a numbered page each, with the key and only the fields it keeps", async () => {
     const { t, alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
 
     const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 150, last: 450, ...job, saveTo: { kind: "none" } });
@@ -153,11 +157,43 @@ describe("Screen all on a saved search, read on the server", () => {
     const { alice } = await setup();
     const start = () => alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } });
 
-    openAlex.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Invalid query parameters error.", message: "Wildcards (* or ?) do not work inside this quoted phrase." }), { status: 400 }));
+    refusals = [new Response(JSON.stringify({ error: "Invalid query parameters error.", message: "Wildcards (* or ?) do not work inside this quoted phrase." }), { status: 400 })];
     await expect(start()).rejects.toThrow(/Wildcards \(\* or \?\) do not work inside this quoted phrase/);
 
-    openAlex.mockResolvedValueOnce(new Response(JSON.stringify({ message: "upstream connect error" }), { status: 503 }));
+    // An OQL search's reason is in its validation errors.
+    refusals = [new Response(JSON.stringify({ validation: { valid: false, errors: [{ type: "parse_error", message: "expected a condition" }] } }), { status: 400 })];
+    await expect(start()).rejects.toThrow(/expected a condition/);
+
+    refusals = [new Response(JSON.stringify({ message: "upstream connect error" }), { status: 503 })];
     await expect(start()).rejects.toThrow(/^(?!.*upstream connect error).*503/s);
+  });
+
+  it("names the query when OpenAlex fails on a bracket without its pair", async () => {
+    const { alice } = await setup({ ...search, query: "(tutoring OR tutor" });
+
+    refusals = [new Response("<!doctype html><title>500 Internal Server Error</title>", { status: 500 })];
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/brackets/);
+
+    // A bracket inside a quoted phrase isn't one: that failure is the server's, and asking again may work.
+    const { alice: quoting } = await setup({ ...search, id: "local-quoted", query: '"phase (one" AND tutoring' });
+    refusals = [new Response("<!doctype html><title>500 Internal Server Error</title>", { status: 500 })];
+    await expect(quoting.action(api.screening.start.screen, { set: { kind: "search", searchId: "local-quoted" }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/^(?!.*brackets).*500/s);
+  });
+
+  it("asks again for pages OpenAlex throttles, and gives up on a wait no retry outlasts", async () => {
+    const { t, alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    const start = (last: number) => alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last, ...job, saveTo: { kind: "none" } });
+    const throttled = (wait: string) => new Response(JSON.stringify({ error: "Rate limit exceeded", reason: "broad_boolean_query" }), { status: 429, headers: { "Retry-After": wait } });
+
+    refusals = [throttled("0"), throttled("0")];
+    const { jobId } = await start(450);
+    expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.totalPapers).toBe(450);
+
+    // The day's budget: OpenAlex says to wait until it resets.
+    refusals = [throttled("57776"), throttled("0")];
+    await expect(start(10)).rejects.toThrow(/429/);
+    // It wasn't asked again: the answer after it is still waiting.
+    expect(refusals).toHaveLength(1);
   });
 
   it("ends a request where the search's results end, however far it was asked to go", async () => {
@@ -171,7 +207,8 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(made?.through).toBeUndefined();
     expect(made?.snapshot).toMatchObject({ request: { sort: "relevance_score:desc" } });
     await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1_001, last: 1_000_000, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/None of these papers/);
-    expect(requests.length).toBeLessThan(15);
+    // The first job's papers are being screened by now, and the model's requests go through the same stub.
+    expect(requests.filter(({ url }) => url.hostname === "api.openalex.org").length).toBeLessThan(15);
   });
 
   it("reads a request's later papers from the search as it was when the request began", async () => {
