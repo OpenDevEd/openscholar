@@ -356,7 +356,7 @@ export function toolsFor(
   // How many changes of each kind the reply has called for unasked, in all its requests: counted as each call arrives,
   // since a request's calls run together, and carried from request to request with the rest of where the reply stands.
   const changes = new Map(Object.entries(changed));
-  const holds = new Map<string, { credits: number; covered: boolean }>();
+  const holds = new Map<string, { credits: number; covered: boolean } | { refused: string }>();
   const sameCall = (path: string, input: unknown) => JSON.stringify([path, input]);
   const hold = async (entry: UserAction, input: Record<string, unknown>) => {
     const key = sameCall(entry.path, input);
@@ -376,10 +376,12 @@ export function toolsFor(
   const call = async (entry: UserAction, input: Record<string, unknown>, toolCallId: string, allowed?: Id<"assistantSteps">, approvedFor?: number) => {
     const approved = allowed !== undefined;
     // A call that spends credits and wasn't asked about runs only when the person's allowance covers what it holds.
-    const within = approved || entry.kind === "query" || !entry.spendsCredits ? undefined : holds.get(sameCall(entry.path, input));
+    const read = approved || entry.kind === "query" || !entry.spendsCredits ? undefined : holds.get(sameCall(entry.path, input));
+    const within = read && "credits" in read ? read : undefined;
     if (!approved) {
       // One that asks first only gets here allowed. The rest is refused: an action that spends credits past what the person allowed, or with no estimate to ask them with, or a call nothing asked about.
-      let why = stopped() ?? (runsWithoutAsking(entry) || within?.covered ? null : entry.kind !== "query" && entry.spendsCredits && !entry.estimate ? NO_ESTIMATE : ASKS_FIRST);
+      // An estimate that says why the call's arguments won't do is told as it said it, so the model can make the call again.
+      let why = stopped() ?? (read && "refused" in read ? read.refused : runsWithoutAsking(entry) || within?.covered ? null : entry.kind !== "query" && entry.spendsCredits && !entry.estimate ? NO_ESTIMATE : ASKS_FIRST);
       if (!why && changesSomething(entry)) {
         const kind = kindOf(entry, input);
         const nth = (changes.get(kind) ?? 0) + 1;
@@ -422,7 +424,7 @@ export function toolsFor(
     if (entry.spendsCredits) {
       // Asked with the most it holds, unless they allowed that much in this chat. With no estimate there's nothing to ask with, and the call is refused.
       const held = await hold(entry, input);
-      return held !== null && !held.covered;
+      return held !== null && "credits" in held && !held.covered;
     }
     return !runsWithoutAsking(entry) || (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) }));
   };
@@ -662,5 +664,5 @@ export function toolsFor(
       execute: (input, { toolCallId }) => bulk(CHANGE_PAPERS, input, toolCallId),
     }),
   };
-  return { tools, approval, resume, planned: (toolCallId: string) => planned.get(toolCallId), made: () => calls, changes: () => Object.fromEntries(changes), digest: () => (did.length ? fnv(did.slice().sort().join("\n")) : undefined), held: (path: string, input: unknown) => holds.get(sameCall(path, input))?.credits };
+  return { tools, approval, resume, planned: (toolCallId: string) => planned.get(toolCallId), made: () => calls, changes: () => Object.fromEntries(changes), digest: () => (did.length ? fnv(did.slice().sort().join("\n")) : undefined), held: (path: string, input: unknown) => { const read = holds.get(sameCall(path, input)); return read && "credits" in read ? read.credits : undefined; } };
 }

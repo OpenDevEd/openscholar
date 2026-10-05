@@ -10,6 +10,8 @@ import type { Id } from "../_generated/dataModel";
 import { internalMutation, internalQuery, type ActionCtx, type QueryCtx } from "../lib/functions";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { createError } from "../lib/errors";
+import { SERVER_MODEL_SLUG } from "../ai/config";
+import { extractionStamp } from "../ai/serverModel";
 import { getFlag } from "../featureFlags/guard";
 import { holdSpend } from "../billing/charge";
 import { heldPapers } from "../paperSets/held";
@@ -20,7 +22,7 @@ import { paperSetValidator } from "../screening/validators";
 import { currentSearch } from "../../lib/research/records";
 import { isRatingFilterActive } from "../../lib/utils";
 import { buildDedupeKey } from "../../lib/bucket/dedupe";
-import { estimatePaperCredits } from "../../lib/extraction/cost-estimate";
+import { estimatePaperCredits, priceScale } from "../../lib/extraction/cost-estimate";
 import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { startJobFor } from "./mutations/jobs";
 import { checkScreeningSelection } from "./sources/screening";
@@ -58,13 +60,35 @@ async function papersOf(ctx: QueryCtx, userId: Id<"users">, { set, first, last }
 }
 
 /**
- * The most an extraction of these papers holds: every paper at its worst case, as each paper
- * holds its own in a job started from the page (../../lib/extraction/cost-estimate.ts).
+ * How many times the measured rates a question of the job costs, on the models the job sends
+ * its questions to (../ai/serverModel.ts `extractionStamp`): the one the person's extractions
+ * run on, or the server's when they picked none, and for yes/no questions the decision model,
+ * when they screen with one. The rates were measured on a small model, and a job on Claude
+ * Sonnet cost twelve times them: its approval would have been for a twelfth of the job.
  */
-async function extractionHold(ctx: QueryCtx, userId: Id<"users">, { questions, usePdfs, ...range }: { set: PaperSet; first: number; last: number; questions: unknown[]; usePdfs?: boolean }) {
-  await checkPdfs(ctx, usePdfs);
-  return (await papersOf(ctx, userId, range)) * estimatePaperCredits({ questionCount: questions.length, pdf: usePdfs === true });
+async function scaleOf(ctx: QueryCtx, userId: Id<"users">, questions: Array<{ type: string }>) {
+  const stamp: { serverModelId?: Id<"models">; decisionModelId?: Id<"models"> } = await extractionStamp(ctx, userId);
+  const scaleAt = async (modelId: Id<"models"> | undefined) => {
+    const model = modelId ? await ctx.db.get("models", modelId) : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).first();
+    return priceScale(model && { input: model.inputPricePerMillion, output: model.outputPricePerMillion });
+  };
+  const own = await scaleAt(stamp.serverModelId);
+  const yesNo = stamp.decisionModelId ? questions.filter((asked) => asked.type === "boolean").length : 0;
+  return yesNo ? (own * (questions.length - yesNo) + (await scaleAt(stamp.decisionModelId)) * yesNo) / questions.length : own;
 }
+
+/** The most an extraction of these papers holds: every paper at its worst case, at the price of the models it runs on. */
+async function extractionHold(ctx: QueryCtx, userId: Id<"users">, { questions, usePdfs, ...range }: { set: PaperSet; first: number; last: number; questions: Array<{ type: string }>; usePdfs?: boolean }) {
+  await checkPdfs(ctx, usePdfs);
+  return (await papersOf(ctx, userId, range)) * estimatePaperCredits({ questionCount: questions.length, pdf: usePdfs === true, scale: await scaleOf(ctx, userId, questions) });
+}
+
+/** The same figure, for the start to check what was approved against (see `start`). */
+export const figure = internalQuery({
+  args: { userId: v.id("users"), ...extractArgs },
+  returns: v.number(),
+  handler: (ctx, { userId, ...args }) => extractionHold(ctx, userId, args),
+});
 
 /** A saved search as an extraction's source: its query, for the source's name, and the request its results page makes. */
 export const searchSource = internalQuery({
@@ -140,7 +164,8 @@ export const begin = internalMutation({
   returns: v.object({ jobId: v.id("extractionJobs") }),
   handler: async (ctx, { userId, spend, ...args }) => {
     await checkPdfs(ctx, args.usePdfs);
-    return await startJobFor(ctx, userId, { ...args, mode: "extraction" }, spend);
+    // The job keeps the price its figure was worked out at, read in the transaction that stamps its models: its papers are measured against the figure at that price, whatever the person picks later.
+    return await startJobFor(ctx, userId, { ...args, mode: "extraction" }, spend && { ...spend, scale: await scaleOf(ctx, userId, args.questions) });
   },
 });
 
@@ -172,6 +197,9 @@ async function start(ctx: ActionCtx, userId: Id<"users">, { name, questions, use
   if (questions.length > MAX_QUESTIONS_PER_JOB) throw invalid(`An extraction takes up to ${MAX_QUESTIONS_PER_JOB} questions.`);
   const job = { userId, name, bucketItems: await sourcesOf(ctx, userId, range), questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true };
   if (cap === undefined) return await ctx.runMutation(internal.extraction.start.begin, job);
+  // What was approved is what the job holds now, or more: the papers or the model may have changed since the person was asked, and a job that holds more than they said yes to is asked about again.
+  const now: number = await ctx.runQuery(internal.extraction.start.figure, { userId, name, questions, ...(usePdfs === undefined ? {} : { usePdfs }), ...range });
+  if (now > cap) throw invalid(`This extraction now holds up to ${Math.ceil(now).toLocaleString("en")} credits, more than the ${cap.toLocaleString("en")} approved: its papers or the model it runs on changed since. Call it again, and the person is asked with the new figure.`);
   const hold = `extraction-job:${crypto.randomUUID()}`;
   const held = await holdSpend(ctx, { userId, chargeId: hold, credits: cap }).catch(async (error) => {
     // Autumn may have taken the hold and not answered, or may yet take it: it is settled a few minutes on, with nothing spent under it, once that request has ended either way.

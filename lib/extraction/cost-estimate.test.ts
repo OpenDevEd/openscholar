@@ -4,6 +4,8 @@ import {
   estimateRetryCredits,
   EXTRACTION_COST_CONSTANTS,
   type ExtractionEstimateArgs,
+  estimatePaperCredits,
+  priceScale,
 } from "@/lib/extraction/cost-estimate";
 
 describe("estimateExtractionCredits", () => {
@@ -179,5 +181,17 @@ describe("estimateRetryCredits (plan-05)", () => {
     const { low, mid, high } = estimateRetryCredits(args);
     expect(high).toBeGreaterThanOrEqual(mid);
     expect(mid).toBeGreaterThanOrEqual(low);
+  });
+});
+
+describe("a job's model against the one the rates were measured on", () => {
+  it("scales a paper's hold by the model's price, and never below the measured rates", () => {
+    // Claude Sonnet 5.5 on 2026-10-05: $2 and $10 a million tokens, twenty times the small model's.
+    expect(priceScale({ input: 2, output: 10 })).toBe(20);
+    expect(priceScale({ input: 0.05, output: 0.2 })).toBe(1);
+    expect(priceScale(null)).toBe(1);
+    // Two abstract questions hold 10 credits on the small model, and 200 on Sonnet, where they cost 107 to 130.
+    expect(estimatePaperCredits({ questionCount: 2, pdf: false })).toBe(10);
+    expect(estimatePaperCredits({ questionCount: 2, pdf: false, scale: 20 })).toBe(200);
   });
 });

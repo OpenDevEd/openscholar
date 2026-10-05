@@ -700,6 +700,20 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).not.toBeNull();
   });
 
+  it("tell the model why an action's estimate refuses a call, in the action's words, so it can make the call again", async () => {
+    const t = convexTest(schema);
+    const { asAda, say, steps } = await chatOf(t);
+    const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
+    // Full texts are turned off here, and the model asks for them.
+    await t.run(async (ctx) => ctx.db.insert("featureFlags", { key: "extraction.pdf", enabled: false, updatedAt: 1 }));
+    const extract = { name: "extraction/start:extract", arguments: { name: "Sample sizes", set: { kind: "collection", collectionId }, first: 1, last: 5, questions: [{ question: "What was the sample size?", type: "number" }], usePdfs: true } };
+    mockDoStream.mockImplementationOnce(calling({ id: "pdfs", name: "run_action", input: extract })).mockImplementationOnce(finishingDoStream(["Full texts are off here."]));
+    await say("Extract the sample sizes from my trials, from the full texts");
+    // Not "this asks first", which it can do nothing with: what to change.
+    expect(told(1, "pdfs")).toEqual({ error: expect.stringContaining("without `usePdfs`") });
+    expect(await steps()).toEqual([]);
+  });
+
   it("ask before an action that spends credits, with the most it holds, and run it unasked once the person allows that much in the chat", async () => {
     const t = convexTest(schema);
     setupScreeningWorkpool(t);
