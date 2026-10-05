@@ -6,6 +6,13 @@ import { autocompleteOptions, autocompleteParameters, sourceTypesParameters, wit
 const namesSchema = z.object({
   results: z.array(z.object({ id: z.string(), display_name: z.string() })),
 });
+const topicsSchema = z.object({
+  results: z.array(z.object({ id: z.string(), topics: z.array(z.object({ display_name: z.string() })).nullish() })),
+});
+
+/** An author's three main research topics, comma separated, as OpenAlex lists them. */
+export const topicNames = (topics?: readonly { display_name: string }[] | null) =>
+  topics?.slice(0, 3).map((topic) => topic.display_name).join(", ") ?? "";
 
 async function readOpenAlex(path: string, parameters: Record<string, string>): Promise<unknown> {
   const response = await fetch(openAlexUrl(path, parameters), { signal: AbortSignal.timeout(12000), next: { revalidate: 3600 } });
@@ -25,6 +32,12 @@ export async function searchOpenAlex(entity: LookupEntity, query: string): Promi
   const options = autocompleteOptions(await readOpenAlex(`autocomplete/${entity}`, autocompleteParameters(query)));
   if (entity !== "sources" || !options.length) return options;
   return withSourceTypes(options, await readOpenAlex("sources", sourceTypesParameters(options.map((option) => option.id))));
+}
+
+/** Each author's main topics, which autocomplete leaves out. One request. */
+export async function readOpenAlexAuthorTopics(ids: readonly string[]): Promise<Record<string, string>> {
+  const body = topicsSchema.parse(await readOpenAlex("authors", { filter: `openalex_id:${ids.join("|")}`, select: "id,topics", "per-page": "100" }));
+  return Object.fromEntries(body.results.map((author) => [author.id.split("/").at(-1)!, topicNames(author.topics)]));
 }
 
 export async function readOpenAlexNames(entity: LookupEntity, ids: readonly string[]): Promise<Record<string, string>> {
