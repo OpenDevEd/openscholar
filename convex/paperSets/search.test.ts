@@ -23,12 +23,16 @@ type Request = { url: URL; init?: RequestInit };
 let requests: Request[] = [];
 /** How many works the search has. */
 let total = 900;
+/** Pages OpenAlex is too busy for the first time each is asked. */
+let busy = new Set<number>();
 /** OpenAlex, answering each page with up to 200 works numbered from the page's start, until the search runs out; a cursor is the next page's number. */
 const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
   const url = new URL(String(input));
   requests.push({ url, init });
   const cursor = url.searchParams.get("cursor");
   const page = cursor === null ? Number(url.searchParams.get("page")) : cursor === "*" ? 1 : Number(cursor);
+  // As it answers a search with many ORs asked for too fast: when to ask again, and nothing else.
+  if (busy.delete(page)) return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { "retry-after": "0.01" } });
   const start = (page - 1) * 200;
   const results = Array.from({ length: Math.max(0, Math.min(200, total - start)) }, (_, i) => ({
     id: `https://openalex.org/W${start + i + 1}`,
@@ -43,6 +47,7 @@ const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
 beforeEach(() => {
   requests = [];
   total = 900;
+  busy = new Set();
   vi.stubEnv("OPENALEX_API_KEY", "platform-key");
   vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
   vi.stubGlobal("fetch", openAlex);
@@ -104,6 +109,19 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(requests.every(({ url }) => url.searchParams.get("sort") === "cited_by_count:desc" && url.searchParams.get("page") === null)).toBe(true);
     const [firstResult] = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1));
     expect(firstResult?.openalexId).toBe("https://openalex.org/W250");
+  });
+
+  it("asks a page again when OpenAlex is too busy for it, and no page past where the search ends", async () => {
+    const { t, alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    // The search has 450 works, and the range asked for would hold a thousand: three pages, not five.
+    total = 450;
+    busy = new Set([1, 3]);
+
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 1000, ...job, saveTo: { kind: "none" } });
+
+    // Pages 1 and 3 were refused once and asked again; pages 4 and 5 never were.
+    expect(requests.map(({ url }) => Number(url.searchParams.get("page"))).sort()).toEqual([1, 1, 2, 3, 3]);
+    expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.totalPapers).toBe(450);
   });
 
   it("keeps exactly the range asked for when it runs across cursor pages", async () => {
