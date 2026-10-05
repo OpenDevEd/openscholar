@@ -1,7 +1,7 @@
 "use client";
 
 import { useAction, useMutation, useQuery } from "convex/react";
-import { ChevronDown, Plus, SparklesIcon } from "@/components/icons";
+import { ChevronDown, Plus, AiIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -70,7 +70,7 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
   return (
     <SectionShell
       sectionKey="ai"
-      icon={SparklesIcon}
+      icon={AiIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

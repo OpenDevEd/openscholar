@@ -2,7 +2,7 @@
 
 import { motion, LayoutGroup, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
-import { Search, Wand2 } from "@/components/icons";
+import { Search, AiIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { modeToggleSpring } from "@/lib/animation-config";
 
@@ -85,7 +85,7 @@ export function ModeToggle({ mode, onModeChange, disabled }: ModeToggleProps) {
               transition={indicatorTransition}
             />
           )}
-          <Wand2 className="relative z-10 h-4 w-4" />
+          <AiIcon className="relative z-10 h-4 w-4" />
           <span className="relative z-10">{t("researchMode")}</span>
         </motion.button>
       </motion.div>

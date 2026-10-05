@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { Check, ChevronsUpDown, Coins, ExternalLink, KeyRound, Monitor, Save, Sparkles } from "@/components/icons";
+import { Check, ChevronsUpDown, Coins, ExternalLink, FallbackRouteIcon, KeyRound, Monitor, Save } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -221,7 +221,7 @@ function PayMenu({
           onChange={onPay}
           options={[
             { id: "credits", label: t("pay.credits"), icon: Coins },
-            { id: "smart", label: t("pay.smart"), icon: Sparkles },
+            { id: "smart", label: t("pay.smart"), icon: FallbackRouteIcon },
             { id: "local", label: t("pay.local"), icon: KeyRound },
           ]}
         />

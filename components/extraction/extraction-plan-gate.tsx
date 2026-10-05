@@ -9,7 +9,6 @@ import {
   BarChart3,
   CheckCircle2,
   FileSearch,
-  Sparkles,
   Users,
 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { useFeatureFlag, useFlagPlanFeature } from "@/lib/feature-flags/hook";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { plansWithFeature } from "@/lib/billing/catalog";
+import { planIcon } from "@/components/billing/plan-icon";
 
 type Step = {
   title: string;
@@ -39,6 +39,7 @@ export function ExtractionPlanGate() {
   const planFeature = useFlagPlanFeature("extraction.start");
   const plans = catalog && planFeature ? plansWithFeature(catalog, planFeature) : [];
   const cheapestPlan = plans[0]?.name;
+  const CheapestPlanIcon = planIcon(plans[0]?.id);
 
   const steps: Step[] = [
     {
@@ -84,7 +85,7 @@ export function ExtractionPlanGate() {
         <div className="relative space-y-4">
           {cheapestPlan && (
             <Badge variant="secondary" className="w-fit gap-1.5">
-              <Sparkles className="h-3.5 w-3.5" />
+              <CheapestPlanIcon className="h-3.5 w-3.5" />
               {t("planGateBadge", { plan: cheapestPlan })}
             </Badge>
           )}

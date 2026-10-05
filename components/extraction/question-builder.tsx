@@ -18,8 +18,6 @@ import {
   Plus,
   Trash2,
   GripVertical,
-  Wand2,
-  Loader2,
   AlignLeft,
   ToggleLeft,
   Hash,
@@ -27,6 +25,7 @@ import {
   ClipboardList,
   ChevronDown,
   MessageSquarePlus,
+  AiIcon,
 } from "@/components/icons";
 import { useExtractionStore } from "@/lib/store/extraction";
 import { useBucketStore } from "@/lib/store/bucket";
@@ -636,14 +635,8 @@ export function QuestionBuilder() {
               disabled={isGenerating}
               className="gap-1.5"
             >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Wand2 className="h-4 w-4" />
-                  {tc("generateWithAI")}
-                </>
-              )}
+              <AiIcon working={isGenerating} className="h-4 w-4" />
+              {tc("generateWithAI")}
             </Button>
           </div>
         </form>

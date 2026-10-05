@@ -2,7 +2,7 @@
 
 import React, { useCallback, useContext, useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, Globe2, Loader2, Sparkles } from "@/components/icons";
+import { Check, TranslateIcon } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -146,12 +146,10 @@ export function ResultsTranslationControl({
         triggerClassName
       )}
     >
-      {isTranslating ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : allTranslated ? (
+      {allTranslated ? (
         <Check className="h-4 w-4 text-success" />
       ) : (
-        <Globe2 className="h-4 w-4" />
+        <TranslateIcon working={isTranslating} className="h-4 w-4" />
       )}
       <span>{allTranslated ? t("translated") : t("translate")}</span>
       {compactTrigger ? (
@@ -168,9 +166,6 @@ export function ResultsTranslationControl({
         >
           {targetBadgeLabel}
         </Badge>
-      )}
-      {showActiveTranslationState && !isTranslating && !allTranslated && !compactTrigger && (
-        <Sparkles className="h-3.5 w-3.5 text-primary/80" />
       )}
     </Button>
   );
@@ -291,7 +286,7 @@ export function ResultsTranslationControl({
           >
             {isTranslating ? (
               <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <TranslateIcon working size={14} className="h-3.5 w-3.5" />
                 {t("translatingResults")}
               </>
             ) : allTranslated ? (

@@ -2,6 +2,8 @@
 @import "tw-animate-css";
 @import "react-pdf/dist/Page/AnnotationLayer.css";
 @import "react-pdf/dist/Page/TextLayer.css";
+/* The animated AI mark (components/ai-mark.tsx), shared with the design preview. */
+@import "../public/assistant-branding/ai-mark.css";
 
 /* Streamdown renders chat and assistant replies and styles them with Tailwind classes of
    its own. Tailwind only writes the classes it finds, and it doesn't look in node_modules,
@@ -102,15 +104,6 @@
   --rating: var(--color-yellow-400);
   --highlight: color-mix(in oklab, var(--color-yellow-200) 50%, transparent);
 
-  /* AI accent. The surfaces derive from --ai. */
-  --ai: oklch(0.55 0.17 303);
-  --ai-fg: oklch(0.45 0.17 303);
-  --ai-bg: color-mix(in oklab, var(--ai) 6%, transparent);
-  --ai-bg-hover: color-mix(in oklab, var(--ai) 12%, transparent);
-  --ai-border: color-mix(in oklab, var(--ai) 25%, transparent);
-  --ai-border-hover: color-mix(in oklab, var(--ai) 40%, transparent);
-  --ai-glow: 0 1px 10px -3px color-mix(in oklab, var(--ai) 30%, transparent);
-
   /* Fonts. --font-app is the family loaded in app/layout.tsx. */
   --font-sans: var(--font-app), ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
@@ -197,9 +190,6 @@
   --pdf-highlight: color-mix(in oklab, var(--primary) 30%, transparent);
   --highlight: color-mix(in oklab, var(--color-yellow-500) 30%, transparent);
 
-  --ai: oklch(0.65 0.15 303);
-  --ai-fg: oklch(0.8 0.12 303);
-
   /* Radius (slightly smaller in dark mode) */
   --radius: 0.625rem;
 
@@ -260,12 +250,6 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-
-  --color-ai: var(--ai-fg);
-  --color-ai-bg: var(--ai-bg);
-  --color-ai-bg-hover: var(--ai-bg-hover);
-  --color-ai-border: var(--ai-border);
-  --color-ai-border-hover: var(--ai-border-hover);
 
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
@@ -519,17 +503,18 @@
   overflow-wrap: break-word;
 }
 
-/* AI surface — flat violet tint + soft glow on hover */
+/* The surface of AI actions: a soft tint of the primary colour, with a glow on hover. AI has no colour of
+   its own; the AI mark is what says AI. */
 @utility ai-surface {
-  background: var(--ai-bg);
-  border-color: var(--ai-border);
-  color: var(--ai-fg);
-  transition: all 200ms ease;
+  background: color-mix(in oklab, var(--primary) 6%, transparent);
+  border-color: color-mix(in oklab, var(--primary) 25%, transparent);
+  color: var(--primary);
+  transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
 
   &:hover {
-    background: var(--ai-bg-hover);
-    border-color: var(--ai-border-hover);
-    box-shadow: var(--ai-glow);
+    background: color-mix(in oklab, var(--primary) 12%, transparent);
+    border-color: color-mix(in oklab, var(--primary) 40%, transparent);
+    box-shadow: 0 1px 10px -3px color-mix(in oklab, var(--primary) 30%, transparent);
   }
 }
 

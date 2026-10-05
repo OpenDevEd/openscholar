@@ -15,6 +15,16 @@ import { StarIcon as StarOutline } from "@solar-icons/react/linear/star";
 /** Any icon component the app can place. */
 export type AppIcon = ComponentType<ComponentPropsWithoutRef<"svg"> & { size?: string | number }>;
 
+// AI: the animated AI mark and its translation form, never a sparkle, wand or robot. Set `working`
+// while AI acts; the mark loops, then settles when it stops.
+export { AiMark as AiIcon, TranslateMark as TranslateIcon } from "@/components/ai-mark";
+
+// Plans: each plan's own icon (see components/billing/plan-icon.ts), an up arrow to upgrade, and a ticket
+// for plans that have no icon of their own. Stars stay out: the four-point star means AI.
+export { RoundArrowUpIcon as UpgradeIcon } from "@solar-icons/react/bold-duotone/round-arrow-up";
+export { TicketIcon as PlanIcon } from "@solar-icons/react/bold-duotone/ticket";
+export { RoutingIcon as FallbackRouteIcon } from "@solar-icons/react/bold-duotone/routing";
+
 // Sections of the app. The sidebar, page headers and settings rails share these.
 export { Home2Icon as HomeIcon, Home2Icon as Home } from "@solar-icons/react/bold-duotone/home-2";
 export { LibraryIcon, LibraryIcon as Library, LibraryIcon as LibraryBig } from "@solar-icons/react/bold-duotone/library";
@@ -28,8 +38,6 @@ export { SettingsIcon, SettingsIcon as Settings } from "@solar-icons/react/bold-
 export { UserRoundedIcon as PersonIcon, UserRoundedIcon as UserRound } from "@solar-icons/react/bold-duotone/user-rounded";
 export { ShieldCheckIcon as SecurityIcon, ShieldCheckIcon as ShieldCheck } from "@solar-icons/react/bold-duotone/shield-check";
 export { CardIcon as BillingIcon, CardIcon as CreditCard } from "@solar-icons/react/bold-duotone/card";
-export { BotIcon } from "@solar-icons/react/bold-duotone/bot";
-export { StarsIcon as SparklesIcon, StarsIcon as Sparkles } from "@solar-icons/react/bold-duotone/stars";
 export { PlugCircleIcon as ConnectionsIcon, PlugCircleIcon as Plug } from "@solar-icons/react/bold-duotone/plug-circle";
 export { Tuning2Icon as SwitchesIcon, Tuning2Icon as SlidersHorizontal, Tuning2Icon as Settings2, Tuning2Icon as SlidersHorizontalIcon, Tuning2Icon as ToggleLeft } from "@solar-icons/react/bold-duotone/tuning-2";
 export { BoxIcon as ModelsIcon, BoxIcon as Package, BoxIcon as Boxes } from "@solar-icons/react/bold-duotone/box";
@@ -82,7 +90,6 @@ export { ChecklistMinimalisticIcon as ListChecks } from "@solar-icons/react/bold
 export { DownloadMinimalisticIcon as Download, DownloadMinimalisticIcon as DownloadIcon } from "@solar-icons/react/bold-duotone/download-minimalistic";
 export { ChevronsUpDownIcon as ChevronsUpDown } from "@solar-icons/react/linear/chevrons-up-down";
 export { DangerCircleIcon as AlertCircle, DangerCircleIcon as CircleAlert, DangerCircleIcon as AlertCircleIcon } from "@solar-icons/react/bold-duotone/danger-circle";
-export { MagicWand2Icon as Wand2 } from "@solar-icons/react/bold-duotone/magic-wand-2";
 export { SortVerticalIcon as ArrowUpDown } from "@solar-icons/react/bold-duotone/sort-vertical";
 export { DangerTriangleIcon as AlertTriangle, DangerTriangleIcon as TriangleAlert } from "@solar-icons/react/bold-duotone/danger-triangle";
 export { BoltIcon as Zap } from "@solar-icons/react/bold-duotone/bolt";

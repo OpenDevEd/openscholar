@@ -16,6 +16,8 @@ import {
   BookOpen,
   Building,
   Table,
+  AiIcon,
+  TranslateIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { authorValue, useScreening, type FilterValue } from "./hooks";
@@ -114,7 +116,7 @@ export function TranslationToggle({
         return (
           <TooltipHint label={tc("translating")}>
             <div role="img" aria-label={tc("translating")} className="flex items-center justify-center p-1.5 rounded-md bg-info/10">
-              <div className="h-3 w-3 animate-spin rounded-full border-2 border-info border-t-transparent" />
+              <TranslateIcon working size={12} className="h-3 w-3 text-info" />
             </div>
           </TooltipHint>
         );
@@ -147,7 +149,7 @@ export function TranslationToggle({
     <div className="flex items-center gap-2 mb-2">
       {isTranslating && (
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+          <TranslateIcon working size={12} className="h-3 w-3 text-primary" />
           <span>{tc("translating")}</span>
         </div>
       )}
@@ -266,9 +268,7 @@ export function ScreeningResponses({
                   {displayState === "checked" && <Check className="h-3 w-3" />}
                   {displayState === "crossed" && <X className="h-3 w-3" />}
                   {displayState === "unchecked" && <Minus className="h-3 w-3" />}
-                  {displayState === "loading" && (
-                    <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
-                  )}
+                  {displayState === "loading" && <AiIcon working size={12} className="h-3 w-3" />}
                   <span className="font-mono">{index + 1}</span>
                 </button>
               </span>
@@ -368,9 +368,7 @@ export function ScreeningResponses({
                           {displayState === "checked" && <Check className="h-3 w-3" />}
                           {displayState === "crossed" && <X className="h-3 w-3" />}
                           {displayState === "unchecked" && <Minus className="h-3 w-3" />}
-                          {displayState === "loading" && (
-                            <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
-                          )}
+                          {displayState === "loading" && <AiIcon working size={12} className="h-3 w-3" />}
                           {statusText}
                         </div>
                       </td>
@@ -417,9 +415,7 @@ export function ScreeningBadge({
         {displayState === "checked" && <Check className="h-3 w-3" />}
         {displayState === "crossed" && <X className="h-3 w-3" />}
         {displayState === "unchecked" && <Minus className="h-3 w-3" />}
-        {displayState === "loading" && (
-          <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
-        )}
+        {displayState === "loading" && <AiIcon working size={12} className="h-3 w-3" />}
         {variant !== "icon-only" && <span className="font-mono">{index + 1}</span>}
       </div>
     </TooltipHint>

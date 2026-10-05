@@ -9,8 +9,8 @@ import {
   Loader2,
   Play,
   Plus,
-  Sparkles,
   Trash2,
+  AiIcon,
 } from "@/components/icons";
 import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
@@ -240,11 +240,7 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
                   disabled={isGenerating || !hasResearchQuestion}
                   className="h-8 gap-1.5 shrink-0"
                 >
-                  {isGenerating ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5" />
-                  )}
+                  <AiIcon working={isGenerating} size={14} className="h-3.5 w-3.5" />
                   {t("common.generate")}
                 </Button>
                 {screeningQuestions.length > 0 && (

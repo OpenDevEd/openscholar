@@ -9,7 +9,7 @@ import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
   ArrowUpDown, Brain, Check, ChevronsUpDown, Cloud, Filter, Languages, ListChecks, MessageSquare, PiggyBank, SlidersHorizontal,
-  Search, TableProperties, Wand2, Scale, Zap,
+  PenLine, Search, TableProperties, Scale, Zap,
 } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -56,7 +56,7 @@ export const TASK_ICONS: Record<AiTask, Ico> = {
   screenAll: ListChecks,
   screening: Filter,
   questionToQuery: Search,
-  refine: Wand2,
+  refine: PenLine,
   translate: Languages,
   broadenNarrow: ArrowUpDown,
 };

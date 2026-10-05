@@ -8,12 +8,12 @@ import { useAction, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import {
   ExternalLink,
-  Sparkles,
+  UpgradeIcon,
   SettingsIcon,
   PersonIcon,
   SecurityIcon,
   BillingIcon,
-  BotIcon,
+  AiIcon,
   ConnectionsIcon,
   SwitchesIcon,
   ModelsIcon,
@@ -23,6 +23,7 @@ import { api } from "@/convex/_generated/api";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { planIcon } from "@/components/billing/plan-icon";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import {
@@ -76,6 +77,7 @@ function Shell({ children }: { children: ReactNode }) {
   // With subscriptions off, a Free account has no plan worth naming.
   const showPlan = subscriptionsEnabled || subscription.onDefaultPlan === false;
   const planLabel = showPlan ? (plan && subscription.catalog && findPlan(subscription.catalog, plan)?.name) || plan || "" : "";
+  const PlanChipIcon = planIcon(plan);
   const env = deployment();
 
   if (phase === "initializing") {
@@ -100,7 +102,7 @@ function Shell({ children }: { children: ReactNode }) {
     {
       label: t("groups.research"),
       items: [
-        { href: "/settings/ai", title: tc("ai"), icon: BotIcon },
+        { href: "/settings/ai", title: tc("ai"), icon: AiIcon },
         ...(signedIn ? [{ href: "/settings/connections", title: tc("connections"), icon: ConnectionsIcon }] : []),
       ],
     },
@@ -109,7 +111,7 @@ function Shell({ children }: { children: ReactNode }) {
       items: isAdmin
         ? [
             { href: "/settings/admin", title: t("items.switches"), icon: SwitchesIcon },
-            { href: "/settings/admin/ai", title: t("items.aiModels"), icon: BotIcon },
+            { href: "/settings/admin/ai", title: t("items.aiModels"), icon: AiIcon },
             { href: "/settings/admin/models", title: t("items.modelList"), icon: ModelsIcon },
             { href: "/settings/admin/admins", title: t("items.admins"), icon: AdminsIcon },
             ...(links?.autumn ? [{ href: links.autumn, title: t("items.plans"), icon: AutumnIcon, external: "Autumn" }] : []),
@@ -139,7 +141,7 @@ function Shell({ children }: { children: ReactNode }) {
                 ) : null}
                 {signedIn && planLabel ? (
                   <StatusChip tone={showUpgrade ? "neutral" : "success"}>
-                    <Sparkles aria-hidden />
+                    <PlanChipIcon aria-hidden />
                     <span className={BAR_LABEL}>{t("planChip", { plan: planLabel })}</span>
                   </StatusChip>
                 ) : null}
@@ -228,7 +230,7 @@ function BillingAction({ showUpgrade, subscriptionsEnabled }: { showUpgrade: boo
       disabled={loading}
       onClick={onClick}
     >
-      {loading ? <Spinner /> : showUpgrade ? <Sparkles /> : <ExternalLink />}
+      {loading ? <Spinner /> : showUpgrade ? <UpgradeIcon /> : <ExternalLink />}
       <span className={BAR_LABEL}>{showUpgrade ? t("upgradePlan") : t("manageSubscriptionBtn")}</span>
     </Button>
   );

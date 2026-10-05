@@ -1,0 +1,150 @@
+/* The translation globe turns by animating --lon; each meridian projects itself from it with sin() and cos(). */
+@property --lon { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+
+/* Motion runs on damped springs sampled into linear(), so turns overshoot and settle instead of stopping dead.
+   --impulse goes out and comes back to rest, for nudges. The loop curves play their motion in part of a cycle, then hold. */
+.ai-mark {
+  --spring: linear(0, 0.043, 0.147, 0.288, 0.443, 0.587, 0.729, 0.852, 0.951, 1.022, 1.075, 1.107, 1.122, 1.124, 1.116, 1.101, 1.083, 1.065, 1.046, 1.029, 1.014, 1.004, 0.995, 0.989, 0.986, 0.985, 0.985, 0.986, 0.988, 0.99, 0.993, 0.995, 1);
+  --settle: linear(0, 0.028, 0.093, 0.181, 0.272, 0.374, 0.473, 0.566, 0.643, 0.717, 0.781, 0.831, 0.876, 0.912, 0.941, 0.962, 0.98, 0.992, 1.001, 1.007, 1.011, 1.013, 1.014, 1.014, 1.013, 1.012, 1.011, 1.009, 1.008, 1.007, 1.005, 1.004, 1);
+  --impulse: linear(0, 0.577, 0.892, 0.999, 0.935, 0.76, 0.53, 0.28, 0.07, -0.092, -0.201, -0.247, -0.247, -0.211, -0.157, -0.097, -0.037, 0.009, 0.041, 0.059, 0.064, 0.058, 0.046, 0.03, 0.015, 0.002, -0.008, -0.013, -0.016, -0.015, -0.013, -0.009, 0);
+  --loop-settle: linear(0 0%, 0.028, 0.093, 0.181, 0.272, 0.374, 0.473, 0.566, 0.643, 0.717, 0.781, 0.831, 0.876, 0.912, 0.941, 0.962, 0.98, 0.992, 1.001, 1.007, 1.011, 1.013, 1.014, 1.014, 1.013, 1.012, 1.011, 1.009, 1.008, 1.007, 1.005, 1.004, 1 60%, 1);
+  --loop-impulse: linear(0 0%, 0.577, 0.892, 0.999, 0.935, 0.76, 0.53, 0.28, 0.07, -0.092, -0.201, -0.247, -0.247, -0.211, -0.157, -0.097, -0.037, 0.009, 0.041, 0.059, 0.064, 0.058, 0.046, 0.03, 0.015, 0.002, -0.008, -0.013, -0.016, -0.015, -0.013, -0.009, 0 70%, 0);
+  --out: cubic-bezier(.16, 1, .3, 1);
+  --pen: cubic-bezier(.35, 0, .25, 1);
+  display: block; flex-shrink: 0; overflow: visible;
+}
+.ai-mark .part { transform-box: view-box; transform-origin: 64px 64px; fill: currentColor; color: var(--base); }
+.ai-mark .draw { stroke-dasharray: 1; }
+.ai-mark[data-tone="brand"] .ring-top { --base: var(--logo-a, #60a5fa); }
+.ai-mark[data-tone="brand"] .ring-mid { --base: var(--logo-c, #bfdbfe); }
+.ai-mark[data-tone="brand"] .ring-bottom { --base: var(--logo-b, #2563eb); }
+.ai-mark[data-tone="brand"] .star { --base: var(--logo-ink, #172554); }
+/* Text colour follows the control. The layers step back as solid mixes with the surface, like the app's
+   two-tone icons; without a surface colour they fall back to see-through. */
+.ai-mark[data-tone="text"] { --mark-surface: var(--icon-surface, var(--card, transparent)); }
+.ai-mark[data-tone="text"] .part { --base: currentColor; }
+.ai-mark[data-tone="text"] .ring-top { --base: color-mix(in oklab, currentColor 55%, var(--mark-surface)); }
+.ai-mark[data-tone="text"] .ring-mid { --base: color-mix(in oklab, currentColor 30%, var(--mark-surface)); }
+.ai-mark[data-tone="text"] .ring-bottom { --base: color-mix(in oklab, currentColor 85%, var(--mark-surface)); }
+
+@keyframes ai-mark-fade-in { from { opacity: 0; } }
+@keyframes ai-mark-star-in { from { transform: scale(.25) rotate(-90deg); } }
+@keyframes ai-mark-quarter-turn { to { transform: rotate(90deg); } }
+@keyframes ai-mark-quarter-back { to { transform: rotate(-90deg); } }
+
+/* Gather: the layers sweep round their circles into place, then the star springs in with a turn.
+   Hover springs the star a quarter turn and the layers ai-mark-recoil. Working repeats that beat. */
+.ai-mark[data-variant="gather"][data-play="load"] .ring-top { animation: ai-mark-fade-in 120ms linear both, ai-mark-gather-in 900ms var(--settle) both; }
+.ai-mark[data-variant="gather"][data-play="load"] .ring-mid { animation: ai-mark-fade-in 120ms linear 50ms both, ai-mark-gather-in-counter 900ms var(--settle) 50ms both; }
+.ai-mark[data-variant="gather"][data-play="load"] .ring-bottom { animation: ai-mark-fade-in 120ms linear 100ms both, ai-mark-gather-in 900ms var(--settle) 100ms both; }
+.ai-mark[data-variant="gather"][data-play="load"] .star { animation: ai-mark-fade-in 140ms linear 280ms both, ai-mark-star-in 720ms var(--spring) 280ms both; }
+.ai-mark[data-variant="gather"][data-play="hover"] .star { animation: ai-mark-quarter-turn 760ms var(--spring); }
+.ai-mark[data-variant="gather"][data-play="hover"] .ring-top { animation: ai-mark-recoil 820ms var(--impulse) 40ms; }
+.ai-mark[data-variant="gather"][data-play="hover"] .ring-mid { animation: ai-mark-recoil-counter 820ms var(--impulse) 70ms; }
+.ai-mark[data-variant="gather"][data-play="hover"] .ring-bottom { animation: ai-mark-recoil 820ms var(--impulse) 100ms; }
+.ai-mark[data-variant="gather"][data-play="loop"] .star { animation: ai-mark-quarter-turn 1.15s var(--loop-settle) infinite; }
+.ai-mark[data-variant="gather"][data-play="loop"] .ring-top { animation: ai-mark-recoil 1.15s var(--loop-impulse) 40ms infinite; }
+.ai-mark[data-variant="gather"][data-play="loop"] .ring-mid { animation: ai-mark-recoil-counter 1.15s var(--loop-impulse) 70ms infinite; }
+.ai-mark[data-variant="gather"][data-play="loop"] .ring-bottom { animation: ai-mark-recoil 1.15s var(--loop-impulse) 100ms infinite; }
+@keyframes ai-mark-gather-in { from { transform: rotate(-110deg) scale(.92); } }
+@keyframes ai-mark-gather-in-counter { from { transform: rotate(100deg) scale(.92); } }
+@keyframes ai-mark-recoil { to { transform: rotate(-16deg); } }
+@keyframes ai-mark-recoil-counter { to { transform: rotate(14deg); } }
+
+/* Draw: each ribbon is drawn along its circle in one clockwise stroke, then the star springs in.
+   Hover sends a soft light once round the ribbons. Working keeps the light circling. */
+.ai-mark .glow { transform-box: view-box; transform-origin: 64px 64px; opacity: 0; pointer-events: none; }
+.ai-mark[data-variant="draw"][data-play="load"] .draw-top { animation: ai-mark-draw 620ms var(--pen) both; }
+.ai-mark[data-variant="draw"][data-play="load"] .draw-mid { animation: ai-mark-draw 520ms var(--pen) 300ms both; }
+.ai-mark[data-variant="draw"][data-play="load"] .draw-bottom { animation: ai-mark-draw 560ms var(--pen) 440ms both; }
+.ai-mark[data-variant="draw"][data-play="load"] .star { animation: ai-mark-fade-in 160ms linear 560ms both, ai-mark-star-pop 700ms var(--spring) 560ms both; }
+.ai-mark[data-variant="draw"][data-play="hover"] .glow { animation: ai-mark-glow-pass 1000ms cubic-bezier(.4, 0, .2, 1); }
+.ai-mark[data-variant="draw"][data-play="hover"] .star { animation: ai-mark-pulse 760ms var(--impulse) 80ms; }
+.ai-mark[data-variant="draw"][data-play="loop"] .glow { animation: ai-mark-glow-pass 1.6s cubic-bezier(.45, .1, .55, .9) infinite; }
+.ai-mark[data-variant="draw"][data-play="loop"] .star { animation: ai-mark-pulse 1.6s var(--loop-impulse) infinite; }
+@keyframes ai-mark-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes ai-mark-star-pop { from { transform: scale(.4); } }
+/* The light fades at the lower left, where only the thin ribbon tips meet, so a loop never blinks. */
+@keyframes ai-mark-glow-pass { 0% { opacity: 0; transform: rotate(-128deg); } 12%, 88% { opacity: 1; } 100% { opacity: 0; transform: rotate(232deg); } }
+@keyframes ai-mark-pulse { to { transform: scale(1.14); } }
+
+/* Focus: the layers close in like an iris and the star turns into focus.
+   Hover opens the iris as the star tightens. Working breathes the iris round a turning star. */
+.ai-mark[data-variant="focus"][data-play="load"] .ring-bottom { animation: ai-mark-fade-in 200ms linear both, ai-mark-iris-in 950ms var(--settle) both; }
+.ai-mark[data-variant="focus"][data-play="load"] .ring-mid { animation: ai-mark-fade-in 200ms linear 60ms both, ai-mark-iris-in 950ms var(--settle) 60ms both; }
+.ai-mark[data-variant="focus"][data-play="load"] .ring-top { animation: ai-mark-fade-in 200ms linear 120ms both, ai-mark-iris-in 950ms var(--settle) 120ms both; }
+.ai-mark[data-variant="focus"][data-play="load"] .star { animation: ai-mark-fade-in 160ms linear 320ms both, ai-mark-star-focus 720ms var(--spring) 320ms both; }
+.ai-mark[data-variant="focus"][data-play="hover"] .ring-top { animation: ai-mark-iris-open 820ms var(--impulse); }
+.ai-mark[data-variant="focus"][data-play="hover"] .ring-mid { animation: ai-mark-iris-open 820ms var(--impulse) 35ms; }
+.ai-mark[data-variant="focus"][data-play="hover"] .ring-bottom { animation: ai-mark-iris-open 820ms var(--impulse) 70ms; }
+.ai-mark[data-variant="focus"][data-play="hover"] .star { animation: ai-mark-tighten 820ms var(--impulse); }
+.ai-mark[data-variant="focus"][data-play="loop"] .ring-top { animation: ai-mark-iris-open 1.3s var(--loop-impulse) infinite; }
+.ai-mark[data-variant="focus"][data-play="loop"] .ring-mid { animation: ai-mark-iris-open 1.3s var(--loop-impulse) 50ms infinite; }
+.ai-mark[data-variant="focus"][data-play="loop"] .ring-bottom { animation: ai-mark-iris-open 1.3s var(--loop-impulse) 100ms infinite; }
+.ai-mark[data-variant="focus"][data-play="loop"] .star { animation: ai-mark-quarter-turn 1.3s var(--loop-settle) 80ms infinite; }
+@keyframes ai-mark-iris-in { from { transform: rotate(75deg) scale(1.2); } }
+@keyframes ai-mark-star-focus { from { transform: scale(.55) rotate(45deg); } }
+@keyframes ai-mark-iris-open { to { transform: rotate(16deg) scale(1.08); } }
+@keyframes ai-mark-tighten { to { transform: scale(.78) rotate(-20deg); } }
+
+/* Orbit: the layers spiral out into place. Hover sends them round once against the star.
+   Working keeps the outer layers circling while the inner one turns the other way. */
+.ai-mark[data-variant="orbit"][data-play="load"] .ring-top { animation: ai-mark-fade-in 220ms linear both, ai-mark-orbit-in 1150ms var(--out) both; }
+.ai-mark[data-variant="orbit"][data-play="load"] .ring-mid { animation: ai-mark-fade-in 220ms linear both, ai-mark-orbit-in-counter 1150ms var(--out) both; }
+.ai-mark[data-variant="orbit"][data-play="load"] .ring-bottom { animation: ai-mark-fade-in 220ms linear both, ai-mark-orbit-in 1150ms var(--out) both; }
+.ai-mark[data-variant="orbit"][data-play="load"] .star { animation: ai-mark-fade-in 160ms linear 420ms both, ai-mark-star-in 760ms var(--spring) 420ms both; }
+.ai-mark[data-variant="orbit"][data-play="hover"] .ring-top, .ai-mark[data-variant="orbit"][data-play="hover"] .ring-bottom { animation: ai-mark-full-turn 950ms cubic-bezier(.5, 0, .1, 1); }
+.ai-mark[data-variant="orbit"][data-play="hover"] .ring-mid { animation: ai-mark-full-turn-back 950ms cubic-bezier(.5, 0, .1, 1); }
+.ai-mark[data-variant="orbit"][data-play="hover"] .star { animation: ai-mark-quarter-back 900ms var(--spring) 60ms; }
+.ai-mark[data-variant="orbit"][data-play="loop"] .ring-top, .ai-mark[data-variant="orbit"][data-play="loop"] .ring-bottom { animation: ai-mark-full-turn 1.5s cubic-bezier(.45, .05, .55, .95) infinite; }
+.ai-mark[data-variant="orbit"][data-play="loop"] .ring-mid { animation: ai-mark-full-turn-back 3s linear infinite; }
+.ai-mark[data-variant="orbit"][data-play="loop"] .star { animation: ai-mark-quarter-back 1.5s cubic-bezier(.45, .05, .55, .95) infinite; }
+@keyframes ai-mark-orbit-in { from { transform: rotate(-300deg) scale(.6); } }
+@keyframes ai-mark-orbit-in-counter { from { transform: rotate(240deg) scale(.6); } }
+@keyframes ai-mark-full-turn { to { transform: rotate(360deg); } }
+@keyframes ai-mark-full-turn-back { to { transform: rotate(-360deg); } }
+
+/* Translation: the star in a globe behind a letter tile. The globe turns into place, turns a third on hover and
+   spins while translating; the tile flips to 文 and back on hover, and through A, अ, あ and 文 while translating. */
+.ai-mark[data-tone="brand"] :is(.meridian, .equator) { --base: var(--logo-c, #bfdbfe); }
+.ai-mark[data-tone="brand"][data-scale="compact"] :is(.meridian, .equator) { --base: var(--logo-a, #60a5fa); }
+.ai-mark[data-tone="brand"] .tile-face { --base: var(--logo-b, #2563eb); }
+.ai-mark[data-tone="text"] :is(.meridian, .equator) { --base: color-mix(in oklab, currentColor 40%, var(--mark-surface)); }
+/* Seen from the front, a meridian at longitude L is a half ellipse sin(L) wide; it fades at the edge and hides behind. */
+.ai-mark .meridian { transform: scaleX(sin(calc(var(--lon) + var(--at)))); opacity: clamp(0, cos(calc(var(--lon) + var(--at))) * 4 - .6, 1); }
+.ai-mark .tile { transform-box: fill-box; transform-origin: center; }
+/* One script at a time, A at rest. Each swaps in at the moment the tile is edge-on. */
+.ai-mark .script { opacity: 0; }
+.ai-mark .script-0 { opacity: 1; }
+
+.ai-mark[data-shape="translate"][data-play="load"] { animation: ai-mark-globe-in 1100ms var(--settle) both; }
+.ai-mark[data-shape="translate"][data-play="load"] .ring-top { animation: ai-mark-fade-in 120ms linear both, ai-mark-gather-in 900ms var(--settle) both; }
+.ai-mark[data-shape="translate"][data-play="load"] .ring-bottom { animation: ai-mark-fade-in 120ms linear 60ms both, ai-mark-gather-in 900ms var(--settle) 60ms both; }
+.ai-mark[data-shape="translate"][data-play="load"] :is(.meridian, .equator) { animation: ai-mark-fade-in 320ms linear 120ms both; }
+.ai-mark[data-shape="translate"][data-play="load"] .star { animation: ai-mark-fade-in 160ms linear 380ms both, ai-mark-star-in 720ms var(--spring) 380ms both; }
+.ai-mark[data-shape="translate"][data-play="load"] .tile { animation: ai-mark-fade-in 160ms linear 300ms both, ai-mark-tile-in 720ms var(--spring) 300ms both; }
+.ai-mark[data-shape="translate"][data-play="hover"] { animation: ai-mark-globe-turn 1000ms var(--spring); }
+.ai-mark[data-shape="translate"][data-play="hover"] .star { animation: ai-mark-pulse 760ms var(--impulse) 80ms; }
+.ai-mark[data-shape="translate"][data-play="hover"] .tile { animation: ai-mark-flip-there-and-back 900ms ease-in-out; }
+.ai-mark[data-shape="translate"][data-play="hover"] .script-0 { animation: ai-mark-shown-outside 900ms linear; }
+.ai-mark[data-shape="translate"][data-play="hover"] .script-3 { animation: ai-mark-shown-inside 900ms linear; }
+.ai-mark[data-shape="translate"][data-play="loop"] { animation: ai-mark-globe-spin .8s linear infinite; }
+.ai-mark[data-shape="translate"][data-play="loop"] .tile { animation: ai-mark-tile-flips 2.4s ease-in-out infinite; }
+.ai-mark[data-shape="translate"][data-play="loop"] .script-0 { animation: ai-mark-letter-0 2.4s linear infinite; }
+.ai-mark[data-shape="translate"][data-play="loop"] .script-1 { animation: ai-mark-letter-1 2.4s linear infinite; }
+.ai-mark[data-shape="translate"][data-play="loop"] .script-2 { animation: ai-mark-letter-2 2.4s linear infinite; }
+.ai-mark[data-shape="translate"][data-play="loop"] .script-3 { animation: ai-mark-letter-3 2.4s linear infinite; }
+@keyframes ai-mark-globe-in { from { --lon: -120deg; } }
+@keyframes ai-mark-globe-turn { to { --lon: 120deg; } }
+@keyframes ai-mark-globe-spin { to { --lon: 60deg; } }
+@keyframes ai-mark-tile-in { from { transform: scale(.4) rotate(-12deg); } }
+@keyframes ai-mark-flip-there-and-back { 20% { transform: scaleX(0); } 40%, 60% { transform: none; } 80% { transform: scaleX(0); } }
+@keyframes ai-mark-shown-outside { 0%, 19.9% { opacity: 1; } 20%, 79.9% { opacity: 0; } 80%, 100% { opacity: 1; } }
+@keyframes ai-mark-shown-inside { 0%, 19.9% { opacity: 0; } 20%, 79.9% { opacity: 1; } 80%, 100% { opacity: 0; } }
+@keyframes ai-mark-tile-flips { 5%, 30%, 55%, 80% { transform: scaleX(0); } 10%, 25%, 35%, 50%, 60%, 75%, 85% { transform: none; } }
+@keyframes ai-mark-letter-0 { 0%, 4.9% { opacity: 1; } 5%, 79.9% { opacity: 0; } 80%, 100% { opacity: 1; } }
+@keyframes ai-mark-letter-1 { 0%, 4.9% { opacity: 0; } 5%, 29.9% { opacity: 1; } 30%, 100% { opacity: 0; } }
+@keyframes ai-mark-letter-2 { 0%, 29.9% { opacity: 0; } 30%, 54.9% { opacity: 1; } 55%, 100% { opacity: 0; } }
+@keyframes ai-mark-letter-3 { 0%, 54.9% { opacity: 0; } 55%, 79.9% { opacity: 1; } 80%, 100% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) { .ai-mark, .ai-mark .part, .ai-mark .tile, .ai-mark .script, .ai-mark .draw, .ai-mark .glow { animation: none !important; } }

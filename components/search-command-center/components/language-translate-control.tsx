@@ -3,7 +3,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "motion/react";
-import { RefreshCw, Loader2, X } from "@/components/icons";
+import { X, TranslateIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { LanguageSelector } from "@/components/language-selector";
 import { cn } from "@/lib/utils";
@@ -64,13 +64,9 @@ export function LanguageTranslateControl({
                 disabled={disabled || translateDisabled || !hasValue}
                 onClick={onTranslate}
                 aria-label={t("translate")}
-                className="size-8 p-0 rounded-none text-ai hover:bg-ai-bg-hover"
+                className="size-8 p-0 rounded-none text-primary hover:bg-primary/12"
               >
-                {isTranslating ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
-                )}
+                <TranslateIcon working={isTranslating} size={14} className="h-3.5 w-3.5" />
               </Button>
             </span>
           </TooltipHint>
@@ -83,7 +79,7 @@ export function LanguageTranslateControl({
                 disabled={disabled || !hasValue}
                 onClick={handleClear}
                 aria-label={t("clearLanguage")}
-                className="size-8 p-0 rounded-none text-ai hover:bg-ai-bg-hover"
+                className="size-8 p-0 rounded-none text-primary hover:bg-primary/12"
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
