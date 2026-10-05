@@ -35,7 +35,9 @@ let releaseHeld: (() => void) | undefined;
 /** OpenAlex, answering each page with up to 200 works numbered from the page's start, until the search runs out; a cursor is the next page's number. */
 const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
   const url = new URL(String(input));
-  if (url.hostname !== "api.openalex.org") throw new Error(`Unexpected request to ${url.hostname}`);
+  // OpenAlex, or the OpenScholar API when a test sets it, which answers works in OpenAlex's shape.
+  const openScholarApi = process.env.OPENSCHOLAR_API_URL ? new URL(process.env.OPENSCHOLAR_API_URL).origin : null;
+  if (url.hostname !== "api.openalex.org" && url.origin !== openScholarApi) throw new Error(`Unexpected request to ${url.hostname}`);
   if (refusals.length) return refusals.shift()!;
   requests.push({ url, init });
   if (url.searchParams.get("per-page") === "200") await held;

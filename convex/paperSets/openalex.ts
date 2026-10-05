@@ -178,8 +178,9 @@ async function readWorks<Work>(
   return { works, offset: first - 1, total };
 }
 
+// OpenAlex's polite pool needs a contact address; the OpenScholar API, when it answers works instead, needs none.
 const contact = () => {
-  if (!process.env.OPENALEX_CONTACT_EMAIL) throw new Error("OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.");
+  if (worksAskOpenAlex() && !process.env.OPENALEX_CONTACT_EMAIL) throw new Error("OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.");
 };
 
 /**
