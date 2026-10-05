@@ -9,7 +9,7 @@ import { useTranslations } from "next-intl";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Check, CircleAlert, Coins, Compass, FileText, FolderPlus, ListChecks, MessagesSquare, Plus, Search, TableProperties, Undo2, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, Check, CircleAlert, Coins, Compass, FileText, FolderPlus, Hash, LibraryBig, ListChecks, MessagesSquare, Plus, Search, TableProperties, Undo2, X, type AppIcon } from "@/components/icons";
 import { AnimatedNumber } from "@/components/screening/parts";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -34,6 +34,8 @@ export const KIND = {
   screening: { icon: ListChecks, tint: "#a78bfa" },
   extraction: { icon: TableProperties, tint: "#fb923c" },
   chat: { icon: MessagesSquare, tint: "#f472b6" },
+  library: { icon: LibraryBig, tint: "#f472b6" },
+  topic: { icon: Hash, tint: "#818cf8" },
   other: { icon: Compass, tint: "#94a3b8" },
 } satisfies Record<string, { icon: AppIcon; tint: string }>;
 
