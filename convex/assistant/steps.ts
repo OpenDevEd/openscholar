@@ -157,7 +157,7 @@ async function failStep(ctx: MutationCtx, step: Step, error: string) {
 
 /** A step starts. */
 export const begin = internalMutation({
-  args: { threadId: v.id("assistantThreads"), order: v.number(), userId: v.id("users"), toolCallId: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) },
+  args: { threadId: v.id("assistantThreads"), order: v.number(), userId: v.id("users"), toolCallId: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()) },
   returns: v.id("assistantSteps"),
   handler: async (ctx, args) => {
     const subject = args.subject ?? (await aboutOf(ctx, args.userId, args.input));

@@ -5,8 +5,10 @@
  * described, because it loads the action registry.
  */
 import { v } from "convex/values";
+import { availableCredits } from "../billing/accounts";
 import { internalQuery } from "../lib/functions";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
+import { allowanceOf, covers } from "./spending";
 
 export const first = internalQuery({
   // `input` is the call's arguments, as JSON.
@@ -24,5 +26,30 @@ export const first = internalQuery({
       console.error(`[assistant] ${path} couldn't be checked for asking first`, error);
       return false;
     }
+  },
+});
+
+/**
+ * What a call of an action that spends credits holds at most, and whether it runs without
+ * the person being asked (#328): they allowed jobs in this chat, this one is within what they
+ * said one may hold, and their balance covers it. Null for an action that gives no estimate,
+ * or whose arguments it can't be read from: that call can't be asked about.
+ */
+export const spend = internalQuery({
+  // `input` is the call's arguments, as JSON.
+  args: { threadId: v.id("assistantThreads"), userId: v.id("users"), path: v.string(), input: v.string() },
+  returns: v.union(v.null(), v.object({ credits: v.number(), covered: v.boolean() })),
+  handler: async (ctx, { threadId, userId, path, input }) => {
+    const entry = USER_ACTIONS.find((candidate) => candidate.path === path);
+    if (!entry || entry.kind === "query" || !entry.spendsCredits || !entry.estimate) return null;
+    let credits: number;
+    try {
+      credits = Math.ceil(await entry.estimate(ctx, userId, JSON.parse(input)));
+    } catch (error) {
+      console.error(`[assistant] ${path} couldn't be estimated`, error);
+      return null;
+    }
+    if (!Number.isFinite(credits) || credits < 0) return null;
+    return { credits, covered: covers(await allowanceOf(ctx, threadId, userId), credits, await availableCredits(ctx, userId)) };
   },
 });

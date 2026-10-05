@@ -59,9 +59,18 @@ export const reversal = <Path extends string, Args extends PropertyValidators>(p
  */
 type AsksFirst<Args extends PropertyValidators> = { asksFirst?(ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>): Promise<boolean> };
 
+/**
+ * The most one call of an action that spends credits holds (#328): an upper estimate, read
+ * before the call runs. The assistant asks the person with it, unless they allowed that much
+ * in the chat. An action that spends credits and gives none can't be asked about, so the
+ * assistant doesn't run it.
+ */
+type Estimates<Args extends PropertyValidators> = { estimate?(ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>): Promise<number> };
+
 export type UserMutation<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
   Labels<keyof Args & string> &
-  AsksFirst<Args> & {
+  AsksFirst<Args> &
+  Estimates<Args> & {
     kind: "mutation";
     run: (ctx: MutationCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author) => Promise<Infer<Returns>>;
   };
@@ -77,7 +86,8 @@ export type ChangeCall = { stepId?: Id<"assistantSteps">; approved: boolean };
 /** A user action that calls an outside service (OpenAlex, an AI provider, Autumn), reading and writing through queries and mutations. */
 export type UserActionEntry<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
   Labels<keyof Args & string> &
-  AsksFirst<Args> & {
+  AsksFirst<Args> &
+  Estimates<Args> & {
     kind: "action";
     /** It writes, after reading from outside: its write ends the step and rechecks approval (see ChangeCall). One without this only reads. */
     changes?: true;
@@ -87,7 +97,7 @@ export type UserActionEntry<Args extends PropertyValidators, Returns extends Gen
 /** What the registry list and the assistant's tools read from an entry. */
 export type UserAction =
   | { kind: "query"; path: string; description: string; args: PropertyValidators }
-  | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators; changes?: true } & Labels & AsksFirst<PropertyValidators>);
+  | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators; changes?: true } & Labels & AsksFirst<PropertyValidators> & Estimates<PropertyValidators>);
 
 /** Entries are written with these so their argument and result types are inferred. */
 export const defineUserQuery = <Args extends PropertyValidators, Returns extends GenericValidator>(

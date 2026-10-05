@@ -91,7 +91,8 @@ const CORE_PATHS = [
  * undone, stays inside the account and costs nothing. The rest ask the person first
  * (decisions 8 and 12): the reply waits for their answer (./asking.ts). One call of an
  * action that passes here can still ask first (`asksFirst` on its entry). An action that
- * spends credits isn't asked for yet, since the person is shown an estimate with it (#328).
+ * spends credits asks with the most it holds, unless the person allowed that much in the
+ * chat (#328); one that gives no estimate can't be asked about, and isn't run.
  */
 export const runsWithoutAsking = (entry: UserAction) => entry.kind === "query" || (!entry.spendsCredits && !entry.outsideEffect && entry.undoable);
 
@@ -137,11 +138,13 @@ export type Asked = { toolCallId: string; toolName: string; input: unknown };
  * becomes a step, since every one needs its result written: a call that names no action
  * any more waits under its tool's name, and fails when it's run.
  */
-export function askedSteps(requests: Asked[]) {
+export function askedSteps(requests: Asked[], held: (path: string, input: unknown) => number | undefined = () => undefined) {
   return requests.map(({ toolCallId, toolName: tool, input }) => {
     const call = called(tool, input);
     const subject = call && subjectOf(call.input);
-    return { toolCallId, tool, path: call?.entry.path ?? tool, input: cut(JSON.stringify(call?.input ?? input ?? {}), STEP_TEXT_MAX), ...(subject ? { subject } : {}) };
+    // What a call that spends credits holds at most goes with its step, for the person asked.
+    const credits = call ? held(call.entry.path, call.input) : undefined;
+    return { toolCallId, tool, path: call?.entry.path ?? tool, input: cut(JSON.stringify(call?.input ?? input ?? {}), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(credits === undefined ? {} : { credits }) };
   });
 }
 
@@ -236,6 +239,19 @@ export function toolsFor(
   // each one makes its own revision and undo, and doing the same one over is a repeat all the same.
   const did: string[] = [];
   const note = (name: string, input: unknown, outcome: unknown) => did.push(JSON.stringify([name, input, outcome ?? null]));
+  // What this request's calls that spend credits hold at most, and whether the person's allowance covers each (./asking.ts):
+  // read once a call, when it's checked for asking, and kept for its step.
+  const holds = new Map<string, { credits: number; covered: boolean }>();
+  const sameCall = (path: string, input: unknown) => JSON.stringify([path, input]);
+  const hold = async (entry: UserAction, input: Record<string, unknown>) => {
+    const key = sameCall(entry.path, input);
+    if (!holds.has(key)) {
+      const read = await ctx.runQuery(internal.assistant.asking.spend, { threadId, userId, path: entry.path, input: JSON.stringify(input) });
+      if (!read) return null;
+      holds.set(key, read);
+    }
+    return holds.get(key)!;
+  };
   /**
    * Runs one call, kept as a step from when it starts to how it ended. The model reads the
    * short form of the result, and an action's failure as its message, so it can say what
@@ -243,9 +259,11 @@ export function toolsFor(
    * about and said yes to: it runs whatever the reply's limits are.
    */
   const call = async (entry: UserAction, input: Record<string, unknown>, toolCallId: string, allowed?: Id<"assistantSteps">) => {
+    // A call that spends credits and wasn't asked about runs only when the person's allowance covers what it holds.
+    const within = allowed || entry.kind === "query" || !entry.spendsCredits ? undefined : holds.get(sameCall(entry.path, input));
     if (!allowed) {
-      // One that asks first only gets here allowed. The rest is refused: an action that spends credits, or a call nothing asked about.
-      const why = stopped() ?? (runsWithoutAsking(entry) ? null : ASKS_FIRST);
+      // One that asks first only gets here allowed. The rest is refused: an action that spends credits past what the person allowed, or with no estimate to ask them with, or a call nothing asked about.
+      const why = stopped() ?? (runsWithoutAsking(entry) || within?.covered ? null : ASKS_FIRST);
       if (why) {
         note(entry.path, input, { error: why });
         return { error: why };
@@ -254,7 +272,9 @@ export function toolsFor(
     // A call the person allowed was counted when it was asked about.
     const key = allowed ? `${attemptId}:${allowed}` : `${attemptId}:${calls++}`;
     const subject = subjectOf(input);
-    const stepId = allowed ?? (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}) }));
+    const stepId =
+      allowed ??
+      (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(within ? { credits: within.credits } : {}) }));
     try {
       // A change ends its step in its own transaction, so the two are saved together: a mutation, or an action whose write does. A read's step is ended here.
       const change = entry.kind === "mutation" || (entry.kind === "action" && entry.changes === true);
@@ -274,8 +294,15 @@ export function toolsFor(
    * Whether the person is asked before a call runs (decisions 8 and 12): its action reaches
    * outside the account or can't be undone, or this call of it can't (`asksFirst`).
    */
-  const asks = async (entry: UserAction, input: Record<string, unknown>) =>
-    entry.kind !== "query" && !entry.spendsCredits && (!runsWithoutAsking(entry) || (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) })));
+  const asks = async (entry: UserAction, input: Record<string, unknown>) => {
+    if (entry.kind === "query") return false;
+    if (entry.spendsCredits) {
+      // Asked with the most it holds, unless they allowed that much in this chat. With no estimate there's nothing to ask with, and the call is refused.
+      const held = await hold(entry, input);
+      return held !== null && !held.covered;
+    }
+    return !runsWithoutAsking(entry) || (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) }));
+  };
   const approval = async ({ toolCall }: { toolCall: { toolName: string; input: unknown } }) => {
     // A call the reply's limits refuse anyway isn't worth asking about.
     if (stopped()) return undefined;
@@ -330,5 +357,5 @@ export function toolsFor(
       },
     }),
   };
-  return { tools, approval, resume, made: () => calls, digest: () => (did.length ? fnv(did.slice().sort().join("\n")) : undefined) };
+  return { tools, approval, resume, made: () => calls, digest: () => (did.length ? fnv(did.slice().sort().join("\n")) : undefined), held: (path: string, input: unknown) => holds.get(sameCall(path, input))?.credits };
 }

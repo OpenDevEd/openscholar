@@ -8,6 +8,7 @@ import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { heldPapers } from "../paperSets/held";
 import type { SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers } from "../paperSets/search";
+import { screeningHold } from "./estimate";
 import { paperSetValidator, saveToValidator, screeningQuestionValidator, screeningScoringConfigValidator } from "./validators";
 
 type PaperSet = Infer<typeof paperSetValidator>;
@@ -88,6 +89,7 @@ export const screenAction = defineUserAction({
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
+  estimate: screeningHold,
   // Typed here: the generated API's types depend on this module, so inference would loop.
   run: (ctx, userId, args, author): Promise<{ jobId: Id<"screeningJobs"> }> => start(ctx, userId, author, args),
 });
