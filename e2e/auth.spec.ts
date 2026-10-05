@@ -273,7 +273,8 @@ test.describe("clerk auth flows", () => {
     const reserveButton = page.getByRole("button", { name: "Reserve address" });
     await expect(reserveButton).toBeEnabled({ timeout: 30_000 });
     await reserveButton.click();
-    await expect(page.getByRole("status")).toHaveAttribute(
+    // The address's own status: the assistant panel, when it's on, announces its own.
+    await expect(page.getByRole("status").and(page.locator("[data-address-state]"))).toHaveAttribute(
       "data-address-state",
       "reserved",
     );
