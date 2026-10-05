@@ -154,6 +154,23 @@ describe("each person's paper slots", () => {
     expect(await t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ status: "creditsExhausted", capped: true });
   });
 
+  it("starts the person's next job once one that filled the queue has stopped at its limit", async () => {
+    const { t, person } = await setup();
+    const ada = await person("ada");
+    // Room for one paper of twenty-five: the rest wait at the head of Ada's queue, ahead of her next job's.
+    const first = await createJob(ada.as, { papers: papers(25, "a"), questions, scoringConfig, spendCap: estimateScreening(1, 0).credits });
+    const next = await createJob(ada.as, { papers: papers(3, "b"), questions, scoringConfig });
+    expect((await papersOf(t, next.jobId)).started).toHaveLength(0);
+
+    const [only] = (await papersOf(t, first.jobId)).started.map((row) => row._id);
+    await t.run((ctx) => ctx.db.patch("screeningResults", only, { status: "completed", completedAt: 2, creditsUsed: 5, doneAt: ctx.db.vars.commitTs }));
+    await t.mutation(internal.screening.bookkeeping.bookkeep, { results: [only] });
+    await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+
+    expect(await t.run((ctx) => ctx.db.get("screeningJobs", first.jobId))).toMatchObject({ status: "creditsExhausted", capped: true });
+    expect((await papersOf(t, next.jobId)).started).toHaveLength(3);
+  });
+
   it("makes the papers a job still had to make as skipped once it has stopped at its limit, so none waits for good", async () => {
     const { t, person } = await setup();
     const ada = await person("ada");
