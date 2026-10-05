@@ -3403,6 +3403,17 @@
     "default": "Par défaut"
   },
   "assistant": {
+    "activity": {
+      "idle": "Prêt",
+      "thinking": "Réflexion en cours",
+      "searching": "Recherche en cours",
+      "writing": "Rédaction de la réponse",
+      "waiting": "En attente de votre réponse",
+      "stopping": "Arrêt en cours",
+      "complete": "Réponse prête",
+      "failed": "Échec de la réponse",
+      "stopped": "Réponse interrompue"
+    },
     "label": "Assistant OpenScholar",
     "open": "Ouvrir l'assistant",
     "fold": "Replier l'assistant",

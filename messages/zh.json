@@ -3403,6 +3403,17 @@
     "default": "默认"
   },
   "assistant": {
+    "activity": {
+      "idle": "准备就绪",
+      "thinking": "思考中",
+      "searching": "搜索中",
+      "writing": "正在撰写回答",
+      "waiting": "等待您的答复",
+      "stopping": "正在停止",
+      "complete": "回答已完成",
+      "failed": "回答失败",
+      "stopped": "回答已停止"
+    },
     "label": "OpenScholar 助手",
     "open": "打开助手",
     "fold": "收起助手",
