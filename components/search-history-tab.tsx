@@ -2,15 +2,10 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { getIdColor } from "@/lib/format";
 import type { SearchResult } from "@/lib/types/search.types";
-import { SearchTooltipContent } from "@/components/search-tooltip-content";
+import { SearchHoverCard } from "@/components/search-tooltip-content";
 import { motion, AnimatePresence } from "motion/react";
 import { countActiveFilters, type FilterParams } from "@/lib/filters";
 import { QueryText } from "@/components/ui/query-text";
@@ -171,27 +166,8 @@ export function SearchHistoryTab({
   );
 
   return (
-    <Tooltip delayDuration={isCollapsed ? 0 : 300}>
-      <TooltipTrigger asChild>
-        {buttonContent}
-      </TooltipTrigger>
-      <TooltipContent
-        side="right"
-        className="w-80 bg-background text-foreground border shadow-lg p-0 max-h-96 overflow-y-auto"
-        arrowClassName="bg-background fill-background"
-      >
-        <div className="p-3">
-          <SearchTooltipContent
-            id={id || searchId}
-            query={query}
-            count={count}
-            filters={filters}
-            createdAt={createdAt}
-            updatedAt={updatedAt || createdAt}
-            search={search}
-          />
-        </div>
-      </TooltipContent>
-    </Tooltip>
+    <SearchHoverCard side="right" delay={isCollapsed ? 0 : 300} id={id || searchId} query={query} count={count} filters={filters} createdAt={createdAt} updatedAt={updatedAt || createdAt} search={search}>
+      {buttonContent}
+    </SearchHoverCard>
   );
 }

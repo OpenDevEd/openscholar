@@ -6,7 +6,8 @@
  * Uses FilterChips and QueryEvolution for consistent display
  */
 
-import React from "react";
+import React, { type ReactElement } from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { SearchResult } from "@/lib/types/search.types";
 import { cn } from "@/lib/utils";
 import { Clock } from "@/components/icons";
@@ -20,7 +21,8 @@ import { useSearchHistoryEntries } from "@/lib/research/history";
 interface SearchTooltipContentProps {
   id: string;
   query: string;
-  count: number;
+  /** How many papers it matches; left out when that isn't known. */
+  count?: number;
   createdAt: string;
   updatedAt: string;
   filters: FilterParams;
@@ -51,9 +53,11 @@ export function SearchTooltipContent({
             query={query}
             className="text-sm font-medium break-words flex-1 leading-snug line-clamp-6 [overflow-wrap:anywhere]"
           />
-          <span className="text-3xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium shrink-0">
-            {format.number(count, count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}
-          </span>
+          {count === undefined ? null : (
+            <span className="text-3xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium shrink-0">
+              {format.number(count, count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1 text-3xs text-muted-foreground/70">
           <Clock className="h-2.5 w-2.5" />
@@ -74,5 +78,23 @@ export function SearchTooltipContent({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * A search's card on hover, beside what it's about: its query, count, age and filters. The
+ * sidebar's history shows one to the right of each search, and the assistant's steps one to
+ * the left of each query they looked up, out over the page.
+ */
+export function SearchHoverCard({ children, side, delay, ...search }: SearchTooltipContentProps & { children: ReactElement; side: "left" | "right"; delay: number }) {
+  return (
+    <Tooltip delayDuration={delay}>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side} className="w-80 bg-background text-foreground border shadow-lg p-0 max-h-96 overflow-y-auto" arrowClassName="bg-background fill-background">
+        <div className="p-3">
+          <SearchTooltipContent {...search} />
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
 }

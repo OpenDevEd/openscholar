@@ -6,6 +6,10 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { SearchHoverCard } from "@/components/search-tooltip-content";
+import { readSharedOql } from "@/lib/search-params";
+import { paramsToSearchResult } from "@/lib/search-params/converters";
+import { parseSearchParamsFromUrl } from "@/lib/search-params/parsers";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -48,16 +52,29 @@ const LINE = 28;
 /** Room under a folded run's lines. */
 const LINES_END = 8;
 
+/** A search as its link carries it: its query, with an OQL one in the fragment, and its filters. */
+function searchOf(href: string) {
+  const url = new URL(href, "https://openscholar.invalid");
+  const params = parseSearchParamsFromUrl(url.searchParams);
+  const oql = readSharedOql(url.hash);
+  return paramsToSearchResult(oql ? { ...params, q: oql } : params);
+}
+
 /**
  * What a step was about, as its card shows it. A query it looked up opens that query's
- * results in this tab, as a new search, and the panel stays up with its chat.
+ * results in this tab, as a new search, and the panel stays up with its chat. Hovered, it
+ * shows the search's card out to the left, over the page, as the sidebar's history does.
  */
-function Subject({ text, href, className = "truncate" }: { text: string; href?: string; className?: string }) {
-  if (!href) return <span className={className}>{text}</span>;
+function Subject({ text, step, className = "truncate" }: { text: string; step: Pick<StepItem, "id" | "href" | "count" | "at">; className?: string }) {
+  if (!step.href) return <span className={className}>{text}</span>;
+  const search = searchOf(step.href);
+  const at = new Date(step.at).toISOString();
   return (
-    <Link href={href} className={cn(className, "underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground")}>
-      {text}
-    </Link>
+    <SearchHoverCard side="left" delay={300} id={step.id} query={search.query} count={step.count} filters={search} createdAt={at} updatedAt={at}>
+      <Link href={step.href} className={cn(className, "underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground")}>
+        {text}
+      </Link>
+    </SearchHoverCard>
   );
 }
 
@@ -340,23 +357,6 @@ function runsOf(steps: StepItem[]) {
   return runs;
 }
 
-/**
- * How much of their start a run's lines share, to a whole word: a run of searches is one
- * query with a different last clause each time, and a line cut at its end would show the
- * same words as the next. Nothing when the lines share little, or one of them is all of it.
- */
-function sharedStart(lines: string[]) {
-  const [first, ...rest] = lines;
-  let end = first.length;
-  for (const line of rest) {
-    let at = 0;
-    while (at < end && line[at] === first[at]) at += 1;
-    end = at;
-  }
-  const from = first.lastIndexOf(" ", end - 1) + 1;
-  return from >= 24 && lines.every((line) => line.length > from) ? from : 0;
-}
-
 function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">; steps: StepItem[]; /** Loads the steps before these, when the reply ran more. */ earlier: (() => void) | "loading" | null }) {
   const t = useTranslations("assistant");
   const format = useFormatter();
@@ -424,7 +424,6 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
             const folded = run.length > 1;
             const open = folded && opened.has(run[0].id);
             const lines = run.map((one) => one.subject ?? t(`steps.${words}.where`));
-            const shared = folded ? sharedStart(lines) : 0;
             return (
               <motion.div
                 key={run[0].id}
@@ -446,18 +445,18 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                         ) : state ? (
                           <>
                             <Fact>{state}</Fact>
-                            {step.subject ? <Subject text={step.subject} href={step.href} /> : null}
+                            {step.subject ? <Subject text={step.subject} step={step} /> : null}
                           </>
                         ) : folded ? (
                           <>
                             <Fact value={run.length}>{t("steps.times", { count: run.length })}</Fact>
-                            {step.subject ? <Subject text={step.subject} href={step.href} /> : <span className="truncate">{t(`steps.${words}.where`)}</span>}
+                            {step.subject ? <Subject text={step.subject} step={step} /> : <span className="truncate">{t(`steps.${words}.where`)}</span>}
                           </>
                         ) : (
                           <>
                             {/* A bulk change's title says how many it made. */}
                             {step.batch === undefined && step.count !== undefined ? <Fact value={counted(step.count)}>{t("steps.found")}</Fact> : null}
-                            {step.subject ? <Subject text={step.subject} href={step.href} /> : null}
+                            {step.subject ? <Subject text={step.subject} step={step} /> : null}
                             {(step.batch !== undefined || step.count === undefined) && !step.subject ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
                           </>
                         )}
@@ -495,7 +494,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                     <ol inert={!open} className="pl-[60px] pr-3 text-xs text-muted-foreground">
                       {run.map((one, at) => (
                         <li key={one.id} className="flex items-center gap-2" style={{ height: LINE }}>
-                          <Subject text={shared ? `… ${lines[at].slice(shared)}` : lines[at]} href={one.subject ? one.href : undefined} className="mr-auto min-w-0 truncate" />
+                          <Subject text={lines[at]} step={one.subject ? one : { ...one, href: undefined }} className="mr-auto min-w-0 truncate" />
                           {one.count !== undefined ? (
                             <span className="shrink-0 tabular-nums">
                               <span className="font-semibold text-foreground/90">{counted(one.count)}</span> {t("steps.found")}
