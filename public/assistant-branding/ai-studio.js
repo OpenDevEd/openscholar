@@ -1,8 +1,8 @@
 const variants = [
-  { id: "gather", name: "Gather", load: "The layers swing into place, then the star turns in.", hover: "A quarter turn of the star, the layers lean back." },
-  { id: "twinkle", name: "Twinkle", load: "The layers rise in, the star twinkles, a glint flashes.", hover: "The star twinkles again with a fresh glint." },
-  { id: "focus", name: "Focus", load: "The layers close in on the star like an aperture.", hover: "The aperture opens, then refocuses on a turning star." },
-  { id: "spin", name: "Spin", load: "The layers spin in at different speeds.", hover: "One full turn of the layers against the star." },
+  { id: "gather", name: "Gather", load: "The layers swing into place, then the star turns in.", hover: "A quarter turn of the star, the layers lean back.", loop: "The star steps round a quarter turn at a time while the layers lean." },
+  { id: "twinkle", name: "Twinkle", load: "The layers rise in, the star twinkles, a glint flashes.", hover: "The star twinkles again with a fresh glint.", loop: "A steady twinkle, with a glint on every beat." },
+  { id: "focus", name: "Focus", load: "The layers close in on the star like an aperture.", hover: "The aperture opens, then refocuses on a turning star.", loop: "The aperture breathes in and out round a turning star." },
+  { id: "spin", name: "Spin", load: "The layers spin in at different speeds.", hover: "One full turn of the layers against the star.", loop: "Each layer orbits at its own speed, the star turns slowly back." },
 ];
 const byId = (id) => document.getElementById(id);
 let selected = "gather";
@@ -20,12 +20,17 @@ byId("variants").innerHTML = variants.map((variant, index) => `
     <span class="variant-phase" aria-hidden="true"><i data-phase="load">Load</i><i data-phase="hover">Hover</i></span>
   </button>`).join("");
 
+const loops = byId("loops");
+loops.innerHTML = variants.map((variant) => `<div class="loop"><span class="loop-art">${aiMark.html(120, { variant: variant.id, label: `${variant.name} AI mark, working` })}</span><span class="loop-small">${aiMark.html(24, { variant: variant.id })}${aiMark.html(16, { variant: variant.id })}</span><span class="loop-name">${variant.name}</span><span class="loop-detail">${variant.loop}</span></div>`).join("");
+loops.querySelectorAll(".ai-mark").forEach((svg) => aiMark.play(svg, "loop"));
+
 function renderProduct() {
   for (const trigger of document.querySelectorAll(".ai-trigger")) {
     trigger.querySelector(".slot").innerHTML = aiMark.html(Number(trigger.dataset.icon), { variant: selected, tone });
   }
   byId("size-samples").innerHTML = [14, 16, 20, 24, 32, 48, 64].map((size) => `<div class="size-sample"><span>${aiMark.html(size, { variant: selected, tone })}</span><span>${size}px</span></div>`).join("");
   document.querySelectorAll("#product .ai-mark, #size-samples .ai-mark").forEach((svg) => aiMark.play(svg, "load"));
+  if (byId("generate").getAttribute("aria-pressed") === "true") aiMark.play(byId("generate").querySelector(".ai-mark"), "loop");
 }
 
 // The cards replay load, then hover, so every gesture can be watched without interacting.
@@ -80,3 +85,17 @@ byId("themes").addEventListener("click", (event) => {
   document.querySelectorAll("[data-theme-choice]").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
 });
 renderProduct();
+byId("loop-toggle").addEventListener("click", () => {
+  const working = byId("loop-toggle").getAttribute("aria-pressed") !== "true";
+  byId("loop-toggle").setAttribute("aria-pressed", String(working));
+  byId("loop-toggle").textContent = working ? "Stop working" : "Start working";
+  loops.querySelectorAll(".ai-mark").forEach((svg) => working ? aiMark.play(svg, "loop") : aiMark.stop(svg));
+});
+byId("generate").addEventListener("click", () => {
+  const button = byId("generate");
+  const generating = button.getAttribute("aria-pressed") !== "true";
+  button.setAttribute("aria-pressed", String(generating));
+  const svg = button.querySelector(".ai-mark");
+  if (generating) aiMark.play(svg, "loop");
+  else aiMark.stop(svg);
+});

@@ -33,6 +33,12 @@
       <div class="variants" id="variants"></div>
     </section>
 
+    <section class="section loops-section" aria-labelledby="loops-title">
+      <div class="section-heading"><div><h2 id="loops-title">While it works</h2><p>An endless loop for as long as AI is busy, in place of the spinner. Stopping lets the current cycle finish so the mark comes to rest instead of snapping back.</p></div>
+        <div class="playback"><button id="loop-toggle" aria-pressed="true">Stop working</button></div></div>
+      <div class="loops" id="loops"></div>
+    </section>
+
     <section class="section product-section" aria-labelledby="product-title">
       <div class="section-heading"><div><h2 id="product-title">Where Sparkles is today</h2><p>Real controls at their real sizes. Hover a control to play the mark inside it.</p></div>
         <div class="playback">
@@ -40,8 +46,8 @@
           <button id="replay-load">Replay load <span aria-hidden="true">↻</span></button>
         </div></div>
       <div class="product" id="product">
-        <div class="sample"><span class="sample-name">Screening setup</span>
-          <button class="os-button os-ghost ai-trigger" data-icon="14" data-colour="primary"><span class="slot"></span>Generate</button></div>
+        <div class="sample"><span class="sample-name">Screening setup, press to generate</span>
+          <button class="os-button os-ghost ai-trigger" id="generate" data-icon="14" data-colour="primary" aria-pressed="false"><span class="slot"></span><span class="generate-label"><span>Generate</span><span>Generating</span></span></button></div>
         <div class="sample"><span class="sample-name">Extraction plan gate</span>
           <span class="os-badge ai-trigger" data-icon="14"><span class="slot"></span>Available on Pro</span></div>
         <div class="sample"><span class="sample-name">Settings</span>

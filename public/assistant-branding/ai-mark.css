@@ -73,4 +73,32 @@
 @keyframes full-turn { to { transform: rotate(360deg); } }
 @keyframes counter-turn { 50% { transform: scale(1.15) rotate(-45deg); } 100% { transform: rotate(-90deg); } }
 
+/* Loops run while AI works. Every cycle starts and ends at rest, so a loop can stop at the end of any cycle. */
+.ai-mark[data-variant="gather"][data-play="loop"] .star { animation: step-turn 1.4s var(--out) infinite; }
+.ai-mark[data-variant="gather"][data-play="loop"] .ring-top { animation: lean-back 1.4s var(--swing) infinite; }
+.ai-mark[data-variant="gather"][data-play="loop"] .ring-mid { animation: lean-back 1.4s var(--swing) 60ms infinite; }
+.ai-mark[data-variant="gather"][data-play="loop"] .ring-bottom { animation: lean-forward 1.4s var(--swing) 120ms infinite; }
+.ai-mark[data-variant="twinkle"][data-play="loop"] .star { animation: twinkle-beat 1.8s var(--swing) infinite; }
+.ai-mark[data-variant="twinkle"][data-play="loop"] .glint { animation: glint-beat 1.8s var(--out) infinite; }
+.ai-mark[data-variant="twinkle"][data-play="loop"] .ring-top { animation: lift-beat 1.8s var(--swing) infinite; }
+.ai-mark[data-variant="twinkle"][data-play="loop"] .ring-bottom { animation: drop-beat 1.8s var(--swing) infinite; }
+.ai-mark[data-variant="focus"][data-play="loop"] .ring-top { animation: aperture-beat 1.6s var(--swing) 160ms infinite; }
+.ai-mark[data-variant="focus"][data-play="loop"] .ring-mid { animation: aperture-beat 1.6s var(--swing) 80ms infinite; }
+.ai-mark[data-variant="focus"][data-play="loop"] .ring-bottom { animation: aperture-beat 1.6s var(--swing) infinite; }
+.ai-mark[data-variant="focus"][data-play="loop"] .star { animation: focus-beat 1.6s var(--swing) infinite; }
+.ai-mark[data-variant="spin"][data-play="loop"] .ring-top { animation: full-turn 1.2s linear infinite; }
+.ai-mark[data-variant="spin"][data-play="loop"] .ring-mid { animation: full-turn 1.8s linear infinite; }
+.ai-mark[data-variant="spin"][data-play="loop"] .ring-bottom { animation: full-turn 2.4s linear infinite; }
+.ai-mark[data-variant="spin"][data-play="loop"] .star { animation: reverse-turn 4.8s linear infinite; }
+@keyframes step-turn { 0% { transform: none; } 40% { transform: scale(1.12) rotate(80deg); } 55%, 100% { transform: rotate(90deg); } }
+@keyframes lean-back { 0%, 55%, 100% { transform: none; } 25% { transform: rotate(-10deg); } }
+@keyframes lean-forward { 0%, 55%, 100% { transform: none; } 25% { transform: rotate(8deg); } }
+@keyframes twinkle-beat { 0%, 60%, 100% { transform: none; } 18% { transform: scale(.8); } 38% { transform: scale(1.18); } }
+@keyframes glint-beat { 0%, 22%, 62%, 100% { opacity: 0; transform: scale(0) rotate(-45deg); } 38% { opacity: 1; transform: scale(1); } 60% { opacity: 0; transform: scale(0) rotate(45deg); } }
+@keyframes lift-beat { 0%, 60%, 100% { transform: none; } 30% { transform: translateY(-3px); } }
+@keyframes drop-beat { 0%, 60%, 100% { transform: none; } 30% { transform: translateY(3px); } }
+@keyframes aperture-beat { 0%, 100% { transform: none; } 45% { transform: scale(1.09); } }
+@keyframes focus-beat { 45% { transform: scale(.8) rotate(45deg); } 90%, 100% { transform: rotate(90deg); } }
+@keyframes reverse-turn { to { transform: rotate(-360deg); } }
+
 @media (prefers-reduced-motion: reduce) { .ai-mark .part { animation: none !important; } }

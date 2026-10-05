@@ -51,3 +51,14 @@ html[data-theme="blue"] .brand img { filter: brightness(0) invert(1); }
   .variants, .product { grid-template-columns: 1fr; }
   .section-heading { flex-direction: column; align-items: flex-start; }
 }
+.loops { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.loop { display: flex; flex-direction: column; padding: 22px 18px 20px; border: 1px solid var(--soft-line); border-radius: 14px; background: var(--surface); }
+.loop-art { display: block; width: 120px; height: 120px; margin: 4px auto 20px; }
+.loop-small { display: flex; align-items: center; justify-content: center; gap: 22px; height: 24px; margin-bottom: 22px; }
+.loop-name { font-size: 17px; font-weight: 500; }
+.loop-detail { font-size: 12px; line-height: 1.45; color: var(--muted); margin-top: 6px; min-height: 36px; }
+.generate-label { display: inline-grid; }
+.generate-label > span { grid-area: 1 / 1; }
+#generate[aria-pressed="false"] .generate-label > :last-child, #generate[aria-pressed="true"] .generate-label > :first-child { visibility: hidden; }
+@media (max-width: 1100px) { .loops { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 720px) { .loops { grid-template-columns: 1fr; } }

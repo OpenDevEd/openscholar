@@ -21,6 +21,11 @@
   function play(svg, gesture) {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     if (gesture === "hover" && svg.dataset.play) return;
+    if (gesture === "loop" && svg.dataset.play === "loop") {
+      // Work started again before the loop settled: keep the cycle that is playing.
+      svg.getAnimations({ subtree: true }).forEach((animation) => animation.effect.updateTiming({ iterations: Infinity }));
+      return;
+    }
     svg.removeAttribute("data-play");
     svg.getBoundingClientRect();
     svg.dataset.play = gesture;
@@ -30,5 +35,15 @@
     }, () => {});
   }
 
-  window.aiMark = { html, play };
+  // A loop finishes the cycle it is in and settles at rest instead of snapping back.
+  function stop(svg) {
+    if (svg.dataset.play !== "loop") return;
+    const running = svg.getAnimations({ subtree: true });
+    for (const animation of running) animation.effect.updateTiming({ iterations: (animation.effect.getComputedTiming().currentIteration ?? 0) + 1 });
+    Promise.all(running.map((animation) => animation.finished)).then(() => {
+      if (running.every((animation) => animation.playState === "finished")) svg.removeAttribute("data-play");
+    }, () => {});
+  }
+
+  window.aiMark = { html, play, stop };
 })();
