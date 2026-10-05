@@ -39,6 +39,8 @@ import { allowAlways, carriedOn, covers, noteReply, pausedAt, replyLimitOf } fro
 import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 import { askedDetailsValidator, askedEachValidator, assistantPausedValidator } from "./validators";
+import { searchHref } from "../research/searches";
+import { searchSettings } from "../research/searchValidators";
 
 const FLAG = "assistant.enabled";
 const MESSAGES_PAGE_MAX = 50;
@@ -574,6 +576,8 @@ const stepValidator = v.object({
   variant: v.optional(v.string()),
   /** What it was about: a title, a name or a query from its arguments, or the title or name of what it returned. */
   subject: v.optional(v.string()),
+  /** Where its subject leads, in the app: the results of a query it looked up, as a new search. */
+  href: v.optional(v.string()),
   /** How many things it found, when its result lists any. */
   count: v.optional(v.number()),
   /** The most it holds, on a call that spends credits (#328). */
@@ -787,6 +791,23 @@ function variantOf(step: Doc<"assistantSteps">) {
   }
 }
 
+/** The actions that look papers up by a query and settings, without saving a search. */
+const LOOKUPS = new Set(["research/papers:search", "research/papers:count"]);
+
+/** Where a step that looked papers up leads: the results of its query and settings, opened as a new search. */
+function hrefOf(step: Doc<"assistantSteps">) {
+  if (!LOOKUPS.has(step.path)) return {};
+  try {
+    const { query, ...rest } = JSON.parse(step.input) as Record<string, unknown>;
+    const settings = Object.fromEntries(Object.entries(rest).filter(([key]) => key in searchSettings)) as Parameters<typeof searchHref>[1];
+    const href = searchHref(typeof query === "string" ? query : undefined, settings);
+    return href ? { href } : {};
+  } catch {
+    // Arguments too long to keep whole were cut, and don't parse.
+    return {};
+  }
+}
+
 /** A step as the chat's page shows it. `asked` is what a call that waits for this person would do. */
 function shownStep(
   step: Doc<"assistantSteps">,
@@ -798,7 +819,7 @@ function shownStep(
     order: step.order,
     action: step.path,
     ...variantOf(step),
-    ...(step.subject ? { subject: step.subject } : {}),
+    ...(step.subject ? { subject: step.subject, ...hrefOf(step) } : {}),
     ...(step.count === undefined ? {} : { count: step.count }),
     ...(step.credits === undefined ? {} : { credits: step.credits }),
     status: shownStatus(step.status, answering === step.order),
