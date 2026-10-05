@@ -6,6 +6,13 @@ import type { OrbitMotion } from "@/lib/assistant/activity";
 import { orbitSeconds, orbitShape } from "@/public/assistant-branding/orbit";
 import "@/public/assistant-branding/orbit.css";
 
+/**
+ * The mark's artwork, as one object for every render. React writes an element's HTML again
+ * whenever it is handed a new object, even one that holds the same text, and new shapes
+ * start their gesture over, out of step with the clock.
+ */
+const ARTWORK = { __html: orbitShape };
+
 /** The header and folded launcher share the same animation clock. */
 export type OrbitClock = { motion: OrbitMotion; start: number } | null;
 const properties = ["transform", "opacity", "strokeDashoffset"] as const;
@@ -73,7 +80,7 @@ export function OrbitMark({ size = 28, motion = "still", clock, onComplete }: {
         if (motion === "complete" && event.target instanceof SVGElement && event.target.classList.contains("body")) onComplete?.();
       }}
       // Authored SVG only, shared with the exportable preview. No user or model content enters it.
-      dangerouslySetInnerHTML={{ __html: orbitShape }}
+      dangerouslySetInnerHTML={ARTWORK}
     />
   );
 }

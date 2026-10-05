@@ -42,6 +42,8 @@ type ThreadId = Id<"assistantThreads">;
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
 type Message = Exclude<Item, StepItem>;
 type Live = NonNullable<FunctionReturnType<typeof api.assistant.replies.live>>;
+/** A message on its way, and the chat it's for: a new chat has no ID until it's made. */
+type Sending = { threadId: ThreadId | null };
 /** One reply as the thread draws it: the exchange of the message it answers, the first thing of it on the page, its steps, and how many messages of it are placed. */
 type Run = { order: number; head: Item; steps: StepItem[]; said: number };
 
@@ -139,7 +141,7 @@ function Overlay({
   const [observed, setObserved] = useState(restingObservation);
   const next = observeActivity(observed, threadId, activity);
   if (next !== observed) setObserved(next);
-  const [sendingFor, setSendingFor] = useState<{ threadId: ThreadId | null } | null>(null);
+  const [sendingFor, setSendingFor] = useState<Sending | null>(null);
   const sending = sendingFor !== null && sendingFor.threadId === threadId;
   const [focused, setFocused] = useState(false);
   const clock = useRef<OrbitClock>(null);
@@ -178,7 +180,8 @@ function Overlay({
 
   return (
     <MotionConfig reducedMotion="user">
-      <span className="sr-only" role="status">{t(`activity.${sending ? "thinking" : activity.phase}`)}</span>
+      {/* Said once while the work goes on, whatever it moves through, then how it ended or what it waits for. */}
+      <span className="sr-only" role="status">{t(`activity.${sending || activity.phase === "searching" || activity.phase === "writing" ? "thinking" : activity.phase}`)}</span>
       <EdgeGlow open={open} working={working} />
       {/* The panel hovers above the page: it's fixed, and the page underneath keeps its full width. */}
       <AnimatePresence>
@@ -315,7 +318,7 @@ function Chat({
   drafts: Drafts;
   live: Live | null;
   sending: boolean;
-  onSending: (request: { threadId: ThreadId | null } | null) => void;
+  onSending: (update: (now: Sending | null) => Sending | null) => void;
   onComposerFocus: (focused: boolean) => void;
   onFold: () => void;
   onHistory: () => void;
@@ -381,14 +384,18 @@ function Chat({
     if (!text || busy || !canWrite) return;
     const from = threadId;
     drafts.set(from, "");
-    onSending({ threadId: from });
+    // This send's own mark, so that finishing it doesn't clear a later one in another chat.
+    let mine: Sending = { threadId: from };
+    onSending(() => mine);
     if (!from) setFirst({ threadId: null, text });
     // The chat the message ends up in: a new chat has its ID once it's made.
     let into = from;
     const sent = (async () => {
       const id = await started(titleFrom(text));
       into = id;
-      onSending({ threadId: id });
+      const before = mine;
+      mine = { threadId: id };
+      onSending((now) => (now === before ? mine : now));
       if (!from) setFirst({ threadId: id, text });
       // Where it's sent from goes with it, so "this" and "here" mean the page the person is on.
       await sendMessage({ threadId: id, text, view: window.location.pathname + window.location.search });
@@ -403,7 +410,7 @@ function Chat({
       setFirst(null);
       toast.error(t("sendFailed"), getErrorMessage(error, ""));
     } finally {
-      onSending(null);
+      onSending((now) => (now === mine ? null : now));
     }
   };
   const stop = async () => {
