@@ -129,7 +129,8 @@ export async function upsertLibraryItem(
       searchableText,
       updatedAt: Date.now(),
     });
-    if (paper.paperData !== undefined) await touchCollectionsIfLookupChanged(ctx, existing, paper.paperData);
+    // What is now stored, not what was given: saving keeps the stored work's fields, a different id included.
+    if (merged.paperData !== undefined) await touchCollectionsIfLookupChanged(ctx, existing, merged.paperData);
     return existing._id;
   }
   const now = Date.now();

@@ -94,8 +94,9 @@ it("moves its version when a saved paper comes to be known by another OpenAlex i
   await owner.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openscholar.ai/OS7", title: "OS7", paperData: stored("https://openalex.org/W7") });
   expect((await read({ knownVersion: backfilled.body.version })).body).toMatchObject({ unchanged: true });
 
+  // Saving again keeps the stored work's id, as saving keeps the metadata a paper has, so nothing moves.
   await owner.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openscholar.ai/OS7", title: "OS7", paperData: stored("https://openalex.org/W70") });
-  expect((await read({ knownVersion: backfilled.body.version })).body).toMatchObject({ unchanged: false, items: [{ itemId: screened, openalexId: "W70", doi: null }] });
+  expect((await read({ knownVersion: backfilled.body.version })).body).toMatchObject({ unchanged: true });
 });
 
 it("lets only the collection's owner connect it, and stops serving it once they leave the organization", async () => {
