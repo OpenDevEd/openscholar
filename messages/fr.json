@@ -3808,6 +3808,7 @@
       "decline": "Ne pas le faire",
       "why": "Cette action est irréversible ou visible en dehors de votre compte. La question est posée à chaque fois.",
       "failed": "Impossible d'envoyer votre réponse",
+      "unnamed": "Sans nom",
       "names": {
         "thread": "Conversation",
         "collection": "Collection",
