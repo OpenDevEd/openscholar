@@ -4,17 +4,19 @@
 // slides in from the right, and the one underneath steps back, shifts left so its
 // edge peeks out, and dims. Each layer is its own card; nothing sits behind them.
 
-import { useDeferredValue, useState, type ReactNode } from "react";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useDeferredValue, useRef, useState, type ReactNode } from "react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Building2, Check, ChevronLeft, Eye, Link2, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, UserRound, X } from "@/components/icons";
+import { Building2, Check, ChevronLeft, CirclePause, Coins, Eye, Link2, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, UserRound, X } from "@/components/icons";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { EASE } from "@/components/settings/model-map";
-import { Segmented } from "@/components/settings/parts";
+import { AnimatedNumber } from "@/components/screening/parts";
+import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
@@ -22,7 +24,7 @@ import { OrbitMark } from "./orbit-mark";
 import { IconButton, WorkingText } from "./parts";
 
 /** A sheet open over the panel. */
-export type OpenSheet = { kind: "history" } | { kind: "share"; threadId: Id<"assistantThreads">; title: string; role: Role };
+export type OpenSheet = { kind: "history" } | { kind: "share"; threadId: Id<"assistantThreads">; title: string; role: Role } | { kind: "spending"; threadId: Id<"assistantThreads">; title: string };
 type Role = "owner" | "write" | "read";
 
 export const SHEET_SPRING = { type: "spring" as const, stiffness: 300, damping: 32, mass: 0.9 };
@@ -524,6 +526,202 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
           </AnimatePresence>
         </button>
       </div>
+    </>
+  );
+}
+
+/** A spending limit, in credits; null is none. */
+type Limit = number | null;
+/** The limits a reply's picker lists before Custom and No limit. */
+const REPLY_LIMITS = [10, 15, 25, 50] as const;
+/** Digits a person's own limit can have: what the server takes, and a number holds exactly. */
+const CUSTOM_DIGITS = 15;
+/** Replies the chart has room for: what the server keeps (convex/assistant/validators.ts). */
+const CHART_REPLIES = 12;
+
+/**
+ * Picks a spending limit: the listed ones, then Custom, which opens a field for any whole
+ * number from 1, then No limit. The mock's picker, which a job's limit will use too (#328).
+ */
+function LimitPicker({ label, listed, value, onChange }: { label: string; listed: readonly number[]; value: Limit; onChange: (limit: Limit) => void }) {
+  const t = useTranslations("assistant.spendingSheet");
+  const format = useFormatter();
+  // Custom was picked, or its field typed in: it stays on for a number that matches a listed limit.
+  const [chosen, setChosen] = useState(value !== null && !listed.includes(value));
+  // A limit that isn't listed is the person's own wherever it came from, a change here that didn't save included.
+  const custom = value !== null && (chosen || !listed.includes(value));
+  // The person's own number, kept while another limit is picked.
+  const [own, setOwn] = useState(value ?? listed[0]!);
+  // What the field holds while it's typed in. Left alone, it shows the limit in force.
+  const [typed, setTyped] = useState<string | null>(null);
+  const number = value !== null && custom ? value : own;
+  const field = useRef<HTMLInputElement>(null);
+  return (
+    <div>
+      <div className="flex items-center gap-3 pl-1">
+        <span className="shrink-0 text-xs text-muted-foreground">{t("upTo")}</span>
+        <div className="min-w-0 flex-1">
+          <Segmented
+            fill="labels"
+            label={label}
+            value={value === null ? "none" : custom ? "custom" : String(value)}
+            onChange={(picked) => {
+              if (picked === "none") return onChange(null);
+              if (picked !== "custom") {
+                setChosen(false);
+                return onChange(Number(picked));
+              }
+              // Custom starts from the limit in force, or from the person's last own number when there's none.
+              const start = value ?? own;
+              setChosen(true);
+              setOwn(start);
+              setTyped(null);
+              onChange(start);
+              // The field takes the keyboard once it's open, its number selected to type over.
+              requestAnimationFrame(() => field.current?.select());
+            }}
+            options={[...listed.map((limit) => ({ id: String(limit), label: format.number(limit) })), { id: "custom", label: t("custom") }, { id: "none", label: t("noLimit") }]}
+          />
+        </div>
+      </div>
+      {/* The field opens under the row: the frame grows, its content laid out at full size, and its gap is inside it. */}
+      <motion.div inert={!custom} initial={false} animate={custom ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
+        <label className="mt-2 flex h-9 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
+          <Coins className="size-3.5 text-muted-foreground" />
+          <input
+            ref={field}
+            inputMode="numeric"
+            value={typed ?? String(number)}
+            onChange={(e) => {
+              const digits = e.target.value.replace(/^0+/, "");
+              // Whole numbers only, as they were typed: "1.5" pasted in isn't read as 15, and a number too long isn't cut into another.
+              if (!/^\d*$/.test(digits) || digits.length > CUSTOM_DIGITS) return;
+              setChosen(true);
+              setTyped(digits);
+              if (!digits) return;
+              setOwn(Number(digits));
+              onChange(Number(digits));
+            }}
+            // Left, it shows the number in force: what was typed if it saved, the limit as it was if it didn't.
+            onBlur={() => setTyped(null)}
+            aria-label={t("own", { label })}
+            className="min-w-0 flex-1 bg-transparent tabular-nums outline-none"
+          />
+          <span className="shrink-0 text-xs text-muted-foreground">{t("credits", { count: number })}</span>
+        </label>
+      </motion.div>
+    </div>
+  );
+}
+
+/** New chats start with this chat's limit, and go on taking it as it changes here: the server's rule (convex/assistant/spending.ts). */
+const takenByNewChats = (now: { replyLimit: Limit; newChats?: Limit }) => now.newChats !== undefined && now.newChats === now.replyLimit;
+
+/**
+ * What the person lets the assistant spend in this chat (#346): how many credits a reply
+ * may spend before it pauses and asks, against what their last replies cost. The limits on
+ * jobs that spend credits join it with the jobs themselves (#328).
+ */
+export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId; title: string; onBack: () => void }) {
+  const t = useTranslations("assistant.spendingSheet");
+  const toast = useAppToast();
+  // The panel reads this for the open chat too, so the sheet opens with it in hand.
+  const spending = useQuery(api.assistant.spending.get, { threadId });
+  // A pick shows at once, ahead of the server's copy.
+  const setLimit = useMutation(api.assistant.spending.setReplyLimit).withOptimisticUpdate((store, args) => {
+    const now = store.getQuery(api.assistant.spending.get, { threadId: args.threadId });
+    if (now) store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, { ...now, replyLimit: args.limit, ...(takenByNewChats(now) ? { newChats: args.limit } : {}) });
+  });
+  const setForNewChats = useMutation(api.assistant.spending.setForNewChats).withOptimisticUpdate((store, args) => {
+    const now = store.getQuery(api.assistant.spending.get, { threadId: args.threadId });
+    if (!now) return;
+    const { newChats: _was, ...rest } = now;
+    store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, args.on ? { ...rest, newChats: now.replyLimit } : rest);
+  });
+  const failed = (error: unknown) => toast.error(t("failed"), getErrorMessage(error, ""));
+  const limit = spending?.replyLimit ?? null;
+  // Oldest first, in the chart's last slots: the newest reply is on the right.
+  const recent = spending?.recent ?? [];
+  const paused = limit === null ? 0 : recent.filter((spent) => spent > limit).length;
+  // The number the headline holds while there's no limit and it's faded out: the last one there was.
+  const [number, setNumber] = useState<number>(REPLY_LIMITS[0]);
+  const shown = limit ?? number;
+  // The chart's top: just above the largest reply, so a higher limit sits on its top edge.
+  const top = Math.max(...recent, 1) * 1.15;
+  return (
+    <>
+      <SheetHeader title={t("title")} detail={title} onBack={onBack} />
+      <ScrollArea shades className="min-h-0 flex-1">
+        {/* Laid out from the first frame at its size; what it says shows once it's known. */}
+        <div inert={spending === undefined} className={cn("space-y-6 px-3 py-4 transition-opacity duration-200", spending === undefined && "opacity-0")}>
+          <Zone label={t("eachReply")}>
+            <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+              {/* Both headlines hold one cell, so the card never changes size between a limit and none. */}
+              <div className="grid px-1 [&>*]:col-start-1 [&>*]:row-start-1">
+                <motion.div initial={false} animate={{ opacity: limit === null ? 0 : 1 }} aria-hidden={limit === null} className="flex min-w-0 items-baseline gap-2">
+                  <span className="text-3xl font-semibold tracking-tight">
+                    <AnimatedNumber value={shown} />
+                  </span>
+                  <span className="min-w-0 truncate text-sm text-muted-foreground">{t("limit", { count: shown })}</span>
+                </motion.div>
+                <motion.div initial={false} animate={{ opacity: limit === null ? 1 : 0 }} aria-hidden={limit !== null} className="flex min-w-0 items-baseline gap-2">
+                  <span className="whitespace-nowrap text-3xl font-semibold tracking-tight">{t("noLimit")}</span>
+                  <span className="min-w-0 truncate text-sm text-muted-foreground">{t("noLimitDetail")}</span>
+                </motion.div>
+              </div>
+              {/* The person's last replies against the limit: the ones over the line would have paused. */}
+              <div className="relative mt-4 flex h-20 items-end gap-1 px-1" aria-hidden>
+                {Array.from({ length: CHART_REPLIES }, (_, slot) => {
+                  const spent = recent[slot - (CHART_REPLIES - recent.length)];
+                  return (
+                    <span
+                      key={slot}
+                      className={cn("flex-1 rounded-t-[3px] transition-colors duration-300", spent !== undefined && limit !== null && spent > limit ? "bg-amber-400" : "bg-foreground/15")}
+                      style={{ height: spent === undefined ? 0 : `${(Math.min(spent, top) / top) * 100}%` }}
+                    />
+                  );
+                })}
+                <motion.span
+                  className="absolute inset-x-0 border-t border-dashed border-foreground/40"
+                  initial={false}
+                  animate={{ bottom: `${Math.min(1, shown / top) * 100}%`, opacity: limit === null ? 0 : 1 }}
+                  transition={{ type: "spring", stiffness: 260, damping: 30 }}
+                />
+              </div>
+              {/* The line keeps its room when there's nothing to say yet, and takes a second one in a narrow panel. */}
+              <p className="mt-2 flex min-h-4 items-start gap-1.5 px-1 text-xs text-muted-foreground">
+                {recent.length ? (
+                  <>
+                    <CirclePause className={cn("mt-px size-3.5 shrink-0", paused ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground/60")} />
+                    <span className="tabular-nums">{t("wouldPause", { paused, count: recent.length })}</span>
+                  </>
+                ) : null}
+              </p>
+              <div className="mt-3">
+                <LimitPicker
+                  // The picker starts from the chat's own limit, once that is known.
+                  key={spending === undefined ? "loading" : "known"}
+                  label={t("pickerLabel")}
+                  listed={REPLY_LIMITS}
+                  value={limit}
+                  onChange={(next) => {
+                    if (next !== null) setNumber(next);
+                    setLimit({ threadId, limit: next }).catch(failed);
+                  }}
+                />
+              </div>
+            </div>
+          </Zone>
+
+          <div className={LIST}>
+            <label className="flex cursor-pointer items-center gap-3 px-3 py-3">
+              <span className="min-w-0 flex-1 text-sm font-medium">{t("forNewChats")}</span>
+              <Switch checked={spending !== undefined && takenByNewChats(spending)} onCheckedChange={(on) => setForNewChats({ threadId, on }).catch(failed)} />
+            </label>
+          </div>
+          <p className="px-2 text-xs leading-relaxed text-muted-foreground">{t("yours")}</p>
+        </div>
+      </ScrollArea>
     </>
   );
 }
