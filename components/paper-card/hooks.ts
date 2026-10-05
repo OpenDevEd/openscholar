@@ -14,6 +14,7 @@ import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { rememberAuthorNames } from "@/lib/openalex/use-author-names";
 import { authorFilterValue, isAuthorId } from "@/lib/openalex/author-filter";
 import { getEffectiveSearchId } from "@/lib/utils";
+import { buildShareableUrl } from "@/lib/search-params";
 import { ScreeningContext, TranslationContext } from "@/components/results-contexts";
 
 // ==================== Types ====================
@@ -168,11 +169,13 @@ export function authorValue(author: { id?: string | null; display_name: string }
 
 /**
  * The authors the page's search is filtered by, and the control that adds or
- * drops one. `toggle` is undefined on a page that has no search to narrow.
+ * drops one. On a page with no search to narrow, such as the library or a paper
+ * a chat names, `toggle` starts a new search by that author instead.
  */
 export function useAuthorFilter() {
-  const pathname = usePathname();
-  const canFilter = Boolean(useSearchOptional()) || pathname.startsWith("/results");
+  const router = useRouter();
+  // A search provider is the search to narrow. Focus mode in the assistant's panel has none, even over a results page.
+  const canFilter = Boolean(useSearchOptional());
   const { authors } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const toggle = (author: { value: string; name: string }) => {
@@ -181,5 +184,9 @@ export function useAuthorFilter() {
     if (isAuthorId(author.value)) rememberAuthorNames({ [author.value]: author.name });
     updateFilter({ authors: [...authors, author.value] });
   };
-  return { authors, toggle: canFilter ? toggle : undefined };
+  const search = (author: { value: string; name: string }) => {
+    if (isAuthorId(author.value)) rememberAuthorNames({ [author.value]: author.name });
+    router.push(buildShareableUrl("", { author: [author.value] }));
+  };
+  return canFilter ? { authors, toggle } : { authors: [] as string[], toggle: search };
 }

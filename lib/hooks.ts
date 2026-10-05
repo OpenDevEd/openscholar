@@ -183,78 +183,56 @@ export function useQueryHistory(
 }
 
 /**
- * Custom hook to get current search form state from URL params
- * Updated to use URL as source of truth instead of store
- * 
- * NOTE: This hook uses useSearchState() which requires a Suspense boundary
- * when using nuqs. For pages that don't need URL-based state, consider
- * using the store directly or wrapping the page in Suspense.
+ * The current search's form state: from the search provider's address when there is one
+ * (it reads nuqs, which needs a Suspense boundary), otherwise from the store.
  */
 export function useCurrentSearchFormState() {
-  const pathname = usePathname();
-  // A search provider mounted away from the results page owns the state too.
-  const localSearch = useSearchOptional();
-  const isOnResultsPage = pathname?.startsWith('/results');
-  
-  // Only use URL-based state on results pages
-  // For other pages, use store defaults
-  if (!isOnResultsPage && !localSearch) {
-    return useCurrentSearchFormStateFromStore();
-  }
-  
-  return useCurrentSearchFormStateFromUrl();
+  // Every hook runs on every render, whatever the page: a component kept across pages, such
+  // as focus mode in the assistant's panel, moves between results pages and the rest. A search
+  // provider, on the results page or mounted elsewhere, owns the state; without one, the store.
+  const search = useSearchOptional();
+  const fromStore = useCurrentSearchFormStateFromStore();
+  return search ? formStateOf(search.params) : fromStore;
 }
 
-/**
- * Internal hook that uses URL-based state via useSearch context
- * Only use this on pages with results
- */
-function useCurrentSearchFormStateFromUrl() {
-  const search = useSearchOptional();
-  
+/** A search provider's address state in the form's shape. */
+function formStateOf(params: NonNullable<ReturnType<typeof useSearchOptional>>["params"]) {
   const defaultYearRange = DEFAULT_FILTERS.yearRange();
-  
-  // If not inside SearchProvider, fall back to defaults
-  if (!search) {
-    return useCurrentSearchFormStateFromStore();
-  }
-  
-  // Map from URL-based state to the old API format
   return {
-    currentSearchField: search.params.field as SearchField,
-    currentQuery: search.params.q,
-    currentLanguage: search.params.lang ?? '',
-    dateRange: search.params.df || search.params.dt ? {
-      from: search.params.df ? new Date(search.params.df) : undefined,
-      to: search.params.dt ? new Date(search.params.dt) : undefined,
+    currentSearchField: params.field as SearchField,
+    currentQuery: params.q,
+    currentLanguage: params.lang ?? '',
+    dateRange: params.df || params.dt ? {
+      from: params.df ? new Date(params.df) : undefined,
+      to: params.dt ? new Date(params.dt) : undefined,
     } : DEFAULT_FILTERS.dateRange,
-    sortBy: search.params.sort,
-    filterType: search.params.ft as 'date' | 'year',
-    yearRange: search.params.yf && search.params.yt 
-      ? [search.params.yf, search.params.yt] as [number, number]
+    sortBy: params.sort,
+    filterType: params.ft as 'date' | 'year',
+    yearRange: params.yf && params.yt
+      ? [params.yf, params.yt] as [number, number]
       : defaultYearRange,
-    isYearRangeEnabled: !!(search.params.yf || search.params.yt),
-    yearFromInput: search.params.yf?.toString() || defaultYearRange[0].toString(),
-    yearToInput: search.params.yt?.toString() || defaultYearRange[1].toString(),
-    ratingRange: [search.params.rmin, search.params.rmax] as [number, number],
-    onlyRatedPapers: search.params.rated,
-    selectedRegions: search.params.reg,
-    selectedCountryFocus: search.params.focus,
-    citesItemId: search.params.cites,
-    citedByItemId: search.params.citedBy,
-    relatedToItemId: search.params.rel,
-    reviewFilter: search.params.review,
-    researchAreas: search.params.area,
-    sdgs: search.params.sdg,
-    openAccessOnly: search.params.oa,
-    workTypes: search.params.type,
-    workLanguages: search.params.wlang,
-    institutionTypes: search.params.itype,
-    funders: search.params.funder,
-    authors: search.params.author,
-    minCitations: search.params.mincite,
-    hasAbstract: search.params.abs,
-    includeRetracted: search.params.retracted,
+    isYearRangeEnabled: !!(params.yf || params.yt),
+    yearFromInput: params.yf?.toString() || defaultYearRange[0].toString(),
+    yearToInput: params.yt?.toString() || defaultYearRange[1].toString(),
+    ratingRange: [params.rmin, params.rmax] as [number, number],
+    onlyRatedPapers: params.rated,
+    selectedRegions: params.reg,
+    selectedCountryFocus: params.focus,
+    citesItemId: params.cites,
+    citedByItemId: params.citedBy,
+    relatedToItemId: params.rel,
+    reviewFilter: params.review,
+    researchAreas: params.area,
+    sdgs: params.sdg,
+    openAccessOnly: params.oa,
+    workTypes: params.type,
+    workLanguages: params.wlang,
+    institutionTypes: params.itype,
+    funders: params.funder,
+    authors: params.author,
+    minCitations: params.mincite,
+    hasAbstract: params.abs,
+    includeRetracted: params.retracted,
   };
 }
 
@@ -301,25 +279,10 @@ function useCurrentSearchFormStateFromStore() {
   };
 }
 
-/**
- * Custom hook to update search filters via URL params
- * Updated to use URL as source of truth
- * Only works on results pages where SearchProvider is available.
- */
+/** Updates the search provider's filters in its address. Without a search provider it changes nothing. */
 export function useUpdateSearchFilter() {
-  const pathname = usePathname();
-  const localSearch = useSearchOptional();
-  const isOnResultsPage = pathname?.startsWith('/results');
-  
-  // On results pages, and inside a local search provider, use its state
-  if (isOnResultsPage || localSearch) {
-    return useUpdateSearchFilterFromUrl();
-  }
-  
-  // On other pages, return a no-op function
-  return useCallback((_updates: Record<string, unknown>) => {
-    console.warn('useUpdateSearchFilter called outside of results page - no-op');
-  }, []);
+  // The same hooks on every page, so a component kept across pages keeps its hook order.
+  return useUpdateSearchFilterFromUrl();
 }
 
 /**
