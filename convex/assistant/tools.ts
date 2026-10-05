@@ -162,6 +162,14 @@ function jobs(value: unknown, path = ""): string[] {
 const sameChange = (entry: UserAction, a: unknown, b: unknown) =>
   viewOf(entry.path, variantIn(entry.path, a)).words === viewOf(entry.path, variantIn(entry.path, b)).words && jobs(a).sort().join() === jobs(b).sort().join();
 
+/**
+ * What a reply is told at an action that spends credits and can't say how many (#328): with
+ * no figure to show the person there is nothing to ask them with, so a chat doesn't start it.
+ * Said plainly, so the reply doesn't tell the person an approval went missing.
+ */
+export const NO_ESTIMATE =
+  "This can't be started from the chat yet: it spends credits, and it has no way to say how many before it runs. Tell the person it's started on its own page in the app, and walk them through it there.";
+
 /** The action a run_many call names: by its name, or by the name of its tool. */
 const namedAs = (name: string) => entryAt(name) ?? core().find((entry) => toolName(entry.path) === name);
 /**
@@ -343,7 +351,7 @@ export function toolsFor(
     const within = approved || entry.kind === "query" || !entry.spendsCredits ? undefined : holds.get(sameCall(entry.path, input));
     if (!approved) {
       // One that asks first only gets here allowed. The rest is refused: an action that spends credits past what the person allowed, or with no estimate to ask them with, or a call nothing asked about.
-      let why = stopped() ?? (runsWithoutAsking(entry) || within?.covered ? null : ASKS_FIRST);
+      let why = stopped() ?? (runsWithoutAsking(entry) || within?.covered ? null : entry.kind !== "query" && entry.spendsCredits && !entry.estimate ? NO_ESTIMATE : ASKS_FIRST);
       if (!why && changesSomething(entry)) {
         const kind = kindOf(entry, input);
         const nth = (changes.get(kind) ?? 0) + 1;

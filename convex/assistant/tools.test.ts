@@ -17,7 +17,7 @@ import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
 import { allowAlways, carriedOn, pausedAt } from "./spending";
 import { MAX_ASKS, MODEL_READS, STEPS_SHOWN, forModel } from "./steps";
-import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, askedSteps, batched, circling, core, definition, found, kindOf, written } from "./tools";
+import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, NO_ESTIMATE, askedSteps, batched, circling, core, definition, found, kindOf, written } from "./tools";
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
@@ -622,7 +622,7 @@ describe("the assistant's tools", () => {
       .mockImplementationOnce(calling({ id: "extract", name: "run_action", input: { name: "extraction/mutations:startJob", arguments: { name: "Sizes", mode: "extraction", bucketItems: [], questions: [] } } }))
       .mockImplementationOnce(finishingDoStream(["I can't start that here."]));
     await say("Extract the sample sizes");
-    expect(told(1, "extract")).toMatchObject({ error: expect.stringMatching(/can't be asked for here/) });
+    expect(told(1, "extract")).toEqual({ error: NO_ESTIMATE });
     expect(await t.run(async (ctx) => (await ctx.db.query("extractionJobs").collect()).length)).toBe(0);
   });
 
