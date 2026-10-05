@@ -267,33 +267,52 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(jobs[1]).toMatchObject({ first: 1_001, last: 2_000, through: 2_500, totalPapers: 1_000, snapshot: { request: { sort: "cited_by_count:desc" } } });
   });
 
-  it("carries a request on from the middle of a page, by cursor whatever the search's sort", async () => {
+  it("ends a long request's jobs with a page of the search, and starts each on the page after, by cursor whatever the sort", async () => {
     total = 2_500;
     const { t, screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
     const firstOf = async (jobId: Id<"screeningJobs">) => (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1)))[0]?.openalexId;
 
-    // Papers 150 to 1,149: the first job stops 149 papers into the sixth page.
+    // From paper 150 the first job takes what's left of the first five pages: no page is asked for again by the job after it.
     const { jobId, made } = await screen({ first: 150, last: 2_400 });
-    expect(made).toMatchObject({ first: 150, last: 1_149, through: 2_400, totalPapers: 1_000 });
+    expect(made).toMatchObject({ first: 150, last: 1_000, through: 2_400, totalPapers: 851 });
     expect(await firstOf(jobId)).toBe("https://openalex.org/W150");
-    expect(pages().map(({ url }) => [url.searchParams.get("page"), url.searchParams.get("cursor")])).toEqual([[null, "*"], [null, "2"], [null, "3"], [null, "4"], [null, "5"], [null, "6"]]);
+    expect(pages().map(({ url }) => [url.searchParams.get("page"), url.searchParams.get("cursor")])).toEqual([[null, "*"], [null, "2"], [null, "3"], [null, "4"], [null, "5"]]);
 
     await t.run((ctx) => ctx.db.patch("screeningJobs", jobId, { status: "completed" }));
     requests = [];
-    await t.action(internal.screening.start.next, { jobId, first: 1_150 });
+    await t.action(internal.screening.start.next, { jobId, first: 1_001 });
 
-    // The job after it takes the sixth page's other papers first, then the pages after it: 1,150 to 2,149.
-    expect(pages().map(({ url }) => url.searchParams.get("cursor"))).toEqual(["6", "7", "8", "9", "10", "11"]);
+    expect(pages().map(({ url }) => url.searchParams.get("cursor"))).toEqual(["6", "7", "8", "9", "10"]);
     const [, second] = await t.run((ctx) => ctx.db.query("screeningJobs").order("asc").take(5));
-    expect(second).toMatchObject({ first: 1_150, last: 2_149, through: 2_400, totalPapers: 1_000 });
-    expect(await firstOf(second._id)).toBe("https://openalex.org/W1150");
+    expect(second).toMatchObject({ first: 1_001, last: 2_000, through: 2_400, totalPapers: 1_000 });
+    expect(await firstOf(second._id)).toBe("https://openalex.org/W1001");
 
-    // And the one after that starts at paper 2,150, where the second stopped.
+    // The last job ends where the request does, partway through a page.
     await t.run((ctx) => ctx.db.patch("screeningJobs", second._id, { status: "completed" }));
-    await t.action(internal.screening.start.next, { jobId: second._id, first: 2_150 });
+    await t.action(internal.screening.start.next, { jobId: second._id, first: 2_001 });
     const [, , third] = await t.run((ctx) => ctx.db.query("screeningJobs").order("asc").take(5));
-    expect(third).toMatchObject({ first: 2_150, last: 2_400, totalPapers: 251 });
-    expect(await firstOf(third._id)).toBe("https://openalex.org/W2150");
+    expect(third).toMatchObject({ first: 2_001, last: 2_400, totalPapers: 400 });
+    expect(await firstOf(third._id)).toBe("https://openalex.org/W2001");
+  });
+
+  it("carries on partway through a page when OpenAlex returns a short one", async () => {
+    total = 2_500;
+    const { t, screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    const work = (i: number) => ({ id: `https://openalex.org/W${i}`, display_name: `Paper ${i}` });
+
+    // The count's answer, then a first page one work short: the job's thousandth paper is the sixth page's first.
+    refusals = [
+      new Response(JSON.stringify({ meta: { count: 2_500 }, results: [work(1)] })),
+      new Response(JSON.stringify({ meta: { count: 2_500, next_cursor: "2" }, results: Array.from({ length: 199 }, (_, i) => work(i + 1)) })),
+    ];
+    const { jobId } = await screen({ first: 1, last: 2_500 });
+    await t.run((ctx) => ctx.db.patch("screeningJobs", jobId, { status: "completed" }));
+    await t.action(internal.screening.start.next, { jobId, first: 1_001 });
+
+    // The job after it starts at that page's second paper.
+    const [, second] = await t.run((ctx) => ctx.db.query("screeningJobs").order("asc").take(5));
+    const [firstResult] = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", second._id)).take(1));
+    expect(firstResult?.openalexId).toBe("https://openalex.org/W1002");
   });
 
   it("reads past the search's 10,000th paper by cursor, where OpenAlex has no numbered pages", async () => {

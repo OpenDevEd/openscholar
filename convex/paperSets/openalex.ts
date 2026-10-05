@@ -11,7 +11,7 @@ import { openAlexUrl } from "../../lib/openalex/request-url";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 
 /** OpenAlex's largest page. */
-const PAGE_SIZE = 200;
+export const PAGE_SIZE = 200;
 /** How long one page may take before the request fails, as the results page's reads do. */
 const PAGE_TIMEOUT_MS = 12_000;
 /** How much of OpenAlex's reason for refusing a search is passed on. Its own run to about 350 characters. */
