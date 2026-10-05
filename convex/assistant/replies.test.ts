@@ -11,6 +11,7 @@ import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/bill
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import schema from "../schema";
 import { SERVER_MODEL_SLUG } from "../ai/config";
+import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 import { people } from "./assistant.test-support";
 import { erroringOnAbortDoStream, finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, waitFor } from "./turn.test-support";
@@ -350,6 +351,25 @@ describe("assistant replies", () => {
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Me too" });
     await ended(t, threadId);
     expect(await newest()).toMatchObject({ text: "Ok", status: "done" });
+  });
+
+  it("say a reply was stopped when its last message holds a call as well as text", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await sharedChat(t);
+    const order = await t.run(async (ctx) => {
+      const thread = (await ctx.db.get("assistantThreads", threadId))!;
+      const { messageId, message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: "Find them", skipEmbeddings: true });
+      // Stopped as it called an action: what it had written is kept, with the call, under the stop's marker.
+      await assistant.saveMessage(ctx, {
+        threadId: thread.agentThreadId,
+        promptMessageId: messageId,
+        message: { role: "assistant", content: [{ type: "text", text: "Looking." }, { type: "tool-call", toolCallId: "search", toolName: "run_action", input: {} }] },
+        metadata: { status: "failed", error: ABORT_ERROR_STRING },
+        skipEmbeddings: true,
+      });
+      return message.order;
+    });
+    expect(await asAda.query(api.assistant.replies.outcome, { threadId })).toEqual({ phase: "stopped", order });
   });
 
   it("report failure when the reply dies before saving its first assistant message", async () => {
