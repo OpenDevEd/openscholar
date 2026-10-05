@@ -277,7 +277,7 @@ describe("the assistant's tools", () => {
     expect(await saved()).toHaveLength(12);
     const waiting = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
     expect(waiting).toHaveLength(1);
-    expect(waiting[0]).toMatchObject({ action: "library/mutations:removeFromLibrary", status: "asking", canAnswer: true, batch: 12, each: [1, 2, 3, 4, 5].map((n) => [{ name: "openalex", value: `Trial ${n}` }]) });
+    expect(waiting[0]).toMatchObject({ action: "library/mutations:removeFromLibrary", status: "asking", canAnswer: true, batch: 12, each: [1, 2, 3, 4, 5].map((n) => [{ name: "title", value: `Trial ${n}` }]) });
 
     // Her yes runs every one, each a step of its own that she can undo, and the model reads what all of them came to.
     mockDoStream.mockImplementationOnce(finishingDoStream(["Your library is empty now."]));

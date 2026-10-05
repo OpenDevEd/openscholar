@@ -103,7 +103,9 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
     // A name that can't be read, such as someone in more organizations than are read at once, stays an ID.
     const record = typeof value === "string" ? await named(value).catch(() => null) : null;
     const shown = record ?? String(value);
-    details.push({ name: nameOf(path), value: shown.length > VALUE_MAX ? `${shown.slice(0, VALUE_MAX)}…` : shown, record: record !== null, within: path.slice(0, -1).join("."), key: path.at(-1) ?? "" });
+    // A saved paper is shown by its title, so that is what its line is called, not the ID the call gave.
+    const title = record !== null && typeof value === "string" && workUrl(value) !== null;
+    details.push({ name: title ? "title" : nameOf(path), value: shown.length > VALUE_MAX ? `${shown.slice(0, VALUE_MAX)}…` : shown, record: record !== null, within: path.slice(0, -1).join("."), key: path.at(-1) ?? "" });
   }
   // Which kind of thing an ID beside it names ("user", "organization") is said by the record's own line.
   const told = new Set(details.flatMap((detail) => (detail.record ? [detail.within] : [])));
