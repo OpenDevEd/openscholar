@@ -139,7 +139,9 @@ export function compactionDue(reply: { lastInputTokens: number; window?: number;
  * Writes the summary that replaces everything through `through`. One call on the chat's
  * own model, reading the same instructions, summary and history its last reply read, so
  * the provider serves them from cache. It has its own hold and its own line in the usage
- * ledger, charged to the person whose reply made it due.
+ * ledger, charged to the person whose reply made it due. Returns what it cost with it: a
+ * summary written while a reply is under way counts towards what the reply has spent. One
+ * the model left empty was charged too, and comes back empty for its caller to refuse.
  */
 export async function summarize(
   ctx: ActionCtx,
@@ -154,7 +156,7 @@ export async function summarize(
     /** Read every half second while the summary is written; true stops it. */
     shouldStop: () => Promise<boolean>;
   },
-): Promise<string> {
+): Promise<{ summary: string; credits: number }> {
   const { model, modelSlug, pricing } = await resolveOpenRouterModel(ctx, args.modelId);
   const history = await historySince(ctx, { agentThreadId: args.agentThreadId, compactedThrough: args.compactedThrough });
   // A summary of part of the range would mark the rest as summarized too.
@@ -181,16 +183,15 @@ export async function summarize(
     });
     const usage = usageOf({ usage: result.usage, providerMetadata: result.providerMetadata });
     const usd = pickProviderCostUsd(result.providerMetadata) ?? calculateCostInDollars({ inputTokens: usage.inputTokens, outputTokens: usage.outputTokens }, pricing);
+    const credits = convertUsdToCredits({ usd }) || 1;
     await settleCredits(ctx, {
       userId: args.senderId,
       chargeId: args.chargeId,
-      credits: convertUsdToCredits({ usd }) || 1,
+      credits,
       usage: { kind: "chat", description: "Conversation summary", model: modelSlug, ...tokenDetails(usage), costUsd: usd },
     });
     settled = true;
-    const summary = result.text.trim();
-    if (!summary) throw new Error("The model wrote an empty summary.");
-    return summary;
+    return { summary: result.text.trim(), credits };
   } finally {
     await stopPolling();
     if (!settled) await releaseCredits(ctx, { userId: args.senderId, chargeId: args.chargeId }).catch(() => {});
