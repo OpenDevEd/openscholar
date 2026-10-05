@@ -66,10 +66,11 @@ const invalid = (message: string) => createError("VALIDATION_ERROR", message);
 /**
  * The set's papers `first` to `last` (from 1), in its own order: a query's and a saved
  * search's as their results list them, a collection's and the library's newest saved first, a
- * screening's included papers in the order it took them. Papers named by ID come as OpenAlex
- * has them. Each page read from OpenAlex counts against the person's allowance.
+ * screening's included papers in the order it took them. Left out, they are the whole set,
+ * as far as one bulk change goes: the person is asked with how many that is. Papers named by
+ * ID come as OpenAlex has them. Each page read from OpenAlex counts against the person's allowance.
  */
-export async function papersOf(ctx: ActionCtx, userId: Id<"users">, { papers: set, first, last }: Pick<ChangePapers, "papers" | "first" | "last">): Promise<SearchPaper[]> {
+export async function papersOf(ctx: ActionCtx, userId: Id<"users">, { papers: set, first: start, last: end }: Pick<ChangePapers, "papers" | "first" | "last">): Promise<SearchPaper[]> {
   if (set.kind === "ids") {
     const ids = [...new Set(set.ids.map((id) => workUrl(id)?.split("/").at(-1)))].filter((id): id is string => id !== undefined);
     if (!ids.length) throw invalid("None of these is a paper's ID, such as W2741809807.");
@@ -83,7 +84,8 @@ export async function papersOf(ctx: ActionCtx, userId: Id<"users">, { papers: se
     }
     return found.map(toPaper);
   }
-  if (first == null || last == null) throw invalid("Say which papers of the set: `first` and `last`, counting from 1. Count the set first, so they cover what you mean.");
+  const first = start ?? 1;
+  const last = end ?? first + PAPERS_MAX - 1;
   checkRange(first, last);
   if (set.kind === "query") {
     const { kind: _kind, query, ...settings } = set;

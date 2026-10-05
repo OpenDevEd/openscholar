@@ -629,7 +629,7 @@ export function toolsFor(
       description:
         "Makes one change to many papers in one go, without reading them first. `papers` is the set: what a query finds ({kind: \"query\", query, and any filter research_papers_search takes, such as minCitations}), a saved search's results ({kind: \"search\", searchId}), " +
         "a collection ({kind: \"collection\", collectionId}), every saved paper ({kind: \"saved\"}), a screening's included papers ({kind: \"screening\", jobId}), or papers you name ({kind: \"ids\", ids}). " +
-        `\`first\` and \`last\` say which of the set, counting from 1, up to ${PAPERS_MAX.toLocaleString("en")} papers; a list of IDs needs neither. Count the set first (research_papers_count for a query), so they cover what you mean. ` +
+        `\`first\` and \`last\` say which of the set, counting from 1. Left out, it is the whole set, up to ${PAPERS_MAX.toLocaleString("en")} papers. ` +
         "`do` is what happens to each paper: \"save\" to the library (with `collectionId`, into that collection too), \"collect\" into `collectionId`, \"uncollect\" out of `collectionId`, \"remove\" from the library, or \"rate\" with `rating`. " +
         `It is one change, with one undo. More than ${BULK} papers and the person is asked once, with how many and the first titles. Use it whenever a change is to more than a few papers: never read a set page by page to change its papers one by one.`,
       inputSchema: changePapersSchema(),
