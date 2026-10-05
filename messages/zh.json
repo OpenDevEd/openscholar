@@ -3964,7 +3964,12 @@
       "none": "你的账户中没有与“{query}”匹配的内容",
       "search": "搜索，{count, plural, other {# 条结果}}",
       "collection": "合集，{count, plural, other {# 篇论文}}",
-      "paper": "已保存的论文"
+      "paper": "已保存的论文",
+      "kinds": {
+        "search": "搜索",
+        "collection": "合集",
+        "paper": "已保存的论文"
+      }
     }
   }
 }

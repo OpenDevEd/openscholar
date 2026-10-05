@@ -32,12 +32,12 @@ export function mentionSegments(text: string): Array<string | Mention> {
 /**
  * Splits a draft into plain runs and the picked records it still names as `@name`. Longest
  * name first, so a name that contains another still matches whole. A name edited after it
- * was picked is plain text again.
+ * was picked, or with a letter or digit run on after it, is plain text again.
  */
 export function draftSegments(text: string, picked: readonly Mention[]): Array<string | Mention> {
   if (!picked.length) return [text];
   const names = [...new Map(picked.map((m) => [m.label, m])).entries()].sort(([a], [b]) => b.length - a.length);
-  const pattern = new RegExp(`@(${names.map(([name]) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "g");
+  const pattern = new RegExp(`@(${names.map(([name]) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?![\\p{L}\\p{N}_])`, "gu");
   const byName = new Map(names);
   const out: Array<string | Mention> = [];
   let at = 0;
@@ -48,6 +48,24 @@ export function draftSegments(text: string, picked: readonly Mention[]): Array<s
   }
   if (at < text.length) out.push(text.slice(at));
   return out;
+}
+
+const same = (a: Mention, b: Mention) => a.kind === b.kind && a.id === b.id;
+
+/** The picked records a draft still names: the rest have nothing to stand for. */
+export const stillNamed = (text: string, picked: readonly Mention[]) =>
+  picked.filter((m) => draftSegments(text, picked).some((part) => typeof part !== "string" && same(part, m)));
+
+/**
+ * The name a pick is written with: its own, unless another record picked in the draft has it,
+ * so that each name in a draft stands for one record. `kind` is the record's kind in words.
+ */
+export function uniqueLabel(mention: Mention, kind: string, picked: readonly Mention[]) {
+  const taken = (label: string) => picked.some((m) => m.label === label && !same(m, mention));
+  const base = taken(mention.label) ? `${mention.label} (${kind})` : mention.label;
+  let label = base;
+  for (let n = 2; taken(label); n++) label = `${base} ${n}`;
+  return label;
 }
 
 /** The draft as it's sent: each picked `@name` becomes its token. */

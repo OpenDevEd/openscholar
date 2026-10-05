@@ -3956,7 +3956,12 @@
       "none": "Nothing in your account matches “{query}”",
       "search": "Search, {count, plural, one {# result} other {# results}}",
       "collection": "Collection, {count, plural, one {# paper} other {# papers}}",
-      "paper": "Saved paper"
+      "paper": "Saved paper",
+      "kinds": {
+        "search": "search",
+        "collection": "collection",
+        "paper": "saved paper"
+      }
     }
   }
 }

@@ -3964,7 +3964,12 @@
       "none": "Rien dans votre compte ne correspond à « {query} »",
       "search": "Recherche, {count, plural, one {# résultat} other {# résultats}}",
       "collection": "Collection, {count, plural, one {# article} other {# articles}}",
-      "paper": "Article enregistré"
+      "paper": "Article enregistré",
+      "kinds": {
+        "search": "recherche",
+        "collection": "collection",
+        "paper": "article enregistré"
+      }
     }
   }
 }

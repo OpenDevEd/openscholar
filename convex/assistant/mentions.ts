@@ -28,7 +28,8 @@ export const findAction = defineUserQuery({
     // through a stream, and the rest take their first few.
     const [searches, collections, papers] = await Promise.all([
       needle
-        ? listedSearchesAction.run(ctx, userId, { paginationOpts: first, sort: "recent", text: needle }).then(({ page }) => page)
+        ? // ponytail: matches among the newest searches the list's one read reaches (1,000 rows), so a match older than that isn't offered. Carry on from its cursor if people with that many searches miss one.
+          listedSearchesAction.run(ctx, userId, { paginationOpts: first, sort: "recent", text: needle }).then(({ page }) => page)
         : ctx.db.query("searches").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)).order("desc").take(EACH).then((rows) => rows.map(({ data }) => data)),
       (needle
         ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", needle).eq("userId", userId))

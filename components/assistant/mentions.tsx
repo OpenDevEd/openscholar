@@ -10,7 +10,7 @@ import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
-import { draftSegments, mentionSegments, openMention, type Mention } from "@/lib/assistant/mentions";
+import { draftSegments, mentionSegments, openMention, uniqueLabel, type Mention } from "@/lib/assistant/mentions";
 import { cn } from "@/lib/utils";
 import { KIND, KindTile } from "./steps";
 
@@ -76,11 +76,13 @@ export function MentionComposer({
   const [focused, setFocused] = useState(false);
   const mirror = useRef<HTMLDivElement>(null);
   // Read while the box has focus, so the list is there the moment @ is typed.
-  const found = useQuery(api.assistant.mentions.find, focused && !disabled ? { text: menu?.query.trim() ?? "" } : "skip");
-  // What the last answer found stays up while the next one loads, so the list doesn't empty between keys.
-  const [kept, setKept] = useState<Found[] | undefined>(found);
-  if (found !== undefined && found !== kept) setKept(found);
-  const options = menu ? (kept ?? []).slice(0, SHOWN) : [];
+  const asked = menu?.query.trim() ?? "";
+  const found = useQuery(api.assistant.mentions.find, focused && !disabled ? { text: asked } : "skip");
+  // What the last answer found stays up, dimmed and inert, while the next one loads, so the list doesn't empty between keys.
+  const [kept, setKept] = useState<{ text: string; found: Found[] } | null>(null);
+  if (found !== undefined && (found !== kept?.found || asked !== kept.text)) setKept({ text: asked, found });
+  const stale = kept !== null && kept.text !== asked;
+  const options = menu && kept ? kept.found.slice(0, SHOWN) : [];
 
   const track = (text: string, caret: number) => {
     const open = openMention(text, caret, picked);
@@ -92,7 +94,9 @@ export function MentionComposer({
   const choose = (found: Found) => {
     const box = composer.current;
     if (!menu || !box) return;
-    const mention = { kind: found.kind, id: found.id, label: found.label.replace(/\s+/g, " ").trim() };
+    const record = { kind: found.kind, id: found.id, label: found.label.replace(/\s+/g, " ").trim() };
+    // Each name in a draft stands for one record: a second record of the same name is told apart by its kind.
+    const mention = { ...record, label: uniqueLabel(record, t(`mentions.kinds.${found.kind}`), picked) };
     const caret = box.selectionStart;
     const text = `${draft.slice(0, menu.start)}@${mention.label} ${draft.slice(caret)}`;
     const end = menu.start + mention.label.length + 2;
@@ -106,7 +110,9 @@ export function MentionComposer({
     });
   };
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (menu && options.length) {
+    // Keys that pick a candidate in an input method are its own.
+    if (e.nativeEvent.isComposing) return;
+    if (menu && options.length && !stale) {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         setActive((i) => (i + (e.key === "ArrowDown" ? 1 : options.length - 1)) % options.length);
@@ -126,9 +132,10 @@ export function MentionComposer({
       setMenu(null);
       return;
     }
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      onSend();
+      // Enter while the list is catching up to what was typed picks nothing and sends nothing.
+      if (!(menu && stale)) onSend();
     }
   };
   const detail = (found: Found) =>
@@ -161,7 +168,8 @@ export function MentionComposer({
                   onMouseDown={(e) => e.preventDefault()}
                   onMouseEnter={() => setActive(i)}
                   onClick={() => choose(option)}
-                  className={cn("flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left", i === active && "bg-muted")}
+                  disabled={stale}
+                  className={cn("flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-opacity", i === active && "bg-muted", stale && "opacity-50")}
                 >
                   <KindTile kind={option.kind} size="sm" />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{option.label}</span>
@@ -169,7 +177,7 @@ export function MentionComposer({
                 </button>
               ))
             ) : (
-              <p className="px-2.5 py-2 text-sm text-muted-foreground">{t("mentions.none", { query: menu.query })}</p>
+              <p className="px-2.5 py-2 text-sm text-muted-foreground">{t("mentions.none", { query: kept.text })}</p>
             )}
           </motion.div>
         ) : null}

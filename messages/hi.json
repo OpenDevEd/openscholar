@@ -3964,7 +3964,12 @@
       "none": "आपके खाते में “{query}” से कुछ मेल नहीं खाता",
       "search": "खोज, {count, plural, one {# परिणाम} other {# परिणाम}}",
       "collection": "संग्रह, {count, plural, one {# पेपर} other {# पेपर}}",
-      "paper": "सहेजा गया पेपर"
+      "paper": "सहेजा गया पेपर",
+      "kinds": {
+        "search": "खोज",
+        "collection": "संग्रह",
+        "paper": "सहेजा गया पेपर"
+      }
     }
   }
 }

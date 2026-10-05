@@ -33,7 +33,7 @@ import type { Effort } from "@/lib/ai/core/call-options";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
 import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { titleFrom } from "@/lib/assistant/title";
-import { withTokens, type Mention } from "@/lib/assistant/mentions";
+import { stillNamed, withTokens, type Mention } from "@/lib/assistant/mentions";
 import { MentionComposer, MessageText } from "./mentions";
 import { inApp } from "@/lib/assistant/view";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
@@ -80,8 +80,6 @@ type Drafts = {
   picks: (id: ThreadId | null) => Mention[];
   pick: (id: ThreadId | null, mention: Mention) => void;
 };
-/** Records a chat's draft keeps picked, the latest. */
-const MENTIONS_KEPT = 20;
 
 const setOpen = (update: (open: boolean) => boolean) => panelPlace.set((now) => ({ ...now, open: update(now.open) }));
 const setThreadId = (threadId: ThreadId | null) => panelPlace.set((now) => ({ ...now, threadId }));
@@ -105,9 +103,9 @@ export function AssistantPanel() {
       setPicked(({ [NEW]: mine, ...rest }) => (mine ? { ...rest, [id]: [...(rest[id] ?? []), ...mine] } : rest));
     },
     picks: (id) => picked[id ?? NEW] ?? [],
-    // A chat keeps the records picked in it, so a draft put back after a failed send still draws them.
+    // A pick keeps the earlier ones its draft still names. Sending keeps them all, so a draft put back after a failed send still draws them.
     pick: (id, mention) =>
-      setPicked((all) => ({ ...all, [id ?? NEW]: [...(all[id ?? NEW] ?? []).filter((m) => m.kind !== mention.kind || m.id !== mention.id), mention].slice(-MENTIONS_KEPT) })),
+      setPicked((all) => ({ ...all, [id ?? NEW]: [...stillNamed(typed[id ?? NEW] ?? "", all[id ?? NEW] ?? []).filter((m) => m.kind !== mention.kind || m.id !== mention.id), mention] })),
   };
   return (
     <Lost onLost={() => setThreadId(null)}>

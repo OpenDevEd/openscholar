@@ -3964,7 +3964,12 @@
       "none": "アカウント内に「{query}」に一致するものはありません",
       "search": "検索、{count, plural, other {#件の結果}}",
       "collection": "コレクション、{count, plural, other {#本の論文}}",
-      "paper": "保存した論文"
+      "paper": "保存した論文",
+      "kinds": {
+        "search": "検索",
+        "collection": "コレクション",
+        "paper": "保存した論文"
+      }
     }
   }
 }
