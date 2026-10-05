@@ -11,6 +11,7 @@ import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/bill
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import schema from "../schema";
 import { SERVER_MODEL_SLUG } from "../ai/config";
+import { endStep } from "./steps";
 import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 import { people } from "./assistant.test-support";
@@ -560,6 +561,36 @@ describe("assistant replies", () => {
     await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "Hi" })).rejects.toThrow(/disabled/);
     await expect(asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).rejects.toThrow(/disabled/);
     await expect(asAda.query(api.assistant.replies.live, { threadId })).rejects.toThrow(/disabled/);
+  });
+
+  it("link a query the reply looked up to its results, with its filters, as a new search, and say how many papers it matched", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await sharedChat(t);
+    mockDoStream.mockImplementation(finishingDoStream(["Found some"]));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Look these up" });
+    await ended(t, threadId);
+    const order = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.at(-1)!.order;
+    await t.run(async (ctx) => {
+      const step = { threadId, order, userId: ada, status: "running" as const, startedAt: 1 };
+      // A page of a search, and a count by year: each matched more papers than it returned.
+      const search = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "search", path: "research/papers:search", input: JSON.stringify({ query: '"machine learning"', minCitations: 11, fromYear: 2020, toYear: 2024, page: 2 }), subject: '"machine learning"' });
+      await endStep(ctx, search, { total: 260, page: 2, pages: 13, papers: [] });
+      const count = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "count", path: "research/papers:count", input: JSON.stringify({ query: "tutoring", by: "year" }), subject: "tutoring" });
+      await endStep(ctx, count, { total: 1840, groups: [{ name: "2024", count: 200 }] });
+      // Kept to the papers the person rated: its total is before that filter, so it says no number.
+      const rated = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "rated", path: "research/papers:search", input: JSON.stringify({ query: "phonics", ratedOnly: true }), subject: "phonics" });
+      await endStep(ctx, rated, { total: 3, totalIgnoresRatings: true, page: 1, pages: 1, papers: [] });
+      await ctx.db.insert("assistantSteps", { ...step, status: "done", endedAt: 1, toolCallId: "collection", path: "library/collections:create", input: JSON.stringify({ name: "Trials" }), subject: "Trials" });
+    });
+
+    const steps = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
+    expect(Object.fromEntries(steps.map((step) => [step.subject, "href" in step ? step.href : null]))).toEqual({
+      '"machine learning"': "/results?q=%22machine+learning%22&yf=2020&yt=2024&mincite=11",
+      tutoring: "/results?q=tutoring",
+      phonics: "/results?q=phonics&rated=true",
+      Trials: null,
+    });
+    expect(Object.fromEntries(steps.map((step) => [step.subject, step.count ?? null]))).toEqual({ '"machine learning"': 260, tutoring: 1840, phonics: null, Trials: null });
   });
 });
 

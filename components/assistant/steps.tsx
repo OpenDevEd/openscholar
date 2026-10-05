@@ -5,11 +5,16 @@
 // asks the person about first shows under the map as the mock's approval card.
 
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { SearchHoverCard } from "@/components/search-tooltip-content";
+import { readSharedOql } from "@/lib/search-params";
+import { paramsToSearchResult } from "@/lib/search-params/converters";
+import { parseSearchParamsFromUrl } from "@/lib/search-params/parsers";
+import { useFormatter, useTranslations } from "next-intl";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Check, CircleAlert, Coins, Compass, FileText, FolderPlus, Hash, LibraryBig, ListChecks, MessagesSquare, Plus, Search, TableProperties, Undo2, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, Check, ChevronDown, CircleAlert, Coins, Compass, FileText, FolderPlus, Hash, LibraryBig, ListChecks, MessagesSquare, Plus, Search, TableProperties, Undo2, X, type AppIcon } from "@/components/icons";
 import { AnimatedNumber } from "@/components/screening/parts";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -44,6 +49,36 @@ const GAP = 8;
 const GUTTER = 36;
 /** Room at the top for the tile the curves start from. */
 const ORIGIN = 28;
+/** One step of a folded run, as a line under its card. */
+const LINE = 28;
+/** Room under a folded run's lines. */
+const LINES_END = 8;
+
+/** A search as its link carries it: its query, with an OQL one in the fragment, and its filters. */
+function searchOf(href: string) {
+  const url = new URL(href, "https://openscholar.invalid");
+  const params = parseSearchParamsFromUrl(url.searchParams);
+  const oql = readSharedOql(url.hash);
+  return paramsToSearchResult(oql ? { ...params, q: oql } : params);
+}
+
+/**
+ * What a step was about, as its card shows it. A query it looked up opens that query's
+ * results in this tab, as a new search, and the panel stays up with its chat. Hovered, it
+ * shows the search's card out to the left, over the page, as the sidebar's history does.
+ */
+function Subject({ text, step, className = "truncate" }: { text: string; step: Pick<StepItem, "id" | "href" | "count" | "at">; className?: string }) {
+  if (!step.href) return <span className={className}>{text}</span>;
+  const search = searchOf(step.href);
+  const at = new Date(step.at).toISOString();
+  return (
+    <SearchHoverCard side="left" delay={300} id={step.id} query={search.query} count={step.count} filters={search} createdAt={at} updatedAt={at}>
+      <Link href={step.href} className={cn(className, "underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground")}>
+        {text}
+      </Link>
+    </SearchHoverCard>
+  );
+}
 
 /** A tinted icon square; the tile of the model cards, one size down. */
 export function KindTile({ kind, size = "md", working }: { kind: Kind; size?: "sm" | "md"; working?: boolean }) {
@@ -74,7 +109,8 @@ function Fact({ value, children }: { value?: ReactNode; children: ReactNode }) {
 /**
  * The steps of one reply. They hang off a small tile at the top, the way the settings map
  * runs a curve from each task to its model. Each card is as tall as the next, and the map
- * grows by a card as a step starts, so nothing above it moves.
+ * grows by a card as a step starts, so nothing above it moves. The same step again is the
+ * same card, counted (`runsOf`).
  */
 export function Steps({
   threadId,
@@ -304,20 +340,51 @@ function Spending({ credits, sent, onAllow, onAlways, onDecline, onAddCredits }:
   );
 }
 
+/** Whether a step leaves its card nothing to press and nothing to read but that it ran: no undo, no error, no answer it waits for, no credits. */
+const folds = (step: StepItem) => (step.status === "done" || step.status === "running") && !step.canUndo && !step.undone && !step.error && step.batch === undefined && step.credits === undefined;
+
+/**
+ * The steps as the map's cards: steps in a row that ran the same action, and that fold, are
+ * one card that says how many times. A reply that counted papers thirty-nine times ran
+ * thirty-nine cards down the page. opencode folds a run of reads into one row the same way
+ * (its context tool group). A step with an undo, an error or a question is always its own card.
+ */
+function runsOf(steps: StepItem[]) {
+  const runs: StepItem[][] = [];
+  for (const step of steps) {
+    const run = runs.at(-1);
+    if (run && folds(step) && folds(run[0]) && run[0].action === step.action && run[0].variant === step.variant) run.push(step);
+    else runs.push([step]);
+  }
+  return runs;
+}
+
 function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">; steps: StepItem[]; /** Loads the steps before these, when the reply ran more. */ earlier: (() => void) | "loading" | null }) {
   const t = useTranslations("assistant");
+  const format = useFormatter();
+  // A count as the search history writes one: compact past a thousand, so a broad query's 329.5M fits its line.
+  const counted = (count: number) => format.number(count, count >= 1000 ? { notation: "compact", maximumFractionDigits: 1 } : undefined);
   const reduceMotion = useReducedMotion();
   const undo = useMutation(api.assistant.undo.run);
   const toast = useAppToast();
   const stepTitle = useStepTitle();
-  const height = ORIGIN + steps.length * (CARD + GAP) - GAP;
-  const y = (i: number) => ORIGIN + i * (CARD + GAP) + CARD / 2;
+  // The folded runs the person opened, each by a step of it: by its first when it was opened, which stays in the run when earlier steps load in front of it.
+  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
+  const isOpen = (run: StepItem[]) => run.length > 1 && run.some((one) => opened.has(one.id));
+  const runs = runsOf(steps);
+  const heights = runs.map((run) => CARD + (isOpen(run) ? run.length * LINE + LINES_END : 0));
+  const tops = heights.map((_, i) => heights.slice(0, i).reduce((top, above) => top + above + GAP, ORIGIN));
+  const height = runs.length ? tops.at(-1)! + heights.at(-1)! : 0;
+  const y = (i: number) => tops[i] + CARD / 2;
+  const curve = (i: number) => `M 12 22 C 12 ${22 + (y(i) - 22) * 0.75}, 16 ${y(i)}, ${GUTTER} ${y(i)}`;
+  // One pace for the map's frame, its cards and its curves, so a run that opens never runs over what's under it.
+  const slide = reduceMotion ? { duration: 0 } : { duration: 0.45, ease: EASE };
   return (
     <motion.div
       className="relative grid grid-cols-[36px_1fr]"
       initial={false}
       animate={{ height: Math.max(0, height) }}
-      transition={reduceMotion ? { duration: 0 } : { duration: 0.45, ease: EASE }}
+      transition={slide}
     >
       <span className="absolute left-0.5 top-0 flex size-5 items-center justify-center rounded-md bg-primary/10">
         <OrbitMark size={14} />
@@ -334,75 +401,113 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
         </button>
       ) : null}
       <svg className="overflow-visible" width={GUTTER} height={height} aria-hidden>
-        {steps.map((step, i) => (
+        {runs.map(([step], i) => (
           <motion.path
             key={step.id}
-            d={`M 12 22 C 12 ${22 + (y(i) - 22) * 0.75}, 16 ${y(i)}, ${GUTTER} ${y(i)}`}
             fill="none"
             stroke={KIND[viewOf(step.action, step.variant).kind].tint}
             strokeWidth={2}
             strokeLinecap="round"
-            initial={reduceMotion ? false : { pathLength: 0 }}
-            animate={{ pathLength: 1, opacity: step.undone || step.status === "failed" || step.status === "declined" ? 0.25 : 1 }}
-            transition={{ duration: 0.5, ease: EASE }}
+            initial={reduceMotion ? false : { pathLength: 0, d: curve(i) }}
+            animate={{ pathLength: 1, d: curve(i), opacity: step.undone || step.status === "failed" || step.status === "declined" ? 0.25 : 1 }}
+            transition={{ duration: 0.5, ease: EASE, d: slide }}
           />
         ))}
       </svg>
       <div className="relative">
         <AnimatePresence initial={false}>
-          {steps.map((step, i) => {
+          {runs.map((run, i) => {
+            // A folded run shows the step it's on, or the last it ran.
+            const step = run.find((one) => one.status === "running") ?? run.at(-1)!;
             const { kind, words } = viewOf(step.action, step.variant);
             const working = step.status === "running";
             const faded = step.undone || step.status === "failed" || step.status === "declined";
             const state = step.status === "asking" ? t("steps.waiting") : step.status === "allowed" ? t("steps.allowed") : step.status === "declined" ? t("steps.declined") : null;
             const title = stepTitle(words, step);
+            const folded = run.length > 1;
+            const open = isOpen(run);
+            const lines = run.map((one) => one.subject ?? t(`steps.${words}.where`));
             return (
               <motion.div
-                key={step.id}
+                key={run[0].id}
                 className="absolute inset-x-0"
-                style={{ top: ORIGIN + i * (CARD + GAP) }}
-                initial={{ opacity: 0, x: -8, scale: 0.97 }}
-                animate={{ opacity: faded ? 0.55 : 1, x: 0, scale: 1 }}
-                transition={{ duration: 0.4, ease: EASE, delay: reduceMotion ? 0 : 0.15 }}
+                initial={{ opacity: 0, x: -8, scale: 0.97, top: tops[i] }}
+                animate={{ opacity: faded ? 0.55 : 1, x: 0, scale: 1, top: tops[i] }}
+                transition={{ duration: 0.4, ease: EASE, delay: reduceMotion ? 0 : 0.15, top: slide }}
               >
-                <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 px-3" style={{ height: CARD }}>
-                  <KindTile kind={kind} working={working} />
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className={cn("truncate text-sm font-semibold", step.undone && "line-through decoration-muted-foreground/60")}>{working ? <WorkingText>{title}</WorkingText> : title}</p>
-                    <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-muted-foreground">
-                      {/* Why it failed. Under a bulk change that was undone, what couldn't be put back, if anything. */}
-                      {(step.status === "failed" && !step.undone) || (step.undone && step.error) ? (
-                        <span className="truncate">{step.error ?? t("steps.interrupted")}</span>
-                      ) : state ? (
-                        <>
-                          <Fact>{state}</Fact>
-                          {step.subject ? <span className="truncate">{step.subject}</span> : null}
-                        </>
-                      ) : (
-                        <>
-                          {/* A bulk change's title says how many it made. */}
-                          {step.batch === undefined && step.count !== undefined ? <Fact value={step.count}>{t("steps.found")}</Fact> : null}
-                          {step.subject ? <span className="truncate">{step.subject}</span> : null}
-                          {(step.batch !== undefined || step.count === undefined) && !step.subject ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
-                        </>
-                      )}
+                <motion.div className="overflow-hidden rounded-2xl border border-border/60 bg-muted/40" initial={false} animate={{ height: heights[i] }} transition={slide}>
+                  {/* The card's own row: as tall as a card inside its border. */}
+                  <div className="flex items-center gap-3 px-3" style={{ height: CARD - 2 }}>
+                    <KindTile kind={kind} working={working} />
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <p className={cn("truncate text-sm font-semibold", step.undone && "line-through decoration-muted-foreground/60")}>{working ? <WorkingText>{title}</WorkingText> : title}</p>
+                      <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-muted-foreground">
+                        {/* Why it failed. Under a bulk change that was undone, what couldn't be put back, if anything. */}
+                        {(step.status === "failed" && !step.undone) || (step.undone && step.error) ? (
+                          <span className="truncate">{step.error ?? t("steps.interrupted")}</span>
+                        ) : state ? (
+                          <>
+                            <Fact>{state}</Fact>
+                            {step.subject ? <Subject text={step.subject} step={step} /> : null}
+                          </>
+                        ) : folded ? (
+                          <>
+                            <Fact value={run.length}>{t("steps.times", { count: run.length })}</Fact>
+                            {step.subject ? <Subject text={step.subject} step={step} /> : <span className="truncate">{t(`steps.${words}.where`)}</span>}
+                          </>
+                        ) : (
+                          <>
+                            {/* A bulk change's title says how many it made. */}
+                            {step.batch === undefined && step.count !== undefined ? <Fact value={counted(step.count)}>{t("steps.found")}</Fact> : null}
+                            {step.subject ? <Subject text={step.subject} step={step} /> : null}
+                            {(step.batch !== undefined || step.count === undefined) && !step.subject ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
+                          </>
+                        )}
+                      </div>
                     </div>
+                    {/* A folded run opens into its steps. A bulk change that ended partway made some of its changes: those can still be undone. */}
+                    {folded ? (
+                      <TooltipHint label={t(open ? "steps.fold" : "steps.unfold")}>
+                        <button
+                          type="button"
+                          aria-label={t(open ? "steps.fold" : "steps.unfold")}
+                          aria-expanded={open}
+                          onClick={() => setOpened((all) => (open ? new Set([...all].filter((id) => !run.some((one) => one.id === id))) : new Set([...all, run[0].id])))}
+                          className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
+                        </button>
+                      </TooltipHint>
+                    ) : step.status === "failed" && !step.canUndo ? (
+                      <CircleAlert className="size-4 shrink-0 text-destructive" aria-label={t("steps.failed")} />
+                    ) : step.canUndo ? (
+                      <button
+                        type="button"
+                        onClick={() => undo({ threadId, stepId: step.id as Id<"assistantSteps"> }).catch((error) => toast.error(t("steps.undoFailed"), getErrorMessage(error, "")))}
+                        className="flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        <Undo2 className="size-3" /> {t("steps.undo")}
+                      </button>
+                    ) : step.status === "done" && !step.undone ? (
+                      <Check className="size-4 shrink-0 text-success" aria-label={t("steps.done")} />
+                    ) : null}
                   </div>
-                  {/* A bulk change that ended partway made some of its changes: those can still be undone. */}
-                  {step.status === "failed" && !step.canUndo ? (
-                    <CircleAlert className="size-4 shrink-0 text-destructive" aria-label={t("steps.failed")} />
-                  ) : step.canUndo ? (
-                    <button
-                      type="button"
-                      onClick={() => undo({ threadId, stepId: step.id as Id<"assistantSteps"> }).catch((error) => toast.error(t("steps.undoFailed"), getErrorMessage(error, "")))}
-                      className="flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      <Undo2 className="size-3" /> {t("steps.undo")}
-                    </button>
-                  ) : step.status === "done" && !step.undone ? (
-                    <Check className="size-4 shrink-0 text-success" aria-label={t("steps.done")} />
+                  {folded ? (
+                    // Each step of the run as a line, under the card's text: what it was about, and how many it found.
+                    <ol inert={!open} className="pl-[60px] pr-3 text-xs text-muted-foreground">
+                      {run.map((one, at) => (
+                        <li key={one.id} className="flex items-center gap-2" style={{ height: LINE }}>
+                          <Subject text={lines[at]} step={one} className="mr-auto min-w-0 truncate" />
+                          {one.count !== undefined ? (
+                            <span className="shrink-0 tabular-nums">
+                              <span className="font-semibold text-foreground/90">{counted(one.count)}</span> {t("steps.found")}
+                            </span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ol>
                   ) : null}
-                </div>
+                </motion.div>
               </motion.div>
             );
           })}
