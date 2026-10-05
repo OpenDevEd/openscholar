@@ -37,4 +37,14 @@ describe("<MessageResponse>", () => {
       "custom source",
     );
   });
+
+  it("shows a link that is still streaming in as its text, never as a blocked address", () => {
+    // Streamdown 2.5 gave the half-written link a placeholder address, stripped it, and then marked the link "[blocked]" until the rest arrived.
+    const { container } = render(
+      <MessageResponse isAnimating parseIncompleteMarkdown>
+        {"It is saved here: [Tutoring review](/results/becfa0"}
+      </MessageResponse>,
+    );
+    expect(container).toHaveTextContent(/^It is saved here: Tutoring review$/);
+  });
 });

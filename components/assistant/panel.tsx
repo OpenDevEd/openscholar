@@ -657,6 +657,9 @@ function Reply({ message, live, acting }: { message: Message; live: string; acti
   );
 }
 
+/** The address Streamdown gives a link whose own is still streaming in. */
+const UNFINISHED_LINK = "streamdown:incomplete-link";
+
 /**
  * A link in a reply. One to a page of the app, a saved search or a collection, opens it here,
  * in this tab, and the panel stays up with its chat. Any other address was written by the
@@ -665,6 +668,8 @@ function Reply({ message, live, acting }: { message: Message; live: string; acti
 function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) {
   const [asking, setAsking] = useState(false);
   const look = "wrap-anywhere font-medium text-primary underline";
+  // Its address hasn't arrived yet: it has its look already, so the text doesn't shift when it does, and nothing to open.
+  if (href === UNFINISHED_LINK) return <span className={look}>{children}</span>;
   if (href && inApp(href)) {
     return (
       <Link href={href} className={look}>
