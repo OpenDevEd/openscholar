@@ -1847,6 +1847,7 @@
     "phase": {
       "running": "En cours",
       "waiting": "En attente",
+      "reading": "Récupération des articles",
       "completed": "Terminé",
       "cancelled": "Annulé",
       "failed": "Échec",
@@ -1883,6 +1884,7 @@
     "progress": "Progression",
     "beingRead": "<n></n> en cours de lecture",
     "startsAfter": "Démarre après {name}",
+    "gettingPapers": "Récupération des articles depuis OpenAlex",
     "ofTotal": "{done, number} sur {total, number}",
     "yourSlots": "Vos emplacements d'articles",
     "slotsInUse": "{running} emplacements utilisés sur {limit}",

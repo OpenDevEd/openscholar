@@ -1847,6 +1847,7 @@
     "phase": {
       "running": "进行中",
       "waiting": "等待中",
+      "reading": "正在获取论文",
       "completed": "已完成",
       "cancelled": "已取消",
       "failed": "失败",
@@ -1883,6 +1884,7 @@
     "progress": "进度",
     "beingRead": "<n></n> 篇正在阅读",
     "startsAfter": "在 {name} 之后开始",
+    "gettingPapers": "正在从 OpenAlex 获取论文",
     "ofTotal": "{done, number} / {total, number}",
     "yourSlots": "你的论文名额",
     "slotsInUse": "已使用 {running} / {limit} 个名额",

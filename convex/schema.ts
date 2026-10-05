@@ -977,10 +977,16 @@ export default defineSchema({
     // The last paper of the whole request when one job can't hold it: the job for the next
     // papers starts when this one completes.
     through: v.optional(v.number()),
-    // Where a collection, the saved papers or a job's papers go on after this job's (./paperSets/held.ts).
+    // Where a collection, the saved papers or a job's papers go on after this job's (./paperSets/held.ts), or a search's cursor pages do (./paperSets/openalex.ts).
     resume: v.optional(v.string()),
     // The search as it was when the request began, which its later jobs read their papers from.
     snapshot: v.optional(searchSnapshotValidator),
+    // Made before its papers were read from its search (`screening/start:read`): it has none yet, and `totalPapers` is the most it may get.
+    reading: v.optional(v.literal(true)),
+    // Why it failed, when it couldn't get its papers, in words for the person.
+    failure: v.optional(v.string()),
+    // The name of the new collection its included papers go to, which is made once it has its papers.
+    newCollection: v.optional(v.string()),
     // Its included papers aren't saved anywhere.
     unsaved: v.optional(v.literal(true)),
     // Papers that end excluded or failed leave the collection it read (`set`).

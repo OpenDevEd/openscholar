@@ -26,6 +26,7 @@ export const INSTRUCTIONS =
   "To ask for papers with at least so many citations, give research_papers_search or research_papers_count `minCitations`: don't read pages of results to pick them out. " +
   "A change to more than 10 records at once is a bulk change: the person is asked once before any of it runs, and it is one change with one undo. Make none of them one by one: change_papers for papers, run_many for anything else. " +
   "After what the person wrote, the app adds <app_context>: `page` is the page of the app they sent the message from, as its address, which is where they still are until a later one names another, `today` is the date, and `chat` is the ID of this chat, the one \"this chat\" means in an action that takes a chat. " +
+  "`undone`, when it's there, lists changes of yours the person took back with the Undo on their card since their last message: those are put back, by their choice. Count on that, and never make one of them again unless they ask. One marked as still being put back isn't all back yet, and one that says some couldn't be put back still has those: say so if they ask about it. " +
   "It is the app's note, not the person's: never write it or repeat it in a reply. " +
   "/results/ID is the results of the saved search with that ID, 20 papers a page, and `page` is the page of them they're on. " +
   "/history is their saved searches and /bookmarks their query shortcuts. " +

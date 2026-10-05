@@ -61,6 +61,9 @@ const jobFacts = {
   // The most it may spend, on a job the assistant started with the person's say (#328), and whether it stopped there.
   spendCap: v.optional(v.number()),
   capped: v.optional(v.boolean()),
+  // Its papers are still being read from its search, and why it failed when they couldn't be.
+  reading: v.optional(v.boolean()),
+  failure: v.optional(v.string()),
 };
 
 async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
@@ -85,6 +88,8 @@ async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
     running: reading.length,
     ...(job.spendCap === undefined ? {} : { spendCap: job.spendCap }),
     ...(job.capped ? { capped: true } : {}),
+    ...(job.reading ? { reading: true } : {}),
+    ...(job.failure ? { failure: job.failure } : {}),
   };
 }
 
@@ -117,6 +122,16 @@ export const answeredCount = internalQuery({
     const search = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", searchId)).unique();
     const screening = search && (await screeningFor(ctx, search._id));
     return screening ? (await answeredFully(ctx, screening, questions, paperIds)).size : 0;
+  },
+});
+
+/** Whether a job is still waiting for its papers: not cancelled, failed or given them meanwhile. */
+export const awaitsPapers = internalQuery({
+  args: { jobId: v.id("screeningJobs") },
+  returns: v.boolean(),
+  handler: async (ctx, { jobId }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    return Boolean(job?.reading && job.status === "processing");
   },
 });
 
@@ -244,7 +259,8 @@ export const getScreeningJobAction = defineUserQuery({
 
     return {
       ...(await factsOf(ctx, job)),
-      ...(target ? { targetCollectionName: target.name } : {}),
+      // A job still to get its papers names the collection it will make.
+      ...(target ? { targetCollectionName: target.name } : job.newCollection ? { targetCollectionName: job.newCollection } : {}),
       unsaved: job.unsaved,
       prune: job.prune,
       ...(job.set ? { saved: kept?.saved ?? 0, removed: kept?.removed ?? 0 } : {}),
@@ -372,7 +388,7 @@ async function jobsOf(ctx: QueryCtx, userId: Id<"users">, args: { paginationOpts
           completedAt: job.completedAt,
           questions: job.questions,
           targetCollectionId: job.targetCollectionId,
-          targetCollectionName: targetCollection?.name,
+          targetCollectionName: targetCollection?.name ?? job.newCollection,
         };
       }),
     );
