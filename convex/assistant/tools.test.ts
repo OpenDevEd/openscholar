@@ -458,7 +458,7 @@ describe("the assistant's tools", () => {
     });
     const jobs = () => t.run(async (ctx) => (await ctx.db.query("screeningJobs").collect()).length);
     const limits = async () => {
-      const { recent: _recent, ...read } = await asAda.query(api.assistant.spending.get, { threadId });
+      const { recent: _recent, jobs: _jobs, ...read } = await asAda.query(api.assistant.spending.get, { threadId });
       return read;
     };
 
@@ -486,6 +486,8 @@ describe("the assistant's tools", () => {
     await say("Screen them again");
     expect(await jobs()).toBe(2);
     expect((await steps()).filter((step) => step.path === "screening/start:screen").map((step) => [step.status, step.credits])).toEqual([["done", 14], ["done", 14]]);
+    // The Spending sheet lists them under the settings that decide for them.
+    expect((await asAda.query(api.assistant.spending.get, { threadId })).jobs).toEqual([{ action: "screening/start:screen", credits: 14 }, { action: "screening/start:screen", credits: 14 }]);
 
     // One that holds more than she allowed asks, and a no starts nothing.
     await asAda.mutation(api.assistant.spending.setAllowance, { threadId, allowance: { cap: 10 } });
@@ -891,7 +893,7 @@ describe("the assistant's tools", () => {
     // A limit is a whole number of credits from 1.
     for (const limit of [0, 1.5, -3]) await expect(asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit })).rejects.toThrow(/whole number/);
     await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
-    expect(await asAda.query(api.assistant.spending.get, { threadId })).toEqual({ replyLimit: 1, allowance: null, recent: [] });
+    expect(await asAda.query(api.assistant.spending.get, { threadId })).toEqual({ replyLimit: 1, allowance: null, jobs: [], recent: [] });
     // It is hers alone: Ben, in the same chat, has none.
     expect((await asBen.query(api.assistant.spending.get, { threadId })).replyLimit).toBeNull();
 
@@ -1031,7 +1033,7 @@ describe("the assistant's tools", () => {
     const t = convexTest(schema);
     const { asAda, threadId } = await chatOf(t);
     const limitIn = async (chat: Id<"assistantThreads">) => {
-      const { recent: _recent, allowance: _allowance, ...limits } = await asAda.query(api.assistant.spending.get, { threadId: chat });
+      const { recent: _recent, allowance: _allowance, jobs: _jobs, ...limits } = await asAda.query(api.assistant.spending.get, { threadId: chat });
       return limits;
     };
     const started = () => asAda.mutation(api.assistant.threads.create, { title: "Another" });
