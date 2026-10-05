@@ -414,7 +414,8 @@ function Chat({
   const [picked, setPicked] = useState<PickedModel | null>(null);
   const draft = drafts.of(threadId);
   // A new chat's first message, shown from the moment it's sent until the server's copy of it loads.
-  const [first, setFirst] = useState<{ threadId: ThreadId | null; text: string } | null>(null);
+  // `title` is the one the chat is made with, which its header shows until the chat's record arrives.
+  const [first, setFirst] = useState<{ threadId: ThreadId | null; text: string; title: string } | null>(null);
   // The chat the open new chat became when its first message was sent. It's the thread already on screen, so the thread isn't built again for it.
   const [born, setBorn] = useState<ThreadId | null>(null);
   // The chat being made, so sending and sharing a chat that hasn't started both end up in the same one.
@@ -452,6 +453,9 @@ function Chat({
     making.current ??= create({ ...(title ? { title } : {}), ...(model ? { modelId: model._id, ...(model.effort ? { effort: model.effort } : {}) } : {}) })
       .then((id) => {
         drafts.adopt(id);
+        // The first message's bubble belongs to the chat before the panel shows it, so the bubble is never
+        // left out of a render, which would drop it for a frame and mount it again with its entrance.
+        setFirst((now) => (now && now.threadId === null ? { ...now, threadId: id } : now));
         setBorn(id);
         setThreadId(id);
         return id;
@@ -472,16 +476,16 @@ function Chat({
     // This send's own mark, so that finishing it doesn't clear a later one in another chat.
     let mine: Sending = { threadId: from };
     onSending(() => mine);
-    if (!from) setFirst({ threadId: null, text });
+    const title = titleFrom(typed);
+    if (!from) setFirst({ threadId: null, text, title });
     // The chat the message ends up in: a new chat has its ID once it's made.
     let into = from;
     const sent = (async () => {
-      const id = await started(titleFrom(typed));
+      const id = await started(title);
       into = id;
       const before = mine;
       mine = { threadId: id };
       onSending((now) => (now === before ? mine : now));
-      if (!from) setFirst({ threadId: id, text });
       // Where it's sent from goes with it, so "this" and "here" mean the page the person is on.
       await sendMessage({ threadId: id, text, view: window.location.pathname + window.location.search });
       return id;
@@ -535,7 +539,8 @@ function Chat({
 
   return (
     <>
-      <Header title={threadId ? (thread?.title ?? "") : t("newChat")} onHistory={onHistory} onShare={share} onSpending={spend} onRestart={restart} onFold={onFold} />
+      {/* A chat that has just been made is named by its first message until its record arrives, as the server names it, so "New chat" changes once. */}
+      <Header title={threadId ? (thread?.title ?? (threadId === born && first?.threadId === threadId ? first.title : "")) : t("newChat")} onHistory={onHistory} onShare={share} onSpending={spend} onRestart={restart} onFold={onFold} />
       <Thread
         // A different chat starts at its own newest message. A new chat that has just become a real one is the same thread.
         key={threadId === null || threadId === born ? NEW : threadId}
