@@ -6,6 +6,7 @@ import { internal } from "../_generated/api";
 import schema from "../schema";
 import { insertJob } from "./createJob.test-support";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
+import { setupScreeningWorkpool } from "./workpool.test-support";
 
 vi.mock("../../lib/ai/core/batch", () => ({
   processScreeningBatch: async ({ papers }: { papers: Array<{ id: string }> }) => ({
@@ -60,24 +61,40 @@ describe("charging a Screen all paper", () => {
     expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("creditsExhausted");
   });
 
-  it("stops a job at the most it may spend, when it has one, without asking the model again", async () => {
+  it("reads no more papers once a job has spent what it may, keeps the one already being read, and ends as stopped at its limit", async () => {
     fakeAutumn.reset();
     vi.stubGlobal("fetch", fakeAutumnFetch());
     const t = convexTest(schema);
+    setupScreeningWorkpool(t);
     const { userId, jobId, first, second } = await seed(t);
     // The assistant started it with the person's yes to 3 credits.
     await t.run(async (ctx) => ctx.db.patch("screeningJobs", jobId, { spendCap: 3 }));
     const counted = (credits: number) => t.run(async (ctx) => ctx.db.patch("screeningJobProgress", (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique())!._id, { credits }));
+    const complete = (resultId: typeof first, returnValue: Record<string, unknown>) =>
+      t.mutation(internal.screening.mutations.handleScreeningComplete, { workId: "work", context: { jobId, resultId }, result: { kind: "success", returnValue } });
 
-    // Under it, a paper runs and is charged as any other.
+    // Under it, a paper is read and charged as any other.
     await counted(2);
-    await t.action(internal.screening.workpoolActions.screenPaperAction, { jobId, resultId: first });
+    const read = await t.action(internal.screening.workpoolActions.screenPaperAction, { jobId, resultId: second });
+    expect(read).not.toHaveProperty("capped");
     expect(fakeAutumn.balance(userId)).toBe(99);
-    // Once its papers have cost that much, the next one isn't run, and the job says where it stopped.
+    // Once its counted papers have cost that much, the next to come up isn't read, and costs nothing.
     await counted(3);
     const calls = fakeAutumn.calls.length;
-    await t.action(internal.screening.workpoolActions.screenPaperAction, { jobId, resultId: second });
+    const notRead = await t.action(internal.screening.workpoolActions.screenPaperAction, { jobId, resultId: first });
+    expect(notRead).toMatchObject({ capped: true });
     expect(fakeAutumn.calls).toHaveLength(calls);
+    // The job runs on until the paper the model was already reading is done: that one is paid for, and its answers are kept.
+    expect(await t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ status: "processing", capped: true });
+    vi.useFakeTimers();
+    await complete(first, notRead);
+    await complete(second, read);
+    await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+    vi.useRealTimers();
+    const rows = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(5));
+    expect(Object.fromEntries(rows.map((row) => [row._id, row.status]))).toEqual({ [first]: "skipped", [second]: "completed" });
+    expect(rows.find((row) => row._id === second)).toMatchObject({ outcome: "included" });
+    // It ends as a job that stopped at its limit, with credits still to the person's name.
     expect(await t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ status: "creditsExhausted", capped: true });
   });
 

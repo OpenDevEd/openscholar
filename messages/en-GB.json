@@ -1842,7 +1842,8 @@
       "completed": "Done",
       "cancelled": "Cancelled",
       "failed": "Failed",
-      "creditsExhausted": "Out of credits"
+      "creditsExhausted": "Out of credits",
+      "capped": "Stopped at its limit"
     },
     "outcome": {
       "included": "Included",

@@ -184,7 +184,8 @@ export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">)
   if (!job || job.status !== "processing" || !progress) return;
   if (progress.completed + progress.skipped + progress.failed < job.totalPapers) return;
   const now = Date.now();
-  await ctx.db.patch("screeningJobs", jobId, { status: "completed", completedAt: now, updatedAt: now });
+  // One that stopped at the most it may spend has papers it never read: it ends as stopped, not as done.
+  await ctx.db.patch("screeningJobs", jobId, { status: job.capped ? "creditsExhausted" : "completed", completedAt: now, updatedAt: now });
   // A request bigger than one job: the job for its next papers starts now.
   if (job.last !== undefined && job.through !== undefined && job.last < job.through) {
     await ctx.scheduler.runAfter(0, internal.screening.start.next, { jobId, first: job.last + 1 });

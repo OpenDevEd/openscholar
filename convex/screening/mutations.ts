@@ -270,12 +270,13 @@ const END_BATCH = 100;
 /**
  * Ends a job's remaining papers once it was cancelled or ran out of credits, a batch at a
  * time: those still waiting for a slot are skipped, and those started have their queued
- * work cancelled.
+ * work cancelled. With `waitingOnly`, for a job that reached the most it may spend, the
+ * started ones are left to finish.
  */
 export const endScreeningWork = internalMutation({
-  args: { jobId: v.id("screeningJobs"), cursor: v.union(v.string(), v.null()) },
+  args: { jobId: v.id("screeningJobs"), cursor: v.union(v.string(), v.null()), waitingOnly: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { jobId, cursor }) => {
+  handler: async (ctx, { jobId, cursor, waitingOnly }) => {
     const page = await ctx.db
       .query("screeningResults")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
@@ -288,11 +289,13 @@ export const endScreeningWork = internalMutation({
       skipped++;
     }
     if (skipped) await bookkeepLater(ctx);
-    for (const workId of getCancelableScreeningWorkIds(page.page)) {
-      await screeningPool.cancel(ctx, workId);
+    if (!waitingOnly) {
+      for (const workId of getCancelableScreeningWorkIds(page.page)) {
+        await screeningPool.cancel(ctx, workId);
+      }
     }
     if (!page.isDone) {
-      await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId, cursor: page.continueCursor });
+      await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId, cursor: page.continueCursor, ...(waitingOnly ? { waitingOnly } : {}) });
     }
     return null;
   },
@@ -303,13 +306,30 @@ export const endScreeningWork = internalMutation({
 // ═══════════════════════════════════════════════════════════════
 
 /**
+ * A job has spent what it may (#328): no more of its papers start. Unlike a job that is
+ * cancelled or out of credits, it goes on running until the papers the model is already
+ * reading are done, since they are paid for and their answers are kept. It then ends as
+ * one that stopped at its limit (./bookkeeping.ts). No-op when it's capped already, or ended.
+ */
+export const capScreeningJob = internalMutation({
+  args: { jobId: v.id("screeningJobs") },
+  returns: v.null(),
+  handler: async (ctx, { jobId }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    if (!job || job.capped || job.status !== "processing") return null;
+    await ctx.db.patch("screeningJobs", jobId, { capped: true, updatedAt: Date.now() });
+    await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId, cursor: null, waitingOnly: true });
+    return null;
+  },
+});
+
+/**
  * Marks a screening job as credits exhausted from background context.
  *
  * No-op when the job is already terminal or missing.
  */
 export const markScreeningJobCreditsExhausted = internalMutation({
-  // `capped`: it stopped at the most it may spend, not because the credits ran out.
-  args: { jobId: v.id("screeningJobs"), capped: v.optional(v.boolean()) },
+  args: { jobId: v.id("screeningJobs") },
   returns: v.null(),
   handler: async (ctx, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
@@ -319,7 +339,6 @@ export const markScreeningJobCreditsExhausted = internalMutation({
 
     await ctx.db.patch("screeningJobs", args.jobId, {
       status: "creditsExhausted",
-      ...(args.capped ? { capped: true as const } : {}),
       updatedAt: Date.now(),
     });
     await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId: args.jobId, cursor: null });
@@ -378,7 +397,9 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
 
     let transition;
     let pending: { answers: Record<string, boolean | null>; confidences: Record<string, number> } | null = null;
-    if (result.kind === "success" && job.status === "processing") {
+    // A paper that came up after its job had spent what it may wasn't read (./workpoolActions.ts): it is skipped, as one cancelled is.
+    const notRead = result.kind === "success" && (result.returnValue as { capped?: boolean }).capped === true;
+    if (result.kind === "success" && job.status === "processing" && !notRead) {
       const data = result.returnValue as {
         model?: string;
         responses: Record<string, boolean | null>;
@@ -419,7 +440,7 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
       transition = deriveCompletionTransition({
         currentRowStatus: screeningResult.status,
         jobStatus: job.status,
-        resultKind: result.kind === "success" ? "success" : result.kind === "canceled" ? "canceled" : "failure",
+        resultKind: notRead ? "canceled" : result.kind === "success" ? "success" : result.kind === "canceled" ? "canceled" : "failure",
       });
     }
     // A paper the model answered after its job ended still cost what it cost.
