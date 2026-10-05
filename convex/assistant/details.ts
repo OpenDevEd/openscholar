@@ -2,9 +2,9 @@
  * What a call the assistant asks about would do, for the person asked: its arguments, one
  * by one, so they allow the exact change and not just a kind of action. A record an argument
  * names by ID is shown by its name, but only where that person can already see it: a chat
- * they can open, a collection, a saved or removed paper of theirs, an organization they're
- * in, someone in one of their organizations. Any other ID stays an ID, so asking never
- * reveals a name.
+ * they can open, a collection, a saved or removed paper of theirs, a screening or an
+ * extraction of theirs, an organization they're in, someone in one of their organizations.
+ * Any other ID stays an ID, so asking never reveals a name.
  */
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
@@ -66,6 +66,16 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
       const removal = await ctx.db.get("libraryRemovals", removalId);
       return removal?.userId === reader._id ? removal.item.title : null;
     }
+    const screeningId = ctx.db.normalizeId("screeningJobs", id);
+    if (screeningId) {
+      const job = await ctx.db.get("screeningJobs", screeningId);
+      return job?.userId === reader._id ? job.label || null : null;
+    }
+    const extractionId = ctx.db.normalizeId("extractionJobs", id);
+    if (extractionId) {
+      const job = await ctx.db.get("extractionJobs", extractionId);
+      return job?.userId === reader._id ? job.name || null : null;
+    }
     const organizationId = ctx.db.normalizeId("organizations", id);
     if (organizationId) return mine.find(({ organization }) => organization._id === organizationId)?.organization.name ?? null;
     const userId = ctx.db.normalizeId("users", id);
@@ -81,17 +91,20 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
   };
   // The call's own arguments come before the fields inside them, so what it acts on and what
   // it changes are shown even when a paper it carries has more fields than fit.
-  const leaves = plain(args).sort(([a], [b]) => a.length - b.length);
-  const details: Array<{ name: string; value: string; record: boolean }> = [];
+  // `expect` is what an undo passes so that it leaves alone a record changed since: it says what the record is now, not what the call does.
+  const leaves = plain(args).filter(([path]) => path[0] !== "expect").sort(([a], [b]) => a.length - b.length);
+  const details: Array<{ name: string; value: string; record: boolean; within: string; key: string }> = [];
   for (const [path, value] of leaves.slice(0, ASKED_DETAILS_MAX)) {
     // A name that can't be read, such as someone in more organizations than are read at once, stays an ID.
     const record = typeof value === "string" ? await named(value).catch(() => null) : null;
     const shown = record ?? String(value);
-    details.push({ name: nameOf(path), value: shown.length > VALUE_MAX ? `${shown.slice(0, VALUE_MAX)}…` : shown, record: record !== null });
+    details.push({ name: nameOf(path), value: shown.length > VALUE_MAX ? `${shown.slice(0, VALUE_MAX)}…` : shown, record: record !== null, within: path.slice(0, -1).join("."), key: path.at(-1) ?? "" });
   }
+  // Which kind of thing an ID beside it names ("user", "organization") is said by the record's own line.
+  const told = new Set(details.flatMap((detail) => (detail.record ? [detail.within] : [])));
   // A call can name a record by its ID and again by the name it expects it to have, so that it
   // fails on one renamed since. The record's own name says both, so the typed one isn't
   // repeated. Two records with one name, a chat and the organization it's shared with, are both said.
   const records = new Set(details.flatMap((detail) => (detail.record ? [detail.value] : [])));
-  return details.flatMap(({ record, ...detail }) => (record || !records.has(detail.value) ? [detail] : []));
+  return details.flatMap(({ record, within, key, ...detail }) => ((record || !records.has(detail.value)) && !(key === "kind" && told.has(within)) ? [detail] : []));
 }

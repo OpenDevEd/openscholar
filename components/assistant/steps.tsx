@@ -146,7 +146,8 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
             {(step.details ?? []).map((detail, i) => (
               <li key={i} className="flex gap-2">
                 <span className="shrink-0 text-foreground/50">{(NAMED as readonly string[]).includes(detail.name) ? t(`asks.names.${detail.name as (typeof NAMED)[number]}`) : detail.name}</span>
-                <span className="min-w-0 break-words">{detail.value}</span>
+                {/* What someone may do in a shared chat, in the Share sheet's own words. */}
+                <span className="min-w-0 break-words">{detail.name === "role" && (detail.value === "read" || detail.value === "write") ? t(detail.value === "read" ? "canView" : "canChat") : detail.value}</span>
               </li>
             ))}
           </ul>
