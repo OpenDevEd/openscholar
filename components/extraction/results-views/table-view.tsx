@@ -140,11 +140,12 @@ export const TableView = memo(function TableView({
   const someSelected = papers.some(p => selectedIds.has(p._id)) && !allSelected;
 
   const toggleSelectAll = () => {
-    if (allSelected) {
-      onSelectionChange(new Set());
-    } else {
-      onSelectionChange(new Set(papers.map(p => p._id)));
+    const next = new Set(selectedIds);
+    for (const paper of papers) {
+      if (allSelected) next.delete(paper._id);
+      else next.add(paper._id);
     }
+    onSelectionChange(next);
   };
 
   const toggleSelect = (id: string) => {

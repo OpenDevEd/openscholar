@@ -12,6 +12,7 @@ import { internalAction, internalMutation, internalQuery, type ActionCtx } from 
 import { countSearch, PAGE_ORDERED_SORT, readSearchPage } from "../paperSets/openalex";
 import { ASSISTANT_FIELDS, keptByRating, requestOf, savedSearchValidator, spender, toPaper, type SavedSearchRequest, type SearchPaper, type Work } from "../paperSets/search";
 import { COUNTRY_HIERARCHY, getCountryCodesForRegions, MIN_YEAR } from "../../lib/constants";
+import { withoutQuotedQuestionMarks } from "../../lib/search/wildcard";
 import { authorFilterValue } from "../../lib/openalex/author-filter";
 import { INSTITUTION_TYPES, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { currentSearch, type SavedSearch, type UndoCommand } from "../../lib/research/records";
@@ -423,7 +424,8 @@ export const deleteSearchForAssistant = assistantMutation(deleteAction);
 export const requestFor = internalQuery({
   args: { userId: v.id("users"), query: v.optional(v.string()), settings: v.object(searchSettings) },
   returns: savedSearchValidator,
-  handler: async (ctx, { userId, query, settings }) => requestOf(ctx, userId, newSearch("unsaved", query, settings), 0),
+  // A title looked up in quotes often ends in a question mark, which OpenAlex refuses there: it's read without.
+  handler: async (ctx, { userId, query, settings }) => requestOf(ctx, userId, newSearch("unsaved", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings), 0),
 });
 
 /** A paper as a page of results gives it. */

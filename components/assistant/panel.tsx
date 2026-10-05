@@ -5,7 +5,7 @@
 // This is the chat itself. The run map, the cards, the sheets, the @ picker and the
 // spending controls arrive with the issues that build what they show.
 
-import { Component, useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Component, useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
 import { insertAtTop, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -39,6 +39,7 @@ import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { OrbitMark, type OrbitClock } from "./orbit-mark";
 import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
+import { panelPlace } from "@/lib/assistant/place";
 import { Steps, type StepItem } from "./steps";
 import { IconButton, WorkingText } from "./parts";
 import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, stackedUnder, type OpenSheet } from "./sheets";
@@ -71,14 +72,15 @@ const LOOP_MS = 2_000;
 /** What is typed and not yet sent, a draft per chat, so one chat's never lands in another. */
 type Drafts = { of: (id: ThreadId | null) => string; set: (id: ThreadId | null, text: string | ((now: string) => string)) => void; adopt: (id: ThreadId) => void };
 
+const setOpen = (update: (open: boolean) => boolean) => panelPlace.set((now) => ({ ...now, open: update(now.open) }));
+const setThreadId = (threadId: ThreadId | null) => panelPlace.set((now) => ({ ...now, threadId }));
+
 export function AssistantPanel() {
   const enabled = useFeatureFlag("assistant.enabled");
   // Signed in, and the account's own record made: the chat's reads fail before it is, and a failed read loses a linked chat.
   const { canRunProtectedQueries } = useAuthReadiness();
-  // A link to a chat (`?chat=`) opens the panel on it. Nothing renders before the session is known, so the server never reads this.
-  const [linked] = useState(() => (typeof window === "undefined" ? null : (new URLSearchParams(window.location.search).get("chat") as ThreadId | null)));
-  const [open, setOpen] = useState(linked !== null);
-  const [threadId, setThreadId] = useState<ThreadId | null>(linked);
+  // Open or folded, and on which chat: kept by the tab, so a reload comes back to the conversation, and a link to a chat (`?chat=`) opens the panel on it.
+  const place = useSyncExternalStore(panelPlace.subscribe, panelPlace.get, panelPlace.onServer);
   // Kept here, above the panel, so folding it away keeps what was typed.
   const [typed, setTyped] = useState<Record<string, string>>({});
   if (!enabled || !canRunProtectedQueries) return null;
@@ -90,7 +92,7 @@ export function AssistantPanel() {
   };
   return (
     <Lost onLost={() => setThreadId(null)}>
-      <Overlay open={open} setOpen={setOpen} threadId={threadId} setThreadId={setThreadId} drafts={drafts} />
+      <Overlay open={place.open} setOpen={setOpen} threadId={place.threadId as ThreadId | null} setThreadId={setThreadId} drafts={drafts} />
     </Lost>
   );
 }
