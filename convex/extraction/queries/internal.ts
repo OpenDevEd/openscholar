@@ -18,8 +18,7 @@ import { userValidator } from "../../lib/validators";
 import { getProcessableFlags } from "../content";
 import { readJobSources } from "../jobSources";
 import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../../lib/queryBounds";
-import { EXTRACTION_PAPER_CONCURRENCY, PAPER_LIMIT } from "@/lib/extraction/limits";
-import { creditsAgg } from "../aggregates";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import {
   errorCodeValidator,
   extractionEvidenceUnitValidator,
@@ -38,26 +37,6 @@ export const getJobInternal = internalQuery({
   returns: v.union(v.null(), extractionJobValidator),
   handler: async (ctx, args) => {
     return await ctx.db.get("extractionJobs", args.jobId);
-  },
-});
-
-/**
- * What a job approved up to a figure checks before it reads another paper (../paperWorker.ts):
- * whether its hold still stands, what it has spent as the ledger has counted it, and how many
- * of its papers are being read now. A hold settled since (the job ended or stopped, and was
- * carried on) no longer takes charges: the job's papers then hold their own.
- */
-export const spendOf = internalQuery({
-  args: { jobId: v.id("extractionJobs"), hold: v.string() },
-  returns: v.object({ held: v.boolean(), spent: v.number(), running: v.number() }),
-  handler: async (ctx, { jobId, hold }) => {
-    const standing = await ctx.db.query("billingHolds").withIndex("by_charge", (q) => q.eq("chargeId", hold)).unique();
-    return {
-      held: standing !== null && !standing.settling,
-      spent: await creditsAgg.sum(ctx, { namespace: jobId }),
-      // A job reads at most this many at once.
-      running: (await ctx.db.query("extractionPaperQueue").withIndex("by_job_and_status", (q) => q.eq("jobId", jobId).eq("status", "running")).take(EXTRACTION_PAPER_CONCURRENCY)).length,
-    };
   },
 });
 

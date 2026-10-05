@@ -3,7 +3,7 @@
 import { convexTest } from "convex-test";
 import type { FunctionArgs } from "convex/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { MODEL_READS } from "../assistant/steps";
 import schema from "../schema";
 
@@ -223,7 +223,7 @@ describe("the assistant's search tools", () => {
   });
 
   it("set the page's own filters: what a paper is about, where its authors work, its type, language and goals, and exact days", async () => {
-    const { alice, make, edit, update, restore, results, search } = await setup();
+    const { t, alice, make, edit, update, restore, results, search } = await setup();
     const { id } = await make({ query: "tutoring", about: ["Africa"], authorsIn: ["ke", "Western Africa"], types: ["article"], languages: ["en", "fr"], institutionTypes: ["education"], sdgs: [4], fromDate: "2025-10-04" });
     // They're kept as the page keeps them, so the page shows them as its own.
     expect(await search(id)).toMatchObject({
@@ -260,6 +260,9 @@ describe("the assistant's search tools", () => {
     // rated papers alone, without being told to: the page reads the range only then.
     const changed = await edit({ id, about: null, sdgs: null, minRating: 4 });
     expect(await search(id)).toMatchObject({ selectedCountryFocus: [], sdgs: [], ratingRange: [4, 5], onlyRatedPapers: true });
+    // An extraction reads a search from OpenAlex, which doesn't know the person's ratings: a search kept by them isn't a source it takes.
+    const aliceId = await t.run(async (ctx) => (await ctx.db.query("users").collect()).find((user) => user.clerkId === "alice")!._id);
+    await expect(t.query(internal.extraction.start.searchSource, { userId: aliceId, searchId: id })).rejects.toThrow(/ratings/);
     await alice.mutation(restore, changed.undo!.args);
     expect(await search(id)).toMatchObject({ selectedCountryFocus: ["africa"], sdgs: ["4"] });
     expect((await search(id))!.onlyRatedPapers).toBeUndefined();

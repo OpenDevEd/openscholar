@@ -10,6 +10,7 @@ import type { Id } from "../_generated/dataModel";
 import { internalMutation, internalQuery, type ActionCtx, type QueryCtx } from "../lib/functions";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { createError } from "../lib/errors";
+import { getFlag } from "../featureFlags/guard";
 import { holdSpend, releaseCredits } from "../billing/charge";
 import { heldPapers } from "../paperSets/held";
 import { filtersOf } from "../paperSets/search";
@@ -17,6 +18,7 @@ import { screeningRevision } from "../screening/accounting";
 import { papersIn } from "../screening/estimate";
 import { paperSetValidator } from "../screening/validators";
 import { currentSearch } from "../../lib/research/records";
+import { isRatingFilterActive } from "../../lib/utils";
 import { buildDedupeKey } from "../../lib/bucket/dedupe";
 import { estimatePaperCredits } from "../../lib/extraction/cost-estimate";
 import { PAPER_LIMIT } from "../../lib/extraction/limits";
@@ -36,6 +38,11 @@ const ITEMS_A_READ = 200;
 
 const invalid = (message: string) => createError("VALIDATION_ERROR", message);
 
+/** Full texts are read only where they're turned on: a job asked for them otherwise would be approved at their price and read abstracts. */
+async function checkPdfs(ctx: QueryCtx, usePdfs: boolean | undefined) {
+  if (usePdfs && (await getFlag(ctx, "extraction.pdf"))?.enabled === false) throw invalid("Full texts are turned off here. Start it without `usePdfs`, from abstracts.");
+}
+
 /** How many papers a request is for. A screening is all its included papers; a search is read from its first paper. */
 async function papersOf(ctx: QueryCtx, userId: Id<"users">, { set, first, last }: { set: PaperSet; first: number; last: number }) {
   const held = await papersIn(ctx, userId, set);
@@ -48,6 +55,7 @@ async function papersOf(ctx: QueryCtx, userId: Id<"users">, { set, first, last }
  * holds its own in a job started from the page (../../lib/extraction/cost-estimate.ts).
  */
 async function extractionHold(ctx: QueryCtx, userId: Id<"users">, { questions, usePdfs, ...range }: { set: PaperSet; first: number; last: number; questions: unknown[]; usePdfs?: boolean }) {
+  await checkPdfs(ctx, usePdfs);
   return (await papersOf(ctx, userId, range)) * estimatePaperCredits({ questionCount: questions.length, pdf: usePdfs === true });
 }
 
@@ -58,8 +66,10 @@ export const searchSource = internalQuery({
   handler: async (ctx, { userId, searchId }) => {
     const row = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", searchId)).unique();
     if (!row) throw createError("NOT_FOUND", "Search not found");
-    const { filters } = await filtersOf(ctx, userId, currentSearch(row.data));
+    const { params, filters } = await filtersOf(ctx, userId, currentSearch(row.data));
     if (!filters) throw invalid("This search's query isn't one OpenAlex can read. Check its brackets and quotes.");
+    // Which papers a person rated is theirs, not OpenAlex's: the job reads the search from OpenAlex, and would read the papers the filter leaves out.
+    if (isRatingFilterActive([params.rmin, params.rmax], params.rated)) throw invalid("This search keeps papers by the person's ratings, which an extraction can't read from the search. Put its papers in a collection first, then extract from the collection.");
     return filters;
   },
 });
@@ -121,7 +131,10 @@ async function sourcesOf(ctx: ActionCtx, userId: Id<"users">, { set, first, last
 export const begin = internalMutation({
   args: { userId: v.id("users"), name: v.string(), bucketItems: v.array(bucketItemInputValidator), questions: v.array(questionInputValidator), usePdfs: v.boolean(), spend: v.optional(v.object({ hold: v.string(), cap: v.number() })) },
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  handler: (ctx, { userId, spend, ...args }) => startJobFor(ctx, userId, { ...args, mode: "extraction" }, spend),
+  handler: async (ctx, { userId, spend, ...args }) => {
+    await checkPdfs(ctx, args.usePdfs);
+    return await startJobFor(ctx, userId, { ...args, mode: "extraction" }, spend);
+  },
 });
 
 /**

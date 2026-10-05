@@ -359,22 +359,33 @@ describe("an approved job's hold", () => {
   });
 
   const calls = (path: string) => fakeAutumn.calls.filter((call) => call.path === path);
-  const item = (userId: Id<"users">, n: number, credits: number) => ({ userId, chargeId: `paper:${n}`, credits, kind: "extraction" as const, description: "Extraction", under: "job:1", createdAt: Date.now() });
-  const settle = (t: ReturnType<typeof convexTest>) => t.action(internal.billing.charge.settleSpent, { chargeId: "job:1", attempt: 0 });
+  const usage = { kind: "extraction" as const, description: "Extraction" };
+  const admit = (t: ReturnType<typeof convexTest>, estimate: number, cap = 200) => t.mutation(internal.billing.charge.admitUnder, { under: "job:1", estimate, cap });
+  const record = (t: ReturnType<typeof convexTest>, userId: Id<"users">, n: number, credits: number, estimate: number) =>
+    t.mutation(internal.billing.charge.recordUnder, { userId, chargeId: `paper:${n}`, credits, ...usage, under: "job:1", estimate, createdAt: Date.now() });
+  const settle = (t: ReturnType<typeof convexTest>, attempt = 0) => t.action(internal.billing.charge.settleSpent, { chargeId: "job:1", attempt });
+  const spent = (t: ReturnType<typeof convexTest>) => t.run(async (ctx) => (await ctx.db.query("billingUsage").collect()).map((row) => row.credits));
 
-  it("charges nothing for its items, then confirms once with their sum, and an item after that pays its own way", async () => {
+  it("admits items while they fit under the figure, charges nothing for them, and confirms once with their sum", async () => {
     vi.stubGlobal("fetch", fakeAutumnFetch());
     const t = convexTest(schema);
     const { userId } = await seedChat(t, 1_000);
     await hold(t, userId, "job:1", 200, true);
 
-    // Each item is on the ledger, and Autumn hears of none of them.
-    expect(await Promise.all([40, 50, 30].map((credits, n) => t.mutation(internal.billing.charge.recordUnder, item(userId, n, credits))))).toEqual([true, true, true]);
+    // Three items that may cost 50 each fit under 200. A fourth that may cost 60 doesn't, while they are all still running.
+    expect([await admit(t, 50), await admit(t, 50), await admit(t, 50), await admit(t, 60)]).toEqual(["admitted", "admitted", "admitted", "full"]);
+    // Each is on the ledger as it ends, and Autumn hears of none of them.
+    expect([await record(t, userId, 0, 40, 50), await record(t, userId, 1, 50, 50), await record(t, userId, 2, 30, 50)]).toEqual(["recorded", "recorded", "recorded"]);
     // One recorded twice, as a retried action would, is one charge.
-    await t.mutation(internal.billing.charge.recordUnder, item(userId, 0, 40));
+    await record(t, userId, 0, 40, 50);
+    expect(await spent(t)).toEqual([40, 50, 30]);
     expect(calls("balances.track")).toHaveLength(0);
     expect(calls("balances.finalize")).toHaveLength(0);
-    expect((await t.run((ctx) => ctx.db.query("billingUsage").collect())).map((row) => row.credits)).toEqual([40, 50, 30]);
+    // They cost 120, less than they might have: there is room for the fourth now. It ends having cost nothing, and gives its room back.
+    expect(await admit(t, 60)).toBe("admitted");
+    expect(await record(t, userId, 3, 0, 60)).toBe("recorded");
+    expect(await admit(t, 80)).toBe("admitted");
+    expect(await spent(t)).toEqual([40, 50, 30]);
 
     await settle(t);
     expect(calls("balances.finalize").map((call) => call.body)).toEqual([{ lock_id: "job:1", action: "confirm", override_value: 120 }]);
@@ -382,9 +393,8 @@ describe("an approved job's hold", () => {
     expect(fakeAutumn.locks.size).toBe(0);
     expect(await t.run((ctx) => ctx.db.query("billingHolds").collect())).toEqual([]);
 
-    // The hold is settled: a paper that finishes late isn't recorded under it, so its caller charges it by itself.
-    expect(await t.mutation(internal.billing.charge.recordUnder, item(userId, 3, 25))).toBe(false);
-    // Settling again finds nothing to do.
+    // The hold is settled: nothing more is admitted or recorded under it, and settling again finds nothing to do.
+    expect([await admit(t, 10), await record(t, userId, 4, 25, 80)]).toEqual(["gone", "gone"]);
     await settle(t);
     expect(calls("balances.finalize")).toHaveLength(1);
     expect(fakeAutumn.balance(userId)).toBe(880);
@@ -402,23 +412,39 @@ describe("an approved job's hold", () => {
 
     // A job that never ends: its hold isn't released with its items uncharged.
     await hold(t, userId, "job:1", 200, true);
-    await t.mutation(internal.billing.charge.recordUnder, item(userId, 0, 70));
+    await admit(t, 100);
+    await record(t, userId, 0, 70, 100);
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(fakeAutumn.balance(userId)).toBe(930);
     expect(fakeAutumn.locks.size).toBe(0);
   });
 
-  it("stops taking items the moment its settling begins, so the sum it confirms is final", async () => {
+  it("is settled by one run at a time, and an item that ends meanwhile is charged by itself once the hold is settled", async () => {
     vi.stubGlobal("fetch", fakeAutumnFetch());
     const t = convexTest(schema);
-    const { userId } = await seedChat(t, 1_000);
+    const { userId } = await seedChat(t, 200);
+    // The whole balance is held: until the hold is confirmed, nothing else can be charged from it.
     await hold(t, userId, "job:1", 200, true);
-    await t.mutation(internal.billing.charge.recordUnder, item(userId, 0, 60));
-    // The settle began and its action went no further yet.
-    await t.mutation(internal.billing.charge.beginSpent, { chargeId: "job:1" });
-    expect(await t.mutation(internal.billing.charge.recordUnder, item(userId, 1, 90))).toBe(false);
-    await settle(t);
-    expect(fakeAutumn.balance(userId)).toBe(940);
+    await admit(t, 100);
+    await admit(t, 100);
+    await record(t, userId, 0, 60, 100);
+
+    // The job ended twice over (cancelled, then deleted): the first call settles, the second does nothing.
+    expect(await t.mutation(internal.billing.charge.beginSpent, { chargeId: "job:1", attempt: 0 })).toMatchObject({ spent: 60 });
+    expect(await t.mutation(internal.billing.charge.beginSpent, { chargeId: "job:1", attempt: 0 })).toBeNull();
+
+    // The second paper ends while the hold is being confirmed. It isn't charged from a balance the hold still has.
+    expect(await record(t, userId, 1, 90, 100)).toBe("settling");
+    const late = { userId, chargeId: "paper:1", credits: 90, usage, under: "job:1" };
+    await t.action(internal.billing.charge.settleLate, { ...late, attempt: 1 });
+    expect(calls("balances.track")).toHaveLength(0);
+
+    // The settling run carries on and confirms what was spent under the hold, which gives the rest back.
+    await settle(t, 1);
+    expect(fakeAutumn.balance(userId)).toBe(140);
+    await t.action(internal.billing.charge.settleLate, { ...late, attempt: 2 });
+    expect(fakeAutumn.balance(userId)).toBe(50);
+    expect(await spent(t)).toEqual([60, 90]);
   });
 });
 

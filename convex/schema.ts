@@ -550,8 +550,7 @@ export default defineSchema({
     // `by_job` stays for the chat's tests, which go with chat mode (#325); the charge list reads `by_job_and_createdAt`.
     .index("by_job", ["jobId"])
     .index("by_job_and_createdAt", ["jobId", "createdAt"])
-    .index("by_stripe_charge", ["stripeChargeId"])
-    .index("by_under", ["under"]),
+    .index("by_stripe_charge", ["stripeChargeId"]),
   billingHolds: defineTable({
     userId: v.id("users"),
     chargeId: v.string(),
@@ -559,7 +558,10 @@ export default defineSchema({
     release: v.id("_scheduled_functions"),
     // An approved job's hold (convex/billing/charge.ts `holdSpend`): its items are recorded under it and charge nothing by themselves.
     spend: v.optional(v.literal(true)),
-    // Set once such a hold is being confirmed with what was spent under it: nothing more is recorded under it.
+    // On such a hold: what its items have cost, and what those admitted and still running may cost. Kept here, in the transaction that admits or records an item, so the job's figure is checked against the items themselves.
+    spent: v.optional(v.number()),
+    committed: v.optional(v.number()),
+    // Set once such a hold is being confirmed with what was spent under it: nothing more is admitted or recorded under it.
     settling: v.optional(v.literal(true)),
     // Set before a settle confirms the hold as it stands and charges the rest
     // separately, so a retry finishes that path instead of confirming again.

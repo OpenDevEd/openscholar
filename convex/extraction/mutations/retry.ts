@@ -208,6 +208,9 @@ export const retryFailedQuestions = mutation({
       completedAt: undefined,
       pausedAt: undefined,
       pausedFromStatus: undefined,
+      // The job had ended, so the hold it was approved under was settled: what's run again holds its own.
+      spendHold: undefined,
+      spendCap: undefined,
       updatedAt: Date.now(),
     });
     await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch });

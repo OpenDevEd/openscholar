@@ -303,17 +303,22 @@ describe("extraction full flow with mocked provider I/O", () => {
     });
     const calls = (path: string) => fakeAutumn.calls.filter((call) => call.path === path);
 
-    // As the assistant runs it once the person has said yes to "up to 20 credits": two papers, two questions, five a question at most.
-    const { jobId } = await t.action(internal.extraction.start.extractForAssistant, {
+    const asked = {
       userId,
       approved: true,
-      approvedCredits: 20,
       name: "Trials, from a chat",
-      set: { kind: "collection", collectionId },
+      set: { kind: "collection" as const, collectionId },
       first: 1,
       last: 2,
-      questions: [{ question: "What was the main finding?", type: "string" }, { question: "What sample size was reported?", type: "string" }],
-    });
+      questions: [{ question: "What was the main finding?", type: "string" as const }, { question: "What sample size was reported?", type: "string" as const }],
+    };
+    // Full texts are turned off here: asked for, the job isn't started at their price to read abstracts, and nothing is left held.
+    await expect(t.action(internal.extraction.start.extractForAssistant, { ...asked, approvedCredits: 204, usePdfs: true })).rejects.toThrow(/turned off/);
+    expect(fakeAutumn.locks.size).toBe(0);
+    fakeAutumn.calls.length = 0;
+
+    // As the assistant runs it once the person has said yes to "up to 20 credits": two papers, two questions, five a question at most.
+    const { jobId } = await t.action(internal.extraction.start.extractForAssistant, { ...asked, approvedCredits: 20 });
     // The figure is held, and nothing else: the job's papers hold nothing of their own.
     expect(calls("balances.check").map((call) => (call.body as { required_balance: number }).required_balance)).toEqual([20]);
 

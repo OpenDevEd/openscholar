@@ -394,17 +394,17 @@ describe("extraction paper queue worker", () => {
     vi.useRealTimers();
   });
 
-  it("keeps a job to the credits it was allowed after its hold was settled, as one that outlasted it", async () => {
+  it("stops a job whose hold no longer stands, as one that outlasted it, and doesn't charge its papers past what was approved", async () => {
     const t = convexTest(schema);
     const { userId, jobId, queueId } = await seedAlreadyAnsweredPaper(t, { credits: 1_000, answered: false });
-    // Its hold is gone, and it has the balance for the paper: the figure alone stops it.
+    // Its hold is gone, and it has the balance for the paper: it stops all the same, until the person carries it on.
     await t.run((ctx) => ctx.db.patch(jobId, { spendHold: "extraction-job:1", spendCap: 3 }));
 
     await t.action(internal.extraction.paperWorker.runPaperQueueItem, { queueId, expectedEpoch: 0, paperConcurrency: 1, questionConcurrency: 1, pdfEnabled: false });
 
-    expect(await t.run((ctx) => ctx.db.get(jobId))).toMatchObject({ status: "creditsExhausted", error: { message: expect.stringContaining("3 credits it was allowed") } });
+    expect(await t.run((ctx) => ctx.db.get(jobId))).toMatchObject({ status: "creditsExhausted", error: { message: expect.stringContaining("no longer held") } });
     expect(fakeAutumn.balance(userId)).toBe(1_000);
-    expect(fakeAutumn.locks.size).toBe(0);
+    expect(fakeAutumn.calls.filter((call) => call.path === "balances.check")).toHaveLength(0);
   });
 
   it("marks a leased item cancelled when the job is already cancelled", async () => {
