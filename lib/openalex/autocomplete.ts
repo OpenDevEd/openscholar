@@ -1,0 +1,48 @@
+/**
+ * OpenAlex's autocomplete for what a search is filtered by ID: authors, funders, journals
+ * (sources) and institutions. The page asks from the Next server (./lookup.ts) and the
+ * assistant from Convex (convex/paperSets/openalex.ts); both read the answer here.
+ */
+
+export type LookupEntity = "authors" | "funders" | "sources" | "institutions";
+export type LookupOption = { id: string; name: string; detail?: string };
+
+/** The ID letter each kind of record has, such as S for a source. */
+export const LOOKUP_ID_LETTER: Record<LookupEntity, string> = { authors: "A", funders: "F", sources: "S", institutions: "I" };
+
+/** Only records with papers: OpenAlex keeps empty duplicates beside some, such as a second "Research square". */
+export const autocompleteParameters = (query: string) => ({ q: query, filter: "works_count:>0" });
+
+export function autocompleteOptions(body: unknown): LookupOption[] {
+  const results = (body as { results?: unknown } | null)?.results;
+  return (Array.isArray(results) ? results : []).flatMap((result: { id?: unknown; display_name?: unknown; hint?: unknown }) =>
+    typeof result.id === "string" && typeof result.display_name === "string" && result.display_name
+      ? [{ id: result.id.split("/").at(-1)!, name: result.display_name, ...(typeof result.hint === "string" && result.hint ? { detail: result.hint } : {}) }]
+      : [],
+  );
+}
+
+const SOURCE_TYPES: Record<string, string> = {
+  journal: "Journal", repository: "Repository", conference: "Conference",
+  "book series": "Book series", "ebook platform": "Ebook platform",
+};
+
+/** The request that reads the sources' types, which autocomplete leaves out. */
+export const sourceTypesParameters = (ids: readonly string[]) => ({ filter: `openalex_id:${ids.join("|")}`, select: "id,type", "per-page": "100" });
+
+/**
+ * Each source's type before its publisher, so a repository named like a journal, such as
+ * "SSRN Electronic Journal", shows as one.
+ */
+export function withSourceTypes(options: LookupOption[], body: unknown): LookupOption[] {
+  const types = new Map<string, string>();
+  const results = (body as { results?: unknown } | null)?.results;
+  for (const result of Array.isArray(results) ? results : []) {
+    if (typeof result?.id === "string" && typeof result.type === "string") types.set(result.id.split("/").at(-1)!, SOURCE_TYPES[result.type] ?? result.type);
+  }
+  return options.map((option) => {
+    const type = types.get(option.id);
+    const detail = [type, option.detail].filter(Boolean).join(", ");
+    return { id: option.id, name: option.name, ...(detail ? { detail } : {}) };
+  });
+}

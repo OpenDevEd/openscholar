@@ -19,6 +19,9 @@ import {
   HandCoins,
   Award,
   UserRound,
+  BookOpen,
+  Building,
+  FlaskConical,
 } from "@/components/icons";
 import {
   cn,
@@ -49,7 +52,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ResearchAreaFilter } from "./research-area-filter";
-import { FunderFilter } from "./funder-filter";
+import { FunderFilter, InstitutionFilter, JournalFilter } from "./record-filters";
 import { AuthorFilter } from "./author-filter";
 import { useLocale, useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
@@ -57,7 +60,7 @@ import { FilterSection } from "@/components/shared/filter-section";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { INSTITUTION_TYPES, SDGS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/vocabulary";
+import { INSTITUTION_TYPES, SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/vocabulary";
 
 
 // Date Filter Component
@@ -485,9 +488,9 @@ function SwitchRow({
 
 const OnlyShowFilterPanel = React.memo(function OnlyShowFilterPanel() {
   const tf = useTranslations("searchFilters");
-  const { openAccessOnly, hasAbstract, includeRetracted, reviewFilter } = useCurrentSearchFormState();
+  const { openAccessOnly, hasAbstract, includeRetracted, reviewFilter, topCitedOnly, venuesOnly } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
-  const isActive = openAccessOnly || hasAbstract || includeRetracted || isReviewFilterActive(reviewFilter);
+  const isActive = openAccessOnly || hasAbstract || includeRetracted || isReviewFilterActive(reviewFilter) || topCitedOnly || venuesOnly;
   return (
     <FilterSection
       title={tf("onlyShow")}
@@ -495,7 +498,7 @@ const OnlyShowFilterPanel = React.memo(function OnlyShowFilterPanel() {
       isActive={isActive}
       onClear={
         isActive
-          ? () => updateFilter({ openAccessOnly: false, hasAbstract: false, includeRetracted: false, reviewFilter: DEFAULT_FILTERS.reviewFilter })
+          ? () => updateFilter({ openAccessOnly: false, hasAbstract: false, includeRetracted: false, reviewFilter: DEFAULT_FILTERS.reviewFilter, topCitedOnly: false, venuesOnly: false })
           : undefined
       }
     >
@@ -520,6 +523,20 @@ const OnlyShowFilterPanel = React.memo(function OnlyShowFilterPanel() {
           hint={tf("reviewFilterDescription")}
           checked={reviewFilter}
           onCheckedChange={(checked) => updateFilter({ reviewFilter: checked })}
+        />
+        <SwitchRow
+          id="top-cited-filter"
+          label={tf("topCited")}
+          hint={tf("topCitedHint")}
+          checked={topCitedOnly}
+          onCheckedChange={(checked) => updateFilter({ topCitedOnly: checked })}
+        />
+        <SwitchRow
+          id="venues-filter"
+          label={tf("venues")}
+          hint={tf("venuesHint")}
+          checked={venuesOnly}
+          onCheckedChange={(checked) => updateFilter({ venuesOnly: checked })}
         />
         <SwitchRow
           id="retracted-filter"
@@ -560,6 +577,71 @@ const WorkLanguageFilterPanel = React.memo(function WorkLanguageFilterPanel() {
         names={Object.fromEntries(options.map((option) => [option.id, option.name]))}
         onToggle={(id) => updateFilter({ workLanguages: toggled(workLanguages, id) })}
       />
+    </FilterSection>
+  );
+});
+
+const StudyDesignFilterPanel = React.memo(function StudyDesignFilterPanel() {
+  const tf = useTranslations("searchFilters");
+  const { studyDesigns } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const isActive = studyDesigns.length > 0;
+  return (
+    <FilterSection
+      title={tf("studyDesign")}
+      icon={FlaskConical}
+      isActive={isActive}
+      onClear={isActive ? () => updateFilter({ studyDesigns: [] }) : undefined}
+    >
+      <div className="space-y-2">
+        <OptionPicker
+          label={tf("studyDesign")}
+          placeholder={tf("anyStudyDesign")}
+          selectedText={tf("nSelected", { count: studyDesigns.length })}
+          searchPlaceholder={tf("searchStudyDesigns")}
+          emptyText={tf("nothingFound")}
+          removeLabel={(name) => tf("removeChoice", { name })}
+          options={STUDY_DESIGNS}
+          selected={studyDesigns}
+          names={Object.fromEntries(STUDY_DESIGNS.map((design) => [design.id, design.name]))}
+          onToggle={(id) => updateFilter({ studyDesigns: toggled(studyDesigns, id) })}
+        />
+        <p className="text-xs text-subtle-foreground">{tf("studyDesignHint")}</p>
+      </div>
+    </FilterSection>
+  );
+});
+
+const JournalFilterPanel = React.memo(function JournalFilterPanel() {
+  const tf = useTranslations("searchFilters");
+  const { journals } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const isActive = journals.length > 0;
+  return (
+    <FilterSection
+      title={tf("journals")}
+      icon={BookOpen}
+      isActive={isActive}
+      onClear={isActive ? () => updateFilter({ journals: [] }) : undefined}
+    >
+      <JournalFilter selected={journals} onChange={(ids) => updateFilter({ journals: ids })} />
+    </FilterSection>
+  );
+});
+
+const InstitutionFilterPanel = React.memo(function InstitutionFilterPanel() {
+  const tf = useTranslations("searchFilters");
+  const { institutions } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const isActive = institutions.length > 0;
+  return (
+    <FilterSection
+      title={tf("institutions")}
+      icon={Building}
+      isActive={isActive}
+      onClear={isActive ? () => updateFilter({ institutions: [] }) : undefined}
+    >
+      <InstitutionFilter selected={institutions} onChange={(ids) => updateFilter({ institutions: ids })} />
     </FilterSection>
   );
 });
@@ -733,8 +815,11 @@ export const SidebarContent = React.memo(function SidebarContent({
 
       <WorkTypeFilterPanel />
       <WorkLanguageFilterPanel />
+      <StudyDesignFilterPanel />
       <ResearchAreaFilterPanel />
       <SdgFilterPanel />
+      <JournalFilterPanel />
+      <InstitutionFilterPanel />
       <InstitutionTypeFilterPanel />
       <FunderFilterPanel />
       <AuthorFilterPanel />

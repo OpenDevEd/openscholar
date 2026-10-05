@@ -31,7 +31,7 @@ import {
   BookOpen,
 } from "@/components/icons";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { useAuthorFilter, useTranslate } from "./hooks";
+import { useAuthorFilter, useJournalFilter, useTranslate } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
   PaperCardProps,
@@ -65,6 +65,7 @@ export function PaperCardListDetail({
   const searchId = getEffectiveSearchId(pathname, undefined);
 
   const authorFilter = useAuthorFilter();
+  const journalFilter = useJournalFilter();
 
   const handleFilteredSearch = (
     filterType: "cites" | "citedBy" | "related",
@@ -169,7 +170,7 @@ export function PaperCardListDetail({
           authorships={result.authorships}
           unparsed={result.authors_unparsed}
           className="mb-3"
-          selected={authorFilter.authors}
+          selected={authorFilter.selected}
           onToggleAuthor={authorFilter.toggle}
         />
 
@@ -178,6 +179,8 @@ export function PaperCardListDetail({
           source={result.primary_location?.source}
           biblio={result.biblio}
           className="mb-4"
+          selected={journalFilter.selected}
+          onToggle={journalFilter.toggle}
         />
 
         {/* Abstract */}

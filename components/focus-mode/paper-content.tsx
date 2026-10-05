@@ -4,7 +4,8 @@ import { BookOpen, Award, ExternalLink, FileText } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { workToCoins } from "@/lib/utils";
 import { ScreeningResponses } from "@/components/paper-card";
-import { AuthorNames } from "@/components/paper-card/shared";
+import { AuthorNames, InstitutionsLine, JournalName } from "@/components/paper-card/shared";
+import type { FilterValue } from "@/components/paper-card/hooks";
 import { TooltipHint } from "@/components/ui/tooltip";
 import type { PaperResult } from "@/lib/types";
 
@@ -30,7 +31,12 @@ export interface PaperContentProps {
   /** The authors the search is filtered by, as OpenAlex ids. */
   selectedAuthors?: readonly string[];
   /** Filters the search by an author, or stops filtering by them. Left out where there is no search. */
-  onToggleAuthor?: (author: { value: string; name: string }) => void;
+  onToggleAuthor?: (author: FilterValue) => void;
+  /** The journals and institutions the search is filtered by, and the controls that change them, as for authors. */
+  selectedJournals?: readonly string[];
+  onToggleJournal?: (journal: FilterValue) => void;
+  selectedInstitutions?: readonly string[];
+  onToggleInstitution?: (institution: FilterValue) => void;
 }
 
 export function PaperContent({
@@ -50,6 +56,10 @@ export function PaperContent({
   isOpen,
   selectedAuthors,
   onToggleAuthor,
+  selectedJournals,
+  onToggleJournal,
+  selectedInstitutions,
+  onToggleInstitution,
 }: PaperContentProps) {
   return (
     <div className={contentClasses}>
@@ -91,12 +101,20 @@ export function PaperContent({
             ) : null
           )}
         </div>
+        {!isPreview && (
+          <InstitutionsLine
+            authorships={paper.authorships ?? []}
+            selected={selectedInstitutions}
+            onToggle={onToggleInstitution}
+            className="mt-1"
+          />
+        )}
         {/* Journal/Source with volume/issue/pages */}
         {!isPreview && paper.primary_location?.source?.display_name && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
             <BookOpen className="h-3 w-3 flex-shrink-0" />
             <span className="italic truncate">
-              {paper.primary_location.source.display_name}
+              <JournalName source={paper.primary_location.source} selected={selectedJournals} onToggle={onToggleJournal} />
               {(paper.biblio?.volume || paper.biblio?.issue || paper.biblio?.first_page) && (
                 <>
                   {paper.biblio?.volume && `, ${tp("vol")} ${paper.biblio.volume}`}

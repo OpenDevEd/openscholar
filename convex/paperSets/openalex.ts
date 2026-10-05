@@ -9,6 +9,7 @@ import { createError } from "../lib/errors";
 import { openAlexFetch, openAlexReason } from "../../lib/openalex/fetch";
 import { openAlexUrl } from "../../lib/openalex/request-url";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
+import { autocompleteOptions, autocompleteParameters, sourceTypesParameters, withSourceTypes, type LookupEntity, type LookupOption } from "../../lib/openalex/autocomplete";
 
 /** OpenAlex's largest page. */
 export const PAGE_SIZE = 200;
@@ -206,29 +207,32 @@ export async function readSearchPage<Work>(
 }
 
 /**
- * Authors or funders whose names start with the words given, as OpenAlex's autocomplete finds
- * them, each with where they work or what they are. One request, counted against the acting
- * person's allowance. The page's own lookups (lib/openalex/authors.ts, funders.ts) make the
- * same request from the Next server, and can't be loaded here.
+ * Authors, funders, journals or institutions whose names start with the words given, as
+ * OpenAlex's autocomplete finds them, each with what tells it apart. Counted against the
+ * acting person's allowance: one request, and a second for journals' types. The page's own
+ * lookup (lib/openalex/lookup.ts) makes the same requests from the Next server.
  */
-export async function autocomplete(entity: "authors" | "funders", text: string, spend: (pages: number) => Promise<boolean>): Promise<Array<{ id: string; name: string; detail?: string }>> {
+export async function autocomplete(entity: LookupEntity, text: string, spend: (pages: number) => Promise<boolean>): Promise<LookupOption[]> {
   contact();
-  if (!(await spend(1))) throw limited();
+  if (!(await spend(entity === "sources" ? 2 : 1))) throw limited();
+  const options = autocompleteOptions(await readLookup(`autocomplete/${entity}`, autocompleteParameters(text)));
+  if (entity !== "sources" || !options.length) return options;
+  return withSourceTypes(options, await readLookup("sources", sourceTypesParameters(options.map((option) => option.id))));
+}
+
+async function readLookup(path: string, parameters: Record<string, string>): Promise<unknown> {
   let response: Response;
   try {
-    response = await fetch(openAlexUrl(`autocomplete/${entity}`, { q: text }), { signal: AbortSignal.timeout(PAGE_TIMEOUT_MS) });
+    response = await fetch(openAlexUrl(path, parameters), { signal: AbortSignal.timeout(PAGE_TIMEOUT_MS) });
   } catch (error) {
-    console.error(`[paperSets] OpenAlex autocomplete of ${entity} didn't answer`, error);
+    console.error(`[paperSets] OpenAlex ${path} didn't answer`, error);
     throw createError("VALIDATION_ERROR", "OpenAlex didn't answer in time. Try again in a moment.");
   }
   if (!response.ok) {
-    console.error(`[paperSets] OpenAlex autocomplete of ${entity} failed: ${response.status} ${(await response.text().catch(() => "")).slice(0, 500)}`);
+    console.error(`[paperSets] OpenAlex ${path} failed: ${response.status} ${(await response.text().catch(() => "")).slice(0, 500)}`);
     throw createError("VALIDATION_ERROR", `OpenAlex couldn't look that up (${response.status}). Try again in a moment.`);
   }
-  const body = (await response.json()) as { results?: Array<{ id?: unknown; display_name?: unknown; hint?: unknown }> };
-  return (Array.isArray(body.results) ? body.results : []).flatMap(({ id, display_name: name, hint }) =>
-    typeof id === "string" && typeof name === "string" && name ? [{ id: id.split("/").at(-1)!, name, ...(typeof hint === "string" && hint ? { detail: hint } : {}) }] : [],
-  );
+  return await response.json();
 }
 
 /** One work by its ID, or null when OpenAlex has none by it. One request, counted against the acting person's allowance. */

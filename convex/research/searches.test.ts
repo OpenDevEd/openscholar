@@ -375,7 +375,7 @@ describe("the assistant's search tools", () => {
     expect((await alice.action(count, { query: "tutoring", by: "language" })).groups).toEqual([{ name: "English", count: 50, id: "en" }, { name: "French", count: 7, id: "fr" }]);
     expect((await alice.action(count, { query: "tutoring", by: "field" })).groups![0]).toEqual({ name: "Social Sciences", count: 50, id: "fields/33" });
     // More groups than are returned says so, without a number: OpenAlex gives its largest 200.
-    expect(await alice.action(count, { query: "tutoring", by: "institution" })).toMatchObject({ moreGroups: true, groups: expect.arrayContaining([{ name: "Institution 0", count: 200 }]) });
+    expect(await alice.action(count, { query: "tutoring", by: "institution" })).toMatchObject({ moreGroups: true, groups: expect.arrayContaining([{ name: "Institution 0", count: 200, id: "I0" }]) });
     // Which papers a person rated isn't OpenAlex's to count.
     await expect(alice.action(count, { query: "tutoring", ratedOnly: true, by: "year" })).rejects.toThrow(/can't be counted/);
 

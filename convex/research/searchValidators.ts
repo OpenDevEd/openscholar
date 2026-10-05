@@ -45,6 +45,9 @@ export const searchSettings = {
   sdgs: v.optional(v.union(v.array(v.number()), v.null())),
   authors: listValidator,
   funders: listValidator,
+  journals: listValidator,
+  institutions: listValidator,
+  studyDesigns: listValidator,
   researchAreas: listValidator,
   citationsOf: textValidator,
   referencesOf: textValidator,
@@ -52,6 +55,8 @@ export const searchSettings = {
   openAccessOnly: v.optional(v.boolean()),
   withAbstractOnly: v.optional(v.boolean()),
   reviewsOnly: v.optional(v.boolean()),
+  topCitedOnly: v.optional(v.boolean()),
+  venuesOnly: v.optional(v.boolean()),
   includeRetracted: v.optional(v.boolean()),
   minCitations: numberValidator,
   ratedOnly: v.optional(v.boolean()),
@@ -75,18 +80,20 @@ export const changesValidator = v.array(
 
 /** What the settings mean, for the description of each tool that takes them. A value one doesn't take is refused with the ones it does. */
 export const SETTINGS =
-  "The time span is whole years (`fromYear`, `toYear`) or exact days (`fromDate`, `toDate`, as YYYY-MM-DD), not both. " +
-  "`authorsIn` is where the authors' institutions are and `about` is where the paper is about: each a list of two-letter country codes or regions, such as africa, sub_saharan_africa, western_africa, southern_asia, latin_america or europe, or the World Bank's income groups: low_income, lower_middle_income, upper_middle_income and high_income. Low- and middle-income countries are the first three, which are too many for one search: search low_income with lower_middle_income, then upper_middle_income. " +
-  "`types` and `institutionTypes` are OpenAlex's, such as article, preprint, book-chapter, and education, government. `languages` are ISO 639 codes. `sdgs` are goal numbers, 1 to 17. " +
-  "`authors` are author IDs from a result or from research/lookup:find, or names as papers print them. `funders` and `researchAreas` are IDs from research/lookup:find. " +
-  "`citationsOf`, `referencesOf` and `relatedTo` each take one paper's ID: the papers that cite that paper, the papers in its own reference list, and papers related to it. " +
-  "`ratedOnly` keeps only papers the person rated. `minRating` and `maxRating` (0 to 5) keep those rated within them, and turn `ratedOnly` on.";
+  "A time span is in years (`fromYear`, `toYear`) or days (`fromDate`, `toDate`, YYYY-MM-DD). " +
+  "`authorsIn` is where the authors work and `about` where the paper is about: two-letter country codes, regions such as africa, western_africa or latin_america, or income groups low_income, lower_middle_income, upper_middle_income and high_income. " +
+  "`types` and `institutionTypes` are OpenAlex's, such as article or education. `languages` are ISO 639 codes, `sdgs` goal numbers 1 to 17. " +
+  "`authors` are IDs or names as papers print them. `funders`, `journals`, `institutions` (their sub-units too) and `researchAreas` are IDs from research/lookup:find. " +
+  "`studyDesigns` are such as systematic-review or randomized-controlled-trial (clinical trials too); only 1 paper in 15 has one, mostly medical. " +
+  "`topCitedOnly` keeps the top 10% of a field and year by citations, `venuesOnly` papers in journals, conferences and book series. " +
+  "`citationsOf`, `referencesOf` and `relatedTo` take one paper's ID: papers citing it, its references, papers like it. " +
+  "`ratedOnly` keeps papers the person rated; `minRating` and `maxRating` (0 to 5) narrow those and turn it on.";
 
 /** Authors of a paper the results name, each with its ID to filter by. */
 export const AUTHORS_SHOWN = 3;
 /** Matches one lookup returns. */
 export const LOOKUP_MAX = 10;
-export const lookupKindValidator = v.union(v.literal("author"), v.literal("funder"), v.literal("researchArea"));
+export const lookupKindValidator = v.union(v.literal("author"), v.literal("funder"), v.literal("journal"), v.literal("institution"), v.literal("researchArea"));
 export const lookupValidator = v.object({
   matches: capped(v.array(v.object({ id: v.string(), name: v.string(), detail: v.optional(v.string()) })), LOOKUP_MAX),
 });
