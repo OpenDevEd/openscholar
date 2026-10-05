@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { subMonths, subWeeks, subYears } from "date-fns";
-import { Check, Clock, FolderOpen, LibraryBig, Search, Settings, SlidersHorizontal, Star } from "@/components/icons";
+import { Check, Clock, Folder, LibraryBig, Search, Settings, SlidersHorizontal, Star } from "@/components/icons";
 import type { DateRange } from "react-day-picker";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -302,7 +302,7 @@ function CollectionFilterSection({
   return (
     <FilterSection
       title={t("filterCollection")}
-      icon={FolderOpen}
+      icon={Folder}
       isActive={isCollectionActive}
       onClear={
         isCollectionActive ? () => onCollectionChange(null) : undefined
@@ -380,7 +380,7 @@ function CollectionFilterSection({
         {/* Empty state */}
         {totalCollections === 0 && (
           <div className="text-center py-3">
-            <FolderOpen className="h-5 w-5 mx-auto mb-1.5 text-muted-foreground/50" />
+            <Folder className="h-5 w-5 mx-auto mb-1.5 text-muted-foreground/50" />
             <p className="text-xs text-muted-foreground">
               {t("noCollections")}
             </p>
@@ -417,7 +417,7 @@ function CollectionRow({
       {isActive ? (
         <Check className="h-3.5 w-3.5 text-primary shrink-0" />
       ) : (
-        <FolderOpen className="h-3.5 w-3.5 shrink-0 opacity-50" />
+        <Folder className="h-3.5 w-3.5 shrink-0 opacity-50" />
       )}
       <span className="truncate flex-1">{name}</span>
       {count !== undefined && (

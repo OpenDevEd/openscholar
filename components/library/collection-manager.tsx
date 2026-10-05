@@ -6,7 +6,6 @@ import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import {
   Folder,
-  FolderOpen,
   FolderPlus,
   MoreHorizontal,
   Pencil,
@@ -342,7 +341,7 @@ export function CollectionManager({
                       )}
                       onClick={() => setFocusedIndex(index)}
                     >
-                      <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
 
                       {isEditing ? (
                         <Input
