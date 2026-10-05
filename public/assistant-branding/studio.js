@@ -23,12 +23,13 @@ let handoffVersion = 0;
 let settling = false;
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const byId = (id) => document.getElementById(id);
-byId("brand-mark").innerHTML = '<img src="../icon.svg" width="33" height="33" alt="">';
+// Speed and pause act on Orbit only; the AI marks on the same page keep their own timing.
+const orbitAnimations = () => document.getAnimations().filter((animation) => animation.effect?.target?.closest(".assistant-mark"));
 byId("hero-mark").innerHTML = mark(motion, "Orbit assistant, thinking");
 byId("reply-mark").innerHTML = mark(motion);
 for (const id of ["chat-mark", "launcher-mark", "wordmark-icon"]) byId(id).innerHTML = mark("idle");
 byId("motion-options").innerHTML = states.map((state, index) => `<button class="motion-option" data-state="${state.id}" aria-pressed="${motion === state.id}"><span class="motion-number">0${index + 1}</span><span class="motion-mark">${mark(state.id)}</span><span class="motion-name">${state.name}</span><span class="motion-detail">${state.detail}</span></button>`).join("");
-byId("size-samples").innerHTML = [16, 24, 32, 48].map((size) => `<div class="size-sample"><span style="width:${size}px;height:${size}px">${mark("still")}</span><span>${size}px</span></div>`).join("");
+byId("orbit-sizes").innerHTML = [16, 24, 32, 48].map((size) => `<div class="size-sample"><span style="width:${size}px;height:${size}px">${mark("still")}</span><span>${size}px</span></div>`).join("");
 
 function updateLabels() {
   const state = states.find((item) => item.id === motion);
@@ -39,7 +40,7 @@ function updateLabels() {
   byId("reply-text").textContent = state.reply;
   byId("motion-duration").textContent = `${(state.seconds * rate).toFixed(1)} s`;
   byId("hero-mark").firstElementChild.setAttribute("aria-label", `Orbit assistant, ${state.name.toLowerCase()}`);
-  document.querySelectorAll("[data-state]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.state === motion)));
+  document.querySelectorAll("#motion-options [data-state]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.state === motion)));
   byId("sequence").textContent = sequencing ? "Stop sequence" : "Play a task";
   byId("sequence").setAttribute("aria-pressed", String(sequencing));
 }
@@ -96,15 +97,9 @@ byId("hero-mark").addEventListener("animationiteration", (event) => {
   if (index === states.length - 1) sequencing = false;
   void showMotion(states[(index + 1) % states.length].id, false);
 });
-byId("themes").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-theme-choice]");
-  if (!button) return;
-  document.documentElement.dataset.theme = button.dataset.themeChoice;
-  document.querySelectorAll("[data-theme-choice]").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
-});
 byId("speed").addEventListener("change", (event) => {
   const nextRate = Number(event.target.value);
-  const clocks = document.getAnimations().filter((animation) => animation instanceof CSSAnimation).map((animation) => ({ animation, time: animation.currentTime }));
+  const clocks = orbitAnimations().filter((animation) => animation instanceof CSSAnimation).map((animation) => ({ animation, time: animation.currentTime }));
   document.documentElement.style.setProperty("--rate", String(nextRate));
   for (const { animation, time } of clocks) animation.currentTime = time * nextRate / rate;
   rate = nextRate;
@@ -113,7 +108,7 @@ byId("speed").addEventListener("change", (event) => {
 byId("pause").addEventListener("click", () => {
   paused = !paused;
   document.documentElement.dataset.paused = String(paused);
-  document.getAnimations().forEach((animation) => paused ? animation.pause() : animation.play());
+  orbitAnimations().forEach((animation) => paused ? animation.pause() : animation.play());
   byId("pause").setAttribute("aria-pressed", String(paused));
   byId("pause").textContent = paused ? "Play motion" : "Pause motion";
 });

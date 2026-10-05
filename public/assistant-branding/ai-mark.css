@@ -1,3 +1,6 @@
+/* The globe turns by animating --lon; each meridian projects itself from it with sin() and cos(). */
+@property --lon { syntax: "<angle>"; inherits: true; initial-value: 0deg; }
+
 /* Motion runs on damped springs sampled into linear(), so turns overshoot and settle instead of stopping dead.
    --impulse goes out and comes back to rest, for nudges. The loop curves play their motion in part of a cycle, then hold. */
 .ai-mark {
@@ -99,4 +102,41 @@
 @keyframes full-turn { to { transform: rotate(360deg); } }
 @keyframes full-turn-back { to { transform: rotate(-360deg); } }
 
-@media (prefers-reduced-motion: reduce) { .ai-mark .part, .ai-mark .draw, .ai-mark .glow { animation: none !important; } }
+/* Translation marks. Exchange: two arrows trade places round the star. Hover swaps them with a spring
+   while the star flips; translating keeps them swapping. Globe: the star sits in a globe that turns into
+   place, turns a third on hover and spins while translating. */
+.ai-mark .turn { transform-box: view-box; transform-origin: 64px 64px; }
+.ai-mark[data-tone="brand"] .tail { stop-color: var(--logo-a, #60a5fa); }
+.ai-mark[data-tone="brand"] .head { stop-color: var(--logo-b, #2563eb); }
+.ai-mark[data-tone="text"] .tail { stop-color: currentColor; stop-opacity: .45; }
+.ai-mark[data-tone="text"] .head { stop-color: currentColor; }
+.ai-mark[data-tone="brand"] :is(.meridian, .equator) { --base: var(--logo-c, #bfdbfe); }
+.ai-mark[data-tone="brand"][data-scale="compact"] :is(.meridian, .equator) { --base: var(--logo-a, #60a5fa); }
+.ai-mark[data-tone="text"] :is(.meridian, .equator) { fill-opacity: .4; }
+/* Seen from the front, a meridian at longitude L is a half ellipse sin(L) wide; it fades at the edge and hides behind. */
+.ai-mark .meridian { transform: scaleX(sin(calc(var(--lon) + var(--at)))); opacity: clamp(0, cos(calc(var(--lon) + var(--at))) * 4 - .6, 1); }
+
+.ai-mark[data-shape="exchange"][data-play="load"] .arrow { animation: fade-in 200ms linear both, exchange-in 1000ms var(--out) both; }
+.ai-mark[data-shape="exchange"][data-play="load"] .star { animation: fade-in 160ms linear 380ms both, star-in 720ms var(--spring) 380ms both; }
+.ai-mark[data-shape="exchange"][data-play="hover"] .arrow { animation: half-turn 900ms var(--spring); }
+.ai-mark[data-shape="exchange"][data-play="hover"] .star { animation: flip 560ms cubic-bezier(.65, 0, .35, 1) 100ms; }
+.ai-mark[data-shape="exchange"][data-play="loop"] .arrow { animation: half-turn 1.3s cubic-bezier(.65, 0, .35, 1) infinite; }
+.ai-mark[data-shape="exchange"][data-play="loop"] .star { animation: flip-beat 1.3s ease-in-out infinite; }
+@keyframes exchange-in { from { transform: rotate(-200deg) scale(.6); } }
+@keyframes half-turn { to { transform: rotate(180deg); } }
+@keyframes flip { to { transform: scaleX(-1); } }
+@keyframes flip-beat { 35%, 100% { transform: scaleX(-1); } }
+
+.ai-mark[data-shape="globe"][data-play="load"] { animation: globe-in 1100ms var(--settle) both; }
+.ai-mark[data-shape="globe"][data-play="load"] .ring-top { animation: fade-in 120ms linear both, gather-in 900ms var(--settle) both; }
+.ai-mark[data-shape="globe"][data-play="load"] .ring-bottom { animation: fade-in 120ms linear 60ms both, gather-in 900ms var(--settle) 60ms both; }
+.ai-mark[data-shape="globe"][data-play="load"] :is(.meridian, .equator) { animation: fade-in 320ms linear 120ms both; }
+.ai-mark[data-shape="globe"][data-play="load"] .star { animation: fade-in 160ms linear 380ms both, star-in 720ms var(--spring) 380ms both; }
+.ai-mark[data-shape="globe"][data-play="hover"] { animation: globe-turn 1000ms var(--spring); }
+.ai-mark[data-shape="globe"][data-play="hover"] .star { animation: pulse 760ms var(--impulse) 80ms; }
+.ai-mark[data-shape="globe"][data-play="loop"] { animation: globe-spin .8s linear infinite; }
+@keyframes globe-in { from { --lon: -120deg; } }
+@keyframes globe-turn { to { --lon: 120deg; } }
+@keyframes globe-spin { to { --lon: 60deg; } }
+
+@media (prefers-reduced-motion: reduce) { .ai-mark, .ai-mark .part, .ai-mark .turn, .ai-mark .draw, .ai-mark .glow { animation: none !important; } }

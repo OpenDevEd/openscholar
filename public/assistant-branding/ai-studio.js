@@ -99,3 +99,50 @@ byId("generate").addEventListener("click", () => {
   if (generating) aiMark.play(svg, "loop");
   else aiMark.stop(svg);
 });
+
+// Translation: each card runs ready (load, then hover), translating and translated on repeat.
+// Pressing Translate jumps the card to translating, or back to ready once it has translated.
+const translations = [
+  { id: "exchange", name: "Exchange", detail: "Two arrows trade places round the star. Hover swaps them as the star flips; translating keeps them swapping." },
+  { id: "globe", name: "Globe", detail: "The star inside a globe. It turns into place, turns a third on hover and spins while translating. Its lines fade below 20px." },
+];
+const phaseLength = { load: 1500, hover: 1500, translating: 2700, translated: 1800 };
+const nextPhase = { load: "hover", hover: "translating", translating: "translated", translated: "load" };
+byId("translations").innerHTML = translations.map((item) => `
+  <div class="translation" data-shape="${item.id}">
+    <div class="translation-art"><span>${aiMark.html(168, { shape: item.id, label: `${item.name} translation mark` })}</span><span class="translation-small">${aiMark.html(48, { shape: item.id })}${aiMark.html(24, { shape: item.id })}${aiMark.html(16, { shape: item.id })}</span></div>
+    <div><div class="translation-name">${item.name}</div><p class="translation-detail">${item.detail}</p></div>
+    <div class="translation-demo">
+      <button class="os-button os-outline translate-button" data-state="ready"><span class="translate-icon">${aiMark.html(16, { shape: item.id })}<svg class="translate-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="translate-label"><span data-label="ready">Translate</span><span data-label="translating">Translating</span><span data-label="translated">Translated</span></span></button>
+      <span class="variant-phase" aria-hidden="true"><i data-phase="load">Load</i><i data-phase="hover">Hover</i><i data-phase="translating">Translating</i><i data-phase="translated">Translated</i></span>
+    </div>
+  </div>`).join("");
+
+function runPhase(card, phase) {
+  clearTimeout(card.timer);
+  card.dataset.phase = phase;
+  const marks = card.querySelectorAll(".ai-mark");
+  const button = card.querySelector(".translate-button");
+  if (phase === "load") {
+    button.dataset.state = "ready";
+    marks.forEach((svg) => aiMark.play(svg, "load"));
+  } else if (phase === "hover") {
+    marks.forEach((svg) => aiMark.play(svg, "hover"));
+  } else if (phase === "translating") {
+    button.dataset.state = "translating";
+    marks.forEach((svg) => aiMark.play(svg, "loop"));
+  } else {
+    button.dataset.state = "translated";
+    marks.forEach((svg) => aiMark.stop(svg));
+  }
+  card.timer = setTimeout(() => runPhase(card, nextPhase[phase]), phaseLength[phase]);
+}
+document.querySelectorAll(".translation").forEach((card) => {
+  runPhase(card, "load");
+  card.querySelector(".translate-button").addEventListener("click", (event) => {
+    runPhase(card, event.currentTarget.dataset.state === "translated" ? "load" : "translating");
+  });
+  card.querySelector(".translate-button").addEventListener("pointerenter", (event) => {
+    if (event.currentTarget.dataset.state === "ready") aiMark.play(event.currentTarget.querySelector(".ai-mark"), "hover");
+  });
+});
