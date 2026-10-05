@@ -11,10 +11,11 @@ import { insertAtTop, useConvex, useMutation, usePaginatedQuery, useQuery } from
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { usePathname } from "next/navigation";
-import { ArrowUp, ChevronDown, CircleAlert, CircleStop, Eye, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus } from "@/components/icons";
-import { useTranslations } from "next-intl";
+import { ArrowUp, ChevronDown, CircleAlert, CirclePause, CircleStop, Coins, Eye, Gauge, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus } from "@/components/icons";
+import { useFormatter, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { ASSISTANT_REQUESTS_BEFORE_ASKING } from "@/convex/lib/constants";
 import { Conversation, ConversationContent } from "@/components/ai-elements/conversation";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { CHAT_LINK_SAFETY } from "@/components/extraction/chat/link-safety-dialog";
@@ -23,6 +24,7 @@ import { EffortMeter } from "@/components/models/meters";
 import { ModelPicker } from "@/components/models/model-picker";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { EASE, effortOf, toMapModel, usePresetModels, type PickedModel, type PresetPick } from "@/components/settings/model-map";
+import { Button } from "@/components/ui/button";
 import { EDGE_FADE } from "@/components/ui/scroll-area";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { PRESET_KEYS } from "@/lib/ai/tasks";
@@ -36,7 +38,7 @@ import { OrbitMark, type OrbitClock } from "./orbit-mark";
 import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
 import { Steps, type StepItem } from "./steps";
 import { IconButton, WorkingText } from "./parts";
-import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, stackedUnder, type OpenSheet } from "./sheets";
+import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, stackedUnder, type OpenSheet } from "./sheets";
 
 type ThreadId = Id<"assistantThreads">;
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -236,6 +238,8 @@ function Overlay({
                   onFold={fold}
                   onHistory={() => push({ kind: "history" })}
                   onShare={(id, title, role) => push({ kind: "share", threadId: id, title, role })}
+                  // Opened from the header and from the reply's meter; never twice on top of itself.
+                  onSpending={(id, title) => setSheets((all) => (all.at(-1)?.kind === "spending" ? all : [...all, { kind: "spending", threadId: id, title }]))}
                 />
               </motion.div>
               <Dim on={depth > 0} />
@@ -257,8 +261,10 @@ function Overlay({
                       }}
                       onShare={(id, title, role) => push({ kind: "share", threadId: id, title, role })}
                     />
-                  ) : (
+                  ) : sheet.kind === "share" ? (
                     <ShareSheet threadId={sheet.threadId} title={sheet.title} role={sheet.role} onBack={pop} />
+                  ) : (
+                    <SpendingSheet threadId={sheet.threadId} title={sheet.title} onBack={pop} />
                   )}
                 </Sheet>
               ))}
@@ -313,6 +319,7 @@ function Chat({
   onFold,
   onHistory,
   onShare,
+  onSpending,
 }: {
   threadId: ThreadId | null;
   setThreadId: (id: ThreadId | null) => void;
@@ -324,10 +331,14 @@ function Chat({
   onFold: () => void;
   onHistory: () => void;
   onShare: (id: ThreadId, title: string, role: "owner" | "write" | "read") => void;
+  onSpending: (id: ThreadId, title: string) => void;
 }) {
   const t = useTranslations("assistant");
   const toast = useAppToast();
   const thread = useQuery(api.assistant.threads.get, threadId ? { threadId } : "skip");
+  // What the person lets a reply spend here: the meter's "allow more" is by it, and the Spending sheet opens with it in hand.
+  const spending = useQuery(api.assistant.spending.get, threadId ? { threadId } : "skip");
+  const carryOn = useMutation(api.assistant.replies.carryOn);
   const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.messages, threadId ? { threadId, stepsAhead: true } : "skip", { initialNumItems: FIRST_MESSAGES });
   const presetModel = usePresetModels();
   // The model picked before the chat exists; once it does, the chat keeps its own.
@@ -432,6 +443,15 @@ function Chat({
       (id) => onShare(id, thread?.title ?? t("newChat"), thread?.role ?? "owner"),
       (error) => toast.error(t("shareFailed"), getErrorMessage(error, "")),
     );
+  // The limits of a chat that hasn't started are set on the chat it becomes.
+  const spend = () =>
+    started().then(
+      (id) => onSpending(id, thread?.title ?? t("newChat")),
+      (error) => toast.error(t("spendingFailed"), getErrorMessage(error, "")),
+    );
+  // What the reply has cost, for the person whose credits it spends: no one else is told.
+  const cost = live ? costOf(live) : null;
+  const meter = live && cost ? { spent: cost.spent, cap: cost.cap ?? null, paused: live.paused, limit: spending?.replyLimit ?? null } : null;
   // Oldest first. A page loaded while the one before it was still taking its fixed end can hold a row that page holds too: it shows once.
   const messages = [...new Map(results.map((item) => [item.id, item])).values()].reverse();
   const sent: Message[] =
@@ -441,7 +461,7 @@ function Chat({
 
   return (
     <>
-      <Header title={threadId ? (thread?.title ?? "") : t("newChat")} onHistory={onHistory} onShare={share} onRestart={restart} onFold={onFold} />
+      <Header title={threadId ? (thread?.title ?? "") : t("newChat")} onHistory={onHistory} onShare={share} onSpending={spend} onRestart={restart} onFold={onFold} />
       <Thread
         // A different chat starts at its own newest message. A new chat that has just become a real one is the same thread.
         key={threadId === null || threadId === born ? NEW : threadId}
@@ -452,7 +472,11 @@ function Chat({
         // An open chat's first page is still on its way, unless it's the chat this message just started.
         older={threadId && status === "LoadingFirstPage" && !sent.length ? "first" : status === "CanLoadMore" ? () => loadMore(FIRST_MESSAGES) : status === "LoadingMore" ? "loading" : null}
       />
-      <Footer composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel} />
+      <Footer composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel}
+        meter={meter}
+        onCarryOn={() => (threadId ? void carryOn({ threadId }).catch((error) => toast.error(t("meter.failed"), getErrorMessage(error, ""))) : undefined)}
+        onSpending={spend}
+      />
     </>
   );
 }
@@ -656,7 +680,7 @@ function Empty() {
   );
 }
 
-function Header({ title, onHistory, onShare, onRestart, onFold }: { title: string; onHistory: () => void; onShare: () => void; onRestart: () => void; onFold: () => void }) {
+function Header({ title, onHistory, onShare, onSpending, onRestart, onFold }: { title: string; onHistory: () => void; onShare: () => void; onSpending: () => void; onRestart: () => void; onFold: () => void }) {
   const t = useTranslations("assistant");
   return (
     <div className="border-b border-border/50 px-4 pb-3 pt-3.5">
@@ -681,6 +705,7 @@ function Header({ title, onHistory, onShare, onRestart, onFold }: { title: strin
         <div className="flex items-center">
           <IconButton label={t("chats")} icon={<MessagesSquare className="size-4" />} onClick={onHistory} />
           <IconButton label={t("shareChat")} icon={<UserPlus className="size-4" />} onClick={onShare} />
+          <IconButton label={t("spending")} icon={<Gauge className="size-4" />} onClick={onSpending} />
           <IconButton label={t("newChat")} icon={<SquarePen className="size-4" />} onClick={onRestart} />
           <IconButton label={t("foldIntoBubble")} shortcut="⌘J" icon={<PictureInPicture2 className="size-4" />} onClick={onFold} />
         </div>
@@ -794,6 +819,9 @@ function Footer({
   model,
   onModel,
   presetModel,
+  meter,
+  onCarryOn,
+  onSpending,
 }: {
   composer: RefObject<HTMLTextAreaElement | null>;
   draft: string;
@@ -810,13 +838,29 @@ function Footer({
   model: PickedModel | null;
   onModel: (model: PickedModel, effort: Effort | undefined) => void;
   presetModel: ReturnType<typeof usePresetModels>;
+  /** What the reply being written has cost the person reading, when it's theirs. */
+  meter: Meter | null;
+  onCarryOn: () => void;
+  onSpending: () => void;
 }) {
   const t = useTranslations("assistant");
   const view = useViewName();
   return (
     <div className="space-y-2 p-3 pt-0">
       {/* The chips hang from their middle on the thread's bottom edge; their frame is the lower half. */}
-      <div style={{ height: CHIP_HANG }} />
+      <div className="relative" style={{ height: CHIP_HANG }}>
+        <div className="absolute inset-x-0 flex h-8 items-center gap-2" style={{ top: -CHIP_HANG }}>
+          <div className="min-w-0 flex-1">
+            <AnimatePresence mode="wait" initial={false}>
+              {meter ? (
+                <motion.div key="reply" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25, ease: EASE }}>
+                  <ReplyMeter meter={meter} onCarryOn={onCarryOn} onSpending={onSpending} />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
       <div className="rounded-2xl border border-border/60 bg-background shadow-xs focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
         <textarea
           ref={composer}
@@ -868,6 +912,62 @@ function Footer({
           </TooltipHint>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** What a reply has cost and the credits it pauses at, which `live` holds only for the person whose credits it spends. */
+const costOf = (live: Live) => ("spent" in live && typeof live.spent === "number" ? (live as { spent: number; cap?: number }) : null);
+
+/** What a reply has cost: `cap` is the credits it pauses at, `limit` the person's limit as it is now, and `paused` why it waits. */
+type Meter = { spent: number; cap: number | null; paused: Live["paused"]; limit: number | null };
+
+/**
+ * What the running reply has spent on its own AI use: against its limit, where the person
+ * set one, and on its own where they didn't. At a limit the reply pauses here until they
+ * allow more. The mock's meter, which opens the Spending sheet.
+ */
+function ReplyMeter({ meter, onCarryOn, onSpending }: { meter: Meter; onCarryOn: () => void; onSpending: () => void }) {
+  const t = useTranslations("assistant.meter");
+  const format = useFormatter();
+  const paused = meter.paused !== null;
+  // One cell: the meter and the pause cross-fade, so the row never changes size.
+  return (
+    <div className="grid h-8 items-center text-xs [&>*]:col-start-1 [&>*]:row-start-1">
+      <motion.button
+        type="button"
+        onClick={onSpending}
+        initial={false}
+        animate={{ opacity: paused ? 0 : 1 }}
+        inert={paused}
+        className="-ml-1 flex h-8 items-center gap-2 justify-self-start rounded-full px-2 hover:bg-muted/60"
+      >
+        <Coins className="size-3.5 text-muted-foreground" />
+        <span className="text-muted-foreground">{t("reply")}</span>
+        {meter.cap === null ? null : (
+          <span className="h-1 w-16 overflow-hidden rounded-full bg-foreground/10">
+            <motion.span
+              className="block h-full rounded-full bg-primary"
+              initial={false}
+              animate={{ width: `${Math.min(1, meter.spent / meter.cap) * 100}%` }}
+              transition={{ duration: 0.3, ease: EASE }}
+            />
+          </span>
+        )}
+        <span className="tabular-nums text-muted-foreground">
+          {t.rich(meter.cap === null ? "spent" : "spentOf", { spent: format.number(meter.spent), cap: format.number(meter.cap ?? 0), n: (chunks) => <span className="font-medium text-foreground">{chunks}</span> })}
+        </span>
+      </motion.button>
+      <motion.div initial={false} animate={{ opacity: paused ? 1 : 0 }} inert={!paused} className="flex items-center gap-2 pl-1">
+        <CirclePause className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+        <span className="whitespace-nowrap font-medium text-amber-700 dark:text-amber-400">
+          {meter.paused === "requests" ? t("pausedRequests", { count: format.number(ASSISTANT_REQUESTS_BEFORE_ASKING) }) : t("paused", { spent: format.number(meter.spent) })}
+        </span>
+        <Button size="sm" variant="secondary" className="h-7 rounded-full px-3" onClick={onCarryOn}>
+          {meter.paused === "requests" || meter.limit === null ? t("carryOn") : t("allowMore", { limit: format.number(meter.limit) })}
+        </Button>
+        <IconButton small label={t("change")} icon={<Gauge className="size-3.5" />} onClick={onSpending} />
+      </motion.div>
     </div>
   );
 }

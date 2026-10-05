@@ -69,8 +69,11 @@ export function Segmented<T extends string>({
   options: Array<{ id: T; label: string; icon?: Ico; detail?: ReactNode; below?: ReactNode }>;
   label: string;
   size?: "sm" | "md" | "lg";
-  /** Stretch across the row, with equal segments. */
-  fill?: boolean;
+  /**
+   * Stretch across the row: with equal segments, whose labels are cut when they don't fit,
+   * or with `"labels"`, where each segment is at least as wide as its label and none is cut.
+   */
+  fill?: boolean | "labels";
   className?: string;
 }) {
   const buttons = useRef<Partial<Record<string, HTMLButtonElement | null>>>({});
@@ -98,7 +101,11 @@ export function Segmented<T extends string>({
         "relative bg-inset p-1",
         stacked ? "rounded-[1.375rem]" : "rounded-full",
         // Equal segments in one row, two by two on narrow screens.
-        fill ? "@container/segments grid w-full auto-cols-fr grid-flow-col @max-[34rem]/configuration:grid-flow-row @max-[34rem]/configuration:grid-cols-2 @max-[34rem]/configuration:rounded-3xl" : "inline-flex shrink-0",
+        fill === true
+          ? "@container/segments grid w-full auto-cols-fr grid-flow-col @max-[34rem]/configuration:grid-flow-row @max-[34rem]/configuration:grid-cols-2 @max-[34rem]/configuration:rounded-3xl"
+          : fill
+            ? "flex w-full"
+            : "inline-flex shrink-0",
         className,
       )}
     >
@@ -128,7 +135,8 @@ export function Segmented<T extends string>({
               "relative flex items-center gap-2 whitespace-nowrap font-medium transition-colors",
               stacked ? "rounded-2xl" : "rounded-full",
               stacked ? "px-4 py-2.5 text-sm" : size === "lg" ? "h-11 px-4 text-sm" : size === "md" ? "h-9 px-4 text-sm" : "h-8 px-3 text-xs",
-              fill && "min-w-0 justify-center @min-[40rem]/segments:justify-between",
+              fill === true && "min-w-0 justify-center @min-[40rem]/segments:justify-between",
+              fill === "labels" && "flex-1 justify-center",
               stacked && "flex-col items-stretch justify-center gap-2 @min-[40rem]/segments:justify-center",
               on ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
