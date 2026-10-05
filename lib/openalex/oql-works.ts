@@ -1,7 +1,7 @@
 import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
 import type { Work, Works } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { describeQueryError, type QueryErrorDetail } from "@/lib/search/search-error";
-import { openAlexFetch, openAlexReason } from "./fetch";
+import { OPENALEX_TIMEOUT_MS, openAlexFetch, openAlexReason } from "./fetch";
 import { openAlexUrl } from "./request-url";
 
 type OqlResponse = Works & {
@@ -28,6 +28,7 @@ export async function fetchOqlWorks(
   let response: Response;
   try {
     response = await openAlexFetch(url, {
+      timeoutMs: OPENALEX_TIMEOUT_MS,
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ oql }),

@@ -1,3 +1,5 @@
+/** How long a search or a count may take before it fails, as the results page's reads do. */
+export const OPENALEX_TIMEOUT_MS = 12_000;
 /** Times a request OpenAlex throttles is made in all. */
 const TRIES = 4;
 /** The longest wait OpenAlex can ask for that is still waited out. A longer one is the day's budget, which no retry outlasts. */

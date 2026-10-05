@@ -169,6 +169,11 @@ describe("Screen all on a saved search, read on the server", () => {
 
     openAlex.mockResolvedValueOnce(new Response("<!doctype html><title>500 Internal Server Error</title>", { status: 500 }));
     await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/brackets/);
+
+    // A bracket inside a quoted phrase isn't one: that failure is the server's, and asking again may work.
+    const { alice: quoting } = await setup({ ...search, id: "local-quoted", query: '"phase (one" AND tutoring' });
+    openAlex.mockResolvedValueOnce(new Response("<!doctype html><title>500 Internal Server Error</title>", { status: 500 }));
+    await expect(quoting.action(api.screening.start.screen, { set: { kind: "search", searchId: "local-quoted" }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/^(?!.*brackets).*500/s);
   });
 
   it("asks again for pages OpenAlex throttles, and gives up on a wait no retry outlasts", async () => {

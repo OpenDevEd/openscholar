@@ -49,8 +49,8 @@ export type SearchSnapshot = Infer<typeof searchSnapshotValidator>;
 
 type Page = { page: number } | { cursor: string };
 
-/** How many of a character the search's text holds. */
-const countOf = (request: SearchRequest, character: string) => `${request.search ?? ""}${request.filter ?? ""}${request.oql ?? ""}`.split(character).length;
+/** How many of a character the search's text holds, outside its quoted phrases. */
+const countOf = (request: SearchRequest, character: string) => `${request.search ?? ""}${request.filter ?? ""}${request.oql ?? ""}`.replace(/"[^"]*"/g, "").split(character).length;
 
 /**
  * The error for an answer that isn't the papers. A 400 is a search OpenAlex won't take, and it
