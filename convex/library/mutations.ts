@@ -43,7 +43,12 @@ const savedPaper = v.object({ openalexId: v.string(), savedAt: v.optional(v.numb
  * A saved paper's rating as a change left it, and which save it's on. An undo is refused once
  * either differs, and still goes through after a later change has itself been undone.
  */
-const ratingAsLeft = v.object({ savedAt: v.number(), rating: ratingOrNone });
+const ratingAsLeft = v.object({
+  savedAt: v.number(),
+  rating: ratingOrNone,
+  /** On the undo of a save that put the paper in a collection: that collection, the one place the paper may still have. */
+  collectionId: v.optional(v.id("collections")),
+});
 
 const REMOVE = "library/mutations:removeFromLibrary" as const;
 const RESTORE = "library/mutations:restoreLibraryItem" as const;
@@ -164,7 +169,9 @@ async function ownedCollection(ctx: MutationCtx, userId: Id<"users">, collection
   return collection;
 }
 
-const saveUndo = v.union(reversal(REMOVE, { openalexId: v.string(), expect: ratingAsLeft }), reversal(RATE, { openalexId: v.string(), rating: ratingOrNone, expect: ratingAsLeft }));
+/** What takes a paper out of a collection again, or puts it back: the undo of a change to its place there. */
+const placeUndo = reversal(IN_COLLECTION, { paper: savedPaper, collectionId: v.id("collections"), inCollection: v.boolean(), assignedAt: v.number() });
+const saveUndo = v.union(reversal(REMOVE, { openalexId: v.string(), expect: ratingAsLeft }), reversal(RATE, { openalexId: v.string(), rating: ratingOrNone, expect: ratingAsLeft }), placeUndo);
 
 /** Whether a save asks the person first: one whose undo would lose the rating the paper has on search cards (see `savePaper`). */
 export async function saveAsksFirst(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, openalexId: string, rating: number | undefined) {
@@ -201,15 +208,23 @@ export const savedByIdValidator = v.object({ libraryItemId: v.id("libraryItems")
  * Saves a paper whose record an action has just read from OpenAlex (./papers.ts). The read
  * took a moment, so whether the save asks the person first is checked again here, and the
  * step of the reply it is ends here, with the write: saved together or not at all.
+ *
+ * With `collectionId` the paper goes into that collection in the same write. Asked to save
+ * eight papers into a collection, the assistant otherwise made sixteen calls, after eight
+ * that failed because the papers weren't saved yet.
  */
 export const saveRead = internalMutation({
-  args: { userId: v.id("users"), paper: libraryPaper, rating: v.optional(ratingArg), author: v.union(v.literal("user"), v.literal("assistant")), stepId: v.optional(v.id("assistantSteps")), approved: v.optional(v.boolean()) },
+  args: { userId: v.id("users"), paper: libraryPaper, rating: v.optional(ratingArg), collectionId: v.optional(v.id("collections")), author: v.union(v.literal("user"), v.literal("assistant")), stepId: v.optional(v.id("assistantSteps")), approved: v.optional(v.boolean()) },
   returns: savedByIdValidator,
-  handler: async (ctx, { userId, paper, rating, author, stepId, approved }) => {
-    // Only the assistant asks: a person saving a paper themselves has decided.
-    if (author === "assistant" && !approved && (await saveAsksFirst(ctx, userId, paper.openalexId, rating))) throw createError("FORBIDDEN", ASKS_FIRST);
+  handler: async (ctx, { userId, paper, rating, collectionId, author, stepId, approved }) => {
+    // Only the assistant asks: a person saving a paper themselves has decided. A collection a library follows shows the paper outside the account.
+    if (author === "assistant" && !approved && ((await saveAsksFirst(ctx, userId, paper.openalexId, rating)) || (collectionId !== undefined && (await followed(ctx, collectionId))))) throw createError("FORBIDDEN", ASKS_FIRST);
     const saved = await savePaper(ctx, userId, paper, rating, author);
-    const result = { libraryItemId: saved.id, title: paper.title, ...(saved.undo ? { undo: saved.undo } : {}) };
+    const placed = collectionId === undefined ? undefined : await setPaperInCollectionAction.run(ctx, userId, { paper: { openalexId: canonical(paper.openalexId) }, collectionId, inCollection: true }, author);
+    // What reverses it all. A paper this added is removed again, its place in the collection with it. One that was
+    // saved already leaves the collection, and when it was there too, a rating this changed goes back.
+    const undo = saved.undo?.path === REMOVE && collectionId !== undefined ? { path: REMOVE, args: { ...saved.undo.args, expect: { ...saved.undo.args.expect, collectionId } } } : (placed?.undo ?? saved.undo);
+    const result = { libraryItemId: saved.id, title: paper.title, ...(undo ? { undo } : {}) };
     if (stepId) await endStep(ctx, stepId, result);
     return result;
   },
@@ -339,7 +354,9 @@ export const removeFromLibraryAction = defineUserMutation({
     // Undoing a save leaves a paper that isn't as the save left it: the same save, with that
     // rating in the library and on search cards, in no collection. Refusing here takes back
     // the removals above with the rest of the transaction.
-    if (args.expect && (item.savedAt !== args.expect.savedAt || (item.rating ?? null) !== args.expect.rating || (await researchRating(ctx, userId, item.openalexId)) !== args.expect.rating || collectionIds.length > 0)) {
+    // The collection the save being undone put it in is part of that save: any other place is a change since.
+    const elsewhere = collectionIds.some((collectionId) => collectionId !== args.expect?.collectionId);
+    if (args.expect && (item.savedAt !== args.expect.savedAt || (item.rating ?? null) !== args.expect.rating || (await researchRating(ctx, userId, item.openalexId)) !== args.expect.rating || elsewhere)) {
       throw createError("CONFLICT", "This paper has changed since then, so it was left in the library.");
     }
     const more = await removeLeftoverMemberships(ctx, item._id);
