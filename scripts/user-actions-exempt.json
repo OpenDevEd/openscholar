@@ -8,6 +8,7 @@
     "assistant/replies:answer": "The person's answer to a call the assistant asked about. Only the person asked can give it.",
     "assistant/replies:carryOn": "Carries on a reply that paused at a spending limit. Only the person whose credits it spends does that.",
     "assistant/replies:live": "The reply being written now, for the chat page to show as it arrives.",
+    "assistant/replies:outcome": "How the chat's last reply ended, for the assistant's mark in the panel while no reply is being written.",
     "assistant/replies:send": "Sending a message is how a person asks the assistant; it doesn't message itself.",
     "assistant/replies:stop": "Stops the reply being written. Only a person watching it does that.",
     "assistant/spending:get": "The person's own spending limit in a chat, for the panel's Spending sheet.",
