@@ -61,6 +61,9 @@ const jobFacts = {
   // The most it may spend, on a job the assistant started with the person's say (#328), and whether it stopped there.
   spendCap: v.optional(v.number()),
   capped: v.optional(v.boolean()),
+  // Its papers are still being read from its search, and why it failed when they couldn't be.
+  reading: v.optional(v.boolean()),
+  failure: v.optional(v.string()),
 };
 
 async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
@@ -85,6 +88,8 @@ async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
     running: reading.length,
     ...(job.spendCap === undefined ? {} : { spendCap: job.spendCap }),
     ...(job.capped ? { capped: true } : {}),
+    ...(job.reading ? { reading: true } : {}),
+    ...(job.failure ? { failure: job.failure } : {}),
   };
 }
 

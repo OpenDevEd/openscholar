@@ -981,6 +981,10 @@ export default defineSchema({
     resume: v.optional(v.string()),
     // The search as it was when the request began, which its later jobs read their papers from.
     snapshot: v.optional(searchSnapshotValidator),
+    // Made before its papers were read from its search (`screening/start:read`): it has none yet, and `totalPapers` is the most it may get.
+    reading: v.optional(v.literal(true)),
+    // Why it failed, when it couldn't get its papers, in words for the person.
+    failure: v.optional(v.string()),
     // Its included papers aren't saved anywhere.
     unsaved: v.optional(v.literal(true)),
     // Papers that end excluded or failed leave the collection it read (`set`).

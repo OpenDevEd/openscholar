@@ -1,6 +1,6 @@
 import { mutation, internalMutation } from "../lib/functions";
 import { internal } from "../_generated/api";
-import { v, type Infer } from "convex/values";
+import { v, type Infer, type ObjectType } from "convex/values";
 import { sourceMetadata } from "../../lib/library/paper-metadata";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
@@ -44,6 +44,86 @@ async function destination(ctx: MutationCtx, userId: Id<"users">, saveTo: Infer<
   return { targetCollectionId: saveTo.collectionId };
 }
 
+/** What a job is made from, whoever makes it and whether or not its papers are read yet. */
+const jobSetup = {
+  /** Who started it: the search revision that takes on its questions records them. */
+  author: v.union(v.literal("user"), v.literal("assistant")),
+  questions: v.array(screeningQuestionValidator),
+  scoringConfig: screeningScoringConfigValidator,
+  // Where the papers came from, which of them these are (from 1), and the last paper of
+  // the whole request when it's more than this job holds. A search's page shows the answers.
+  set: v.optional(paperSetValidator),
+  first: v.optional(v.number()),
+  last: v.optional(v.number()),
+  through: v.optional(v.number()),
+  resume: v.optional(v.string()),
+  snapshot: v.optional(searchSnapshotValidator),
+  // Missing: included papers are saved to the library alone, as jobs from before the screening page were.
+  saveTo: v.optional(saveToValidator),
+  prune: v.optional(v.boolean()),
+  // The most it may spend, when the assistant starts it with the person's say (#328).
+  spendCap: v.optional(v.number()),
+};
+type JobSetup = ObjectType<typeof jobSetup>;
+
+/**
+ * Makes a job's row for `user`, with its progress row: finds the screening its answers go to,
+ * names it after its set, and stamps it with the model Screen all runs on.
+ */
+async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, saveTo, prune, ...args }: JobSetup, state: Pick<Doc<"screeningJobs">, "status" | "totalPapers" | "reading">) {
+  if (prune && set?.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
+
+  // The screening its answers go to, and the set's name as the page shows it.
+  const now = Date.now();
+  let screeningId: Id<"screenings">;
+  let label: string | undefined;
+  if (set?.kind === "search") {
+    const localId = set.searchId;
+    const search = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", user._id).eq("localId", localId)).unique();
+    if (!search) throw createError("NOT_FOUND", "Search not found");
+    // The search's page shows answers to its own questions, so it takes on the job's it
+    // lacks, all in one edit with one revision.
+    const asked = new Set(search.data.screeningQuestions.map(({ question }) => question));
+    const missing = [...new Set(args.questions.map((q) => q.question))].filter((question) => !asked.has(question));
+    if (missing.length) {
+      const screeningQuestions = [...search.data.screeningQuestions, ...missing.map((question) => ({ question }))];
+      await applyCommand(ctx, user._id, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, author);
+    }
+    screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
+    label = search.data.query;
+  } else {
+    screeningId = await ctx.db.insert("screenings", { userId: user._id, version: 0, createdAt: now });
+    const source = set?.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
+    if (set && set.kind !== "saved" && source?.userId !== user._id) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");
+    label = source ? ("name" in source ? source.name : source.label) : undefined;
+  }
+
+  // Stamped with what Screen All runs on (read back at run by screenPaperAction).
+  const serverPick = await resolveTaskPick(ctx, user._id, "screenAll");
+  const jobId = await ctx.db.insert("screeningJobs", {
+    userId: user._id,
+    ...state,
+    screeningId,
+    ...args,
+    ...(set ? { set } : {}),
+    ...(label ? { label } : {}),
+    ...(await destination(ctx, user._id, saveTo)),
+    ...(prune ? { prune: true as const } : {}),
+    ...serverStamp(serverPick),
+    createdAt: now,
+    updatedAt: now,
+  });
+  await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0 });
+  return jobId;
+}
+
+/** Whether the person can pay for screening `papers` papers, with the figures a refusal names. */
+async function affords(ctx: MutationCtx, userId: Id<"users">, papers: number) {
+  const available = await availableCredits(ctx, userId);
+  const estimate = estimateScreening(papers, available).credits;
+  return { affordable: available >= estimate, estimate, available };
+}
+
 /**
  * Creates a Screen all job for `userId` from papers the server has already resolved
  * (`screening/start:screen`); the browser never sends papers. Checks the person's credits,
@@ -54,93 +134,91 @@ async function destination(ctx: MutationCtx, userId: Id<"users">, saveTo: Infer<
 export const createScreeningJobForUser = internalMutation({
   args: {
     userId: v.id("users"),
-    /** Who started it: the search revision that takes on its questions records them. */
-    author: v.union(v.literal("user"), v.literal("assistant")),
     papers: v.array(screeningPaperInputValidator),
-    questions: v.array(screeningQuestionValidator),
-    scoringConfig: screeningScoringConfigValidator,
-    // Where the papers came from, which of them these are (from 1), and the last paper of
-    // the whole request when it's more than this job holds. A search's page shows the answers.
-    set: v.optional(paperSetValidator),
-    first: v.optional(v.number()),
-    last: v.optional(v.number()),
-    through: v.optional(v.number()),
-    resume: v.optional(v.string()),
-    snapshot: v.optional(searchSnapshotValidator),
     // How many of the papers the search's page already answers every question for
     // (`screening/queries:answeredCount`); the credit check leaves them out.
     answered: v.optional(v.number()),
-    // Missing: included papers are saved to the library alone, as jobs from before the screening page were.
-    saveTo: v.optional(saveToValidator),
-    prune: v.optional(v.boolean()),
     // The job that follows another in one request: it takes that job's place in the request
     // even when the person can no longer pay for it, so the page shows where the request stopped.
     chained: v.optional(v.boolean()),
-    // The most it may spend, when the assistant starts it with the person's say (#328).
-    spendCap: v.optional(v.number()),
+    ...jobSetup,
   },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, { userId, author, papers, set, saveTo, prune, chained, answered = 0, ...args }) => {
+  handler: async (ctx, { userId, papers, chained, answered = 0, ...setup }) => {
     // The acting user, who may have been suspended since the action began.
     const user = await requireActiveUser(ctx, userId);
     if (papers.length === 0) throw createError("VALIDATION_ERROR", "At least one paper is required");
     if (papers.length > MAX_SCREENING_PAPERS_PER_JOB) {
       throw createError("VALIDATION_ERROR", `Cannot screen more than ${MAX_SCREENING_PAPERS_PER_JOB} papers per job`);
     }
-    if (prune && set?.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
-
-    // The screening its answers go to, and the set's name as the page shows it.
-    const now = Date.now();
-    let screeningId: Id<"screenings">;
-    let label: string | undefined;
-    if (set?.kind === "search") {
-      const localId = set.searchId;
-      const search = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", user._id).eq("localId", localId)).unique();
-      if (!search) throw createError("NOT_FOUND", "Search not found");
-      // The search's page shows answers to its own questions, so it takes on the job's it
-      // lacks, all in one edit with one revision.
-      const asked = new Set(search.data.screeningQuestions.map(({ question }) => question));
-      const missing = [...new Set(args.questions.map((q) => q.question))].filter((question) => !asked.has(question));
-      if (missing.length) {
-        const screeningQuestions = [...search.data.screeningQuestions, ...missing.map((question) => ({ question }))];
-        await applyCommand(ctx, user._id, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, author);
-      }
-      screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
-      label = search.data.query;
-    } else {
-      screeningId = await ctx.db.insert("screenings", { userId: user._id, version: 0, createdAt: now });
-      const source = set?.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
-      if (set && set.kind !== "saved" && source?.userId !== user._id) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");
-      label = source ? ("name" in source ? source.name : source.label) : undefined;
-    }
-
     // Papers the search's page already answered keep their answers and cost nothing.
-    const available = await availableCredits(ctx, user._id);
-    const estimate = estimateScreening(papers.length - answered, available).credits;
-    const affordable = available >= estimate;
+    const { affordable, estimate, available } = await affords(ctx, user._id, papers.length - answered);
     if (!affordable && !chained) {
       throw createError("INSUFFICIENT_CREDITS", `Need ~${estimate} credits for ${papers.length} papers but only have ${available}`);
     }
-
-    // Stamped with what Screen All runs on (read back at run by screenPaperAction).
-    const serverPick = await resolveTaskPick(ctx, user._id, "screenAll");
-    const jobId = await ctx.db.insert("screeningJobs", {
-      userId: user._id,
-      status: affordable ? "processing" : "creditsExhausted",
-      totalPapers: papers.length,
-      screeningId,
-      ...args,
-      ...(set ? { set } : {}),
-      ...(label ? { label } : {}),
-      ...(await destination(ctx, user._id, saveTo)),
-      ...(prune ? { prune: true as const } : {}),
-      ...serverStamp(serverPick),
-      createdAt: now,
-      updatedAt: now,
-    });
-    await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0 });
-    if (affordable) await createResults(ctx, (await ctx.db.get("screeningJobs", jobId))!, papers, now);
+    const jobId = await insertJob(ctx, user, setup, { status: affordable ? "processing" : "creditsExhausted", totalPapers: papers.length });
+    const job = (await ctx.db.get("screeningJobs", jobId))!;
+    if (affordable) await createResults(ctx, job, papers, job.createdAt);
     return { jobId };
+  },
+});
+
+/**
+ * Makes a job on a search before its papers are read, so the person has it at once: OpenAlex
+ * can take seconds over them, or refuse them. `papers` is the most it may get. They follow
+ * (`screening/start:read`), and the job is `reading` until they do.
+ */
+export const openScreeningJob = internalMutation({
+  args: { userId: v.id("users"), papers: v.number(), ...jobSetup, first: v.number(), last: v.number(), snapshot: searchSnapshotValidator },
+  returns: v.object({ jobId: v.id("screeningJobs") }),
+  handler: async (ctx, { userId, papers, ...setup }) => {
+    const user = await requireActiveUser(ctx, userId);
+    if (setup.set?.kind !== "search") throw createError("VALIDATION_ERROR", "Only a search's papers are read after its job is made");
+    const jobId = await insertJob(ctx, user, setup, { status: "processing", totalPapers: papers, reading: true });
+    const { set, first, last, through = last, questions, snapshot } = setup;
+    await ctx.scheduler.runAfter(0, internal.screening.start.read, { jobId, userId, searchId: set.searchId, first, through, questions, snapshot });
+    return { jobId };
+  },
+});
+
+/**
+ * Gives a job made by `openScreeningJob` its papers, and the part of its request they turned
+ * out to be. The person's credits are checked as for a job made with its papers; one they
+ * can't pay for stays, out of credits. A job cancelled while its papers were read is left alone.
+ */
+export const fillScreeningJob = internalMutation({
+  args: {
+    jobId: v.id("screeningJobs"),
+    papers: v.array(screeningPaperInputValidator),
+    first: v.number(),
+    last: v.number(),
+    through: v.optional(v.number()),
+    answered: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { jobId, papers, answered, first, last, through }) => {
+    const reading = await ctx.db.get("screeningJobs", jobId);
+    if (!reading?.reading || reading.status !== "processing") return null;
+    const { affordable } = await affords(ctx, reading.userId, papers.length - answered);
+    const now = Date.now();
+    await ctx.db.patch("screeningJobs", jobId, { reading: undefined, totalPapers: papers.length, first, last, through, updatedAt: now, ...(affordable ? {} : { status: "creditsExhausted" as const }) });
+    if (affordable) await createResults(ctx, (await ctx.db.get("screeningJobs", jobId))!, papers, now);
+    return null;
+  },
+});
+
+/** How much of why a job couldn't get its papers is kept. */
+const FAILURE_SHOWN = 600;
+
+/** Ends a job that couldn't get its papers as failed, with why. A job cancelled meanwhile is left alone. */
+export const failScreeningRead = internalMutation({
+  args: { jobId: v.id("screeningJobs"), reason: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { jobId, reason }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    if (!job?.reading || job.status !== "processing") return null;
+    await ctx.db.patch("screeningJobs", jobId, { status: "failed", reading: undefined, failure: reason.slice(0, FAILURE_SHOWN), updatedAt: Date.now() });
+    return null;
   },
 });
 

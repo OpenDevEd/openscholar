@@ -145,6 +145,12 @@ export function checkRange(first: number, last: number) {
   }
 }
 
+/** A saved search as it stands: its results page's request and its rating filter. */
+export function snapshotOf(found: SavedSearchRequest): SearchSnapshot {
+  if (!found.request) throw createError("VALIDATION_ERROR", "This search's query isn't valid. Fix it on the results page first.");
+  return { request: found.request, ...(found.ratingRange ? { rating: { min: found.ratingRange[0], max: found.ratingRange[1] } } : {}) };
+}
+
 /**
  * Papers `first` to `last` (counting from 1) of the person's saved search, in its results
  * page's order, kept to its rating filter. Spends one OpenAlex request per page read.
@@ -161,10 +167,8 @@ export async function searchPapers(
   checkRange(first, last);
   // Typed here: the generated API's types depend on this module, so inference would loop.
   const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId });
-  const request = snapshot ? snapshot.request : found.request;
-  if (!request) throw createError("VALIDATION_ERROR", "This search's query isn't valid. Fix it on the results page first.");
-  const rating = snapshot ? snapshot.rating : found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined;
-  const taken: SearchSnapshot = { request, ...(rating ? { rating } : {}) };
+  const taken = snapshot ?? snapshotOf(found);
+  const { request, rating } = taken;
 
   const works = await readSearchWorks<Work>(request, { first, last, select: SCREENING_FIELDS }, spender(ctx, found.clerkId));
   return { papers: await keptByRating(ctx, userId, works.map(toPaper), rating), ended: works.length < last - first + 1, snapshot: taken };

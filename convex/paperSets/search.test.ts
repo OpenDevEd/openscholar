@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
@@ -52,32 +53,53 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function setup(saved: SavedSearch = search, ratings: Array<{ paperId: string; rating: number }> = []) {
+async function setup(saved: SavedSearch = search, ratings: Array<{ paperId: string; rating: number }> = [], credits = 100_000) {
   const t = convexTest(schema);
   setupScreeningWorkpool(t);
   const userId = await t.run(async (ctx) => {
     const id = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "alice", email: "alice@example.com", state: "active", createdAt: 1, updatedAt: 1 });
-    await seedCreditsForTest(ctx, { userId: id, free: 100_000 });
+    await seedCreditsForTest(ctx, { userId: id, free: credits });
     return id;
   });
   const alice = t.withIdentity({ subject: "alice" });
   await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: [{ search: saved }], shortcuts, ratings });
-  return { t, userId, alice };
+  const read = (jobId: Id<"screeningJobs">) => t.run((ctx) => ctx.db.get("screeningJobs", jobId));
+  /** The job once the reading of its papers, which follows its start, is over. */
+  const settled = (jobId: Id<"screeningJobs">) =>
+    vi.waitFor(async () => {
+      const made = (await read(jobId))!;
+      expect(made.reading).toBeUndefined();
+      return made;
+    }, { timeout: 10_000, interval: 20 });
+  /** Starts a job as Alice and waits for its papers. */
+  const screen = async (args: { searchId?: string; first: number; last: number }) => {
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: args.searchId ?? search.id }, first: args.first, last: args.last, ...job, saveTo: { kind: "none" } });
+    return { jobId, made: await settled(jobId) };
+  };
+  return { t, userId, alice, read, settled, screen };
 }
+
+/** The requests made to OpenAlex, which the model's requests share a stub with. */
+const asked = () => requests.filter(({ url }) => url.hostname === "api.openalex.org");
+/** Those for the search's papers: the one that counts the search before the job is made asks for a single work. */
+const pages = () => asked().filter(({ url }) => url.searchParams.get("per-page") === "200");
 
 describe("Screen all on a saved search, read on the server", () => {
   it("reads the range from the results page's request, a numbered page each, with the key and only the fields it keeps", async () => {
-    const { t, alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    const { t, alice, read, settled } = await setup({ ...search, sortBy: "relevance_score:desc" });
 
     const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 150, last: 450, ...job, saveTo: { kind: "none" } });
 
-    expect(requests.map(({ url }) => Number(url.searchParams.get("page"))).sort()).toEqual([1, 2, 3]);
-    for (const { url } of requests) {
+    // The job is there before its papers: nobody waits for OpenAlex to see it.
+    expect(await read(jobId)).toMatchObject({ status: "processing", reading: true, totalPapers: 301, first: 150, last: 450 });
+    await settled(jobId);
+
+    expect(pages().map(({ url }) => Number(url.searchParams.get("page"))).sort()).toEqual([1, 2, 3]);
+    for (const { url } of pages()) expect(url.searchParams.get("select")?.split(",")).toEqual(expect.arrayContaining(["id", "abstract_inverted_index", "authorships"]));
+    for (const { url } of asked()) {
       expect(url.pathname).toBe("/works");
       expect(url.searchParams.get("api_key")).toBe("platform-key");
-      expect(url.searchParams.get("per-page")).toBe("200");
       expect(url.searchParams.get("sort")).toBe("relevance_score:desc");
-      expect(url.searchParams.get("select")?.split(",")).toEqual(expect.arrayContaining(["id", "abstract_inverted_index", "authorships"]));
       // The account's shortcut is expanded as the results page expands it, and its year range applies.
       expect(url.searchParams.get("filter")).toContain("randomized controlled trial");
       expect(url.searchParams.get("filter")).toContain("from_publication_date:2015-01-01,to_publication_date:2024-12-31");
@@ -92,51 +114,54 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(created.job?.snapshot?.request.filter).toContain("randomized controlled trial");
     expect(created.results.map((result) => result.openalexId)).toEqual(["W150", "W151", "W152"].map((id) => `https://openalex.org/${id}`));
     expect(created.results[0]).toMatchObject({ title: "Paper 150", abstract: "Tutoring works", authors: ["Ada Lovelace"], publicationYear: 2020 });
-    expect(created.limits.find((row) => row.name === "openalex-day")?.value).toBe(20_000 - 3);
+    // A request to count the search, and one for each page.
+    expect(created.limits.find((row) => row.name === "openalex-day")?.value).toBe(20_000 - 4);
   });
 
   it("reads an explicit sort's cursor pages in order from the start, as the results page lists them", async () => {
-    const { t, alice } = await setup();
+    const { t, screen } = await setup();
 
-    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 250, last: 260, ...job, saveTo: { kind: "none" } });
+    const { jobId } = await screen({ first: 250, last: 260 });
 
-    expect(requests.map(({ url }) => url.searchParams.get("cursor"))).toEqual(["*", "2"]);
-    expect(requests.every(({ url }) => url.searchParams.get("sort") === "cited_by_count:desc" && url.searchParams.get("page") === null)).toBe(true);
+    expect(pages().map(({ url }) => url.searchParams.get("cursor"))).toEqual(["*", "2"]);
+    expect(pages().every(({ url }) => url.searchParams.get("sort") === "cited_by_count:desc" && url.searchParams.get("page") === null)).toBe(true);
     const [firstResult] = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1));
     expect(firstResult?.openalexId).toBe("https://openalex.org/W250");
   });
 
   it("keeps exactly the range asked for when it runs across cursor pages", async () => {
-    const { t, alice } = await setup();
+    const { t, screen } = await setup();
 
-    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 190, last: 410, ...job, saveTo: { kind: "none" } });
+    const { jobId } = await screen({ first: 190, last: 410 });
 
-    expect(requests.map(({ url }) => url.searchParams.get("cursor"))).toEqual(["*", "2", "3"]);
+    expect(pages().map(({ url }) => url.searchParams.get("cursor"))).toEqual(["*", "2", "3"]);
     const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(300));
     expect(results.map((result) => result.openalexId)).toEqual(Array.from({ length: 221 }, (_, i) => `https://openalex.org/W${190 + i}`));
   });
 
   it("filters by the days picked, whatever the server's timezone", async () => {
-    const { alice } = await setup({ ...search, sortBy: "relevance_score:desc", filterType: "date", isYearRangeEnabled: false, yearRange: undefined, dateRange: { from: "2024-12-31T23:00:00.000Z", to: "2025-01-30T23:00:00.000Z" } });
+    const { screen } = await setup({ ...search, sortBy: "relevance_score:desc", filterType: "date", isYearRangeEnabled: false, yearRange: undefined, dateRange: { from: "2024-12-31T23:00:00.000Z", to: "2025-01-30T23:00:00.000Z" } });
 
-    await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 5, ...job, saveTo: { kind: "none" } });
+    await screen({ first: 1, last: 5 });
 
-    expect(requests[0]!.url.searchParams.get("filter")).toContain("from_publication_date:2025-01-01,to_publication_date:2025-01-31");
+    expect(pages()[0]!.url.searchParams.get("filter")).toContain("from_publication_date:2025-01-01,to_publication_date:2025-01-31");
   });
 
   it("posts an OQL search, and keeps only the papers inside the search's rating filter", async () => {
     const oql: SavedSearch = { ...search, id: "local-oql", query: 'works where title.search has "tutoring"', field: OQL_FIELD, onlyRatedPapers: true, ratingRange: [3, 5] };
-    const { t, alice } = await setup(oql, [
+    const { t, screen } = await setup(oql, [
       { paperId: "https://openalex.org/W2", rating: 4 },
       { paperId: "https://openalex.org/W5", rating: 1 },
     ]);
 
-    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: oql.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } });
+    const { jobId } = await screen({ searchId: oql.id, first: 1, last: 10 });
 
-    expect(requests).toHaveLength(1);
-    expect(requests[0]!.url.pathname).toBe("/");
-    expect(requests[0]!.init?.method).toBe("POST");
-    expect(JSON.parse(String(requests[0]!.init?.body)).oql).toContain("tutoring");
+    expect(pages()).toHaveLength(1);
+    for (const request of asked()) {
+      expect(request.url.pathname).toBe("/");
+      expect(request.init?.method).toBe("POST");
+      expect(JSON.parse(String(request.init?.body)).oql).toContain("tutoring");
+    }
     const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect());
     expect(results.map((result) => result.openalexId)).toEqual(["https://openalex.org/W2"]);
   });
@@ -146,7 +171,7 @@ describe("Screen all on a saved search, read on the server", () => {
     await alice.mutation(api.openalex.limits.spend, { count: 300 });
 
     await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toThrow();
-    expect(requests).toHaveLength(0);
+    expect(asked()).toHaveLength(0);
   });
 
   it("says why OpenAlex won't take a search, and keeps a failing server's answer to itself", async () => {
@@ -172,13 +197,15 @@ describe("Screen all on a saved search, read on the server", () => {
   });
 
   it("asks again for pages OpenAlex throttles, and gives up on a wait no retry outlasts", async () => {
-    const { t, alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    const { alice, settled } = await setup({ ...search, sortBy: "relevance_score:desc" });
     const start = (last: number) => alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last, ...job, saveTo: { kind: "none" } });
     const throttled = (wait: string) => new Response(JSON.stringify({ error: "Rate limit exceeded", reason: "broad_boolean_query" }), { status: 429, headers: { "Retry-After": wait } });
 
-    openAlex.mockResolvedValueOnce(throttled("0")).mockResolvedValueOnce(throttled("0"));
+    // The count, then two of the pages.
+    openAlex.mockResolvedValueOnce(throttled("0"));
     const { jobId } = await start(450);
-    expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.totalPapers).toBe(450);
+    openAlex.mockResolvedValueOnce(throttled("0")).mockResolvedValueOnce(throttled("0"));
+    expect(await settled(jobId)).toMatchObject({ status: "processing", totalPapers: 450 });
 
     // The day's budget: OpenAlex says to wait until it resets.
     const asked = openAlex.mock.calls.length;
@@ -188,25 +215,24 @@ describe("Screen all on a saved search, read on the server", () => {
   });
 
   it("ends a request where the search's results end, however far it was asked to go", async () => {
-    const { t, alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    const { alice, screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
 
-    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 801, last: 1_000_000, ...job, saveTo: { kind: "none" } });
+    const { made } = await screen({ first: 801, last: 1_000_000 });
 
-    const made = await t.run((ctx) => ctx.db.get("screeningJobs", jobId));
-    expect(made).toMatchObject({ totalPapers: 100, first: 801, last: 1_800 });
+    expect(made).toMatchObject({ totalPapers: 100, first: 801, last: 900 });
     // Nothing follows this job: no end of the request to reach, and no papers past the search's last.
-    expect(made?.through).toBeUndefined();
-    expect(made?.snapshot).toMatchObject({ request: { sort: "relevance_score:desc" } });
-    await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1_001, last: 1_000_000, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/None of these papers/);
-    // The first job's papers are being screened by now, and the model's requests go through the same stub.
-    expect(requests.filter(({ url }) => url.hostname === "api.openalex.org").length).toBeLessThan(15);
+    expect(made.through).toBeUndefined();
+    expect(made.snapshot).toMatchObject({ request: { sort: "relevance_score:desc" } });
+    // Only the page that holds the search's last papers was asked for.
+    expect(pages().map(({ url }) => url.searchParams.get("page"))).toEqual(["5"]);
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1_001, last: 1_000_000, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/no papers in that range/);
   });
 
   it("reads a request's later papers from the search as it was when the request began", async () => {
     total = 2_500;
-    const { t, alice } = await setup();
-    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 2_500, ...job, saveTo: { kind: "none" } });
-    expect(await t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ first: 1, last: 1_000, through: 2_500, snapshot: { request: { sort: "cited_by_count:desc" } } });
+    const { t, alice, screen } = await setup();
+    const { jobId, made } = await screen({ first: 1, last: 2_500 });
+    expect(made).toMatchObject({ first: 1, last: 1_000, through: 2_500, snapshot: { request: { sort: "cited_by_count:desc" } } });
 
     // The search is edited while its first job runs; the job after it reads the search as it was.
     await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "edit", command: { kind: "editSearch", id: search.id, edit: { kind: "patch", fields: { sortBy: "publication_date:desc", query: "something else" }, clear: [] } } });
@@ -223,12 +249,48 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(jobs[1]).toMatchObject({ first: 1_001, last: 2_000, through: 2_500, totalPapers: 1_000, snapshot: { request: { sort: "cited_by_count:desc" } } });
   });
 
+  it("ends a job as failed, with why, when its papers can't be read", async () => {
+    const { alice, settled } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    const start = () => alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } });
+
+    // The search counted, and then OpenAlex fails on its papers.
+    const failing = await start();
+    openAlex.mockResolvedValueOnce(new Response(JSON.stringify({ message: "upstream connect error" }), { status: 503 }));
+    expect(await settled(failing.jobId)).toMatchObject({ status: "failed", failure: expect.stringMatching(/503/) });
+
+    // Every paper is outside the search's rating filter.
+    const { alice: rater, settled: rated } = await setup({ ...search, id: "local-rated", onlyRatedPapers: true, ratingRange: [3, 5] });
+    const empty = await rater.action(api.screening.start.screen, { set: { kind: "search", searchId: "local-rated" }, first: 1, last: 10, ...job, saveTo: { kind: "none" } });
+    expect(await rated(empty.jobId)).toMatchObject({ status: "failed", failure: expect.stringMatching(/rating filter/) });
+  });
+
+  it("leaves a job cancelled while its papers were read without them", async () => {
+    const { t, alice, read } = await setup({ ...search, sortBy: "relevance_score:desc" });
+
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 450, ...job, saveTo: { kind: "none" } });
+    await alice.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
+    await vi.waitFor(() => expect(pages()).toHaveLength(3), { timeout: 10_000, interval: 20 });
+    await t.finishInProgressScheduledFunctions();
+
+    expect((await read(jobId))?.status).toBe("cancelled");
+    expect(await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1))).toHaveLength(0);
+  });
+
+  it("keeps a job the person can't pay for once its papers are counted, out of credits", async () => {
+    const { t, screen } = await setup(search, [], 5);
+
+    const { jobId, made } = await screen({ first: 1, last: 10 });
+
+    expect(made).toMatchObject({ status: "creditsExhausted", totalPapers: 10 });
+    expect(await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1))).toHaveLength(0);
+  });
+
   it("refuses another account's search", async () => {
     const { t } = await setup();
     await t.run((ctx) => ctx.db.insert("users", { libraryItemCount: 0, clerkId: "bob", email: "bob@example.com", state: "active", createdAt: 1, updatedAt: 1 }));
 
     await expect(t.withIdentity({ subject: "bob" }).action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
-    expect(requests).toHaveLength(0);
+    expect(asked()).toHaveLength(0);
   });
 });
 
