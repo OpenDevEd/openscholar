@@ -12,6 +12,7 @@ import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { createCitationSearch, useSearchOptional } from "@/lib/search";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { rememberAuthorNames } from "@/lib/openalex/use-author-names";
+import { rememberInstitutionNames, rememberJournalNames } from "@/lib/openalex/use-record-names";
 import { authorFilterValue, isAuthorId } from "@/lib/openalex/author-filter";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { buildShareableUrl } from "@/lib/search-params";
@@ -167,26 +168,34 @@ export function authorValue(author: { id?: string | null; display_name: string }
   return authorFilterValue(author.id ?? author.display_name);
 }
 
+/** One of a work's authors, journals or institutions, as the search keeps it and as the page names it. */
+export type FilterValue = { value: string; name: string };
+
 /**
- * The authors the page's search is filtered by, and the control that adds or
- * drops one. On a page with no search to narrow, such as the library or a paper
- * a chat names, `toggle` starts a new search by that author instead.
+ * The records of one kind the page's search is filtered by, and the control that
+ * adds or drops one. On a page with no search to narrow, such as the library or a
+ * paper a chat names, `toggle` starts a new search by that record instead.
  */
-export function useAuthorFilter() {
+function useRecordFilter(field: "authors" | "journals" | "institutions", param: "author" | "journal" | "inst", remember: (names: Record<string, string>) => void) {
   const router = useRouter();
   // A search provider is the search to narrow. Focus mode in the assistant's panel has none, even over a results page.
   const canFilter = Boolean(useSearchOptional());
-  const { authors } = useCurrentSearchFormState();
+  const selected = useCurrentSearchFormState()[field];
   const updateFilter = useUpdateSearchFilter();
-  const toggle = (author: { value: string; name: string }) => {
-    if (authors.includes(author.value)) return updateFilter({ authors: authors.filter((one) => one !== author.value) });
-    // An id's name is saved as it is picked, so the filter's chip never has to look it up.
-    if (isAuthorId(author.value)) rememberAuthorNames({ [author.value]: author.name });
-    updateFilter({ authors: [...authors, author.value] });
+  const toggle = ({ value, name }: FilterValue) => {
+    if (canFilter && selected.includes(value)) return updateFilter({ [field]: selected.filter((one) => one !== value) });
+    // A name is saved as it is picked, so the filter's chip never has to look it up.
+    remember({ [value]: name });
+    if (canFilter) updateFilter({ [field]: [...selected, value] });
+    else router.push(buildShareableUrl("", { [param]: [value] }));
   };
-  const search = (author: { value: string; name: string }) => {
-    if (isAuthorId(author.value)) rememberAuthorNames({ [author.value]: author.name });
-    router.push(buildShareableUrl("", { author: [author.value] }));
-  };
-  return canFilter ? { authors, toggle } : { authors: [] as string[], toggle: search };
+  return { selected: canFilter ? selected : ([] as string[]), toggle };
 }
+
+// An author kept by name is its own name, so only an id's is saved.
+const rememberAuthorIds = (names: Record<string, string>) =>
+  rememberAuthorNames(Object.fromEntries(Object.entries(names).filter(([value]) => isAuthorId(value))));
+
+export const useAuthorFilter = () => useRecordFilter("authors", "author", rememberAuthorIds);
+export const useJournalFilter = () => useRecordFilter("journals", "journal", rememberJournalNames);
+export const useInstitutionFilter = () => useRecordFilter("institutions", "inst", rememberInstitutionNames);

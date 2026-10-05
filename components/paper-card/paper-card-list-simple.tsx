@@ -14,7 +14,7 @@ import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { BookOpen, Quote } from "@/components/icons";
-import { useAuthorFilter, useTranslate, useCitationHandlers } from "./hooks";
+import { useAuthorFilter, useJournalFilter, useTranslate, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
   PaperCardProps,
@@ -22,6 +22,7 @@ import {
   OpenAccessBadge,
   DOIBadge,
   AuthorNames,
+  JournalName,
   DownloadMenuCompact,
   TranslationToggle,
   ScreeningResponses,
@@ -53,6 +54,7 @@ export function PaperCardListSimple({
     : result.title;
 
   const authorFilter = useAuthorFilter();
+  const journalFilter = useJournalFilter();
 
   const journal = result.primary_location?.source?.display_name || "";
 
@@ -109,7 +111,7 @@ export function PaperCardListSimple({
                       authorships={result.authorships ?? []}
                       unparsed={result.authors_unparsed}
                       maxLength={60}
-                      selected={authorFilter.authors}
+                      selected={authorFilter.selected}
                       onToggleAuthor={authorFilter.toggle}
                     />
                   </span>
@@ -117,7 +119,7 @@ export function PaperCardListSimple({
                 {journal && (
                   <span className="flex min-w-3 shrink-[100] items-center gap-1.5 italic">
                     <BookOpen aria-hidden className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{journal}</span>
+                    <JournalName source={result.primary_location?.source} selected={journalFilter.selected} onToggle={journalFilter.toggle} className="min-w-0 truncate" />
                   </span>
                 )}
               </div>

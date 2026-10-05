@@ -26,6 +26,11 @@ import {
   AlignLeft,
   FileX,
   UserRound,
+  BookOpen,
+  Building,
+  FlaskConical,
+  TrendingUp,
+  BadgeCheck,
   AppIcon,
 } from "@/components/icons";
 import { FilterSectionType, FilterType } from "./filter-types";
@@ -61,6 +66,11 @@ export const FILTER_ICONS: Record<FilterType, AppIcon> = {
   institutionType: Building2,
   funder: HandCoins,
   author: UserRound,
+  journal: BookOpen,
+  institution: Building,
+  studyDesign: FlaskConical,
+  topCited: TrendingUp,
+  venuesOnly: BadgeCheck,
   minCitations: Award,
   hasAbstract: AlignLeft,
   includeRetracted: FileX,

@@ -13,7 +13,7 @@ import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Quote, Network, Users, BookOpen } from "@/components/icons";
-import { useAuthorFilter, useTranslate, useScreening, useCitationHandlers } from "./hooks";
+import { useAuthorFilter, useJournalFilter, useTranslate, useScreening, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
   PaperCardProps,
@@ -21,6 +21,7 @@ import {
   OpenAccessBadge,
   DOIBadge,
   AuthorNames,
+  JournalName,
   ScreeningBadge,
   finalState,
   DownloadMenuCompact,
@@ -63,6 +64,7 @@ export function PaperCardGrid({
     : result.title;
 
   const authorFilter = useAuthorFilter();
+  const journalFilter = useJournalFilter();
   const journal = result.primary_location?.source?.display_name || "";
 
   const isCompact = viewMode === "grid-3";
@@ -147,7 +149,7 @@ export function PaperCardGrid({
                   authorships={result.authorships ?? []}
                   unparsed={result.authors_unparsed}
                   maxLength={0}
-                  selected={authorFilter.authors}
+                  selected={authorFilter.selected}
                   onToggleAuthor={authorFilter.toggle}
                 />
               </span>
@@ -158,7 +160,7 @@ export function PaperCardGrid({
           {journal && !isCompact && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
               <BookOpen className="h-3 w-3 flex-shrink-0" />
-              <span className="line-clamp-1 italic">{journal}</span>
+              <JournalName source={result.primary_location?.source} selected={journalFilter.selected} onToggle={journalFilter.toggle} className="line-clamp-1 italic" />
             </div>
           )}
 

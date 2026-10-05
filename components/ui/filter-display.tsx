@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { getAllFilterItems, type FilterItem, type FilterParams, type FilterT } from "@/lib/filters";
 import { getRegionDisplayName } from "@/lib/i18n/region-names";
-import { useFunderNames } from "@/lib/openalex/use-funder-names";
+import { useFunderNames, useInstitutionNames, useJournalNames } from "@/lib/openalex/use-record-names";
 import { useAuthorNames } from "@/lib/openalex/use-author-names";
 import { topicName } from "@/lib/topics/search";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,8 @@ export function FilterChips({
   );
   const funders = useFunderNames(filters.funders ?? []);
   const authors = useAuthorNames(filters.authors ?? []);
+  const journals = useJournalNames(filters.journals ?? []);
+  const institutions = useInstitutionNames(filters.institutions ?? []);
   const languageNames = new Intl.DisplayNames([locale], { type: "language" });
   const items = getAllFilterItems(
     filters,
@@ -49,6 +51,8 @@ export function FilterChips({
       researchAreas,
       funders,
       authors,
+      journals,
+      institutions,
       place: (id) => getRegionDisplayName(id, locale, (key) => (t as FilterT)(key)),
       language: (code) => languageNames.of(code) ?? code,
     },

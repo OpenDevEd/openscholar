@@ -34,11 +34,12 @@ import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
+import { JOB_ENDED } from "./jobEnds";
 import { bulkOf, detailsOf } from "./details";
 import { allowAlways, carriedOn, covers, noteReply, pausedAt, replyLimitOf } from "./spending";
 import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
-import { askedDetailsValidator, askedEachValidator, assistantPausedValidator } from "./validators";
+import { askedDetailsValidator, askedEachValidator, assistantPausedValidator, jobsEndedValidator, JOBS_TOLD_AT_ONCE } from "./validators";
 import { searchHref } from "../research/searches";
 import { searchSettings } from "../research/searchValidators";
 
@@ -67,7 +68,7 @@ const SWEEP_BATCH = 200;
  * Refuses a reply that would be one too many being written for a person at once. A reply
  * that waits for an answer runs nothing and isn't one of them; carrying it on is.
  */
-async function admit(ctx: MutationCtx, userId: Id<"users">) {
+export async function admit(ctx: MutationCtx, userId: Id<"users">) {
   // Twice the limit, so locks whose action died can't hide live ones behind them. The dead
   // ones found are released here, which keeps the next count honest too.
   const mine = await ctx.db
@@ -109,13 +110,6 @@ export const send = mutation({
     // A reply that was stopped, or died, around asking the person can leave calls without their results.
     await settleAsked(ctx, threadId);
     await healCalls(ctx, thread.agentThreadId);
-    const { modelId, effort } = await chatModel(ctx, thread, userId);
-    // The model the chat falls back on, or one picked before the rule, is held to it too. So is
-    // the server's own default, which runs when nothing picks a model, where the catalog has it.
-    const model = modelId
-      ? await requireAvailableModel(ctx, modelId)
-      : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
-    if (model) requireAssistantModel(model);
 
     // The message, the lock and the scheduled reply commit together, so a second send
     // can't slip in between them.
@@ -157,29 +151,47 @@ export const send = mutation({
       const counts = (thread.undoneMore ?? []).filter((entry) => entry.userId !== userId);
       await ctx.db.patch("assistantThreads", threadId, { undone: others.length ? others : undefined, undoneMore: counts.length ? counts : undefined });
     }
-    const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
-    await touchThread(ctx, threadId, now);
-    // What the sender lets a reply spend here, if they set a limit (./spending.ts). Taken with the message, like its model.
-    const cap = await replyLimitOf(ctx, threadId, userId);
-    const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.reply, {
-      threadId,
-      agentThreadId: thread.agentThreadId,
-      promptMessageId: messageId,
-      attemptId,
-      senderId: userId,
-      // Taken when the message is sent, so a later change only affects the next reply.
-      modelId,
-      // An effort the catalog has since dropped runs at the model's default.
-      effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
-      ...(cap === undefined ? {} : { used: { credits: 0, rounds: 0, calls: 0, cap } }),
-    });
     // A chat made before it had a message, to share it or to set what it may spend, is named by its first.
     // ponytail: told apart by its title alone, so a chat renamed to exactly the default before its first message is named over. A flag on the chat for "named by hand" if that ever matters.
     const title = thread.preview === undefined && thread.title === NEW_CHAT_TITLE ? titleFrom(text) : "";
-    await ctx.db.patch("assistantThreads", threadId, { ...(title ? { title } : {}), preview: previewOf(text), ...(moved ? { view: { ...((view ?? said?.address) === undefined ? {} : { address: view ?? said?.address }), day: today, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId, spent: 0, ...(cap === undefined ? {} : { cap }) } });
+    await startReply(ctx, thread, userId, { messageId, order: message.order }, { ...(title ? { title } : {}), preview: previewOf(text), ...(moved ? { view: { ...((view ?? said?.address) === undefined ? {} : { address: view ?? said?.address }), day: today, userId, order: message.order } } : {}) });
     return null;
   },
 });
+
+/**
+ * Starts a reply to a message saved in the chat, as `userId`, under the chat's lock: on the
+ * model the chat runs for them, within what they let a reply spend here. `patch` goes to the
+ * chat with the lock. The caller has admitted the reply (`admit`) and settled what the last
+ * one left (`settleAsked`, `healCalls`).
+ */
+export async function startReply(ctx: MutationCtx, thread: Doc<"assistantThreads">, userId: Id<"users">, { messageId, order }: { messageId: string; order: number }, patch: Partial<Doc<"assistantThreads">> = {}) {
+  const { modelId, effort } = await chatModel(ctx, thread, userId);
+  // The model the chat falls back on, or one picked before the rule, is held to it too. So is
+  // the server's own default, which runs when nothing picks a model, where the catalog has it.
+  const model = modelId
+    ? await requireAvailableModel(ctx, modelId)
+    : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
+  if (model) requireAssistantModel(model);
+  const now = Date.now();
+  const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
+  await touchThread(ctx, thread._id, now);
+  // What the sender lets a reply spend here, if they set a limit (./spending.ts). Taken with the message, like its model.
+  const cap = await replyLimitOf(ctx, thread._id, userId);
+  const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.reply, {
+    threadId: thread._id,
+    agentThreadId: thread.agentThreadId,
+    promptMessageId: messageId,
+    attemptId,
+    senderId: userId,
+    // Taken when the message is sent, so a later change only affects the next reply.
+    modelId,
+    // An effort the catalog has since dropped runs at the model's default.
+    effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
+    ...(cap === undefined ? {} : { used: { credits: 0, rounds: 0, calls: 0, cap } }),
+  });
+  await ctx.db.patch("assistantThreads", thread._id, { ...patch, reply: { attemptId, senderId: userId, order, startedAt: now, scheduledId, spent: 0, ...(cap === undefined ? {} : { cap }) } });
+}
 
 /** What Stop takes for a reply that waits for an answer: no reply is being written then, so it has no attempt of its own. */
 const waitingPrefix = (order: number) => `waiting:${order}:`;
@@ -602,6 +614,15 @@ const stepValidator = v.object({
   at: v.number(),
 });
 
+/** The app's message that tells the chat jobs its replies started have ended (./jobEnds.ts): which, and how each ended. The reply to it is the assistant's readout. */
+const eventValidator = v.object({
+  id: v.string(),
+  role: v.literal("event"),
+  order: v.number(),
+  ended: jobsEndedValidator,
+  at: v.number(),
+});
+
 const messageValidator = v.object({
   id: v.string(),
   role: v.union(v.literal("user"), v.literal("assistant")),
@@ -700,7 +721,7 @@ export const messagesAction = defineUserQuery({
   description:
     "Reads an assistant chat's messages, newest first, a page at a time: what each person wrote, what the assistant replied, and each action it ran on the way. An exchange's actions come with the message they answer. With `stepsAhead`, the newest page also brings the actions of a reply whose message is on an earlier page, and they come again with that message.",
   args: { threadId: v.id("assistantThreads"), stepsAhead: v.optional(v.boolean()), paginationOpts: paginationOptsValidator },
-  returns: paginationResultValidator(v.union(messageValidator, stepValidator)),
+  returns: paginationResultValidator(v.union(messageValidator, stepValidator, eventValidator)),
   run: async (ctx, userId, { threadId, stepsAhead, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
@@ -726,7 +747,15 @@ export const messagesAction = defineUserQuery({
     const details = new Map(
       await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: await detailsOf(ctx, reader!, step.shown ?? step.input) } : await bulkOf(ctx, reader!, step)] as const)),
     );
-    const page = read.page.flatMap((row) => {
+    // The jobs each of the app's job-ended messages told the chat of.
+    const told = new Map<string, Doc<"assistantJobEnds">[]>(
+      await Promise.all(
+        read.page
+          .filter((row) => row.message?.role === "user" && row.agentName === JOB_ENDED)
+          .map(async (row) => [row._id, await ctx.db.query("assistantJobEnds").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).eq("order", row.order)).take(JOBS_TOLD_AT_ONCE)] as const),
+      ),
+    );
+    const page = read.page.flatMap((row): Array<Infer<typeof messageValidator> | Infer<typeof stepValidator> | Infer<typeof eventValidator>> => {
       const role = row.message?.role;
       // Newest first, like the page: the steps come after the message they answer, so they're listed before it.
       const steps = (ran.get(row._id) ?? []).map((step) => shownStep(step, { userId, answering, asked: details.get(step._id) })).reverse();
@@ -734,6 +763,11 @@ export const messagesAction = defineUserQuery({
       if (role !== "user" && role !== "assistant") return steps;
       // The message a reply summarized partway goes on from is the app's own (./context.ts). What the reply did in answer to it is the reply's.
       if (role === "user" && row.agentName === CARRIED) return steps;
+      // The app told the chat its jobs ended: an event, and the reply to it is the readout.
+      if (role === "user" && row.agentName === JOB_ENDED) {
+        const ended = (told.get(row._id) ?? []).map(({ kind, jobId, status, stepId }) => ({ kind, jobId, status, stepId }));
+        return [...steps, { id: row._id, role: "event" as const, order: row.order, ended, at: row._creationTime }];
+      }
       // A message of the reply that only called actions has no text of its own to show.
       if (role === "assistant" && !row.text && row.status === "success" && Array.isArray(row.message?.content) && row.message.content.some((part) => part.type === "tool-call")) return steps;
       const error = row.status === "failed" ? parseChatError(row.error) : null;

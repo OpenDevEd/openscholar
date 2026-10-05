@@ -15,7 +15,8 @@ import { ASSISTANT_FIELDS, keptByRating, requestOf, savedSearchValidator, spende
 import { COUNTRY_HIERARCHY, getCountryCodesForRegions, MIN_YEAR } from "../../lib/constants";
 import { withoutQuotedQuestionMarks } from "../../lib/search/wildcard";
 import { authorFilterValue } from "../../lib/openalex/author-filter";
-import { INSTITUTION_TYPES, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
+import { institutionId, openAlexId, sourceId } from "../../lib/openalex/ids";
+import { INSTITUTION_TYPES, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { currentSearch, restoreSearch, type SavedSearch, type UndoCommand } from "../../lib/research/records";
 import { buildShareableUrl } from "../../lib/search-params";
 import { searchResultToParams } from "../../lib/search-params/converters";
@@ -44,7 +45,7 @@ type Settings = ObjectType<typeof searchSettings>;
 
 const needsQuery = () => createError("VALIDATION_ERROR", "A search needs a query, or a filter to search by.");
 /** The fields that narrow a search by themselves, so it can do without a query: its page searches by a filter alone too. */
-const NARROWS = ["authors", "funders", "researchAreas", "selectedRegions", "selectedCountryFocus", "workTypes", "workLanguages", "institutionTypes", "sdgs", "citesItemId", "citedByItemId", "relatedToItemId", "dateRange", "yearRange", "minCitations", "openAccessOnly", "hasAbstract", "reviewFilter", "onlyRatedPapers"] as const;
+const NARROWS = ["authors", "funders", "journals", "institutions", "studyDesigns", "topCitedOnly", "venuesOnly", "researchAreas", "selectedRegions", "selectedCountryFocus", "workTypes", "workLanguages", "institutionTypes", "sdgs", "citesItemId", "citedByItemId", "relatedToItemId", "dateRange", "yearRange", "minCitations", "openAccessOnly", "hasAbstract", "reviewFilter", "onlyRatedPapers"] as const;
 // A citation minimum of none is no filter: the request leaves it out.
 const off = (value: unknown) => value === undefined || value === false || value === 0 || value === "" || (Array.isArray(value) && !value.length);
 const narrowed = (search: Partial<SavedSearch>) => Boolean(search.query?.trim()) || NARROWS.some((field) => !off(search[field]));
@@ -166,8 +167,6 @@ const isDay = (day: string) => {
   return Number.isFinite(at) && new Date(at).toISOString().slice(0, 10) === day;
 };
 
-/** An OpenAlex ID of one kind, bare, from the ID or the address it was given as. */
-const openAlexId = (letter: string) => (value: string) => value.trim().match(new RegExp(`^(?:https?://openalex\\.org/(?:[a-z]+/)?)?(${letter}\\d+)$`, "i"))?.[1].toUpperCase();
 const workId = openAlexId("W");
 const funderId = openAlexId("F");
 /** A research area as the page's filter keeps it: a domain, field or subfield by its path, a topic by its ID. */
@@ -178,6 +177,9 @@ const LOOK_UP = "Find it with research/lookup:find.";
 const LISTS = [
   ["authors", "authors", (given: string[]) => given.map((value) => authorFilterValue(value) ?? invalid("An author is an ID, such as A5023888391, or a name."))],
   ["funders", "funders", (given: string[]) => given.map((value) => funderId(value) ?? invalid(`"${value}" isn't a funder's ID, such as F4320332161. ${LOOK_UP}`))],
+  ["journals", "journals", (given: string[]) => given.map((value) => sourceId(value) ?? invalid(`"${value}" isn't a journal's ID, such as S137773608. ${LOOK_UP}`))],
+  ["institutions", "institutions", (given: string[]) => given.map((value) => institutionId(value) ?? invalid(`"${value}" isn't an institution's ID, such as I136199984. ${LOOK_UP}`))],
+  ["studyDesigns", "studyDesigns", among(STUDY_DESIGNS.map((design) => design.id), "studyDesigns")],
   ["researchAreas", "researchAreas", (given: string[]) => given.map((value) => (AREA.test(value.trim()) ? value.trim() : invalid(`"${value}" isn't a research area's ID, such as fields/33 or T13958. ${LOOK_UP}`)))],
   ["authorsIn", "selectedRegions", (given: string[]) => places(given, "authorsIn")],
   ["about", "selectedCountryFocus", (given: string[]) => places(given, "about")],
@@ -261,6 +263,8 @@ function savedFields(settings: Settings, current?: SavedSearch) {
   if (settings.openAccessOnly !== undefined) fields.openAccessOnly = settings.openAccessOnly;
   if (settings.withAbstractOnly !== undefined) fields.hasAbstract = settings.withAbstractOnly;
   if (settings.reviewsOnly !== undefined) fields.reviewFilter = settings.reviewsOnly;
+  if (settings.topCitedOnly !== undefined) fields.topCitedOnly = settings.topCitedOnly;
+  if (settings.venuesOnly !== undefined) fields.venuesOnly = settings.venuesOnly;
   if (settings.minCitations === null) clear.push("minCitations");
   else if (settings.minCitations !== undefined) {
     if (!Number.isInteger(settings.minCitations) || settings.minCitations < 0) throw createError("VALIDATION_ERROR", "The citation minimum is a whole number, 0 or more.");

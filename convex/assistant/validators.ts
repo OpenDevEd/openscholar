@@ -5,6 +5,7 @@
 import { v } from "convex/values";
 import { effortValidator } from "../aiModelConfig/validators";
 import { capped } from "../lib/listCaps";
+import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { MENTION_KINDS } from "../../lib/assistant/mentions";
 
 /** What someone may do in a chat: the owner also shares, renames and deletes it; `write` sends messages; `read` only reads. */
@@ -205,6 +206,27 @@ export const assistantStepUndoFields = { threadId: v.id("assistantThreads"), ste
 /** What a step's action returned, as JSON: kept apart from the step, so listing steps reads none of it. */
 export const assistantStepResultFields = { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), result: v.string() };
 
+/**
+ * A job a reply started that has ended (#328, ./jobs.ts): written once, by the transaction
+ * that ends the job, and told to its chat once, as the person who started it, when the chat
+ * isn't writing a reply or waiting for an answer.
+ */
+export const assistantJobEndFields = {
+  threadId: v.id("assistantThreads"),
+  /** The step that started it, and the person whose reply that was. */
+  stepId: v.id("assistantSteps"),
+  userId: v.id("users"),
+  kind: v.union(v.literal("screening"), v.literal("extraction")),
+  jobId: v.string(),
+  /** How it ended: the job's status then. */
+  status: v.string(),
+  endedAt: v.number(),
+  /** Set until it's told to the chat. */
+  pending: v.optional(v.literal(true)),
+  /** The chat message it was told in, by its order. */
+  order: v.optional(v.number()),
+};
+
 export const assistantThreadAccessFields = {
   threadId: v.id("assistantThreads"),
   /**
@@ -238,4 +260,65 @@ export const MENTIONS_EACH = 4;
 export const mentionablesValidator = capped(
   v.array(v.object({ kind: v.union(...MENTION_KINDS.map((kind) => v.literal(kind))), id: v.string(), label: v.string(), count: v.optional(v.number()) })),
   MENTIONS_EACH * MENTION_KINDS.length,
+);
+
+/** Papers an extraction's card lines up under its questions: the job's page has the rest. */
+export const JOB_CARD_ROWS = 5;
+/** Job ends one chat is told in one message. */
+export const JOBS_TOLD_AT_ONCE = 10;
+
+/** A screening's live card in the chat that started it (./jobs.ts). */
+export const screeningCardValidator = v.object({
+  kind: v.literal("screening"),
+  jobId: v.id("screeningJobs"),
+  status: v.string(),
+  label: v.optional(v.string()),
+  total: v.number(),
+  included: v.number(),
+  excluded: v.number(),
+  unclear: v.number(),
+  failed: v.number(),
+  /** Credits its counted papers cost, and the most it may. */
+  credits: v.number(),
+  cap: v.optional(v.number()),
+  capped: v.optional(v.boolean()),
+  /** Its papers wait for the person's other papers to finish: how far the screening ahead of it has got. */
+  waiting: v.optional(v.object({ label: v.optional(v.string()), done: v.number(), total: v.number() })),
+  failure: v.optional(v.string()),
+});
+/** An extraction's live card, with its first papers' answers. */
+export const extractionCardValidator = v.object({
+  kind: v.literal("extraction"),
+  jobId: v.id("extractionJobs"),
+  status: v.string(),
+  name: v.string(),
+  total: v.number(),
+  done: v.number(),
+  failed: v.number(),
+  credits: v.number(),
+  cap: v.optional(v.number()),
+  /** Why it stopped, when it did. */
+  stopped: v.optional(v.string()),
+  questions: capped(v.array(v.object({ key: v.string(), question: v.string() })), MAX_QUESTIONS_PER_JOB),
+  /** Its first papers, each with the answers it has so far by question. */
+  rows: capped(
+    v.array(
+    v.object({
+      id: v.id("extractionPapers"),
+      title: v.string(),
+      /** Each answer as it reads, and whether the paper didn't say. */
+      answers: capped(v.record(v.string(), v.object({ text: v.string(), missing: v.boolean() })), MAX_QUESTIONS_PER_JOB),
+      done: v.boolean(),
+      /** It had no abstract or full text to read: its answers come from its title. */
+      titleOnly: v.boolean(),
+    }),
+    ),
+    JOB_CARD_ROWS,
+  ),
+});
+
+/** The jobs one of the app's job-ended messages told the chat of (./replies.ts). */
+export const jobsEndedValidator = capped(
+  v.array(v.object({ kind: v.union(v.literal("screening"), v.literal("extraction")), jobId: v.string(), status: v.string(), stepId: v.id("assistantSteps") })),
+  JOBS_TOLD_AT_ONCE,
 );

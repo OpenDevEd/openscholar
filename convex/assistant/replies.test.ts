@@ -12,6 +12,7 @@ import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import schema from "../schema";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { endStep } from "./steps";
+import { insertJob } from "../screening/createJob.test-support";
 import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 import { people } from "./assistant.test-support";
@@ -144,7 +145,7 @@ describe("assistant replies", () => {
     expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
     expect(await asAda.query(api.assistant.replies.outcome, { threadId })).toEqual({ phase: "stopped", order: live!.order });
     expect("text" in page[0] && page[0].text.trim()).toBe("One two three");
-    expect(page[0].error).toBeUndefined();
+    expect("error" in page[0] ? page[0].error : undefined).toBeUndefined();
 
     // The chat takes the next message.
     mockDoStream.mockImplementation(finishingDoStream(["Done"]));
@@ -169,7 +170,7 @@ describe("assistant replies", () => {
     await waitFor(() => mockDoStream.mock.calls.length === 1);
     const early = await stopping();
     expect(early).toMatchObject({ role: "assistant", status: "stopped", text: "" });
-    expect(early.error).toBeUndefined();
+    expect("error" in early ? early.error : undefined).toBeUndefined();
 
     // Stopped mid-reply: the stream fails, and what was written is kept.
     mockDoStream.mockImplementation(erroringOnAbortDoStream(["One ", "two "], 300));
@@ -178,7 +179,7 @@ describe("assistant replies", () => {
     const late = await stopping();
     expect(late).toMatchObject({ role: "assistant", status: "stopped" });
     expect("text" in late && late.text.trim()).toBe("One two");
-    expect(late.error).toBeUndefined();
+    expect("error" in late ? late.error : undefined).toBeUndefined();
   });
 
   it("can't be asked for by someone who only reads the chat", async () => {
@@ -613,3 +614,94 @@ function mockModel(t: Test, slug = "mock/model") {
     }),
   );
 }
+
+describe("a job a reply started", () => {
+  it("takes its end back when it's carried on before the chat is told, and goes with a deleted chat", async () => {
+    const t = convexTest(schema);
+    const { ada, threadId } = await sharedChat(t);
+    const { jobId, stepId } = await t.run(async (ctx) => {
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
+      const jobId = await insertJob(ctx, {
+        userId: ada, status: "processing", totalPapers: 2, chatStep: stepId,
+        questions: [{ key: "q1", question: "Is this a trial?" }],
+        scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] },
+        createdAt: 1, updatedAt: 1,
+      });
+      // The chat is busy, so the end waits.
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "busy", senderId: ada, order: 0, startedAt: 1, scheduledId: await ctx.scheduler.runAfter(60_000, internal.assistant.jobs.deliver, { threadId }), spent: 0 } });
+      return { jobId, stepId };
+    });
+    await t.mutation(internal.screening.mutations.markScreeningJobCreditsExhausted, { jobId });
+    expect(await t.run((ctx) => ctx.db.query("assistantJobEnds").collect())).toMatchObject([{ jobId, stepId, pending: true }]);
+    // Carried on from its page before the chat was told: when the chat is free, there's nothing to tell.
+    await t.run(async (ctx) => {
+      await ctx.db.patch("screeningJobs", jobId, { status: "processing" });
+      await ctx.db.patch("assistantThreads", threadId, { reply: undefined });
+    });
+    await t.mutation(internal.assistant.jobs.deliver, { threadId });
+    expect(await t.run((ctx) => ctx.db.query("assistantJobEnds").collect())).toEqual([]);
+    expect(mockDoStream).not.toHaveBeenCalled();
+
+    // An end the chat still holds goes when the chat is deleted.
+    await t.run((ctx) => ctx.db.insert("assistantJobEnds", { threadId, stepId, userId: ada, kind: "screening", jobId, status: "completed", endedAt: 1, order: 0 }));
+    await t.mutation(internal.assistant.steps.forget, { threadId });
+    expect(await t.run((ctx) => ctx.db.query("assistantJobEnds").collect())).toEqual([]);
+  });
+
+  it("shows its card, waits while the chat is busy, then is told to the chat once and answered as the person who started it", async () => {
+    const t = convexTest(schema);
+    const { asAda, asBen, ada, threadId } = await sharedChat(t);
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Starting the screening."]));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Screen my trials" });
+    await ended(t, threadId);
+    // The step that started it, and the job, which keeps that step.
+    const order = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.at(-1)!.order;
+    const { stepId, jobId } = await t.run(async (ctx) => {
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, order, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", credits: 23, status: "done", startedAt: 1, endedAt: 1 });
+      const jobId = await insertJob(ctx, {
+        userId: ada, status: "processing", totalPapers: 2, chatStep: stepId, spendCap: 23,
+        questions: [{ key: "q1", question: "Is this a trial?" }],
+        scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] },
+        createdAt: 1, updatedAt: 1,
+      });
+      await ctx.db.insert("assistantStepResults", { threadId, stepId, result: JSON.stringify({ jobId }) });
+      return { stepId, jobId };
+    });
+
+    // Everyone in the chat sees its card; only Ada, whose job it is, can cancel it.
+    expect(await asBen.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ card: { kind: "screening", jobId, status: "processing", total: 2, cap: 23 }, mine: false });
+    expect(await asAda.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ mine: true });
+
+    // Ben's reply is being written when the job stops at its credits: the end waits for the chat.
+    mockDoStream.mockImplementationOnce(hangingDoStream());
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "Meanwhile, what else?" });
+    await waitFor(() => mockDoStream.mock.calls.length === 2);
+    await t.mutation(internal.screening.mutations.markScreeningJobCreditsExhausted, { jobId });
+    // The delivery it schedules finds the chat busy and leaves it waiting.
+    await t.mutation(internal.assistant.jobs.deliver, { threadId });
+    expect(await t.run((ctx) => ctx.db.query("assistantJobEnds").collect())).toMatchObject([{ jobId, status: "creditsExhausted", pending: true, userId: ada }]);
+    expect(mockDoStream.mock.calls).toHaveLength(2);
+
+    // Once Ben's reply ends, the chat is told, and the readout is Ada's reply: she started the job.
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Your screening stopped at the 23 credits you allowed."]));
+    const running = (await chat(t, threadId))!.reply!;
+    await asBen.mutation(api.assistant.replies.stop, { threadId, attemptId: running.attemptId });
+    await waitFor(() => mockDoStream.mock.calls.length === 3);
+    await ended(t, threadId);
+    expect(JSON.stringify(mockDoStream.mock.calls[2][0].prompt)).toContain(`<job_ended>screening ${jobId}`);
+    const [end] = await t.run((ctx) => ctx.db.query("assistantJobEnds").collect());
+    expect(end.pending).toBeUndefined();
+    const page = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page;
+    // Newest first: the readout, then the event it answers, which is no one's bubble.
+    expect(page.slice(0, 2)).toMatchObject([
+      { role: "assistant", text: "Your screening stopped at the 23 credits you allowed.", order: end.order },
+      { role: "event", order: end.order, ended: [{ kind: "screening", jobId, status: "creditsExhausted", stepId }] },
+    ]);
+    expect(page.filter((item) => item.role === "user")).toHaveLength(2);
+
+    // It ended once, and is told once: ending again tells nobody.
+    await t.mutation(internal.screening.mutations.markScreeningJobCreditsExhausted, { jobId });
+    expect(await t.run((ctx) => ctx.db.query("assistantJobEnds").collect())).toHaveLength(1);
+    expect(mockDoStream.mock.calls).toHaveLength(3);
+  });
+});

@@ -32,6 +32,11 @@ export type FilterType =
   | "institutionType"
   | "funder"
   | "author"
+  | "journal"
+  | "institution"
+  | "studyDesign"
+  | "topCited"
+  | "venuesOnly"
   | "minCitations"
   | "hasAbstract"
   | "includeRetracted";
@@ -107,6 +112,11 @@ export interface FilterParams {
   institutionTypes?: string[];
   funders?: string[];
   authors?: string[];
+  journals?: string[];
+  institutions?: string[];
+  studyDesigns?: string[];
+  topCitedOnly?: boolean;
+  venuesOnly?: boolean;
   minCitations?: number | null;
   hasAbstract?: boolean;
   includeRetracted?: boolean;

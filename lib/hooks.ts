@@ -230,6 +230,11 @@ function formStateOf(params: NonNullable<ReturnType<typeof useSearchOptional>>["
     institutionTypes: params.itype,
     funders: params.funder,
     authors: params.author,
+    journals: params.journal,
+    institutions: params.inst,
+    studyDesigns: params.design,
+    topCitedOnly: params.top10,
+    venuesOnly: params.venue,
     minCitations: params.mincite,
     hasAbstract: params.abs,
     includeRetracted: params.retracted,
@@ -273,6 +278,11 @@ function useCurrentSearchFormStateFromStore() {
     institutionTypes: searchResult?.institutionTypes ?? [],
     funders: searchResult?.funders ?? [],
     authors: searchResult?.authors ?? [],
+    journals: searchResult?.journals ?? [],
+    institutions: searchResult?.institutions ?? [],
+    studyDesigns: searchResult?.studyDesigns ?? [],
+    topCitedOnly: searchResult?.topCitedOnly ?? false,
+    venuesOnly: searchResult?.venuesOnly ?? false,
     minCitations: searchResult?.minCitations ?? null,
     hasAbstract: searchResult?.hasAbstract ?? false,
     includeRetracted: searchResult?.includeRetracted ?? false,
@@ -415,6 +425,26 @@ function useUpdateSearchFilterFromUrl() {
       batchUpdates.author = updates.authors as string[];
       shouldResetPage = true;
     }
+    if ('journals' in updates) {
+      batchUpdates.journal = updates.journals as string[];
+      shouldResetPage = true;
+    }
+    if ('institutions' in updates) {
+      batchUpdates.inst = updates.institutions as string[];
+      shouldResetPage = true;
+    }
+    if ('studyDesigns' in updates) {
+      batchUpdates.design = updates.studyDesigns as string[];
+      shouldResetPage = true;
+    }
+    if ('topCitedOnly' in updates) {
+      batchUpdates.top10 = updates.topCitedOnly as boolean;
+      shouldResetPage = true;
+    }
+    if ('venuesOnly' in updates) {
+      batchUpdates.venue = updates.venuesOnly as boolean;
+      shouldResetPage = true;
+    }
     if ('minCitations' in updates) {
       batchUpdates.mincite = updates.minCitations as number | null;
       shouldResetPage = true;
@@ -471,6 +501,11 @@ export function useCreateSearchFilters() {
     institutionTypes,
     funders,
     authors,
+    journals,
+    institutions,
+    studyDesigns,
+    topCitedOnly,
+    venuesOnly,
     minCitations,
     hasAbstract,
     includeRetracted,
@@ -499,6 +534,11 @@ export function useCreateSearchFilters() {
     institutionTypes,
     funders,
     authors,
+    journals,
+    institutions,
+    studyDesigns,
+    topCitedOnly,
+    venuesOnly,
     minCitations,
     hasAbstract,
     includeRetracted,

@@ -17,8 +17,8 @@ import { AUTHORS_LISTED, countValidator, FUNDERS_LISTED, GROUPINGS, GROUPS_MAX, 
 export const searchAction = defineUserAction({
   path: "research/papers:search",
   description:
-    "Searches OpenAlex for papers by a query, filters, or both, and saves nothing. Use it to look papers up, to answer a question about papers, or to try a query: the person's saved searches stay as they are, and nothing changes on their page. " +
-    `Returns ${RESULTS_PAGE} papers a page, each with its ID, title, first authors with their IDs, the countries they work in, year, the day it was published, venue, type, DOI, whether it's open access, citations and the start of its abstract, and how many papers match in all. ` +
+    "Searches OpenAlex for papers by a query, filters, or both, and saves nothing. Use it to look papers up or try a query. " +
+    `Returns ${RESULTS_PAGE} papers a page, each with its ID, title, first authors with IDs and countries, year, venue, type, DOI, open access, citations and the start of its abstract, and how many match in all. ` +
     "The query is keywords, with AND, OR, NOT and quoted phrases. A quoted phrase holds no ? or *, which OpenAlex reads as wildcards: leave a title's question mark out. " +
     SETTINGS +
     " Each page read counts against the person's OpenAlex allowance.",
@@ -39,13 +39,15 @@ export const searchForAssistant = assistantAction(searchAction);
 
 /**
  * A group as the filter that narrows by it takes it, from OpenAlex's address for the group:
- * an author or a funder by its ID (`authors`, `funders`), a country, a language, a type or
- * a goal by its code (`authorsIn` and `about`, `languages`, `types`, `sdgs`), and a field
- * as `researchAreas` has it, fields/33. An institution or a journal has no filter here.
+ * an author, a funder, a journal or an institution by its ID (`authors`, `funders`, `journals`,
+ * `institutions`), a country, a language, a type or a goal by its code (`authorsIn` and `about`,
+ * `languages`, `types`, `sdgs`), and a field as `researchAreas` has it, fields/33.
  */
 const FILTER_ID: Partial<Record<Grouping, (key: string) => string>> = {
   author: (key) => key.split("/").at(-1)!,
   funder: (key) => key.split("/").at(-1)!,
+  journal: (key) => key.split("/").at(-1)!,
+  institution: (key) => key.split("/").at(-1)!,
   country: (key) => key.split("/").at(-1)!,
   language: (key) => key.split("/").at(-1)!,
   type: (key) => key.split("/").at(-1)!,
@@ -58,7 +60,7 @@ export const countAction = defineUserAction({
   description:
     "Counts the papers a query, filters, or both find in OpenAlex, and saves nothing. With `by`, also how they divide: by year, language, type, openAccess, country (where the authors work), author, institution, funder, journal, field or sdg. " +
     `It returns up to ${GROUPS_MAX} groups with how many papers each has: the largest first, or by year the latest ${GROUPS_MAX} in order. Use it for how many, how a topic changed over the years, who publishes most, which countries or languages, in one call, and never by reading pages of results. ` +
-    "A group comes with the `id` the filter that narrows by it takes: `authors`, `funders`, `authorsIn` or `about` for a country, `languages`, `types`, `sdgs`, and `researchAreas` for a field. The query and the filters are the ones research/papers:search takes, and mean the same. " +
+    "A group comes with the `id` the filter that narrows by it takes: `authors`, `funders`, `journals`, `institutions`, `authorsIn` or `about` for a country, `languages`, `types`, `sdgs`, and `researchAreas` for a field. The query and the filters are the ones research/papers:search takes, and mean the same. " +
     "One request against the person's OpenAlex allowance.",
   args: { query: v.optional(v.string()), ...searchSettings, by: v.optional(v.union(...(Object.keys(GROUPINGS) as Grouping[]).map((name) => v.literal(name)), v.null())) },
   returns: countValidator,

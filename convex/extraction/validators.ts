@@ -296,6 +296,8 @@ export const extractionJobFields = {
   spendCap: v.optional(v.number()),
   /** With them: how many times the measured rates a question of the job costs on the models it runs on, as its figure was worked out (../extraction/start.ts). */
   spendScale: v.optional(v.number()),
+  /** The step of the assistant's reply that started it (#328): its chat hears when it ends (convex/assistant/jobs.ts). */
+  chatStep: v.optional(v.id("assistantSteps")),
 };
 
 export const extractionJobValidator = v.object({
