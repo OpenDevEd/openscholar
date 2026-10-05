@@ -28,7 +28,7 @@ import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { NEW_CHAT_TITLE, titleFrom } from "../../lib/assistant/title";
 import { notePart, viewOf } from "../../lib/assistant/view";
-import { viewOf as actionView } from "../../lib/assistant/actions";
+import { variantIn, viewOf as actionView } from "../../lib/assistant/actions";
 import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { personName, requireThread, touchThread } from "./access";
@@ -218,7 +218,7 @@ async function goOnFrom(ctx: MutationCtx, thread: Doc<"assistantThreads">, waiti
     senderId: waiting.senderId,
     modelId: waiting.modelId,
     effort: waiting.effort,
-    used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made, ...(waiting.failed ? { failed: waiting.failed } : {}), ...(waiting.recent ? { recent: waiting.recent } : {}), ...limits },
+    used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made, ...(waiting.failed ? { failed: waiting.failed } : {}), ...(waiting.recent ? { recent: waiting.recent } : {}), ...(waiting.changes ? { changes: waiting.changes } : {}), ...limits },
   });
   await ctx.db.patch("assistantThreads", thread._id, {
     asking: undefined,
@@ -266,6 +266,8 @@ export const usedValidator = v.object({
   tokens: v.optional(v.number()),
   failed: v.optional(v.number()),
   recent: v.optional(v.array(v.string())),
+  /** How many changes of each kind it has called for unasked (./tools.ts `kindOf`). */
+  changes: v.optional(v.record(v.string(), v.number())),
   told: v.optional(v.string()),
   cap: v.optional(v.number()),
   lap: v.optional(v.number()),
@@ -357,6 +359,7 @@ export const release = internalMutation({
         made: v.number(),
         failed: v.number(),
         recent: v.array(v.string()),
+        changes: v.optional(v.record(v.string(), v.number())),
         cap: v.optional(v.number()),
         lap: v.optional(v.number()),
       }),
@@ -372,6 +375,7 @@ export const release = internalMutation({
         tokens: v.number(),
         failed: v.number(),
         recent: v.array(v.string()),
+        changes: v.optional(v.record(v.string(), v.number())),
         told: v.optional(v.string()),
         cap: v.optional(v.number()),
         lap: v.optional(v.number()),
@@ -408,6 +412,7 @@ export const release = internalMutation({
       made: used.calls,
       ...(used.failed ? { failed: used.failed } : {}),
       ...(used.recent?.length ? { recent: used.recent } : {}),
+      ...(used.changes ? { changes: used.changes } : {}),
       ...(used.cap === undefined ? {} : { cap: used.cap }),
       ...(used.lap === undefined ? {} : { lap: used.lap }),
       paused,
@@ -462,6 +467,7 @@ export const release = internalMutation({
         made: asking.made,
         ...(asking.failed ? { failed: asking.failed } : {}),
         ...(asking.recent.length ? { recent: asking.recent } : {}),
+        ...(asking.changes ? { changes: asking.changes } : {}),
         ...(asking.cap === undefined ? {} : { cap: asking.cap }),
         ...(asking.lap === undefined ? {} : { lap: asking.lap }),
         askedAt: now,
@@ -476,7 +482,7 @@ export const release = internalMutation({
       // The reply goes on, in an action of its own.
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
       const limits = { ...(next.cap === undefined ? {} : { cap: next.cap }), ...(next.lap === undefined ? {} : { lap: next.lap }) };
-      const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens, failed: next.failed, recent: next.recent, ...(next.told ? { told: next.told } : {}), ...limits } };
+      const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens, failed: next.failed, recent: next.recent, ...(next.changes ? { changes: next.changes } : {}), ...(next.told ? { told: next.told } : {}), ...limits } };
       // A conversation as long as a request should read is summarized first, through what the reply
       // has written, and the reply goes on from the summary (./context.ts). A limit it has reached too
       // is asked about once the summary is written.
@@ -560,7 +566,7 @@ const stepValidator = v.object({
   canAnswer: v.boolean(),
   /** What it would do, for the person who can answer it: its arguments, with the records they name by name (./details.ts). */
   details: askedDetailsValidator,
-  /** On a step that asks about a bulk change: how many changes it is, and for the person who can answer it, the first of the records they're made to. */
+  /** On a step that asks about a bulk change: how many changes it is, and for the person who can answer it, the first of them, each as what it alone is given. */
   batch: v.optional(v.number()),
   each: askedEachValidator,
   /** Why it failed, as the assistant was told. */
@@ -747,8 +753,10 @@ export const messages = userQuery(messagesAction);
 function variantOf(step: Doc<"assistantSteps">) {
   if (step.path !== "research/records:change") return {};
   try {
-    const kind = (JSON.parse(step.input) as { command?: { kind?: unknown } }).command?.kind;
-    return typeof kind === "string" ? { variant: kind } : {};
+    const input = JSON.parse(step.input);
+    // A bulk change is all of one kind (./tools.ts `batched`), so its first change says which.
+    const variant = variantIn(step.path, step.batch === undefined ? input : input[0]);
+    return variant ? { variant } : {};
   } catch {
     // Arguments too long to keep whole were cut, and don't parse.
     return {};
@@ -758,7 +766,7 @@ function variantOf(step: Doc<"assistantSteps">) {
 /** A step as the chat's page shows it. `asked` is what a call that waits for this person would do. */
 function shownStep(
   step: Doc<"assistantSteps">,
-  { userId, answering, asked }: { userId: Id<"users">; answering: number | undefined; asked?: { details: NonNullable<Infer<typeof askedDetailsValidator>>; each?: string[] } },
+  { userId, answering, asked }: { userId: Id<"users">; answering: number | undefined; asked?: { details: NonNullable<Infer<typeof askedDetailsValidator>>; each?: NonNullable<Infer<typeof askedEachValidator>> } },
 ) {
   return {
     id: step._id,

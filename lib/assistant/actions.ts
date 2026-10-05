@@ -96,5 +96,10 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
 };
 /** Every action with words of its own, for the test that none the assistant can run is left without. */
 export const WORDED = new Set(Object.keys(ACTIONS));
+/** Which of its several jobs a call of an action does, from its arguments: the kind of change `research/records:change` makes. */
+export function variantIn(action: string, input: unknown) {
+  const kind = action === "research/records:change" && input && typeof input === "object" ? (input as { command?: { kind?: unknown } }).command?.kind : undefined;
+  return typeof kind === "string" ? kind : undefined;
+}
 /** `variant`: which of its several jobs the action did, for one that has more than one. */
 export const viewOf = (action: string, variant?: string): { kind: Kind; words: Words; searching?: boolean } => (variant ? ACTIONS[`${action}#${variant}`] : undefined) ?? ACTIONS[action] ?? { kind: "other", words: "other" };

@@ -9,7 +9,6 @@ import { availableCredits } from "../billing/accounts";
 import { internalQuery } from "../lib/functions";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { allowanceOf, covers } from "./spending";
-import { stepsOfExchange } from "./steps";
 
 export const first = internalQuery({
   // `input` is the call's arguments, as JSON.
@@ -28,19 +27,6 @@ export const first = internalQuery({
       return false;
     }
   },
-});
-
-/**
- * How many times a reply has run an action in the exchange it's answering, for telling a bulk
- * change (./steps.ts `BULK`): its steps that ran or are running. A step that asked about a
- * batch isn't one: each of its changes is.
- * ponytail: reads the exchange's newest steps (`STEPS_SHOWN`), so a reply that ran more than that since counts short. An index by action if replies get that long.
- */
-export const made = internalQuery({
-  args: { threadId: v.id("assistantThreads"), order: v.number(), path: v.string() },
-  returns: v.number(),
-  handler: async (ctx, { threadId, order, path }) =>
-    (await stepsOfExchange(ctx, threadId, order)).filter((step) => step.path === path && step.batch === undefined && (step.status === "done" || step.status === "running")).length,
 });
 
 /**

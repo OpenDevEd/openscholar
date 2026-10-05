@@ -144,6 +144,8 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
   const addCredits = useContext(AddCredits);
   const heading = useAskTitle()(words, step.batch);
   const each = step.each ?? [];
+  /** An argument's name in the person's language, where the card has one; any other shows as the action names it. */
+  const named = (name: string) => ((NAMED as readonly string[]).includes(name) ? t(`asks.names.${name as (typeof NAMED)[number]}`) : name);
   const say = (allow: boolean, always?: boolean) => {
     setSent(true);
     answer({ threadId, stepId: step.id as Id<"assistantSteps">, allow, ...(always ? { always } : {}) }).catch((error) => {
@@ -166,7 +168,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
           <ul className="mt-1.5 space-y-1 text-sm text-muted-foreground empty:hidden">
             {(step.details ?? []).map((detail, i) => (
               <li key={i} className="flex gap-2">
-                <span className="shrink-0 text-foreground/50">{(NAMED as readonly string[]).includes(detail.name) ? t(`asks.names.${detail.name as (typeof NAMED)[number]}`) : detail.name}</span>
+                <span className="shrink-0 text-foreground/50">{named(detail.name)}</span>
                 {/* What someone may do in a shared chat, in the Share sheet's own words. A record with nothing to call it by, such as a search saved with filters alone, says so. */}
                 <span className="min-w-0 break-words">{detail.name === "role" && (detail.value === "read" || detail.value === "write") ? t(detail.value === "read" ? "canView" : "canChat") : detail.value || t("asks.unnamed")}</span>
               </li>
@@ -174,9 +176,16 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
           </ul>
           {each.length ? (
             <ol className="mt-1.5 space-y-1 text-sm text-muted-foreground">
-              {each.map((name, i) => (
-                <li key={i} className="truncate">
-                  {name || t("asks.unnamed")}
+              {/* Each change: the record it's made to, then what it alone gives it, such as a new name. */}
+              {each.map(([record, ...given], i) => (
+                <li key={i} className="flex min-w-0 gap-2">
+                  <span className="min-w-0 truncate">{record?.value || t("asks.unnamed")}</span>
+                  {given.map((detail) => (
+                    <span key={detail.name} className="flex min-w-0 max-w-[50%] shrink-0 gap-1">
+                      <span className="shrink-0 text-foreground/50">{named(detail.name)}</span>
+                      <span className="truncate">{detail.value}</span>
+                    </span>
+                  ))}
                 </li>
               ))}
               {step.batch !== undefined && step.batch > each.length ? <li className="text-foreground/50">{t("asks.more", { count: step.batch - each.length })}</li> : null}

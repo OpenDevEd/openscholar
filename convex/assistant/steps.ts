@@ -31,9 +31,10 @@ export { STEPS_SHOWN };
 /** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
 export const MAX_ASKS = 10;
 /**
- * Changes of one kind a reply makes without asking. More is a bulk change: it goes in one
- * call that lists every one, and the person is asked once before any of it runs (./tools.ts,
- * `run_many`). As opencode asks once for a patch, with every file it touches.
+ * Changes of one kind a reply makes without asking, whichever actions make them. More is a
+ * bulk change: it goes in one call that lists every one, and the person is asked once before
+ * any of it runs (./tools.ts, `run_many`). As opencode asks once for a patch, with every
+ * file it touches.
  */
 export const BULK = 10;
 /**
@@ -176,7 +177,7 @@ export const begin = internalMutation({
  * saved paper's title, or else the collection's name. A paper it is about to save isn't
  * theirs yet, and gets its title from what the call returns (`namedBy`).
  */
-export async function aboutOf(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, input: string) {
+async function aboutOf(ctx: Pick<MutationCtx, "db">, userId: Id<"users">, input: string) {
   let args: Record<string, unknown>;
   try {
     args = JSON.parse(input) as Record<string, unknown>;

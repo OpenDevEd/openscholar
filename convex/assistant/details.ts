@@ -12,8 +12,8 @@ import { readMemberOrganizations } from "../organizationFeatures";
 import { findSearch } from "../research/records";
 import { currentSearch } from "../../lib/research/records";
 import { personName, principalsOf, roleAmong } from "./access";
-import { aboutOf } from "./steps";
-import { ASKED_DETAILS_MAX, ASKED_EACH_MAX } from "./validators";
+import { workUrl } from "../../lib/openalex/work-id";
+import { ASKED_DETAILS_MAX, ASKED_EACH_DETAILS_MAX, ASKED_EACH_MAX } from "./validators";
 
 /** A saved search's ID: the one the page made for it. */
 const SEARCH_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -51,6 +51,9 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
       // One saved with filters alone has no query to show: it is named as such, never by its ID.
       return search ? currentSearch(search.data).query : null;
     }
+    // A paper by its OpenAlex ID is shown by its title when it's one the reader has saved.
+    const work = workUrl(id);
+    if (work) return (await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", reader._id).eq("openalexId", work)).first())?.title ?? null;
     const threadId = ctx.db.normalizeId("assistantThreads", id);
     if (threadId) return (await roleAmong(ctx, threadId, await principalsOf(ctx, reader))) ? ((await ctx.db.get("assistantThreads", threadId))?.title ?? null) : null;
     const collectionId = ctx.db.normalizeId("collections", id);
@@ -113,8 +116,8 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
 
 /**
  * What a bulk change the assistant asks about would do (./steps.ts `BULK`): what every one of
- * its changes is given alike, as `detailsOf` says it, and the first of the records they're
- * made to, each by its name where the reader can see it.
+ * its changes is given alike, as `detailsOf` says it, then the first of its changes, each as
+ * what it alone is given: the record it's made to, and what it gives that record.
  */
 export async function bulkOf(ctx: QueryCtx, reader: Doc<"users">, input: string) {
   let each: Record<string, unknown>[];
@@ -126,14 +129,7 @@ export async function bulkOf(ctx: QueryCtx, reader: Doc<"users">, input: string)
   }
   const [first = {}] = each;
   const shared = Object.fromEntries(Object.entries(first).filter(([key, value]) => each.length > 1 && each.every((item) => JSON.stringify(item[key]) === JSON.stringify(value))));
-  const names = await Promise.all(
-    each.slice(0, ASKED_EACH_MAX).map(async (item) => {
-      const own = JSON.stringify(Object.fromEntries(Object.entries(item).filter(([key]) => !(key in shared))));
-      const about = await aboutOf(ctx, reader._id, own);
-      if (about) return about;
-      const said = await detailsOf(ctx, reader, own);
-      return (said.find((detail) => ["title", "name", "query"].includes(detail.name)) ?? said[0])?.value ?? "";
-    }),
-  );
-  return { details: await detailsOf(ctx, reader, JSON.stringify(shared)), each: names };
+  const own = (item: Record<string, unknown>) => JSON.stringify(Object.fromEntries(Object.entries(item).filter(([key]) => !(key in shared))));
+  const changes = await Promise.all(each.slice(0, ASKED_EACH_MAX).map(async (item) => (await detailsOf(ctx, reader, own(item))).slice(0, ASKED_EACH_DETAILS_MAX)));
+  return { details: await detailsOf(ctx, reader, JSON.stringify(shared)), each: changes };
 }

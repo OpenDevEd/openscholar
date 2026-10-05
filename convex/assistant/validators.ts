@@ -34,6 +34,8 @@ export const assistantReplyValidator = v.object({
 /** Why a reply paused: it reached the credits its sender lets a reply spend, or the requests a reply makes before it asks. */
 export const assistantPausedValidator = v.union(v.literal("credits"), v.literal("requests"));
 
+/** A reply's changes so far, by kind: one entry for each kind of change the panel has words for (lib/assistant/actions.ts), which are a few dozen. */
+export const assistantChangesValidator = capped(v.optional(v.record(v.string(), v.number())), 100);
 /** Requests whose digests a reply carries along, to tell when it is going round in circles (./tools.ts). */
 export const RECENT_REQUESTS = 6;
 
@@ -57,6 +59,8 @@ export const assistantAskingValidator = v.object({
   /** How many of its requests in a row, up to the one that asked, had every action fail, and the digests of what its last few did (./tools.ts). */
   failed: v.optional(v.number()),
   recent: capped(v.optional(v.array(v.string())), RECENT_REQUESTS),
+  /** How many changes of each kind it has called for unasked, for telling a bulk change (./tools.ts `kindOf`). */
+  changes: assistantChangesValidator,
   /** The credits it pauses at, when its sender set a limit, and the requests it pauses at. */
   cap: v.optional(v.number()),
   lap: v.optional(v.number()),
@@ -171,9 +175,10 @@ export const assistantStepFields = {
 /** Arguments of a call the assistant asks about that the person asked is shown (./details.ts). */
 export const ASKED_DETAILS_MAX = 12;
 export const askedDetailsValidator = capped(v.optional(v.array(v.object({ name: v.string(), value: v.string() }))), ASKED_DETAILS_MAX);
-/** Of the records a bulk change is made to, how many the person asked is shown by name (./details.ts). */
+/** Of the changes a bulk change makes, how many the person asked is shown, and how much of each (./details.ts). */
 export const ASKED_EACH_MAX = 5;
-export const askedEachValidator = capped(v.optional(v.array(v.string())), ASKED_EACH_MAX);
+export const ASKED_EACH_DETAILS_MAX = 3;
+export const askedEachValidator = capped(v.optional(v.array(capped(v.array(v.object({ name: v.string(), value: v.string() })), ASKED_EACH_DETAILS_MAX))), ASKED_EACH_MAX);
 /** What a step's action returned, as JSON: kept apart from the step, so listing steps reads none of it. */
 export const assistantStepResultFields = { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), result: v.string() };
 

@@ -17,7 +17,7 @@ import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
 import { allowAlways, carriedOn, pausedAt } from "./spending";
 import { MAX_ASKS, MODEL_READS, STEPS_SHOWN, forModel } from "./steps";
-import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, circling, core, definition, found, written } from "./tools";
+import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, batched, circling, core, definition, found, kindOf, written } from "./tools";
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
@@ -277,7 +277,7 @@ describe("the assistant's tools", () => {
     expect(await saved()).toHaveLength(12);
     const waiting = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
     expect(waiting).toHaveLength(1);
-    expect(waiting[0]).toMatchObject({ action: "library/mutations:removeFromLibrary", status: "asking", canAnswer: true, batch: 12, each: ["Trial 1", "Trial 2", "Trial 3", "Trial 4", "Trial 5"] });
+    expect(waiting[0]).toMatchObject({ action: "library/mutations:removeFromLibrary", status: "asking", canAnswer: true, batch: 12, each: [1, 2, 3, 4, 5].map((n) => [{ name: "openalex", value: `Trial ${n}` }]) });
 
     // Her yes runs every one, each a step of its own that she can undo, and the model reads what all of them came to.
     mockDoStream.mockImplementationOnce(finishingDoStream(["Your library is empty now."]));
@@ -290,13 +290,22 @@ describe("the assistant's tools", () => {
     expect((told(1, "all") as { results: unknown[] }).results).toHaveLength(12);
 
     // Made one by one, the eleventh change of a kind in a reply is refused, and the model is told to put the rest in one call.
+    // The count is the reply's, not one request's: a twelfth in its next request is refused too.
     mockDoStream
       .mockImplementationOnce(calling(...Array.from({ length: 11 }, (_, i) => ({ id: `s${i}`, name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: work(101 + i) } }))))
+      .mockImplementationOnce(calling({ id: "later", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: work(112) } }))
       .mockImplementationOnce(finishingDoStream(["Saved ten."]));
-    await say("Save these eleven");
+    await say("Save these twelve");
     expect(await saved()).toHaveLength(10);
     const refused = Array.from({ length: 11 }, (_, i) => told(3, `s${i}`)).filter((value) => (value as { error?: string }).error === BULK_FIRST);
     expect(refused).toHaveLength(1);
+    expect(told(4, "later")).toEqual({ error: BULK_FIRST });
+    // A kind of change is one kind whichever action makes it, and a batch is all of one kind, so its card can say what it does.
+    const action = (path: string) => USER_ACTIONS.find((entry) => entry.path === path)!;
+    expect(kindOf(action("library/papers:save"), {})).toBe(kindOf(action("library/mutations:saveToLibrary"), {}));
+    const rating = { requestId: "r1", command: { kind: "rating", paperId: "W1", rating: 5 } };
+    expect(batched("run_many", { name: "research/records:change", each: [rating, { ...rating, requestId: "r2" }] })).not.toBeNull();
+    expect(batched("run_many", { name: "research/records:change", each: [rating, { requestId: "r3", command: { kind: "clearShortcuts" } }] })).toBeNull();
 
     // A few changes in one call run at once, as they would one by one.
     mockDoStream
@@ -304,6 +313,13 @@ describe("the assistant's tools", () => {
       .mockImplementationOnce(finishingDoStream(["Rated three."]));
     await say("Rate the first three 4 stars");
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).filter((item) => item.rating === 4).length)).toBe(3);
+
+    // One whose changes all fail says so as a failed call does, with what each came to.
+    mockDoStream
+      .mockImplementationOnce(calling({ id: "none", name: "run_many", input: { name: "library/mutations:setLibraryRating", each: [901, 902].map((n) => ({ openalexId: work(n).openalexId, rating: 2 })) } }))
+      .mockImplementationOnce(finishingDoStream(["Those aren't in your library."]));
+    await say("Rate two I never saved");
+    expect(told(8, "none")).toMatchObject({ error: expect.stringContaining("None of these 2"), results: [{ error: expect.any(String) }, { error: expect.any(String) }] });
   });
 
   it("tell the model a change that returns nothing was made, make again a write that collided, and keep a reply going past arguments the asking check can't read", async () => {
