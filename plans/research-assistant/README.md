@@ -115,6 +115,18 @@ everything a user can, calling the same actions as the UI:
   pointing at an exact record. Proof: the assistant mock on branch
   `mock/research-assistant` (commit 9f607773) runs the whole flow without
   attaching, with the @ picker in the composer.
+- **2026-10-05, decisions 8 and 12: a bulk change asks once first.** Was:
+  every reversible write with no effect outside the account runs without
+  asking and offers undo, however many there are. Now: a reply makes up to
+  ten changes of one kind that way. More than ten at once is a bulk change:
+  it goes in one call that lists every change (`run_many`), the person is
+  asked once before any of it runs, and each change keeps its own undo.
+  Reason: asked to delete everything in a library, the assistant ran 33
+  removals unasked, and they could only be undone one at a time. The user
+  decided this on 2026-10-05. Proof: opencode asks once for a patch, with
+  every file it touches (`packages/opencode/src/tool/apply_patch.ts`), and
+  Roo Code shows a batch as one approval that lists its files
+  (`webview-ui/src/components/chat/BatchFilePermission.tsx`).
 - **2026-10-02, how the remaining steps are built.** The decisions above stand.
   What changed is how steps 4b to 14 are built, after the Convex-limits work
   (OS-18, #350 to #413) measured the system at full size:
