@@ -3473,7 +3473,17 @@
       "credits": "{count, plural, one {credit} other {credits}}",
       "forNewChats": "Use these for my new chats",
       "yours": "These are yours in this chat. People you share it with set their own, and spend their own credits.",
-      "failed": "Couldn't change the limit"
+      "failed": "Couldn't change the limit",
+      "jobs": "Jobs that spend credits",
+      "beforeJob": "Before a job spends credits",
+      "askEveryTime": "Ask every time",
+      "allowWithoutAsking": "Allow without asking",
+      "jobPickerLabel": "Most one job may hold without asking",
+      "holds": "Holds up to {credits, plural, one {# credit} other {# credits}}",
+      "runs": "Runs",
+      "asks": "Asks",
+      "publishing": "Publishing a library",
+      "publishingDetail": "Visitors see it at once"
     },
     "meter": {
       "reply": "This reply",
@@ -3799,6 +3809,11 @@
       "why": "This can't be undone, or it shows outside your account. It asks every time.",
       "failed": "Couldn't send your answer",
       "unnamed": "No name",
+      "upTo": "Up to {credits, plural, one {# credit} other {# credits}}",
+      "short": "{credits, number} short",
+      "left": "<n></n> left",
+      "always": "Always allow in this chat",
+      "addCredits": "Add credits",
       "names": {
         "thread": "Chat",
         "collection": "Collection",
@@ -3807,8 +3822,35 @@
         "role": "Access",
         "name": "Name",
         "title": "Title",
-        "model": "Model"
+        "model": "Model",
+        "search": "Search",
+        "screening": "Screening",
+        "papers": "Papers",
+        "first": "From paper",
+        "last": "To paper",
+        "question": "Question",
+        "saveTo": "Included go to",
+        "prune": "Excluded leave it"
       }
+    },
+    "topUp": {
+      "title": "Add credits",
+      "detail": "Without leaving the chat",
+      "short": "credits, <s>{need, number} short</s>",
+      "enough": "credits",
+      "added": "Added {credits, plural, one {# credit} other {# credits}}",
+      "waiting": "Waiting in the chat",
+      "upTo": "Up to {credits, plural, one {# credit} other {# credits}}",
+      "buy": "Add {credits, number} credits for {price}",
+      "plans": "See plans",
+      "note": "The assistant still asks before it spends them.",
+      "failed": "Couldn't add credits"
+    },
+    "allowance": {
+      "any": "Credits allowed",
+      "upTo": "Up to {cap, number} a job",
+      "stop": "Ask before spending credits again",
+      "failed": "Couldn't change it"
     }
   }
 }

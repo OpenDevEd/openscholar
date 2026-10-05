@@ -171,10 +171,10 @@ export const get = query({
     /** The person's newest calls in this chat that held credits, newest first: the action, what it was about, and the most it held. */
     jobs: v.array(v.object({ action: v.string(), subject: v.optional(v.string()), credits: v.number() })),
     /**
-     * What the chats the person starts begin with, null being no limit; absent until they choose.
-     * A chat whose limit this equals is one new chats take theirs from: changing it there changes this.
+     * What the chats the person starts begin with; absent until they choose. A chat whose limits
+     * these equal is one new chats take theirs from: changing them there changes these.
      */
-    newChats: v.optional(v.union(v.number(), v.null())),
+    newChats: v.optional(v.object({ replyLimit: v.union(v.number(), v.null()), allowance: v.union(v.null(), v.object({ cap: v.union(v.number(), v.null()) })) })),
     /** What their last replies cost, oldest first. */
     recent: recentCostsValidator,
   }),
@@ -189,7 +189,7 @@ export const get = query({
       .filter((step) => step.userId === userId && step.credits !== undefined)
       .slice(0, JOBS_LISTED)
       .map((step) => ({ action: step.path, ...(step.subject ? { subject: step.subject } : {}), credits: step.credits! }));
-    return { replyLimit: limit?.replyLimit ?? null, allowance: limit?.jobs ? { cap: limit.jobs.cap ?? null } : null, jobs, ...(spender?.newChats === undefined ? {} : { newChats: spender.newChats.replyLimit ?? null }), recent: (spender?.recent ?? []).map((entry) => entry.credits) };
+    return { replyLimit: limit?.replyLimit ?? null, allowance: limit?.jobs ? { cap: limit.jobs.cap ?? null } : null, jobs, ...(spender?.newChats === undefined ? {} : { newChats: { replyLimit: spender.newChats.replyLimit ?? null, allowance: spender.newChats.jobs ? { cap: spender.newChats.jobs.cap ?? null } : null } }), recent: (spender?.recent ?? []).map((entry) => entry.credits) };
   },
 });
 

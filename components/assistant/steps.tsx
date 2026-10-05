@@ -4,12 +4,13 @@
 // top, a tinted curve out to each step's card, one card per action it ran. An action it
 // asks the person about first shows under the map as the mock's approval card.
 
-import { useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check, CircleAlert, Compass, FileText, FolderPlus, ListChecks, MessagesSquare, Search, TableProperties, Undo2, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, Check, CircleAlert, Coins, Compass, FileText, FolderPlus, ListChecks, MessagesSquare, Plus, Search, TableProperties, Undo2, X, type AppIcon } from "@/components/icons";
+import { AnimatedNumber } from "@/components/screening/parts";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { EASE } from "@/components/settings/model-map";
@@ -43,7 +44,7 @@ const GUTTER = 36;
 const ORIGIN = 28;
 
 /** A tinted icon square; the tile of the model cards, one size down. */
-function KindTile({ kind, working }: { kind: Kind; working?: boolean }) {
+export function KindTile({ kind, working }: { kind: Kind; working?: boolean }) {
   const { icon: Icon, tint } = KIND[kind];
   const reduceMotion = useReducedMotion();
   return (
@@ -107,12 +108,18 @@ export function Steps({
 }
 
 /** Names of a call's arguments the card says in the person's language; any other shows as the action names it. */
-const NAMED = ["thread", "collection", "user", "organization", "role", "name", "title", "model"] as const;
+const NAMED = ["thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune"] as const;
+
+/** What the credits a card's top-up is for: the call that waits, as the Add credits sheet names it. */
+export type Waiting = { kind: Kind; title: string; credits: number };
+/** Opens the Add credits sheet over the panel, for a call that waits on a balance too low for it. */
+export const AddCredits = createContext<(waiting: Waiting) => void>(() => {});
 
 /**
  * Asks before a change that can't be undone or that shows outside the account: what it
- * would do, with the records it names, then Allow once or Not now. The mock's approval
- * card, without the credits row, which comes with the actions that spend them (#328).
+ * would do, with the records it names, then Allow once or Not now. One that spends credits
+ * (#328) asks with the most it holds against the person's balance, and can be allowed for
+ * the rest of the chat. The mock's approval card.
  */
 function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; step: StepItem }) {
   const t = useTranslations("assistant");
@@ -123,9 +130,11 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
   const { kind, words } = viewOf(step.action, step.variant);
   // Only the kinds of action that can ask have the words for it.
   const title = `steps.${words}.ask` as "steps.other.ask";
-  const say = (allow: boolean) => {
+  const addCredits = useContext(AddCredits);
+  const heading = t.has(title) ? t(title) : t("steps.other.ask");
+  const say = (allow: boolean, always?: boolean) => {
     setSent(true);
-    answer({ threadId, stepId: step.id as Id<"assistantSteps">, allow }).catch((error) => {
+    answer({ threadId, stepId: step.id as Id<"assistantSteps">, allow, ...(always ? { always } : {}) }).catch((error) => {
       setSent(false);
       toast.error(t("asks.failed"), getErrorMessage(error, ""));
     });
@@ -141,7 +150,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
       <div className="flex items-start gap-3 p-4">
         <KindTile kind={kind} />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{t.has(title) ? t(title) : t("steps.other.ask")}</p>
+          <p className="text-sm font-semibold">{heading}</p>
           <ul className="mt-1.5 space-y-1 text-sm text-muted-foreground">
             {(step.details ?? []).map((detail, i) => (
               <li key={i} className="flex gap-2">
@@ -164,16 +173,88 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
           </button>
         </TooltipHint>
       </div>
-      <p className="px-4 pb-4 text-xs text-muted-foreground">{t("asks.why")}</p>
-      <div className="grid grid-cols-[1fr_auto] gap-2 border-t border-primary/15 p-3">
-        <Button className="h-9" disabled={sent} onClick={() => say(true)}>
-          {t("asks.allow")}
-        </Button>
-        <Button className="h-9 px-4" variant="secondary" disabled={sent} onClick={() => say(false)}>
-          {t("asks.notNow")}
-        </Button>
-      </div>
+      {step.credits === undefined ? (
+        <>
+          <p className="px-4 pb-4 text-xs text-muted-foreground">{t("asks.why")}</p>
+          <div className="grid grid-cols-[1fr_auto] gap-2 border-t border-primary/15 p-3">
+            <Button className="h-9" disabled={sent} onClick={() => say(true)}>
+              {t("asks.allow")}
+            </Button>
+            <Button className="h-9 px-4" variant="secondary" disabled={sent} onClick={() => say(false)}>
+              {t("asks.notNow")}
+            </Button>
+          </div>
+        </>
+      ) : (
+        <Spending credits={step.credits} sent={sent} onAllow={() => say(true)} onAlways={() => say(true, true)} onDecline={() => say(false)} onAddCredits={() => addCredits({ kind, title: heading, credits: step.credits! })} />
+      )}
     </motion.div>
+  );
+}
+
+/**
+ * The part of an approval card for a call that spends credits: the most it holds against the
+ * person's balance, then Allow once or Always allow in this chat. When the balance can't
+ * cover it, the buttons turn into a top-up, and turn back once the credits land.
+ */
+function Spending({ credits, sent, onAllow, onAlways, onDecline, onAddCredits }: { credits: number; sent: boolean; onAllow: () => void; onAlways: () => void; onDecline: () => void; onAddCredits: () => void }) {
+  const t = useTranslations("assistant.asks");
+  const account = useQuery(api.billing.accounts.mine, {});
+  // Until the balance is read, nothing is said about it, and the row keeps its room.
+  const known = account !== undefined;
+  const balance = Math.floor(account?.balance ?? 0);
+  const short = known && credits > balance;
+  // The bar is the balance; the filled part is what this takes from it.
+  const share = known ? Math.min(1, credits / Math.max(balance, 1)) : 0;
+  return (
+    <>
+      <div className="space-y-2 px-4 pb-4">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Coins className="size-3.5 text-primary" />
+          <span className="font-medium text-foreground">{t("upTo", { credits })}</span>
+          <span className={cn("ml-auto flex items-center gap-1.5 transition-opacity duration-200", !known && "opacity-0")} aria-hidden={!known}>
+            <AnimatedNumber value={balance} />
+            <ArrowRight className="size-3" />
+            {/* Both labels hold their place, so the row never reflows when the balance changes. */}
+            <span className="grid font-medium [&>*]:col-start-1 [&>*]:row-start-1 [&>*]:text-right">
+              <motion.span initial={false} animate={{ opacity: short ? 1 : 0 }} aria-hidden={!short} className="tabular-nums text-amber-600 dark:text-amber-400">
+                {t("short", { credits: Math.max(0, credits - balance) })}
+              </motion.span>
+              <motion.span initial={false} animate={{ opacity: short ? 0 : 1 }} aria-hidden={short} className="text-foreground">
+                {t.rich("left", { n: () => <AnimatedNumber value={Math.max(0, balance - credits)} /> })}
+              </motion.span>
+            </span>
+          </span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10">
+          <motion.span
+            className={cn("block h-full rounded-full", short ? "bg-amber-400" : "bg-primary")}
+            initial={false}
+            animate={{ width: `${share * 100}%` }}
+            transition={{ type: "spring", stiffness: 170, damping: 26 }}
+          />
+        </div>
+      </div>
+      {/* The two sets of buttons share one cell and cross-fade, so the card keeps its height. */}
+      <div className="grid border-t border-primary/15 p-3 [&>*]:col-start-1 [&>*]:row-start-1">
+        <motion.div initial={false} animate={{ opacity: short ? 0 : 1, scale: short ? 0.98 : 1 }} transition={{ duration: 0.25, ease: EASE }} inert={short} className="grid grid-cols-2 gap-2">
+          <Button className="h-9" disabled={sent} onClick={onAllow}>
+            {t("allow")}
+          </Button>
+          <Button className="h-9" variant="secondary" disabled={sent} onClick={onAlways}>
+            {t("always")}
+          </Button>
+        </motion.div>
+        <motion.div initial={false} animate={{ opacity: short ? 1 : 0, scale: short ? 1 : 0.98 }} transition={{ duration: 0.25, ease: EASE }} inert={!short} className="grid grid-cols-[1fr_auto] gap-2">
+          <Button className="h-9 gap-1.5" onClick={onAddCredits}>
+            <Plus className="size-4" /> {t("addCredits")}
+          </Button>
+          <Button className="h-9 px-4" variant="secondary" disabled={sent} onClick={onDecline}>
+            {t("notNow")}
+          </Button>
+        </motion.div>
+      </div>
+    </>
   );
 }
 

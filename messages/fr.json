@@ -3483,7 +3483,17 @@
       "credits": "{count, plural, one {crédit} other {crédits}}",
       "forNewChats": "Utiliser ces réglages pour mes nouvelles conversations",
       "yours": "Ces réglages sont les vôtres dans cette conversation. Les personnes avec qui vous la partagez définissent les leurs et dépensent leurs propres crédits.",
-      "failed": "Impossible de modifier la limite"
+      "failed": "Impossible de modifier la limite",
+      "jobs": "Tâches qui dépensent des crédits",
+      "beforeJob": "Avant qu'une tâche dépense des crédits",
+      "askEveryTime": "Toujours demander",
+      "allowWithoutAsking": "Autoriser sans demander",
+      "jobPickerLabel": "Maximum qu'une tâche peut réserver sans demander",
+      "holds": "Réserve jusqu'à {credits, plural, one {# crédit} other {# crédits}}",
+      "runs": "S'exécute",
+      "asks": "Demande",
+      "publishing": "Publier une bibliothèque",
+      "publishingDetail": "Les visiteurs la voient aussitôt"
     },
     "meter": {
       "reply": "Cette réponse",
@@ -3809,6 +3819,11 @@
       "why": "Cette action est irréversible ou visible en dehors de votre compte. La question est posée à chaque fois.",
       "failed": "Impossible d'envoyer votre réponse",
       "unnamed": "Sans nom",
+      "upTo": "Jusqu'à {credits, plural, one {# crédit} other {# crédits}}",
+      "short": "il manque {credits, number}",
+      "left": "reste <n></n>",
+      "always": "Toujours autoriser dans cette conversation",
+      "addCredits": "Ajouter des crédits",
       "names": {
         "thread": "Conversation",
         "collection": "Collection",
@@ -3817,8 +3832,35 @@
         "role": "Accès",
         "name": "Nom",
         "title": "Titre",
-        "model": "Modèle"
+        "model": "Modèle",
+        "search": "Recherche",
+        "screening": "Sélection",
+        "papers": "Articles",
+        "first": "À partir de l'article",
+        "last": "Jusqu'à l'article",
+        "question": "Question",
+        "saveTo": "Les inclus vont dans",
+        "prune": "Les exclus en sortent"
       }
+    },
+    "topUp": {
+      "title": "Ajouter des crédits",
+      "detail": "Sans quitter la conversation",
+      "short": "crédits, <s>il en manque {need, number}</s>",
+      "enough": "crédits",
+      "added": "{credits, plural, one {# crédit ajouté} other {# crédits ajoutés}}",
+      "waiting": "En attente dans la conversation",
+      "upTo": "Jusqu'à {credits, plural, one {# crédit} other {# crédits}}",
+      "buy": "Ajouter {credits, number} crédits pour {price}",
+      "plans": "Voir les offres",
+      "note": "L'assistant demande toujours avant de les dépenser.",
+      "failed": "Impossible d'ajouter des crédits"
+    },
+    "allowance": {
+      "any": "Crédits autorisés",
+      "upTo": "Jusqu'à {cap, number} par tâche",
+      "stop": "Redemander avant de dépenser des crédits",
+      "failed": "Impossible de le modifier"
     }
   }
 }

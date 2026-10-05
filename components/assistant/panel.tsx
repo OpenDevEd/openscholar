@@ -12,7 +12,7 @@ import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUp, ChevronDown, CircleAlert, CirclePause, CircleStop, Coins, Eye, Gauge, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus } from "@/components/icons";
+import { ArrowUp, ChevronDown, CircleAlert, CirclePause, CircleStop, Coins, Eye, Gauge, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus, X } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -40,9 +40,9 @@ import { cn } from "@/lib/utils";
 import { OrbitMark, type OrbitClock } from "./orbit-mark";
 import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
 import { panelPlace } from "@/lib/assistant/place";
-import { Steps, type StepItem } from "./steps";
+import { AddCredits, Steps, type StepItem } from "./steps";
 import { IconButton, WorkingText } from "./parts";
-import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, stackedUnder, type OpenSheet } from "./sheets";
+import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet } from "./sheets";
 
 type ThreadId = Id<"assistantThreads">;
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -227,6 +227,8 @@ function Overlay({
                 animate={{ opacity: 1, transition: { delay: 0.16, duration: 0.25 } }}
                 exit={{ opacity: 0, transition: { duration: 0.08 } }}
               >
+                {/* A call that waits on a balance too low for it opens Add credits from its card, never twice on top of itself. */}
+                <AddCredits value={(waiting) => setSheets((all) => (all.at(-1)?.kind === "topUp" ? all : [...all, { kind: "topUp", waiting }]))}>
                 <Chat
                   threadId={threadId}
                   setThreadId={setThreadId}
@@ -241,6 +243,7 @@ function Overlay({
                   // Opened from the header and from the reply's meter; never twice on top of itself.
                   onSpending={(id, title) => setSheets((all) => (all.at(-1)?.kind === "spending" ? all : [...all, { kind: "spending", threadId: id, title }]))}
                 />
+                </AddCredits>
               </motion.div>
               <Dim on={depth > 0} />
             </motion.div>
@@ -263,6 +266,8 @@ function Overlay({
                     />
                   ) : sheet.kind === "share" ? (
                     <ShareSheet threadId={sheet.threadId} title={sheet.title} role={sheet.role} onBack={pop} />
+                  ) : sheet.kind === "topUp" ? (
+                    <TopUpSheet waiting={sheet.waiting} onBack={pop} />
                   ) : (
                     <SpendingSheet threadId={sheet.threadId} title={sheet.title} onBack={pop} />
                   )}
@@ -340,6 +345,11 @@ function Chat({
   const spending = useQuery(api.assistant.spending.get, threadId ? { threadId } : "skip");
   const carryOn = useMutation(api.assistant.replies.carryOn);
   const carrying = useRef(false);
+  // The chip's X: every job asks again, which shows at once.
+  const setAllowance = useMutation(api.assistant.spending.setAllowance).withOptimisticUpdate((store, args) => {
+    const now = store.getQuery(api.assistant.spending.get, { threadId: args.threadId });
+    if (now) store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, changed(now, { allowance: args.allowance }));
+  });
   const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.messages, threadId ? { threadId, stepsAhead: true } : "skip", { initialNumItems: FIRST_MESSAGES });
   const presetModel = usePresetModels();
   // The model picked before the chat exists; once it does, the chat keeps its own.
@@ -476,6 +486,8 @@ function Chat({
       />
       <Footer composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel}
         meter={meter}
+        allowance={spending?.allowance ?? null}
+        onStopAllowance={() => (threadId ? void setAllowance({ threadId, allowance: null }).catch((error) => toast.error(t("allowance.failed"), getErrorMessage(error, ""))) : undefined)}
         onCarryOn={() => {
           // Pressed twice, it carries on once: the second would find nothing paused and say it failed.
           if (!threadId || carrying.current) return;
@@ -866,6 +878,8 @@ function Footer({
   onModel,
   presetModel,
   meter,
+  allowance,
+  onStopAllowance,
   onCarryOn,
   onSpending,
 }: {
@@ -886,6 +900,9 @@ function Footer({
   presetModel: ReturnType<typeof usePresetModels>;
   /** What the reply being written has cost the person reading, when it's theirs. */
   meter: Meter | null;
+  /** What jobs that spend credits may hold in this chat without asking, when the person allowed them. The chip opens Spending, and its X turns the allowance off. */
+  allowance: { cap: number | null } | null;
+  onStopAllowance: () => void;
   onCarryOn: () => void;
   onSpending: () => void;
 }) {
@@ -905,6 +922,28 @@ function Footer({
               ) : null}
             </AnimatePresence>
           </div>
+          <AnimatePresence initial={false}>
+            {/* A paused reply needs the row for its own controls; the chip comes back when it runs on. */}
+            {allowance && !meter?.paused ? (
+              <motion.span
+                key="allowance"
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={{ type: "spring", stiffness: 480, damping: 32 }}
+                className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 pl-2.5 pr-1 text-xs font-medium text-primary"
+              >
+                <button type="button" onClick={onSpending} className="flex items-center gap-1 tabular-nums hover:underline">
+                  <Coins className="size-3" /> {allowance.cap === null ? t("allowance.any") : t("allowance.upTo", { cap: allowance.cap })}
+                </button>
+                <TooltipHint label={t("allowance.stop")}>
+                  <button type="button" aria-label={t("allowance.stop")} onClick={onStopAllowance} className="flex size-5 items-center justify-center rounded-full hover:bg-primary/15">
+                    <X className="size-3" />
+                  </button>
+                </TooltipHint>
+              </motion.span>
+            ) : null}
+          </AnimatePresence>
         </div>
       </div>
       <div className="rounded-2xl border border-border/60 bg-background shadow-xs focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
