@@ -5,6 +5,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
+import { screeningPool } from "../workpool";
 import { OQL_FIELD } from "../../lib/openalex/oql";
 import type { SavedSearch } from "../../lib/research/records";
 
@@ -24,14 +25,18 @@ type Request = { url: URL; init?: RequestInit };
 let requests: Request[] = [];
 /** How many works the search has. */
 let total = 900;
-/** Answers OpenAlex gives its next requests in place of works. The model's requests share the stub, and never take one. */
+/** Answers OpenAlex gives its next requests in place of works. */
 let refusals: Response[] = [];
+const instances: ReturnType<typeof convexTest>[] = [];
+const maxParallelism = screeningPool.options.maxParallelism;
 /** OpenAlex's pages of papers wait for this before they answer. */
 let held: Promise<void> | undefined;
+let releaseHeld: (() => void) | undefined;
 /** OpenAlex, answering each page with up to 200 works numbered from the page's start, until the search runs out; a cursor is the next page's number. */
 const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
   const url = new URL(String(input));
-  if (url.hostname === "api.openalex.org" && refusals.length) return refusals.shift()!;
+  if (url.hostname !== "api.openalex.org") throw new Error(`Unexpected request to ${url.hostname}`);
+  if (refusals.length) return refusals.shift()!;
   requests.push({ url, init });
   if (url.searchParams.get("per-page") === "200") await held;
   const cursor = url.searchParams.get("cursor");
@@ -48,21 +53,34 @@ const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
 });
 
 beforeEach(() => {
+  // Starting a job is under test here; its scheduled screening runs belong to their own tests.
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  screeningPool.options.maxParallelism = 0;
   requests = [];
   refusals = [];
   held = undefined;
+  releaseHeld = undefined;
   total = 900;
   vi.stubEnv("OPENALEX_API_KEY", "platform-key");
   vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
   vi.stubGlobal("fetch", openAlex);
 });
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.unstubAllGlobals();
+afterEach(async () => {
+  try {
+    releaseHeld?.();
+    for (const t of instances.splice(0)) await t.finishInProgressScheduledFunctions();
+  } finally {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    screeningPool.options.maxParallelism = maxParallelism;
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  }
 });
 
 async function setup(saved: SavedSearch = search, ratings: Array<{ paperId: string; rating: number }> = [], credits = 100_000) {
   const t = convexTest(schema);
+  instances.push(t);
   setupScreeningWorkpool(t);
   const userId = await t.run(async (ctx) => {
     const id = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "alice", email: "alice@example.com", state: "active", createdAt: 1, updatedAt: 1 });
@@ -87,10 +105,8 @@ async function setup(saved: SavedSearch = search, ratings: Array<{ paperId: stri
   return { t, userId, alice, read, settled, screen };
 }
 
-/** The requests made to OpenAlex, which the model's requests share a stub with. */
-const asked = () => requests.filter(({ url }) => url.hostname === "api.openalex.org");
 /** Those for the search's papers: the one that counts the search before the job is made asks for a single work. */
-const pages = () => asked().filter(({ url }) => url.searchParams.get("per-page") === "200");
+const pages = () => requests.filter(({ url }) => url.searchParams.get("per-page") === "200");
 
 describe("Screen all on a saved search, read on the server", () => {
   it("reads the range from the results page's request, a numbered page each, with the key and only the fields it keeps", async () => {
@@ -104,7 +120,7 @@ describe("Screen all on a saved search, read on the server", () => {
 
     expect(pages().map(({ url }) => Number(url.searchParams.get("page"))).sort()).toEqual([1, 2, 3]);
     for (const { url } of pages()) expect(url.searchParams.get("select")?.split(",")).toEqual(expect.arrayContaining(["id", "abstract_inverted_index", "authorships"]));
-    for (const { url } of asked()) {
+    for (const { url } of requests) {
       expect(url.pathname).toBe("/works");
       expect(url.searchParams.get("api_key")).toBe("platform-key");
       expect(url.searchParams.get("sort")).toBe("relevance_score:desc");
@@ -169,7 +185,7 @@ describe("Screen all on a saved search, read on the server", () => {
     const { jobId } = await screen({ searchId: oql.id, first: 1, last: 10 });
 
     expect(pages()).toHaveLength(1);
-    for (const request of asked()) {
+    for (const request of requests) {
       expect(request.url.pathname).toBe("/");
       expect(request.init?.method).toBe("POST");
       expect(JSON.parse(String(request.init?.body)).oql).toContain("tutoring");
@@ -183,7 +199,7 @@ describe("Screen all on a saved search, read on the server", () => {
     await alice.mutation(api.openalex.limits.spend, { count: 300 });
 
     await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toThrow();
-    expect(asked()).toHaveLength(0);
+    expect(requests).toHaveLength(0);
   });
 
   it("says why OpenAlex won't take a search, and keeps a failing server's answer to itself", async () => {
@@ -259,7 +275,7 @@ describe("Screen all on a saved search, read on the server", () => {
 
     // It carries on from the page after the first job's last, without reading the search from its start again.
     expect(pages().map(({ url }) => url.searchParams.get("cursor"))).toEqual(["6", "7", "8", "9", "10"]);
-    for (const { url } of asked()) {
+    for (const { url } of requests) {
       expect(url.searchParams.get("sort")).toBe("cited_by_count:desc");
       expect(url.searchParams.get("filter")).toContain("randomized controlled trial");
     }
@@ -372,13 +388,12 @@ describe("Screen all on a saved search, read on the server", () => {
     total = 2_500;
     const { t, alice, read } = await setup({ ...search, sortBy: "relevance_score:desc", onlyRatedPapers: true, ratingRange: [3, 5] });
 
-    let answer = () => {};
-    held = new Promise((resolve) => (answer = resolve));
+    held = new Promise((resolve) => (releaseHeld = resolve));
     const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 2_500, ...job, saveTo: { kind: "none" } });
     // Cancelled while OpenAlex is still answering the first stretch's pages.
     await vi.waitFor(() => expect(pages().length).toBeGreaterThan(0), { timeout: 10_000, interval: 20 });
     await alice.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
-    answer();
+    releaseHeld!();
     await vi.waitFor(async () => expect(await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect()).then((rows) => rows.filter((row) => row.name.includes("start:read") && row.state.kind !== "success" && row.state.kind !== "failed"))).toHaveLength(0), { timeout: 10_000, interval: 50 });
 
     // The first 1,000 papers' pages, and none of the 1,500 after them.
@@ -426,7 +441,7 @@ describe("Screen all on a saved search, read on the server", () => {
     await t.run((ctx) => ctx.db.insert("users", { libraryItemCount: 0, clerkId: "bob", email: "bob@example.com", state: "active", createdAt: 1, updatedAt: 1 }));
 
     await expect(t.withIdentity({ subject: "bob" }).action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
-    expect(asked()).toHaveLength(0);
+    expect(requests).toHaveLength(0);
   });
 });
 
@@ -436,7 +451,9 @@ describe("counting OpenAlex requests from an action", () => {
     const collision = new Error('Documents read from or written to the "rateLimits" table changed while this mutation was being run and on every subsequent retry.');
     // Two collisions, then it counts: the caller never sees them.
     const runMutation = vi.fn().mockRejectedValueOnce(collision).mockRejectedValueOnce(collision).mockResolvedValueOnce(true);
-    expect(await spender({ runMutation } as never, "clerk_1")(3)).toBe(true);
+    const spending = spender({ runMutation } as never, "clerk_1")(3);
+    await vi.runAllTimersAsync();
+    expect(await spending).toBe(true);
     expect(runMutation).toHaveBeenCalledTimes(3);
     expect(runMutation.mock.calls[2][1]).toEqual({ clerkId: "clerk_1", count: 3 });
     // An allowance that's used up is an answer, not a collision.
@@ -447,7 +464,9 @@ describe("counting OpenAlex requests from an action", () => {
     expect(broken).toHaveBeenCalledTimes(1);
     // A counter that never frees up fails after a bounded number of tries.
     const stuck = vi.fn().mockRejectedValue(collision);
-    await expect(spender({ runMutation: stuck } as never, "clerk_1")(1)).rejects.toThrow(/changed while this mutation/);
+    const rejected = expect(spender({ runMutation: stuck } as never, "clerk_1")(1)).rejects.toThrow(/changed while this mutation/);
+    await vi.runAllTimersAsync();
+    await rejected;
     expect(stuck).toHaveBeenCalledTimes(6);
   }, 20_000);
 });

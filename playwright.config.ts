@@ -60,8 +60,10 @@ export default defineConfig({
   globalSetup: "./e2e/global.setup.ts",
   webServer: {
     command: webServerCommand,
+    env: { PLAYWRIGHT_TEST_PROXY: "1" },
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    // The server must start with Next's test proxy enabled.
+    reuseExistingServer: false,
     stdout: "pipe",
     stderr: "pipe",
     timeout: 300_000,
