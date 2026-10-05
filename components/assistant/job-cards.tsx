@@ -240,7 +240,7 @@ function ExtractionCard({ job, mine }: { job: Extraction; mine: boolean }) {
       <div className="px-3 pb-3">
         {/* Every question, none cut: past the card's width the row scrolls sideways. */}
         <div className="overflow-x-auto scrollbar-hover">
-          <Segmented label={t("question")} value={question} onChange={setPicked} fill="labels" options={job.questions.map((asked) => ({ id: asked.key, label: asked.question }))} />
+          <Segmented label={t("question")} value={question} onChange={setPicked} options={job.questions.map((asked) => ({ id: asked.key, label: asked.question }))} />
         </div>
         <ol className="mt-2 space-y-0.5">
           {job.rows.map((row, r) => (

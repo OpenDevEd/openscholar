@@ -50,9 +50,9 @@ async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"scr
   const job = await getScreeningJobAction.run(ctx, userId, { jobId });
   if (!job) return null;
   const done = job.outcomes.included + job.outcomes.unclear + job.outcomes.excluded + job.outcomes.failed;
-  // Nothing of it read or being read while it runs: its papers wait for the person's others (#335).
-  const queued = job.status === "processing" && !job.reading && done === 0 && job.running === 0;
-  const ahead = queued ? await screeningAhead(ctx, userId, jobId) : null;
+  // Nothing of it read or being read while another of the person's screenings is: its papers wait for that one's (#335).
+  // With none ahead of it, it's starting, not waiting.
+  const ahead = job.status === "processing" && !job.reading && done === 0 && job.running === 0 ? await screeningAhead(ctx, userId, jobId) : null;
   return {
     kind: "screening",
     jobId,
@@ -63,7 +63,7 @@ async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"scr
     credits: job.credits.spent ?? 0,
     ...(job.spendCap === undefined ? {} : { cap: job.spendCap }),
     ...(job.capped ? { capped: true } : {}),
-    ...(queued ? { waiting: ahead ?? { done: 0, total: 0 } } : {}),
+    ...(ahead ? { waiting: ahead } : {}),
     ...(job.failure ? { failure: job.failure } : {}),
   };
 }

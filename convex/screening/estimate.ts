@@ -3,7 +3,19 @@ import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { collectionCount, libraryCountRow } from "../library/counter";
 import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
-import type { paperSetValidator } from "./validators";
+import { createError } from "../lib/errors";
+import type { paperSetValidator, screeningScoringConfigValidator } from "./validators";
+
+/**
+ * Refuses a screening whose rules include every paper, whatever it's answered: one with no
+ * `minimumScore` (./scoring.ts reads none as every paper qualifying). The screening page always
+ * sets one; a call that leaves it out is told so before the person is asked to pay for it.
+ */
+export function requireMinimum(config: Infer<typeof screeningScoringConfigValidator>) {
+  if (config.minimumScore === undefined) {
+    throw createError("VALIDATION_ERROR", "scoringConfig needs minimumScore, the least score a paper needs to be included: without it every paper is included whatever it's answered. With one question worth 1 point for yes, that's 1.");
+  }
+}
 
 /**
  * What screening `papers` papers holds against an `available` balance, and how many papers
@@ -43,7 +55,8 @@ export async function papersIn(ctx: QueryCtx, userId: Id<"users">, set: Infer<ty
  * that range, up to how many the set is known to have. For a search that is the whole range
  * asked for. Papers a search's page already answered cost nothing, so it is an upper figure.
  */
-export async function screeningHold(ctx: QueryCtx, userId: Id<"users">, { set, first, last }: { set: Infer<typeof paperSetValidator>; first: number; last: number }) {
+export async function screeningHold(ctx: QueryCtx, userId: Id<"users">, { set, first, last, scoringConfig }: { set: Infer<typeof paperSetValidator>; first: number; last: number; scoringConfig: Infer<typeof screeningScoringConfigValidator> }) {
+  requireMinimum(scoringConfig);
   const held = await papersIn(ctx, userId, set);
   return estimateScreening(Math.max(0, Math.min(last, held ?? last) - first + 1), 0).credits;
 }
