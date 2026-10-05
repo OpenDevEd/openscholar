@@ -23,8 +23,9 @@ type Request = { url: URL; init?: RequestInit };
 let requests: Request[] = [];
 /** How many works the search has. */
 let total = 900;
-/** Pages OpenAlex is too busy for the first time each is asked. */
+/** Pages OpenAlex is too busy for the first time each is asked, and how long it says to wait. */
 let busy = new Set<number>();
+let wait = "0.01";
 /** OpenAlex, answering each page with up to 200 works numbered from the page's start, until the search runs out; a cursor is the next page's number. */
 const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
   const url = new URL(String(input));
@@ -32,7 +33,7 @@ const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
   const cursor = url.searchParams.get("cursor");
   const page = cursor === null ? Number(url.searchParams.get("page")) : cursor === "*" ? 1 : Number(cursor);
   // As it answers a search with many ORs asked for too fast: when to ask again, and nothing else.
-  if (busy.delete(page)) return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { "retry-after": "0.01" } });
+  if (busy.delete(page)) return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { "retry-after": wait } });
   const start = (page - 1) * 200;
   const results = Array.from({ length: Math.max(0, Math.min(200, total - start)) }, (_, i) => ({
     id: `https://openalex.org/W${start + i + 1}`,
@@ -48,6 +49,7 @@ beforeEach(() => {
   requests = [];
   total = 900;
   busy = new Set();
+  wait = "0.01";
   vi.stubEnv("OPENALEX_API_KEY", "platform-key");
   vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
   vi.stubGlobal("fetch", openAlex);
@@ -122,6 +124,25 @@ describe("Screen all on a saved search, read on the server", () => {
     // Pages 1 and 3 were refused once and asked again; pages 4 and 5 never were.
     expect(requests.map(({ url }) => Number(url.searchParams.get("page"))).sort()).toEqual([1, 1, 2, 3, 3]);
     expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.totalPapers).toBe(450);
+  });
+
+  it("asks a busy page again only while the account's allowance lasts: asking again is a request like any other", async () => {
+    const { alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    // One request is left of the minute's three hundred.
+    await alice.mutation(api.openalex.limits.spend, { count: 299 });
+    busy = new Set([1]);
+
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/429/);
+    expect(requests).toHaveLength(1);
+  });
+
+  it("doesn't wait when OpenAlex says to come back much later: that is a quota, and the refusal stands", async () => {
+    const { alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    busy = new Set([1]);
+    wait = "1800";
+
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/429/);
+    expect(requests).toHaveLength(1);
   });
 
   it("keeps exactly the range asked for when it runs across cursor pages", async () => {

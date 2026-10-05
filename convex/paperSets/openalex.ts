@@ -60,23 +60,28 @@ async function refused(response: Response, doing: "return" | "count", what: stri
 
 /** Times a request OpenAlex is too busy for is asked again. */
 const BUSY_TRIES = 5;
+/** The longest wait OpenAlex may ask for before a request is asked again, in seconds. A longer one is a quota that resets later, not a busy moment. */
+const BUSY_WAIT_MAX = 10;
 /**
  * Asks OpenAlex, and asks again when it answers that it's too busy (429). It limits how fast
  * one client may ask a search with many ORs, such as one kept to a region's sixty countries,
  * and says how long to wait: pages asked for together each wait that long and a little more,
  * so they come back spaced out. Asked five pages of such a search at once, it refused four.
+ * Each time it's asked again is a request like any other, spent for from the person's
+ * allowance first; the refusal stands once that says no.
  */
-async function ask(url: string | URL, init?: RequestInit): Promise<Response> {
+async function ask(url: string | URL, spend: (pages: number) => Promise<boolean>, init?: RequestInit): Promise<Response> {
   for (let tries = 1; ; tries += 1) {
     const response = await fetch(url, { ...init, signal: AbortSignal.timeout(PAGE_TIMEOUT_MS) });
-    if (response.status !== 429 || tries >= BUSY_TRIES) return response;
     const seconds = Number(response.headers.get("retry-after")) || 1;
+    if (response.status !== 429 || tries >= BUSY_TRIES || seconds > BUSY_WAIT_MAX) return response;
     await new Promise((resolve) => setTimeout(resolve, seconds * (1 + Math.random() * tries) * 1000));
+    if (!(await spend(1))) return response;
   }
 }
 
 /** One page of the search, by number or cursor. An OQL search goes in a POST body: it outgrows the URL limit. */
-async function readPage<Work>(request: SearchRequest, at: Page, select: string, size = PAGE_SIZE): Promise<{ works: Work[]; nextCursor: string | null; total: number }> {
+async function readPage<Work>(request: SearchRequest, at: Page, select: string, spend: (pages: number) => Promise<boolean>, size = PAGE_SIZE): Promise<{ works: Work[]; nextCursor: string | null; total: number }> {
   const parameters = {
     "per-page": String(size),
     ...("page" in at ? { page: String(at.page) } : { cursor: at.cursor }),
@@ -88,7 +93,7 @@ async function readPage<Work>(request: SearchRequest, at: Page, select: string, 
     : openAlexUrl("works", { ...parameters, search: request.search, filter: request.filter });
   let response: Response;
   try {
-    response = await ask(url, request.oql ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oql: request.oql }) } : undefined);
+    response = await ask(url, spend, request.oql ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oql: request.oql }) } : undefined);
   } catch (error) {
     console.error(`[paperSets] OpenAlex page ${JSON.stringify(at)} didn't answer`, error);
     throw createError("VALIDATION_ERROR", "OpenAlex didn't return these papers in time. Try again in a moment.");
@@ -108,7 +113,7 @@ async function* cursorPages<Work>(request: SearchRequest, select: string, spend:
   let cursor: string | null = "*";
   while (cursor) {
     if (!(await spend(1))) throw limited();
-    const page: { works: Work[]; nextCursor: string | null; total: number } = await readPage<Work>(request, { cursor }, select);
+    const page: { works: Work[]; nextCursor: string | null; total: number } = await readPage<Work>(request, { cursor }, select, spend);
     yield page;
     cursor = page.nextCursor;
   }
@@ -132,10 +137,10 @@ async function readWorks<Work>(
     const pages = Array.from({ length: Math.ceil(last / PAGE_SIZE) - firstPage + 1 }, (_, i) => firstPage + i);
     // The first of them says how many works the search has: pages past its last aren't asked for, or counted.
     if (!(await spend(1))) throw limited();
-    const head = await readPage<Work>(request, { page: firstPage }, select);
+    const head = await readPage<Work>(request, { page: firstPage }, select, spend);
     const rest = pages.slice(1).filter((page) => page <= Math.ceil(head.total / PAGE_SIZE));
     if (rest.length && !(await spend(rest.length))) throw limited();
-    const read = [head, ...(await Promise.all(rest.map((page) => readPage<Work>(request, { page }, select))))];
+    const read = [head, ...(await Promise.all(rest.map((page) => readPage<Work>(request, { page }, select, spend))))];
     return { works: read.flatMap((page) => page.works), offset: (firstPage - 1) * PAGE_SIZE, total: head.total };
   }
   const works: Work[] = [];
@@ -172,7 +177,7 @@ export async function readSearchPage<Work>(
     return { works, total };
   }
   if (!(await spend(1))) throw limited();
-  const { works, total } = await readPage<Work>(request, { page }, select, size);
+  const { works, total } = await readPage<Work>(request, { page }, select, spend, size);
   return { works, total };
 }
 
@@ -187,7 +192,7 @@ export async function autocomplete(entity: "authors" | "funders", text: string, 
   if (!(await spend(1))) throw limited();
   let response: Response;
   try {
-    response = await ask(openAlexUrl(`autocomplete/${entity}`, { q: text }));
+    response = await ask(openAlexUrl(`autocomplete/${entity}`, { q: text }), spend);
   } catch (error) {
     console.error(`[paperSets] OpenAlex autocomplete of ${entity} didn't answer`, error);
     throw createError("VALIDATION_ERROR", "OpenAlex didn't answer in time. Try again in a moment.");
@@ -208,7 +213,7 @@ export async function readWork<Work>(id: string, select: string, spend: (pages: 
   if (!(await spend(1))) throw limited();
   let response: Response;
   try {
-    response = await ask(openAlexUrl(`works/${id}`, { select }));
+    response = await ask(openAlexUrl(`works/${id}`, { select }), spend);
   } catch (error) {
     console.error(`[paperSets] OpenAlex work ${id} didn't answer`, error);
     throw createError("VALIDATION_ERROR", "OpenAlex didn't return this paper in time. Try again in a moment.");
@@ -232,7 +237,7 @@ export async function groupSearch(request: SearchRequest, by: string, spend: (pa
   if (!(await spend(1))) throw limited();
   let response: Response;
   try {
-    response = await ask(openAlexUrl("works", { search: request.search, filter: request.filter, group_by: by, "per-page": String(PAGE_SIZE) }));
+    response = await ask(openAlexUrl("works", { search: request.search, filter: request.filter, group_by: by, "per-page": String(PAGE_SIZE) }), spend);
   } catch (error) {
     console.error(`[paperSets] OpenAlex count by ${by} didn't answer`, error);
     throw createError("VALIDATION_ERROR", "OpenAlex didn't count these papers in time. Try again in a moment.");
@@ -249,7 +254,7 @@ export async function groupSearch(request: SearchRequest, by: string, spend: (pa
 export async function countSearch(request: SearchRequest, spend: (pages: number) => Promise<boolean>): Promise<number> {
   contact();
   if (!(await spend(1))) throw limited();
-  return (await readPage(request, { page: 1 }, "id", 1)).total;
+  return (await readPage(request, { page: 1 }, "id", spend, 1)).total;
 }
 
 /**
