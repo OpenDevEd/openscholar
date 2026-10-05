@@ -468,6 +468,8 @@ describe("the assistant's tools", () => {
     expect(await jobs()).toBe(0);
     const asked = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step" && item.status === "asking");
     expect(asked).toMatchObject({ action: "screening/start:screen", canAnswer: true, credits: 14 });
+    // She is asked about the papers and the question, with her collection by its name, and not about how each answer scores.
+    expect(asked && "details" in asked && asked.details).toEqual([{ name: "collection", value: "Trials" }, { name: "first", value: "1" }, { name: "last", value: "500" }, { name: "question", value: "Is this a trial?" }]);
 
     // "Always allow in this chat": it runs, and from now on jobs that hold no more than the smallest listed limit covering it run without asking.
     mockDoStream.mockImplementationOnce(finishingDoStream(["Screening them now."]));

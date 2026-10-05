@@ -90,6 +90,15 @@ export const screenAction = defineUserAction({
   outsideEffect: false,
   undoable: false,
   estimate: screeningHold,
+  // The papers, the questions put to them and where the included ones go. How each answer scores is the job's own business.
+  shown: ({ set, first, last, questions, saveTo, prune }) => ({
+    ...(set.kind === "collection" ? { collectionId: set.collectionId } : set.kind === "search" ? { search: set.searchId } : set.kind === "screening" ? { screening: set.jobId } : { papers: "library" }),
+    first,
+    last,
+    question: questions.map((asked) => asked.question),
+    ...(saveTo.kind === "new" ? { saveTo: saveTo.name } : saveTo.kind === "collection" ? { saveTo: saveTo.collectionId } : {}),
+    ...(prune ? { prune } : {}),
+  }),
   // Typed here: the generated API's types depend on this module, so inference would loop.
   run: (ctx, userId, args, author): Promise<{ jobId: Id<"screeningJobs"> }> => start(ctx, userId, author, args),
 });
