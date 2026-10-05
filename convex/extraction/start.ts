@@ -11,7 +11,7 @@ import { internalMutation, internalQuery, type ActionCtx, type QueryCtx } from "
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { createError } from "../lib/errors";
 import { getFlag } from "../featureFlags/guard";
-import { holdSpend, releaseCredits } from "../billing/charge";
+import { holdSpend } from "../billing/charge";
 import { heldPapers } from "../paperSets/held";
 import { filtersOf } from "../paperSets/search";
 import { screeningRevision } from "../screening/accounting";
@@ -152,7 +152,8 @@ async function start(ctx: ActionCtx, userId: Id<"users">, { name, questions, use
   try {
     return await ctx.runMutation(internal.extraction.start.begin, { ...job, spend: { hold, cap } });
   } catch (error) {
-    await releaseCredits(ctx, { userId, chargeId: hold });
+    // Given back by a function that tries again if Autumn doesn't answer: there's no job to settle it.
+    await ctx.scheduler.runAfter(0, internal.billing.charge.releaseLock, { userId, chargeId: hold, attempt: 0 });
     throw error;
   }
 }

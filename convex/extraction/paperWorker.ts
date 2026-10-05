@@ -329,9 +329,12 @@ type PaperReservation = { chargeId: string; reserved: number; description: strin
  *
  * A job the person approved up to a figure (#328) holds that figure once, and its papers
  * are charged under that hold: a paper holds nothing more. It is read only while the hold
- * has room for it under the figure (billing/charge.ts `admitUnder`). When it hasn't, or
- * the hold no longer stands, the job stops there, as one out of credits does. Carried on
- * by the person after that, its papers hold their own again (./mutations/resume.ts).
+ * takes items and what the ledger has counted of the job leaves room for it under the
+ * figure. Otherwise the job stops there, as one out of credits does. The ledger runs a
+ * little behind the papers, and a paper can cost more than it was expected to: neither is
+ * the person's to pay, since the hold is never confirmed for more than it holds
+ * (billing/charge.ts `settleSpent`). Carried on by the person after it stopped, the job's
+ * papers hold their own again (./mutations/resume.ts).
  */
 async function reservePaperCredits(
   ctx: ActionCtx,
@@ -361,12 +364,11 @@ async function reservePaperCredits(
   let message = `Need about ${reserved} credits to extract the next paper`;
   if (job.spendHold) {
     const cap = job.spendCap ?? 0;
-    const room = await retryOnConflict(() => ctx.runMutation(internal.billing.charge.admitUnder, { under: job.spendHold!, estimate: reserved, cap }));
-    if (room === "admitted") return { ...reservation, under: job.spendHold };
-    message =
-      room === "full"
-        ? `This extraction reached the ${cap.toLocaleString("en")} credits it was allowed. Resume it to carry on past them.`
-        : "The credits this extraction was allowed are no longer held for it. Resume it to carry on.";
+    const { open, spent } = await ctx.runQuery(internal.extraction.queries.internal.approvalOf, { jobId: job._id, hold: job.spendHold });
+    if (open && spent + reserved <= cap) return { ...reservation, under: job.spendHold };
+    message = open
+      ? `This extraction reached the ${cap.toLocaleString("en")} credits it was allowed. Resume it to carry on past them.`
+      : "The credits this extraction was allowed are no longer held for it. Resume it to carry on.";
   } else if (
     await reserveCredits(ctx, {
       userId: job.userId,
@@ -402,7 +404,7 @@ async function settlePaperCredits(
     chargeId: reservation.chargeId,
     credits,
     usage: { kind: "extraction", description: reservation.description, jobId: job._id, ...tokenDetails(usage) },
-    ...(reservation.under ? { under: reservation.under, estimate: reservation.reserved } : {}),
+    ...(reservation.under ? { under: reservation.under } : {}),
   });
 }
 

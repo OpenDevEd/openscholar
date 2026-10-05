@@ -314,6 +314,9 @@ describe("extraction full flow with mocked provider I/O", () => {
     };
     // Full texts are turned off here: asked for, the job isn't started at their price to read abstracts, and nothing is left held.
     await expect(t.action(internal.extraction.start.extractForAssistant, { ...asked, approvedCredits: 204, usePdfs: true })).rejects.toThrow(/turned off/);
+    // The hold it took is given back by a function of its own, which tries again if Autumn doesn't answer.
+    vi.advanceTimersByTime(1_000);
+    await t.finishInProgressScheduledFunctions();
     expect(fakeAutumn.locks.size).toBe(0);
     fakeAutumn.calls.length = 0;
 
