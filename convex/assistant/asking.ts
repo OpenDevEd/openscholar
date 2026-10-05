@@ -6,6 +6,7 @@
  */
 import { v } from "convex/values";
 import { availableCredits } from "../billing/accounts";
+import { readConvexErrorData } from "../lib/errors";
 import { internalQuery } from "../lib/functions";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { allowanceOf, covers } from "./spending";
@@ -33,12 +34,14 @@ export const first = internalQuery({
  * What a call of an action that spends credits holds at most, and whether it runs without
  * the person being asked (#328): they allowed jobs in this chat, this one is within what they
  * said one may hold, and their balance covers it. Null for an action that gives no estimate,
- * or whose arguments it can't be read from: that call can't be asked about.
+ * or whose arguments it can't be read from: that call can't be asked about. `refused` when
+ * the estimate itself says why these arguments won't do, in the action's own words: the
+ * model is told that, and can call it again with ones that will.
  */
 export const spend = internalQuery({
   // `input` is the call's arguments, as JSON.
   args: { threadId: v.id("assistantThreads"), userId: v.id("users"), path: v.string(), input: v.string() },
-  returns: v.union(v.null(), v.object({ credits: v.number(), covered: v.boolean() })),
+  returns: v.union(v.null(), v.object({ credits: v.number(), covered: v.boolean() }), v.object({ refused: v.string() })),
   handler: async (ctx, { threadId, userId, path, input }) => {
     const entry = USER_ACTIONS.find((candidate) => candidate.path === path);
     if (!entry || entry.kind === "query" || !entry.spendsCredits || !entry.estimate) return null;
@@ -46,6 +49,8 @@ export const spend = internalQuery({
     try {
       credits = Math.ceil(await entry.estimate(ctx, userId, JSON.parse(input)));
     } catch (error) {
+      const refused = readConvexErrorData(error)?.message;
+      if (refused) return { refused };
       console.error(`[assistant] ${path} couldn't be estimated`, error);
       return null;
     }
