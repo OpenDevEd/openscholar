@@ -160,7 +160,7 @@ describe("charging a Screen all paper", () => {
     vi.useRealTimers();
   });
 
-  it("charges a held job's paper by itself once the hold no longer takes papers, still within the figure", async () => {
+  it("reads no more of a held job's papers once its hold no longer takes them, and charges nothing outside it", async () => {
     fakeAutumn.reset();
     vi.stubGlobal("fetch", fakeAutumnFetch());
     const t = convexTest(schema);
@@ -168,9 +168,10 @@ describe("charging a Screen all paper", () => {
     // Its hold was settled at its expiry, a day on, while the job still ran.
     await t.run(async (ctx) => ctx.db.patch("screeningJobs", jobId, { spendCap: 10, spendHold: "screening-job:gone" }));
 
-    await t.action(internal.screening.workpoolActions.screenPaperAction, { jobId, resultId: first });
+    expect(await t.action(internal.screening.workpoolActions.screenPaperAction, { jobId, resultId: first })).toMatchObject({ capped: true });
 
-    expect(fakeAutumn.calls.map((call) => call.path).filter((path) => path.startsWith("balances."))).toEqual(["balances.track"]);
-    expect(fakeAutumn.balance(userId)).toBe(99);
+    expect(fakeAutumn.calls).toHaveLength(0);
+    expect(fakeAutumn.balance(userId)).toBe(100);
+    expect(await t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ capped: true });
   });
 });

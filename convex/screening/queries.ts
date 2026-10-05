@@ -533,7 +533,9 @@ export const paperContext = internalQuery({
         serverEffort: v.optional(effortValidator),
         // The most it may spend, what its counted papers have cost so far, and whether it has stopped there, on a job that has a limit.
         spendCap: v.optional(v.number()),
+        // The hold the figure is kept in, and whether it still takes papers.
         spendHold: v.optional(v.string()),
+        held: v.optional(v.boolean()),
         spent: v.optional(v.number()),
         capped: v.optional(v.boolean()),
       }),
@@ -562,8 +564,7 @@ export const paperContext = internalQuery({
         serverEffort: job.serverEffort,
         // Only a job with a limit reads what it has spent: every other paper is spared the read.
         ...(job.spendCap === undefined ? {} : { spendCap: job.spendCap, spent: (await progressRow(ctx, jobId))?.credits ?? 0, ...(job.capped ? { capped: true } : {}) }),
-        // Its papers are charged under its hold while the hold takes them; past that, each pays its own way, still within the figure.
-        ...(job.spendHold !== undefined && (await holdOpen(ctx, job.spendHold)) ? { spendHold: job.spendHold } : {}),
+        ...(job.spendHold === undefined ? {} : { spendHold: job.spendHold, held: await holdOpen(ctx, job.spendHold) }),
       },
       paper: { title: paper.title, abstract: paper.abstract, status: paper.status },
       clerkId: user.clerkId,

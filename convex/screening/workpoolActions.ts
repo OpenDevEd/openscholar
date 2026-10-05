@@ -86,7 +86,8 @@ export const screenPaperAction = internalAction({
     // A job the assistant started with the person's say reads no more papers once the ones counted have cost what
     // they approved (#328). Its papers start only while it has room for them at the estimate (./slots.ts), so this
     // stops one whose papers cost more than that: those already being read finish and are kept, the rest aren't read.
-    if (job.spendCap !== undefined && (job.capped || (job.spent ?? 0) >= job.spendCap)) {
+    // Its hold no longer taking papers (it expired while the job ran) stops it too: every charge of the job goes through the hold.
+    if (job.spendCap !== undefined && (job.capped || (job.spent ?? 0) >= job.spendCap || (job.spendHold !== undefined && !job.held))) {
       if (!job.capped) await ctx.runMutation(internal.screening.mutations.capScreeningJob, { jobId: args.jobId });
       return { ...emptyResult, capped: true };
     }
