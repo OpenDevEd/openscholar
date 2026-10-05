@@ -109,13 +109,15 @@ export const answerAction = defineUserMutation({
   // A change returns its undo, but not every one: an answer that moves a paper in or out of
   // what the job saves has none yet (#342). Until it does, the assistant asks before it changes one.
   undoable: false,
-  run: async (ctx, userId, { jobId, paperId, questionKey, answer, expect }, author) => {
+  run: async (ctx, userId, { jobId, paperId: given, questionKey, answer, expect }, author) => {
     let job = await ctx.db.get("screeningJobs", jobId);
     if (!job || job.userId !== userId) throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
     const question = job.questions.find((q) => q.key === questionKey);
     if (!question) throw createError("VALIDATION_ERROR", "This screening doesn't ask that question");
-    let result = await screened(ctx, jobId, paperId);
+    let result = await screened(ctx, jobId, given);
     if (!result || result.status !== "completed") throw createError("VALIDATION_ERROR", "Only a screened paper's answers can be changed");
+    // Its answers are kept under the ID the job has for it, whichever form it was asked for by.
+    const paperId = result.openalexId;
     // Answers still waiting on the result move to the job's screening first: that's where they change.
     if (result.answers) {
       await moveResultAnswers(ctx, result);

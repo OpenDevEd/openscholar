@@ -180,6 +180,13 @@ export function classifyUnknownError(err: unknown): ClassifiedError {
     return finalize(CODE_TO_TAXONOMY[prefixMatch[1]], message, { context });
   }
 
+  // 2b. The app's own words about a request it won't run. They can quote what
+  // the person typed (a search OpenAlex refused, with its phrase), so a word in
+  // them says nothing about a provider: no status or text matching.
+  if (explicitCode === "VALIDATION_ERROR") {
+    return finalize("unknown", message, { context });
+  }
+
   // 3. AbortError / AbortSignal — user-initiated stop. isAbortLike
   // covers DOMException-style instances AND `new Error(persistedSentinel)`.
   if (isAbortLike(err)) {

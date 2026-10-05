@@ -141,7 +141,9 @@ export const deleteMemberships = internalMutation({
 
 export const deleteCollectionAction = defineUserMutation({
   path: DELETE,
-  description: "Deletes one of the person's collections. Its papers stay in the library. This can't be undone.",
+  description:
+    "Deletes one of the person's collections. Its papers stay in the library. This can't be undone. " +
+    "`expect` is only for undoing a collection's creation: with it, a collection that was renamed or holds papers since is left as it is. To delete a collection the person asks to delete, leave `expect` out.",
   // `expect` is the collection as the creation being undone left it: one renamed, or with a paper in it, stays.
   args: { collectionId: v.id("collections"), expect: v.optional(asCreated) },
   returns: v.null(),
