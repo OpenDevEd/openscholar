@@ -819,6 +819,11 @@ describe("the assistant's tools", () => {
     // What it cost in all is the newest of her last replies.
     const paid = (await t.run(async (ctx) => ctx.db.query("billingUsage").collect())).filter((charge) => charge.userId === ada).reduce((sum, charge) => sum + charge.credits, 0);
     expect((await asAda.query(api.assistant.spending.get, { threadId })).recent).toEqual([paid]);
+    // A request stopped partway is settled after its reply has ended. What it cost is added to that reply, whichever is recorded first.
+    const [{ reply }] = (await t.run(async (ctx) => ctx.db.query("assistantSpenders").collect()))[0].recent;
+    await t.mutation(internal.assistant.spending.settledLate, { userId: ada, reply, credits: 4 });
+    await t.mutation(internal.assistant.spending.settledLate, { userId: ada, reply: "a reply not recorded yet", credits: 7 });
+    expect((await asAda.query(api.assistant.spending.get, { threadId })).recent).toEqual([paid + 4, 7]);
   });
 
   it.each([true, false])("hold a reply that asked with its limit already reached until it's carried on, when the answer is %s", async (allow) => {

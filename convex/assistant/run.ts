@@ -116,6 +116,7 @@ export const reply = internalAction({
       effort,
       // Each request holds and settles its own credits.
       attemptId: `${attemptId}:${used.rounds}`,
+      replyId: attemptId,
       credits: cap,
       lesser: async () => (await refreshAccount(ctx, senderId).catch(() => null))?.balance,
       tools,

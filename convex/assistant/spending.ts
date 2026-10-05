@@ -21,9 +21,9 @@ import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { ASSISTANT_REQUESTS_BEFORE_ASKING } from "../lib/constants";
 import { createError } from "../lib/errors";
-import { mutation, query } from "../lib/functions";
+import { internalMutation, mutation, query } from "../lib/functions";
 import { requireThread } from "./access";
-import { RECENT_REPLIES, assistantSpenderFields } from "./validators";
+import { RECENT_REPLIES, recentCostsValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
 /** The largest limit a person can set: fifteen digits, which a number holds exactly. */
@@ -65,14 +65,32 @@ export async function startWith(ctx: MutationCtx, threadId: Id<"assistantThreads
   if (replyLimit !== undefined) await ctx.db.insert("assistantLimits", { threadId, userId, replyLimit });
 }
 
-/** Keeps what a reply cost among the person's last, for the Spending sheet's chart. One that cost nothing, stopped or failed before the model answered, isn't one of them. */
-export async function noteReply(ctx: MutationCtx, userId: Id<"users">, spent: number) {
+/**
+ * Keeps what a reply cost among the person's last, for the Spending sheet's chart, under the
+ * reply's name. Credits for a reply already among them are added to it: a request stopped or
+ * failed partway is settled after the reply has ended. Nothing is kept for no credits.
+ */
+export async function noteReply(ctx: MutationCtx, userId: Id<"users">, reply: string, credits: number) {
   // A reply can outlast its sender's account, paused in someone else's chat: nothing is kept for an account that is gone.
-  if (spent <= 0 || !(await ctx.db.get("users", userId))) return;
+  if (credits <= 0 || !(await ctx.db.get("users", userId))) return;
   const spender = await spenderOf(ctx, userId);
-  if (!spender) await ctx.db.insert("assistantSpenders", { userId, recent: [spent] });
-  else await ctx.db.patch("assistantSpenders", spender._id, { recent: [...spender.recent, spent].slice(-RECENT_REPLIES) });
+  const kept = spender?.recent ?? [];
+  const recent = kept.some((entry) => entry.reply === reply)
+    ? kept.map((entry) => (entry.reply === reply ? { reply, credits: entry.credits + credits } : entry))
+    : [...kept, { reply, credits }].slice(-RECENT_REPLIES);
+  if (spender) await ctx.db.patch("assistantSpenders", spender._id, { recent });
+  else await ctx.db.insert("assistantSpenders", { userId, recent });
 }
+
+/** A request of a reply that was stopped or failed partway is settled once OpenRouter says what it cost (convex/chat/billing.ts). */
+export const settledLate = internalMutation({
+  args: { userId: v.id("users"), reply: v.string(), credits: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { userId, reply, credits }) => {
+    await noteReply(ctx, userId, reply, credits);
+    return null;
+  },
+});
 
 /** Deletes a batch of a deleted chat's limits. Returns whether more are left. */
 export async function forgetLimits(ctx: MutationCtx, threadId: Id<"assistantThreads">) {
@@ -99,14 +117,14 @@ export const get = query({
     /** The chats the person starts begin with this chat's. */
     forNewChats: v.boolean(),
     /** What their last replies cost, oldest first. */
-    recent: assistantSpenderFields.recent,
+    recent: recentCostsValidator,
   }),
   handler: async (ctx, { threadId }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);
     const [limit, spender] = await Promise.all([limitOf(ctx, threadId, userId), spenderOf(ctx, userId)]);
-    return { replyLimit: limit?.replyLimit ?? null, forNewChats: spender?.newChats !== undefined && spender.newChats.replyLimit === limit?.replyLimit, recent: spender?.recent ?? [] };
+    return { replyLimit: limit?.replyLimit ?? null, forNewChats: spender?.newChats !== undefined && spender.newChats.replyLimit === limit?.replyLimit, recent: (spender?.recent ?? []).map((entry) => entry.credits) };
   },
 });
 

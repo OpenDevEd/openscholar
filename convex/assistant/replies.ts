@@ -79,7 +79,7 @@ async function admit(ctx: MutationCtx, userId: Id<"users">) {
 
 /** Clears the lock of a reply whose action died. What it had cost by then is still one of its sender's last replies. */
 async function endDead(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
-  if (thread.reply) await noteReply(ctx, thread.reply.senderId, thread.reply.spent ?? 0);
+  if (thread.reply) await noteReply(ctx, thread.reply.senderId, thread.reply.attemptId, thread.reply.spent ?? 0);
   await ctx.db.patch("assistantThreads", thread._id, { reply: undefined });
 }
 
@@ -481,7 +481,7 @@ export const release = internalMutation({
     await settleAsked(ctx, threadId);
     // What it cost is kept among its sender's last replies. One that ended before a request of its own
     // reported in, stopped as it went on, say, has what its lock last held.
-    await noteReply(ctx, current.senderId, spent ?? current.spent ?? 0);
+    await noteReply(ctx, current.senderId, attemptId, spent ?? current.spent ?? 0);
     // A stopped reply is left alone: whoever stopped it is waiting to write.
     if (ended && !current.stop && compactionDue({ ...ended, window })) {
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;

@@ -267,7 +267,8 @@ export async function stopAsking(ctx: MutationCtx, thread: Doc<"assistantThreads
     skipEmbeddings: true,
   });
   await ctx.db.patch("assistantThreads", thread._id, { asking: undefined });
-  await noteReply(ctx, waiting.senderId, waiting.spent);
+  // It has no request running, so no charge of its own is still to settle: any name of its own will do.
+  await noteReply(ctx, waiting.senderId, `waiting:${thread._id}:${waiting.askedAt}`, waiting.spent);
 }
 
 /** Deletes a deleted chat's steps and their results, a batch at a time, until none are left. */

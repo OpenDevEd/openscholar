@@ -41,6 +41,8 @@ export type Turn = {
   effort?: Effort;
   /** Names this run of the reply. Its credits are held under it. */
   attemptId?: string;
+  /** The reply this request is part of, for its sender's record of what replies cost, when a charge is settled after it ended. */
+  replyId?: string;
   /** Credits held before the reply starts. */
   credits: number;
   /** Asked when that hold is refused: what to hold in its place, when the person turns out to have less. */
@@ -436,6 +438,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
         ...(turn.jobId ? { jobId: turn.jobId } : {}),
         chargeId,
         generationId: unfinishedGeneration,
+        ...(turn.replyId ? { reply: turn.replyId } : {}),
         extraUsd: completedUsd,
         earlierTokens: tokenCounts(aggregateUsage(stepUsages)),
         attempt: 0,

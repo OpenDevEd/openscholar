@@ -81,9 +81,14 @@ export const assistantSpenderFields = {
   userId: v.id("users"),
   /** Set while "Use these for my new chats" is on: the limits a chat they start begins with. */
   newChats: v.optional(v.object({ replyLimit: v.optional(v.number()) })),
-  /** What their last replies cost in credits, oldest first. */
-  recent: capped(v.array(v.number()), RECENT_REPLIES),
+  /**
+   * What their last replies cost in credits, oldest first. Each is under its reply's name, so a
+   * charge settled after the reply ended (convex/chat/billing.ts) is added to the right one.
+   */
+  recent: capped(v.array(v.object({ reply: v.string(), credits: v.number() })), RECENT_REPLIES),
 };
+/** What a person's last replies cost, oldest first, as the Spending sheet reads them. */
+export const recentCostsValidator = capped(v.array(v.number()), RECENT_REPLIES);
 
 export const assistantThreadFields = {
   ownerId: v.id("users"),
