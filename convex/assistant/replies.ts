@@ -135,10 +135,13 @@ export const send = mutation({
     const undone: string[] = [];
     for (const { stepId } of mine) {
       const step = await ctx.db.get("assistantSteps", stepId);
-      // What the change was, how many it made, what it was about, and whether a bulk one is still being put back.
-      if (step) undone.push([step.variant ? `${step.path}#${step.variant}` : step.path, step.batch === undefined ? null : `${step.count ?? step.batch} changes`, step.subject, step.reverting ? "still being put back" : null].filter(Boolean).join(", "));
+      if (!step) continue;
+      // What the change was, how many it made, what it was about, and how putting a bulk one back went: still at it, or what of it stayed (./bulk.ts).
+      const { variant } = variantOf(step);
+      undone.push([variant ? `${step.path}#${variant}` : step.path, step.batch === undefined ? null : `${step.count ?? step.batch} changes`, step.subject, step.reverting ? "still being put back" : step.error].filter(Boolean).join(", "));
     }
-    if (mine.length && thread.undoneMore) undone.push(`and ${thread.undoneMore} changes before these`);
+    const more = (thread.undoneMore ?? []).find((entry) => entry.userId === userId)?.count;
+    if (more) undone.push(`and ${more} before these`);
     const { messageId, message } = await assistant.saveMessage(ctx, {
       threadId: thread.agentThreadId,
       userId,
@@ -148,7 +151,10 @@ export const send = mutation({
         : { prompt: text }),
       skipEmbeddings: true,
     });
-    if (mine.length) await ctx.db.patch("assistantThreads", threadId, { undone: others.length ? others : undefined, undoneMore: undefined });
+    if (mine.length || more) {
+      const counts = (thread.undoneMore ?? []).filter((entry) => entry.userId !== userId);
+      await ctx.db.patch("assistantThreads", threadId, { undone: others.length ? others : undefined, undoneMore: counts.length ? counts : undefined });
+    }
     const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
     await touchThread(ctx, threadId, now);
     // What the sender lets a reply spend here, if they set a limit (./spending.ts). Taken with the message, like its model.

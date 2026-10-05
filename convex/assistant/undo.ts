@@ -30,10 +30,15 @@ export const run = mutation({
     // The reversing action refuses on its own when the record has changed since (its `expect`).
     await ctx.runMutation(makeFunctionReference<"mutation">(assistantPath(entry.path)), { ...JSON.parse(step.undo.args), ...(entry.retryKey ? { [entry.retryKey]: `undo:${stepId}` } : {}), userId, approved: true });
     await ctx.db.patch("assistantSteps", stepId, { undone: true });
-    // The assistant is told with this person's next message (./replies.ts). Past what the chat keeps, the earliest are counted, not forgotten.
+    // The assistant is told with this person's next message (./replies.ts). Past what the chat keeps, the earliest goes, counted for whoever's it was and not forgotten.
     const undone = [...(thread.undone ?? []), { userId, stepId }];
-    const over = Math.max(0, undone.length - UNDONE_TOLD);
-    await ctx.db.patch("assistantThreads", threadId, { undone: undone.slice(over), ...(over ? { undoneMore: (thread.undoneMore ?? 0) + over } : {}) });
+    const dropped = undone.length > UNDONE_TOLD ? undone.shift() : undefined;
+    const more = thread.undoneMore ?? [];
+    const counted = more.find((entry) => entry.userId === dropped?.userId);
+    await ctx.db.patch("assistantThreads", threadId, {
+      undone,
+      ...(dropped ? { undoneMore: [...more.filter((entry) => entry !== counted), { userId: dropped.userId, count: (counted?.count ?? 0) + 1 }].slice(-UNDONE_TOLD) } : {}),
+    });
     return null;
   },
 });

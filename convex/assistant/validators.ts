@@ -131,10 +131,11 @@ export const assistantThreadFields = {
    * Changes of the assistant's that people took back with Undo and the model hasn't been told
    * of: whose it was, and which step. A person's next message tells the model of theirs (the
    * changes were to their own records): it only knows what its own calls came to, and made an
-   * undone change again when it found it gone. `undoneMore` counts those that no longer fit.
+   * undone change again when it found it gone. `undoneMore` counts those that no longer fit,
+   * for each person whose they were.
    */
   undone: capped(v.optional(v.array(v.object({ userId: v.id("users"), stepId: v.id("assistantSteps") }))), UNDONE_TOLD),
-  undoneMore: v.optional(v.number()),
+  undoneMore: capped(v.optional(v.array(v.object({ userId: v.id("users"), count: v.number() }))), UNDONE_TOLD),
   createdAt: v.number(),
   updatedAt: v.number(),
 };

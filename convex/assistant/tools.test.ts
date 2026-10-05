@@ -380,6 +380,21 @@ describe("the assistant's tools", () => {
     await say("Is it saved?");
     expect(lastSent()).toContain("undone: library/mutations:saveToLibrary, Tutoring at scale</app_context>");
     expect(await waiting()).toBe(0);
+
+    // Past what the chat keeps, the earliest undo is counted for whoever's it was: Ben's undo pushes one of Ada's out, and it's Ada who hears of it.
+    const [saved] = await steps();
+    await t.run(async (ctx) => ctx.db.patch("assistantThreads", threadId, { undone: Array.from({ length: 20 }, () => ({ userId: saved.userId, stepId: saved._id })) }));
+    mockDoStream.mockImplementationOnce(calling({ id: "bens", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W2", title: "Reading camps" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "Save this one for me" });
+    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: 5_000 });
+    await asBen.mutation(api.assistant.undo.run, { threadId, stepId: (await steps()).at(-1)!._id });
+    mockDoStream.mockImplementationOnce(finishingDoStream(["It's out again."]));
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "Is mine saved?" });
+    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: 5_000 });
+    expect(lastSent()).toContain("undone: library/mutations:saveToLibrary, Reading camps</app_context>");
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Those are all out."]));
+    await say("And mine?");
+    expect(lastSent()).toContain("and 1 before these</app_context>");
   });
 
   it("change the papers of a set without reading them: what a query finds goes into a collection as one step, asked about with its first titles", async () => {
@@ -442,6 +457,8 @@ describe("the assistant's tools", () => {
       .mockImplementationOnce(calling({ id: "named", name: "change_papers", input: { papers: { kind: "ids", ids: ["W101", "https://openalex.org/W102", "W101"] }, do: "save" } }))
       .mockImplementationOnce(finishingDoStream(["Saved both."]));
     await say("Save these two");
+    // The undo that couldn't put three back is told as it went, so the model doesn't count them as gone.
+    expect(JSON.stringify((requests.at(-2) as Sent).at(-1))).toMatch(/undone: library\/mutations:saveToLibrary, 30 changes, luna test, 3 of these couldn't be put back/);
     expect(await held()).toEqual({ saved: 5, collected: 0 });
     expect((await steps()).at(-1)).toMatchObject({ path: "library/mutations:saveToLibrary", status: "done", batch: 2, count: 2 });
     vi.unstubAllEnvs();

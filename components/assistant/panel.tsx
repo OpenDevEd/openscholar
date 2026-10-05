@@ -690,6 +690,8 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
           setAsking(true);
         }}
         onAuxClick={(event) => {
+          // The middle button opens a link in a new tab. The right one opens the browser's menu, which stays the person's.
+          if (event.button !== 1) return;
           event.preventDefault();
           setAsking(true);
         }}
