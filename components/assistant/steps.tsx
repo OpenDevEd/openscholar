@@ -35,7 +35,7 @@ import { WorkingText } from "./parts";
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
 export type StepItem = Extract<Item, { role: "step" }>;
 
-/** Each kind's look, the same as everywhere else in the app (components/record-kinds.ts); `other` is an action on no one record. */
+/** Each kind's icon, the same as everywhere in the app, and its colour, which only the assistant uses (components/record-kinds.ts). `other` is an action on no one record. */
 export const KIND = {
   search: RECORD_KINDS.search,
   paper: RECORD_KINDS.paper,
