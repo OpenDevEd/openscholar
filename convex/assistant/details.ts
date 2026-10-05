@@ -9,9 +9,13 @@
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { readMemberOrganizations } from "../organizationFeatures";
+import { findSearch } from "../research/records";
+import { currentSearch } from "../../lib/research/records";
 import { personName, principalsOf, roleAmong } from "./access";
 import { ASKED_DETAILS_MAX } from "./validators";
 
+/** A saved search's ID: the one the page made for it. */
+const SEARCH_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Characters of one argument's value. */
 const VALUE_MAX = 200;
 /** How deep an argument's own fields are listed. */
@@ -40,6 +44,12 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
   const mine = await readMemberOrganizations(ctx, reader);
   /** The name of the record an ID names, when the reader can already see it. */
   const named = async (id: string): Promise<string | null> => {
+    // A saved search has the ID its page gave it, not a document's. It is the reader's own or it isn't found.
+    if (SEARCH_ID.test(id)) {
+      const search = await findSearch(ctx, reader._id, id);
+      // One saved with filters alone has no query to show: it is named as such, never by its ID.
+      return search ? currentSearch(search.data).query : null;
+    }
     const threadId = ctx.db.normalizeId("assistantThreads", id);
     if (threadId) return (await roleAmong(ctx, threadId, await principalsOf(ctx, reader))) ? ((await ctx.db.get("assistantThreads", threadId))?.title ?? null) : null;
     const collectionId = ctx.db.normalizeId("collections", id);
@@ -73,11 +83,16 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
   // The call's own arguments come before the fields inside them, so what it acts on and what
   // it changes are shown even when a paper it carries has more fields than fit.
   const leaves = plain(args).sort(([a], [b]) => a.length - b.length);
-  const details: Array<{ name: string; value: string }> = [];
+  const details: Array<{ name: string; value: string; record: boolean }> = [];
   for (const [path, value] of leaves.slice(0, ASKED_DETAILS_MAX)) {
     // A name that can't be read, such as someone in more organizations than are read at once, stays an ID.
-    const shown = typeof value === "string" ? ((await named(value).catch(() => null)) ?? value) : String(value);
-    details.push({ name: nameOf(path), value: shown.length > VALUE_MAX ? `${shown.slice(0, VALUE_MAX)}…` : shown });
+    const record = typeof value === "string" ? await named(value).catch(() => null) : null;
+    const shown = record ?? String(value);
+    details.push({ name: nameOf(path), value: shown.length > VALUE_MAX ? `${shown.slice(0, VALUE_MAX)}…` : shown, record: record !== null });
   }
-  return details;
+  // A call can name a record by its ID and again by the name it expects it to have, so that it
+  // fails on one renamed since. The record's own name says both, so the typed one isn't
+  // repeated. Two records with one name, a chat and the organization it's shared with, are both said.
+  const records = new Set(details.flatMap((detail) => (detail.record ? [detail.value] : [])));
+  return details.flatMap(({ record, ...detail }) => (record || !records.has(detail.value) ? [detail] : []));
 }

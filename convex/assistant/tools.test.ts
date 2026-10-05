@@ -129,7 +129,8 @@ describe("the assistant's tools", () => {
 
     const [saved] = await t.run(async (ctx) => ctx.db.query("libraryItems").collect());
     expect(saved).toMatchObject({ userId: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale" });
-    expect(await steps()).toMatchObject([{ path: "library/papers:save", status: "done", undo: { path: "library/mutations:removeFromLibrary" } }]);
+    // The call named the paper by its ID alone, so the step is about the paper it came back with.
+    expect(await steps()).toMatchObject([{ path: "library/papers:save", status: "done", subject: "Tutoring at scale", undo: { path: "library/mutations:removeFromLibrary" } }]);
     // One result beside the step: the write ended it, and nothing ended it again.
     expect(await results()).toEqual([expect.objectContaining({ libraryItemId: saved._id, title: "Tutoring at scale" })]);
     expect(await shown()).toEqual(["user: Save that paper", "step: library/papers:save done, can be undone", "assistant: Saved it."]);
@@ -444,7 +445,7 @@ describe("the assistant's tools", () => {
 
   it("show the person what a call acts on and what it changes before anything else about it", async () => {
     const t = convexTest(schema);
-    const { ada, asAda } = await chatOf(t);
+    const { ada, asAda, threadId } = await chatOf(t);
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
     const paper = Object.fromEntries(Array.from({ length: 14 }, (_, index) => [`field${index}`, `value ${index}`]));
     const details = await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ paper, collectionId, inCollection: false, note: null })));
@@ -454,6 +455,32 @@ describe("the assistant's tools", () => {
     // A collection that isn't hers stays an ID.
     const theirs = await t.run(async (ctx) => ctx.db.insert("collections", { ...(await ctx.db.get("collections", collectionId))!, _id: undefined, _creationTime: undefined, userId: (await ctx.db.query("users").collect()).find((user) => user._id !== ada)!._id, name: "Private to someone else" } as never));
     expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId: theirs })))).toEqual([{ name: "collection", value: theirs }]);
+    // A collection named by its ID and again by the name the call expects it to have is one line.
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId, name: "Trials" })))).toEqual([{ name: "collection", value: "Trials" }]);
+    // A saved search is shown by its query, and one saved with filters alone by nothing, never by its ID.
+    const { id: asked } = await asAda.mutation(api.research.searches.create, { query: "tutoring trials" });
+    const { id: filtered } = await asAda.mutation(api.research.searches.create, { fromYear: 2020, toYear: 2024 });
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ id: asked })))).toEqual([{ name: "id", value: "tutoring trials" }]);
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ id: filtered })))).toEqual([{ name: "id", value: "" }]);
+    // Two records that share a name are both said: who a chat is shared with is never left out.
+    await asAda.mutation(api.assistant.threads.rename, { threadId, title: "Trials" });
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ threadId, collectionId })))).toEqual([{ name: "thread", value: "Trials" }, { name: "collection", value: "Trials" }]);
+  });
+
+  it("name a step after the saved paper or the collection its call gave only the ID of", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, say, steps } = await chatOf(t);
+    const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
+    await t.run(async (ctx) => {
+      await ctx.db.insert("libraryItems", { userId: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale", paperData: "{}", savedAt: 1, updatedAt: 1, searchableText: "tutoring at scale" });
+    });
+    mockDoStream
+      // The paper by its short ID, as results give it, and a collection of hers.
+      .mockImplementationOnce(calling({ id: "collect", name: "run_action", input: { name: "library/papers:collect", arguments: { id: "W7", collectionId, inCollection: true } } }))
+      .mockImplementationOnce(calling({ id: "open", name: "run_action", input: { name: "library/collections:getCollection", arguments: { collectionId } } }))
+      .mockImplementationOnce(finishingDoStream(["Done."]));
+    await say("Put that paper in Trials");
+    expect((await steps()).map((step) => [step.path, step.subject])).toEqual([["library/papers:collect", "Tutoring at scale"], ["library/collections:getCollection", "Trials"]]);
   });
 
   it("carry a reply on through a pause, for as many requests as its work takes", async () => {
@@ -979,6 +1006,21 @@ describe("the assistant's tools", () => {
     expect(stepIds).toHaveLength(60);
     expect(new Set(stepIds).size).toBe(30);
     expect(all.filter((item) => item.role !== "step").map((item) => `${item.role}: ${"text" in item ? item.text : ""}`)).toEqual(["assistant: All read.", "user: Read a great deal"]);
+  });
+
+  it("say which kind of change a step made to the person's research records, the one action that makes several", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, threadId, say } = await chatOf(t);
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Rated."]));
+    await say("Rate that paper");
+    await t.run(async (ctx) => {
+      const step = { threadId, order: 0, userId: ada, toolCallId: "rate", path: "research/records:change", status: "done" as const, startedAt: 1, endedAt: 1 };
+      await ctx.db.insert("assistantSteps", { ...step, input: JSON.stringify({ requestId: "r1", command: { kind: "rating", paperId: "W1", rating: 5 } }) });
+      // Arguments too long to keep whole were cut, and don't parse: the step still shows, as the action alone.
+      await ctx.db.insert("assistantSteps", { ...step, toolCallId: "cut", input: '{"requestId":"r2","command":{"kind":"createSea' });
+    });
+    const page = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.flatMap((item) => (item.role === "step" ? [item] : []));
+    expect(page.map((item) => [item.action, item.variant])).toEqual([["research/records:change", undefined], ["research/records:change", "rating"]]);
   });
 
   it("give a call left without a result its result, however long the reply it's in ran", async () => {

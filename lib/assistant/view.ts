@@ -38,6 +38,23 @@ function shown(value: string) {
   return kept.replace(/[<>&%;\n\r\t]/g, encodeURIComponent);
 }
 
+/** Any address, to resolve a path against as a browser would. */
+const SITE = "https://openscholar.invalid";
+
+/**
+ * Whether an address the model wrote is a page of the app: a path that is still on this site
+ * once a browser has read it. "//host" isn't, and neither is "/\\host", since a browser reads
+ * a backslash there as a slash, nor a path with a tab or a line break before its second slash,
+ * which a browser drops. Such an address would leave the app without the person being asked.
+ */
+export function inApp(address: string) {
+  try {
+    return address.startsWith("/") && new URL(address, SITE).origin === SITE;
+  } catch {
+    return false;
+  }
+}
+
 /** A page's address as a view: its path and the parameters kept for that page. Null for one that isn't a page of the app. */
 export function viewOf(address: string): string | null {
   if (address.length > ADDRESS_MAX || !/^\/(?![/\\])/.test(address)) return null;
@@ -60,7 +77,8 @@ export function viewOf(address: string): string | null {
 
 /**
  * The app's note to the model, after what the person typed: the page they're on, when it's
- * a page of the app, and the date. Without the date a model takes "the past year" from when
- * it was trained.
+ * a page of the app, the date, and the chat. Without the date a model takes "the past year"
+ * from when it was trained. Without the chat's ID, "share this chat" made it look through
+ * the person's chats for one with a matching title.
  */
-export const notePart = ({ page, today }: { page?: string; today: string }) => `<app_context>${page === undefined ? "" : `page: ${page}; `}today: ${today}</app_context>`;
+export const notePart = ({ page, today, chat }: { page?: string; today: string; chat: string }) => `<app_context>${page === undefined ? "" : `page: ${page}; `}today: ${today}; chat: ${chat}</app_context>`;

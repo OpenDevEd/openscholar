@@ -3675,11 +3675,92 @@
         "where": "Screening",
         "ask": "Change a screening answer"
       },
+      "chats": {
+        "doing": "Looking through your chats",
+        "did": "Looked through your chats",
+        "where": "Chats"
+      },
+      "readChat": {
+        "doing": "Reading a chat",
+        "did": "Read a chat",
+        "where": "Chats"
+      },
+      "chatAccess": {
+        "doing": "Checking who is in a chat",
+        "did": "Checked who is in a chat",
+        "where": "Chats"
+      },
+      "admins": {
+        "doing": "Looking at the admins",
+        "did": "Looked at the admins",
+        "where": "Admin"
+      },
+      "models": {
+        "doing": "Looking at the models",
+        "did": "Looked at the models",
+        "where": "Models"
+      },
+      "keys": {
+        "doing": "Looking at your API keys",
+        "did": "Looked at your API keys",
+        "where": "API keys"
+      },
+      "startScreening": {
+        "doing": "Starting a screening",
+        "did": "Started a screening",
+        "where": "Screening",
+        "ask": "Start a screening"
+      },
+      "screeningEstimate": {
+        "doing": "Working out what a screening would cost",
+        "did": "Worked out what a screening would cost",
+        "where": "Screening"
+      },
+      "extractionResults": {
+        "doing": "Reading an extraction's results",
+        "did": "Read an extraction's results",
+        "where": "Extraction"
+      },
+      "clearSearches": {
+        "doing": "Removing all your searches",
+        "did": "Removed all your searches",
+        "where": "Saved searches",
+        "ask": "Remove all your searches"
+      },
+      "bookmark": {
+        "doing": "Changing a bookmark",
+        "did": "Changed a bookmark",
+        "where": "Bookmarks",
+        "ask": "Change a bookmark"
+      },
+      "clearBookmarks": {
+        "doing": "Removing all your bookmarks",
+        "did": "Removed all your bookmarks",
+        "where": "Bookmarks",
+        "ask": "Remove all your bookmarks"
+      },
       "other": {
         "doing": "Working in your account",
         "did": "Worked in your account",
         "where": "Your account",
         "ask": "Run an action in your account"
+      },
+      "startExtraction": {
+        "doing": "Starting an extraction",
+        "did": "Started an extraction",
+        "where": "Extraction",
+        "ask": "Start an extraction"
+      },
+      "copyExtraction": {
+        "doing": "Copying an extraction",
+        "did": "Copied an extraction",
+        "where": "Extraction",
+        "ask": "Copy an extraction"
+      },
+      "sharePeople": {
+        "doing": "Looking for people to share with",
+        "did": "Looked for people to share with",
+        "where": "Chats"
       }
     },
     "asks": {
@@ -3688,6 +3769,7 @@
       "decline": "Don't do this",
       "why": "This can't be undone, or it shows outside your account. It asks every time.",
       "failed": "Couldn't send your answer",
+      "unnamed": "No name",
       "names": {
         "thread": "Chat",
         "collection": "Collection",

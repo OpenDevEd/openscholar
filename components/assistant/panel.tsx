@@ -10,6 +10,7 @@ import { useSmoothText } from "@convex-dev/agent/react";
 import { insertAtTop, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowUp, ChevronDown, CircleAlert, CircleStop, Eye, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus } from "@/components/icons";
 import { useTranslations } from "next-intl";
@@ -17,7 +18,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Conversation, ConversationContent } from "@/components/ai-elements/conversation";
 import { MessageResponse } from "@/components/ai-elements/message";
-import { CHAT_LINK_SAFETY } from "@/components/extraction/chat/link-safety-dialog";
+import { LinkSafetyDialog } from "@/components/extraction/chat/link-safety-dialog";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { EffortMeter } from "@/components/models/meters";
 import { ModelPicker } from "@/components/models/model-picker";
@@ -29,6 +30,8 @@ import { PRESET_KEYS } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
 import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
+import { titleFrom } from "@/lib/assistant/title";
+import { inApp } from "@/lib/assistant/view";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
@@ -54,7 +57,6 @@ const SHELL_SPRING = { type: "spring" as const, stiffness: 380, damping: 36, mas
 const FIRST_MESSAGES = 30;
 /** How near the thread's top the person scrolls before the messages before these load, so they're there by the time they get to them. */
 const LOAD_AHEAD = 1200;
-const TITLE_MAX = 60;
 /** The ID of a message shown ahead of the server's copy of it. */
 const SENDING = "sending:";
 /** The one message that can be on its way in a chat: its bubble keeps this ID until the server's copy takes its place. */
@@ -66,12 +68,6 @@ const LOOP_MS = 2_000;
 
 /** What is typed and not yet sent, a draft per chat, so one chat's never lands in another. */
 type Drafts = { of: (id: ThreadId | null) => string; set: (id: ThreadId | null, text: string | ((now: string) => string)) => void };
-
-/** A new chat is named after its first message's first line, cut between characters, never inside one. */
-function titleFrom(text: string) {
-  const line = [...text.trim().split("\n")[0]!.replace(/\s+/g, " ")];
-  return line.length > TITLE_MAX ? `${line.slice(0, TITLE_MAX - 1).join("").trimEnd()}…` : line.join("");
-}
 
 export function AssistantPanel() {
   const enabled = useFeatureFlag("assistant.enabled");
@@ -575,12 +571,47 @@ function Reply({ message, live, acting }: { message: Message; live: string; acti
   if (!text) return pending ? <Thinking wordless={acting} /> : null;
   return (
     <div className="text-sm leading-relaxed text-foreground">
-      <MessageResponse isAnimating={pending || isStreaming} parseIncompleteMarkdown={pending || isStreaming || message.status === "stopped"} linkSafety={CHAT_LINK_SAFETY}>
+      <MessageResponse isAnimating={pending || isStreaming} parseIncompleteMarkdown={pending || isStreaming || message.status === "stopped"} components={REPLY_PARTS}>
         {text}
       </MessageResponse>
     </div>
   );
 }
+
+/**
+ * A link in a reply. One to a page of the app, a saved search or a collection, opens it here,
+ * in this tab, and the panel stays up with its chat. Any other address was written by the
+ * model, so the person sees where it goes and says yes first, as in the paper chat.
+ */
+function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) {
+  const [asking, setAsking] = useState(false);
+  const look = "wrap-anywhere font-medium text-primary underline";
+  if (href && inApp(href)) {
+    return (
+      <Link href={href} className={look}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <>
+      <button type="button" className={cn(look, "text-left")} onClick={() => setAsking(true)}>
+        {children}
+      </button>
+      <LinkSafetyDialog
+        isOpen={asking}
+        url={href ?? ""}
+        onClose={() => setAsking(false)}
+        onConfirm={() => {
+          window.open(href, "_blank", "noreferrer");
+          setAsking(false);
+        }}
+      />
+    </>
+  );
+}
+/** One object for every reply, so a reply's text isn't rendered again for a new one. */
+const REPLY_PARTS = { a: ReplyLink };
 
 /** Under a reply that was stopped. */
 function StoppedRow() {

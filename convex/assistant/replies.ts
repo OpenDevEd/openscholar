@@ -25,6 +25,7 @@ import { internalMutation, internalQuery, mutation, query } from "../lib/functio
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
+import { NEW_CHAT_TITLE, titleFrom } from "../../lib/assistant/title";
 import { notePart, viewOf } from "../../lib/assistant/view";
 import { viewOf as actionView } from "../../lib/assistant/actions";
 import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
@@ -129,7 +130,7 @@ export const send = mutation({
     const { messageId, message } = await assistant.saveMessage(ctx, {
       threadId: thread.agentThreadId,
       userId,
-      ...(moved ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: notePart({ page: view ?? undefined, today }) }] } } : { prompt: text }),
+      ...(moved ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: notePart({ page: view ?? undefined, today, chat: threadId }) }] } } : { prompt: text }),
       skipEmbeddings: true,
     });
     const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
@@ -148,7 +149,10 @@ export const send = mutation({
       effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
       ...(cap === undefined ? {} : { used: { credits: 0, rounds: 0, calls: 0, cap } }),
     });
-    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), ...(moved ? { view: { ...((view ?? said?.address) === undefined ? {} : { address: view ?? said?.address }), day: today, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId, spent: 0, ...(cap === undefined ? {} : { cap }) } });
+    // A chat made before it had a message, to share it or to set what it may spend, is named by its first.
+    // ponytail: told apart by its title alone, so a chat renamed to exactly the default before its first message is named over. A flag on the chat for "named by hand" if that ever matters.
+    const title = thread.preview === undefined && thread.title === NEW_CHAT_TITLE ? titleFrom(text) : "";
+    await ctx.db.patch("assistantThreads", threadId, { ...(title ? { title } : {}), preview: previewOf(text), ...(moved ? { view: { ...((view ?? said?.address) === undefined ? {} : { address: view ?? said?.address }), day: today, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId, spent: 0, ...(cap === undefined ? {} : { cap }) } });
     return null;
   },
 });
@@ -527,7 +531,9 @@ const stepValidator = v.object({
   order: v.number(),
   /** The action it ran, by its path in the registry. */
   action: v.string(),
-  /** What it was about: a title, a name or a query from its arguments. */
+  /** Which of its several jobs the action did, for one that has more than one (lib/assistant/actions.ts). */
+  variant: v.optional(v.string()),
+  /** What it was about: a title, a name or a query from its arguments, or the title or name of what it returned. */
   subject: v.optional(v.string()),
   /** How many things it found, when its result lists any. */
   count: v.optional(v.number()),
@@ -718,6 +724,18 @@ export const messagesAction = defineUserQuery({
 });
 export const messages = userQuery(messagesAction);
 
+/** The kind of change a step made to the person's research records, the one action that makes several kinds. */
+function variantOf(step: Doc<"assistantSteps">) {
+  if (step.path !== "research/records:change") return {};
+  try {
+    const kind = (JSON.parse(step.input) as { command?: { kind?: unknown } }).command?.kind;
+    return typeof kind === "string" ? { variant: kind } : {};
+  } catch {
+    // Arguments too long to keep whole were cut, and don't parse.
+    return {};
+  }
+}
+
 /** A step as the chat's page shows it. `details` is what a call that waits for this person would do. */
 function shownStep(step: Doc<"assistantSteps">, { userId, answering, details }: { userId: Id<"users">; answering: number | undefined; details?: Infer<typeof askedDetailsValidator> }) {
   return {
@@ -725,6 +743,7 @@ function shownStep(step: Doc<"assistantSteps">, { userId, answering, details }: 
     role: "step" as const,
     order: step.order,
     action: step.path,
+    ...variantOf(step),
     ...(step.subject ? { subject: step.subject } : {}),
     ...(step.count === undefined ? {} : { count: step.count }),
     status: shownStatus(step.status, answering === step.order),

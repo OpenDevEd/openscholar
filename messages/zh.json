@@ -3685,11 +3685,92 @@
         "where": "筛选",
         "ask": "更改筛选答案"
       },
+      "chats": {
+        "doing": "正在查看你的对话",
+        "did": "已查看你的对话",
+        "where": "对话"
+      },
+      "readChat": {
+        "doing": "正在读取对话",
+        "did": "已读取对话",
+        "where": "对话"
+      },
+      "chatAccess": {
+        "doing": "正在查看对话成员",
+        "did": "已查看对话成员",
+        "where": "对话"
+      },
+      "admins": {
+        "doing": "正在查看管理员",
+        "did": "已查看管理员",
+        "where": "管理"
+      },
+      "models": {
+        "doing": "正在查看模型",
+        "did": "已查看模型",
+        "where": "模型"
+      },
+      "keys": {
+        "doing": "正在查看你的 API 密钥",
+        "did": "已查看你的 API 密钥",
+        "where": "API 密钥"
+      },
+      "startScreening": {
+        "doing": "正在开始筛选",
+        "did": "已开始筛选",
+        "where": "筛选",
+        "ask": "开始筛选"
+      },
+      "screeningEstimate": {
+        "doing": "正在估算筛选费用",
+        "did": "已估算筛选费用",
+        "where": "筛选"
+      },
+      "extractionResults": {
+        "doing": "正在读取提取结果",
+        "did": "已读取提取结果",
+        "where": "提取"
+      },
+      "clearSearches": {
+        "doing": "正在移除你的全部检索",
+        "did": "已移除你的全部检索",
+        "where": "已保存的检索",
+        "ask": "移除你的全部检索"
+      },
+      "bookmark": {
+        "doing": "正在更改书签",
+        "did": "已更改书签",
+        "where": "书签",
+        "ask": "更改书签"
+      },
+      "clearBookmarks": {
+        "doing": "正在移除你的全部书签",
+        "did": "已移除你的全部书签",
+        "where": "书签",
+        "ask": "移除你的全部书签"
+      },
       "other": {
         "doing": "正在你的账户中处理",
         "did": "已在你的账户中处理",
         "where": "你的账户",
         "ask": "在你的账户中执行操作"
+      },
+      "startExtraction": {
+        "doing": "正在开始提取",
+        "did": "已开始提取",
+        "where": "提取",
+        "ask": "开始提取"
+      },
+      "copyExtraction": {
+        "doing": "正在复制提取",
+        "did": "已复制提取",
+        "where": "提取",
+        "ask": "复制提取"
+      },
+      "sharePeople": {
+        "doing": "正在查找可共享的人",
+        "did": "已查找可共享的人",
+        "where": "对话"
       }
     },
     "asks": {
@@ -3698,6 +3779,7 @@
       "decline": "不执行",
       "why": "此操作无法撤销，或会在你的账户之外显示。每次都会询问。",
       "failed": "无法发送你的回答",
+      "unnamed": "未命名",
       "names": {
         "thread": "对话",
         "collection": "合集",
