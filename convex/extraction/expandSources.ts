@@ -2,14 +2,16 @@ import type { BucketItemInput, JobSourceSearchFilters } from "./jobSources";
 import type { PaperData } from "./types";
 import { buildDedupeKey } from "./dedupe";
 import { authorMetadata, sourceMetadata, type PaperSourceMetadata } from "../../lib/library/paper-metadata";
+import { createError } from "../lib/errors";
 
-type SourceType = "history" | "zotero" | "manual";
+type SourceType = "history" | "zotero" | "manual" | "screening";
 
 export type ExpandedSourcePaper = {
   bucketItem: BucketItemInput;
   paper: PaperData;
   sourceType: SourceType;
   sourceId: string;
+  screeningRevision?: string;
 };
 
 /** A paper in the person's library, as `ownedLibraryItems` reads it. */
@@ -33,6 +35,7 @@ type ExpandSourceDeps = {
   resolveZoteroUserId: () => Promise<string | undefined>;
   /** The person's own library papers among these ids; others' and deleted ones are left out. */
   readLibraryItems: (ids: string[]) => Promise<LibraryPaper[]>;
+  readScreening?: (selection: NonNullable<BucketItemInput["screeningSelection"]>) => Promise<PaperData[]>;
 };
 
 /**
@@ -213,6 +216,12 @@ export async function expandJobSources(
   );
 
   for (const item of items) {
+    if (item.source === "screening") {
+      if (!item.screeningSelection || !deps.readScreening) throw createError("VALIDATION_ERROR", "Screening selection is missing.");
+      const papers = await deps.readScreening(item.screeningSelection);
+      expanded.push(...papers.map(paper => ({ bucketItem: item, paper, sourceType: "screening" as const, sourceId: item.screeningSelection!.jobId, screeningRevision: item.screeningSelection!.revision })));
+      continue;
+    }
     if (item.source === "library" || item.source === "collection") {
       const row = library.get(item.sourceRefId);
       if (row) expanded.push(expandDirectSource(fromLibrary(item, row)));

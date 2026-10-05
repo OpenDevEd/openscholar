@@ -18,6 +18,9 @@ describe("researcher export contents", () => {
     expect(parsed.data).toHaveLength(1);
     const row = parsed.data[0];
     expect(row["Paper ID"]).toBe(exportPapers[0]._id);
+    expect(row["Paper Source Type"]).toBe("screening");
+    expect(row["Paper Source ID"]).toBe("screening-origin");
+    expect(row["Screening Decision Revision"]).toBe("2:completed:3");
     expect(row["OpenAlex ID"]).toBe("https://openalex.org/W123");
     expect(row["Paper Title"]).toBe(exportPapers[0].title);
     expect(row["[zero] Reported outcome"]).toBe("0");
@@ -38,6 +41,7 @@ describe("researcher export contents", () => {
     const data = JSON.parse(await downloaded.text());
     expect(data.format).toBe("openscholar.extraction");
     expect(data.version).toBe(2);
+    expect(data.papers[0]).toMatchObject({ sourceType: "screening", sourceId: "screening-origin", screeningRevision: "2:completed:3" });
     expect(data.job).toMatchObject({ id: exportJob._id, runEpoch: 2, pdfEnabled: false });
     expect(data.papers[0].results.map((r: { questionKey: string }) => r.questionKey)).toEqual(exportQuestions.map(q => q.key));
     expect(data.papers[0].results[0]).toMatchObject({ answer: 0, confidence: 0, modelConfidence: 0.95, source: "abstract", model: "openai/gpt-6-luna", citations: exportPapers[0].results[0].citations });

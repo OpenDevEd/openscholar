@@ -309,6 +309,7 @@ export const getActiveScreeningJobProgress = query({
 const jobListArgs = { paginationOpts: paginationOptsValidator, status: v.optional(screeningJobStatusValidator) };
 const jobListValidator = paginationResultValidator(
     v.object({
+      revision: v.string(),
       _id: v.id("screeningJobs"),
       _creationTime: v.number(),
       status: screeningJobStatusValidator,
@@ -346,6 +347,7 @@ async function jobsOf(ctx: QueryCtx, userId: Id<"users">, args: { paginationOpts
 
         return {
           ...facts,
+          revision: await screeningRevision(ctx, job),
           _id: job._id,
           _creationTime: job._creationTime,
           status: job.status,

@@ -26,8 +26,11 @@ import { listModelsAction as adminModelsAction, summaryAction as adminModelSumma
 import { balanceAction, countChargesAction, listChargesAction, spendingAction } from "../billing/usage";
 import { countKeysAction as walletKeyCountAction, listKeysAction as walletKeysAction } from "../wallet/queries";
 import type { UserAction } from "./userActions";
+import { startJobAction as extractionStartAction, duplicateJobAction as extractionDuplicateAction } from "../extraction/mutations/jobs";
 
 export const USER_ACTIONS: readonly UserAction[] = [
+  extractionStartAction,
+  extractionDuplicateAction,
   chatsAction,
   chatAction,
   chatCreateAction,

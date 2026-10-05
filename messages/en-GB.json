@@ -666,7 +666,7 @@
     "nameYourJobDescription": "Give this job a descriptive name to help you identify it later.",
     "jobName": "Job Name",
     "jobNamePlaceholder": "e.g., RCT Data Extraction for Review 2024",
-    "combineSources": "Combine sources from history, Zotero, or manual entries.",
+    "combineSources": "Choose and combine paper sources.",
     "whatDataPoints": "What data points do you want to extract from each paper?",
     "startExtraction": "Start Extraction",
     "confidenceHighLow": "Confidence High-Low",

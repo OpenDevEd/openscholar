@@ -8,6 +8,7 @@ import {
   Folder,
   Layers,
   Search,
+  ListChecks,
 } from "@/components/icons";
 import { useTranslations } from "next-intl";
 
@@ -19,6 +20,7 @@ import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { cn } from "@/lib/utils";
 
 const SOURCE_KEYS: BucketSource[] = [
+  "screening",
   "history",
   "library",
   "collection",
@@ -27,6 +29,7 @@ const SOURCE_KEYS: BucketSource[] = [
 ];
 
 const SOURCE_ICONS: Record<BucketSource, ComponentType<SVGProps<SVGSVGElement>>> = {
+  screening: ListChecks,
   history: Search,
   library: BookOpen,
   collection: Folder,
@@ -37,6 +40,7 @@ const SOURCE_ICONS: Record<BucketSource, ComponentType<SVGProps<SVGSVGElement>>>
 // Static class strings so Tailwind's JIT captures all 10 at build time.
 // Dynamic `bg-chart-${n}` would be purged.
 const CHIP_TINT: Record<BucketSource, string> = {
+  screening: "bg-chart-3/10 border-chart-3/30",
   history: "bg-chart-1/10 border-chart-1/30",
   library: "bg-chart-2/10 border-chart-2/30",
   collection: "bg-chart-3/10 border-chart-3/30",
@@ -45,6 +49,7 @@ const CHIP_TINT: Record<BucketSource, string> = {
 };
 
 const ICON_TINT: Record<BucketSource, string> = {
+  screening: "text-chart-3",
   history: "text-chart-1",
   library: "text-chart-2",
   collection: "text-chart-3",
@@ -60,6 +65,7 @@ export function SourceSummary() {
 
   const counts = useMemo(() => {
     const tally: Record<BucketSource, number> = {
+      screening: 0,
       history: 0,
       library: 0,
       collection: 0,
