@@ -18,7 +18,7 @@ import { readJobCounters } from "../extraction/jobCounters";
 import { formatAnswerForDisplay } from "../../lib/extraction/analysis";
 import { requireThread } from "./access";
 import { extractionCardValidator, JOB_CARD_ROWS, JOBS_TOLD_AT_ONCE, screeningCardValidator } from "./validators";
-import { JOB_ENDED } from "./jobEnds";
+import { hasEnded, JOB_ENDED } from "./jobEnds";
 import { admit, startReply } from "./replies";
 import { healCalls, settleAsked } from "./steps";
 import { writing } from "./threads";
@@ -126,7 +126,7 @@ async function extractionFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"ex
 /** The live card of a job a step of this chat started, for anyone who can read the chat. Null for a step that started none. */
 export const card = query({
   args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps") },
-  returns: v.union(v.null(), v.object({ card: cardValidator, canCancel: v.boolean() })),
+  returns: v.union(v.null(), v.object({ card: cardValidator, mine: v.boolean() })),
   handler: async (ctx, { threadId, stepId }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
@@ -137,7 +137,7 @@ export const card = query({
     if (!job) return null;
     // The job is its starter's: the chat shows it to everyone who reads the chat, and only they can cancel it.
     const card = job.kind === "screening" ? await screeningFacts(ctx, step.userId, job.id as Id<"screeningJobs">) : await extractionFacts(ctx, step.userId, job.id as Id<"extractionJobs">);
-    return card ? { card, canCancel: step.userId === userId } : null;
+    return card ? { card, mine: step.userId === userId } : null;
   },
 });
 
@@ -166,8 +166,16 @@ export const deliver = internalMutation({
     if (!thread || thread.asking || (await writing(ctx, thread.reply))) return null;
     const pending = await ctx.db.query("assistantJobEnds").withIndex("by_thread_and_pending", (q) => q.eq("threadId", threadId).eq("pending", true)).take(JOBS_TOLD_AT_ONCE);
     if (!pending.length) return null;
-    const userId = pending[0].userId;
-    const ends = pending.filter((end) => end.userId === userId);
+    // A job carried on since it ended takes its end back: it's written again when it ends again.
+    const live = [];
+    for (const end of pending) {
+      const job = await ctx.db.get(end.kind === "screening" ? "screeningJobs" : "extractionJobs", end.jobId as Id<"screeningJobs"> & Id<"extractionJobs">);
+      if (job && !hasEnded(job.status)) await ctx.db.delete("assistantJobEnds", end._id);
+      else live.push(end);
+    }
+    if (!live.length) return null;
+    const userId = live[0].userId;
+    const ends = live.filter((end) => end.userId === userId);
     // Lost access to the chat, or the assistant, since: the end stays on its card, and nobody is answered for it.
     const allowed = await requireThread(ctx, userId, threadId, "write").then(() => requireFeature(ctx, FLAG, userId)).then(() => true, () => false);
     if (!allowed) {
@@ -188,7 +196,14 @@ export const deliver = internalMutation({
     const note = (await Promise.all(ends.map((end) => told(ctx, end)))).join("\n");
     const [message] = (await saveMessages(ctx, components.agent, { threadId: thread.agentThreadId, userId, agentName: JOB_ENDED, messages: [{ role: "user", content: note }] })).messages;
     for (const end of ends) await ctx.db.patch("assistantJobEnds", end._id, { pending: undefined, order: message.order });
-    await startReply(ctx, thread, userId, { messageId: message._id, order: message.order });
+    try {
+      await startReply(ctx, thread, userId, { messageId: message._id, order: message.order });
+    } catch (error) {
+      // Their chat model was retired, say: the chat shows the end, and the next reply reads its note.
+      console.error(`[assistant] the readout of ${ends.map((end) => end.jobId).join(", ")} in ${threadId} couldn't start`, error);
+      return null;
+    }
+    // Anyone else's that waited are told after this reply.
     return null;
   },
 });

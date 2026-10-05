@@ -10,6 +10,9 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { ENDED } from "../billing/spend";
 
+/** Whether a job's status is one it ends in (../billing/spend.ts): a job carried on since has another. */
+export const hasEnded = (status: string | undefined) => ENDED.has(status ?? "");
+
 /** The chat message that tells a chat its jobs ended: the app's own, which the chat shows as an event (./replies.ts). */
 export const JOB_ENDED = "job-ended";
 
@@ -23,8 +26,12 @@ export const noteEndedJob =
   (kind: Doc<"assistantJobEnds">["kind"]) =>
   async (ctx: MutationCtx, { oldDoc, newDoc }: { oldDoc: Job | null; newDoc: Job | null }) => {
     if (!newDoc?.chatStep || !oldDoc || ENDED.has(oldDoc.status ?? "") || !ENDED.has(newDoc.status ?? "")) return;
-    // A job carried on after it stopped, then ended again, was told the first time.
-    if (await ctx.db.query("assistantJobEnds").withIndex("by_job", (q) => q.eq("jobId", newDoc._id)).first()) return;
+    // One end of it still waits to be told: it's told as it ends now. One already told was that end; this is a new one.
+    const waiting = (await ctx.db.query("assistantJobEnds").withIndex("by_job", (q) => q.eq("jobId", newDoc._id)).take(20)).find((end) => end.pending);
+    if (waiting) {
+      await ctx.db.patch("assistantJobEnds", waiting._id, { status: newDoc.status!, endedAt: Date.now() });
+      return;
+    }
     const step = await ctx.db.get("assistantSteps", newDoc.chatStep);
     if (!step) return;
     await ctx.db.insert("assistantJobEnds", { threadId: step.threadId, stepId: step._id, userId: step.userId, kind, jobId: newDoc._id, status: newDoc.status!, endedAt: Date.now(), pending: true });

@@ -45,9 +45,9 @@ export function JobCard({ threadId, stepId, kind }: { threadId: Id<"assistantThr
           // Its frame until the job's progress arrives.
           <div className="rounded-2xl border border-border/60 bg-muted/40" style={{ height: kind === "screening" ? SCREENING_H : EXTRACTION_H }} />
         ) : read === null ? null : read.card.kind === "screening" ? (
-          <ScreeningCard job={read.card} canCancel={read.canCancel} />
+          <ScreeningCard job={read.card} mine={read.mine} />
         ) : (
-          <ExtractionCard job={read.card} canCancel={read.canCancel} />
+          <ExtractionCard job={read.card} mine={read.mine} />
         )}
       </Grows>
     </motion.div>
@@ -78,9 +78,9 @@ function Grows({ from, children }: { from: number; children: ReactNode }) {
 }
 
 /** Cancel while it runs, and how it ended after: one slot, one size, so nothing beside it moves. */
-function EndSlot({ running, status, capped, cancelLabel, onCancel, canCancel }: { running: boolean; status: string; capped?: boolean; cancelLabel: string; onCancel: () => void; canCancel: boolean }) {
+function EndSlot({ running, status, capped, cancelLabel, onCancel, mine }: { running: boolean; status: string; capped?: boolean; cancelLabel: string; onCancel: () => void; mine: boolean }) {
   const t = useTranslations("assistant.jobs");
-  if (running && canCancel) {
+  if (running && mine) {
     return (
       <TooltipHint label={cancelLabel}>
         <button type="button" aria-label={cancelLabel} onClick={onCancel} className="-mr-1 flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
@@ -122,7 +122,7 @@ function Credits({ credits }: { credits: number }) {
  * as papers are decided. Waiting and running share one frame, cross-fading their bar and
  * legend, so the card never changes size.
  */
-function ScreeningCard({ job, canCancel }: { job: Screening; canCancel: boolean }) {
+function ScreeningCard({ job, mine }: { job: Screening; mine: boolean }) {
   const t = useTranslations("assistant.jobs");
   const cancel = useCancel(useMutation(api.screening.mutations.cancelScreeningJob).bind(null, { jobId: job.jobId }));
   const done = job.included + job.excluded + job.unclear + job.failed;
@@ -154,7 +154,7 @@ function ScreeningCard({ job, canCancel }: { job: Screening; canCancel: boolean 
           {done}
           <span className="font-normal text-muted-foreground"> / {job.total}</span>
         </span>
-        <EndSlot running={running} status={job.status} capped={stopped} cancelLabel={t("screening.cancel")} onCancel={cancel} canCancel={canCancel} />
+        <EndSlot running={running} status={job.status} capped={stopped} cancelLabel={t("screening.cancel")} onCancel={cancel} mine={mine} />
       </div>
       <div className="mt-3 grid h-2 [&>*]:col-start-1 [&>*]:row-start-1">
         {/* The screening ahead of it, in the screening tint. */}
@@ -189,9 +189,12 @@ function ScreeningCard({ job, canCancel }: { job: Screening; canCancel: boolean 
           <span className="flex items-center gap-1"><CircleHelp className="size-3 text-amber-600" /> <span className="tabular-nums">{job.unclear}</span> {t("unclear")}</span>
         </motion.div>
       </div>
-        <Link href={`/screening?job=${job.jobId}`} className="flex shrink-0 items-center gap-1 font-medium text-foreground/80 hover:text-foreground">
-          {t("open")} <ExternalLink className="size-3" />
-        </Link>
+        {/* Its page shows a job to its owner alone. */}
+        {mine ? (
+          <Link href={`/screening?job=${job.jobId}`} className="flex shrink-0 items-center gap-1 font-medium text-foreground/80 hover:text-foreground">
+            {t("open")} <ExternalLink className="size-3" />
+          </Link>
+        ) : null}
       </div>
     </div>
   );
@@ -202,7 +205,7 @@ function ScreeningCard({ job, canCancel }: { job: Screening; canCancel: boolean 
  * under it for comparison. Each row holds the height of its longest answer, so switching
  * questions or answers arriving never moves it.
  */
-function ExtractionCard({ job, canCancel }: { job: Extraction; canCancel: boolean }) {
+function ExtractionCard({ job, mine }: { job: Extraction; mine: boolean }) {
   const t = useTranslations("assistant.jobs");
   const cancel = useCancel(useMutation(api.extraction.mutations.jobs.cancelExtraction).bind(null, { jobId: job.jobId }));
   const [picked, setPicked] = useState<string | null>(null);
@@ -227,10 +230,12 @@ function ExtractionCard({ job, canCancel }: { job: Extraction; canCancel: boolea
           <p className="truncate text-sm font-semibold">{running ? <WorkingText>{title}</WorkingText> : title}</p>
           <Credits credits={job.credits} />
         </div>
-        <EndSlot running={running} status={job.status} capped={stopped} cancelLabel={t("extraction.cancel")} onCancel={cancel} canCancel={canCancel} />
-        <Link href={`/extraction/${job.jobId}`} className="flex items-center gap-1 text-xs font-medium text-foreground/80 hover:text-foreground">
-          {t("open")} <ExternalLink className="size-3" />
-        </Link>
+        <EndSlot running={running} status={job.status} capped={stopped} cancelLabel={t("extraction.cancel")} onCancel={cancel} mine={mine} />
+        {mine ? (
+          <Link href={`/extraction/${job.jobId}`} className="flex items-center gap-1 text-xs font-medium text-foreground/80 hover:text-foreground">
+            {t("open")} <ExternalLink className="size-3" />
+          </Link>
+        ) : null}
       </div>
       <div className="px-3 pb-3">
         {/* Every question, none cut: past the card's width the row scrolls sideways. */}
