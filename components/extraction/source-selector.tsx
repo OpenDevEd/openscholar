@@ -46,7 +46,7 @@ export function SourceSelector({ paperLimit }: { paperLimit: number }) {
 
   return (
     <Tabs value={tab === "screening" && !screeningEnabled ? "history" : tab} onValueChange={(v) => setTab(v as SourceTab)} className="w-full">
-      <TabsList className="mb-4">
+      <TabsList className="mb-4 max-w-full justify-start overflow-x-auto">
         <TabsTrigger value="history">{tc("searchHistory")}</TabsTrigger>
         <TabsTrigger value="library">Library</TabsTrigger>
         {screeningEnabled && <TabsTrigger value="screening">Screening</TabsTrigger>}
