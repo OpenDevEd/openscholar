@@ -3920,7 +3920,9 @@
         "last": "To paper",
         "question": "Question",
         "saveTo": "Included go to",
-        "prune": "Excluded leave it"
+        "prune": "Excluded leave it",
+        "rating": "Rating",
+        "change": "Changes"
       }
     },
     "topUp": {

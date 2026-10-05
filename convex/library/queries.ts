@@ -403,7 +403,7 @@ function viewOf(given: ObjectType<typeof narrowing>) {
 export const papersAction = defineUserQuery({
   path: "library/queries:papers",
   description:
-    `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, the rating they gave it, the day they saved it, its paper ID and its library item ID. ` +
+    `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, the rating they gave it, whether it's in any of their collections, the day they saved it, its paper ID and its library item ID. ` +
     "`total` is how many papers the whole library or one collection has; a narrowed list has none, and library/queries:countPapers counts it. " +
     "With nothing else given it lists the whole library, newest saved first. To narrow it: `search` is words to find in titles, abstracts and authors; `collectionId` is one of their collections (from library/collections:listCollections); " +
     "`rated` is true for only the papers they rated and false for only those they haven't; `minRating` and `maxRating` are 0 to 5; `yearFrom` and `yearTo` are years published. " +
@@ -422,9 +422,11 @@ export const papersAction = defineUserQuery({
     const read = await readLibraryPage(ctx, userId, { ...view, sortBy: SORTS[given.sort ?? "saved"], sortOrder: given.ascending ? "asc" : "desc" }, { cursor: given.cursor || null, numItems: PAPERS_PAGE });
     // A narrowed view is counted by reading it, which a page of it leaves no room for in one read: its count is its own action.
     const kept = view.searchText === undefined && !hasNonCollectionLibraryFilters(view);
+    // Asked paper by paper, finding the ones in no collection took a library of sixty a hundred reads.
+    const collected = await Promise.all(read.page.map(async (item) => (await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", item._id)).first()) !== null));
     return {
       ...(kept ? { total: (await countLibraryView(ctx, user, view)).count } : {}),
-      papers: read.page.map((item) => ({
+      papers: read.page.map((item, at) => ({
         libraryItemId: item._id,
         id: item.openalexId,
         title: short(item.title, PAPER_SHOWN.title),
@@ -432,6 +434,7 @@ export const papersAction = defineUserQuery({
         ...(item.publicationYear == null ? {} : { year: item.publicationYear }),
         ...(item.journal ? { journal: short(item.journal, PAPER_SHOWN.journal) } : {}),
         ...(item.rating === undefined ? {} : { rating: item.rating }),
+        inCollection: collected[at],
         savedOn: new Date(item.savedAt).toISOString().slice(0, 10),
       })),
       ...(read.isDone || !read.continueCursor ? {} : { next: read.continueCursor }),
