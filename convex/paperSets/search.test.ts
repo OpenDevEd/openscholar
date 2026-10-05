@@ -66,7 +66,7 @@ async function setup(saved: SavedSearch = search, ratings: Array<{ paperId: stri
 }
 
 describe("Screen all on a saved search, read on the server", () => {
-  it("reads the range from the results page's request, one parallel page each, with the key and only the fields it keeps", async () => {
+  it("reads the range from the results page's request, a numbered page each, with the key and only the fields it keeps", async () => {
     const { t, alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
 
     const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 150, last: 450, ...job, saveTo: { kind: "none" } });
@@ -156,8 +156,35 @@ describe("Screen all on a saved search, read on the server", () => {
     openAlex.mockResolvedValueOnce(new Response(JSON.stringify({ error: "Invalid query parameters error.", message: "Wildcards (* or ?) do not work inside this quoted phrase." }), { status: 400 }));
     await expect(start()).rejects.toThrow(/Wildcards \(\* or \?\) do not work inside this quoted phrase/);
 
+    // An OQL search's reason is in its validation errors.
+    openAlex.mockResolvedValueOnce(new Response(JSON.stringify({ validation: { valid: false, errors: [{ type: "parse_error", message: "expected a condition" }] } }), { status: 400 }));
+    await expect(start()).rejects.toThrow(/expected a condition/);
+
     openAlex.mockResolvedValueOnce(new Response(JSON.stringify({ message: "upstream connect error" }), { status: 503 }));
     await expect(start()).rejects.toThrow(/^(?!.*upstream connect error).*503/s);
+  });
+
+  it("names the query when OpenAlex fails on a bracket without its pair", async () => {
+    const { alice } = await setup({ ...search, query: "(tutoring OR tutor" });
+
+    openAlex.mockResolvedValueOnce(new Response("<!doctype html><title>500 Internal Server Error</title>", { status: 500 }));
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/brackets/);
+  });
+
+  it("asks again for pages OpenAlex throttles, and gives up on a wait no retry outlasts", async () => {
+    const { t, alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    const start = (last: number) => alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last, ...job, saveTo: { kind: "none" } });
+    const throttled = (wait: string) => new Response(JSON.stringify({ error: "Rate limit exceeded", reason: "broad_boolean_query" }), { status: 429, headers: { "Retry-After": wait } });
+
+    openAlex.mockResolvedValueOnce(throttled("0")).mockResolvedValueOnce(throttled("0"));
+    const { jobId } = await start(450);
+    expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.totalPapers).toBe(450);
+
+    // The day's budget: OpenAlex says to wait until it resets.
+    const asked = openAlex.mock.calls.length;
+    openAlex.mockResolvedValueOnce(throttled("57776"));
+    await expect(start(10)).rejects.toThrow(/429/);
+    expect(openAlex.mock.calls.length).toBe(asked + 1);
   });
 
   it("ends a request where the search's results end, however far it was asked to go", async () => {
@@ -171,7 +198,8 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(made?.through).toBeUndefined();
     expect(made?.snapshot).toMatchObject({ request: { sort: "relevance_score:desc" } });
     await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1_001, last: 1_000_000, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/None of these papers/);
-    expect(requests.length).toBeLessThan(15);
+    // The first job's papers are being screened by now, and the model's requests go through the same stub.
+    expect(requests.filter(({ url }) => url.hostname === "api.openalex.org").length).toBeLessThan(15);
   });
 
   it("reads a request's later papers from the search as it was when the request began", async () => {
