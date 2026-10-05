@@ -494,7 +494,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                     <ol inert={!open} className="pl-[60px] pr-3 text-xs text-muted-foreground">
                       {run.map((one, at) => (
                         <li key={one.id} className="flex items-center gap-2" style={{ height: LINE }}>
-                          <Subject text={lines[at]} step={one.subject ? one : { ...one, href: undefined }} className="mr-auto min-w-0 truncate" />
+                          <Subject text={lines[at]} step={one} className="mr-auto min-w-0 truncate" />
                           {one.count !== undefined ? (
                             <span className="shrink-0 tabular-nums">
                               <span className="font-semibold text-foreground/90">{counted(one.count)}</span> {t("steps.found")}
