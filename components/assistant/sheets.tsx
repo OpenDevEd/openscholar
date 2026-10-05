@@ -18,7 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
-import { LogoMark } from "./logo-mark";
+import { OrbitMark } from "./orbit-mark";
 import { IconButton, WorkingText } from "./parts";
 
 /** A sheet open over the panel. */
@@ -148,7 +148,7 @@ function Status({ chat }: { chat: Chat }) {
   if (chat.writing) {
     return (
       <span className="flex min-w-0 items-center gap-2 text-xs font-medium">
-        <LogoMark size={18} working />
+        <OrbitMark size={18} motion="thinking" />
         <WorkingText>{t("writingReply")}</WorkingText>
       </span>
     );

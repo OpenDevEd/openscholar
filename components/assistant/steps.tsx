@@ -18,7 +18,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { STEPS_SHOWN } from "@/lib/assistant/steps";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
-import { LogoMark } from "./logo-mark";
+import { viewOf, type Kind } from "@/lib/assistant/actions";
+import { OrbitMark } from "./orbit-mark";
 import { WorkingText } from "./parts";
 
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -34,60 +35,6 @@ const KIND = {
   chat: { icon: MessagesSquare, tint: "#f472b6" },
   other: { icon: Compass, tint: "#94a3b8" },
 } satisfies Record<string, { icon: AppIcon; tint: string }>;
-type Kind = keyof typeof KIND;
-
-/** The words for a kind of step: `assistant.steps.<words>` in the messages. */
-type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "other";
-
-/** Each action's kind of work and the words for it; one that isn't here shows as work in the account. */
-const ACTIONS: Record<string, { kind: Kind; words: Words }> = {
-  "research/records:listedSearches": { kind: "search", words: "searches" },
-  "research/records:countSearches": { kind: "search", words: "searches" },
-  "research/records:getSearch": { kind: "search", words: "search" },
-  "research/records:searchHistory": { kind: "search", words: "searchHistory" },
-  "research/searches:create": { kind: "search", words: "newSearch" },
-  "research/searches:update": { kind: "search", words: "changeSearch" },
-  "research/searches:restore": { kind: "search", words: "restoreSearch" },
-  "research/searches:remove": { kind: "search", words: "removeSearch" },
-  "research/searches:results": { kind: "search", words: "results" },
-  "research/lookup:find": { kind: "search", words: "lookup" },
-  "research/papers:search": { kind: "search", words: "lookPapers" },
-  "research/papers:get": { kind: "paper", words: "readPaper" },
-  "research/searches:deleteSearch": { kind: "search", words: "removeSearch" },
-  "research/records:listedShortcuts": { kind: "search", words: "bookmarks" },
-  "research/records:ratingsOf": { kind: "paper", words: "ratings" },
-  "library/queries:savedPaper": { kind: "paper", words: "saved" },
-  "library/queries:papers": { kind: "paper", words: "saved" },
-  "library/queries:countPapers": { kind: "paper", words: "saved" },
-  "library/papers:save": { kind: "paper", words: "save" },
-  "billing/usage:balance": { kind: "other", words: "credits" },
-  "billing/usage:spending": { kind: "other", words: "credits" },
-  "billing/usage:listCharges": { kind: "other", words: "credits" },
-  "screening/queries:listJobs": { kind: "screening", words: "screening" },
-  "library/mutations:saveToLibrary": { kind: "paper", words: "save" },
-  "library/mutations:setLibraryRating": { kind: "paper", words: "rate" },
-  "library/mutations:removeFromLibrary": { kind: "paper", words: "remove" },
-  "library/mutations:restoreLibraryItem": { kind: "paper", words: "restore" },
-  "library/mutations:setPaperInCollection": { kind: "collection", words: "collect" },
-  "library/collections:addToCollection": { kind: "collection", words: "collect" },
-  "library/collections:removeFromCollection": { kind: "collection", words: "collect" },
-  "library/collections:listCollections": { kind: "collection", words: "collections" },
-  "library/collections:getCollection": { kind: "collection", words: "collection" },
-  "library/collections:createCollection": { kind: "collection", words: "newCollection" },
-  "library/collections:renameCollection": { kind: "collection", words: "renameCollection" },
-  "library/collections:deleteCollection": { kind: "collection", words: "deleteCollection" },
-  "assistant/sharing:grant": { kind: "chat", words: "shareChat" },
-  "assistant/sharing:revoke": { kind: "chat", words: "unshareChat" },
-  "assistant/threads:remove": { kind: "chat", words: "deleteChat" },
-  "assistant/threads:create": { kind: "chat", words: "newChat" },
-  "assistant/threads:rename": { kind: "chat", words: "renameChat" },
-  "assistant/threads:setModel": { kind: "chat", words: "chatModel" },
-  "screening/papers:answer": { kind: "screening", words: "answer" },
-  "screening/papers:list": { kind: "screening", words: "screening" },
-  "screening/papers:get": { kind: "screening", words: "screening" },
-  "extraction/queries:listJobs": { kind: "extraction", words: "extractions" },
-};
-const viewOf = (action: string): { kind: Kind; words: Words } => ACTIONS[action] ?? { kind: "other", words: "other" };
 
 const CARD = 56;
 const GAP = 8;
@@ -244,7 +191,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
       transition={reduceMotion ? { duration: 0 } : { duration: 0.45, ease: EASE }}
     >
       <span className="absolute left-0.5 top-0 flex size-5 items-center justify-center rounded-md bg-primary/10">
-        <LogoMark size={14} />
+        <OrbitMark size={14} />
       </span>
       {earlier ? (
         // Beside the tile, in the room the curves start from, so the cards stay where they are.

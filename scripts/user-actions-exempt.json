@@ -7,6 +7,7 @@
     "assistant/presence:leave": "The panel closing a chat, so its room drops the person at once.",
     "assistant/replies:answer": "The person's answer to a call the assistant asked about. Only the person asked can give it.",
     "assistant/replies:live": "The reply being written now, for the chat page to show as it arrives.",
+    "assistant/replies:outcome": "How the chat's last reply ended, for the assistant's mark in the panel while no reply is being written.",
     "assistant/replies:send": "Sending a message is how a person asks the assistant; it doesn't message itself.",
     "assistant/replies:stop": "Stops the reply being written. Only a person watching it does that.",
     "assistant/undo:run": "Undoes a step the assistant took, by running the reversing action the step kept. The assistant runs that action itself.",

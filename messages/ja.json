@@ -3403,6 +3403,17 @@
     "default": "デフォルト"
   },
   "assistant": {
+    "activity": {
+      "idle": "準備完了",
+      "thinking": "考えています",
+      "searching": "検索しています",
+      "writing": "回答を作成しています",
+      "waiting": "回答をお待ちしています",
+      "stopping": "停止しています",
+      "complete": "回答ができました",
+      "failed": "回答に失敗しました",
+      "stopped": "回答を停止しました"
+    },
     "label": "OpenScholar アシスタント",
     "open": "アシスタントを開く",
     "fold": "アシスタントをたたむ",

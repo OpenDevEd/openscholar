@@ -5,7 +5,7 @@
 // This is the chat itself. The run map, the cards, the sheets, the @ picker and the
 // spending controls arrive with the issues that build what they show.
 
-import { Component, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Component, useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
 import { insertAtTop, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -32,7 +32,8 @@ import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
-import { LogoMark } from "./logo-mark";
+import { OrbitMark, type OrbitClock } from "./orbit-mark";
+import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
 import { Steps, type StepItem } from "./steps";
 import { IconButton, WorkingText } from "./parts";
 import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, stackedUnder, type OpenSheet } from "./sheets";
@@ -132,7 +133,24 @@ function Overlay({
   const t = useTranslations("assistant");
   // Read here, not in the chat, so the launcher shows a reply being written while the panel is folded.
   const live = useQuery(api.assistant.replies.live, threadId ? { threadId } : "skip") ?? null;
-  const working = live !== null;
+  // What the mark shows: what the reply at work is doing, or how the chat's last one ended.
+  const outcome = useQuery(api.assistant.replies.outcome, threadId ? { threadId } : "skip");
+  const activity: Activity = live?.activity ?? outcome ?? { phase: "idle", order: null };
+  const [observed, setObserved] = useState(restingObservation);
+  const next = observeActivity(observed, threadId, activity);
+  if (next !== observed) setObserved(next);
+  const [sendingFor, setSendingFor] = useState<{ threadId: ThreadId | null } | null>(null);
+  const sending = sendingFor !== null && sendingFor.threadId === threadId;
+  const [focused, setFocused] = useState(false);
+  const clock = useRef<OrbitClock>(null);
+  const working = sending || (live !== null && !live.asking && !live.stopping);
+  const resting: OrbitMotion = focused ? "listening" : "idle";
+  const orbit: OrbitMotion = sending ? "thinking"
+    : activity.phase === "waiting" ? "listening"
+    : activity.phase === "stopping" || activity.phase === "stopped" || activity.phase === "failed" ? "still"
+    : activity.phase === "complete" ? next.complete ? "complete" : resting
+    : activity.phase === "idle" ? resting : activity.phase;
+  const completed = useCallback(() => setObserved((current) => current.complete ? { ...current, complete: false } : current), []);
   // Sheets stacked over the panel, bottom first.
   const [sheets, setSheets] = useState<OpenSheet[]>([]);
   const depth = sheets.length;
@@ -152,12 +170,14 @@ function Overlay({
     return () => window.removeEventListener("keydown", onKey);
   }, [setOpen]);
   const fold = () => {
+    setFocused(false);
     setSheets([]);
     setOpen(() => false);
   };
 
   return (
     <MotionConfig reducedMotion="user">
+      <span className="sr-only" role="status">{t(`activity.${sending ? "thinking" : activity.phase}`)}</span>
       <EdgeGlow open={open} working={working} />
       {/* The panel hovers above the page: it's fixed, and the page underneath keeps its full width. */}
       <AnimatePresence>
@@ -191,7 +211,7 @@ function Overlay({
                   transition={SHELL_SPRING}
                   className="absolute left-4 top-3.5 z-10 flex size-9 items-center justify-center rounded-xl bg-primary/10 hover:bg-primary/15"
                 >
-                  <LogoMark size={24} draw working={working} />
+                  <OrbitMark size={24} motion={orbit} clock={clock} onComplete={completed} />
                 </motion.button>
               </TooltipHint>
               <motion.div
@@ -205,6 +225,9 @@ function Overlay({
                   setThreadId={setThreadId}
                   drafts={drafts}
                   live={live}
+                  sending={sending}
+                  onSending={setSendingFor}
+                  onComposerFocus={setFocused}
                   onFold={fold}
                   onHistory={() => push({ kind: "history" })}
                   onShare={(id, title, role) => push({ kind: "share", threadId: id, title, role })}
@@ -239,7 +262,7 @@ function Overlay({
         ) : null}
       </AnimatePresence>
 
-      <AnimatePresence>{!open ? <Launcher key="launcher" working={working} onOpen={() => setOpen(() => true)} /> : null}</AnimatePresence>
+      <AnimatePresence>{!open ? <Launcher key="launcher" orbit={orbit} clock={clock} onComplete={completed} onOpen={() => setOpen(() => true)} /> : null}</AnimatePresence>
     </MotionConfig>
   );
 }
@@ -279,6 +302,9 @@ function Chat({
   setThreadId,
   drafts,
   live,
+  sending,
+  onSending,
+  onComposerFocus,
   onFold,
   onHistory,
   onShare,
@@ -287,6 +313,9 @@ function Chat({
   setThreadId: (id: ThreadId | null) => void;
   drafts: Drafts;
   live: Live | null;
+  sending: boolean;
+  onSending: (request: { threadId: ThreadId | null } | null) => void;
+  onComposerFocus: (focused: boolean) => void;
   onFold: () => void;
   onHistory: () => void;
   onShare: (id: ThreadId, title: string, role: "owner" | "write" | "read") => void;
@@ -299,7 +328,6 @@ function Chat({
   // The model picked before the chat exists; once it does, the chat keeps its own.
   const [picked, setPicked] = useState<PickedModel | null>(null);
   const draft = drafts.of(threadId);
-  const [sending, setSending] = useState(false);
   // A new chat's first message, shown from the moment it's sent until the server's copy of it loads.
   const [first, setFirst] = useState<{ threadId: ThreadId | null; text: string } | null>(null);
   // The chat the open new chat became when its first message was sent. It's the thread already on screen, so the thread isn't built again for it.
@@ -352,13 +380,14 @@ function Chat({
     if (!text || busy || !canWrite) return;
     const from = threadId;
     drafts.set(from, "");
-    setSending(true);
+    onSending({ threadId: from });
     if (!from) setFirst({ threadId: null, text });
     // The chat the message ends up in: a new chat has its ID once it's made.
     let into = from;
     const sent = (async () => {
       const id = await started(titleFrom(text));
       into = id;
+      onSending({ threadId: id });
       if (!from) setFirst({ threadId: id, text });
       // Where it's sent from goes with it, so "this" and "here" mean the page the person is on.
       await sendMessage({ threadId: id, text, view: window.location.pathname + window.location.search });
@@ -373,7 +402,7 @@ function Chat({
       setFirst(null);
       toast.error(t("sendFailed"), getErrorMessage(error, ""));
     } finally {
-      setSending(false);
+      onSending(null);
     }
   };
   const stop = async () => {
@@ -414,13 +443,13 @@ function Chat({
         // An open chat's first page is still on its way, unless it's the chat this message just started.
         older={threadId && status === "LoadingFirstPage" && !sent.length ? "first" : status === "CanLoadMore" ? () => loadMore(FIRST_MESSAGES) : status === "LoadingMore" ? "loading" : null}
       />
-      <Footer composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} model={model} onModel={pickModel} presetModel={presetModel} />
+      <Footer composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel} />
     </>
   );
 }
 
 /** The folded panel: the mark, on every page. */
-function Launcher({ working, onOpen }: { working: boolean; onOpen: () => void }) {
+function Launcher({ orbit, clock, onComplete, onOpen }: { orbit: OrbitMotion; clock: RefObject<OrbitClock>; onComplete: () => void; onOpen: () => void }) {
   const t = useTranslations("assistant");
   return (
     <TooltipHint label={`${t("open")}  ⌘J`}>
@@ -435,7 +464,7 @@ function Launcher({ working, onOpen }: { working: boolean; onOpen: () => void })
         style={{ borderRadius: 18 }}
       >
         <motion.span layoutId="assistant-logo" layoutDependency={false} transition={SHELL_SPRING} className="relative flex size-11 items-center justify-center rounded-xl">
-          <LogoMark size={30} working={working} />
+          <OrbitMark size={30} motion={orbit} clock={clock} onComplete={onComplete} />
         </motion.span>
       </motion.button>
     </TooltipHint>
@@ -600,7 +629,7 @@ function Thinking({ wordless }: { wordless: boolean }) {
   const t = useTranslations("assistant");
   return (
     <div className="flex h-9 items-center gap-2 pl-1 text-sm">
-      <LogoMark size={18} working />
+      <OrbitMark size={18} motion="thinking" />
       <span aria-hidden={wordless} className={cn("transition-opacity duration-200", wordless && "opacity-0")}>
         <WorkingText>{t("thinking")}</WorkingText>
       </span>
@@ -752,6 +781,7 @@ function Footer({
   canWrite,
   onSend,
   onStop,
+  onComposerFocus,
   model,
   onModel,
   presetModel,
@@ -767,6 +797,7 @@ function Footer({
   canWrite: boolean;
   onSend: () => void;
   onStop: () => void;
+  onComposerFocus: (focused: boolean) => void;
   model: PickedModel | null;
   onModel: (model: PickedModel, effort: Effort | undefined) => void;
   presetModel: ReturnType<typeof usePresetModels>;
@@ -783,6 +814,8 @@ function Footer({
           value={draft}
           disabled={!canWrite}
           onChange={(e) => setDraft(e.target.value)}
+          onFocus={() => onComposerFocus(true)}
+          onBlur={() => onComposerFocus(false)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
