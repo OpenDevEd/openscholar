@@ -44,6 +44,11 @@ export type NewSearchResultData = {
   institutionTypes?: string[];
   funders?: string[];
   authors?: string[];
+  journals?: string[];
+  institutions?: string[];
+  studyDesigns?: string[];
+  topCitedOnly?: boolean;
+  venuesOnly?: boolean;
   minCitations?: number;
   hasAbstract?: boolean;
   includeRetracted?: boolean;
@@ -103,6 +108,11 @@ export function paramsToSearchResult(params: ParsedSearchParams): NewSearchResul
     institutionTypes: params.itype,
     funders: params.funder,
     authors: params.author,
+    journals: params.journal,
+    institutions: params.inst,
+    studyDesigns: params.design,
+    topCitedOnly: params.top10,
+    venuesOnly: params.venue,
     minCitations: params.mincite ?? undefined,
     hasAbstract: params.abs,
     includeRetracted: params.retracted,
@@ -185,6 +195,11 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
   if (result.institutionTypes?.length) params.itype = result.institutionTypes;
   if (result.funders?.length) params.funder = result.funders;
   if (result.authors?.length) params.author = result.authors;
+  if (result.journals?.length) params.journal = result.journals;
+  if (result.institutions?.length) params.inst = result.institutions;
+  if (result.studyDesigns?.length) params.design = result.studyDesigns;
+  if (result.topCitedOnly) params.top10 = true;
+  if (result.venuesOnly) params.venue = true;
   if (result.minCitations) params.mincite = result.minCitations;
   if (result.hasAbstract) params.abs = true;
   if (result.includeRetracted) params.retracted = true;
@@ -252,6 +267,11 @@ export function paramsToFilters(params: ParsedSearchParams): SearchFilters {
     institutionTypes: params.itype,
     funders: params.funder,
     authors: params.author,
+    journals: params.journal,
+    institutions: params.inst,
+    studyDesigns: params.design,
+    topCitedOnly: params.top10,
+    venuesOnly: params.venue,
     minCitations: params.mincite,
     hasAbstract: params.abs,
     includeRetracted: params.retracted,
@@ -324,6 +344,11 @@ export function paramsMatchState(params: ParsedSearchParams, state: SearchResult
   if (!arraysEqual(params.itype, state.institutionTypes ?? [])) return false;
   if (!arraysEqual(params.funder, state.funders ?? [])) return false;
   if (!arraysEqual(params.author, state.authors ?? [])) return false;
+  if (!arraysEqual(params.journal, state.journals ?? [])) return false;
+  if (!arraysEqual(params.inst, state.institutions ?? [])) return false;
+  if (!arraysEqual(params.design, state.studyDesigns ?? [])) return false;
+  if (params.top10 !== (state.topCitedOnly ?? false)) return false;
+  if (params.venue !== (state.venuesOnly ?? false)) return false;
   if (params.mincite !== (state.minCitations ?? null)) return false;
   if (params.abs !== (state.hasAbstract ?? false)) return false;
   if (params.retracted !== (state.includeRetracted ?? false)) return false;
@@ -360,6 +385,11 @@ export function hasActiveFilters(params: ParsedSearchParams): boolean {
     params.itype.length > 0 ||
     params.funder.length > 0 ||
     params.author.length > 0 ||
+    params.journal.length > 0 ||
+    params.inst.length > 0 ||
+    params.design.length > 0 ||
+    params.top10 ||
+    params.venue ||
     params.mincite !== null ||
     params.abs ||
     params.retracted

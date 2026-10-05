@@ -7,7 +7,7 @@ import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
 import { unlessLimited, type OpenAlexLimited } from "./limited";
 
 /**
- * Names for one kind of OpenAlex id (funders, authors) that this browser has seen, so a chip
+ * Names for one kind of OpenAlex id (authors, funders, journals, institutions) that this browser has seen, so a chip
  * starts with its name instead of its id: saved ones at once, others looked up once and then saved.
  */
 export function createNameLookup(what: string, read: (ids: string[]) => Promise<Record<string, string> | OpenAlexLimited>) {

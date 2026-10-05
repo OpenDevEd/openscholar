@@ -14,10 +14,12 @@ import {
   Minus,
   Users,
   BookOpen,
+  Building,
   Table,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
-import { authorValue, useScreening } from "./hooks";
+import { authorValue, useScreening, type FilterValue } from "./hooks";
+import { institutionId, sourceId } from "@/lib/openalex/ids";
 import type { TranslationContent } from "./hooks";
 import { useUIStore } from "@/lib/store";
 import { useTranslations, useFormatter } from "next-intl";
@@ -627,10 +629,31 @@ interface AuthorNamesProps {
 }
 
 /**
- * A work's authors, comma separated. With `onToggleAuthor` each name is a
- * control. It keeps its click and its Enter or Space to itself, since it sits
- * inside cards that open on both.
+ * A name that filters the search by what it names, or stops filtering by it. It
+ * keeps its click and its Enter or Space to itself, since it sits inside cards
+ * that open on both.
  */
+function FilterName({ pressed, label, onToggle, className, children }: { pressed: boolean; label: string; onToggle: () => void; className?: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      aria-label={label}
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggle();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+      }}
+      className={cn("rounded-sm text-left underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring aria-pressed:font-medium aria-pressed:text-primary", className)}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** A work's authors, comma separated. With `onToggleAuthor` each name is a control. */
 export function AuthorNames({ authorships, unparsed, maxLength = Infinity, selected, onToggleAuthor }: AuthorNamesProps) {
   const tf = useTranslations("searchFilters");
   if (authorships.length === 0) return unparsed || null;
@@ -644,21 +667,13 @@ export function AuthorNames({ authorships, unparsed, maxLength = Infinity, selec
           <React.Fragment key={`${value}-${index}`}>
             {index > 0 && ", "}
             {value && onToggleAuthor ? (
-              <button
-                type="button"
-                aria-pressed={selected?.includes(value) ?? false}
-                aria-label={tf("filterByAuthor", { name: author.display_name })}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onToggleAuthor({ value, name: author.display_name });
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") event.stopPropagation();
-                }}
-                className="rounded-sm underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring aria-pressed:font-medium aria-pressed:text-primary"
+              <FilterName
+                pressed={selected?.includes(value) ?? false}
+                label={tf("filterByAuthor", { name: author.display_name })}
+                onToggle={() => onToggleAuthor({ value, name: author.display_name })}
               >
                 {author.display_name}
-              </button>
+              </FilterName>
             ) : (
               author.display_name
             )}
@@ -667,6 +682,90 @@ export function AuthorNames({ authorships, unparsed, maxLength = Infinity, selec
       })}
       {shown < authorships.length && " et al."}
     </>
+  );
+}
+
+/** A work's journal. With `onToggle` and an OpenAlex id to filter by, a control. */
+export function JournalName({
+  source,
+  selected,
+  onToggle,
+  className,
+}: {
+  source?: { id?: string | null; display_name?: string | null } | null;
+  selected?: readonly string[];
+  onToggle?: (journal: FilterValue) => void;
+  className?: string;
+}) {
+  const tf = useTranslations("searchFilters");
+  const name = source?.display_name;
+  if (!name) return null;
+  const id = source.id ? sourceId(source.id) : undefined;
+  if (!id || !onToggle) return <span className={className}>{name}</span>;
+  return (
+    <FilterName pressed={selected?.includes(id) ?? false} label={tf("filterByJournal", { name })} onToggle={() => onToggle({ value: id, name })} className={className}>
+      {name}
+    </FilterName>
+  );
+}
+
+/** Institutions listed before the rest are behind "+N more": a paper can have hundreds. */
+const INSTITUTIONS_SHOWN = 6;
+
+/** The institutions of a work's authors, each once, in author order. With `onToggle` each is a control. */
+export function InstitutionsLine({
+  authorships,
+  selected,
+  onToggle,
+  className,
+}: {
+  authorships: readonly { institutions?: readonly { id?: string | null; display_name?: string | null }[] | null }[];
+  selected?: readonly string[];
+  onToggle?: (institution: FilterValue) => void;
+  className?: string;
+}) {
+  const tf = useTranslations("searchFilters");
+  const [showAll, setShowAll] = React.useState(false);
+  const institutions = new Map<string, string>();
+  for (const authorship of authorships) {
+    for (const institution of authorship.institutions ?? []) {
+      const id = institution.id ? institutionId(institution.id) : undefined;
+      if (id && institution.display_name && !institutions.has(id)) institutions.set(id, institution.display_name);
+    }
+  }
+  if (!institutions.size) return null;
+  const all = [...institutions];
+  const shown = showAll ? all : all.slice(0, INSTITUTIONS_SHOWN);
+  return (
+    <div className={cn("flex items-start gap-2 text-sm text-muted-foreground", className)}>
+      <Building aria-hidden className="mt-1 h-3 w-3 flex-shrink-0" />
+      <span>
+        {shown.map(([id, name], index) => (
+          <React.Fragment key={id}>
+            {index > 0 && ", "}
+            {onToggle ? (
+              <FilterName pressed={selected?.includes(id) ?? false} label={tf("filterByThisInstitution", { name })} onToggle={() => onToggle({ value: id, name })}>
+                {name}
+              </FilterName>
+            ) : (
+              name
+            )}
+          </React.Fragment>
+        ))}
+        {shown.length < all.length && (
+          <>
+            {" "}
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="rounded-sm font-medium text-foreground underline-offset-2 transition-colors hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              {tf("nMore", { count: all.length - shown.length })}
+            </button>
+          </>
+        )}
+      </span>
+    </div>
   );
 }
 
@@ -695,10 +794,14 @@ export function JournalLine({
   source,
   biblio,
   className,
+  selected,
+  onToggle,
 }: {
-  source?: { display_name?: string };
-  biblio?: { volume?: string; issue?: string; first_page?: string; last_page?: string };
+  source?: { id?: string | null; display_name?: string | null } | null;
+  biblio?: { volume?: string | null; issue?: string | null; first_page?: string | null; last_page?: string | null } | null;
   className?: string;
+  selected?: readonly string[];
+  onToggle?: (journal: FilterValue) => void;
 }) {
   const tp = useTranslations("paperCard");
   if (!source?.display_name) return null;
@@ -707,7 +810,7 @@ export function JournalLine({
     <div className={cn("flex gap-2 text-sm text-muted-foreground", className)}>
       <BookOpen className="h-4 w-4 flex-shrink-0 mt-0.5" />
       <span className="italic line-clamp-1">
-        {source.display_name}
+        <JournalName source={source} selected={selected} onToggle={onToggle} />
         {biblio?.volume && `, ${tp("vol")} ${biblio.volume}`}
         {biblio?.issue && ` (${biblio.issue})`}
         {biblio?.first_page && (

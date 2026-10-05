@@ -1,28 +1,31 @@
 "use server";
 import { z } from "zod";
 import client from "@/lib/openalex";
+import { lookupRequests, readOpenAlexAuthorTopics, searchOpenAlex, topicNames } from "@/lib/openalex/lookup";
 import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
 import type { OpenAlexMatch } from "@/components/authors/types";
 import type { Author } from "@sickrin/openalex-sdk/dist/src/types/author";
 
-function match(author: Author): OpenAlexMatch {
+// OpenAlex sends an author's topics; the SDK's type still has only the concepts they replaced.
+function match(author: Author & { topics?: { display_name: string }[] | null }): OpenAlexMatch {
   return {
     id: author.id.replace("https://openalex.org/", ""),
     name: author.display_name ?? author.id,
     affiliation: author.last_known_institutions?.map(institution => institution.display_name).join(", ") ?? author.last_known_institution?.display_name ?? "",
-    topics: author.x_concepts?.slice(0, 3).map(topic => topic.display_name).join(", ") ?? "",
+    topics: topicNames(author.topics),
     works: [],
   };
 }
 
+/** Authors to link a profile to: the filters' own lookup, which also takes a pasted ID, with each author's topics. */
 export async function searchProfileAuthors(search: string) {
   const query = search.trim().slice(0, 200).replace(/^https:\/\/openalex.org\//, "");
   if (!query) return [];
-  const limited = await spendOpenAlexRequests();
+  const limited = await spendOpenAlexRequests(lookupRequests("authors") + 1);
   if (limited) return limited;
-  if (/^A\d+$/.test(query)) return [match(await client.author(query))];
-  const authors = await client.authors({search: query, perPage: 10});
-  return authors.results.map(match);
+  const authors = await searchOpenAlex("authors", query);
+  const topics = authors.length ? await readOpenAlexAuthorTopics(authors.map(author => author.id)) : {};
+  return authors.map((author): OpenAlexMatch => ({id: author.id, name: author.name, affiliation: author.detail ?? "", topics: topics[author.id] ?? "", works: []}));
 }
 
 export async function readProfileAuthor(id: string) {

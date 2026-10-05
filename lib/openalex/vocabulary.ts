@@ -38,6 +38,25 @@ export const INSTITUTION_TYPES = [
   ["funder", "Funder"], ["archive", "Archive"], ["other", "Other"],
 ].map(([id, name]) => ({ id, name }));
 
+/**
+ * Study designs OpenAlex finds in a paper, from api.openalex.org/study-designs. Its own "clinical
+ * trial" goes with randomized controlled trials: it tags well-known education RCTs as clinical
+ * trials alone, so an RCT filter without them misses them.
+ */
+export const STUDY_DESIGNS = [
+  ["systematic-review", "Systematic review"], ["meta-analysis", "Meta-analysis"],
+  ["randomized-controlled-trial", "Randomized controlled trial"], ["observational-study", "Observational study"],
+  ["case-report", "Case report"], ["study-protocol", "Study protocol"],
+].map(([id, name]) => ({ id, name }));
+
+/** The `study_designs.id` filter value for these designs. */
+export const studyDesignFilterValue = (designs: readonly string[]) =>
+  designs.flatMap((design) => (design === "randomized-controlled-trial" ? [design, "clinical-trial"] : [design]))
+    .map((design) => `study-designs/${design}`).join("|");
+
+/** Where a paper can be published for the venue filter: OpenAlex source types other than repositories and ebook platforms. */
+export const VENUE_TYPES = "journal|conference|book series";
+
 export type TopicLevel = "domain" | "field" | "subfield" | "topic";
 
 /** Research area ids carry their level: "fields/33", "subfields/3304", "T13958". */

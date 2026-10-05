@@ -5,13 +5,15 @@ import useSWR from "swr";
 import { useTranslations } from "next-intl";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { OpenAlexLimitedError, unlessLimited, type OpenAlexLimited } from "@/lib/openalex/limited";
+import { searchOpenAlexRecords } from "@/app/actions/openalex-lookup";
+import type { LookupEntity } from "@/lib/openalex/autocomplete";
+import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 
 type Option = { id: string; name: string; detail?: string };
 
 /**
  * A filter picked from OpenAlex's autocomplete, for things there are too many
- * of to list: funders, authors. `lookup` finds them and keeps their names.
+ * of to list: authors, funders, journals, institutions. `lookup` says which, and keeps their names.
  */
 export function OpenAlexLookupFilter({
   selected,
@@ -22,8 +24,7 @@ export function OpenAlexLookupFilter({
   selected: string[];
   onChange: (ids: string[]) => void;
   lookup: {
-    key: string;
-    search: (query: string) => Promise<Option[] | OpenAlexLimited>;
+    entity: LookupEntity;
     useNames: (ids: readonly string[]) => Record<string, string>;
     remember: (names: Record<string, string>) => void;
     /** An option made from the words typed, for what OpenAlex has no record of. Listed first, so the records load in under it. */
@@ -35,7 +36,7 @@ export function OpenAlexLookupFilter({
   const tToast = useTranslations("toast");
   const [search, setSearch] = useState("");
   const query = useDebouncedValue(search.trim());
-  const results = useSWR(query ? [`${lookup.key}-search`, query] : null, () => unlessLimited(lookup.search(query)), {
+  const results = useSWR(query ? [`${lookup.entity}-search`, query] : null, () => unlessLimited(searchOpenAlexRecords(lookup.entity, query)), {
     revalidateOnFocus: false,
     keepPreviousData: true,
   });

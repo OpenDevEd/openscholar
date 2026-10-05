@@ -17,7 +17,7 @@ import { useIsMobile } from "@/lib/hooks";
 import { useTranslations } from "next-intl";
 
 import { useTranslate } from "../paper-card";
-import { useAuthorFilter } from "../paper-card/hooks";
+import { useAuthorFilter, useInstitutionFilter, useJournalFilter, type FilterValue } from "../paper-card/hooks";
 
 import { PaperContent } from "@/components/focus-mode/paper-content";
 import type { PaperContentProps } from "@/components/focus-mode/paper-content";
@@ -79,6 +79,8 @@ export function FocusMode({
   const currentPaper = papers[currentIndex];
   const savePaper = useSavePaper(currentPaper);
   const authorFilter = useAuthorFilter();
+  const journalFilter = useJournalFilter();
+  const institutionFilter = useInstitutionFilter();
 
   const trackFocusModeClosed = () => {
     if (!focusModeStartTimeRef.current) {
@@ -406,6 +408,10 @@ export function FocusMode({
     }
   };
 
+  const closingFirst = (toggle: (value: FilterValue) => void) => (value: FilterValue) => {
+    onClose();
+    toggle(value);
+  };
   const paperContentProps: Omit<PaperContentProps, "paper" | "isPreview"> = {
     contentClasses: getContentClasses(),
     fontSizeClass: getFontSizeClass(),
@@ -422,12 +428,13 @@ export function FocusMode({
     tp: tp as (key: string, opts?: Record<string, unknown>) => string,
     tAccessibility: tAccessibility as (key: string) => string,
     isOpen,
-    selectedAuthors: authorFilter.authors,
     // The paper being read may not be in the new results, so a change to the search closes focus mode.
-    onToggleAuthor: authorFilter.toggle && ((author) => {
-      onClose();
-      authorFilter.toggle?.(author);
-    }),
+    selectedAuthors: authorFilter.selected,
+    onToggleAuthor: closingFirst(authorFilter.toggle),
+    selectedJournals: journalFilter.selected,
+    onToggleJournal: closingFirst(journalFilter.toggle),
+    selectedInstitutions: institutionFilter.selected,
+    onToggleInstitution: closingFirst(institutionFilter.toggle),
   };
 
   if (!currentPaper) return null;

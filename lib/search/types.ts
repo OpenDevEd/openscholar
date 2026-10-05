@@ -41,6 +41,11 @@ export interface SearchParams {
   itype: string[];        // author institution types
   funder: string[];       // OpenAlex funder ids
   author: string[];       // OpenAlex author ids, or names OpenAlex has no author record for
+  journal: string[];      // OpenAlex source ids (S…), the paper's main venue
+  inst: string[];         // OpenAlex institution ids (I…), child institutions included
+  design: string[];       // study designs (STUDY_DESIGNS ids)
+  top10: boolean;         // only papers in the top 10% of their field by citations
+  venue: boolean;         // only papers in a journal, conference or book series
   mincite: number | null; // minimum citations
   abs: boolean;           // only works with an abstract
   retracted: boolean;     // include retracted works
