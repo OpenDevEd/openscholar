@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { MAX_LIBRARY_BROWSE } from "../lib/queryBounds";
+import { MAX_COLLECTION_MEMBERS, MAX_LIBRARY_BROWSE } from "../lib/queryBounds";
 
 type LibraryCountCtx = Pick<QueryCtx, "db"> | Pick<MutationCtx, "db">;
 
@@ -33,6 +33,12 @@ export async function resolveLibraryCount(
   });
 
   return items.length;
+}
+
+/** How many papers a collection holds. One saved before counts were kept is counted until migrations/backfillLibraryCounters runs. */
+export async function collectionCount(ctx: LibraryCountCtx, collection: Doc<"collections">) {
+  if (collection.itemCount !== undefined) return collection.itemCount;
+  return (await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collection._id)).take(MAX_COLLECTION_MEMBERS)).length;
 }
 
 export function libraryCountRow(ctx: LibraryCountCtx, userId: Id<"users">) {

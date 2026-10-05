@@ -1850,7 +1850,8 @@
       "completed": "पूरी हुई",
       "cancelled": "रद्द",
       "failed": "विफल",
-      "creditsExhausted": "क्रेडिट समाप्त"
+      "creditsExhausted": "क्रेडिट समाप्त",
+      "capped": "अपनी सीमा पर रुका"
     },
     "outcome": {
       "included": "शामिल",

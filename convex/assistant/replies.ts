@@ -18,6 +18,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { effortValidator } from "../aiModelConfig/validators";
+import { availableCredits } from "../billing/accounts";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -34,7 +35,7 @@ import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
 import { detailsOf } from "./details";
-import { carriedOn, noteReply, pausedAt, replyLimitOf } from "./spending";
+import { allowAlways, carriedOn, covers, noteReply, pausedAt, replyLimitOf } from "./spending";
 import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 import { askedDetailsValidator, assistantPausedValidator } from "./validators";
@@ -163,9 +164,10 @@ const waitingAttempt = (waiting: { order: number; askedAt: number }) => `${waiti
 
 /** The person's answer to a call the assistant asked about (./steps.ts): run it, or don't. */
 export const answer = mutation({
-  args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), allow: v.boolean() },
+  // `always`, with a yes to a call that spends credits: jobs that hold no more run in this chat without asking from now on (./spending.ts).
+  args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), allow: v.boolean(), always: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { threadId, stepId, allow }) => {
+  handler: async (ctx, { threadId, stepId, allow, always }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId, "write");
@@ -175,7 +177,17 @@ export const answer = mutation({
     if (!waiting || step.order !== waiting.order || step.status !== "asking") throw createError("CONFLICT", "This has already been answered.");
     // It would run with their access, on their records, so the answer is theirs alone.
     if (step.userId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can allow this.");
-    const left = (await stepsAt(ctx, threadId, "asking")).filter((other) => other._id !== stepId);
+    let left = (await stepsAt(ctx, threadId, "asking")).filter((other) => other._id !== stepId);
+    // A yes to a call that holds more than the person has starts nothing: it waits while they add credits, as its card says.
+    const balance = allow && step.credits !== undefined ? await availableCredits(ctx, userId) : 0;
+    if (allow && step.credits !== undefined && step.credits > balance) throw createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
+    if (allow && always && step.credits !== undefined) {
+      // As opencode's "always" does for a session: the rule is kept, and what else waits that it now covers is allowed with it.
+      const allowance = await allowAlways(ctx, threadId, userId, step.credits);
+      const covered = left.filter((other) => other.credits !== undefined && covers(allowance, other.credits, balance));
+      for (const other of covered) await ctx.db.patch("assistantSteps", other._id, { status: "allowed" });
+      left = left.filter((other) => !covered.includes(other));
+    }
     // It asked with its limit already reached: the last answer starts nothing, and the reply waits to be carried on.
     const paused = left.length ? null : pausedAt(waiting);
     // The answer that lets the reply carry on starts a reply, so it's held to how many a person has at once, before anything changes.
@@ -339,7 +351,7 @@ export const release = internalMutation({
     asking: v.optional(
       v.object({
         promptMessageId: v.string(),
-        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) })),
+        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()) })),
         spent: v.number(),
         rounds: v.number(),
         made: v.number(),
@@ -537,6 +549,8 @@ const stepValidator = v.object({
   subject: v.optional(v.string()),
   /** How many things it found, when its result lists any. */
   count: v.optional(v.number()),
+  /** The most it holds, on a call that spends credits (#328). */
+  credits: v.optional(v.number()),
   /**
    * `failed` also covers a step whose reply died while it ran. `asking`: the person is asked before it runs.
    * `allowed`: they said yes, and it runs once the reply carries on. `declined`: they said no, or stopped the reply.
@@ -675,7 +689,7 @@ export const messagesAction = defineUserQuery({
     // What each call that waits for this person would do.
     const reader = thread.asking?.senderId === userId ? await ctx.db.get("users", userId) : null;
     const mine = reader ? await stepsAt(ctx, threadId, "asking") : [];
-    const details = new Map(await Promise.all(mine.map(async (step) => [step._id, await detailsOf(ctx, reader!, step.input)] as const)));
+    const details = new Map(await Promise.all(mine.map(async (step) => [step._id, await detailsOf(ctx, reader!, step.shown ?? step.input)] as const)));
     const page = read.page.flatMap((row) => {
       const role = row.message?.role;
       // Newest first, like the page: the steps come after the message they answer, so they're listed before it.
@@ -753,6 +767,7 @@ function shownStep(step: Doc<"assistantSteps">, { userId, answering, details }: 
     ...variantOf(step),
     ...(step.subject ? { subject: step.subject } : {}),
     ...(step.count === undefined ? {} : { count: step.count }),
+    ...(step.credits === undefined ? {} : { credits: step.credits }),
     status: shownStatus(step.status, answering === step.order),
     canAnswer: details !== undefined,
     ...(details !== undefined ? { details } : {}),

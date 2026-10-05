@@ -8,6 +8,7 @@ import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { heldPapers } from "../paperSets/held";
 import type { SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers } from "../paperSets/search";
+import { screeningHold } from "./estimate";
 import { paperSetValidator, saveToValidator, screeningQuestionValidator, screeningScoringConfigValidator } from "./validators";
 
 type PaperSet = Infer<typeof paperSetValidator>;
@@ -57,14 +58,18 @@ async function jobPapers(ctx: ActionCtx, userId: Id<"users">, { set, first, thro
  * a whole stretch with no papers; the request then starts at its first stretch that has
  * some, and stops looking where the search's results end.
  */
-async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assistant", { set, first, last: through, ...config }: Config & { set: PaperSet; first: number; last: number }): Promise<{ jobId: Id<"screeningJobs"> }> {
+async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assistant", { set, first, last: through, ...config }: Config & { set: PaperSet; first: number; last: number }, spendCap?: number): Promise<{ jobId: Id<"screeningJobs"> }> {
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(through) || first < 1 || through < first) {
     throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
+  }
+  // What the person approved is one job's to spend. The jobs that would follow it in a longer request start later, by themselves, with no figure of their own.
+  if (spendCap !== undefined && through > jobEnd(first, through)) {
+    throw createError("VALIDATION_ERROR", `A screening started here takes up to ${MAX_SCREENING_PAPERS_PER_JOB.toLocaleString("en")} papers. Screen papers ${first} to ${jobEnd(first, through)} first, then the rest.`);
   }
   let snapshot: SearchSnapshot | undefined;
   for (let from = first; from <= through; from = jobEnd(from, through) + 1) {
     const { papers, ended, range } = await jobPapers(ctx, userId, { set, first: from, through, snapshot }, config.questions);
-    if (papers.length) return await ctx.runMutation(internal.screening.mutations.createScreeningJobForUser, { userId, author, papers, ...range, ...config });
+    if (papers.length) return await ctx.runMutation(internal.screening.mutations.createScreeningJobForUser, { userId, author, papers, ...range, ...config, ...(spendCap === undefined ? {} : { spendCap }) });
     if (ended) break;
     snapshot = "snapshot" in range ? range.snapshot : undefined;
   }
@@ -88,8 +93,18 @@ export const screenAction = defineUserAction({
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
+  estimate: screeningHold,
+  // The papers, the questions put to them and where the included ones go. How each answer scores is the job's own business.
+  shown: ({ set, first, last, questions, saveTo, prune }) => ({
+    ...(set.kind === "collection" ? { collectionId: set.collectionId } : set.kind === "search" ? { search: set.searchId } : set.kind === "screening" ? { screening: set.jobId } : { papers: "library" }),
+    first,
+    last,
+    question: questions.map((asked) => asked.question),
+    ...(saveTo.kind === "new" ? { saveTo: saveTo.name } : saveTo.kind === "collection" ? { saveTo: saveTo.collectionId } : {}),
+    ...(prune ? { prune } : {}),
+  }),
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  run: (ctx, userId, args, author): Promise<{ jobId: Id<"screeningJobs"> }> => start(ctx, userId, author, args),
+  run: (ctx, userId, args, author, call): Promise<{ jobId: Id<"screeningJobs"> }> => start(ctx, userId, author, args, call?.credits),
 });
 export const screen = userAction(screenAction);
 export const screenForAssistant = assistantAction(screenAction);

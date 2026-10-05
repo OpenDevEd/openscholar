@@ -157,7 +157,7 @@ async function failStep(ctx: MutationCtx, step: Step, error: string) {
 
 /** A step starts. */
 export const begin = internalMutation({
-  args: { threadId: v.id("assistantThreads"), order: v.number(), userId: v.id("users"), toolCallId: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) },
+  args: { threadId: v.id("assistantThreads"), order: v.number(), userId: v.id("users"), toolCallId: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()) },
   returns: v.id("assistantSteps"),
   handler: async (ctx, args) => {
     const subject = args.subject ?? (await aboutOf(ctx, args.userId, args.input));
@@ -218,8 +218,9 @@ export const failed = internalMutation({
 /** The steps the person allowed, in the order they were asked: the reply runs them as it carries on. */
 export const allowed = internalQuery({
   args: { threadId: v.id("assistantThreads") },
-  returns: v.array(v.object({ stepId: v.id("assistantSteps"), toolCallId: v.string(), path: v.string(), input: v.string() })),
-  handler: async (ctx, { threadId }) => (await stepsAt(ctx, threadId, "allowed")).map((step) => ({ stepId: step._id, toolCallId: step.toolCallId, path: step.path, input: step.input })),
+  returns: v.array(v.object({ stepId: v.id("assistantSteps"), toolCallId: v.string(), path: v.string(), input: v.string(), credits: v.optional(v.number()) })),
+  handler: async (ctx, { threadId }) =>
+    (await stepsAt(ctx, threadId, "allowed")).map((step) => ({ stepId: step._id, toolCallId: step.toolCallId, path: step.path, input: step.input, ...(step.credits === undefined ? {} : { credits: step.credits }) })),
 });
 
 /**

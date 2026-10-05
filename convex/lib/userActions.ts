@@ -59,9 +59,27 @@ export const reversal = <Path extends string, Args extends PropertyValidators>(p
  */
 type AsksFirst<Args extends PropertyValidators> = { asksFirst?(ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>): Promise<boolean> };
 
+/**
+ * The most one call of an action that spends credits holds (#328): an upper estimate, read
+ * before the call runs. The assistant asks the person with it, unless they allowed that much
+ * in the chat. An action that spends credits and gives none can't be asked about, so the
+ * assistant doesn't run it.
+ */
+type Estimates<Args extends PropertyValidators> = { estimate?(ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>): Promise<number> };
+
+/**
+ * What of a call's arguments the person is shown when they're asked about it, for an action
+ * whose arguments, one by one, don't read as what it does: a screening is its papers and its
+ * questions to them, not the points each answer scores. IDs stay IDs here, and are shown by
+ * the name of what they name (convex/assistant/details.ts).
+ */
+type Shows<Args extends PropertyValidators> = { shown?(args: ObjectType<Args>): Record<string, unknown> };
+
 export type UserMutation<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
   Labels<keyof Args & string> &
-  AsksFirst<Args> & {
+  AsksFirst<Args> &
+  Estimates<Args> &
+  Shows<Args> & {
     kind: "mutation";
     run: (ctx: MutationCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author) => Promise<Infer<Returns>>;
   };
@@ -72,12 +90,14 @@ export type UserMutation<Args extends PropertyValidators, Returns extends Generi
  * hands both to the mutation that writes, which checks `asksFirst` again unless approved and
  * ends the step, in the write's own transaction, as a change that is a mutation does.
  */
-export type ChangeCall = { stepId?: Id<"assistantSteps">; approved: boolean };
+export type ChangeCall = { stepId?: Id<"assistantSteps">; approved: boolean; /** On a call that spends credits: the most the person let it hold, by a yes to its question or by what they allow in the chat (#328). */ credits?: number };
 
 /** A user action that calls an outside service (OpenAlex, an AI provider, Autumn), reading and writing through queries and mutations. */
 export type UserActionEntry<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
   Labels<keyof Args & string> &
-  AsksFirst<Args> & {
+  AsksFirst<Args> &
+  Estimates<Args> &
+  Shows<Args> & {
     kind: "action";
     /** It writes, after reading from outside: its write ends the step and rechecks approval (see ChangeCall). One without this only reads. */
     changes?: true;
@@ -87,7 +107,7 @@ export type UserActionEntry<Args extends PropertyValidators, Returns extends Gen
 /** What the registry list and the assistant's tools read from an entry. */
 export type UserAction =
   | { kind: "query"; path: string; description: string; args: PropertyValidators }
-  | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators; changes?: true } & Labels & AsksFirst<PropertyValidators>);
+  | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators; changes?: true } & Labels & AsksFirst<PropertyValidators> & Estimates<PropertyValidators> & Shows<PropertyValidators>);
 
 /** Entries are written with these so their argument and result types are inferred. */
 export const defineUserQuery = <Args extends PropertyValidators, Returns extends GenericValidator>(
@@ -115,7 +135,7 @@ const userArg = { userId: v.id("users") };
  * is, which the change ends in its own transaction; and `approved`, set when the person
  * themselves asked for it, as when they press Undo.
  */
-const changeArgs = { ...userArg, stepId: v.optional(v.id("assistantSteps")), approved: v.optional(v.boolean()) };
+const changeArgs = { ...userArg, stepId: v.optional(v.id("assistantSteps")), approved: v.optional(v.boolean()), approvedCredits: v.optional(v.number()) };
 /** What the assistant is told when a call asks the person first. */
 export const ASKS_FIRST = "This needs the person's say first, and it can't be asked for here. Tell them what you would have done, so they can do it themselves.";
 
@@ -220,7 +240,7 @@ export function assistantMutation<Args extends PropertyValidators, Returns exten
       args: { ...entry.args, ...changeArgs },
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const { userId, stepId, approved, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
+        const { userId, stepId, approved, approvedCredits: _held, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
         const rest = own as ObjectType<Args>;
         // The sender may have been suspended or deleted since the turn began.
         const actingAs = (await requireActiveUser(ctx, userId))._id;
@@ -259,10 +279,10 @@ export function assistantAction<Args extends PropertyValidators, Returns extends
       args: { ...entry.args, ...changeArgs },
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const { userId, stepId, approved, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
+        const { userId, stepId, approved, approvedCredits, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
         // The sender may have been suspended or deleted since the turn began.
         const user: Doc<"users"> = await ctx.runQuery(internal.users.internal.getActiveUser, { userId });
-        return entry.run(ctx, user._id, own as ObjectType<Args>, "assistant", { ...(stepId ? { stepId } : {}), approved: approved === true });
+        return entry.run(ctx, user._id, own as ObjectType<Args>, "assistant", { ...(stepId ? { stepId } : {}), approved: approved === true, ...(approvedCredits === undefined ? {} : { credits: approvedCredits }) });
       },
     }),
     entry.path,

@@ -1850,7 +1850,8 @@
       "completed": "已完成",
       "cancelled": "已取消",
       "failed": "失败",
-      "creditsExhausted": "积分用尽"
+      "creditsExhausted": "积分用尽",
+      "capped": "已在上限处停止"
     },
     "outcome": {
       "included": "入选",

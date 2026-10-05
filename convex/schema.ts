@@ -211,7 +211,9 @@ export default defineSchema({
   assistantSteps: defineTable(assistantStepFields)
     // The steps that wait for the person, or for the reply to run them (convex/assistant/steps.ts).
     .index("by_thread_and_status", ["threadId", "status"]).index("by_thread_and_order", ["threadId", "order"])
-    .index("by_thread_order_status", ["threadId", "order", "status"]),
+    .index("by_thread_order_status", ["threadId", "order", "status"])
+    // A person's steps in a chat that hold credits, by how much (convex/assistant/spending.ts).
+    .index("by_thread_user_credits", ["threadId", "userId", "credits"]),
   assistantStepResults: defineTable(assistantStepResultFields).index("by_step", ["stepId"]).index("by_thread", ["threadId"]),
   // What each person lets the assistant spend in a chat, and each person's own record (convex/assistant/spending.ts).
   assistantLimits: defineTable(assistantLimitFields).index("by_thread_and_user", ["threadId", "userId"]).index("by_user", ["userId"]),
@@ -989,6 +991,10 @@ export default defineSchema({
     // Resolved per-user server model for this bulk screening run (credits path).
     serverModelId: v.optional(v.id("models")),
     serverEffort: v.optional(effortValidator),
+    // The most it may spend, on a job the assistant started with the person's say (#328): its papers stop once it has.
+    spendCap: v.optional(v.number()),
+    // Set once it has: its papers that haven't started are skipped, those running finish and are kept, and it ends as one that stopped at its limit.
+    capped: v.optional(v.literal(true)),
     createdAt: v.number(),
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),
@@ -1096,6 +1102,8 @@ export default defineSchema({
     tallies: screeningTalliesValidator,
     // Credits its counted papers cost.
     credits: v.optional(v.number()),
+    // In a job with a spending limit, papers started and not counted yet (screening/slots.ts).
+    running: v.optional(v.number()),
     // Papers it saved for the first time, and papers it took from the collection it read
     // that are still out of it.
     saved: v.optional(v.number()),

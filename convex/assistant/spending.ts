@@ -10,16 +10,23 @@
  * carry on, as Goose does at its turn limit: a reply that keeps finding something new to
  * do isn't caught by the rules for one going round in circles (./tools.ts).
  *
- *   get (query)       the person's limit in a chat, what their new chats start with, and what their last replies cost
- *   setReplyLimit     sets or lifts it
+ * A job that spends credits asks first, with the most it holds (#328). A person can allow
+ * jobs in a chat without being asked, up to what one may hold: opencode's "always" for a
+ * session, with Roo Code's ceiling on it.
+ *
+ *   get (query)       the person's limits in a chat, what their new chats start with, and what their last replies cost
+ *   jobs (query)      their calls in the chat that held credits, a page at a time
+ *   setReplyLimit     sets or lifts a reply's
+ *   setAllowance      whether jobs run without asking, and the most one may hold
  *   setForNewChats    whether the chats they start begin with this chat's
  */
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
-import { ASSISTANT_REQUESTS_BEFORE_ASKING } from "../lib/constants";
+import { ASSISTANT_JOB_CAPS, ASSISTANT_REQUESTS_BEFORE_ASKING } from "../lib/constants";
 import { createError } from "../lib/errors";
 import { internalMutation, mutation, query } from "../lib/functions";
 import { requireThread } from "./access";
@@ -28,6 +35,8 @@ import { RECENT_REPLIES, recentCostsValidator } from "./validators";
 const FLAG = "assistant.enabled";
 /** The largest limit a person can set: fifteen digits, which a number holds exactly. */
 export const REPLY_LIMIT_MAX = 999_999_999_999_999;
+/** Jobs one page of the Spending sheet's list holds at most. */
+const JOBS_PAGE_MAX = 50;
 /** Rows of a deleted chat, or of a purged account, that one batch deletes. */
 const FORGET_LIMITS = 100;
 
@@ -39,6 +48,50 @@ const spenderOf = (ctx: Reader, userId: Id<"users">) => ctx.db.query("assistantS
 /** Credits a reply to this person may spend in this chat before it pauses. With none, it has no limit. */
 export async function replyLimitOf(ctx: Reader, threadId: Id<"assistantThreads">, userId: Id<"users">) {
   return (await limitOf(ctx, threadId, userId))?.replyLimit;
+}
+
+type Allowance = { cap?: number };
+/** What a person lets the assistant spend in a chat: a reply's limit, and what jobs may hold without asking. */
+type Limits = { replyLimit?: number; jobs?: Allowance };
+const sameAllowance = (a: Allowance | undefined, b: Allowance | undefined) => (a === undefined) === (b === undefined) && a?.cap === b?.cap;
+const sameLimits = (a: Limits, b: Limits) => a.replyLimit === b.replyLimit && sameAllowance(a.jobs, b.jobs);
+const limitsIn = (row: Limits | null | undefined): Limits => ({ ...(row?.replyLimit === undefined ? {} : { replyLimit: row.replyLimit }), ...(row?.jobs === undefined ? {} : { jobs: row.jobs }) });
+
+/** What jobs that spend credits may hold in this chat without this person being asked. Undefined when each one asks. */
+export async function allowanceOf(ctx: Reader, threadId: Id<"assistantThreads">, userId: Id<"users">) {
+  return (await limitOf(ctx, threadId, userId))?.jobs;
+}
+
+/** Whether a call that holds `credits` runs without asking: jobs are allowed, this one is within what one may hold, and the balance covers it. */
+export const covers = (allowance: Allowance | undefined, credits: number, balance: number) => allowance !== undefined && (allowance.cap === undefined || credits <= allowance.cap) && credits <= balance;
+
+/**
+ * Changes what a person lets the assistant spend in a chat. New chats that take this chat's
+ * limits go on taking them.
+ */
+async function setLimits(ctx: MutationCtx, threadId: Id<"assistantThreads">, userId: Id<"users">, change: (now: Limits) => Limits) {
+  const [row, spender] = await Promise.all([limitOf(ctx, threadId, userId), spenderOf(ctx, userId)]);
+  const now = limitsIn(row);
+  const next = change(now);
+  if (spender?.newChats !== undefined && sameLimits(limitsIn(spender.newChats), now)) await ctx.db.patch("assistantSpenders", spender._id, { newChats: next });
+  if (row) await ctx.db.patch("assistantLimits", row._id, { replyLimit: next.replyLimit, jobs: next.jobs });
+  else if (next.replyLimit !== undefined || next.jobs !== undefined) await ctx.db.insert("assistantLimits", { threadId, userId, ...next });
+  return next;
+}
+
+/**
+ * "Always allow in this chat", said to a call that holds `credits`: from now on jobs run
+ * without asking up to the smallest listed limit that covers this one. Past the largest
+ * listed limit there is none. A limit the person already has that covers it stays as it
+ * is, their own number included.
+ */
+export async function allowAlways(ctx: MutationCtx, threadId: Id<"assistantThreads">, userId: Id<"users">, credits: number) {
+  const { jobs } = await setLimits(ctx, threadId, userId, (now) => {
+    if (now.jobs && (now.jobs.cap === undefined || now.jobs.cap >= credits)) return now;
+    const cap = ASSISTANT_JOB_CAPS.find((listed) => listed >= credits);
+    return { ...now, jobs: cap === undefined ? {} : { cap } };
+  });
+  return jobs;
 }
 
 /** Why a reply with more to do pauses before its next request, when it does. */
@@ -61,8 +114,8 @@ export function carriedOn(waiting: Pick<NonNullable<Doc<"assistantThreads">["ask
 
 /** A chat the person starts begins with what they chose for their new chats. */
 export async function startWith(ctx: MutationCtx, threadId: Id<"assistantThreads">, userId: Id<"users">) {
-  const replyLimit = (await spenderOf(ctx, userId))?.newChats?.replyLimit;
-  if (replyLimit !== undefined) await ctx.db.insert("assistantLimits", { threadId, userId, replyLimit });
+  const limits = limitsIn((await spenderOf(ctx, userId))?.newChats);
+  if (limits.replyLimit !== undefined || limits.jobs !== undefined) await ctx.db.insert("assistantLimits", { threadId, userId, ...limits });
 }
 
 /**
@@ -114,6 +167,8 @@ export const get = query({
   returns: v.object({
     /** Credits a reply may spend before it pauses; null is no limit. */
     replyLimit: v.union(v.number(), v.null()),
+    /** Jobs that spend credits run without asking: the most one may hold, null being any amount. Null when each one asks. */
+    allowance: v.union(v.null(), v.object({ cap: v.union(v.number(), v.null()) })),
     /**
      * What the chats the person starts begin with, null being no limit; absent until they choose.
      * A chat whose limit this equals is one new chats take theirs from: changing it there changes this.
@@ -127,7 +182,29 @@ export const get = query({
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);
     const [limit, spender] = await Promise.all([limitOf(ctx, threadId, userId), spenderOf(ctx, userId)]);
-    return { replyLimit: limit?.replyLimit ?? null, ...(spender?.newChats === undefined ? {} : { newChats: spender.newChats.replyLimit ?? null }), recent: (spender?.recent ?? []).map((entry) => entry.credits) };
+    return { replyLimit: limit?.replyLimit ?? null, allowance: limit?.jobs ? { cap: limit.jobs.cap ?? null } : null, ...(spender?.newChats === undefined ? {} : { newChats: spender.newChats.replyLimit ?? null }), recent: (spender?.recent ?? []).map((entry) => entry.credits) };
+  },
+});
+
+/**
+ * The person's calls in this chat that held credits, the largest hold first, a page at a
+ * time: what the Spending sheet's settings for jobs decide for, each shown as one that
+ * would run or would ask.
+ */
+export const jobs = query({
+  args: { threadId: v.id("assistantThreads"), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(v.object({ id: v.id("assistantSteps"), action: v.string(), subject: v.optional(v.string()), credits: v.number() })),
+  handler: async (ctx, { threadId, paginationOpts }) => {
+    const userId = (await requireAuth(ctx))._id;
+    await requireFeature(ctx, FLAG, userId);
+    await requireThread(ctx, userId, threadId);
+    const read = await ctx.db
+      .query("assistantSteps")
+      // Only a step that holds credits has a number here.
+      .withIndex("by_thread_user_credits", (q) => q.eq("threadId", threadId).eq("userId", userId).gte("credits", 0))
+      .order("desc")
+      .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, JOBS_PAGE_MAX) });
+    return { ...read, page: read.page.map((step) => ({ id: step._id, action: step.path, ...(step.subject ? { subject: step.subject } : {}), credits: step.credits! })) };
   },
 });
 
@@ -140,12 +217,22 @@ export const setReplyLimit = mutation({
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);
     if (limit !== null && (!Number.isInteger(limit) || limit < 1 || limit > REPLY_LIMIT_MAX)) throw createError("VALIDATION_ERROR", "A limit is a whole number of credits, from 1.");
-    const replyLimit = limit ?? undefined;
-    const [row, spender] = await Promise.all([limitOf(ctx, threadId, userId), spenderOf(ctx, userId)]);
-    // New chats that take this chat's limit go on taking it.
-    if (spender?.newChats !== undefined && spender.newChats.replyLimit === row?.replyLimit) await ctx.db.patch("assistantSpenders", spender._id, { newChats: replyLimit === undefined ? {} : { replyLimit } });
-    if (row) await ctx.db.patch("assistantLimits", row._id, { replyLimit });
-    else if (replyLimit !== undefined) await ctx.db.insert("assistantLimits", { threadId, userId, replyLimit });
+    await setLimits(ctx, threadId, userId, ({ replyLimit: _was, ...rest }) => (limit === null ? rest : { ...rest, replyLimit: limit }));
+    return null;
+  },
+});
+
+export const setAllowance = mutation({
+  // `allowance`: null to be asked before every job that spends credits; else the most one may hold without asking, a whole number of credits from 1, or null for any amount.
+  args: { threadId: v.id("assistantThreads"), allowance: v.union(v.null(), v.object({ cap: v.union(v.number(), v.null()) })) },
+  returns: v.null(),
+  handler: async (ctx, { threadId, allowance }) => {
+    const userId = (await requireAuth(ctx))._id;
+    await requireFeature(ctx, FLAG, userId);
+    await requireThread(ctx, userId, threadId);
+    const cap = allowance?.cap ?? null;
+    if (cap !== null && (!Number.isInteger(cap) || cap < 1 || cap > REPLY_LIMIT_MAX)) throw createError("VALIDATION_ERROR", "A limit is a whole number of credits, from 1.");
+    await setLimits(ctx, threadId, userId, ({ jobs: _was, ...rest }) => (allowance === null ? rest : { ...rest, jobs: cap === null ? {} : { cap } }));
     return null;
   },
 });
@@ -157,8 +244,7 @@ export const setForNewChats = mutation({
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);
-    const replyLimit = on ? await replyLimitOf(ctx, threadId, userId) : undefined;
-    const newChats = on ? (replyLimit === undefined ? {} : { replyLimit }) : undefined;
+    const newChats = on ? limitsIn(await limitOf(ctx, threadId, userId)) : undefined;
     const spender = await spenderOf(ctx, userId);
     if (spender) await ctx.db.patch("assistantSpenders", spender._id, { newChats });
     else if (newChats) await ctx.db.insert("assistantSpenders", { userId, newChats, recent: [] });

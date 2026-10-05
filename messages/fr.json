@@ -1850,7 +1850,8 @@
       "completed": "Terminé",
       "cancelled": "Annulé",
       "failed": "Échec",
-      "creditsExhausted": "Crédits épuisés"
+      "creditsExhausted": "Crédits épuisés",
+      "capped": "Arrêtée à sa limite"
     },
     "outcome": {
       "included": "Inclus",

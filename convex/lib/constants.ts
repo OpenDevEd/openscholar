@@ -49,6 +49,13 @@ export const ASSISTANT_REPLIES_AT_ONCE = 16;
 export const ASSISTANT_REQUESTS_BEFORE_ASKING = 1_000;
 
 /**
+ * The limits listed for what one job may hold without asking, once a person allows jobs
+ * that spend credits in a chat (#328). "Always allow in this chat" picks the smallest that
+ * covers the job it was said to.
+ */
+export const ASSISTANT_JOB_CAPS = [100, 250, 1_000] as const;
+
+/**
  * Credits reserved before a wallet gateway call, plus one web search when it
  * asks for one. The call then settles to what it really cost.
  */
