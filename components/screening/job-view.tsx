@@ -5,7 +5,7 @@ import { useConvex, useMutation } from "convex/react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  AlertTriangle, Ban, ChevronDown, Clock, Coins, Copy, Download, FolderMinus, FolderPlus, Gauge, Hourglass, Layers, Loader2, Quote, Search, Square, Undo2,
+  AlertTriangle, Ban, ChevronDown, CircleX, Clock, Coins, Copy, Download, FileSearch, FolderMinus, FolderPlus, Gauge, Hourglass, Layers, Loader2, Quote, Search, Square, Undo2,
 } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ const PAGE_SIZE = 10;
 const listPx = (rows: number) => rows * 61 + 1;
 
 const TONE: Record<Exclude<Phase, "processing">, StatusTone> = {
-  running: "running", waiting: "warning", completed: "success", cancelled: "neutral", failed: "danger", creditsExhausted: "danger",
+  running: "running", waiting: "warning", reading: "running", completed: "success", cancelled: "neutral", failed: "danger", creditsExhausted: "danger",
 };
 
 type Translate = ReturnType<typeof useTranslations<"screeningPage">>;
@@ -86,7 +86,7 @@ export function JobView({
   const counts = job.outcomes;
   const total = job.totalPapers;
   const done = doneOf(job);
-  const active = phase === "running" || phase === "waiting";
+  const active = phase === "running" || phase === "waiting" || phase === "reading";
   const name = jobName(t, job, (at) => format.dateTime(new Date(at), { dateStyle: "medium" }));
   const SourceIcon = job.set ? SOURCE_ICON[job.set.kind] : undefined;
   const source = job.set?.kind === "saved" ? t("savedPapers") : job.label;
@@ -117,7 +117,7 @@ export function JobView({
           <div className="flex items-center gap-2.5">
             <h2 className="truncate text-xl font-semibold tracking-tight">{name}</h2>
             {/* One that stopped at the most it may spend still has credits to its name: it says so, not "Out of credits". */}
-            <StatusChip tone={TONE[phase]} icon={phase === "waiting" ? Hourglass : "tone"}>{phase === "creditsExhausted" && job.capped ? t("phase.capped") : t(`phase.${phase}`)}</StatusChip>
+            <StatusChip className="shrink-0 whitespace-nowrap" tone={TONE[phase]} icon={phase === "waiting" ? Hourglass : "tone"}>{phase === "creditsExhausted" && job.capped ? t("phase.capped") : t(`phase.${phase}`)}</StatusChip>
           </div>
           {/* One line of facts and, for a search, its filters: it scrolls sideways under a fading edge. */}
           <div className="min-w-0 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
@@ -187,6 +187,12 @@ export function JobView({
                 </p>
                 <Meter value={blocker.done} max={blocker.total} fill="bg-warning" />
               </div>
+            ) : phase === "reading" ? (
+              // The job's papers haven't come from its search yet: the row is the one its slots take once they have.
+              <div className="space-y-2">
+                <p className="flex items-center gap-1.5 text-xs font-medium"><FileSearch className="size-3.5 shrink-0 text-primary" /><span className="truncate">{t("gettingPapers")}</span></p>
+                <Meter value={0} max={1} />
+              </div>
             ) : phase === "running" ? (
               <div className="space-y-2">
                 <p className="flex items-center justify-between text-xs font-medium">
@@ -200,6 +206,8 @@ export function JobView({
                   ))}
                 </div>
               </div>
+            ) : job.failure ? (
+              <p className="flex items-start gap-1.5 self-center text-xs font-medium text-destructive"><CircleX className="mt-0.5 size-3.5 shrink-0" /><span>{job.failure}</span></p>
             ) : (
               <div className="flex flex-wrap items-center gap-1.5 self-center">
                 {/* A job from before these were kept counts them from its outcomes. */}
