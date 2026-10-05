@@ -10,9 +10,17 @@
  *
  * Bulk work of small, bounded items (a Screen all paper) holds nothing and
  * settles each item with one `track`, as Firecrawl bills each page of a crawl.
+ *
+ * A job the person approved up to a figure (#328) holds that figure once
+ * (`holdSpend`). Each of its items writes its cost to the ledger under the hold
+ * and charges nothing (`settleUnder`), and the hold is confirmed once with
+ * their sum, and never more than was held, when the job has ended
+ * (`settleSpent`), as Firecrawl locks a monitor check's estimate and confirms
+ * the lock with the pages' real total. A job uses one path or the other, never
+ * both.
  */
 import { v, type Infer } from "convex/values";
-import { internalAction, internalMutation, type ActionCtx, type MutationCtx } from "../lib/functions";
+import { internalAction, internalMutation, internalQuery, type ActionCtx, type MutationCtx } from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { autumn, AutumnError } from "./autumn";
@@ -24,6 +32,13 @@ import type { Usage } from "../../lib/ai/core/types";
 /** Long enough for any single chat turn, paper, or batch we run. */
 const DEFAULT_HOLD_MS = 30 * 60_000;
 
+/**
+ * How long an approved job's hold stands by itself: longer than a job runs. A job that
+ * never ends has its hold settled then with what it spent, so nothing spent under it goes uncharged.
+ */
+const SPEND_HOLD_MS = 24 * 60 * 60_000;
+/** Items of a hold read, or cleared away, in one go. */
+const SPENT_PAGE = 500;
 /** When to try a failed settle or release again; Autumn may be briefly down. */
 const RETRY_DELAYS_MS = [10_000, 60_000, 5 * 60_000, 30 * 60_000, 2 * 60 * 60_000];
 
@@ -67,15 +82,14 @@ async function usageFor(ctx: MutationCtx, chargeId: string) {
  * cancels it.
  */
 export const hold = internalMutation({
-  args: { userId: v.id("users"), chargeId: v.string(), credits: v.number(), expiresAt: v.number() },
+  args: { userId: v.id("users"), chargeId: v.string(), credits: v.number(), expiresAt: v.number(), spend: v.optional(v.literal(true)) },
   returns: v.null(),
-  handler: async (ctx, { userId, chargeId, credits, expiresAt }) => {
-    const release = await ctx.scheduler.runAt(expiresAt, internal.billing.charge.releaseLock, {
-      userId,
-      chargeId,
-      attempt: 0,
-    });
-    await ctx.db.insert("billingHolds", { userId, chargeId, credits, release });
+  handler: async (ctx, { userId, chargeId, credits, expiresAt, spend }) => {
+    // A job's hold has charges recorded under it: left standing, it is settled with them, never given back whole.
+    const release = spend
+      ? await ctx.scheduler.runAt(expiresAt, internal.billing.charge.settleSpent, { chargeId, attempt: 0 })
+      : await ctx.scheduler.runAt(expiresAt, internal.billing.charge.releaseLock, { userId, chargeId, attempt: 0 });
+    await ctx.db.insert("billingHolds", { userId, chargeId, credits, release, ...(spend ? { spend } : {}) });
     return null;
   },
 });
@@ -100,7 +114,7 @@ export const endHold = internalMutation({
  */
 export async function reserveCredits(
   ctx: ActionCtx,
-  args: { userId: Id<"users">; chargeId: string; credits: number; holdMs?: number },
+  args: { userId: Id<"users">; chargeId: string; credits: number; holdMs?: number; spend?: true },
 ): Promise<boolean> {
   if (args.credits <= 0) return true;
   const expiresAt = Date.now() + (args.holdMs ?? DEFAULT_HOLD_MS);
@@ -109,6 +123,7 @@ export async function reserveCredits(
     chargeId: args.chargeId,
     credits: args.credits,
     expiresAt,
+    ...(args.spend ? { spend: args.spend } : {}),
   });
   const result = await autumn.lock({
     customerId: args.userId,
@@ -280,7 +295,7 @@ async function confirmAsHeld(chargeId: string) {
  * stands, and the rest charged down to zero. A retry of a marked hold repeats
  * those two idempotent steps.
  */
-async function confirm(ctx: ActionCtx, args: SettleArgs, held: number, rest: boolean) {
+async function confirm(ctx: ActionCtx, args: Pick<SettleArgs, "userId" | "chargeId" | "credits">, held: number, rest: boolean) {
   if (!rest) {
     try {
       await autumn.finalize(args.chargeId, "confirm", args.credits);
@@ -376,5 +391,187 @@ export const recordUsage = internalMutation({
     if (row) await ctx.db.delete("billingHolds", row._id);
     if (remaining !== undefined && remaining <= 0) await zeroCachedBalance(ctx, args.userId);
     return true;
+  },
+});
+
+
+
+
+/**
+ * Holds the most an approved job may spend (#328). False, holding nothing, when the balance
+ * can't cover it. The job keeps `chargeId`: its items are charged under it (`settleUnder`),
+ * and it is settled once, when the job has ended and its items have been recorded (./spend.ts).
+ */
+export const holdSpend = (ctx: ActionCtx, args: { userId: Id<"users">; chargeId: string; credits: number }) =>
+  reserveCredits(ctx, { ...args, holdMs: SPEND_HOLD_MS, spend: true });
+
+/**
+ * Writes an item's cost to the ledger under its job's hold, charging nothing. False when the
+ * hold no longer takes items. It reads the hold and writes only the item's own row, so the
+ * items of one job never wait on each other.
+ */
+export const recordUnder = internalMutation({
+  args: { ...billingUsageFields, under: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { under, ...usage }) => {
+    const row = await holdFor(ctx, under);
+    if (!row?.spend || row.settling) {
+      // Every charge of an approved job goes through its hold's one confirm, so the job never costs more than was approved: an item that ends after that isn't charged.
+      console.error(`[billing] ${usage.chargeId} (${usage.credits} credits) ended after the hold ${under} it was approved under stopped taking items; not charged`);
+      return false;
+    }
+    // Recorded once, however often its action runs: on the ledger, and beside the hold for its sum.
+    if (await usageFor(ctx, usage.chargeId)) return true;
+    await insertUsage(ctx, usage);
+    await ctx.db.insert("billingHoldItems", { under, chargeId: usage.chargeId, credits: usage.credits });
+    return true;
+  },
+});
+
+/**
+ * Charges an item of a job: under the job's hold when it has one, by itself otherwise, as
+ * `settleCredits` does. False when it wasn't recorded under the hold: the hold had stopped
+ * taking items (see `recordUnder`), or the write failed, and is then scheduled, which Convex
+ * runs until it lands.
+ */
+export async function settleUnder(ctx: ActionCtx, { under, ...args }: SettleArgs & { under?: string }): Promise<boolean> {
+  if (under === undefined) return await settleCredits(ctx, args);
+  if (args.credits <= 0) return true;
+  const { usage, ...charge } = args;
+  const row = { ...charge, ...usage, under, createdAt: Date.now() };
+  try {
+    return await ctx.runMutation(internal.billing.charge.recordUnder, row);
+  } catch (error) {
+    console.error(`[billing] recording ${args.chargeId} under ${under} failed; scheduled`, error);
+    await ctx.scheduler.runAfter(0, internal.billing.charge.recordUnder, row);
+    return false;
+  }
+}
+
+/**
+ * Longer than an action runs: a confirm that ended without a word is taken over only after
+ * it can no longer be running, so two never confirm one hold at once.
+ */
+const SPENT_TAKEOVER_MS = 15 * 60_000;
+
+/**
+ * Starts, or carries on, settling an approved job's hold: from its first run nothing more is
+ * recorded under the hold, so what was spent under it is final, and its confirm is scheduled
+ * (`confirmSpent`). A mutation, so it runs once and is retried until it does, and the hold
+ * always has one thing scheduled (`release`): this, at its expiry or when its job has ended
+ * (`laterSpent`); then a takeover, in case the confirm ends without a word; then the confirm's
+ * next try, if it failed. `attempt` 0 is a new call, and does nothing once settling has begun.
+ */
+export const settleSpent = internalMutation({
+  args: { chargeId: v.string(), attempt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { chargeId, attempt }) => {
+    const row = await holdFor(ctx, chargeId);
+    if (!row?.spend || (row.settling && attempt === 0)) return null;
+    // Whatever was scheduled before, unless that is this run.
+    if ((await ctx.db.system.get(row.release))?.state.kind === "pending") await ctx.scheduler.cancel(row.release);
+    const release = await ctx.scheduler.runAfter(SPENT_TAKEOVER_MS, internal.billing.charge.settleSpent, { chargeId, attempt: attempt + 1 });
+    await ctx.db.patch("billingHolds", row._id, { settling: true, release });
+    await ctx.scheduler.runAfter(0, internal.billing.charge.confirmSpent, { userId: row.userId, chargeId, credits: row.credits, attempt });
+    return null;
+  },
+});
+
+/**
+ * Schedules a hold's settling in place of whatever it had scheduled: when its job has ended,
+ * and when a confirm failed, for its next try. A job that ends twice is settled once.
+ */
+export const laterSpent = internalMutation({
+  args: { chargeId: v.string(), attempt: v.number(), delay: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { chargeId, attempt, delay }) => {
+    const row = await holdFor(ctx, chargeId);
+    if (!row?.spend || (row.settling && attempt === 0)) return null;
+    if ((await ctx.db.system.get(row.release))?.state.kind === "pending") await ctx.scheduler.cancel(row.release);
+    const release = await ctx.scheduler.runAfter(delay, internal.billing.charge.settleSpent, { chargeId, attempt });
+    await ctx.db.patch("billingHolds", row._id, { release });
+    return null;
+  },
+});
+
+/**
+ * Forgets a job's hold once Autumn has confirmed it, and clears away the items kept beside
+ * it. `over` is what the items cost beyond the hold, which the person wasn't charged: the
+ * ledger takes it back off the job in a row of its own, so their charge history and the
+ * job's cost say what they paid.
+ */
+export const endSpent = internalMutation({
+  args: { chargeId: v.string(), over: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { chargeId, over }) => {
+    const row = await holdFor(ctx, chargeId);
+    if (!row) return null;
+    const item = over > 0 ? await ctx.db.query("billingHoldItems").withIndex("by_under", (q) => q.eq("under", chargeId)).first() : null;
+    const charged = item && (await usageFor(ctx, item.chargeId));
+    if (charged) {
+      console.error(`[billing] ${chargeId} spent ${row.credits + over} under a hold of ${row.credits}; the hold was charged`);
+      await insertUsage(ctx, { userId: row.userId, chargeId: `${chargeId}:over`, credits: -over, kind: charged.kind, description: "Not charged: over the credits approved", ...(charged.jobId ? { jobId: charged.jobId } : {}), createdAt: Date.now() });
+    }
+    if ((await ctx.db.system.get(row.release))?.state.kind === "pending") await ctx.scheduler.cancel(row.release);
+    await ctx.db.delete("billingHolds", row._id);
+    await ctx.scheduler.runAfter(0, internal.billing.charge.forgetSpent, { under: chargeId });
+    await requestRefresh(ctx, row.userId);
+    return null;
+  },
+});
+
+/** Clears away the items of a hold that has been settled, a batch a transaction. */
+export const forgetSpent = internalMutation({
+  args: { under: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { under }) => {
+    const items = await ctx.db.query("billingHoldItems").withIndex("by_under", (q) => q.eq("under", under)).take(SPENT_PAGE);
+    for (const item of items) await ctx.db.delete("billingHoldItems", item._id);
+    if (items.length === SPENT_PAGE) await ctx.scheduler.runAfter(0, internal.billing.charge.forgetSpent, { under });
+    return null;
+  },
+});
+
+/** What a page of the charges recorded under a hold comes to. */
+export const spentUnder = internalQuery({
+  args: { under: v.string(), cursor: v.union(v.string(), v.null()) },
+  returns: v.object({ credits: v.number(), cursor: v.string(), done: v.boolean() }),
+  handler: async (ctx, { under, cursor }) => {
+    const read = await ctx.db
+      .query("billingHoldItems")
+      .withIndex("by_under", (q) => q.eq("under", under))
+      .paginate({ cursor, numItems: SPENT_PAGE });
+    return { credits: read.page.reduce((sum, row) => sum + row.credits, 0), cursor: read.continueCursor, done: read.isDone };
+  },
+});
+
+/**
+ * Confirms an approved job's hold with what was spent under it, once, and forgets it. Never
+ * more than the hold: it is the most the person approved, so items that cost more than they
+ * were expected to are not charged past it. With nothing spent, the hold is given back. A
+ * confirm that fails is tried again, for as long as it takes: the hold keeps the person's
+ * credits until it is settled.
+ */
+export const confirmSpent = internalAction({
+  args: { userId: v.id("users"), chargeId: v.string(), credits: v.number(), attempt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { userId, chargeId, credits: held, attempt }) => {
+    try {
+      let spent = 0;
+      let cursor: string | null = null;
+      for (let done = false; !done; ) {
+        const read: { credits: number; cursor: string; done: boolean } = await ctx.runQuery(internal.billing.charge.spentUnder, { under: chargeId, cursor });
+        spent += read.credits;
+        ({ cursor, done } = read);
+      }
+      if (spent > 0) await confirm(ctx, { userId, chargeId, credits: Math.min(spent, held) }, held, false);
+      else await releaseHold(chargeId);
+      await ctx.runMutation(internal.billing.charge.endSpent, { chargeId, over: Math.max(0, spent - held) });
+    } catch (error) {
+      console.error(`[billing] confirming what was spent under ${chargeId} failed; trying again`, error);
+      // If this can't be scheduled either, the takeover `settleSpent` left is still coming.
+      await ctx.runMutation(internal.billing.charge.laterSpent, { chargeId, attempt: attempt + 1, delay: RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)] });
+    }
+    return null;
   },
 });

@@ -368,6 +368,74 @@ describe("extraction paper queue worker", () => {
     expect(fakeAutumn.locks.size).toBe(0);
   });
 
+  it("stops a job at the credits it was allowed, taking nothing more for the paper, and gives its hold back when nothing was spent under it", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema);
+    const { userId, jobId, paperId, queueId } = await seedAlreadyAnsweredPaper(t, { credits: 1_000, answered: false });
+    // Approved up to 3 credits from a chat, and held: one question holds 5 at most, so there's no room for this paper.
+    await t.mutation(internal.billing.charge.hold, { userId, chargeId: "extraction-job:1", credits: 3, expiresAt: Date.now() + 86_400_000, spend: true });
+    await fetch("https://autumn.test/v1/balances.check", { method: "POST", body: JSON.stringify({ customer_id: userId, feature_id: "credits", required_balance: 3, lock: { enabled: true, lock_id: "extraction-job:1", expires_at: Date.now() + 86_400_000 } }) });
+    await t.run((ctx) => ctx.db.patch(jobId, { spendHold: "extraction-job:1", spendCap: 3 }));
+
+    await t.action(internal.extraction.paperWorker.runPaperQueueItem, { queueId, expectedEpoch: 0, paperConcurrency: 1, questionConcurrency: 1, pdfEnabled: false });
+
+    const [job, paper, queueRow] = await t.run((ctx) => Promise.all([ctx.db.get(jobId), ctx.db.get(paperId), ctx.db.get(queueId)]));
+    expect(job).toMatchObject({ status: "creditsExhausted", error: { message: expect.stringContaining("3 credits it was allowed") } });
+    expect(queueRow?.status).toBe("parked");
+    expect(paper?.status).toBe("pending");
+    // The paper held nothing of its own: the one hold is the job's.
+    expect(fakeAutumn.calls.filter((call) => call.path === "balances.check")).toHaveLength(1);
+
+    // The job stopped, so its hold is settled: nothing was spent under it, and the person has their credits back.
+    await t.finishAllScheduledFunctions(vi.runOnlyPendingTimers.bind(vi));
+    expect(fakeAutumn.locks.size).toBe(0);
+    expect(fakeAutumn.balance(userId)).toBe(1_000);
+    expect(await t.run((ctx) => ctx.db.query("billingHolds").collect())).toEqual([]);
+    vi.useRealTimers();
+  });
+
+  it("settles an ended job's hold only once none of its papers is still being read, so each is recorded under it", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema);
+    const { userId, jobId, queueId } = await seedAlreadyAnsweredPaper(t, { credits: 1_000, answered: false });
+    await t.mutation(internal.billing.charge.hold, { userId, chargeId: "extraction-job:1", credits: 50, expiresAt: Date.now() + 86_400_000, spend: true });
+    await fetch("https://autumn.test/v1/balances.check", { method: "POST", body: JSON.stringify({ customer_id: userId, feature_id: "credits", required_balance: 50, lock: { enabled: true, lock_id: "extraction-job:1", expires_at: Date.now() + 86_400_000 } }) });
+    // Cancelled while its one paper is being read.
+    await t.run(async (ctx) => {
+      await ctx.db.patch(jobId, { spendHold: "extraction-job:1", spendCap: 50, status: "cancelled" });
+      await ctx.db.patch(queueId, { status: "running" });
+    });
+    const recorded = (n: number) => t.mutation(internal.billing.charge.recordUnder, { userId, chargeId: `paper:${n}`, credits: 4, kind: "extraction", description: "Extraction", under: "extraction-job:1", createdAt: Date.now() });
+
+    await t.mutation(internal.extraction.start.settleHold, { jobId, hold: "extraction-job:1", waited: 0 });
+    vi.advanceTimersByTime(60_000);
+    await t.finishInProgressScheduledFunctions();
+    // A minute on the paper is still being read: the hold still takes its cost.
+    expect(await recorded(1)).toBe(true);
+    expect(fakeAutumn.locks.size).toBe(1);
+
+    // The paper ends. The hold is settled a moment later, for what was recorded under it.
+    await t.run((ctx) => ctx.db.patch(queueId, { status: "completed" }));
+    await t.finishAllScheduledFunctions(vi.runOnlyPendingTimers.bind(vi));
+    expect(fakeAutumn.locks.size).toBe(0);
+    expect(fakeAutumn.balance(userId)).toBe(996);
+    expect(await recorded(2)).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it("stops a job whose hold no longer stands, as one that outlasted it, and doesn't charge its papers past what was approved", async () => {
+    const t = convexTest(schema);
+    const { userId, jobId, queueId } = await seedAlreadyAnsweredPaper(t, { credits: 1_000, answered: false });
+    // Its hold is gone, and it has the balance for the paper: it stops all the same, until the person carries it on.
+    await t.run((ctx) => ctx.db.patch(jobId, { spendHold: "extraction-job:1", spendCap: 3 }));
+
+    await t.action(internal.extraction.paperWorker.runPaperQueueItem, { queueId, expectedEpoch: 0, paperConcurrency: 1, questionConcurrency: 1, pdfEnabled: false });
+
+    expect(await t.run((ctx) => ctx.db.get(jobId))).toMatchObject({ status: "creditsExhausted", error: { message: expect.stringContaining("no longer held") } });
+    expect(fakeAutumn.balance(userId)).toBe(1_000);
+    expect(fakeAutumn.calls.filter((call) => call.path === "balances.check")).toHaveLength(0);
+  });
+
   it("marks a leased item cancelled when the job is already cancelled", async () => {
     const t = convexTest(schema);
     const { queueId } = await seedLeasedPaperQueueItem(t, "cancelled");

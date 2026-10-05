@@ -569,7 +569,9 @@
       "title": "Extraction en pause — crédits épuisés",
       "body": "La tâche s'est arrêtée en cours d'exécution car votre solde de crédits est épuisé. Rechargez pour reprendre, ou annulez les articles restants.",
       "resume": "Reprendre",
-      "cancelRemaining": "Annuler les articles restants"
+      "cancelRemaining": "Annuler les articles restants",
+      "limitTitle": "Extraction en pause : crédits autorisés atteints",
+      "limitBody": "Cette tâche a été lancée depuis une discussion avec au plus {credits} crédits. Reprenez-la pour continuer au-delà, ou annulez les articles restants."
     },
     "paused": {
       "title": "Extraction en pause",
@@ -3934,7 +3936,8 @@
         "saveTo": "Les inclus vont dans",
         "prune": "Les exclus en sortent",
         "rating": "Note",
-        "change": "Modifications"
+        "change": "Modifications",
+        "usePdfs": "Textes intégraux"
       }
     },
     "topUp": {

@@ -581,7 +581,9 @@
       "title": "Extraction paused — out of credits",
       "body": "The job stopped mid-run because your credit balance ran out. Top up to resume, or cancel the remaining papers.",
       "resume": "Resume",
-      "cancelRemaining": "Cancel remaining papers"
+      "cancelRemaining": "Cancel remaining papers",
+      "limitTitle": "Extraction paused at the credits you allowed",
+      "limitBody": "This job was started from a chat with up to {credits} credits. Resume to carry on past them, or cancel the remaining papers."
     },
     "paused": {
       "title": "Extraction paused",
@@ -3926,7 +3928,8 @@
         "saveTo": "Included go to",
         "prune": "Excluded leave it",
         "rating": "Rating",
-        "change": "Changes"
+        "change": "Changes",
+        "usePdfs": "Full texts"
       }
     },
     "topUp": {

@@ -42,6 +42,7 @@ import {
 } from "../stateMachine";
 import { validateResumeTransition } from "../../../lib/extraction/transitions";
 import { estimatePaperCredits } from "../../../lib/extraction/cost-estimate";
+import { approvalLeft } from "../../billing/spend";
 import {
   EXTRACTION_PAPER_CONCURRENCY,
   EXTRACTION_QUESTION_CONCURRENCY,
@@ -127,6 +128,7 @@ export const resumeExtraction = mutation({
       // Clear any stale creditsExhausted error so the UI doesn't show it
       // after resume.
       error: undefined,
+      ...(await approvalLeft(ctx, job)),
       updatedAt: Date.now(),
     });
 

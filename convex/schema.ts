@@ -556,10 +556,17 @@ export default defineSchema({
     chargeId: v.string(),
     credits: v.number(),
     release: v.id("_scheduled_functions"),
+    // An approved job's hold (convex/billing/charge.ts `holdSpend`): its items are recorded under it and charge nothing by themselves.
+    spend: v.optional(v.literal(true)),
+    // Set once such a hold is being confirmed with what was spent under it: nothing more is recorded under it.
+    settling: v.optional(v.literal(true)),
     // Set before a settle confirms the hold as it stands and charges the rest
     // separately, so a retry finishes that path instead of confirming again.
     rest: v.optional(v.literal(true)),
   }).index("by_charge", ["chargeId"]),
+  // What each item of an approved job cost, kept beside the job's hold until the hold is confirmed with their
+  // sum (convex/billing/charge.ts). Its own table, so the usage ledger needs no index for it.
+  billingHoldItems: defineTable({ under: v.string(), chargeId: v.string(), credits: v.number() }).index("by_under", ["under"]),
 
   // Retired billing tables: credits, creditTransactions, subscriptions,
   // billingCustomers, stripeEventLogs, and chatGenerationUsages. Only
