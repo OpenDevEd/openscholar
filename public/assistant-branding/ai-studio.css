@@ -1,0 +1,53 @@
+:root { --logo-a: var(--mark-a); --logo-b: var(--mark-b); --logo-c: var(--mark-c); --logo-ink: var(--eye); }
+.brand img { display: block; }
+html[data-theme="black"] .brand img { content: url(../icon-black.svg); }
+html[data-theme="blue"] .brand img { filter: brightness(0) invert(1); }
+.section-heading p { max-width: 62ch; }
+.playback .segments { padding: 3px; }
+.playback .segments button { height: 30px; padding: 0 12px; font-size: 12px; }
+.playback > button span { margin-left: 6px; }
+
+.variants { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.variant { display: flex; flex-direction: column; text-align: left; padding: 16px 18px 18px; border-radius: 14px; border-color: var(--soft-line); background: var(--surface); }
+.variant:hover { background: var(--surface); border-color: var(--line); }
+.variant[aria-pressed="true"] { border-color: var(--accent); background: var(--selected); }
+.variant-top { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.variant-check { visibility: hidden; color: var(--accent); font-size: 13px; }
+.variant[aria-pressed="true"] .variant-check { visibility: visible; }
+.variant-art { display: block; width: 168px; height: 168px; margin: 18px auto 22px; }
+.variant-small { display: flex; align-items: center; justify-content: center; gap: 22px; height: 48px; margin-bottom: 22px; }
+.variant-name { font-size: 17px; font-weight: 500; margin-bottom: 10px; }
+.variant-line { display: grid; grid-template-columns: 46px 1fr; font-size: 12px; line-height: 1.45; color: var(--muted); min-height: 36px; }
+.variant-line b { font-weight: 500; color: var(--ink); }
+.variant-phase { display: flex; gap: 4px; margin-top: 12px; }
+.variant-phase i { font-style: normal; font-size: 11px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); transition: background-color 160ms, color 160ms; }
+.variant[data-phase="load"] [data-phase="load"], .variant[data-phase="hover"] [data-phase="hover"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.product { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.sample { display: flex; flex-direction: column; justify-content: space-between; gap: 26px; min-height: 128px; padding: 16px 18px 22px; border: 1px solid var(--soft-line); border-radius: 14px; background: var(--raised); }
+.sample-name { font-size: 12px; color: var(--muted); }
+.os-row { display: flex; align-items: center; gap: 8px; }
+.slot { display: contents; }
+.os-button, .os-badge, .os-chip, .os-launcher { display: inline-flex; align-items: center; width: fit-content; white-space: nowrap; }
+.os-button { gap: 8px; height: 32px; padding: 0 12px; border-radius: 8px; font-size: 14px; font-weight: 500; }
+.os-ghost { height: 28px; padding: 0 10px; font-size: 12px; border-color: transparent; }
+.os-outline { background: var(--raised); }
+.os-badge { gap: 6px; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 500; background: var(--selected); }
+.os-chip { gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--line); }
+.os-input { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); }
+.os-input input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 14px; color: var(--ink); }
+.os-input input::placeholder { color: var(--muted); }
+.os-launcher { gap: 10px; height: 44px; padding: 0 14px 0 12px; border-radius: 12px; font-size: 14px; background: var(--raised); box-shadow: 0 6px 20px -8px rgb(23 37 84 / .25); }
+.os-launcher kbd { padding-left: 8px; }
+[data-colour="primary"] { color: var(--accent); }
+[data-colour="muted"] { color: var(--muted); }
+
+.size-samples { gap: 34px; padding: 4px 6px; }
+@media (max-width: 1100px) {
+  .variants { grid-template-columns: repeat(2, 1fr); }
+  .product { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 720px) {
+  .variants, .product { grid-template-columns: 1fr; }
+  .section-heading { flex-direction: column; align-items: flex-start; }
+}

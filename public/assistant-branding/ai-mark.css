@@ -1,0 +1,76 @@
+.ai-mark { --out: cubic-bezier(.22, 1, .36, 1); --swing: cubic-bezier(.65, 0, .35, 1); display: block; flex-shrink: 0; overflow: visible; }
+.ai-mark .part { transform-box: view-box; transform-origin: 64px 64px; }
+.ai-mark .glint { transform-box: fill-box; transform-origin: center; opacity: 0; }
+.ai-mark[data-tone="brand"] .ring-top, .ai-mark[data-tone="brand"] .glint { color: var(--logo-a, #60a5fa); }
+.ai-mark[data-tone="brand"] .ring-mid { color: var(--logo-c, #bfdbfe); }
+.ai-mark[data-tone="brand"] .ring-bottom { color: var(--logo-b, #2563eb); }
+.ai-mark[data-tone="brand"] .star { color: var(--logo-ink, #172554); }
+/* Text colour follows the control, with the layers stepped back. */
+.ai-mark[data-tone="text"] .ring-top { fill-opacity: .5; stroke-opacity: .5; }
+.ai-mark[data-tone="text"] .ring-mid { fill-opacity: .28; }
+.ai-mark[data-tone="text"] .ring-bottom { fill-opacity: .8; stroke-opacity: .8; }
+
+/* Gather: the layers swing into place, then the star turns in. Hover gives the star a quarter turn. */
+.ai-mark[data-variant="gather"][data-play="load"] .ring-top { animation: gather-top 760ms var(--out) both; }
+.ai-mark[data-variant="gather"][data-play="load"] .ring-mid { animation: gather-mid 760ms var(--out) 70ms both; }
+.ai-mark[data-variant="gather"][data-play="load"] .ring-bottom { animation: gather-bottom 760ms var(--out) 140ms both; }
+.ai-mark[data-variant="gather"][data-play="load"] .star { animation: gather-star 640ms var(--out) 260ms both; }
+.ai-mark[data-variant="gather"][data-play="hover"] .ring-top { animation: nudge-back 620ms var(--swing); }
+.ai-mark[data-variant="gather"][data-play="hover"] .ring-mid { animation: nudge-back 620ms var(--swing) 40ms; }
+.ai-mark[data-variant="gather"][data-play="hover"] .ring-bottom { animation: nudge-forward 620ms var(--swing) 80ms; }
+.ai-mark[data-variant="gather"][data-play="hover"] .star { animation: quarter-turn 640ms var(--out); }
+@keyframes gather-top { from { opacity: 0; transform: rotate(-80deg) scale(.85); } }
+@keyframes gather-mid { from { opacity: 0; transform: rotate(-60deg) scale(.85); } }
+@keyframes gather-bottom { from { opacity: 0; transform: rotate(-40deg) scale(.85); } }
+@keyframes gather-star { 0% { opacity: 0; transform: scale(0) rotate(-90deg); } 60% { opacity: 1; transform: scale(1.18) rotate(8deg); } }
+@keyframes nudge-back { 40% { transform: rotate(-12deg); } }
+@keyframes nudge-forward { 40% { transform: rotate(10deg); } }
+@keyframes quarter-turn { 45% { transform: scale(1.2) rotate(70deg); } 100% { transform: rotate(90deg); } }
+
+/* Twinkle: the layers rise in, the star twinkles and a small glint flashes. Hover repeats the twinkle. */
+.ai-mark[data-variant="twinkle"][data-play="load"] .ring-top { animation: rise 600ms var(--out) both; }
+.ai-mark[data-variant="twinkle"][data-play="load"] .ring-mid { animation: rise 600ms var(--out) 80ms both; }
+.ai-mark[data-variant="twinkle"][data-play="load"] .ring-bottom { animation: rise 600ms var(--out) 160ms both; }
+.ai-mark[data-variant="twinkle"][data-play="load"] .star { animation: twinkle-in 720ms var(--out) 200ms both; }
+.ai-mark[data-variant="twinkle"][data-play="load"] .glint { animation: glint 560ms var(--out) 640ms both; }
+.ai-mark[data-variant="twinkle"][data-play="hover"] .ring-top { animation: lift 560ms var(--swing); }
+.ai-mark[data-variant="twinkle"][data-play="hover"] .ring-bottom { animation: drop 560ms var(--swing); }
+.ai-mark[data-variant="twinkle"][data-play="hover"] .star { animation: twinkle 600ms var(--swing); }
+.ai-mark[data-variant="twinkle"][data-play="hover"] .glint { animation: glint 520ms var(--out) 140ms both; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px) scale(.96); } }
+@keyframes twinkle-in { 0% { opacity: 0; transform: scale(0); } 50% { opacity: 1; transform: scale(1.28); } 74% { transform: scale(.9); } }
+@keyframes twinkle { 30% { transform: scale(.8); } 65% { transform: scale(1.18); } }
+@keyframes glint { 0% { opacity: 0; transform: scale(0) rotate(-45deg); } 40% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0) rotate(45deg); } }
+@keyframes lift { 40% { transform: translateY(-3px); } }
+@keyframes drop { 40% { transform: translateY(3px); } }
+
+/* Focus: the layers close in like an aperture onto the star. Hover opens and refocuses. */
+.ai-mark[data-variant="focus"][data-play="load"] .ring-bottom { animation: aperture-in 820ms var(--out) both; }
+.ai-mark[data-variant="focus"][data-play="load"] .ring-mid { animation: aperture-in 820ms var(--out) 60ms both; }
+.ai-mark[data-variant="focus"][data-play="load"] .ring-top { animation: aperture-in 820ms var(--out) 120ms both; }
+.ai-mark[data-variant="focus"][data-play="load"] .star { animation: focus-in 520ms var(--out) 380ms both; }
+.ai-mark[data-variant="focus"][data-play="hover"] .ring-top { animation: aperture 680ms var(--out); }
+.ai-mark[data-variant="focus"][data-play="hover"] .ring-mid { animation: aperture 680ms var(--out) 40ms; }
+.ai-mark[data-variant="focus"][data-play="hover"] .ring-bottom { animation: aperture 680ms var(--out) 80ms; }
+.ai-mark[data-variant="focus"][data-play="hover"] .star { animation: refocus 680ms var(--out); }
+@keyframes aperture-in { 0% { opacity: 0; transform: scale(1.45); } 70% { opacity: 1; transform: scale(.96); } }
+@keyframes focus-in { from { opacity: 0; transform: scale(.4); } }
+@keyframes aperture { 35% { transform: scale(1.1); } 70% { transform: scale(.98); } }
+@keyframes refocus { 35% { transform: scale(.78); } 100% { transform: rotate(90deg); } }
+
+/* Spin: the layers spin in at different speeds. Hover sends them round once against the star. */
+.ai-mark[data-variant="spin"][data-play="load"] .ring-top { animation: spin-in-top 1000ms cubic-bezier(.16, 1, .3, 1) both; }
+.ai-mark[data-variant="spin"][data-play="load"] .ring-mid { animation: spin-in-mid 1000ms cubic-bezier(.16, 1, .3, 1) both; }
+.ai-mark[data-variant="spin"][data-play="load"] .ring-bottom { animation: spin-in-bottom 1000ms cubic-bezier(.16, 1, .3, 1) both; }
+.ai-mark[data-variant="spin"][data-play="load"] .star { animation: gather-star 560ms var(--out) 420ms both; }
+.ai-mark[data-variant="spin"][data-play="hover"] .ring-top { animation: full-turn 820ms var(--swing); }
+.ai-mark[data-variant="spin"][data-play="hover"] .ring-mid { animation: full-turn 820ms var(--swing) 50ms; }
+.ai-mark[data-variant="spin"][data-play="hover"] .ring-bottom { animation: full-turn 820ms var(--swing) 100ms; }
+.ai-mark[data-variant="spin"][data-play="hover"] .star { animation: counter-turn 820ms var(--swing); }
+@keyframes spin-in-top { from { opacity: 0; transform: rotate(-300deg) scale(.5); } }
+@keyframes spin-in-mid { from { opacity: 0; transform: rotate(-240deg) scale(.5); } }
+@keyframes spin-in-bottom { from { opacity: 0; transform: rotate(-180deg) scale(.5); } }
+@keyframes full-turn { to { transform: rotate(360deg); } }
+@keyframes counter-turn { 50% { transform: scale(1.15) rotate(-45deg); } 100% { transform: rotate(-90deg); } }
+
+@media (prefers-reduced-motion: reduce) { .ai-mark .part { animation: none !important; } }

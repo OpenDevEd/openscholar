@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en" data-theme="white">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>AI mark · OpenScholar</title>
+  <link rel="icon" href="../icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="studio.css">
+  <link rel="stylesheet" href="ai-mark.css">
+  <link rel="stylesheet" href="ai-studio.css">
+</head>
+<body>
+  <header class="masthead">
+    <a class="brand" href="#top"><img src="../icon.svg" width="33" height="33" alt=""><span>OpenScholar</span></a>
+    <span class="project-label">AI mark motion studies</span>
+    <a class="quiet-link" href="index.html">Orbit assistant <span aria-hidden="true">↗</span></a>
+  </header>
+  <main id="top">
+    <section class="intro">
+      <div><h1>A mark for AI, <span>not sparkles.</span></h1><p>The Lens star, for every feature that uses AI. It plays once when it appears and again on hover.</p></div>
+      <fieldset class="theme-picker"><legend>Background</legend><div class="segments" id="themes">
+        <button data-theme-choice="white" aria-pressed="true">White</button>
+        <button data-theme-choice="navy" aria-pressed="false">Navy</button>
+        <button data-theme-choice="blue" aria-pressed="false">Blue</button>
+        <button data-theme-choice="black" aria-pressed="false">Black</button>
+      </div></fieldset>
+    </section>
+
+    <section class="section variants-section" aria-labelledby="variants-title">
+      <div class="section-heading"><div><h2 id="variants-title">Four ways in</h2><p>Each one plays its load, then its hover, on repeat. Hover a mark to play its hover yourself. Pick one to try it in the product below.</p></div>
+        <div class="playback"><button id="autoplay" aria-pressed="true">Pause the loop</button></div></div>
+      <div class="variants" id="variants"></div>
+    </section>
+
+    <section class="section product-section" aria-labelledby="product-title">
+      <div class="section-heading"><div><h2 id="product-title">Where Sparkles is today</h2><p>Real controls at their real sizes. Hover a control to play the mark inside it.</p></div>
+        <div class="playback">
+          <div class="segments" id="tones"><button data-tone-choice="brand" aria-pressed="true">Brand colours</button><button data-tone-choice="text" aria-pressed="false">Text colour</button></div>
+          <button id="replay-load">Replay load <span aria-hidden="true">↻</span></button>
+        </div></div>
+      <div class="product" id="product">
+        <div class="sample"><span class="sample-name">Screening setup</span>
+          <button class="os-button os-ghost ai-trigger" data-icon="14" data-colour="primary"><span class="slot"></span>Generate</button></div>
+        <div class="sample"><span class="sample-name">Extraction plan gate</span>
+          <span class="os-badge ai-trigger" data-icon="14"><span class="slot"></span>Available on Pro</span></div>
+        <div class="sample"><span class="sample-name">Settings</span>
+          <span class="os-row"><span class="os-chip ai-trigger" data-icon="14"><span class="slot"></span>Pro plan</span>
+          <button class="os-button os-outline ai-trigger" data-icon="16"><span class="slot"></span>Upgrade plan</button></span></div>
+        <div class="sample"><span class="sample-name">Library home prompt</span>
+          <label class="os-input ai-trigger" data-icon="16" data-colour="muted"><span class="slot"></span><input placeholder="Describe what the library covers"></label></div>
+        <div class="sample"><span class="sample-name">Results translation</span>
+          <button class="os-button os-outline ai-trigger" data-icon="14" data-colour="primary"><span class="slot"></span>Translated to French</button></div>
+        <div class="sample"><span class="sample-name">Assistant launcher</span>
+          <button class="os-launcher ai-trigger" data-icon="20"><span class="slot"></span>Ask OpenScholar<kbd>⌘ J</kbd></button></div>
+      </div>
+    </section>
+
+    <section class="section specimen-section">
+      <div class="section-heading"><h2>Sizes</h2><span>The compact drawing takes over below 28px</span></div>
+      <div class="size-samples" id="size-samples"></div>
+    </section>
+  </main>
+  <footer><span>AI mark / OpenScholar</span><span>Motion study 03 / October 2026</span><a href="Ubuntu-LICENSE.txt">Ubuntu font licence</a></footer>
+  <script src="ai-mark.js"></script>
+  <script src="ai-studio.js"></script>
+</body>
+</html>
