@@ -450,6 +450,9 @@ function Chat({
     making.current ??= create({ ...(title ? { title } : {}), ...(model ? { modelId: model._id, ...(model.effort ? { effort: model.effort } : {}) } : {}) })
       .then((id) => {
         drafts.adopt(id);
+        // The first message's bubble belongs to the chat before the panel shows it, so the bubble is never
+        // left out of a render, which would drop it for a frame and mount it again with its entrance.
+        setFirst((now) => (now && now.threadId === null ? { ...now, threadId: id } : now));
         setBorn(id);
         setThreadId(id);
         return id;
@@ -479,7 +482,6 @@ function Chat({
       const before = mine;
       mine = { threadId: id };
       onSending((now) => (now === before ? mine : now));
-      if (!from) setFirst({ threadId: id, text });
       // Where it's sent from goes with it, so "this" and "here" mean the page the person is on.
       await sendMessage({ threadId: id, text, view: window.location.pathname + window.location.search });
       return id;
@@ -533,7 +535,8 @@ function Chat({
 
   return (
     <>
-      <Header title={threadId ? (thread?.title ?? "") : t("newChat")} onHistory={onHistory} onShare={share} onSpending={spend} onRestart={restart} onFold={onFold} />
+      {/* A chat that has just been made is named by its first message until its record arrives, as the server names it, so "New chat" changes once. */}
+      <Header title={threadId ? (thread?.title ?? (threadId === born && first?.threadId === threadId ? titleFrom(first.text) : "")) : t("newChat")} onHistory={onHistory} onShare={share} onSpending={spend} onRestart={restart} onFold={onFold} />
       <Thread
         // A different chat starts at its own newest message. A new chat that has just become a real one is the same thread.
         key={threadId === null || threadId === born ? NEW : threadId}
