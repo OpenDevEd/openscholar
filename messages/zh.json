@@ -569,7 +569,9 @@
       "title": "提取已暂停 — 积分已用尽",
       "body": "由于积分余额耗尽，作业在运行中已停止。请充值以继续，或取消剩余的论文。",
       "resume": "继续",
-      "cancelRemaining": "取消剩余论文"
+      "cancelRemaining": "取消剩余论文",
+      "limitTitle": "提取已在您允许的积分处暂停",
+      "limitBody": "此作业从对话中启动，最多使用 {credits} 积分。继续即可超出该额度运行，或取消剩余的论文。"
     },
     "paused": {
       "title": "提取已暂停",
@@ -3932,7 +3934,8 @@
         "last": "到第几篇",
         "question": "问题",
         "saveTo": "纳入的论文存入",
-        "prune": "排除的论文移出"
+        "prune": "排除的论文移出",
+        "usePdfs": "全文"
       }
     },
     "topUp": {

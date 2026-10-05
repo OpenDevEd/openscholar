@@ -12,7 +12,7 @@ import {
 import { chunk } from "./batching";
 import { getProcessableFlags } from "./content";
 import { resolveOpenRouterModel } from "../chat/provider";
-import { reserveCredits, settleCredits, tokenDetails } from "../billing/charge";
+import { reserveCredits, settleUnder, tokenDetails } from "../billing/charge";
 import { aggregateUsage } from "../../lib/ai/core/cost";
 import type { Usage } from "../../lib/ai/core/types";
 import { estimatePaperCredits } from "../../lib/extraction/cost-estimate";
@@ -320,12 +320,18 @@ async function runQuestionBatches(
   return { stop: null, credits, usages };
 }
 
-type PaperReservation = { chargeId: string; reserved: number; description: string };
+type PaperReservation = { chargeId: string; reserved: number; description: string; under?: string };
 
 /**
  * Holds the paper's worst-case cost before any work starts. When the balance
  * can't cover it, the job pauses as credits exhausted and this row parks
  * until the user tops up and resumes.
+ *
+ * A job the person approved up to a figure (#328) holds that figure once, and its papers
+ * are charged under that hold: a paper holds nothing more. It is read only while what the
+ * job has spent, and what the papers being read may cost, leave room for it under the
+ * figure. When they don't, the job stops there, as one out of credits does. Carried on
+ * after that, or after its hold was settled, its papers hold their own again.
  */
 async function reservePaperCredits(
   ctx: ActionCtx,
@@ -352,7 +358,14 @@ async function reservePaperCredits(
     reserved,
     description: `Extraction (${questionCount} ${questionCount === 1 ? "question" : "questions"})`,
   };
-  if (
+  const spend = job.spendHold ? await ctx.runQuery(internal.extraction.queries.internal.spendOf, { jobId: job._id, hold: job.spendHold }) : null;
+  let message = `Need about ${reserved} credits to extract the next paper`;
+  // The figure stands whether or not the hold still does: a job that outlasts its hold keeps to it. This paper is one of those being read.
+  if (spend && job.spendCap !== undefined && spend.spent + spend.running * reserved > job.spendCap) {
+    message = `This extraction reached the ${job.spendCap.toLocaleString("en")} credits it was allowed. Resume it to carry on past them.`;
+  } else if (spend?.held) {
+    return { ...reservation, under: job.spendHold };
+  } else if (
     await reserveCredits(ctx, {
       userId: job.userId,
       chargeId: reservation.chargeId,
@@ -367,7 +380,7 @@ async function reservePaperCredits(
     status: "creditsExhausted",
     error: {
       code: "insufficient_credits",
-      message: `Need about ${reserved} credits to extract the next paper`,
+      message,
       at: Date.now(),
     },
   });
@@ -382,11 +395,12 @@ async function settlePaperCredits(
   credits: number,
   usage: Usage,
 ): Promise<void> {
-  await settleCredits(ctx, {
+  await settleUnder(ctx, {
     userId: job.userId,
     chargeId: reservation.chargeId,
     credits,
     usage: { kind: "extraction", description: reservation.description, jobId: job._id, ...tokenDetails(usage) },
+    ...(reservation.under ? { under: reservation.under } : {}),
   });
 }
 

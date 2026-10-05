@@ -54,8 +54,8 @@ async function usageFor(t: ReturnType<typeof convexTest>, chargeId: string) {
 }
 
 /** Holds credits as reserveCredits does: the hold with its scheduled release, then Autumn's lock. */
-async function hold(t: ReturnType<typeof convexTest>, userId: Id<"users">, chargeId: string, credits: number) {
-  await t.mutation(internal.billing.charge.hold, { userId, chargeId, credits, expiresAt: Date.now() + 60_000 });
+async function hold(t: ReturnType<typeof convexTest>, userId: Id<"users">, chargeId: string, credits: number, spend?: true) {
+  await t.mutation(internal.billing.charge.hold, { userId, chargeId, credits, expiresAt: Date.now() + 60_000, ...(spend ? { spend } : {}) });
   const response = await fetch("https://autumn.test/v1/balances.check", {
     method: "POST",
     body: JSON.stringify({
@@ -348,6 +348,77 @@ describe("holding and charging", () => {
     const account = await t.withIdentity({ subject: user!.clerkId }).query(api.billing.accounts.mine, {});
 
     expect(account).toMatchObject({ balance: 1_000 });
+  });
+});
+
+describe("an approved job's hold", () => {
+  beforeEach(() => fakeAutumn.reset());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  const calls = (path: string) => fakeAutumn.calls.filter((call) => call.path === path);
+  const item = (userId: Id<"users">, n: number, credits: number) => ({ userId, chargeId: `paper:${n}`, credits, kind: "extraction" as const, description: "Extraction", under: "job:1", createdAt: Date.now() });
+  const settle = (t: ReturnType<typeof convexTest>) => t.action(internal.billing.charge.settleSpent, { chargeId: "job:1", attempt: 0 });
+
+  it("charges nothing for its items, then confirms once with their sum, and an item after that pays its own way", async () => {
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 1_000);
+    await hold(t, userId, "job:1", 200, true);
+
+    // Each item is on the ledger, and Autumn hears of none of them.
+    expect(await Promise.all([40, 50, 30].map((credits, n) => t.mutation(internal.billing.charge.recordUnder, item(userId, n, credits))))).toEqual([true, true, true]);
+    // One recorded twice, as a retried action would, is one charge.
+    await t.mutation(internal.billing.charge.recordUnder, item(userId, 0, 40));
+    expect(calls("balances.track")).toHaveLength(0);
+    expect(calls("balances.finalize")).toHaveLength(0);
+    expect((await t.run((ctx) => ctx.db.query("billingUsage").collect())).map((row) => row.credits)).toEqual([40, 50, 30]);
+
+    await settle(t);
+    expect(calls("balances.finalize").map((call) => call.body)).toEqual([{ lock_id: "job:1", action: "confirm", override_value: 120 }]);
+    expect(fakeAutumn.balance(userId)).toBe(880);
+    expect(fakeAutumn.locks.size).toBe(0);
+    expect(await t.run((ctx) => ctx.db.query("billingHolds").collect())).toEqual([]);
+
+    // The hold is settled: a paper that finishes late isn't recorded under it, so its caller charges it by itself.
+    expect(await t.mutation(internal.billing.charge.recordUnder, item(userId, 3, 25))).toBe(false);
+    // Settling again finds nothing to do.
+    await settle(t);
+    expect(calls("balances.finalize")).toHaveLength(1);
+    expect(fakeAutumn.balance(userId)).toBe(880);
+  });
+
+  it("is given back whole when nothing was spent, and is settled with what was spent if it's still standing at its expiry", async () => {
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    vi.useFakeTimers();
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 1_000);
+    await hold(t, userId, "job:1", 200, true);
+    await settle(t);
+    expect(fakeAutumn.balance(userId)).toBe(1_000);
+    expect(fakeAutumn.locks.size).toBe(0);
+
+    // A job that never ends: its hold isn't released with its items uncharged.
+    await hold(t, userId, "job:1", 200, true);
+    await t.mutation(internal.billing.charge.recordUnder, item(userId, 0, 70));
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(fakeAutumn.balance(userId)).toBe(930);
+    expect(fakeAutumn.locks.size).toBe(0);
+  });
+
+  it("stops taking items the moment its settling begins, so the sum it confirms is final", async () => {
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 1_000);
+    await hold(t, userId, "job:1", 200, true);
+    await t.mutation(internal.billing.charge.recordUnder, item(userId, 0, 60));
+    // The settle began and its action went no further yet.
+    await t.mutation(internal.billing.charge.beginSpent, { chargeId: "job:1" });
+    expect(await t.mutation(internal.billing.charge.recordUnder, item(userId, 1, 90))).toBe(false);
+    await settle(t);
+    expect(fakeAutumn.balance(userId)).toBe(940);
   });
 });
 

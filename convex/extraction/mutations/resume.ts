@@ -127,6 +127,8 @@ export const resumeExtraction = mutation({
       // Clear any stale creditsExhausted error so the UI doesn't show it
       // after resume.
       error: undefined,
+      // A job that stopped at the credits it was allowed carries on without that figure, as one started from the page: its hold was settled when it stopped.
+      ...(job.status === "creditsExhausted" && job.spendCap !== undefined ? { spendHold: undefined, spendCap: undefined } : {}),
       updatedAt: Date.now(),
     });
 

@@ -287,6 +287,13 @@ export const extractionJobFields = {
   updatedAt: v.number(),
   completedAt: v.optional(v.number()),
   error: v.optional(structuredErrorValidator),
+  /**
+   * On a job the person approved up to a figure (#328): the hold that figure is kept in
+   * (convex/billing/charge.ts), under which its papers are charged, and the figure itself,
+   * past which it reads no more papers. Carried on by the person, it has no figure any more.
+   */
+  spendHold: v.optional(v.string()),
+  spendCap: v.optional(v.number()),
 };
 
 export const extractionJobValidator = v.object({

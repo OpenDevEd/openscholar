@@ -150,6 +150,21 @@ describe("resumeExtraction — happy paths", () => {
     expect(job?.runEpoch).toBe(2);
   });
 
+  it("carries a job that stopped at the credits it was allowed on without that figure, so it isn't stopped by it again", async () => {
+    const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
+    const userId = await seedUserAndCredits(t, { paid: 100_000 });
+    const jobId = await seedJob(t, userId, { jobStatus: "creditsExhausted", usePdfs: false, questions: 5 });
+    await t.run((ctx) => ctx.db.patch(jobId, { spendHold: "extraction-job:1", spendCap: 50 }));
+
+    await t.withIdentity(OWNER_IDENTITY).mutation(api.extraction.mutations.resume.resumeExtraction, { jobId });
+
+    const job = await t.run((ctx) => ctx.db.get(jobId));
+    expect(job).toMatchObject({ status: "extracting" });
+    expect(job?.spendCap).toBeUndefined();
+    expect(job?.spendHold).toBeUndefined();
+  });
+
   it("resumes 'creditsExhausted' to 'extracting' when balance covers the estimate", async () => {
     const t = convexTest(schema);
     setupExtractionPaperWorkpool(t);

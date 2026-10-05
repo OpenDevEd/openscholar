@@ -17,6 +17,8 @@ export interface CreditsExhaustedBannerProps {
    * will replace this.
    */
   minCreditsToResume?: number;
+  /** Set when the job stopped at the credits it was allowed from a chat: that figure. */
+  allowed?: number;
   onResume?: () => void;
   onCancelRemaining?: () => void;
 }

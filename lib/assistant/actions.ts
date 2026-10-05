@@ -91,6 +91,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "assistant/sharing:listAccess": { kind: "chat", words: "chatAccess" },
   "assistant/sharing:candidates": { kind: "chat", words: "sharePeople" },
   "extraction/mutations:startJob": { kind: "extraction", words: "startExtraction" },
+  "extraction/start:extract": { kind: "extraction", words: "startExtraction" },
   "extraction/mutations:duplicateJob": { kind: "extraction", words: "copyExtraction" },
   "billing/usage:countCharges": { kind: "other", words: "credits" },
   "wallet/queries:listKeys": { kind: "other", words: "keys" },

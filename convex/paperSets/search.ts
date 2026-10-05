@@ -37,14 +37,20 @@ export const savedSearchValidator = v.object({
 });
 export type SavedSearchRequest = Infer<typeof savedSearchValidator>;
 
+/** A search as its results page reads it: its settings, and the query and OpenAlex request a chat or an extraction keeps of it. Null filters for a query OpenAlex can't read. */
+export async function filtersOf(ctx: QueryCtx, userId: Id<"users">, saved: SavedSearch) {
+  const params = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(restoreSearch({ ...saved, screeningResponses: [] })), q: saved.query };
+  // The account's shortcuts this query uses, as the results page expands them.
+  const expansions = await shortcutExpansions(ctx, userId, shortcutNames(saved.query));
+  return { params, filters: paramsToBucketSearchFilters(params, { expand: (query) => expandShortcuts(query, expansions) }) };
+}
+
 /** The request a search's results page makes for it, and its rating filter: a saved search's, or one that's only being tried. */
 export async function requestOf(ctx: QueryCtx, userId: Id<"users">, saved: SavedSearch, revision: number): Promise<SavedSearchRequest> {
   const user = await ctx.db.get("users", userId);
   if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
-  const params = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(restoreSearch({ ...saved, screeningResponses: [] })), q: saved.query };
-  // The account's shortcuts this query uses, as the results page expands them.
-  const expansions = await shortcutExpansions(ctx, userId, shortcutNames(saved.query));
-  const request = paramsToBucketSearchFilters(params, { expand: (query) => expandShortcuts(query, expansions) })?.openAlexQuery ?? null;
+  const { params, filters } = await filtersOf(ctx, userId, saved);
+  const request = filters?.openAlexQuery ?? null;
   const ratingRange: [number, number] = [params.rmin, params.rmax];
   return { clerkId: user.clerkId, request, ratingRange: isRatingFilterActive(ratingRange, params.rated) ? ratingRange : null, revision };
 }
