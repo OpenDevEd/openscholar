@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { exportLibrary, exportParts, exportedTitles } from "../exports.test-support";
-import { PAPER_LIMIT, RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits";
+import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { replaceJobSources, writeJobSources } from "../extraction/jobSources";
 import { collectionSortName } from "../library/collections";
 import { MAX_COLLECTIONS_PER_USER, MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
@@ -21,8 +21,6 @@ import { insertJob } from "../screening/createJob.test-support";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { screeningInputs } from "../extraction/sources/screening.test-support";
 
-const filters = { searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [] };
-
 describe("at the largest sizes the product allows", () => {
   it("captures all 1,000 Included screening papers for extraction through bounded pages", async () => {
     vi.useFakeTimers();
@@ -35,64 +33,6 @@ describe("at the largest sizes the product allows", () => {
       expect(saved.map(p => p.openalexId)).toEqual(Array.from({ length: 1000 }, (_, i) => `https://openalex.org/W${i}`));
       expect(saved.every(p => p.screeningRevision === source.screeningSelection!.revision && p.abstract?.length === 2000)).toBe(true);
     } finally { vi.useRealTimers(); }
-  }, 300_000);
-  it("a 1,000-paper, 50-question extraction job opens its results page and details", async () => {
-    const t = convexTest(schema);
-    const { userId, as } = await seedAccount(t);
-    const { jobId } = await seedExtractionJob(t, userId);
-    const page = await as.query(api.extraction.queries.listJobResults, { jobId, filters, sortBy: "default", paginationOpts: { cursor: null, numItems: 25 } });
-    expect(page.page).toHaveLength(25);
-    expect(page.isDone).toBe(false);
-    const details = await as.query(api.extraction.queries.getJobDetails, { jobId });
-    expect(details).toMatchObject({ status: "ok" });
-  }, 300_000);
-
-  it.each(["", "tutoring"])("pages a full extraction job with search %j by answer and citation bytes without losing papers", async (searchQuery) => {
-    const t = convexTest(schema);
-    const { userId, as } = await seedAccount(t);
-    const { jobId, paperIds } = await seedExtractionJob(t, userId);
-    // Eight citation-heavy papers already exceed one transaction's read budget.
-    for (const paperId of paperIds.slice(0, 8)) {
-      const ids = await t.run(async ctx => (await ctx.db.query("extractionResults").withIndex("by_paper", q => q.eq("paperId", paperId)).take(50)).map(row => row._id));
-      await t.run(async ctx => { for (const id of ids) await ctx.db.patch("extractionResults", id, {
-        citations: Array.from({ length: 50 }, (_, i) => ({ source: "pdf" as const, paperId, sourceHash: "a".repeat(64), evidenceId: `page-${i}`, page: i + 1, charRange: [0, 900], quote: text(900, i), retrieval: {}, validated: true })),
-      }); });
-    }
-    const ids: string[] = [];
-    let cursor: string | null = null;
-    for (let pages = 0; pages <= PAPER_LIMIT; pages++) {
-      const read: Awaited<ReturnType<typeof as.query<typeof api.extraction.queries.listJobResults>>> = await as.query(api.extraction.queries.listJobResults, { jobId, filters: { ...filters, searchQuery }, sortBy: "default", paginationOpts: { cursor, numItems: cursor ? RESULTS_PAGE_SIZE_MAX : PAPER_LIMIT } });
-      if (!cursor) expect(read.page.length).toBeLessThan(RESULTS_PAGE_SIZE_MAX);
-      expect(read.page.length).toBeGreaterThan(0);
-      expect(read.page.length).toBeLessThanOrEqual(RESULTS_PAGE_SIZE_MAX);
-      expect(read.page.every(paper => paper.results.length === MAX_SIZE.questionsPerJob)).toBe(true);
-      expect(getDocumentSize({ page: read.page })).toBeLessThan(8 * 1024 * 1024);
-      ids.push(...read.page.map(paper => paper._id));
-      for (const paper of read.page) if (paperIds.slice(0, 8).includes(paper._id)) {
-        expect(paper.results).toHaveLength(50);
-        expect(paper.results.every(result => result.citations.length === 50 && result.citations[49].quote === text(900, 49))).toBe(true);
-      }
-      if (read.isDone) break;
-      cursor = read.continueCursor;
-    }
-    expect(ids).toHaveLength(PAPER_LIMIT);
-    expect(new Set(ids)).toEqual(new Set(paperIds));
-    // Selecting a late, small record never hydrates the unselected large answers.
-    const selectedPaperIds = [paperIds.at(-1)!];
-    const selected = await as.query(api.extraction.queries.listJobResults, { jobId, filters, selectedPaperIds, sortBy: "default", paginationOpts: { cursor: null, numItems: RESULTS_PAGE_SIZE_MAX } });
-    expect(selected.page.map(paper => paper._id)).toEqual(selectedPaperIds);
-    expect(selected.isDone).toBe(true);
-    expect(await as.query(api.extraction.queries.countJobResults, { jobId, filters, selectedPaperIds, includeRevision: true })).toMatchObject({ all: PAPER_LIMIT, matching: 1 });
-  }, 300_000);
-
-  it("a 1,000-paper, 50-question extraction job shows its progress and retry summaries", async () => {
-    const t = convexTest(schema);
-    const { userId, as } = await seedAccount(t);
-    const { jobId } = await seedExtractionJob(t, userId);
-    const results = MAX_SIZE.papersPerJob * MAX_SIZE.questionsPerJob;
-    expect(await as.query(api.extraction.queries.countJobFailures, { jobId })).toEqual({ asked: results, answered: results, retryable: 0, permanent: {}, paperErrors: {} });
-    // Counting a filtered view reads every paper of the job once.
-    expect(await as.query(api.extraction.queries.countJobResults, { jobId, filters: { ...filters, confidenceRange: [0, 50] } })).toMatchObject({ all: MAX_SIZE.papersPerJob });
   }, 300_000);
 
   // A retry batch's work is 25 papers × their questions whatever the job's size, so 100

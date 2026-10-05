@@ -2,7 +2,7 @@ import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
@@ -285,5 +285,82 @@ describe("extraction full flow with mocked provider I/O", () => {
       STARTING_CREDITS - EXPECTED_ACTUAL_CREDITS,
     );
     expect(fakeAutumn.locks.size).toBe(0);
+  });
+  it("holds the figure an extraction started from a chat was approved up to, charges its papers under it, and confirms it once with their sum", async () => {
+    const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
+    const { userId } = await seedUserFlagsAndCredits(t);
+    const abstract = "This abstract is intentionally long enough to be processed without a PDF. It states the intervention improved retention and gives the mocked extraction flow source material.";
+    // Two saved papers in a collection: the set the assistant names.
+    const collectionId = await t.run(async (ctx) => {
+      const now = Date.now();
+      const id = await ctx.db.insert("collections", { userId, name: "Trials", itemCount: 2, createdAt: now, updatedAt: now });
+      for (const n of [1, 2]) {
+        const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: ["Fixture Author"], abstract, searchableText: `Trial ${n}`, savedAt: now + n, updatedAt: now });
+        await ctx.db.insert("libraryItemCollections", { userId, collectionId: id, libraryItemId, assignedAt: now + n });
+      }
+      return id;
+    });
+    const calls = (path: string) => fakeAutumn.calls.filter((call) => call.path === path);
+
+    const asked = {
+      userId,
+      approved: true,
+      name: "Trials, from a chat",
+      set: { kind: "collection" as const, collectionId },
+      first: 1,
+      last: 2,
+      questions: [{ question: "What was the main finding?", type: "string" as const }, { question: "What sample size was reported?", type: "string" as const }],
+    };
+    // Full texts are turned off here: asked for, the job isn't started at their price to read abstracts, and nothing is left held.
+    await expect(t.action(internal.extraction.start.extractForAssistant, { ...asked, approvedCredits: 204, usePdfs: true })).rejects.toThrow(/turned off/);
+    // The hold it took is given back by a function of its own, which tries again if Autumn doesn't answer.
+    vi.advanceTimersByTime(1_000);
+    await t.finishInProgressScheduledFunctions();
+    expect(fakeAutumn.locks.size).toBe(0);
+
+    // Autumn doesn't answer the hold: nothing starts, and the hold is settled a few minutes on, whether or not Autumn took it.
+    fakeAutumn.failNext = "balances.check";
+    await expect(t.action(internal.extraction.start.extractForAssistant, { ...asked, approvedCredits: 20 })).rejects.toThrow();
+    expect(await t.run((ctx) => ctx.db.query("extractionJobs").collect())).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.query("billingHolds").collect())).toHaveLength(1);
+    for (let second = 0; second < 400; second += 1) {
+      vi.advanceTimersByTime(1_000);
+      await t.finishInProgressScheduledFunctions();
+    }
+    expect(await t.run((ctx) => ctx.db.query("billingHolds").collect())).toEqual([]);
+    expect(fakeAutumn.locks.size).toBe(0);
+    fakeAutumn.calls.length = 0;
+
+    // As the assistant runs it once the person has said yes to "up to 20 credits": two papers, two questions, five a question at most.
+    const { jobId } = await t.action(internal.extraction.start.extractForAssistant, { ...asked, approvedCredits: 20 });
+    // The figure is held, and nothing else: the job's papers hold nothing of their own.
+    expect(calls("balances.check").map((call) => (call.body as { required_balance: number }).required_balance)).toEqual([20]);
+
+    // The job runs over the next minutes. Time isn't jumped to the end of the hold, a day away: left standing that long, it settles itself.
+    for (let second = 0; second < 600; second += 1) {
+      vi.advanceTimersByTime(1_000);
+      await t.finishInProgressScheduledFunctions();
+    }
+
+    const state = await t.run(async (ctx) => ({
+      job: await ctx.db.get("extractionJobs", jobId),
+      papers: await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect(),
+      usage: await ctx.db.query("billingUsage").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect(),
+      holds: await ctx.db.query("billingHolds").collect(),
+      items: await ctx.db.query("billingHoldItems").collect(),
+    }));
+    expect(state.job).toMatchObject({ status: "completed", spendCap: 20 });
+    expect(state.papers.map((paper) => paper.status)).toEqual(["completed", "completed"]);
+    // Each paper is on the ledger. Autumn was charged once, for both, when the job ended.
+    expect(state.usage.map((row) => row.credits)).toEqual([EXPECTED_ACTUAL_CREDITS, EXPECTED_ACTUAL_CREDITS]);
+    expect(calls("balances.check")).toHaveLength(1);
+    expect(calls("balances.track")).toHaveLength(0);
+    expect(calls("balances.finalize").map((call) => call.body)).toEqual([{ lock_id: state.job!.spendHold, action: "confirm", override_value: 2 * EXPECTED_ACTUAL_CREDITS }]);
+    expect(fakeAutumn.balance(userId)).toBe(STARTING_CREDITS - 2 * EXPECTED_ACTUAL_CREDITS);
+    expect(fakeAutumn.locks.size).toBe(0);
+    // The hold is forgotten, with what was kept beside it for its sum.
+    expect(state.holds).toEqual([]);
+    expect(state.items).toEqual([]);
   });
 });

@@ -39,6 +39,8 @@ export type JobStatusBannerProps =
       variant: "creditsExhausted";
       /** Required balance floor before the Resume CTA is enabled. */
       minCreditsToResume?: number;
+      /** Set when the job stopped at the credits it was allowed from a chat, not at an empty balance: that figure. */
+      allowed?: number;
     });
 
 export function JobStatusBanner(props: JobStatusBannerProps) {
@@ -111,10 +113,10 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
     >
       <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden="true" />
       <AlertTitle className="text-destructive">
-        {t("creditsExhausted.title")}
+        {t(props.allowed === undefined ? "creditsExhausted.title" : "creditsExhausted.limitTitle")}
       </AlertTitle>
       <AlertDescription className="space-y-3">
-        <p className="text-sm">{t("creditsExhausted.body")}</p>
+        <p className="text-sm">{props.allowed === undefined ? t("creditsExhausted.body") : t("creditsExhausted.limitBody", { credits: props.allowed.toLocaleString() })}</p>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Coins className="h-3.5 w-3.5" aria-hidden="true" />
           <span className="tabular-nums">
@@ -122,15 +124,17 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {/* A job stopped at its own figure usually has the balance to go on, so Resume leads there. */}
           <Button
             size="sm"
+            variant={props.allowed === undefined ? "default" : "outline"}
             onClick={() => router.push("/settings/billing#topup-section")}
           >
             {tc("buyCredits")}
           </Button>
           <Button
             size="sm"
-            variant="outline"
+            variant={props.allowed === undefined ? "outline" : "default"}
             data-action="resume"
             disabled={!canResume}
             onClick={props.onResume}

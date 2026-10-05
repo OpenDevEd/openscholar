@@ -19,6 +19,7 @@ import { getProcessableFlags } from "../content";
 import { readJobSources } from "../jobSources";
 import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../../lib/queryBounds";
 import { PAPER_LIMIT } from "@/lib/extraction/limits";
+import { creditsAgg } from "../aggregates";
 import {
   errorCodeValidator,
   extractionEvidenceUnitValidator,
@@ -37,6 +38,19 @@ export const getJobInternal = internalQuery({
   returns: v.union(v.null(), extractionJobValidator),
   handler: async (ctx, args) => {
     return await ctx.db.get("extractionJobs", args.jobId);
+  },
+});
+
+/**
+ * What a job approved up to a figure checks before it reads another paper (../paperWorker.ts):
+ * whether its hold still takes items, and what the ledger has counted of the job so far.
+ */
+export const approvalOf = internalQuery({
+  args: { jobId: v.id("extractionJobs"), hold: v.string() },
+  returns: v.object({ open: v.boolean(), spent: v.number() }),
+  handler: async (ctx, { jobId, hold }) => {
+    const row = await ctx.db.query("billingHolds").withIndex("by_charge", (q) => q.eq("chargeId", hold)).unique();
+    return { open: row?.spend === true && !row.settling, spent: await creditsAgg.sum(ctx, { namespace: jobId }) };
   },
 });
 

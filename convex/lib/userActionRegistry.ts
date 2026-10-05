@@ -28,6 +28,7 @@ import { balanceAction, countChargesAction, listChargesAction, planAction, spend
 import { countKeysAction as walletKeyCountAction, listKeysAction as walletKeysAction } from "../wallet/queries";
 import type { UserAction } from "./userActions";
 import { startJobAction as extractionStartAction, duplicateJobAction as extractionDuplicateAction } from "../extraction/mutations/jobs";
+import { extractAction } from "../extraction/start";
 
 export const USER_ACTIONS: readonly UserAction[] = [
   extractionStartAction,
@@ -84,6 +85,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   savedPaperAction,
   screeningEstimateAction,
   screenAction,
+  extractAction,
   screeningSlotsAction,
   screeningPaperAction,
   screeningPapersAction,

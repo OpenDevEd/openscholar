@@ -50,7 +50,7 @@ const STABLE_CONTEXT: Ctx = { id: "ctx" };
 
 interface HarnessProps {
   papers: Paper[];
-  execute: ReturnType<typeof vi.fn>;
+  execute: (input: { ids: string[] }) => Promise<{ results: Record<string, Result>; errors: never[] }>;
   retryFailedItems?: boolean;
 }
 

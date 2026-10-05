@@ -742,6 +742,7 @@ export default function JobDetailPage() {
           <div className="space-y-3 border-b border-border-subtle px-4 py-4 empty:hidden md:px-6">
             {job.status === "creditsExhausted" && (
               <CreditsExhaustedBanner
+                allowed={job.spendCap}
                 onResume={handleResume}
                 onCancelRemaining={handleCancel}
               />

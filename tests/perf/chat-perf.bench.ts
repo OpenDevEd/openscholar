@@ -1,4 +1,4 @@
-import { bench, describe } from "vitest";
+import { test, describe } from "vitest";
 import { stabilizeRowsById } from "@/lib/chat/stabilize-rows";
 import { runWeightedSearch } from "@/lib/chat/search/source-scorer";
 import { sortByComparator } from "@/lib/chat/sort/source-comparators";
@@ -11,43 +11,43 @@ describe("stabilizeRowsById @ N=1000", () => {
     i === 500 ? { ...r, included: !r.included } : r,
   );
 
-  bench("zero changes — fully stable", () => {
-    stabilizeRowsById(prev, nextSame);
+  test("zero changes stay stable", async ({ bench }) => {
+    await bench("stabilize rows", () => stabilizeRowsById(prev, nextSame)).run();
   });
 
-  bench("one row changed", () => {
-    stabilizeRowsById(prev, nextOneChanged);
+  test("one row changed", async ({ bench }) => {
+    await bench("stabilize rows", () => stabilizeRowsById(prev, nextOneChanged)).run();
   });
 });
 
 describe("runWeightedSearch @ N=1000", () => {
   const rows = makeFakeRows(1000);
 
-  bench("short query (3 chars)", () => {
-    runWeightedSearch(rows, "pho");
+  test("short query (3 chars)", async ({ bench }) => {
+    await bench("search", () => runWeightedSearch(rows, "pho")).run();
   });
 
-  bench("long query (12 chars)", () => {
-    runWeightedSearch(rows, "photosynthes");
+  test("long query (12 chars)", async ({ bench }) => {
+    await bench("search", () => runWeightedSearch(rows, "photosynthes")).run();
   });
 
-  bench("no match", () => {
-    runWeightedSearch(rows, "zzzzzz");
+  test("no match", async ({ bench }) => {
+    await bench("search", () => runWeightedSearch(rows, "zzzzzz")).run();
   });
 });
 
 describe("sortByComparator @ N=1000", () => {
   const rows = makeFakeRows(1000);
 
-  bench("added asc", () => {
-    sortByComparator(rows, "added", "asc");
+  test("added asc", async ({ bench }) => {
+    await bench("sort", () => sortByComparator(rows, "added", "asc")).run();
   });
 
-  bench("title asc", () => {
-    sortByComparator(rows, "title", "asc");
+  test("title asc", async ({ bench }) => {
+    await bench("sort", () => sortByComparator(rows, "title", "asc")).run();
   });
 
-  bench("inContext desc", () => {
-    sortByComparator(rows, "inContext", "desc");
+  test("inContext desc", async ({ bench }) => {
+    await bench("sort", () => sortByComparator(rows, "inContext", "desc")).run();
   });
 });

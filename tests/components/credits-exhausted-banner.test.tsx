@@ -102,4 +102,18 @@ describe("<CreditsExhaustedBanner>", () => {
     fireEvent.click(cancelBtn);
     expect(onCancelRemaining).toHaveBeenCalledTimes(1);
   });
+
+  it("offers both ways on for a job that stopped at the credits it was allowed: carrying on, and a top-up if its figure was the whole balance", () => {
+    setBalance(100, true, 1);
+    const onResume = vi.fn();
+    const { rerender } = render(<CreditsExhaustedBanner allowed={40} onResume={onResume} />);
+    fireEvent.click(screen.getByRole("button", { name: /creditsExhausted.resume/i }));
+    expect(onResume).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: /buyCredits/i })).toBeInTheDocument();
+
+    setBalance(0, false, 1);
+    rerender(<CreditsExhaustedBanner allowed={40} onResume={onResume} />);
+    expect(screen.getByRole("button", { name: /creditsExhausted.resume/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /buyCredits/i })).toBeInTheDocument();
+  });
 });
