@@ -141,8 +141,7 @@ function Overlay({
   const [focused, setFocused] = useState(false);
   const clock = useRef<OrbitClock>(null);
   const working = sending || (live !== null && !live.asking && !live.stopping);
-  // The box that was typed in goes with the panel when it folds, by the button or the shortcut, and tells no one it lost the keyboard.
-  const resting: OrbitMotion = focused && open ? "listening" : "idle";
+  const resting: OrbitMotion = focused ? "listening" : "idle";
   const orbit: OrbitMotion = sending ? "thinking"
     : activity.phase === "waiting" ? "listening"
     : activity.phase === "stopping" || activity.phase === "stopped" || activity.phase === "failed" ? "still"
@@ -159,6 +158,8 @@ function Overlay({
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") {
         e.preventDefault();
+        // The message box goes with the panel, and a box that is taken away doesn't say it lost the keyboard.
+        setFocused(false);
         setSheets([]);
         setOpen((o) => !o);
       }

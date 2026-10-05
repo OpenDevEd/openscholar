@@ -41,6 +41,8 @@ export type Turn = {
   effort?: Effort;
   /** Names this run of the reply. Its credits are held under it. */
   attemptId?: string;
+  /** The reply this request is part of, for its sender's record of what replies cost, when a charge is settled after it ended. */
+  replyId?: string;
   /** Credits held before the reply starts. */
   credits: number;
   /** Asked when that hold is refused: what to hold in its place, when the person turns out to have less. */
@@ -155,6 +157,8 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   const chargeId = `chat:${turn.attemptId ?? crypto.randomUUID()}`;
   let reserved = false;
   let settledOrScheduled = false;
+  /** What the request was charged, once it's settled here. */
+  let charged: number | undefined;
   // A turn can take several model steps (tool calls). Each completed step
   // adds its cost; a step still running at a stop or error is billed from
   // its OpenRouter generation record.
@@ -434,6 +438,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
         ...(turn.jobId ? { jobId: turn.jobId } : {}),
         chargeId,
         generationId: unfinishedGeneration,
+        ...(turn.replyId ? { reply: turn.replyId } : {}),
         extraUsd: completedUsd,
         earlierTokens: tokenCounts(aggregateUsage(stepUsages)),
         attempt: 0,
@@ -441,10 +446,11 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       settledOrScheduled = true;
     } else if (completedTokens > 0) {
       const usd = completedUsd;
+      charged = convertUsdToCredits({ usd }) || 1;
       await settleCredits(ctx, {
         userId,
         chargeId,
-        credits: convertUsdToCredits({ usd }) || 1,
+        credits: charged,
         usage: {
           kind: "chat",
           description: "Chat message",
@@ -503,7 +509,8 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
     await turn.release({
       lastInputTokens: stepUsages.at(-1)?.inputTokens ?? 0,
       asked: finished && !streamErrored && !streamAbortedByUser ? asked : [],
-      credits: convertUsdToCredits({ usd: completedUsd }) || 0,
+      // What it was charged, the least a request costs included. One stopped or failed partway is settled later, from what its finished steps cost.
+      credits: charged ?? (convertUsdToCredits({ usd: completedUsd }) || 0),
       requests: stepUsages.length,
       more: finished && !streamErrored && !streamAbortedByUser && ranTools && asked.length === 0,
       failed: allFailed,

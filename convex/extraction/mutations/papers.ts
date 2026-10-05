@@ -47,6 +47,7 @@ export const createPaperRecords = internalMutation({
         storageId: v.optional(v.id("_storage")),
         sourceType: v.optional(paperSourceTypeValidator),
         sourceId: v.optional(v.string()),
+        screeningRevision: v.optional(v.string()),
       }),
     ),
   },
@@ -96,6 +97,7 @@ export const createPaperRecords = internalMutation({
         isOpenAccess: paper.isOpenAccess,
         sourceType: paper.sourceType,
         sourceId: paper.sourceId,
+        screeningRevision: paper.screeningRevision,
         processable,
         status: "pending",
       });

@@ -42,6 +42,13 @@ export const ASSISTANT_HOLD_CREDITS = 1_000;
 export const ASSISTANT_REPLIES_AT_ONCE = 16;
 
 /**
+ * Model requests a reply makes before it pauses and asks whether to carry on. A person's
+ * own limit is in credits (convex/assistant/spending.ts); this one is there for the reply
+ * that keeps finding something new to do and would otherwise run until the credits are gone.
+ */
+export const ASSISTANT_REQUESTS_BEFORE_ASKING = 1_000;
+
+/**
  * Credits reserved before a wallet gateway call, plus one web search when it
  * asks for one. The call then settles to what it really cost.
  */

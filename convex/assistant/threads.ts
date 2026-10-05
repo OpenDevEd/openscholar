@@ -20,6 +20,7 @@ import type { Effort } from "../../lib/ai/core/call-options";
 import { NEW_CHAT_TITLE } from "../../lib/assistant/title";
 import { accessRows, best, deleteThread, personName, principalOf, principalsOf, requireThread, userPrincipal, type AssistantRole } from "./access";
 import { viewers } from "./presence";
+import { startWith } from "./spending";
 import { ASSISTANT_MEMBERS_SHOWN, assistantMembersValidator, assistantRoleValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
@@ -154,6 +155,7 @@ export const createAction = defineUserMutation({
       updatedAt: now,
     });
     await ctx.db.insert("assistantThreadAccess", { threadId, principal: userPrincipal(userId), role: "owner", lastMessageAt: now, createdAt: now });
+    await startWith(ctx, threadId, userId);
     return threadId;
   },
 });

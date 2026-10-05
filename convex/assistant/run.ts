@@ -64,7 +64,10 @@ export const reply = internalAction({
     if (read.owed && read.answering && (read.compactedThrough ?? -1) < read.answering - 1) {
       try {
         const through = read.answering - 1;
-        const summary = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:before:${used.rounds}:summary`, shouldStop });
+        const { summary, credits } = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:before:${used.rounds}:summary`, shouldStop });
+        // What it cost counts towards what the reply has spent, written or not.
+        used = { ...used, credits: used.credits + credits };
+        if (!summary) throw new Error("The model wrote an empty summary.");
         await ctx.runMutation(internal.assistant.replies.summarized, { ...lock, summary, through });
         read = { ...read, summary, compactedThrough: through, owed: false };
       } catch (error) {
@@ -113,6 +116,7 @@ export const reply = internalAction({
       effort,
       // Each request holds and settles its own credits.
       attemptId: `${attemptId}:${used.rounds}`,
+      replyId: attemptId,
       credits: cap,
       lesser: async () => (await refreshAccount(ctx, senderId).catch(() => null))?.balance,
       tools,
@@ -133,13 +137,14 @@ export const reply = internalAction({
       }),
       release: ({ lastInputTokens, asked, credits, requests, more, failed }) => {
         const calls = askedSteps(asked);
-        const now = { spent: used.credits + credits, rounds: used.rounds + requests, made: made() };
+        const now = { spent: used.credits + credits, rounds: used.rounds + requests, made: made(), ...(used.cap === undefined ? {} : { cap: used.cap }), ...(used.lap === undefined ? {} : { lap: used.lap }) };
         const did = digest();
         const recent = [...(used.recent ?? []), ...(did ? [did] : [])].slice(-RECENT_REQUESTS);
         return ctx.runMutation(internal.assistant.replies.release, {
           ...lock,
           // A request that failed before the model answered read nothing: what the one before it read still says how long the conversation is.
           ended: { ...turn, ...history, lastInputTokens: lastInputTokens || (used.tokens ?? 0) },
+          spent: now.spent,
           // It waits for the person's answer, or goes on to its next request, or has ended.
           // A request that was the reply's answer ends it, whatever the model called in it.
           ...(calls.length
@@ -174,17 +179,20 @@ export const compact = internalAction({
   returns: v.null(),
   handler: async (ctx, { threadId, attemptId, through, resume, ...turn }) => {
     const lock = { threadId, attemptId };
-    let summary: string | undefined;
+    let written: { summary: string; credits: number } | undefined;
     const shouldStop = async () => (await ctx.runQuery(internal.assistant.replies.lockState, lock)) !== "writing";
     try {
       if (!(await shouldStop())) {
         // A reply can be summarized more than once as it goes, and one that couldn't be written is tried again after its next request: each try is a charge of its own.
-        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, chargeId: `chat:${attemptId}:through:${through}:${resume?.used.rounds ?? "end"}:summary`, shouldStop });
+        written = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, chargeId: `chat:${attemptId}:through:${through}:${resume?.used.rounds ?? "end"}:summary`, shouldStop });
       }
     } catch (error) {
       console.error("[assistant] compaction failed", { threadId, error: errorToLogString(error) });
     }
-    await ctx.runMutation(internal.assistant.replies.release, { ...lock, ...(summary ? { summarized: { summary, through } } : {}), ...(resume ? { resume } : {}) });
+    if (written && !written.summary) console.error("[assistant] compaction failed", { threadId, error: "The model wrote an empty summary." });
+    // One made while the reply is under way counts towards what the reply has spent, whether or not it was written.
+    const from = resume && written ? { ...resume, used: { ...resume.used, credits: resume.used.credits + written.credits } } : resume;
+    await ctx.runMutation(internal.assistant.replies.release, { ...lock, ...(written?.summary ? { summarized: { summary: written.summary, through } } : {}), ...(from ? { resume: from } : {}) });
     return null;
   },
 });

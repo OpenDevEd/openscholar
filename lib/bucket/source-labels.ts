@@ -1,4 +1,4 @@
-import { Clock, FolderOpen, Library, Upload, type AppIcon } from "@/components/icons";
+import { Clock, FolderOpen, Library, Upload, ListChecks, type AppIcon } from "@/components/icons";
 import type { ComponentType } from "react";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import type { BucketSource } from "@/lib/bucket/bucketItem";
@@ -9,6 +9,7 @@ import type { BucketSource } from "@/lib/bucket/bucketItem";
  * surfaces the source of a staged paper.
  */
 export const BUCKET_SOURCE_LABELS: Record<BucketSource, string> = {
+  screening: "Screening",
   history: "History",
   library: "Library",
   collection: "Collections",
@@ -22,6 +23,7 @@ export const BUCKET_SOURCE_LABELS: Record<BucketSource, string> = {
  * chroma keeps them legible in dark mode without overrides.
  */
 export const SOURCE_COLOR_VAR: Record<BucketSource, string> = {
+  screening: "--chart-3",
   history: "--chart-1",
   library: "--chart-2",
   collection: "--chart-3",
@@ -31,6 +33,7 @@ export const SOURCE_COLOR_VAR: Record<BucketSource, string> = {
 
 /** Each source's icon, coloured by `SOURCE_COLOR_VAR`, the way chat sources are shown. */
 export const SOURCE_ICON: Record<BucketSource, AppIcon | ComponentType<{ className?: string }>> = {
+  screening: ListChecks,
   history: Clock,
   library: Library,
   collection: FolderOpen,

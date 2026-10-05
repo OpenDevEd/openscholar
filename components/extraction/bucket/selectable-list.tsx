@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 export interface SelectableListProps<T> {
   items: T[];
   isSelected: (t: T) => boolean;
+  isDisabled?: (t: T) => boolean;
   onToggle: (t: T, next: boolean) => void;
   /**
    * Optional batch handler for shift-click ranges. When defined, a
@@ -68,6 +69,7 @@ export interface SelectableListProps<T> {
 export function SelectableList<T>({
   items,
   isSelected,
+  isDisabled,
   onToggle,
   onToggleRange,
   onToggleAll,
@@ -104,6 +106,7 @@ export function SelectableList<T>({
   }) => {
     const current = items[index];
     if (!current) return;
+    if (isDisabled?.(current)) return;
     const shift = Boolean(event.shiftKey);
     const last = lastIndexRef.current;
     if (shift && last !== null && last !== index) {
@@ -118,14 +121,14 @@ export function SelectableList<T>({
         for (let i = from; i <= to; i++) {
           const item = items[i];
           if (!item) continue;
-          if (isSelected(item) !== target) batch.push(item);
+          if (!isDisabled?.(item) && isSelected(item) !== target) batch.push(item);
         }
         if (batch.length > 0) onToggleRange(batch, target);
       } else {
         for (let i = from; i <= to; i++) {
           const item = items[i];
           if (!item) continue;
-          if (isSelected(item) !== target) onToggle(item, target);
+          if (!isDisabled?.(item) && isSelected(item) !== target) onToggle(item, target);
         }
       }
     } else {
@@ -209,6 +212,7 @@ export function SelectableList<T>({
       )}
       {items.map((item, index) => {
         const selected = isSelected(item);
+        const disabled = isDisabled?.(item) ?? false;
         const key = keyOf(item);
         return (
           <div
@@ -220,7 +224,7 @@ export function SelectableList<T>({
             // nested-interactive axe violation that role="button"+
             // focusable inner controls (Checkbox, anchors) would raise.
             {...(rowAs === "button"
-              ? { role: "button", tabIndex: 0, "aria-pressed": selected }
+              ? { role: "button", tabIndex: 0, "aria-pressed": selected, "aria-disabled": disabled }
               : {})}
             onClick={(e) => handleRowActivate(index, { shiftKey: e.shiftKey })}
             onKeyDown={(e) => {
@@ -237,11 +241,13 @@ export function SelectableList<T>({
                 ? "bg-primary/5 border-l-4 border-l-primary"
                 : "hover:bg-muted border-l-4 border-l-transparent",
               "focus-visible:ring-2 focus-visible:ring-ring",
+              disabled && "cursor-default opacity-60",
             )}
           >
             <div className="mt-0.5">
               <Checkbox
                 checked={selected}
+                disabled={disabled}
                 tabIndex={-1}
                 onCheckedChange={() => {
                   onToggle(item, !selected);

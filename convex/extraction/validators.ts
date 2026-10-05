@@ -134,6 +134,7 @@ export const citationStatusValidator = v.union(
 );
 
 export const sourceTypeValidator = v.union(
+  v.literal("screening"),
   v.literal("history"),
   v.literal("zotero"),
   v.literal("manual"),
@@ -146,6 +147,7 @@ export const sourceTypeValidator = v.union(
  * aggregation and is never valid on a paper row.
  */
 export const paperSourceTypeValidator = v.union(
+  v.literal("screening"),
   v.literal("history"),
   v.literal("zotero"),
   v.literal("manual")
@@ -296,10 +298,13 @@ export const extractionJobValidator = v.object({
 const _check_extractionJobValidator: AssertExactDoc<"extractionJobs", typeof extractionJobValidator> = true;
 void _check_extractionJobValidator;
 
+export const screeningSelectionValidator = v.object({ jobId: v.id("screeningJobs"), revision: v.string(), count: v.number() });
+
 const bucketItemFields = {
   ...sourceMetadataFields,
   bucketKey: v.string(),
   source: v.union(
+    v.literal("screening"),
     v.literal("history"),
     v.literal("library"),
     v.literal("collection"),
@@ -307,6 +312,7 @@ const bucketItemFields = {
     v.literal("upload"),
   ),
   sourceRefId: v.string(),
+  screeningSelection: v.optional(screeningSelectionValidator),
   title: v.string(),
   authors: capped(v.array(v.string()), MAX_AUTHORS),
   year: v.optional(v.number()),
@@ -371,6 +377,7 @@ const _check_extractionQuestionValidator: AssertExactDoc<"extractionQuestions", 
 void _check_extractionQuestionValidator;
 
 export const extractionPaperFields = {
+  screeningRevision: v.optional(v.string()),
   ...sourceMetadataFields,
   citedByCount: v.optional(v.number()),
   venueName: v.optional(v.string()),
