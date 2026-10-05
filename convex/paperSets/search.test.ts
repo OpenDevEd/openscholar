@@ -26,11 +26,14 @@ let requests: Request[] = [];
 let total = 900;
 /** Answers OpenAlex gives its next requests in place of works. The model's requests share the stub, and never take one. */
 let refusals: Response[] = [];
+/** OpenAlex's pages of papers wait for this before they answer. */
+let held: Promise<void> | undefined;
 /** OpenAlex, answering each page with up to 200 works numbered from the page's start, until the search runs out; a cursor is the next page's number. */
 const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
   const url = new URL(String(input));
   if (url.hostname === "api.openalex.org" && refusals.length) return refusals.shift()!;
   requests.push({ url, init });
+  if (url.searchParams.get("per-page") === "200") await held;
   const cursor = url.searchParams.get("cursor");
   const page = cursor === null ? Number(url.searchParams.get("page")) : cursor === "*" ? 1 : Number(cursor);
   const start = (page - 1) * 200;
@@ -47,6 +50,7 @@ const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
 beforeEach(() => {
   requests = [];
   refusals = [];
+  held = undefined;
   total = 900;
   vi.stubEnv("OPENALEX_API_KEY", "platform-key");
   vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
@@ -287,6 +291,40 @@ describe("Screen all on a saved search, read on the server", () => {
 
     expect((await read(jobId))?.status).toBe("cancelled");
     expect(await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1))).toHaveLength(0);
+  });
+
+  it("stops reading for a job cancelled while a stretch its rating filter left empty was read", async () => {
+    total = 2_500;
+    const { t, alice, read } = await setup({ ...search, sortBy: "relevance_score:desc", onlyRatedPapers: true, ratingRange: [3, 5] });
+
+    let answer = () => {};
+    held = new Promise((resolve) => (answer = resolve));
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 2_500, ...job, saveTo: { kind: "none" } });
+    // Cancelled while OpenAlex is still answering the first stretch's pages.
+    await vi.waitFor(() => expect(pages().length).toBeGreaterThan(0), { timeout: 10_000, interval: 20 });
+    await alice.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
+    answer();
+    await vi.waitFor(async () => expect(await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect()).then((rows) => rows.filter((row) => row.name.includes("start:read") && row.state.kind !== "success" && row.state.kind !== "failed"))).toHaveLength(0), { timeout: 10_000, interval: 50 });
+
+    // The first 1,000 papers' pages, and none of the 1,500 after them.
+    expect(pages()).toHaveLength(5);
+    expect((await read(jobId))?.status).toBe("cancelled");
+  });
+
+  it("makes the new collection a job saves to once the job has its papers, and not for one that gets none", async () => {
+    const { t, alice, settled } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    const start = () => alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "new", name: "Trials to read" } });
+    const collections = () => t.run((ctx) => ctx.db.query("collections").take(5));
+
+    const failing = await start();
+    refusals = [new Response(JSON.stringify({ message: "upstream connect error" }), { status: 503 })];
+    expect((await settled(failing.jobId)).status).toBe("failed");
+    expect(await collections()).toHaveLength(0);
+
+    const made = await settled((await start()).jobId);
+    const [collection] = await collections();
+    expect(collection).toMatchObject({ name: "Trials to read" });
+    expect(made.targetCollectionId).toBe(collection!._id);
   });
 
   it("gives no papers to a job whose person was suspended while they were read", async () => {

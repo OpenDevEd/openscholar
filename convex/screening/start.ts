@@ -117,6 +117,9 @@ export const read = internalAction({
           return null;
         }
         if (ended) break;
+        // Cancelled meanwhile: the stretches after this one aren't read for nothing.
+        const waits: boolean = await ctx.runQuery(internal.screening.queries.awaitsPapers, { jobId });
+        if (!waits) return null;
       }
       throw createError("VALIDATION_ERROR", "None of these papers match the search's rating filter");
     } catch (error) {

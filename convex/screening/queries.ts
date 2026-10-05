@@ -125,6 +125,16 @@ export const answeredCount = internalQuery({
   },
 });
 
+/** Whether a job is still waiting for its papers: not cancelled, failed or given them meanwhile. */
+export const awaitsPapers = internalQuery({
+  args: { jobId: v.id("screeningJobs") },
+  returns: v.boolean(),
+  handler: async (ctx, { jobId }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    return Boolean(job?.reading && job.status === "processing");
+  },
+});
+
 /**
  * A completed job of a request that goes on past it, as the request's next job takes it
  * over: its papers' set, where the request ends, and the questions, rules and destination.
@@ -249,7 +259,8 @@ export const getScreeningJobAction = defineUserQuery({
 
     return {
       ...(await factsOf(ctx, job)),
-      ...(target ? { targetCollectionName: target.name } : {}),
+      // A job still to get its papers names the collection it will make.
+      ...(target ? { targetCollectionName: target.name } : job.newCollection ? { targetCollectionName: job.newCollection } : {}),
       unsaved: job.unsaved,
       prune: job.prune,
       ...(job.set ? { saved: kept?.saved ?? 0, removed: kept?.removed ?? 0 } : {}),
@@ -377,7 +388,7 @@ async function jobsOf(ctx: QueryCtx, userId: Id<"users">, args: { paginationOpts
           completedAt: job.completedAt,
           questions: job.questions,
           targetCollectionId: job.targetCollectionId,
-          targetCollectionName: targetCollection?.name,
+          targetCollectionName: targetCollection?.name ?? job.newCollection,
         };
       }),
     );
