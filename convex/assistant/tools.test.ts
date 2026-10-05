@@ -128,7 +128,8 @@ describe("the assistant's tools", () => {
 
     const [saved] = await t.run(async (ctx) => ctx.db.query("libraryItems").collect());
     expect(saved).toMatchObject({ userId: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale" });
-    expect(await steps()).toMatchObject([{ path: "library/papers:save", status: "done", undo: { path: "library/mutations:removeFromLibrary" } }]);
+    // The call named the paper by its ID alone, so the step is about the paper it came back with.
+    expect(await steps()).toMatchObject([{ path: "library/papers:save", status: "done", subject: "Tutoring at scale", undo: { path: "library/mutations:removeFromLibrary" } }]);
     // One result beside the step: the write ended it, and nothing ended it again.
     expect(await results()).toEqual([expect.objectContaining({ libraryItemId: saved._id, title: "Tutoring at scale" })]);
     expect(await shown()).toEqual(["user: Save that paper", "step: library/papers:save done, can be undone", "assistant: Saved it."]);
@@ -806,6 +807,21 @@ describe("the assistant's tools", () => {
     expect(stepIds).toHaveLength(60);
     expect(new Set(stepIds).size).toBe(30);
     expect(all.filter((item) => item.role !== "step").map((item) => `${item.role}: ${"text" in item ? item.text : ""}`)).toEqual(["assistant: All read.", "user: Read a great deal"]);
+  });
+
+  it("say which kind of change a step made to the person's research records, the one action that makes several", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, threadId, say } = await chatOf(t);
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Rated."]));
+    await say("Rate that paper");
+    await t.run(async (ctx) => {
+      const step = { threadId, order: 0, userId: ada, toolCallId: "rate", path: "research/records:change", status: "done" as const, startedAt: 1, endedAt: 1 };
+      await ctx.db.insert("assistantSteps", { ...step, input: JSON.stringify({ requestId: "r1", command: { kind: "rating", paperId: "W1", rating: 5 } }) });
+      // Arguments too long to keep whole were cut, and don't parse: the step still shows, as the action alone.
+      await ctx.db.insert("assistantSteps", { ...step, toolCallId: "cut", input: '{"requestId":"r2","command":{"kind":"createSea' });
+    });
+    const page = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.flatMap((item) => (item.role === "step" ? [item] : []));
+    expect(page.map((item) => [item.action, item.variant])).toEqual([["research/records:change", undefined], ["research/records:change", "rating"]]);
   });
 
   it("give a call left without a result its result, however long the reply it's in ran", async () => {

@@ -404,7 +404,9 @@ const stepValidator = v.object({
   order: v.number(),
   /** The action it ran, by its path in the registry. */
   action: v.string(),
-  /** What it was about: a title, a name or a query from its arguments. */
+  /** Which of its several jobs the action did, for one that has more than one (lib/assistant/actions.ts). */
+  variant: v.optional(v.string()),
+  /** What it was about: a title, a name or a query from its arguments, or the title or name of what it returned. */
   subject: v.optional(v.string()),
   /** How many things it found, when its result lists any. */
   count: v.optional(v.number()),
@@ -595,6 +597,18 @@ export const messagesAction = defineUserQuery({
 });
 export const messages = userQuery(messagesAction);
 
+/** The kind of change a step made to the person's research records, the one action that makes several kinds. */
+function variantOf(step: Doc<"assistantSteps">) {
+  if (step.path !== "research/records:change") return {};
+  try {
+    const kind = (JSON.parse(step.input) as { command?: { kind?: unknown } }).command?.kind;
+    return typeof kind === "string" ? { variant: kind } : {};
+  } catch {
+    // Arguments too long to keep whole were cut, and don't parse.
+    return {};
+  }
+}
+
 /** A step as the chat's page shows it. `details` is what a call that waits for this person would do. */
 function shownStep(step: Doc<"assistantSteps">, { userId, answering, details }: { userId: Id<"users">; answering: number | undefined; details?: Infer<typeof askedDetailsValidator> }) {
   return {
@@ -602,6 +616,7 @@ function shownStep(step: Doc<"assistantSteps">, { userId, answering, details }: 
     role: "step" as const,
     order: step.order,
     action: step.path,
+    ...variantOf(step),
     ...(step.subject ? { subject: step.subject } : {}),
     ...(step.count === undefined ? {} : { count: step.count }),
     status: shownStatus(step.status, answering === step.order),

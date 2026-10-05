@@ -120,7 +120,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
   const toast = useAppToast();
   // Pressed once: the buttons rest until the chat shows the answer, or says it couldn't be sent.
   const [sent, setSent] = useState(false);
-  const { kind, words } = viewOf(step.action);
+  const { kind, words } = viewOf(step.action, step.variant);
   // Only the kinds of action that can ask have the words for it.
   const title = `steps.${words}.ask` as "steps.other.ask";
   const say = (allow: boolean) => {
@@ -210,7 +210,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
             key={step.id}
             d={`M 12 22 C 12 ${22 + (y(i) - 22) * 0.75}, 16 ${y(i)}, ${GUTTER} ${y(i)}`}
             fill="none"
-            stroke={KIND[viewOf(step.action).kind].tint}
+            stroke={KIND[viewOf(step.action, step.variant).kind].tint}
             strokeWidth={2}
             strokeLinecap="round"
             initial={reduceMotion ? false : { pathLength: 0 }}
@@ -222,7 +222,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
       <div className="relative">
         <AnimatePresence initial={false}>
           {steps.map((step, i) => {
-            const { kind, words } = viewOf(step.action);
+            const { kind, words } = viewOf(step.action, step.variant);
             const working = step.status === "running";
             const faded = step.undone || step.status === "failed" || step.status === "declined";
             const state = step.status === "asking" ? t("steps.waiting") : step.status === "allowed" ? t("steps.allowed") : step.status === "declined" ? t("steps.declined") : null;

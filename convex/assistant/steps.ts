@@ -96,6 +96,14 @@ export function undoOf(result: unknown) {
   return args.length <= STEP_TEXT_MAX ? { path: undo.path, args } : undefined;
 }
 
+/** What a result is, for its step's card: the title or the name of the one thing it returns. */
+export function namedBy(result: unknown) {
+  if (!result || typeof result !== "object" || Array.isArray(result)) return undefined;
+  const { title, name } = result as { title?: unknown; name?: unknown };
+  const named = [title, name].find((value) => typeof value === "string" && value.trim() !== "");
+  return typeof named === "string" ? cut(named.trim(), 200) : undefined;
+}
+
 /** How many things a result lists: its page's rows, or its own when it's a list. */
 export function countOf(result: unknown) {
   if (Array.isArray(result)) return result.length;
@@ -132,7 +140,9 @@ export async function endStep(ctx: MutationCtx, stepId: Id<"assistantSteps">, re
   // Its chat was deleted while it ran.
   if (!step) return;
   const [undo, count] = [undoOf(result), countOf(result)];
-  await ctx.db.patch("assistantSteps", stepId, { status: "done", ...(count === undefined ? {} : { count }), ...(undo ? { undo } : {}), endedAt: Date.now() });
+  // A call that names a paper by its ID alone is about the paper it returned.
+  const subject = step.subject ? undefined : namedBy(result);
+  await ctx.db.patch("assistantSteps", stepId, { status: "done", ...(count === undefined ? {} : { count }), ...(undo ? { undo } : {}), ...(subject ? { subject } : {}), endedAt: Date.now() });
   await ctx.db.insert("assistantStepResults", { threadId: step.threadId, stepId, result: cut(JSON.stringify(result ?? null), STEP_RESULT_MAX) });
   const read = forModel(result);
   await answerCalls(ctx, [step], () => (typeof read === "string" ? { type: "text", value: read } : { type: "json", value: read }));
