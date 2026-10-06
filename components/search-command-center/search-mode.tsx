@@ -33,10 +33,10 @@ interface SearchModeProps {
   isValidating?: boolean;
 }
 
-// The keywords before a search's first translation and what its last translation produced, by search. It
-// outlives switching modes and browser history: while the box still holds that translation, another language
-// starts from the original and clearing the language puts the original back.
-const translations = new Map<string, { original: string; result: string }>();
+// Every translation a search has made, mapped back to the keywords it came from. It outlives switching modes,
+// browser history and the query history arrows: while the box holds any of those translations, another
+// language starts from the person's own keywords and clearing the language puts them back.
+const originals = new Map<string, Map<string, string>>();
 
 export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const toast = useAppToast();
@@ -61,8 +61,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   // The shortcuts the box names are read as they're typed, for the suggestion and the actions below.
   useQueryShortcuts(localInputValue);
   const [isTranslating, setIsTranslating] = useState(false);
-  const saved = effectiveSearchId ? translations.get(effectiveSearchId) : undefined;
-  const untouchedTranslation = saved && localInputValue === saved.result ? saved : null;
+  const original = effectiveSearchId ? originals.get(effectiveSearchId)?.get(localInputValue) : undefined;
 
   // Sync local input + global store when URL query changes (e.g. history nav, AI enhance, translation)
   useEffect(() => {
@@ -174,7 +173,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   // Shared translation logic
   const performTranslation = useCallback(
     async (targetLanguage: string) => {
-      const source = untouchedTranslation?.original ?? localInputValue;
+      const source = original ?? localInputValue;
       if (!search || !targetLanguage || !source.trim()) return;
       if (!isTranslateConfigured) {
         toast.ai.configRequired(tValidation("aiConfigRequired"));
@@ -190,7 +189,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
           syntax,
         });
         search.setQuery(result.translatedQuery);
-        if (effectiveSearchId) translations.set(effectiveSearchId, { original: source, result: result.translatedQuery });
+        if (effectiveSearchId) originals.set(effectiveSearchId, (originals.get(effectiveSearchId) ?? new Map()).set(result.translatedQuery, source));
         posthog.capture("query_translated", {
           original_query: expandedQuery,
           translated_query: result.translatedQuery,
@@ -213,7 +212,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     [
       search,
       localInputValue,
-      untouchedTranslation,
+      original,
       effectiveSearchId,
       isTranslateConfigured,
       translateQueryFn,
@@ -230,7 +229,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     async (language: string) => {
       if (!search || language === selectedLanguage) return;
       search.setLanguage(language || null);
-      if (!language && untouchedTranslation) search.setQuery(untouchedTranslation.original);
+      if (!language && original !== undefined) search.setQuery(original);
       posthog.capture("language_selected", {
         language: language || "none",
         previous_language: selectedLanguage || "none",
@@ -240,7 +239,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         await performTranslation(language);
       }
     },
-    [search, selectedLanguage, localInputValue, untouchedTranslation, performTranslation]
+    [search, selectedLanguage, localInputValue, original, performTranslation]
   );
 
   // Handle translate button click
