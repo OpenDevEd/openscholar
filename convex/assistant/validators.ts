@@ -182,7 +182,7 @@ export const assistantStepFields = {
   outside: v.optional(v.literal(true)),
   /** Which of its several jobs its action does (lib/assistant/actions.ts), where its arguments don't say it one by one: a bulk change. */
   variant: v.optional(v.string()),
-  /** Its action only reads: one that failed and was run again with success is hidden from the chat (lib/assistant/step-cards.ts). */
+  /** Its action only reads (./tools.ts `onlyReads`): one that failed and was run again with success is hidden from the chat (lib/assistant/step-cards.ts). */
   reads: v.optional(v.literal(true)),
   /** Set while a bulk change's undo is putting its changes back (./bulk.ts): what would undo it is the reversal's to read until it's done. */
   reverting: v.optional(v.boolean()),

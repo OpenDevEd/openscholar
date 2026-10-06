@@ -139,6 +139,8 @@ const CHANGE_PAPERS = "change_papers";
 
 /** Whether an action changes something, and so ends its step in its own transaction: a mutation, or an action whose write does. */
 const changesSomething = (entry: UserAction) => entry.kind === "mutation" || (entry.kind === "action" && entry.changes === true);
+/** Whether an action only reads: it changes nothing, spends nothing and reaches no one, like an OpenAlex search. */
+export const onlyReads = (entry: UserAction) => entry.kind === "query" || (!changesSomething(entry) && !entry.spendsCredits && !entry.outsideEffect);
 /**
  * Whether many of an action's changes can go in one bulk change: a mutation, since a bulk
  * change runs it inside its own (./bulk.ts), that spends no credits. One that would ask alone
@@ -401,7 +403,7 @@ export function toolsFor(
     const subject = subjectOf(input);
     const stepId =
       allowed ??
-      (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(within ? { credits: within.credits } : {}), ...(entry.kind === "query" ? { reads: true as const } : {}) }));
+      (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(within ? { credits: within.credits } : {}), ...(onlyReads(entry) ? { reads: true as const } : {}) }));
     try {
       // A change ends its step in its own transaction, so the two are saved together. A read's step is ended here.
       const change = changesSomething(entry);
