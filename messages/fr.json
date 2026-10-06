@@ -3846,6 +3846,11 @@
         "did": "Coût d'une sélection estimé",
         "where": "Sélection"
       },
+      "extraction": {
+        "doing": "Lecture d'une extraction",
+        "did": "Extraction lue",
+        "where": "Extraction"
+      },
       "extractionResults": {
         "doing": "Lecture des résultats d'une extraction",
         "did": "Résultats d'une extraction lus",

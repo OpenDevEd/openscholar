@@ -9,7 +9,7 @@ import { countAction as paperCountAction, getAction as paperGetAction, searchAct
 import { findAction as lookupFindAction } from "../research/lookup";
 import { setLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAction, saveToLibraryAction, setPaperInCollectionAction } from "../library/mutations";
 import { collectAction as libraryCollectAction, saveAction as librarySaveAction } from "../library/papers";
-import { countJobsAction as extractionJobCountAction, listJobsAction as extractionJobsAction } from "../extraction/queries/jobs";
+import { countJobsAction as extractionJobCountAction, getJobDetailsAction as extractionJobAction, listJobsAction as extractionJobsAction } from "../extraction/queries/jobs";
 import { countJobFailuresAction as extractionFailureCountAction } from "../extraction/queries/failures";
 import { countJobResultsAction as extractionResultCountAction, listJobResultsAction as extractionResultsAction, summarizeJobResultsAction as extractionSummaryAction } from "../extraction/queries/results";
 import { candidatesAction as chatCandidatesAction, grantAction as chatGrantAction, listAccessAction as chatAccessAction, revokeAction as chatRevokeAction } from "../assistant/sharing";
@@ -50,6 +50,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   chatRevokeAction,
   extractionJobsAction,
   extractionJobCountAction,
+  extractionJobAction,
   extractionResultsAction,
   extractionResultCountAction,
   extractionSummaryAction,

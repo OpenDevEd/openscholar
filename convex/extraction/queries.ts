@@ -18,6 +18,7 @@ export {
   countJobsForAssistant,
   getJobShell,
   getJobDetails,
+  getJobDetailsForAssistant,
   subscribeToJobProgress,
 } from "./queries/jobs";
 

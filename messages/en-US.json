@@ -3836,6 +3836,11 @@
         "did": "Worked out what a screening would cost",
         "where": "Screening"
       },
+      "extraction": {
+        "doing": "Reading an extraction",
+        "did": "Read an extraction",
+        "where": "Extraction"
+      },
       "extractionResults": {
         "doing": "Reading an extraction's results",
         "did": "Read an extraction's results",
