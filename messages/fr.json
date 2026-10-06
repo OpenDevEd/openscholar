@@ -925,7 +925,8 @@
       "melanesia": "Mélanésie",
       "micronesia": "Micronésie",
       "polynesia": "Polynésie"
-    }
+    },
+    "filterByTopic": "Seulement les travaux sur {name}"
   },
   "paperCard": {
     "screeningResponses": "Réponses de sélection",
@@ -2665,7 +2666,8 @@
     "loadingLibrary": "Chargement des publications des bibliothèques",
     "noPageMatches": "Aucun résultat sur cette page. Continuez à charger les publications.",
     "noLibraryMatches": "Aucune publication ne correspond à votre recherche.",
-    "noLibraryRecords": "Aucune notice publiée d'une Evidence Library n'utilise encore ce sujet."
+    "noLibraryRecords": "Aucune notice publiée d'une Evidence Library n'utilise encore ce sujet.",
+    "searchPapers": "Rechercher des articles"
   },
   "evidenceLibraries": {
     "list": {
@@ -4171,5 +4173,34 @@
   },
   "models": {
     "changeInSettings": "Modifier dans les paramètres IA"
+  },
+  "entityCards": {
+    "papers": "Articles",
+    "citations": "Citations",
+    "hIndex": "Indice h",
+    "noInstitution": "Aucune institution actuelle",
+    "noTopics": "Aucun sujet indiqué",
+    "authorFailed": "Impossible de charger cet auteur.",
+    "topicFailed": "Impossible de charger la description.",
+    "noDescription": "Pas encore de description.",
+    "tryAgain": "Réessayer",
+    "filterResults": "Filtrer les résultats",
+    "removeFilter": "Retirer le filtre",
+    "searchPapers": "Rechercher des articles",
+    "authorPage": "Page de l'auteur",
+    "topicPage": "Page du sujet",
+    "browseTopics": "Parcourir les sujets",
+    "openOnOpenAlex": "Ouvrir sur OpenAlex",
+    "level": {
+      "topic": "Sujet",
+      "subfield": "Sous-domaine",
+      "field": "Domaine",
+      "domain": "Grand domaine"
+    },
+    "below": {
+      "domain": "Domaines",
+      "field": "Sous-domaines",
+      "subfield": "Sujets"
+    }
   }
 }

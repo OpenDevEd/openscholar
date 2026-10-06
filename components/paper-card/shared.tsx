@@ -22,6 +22,8 @@ import {
 import { cn } from "@/lib/utils";
 import { authorValue, useScreening, type FilterValue } from "./hooks";
 import { institutionId, sourceId } from "@/lib/openalex/ids";
+import { isAuthorId } from "@/lib/openalex/author-filter";
+import { AuthorHoverCard } from "@/components/entity-cards";
 import type { TranslationContent } from "./hooks";
 import { useUIStore } from "@/lib/store";
 import { useTranslations, useFormatter } from "next-intl";
@@ -636,12 +638,13 @@ interface AuthorNamesProps {
 /**
  * A name that filters the search by what it names, or stops filtering by it. It
  * keeps its click and its Enter or Space to itself, since it sits inside cards
- * that open on both.
+ * that open on both. Other props, such as a hover card's, pass to the button.
  */
-function FilterName({ pressed, label, onToggle, className, children }: { pressed: boolean; label: string; onToggle: () => void; className?: string; children: React.ReactNode }) {
+export function FilterName({ pressed, label, onToggle, className, children, ...props }: Omit<React.ComponentProps<"button">, "onClick"> & { pressed: boolean; label: string; onToggle: () => void }) {
   return (
     <button
       type="button"
+      {...props}
       aria-pressed={pressed}
       aria-label={label}
       onClick={(event) => {
@@ -650,6 +653,7 @@ function FilterName({ pressed, label, onToggle, className, children }: { pressed
       }}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+        props.onKeyDown?.(event);
       }}
       className={cn("rounded-sm text-left underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring aria-pressed:font-medium aria-pressed:text-primary", className)}
     >
@@ -668,18 +672,21 @@ export function AuthorNames({ authorships, unparsed, maxLength = Infinity, selec
     <>
       {authorships.slice(0, shown).map(({ author }, index) => {
         const value = authorValue(author);
+        const name = value && onToggleAuthor ? (
+          <FilterName
+            pressed={selected?.includes(value) ?? false}
+            label={tf("filterByAuthor", { name: author.display_name })}
+            onToggle={() => onToggleAuthor({ value, name: author.display_name })}
+          >
+            {author.display_name}
+          </FilterName>
+        ) : null;
         return (
           <React.Fragment key={`${value}-${index}`}>
             {index > 0 && ", "}
-            {value && onToggleAuthor ? (
-              <FilterName
-                pressed={selected?.includes(value) ?? false}
-                label={tf("filterByAuthor", { name: author.display_name })}
-                onToggle={() => onToggleAuthor({ value, name: author.display_name })}
-              >
-                {author.display_name}
-              </FilterName>
-            ) : (
+            {name && value && isAuthorId(value) ? (
+              <AuthorHoverCard id={value} name={author.display_name}>{name}</AuthorHoverCard>
+            ) : name ?? (
               author.display_name
             )}
           </React.Fragment>

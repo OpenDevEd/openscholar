@@ -925,7 +925,8 @@
       "melanesia": "मेलेनेशिया",
       "micronesia": "माइक्रोनेशिया",
       "polynesia": "पॉलीनेशिया"
-    }
+    },
+    "filterByTopic": "केवल {name} पर कार्य"
   },
   "paperCard": {
     "screeningResponses": "स्क्रीनिंग प्रतिक्रियाएं",
@@ -2665,7 +2666,8 @@
     "loadingLibrary": "लाइब्रेरी प्रकाशन लोड हो रहे हैं",
     "noPageMatches": "इस पेज पर कोई मेल नहीं। प्रकाशन लोड करना जारी रखें।",
     "noLibraryMatches": "आपकी खोज से कोई प्रकाशन मेल नहीं खाता।",
-    "noLibraryRecords": "अभी तक किसी प्रकाशित Evidence Library रिकॉर्ड में यह विषय नहीं है।"
+    "noLibraryRecords": "अभी तक किसी प्रकाशित Evidence Library रिकॉर्ड में यह विषय नहीं है।",
+    "searchPapers": "शोध-पत्र खोजें"
   },
   "evidenceLibraries": {
     "list": {
@@ -4171,5 +4173,34 @@
   },
   "models": {
     "changeInSettings": "AI सेटिंग्स में बदलें"
+  },
+  "entityCards": {
+    "papers": "शोध-पत्र",
+    "citations": "उद्धरण",
+    "hIndex": "h-सूचकांक",
+    "noInstitution": "कोई वर्तमान संस्थान नहीं",
+    "noTopics": "कोई विषय सूचीबद्ध नहीं",
+    "authorFailed": "यह लेखक लोड नहीं हो सका।",
+    "topicFailed": "विवरण लोड नहीं हो सका।",
+    "noDescription": "अभी कोई विवरण नहीं।",
+    "tryAgain": "फिर से प्रयास करें",
+    "filterResults": "परिणाम फ़िल्टर करें",
+    "removeFilter": "फ़िल्टर हटाएँ",
+    "searchPapers": "शोध-पत्र खोजें",
+    "authorPage": "लेखक पृष्ठ",
+    "topicPage": "विषय पृष्ठ",
+    "browseTopics": "विषय ब्राउज़ करें",
+    "openOnOpenAlex": "OpenAlex पर खोलें",
+    "level": {
+      "topic": "विषय",
+      "subfield": "उपक्षेत्र",
+      "field": "क्षेत्र",
+      "domain": "डोमेन"
+    },
+    "below": {
+      "domain": "क्षेत्र",
+      "field": "उपक्षेत्र",
+      "subfield": "विषय"
+    }
   }
 }
