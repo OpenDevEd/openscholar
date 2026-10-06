@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useContext, type ReactElement, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
-import { readAuthorCard } from "@/app/actions/author-card";
+import { readAuthorCard, type AuthorCard } from "@/app/actions/author-card";
 import { readTopic } from "@/app/actions/topics";
 import { AuthorAvatar } from "@/components/authors/author-avatar";
 import { ArrowUpRight, ChevronRight, Filter, Search, TopicsIcon } from "@/components/icons";
@@ -27,9 +27,6 @@ export function useCloseFocus() {
   const closeFocus = useContext(FocusModeClose);
   return closeFocus ?? (() => useUIStore.getState().setIsFocusModeOpen(false));
 }
-
-/** A card's chips: one line that scrolls sideways, each a link. */
-const CHIP = "shrink-0 rounded-md bg-inset px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring";
 
 /**
  * A card that opens over a name after a short hover, holding what the name is and what can be
@@ -115,6 +112,35 @@ function CardActions({ filter, value, name, page, openAlex }: {
   );
 }
 
+/**
+ * An author's top topics, each a link to its page with the number of their papers it holds, on a
+ * bar scaled to the first. Three rows' space is kept whether they are loading or there are fewer.
+ */
+function TopTopics({ topics, onNavigate }: { topics: AuthorCard["topics"] | undefined; onNavigate: () => void }) {
+  const t = useTranslations("entityCards");
+  const locale = useLocale();
+  const most = Math.max(1, ...(topics ?? []).map((topic) => topic.papers));
+  return (
+    <div className="mt-3 -mx-2 space-y-0.5">
+      {topics?.map((topic) => (
+        <TooltipHint key={topic.id} label={topic.name} onlyWhenClipped>
+          <Link
+            href={`/topics/${topic.id}`}
+            onNavigate={onNavigate}
+            aria-label={t("topicPapers", { name: topic.name, count: topic.papers })}
+            className="relative flex h-7 items-center gap-3 overflow-hidden rounded-md px-2 text-xs transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <span aria-hidden className="absolute inset-y-0 left-0 rounded-md bg-primary/10" style={{ width: `${(topic.papers / most) * 100}%` }} />
+            <span className="relative min-w-0 flex-1 truncate">{topic.name}</span>
+            <span className="relative tabular-nums text-muted-foreground">{topic.papers.toLocaleString(locale)}</span>
+          </Link>
+        </TooltipHint>
+      ))}
+      {topics && !topics.length && <p className="px-2 text-xs text-muted-foreground">{t("noTopics")}</p>}
+    </div>
+  );
+}
+
 function AuthorCardBody({ id, name }: { id: string; name: string }) {
   const t = useTranslations("entityCards");
   const closeFocus = useCloseFocus();
@@ -133,25 +159,21 @@ function AuthorCardBody({ id, name }: { id: string; name: string }) {
           </>
         ) : author ? <span>{t("noInstitution")}</span> : null}
       />
+      {/* Counts and top topics, at one height whether loading, loaded, empty or failed. */}
       {card.error ? (
-        <div role="alert" className="mx-4 mt-3 flex h-20 flex-col items-start justify-center gap-2 text-sm text-muted-foreground">
+        <div role="alert" className="mx-4 mt-3 flex h-[8.75rem] flex-col items-start justify-center gap-2 text-sm text-muted-foreground">
           {t("authorFailed")}
           <Button size="sm" variant="outline" onClick={() => void card.mutate()}>{t("tryAgain")}</Button>
         </div>
       ) : (
-        <>
-          <div className="mt-3 grid grid-cols-3 gap-3 px-4">
+        <div className="mt-3 h-[8.75rem] px-4">
+          <div className="grid grid-cols-3 gap-3">
             <Stat value={author?.works} label={t("papers")} />
             <Stat value={author?.citations} label={t("citations")} />
             <Stat value={author?.hIndex} label={t("hIndex")} />
           </div>
-          <FadeRow scrolls className="mt-3 h-7 px-4">
-            <div className="flex w-max items-center gap-1.5">
-              {author?.topics.map((topic) => <Link key={topic.id} href={`/topics/${topic.id}`} onNavigate={closeFocus} className={CHIP}>{topic.name}</Link>)}
-              {author && !author.topics.length && <span className="text-xs text-muted-foreground">{t("noTopics")}</span>}
-            </div>
-          </FadeRow>
-        </>
+          <TopTopics topics={author?.topics} onNavigate={closeFocus} />
+        </div>
       )}
       <CardActions
         filter={filter}

@@ -4083,6 +4083,7 @@
       "domain": "分野",
       "field": "サブフィールド",
       "subfield": "トピック"
-    }
+    },
+    "topicPapers": "{name}、論文 {count} 件"
   }
 }

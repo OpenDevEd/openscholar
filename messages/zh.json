@@ -4083,6 +4083,7 @@
       "domain": "领域",
       "field": "子领域",
       "subfield": "主题"
-    }
+    },
+    "topicPapers": "{name}，{count} 篇论文"
   }
 }

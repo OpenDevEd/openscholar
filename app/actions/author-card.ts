@@ -13,7 +13,7 @@ const authorSchema = z.object({
   cited_by_count: z.number(),
   summary_stats: z.object({ h_index: z.number().nullish() }).nullish(),
   last_known_institutions: z.array(z.object({ display_name: z.string(), country_code: z.string().nullish() })).nullish(),
-  topics: z.array(z.object({ id: z.string(), display_name: z.string() })).nullish(),
+  topics: z.array(z.object({ id: z.string(), display_name: z.string(), count: z.number() })).nullish(),
 });
 
 export type AuthorCard = {
@@ -23,7 +23,8 @@ export type AuthorCard = {
   citations: number;
   hIndex: number | null;
   institution: { name: string; country: string | null } | null;
-  topics: { id: string; name: string }[];
+  /** The author's top topics, with how many of their papers each holds, most first. */
+  topics: { id: string; name: string; papers: number }[];
   /** The hand-made profile that links this OpenAlex author, when one does. */
   profileId: string | null;
 };
@@ -45,6 +46,9 @@ async function linkedProfile(id: string, name: string) {
 /** The "test author" profile on shared dev, which every mock card without a linked profile goes to. */
 const DEMO_PROFILE = "t57aha45aqex5padqh3wcgekgd8fqjca";
 
+/** How many of an author's topics the card lists. */
+const TOP_TOPICS = 3;
+
 /** What an author's hover card shows, from OpenAlex and the author profiles. */
 export async function readAuthorCard(id: string) {
   if (!/^A\d+$/.test(id)) throw new Error("Invalid OpenAlex author");
@@ -62,7 +66,7 @@ export async function readAuthorCard(id: string) {
     citations: author.cited_by_count,
     hIndex: author.summary_stats?.h_index ?? null,
     institution: institution ? { name: institution.display_name, country: institution.country_code ?? null } : null,
-    topics: (author.topics ?? []).slice(0, 6).map((topic) => ({ id: topic.id.replace("https://openalex.org/", ""), name: topic.display_name })),
+    topics: (author.topics ?? []).slice(0, TOP_TOPICS).map((topic) => ({ id: topic.id.replace("https://openalex.org/", ""), name: topic.display_name, papers: topic.count })),
     // ponytail: mock only, every author links to the demo profile so the card shows its page link; the real build links a matched profile or the author's own page.
     profileId: (await linkedProfile(id, author.display_name)) ?? DEMO_PROFILE,
   } satisfies AuthorCard;
