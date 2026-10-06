@@ -86,10 +86,10 @@ function SheetHeader({ title, detail, onBack }: { title: string; detail?: string
           <ChevronLeft className="size-4" />
         </button>
       </TooltipHint>
-      <div className="min-w-0">
+      {/* Two lines high whatever it holds, so the header never changes height; a title with no line under it sits level with the back button. */}
+      <div className="flex h-9 min-w-0 flex-col justify-center">
         <p className="truncate text-sm font-semibold">{title}</p>
-        {/* The line keeps its height while empty, so the header doesn't grow when its text arrives. */}
-        <p className="h-4 truncate text-xs text-muted-foreground">{detail}</p>
+        {detail ? <p className="truncate text-xs text-muted-foreground">{detail}</p> : null}
       </div>
     </div>
   );
