@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TranslateIcon } from "@/components/icons";
+import { SearchLanguageIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { languageOptions } from "@/lib/ai/core/languages";
 import { useTranslations } from "next-intl";
@@ -42,7 +42,7 @@ export function LanguageSelector({ value, onValueChange, disabled = false, worki
         aria-label={label}
         className={cn("w-auto gap-1.5 px-2.5 ai-surface shadow-xs [&_svg:not([class*='text-'])]:text-primary", className)}
       >
-        <TranslateIcon working={working} size={12} className="h-3 w-3" />
+        <SearchLanguageIcon working={working} size={12} className="h-3 w-3" />
         <span className="hidden whitespace-nowrap text-xs font-medium sm:inline">{label}</span>
         {selectedLanguage ? (
           <span className="text-2xs font-medium uppercase leading-none sm:hidden">{selectedLanguage.code}</span>

@@ -16,7 +16,7 @@ type MarkProps = Omit<ComponentPropsWithoutRef<"svg">, "children"> & {
 // Hovering the control a mark sits in plays the mark's hover.
 const HOVER_HOST = "button, a, label, [role='button'], [role='menuitem'], [role='tab']";
 
-function Mark({ shape, size = 16, variant = "orbit", working = false, className, ...props }: MarkProps & { shape: "ai" | "translate" }) {
+function Mark({ shape, size = 16, variant = "orbit", working = false, className, ...props }: MarkProps & { shape: "ai" | "translate" | "search-language" }) {
   const svg = useRef<SVGSVGElement>(null);
   const started = useRef(false);
   // Mask ids must be unique and identical on the server and the client.
@@ -66,4 +66,9 @@ export function AiMark(props: MarkProps) {
 /** The AI mark's translation form: a globe behind a letter tile that flips through the app's scripts. */
 export function TranslateMark(props: MarkProps) {
   return <Mark shape="translate" {...props} />;
+}
+
+/** Searching in a language: a magnifier round the AI star, with the same letter tile. */
+export function SearchLanguageMark(props: MarkProps) {
+  return <Mark shape="search-language" {...props} />;
 }
