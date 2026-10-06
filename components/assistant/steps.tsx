@@ -288,7 +288,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
       </div>
       {step.credits === undefined ? (
         <>
-          <p className="px-4 pb-4 text-xs text-muted-foreground">{t(step.batch === undefined ? "asks.why" : "asks.whyMany")}</p>
+          <p className="px-4 pb-4 text-xs text-muted-foreground">{t(step.batch !== undefined ? "asks.whyMany" : step.outside ? "asks.whyOutside" : "asks.whyUndo")}</p>
           <div className="grid grid-cols-[1fr_auto] gap-2 border-t border-primary/15 p-3">
             <Button className="h-9" disabled={sent} onClick={() => say(true)}>
               {t("asks.allow")}

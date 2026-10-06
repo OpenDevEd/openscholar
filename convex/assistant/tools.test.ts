@@ -682,6 +682,28 @@ describe("the assistant's tools", () => {
     expect((await thread())?.asking).toBeUndefined();
   });
 
+  it("say why a call asks: what reaches other people, or what can't be undone, without repeating which job it does", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, sayUntilAsked } = await chatOf(t);
+    const asked = async () => (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step" && item.status === "asking");
+    const old = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
+    // Deleting a chat takes it away from whoever it's shared with.
+    mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: old } } }));
+    await sayUntilAsked("Delete my old chat");
+    expect(await asked()).toMatchObject({ action: "assistant/threads:remove", outside: true });
+  });
+
+  it("ask about clearing every search because it can't be undone, named by the card and not by its kind", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, sayUntilAsked } = await chatOf(t);
+    mockDoStream.mockImplementationOnce(calling({ id: "clear", name: "run_action", input: { name: "research/records:change", arguments: { requestId: "clear-1", command: { kind: "clearSearches" } } } }));
+    await sayUntilAsked("Clear out all my old searches");
+    const step = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step" && item.status === "asking");
+    expect(step).toMatchObject({ action: "research/records:change", variant: "clearSearches" });
+    expect(step && "outside" in step).toBe(false);
+    expect(step && "details" in step && step.details?.some((detail) => detail.name === "kind")).toBe(false);
+  });
+
   it("give a call its result from the conversation itself, when its reply died before recording that it asked", async () => {
     const t = convexTest(schema);
     const { asAda, threadId, say, sayUntilAsked, steps } = await chatOf(t);

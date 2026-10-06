@@ -391,7 +391,7 @@ export const release = internalMutation({
     asking: v.optional(
       v.object({
         promptMessageId: v.string(),
-        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()), batch: v.optional(v.number()), variant: v.optional(v.string()) })),
+        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()), batch: v.optional(v.number()), variant: v.optional(v.string()), outside: v.optional(v.literal(true)) })),
         spent: v.number(),
         rounds: v.number(),
         made: v.number(),
@@ -597,6 +597,8 @@ const stepValidator = v.object({
   count: v.optional(v.number()),
   /** The most it holds, on a call that spends credits (#328). */
   credits: v.optional(v.number()),
+  /** On a call that asks first: what it does reaches other people, which is why it asks. Otherwise it asks because it can't be undone. */
+  outside: v.optional(v.literal(true)),
   /**
    * `failed` also covers a step whose reply died while it ran. `asking`: the person is asked before it runs.
    * `allowed`: they said yes, and it runs once the reply carries on. `declined`: they said no, or stopped the reply.
@@ -748,7 +750,7 @@ export const messagesAction = defineUserQuery({
     const reader = thread.asking?.senderId === userId ? await ctx.db.get("users", userId) : null;
     const mine = reader ? await stepsAt(ctx, threadId, "asking") : [];
     const details = new Map(
-      await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: await detailsOf(ctx, reader!, step.shown ?? step.input) } : await bulkOf(ctx, reader!, step)] as const)),
+      await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: withoutVariant(await detailsOf(ctx, reader!, step.shown ?? step.input), step) } : await bulkOf(ctx, reader!, step)] as const)),
     );
     // The jobs each of the app's job-ended messages told the chat of.
     const told = new Map<string, Doc<"assistantJobEnds">[]>(
@@ -815,6 +817,12 @@ export const messages = userQuery(messagesAction);
  * Which of its several jobs a step's action did: the kind of change made to the person's
  * research records, or which way a paper moved between the library and a collection.
  */
+/** A call's details without the `kind` that only says which of its jobs it does, which its card's title already says. */
+function withoutVariant(details: Array<{ name: string; value: string }>, step: Doc<"assistantSteps">) {
+  const { variant } = variantOf(step);
+  return variant ? details.filter((detail) => !(detail.name === "kind" && detail.value === variant)) : details;
+}
+
 function variantOf(step: Doc<"assistantSteps">) {
   // A bulk change keeps which job all its changes do: what it was given doesn't say it one by one.
   if (step.variant) return { variant: step.variant };
@@ -859,6 +867,7 @@ function shownStep(
     ...(step.subject ? { subject: step.subject, ...hrefOf(step) } : {}),
     ...(step.count === undefined ? {} : { count: step.count }),
     ...(step.credits === undefined ? {} : { credits: step.credits }),
+    ...(step.outside ? { outside: true as const } : {}),
     status: shownStatus(step.status, answering === step.order),
     ...(step.batch === undefined ? {} : { batch: step.batch }),
     canAnswer: asked !== undefined,
