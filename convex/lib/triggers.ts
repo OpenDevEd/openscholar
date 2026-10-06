@@ -8,7 +8,7 @@ import { Triggers } from "convex-helpers/server/triggers";
 import { makeFunctionReference } from "convex/server";
 import type { DataModel, Id } from "../_generated/dataModel";
 import { settleEndedJob } from "../billing/spend";
-import { noteEndedJob, tellIdleChat } from "../assistant/jobEnds";
+import { noteEndedJob, tellIdleChat, trackChatJob } from "../assistant/jobEnds";
 import { countJobChange, countPaperChange, countPaperErrorChange, countResultChange, reviseQuestionChange } from "../extraction/counts";
 import { nameJob } from "../extraction/jobList";
 import { recordRevisionApprovedQueries } from "../evidenceLibraries/approvedQueries";
@@ -34,6 +34,9 @@ triggers.register("screeningJobs", settleEndedJob<Id<"screeningJobs">>(makeFunct
 // A job a reply started tells its chat when it ends; a chat that stops being busy hears the ends that waited (convex/assistant/jobEnds.ts).
 triggers.register("screeningJobs", noteEndedJob("screening"));
 triggers.register("extractionJobs", noteEndedJob("extraction"));
+// While it runs, a job a reply started has a row its chat docks the job's live card from.
+triggers.register("screeningJobs", trackChatJob("screening"));
+triggers.register("extractionJobs", trackChatJob("extraction"));
 triggers.register("assistantThreads", tellIdleChat);
 triggers.register("walletKeys", countList(walletKeyList));
 triggers.register("admins", countList(() => ADMIN_LIST));

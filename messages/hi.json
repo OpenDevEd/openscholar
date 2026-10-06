@@ -4008,11 +4008,6 @@
       "excluded": "बाहर",
       "unclear": "अस्पष्ट",
       "open": "खोलें",
-      "question": "प्रश्न",
-      "missing": "नहीं बताया गया",
-      "noAnswer": "कोई उत्तर नहीं",
-      "titleOnly": "केवल शीर्षक",
-      "more": "इसके पेज पर {count} और शोध-पत्र",
       "finished": "पूरा हुआ",
       "cancelled": "रद्द किया गया",
       "stopped": "रुका",
@@ -4036,7 +4031,16 @@
         "failed": "एक्सट्रैक्शन विफल रहा",
         "cancel": "एक्सट्रैक्शन रद्द करें"
       },
-      "ended": "{kind, select, screening {आपकी स्क्रीनिंग} other {आपका एक्सट्रैक्शन}} {status, select, completed {पूरा हुआ} creditsExhausted {आपके दिए क्रेडिट पर रुका} cancelled {रद्द हुआ} other {विफल रहा}}"
-    }
+      "ended": "{kind, select, screening {आपकी स्क्रीनिंग} other {आपका एक्सट्रैक्शन}} {status, select, completed {पूरा हुआ} creditsExhausted {आपके दिए क्रेडिट पर रुका} cancelled {रद्द हुआ} other {विफल रहा}}",
+      "read": "पढ़े गए",
+      "failedCount": "विफल",
+      "showLess": "कम दिखाएँ",
+      "showAll": "सभी {count} चल रहे कार्य दिखाएँ"
+    },
+    "jobKind": {
+      "screening": "स्क्रीनिंग",
+      "extraction": "एक्सट्रैक्शन"
+    },
+    "moreJobs": "{count} और कार्य"
   }
 }

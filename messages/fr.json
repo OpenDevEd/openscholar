@@ -4008,11 +4008,6 @@
       "excluded": "exclus",
       "unclear": "incertains",
       "open": "Ouvrir",
-      "question": "Question",
-      "missing": "Non indiqué",
-      "noAnswer": "Pas de réponse",
-      "titleOnly": "Titre seul",
-      "more": "{count, plural, one {# autre article} other {# autres articles}} sur sa page",
       "finished": "Terminé",
       "cancelled": "Annulé",
       "stopped": "Arrêté",
@@ -4036,7 +4031,16 @@
         "failed": "L'extraction a échoué",
         "cancel": "Annuler l'extraction"
       },
-      "ended": "{kind, select, screening {Votre tri} other {Votre extraction}} {status, select, completed {est terminé} creditsExhausted {s'est arrêté aux crédits autorisés} cancelled {a été annulé} other {a échoué}}"
-    }
+      "ended": "{kind, select, screening {Votre tri} other {Votre extraction}} {status, select, completed {est terminé} creditsExhausted {s'est arrêté aux crédits autorisés} cancelled {a été annulé} other {a échoué}}",
+      "read": "lus",
+      "failedCount": "en échec",
+      "showLess": "Afficher moins",
+      "showAll": "Afficher les {count} tâches en cours"
+    },
+    "jobKind": {
+      "screening": "Tri",
+      "extraction": "Extraction"
+    },
+    "moreJobs": "{count, plural, one {# autre tâche} other {# autres tâches}}"
   }
 }

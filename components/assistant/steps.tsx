@@ -30,7 +30,7 @@ import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { viewOf, type Kind } from "@/lib/assistant/actions";
 import { OrbitMark } from "./orbit-mark";
-import { JOB_STARTS, JobCard } from "./job-cards";
+import { CARD_SPRING, cardLayoutId, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
 import { FadeRow, WorkingText } from "./parts";
 
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -149,6 +149,8 @@ export function Steps({
   const all = [...new Map([...results.toReversed(), ...newest].map((step) => [step.id, step])).values()].sort((a, b) => a.order - b.order || a.at - b.at);
   const asked = all.filter((step) => step.canAnswer);
   const steps = all.filter((step) => !step.canAnswer);
+  const docked = useContext(DockedJobs);
+  const reduceMotion = useReducedMotion();
   return (
     <div className="space-y-3">
       {steps.length ? <RunMap threadId={threadId} steps={steps} earlier={status === "CanLoadMore" ? () => loadMore(STEPS_SHOWN) : status === "LoadingMore" ? "loading" : null} /> : null}
@@ -157,11 +159,13 @@ export function Steps({
           <ApprovalCard key={step.id} threadId={threadId} step={step} />
         ))}
       </AnimatePresence>
-      {/* Each job the reply started, live, under its map. */}
+      {/* Each job the reply started, under its map, once it has ended: while it runs, its card is docked over the message box, and it flies here as it ends. */}
       {steps
-        .filter((step) => JOB_STARTS.has(step.action) && step.status === "done")
+        .filter((step) => JOB_STARTS.has(step.action) && step.status === "done" && !docked.has(step.id))
         .map((step) => (
-          <JobCard key={`job:${step.id}`} threadId={threadId} stepId={step.id} kind={step.action === "screening/start:screen" ? "screening" : "extraction"} />
+          <motion.div key={`job:${step.id}`} layoutId={cardLayoutId(step.id)} transition={reduceMotion ? { duration: 0 } : CARD_SPRING} className="rounded-2xl bg-card">
+            <JobCard threadId={threadId} stepId={step.id} />
+          </motion.div>
         ))}
     </div>
   );

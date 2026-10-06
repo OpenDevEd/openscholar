@@ -4008,11 +4008,6 @@
       "excluded": "排除",
       "unclear": "不确定",
       "open": "打开",
-      "question": "问题",
-      "missing": "未报告",
-      "noAnswer": "无答案",
-      "titleOnly": "仅标题",
-      "more": "其页面上还有 {count} 篇论文",
       "finished": "已完成",
       "cancelled": "已取消",
       "stopped": "已停止",
@@ -4036,7 +4031,16 @@
         "failed": "提取失败",
         "cancel": "取消提取"
       },
-      "ended": "{kind, select, screening {你的筛选} other {你的提取}}{status, select, completed {已完成} creditsExhausted {已在你允许的积分处停止} cancelled {已取消} other {失败}}"
-    }
+      "ended": "{kind, select, screening {你的筛选} other {你的提取}}{status, select, completed {已完成} creditsExhausted {已在你允许的积分处停止} cancelled {已取消} other {失败}}",
+      "read": "已读",
+      "failedCount": "失败",
+      "showLess": "收起",
+      "showAll": "显示全部 {count} 个运行中的任务"
+    },
+    "jobKind": {
+      "screening": "筛选",
+      "extraction": "提取"
+    },
+    "moreJobs": "另外 {count} 个任务"
   }
 }

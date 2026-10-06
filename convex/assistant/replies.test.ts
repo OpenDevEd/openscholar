@@ -661,6 +661,38 @@ describe("a job a reply started", () => {
     expect(JSON.stringify(mockDoStream.mock.calls[1][0].prompt)).toContain(`<job_ended>screening ${later}`);
   });
 
+  it("docks in its chat and shows on the chat's row while it runs, from its start until it ends, and again when it's carried on", async () => {
+    const t = convexTest(schema);
+    const { asAda, asBen, ada, threadId } = await sharedChat(t);
+    // The job is written while the step that starts it is still running: its card is read from the job's row until the step ends.
+    const { jobId, stepId } = await t.run(async (ctx) => {
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "running", startedAt: 1 });
+      const jobId = await insertJob(ctx, {
+        userId: ada, status: "processing", totalPapers: 2, chatStep: stepId,
+        questions: [{ key: "q1", question: "Is this a trial?" }],
+        scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [{ minScore: 0, stars: 1 }] },
+        createdAt: 1, updatedAt: 1,
+      });
+      return { jobId, stepId };
+    });
+    const running = () => asBen.query(api.assistant.jobs.running, { threadId });
+    const row = async () => (await asBen.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage })).page.find((listed) => listed._id === threadId);
+    expect(await running()).toEqual([{ stepId, kind: "screening" }]);
+    expect(await asBen.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ card: { kind: "screening", jobId, total: 2 }, mine: false });
+    expect(await row()).toMatchObject({ jobs: [{ id: jobId, kind: "screening", done: 0, total: 2 }], moreJobs: 0 });
+
+    // It ends: the chat's dock and row let it go.
+    await t.mutation(internal.screening.mutations.markScreeningJobCreditsExhausted, { jobId });
+    expect(await running()).toEqual([]);
+    expect(await row()).toMatchObject({ jobs: [], moreJobs: 0 });
+
+    // Carried on from its page, it docks again; it goes with a deleted chat.
+    await t.run((ctx) => ctx.db.patch("screeningJobs", jobId, { status: "processing" }));
+    expect(await asAda.query(api.assistant.jobs.running, { threadId })).toEqual([{ stepId, kind: "screening" }]);
+    await t.mutation(internal.assistant.steps.forget, { threadId });
+    expect(await t.run((ctx) => ctx.db.query("assistantJobs").collect())).toEqual([]);
+  });
+
   it("takes its end back when it's carried on before the chat is told, and goes with a deleted chat", async () => {
     const t = convexTest(schema);
     const { ada, threadId } = await sharedChat(t);

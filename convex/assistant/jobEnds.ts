@@ -38,6 +38,27 @@ export const noteEndedJob =
     await ctx.scheduler.runAfter(0, deliver, { threadId: step.threadId });
   };
 
+/**
+ * A trigger that keeps the row of each job a reply started while it runs, so its chat can dock
+ * the job's live card: written as the job starts, or carries on after it ended, and deleted as
+ * it ends. A job's progress changes it often; only a change between running and ended writes.
+ */
+export const trackChatJob =
+  (kind: Doc<"assistantJobs">["kind"]) =>
+  async (ctx: MutationCtx, { oldDoc, newDoc }: { oldDoc: Job | null; newDoc: Job | null }) => {
+    const live = (job: Job | null) => Boolean(job?.chatStep) && !ENDED.has(job?.status ?? "");
+    if (live(oldDoc) === live(newDoc)) return;
+    const jobId = (newDoc ?? oldDoc)!._id;
+    const row = await ctx.db.query("assistantJobs").withIndex("by_job", (q) => q.eq("jobId", jobId)).first();
+    if (!live(newDoc)) {
+      if (row) await ctx.db.delete("assistantJobs", row._id);
+      return;
+    }
+    if (row) return;
+    const step = await ctx.db.get("assistantSteps", newDoc!.chatStep!);
+    if (step) await ctx.db.insert("assistantJobs", { threadId: step.threadId, stepId: step._id, userId: step.userId, kind, jobId });
+  };
+
 /** A trigger that tells a chat the ends that waited for it, when it stops writing a reply or waiting for an answer. */
 export async function tellIdleChat(ctx: MutationCtx, { oldDoc, newDoc }: { oldDoc: Doc<"assistantThreads"> | null; newDoc: Doc<"assistantThreads"> | null }) {
   const busy = (thread: Doc<"assistantThreads"> | null) => Boolean(thread?.reply || thread?.asking);

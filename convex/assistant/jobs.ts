@@ -15,9 +15,9 @@ import { internalMutation, query } from "../lib/functions";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { getScreeningJobAction } from "../screening/queries";
 import { readJobCounters } from "../extraction/jobCounters";
-import { formatAnswerForDisplay } from "../../lib/extraction/analysis";
+import { readScreeningProgressCounts } from "../screening/progress";
 import { requireThread } from "./access";
-import { extractionCardValidator, JOB_CARD_ROWS, JOBS_TOLD_AT_ONCE, screeningCardValidator } from "./validators";
+import { extractionCardValidator, JOBS_DOCKED, JOBS_TOLD_AT_ONCE, runningJobsValidator, screeningCardValidator } from "./validators";
 import { hasEnded, JOB_ENDED } from "./jobEnds";
 import { admit, startReply } from "./replies";
 import { healCalls, settleAsked } from "./steps";
@@ -31,10 +31,19 @@ const BUSY_RETRY_MS = 60_000;
 
 const cardValidator = v.union(screeningCardValidator, extractionCardValidator);
 
-/** The job a step started, from what it returned. */
+/**
+ * The job a step started: from what it returned, or, while the step is still finishing, from
+ * the running job's row, which the job's own insert writes (./jobEnds.ts).
+ */
 async function jobOf(ctx: QueryCtx, step: Doc<"assistantSteps">) {
   const kind = STARTS[step.path];
-  if (!kind || step.status !== "done") return null;
+  if (!kind) return null;
+  const running = await ctx.db.query("assistantJobs").withIndex("by_step", (q) => q.eq("stepId", step._id)).first();
+  if (running) {
+    const id = ctx.db.normalizeId(kind === "screening" ? "screeningJobs" : "extractionJobs", running.jobId);
+    return id ? { kind, id } : null;
+  }
+  if (step.status !== "done") return null;
   const row = await ctx.db.query("assistantStepResults").withIndex("by_step", (q) => q.eq("stepId", step._id)).unique();
   try {
     const { jobId } = JSON.parse(row?.result ?? "null") as { jobId?: string };
@@ -84,46 +93,28 @@ async function screeningAhead(ctx: QueryCtx, userId: Id<"users">, waiting: Id<"s
   return null;
 }
 
-/** What an extraction has come to, with its first papers' answers. */
+/** What an extraction has come to: how many papers it has read, and the questions it asks. */
 async function extractionFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"extractionJobs">): Promise<Infer<typeof extractionCardValidator> | null> {
   const job = await ctx.db.get("extractionJobs", jobId);
   if (!job || job.userId !== userId) return null;
-  const [counters, credits, questions, papers] = await Promise.all([
+  const [counters, credits, questions] = await Promise.all([
     readJobCounters(ctx, jobId),
     creditsAgg.sum(ctx, { namespace: jobId }),
     ctx.db.query("extractionQuestions").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(MAX_QUESTIONS_PER_JOB),
-    ctx.db.query("extractionPapers").withIndex("by_job_processable", (q) => q.eq("jobId", jobId).eq("processable", true)).take(JOB_CARD_ROWS),
   ]);
-  const asked = questions.sort((a, b) => a.order - b.order);
-  const types = new Map(asked.map((question) => [question.key, question.type]));
-  const rows = await Promise.all(
-    papers.map(async (paper) => {
-      const results = await ctx.db.query("extractionResults").withIndex("by_paper", (q) => q.eq("paperId", paper._id)).take(MAX_QUESTIONS_PER_JOB);
-      const answers = Object.fromEntries(
-        results
-          .filter((result) => result.status === "completed")
-          .map((result) => {
-            const missing = result.answer === null || result.answer === "" || (Array.isArray(result.answer) && !result.answer.length);
-            return [result.questionKey, { text: missing ? "" : formatAnswerForDisplay(result.answer, types.get(result.questionKey) as Parameters<typeof formatAnswerForDisplay>[1]), missing }];
-          }),
-      );
-      return { id: paper._id, title: paper.title, answers, done: paper.status === "completed", titleOnly: !paper.abstract && !paper.storageId };
-    }),
-  );
   return {
     kind: "extraction",
     jobId,
     status: job.status ?? "pending",
     name: job.name,
     total: job.totalPapers ?? 0,
-    // Papers, as the job's page counts them: its counts row has each answer too.
+    // Papers, as the job's page counts them.
     done: counters.processed,
     failed: counters.failed,
     credits,
     ...(job.spendCap === undefined ? {} : { cap: job.spendCap }),
     ...(job.error?.message && job.status !== "completed" ? { stopped: job.error.message } : {}),
-    questions: asked.map(({ key, question }) => ({ key, question })),
-    rows,
+    questions: questions.sort((a, b) => a.order - b.order).map(({ key, question }) => ({ key, question })),
   };
 }
 
@@ -144,6 +135,32 @@ export const card = query({
     return card ? { card, mine: step.userId === userId } : null;
   },
 });
+
+/** The jobs this chat's replies started that are still running, newest first: the chat docks their live cards. */
+export const running = query({
+  args: { threadId: v.id("assistantThreads") },
+  returns: runningJobsValidator,
+  handler: async (ctx, { threadId }) => {
+    const userId = (await requireAuth(ctx))._id;
+    await requireFeature(ctx, FLAG, userId);
+    await requireThread(ctx, userId, threadId);
+    const rows = await ctx.db.query("assistantJobs").withIndex("by_thread", (q) => q.eq("threadId", threadId)).order("desc").take(JOBS_DOCKED);
+    return rows.map(({ stepId, kind }) => ({ stepId, kind }));
+  },
+});
+
+/** How far a running job has got, in papers, for a chat's row in the list. Null for a job that's gone. */
+export async function progressOf(ctx: QueryCtx, row: Doc<"assistantJobs">): Promise<{ done: number; total: number } | null> {
+  if (row.kind === "screening") {
+    const job = await ctx.db.get("screeningJobs", row.jobId as Id<"screeningJobs">);
+    if (!job) return null;
+    const counts = await readScreeningProgressCounts(ctx, job);
+    return { done: counts.completedCount + counts.failedCount, total: job.totalPapers };
+  }
+  const job = await ctx.db.get("extractionJobs", row.jobId as Id<"extractionJobs">);
+  if (!job) return null;
+  return { done: (await readJobCounters(ctx, job._id)).processed, total: job.totalPapers ?? 0 };
+}
 
 /** One ended job as the assistant is told it: what it found, what it cost, and where its page is. */
 async function told(ctx: QueryCtx, end: Doc<"assistantJobEnds">, quiet: boolean) {

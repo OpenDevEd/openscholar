@@ -4000,11 +4000,6 @@
       "excluded": "excluded",
       "unclear": "unclear",
       "open": "Open",
-      "question": "Question",
-      "missing": "Not reported",
-      "noAnswer": "No answer",
-      "titleOnly": "Title only",
-      "more": "{count, plural, one {# more paper} other {# more papers}} on its page",
       "finished": "Finished",
       "cancelled": "Cancelled",
       "stopped": "Stopped",
@@ -4028,7 +4023,16 @@
         "failed": "The extraction failed",
         "cancel": "Cancel the extraction"
       },
-      "ended": "{kind, select, screening {Your screening} other {Your extraction}} {status, select, completed {finished} creditsExhausted {stopped at the credits you allowed} cancelled {was cancelled} other {failed}}"
-    }
+      "ended": "{kind, select, screening {Your screening} other {Your extraction}} {status, select, completed {finished} creditsExhausted {stopped at the credits you allowed} cancelled {was cancelled} other {failed}}",
+      "read": "read",
+      "failedCount": "failed",
+      "showLess": "Show less",
+      "showAll": "Show all {count} running jobs"
+    },
+    "jobKind": {
+      "screening": "Screening",
+      "extraction": "Extraction"
+    },
+    "moreJobs": "{count, plural, one {# more job} other {# more jobs}}"
   }
 }

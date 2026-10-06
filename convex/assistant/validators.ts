@@ -229,6 +229,16 @@ export const assistantJobEndFields = {
   order: v.optional(v.number()),
 };
 
+/** A job a chat's reply started that hasn't ended: the chat docks its live card while it runs (./jobEnds.ts keeps these). */
+export const assistantJobFields = {
+  threadId: v.id("assistantThreads"),
+  /** The step that started it, and the person whose reply that was. */
+  stepId: v.id("assistantSteps"),
+  userId: v.id("users"),
+  kind: v.union(v.literal("screening"), v.literal("extraction")),
+  jobId: v.string(),
+};
+
 export const assistantThreadAccessFields = {
   threadId: v.id("assistantThreads"),
   /**
@@ -264,8 +274,15 @@ export const mentionablesValidator = capped(
   MENTIONS_EACH * MENTION_KINDS.length,
 );
 
-/** Papers an extraction's card lines up under its questions: the job's page has the rest. */
-export const JOB_CARD_ROWS = 5;
+/** Running jobs a chat docks at most; a chat runs few at once, and each holds credits it was allowed. */
+export const JOBS_DOCKED = 10;
+/** Running jobs a chat's row in the list names, one line each; it counts the rest. */
+export const JOBS_LISTED = 2;
+const jobKindValidator = v.union(v.literal("screening"), v.literal("extraction"));
+/** A chat's running jobs, newest first, by the step that started each (./jobs.ts `running`). */
+export const runningJobsValidator = capped(v.array(v.object({ stepId: v.id("assistantSteps"), kind: jobKindValidator })), JOBS_DOCKED);
+/** The running jobs a chat's row names, with how far each has got in papers (./threads.ts `list`). */
+export const listedJobsValidator = capped(v.array(v.object({ id: v.string(), kind: jobKindValidator, done: v.number(), total: v.number() })), JOBS_LISTED);
 /** Job ends one chat is told in one message. */
 export const JOBS_TOLD_AT_ONCE = 10;
 
@@ -288,7 +305,7 @@ export const screeningCardValidator = v.object({
   waiting: v.optional(v.object({ label: v.optional(v.string()), done: v.number(), total: v.number() })),
   failure: v.optional(v.string()),
 });
-/** An extraction's live card, with its first papers' answers. */
+/** An extraction's live card: how far it has got. Its answers are on its page. */
 export const extractionCardValidator = v.object({
   kind: v.literal("extraction"),
   jobId: v.id("extractionJobs"),
@@ -302,21 +319,6 @@ export const extractionCardValidator = v.object({
   /** Why it stopped, when it did. */
   stopped: v.optional(v.string()),
   questions: capped(v.array(v.object({ key: v.string(), question: v.string() })), MAX_QUESTIONS_PER_JOB),
-  /** Its first papers, each with the answers it has so far by question. */
-  rows: capped(
-    v.array(
-    v.object({
-      id: v.id("extractionPapers"),
-      title: v.string(),
-      /** Each answer as it reads, and whether the paper didn't say. */
-      answers: capped(v.record(v.string(), v.object({ text: v.string(), missing: v.boolean() })), MAX_QUESTIONS_PER_JOB),
-      done: v.boolean(),
-      /** It had no abstract or full text to read: its answers come from its title. */
-      titleOnly: v.boolean(),
-    }),
-    ),
-    JOB_CARD_ROWS,
-  ),
 });
 
 /** The jobs one of the app's job-ended messages told the chat of (./replies.ts). */

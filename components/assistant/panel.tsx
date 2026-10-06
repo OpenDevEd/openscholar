@@ -5,7 +5,7 @@
 // This is the chat itself. The run map, the cards, the sheets and the spending controls
 // arrive with the issues that build what they show; the @ picker is ./mentions.tsx.
 
-import { Component, useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
 import { insertAtTop, useAction, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -50,6 +50,7 @@ import { OrbitMark, type OrbitClock } from "./orbit-mark";
 import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
 import { panelPlace } from "@/lib/assistant/place";
 import { AddCredits, KIND, KindTile, Steps, type StepItem } from "./steps";
+import { DockedJobs, JobDock } from "./job-cards";
 import { IconButton, WorkingText } from "./parts";
 import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
 
@@ -65,8 +66,8 @@ type Sending = { threadId: ThreadId | null };
 type Run = { order: number; head: Item; steps: StepItem[]; said: number };
 
 const PANEL_W = 440;
-/** How far the chips above the composer hang over the thread: half their height. */
-const CHIP_HANG = 16;
+/** The chips' row over the message box: a chip's height and the gap under it. */
+const CHIP_ROW = 40;
 const SHELL_SPRING = { type: "spring" as const, stiffness: 380, damping: 36, mass: 0.9 };
 const FIRST_MESSAGES = 30;
 /** How near the thread's top the person scrolls before the messages before these load, so they're there by the time they get to them. */
@@ -418,6 +419,15 @@ function Chat({
   const [first, setFirst] = useState<{ threadId: ThreadId | null; text: string; title: string } | null>(null);
   // The chat the open new chat became when its first message was sent. It's the thread already on screen, so the thread isn't built again for it.
   const [born, setBorn] = useState<ThreadId | null>(null);
+  // The jobs its replies started that are still running, newest first: their cards dock over the message box.
+  const running = useQuery(api.assistant.jobs.running, threadId ? { threadId } : "skip");
+  const docked = useMemo(() => new Set((running ?? []).map((job) => job.stepId)), [running]);
+  // Whether the dock's stack is opened into a list, for the chat it was opened in.
+  const [stack, setStack] = useState<{ threadId: ThreadId | null; open: boolean }>({ threadId: null, open: false });
+  const stackOpen = stack.open && stack.threadId === threadId && (running?.length ?? 0) > 1;
+  const openStack = (open: boolean) => setStack({ threadId, open });
+  // Which of its jobs are docked is known; a chat its first message just started has none yet.
+  const jobsKnown = running !== undefined || threadId === born;
   // The chat being made, so sending and sharing a chat that hasn't started both end up in the same one.
   const making = useRef<Promise<ThreadId> | null>(null);
   // The message on its way to the server, and the chat it's for: Stop pressed before its reply shows waits for it.
@@ -541,17 +551,39 @@ function Chat({
     <>
       {/* A chat that has just been made is named by its first message until its record arrives, as the server names it, so "New chat" changes once. */}
       <Header title={threadId ? (thread?.title ?? (threadId === born && first?.threadId === threadId ? first.title : "")) : t("newChat")} onHistory={onHistory} onShare={share} onSpending={spend} onRestart={restart} onFold={onFold} />
-      <Thread
-        // A different chat starts at its own newest message. A new chat that has just become a real one is the same thread.
-        key={threadId === null || threadId === born ? NEW : threadId}
-        threadId={threadId}
-        messages={[...messages, ...sent]}
-        live={live}
-        fresh={threadId === null && sent.length === 0}
-        // An open chat's first page is still on its way, unless it's the chat this message just started.
-        older={threadId && status === "LoadingFirstPage" && !sent.length ? "first" : status === "CanLoadMore" ? () => loadMore(FIRST_MESSAGES) : status === "LoadingMore" ? "loading" : null}
-      />
-      <Footer composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} picked={drafts.picks(threadId)} onPick={(mention) => drafts.pick(threadId, mention)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel}
+      <DockedJobs.Provider value={docked}>
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <Thread
+            // A different chat starts at its own newest message. A new chat that has just become a real one is the same thread.
+            key={threadId === null || threadId === born ? NEW : threadId}
+            threadId={threadId}
+            // An open chat shows once it's known which of its jobs are docked, so no job's card moves out of it after it shows.
+            messages={threadId && !jobsKnown ? sent : [...messages, ...sent]}
+            live={live}
+            fresh={threadId === null && sent.length === 0}
+            // An open chat's first page is still on its way, unless it's the chat this message just started.
+            older={threadId && (status === "LoadingFirstPage" || !jobsKnown) && !sent.length ? "first" : status === "CanLoadMore" ? () => loadMore(FIRST_MESSAGES) : status === "LoadingMore" ? "loading" : null}
+          />
+          {/* The dock's opened list lies over the chat, which fades back; a tap on it folds the list again. */}
+          <AnimatePresence>
+            {stackOpen ? (
+              <motion.div
+                key="stack"
+                aria-hidden
+                className="absolute inset-0 z-10 bg-card/80"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, ease: EASE }}
+                onClick={() => openStack(false)}
+              />
+            ) : null}
+          </AnimatePresence>
+        </div>
+      </DockedJobs.Provider>
+      <Footer
+        dock={threadId && running ? <JobDock key={threadId} threadId={threadId} jobs={running} open={stackOpen} onOpen={openStack} /> : null}
+        composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} picked={drafts.picks(threadId)} onPick={(mention) => drafts.pick(threadId, mention)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel}
         meter={meter}
         allowance={spending?.allowance ?? null}
         onStopAllowance={() => (threadId ? void setAllowance({ threadId, allowance: null }).catch((error) => toast.error(t("allowance.failed"), getErrorMessage(error, ""))) : undefined)}
@@ -638,18 +670,17 @@ function Thread({
   }
   const loading = older === "loading";
   return (
-    // Both edges fade. The bottom one is clear under the hanging chips, then fades the usual
-    // distance; the content's bottom padding keeps the last message clear of both.
+    // Both edges fade; the content's bottom padding keeps the last message clear of the fade.
     <Conversation
       className="min-h-0 flex-1"
-      style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${CHIP_HANG + EDGE_FADE}px), transparent calc(100% - ${CHIP_HANG}px))` }}
+      style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)` }}
       // The messages before these load as the person scrolls back towards them, as the app's other lists do.
       // The scroller is the conversation's first element; a table or a code block scrolling inside a reply isn't it.
       onScrollCapture={(event) => {
         if (typeof older === "function" && event.target === event.currentTarget.firstElementChild && event.currentTarget.firstElementChild.scrollTop < LOAD_AHEAD) older();
       }}
     >
-      <ConversationContent className="gap-5 overflow-x-clip px-4 pt-4" style={{ paddingBottom: CHIP_HANG + EDGE_FADE + 8 }}>
+      <ConversationContent className="gap-5 overflow-x-clip px-4 pt-4" style={{ paddingBottom: EDGE_FADE + 8 }}>
         {fresh ? <Empty /> : null}
         {typeof older === "function" || loading ? (
           <button
@@ -905,7 +936,7 @@ function Thinking({ wordless }: { wordless: boolean }) {
   return (
     <div className="flex h-9 items-center gap-2 pl-1 text-sm">
       <OrbitMark size={18} motion="thinking" />
-      <span aria-hidden={wordless} className={cn("transition-opacity duration-200", wordless && "opacity-0")}>
+      <span aria-hidden={wordless} className={cn("font-medium transition-opacity duration-200", wordless && "opacity-0")}>
         <WorkingText>{t("thinking")}</WorkingText>
       </span>
     </div>
@@ -1068,6 +1099,7 @@ function Footer({
   onStopAllowance,
   onCarryOn,
   onSpending,
+  dock,
 }: {
   composer: RefObject<HTMLTextAreaElement | null>;
   draft: string;
@@ -1093,14 +1125,17 @@ function Footer({
   onStopAllowance: () => void;
   onCarryOn: () => void;
   onSpending: () => void;
+  /** The chat's running jobs, between the chips and the message box. */
+  dock?: ReactNode;
 }) {
   const t = useTranslations("assistant");
   const view = useViewName();
+  const chips = meter !== null || allowance !== null;
   return (
-    <div className="space-y-2 p-3 pt-0">
-      {/* The chips hang from their middle on the thread's bottom edge; their frame is the lower half. */}
-      <div className="relative" style={{ height: CHIP_HANG }}>
-        <div className="absolute inset-x-0 flex h-8 items-center gap-2" style={{ top: -CHIP_HANG }}>
+    <div className="p-3 pt-0">
+      {/* The chips' row takes room only while a chip shows, and opens and closes as one does. */}
+      <motion.div className="overflow-hidden" initial={false} animate={{ height: chips ? CHIP_ROW : 0 }} transition={{ duration: 0.3, ease: EASE }}>
+        <div className="flex h-8 items-center gap-2">
           <div className="min-w-0 flex-1">
             <AnimatePresence mode="wait" initial={false}>
               {meter ? (
@@ -1133,7 +1168,8 @@ function Footer({
             ) : null}
           </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
+      {dock}
       <div className="rounded-2xl border border-border/60 bg-background shadow-xs focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
         <MentionComposer
           composer={composer}
