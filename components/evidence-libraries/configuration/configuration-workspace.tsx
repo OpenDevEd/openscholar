@@ -15,7 +15,6 @@ import {
   SourcesIcon,
   TeamIcon,
   EvidenceLibrariesIcon,
-  SparklesIcon,
   SwitchesIcon,
   GlobeIcon,
   PaletteIcon,
@@ -32,6 +31,7 @@ import {
   PublishIcon,
   TrashIcon,
   type AppIcon,
+  AiIcon,
 } from "@/components/icons";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -168,7 +168,7 @@ const SECTION_ICONS: Record<RailKey, AppIcon> = {
   sources: SourcesIcon,
   citations: QuoteIcon,
   features: SwitchesIcon,
-  ai: SparklesIcon,
+  ai: AiIcon,
   languages: LanguagesIcon,
   analytics: AnalyticsIcon,
   domain: LinkIcon,

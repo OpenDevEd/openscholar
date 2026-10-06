@@ -33,7 +33,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
 import {
   Tooltip,
   TooltipContent,
@@ -48,6 +47,7 @@ import {
   PlusIcon,
   SquareIcon,
   XIcon,
+  AiIcon,
 } from "@/components/icons";
 import { nanoid } from "nanoid";
 import type {
@@ -1232,7 +1232,7 @@ export const PromptInputSubmit = ({
   let Icon = <CornerDownLeftIcon className="size-4" />;
 
   if (status === "submitted") {
-    Icon = <Spinner />;
+    Icon = <AiIcon working className="size-4" />;
   } else if (status === "streaming") {
     Icon = <SquareIcon className="size-4" />;
   } else if (status === "error") {

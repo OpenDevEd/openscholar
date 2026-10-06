@@ -177,7 +177,7 @@ export function WebSearchToggle({
                 className="flex items-center gap-2 text-2xs"
                 data-tooltip-provider-line=""
               >
-                <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-ai/12 text-ai">
+                <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-primary/12 text-primary">
                   <Zap className="size-2.5" aria-hidden="true" />
                 </span>
                 <span className="text-muted-foreground">

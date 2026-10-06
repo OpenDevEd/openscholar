@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from "motion/react";
-import { Search, Loader2, Wand2 } from "@/components/icons";
+import { Search, AiIcon } from "@/components/icons";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -163,7 +163,7 @@ export function SearchInput({
               >
                 {isEnhancing ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                    <AiIcon working className="h-4 w-4 shrink-0" />
                     {tc("processing")}
                   </>
                 ) : (
@@ -194,7 +194,7 @@ export function SearchInput({
                             transition={submitMorphTransition}
                             className="inline-flex shrink-0"
                           >
-                            <Wand2 className="h-4 w-4" />
+                            <AiIcon className="h-4 w-4" />
                           </motion.span>
                           <motion.span
                             variants={submitTextVariants}
@@ -264,7 +264,7 @@ export function SearchInput({
                 transition={hintAnimTransition}
                 className="h-9 flex items-center justify-center gap-2.5 rounded-full border border-border-subtle bg-inset px-3 text-xs text-muted-foreground transition-[color,background-color,border-color,box-shadow] duration-200 hover:border-primary/25 hover:bg-muted hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 sm:text-sm"
               >
-                <Wand2 className="h-3.5 w-3.5 text-foreground/70" />
+                <AiIcon size={14} className="h-3.5 w-3.5" />
                 <span>{t("questionShortcutHint")}</span>
               </motion.button>
             ) : (

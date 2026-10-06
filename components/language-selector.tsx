@@ -59,12 +59,8 @@ export function LanguageSelector({
         className={cn(
           "w-auto flex-1",
           compact ? "min-w-[2.5rem] px-2" : "min-w-[120px] max-w-[220px]",
-          "bg-ai-bg border-ai-border text-ai shadow-xs",
-          "hover:bg-ai-bg-hover hover:border-ai-border-hover hover:shadow-[var(--ai-glow)]",
-          "dark:bg-ai-bg dark:border-ai-border dark:text-ai",
-          "dark:hover:bg-ai-bg-hover dark:hover:border-ai-border-hover",
-          "transition-all duration-200",
-          "[&_svg:not([class*='text-'])]:text-ai",
+          "ai-surface shadow-xs",
+          "[&_svg:not([class*='text-'])]:text-primary",
           className,
         )}
         aria-label={compact ? selectedLabel || resolvedPlaceholder : undefined}

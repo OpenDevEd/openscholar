@@ -98,8 +98,8 @@ vi.mock("@/components/icons", () => ({
   Coins: () => null,
   MessageSquare: () => null,
   Check: () => null,
-  Globe2: () => null,
-  Sparkles: () => null,
+  AiIcon: () => null,
+  TranslateIcon: () => null,
 }));
 
 vi.mock("convex/react", () => ({

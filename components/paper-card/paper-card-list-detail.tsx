@@ -29,6 +29,7 @@ import {
   Quote,
   Network,
   BookOpen,
+  TranslateIcon,
 } from "@/components/icons";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useAuthorFilter, useJournalFilter, useTranslate } from "./hooks";
@@ -129,7 +130,7 @@ export function PaperCardListDetail({
             <div className="flex items-center gap-2 mb-2">
               {isTranslating && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                  <TranslateIcon working size={12} className="h-3 w-3" />
                   <span>{tc("translating")}</span>
                 </div>
               )}

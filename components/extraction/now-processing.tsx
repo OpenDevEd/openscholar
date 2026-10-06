@@ -20,7 +20,7 @@
  *   data-paper-id         — stable id hook for deep-links
  */
 
-import { Loader2 } from "@/components/icons";
+import { AiIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
@@ -54,10 +54,7 @@ export function NowProcessing({ jobId }: NowProcessingProps) {
       data-paper-id={data.paperId}
       className="inline-flex items-center gap-2 rounded-md bg-inset px-3 py-1.5 text-xs text-muted-foreground"
     >
-      <Loader2
-        className="h-3.5 w-3.5 animate-spin text-primary"
-        aria-hidden="true"
-      />
+      <AiIcon working size={14} className="h-3.5 w-3.5" />
       <span className="font-medium text-foreground">
         {t("prefix")}
       </span>

@@ -62,3 +62,9 @@ if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
     dispatchEvent() { return true; },
   });
 }
+
+// JSDOM has no Web Animations either. The animated AI mark asks the document for its running animations;
+// browser checks cover the motion, and component tests see none.
+if (typeof Document !== "undefined" && typeof Document.prototype.getAnimations !== "function") {
+  Document.prototype.getAnimations = () => [];
+}

@@ -29,6 +29,7 @@ import {
   ListChecks,
   SearchX,
   ExtractionIcon,
+  AiIcon,
 } from "@/components/icons";
 import posthog from "posthog-js";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -707,7 +708,7 @@ export default function JobDetailPage() {
                 {tJob('questionsCount', { count: questions.length })}
               </span>
               <span className="flex items-center gap-1.5">
-                <RefreshCw className={cn("size-3.5", isProcessing && "animate-spin")} />
+                {isProcessing ? <AiIcon working size={14} className="size-3.5" /> : <RefreshCw className="size-3.5" />}
                 {tJob('updated', { timeAgo: format.relativeTime(new Date(job.updatedAt), now) })}
               </span>
               <CostBadge

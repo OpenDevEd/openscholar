@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
-import { Loader2, Wand2 } from "@/components/icons";
+import { AiIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { QueryHistoryNav } from "./components/query-history-nav";
@@ -125,7 +125,7 @@ Please enhance this academic search query according to the user's specific instr
           value={aiInstructions}
           onChange={(e) => setAiInstructions(e.target.value)}
           disabled={isFormDisabled}
-          icon={<Wand2 className="h-4 w-4" />}
+          icon={<AiIcon className="h-4 w-4" />}
           action={
             <Button
               type="submit"
@@ -134,14 +134,8 @@ Please enhance this academic search query according to the user's specific instr
               disabled={isFormDisabled || !aiInstructions.trim()}
               className="h-7 px-2.5 text-xs gap-1.5"
             >
-              {isEnhancing ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <>
-                  <Wand2 className="h-3 w-3" />
-                  {t("searchCommand.enhance")}
-                </>
-              )}
+              <AiIcon working={isEnhancing} size={12} className="h-3 w-3" />
+              {t("searchCommand.enhance")}
             </Button>
           }
         />

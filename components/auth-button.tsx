@@ -12,7 +12,7 @@ import {
   Settings,
   Loader2,
   SettingsIcon,
-  BotIcon,
+  AiIcon,
 } from "@/components/icons";
 import { useRouter } from "next/navigation";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
@@ -156,7 +156,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
             }}
             className="cursor-pointer flex items-start gap-3 py-2.5"
           >
-            <BotIcon className="h-4 w-4 shrink-0 mt-0.5" />
+            <AiIcon className="h-4 w-4 shrink-0 mt-0.5" />
             <div className="flex flex-col items-start gap-0.5 min-w-0 text-left">
               <span className="font-medium">{tai("aiConfiguration")}</span>
               <span className="text-xs text-muted-foreground leading-snug">

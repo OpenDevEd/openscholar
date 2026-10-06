@@ -4,7 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { useAction } from "convex/react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Loader2, Minus, Plus, Sparkles, Star, Trash2, TriangleAlert, X, Zap, type AppIcon } from "@/components/icons";
+import { AiIcon, Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X, Zap } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { MAX_SCREENING_PAPERS_PER_JOB as JOB_LIMIT } from "@/convex/lib/queryBounds";
@@ -387,7 +387,7 @@ export function SetupView({
               ) : null}
               {kind === "search" ? (
                 <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={generate} disabled={generating || !canGenerate || !source}>
-                  {generating ? <Loader2 className="animate-spin text-primary" /> : <Sparkles className="text-primary" />}{t("generate")}
+                  <AiIcon working={generating} />{t("generate")}
                 </Button>
               ) : null}
             </span>

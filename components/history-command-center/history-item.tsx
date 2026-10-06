@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations, useFormatter, useNow } from "next-intl";
-import { Copy, Trash2, BookmarkPlus, History, Wand2 } from "@/components/icons";
+import { Copy, Trash2, BookmarkPlus, History, AiIcon } from "@/components/icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -96,7 +96,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
   // Sits above the entry's hit area so its full text can show when clipped; a click still opens.
   const question = item.latestQuestion ? (
     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-      <Wand2 aria-hidden className="size-3.5 shrink-0" />
+      <AiIcon size={14} className="size-3.5 shrink-0" />
       <TooltipHint label={item.latestQuestion} onlyWhenClipped>
         <span className="relative z-10 truncate" onClick={openSearch}>{item.latestQuestion}</span>
       </TooltipHint>

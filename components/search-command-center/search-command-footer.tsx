@@ -18,6 +18,7 @@ import {
   ListChecks,
   Coins,
   MessageSquare,
+  AiIcon,
 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -414,7 +415,7 @@ Return a more targeted version of this query.`;
                   )}
                 >
                   {isContextualActionLoading ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <AiIcon working size={14} className="h-3.5 w-3.5" />
                   ) : contextualAction === "broaden" ? (
                     <Expand className="h-3.5 w-3.5" />
                   ) : (

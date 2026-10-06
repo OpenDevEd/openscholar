@@ -19,12 +19,10 @@ import {
   Check,
   Loader2,
   Building2,
-  Zap,
-  Rocket,
   CreditCard,
-  BookOpen,
-  Sparkles,
+  type AppIcon,
 } from "@/components/icons";
+import { planIcon } from "@/components/billing/plan-icon";
 import { useAppToast } from "@/lib/toast";
 import { toast as sonnerToast } from "sonner";
 import {
@@ -42,7 +40,7 @@ import { useFeatureFlag } from "@/lib/feature-flags/hook";
 type PlanCard = {
   id: string;
   name: string;
-  icon: typeof BookOpen;
+  icon: AppIcon;
   description?: string;
   features: string[];
   price?: { amount: number; interval: string };
@@ -54,9 +52,6 @@ type PlanCard = {
 /** Enterprise is sold by contract, so it only appears as a contact card. */
 const ENTERPRISE_ID = "enterprise";
 const ENTERPRISE_CREDITS_PER_MONTH = 150_000;
-
-/** Icons for the plans OpenScholar launched with; other plans get a generic one. */
-const PLAN_ICONS: Record<string, typeof BookOpen> = { free: BookOpen, go: Rocket, pro: Zap };
 
 /**
  * Translated wording for the plans OpenScholar launched with. A description or
@@ -122,7 +117,7 @@ export function Pricing() {
       return {
         id: plan.id,
         name: plan.name,
-        icon: PLAN_ICONS[plan.id] ?? Sparkles,
+        icon: planIcon(plan.id),
         description: plan.description ?? (copy ? t(copy.description) : undefined),
         features: [
           ...creditsLine(plan),

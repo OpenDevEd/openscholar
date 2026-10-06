@@ -2,7 +2,7 @@
 "use no memo"; // Sync effect setCurrentQuery(urlQuery) for store; try/finally in handlers
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Search, Wand2, Loader2 } from "@/components/icons";
+import { Search, AiIcon } from "@/components/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { Button } from "@/components/ui/button";
@@ -255,7 +255,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
           value={currentQuestion}
           onChange={(e) => setCurrentQuestion(e.target.value)}
           disabled={isFormDisabled}
-          icon={<Wand2 className="h-4 w-4" />}
+          icon={<AiIcon className="h-4 w-4" />}
           action={
             <Button
               type="submit"
@@ -264,14 +264,8 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
               disabled={isFormDisabled || !currentQuestion.trim()}
               className="h-7 px-2.5 text-xs gap-1.5"
             >
-              {isEnhancing ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <>
-                  <Wand2 className="h-3 w-3" />
-                  {t('askAI')}
-                </>
-              )}
+              <AiIcon working={isEnhancing} size={12} className="h-3 w-3" />
+              {t('askAI')}
             </Button>
           }
         />

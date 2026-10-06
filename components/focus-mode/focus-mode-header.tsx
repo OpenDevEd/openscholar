@@ -10,11 +10,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Star,
-  Globe,
   ExternalLink,
   Settings,
-  Loader2,
   X,
+  TranslateIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { DownloadMenu } from "@/components/download-menu";
@@ -182,16 +181,10 @@ export function FocusModeHeader({
                 translatedContent.noTranslationNeeded
               }
             >
-              {isTranslating ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <>
-                  <Globe className="h-3 w-3 md:mr-1" />
-                  <span className="hidden sm:inline">
-                    {showTranslated ? tFocus("original") : tFocus("translation")}
-                  </span>
-                </>
-              )}
+              <TranslateIcon working={isTranslating} size={12} className="h-3 w-3 md:mr-1" />
+              <span className="hidden sm:inline">
+                {showTranslated ? tFocus("original") : tFocus("translation")}
+              </span>
             </Button>
             <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
               T
