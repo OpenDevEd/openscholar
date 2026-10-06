@@ -77,30 +77,24 @@
     </section>
 
     <section class="section product-section" aria-labelledby="product-title">
-      <div class="section-heading"><div><h2 id="product-title">Where Sparkles is today</h2><p>Real controls at their real sizes. Hover a control to play the mark inside it.</p></div>
+      <div class="section-heading"><div><h2 id="product-title">In the product</h2><p>Real controls at their real sizes. Hover a control to play the mark inside it.</p></div>
         <div class="playback">
-          <div class="segments" id="tones"><button data-tone-choice="brand" aria-pressed="true">Brand colours</button><button data-tone-choice="text" aria-pressed="false">Text colour</button></div>
           <button id="replay-load">Replay load <span aria-hidden="true">↻</span></button>
         </div></div>
       <div class="product" id="product">
         <div class="sample"><span class="sample-name">Screening setup, press to generate</span>
           <button class="os-button os-ghost ai-trigger" id="generate" data-icon="14" data-colour="primary" aria-pressed="false"><span class="slot"></span><span class="generate-label"><span>Generate</span><span>Generating</span></span></button></div>
-        <div class="sample"><span class="sample-name">Extraction plan gate</span>
-          <span class="os-badge ai-trigger" data-icon="14"><span class="slot"></span>Available on Pro</span></div>
-        <div class="sample"><span class="sample-name">Settings</span>
-          <span class="os-row"><span class="os-chip ai-trigger" data-icon="14"><span class="slot"></span>Pro plan</span>
-          <button class="os-button os-outline ai-trigger" data-icon="16"><span class="slot"></span>Upgrade plan</button></span></div>
+        <div class="sample"><span class="sample-name">Adjust a search</span>
+          <button class="os-button os-ai ai-trigger" data-icon="12"><span class="slot"></span>Enhance</button></div>
         <div class="sample"><span class="sample-name">Library home prompt</span>
           <label class="os-input ai-trigger" data-icon="16" data-colour="muted"><span class="slot"></span><input placeholder="Describe what the library covers"></label></div>
         <div class="sample"><span class="sample-name">Results translation</span>
-          <button class="os-button os-outline ai-trigger" data-icon="14" data-colour="primary"><span class="slot"></span>Translated to French</button></div>
-        <div class="sample"><span class="sample-name">Assistant launcher</span>
-          <button class="os-launcher ai-trigger" data-icon="20"><span class="slot"></span>Ask OpenScholar<kbd>⌘ J</kbd></button></div>
+          <button class="os-button os-outline ai-trigger" data-icon="14" data-shape="translate"><span class="slot"></span>Translate</button></div>
       </div>
     </section>
 
     <section class="section translate-section" aria-labelledby="translate-title">
-      <div class="section-heading"><div><h2 id="translate-title">For translation</h2><p>One icon for the Translate button instead of a globe, a spinner and Sparkles. The globe on its own reads as the world, so the other three add speech or letters. Each plays ready, hover, translating and translated on repeat. Press Translate to run it yourself.</p></div></div>
+      <div class="section-heading"><div><h2 id="translate-title">For translation</h2><p>The lettered globe replaces the globe, the spinner and Sparkles on every Translate control. It plays ready, hover, translating and translated on repeat. Press Translate to run it yourself.</p></div></div>
       <div class="translations" id="translations"></div>
     </section>
 
@@ -115,8 +109,7 @@
     </section>
   </main>
   <footer><span>Orbit and the AI mark / OpenScholar</span><span>Motion study 03 / October 2026</span><a href="Ubuntu-LICENSE.txt">Ubuntu font licence</a></footer>
-  <script src="ai-mark.js"></script>
-  <script src="ai-studio.js"></script>
+  <script type="module" src="ai-studio.js"></script>
   <script type="module" src="studio.js"></script>
 </body>
 </html>

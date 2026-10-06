@@ -4,9 +4,22 @@ const variants = [
   { id: "focus", name: "Focus", load: "The layers close in like an iris as the star turns into focus.", hover: "The iris opens as the star tightens.", loop: "The iris breathes round a star that turns a quarter each beat." },
   { id: "orbit", name: "Orbit", load: "The layers spiral out into place.", hover: "The layers go round once against the star.", loop: "The outer layers circle, the inner one turns the other way." },
 ];
+import { aiMarkParts, play, stop } from "./ai-mark.js";
+
+// One SVG string per mark, built from the shared module the app's AiMark component also uses.
+let count = 0;
+const aiMark = {
+  html(size, { shape = "ai", variant = "orbit", label } = {}) {
+    const { body, attributes } = aiMarkParts(size, { shape, variant, id: `mark-${++count}` });
+    const data = Object.entries(attributes).map(([key, value]) => `${key}="${value}"`).join(" ");
+    const name = label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"';
+    return `<svg xmlns="http://www.w3.org/2000/svg" class="ai-mark" viewBox="0 0 128 128" width="${size}" height="${size}" ${data} ${name}>${body}</svg>`;
+  },
+  play,
+  stop,
+};
 const byId = (id) => document.getElementById(id);
 let selected = "orbit";
-let tone = "brand";
 let looping = true;
 
 byId("variants").innerHTML = variants.map((variant, index) => `
@@ -26,9 +39,9 @@ loops.querySelectorAll(".ai-mark").forEach((svg) => aiMark.play(svg, "loop"));
 
 function renderProduct() {
   for (const trigger of document.querySelectorAll(".ai-trigger")) {
-    trigger.querySelector(".slot").innerHTML = aiMark.html(Number(trigger.dataset.icon), { variant: selected, tone });
+    trigger.querySelector(".slot").innerHTML = aiMark.html(Number(trigger.dataset.icon), { shape: trigger.dataset.shape, variant: selected });
   }
-  byId("size-samples").innerHTML = [14, 16, 20, 24, 32, 48, 64].map((size) => `<div class="size-sample"><span>${aiMark.html(size, { variant: selected, tone })}</span><span>${size}px</span></div>`).join("");
+  byId("size-samples").innerHTML = [14, 16, 20, 24, 32, 48, 64].map((size) => `<div class="size-sample"><span>${aiMark.html(size, { variant: selected })}</span><span>${size}px</span></div>`).join("");
   document.querySelectorAll("#product .ai-mark, #size-samples .ai-mark").forEach((svg) => aiMark.play(svg, "load"));
   if (byId("generate").getAttribute("aria-pressed") === "true") aiMark.play(byId("generate").querySelector(".ai-mark"), "loop");
 }
@@ -63,13 +76,6 @@ byId("product").addEventListener("pointerover", (event) => {
   const trigger = event.target.closest(".ai-trigger");
   if (trigger && !trigger.contains(event.relatedTarget)) aiMark.play(trigger.querySelector(".ai-mark"), "hover");
 });
-byId("tones").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-tone-choice]");
-  if (!button) return;
-  tone = button.dataset.toneChoice;
-  document.querySelectorAll("[data-tone-choice]").forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
-  renderProduct();
-});
 byId("replay-load").addEventListener("click", renderProduct);
 byId("autoplay").addEventListener("click", () => {
   looping = !looping;
@@ -103,10 +109,7 @@ byId("generate").addEventListener("click", () => {
 // Translation: each card runs ready (load, then hover), translating and translated on repeat.
 // Pressing Translate jumps the card to translating, or back to ready once it has translated.
 const translations = [
-  { id: "globe", name: "Globe", detail: "The star inside a globe. It turns into place, turns a third on hover and spins while translating." },
-  { id: "speech", name: "Speech globe", detail: "The globe's bottom layer ends in a speech-bubble tail, so it reads as talk, not just the world." },
-  { id: "letter", name: "Lettered globe", detail: "An A tile in front of the globe. Hover flips it to 文 and back; translating flips it through A, अ, あ and 文, the app's own scripts." },
-  { id: "scripts", name: "Speaking scripts", detail: "The speech globe, with the star itself flipping through A, अ, あ and 文 while translating and back to the star when done." },
+  { id: "translate", name: "Lettered globe", detail: "An A tile in front of the globe. Hover flips it to 文 and back; translating flips it through A, अ, あ and 文, the app's own scripts." },
 ];
 const phaseLength = { load: 1500, hover: 1500, translating: 2700, translated: 1800 };
 const nextPhase = { load: "hover", hover: "translating", translating: "translated", translated: "load" };

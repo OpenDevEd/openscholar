@@ -1,4 +1,4 @@
-:root { --logo-a: var(--mark-a); --logo-b: var(--mark-b); --logo-c: var(--mark-c); --logo-ink: var(--eye); }
+:root { --logo-a: var(--mark-a); --logo-b: var(--mark-b); --logo-c: var(--mark-c); --brand-ink: var(--eye); }
 /* The AI mark opens its own part of the page, titled like the page heading. */
 .part-intro { padding-top: 64px; }
 .part-title { margin: 0; font-size: clamp(35px, 3.8vw, 52px); font-weight: 500; line-height: 1.1; letter-spacing: -1.8px; }
@@ -24,7 +24,7 @@
 .variant-phase i { font-style: normal; font-size: 11px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); transition: background-color 160ms, color 160ms; }
 .variant[data-phase="load"] [data-phase="load"], .variant[data-phase="hover"] [data-phase="hover"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
-.product { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.product { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .sample { display: flex; flex-direction: column; justify-content: space-between; gap: 26px; min-height: 128px; padding: 16px 18px 22px; border: 1px solid var(--soft-line); border-radius: 14px; background: var(--raised); }
 .sample-name { font-size: 12px; color: var(--muted); }
 .os-row { display: flex; align-items: center; gap: 8px; }
@@ -33,6 +33,8 @@
 .os-button { gap: 8px; height: 32px; padding: 0 12px; border-radius: 8px; font-size: 14px; font-weight: 500; }
 .os-ghost { height: 28px; padding: 0 10px; font-size: 12px; border-color: transparent; }
 .os-outline { background: var(--raised); }
+/* The app's AI surface: a soft tint of the primary colour. */
+.os-ai { height: 28px; padding: 0 10px; gap: 6px; font-size: 12px; color: var(--accent); background: color-mix(in oklab, var(--accent) 6%, transparent); border-color: color-mix(in oklab, var(--accent) 25%, transparent); }
 .os-badge { gap: 6px; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 500; background: var(--selected); }
 .os-chip { gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--line); }
 .os-input { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); }
@@ -63,7 +65,7 @@
 #generate[aria-pressed="false"] .generate-label > :last-child, #generate[aria-pressed="true"] .generate-label > :first-child { visibility: hidden; }
 @media (max-width: 1100px) { .loops { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 720px) { .loops { grid-template-columns: 1fr; } }
-.translations { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.translations { display: grid; gap: 10px; }
 .translation { display: grid; grid-template-columns: 200px 1fr; gap: 8px 28px; padding: 22px 24px 24px; border: 1px solid var(--soft-line); border-radius: 14px; background: var(--surface); }
 .translation-art { grid-row: span 2; display: flex; flex-direction: column; align-items: center; gap: 22px; }
 .translation-art > span:first-child { display: block; width: 168px; height: 168px; }
@@ -81,5 +83,4 @@
 .translate-button[data-state="ready"] [data-label="ready"], .translate-button[data-state="translating"] [data-label="translating"], .translate-button[data-state="translated"] [data-label="translated"] { visibility: visible; }
 .translation .variant-phase { margin-top: 0; }
 .translation[data-phase="load"] [data-phase="load"], .translation[data-phase="hover"] [data-phase="hover"], .translation[data-phase="translating"] [data-phase="translating"], .translation[data-phase="translated"] [data-phase="translated"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-@media (max-width: 1240px) { .translations { grid-template-columns: 1fr; } }
 @media (max-width: 720px) { .translation { grid-template-columns: 1fr; } .translation-art { grid-row: auto; } }

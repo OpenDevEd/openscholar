@@ -27,8 +27,10 @@ html = html.replace('<link rel="stylesheet" href="studio.css">', () => `<style>$
 html = await inline('<link id="assistant-motion" rel="stylesheet" href="orbit.css">', "orbit.css");
 html = await inline('<link rel="stylesheet" href="ai-mark.css">', "ai-mark.css");
 html = await inline('<link rel="stylesheet" href="ai-studio.css">', "ai-studio.css");
-html = await inline('<script src="ai-mark.js"></script>', "ai-mark.js");
-html = await inline('<script src="ai-studio.js"></script>', "ai-studio.js");
+// The AI mark studio imports the shared ai-mark.js module; inline both as one module script.
+const mark = (await read("ai-mark.js")).replaceAll("export function", "function");
+const aiStudio = (await read("ai-studio.js")).replace('import { aiMarkParts, play, stop } from "./ai-mark.js";', () => mark);
+html = html.replace('<script type="module" src="ai-studio.js"></script>', () => `<script type="module">${aiStudio}</script>`);
 // Still a module, so its names stay out of the page scripts' global scope.
 html = html.replace('<script type="module" src="studio.js"></script>', () => `<script type="module">${studio}</script>`);
 html = html.replaceAll('src="../icon.svg"', `src="${logo}"`).replace('href="../icon.svg"', `href="${logo}"`);
