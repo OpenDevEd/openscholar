@@ -17,7 +17,7 @@ afterEach(() => vi.useRealTimers());
 /** Jobs made one after another, so the order they were made in is the order they list in. */
 async function seedJobs(t: Test, userId: Id<"users">, jobs: Array<{ name: string; status?: Status; description?: string }>) {
   for (const [i, job] of jobs.entries()) {
-    await t.run((ctx) => ctx.db.insert("extractionJobs", { userId, mode: "extraction", totalPapers: 1, createdAt: i + 1, updatedAt: i + 1, ...job }));
+    await t.run((ctx) => ctx.db.insert("extractionJobs", { userId, totalPapers: 1, createdAt: i + 1, updatedAt: i + 1, ...job }));
   }
   await t.finishAllScheduledFunctions(vi.runAllTimers);
 }
@@ -106,7 +106,7 @@ describe("the extraction job list", () => {
     for (let from = 0; from < 2_300; from += 460) {
       await t.run(async (ctx) => {
         for (let i = from; i < from + 460; i++) {
-          await ctx.db.insert("extractionJobs", { userId, mode: "extraction", totalPapers: 1, createdAt: i, updatedAt: i, name: i === 0 ? "needle" : `job ${i}`, status: i % 2 ? "pending" : "completed" });
+          await ctx.db.insert("extractionJobs", { userId, totalPapers: 1, createdAt: i, updatedAt: i, name: i === 0 ? "needle" : `job ${i}`, status: i % 2 ? "pending" : "completed" });
         }
       });
     }

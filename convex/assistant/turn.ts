@@ -1,7 +1,5 @@
 /**
- * One reply, from the credit hold to the released lock. The paper chat
- * (convex/chat/messages.ts) and the assistant (./replies.ts) both run their replies
- * through `runTurn`, so a stop, a provider error and a bill behave the same in both.
+ * One assistant reply (./replies.ts), from the credit hold to the released lock.
  *
  *   hold the credits (throws AI_INSUFFICIENT_CREDITS)
  *   resolve the model through OpenRouter
@@ -15,15 +13,14 @@ import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
 import { releaseCredits, reserveCredits, settleCredits, tokenCounts, tokenDetails } from "../billing/charge";
-import { LEASE_RENEW_MS } from "../chat/concurrency";
-import { resolveOpenRouterModel, type Pricing } from "../chat/provider";
+import { resolveOpenRouterModel, type Pricing } from "../ai/provider";
 import { createError, errorToLogString } from "../lib/errors";
 import { callOptions, type Effort } from "../../lib/ai/core/call-options";
 import { aggregateUsage, calculateCostInDollars, usageOf } from "../../lib/ai/core/cost";
 import type { Usage } from "../../lib/ai/core/types";
-import { startAbortPoller } from "../../lib/chat/abort-poller";
-import { ABORT_ERROR_STRING, isAbortLike } from "../../lib/chat/abort-signal";
-import { pickProviderCostUsd } from "../../lib/chat/pick-provider-cost";
+import { startAbortPoller } from "../../lib/ai/abort-poller";
+import { ABORT_ERROR_STRING, isAbortLike } from "../../lib/ai/abort-signal";
+import { pickProviderCostUsd } from "../../lib/ai/pick-provider-cost";
 import { classifyChatError, serializeChatError } from "../../lib/errors/taxonomy";
 import { convertUsdToCredits } from "../../lib/pricing";
 import { extractErrorCode, extractHttpStatus, type AIGenerationParams } from "../../lib/posthog-ai-shared";
@@ -61,14 +58,10 @@ export type Turn = {
   answer?: boolean;
   /** The reply's rule for asking the person before a tool call runs (the AI SDK's `toolApproval`). A call it asks about ends the reply there, unanswered. */
   approval?: (options: { toolCall: { toolCallId: string; toolName: string; input: unknown } }) => unknown;
-  /** The paper chat the reply is in, which its charge is recorded under. */
-  jobId?: Id<"extractionJobs">;
   /** IDs for the log lines. */
   log: Record<string, unknown>;
   /** Read every STOP_ABORT_POLL_INTERVAL_MS while the reply streams; true stops it. */
   shouldStop: () => Promise<boolean>;
-  /** Called every LEASE_RENEW_MS, where a lock is one that has to be renewed. */
-  renewLease?: () => Promise<unknown>;
   /**
    * Releases the reply's lock. Runs whether the reply finished, failed or was stopped, with
    * the input tokens the provider reported for the reply's last request (0 when none finished).
@@ -113,22 +106,12 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   const isStop = (error: unknown) =>
     abortController.signal.aborted && (isAbortLike(error) || /abort/i.test(error instanceof Error ? error.message : String(error)));
 
-  // Abort wiring (plans/chat-stop-streaming/01-action-abort-wiring.md).
   // Poll the stop flag every 500ms; when flipped, abort the signal
   // we pass into agent.streamText, which cascades through the
   // library's DeltaStreamer → AI SDK streamText → OpenRouter fetch.
   const abortController = new AbortController();
-  // The poller also renews this generation's lock, so a long reply isn't
-  // taken for one that died (convex/chat/concurrency.ts).
-  let leaseRenewedAt = Date.now();
   const stopAbortPoller = startAbortPoller({
-    readFlag: async () => {
-      if (turn.renewLease && Date.now() - leaseRenewedAt >= LEASE_RENEW_MS) {
-        leaseRenewedAt = Date.now();
-        await turn.renewLease();
-      }
-      return await turn.shouldStop();
-    },
+    readFlag: turn.shouldStop,
     onAbort: () => {
       if (!abortController.signal.aborted) {
         // Pass the wire string directly as the abort reason. The agent
@@ -156,11 +139,11 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   let generationErrorRecordedFromOnError = false;
 
   // Captured from OpenRouter's X-Generation-Id response header via
-  // the provider's fetch wrapper (see convex/chat/openrouterFetch.ts).
+  // the provider's fetch wrapper (see convex/ai/openrouterFetch.ts).
   // The header lands on the initial HTTP response frame, so this ref
   // is populated even when the client aborts the stream mid-flight.
   // That is what lets stopped turns bill from OpenRouter's
-  // /api/v1/generation record via chat/billing.ts settleFromOpenRouter.
+  // /api/v1/generation record via ../billing/openRouter.ts settleFromOpenRouter.
   let capturedGenerationId: string | undefined;
   let capturedModelSlug: string | undefined;
   let streamErrored = false;
@@ -189,7 +172,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   const completedGenerations = new Set<string>();
   let finished = false;
   // The request's `$ai_generation`, as far as this action knows it. A request stopped or failed partway is
-  // charged later, from OpenRouter's record, and its event goes with that charge (chat/billing.ts).
+  // charged later, from OpenRouter's record, and its event goes with that charge (../billing/openRouter.ts).
   const generation = (): AIGenerationParams => {
     const usage = aggregateUsage(stepUsages);
     return {
@@ -485,9 +468,8 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       // Stopped or failed mid-step. The step's generation record says what
       // OpenRouter billed, including a response the provider finished
       // after the stop.
-      await ctx.scheduler.runAfter(0, internal.chat.billing.settleFromOpenRouter, {
+      await ctx.scheduler.runAfter(0, internal.billing.openRouter.settleFromOpenRouter, {
         userId,
-        ...(turn.jobId ? { jobId: turn.jobId } : {}),
         chargeId,
         generationId: unfinishedGeneration,
         ...(turn.replyId ? { reply: turn.replyId } : {}),
@@ -508,7 +490,6 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
         usage: {
           kind: "chat",
           description: "Chat message",
-          ...(turn.jobId ? { jobId: turn.jobId } : {}),
           model: modelSlug,
           ...tokenDetails(aggregateUsage(stepUsages)),
           costUsd: usd,

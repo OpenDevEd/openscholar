@@ -10,7 +10,7 @@ import {
   ABORT_REASON_USER_STOPPED,
   isAbortErrorString,
   isAbortLike,
-} from "@/lib/chat/abort-signal";
+} from "@/lib/ai/abort-signal";
 
 export const ERROR_CODES = [
   // chat + extraction shared
@@ -422,7 +422,7 @@ export function classifyChatError(error: unknown): ChatErrorEnvelope {
   // or AbortError, not AI SDK APICallError. Strict: only OUR user_stopped
   // sentinel counts; other AbortError shapes (e.g. provider-side aborts on
   // upstream timeouts) classify as "unknown" so the user sees the real
-  // failure. Contrast `isAbortLike` from lib/chat/abort-signal.ts which
+  // failure. Contrast `isAbortLike` from lib/ai/abort-signal.ts which
   // is permissive on AbortError name — classifyUnknownError may be called
   // without provider context to distinguish ours from theirs.
   if (isUserStopAbort(rec)) {
@@ -663,7 +663,7 @@ function parseJsonIfString(
  *   - In-memory DOMException with name "AbortError" AND message exactly
  *     "user_stopped" (the literal we abort with at messages.ts).
  *
- * Deliberately stricter than `isAbortLike` from lib/chat/abort-signal.ts:
+ * Deliberately stricter than `isAbortLike` from lib/ai/abort-signal.ts:
  * `isAbortLike` accepts ANY AbortError name regardless of message and is
  * used by `classifyUnknownError` where we may receive a rehydrated string
  * with no provider context. Here in chat we

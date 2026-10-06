@@ -31,7 +31,7 @@ type Sent = Array<{ role: string; content: string | Part[] }>;
 const { mockDoStream, requests, toolsSent, toolChoices, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), requests: [] as unknown[], toolsSent: [] as string[][], toolChoices: [] as string[], fetchMock: vi.fn() }));
 
 // The model every reply runs on, in place of OpenRouter. It keeps each request it is sent.
-vi.mock("../chat/provider", async () => {
+vi.mock("../ai/provider", async () => {
   const { MockLanguageModelV3 } = await import("ai/test");
   return {
     resolveOpenRouterModel: async () => ({
@@ -852,7 +852,7 @@ describe("the assistant's tools", () => {
     expect(await limits()).toEqual({ replyLimit: null, allowance: null });
     requests.length = 0;
     mockDoStream
-      .mockImplementationOnce(calling({ id: "extract", name: "run_action", input: { name: "extraction/mutations:startJob", arguments: { name: "Sizes", mode: "extraction", bucketItems: [], questions: [] } } }))
+      .mockImplementationOnce(calling({ id: "extract", name: "run_action", input: { name: "extraction/mutations:startJob", arguments: { name: "Sizes", bucketItems: [], questions: [] } } }))
       .mockImplementationOnce(finishingDoStream(["I can't start that here."]));
     await say("Extract the sample sizes");
     expect(told(1, "extract")).toEqual({ error: NO_ESTIMATE });

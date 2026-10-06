@@ -18,7 +18,7 @@ import {
 } from "../../lib/ai/core";
 import { SERVER_AI_CONFIG } from "./config";
 import { getProviderModel } from "../../lib/ai/server/providers";
-import { resolveOpenRouterModel } from "../chat/provider";
+import { resolveOpenRouterModel } from "./provider";
 import type { AIProvider } from "../../lib/types/ai.types";
 import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType, type GenericValidator } from "convex/values";

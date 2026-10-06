@@ -41,13 +41,6 @@ export const pauseExtraction = mutation({
     const user = await requireAuth(ctx);
     const job = await assertJobOwnership(ctx, user._id, jobId);
 
-    if (job.mode !== "extraction") {
-      throw createError(
-        "VALIDATION_ERROR",
-        "Only extraction jobs can be paused",
-      );
-    }
-
     if (!job.status) {
       // Chat rows and freshly-created extraction rows before startJob
       // writes a status — nothing to pause.

@@ -20,7 +20,7 @@ const record: SavedSearch = {
   sortBy: "cited_by_count:desc", selectedRegions: ["africa"], selectedCountryFocus: ["MA"], ratingRange: [2, 5], onlyRatedPapers: true,
   citesItemId: "W10", citedByItemId: "W11", relatedToItemId: "W12", reviewFilter: true, researchAreas: ["17"], sdgs: ["4"],
   openAccessOnly: true, workTypes: ["article"], workLanguages: ["en"], institutionTypes: ["education"], funders: ["F123"], authors: ["A123"],
-  minCitations: 3, hasAbstract: true, includeRetracted: false, language: "fr", page: 3, chatJobIdsByAccountId: { alice: "prior-chat" },
+  minCitations: 3, hasAbstract: true, includeRetracted: false, language: "fr", page: 3,
 };
 const history = {
   queryHistory: [{ query: "tutoring", field: "title" as const, timestamp: "2026-08-01T12:00:00Z" }],
@@ -535,18 +535,9 @@ describe("undoing a change to research records (#342)", () => {
     expect((await edit({ kind: "patch", fields: { minCitations: record.minCitations }, clear: [] })).undo).toBeUndefined();
     // A change that also touches what a restore leaves alone would only be half undone, so it has none either.
     expect((await edit({ kind: "patch", fields: { minCitations: 50, screeningQuestions: [{ question: "Children?" }] }, clear: [] })).undo).toBeUndefined();
-    expect((await edit({ kind: "patch", fields: { minCitations: 60, chatJobIdsByAccountId: { alice: "later-chat" } }, clear: [] })).undo).toBeUndefined();
     expect((await change({ kind: "rating", paperId: "W1", rating: null })).undo).toBeUndefined();
     expect((await change({ kind: "shortcut", shorthand: "none", value: null })).undo).toBeUndefined();
     expect((await change({ kind: "deleteSearch", id: record.id })).undo).toBeUndefined();
-  });
-
-  it("keeps the chats started from a search when it is restored", async () => {
-    const { search, edit } = await changing();
-    await edit({ kind: "patch", fields: { minCitations: 10 }, clear: [] });
-    await edit({ kind: "patch", fields: { chatJobIdsByAccountId: { alice: "later-chat" } }, clear: [] });
-    await edit({ kind: "restore", revision: 1 });
-    expect(await search()).toMatchObject({ minCitations: record.minCitations, chatJobIdsByAccountId: { alice: "later-chat" } });
   });
 
   it("answers a retried request with the same undo", async () => {

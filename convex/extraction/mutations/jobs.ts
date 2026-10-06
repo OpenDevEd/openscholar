@@ -3,15 +3,7 @@
  *
  * startJob / duplicateJob own the job-start path; cancelExtraction /
  * deleteExtraction own the terminal paths.
- *
- * startJob is mode-aware: `mode: "extraction"` schedules the app-owned
- * paper queue setup action; `mode: "chat"` schedules thread creation.
- * Validation, auth, rate-limit and bucket persistence are shared between
- * both branches.
- *
- * cancelExtraction and deleteExtraction stay extraction-specific.
- * cancelExtraction rejects chat jobs up front; deleteExtraction
- * cascades for both modes (cascade is mode-agnostic).
+ * startJob schedules the app-owned paper queue setup action.
  */
 
 import { mutation, type MutationCtx } from "../../lib/functions";
@@ -20,8 +12,7 @@ import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
-import { extractionPricing, extractionStamp, resolveTaskPick } from "../../ai/serverModel";
-import { requireAvailableModel, requireTaskModel } from "../../models/catalog";
+import { extractionPricing, extractionStamp } from "../../ai/serverModel";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { assertBucketWithinLimits } from "../bucket/limits";
@@ -36,7 +27,6 @@ import {
   MAX_QUESTION_TEXT_LENGTH,
 } from "../validators";
 import { writeJobSources, type BucketItemInput } from "../jobSources";
-import { cloneChatPapersForDuplicate } from "../../chat/chatPapersDuplicate";
 import { extractionPaperCredits } from "../../../lib/pricing";
 import { cancelPaperQueueRowsForJobTx } from "../queue/mutations";
 import { refillPerson } from "../queue/dispatcher";
@@ -63,13 +53,9 @@ function deriveSourceType(
 
 const startArgs = {
   name: v.string(),
-  mode: v.union(v.literal("extraction"), v.literal("chat")),
   bucketItems: v.array(bucketItemInputValidator),
-  // extraction-only
   questions: v.optional(v.array(questionInputValidator)),
   usePdfs: v.optional(v.boolean()),
-  // chat-only
-  chatModelId: v.optional(v.id("models")),
 };
 
 /**
@@ -79,11 +65,7 @@ const startArgs = {
  */
 export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: ObjectType<typeof startArgs>, spend?: { hold: string; cap: number }, chatStep?: Id<"assistantSteps">): Promise<{ jobId: Id<"extractionJobs"> }> {
   await requireFeature(ctx, "extraction.enabled", userId);
-  if (args.mode === "extraction") {
-    await requireFeature(ctx, "extraction.start", userId);
-  } else {
-    await requireFeature(ctx, "extraction.chat", userId);
-  }
+  await requireFeature(ctx, "extraction.start", userId);
   await rateLimit(ctx, {
     name: "start-extraction",
     key: userId,
@@ -97,7 +79,6 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
     : item));
   for (const item of deduped) {
     if (item.source !== "screening") continue;
-    if (args.mode !== "extraction") throw createError("VALIDATION_ERROR", "Screening sources are only available for extraction. Remove this source to start a chat.");
     if (!item.screeningSelection) {
       throw createError("VALIDATION_ERROR", "Select a screening job and its decision revision for extraction.");
     }
@@ -109,116 +90,80 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
   const sourceType = deriveSourceType(deduped);
 
   // Stamp what extraction runs on (credits path), read back at run by paperWorker.
-  const stamp = args.mode === "extraction" ? await extractionStamp(ctx, userId) : {};
+  const stamp = await extractionStamp(ctx, userId);
 
-  // Extraction-mode question validation happens after bucket validation
-  // so an empty bucket throws first (consistent with the old path).
-  if (args.mode === "extraction") {
-    const qs = args.questions ?? [];
-    if (qs.length > MAX_QUESTIONS_PER_JOB) {
+  // Question validation happens after bucket validation so an empty bucket throws first.
+  const qs = args.questions ?? [];
+  if (qs.length > MAX_QUESTIONS_PER_JOB) {
+    throw createError(
+      "VALIDATION_ERROR",
+      `questions exceeds maximum of ${MAX_QUESTIONS_PER_JOB}`,
+    );
+  }
+  for (const q of qs) {
+    if (q.question.length > MAX_QUESTION_TEXT_LENGTH) {
       throw createError(
         "VALIDATION_ERROR",
-        `questions exceeds maximum of ${MAX_QUESTIONS_PER_JOB}`,
+        `question text exceeds maximum length of ${MAX_QUESTION_TEXT_LENGTH}`,
       );
     }
-    for (const q of qs) {
-      if (q.question.length > MAX_QUESTION_TEXT_LENGTH) {
-        throw createError(
-          "VALIDATION_ERROR",
-          `question text exceeds maximum length of ${MAX_QUESTION_TEXT_LENGTH}`,
-        );
-      }
-    }
-
-    // The most the job costs, on the models just stamped, against the balance: better to refuse
-    // it now than stop it part way. A job with a hold has its credits already.
-    if (!spend) {
-      const credits = bucketLimits.effectiveCount * extractionPaperCredits(await extractionPricing(ctx, stamp), qs, args.usePdfs ?? false);
-      const totalAvailable = await readAvailableCredits(ctx, userId);
-      if (totalAvailable < credits) {
-        throw createError(
-          "INSUFFICIENT_CREDITS",
-          `Need up to ${credits} credits for ${bucketLimits.effectiveCount} papers × ${qs.length} questions but only have ${totalAvailable}`,
-        );
-      }
-    }
   }
 
-  // Pre-resolve so the composer's controlled value is never null. A new chat
-  // starts on the model and effort the user's choice gives chat, which
-  // swapModel can still change per conversation.
-  if (args.mode === "chat" && args.chatModelId !== undefined) {
-    requireTaskModel(await requireAvailableModel(ctx, args.chatModelId), "chat");
+  // The most the job costs, on the models just stamped, against the balance: better to refuse
+  // it now than stop it part way. A job with a hold has its credits already.
+  if (!spend) {
+    const credits = bucketLimits.effectiveCount * extractionPaperCredits(await extractionPricing(ctx, stamp), qs, args.usePdfs ?? false);
+    const totalAvailable = await readAvailableCredits(ctx, userId);
+    if (totalAvailable < credits) {
+      throw createError(
+        "INSUFFICIENT_CREDITS",
+        `Need up to ${credits} credits for ${bucketLimits.effectiveCount} papers × ${qs.length} questions but only have ${totalAvailable}`,
+      );
+    }
   }
-  const chatPick =
-    args.mode !== "chat" ? null
-    : args.chatModelId !== undefined ? { modelId: args.chatModelId }
-    : await resolveTaskPick(ctx, userId, "chat");
 
   const now = Date.now();
   const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
     userId,
-    mode: args.mode,
     name: args.name,
     sourceType,
     createdAt: now,
     updatedAt: now,
-    ...(args.mode === "extraction"
-      ? {
-          status: "pending" as const,
-          totalPapers: 0,
-          runEpoch: 0,
-          usePdfs: args.usePdfs ?? false,
-          ...stamp,
-          ...(spend ? { spendHold: spend.hold, spendCap: spend.cap } : {}),
-          ...(chatStep ? { chatStep } : {}),
-        }
-      : {
-          messageCount: 0,
-          chatModelId: chatPick?.modelId,
-          ...(chatPick?.effort && { chatEffort: chatPick.effort }),
-        }),
+    status: "pending",
+    totalPapers: 0,
+    runEpoch: 0,
+    usePdfs: args.usePdfs ?? false,
+    ...stamp,
+    ...(spend ? { spendHold: spend.hold, spendCap: spend.cap } : {}),
+    ...(chatStep ? { chatStep } : {}),
   });
 
   await writeJobSources(ctx, jobId, deduped);
 
-  if (args.mode === "extraction") {
-    const qs = args.questions ?? [];
-    for (let i = 0; i < qs.length; i++) {
-      await ctx.db.insert("extractionQuestions", {
-        jobId,
-        key: qs[i].key,
-        question: qs[i].question,
-        type: qs[i].type,
-        description: qs[i].description,
-        order: i,
-        createdAt: now,
-      });
-    }
-
-    await ctx.scheduler.runAfter(
-      0,
-      internal.extraction.actions.setupExtractionQueueJob,
-      { jobId, expectedEpoch: 0 },
-    );
-  } else {
-    // Chat branch: schedule thread creation. The scheduler target is the
-    // P9.T10 stub for now — it throws FEATURE_DISABLED. The job row
-    // still lands so the UI has something to navigate to; chat is
-    // gated behind the extraction.chat flag (default OFF) at entry.
-    await ctx.scheduler.runAfter(
-      0,
-      internal.chat.threads.ensureThreadForJob,
-      { jobId },
-    );
+  for (let i = 0; i < qs.length; i++) {
+    await ctx.db.insert("extractionQuestions", {
+      jobId,
+      key: qs[i].key,
+      question: qs[i].question,
+      type: qs[i].type,
+      description: qs[i].description,
+      order: i,
+      createdAt: now,
+    });
   }
+
+  await ctx.scheduler.runAfter(
+    0,
+    internal.extraction.actions.setupExtractionQueueJob,
+    { jobId, expectedEpoch: 0 },
+  );
 
   return { jobId };
 }
 
 export const startJobAction = defineUserMutation({
   path: "extraction/mutations:startJob",
-  description: "Start extraction or a source chat from the sources picked on the extraction page. From a chat, an extraction over a collection, saved papers, a search or a screening is extraction/start:extract. Screening sources use the owned job's current Included papers and require its decision revision. Extraction saves those papers unchanged by later screening edits. At most 1,000 papers per job.",
+  description: "Start an extraction from the sources picked on the extraction page. From a chat, an extraction over a collection, saved papers, a search or a screening is extraction/start:extract. Screening sources use the owned job's current Included papers and require its decision revision. Extraction saves those papers unchanged by later screening edits. At most 1,000 papers per job.",
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
@@ -246,21 +191,14 @@ export const duplicateJobAction = defineUserMutation({
       throw createError("NOT_FOUND", "Job not found");
     }
 
-    // Feature gate + rate limit, branched by mode.
-    if (oldJob.mode === "chat") {
-      await requireFeature(ctx, "extraction.chat", userId);
-    } else {
-      await requireFeature(ctx, "extraction.start", userId);
-    }
+    await requireFeature(ctx, "extraction.start", userId);
     await rateLimit(ctx, {
       name: "start-extraction",
       key: userId,
       throws: true,
     });
 
-    // Read old source rows in position order — we need _ids (not just
-    // bucket-item shape) to build the old→new source mapping for the
-    // chat-mode chatPapers clone.
+    // Old source rows in position order.
     const oldSourceRows = await ctx.db
       .query("extractionJobSources")
       .withIndex("by_job_and_position", (q) => q.eq("jobId", args.jobId))
@@ -273,54 +211,6 @@ export const duplicateJobAction = defineUserMutation({
 
     const now = Date.now();
 
-    if (oldJob.mode === "chat") {
-      const newJobId = await ctx.db.insert("extractionJobs", {
-        userId,
-        mode: "chat" as const,
-        name: `${oldJob.name} (Copy)`,
-        sourceType: oldJob.sourceType,
-        messageCount: 0,
-        chatModelId: oldJob.chatModelId,
-        ...(oldJob.chatEffort && { chatEffort: oldJob.chatEffort }),
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      const newSourceIds = await writeJobSources(ctx, newJobId, bucketItems);
-      const sourceIdMap = new Map<
-        Id<"extractionJobSources">,
-        Id<"extractionJobSources">
-      >();
-      for (let i = 0; i < oldSourceRows.length; i++) {
-        sourceIdMap.set(oldSourceRows[i]._id, newSourceIds[i]);
-      }
-
-      const oldChatPapers = await ctx.db
-        .query("chatPapers")
-        .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-        .take(PAPER_LIMIT);
-      const newChatPaperRows = cloneChatPapersForDuplicate(
-        newJobId,
-        oldChatPapers.map((r) => ({
-          sourceId: r.sourceId,
-          included: r.included,
-        })),
-        sourceIdMap,
-      );
-      for (const row of newChatPaperRows) {
-        await ctx.db.insert("chatPapers", row);
-      }
-
-      await ctx.scheduler.runAfter(
-        0,
-        internal.chat.threads.createThreadForDuplicatedJob,
-        { jobId: newJobId },
-      );
-
-      return { jobId: newJobId };
-    }
-
-    // Extraction-mode duplicate.
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
@@ -330,7 +220,6 @@ export const duplicateJobAction = defineUserMutation({
     const dupStamp = await extractionStamp(ctx, userId);
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       name: `${oldJob.name} (Copy)`,
       sourceType: oldJob.sourceType,
       status: "pending",
@@ -381,13 +270,6 @@ export const cancelExtraction = mutation({
       throw createError("NOT_FOUND", "Job not found");
     }
 
-    if (job.mode === "chat") {
-      throw createError(
-        "VALIDATION_ERROR",
-        "Chat jobs cannot be cancelled this way",
-      );
-    }
-
     if (
       job.status &&
       ["completed", "failed", "cancelled"].includes(job.status)
@@ -427,8 +309,7 @@ export const deleteExtraction = mutation({
     await refillPerson(ctx, user._id);
 
     // Schedule the cascade delete as an independent mutation to avoid
-    // transaction limits on a large job's child tables. Cascade is
-    // mode-agnostic — chat jobs carry extractionJobSources too.
+    // transaction limits on a large job's child tables.
     await ctx.scheduler.runAfter(
       0,
       internal.extraction.mutations.internal.admin.deleteExtractionInternal,

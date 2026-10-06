@@ -19,7 +19,7 @@ const { mockDoStream, mockDoGenerate, requests, fetchMock } = vi.hoisted(() => (
 vi.stubGlobal("fetch", fetchMock);
 
 // The model every reply runs on, in place of OpenRouter. It keeps each request it is sent.
-vi.mock("../chat/provider", async () => {
+vi.mock("../ai/provider", async () => {
   const { MockLanguageModelV3 } = await import("ai/test");
   const keeping =
     (run: (options: unknown) => unknown) =>

@@ -61,7 +61,6 @@ function buildJob(overrides: Partial<Doc<"extractionJobs">>): Doc<"extractionJob
     _id: "job_abc" as Id<"extractionJobs">,
     _creationTime: now,
     userId: "user_abc" as Id<"users">,
-    mode: "extraction",
     name: "Test Job",
     sourceType: "history",
     status: "extracting",
@@ -105,26 +104,6 @@ describe("<JobListItem> status-icon a11y", () => {
     // `tc("completed")` → the mocked key echo; pins that the label derives
     // from the translation layer, not from the raw status literal.
     expect(stripe).toHaveAttribute("aria-label", "completed");
-  });
-
-  it("chat mode: does NOT emit a pipeline data-job-status (no status icon)", () => {
-    const job = buildJob({ mode: "chat", status: "extracting" });
-    // list-simple hides the dot entirely in chat mode.
-    const { container: simpleContainer } = render(
-      <JobListItem job={job} viewMode="list-simple" />,
-    );
-    expect(
-      simpleContainer.querySelector("[data-job-status]"),
-    ).toBeNull();
-
-    // grid-3 shows a stripe but it's decorative for chat (no pipeline
-    // state); the attr must not leak.
-    const { container: gridContainer } = render(
-      <JobListItem job={job} viewMode="grid-3" />,
-    );
-    expect(
-      gridContainer.querySelector("[data-job-status]"),
-    ).toBeNull();
   });
 
   it("humanises unknown states ('download_failed' → 'download failed') for aria-label", () => {

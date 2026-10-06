@@ -9,7 +9,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { creditsForUsage, EMBEDDING_PRICING } from "../../lib/pricing";
-import { resolveOpenRouterModel } from "../chat/provider";
+import { resolveOpenRouterModel } from "../ai/provider";
 type ExtractionModel = Awaited<ReturnType<typeof resolveOpenRouterModel>>["model"];
 type ExtractionPricing = Awaited<ReturnType<typeof resolveOpenRouterModel>>["pricing"];
 import { callOptions, type Effort } from "../../lib/ai/core/call-options";

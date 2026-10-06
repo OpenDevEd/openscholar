@@ -18,7 +18,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { STEPS_SHOWN } from "../../lib/assistant/steps";
 import { workUrl } from "../../lib/openalex/work-id";
-import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
+import { ABORT_ERROR_STRING } from "../../lib/ai/abort-signal";
 import { assistant } from "./agent";
 import { forgetLimits, noteReply } from "./spending";
 

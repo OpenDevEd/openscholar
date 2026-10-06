@@ -18,7 +18,6 @@ async function seedQueueJob(t: ReturnType<typeof convexTest>) {
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       sourceType: "history" as const,
       status: "extracting" as const,
       runEpoch: 0,
@@ -84,7 +83,6 @@ async function seedEligibleQueueJob(
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       sourceType: "history" as const,
       status: "extracting" as const,
       runEpoch: 0,
@@ -124,7 +122,6 @@ async function seedRetryQueueJob(t: ReturnType<typeof convexTest>) {
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       sourceType: "history" as const,
       status: "extracting" as const,
       runEpoch: 0,
@@ -488,7 +485,7 @@ describe("extraction paper queue", () => {
     const first = await seedEligibleQueueJob(t, 4);
     const userId = await t.run(async (ctx) => (await ctx.db.get(first.jobId))!.userId);
     const second = await t.run(async (ctx) => {
-      const jobId = await ctx.db.insert("extractionJobs", { userId, mode: "extraction" as const, sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 2, name: "Second", createdAt: 2, updatedAt: 2 });
+      const jobId = await ctx.db.insert("extractionJobs", { userId, sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 2, name: "Second", createdAt: 2, updatedAt: 2 });
       const paperIds = [
         await ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:second:0", title: "Second 0", status: "pending" as const, processable: true }),
         await ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:second:1", title: "Second 1", status: "pending" as const, processable: true }),
@@ -519,7 +516,7 @@ describe("extraction paper queue", () => {
       await ctx.db.insert("billingAccounts", { userId, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, concurrency: 3 });
       const jobs: Array<{ jobId: Id<"extractionJobs">; paperIds: Array<Id<"extractionPapers">> }> = [];
       for (let j = 0; j < 12; j++) {
-        const jobId = await ctx.db.insert("extractionJobs", { userId, mode: "extraction" as const, sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 2, name: `Job ${j}`, createdAt: 2 + j, updatedAt: 2 + j });
+        const jobId = await ctx.db.insert("extractionJobs", { userId, sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 2, name: `Job ${j}`, createdAt: 2 + j, updatedAt: 2 + j });
         const paperIds = [0, 1].map(() => undefined) as unknown as Array<Id<"extractionPapers">>;
         for (let i = 0; i < 2; i++) paperIds[i] = await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:${j}:${i}`, title: `Job ${j} paper ${i}`, status: "pending" as const, processable: true });
         jobs.push({ jobId, paperIds });
@@ -557,7 +554,7 @@ describe("extraction paper queue", () => {
     const userId = await t.run(async (ctx) => (await ctx.db.get(older.jobId))!.userId);
     const newer = await t.run(async (ctx) => {
       await ctx.db.insert("billingAccounts", { userId, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, concurrency: 2 });
-      const jobId = await ctx.db.insert("extractionJobs", { userId, mode: "extraction" as const, sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 4, name: "Newer", createdAt: 9, updatedAt: 9 });
+      const jobId = await ctx.db.insert("extractionJobs", { userId, sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 4, name: "Newer", createdAt: 9, updatedAt: 9 });
       const paperIds: Array<Id<"extractionPapers">> = [];
       for (let i = 0; i < 4; i++) paperIds.push(await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:newer:${i}`, title: `Newer ${i}`, status: "pending" as const, processable: true }));
       return { jobId, paperIds };

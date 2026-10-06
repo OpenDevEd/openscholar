@@ -11,7 +11,7 @@ import {
 } from "@/lib/errors/taxonomy";
 import { chunk } from "./batching";
 import { getProcessableFlags } from "./content";
-import { resolveOpenRouterModel } from "../chat/provider";
+import { resolveOpenRouterModel } from "../ai/provider";
 import { reserveCredits, settleUnder, tokenDetails } from "../billing/charge";
 import { aggregateUsage } from "../../lib/ai/core/cost";
 import type { Usage } from "../../lib/ai/core/types";

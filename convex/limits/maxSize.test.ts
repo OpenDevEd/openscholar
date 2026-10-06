@@ -207,7 +207,7 @@ describe("at the largest sizes the product allows", () => {
   it("a job takes as many sources as it can hold papers, replaces them, and refuses one more (#427)", async () => {
     const t = convexTest({ schema, transactionLimits: true });
     const { userId } = await seedAccount(t, "max_size_user");
-    const jobId = await t.run((ctx) => ctx.db.insert("extractionJobs", { userId, mode: "extraction", sourceType: "history", status: "pending", totalPapers: 0, name: "Sources", createdAt: 1, updatedAt: 1 }));
+    const jobId = await t.run((ctx) => ctx.db.insert("extractionJobs", { userId, sourceType: "history", status: "pending", totalPapers: 0, name: "Sources", createdAt: 1, updatedAt: 1 }));
     const source = (i: number) => ({ bucketKey: `library:${i}`, source: "library" as const, sourceRefId: `W${i}`, title: `Paper ${i}`, authors: ["A. Author"] });
     const sources = (count: number) => Array.from({ length: count }, (_, i) => source(i));
     const rows = () => t.run(async (ctx) => (await ctx.db.query("extractionJobSources").withIndex("by_job_and_position", (q) => q.eq("jobId", jobId)).take(PAPER_LIMIT + 1)).length);

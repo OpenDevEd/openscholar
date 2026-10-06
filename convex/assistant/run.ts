@@ -14,7 +14,7 @@ import { refreshAccount } from "../billing/accounts";
 import { CALL_TOKENS, estimateCredits, type Pricing } from "../../lib/pricing";
 import { errorToLogString } from "../lib/errors";
 import { internalAction } from "../lib/functions";
-import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
+import { ABORT_ERROR_STRING } from "../../lib/ai/abort-signal";
 import { assistant } from "./agent";
 import { COMPACT_AT_TOKENS, compactedOf, contextSince, summarize } from "./context";
 import { lockArgs, turnArgs, usedValidator } from "./replies";

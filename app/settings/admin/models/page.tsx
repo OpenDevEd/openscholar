@@ -14,7 +14,7 @@ import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useAppToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import { stripProviderPrefix } from "@/lib/chat/model-display";
+import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { Enter, LIST, Paged, Segmented, Tile } from "@/components/settings/parts";
 import { IntelligenceMeter, priceLabel } from "@/components/models/meters";
 import { tintOf } from "@/components/settings/model-map";

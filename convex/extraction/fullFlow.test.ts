@@ -27,8 +27,8 @@ const {
 
 // The extraction run path resolves its model+pricing through the shared chat
 // resolver now (per-user server model). Mock that to the deterministic fixture.
-vi.mock("../chat/provider", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../chat/provider")>();
+vi.mock("../ai/provider", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../ai/provider")>();
   const { MockLanguageModelV3 } = await import("ai/test");
 
   return {
@@ -163,7 +163,6 @@ describe("extraction full flow with mocked provider I/O", () => {
 
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
       name: "Full Flow E2E",
-      mode: "extraction",
       bucketItems: [
         {
           bucketKey: "upload:full-flow-paper",

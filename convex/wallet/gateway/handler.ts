@@ -10,7 +10,7 @@ import {
   createStreamingResponse,
 } from "./formatResponse";
 import { callOptions as providerCallOptions, clamp } from "../../../lib/ai/core/call-options";
-import { pickProviderCostUsd } from "../../../lib/chat/pick-provider-cost";
+import { pickProviderCostUsd } from "../../../lib/ai/pick-provider-cost";
 import {
   calculateEnhancedModelCost,
   extractEnhancedUsage,

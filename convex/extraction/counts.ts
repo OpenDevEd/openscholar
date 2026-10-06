@@ -141,7 +141,7 @@ export async function readCounts(ctx: QueryCtx | MutationCtx, jobId: Id<"extract
 export async function countJobChange(ctx: MutationCtx, change: Change<DataModel, "extractionJobs">) {
   if (!change.oldDoc && change.newDoc) await ctx.db.insert("extractionJobCounts", { jobId: change.newDoc._id, counts: {} });
   if (change.oldDoc && !change.newDoc) await clearCounts(ctx, change.oldDoc._id);
-  if (change.oldDoc && change.newDoc?.mode === "extraction") {
+  if (change.oldDoc && change.newDoc) {
     const { sortName: beforeSortName, ...before } = change.oldDoc;
     const { sortName: afterSortName, ...after } = change.newDoc;
     if (JSON.stringify(convexToJson(before)) !== JSON.stringify(convexToJson(after))) await append(ctx, change.newDoc._id, { exportRevision: 1 });

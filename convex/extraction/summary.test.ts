@@ -15,7 +15,7 @@ async function seedJob(t: ReturnType<typeof convexTest>, rows: Row[], project = 
     const userId = await ctx.db.insert("users", { clerkId: "clerk_summary", email: "summary@test.com", state: "active", createdAt: now, updatedAt: now });
     await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: now });
     await seedOrganizationFeatures(ctx, ["clerk_summary"], { extraction: true });
-    const jobId = await ctx.db.insert("extractionJobs", { userId, mode: "extraction", sourceType: "history", status: "completed", totalPapers: rows.length, name: "Summary", createdAt: now, updatedAt: now });
+    const jobId = await ctx.db.insert("extractionJobs", { userId, sourceType: "history", status: "completed", totalPapers: rows.length, name: "Summary", createdAt: now, updatedAt: now });
     await ctx.db.insert("extractionQuestions", { jobId, key: "country", question: "In what country was the study done?", type: "string", order: 0, createdAt: now });
     await ctx.db.insert("extractionQuestions", { jobId, key: "outcomes", question: "Which outcomes were measured?", type: "array", order: 1, createdAt: now });
     const papers: Id<"extractionPapers">[] = [];

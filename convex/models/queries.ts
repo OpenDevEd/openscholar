@@ -172,7 +172,7 @@ export const getServedByModelId = internalQuery({
 /**
  * Internal query: resolve a models row by its Convex _id, returning
  * the fields the chat pipeline needs at per-turn model resolution.
- * Used by convex/chat/provider.ts::resolveOpenRouterModel.
+ * Used by convex/ai/provider.ts::resolveOpenRouterModel.
  */
 export const getById = internalQuery({
   args: { modelId: v.id("models") },

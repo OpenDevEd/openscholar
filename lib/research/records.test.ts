@@ -28,7 +28,7 @@ describe("saved search edits", () => {
     expect(restoreSearch(result).screeningResponses).toEqual({ W1: { "Adults?": null } });
   });
   it("round trips date ranges and full filter state", () => {
-    const input = { ...search, dateRange: { from: "2020-01-01", to: "2025-12-31" }, yearRange: [2020, 2025], includeRetracted: true, ratingRange: [1, 5], chatJobIdsByAccountId: { userA: "jobA" } };
+    const input = { ...search, dateRange: { from: "2020-01-01", to: "2025-12-31" }, yearRange: [2020, 2025], includeRetracted: true, ratingRange: [1, 5] };
     expect(restoreSearch(input).dateRange?.from).toBeInstanceOf(Date);
     expect(serializeSearch(restoreSearch(input))).toEqual(input);
   });

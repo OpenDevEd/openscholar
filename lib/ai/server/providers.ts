@@ -9,14 +9,14 @@ export interface ProviderOptions {
    * custom fetch (OpenRouter does). Used by chat billing to capture
    * X-Generation-Id from the initial HTTP response headers so stopped
    * streams can still reconcile against OpenRouter's generation API —
-   * see convex/chat/openrouterFetch.ts.
+   * see convex/ai/openrouterFetch.ts.
    */
   fetch?: typeof globalThis.fetch
   /**
    * When true, builds the OpenRouter chat model with `usage: { include: true }`
    * so providerMetadata.openrouter.usage.cost is populated on the AI SDK
    * `finish` event. Chat billing prefers this all-in cost over the
-   * pricing×tokens math — see plan-02 and convex/chat/billing.ts.
+   * pricing×tokens math — see plan-02 and convex/billing/openRouter.ts.
    */
   openrouterUsageInclude?: boolean
 }

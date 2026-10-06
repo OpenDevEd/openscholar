@@ -50,7 +50,7 @@ export async function insertMany<T extends TableNames>(t: Test, table: T, docs: 
 export async function seedAccount(t: Test, clerkId = "max_size_user") {
   const userId = await t.run(async (ctx) => {
     await seedOrganizationFeatures(ctx, [clerkId], { extraction: true });
-    for (const key of ["extraction.enabled", "extraction.start", "extraction.chat"]) await ctx.db.insert("featureFlags", { key, enabled: true, updatedAt: 1 });
+    for (const key of ["extraction.enabled", "extraction.start"]) await ctx.db.insert("featureFlags", { key, enabled: true, updatedAt: 1 });
     return seedFeatureUser(ctx, clerkId);
   });
   return { userId, as: t.withIdentity({ subject: clerkId, tokenIdentifier: `${clerkId}|test` }) };
@@ -61,7 +61,7 @@ export async function seedAccount(t: Test, clerkId = "max_size_user") {
  * Every result completed, or with `failed`, every result failed with a retryable error.
  */
 export async function seedExtractionJob(t: Test, userId: Id<"users">, { papers = MAX_SIZE.papersPerJob as number, questions = MAX_SIZE.questionsPerJob as number, failed = false } = {}) {
-  const [jobId] = await insertMany(t, "extractionJobs", [{ userId, mode: "extraction", sourceType: "history", status: "completed", totalPapers: papers, name: "Max-size job", createdAt: 1, updatedAt: 1 }]);
+  const [jobId] = await insertMany(t, "extractionJobs", [{ userId, sourceType: "history", status: "completed", totalPapers: papers, name: "Max-size job", createdAt: 1, updatedAt: 1 }]);
   const keys = Array.from({ length: questions }, (_, i) => `q${i}`);
   await insertMany(t, "extractionQuestions", keys.map((key, order) => ({ jobId, key, order, question: `${text(80, order)}?`, type: "string", createdAt: 1 })));
   const paperIds = await insertMany(t, "extractionPapers", Array.from({ length: papers }, (_, i) => ({

@@ -102,7 +102,6 @@ async function seedJob(
     const now = Date.now();
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       name: "Retry Test Job",
       sourceType: "history" as const,
       status: opts.jobStatus ?? "completed",
@@ -423,27 +422,6 @@ describe("retryFailedQuestions — public mutation guards", () => {
         jobId,
       }),
     ).rejects.toThrow(/NOT_FOUND|not found/i);
-  });
-
-  it("rejects retry on a non-extraction (chat) job", async () => {
-    const t = convexTest(schema);
-    const { userId } = await seedFlagsAndCredits(t);
-    const jobId = await t.run((ctx) =>
-      ctx.db.insert("extractionJobs", {
-        userId,
-        mode: "chat" as const,
-        name: "Chat Job",
-        messageCount: 0,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }),
-    );
-    const auth = t.withIdentity(OWNER_IDENTITY);
-    await expect(
-      auth.mutation(api.extraction.mutations.retry.retryFailedQuestions, {
-        jobId,
-      }),
-    ).rejects.toThrow(/extraction/i);
   });
 
   it("rejects retry on a job in an active status (pending/extracting)", async () => {

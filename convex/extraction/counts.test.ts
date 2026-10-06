@@ -16,7 +16,7 @@ afterEach(() => vi.useRealTimers());
 async function seedJob(t: ReturnType<typeof convexTest>, totalPapers: number) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { clerkId: `clerk_${Math.random()}`, email: "x@test", state: "active", createdAt: 1, updatedAt: 1 });
-    return await ctx.db.insert("extractionJobs", { userId, mode: "extraction", sourceType: "history", status: "extracting", totalPapers, runEpoch: 0, name: "Counted", createdAt: 1, updatedAt: 1 });
+    return await ctx.db.insert("extractionJobs", { userId, sourceType: "history", status: "extracting", totalPapers, runEpoch: 0, name: "Counted", createdAt: 1, updatedAt: 1 });
   });
 }
 
@@ -32,20 +32,6 @@ describe("extraction counts", () => {
     expect(await t.run(ctx => exportRevision(ctx, jobId))).toBe(1);
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await t.run(ctx => exportRevision(ctx, jobId))).toBe(1);
-  });
-
-  it("does not queue export revisions for chat updates", async () => {
-    const t = convexTest(schema);
-    const extractionId = await seedJob(t, 0);
-    const chatId = await t.run(async ctx => {
-      const extraction = (await ctx.db.get(extractionId))!;
-      return ctx.db.insert("extractionJobs", { userId: extraction.userId, mode: "chat", name: "Chat", createdAt: 1, updatedAt: 1 });
-    });
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-    await t.run(ctx => ctx.db.patch(chatId, { name: "Updated chat" }));
-    expect(await t.run(ctx => ctx.db.query("extractionCountChanges").withIndex("by_job", q => q.eq("jobId", chatId)).collect())).toEqual([]);
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-    expect((await t.run(ctx => ctx.db.get(chatId)))?.status).toBeUndefined();
   });
 
   it("does not finish a job while source setup has not established its paper count", async () => {

@@ -111,7 +111,6 @@ export const createJobDirect = internalMutation({
 
     const jobId = await ctx.db.insert("extractionJobs", {
       userId: args.userId,
-      mode: "extraction" as const,
       name: args.name,
       sourceType: args.sourceType,
       status: "pending",

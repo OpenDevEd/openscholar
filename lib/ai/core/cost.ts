@@ -1,5 +1,5 @@
 import type { LanguageModelUsage, ProviderMetadata } from 'ai'
-import { pickProviderCostUsd } from '../../chat/pick-provider-cost'
+import { pickProviderCostUsd } from '../pick-provider-cost'
 import type { Usage } from './types'
 
 /** Token counts and OpenRouter's reported cost from one AI SDK result. */

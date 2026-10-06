@@ -51,7 +51,7 @@ describe("extraction from Included screening papers", () => {
     const { t, jobId, selection, start } = await screeningInputs();
     await t.run(async ctx => { await seedOrganizationFeatures(ctx, ["outsider"], { extraction: true }); await seedFeatureUser(ctx, "outsider"); });
     const source = await selection();
-    await expect(t.withIdentity({ subject: "outsider" }).mutation(api.extraction.mutations.startJob, { name: "No access", mode: "extraction", bucketItems: [source] })).rejects.toThrow(/Screening not found/);
+    await expect(t.withIdentity({ subject: "outsider" }).mutation(api.extraction.mutations.startJob, { name: "No access", bucketItems: [source] })).rejects.toThrow(/Screening not found/);
     await t.run(ctx => ctx.db.delete("screeningJobs", jobId));
     await expect(start([source])).rejects.toThrow(/Screening not found/);
     expect(await t.run(ctx => ctx.db.query("extractionJobs").take(1))).toEqual([]);

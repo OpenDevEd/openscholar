@@ -5,7 +5,7 @@ import { useTranslations, useFormatter, useNow } from "next-intl";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { JobStatusIcon } from "./job-status-icon";
-import { Database, MessageSquare } from "@/components/icons";
+import { Database } from "@/components/icons";
 import { LIST_TILE } from "@/components/evidence-libraries/list-controls";
 import { Entry, EntryAside, ENTRY_OPEN, isGrid, isRoomy } from "@/components/command-center/entry";
 import type { ViewMode } from "@/lib/types";
@@ -36,23 +36,19 @@ export function JobListItem({ job, viewMode }: JobListItemProps) {
   const status = job.status ?? "pending";
   const statusLabel = statusLabelMap[status] ?? status.replace(/_/g, " ");
 
-  const isChat = job.mode === "chat";
   const roomy = isRoomy(viewMode);
-  const KindIcon = isChat ? MessageSquare : Database;
 
-  // Which kind of job this is: a chat, or an extraction.
   const kind = roomy ? (
-    <span role="img" aria-label={isChat ? t("jobBadgeChat") : t("jobBadgeExtraction")} className={cn(LIST_TILE, "shrink-0")}>
-      <KindIcon aria-hidden className="size-5" />
+    <span role="img" aria-label={t("jobBadgeExtraction")} className={cn(LIST_TILE, "shrink-0")}>
+      <Database aria-hidden className="size-5" />
     </span>
   ) : (
-    <span role="img" aria-label={isChat ? t("jobBadgeChat") : t("jobBadgeExtraction")} className="flex shrink-0 text-primary">
-      <KindIcon aria-hidden className="size-4" />
+    <span role="img" aria-label={t("jobBadgeExtraction")} className="flex shrink-0 text-primary">
+      <Database aria-hidden className="size-4" />
     </span>
   );
-  // A chat has no pipeline, so it has no state to show. The icon sits above the entry's
-  // hit area so it can say what it means, in a link of its own so a click on it still opens the job.
-  const state = isChat ? null : (
+  // The icon sits above the entry's hit area so it can say what it means, in a link of its own so a click on it still opens the job.
+  const state = (
     <Link href={`/extraction/${job._id}`} tabIndex={-1} className="relative z-10 flex shrink-0">
       <JobStatusIcon status={status} label={statusLabel} />
     </Link>
@@ -64,7 +60,7 @@ export function JobListItem({ job, viewMode }: JobListItemProps) {
   );
   const size = (
     <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground">
-      {isChat ? t("jobChatSubline", { messages: job.messageCount ?? 0 }) : tJob("papersCount", { count: job.totalPapers ?? 0 })}
+      {tJob("papersCount", { count: job.totalPapers ?? 0 })}
     </span>
   );
   const description = job.description ? <p className="truncate text-xs text-muted-foreground">{job.description}</p> : null;
@@ -72,15 +68,15 @@ export function JobListItem({ job, viewMode }: JobListItemProps) {
     <EntryAside
       className={cn(viewMode === "list-detail" && "h-7 self-start", viewMode === "list-simple" && "max-sm:hidden")}
       meta={
-        <time dateTime={new Date(isChat ? (job.lastMessageAt ?? job.updatedAt) : job.createdAt).toISOString()}>
-          {format.relativeTime(new Date(isChat ? (job.lastMessageAt ?? job.updatedAt) : job.createdAt), now)}
+        <time dateTime={new Date(job.createdAt).toISOString()}>
+          {format.relativeTime(new Date(job.createdAt), now)}
         </time>
       }
     />
   );
 
   return (
-    <Entry viewMode={viewMode} data-mode={job.mode}>
+    <Entry viewMode={viewMode}>
       {isGrid(viewMode) ? (
         <>
           <div className="flex items-center gap-2">

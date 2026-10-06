@@ -122,7 +122,6 @@ async function seedScenario(
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       sourceType: "history" as const,
       status: jobStatus,
       totalPapers,

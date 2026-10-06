@@ -20,7 +20,6 @@ async function seedBatchResultFixture(t: ReturnType<typeof convexTest>) {
     await seedCreditsForTest(ctx, { userId, paid: 100_000, now });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       sourceType: "history" as const,
       status: "extracting" as const,
       runEpoch: 0,

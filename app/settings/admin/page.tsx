@@ -26,7 +26,6 @@ const GROUPS = [
     flags: [
       ["extraction.enabled", "extraction"],
       ["extraction.start", "startJobs"],
-      ["extraction.chat", "chat"],
       ["extraction.pdf", "pdf"],
     ],
   },

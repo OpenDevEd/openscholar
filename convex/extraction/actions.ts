@@ -166,7 +166,7 @@ function canContinueSetup(
   job: Doc<"extractionJobs"> | null,
   expectedEpoch: number,
 ): job is Doc<"extractionJobs"> {
-  if (!job || job.mode !== "extraction") return false;
+  if (!job) return false;
   if ((job.runEpoch ?? 0) !== expectedEpoch) return false;
   return (
     job.status !== "cancelled" &&

@@ -21,7 +21,7 @@ async function seedJob(t: ReturnType<typeof convexTest>, papers: PaperState[]) {
     const now = Date.now();
     const userId = await ctx.db.insert("users", { clerkId: `clerk_${now}_${Math.random()}`, email: "x@test", state: "active", createdAt: now, updatedAt: now });
     const jobId = await ctx.db.insert("extractionJobs", {
-      userId, mode: "extraction", sourceType: "history", status: "extracting", runEpoch: 0, totalPapers: papers.length, name: "Dispatch", createdAt: now, updatedAt: now,
+      userId, sourceType: "history", status: "extracting", runEpoch: 0, totalPapers: papers.length, name: "Dispatch", createdAt: now, updatedAt: now,
     });
     const queueIds: Id<"extractionPaperQueue">[] = [];
     for (const [i, state] of papers.entries()) {

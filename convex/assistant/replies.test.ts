@@ -14,7 +14,7 @@ import schema from "../schema";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { endStep } from "./steps";
 import { insertJob } from "../screening/createJob.test-support";
-import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
+import { ABORT_ERROR_STRING } from "../../lib/ai/abort-signal";
 import { assistant } from "./agent";
 import { people } from "./assistant.test-support";
 import { JOBS_DOCKED } from "./validators";
@@ -24,7 +24,7 @@ const { mockDoStream, modelIdsSeen, fetchMock } = vi.hoisted(() => ({ mockDoStre
 vi.stubGlobal("fetch", fetchMock);
 
 // The model every reply runs on, in place of OpenRouter.
-vi.mock("../chat/provider", async () => {
+vi.mock("../ai/provider", async () => {
   const { MockLanguageModelV3 } = await import("ai/test");
   return {
     resolveOpenRouterModel: async (_ctx: unknown, modelId: unknown) => {
@@ -720,7 +720,7 @@ describe("a job a reply started", () => {
     // An extraction paused from its page waits for the person: it leaves the dock until it carries on.
     const { extraction, extractStep } = await t.run(async (ctx) => {
       const extractStep = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "extract", path: "extraction/start:extract", input: "{}", status: "done", startedAt: 2, endedAt: 2 });
-      const extraction = await ctx.db.insert("extractionJobs", { userId: ada, mode: "extraction", name: "Sample sizes", status: "extracting", totalPapers: 4, chatStep: extractStep, createdAt: 2, updatedAt: 2 });
+      const extraction = await ctx.db.insert("extractionJobs", { userId: ada, name: "Sample sizes", status: "extracting", totalPapers: 4, chatStep: extractStep, createdAt: 2, updatedAt: 2 });
       return { extraction, extractStep };
     });
     expect(await running()).toEqual([{ stepId: extractStep, kind: "extraction" }, { stepId, kind: "screening" }]);
@@ -736,7 +736,7 @@ describe("a job a reply started", () => {
     await expect(
       t.run(async (ctx) => {
         const more = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "one-more", path: "extraction/start:extract", input: "{}", status: "done", startedAt: 3, endedAt: 3 });
-        await ctx.db.insert("extractionJobs", { userId: ada, mode: "extraction", name: "One more", status: "pending", totalPapers: 1, chatStep: more, createdAt: 3, updatedAt: 3 });
+        await ctx.db.insert("extractionJobs", { userId: ada, name: "One more", status: "pending", totalPapers: 1, chatStep: more, createdAt: 3, updatedAt: 3 });
       }),
     ).rejects.toThrow(`already has ${JOBS_DOCKED} jobs running`);
     expect(await row()).toMatchObject({ moreJobs: JOBS_DOCKED - 2 });

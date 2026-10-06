@@ -28,7 +28,6 @@ export async function seedFullJobGraph(t: ReturnType<typeof convexTest>) {
 
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       sourceType: "history" as const,
       status: "completed" as const,
       totalPapers: 1,

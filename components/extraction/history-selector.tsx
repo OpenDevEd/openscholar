@@ -12,7 +12,7 @@ import { SelectableList } from "./bucket/selectable-list";
 import { CountChip } from "./bucket/count-chip";
 import { useBucketStore } from "@/lib/store/bucket";
 import { fromSavedSearchQuery } from "@/lib/bucket/bucketItem";
-import { paramsToBucketSearchFilters } from "@/lib/chat/params-to-bucket-filters";
+import { paramsToBucketSearchFilters } from "@/lib/bucket/search-filters";
 import { DEFAULT_SEARCH_PARAMS, searchResultToParams } from "@/lib/search-params";
 import { useAppToast } from "@/lib/toast";
 import { bucketAdded } from "@/lib/toast/bucket";

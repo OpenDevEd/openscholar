@@ -15,7 +15,7 @@ import { screeningPaperInputValidator } from "../screening/validators";
 import { currentSearch, restoreSearch, type SavedSearch } from "../../lib/research/records";
 import { DEFAULT_SEARCH_PARAMS } from "../../lib/search-params/parsers";
 import { searchResultToParams } from "../../lib/search-params/converters";
-import { paramsToBucketSearchFilters } from "../../lib/chat/params-to-bucket-filters";
+import { paramsToBucketSearchFilters } from "../../lib/bucket/search-filters";
 import { isRatingFilterActive } from "../../lib/utils";
 import { expandShortcuts, shortcutNames } from "../../lib/query-shortcuts";
 import { ratingsAmong, shortcutExpansions } from "../research/records";

@@ -94,7 +94,7 @@ export const assistantSpenderFields = {
   newChats: v.optional(v.object({ replyLimit: v.optional(v.number()), jobs: v.optional(assistantAllowanceValidator) })),
   /**
    * What their last replies cost in credits, oldest first. Each is under its reply's name, so a
-   * charge settled after the reply ended (convex/chat/billing.ts) is added to the right one.
+   * charge settled after the reply ended (convex/billing/openRouter.ts) is added to the right one.
    */
   recent: capped(v.array(v.object({ reply: v.string(), credits: v.number() })), RECENT_REPLIES),
 };

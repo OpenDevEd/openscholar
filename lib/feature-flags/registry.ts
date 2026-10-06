@@ -21,7 +21,6 @@ type FlagDefault = {
 export const FLAG_REGISTRY = {
   "extraction.enabled": { enabled: true, description: "Master switch for the extraction feature" },
   "extraction.pdf": { enabled: true, description: "PDF processing capability gate (per-job toggle visibility)" },
-  "extraction.chat": { enabled: false, description: "Chat mode for job creation (paper Q&A)" },
   "extraction.start": { enabled: true, planFeature: "extraction", description: "Start new extraction jobs" },
   "assistant.enabled": { enabled: false, description: "The research assistant and its chats" },
   "credits.enabled": { enabled: true, description: "Credit system master switch" },

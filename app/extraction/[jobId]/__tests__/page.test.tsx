@@ -112,11 +112,8 @@ type MockJobDetailsData = {
   status: "ok";
   job: {
     _id: string;
-    mode: "chat" | "extraction";
-    chatThreadId?: string;
     name: string;
     sourceType: string;
-    messageCount: number;
     status?: "pending" | "extracting" | "completed";
     totalPapers?: number;
     usePdfs?: boolean;
@@ -147,11 +144,8 @@ const mockQueryResult: MockQueryResult = {
     status: "ok",
     job: {
       _id: "job_1",
-      mode: "chat",
-      chatThreadId: "thread_1",
-      name: "Chat job",
+      name: "Extraction job",
       sourceType: "history",
-      messageCount: 0,
       createdAt: 0,
       updatedAt: 0,
     },
@@ -205,10 +199,8 @@ const extractionJobQueryResult: MockQueryResult = {
     status: "ok",
     job: {
       _id: "job_1",
-      mode: "extraction",
       name: "Extraction job",
       sourceType: "history",
-      messageCount: 0,
       status: "completed",
       totalPapers: 293,
       usePdfs: false,
@@ -392,14 +384,6 @@ vi.mock("@/components/extraction/extraction-citation-sidebar", () => ({
   ExtractionCitationSidebar: () => <div>citation sidebar</div>,
 }));
 
-vi.mock("@/components/extraction/chat/chat-job-view", () => ({
-  ChatJobView: ({
-    threadId,
-  }: {
-    threadId: string;
-  }) => <div data-testid="chat-job-view" data-thread-id={threadId} />,
-}));
-
 
 vi.mock("@/components/extraction/cost-badge", () => ({
   CostBadge: () => <div>cost badge</div>,
@@ -522,48 +506,6 @@ describe("JobDetailPage", () => {
     });
   });
 
-  it("renders the chat job view without ever mounting extraction-only UI", () => {
-    render(<JobDetailPage />);
-
-    const mountedJobDetailsCalls = (
-      authQuery.useProtectedQuery as unknown as {
-        mock: {
-          calls: Array<[unknown, unknown]>;
-        };
-      }
-    ).mock.calls.filter(
-      ([query, args]) =>
-        query === api.extraction.queries.getJobDetails && args !== "skip",
-    );
-
-    expect(screen.getByTestId("chat-job-view")).toHaveAttribute(
-      "data-thread-id",
-      "thread_1",
-    );
-    expect(mountedJobDetailsCalls).toHaveLength(0);
-    expect(document.querySelector('[data-job-mode="chat"]')).not.toBeNull();
-    expect(document.querySelector('[data-job-mode="extraction"]')).toBeNull();
-    expect(resultsFiltersSpy).not.toHaveBeenCalled();
-    expect(screen.queryByTestId("results-filters")).toBeNull();
-    expect(screen.queryByText("extractionResults")).toBeNull();
-    expect(screen.queryByText("insights")).toBeNull();
-    expect(screen.queryByText("reviewQueue")).toBeNull();
-    expect(screen.queryByText("reportBuilder")).toBeNull();
-  });
-
-  it("renders the extraction route without mounting the chat shell", () => {
-    mockExtractionQueries();
-
-    render(<JobDetailPage />);
-
-    expect(document.querySelector('[data-job-mode="chat"]')).toBeNull();
-    expect(document.querySelector('[data-job-mode="extraction"]')).not.toBeNull();
-    expect(screen.getByTestId("extraction-results-shell")).toBeInTheDocument();
-    expect(screen.queryByTestId("chat-job-view")).toBeNull();
-    expect(document.querySelector("[data-results-scope]")).toHaveAttribute("data-total-papers", "293");
-    expect(document.querySelector("[data-results-scope]")).toHaveAttribute("data-filtered-papers", "293");
-  });
-
   it("keeps showing the shared loading spinner while stale job shell data do not match the route", () => {
     currentJobIdMock.value = "job_2";
 
@@ -585,8 +527,6 @@ describe("JobDetailPage", () => {
           job: {
             ...mockQueryResult.data.job,
             _id: "job_1",
-            mode: "extraction" as const,
-            chatThreadId: undefined,
           },
         },
       } as MockQueryResult;
@@ -595,46 +535,7 @@ describe("JobDetailPage", () => {
     render(<JobDetailPage />);
 
     expect(screen.getByRole("status", { name: "loadingExtractionResults" })).toBeInTheDocument();
-    expect(document.querySelector('[data-job-mode="chat"]')).toBeNull();
     expect(document.querySelector('[data-job-mode="extraction"]')).toBeNull();
-    expect(resultsFiltersSpy).not.toHaveBeenCalled();
-  });
-
-  it("uses the shared spinner loading state while a chat thread is preparing", () => {
-    (
-      authQuery.useProtectedQuery as unknown as {
-        mockImplementation: (
-          fn: (
-            query: unknown,
-            args: unknown,
-          ) => MockProtectedQueryHookResult,
-        ) => void;
-      }
-    ).mockImplementation((_query, args) => {
-      if (args === "skip") return mockSkippedQueryResult;
-      return {
-        ...mockQueryResult,
-        data: {
-          ...mockQueryResult.data,
-          job: {
-            ...mockQueryResult.data.job,
-            chatThreadId: undefined,
-          },
-        },
-      } as MockQueryResult;
-    });
-
-    render(<JobDetailPage />);
-
-    expect(document.querySelector('[data-chat-state="preparing"]')).not.toBeNull();
-    expect(screen.getByTestId("auth-state-loading")).toHaveAttribute(
-      "data-loading-style",
-      "spinner",
-    );
-    expect(screen.getByTestId("auth-state-loading")).toHaveAttribute(
-      "data-title",
-      "chatPreparing",
-    );
     expect(resultsFiltersSpy).not.toHaveBeenCalled();
   });
 

@@ -112,7 +112,6 @@ describe("startJob — pre-flight credit check", () => {
     await expect(
       auth.mutation(api.extraction.mutations.startJob, {
         name: "Poor Job",
-        mode: "extraction",
         bucketItems: [BUCKET_ITEM_HISTORY],
         questions: [
           { key: "q1", question: "What is the outcome?", type: "string" },
@@ -138,7 +137,6 @@ describe("startJob — pre-flight credit check", () => {
 
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
       name: "Rich Job",
-      mode: "extraction",
       bucketItems: [BUCKET_ITEM_HISTORY],
       questions: [
         { key: "q1", question: "What is the outcome?", type: "string" },
@@ -162,7 +160,6 @@ describe("startJob — pre-flight credit check", () => {
     await expect(
       auth.mutation(api.extraction.mutations.startJob, {
         name: "Expanded History",
-        mode: "extraction",
         bucketItems: [BUCKET_ITEM_HISTORY_200],
         questions: [
           { key: "q1", question: "What is the outcome?", type: "string" },
@@ -172,30 +169,6 @@ describe("startJob — pre-flight credit check", () => {
     ).rejects.toThrow(/200 papers|INSUFFICIENT_CREDITS|credits/i);
   });
 
-  it("skips preflight when mode=chat (chat jobs don't consume LLM credits up-front)", async () => {
-    const t = convexTest(schema);
-    const { userId: _userId } = await seedUserFlagsAndCredits(t, { paid: 0 });
-
-    // Enable the chat flag.
-    await t.run(async (ctx) => {
-      await ctx.db.insert("featureFlags", {
-        key: "extraction.chat",
-        enabled: true,
-        updatedAt: Date.now(),
-      });
-    });
-
-    const auth = t.withIdentity(IDENTITY);
-    const { jobId } = (await auth.mutation(api.extraction.mutations.startJob, {
-      name: "Free chat",
-      mode: "chat",
-      bucketItems: [BUCKET_ITEM_HISTORY],
-    })) as { jobId: Id<"extractionJobs"> };
-    expect(jobId).toBeTruthy();
-    const job = await t.run((ctx) => ctx.db.get(jobId));
-    expect(job?.mode).toBe("chat");
-  });
-
   it("zero questions short-circuits the preflight (estimator returns zero; insufficient balance still allowed)", async () => {
     const t = convexTest(schema);
     await seedUserFlagsAndCredits(t, { paid: 0 });
@@ -203,7 +176,6 @@ describe("startJob — pre-flight credit check", () => {
 
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
       name: "No Qs",
-      mode: "extraction",
       bucketItems: [BUCKET_ITEM_HISTORY],
       questions: [],
       usePdfs: false,
@@ -222,7 +194,6 @@ describe("startJob — pre-flight credit check", () => {
 
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
       name: "Abstract",
-      mode: "extraction",
       bucketItems: [BUCKET_ITEM_HISTORY],
       questions: [
         { key: "q1", question: "Q1?", type: "string" },
@@ -239,7 +210,6 @@ describe("startJob — pre-flight credit check", () => {
     await expect(
       auth.mutation(api.extraction.mutations.startJob, {
         name: "PDFs",
-        mode: "extraction",
         bucketItems: [BUCKET_ITEM_HISTORY],
         questions: [
           { key: "q1", question: "Q1?", type: "string" },
@@ -258,7 +228,6 @@ describe("startJob — pre-flight credit check", () => {
     const start = () =>
       auth.mutation(api.extraction.mutations.startJob, {
         name: "One paper",
-        mode: "extraction",
         bucketItems: [BUCKET_ITEM_HISTORY],
         questions: [{ key: "q1", question: "What is the outcome?", type: "string" }],
         usePdfs: false,

@@ -30,7 +30,7 @@ export async function importLocalResearch(
   localSearchHistoryStore.setState(state => ({ searchHistory: state.searchHistory.map(search => {
     if (search.id) return search;
     try {
-      return { ...importSearchRecord(search as unknown as Record<string, unknown>), screeningResponses: search.screeningResponses ?? {}, chatJobIdsByAccountId: search.chatJobIdsByAccountId };
+      return { ...importSearchRecord(search as unknown as Record<string, unknown>), screeningResponses: search.screeningResponses ?? {} };
     } catch (error) { failures.push(error); return search; }
   }) }));
   const claims = JSON.parse(localStorage.getItem(CLAIMS_KEY) ?? "{}") as Record<string, string>;

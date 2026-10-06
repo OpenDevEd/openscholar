@@ -72,13 +72,6 @@ export const resumeExtraction = mutation({
     const job = await assertJobOwnership(ctx, user._id, jobId);
     await requireOrganizationFeature(ctx, "extraction");
 
-    if (job.mode !== "extraction") {
-      throw createError(
-        "VALIDATION_ERROR",
-        "Only extraction jobs can be resumed",
-      );
-    }
-
     if (!job.status) {
       return { resumed: false, reason: "not_paused" };
     }

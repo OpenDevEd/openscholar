@@ -39,7 +39,6 @@ async function seedJob(
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       name: "J",
       sourceType: "history" as const,
       status,

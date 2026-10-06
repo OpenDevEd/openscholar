@@ -70,7 +70,6 @@ export const searchFields = {
   includeRetracted: v.optional(v.boolean()),
   language: v.optional(v.string()),
   page: v.optional(v.number()),
-  chatJobIdsByAccountId: capped(v.optional(v.record(v.string(), v.string())), MAX_LINKED_ACCOUNTS),
   createdAt: v.string(),
   updatedAt: v.string(),
 };
@@ -95,12 +94,14 @@ export const storedSearchValidator = v.object({
   screeningResponses: capped(v.array(v.object({ paperId: v.string(), responses: answers })), MAX_LEGACY_ENTRIES),
   queryHistory: capped(v.optional(v.array(queryHistoryEntryValidator)), MAX_LEGACY_ENTRIES),
   questionHistory: capped(v.optional(v.array(questionHistoryEntryValidator)), MAX_LEGACY_ENTRIES),
+  // The paper chats started from the search, gone with them (#325): migrations/removeChat clears them, and nothing reads them.
+  chatJobIdsByAccountId: capped(v.optional(v.record(v.string(), v.string())), MAX_LINKED_ACCOUNTS),
 });
 export type StoredSearch = Infer<typeof storedSearchValidator>;
 
 /** A stored search as the app reads it: its history summarised, never the arrays. */
 export function currentSearch(stored: StoredSearch): SavedSearch {
-  const { queryHistory, questionHistory, ...rest } = stored;
+  const { queryHistory, questionHistory, chatJobIdsByAccountId: _chats, ...rest } = stored;
   if (!queryHistory && !questionHistory && rest.queryHistoryCount !== undefined) return rest as SavedSearch;
   return { ...rest, ...historySummary(queryHistory ?? [], questionHistory ?? []) };
 }
@@ -174,7 +175,7 @@ export function importSearchRecord(row: Record<string, unknown>, id?: string): S
   if (!validate(fieldValidator, field)) throw new Error("Unknown search field");
   const count = Number(record.count ?? 0);
   if (!Number.isSafeInteger(count) || count < 0) throw new Error("Invalid result count");
-  const known = Object.fromEntries(Object.entries(record).filter(([key]) => key in searchFields && key !== "chatJobIdsByAccountId" && key !== "screeningResponses"));
+  const known = Object.fromEntries(Object.entries(record).filter(([key]) => key in searchFields && key !== "screeningResponses"));
   const queryHistory = record.queryHistory ?? [{ query, field, timestamp: now }];
   const questionHistory = record.questionHistory ?? [];
   if (!validate(historyArrays.queryHistory, queryHistory)) throw new Error("Invalid query history");
@@ -304,16 +305,16 @@ export function editedResponses(responses: SavedSearch["screeningResponses"], ed
 
 /**
  * Fields a patch can set that a restore leaves as they are now: screening questions, whose
- * answers have their own history, and the chats started from the search.
+ * answers have their own history.
  */
-const KEPT_ON_RESTORE = ["screeningQuestions", "chatJobIdsByAccountId"] as const;
+const KEPT_ON_RESTORE = ["screeningQuestions"] as const;
 /** Whether a change left those fields alone, so restoring the revision before it reverses all of it. */
 export const restoreReverses = (before: SavedSearch, after: SavedSearch) => KEPT_ON_RESTORE.every((key) => JSON.stringify(before[key]) === JSON.stringify(after[key]));
 
 /**
  * The search with its query and filters as they were in `then`. What stays as it is now:
  * its identity, its history (going back to an earlier query adds to it), its research
- * questions, its screening questions and answers, and the chats started from it.
+ * questions, and its screening questions and answers.
  */
 export function restoredSearch(search: SavedSearch, then: SavedSearch, now: string): SavedSearch {
   const next: Record<string, unknown> = { ...search };
