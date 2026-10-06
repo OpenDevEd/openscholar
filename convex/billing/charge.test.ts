@@ -117,7 +117,7 @@ describe("settling a charge", () => {
     expect(await usageFor(t, "chat:stopped")).toMatchObject({ cacheReadTokens: 4_300, cacheWriteTokens: 150, reasoningTokens: 60 });
   });
 
-  it("sends a stopped request's $ai_generation with OpenRouter's tokens and what it was charged", async () => {
+  it("sends a stopped request's $ai_generation once, with OpenRouter's tokens and what it was charged", async () => {
     vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.01)));
     const t = convexTest(schema);
     const { userId, jobId } = await seedChat(t, 1_000);
@@ -125,16 +125,20 @@ describe("settling a charge", () => {
     // What the request's finished steps used, as runTurn hands it over.
     const analytics = JSON.stringify({ provider: "openrouter", modelId: "openai/gpt-6-luna", feature: "assistant", usage: { inputTokens: 1_000, outputTokens: 10 }, latencyMs: 2_000, metadata: { stopped: true } });
 
-    await t.action(internal.chat.billing.settleFromOpenRouter, {
-      userId,
-      jobId,
-      chargeId: "chat:tracked",
-      generationId: "gen_1",
-      extraUsd: 0,
-      earlierTokens: { cacheReadTokens: 4_000, cacheWriteTokens: 0, reasoningTokens: 40 },
-      analytics,
-      attempt: 0,
-    });
+    const settle = () =>
+      t.action(internal.chat.billing.settleFromOpenRouter, {
+        userId,
+        jobId,
+        chargeId: "chat:tracked",
+        generationId: "gen_1",
+        extraUsd: 0,
+        earlierTokens: { cacheReadTokens: 4_000, cacheWriteTokens: 0, reasoningTokens: 40 },
+        analytics,
+        attempt: 0,
+      });
+    // Settled twice, as a retry can: charged once, and counted once.
+    await settle();
+    await settle();
 
     const scheduled = await t.run(async (ctx) => (await ctx.db.system.query("_scheduled_functions").collect()).filter((job) => job.name === "lib/analytics:capture"));
     expect(scheduled).toHaveLength(1);

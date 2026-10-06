@@ -206,13 +206,14 @@ export async function summarize(
     });
     return { summary: result.text.trim(), credits };
   } catch (error) {
+    // A summary the person stopped didn't fail.
     await captureUserGenerationLater(ctx, args.senderId, {
       ...generation,
       usage: {},
       latencyMs: Date.now() - startedAt,
-      isError: true,
-      httpStatus: extractHttpStatus(error),
-      errorCode: extractErrorCode(error),
+      ...(stopped.signal.aborted
+        ? { metadata: { stopped: true } }
+        : { isError: true, httpStatus: extractHttpStatus(error), errorCode: extractErrorCode(error) }),
     });
     throw error;
   } finally {

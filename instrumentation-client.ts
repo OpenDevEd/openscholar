@@ -5,8 +5,11 @@ const REPLAY_MASK_ATTRIBUTE = "data-ph-mask";
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 const stars = (value: string) => "*".repeat(value.length);
 const hideEmails = (value: string) => value.replace(EMAIL, stars);
-/** Attributes that carry words a person reads or hears, as text does. */
-const TEXT_ATTRIBUTES = new Set(["aria-label", "aria-description", "aria-valuetext", "title", "alt", "placeholder", "value", "data-value"]);
+/** Attributes that carry what a page says or links to: words a person reads or hears, and addresses. */
+const CONTENT_ATTRIBUTES = new Set([
+  "aria-label", "aria-description", "aria-valuetext", "title", "alt", "placeholder", "value", "data-value",
+  "href", "src", "srcset", "action", "formaction", "poster", "cite", "download",
+]);
 const masked = (element?: Element) => Boolean(element?.closest(`[${REPLAY_MASK_ATTRIBUTE}]`));
 
 // A local dev server sends nothing: its traffic isn't the product's.
@@ -32,10 +35,10 @@ if (process.env.NEXT_PUBLIC_POSTHOG_KEY && !/^(localhost|127\.0\.0\.1)$/.test(wi
     },
     session_recording: {
       // Replays show no email address anywhere, as text or in an attribute such as a mailto link, and no
-      // words at all where the page marks it (settings, the assistant), in its text or its labels.
+      // words or links at all where the page marks it (settings, the assistant), in its text or its attributes.
       maskTextSelector: "*",
       maskTextFn: (text, element) => (masked(element) ? stars(text) : hideEmails(text)),
-      maskAttributeFn: (name, value, element) => (masked(element) && TEXT_ATTRIBUTES.has(name) ? stars(value) : hideEmails(value)),
+      maskAttributeFn: (name, value, element) => (masked(element) && CONTENT_ATTRIBUTES.has(name) ? stars(value) : hideEmails(value)),
     },
   });
 }

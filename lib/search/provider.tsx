@@ -427,8 +427,8 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       filters,
     };
 
-    // A search is counted with how it ended, whether or not its results are still the ones on screen. One the
-    // page left before it ended isn't counted: its start would have no end.
+    // A search is counted when it ends, with how it ended, whether or not its results are still the ones on
+    // screen: it ran either way. One whose tab closed first isn't counted, as its end never comes.
     try {
       const result = await getSearchResultsWithFilters(searchParams, {
         getMessage: (key, params) =>

@@ -198,7 +198,9 @@ export const settleFromOpenRouter = internalAction({
       );
     }
     const usd = (result.kind === "ok" ? result.generation.totalCostUsd : 0) + args.extraUsd;
-    await settleCredits(ctx, {
+    // The request's event goes with the call that settles its charge, once, and says what that charge took.
+    const settledBefore = args.analytics !== undefined && (await ctx.runQuery(internal.billing.charge.charged, { chargeId: args.chargeId })) !== null;
+    const settled = await settleCredits(ctx, {
       userId: args.userId,
       chargeId: args.chargeId,
       credits: convertUsdToCredits({ usd }),
@@ -217,8 +219,9 @@ export const settleFromOpenRouter = internalAction({
     // The reply reported what its finished steps cost when it ended. The rest of this charge is added to it now.
     const late = convertUsdToCredits({ usd }) - convertUsdToCredits({ usd: args.extraUsd });
     if (args.reply && late > 0) await ctx.runMutation(internal.assistant.spending.settledLate, { userId: args.userId, reply: args.reply, credits: late });
-    if (args.analytics) {
+    if (args.analytics && settled && !settledBefore) {
       const params = JSON.parse(args.analytics) as AIGenerationParams;
+      const credits = await ctx.runQuery(internal.billing.charge.charged, { chargeId: args.chargeId });
       const generation = result.kind === "ok" ? result.generation : undefined;
       await captureUserGenerationLater(ctx, args.userId, {
         ...params,
@@ -226,7 +229,7 @@ export const settleFromOpenRouter = internalAction({
           inputTokens: (params.usage.inputTokens ?? 0) + (generation?.promptTokens ?? 0),
           outputTokens: (params.usage.outputTokens ?? 0) + (generation?.completionTokens ?? 0),
         },
-        creditsDeducted: convertUsdToCredits({ usd }),
+        ...(credits === null ? {} : { creditsDeducted: credits }),
         metadata: {
           ...params.metadata,
           $ai_cache_read_input_tokens: earlier.cacheReadTokens + (generation?.cachedPromptTokens ?? 0),
