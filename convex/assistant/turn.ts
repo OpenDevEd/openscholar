@@ -26,6 +26,8 @@ import { ABORT_ERROR_STRING, isAbortLike } from "../../lib/chat/abort-signal";
 import { pickProviderCostUsd } from "../../lib/chat/pick-provider-cost";
 import { classifyChatError, serializeChatError } from "../../lib/errors/taxonomy";
 import { convertUsdToCredits } from "../../lib/pricing";
+import { extractErrorCode, extractHttpStatus, type AIGenerationParams } from "../../lib/posthog-ai-shared";
+import { captureUserGenerationLater } from "../lib/analyticsEvents";
 
 export const STOP_ABORT_POLL_INTERVAL_MS = 500;
 /** How long a request waits for the model to start answering, reasoning included, and then between parts of its answer. */
@@ -36,6 +38,8 @@ const STALLED = Object.assign(new Error("The model stopped answering."), { name:
 
 export type Turn = {
   agent: Agent;
+  /** What the request is for, in its `$ai_generation` event. */
+  feature: "assistant" | "chat";
   /** The agent component's thread. */
   threadId: string;
   promptMessageId: string;
@@ -93,9 +97,13 @@ export type Turn = {
 
 export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   const { agent, threadId, promptMessageId, userId, log } = turn;
+  const startedAt = Date.now();
+  // What the request failed with, for its analytics event. A stop isn't a failure.
+  let failure: unknown;
   const recordError = async (error: unknown) => {
-    if (!turn.recordError || classifyChatError(error).class === "aborted") return;
-    await turn.recordError(error);
+    if (classifyChatError(error).class === "aborted") return;
+    failure ??= error;
+    await turn.recordError?.(error);
   };
 
   // After Stop, a cancellation error is the stop arriving, not a failure: this runtime ends
@@ -180,6 +188,31 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   let allFailed = false;
   const completedGenerations = new Set<string>();
   let finished = false;
+  // The request's `$ai_generation`, as far as this action knows it. A request stopped or failed partway is
+  // charged later, from OpenRouter's record, and its event goes with that charge (chat/billing.ts).
+  const generation = (): AIGenerationParams => {
+    const usage = aggregateUsage(stepUsages);
+    return {
+      provider: "openrouter",
+      modelId: capturedModelSlug ?? "",
+      feature: turn.feature,
+      usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
+      latencyMs: Date.now() - startedAt,
+      isError: failure !== undefined,
+      httpStatus: extractHttpStatus(failure),
+      errorCode: extractErrorCode(failure),
+      traceId: turn.replyId ?? chargeId,
+      sessionId: threadId,
+      creditsDeducted: charged,
+      metadata: {
+        $ai_cache_read_input_tokens: usage.cacheReadTokens,
+        $ai_cache_creation_input_tokens: usage.cacheWriteTokens,
+        $ai_reasoning_tokens: usage.reasoningTokens,
+        stopped: streamAbortedByUser,
+      },
+    };
+  };
+  let generationSentLater = false;
 
   try {
     const { model, modelSlug, pricing } = await resolveOpenRouterModel(
@@ -461,8 +494,10 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
         extraUsd: completedUsd,
         earlierTokens: tokenCounts(aggregateUsage(stepUsages)),
         attempt: 0,
+        analytics: JSON.stringify(generation()),
       });
       settledOrScheduled = true;
+      generationSentLater = true;
     } else if (completedTokens > 0) {
       const usd = completedUsd;
       charged = convertUsdToCredits({ usd }) || 1;
@@ -534,6 +569,8 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       more: finished && !streamErrored && !streamAbortedByUser && ranTools && asked.length === 0,
       failed: allFailed,
     });
+    // Every request on a resolved model sends its `$ai_generation`, a failed one and one refused for credits included.
+    if (capturedModelSlug && !generationSentLater) await captureUserGenerationLater(ctx, userId, generation());
   }
 }
 

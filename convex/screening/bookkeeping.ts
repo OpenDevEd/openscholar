@@ -22,6 +22,7 @@ import { addCollectionMembership, removeCollectionMembership } from "../library/
 import { moveResultAnswers } from "./drain";
 import { account, FAILED, standing, withDeltas, type Delta, type Move } from "./accounting";
 import { startWaitingPapers } from "./slots";
+import { captureLater } from "../lib/analyticsEvents";
 
 /** Papers per batch: each moves its answers and may save a library item, a few dozen reads. */
 const BATCH = 50;
@@ -194,7 +195,7 @@ export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">)
   }
   const user = await ctx.db.get("users", job.userId);
   if (user?.clerkId) {
-    await ctx.scheduler.runAfter(0, internal.lib.analytics.captureEvent, {
+    await captureLater(ctx, [{
       distinctId: user.clerkId,
       event: "screening_job_completed",
       properties: {
@@ -205,7 +206,8 @@ export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">)
         question_count: job.questions.length,
         duration_ms: job.createdAt ? now - job.createdAt : 0,
       },
-    });
+      timestamp: now,
+    }]);
   }
 }
 

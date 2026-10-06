@@ -11,7 +11,7 @@ export type SearchTrigger =
   | "query_change"
   | "filter_change"
   | "pagination"
-  | "unknown";
+  | "refetch";
 
 const SEARCH_PARAM_KEYS: SearchParamKey[] = [
   "q",
@@ -325,7 +325,7 @@ export function deriveSearchTrigger(
   changedKeys: SearchParamKey[]
 ): SearchTrigger {
   if (!previous) return "initial_load";
-  if (changedKeys.length === 0) return "unknown";
+  if (changedKeys.length === 0) return "refetch";
   if (changedKeys.every((key) => key === "page")) return "pagination";
   if (changedKeys.includes("q")) return "query_change";
   return "filter_change";

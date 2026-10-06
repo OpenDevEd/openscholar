@@ -53,7 +53,10 @@ function deployment() {
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   return (
     <SubscriptionStateProvider>
-      <Shell>{children}</Shell>
+      {/* Session replays show none of the account's text (instrumentation-client.ts). */}
+      <div data-ph-mask className="contents">
+        <Shell>{children}</Shell>
+      </div>
     </SubscriptionStateProvider>
   );
 }

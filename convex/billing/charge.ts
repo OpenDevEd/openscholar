@@ -20,7 +20,7 @@
  * both.
  */
 import { v, type Infer } from "convex/values";
-import { internalAction, internalMutation, internalQuery, type ActionCtx, type MutationCtx } from "../lib/functions";
+import { internalAction, internalMutation, internalQuery, type ActionCtx, type MutationCtx, type QueryCtx } from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { autumn, AutumnError } from "./autumn";
@@ -70,12 +70,19 @@ async function holdFor(ctx: MutationCtx, chargeId: string) {
     .unique();
 }
 
-async function usageFor(ctx: MutationCtx, chargeId: string) {
+async function usageFor(ctx: QueryCtx, chargeId: string) {
   return await ctx.db
     .query("billingUsage")
     .withIndex("by_charge", (q) => q.eq("chargeId", chargeId))
     .first();
 }
+
+/** What a settled charge took, which the balance can cap below its cost, or null before it settles. */
+export const charged = internalQuery({
+  args: { chargeId: v.string() },
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx, { chargeId }) => (await usageFor(ctx, chargeId))?.credits ?? null,
+});
 
 /**
  * Records a hold before Autumn takes it. Self-hosted Autumn never expires

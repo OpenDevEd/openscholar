@@ -288,6 +288,7 @@ export const generateResponse = internalAction({
     const webSearch = chatSearchesWeb(meta);
     await runTurn(ctx, {
       agent: paperChat,
+      feature: "chat",
       threadId,
       promptMessageId,
       userId,

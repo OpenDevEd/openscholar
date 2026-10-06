@@ -39,8 +39,6 @@ export interface BatchProcessorConfig<TItem, TConfigInput, TOutput, TResult> {
 
 export interface ItemTrackingData {
   latencyMs: number
-  input: string
-  output: string
   temperature: number
 }
 
@@ -68,7 +66,6 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
 
   return settleBatch(items, getItemId, async (item) => {
     const operationConfig = getOperationConfig(toConfigInput(item))
-    const prompts = operationConfig.buildPrompts(operationConfig.input, 0)
 
     const start = Date.now()
     const { output, usage } = await executeAIOperation({
@@ -81,8 +78,6 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
       usage,
       tracking: {
         latencyMs: Date.now() - start,
-        input: `[system] ${prompts.system}\n[user] ${prompts.prompt}`,
-        output: JSON.stringify(output),
         temperature: operationConfig.temperature,
       },
     }
@@ -163,7 +158,7 @@ export async function processScreeningBatch(
       return {
         result,
         usage,
-        tracking: { latencyMs: Date.now() - start, input: JSON.stringify({ state, questions }), output: JSON.stringify(result), temperature: 0 },
+        tracking: { latencyMs: Date.now() - start, temperature: 0 },
       }
     })
   }

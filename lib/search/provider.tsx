@@ -67,11 +67,6 @@ interface SearchProviderProps {
   children: ReactNode;
 }
 
-interface PendingSearchRequest {
-  startedAt: number;
-  payload: SearchBaseEventPayload;
-}
-
 const SEARCH_FETCH_PARAM_KEY_SET = new Set<SearchParamKey>(SEARCH_FETCH_PARAM_KEYS);
 
 /** Where a history entry keeps the search it showed, in `history.state`. */
@@ -222,7 +217,6 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
 
   const currentParams = urlParams as SearchParams;
   const previousTrackedParamsRef = useRef<SearchParams | null>(null);
-  const pendingRequestsRef = useRef<Map<string, PendingSearchRequest>>(new Map());
   
   // Get store methods for updating history entry
   const updateSearchResult = useSearchHistoryStore((state) => state.updateSearchResult);
@@ -386,11 +380,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       }),
     };
 
-    captureSearchExecuted(basePayload);
-    pendingRequestsRef.current.set(paramsJson, {
-      startedAt: Date.now(),
-      payload: basePayload,
-    });
+    const startedAt = Date.now();
     previousTrackedParamsRef.current = cloneSearchParams(params);
     
     const effectiveSortBy = effectiveSort(params);
@@ -437,12 +427,33 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       filters,
     };
 
-    const result = await getSearchResultsWithFilters(searchParams, {
-      getMessage: (key, params) =>
-        tValidation(key as "bookmarkNotFound", params as Record<string, string>),
-    });
-    // Attach the paramsKey and requestId for outcome tracking
-    return { ...result, paramsKey: paramsJson, requestId };
+    // A search is counted when it ends, with how it ended, whether or not its results are still the ones on
+    // screen: it ran either way. One whose tab closed first isn't counted, as its end never comes.
+    try {
+      const result = await getSearchResultsWithFilters(searchParams, {
+        getMessage: (key, params) =>
+          tValidation(key as "bookmarkNotFound", params as Record<string, string>),
+      });
+      captureSearchExecuted(basePayload);
+      captureSearchSucceeded({
+        ...basePayload,
+        duration_ms: Date.now() - startedAt,
+        results_count: result?.results?.meta?.count ?? 0,
+        validation_is_valid: result?.validation?.isValid ?? true,
+        validation_warning_count: result?.validation?.warnings?.length ?? 0,
+      });
+      return { ...result, paramsKey: paramsJson };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      captureSearchExecuted(basePayload);
+      captureSearchFailed({
+        ...basePayload,
+        duration_ms: Date.now() - startedAt,
+        error_message: message || 'Unknown error',
+        error_type: parseSearchErrorType(message),
+      });
+      throw err;
+    }
   }, [searchId, getSearchResult, toast, tValidation]);
   
   // Single SWR instance
@@ -458,20 +469,6 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       errorRetryCount: 2,
       errorRetryInterval: 1000,
       onSuccess: (data) => {
-        if (data?.paramsKey) {
-          const pendingRequest = pendingRequestsRef.current.get(data.paramsKey);
-          if (pendingRequest) {
-            captureSearchSucceeded({
-              ...pendingRequest.payload,
-              duration_ms: Date.now() - pendingRequest.startedAt,
-              results_count: data?.results?.meta?.count ?? 0,
-              validation_is_valid: data?.validation?.isValid ?? true,
-              validation_warning_count: data?.validation?.warnings?.length ?? 0,
-            });
-            pendingRequestsRef.current.delete(data.paramsKey);
-          }
-        }
-
         if (data?.results?.meta?.count !== undefined && searchId && data.paramsKey === paramsKey) {
           const existing = getSearchResult(searchId);
           if (existing && existing.count !== data.results.meta.count) {
@@ -479,24 +476,8 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
           }
         }
       },
-      onError: (err, key) => {
+      onError: (err) => {
         console.error('Search failed:', err);
-        const message = err?.message || '';
-
-        const paramsJson = Array.isArray(key) && typeof key[1] === 'string' ? key[1] : undefined;
-        if (paramsJson) {
-          const pendingRequest = pendingRequestsRef.current.get(paramsJson);
-          if (pendingRequest) {
-            captureSearchFailed({
-              ...pendingRequest.payload,
-              duration_ms: Date.now() - pendingRequest.startedAt,
-              error_message: message || 'Unknown error',
-              error_type: parseSearchErrorType(message),
-            });
-            pendingRequestsRef.current.delete(paramsJson);
-          }
-        }
-
         // An OQL query OpenAlex rejects shows its reason under the query box instead.
         const rejectedOql = currentParams.field === OQL_FIELD && err instanceof SearchError && err.status === 400;
         if (!rejectedOql) toast.search.failed(err);
