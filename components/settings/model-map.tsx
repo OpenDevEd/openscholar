@@ -7,7 +7,7 @@ import { useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
-import { ArrowUpDown, Brain, Check, ChevronsUpDown, Cloud, Filter, Languages, ListChecks, MessageSquare, PiggyBank, SlidersHorizontal, Search, PenLine, Scale, Zap, ExtractionIcon } from "@/components/icons";
+import { ArrowUpDown, Brain, Check, ChevronsUpDown, Cloud, Filter, ListChecks, MessageSquare, PiggyBank, SlidersHorizontal, Search, PenLine, Scale, Zap, ExtractionIcon, TranslateIcon } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
@@ -54,7 +54,7 @@ export const TASK_ICONS: Record<AiTask, Ico> = {
   screening: Filter,
   questionToQuery: Search,
   refine: PenLine,
-  translate: Languages,
+  translate: TranslateIcon,
   broadenNarrow: ArrowUpDown,
 };
 

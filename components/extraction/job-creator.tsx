@@ -20,6 +20,7 @@ import {
   CircleCheck,
   ChevronRight,
   ExtractionIcon,
+  AiIcon,
 } from "@/components/icons";
 import { useExtractionStore, type JobMode } from "@/lib/store/extraction";
 import { useBucketStore } from "@/lib/store/bucket";
@@ -433,7 +434,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
           ) : validStep === 3 ? (
             <>
               {effectiveMode === "chat" ? t("startChat") : t("startExtraction")}
-              <Zap className="ml-2 h-4 w-4" />
+              <AiIcon className="ml-2 h-4 w-4" />
             </>
           ) : (
             <>
