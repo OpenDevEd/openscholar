@@ -150,6 +150,7 @@ async function told(ctx: QueryCtx, end: Doc<"assistantJobEnds">) {
   const facts = end.kind === "screening" ? await screeningFacts(ctx, end.userId, end.jobId as Id<"screeningJobs">) : await extractionFacts(ctx, end.userId, end.jobId as Id<"extractionJobs">);
   if (!facts) return `<job_ended>${end.kind} ${end.jobId} ended (${end.status}); it can no longer be read.</job_ended>`;
   const spent = `credits: ${facts.credits}${facts.cap === undefined ? "" : ` of ${facts.cap} approved`}`;
+  if (end.quiet) return `<job_ended quiet>${end.kind} ${end.jobId} ended (${end.status}) while ${facts.kind === "screening" ? facts.label ?? "a screening" : facts.name}'s reply was stopped: no readout is owed for it unless the person asks.</job_ended>`;
   if (facts.kind === "screening") {
     return `<job_ended>screening ${facts.jobId}${facts.label ? ` (${facts.label})` : ""}; status: ${end.status}${facts.capped ? ", stopped at the credits approved" : ""}; page: /screening?job=${facts.jobId}; papers: ${facts.total}; included: ${facts.included}; unclear: ${facts.unclear}; excluded: ${facts.excluded}; failed: ${facts.failed}; ${spent}${facts.failure ? `; why it failed: ${facts.failure}` : ""}</job_ended>`;
   }
@@ -178,6 +179,16 @@ export const deliver = internalMutation({
       else live.push(end);
     }
     if (!live.length) return null;
+    // Ends someone pressed Stop on are told first, together, with no readout.
+    const quiet = live.filter((end) => end.quiet);
+    if (quiet.length) {
+      const note = (await Promise.all(quiet.map((end) => told(ctx, end)))).join("\n");
+      const [message] = (await saveMessages(ctx, components.agent, { threadId: thread.agentThreadId, userId: quiet[0].userId, agentName: JOB_ENDED, messages: [{ role: "user", content: note }] })).messages;
+      for (const end of quiet) await ctx.db.patch("assistantJobEnds", end._id, { pending: undefined, order: message.order });
+      // Whatever else waits, quiet or not, is told next, a batch at a time.
+      await ctx.scheduler.runAfter(0, internal.assistant.jobs.deliver, { threadId });
+      return null;
+    }
     const userId = live[0].userId;
     const ends = live.filter((end) => end.userId === userId);
     // Lost access to the chat, or the assistant, since: the end stays on its card, and nobody is answered for it.

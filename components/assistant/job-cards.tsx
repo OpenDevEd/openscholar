@@ -18,7 +18,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
-import { WorkingText } from "./parts";
+import { FadeRow, WorkingText } from "./parts";
 import { KIND, KindTile } from "./steps";
 
 type Read = NonNullable<FunctionReturnType<typeof api.assistant.jobs.card>>;
@@ -239,9 +239,9 @@ function ExtractionCard({ job, mine }: { job: Extraction; mine: boolean }) {
       </div>
       <div className="px-3 pb-3">
         {/* Every question, none cut: past the card's width the row scrolls sideways. */}
-        <div className="overflow-x-auto scrollbar-hover">
+        <FadeRow scrolls>
           <Segmented label={t("question")} value={question} onChange={setPicked} options={job.questions.map((asked) => ({ id: asked.key, label: asked.question }))} />
-        </div>
+        </FadeRow>
         <ol className="mt-2 space-y-0.5">
           {job.rows.map((row, r) => (
             <li key={row.id} className="flex gap-3 rounded-xl px-2 py-2.5">

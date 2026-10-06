@@ -223,6 +223,8 @@ export const assistantJobEndFields = {
   endedAt: v.number(),
   /** Set until it's told to the chat. */
   pending: v.optional(v.literal(true)),
+  /** Someone pressed Stop while it waited: the chat is told it ended, with no readout (#328). */
+  quiet: v.optional(v.literal(true)),
   /** The chat message it was told in, by its order. */
   order: v.optional(v.number()),
 };

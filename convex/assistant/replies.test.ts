@@ -616,6 +616,35 @@ function mockModel(t: Test, slug = "mock/model") {
 }
 
 describe("a job a reply started", () => {
+  it("is told with no readout when someone stops the reply it waited for", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await sharedChat(t);
+    const jobId = await t.run(async (ctx) => {
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
+      return insertJob(ctx, {
+        userId: ada, status: "processing", totalPapers: 2, chatStep: stepId,
+        questions: [{ key: "q1", question: "Is this a trial?" }],
+        scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [{ minScore: 0, stars: 1 }] },
+        createdAt: 1, updatedAt: 1,
+      });
+    });
+    mockDoStream.mockImplementationOnce(hangingDoStream());
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Something else meanwhile" });
+    await waitFor(() => mockDoStream.mock.calls.length === 1);
+    await t.mutation(internal.screening.mutations.markScreeningJobCreditsExhausted, { jobId });
+    // Ada stops the reply: the end that waited for it is told, and nothing writes about it.
+    await asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: (await chat(t, threadId))!.reply!.attemptId });
+    await ended(t, threadId);
+    await waitFor(async () => (await t.run((ctx) => ctx.db.query("assistantJobEnds").collect()))[0]?.pending === undefined);
+    const [end] = await t.run((ctx) => ctx.db.query("assistantJobEnds").collect());
+    expect(end).toMatchObject({ quiet: true, status: "creditsExhausted" });
+    expect(end.order).toBeDefined();
+    expect((await chat(t, threadId))?.reply).toBeUndefined();
+    expect(mockDoStream).toHaveBeenCalledTimes(1);
+    const page = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page;
+    expect(page[0]).toMatchObject({ role: "event", ended: [{ jobId, status: "creditsExhausted" }] });
+  });
+
   it("takes its end back when it's carried on before the chat is told, and goes with a deleted chat", async () => {
     const t = convexTest(schema);
     const { ada, threadId } = await sharedChat(t);
@@ -678,7 +707,11 @@ describe("a job a reply started", () => {
     await t.run((ctx) => ctx.db.delete("screeningResults", queued));
 
     // Ben's reply is being written when the job stops at its credits: the end waits for the chat.
-    mockDoStream.mockImplementationOnce(hangingDoStream());
+    const gate = Promise.withResolvers<void>();
+    mockDoStream.mockImplementationOnce(async () => {
+      await gate.promise;
+      return finishingDoStream(["Here's the rest."])();
+    });
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Meanwhile, what else?" });
     await waitFor(() => mockDoStream.mock.calls.length === 2);
     await t.mutation(internal.screening.mutations.markScreeningJobCreditsExhausted, { jobId });
@@ -689,8 +722,7 @@ describe("a job a reply started", () => {
 
     // Once Ben's reply ends, the chat is told, and the readout is Ada's reply: she started the job.
     mockDoStream.mockImplementationOnce(finishingDoStream(["Your screening stopped at the 23 credits you allowed."]));
-    const running = (await chat(t, threadId))!.reply!;
-    await asBen.mutation(api.assistant.replies.stop, { threadId, attemptId: running.attemptId });
+    gate.resolve();
     await waitFor(() => mockDoStream.mock.calls.length === 3);
     await ended(t, threadId);
     expect(JSON.stringify(mockDoStream.mock.calls[2][0].prompt)).toContain(`<job_ended>screening ${jobId}`);
