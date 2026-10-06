@@ -17,6 +17,7 @@ import { insertJob } from "../screening/createJob.test-support";
 import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 import { people } from "./assistant.test-support";
+import { JOBS_DOCKED } from "./validators";
 import { erroringOnAbortDoStream, finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, waitFor } from "./turn.test-support";
 
 const { mockDoStream, modelIdsSeen, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), modelIdsSeen: [] as unknown[], fetchMock: vi.fn() }));
@@ -694,9 +695,35 @@ describe("a job a reply started", () => {
     expect(await running()).toEqual([]);
     expect(await row()).toMatchObject({ jobs: [], moreJobs: 0 });
 
-    // Carried on from its page, it docks again; it goes with a deleted chat.
+    // Carried on from its page, it docks again.
     await t.run((ctx) => ctx.db.patch("screeningJobs", jobId, { status: "processing" }));
     expect(await asAda.query(api.assistant.jobs.running, { threadId })).toEqual([{ stepId, kind: "screening" }]);
+
+    // An extraction paused from its page waits for the person: it leaves the dock until it carries on.
+    const { extraction, extractStep } = await t.run(async (ctx) => {
+      const extractStep = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "extract", path: "extraction/start:extract", input: "{}", status: "done", startedAt: 2, endedAt: 2 });
+      const extraction = await ctx.db.insert("extractionJobs", { userId: ada, mode: "extraction", name: "Sample sizes", status: "extracting", totalPapers: 4, chatStep: extractStep, createdAt: 2, updatedAt: 2 });
+      return { extraction, extractStep };
+    });
+    expect(await running()).toEqual([{ stepId: extractStep, kind: "extraction" }, { stepId, kind: "screening" }]);
+    await t.run((ctx) => ctx.db.patch("extractionJobs", extraction, { status: "paused" }));
+    expect(await running()).toEqual([{ stepId, kind: "screening" }]);
+    await t.run((ctx) => ctx.db.patch("extractionJobs", extraction, { status: "extracting" }));
+    expect((await running()).map((job) => job.kind)).toEqual(["extraction", "screening"]);
+
+    // A chat runs at most JOBS_DOCKED jobs at once, so its dock and its row always hold them all: one more isn't started.
+    await t.run(async (ctx) => {
+      for (let n = 2; n < JOBS_DOCKED; n++) await ctx.db.insert("assistantJobs", { threadId, stepId, userId: ada, kind: "screening", jobId: `filler-${n}` });
+    });
+    await expect(
+      t.run(async (ctx) => {
+        const more = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "one-more", path: "extraction/start:extract", input: "{}", status: "done", startedAt: 3, endedAt: 3 });
+        await ctx.db.insert("extractionJobs", { userId: ada, mode: "extraction", name: "One more", status: "pending", totalPapers: 1, chatStep: more, createdAt: 3, updatedAt: 3 });
+      }),
+    ).rejects.toThrow(`already has ${JOBS_DOCKED} jobs running`);
+    expect(await row()).toMatchObject({ moreJobs: JOBS_DOCKED - 2 });
+
+    // They go with a deleted chat.
     await t.mutation(internal.assistant.steps.forget, { threadId });
     expect(await t.run((ctx) => ctx.db.query("assistantJobs").collect())).toEqual([]);
   });

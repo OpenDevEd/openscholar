@@ -152,12 +152,14 @@ export const running = query({
 /** How far a running job has got, in papers, for a chat's row in the list. Null for a job that's gone. */
 export async function progressOf(ctx: QueryCtx, row: Doc<"assistantJobs">): Promise<{ done: number; total: number } | null> {
   if (row.kind === "screening") {
-    const job = await ctx.db.get("screeningJobs", row.jobId as Id<"screeningJobs">);
+    const id = ctx.db.normalizeId("screeningJobs", row.jobId);
+    const job = id ? await ctx.db.get("screeningJobs", id) : null;
     if (!job) return null;
     const counts = await readScreeningProgressCounts(ctx, job);
     return { done: counts.completedCount + counts.failedCount, total: job.totalPapers };
   }
-  const job = await ctx.db.get("extractionJobs", row.jobId as Id<"extractionJobs">);
+  const id = ctx.db.normalizeId("extractionJobs", row.jobId);
+  const job = id ? await ctx.db.get("extractionJobs", id) : null;
   if (!job) return null;
   // Papers it answered and papers that failed are both finished.
   const counters = await readJobCounters(ctx, job._id);
