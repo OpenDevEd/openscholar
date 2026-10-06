@@ -40,6 +40,7 @@ import {
   BookIcon,
 } from "@/components/icons";
 import { buildShareableUrl } from "@/lib/search-params";
+import { useTranslations } from "next-intl";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
 import { useUIStore } from "@/lib/store";
@@ -111,6 +112,7 @@ export default function AuthorPage({
   openAlexError: string | null;
   hasMoreWorks: boolean; workCount: number; loadingWorks: boolean; onLoadMoreWorks: () => void;
 }) {
+  const tCard = useTranslations("entityCards");
   const profileId = profile.id;
   // A paper is shown once its rating is read, so its card opens at its final size.
   const rated = useRatedPapers(works);
@@ -565,7 +567,7 @@ export default function AuthorPage({
             {profile.openalex && <Button variant="outline" size="sm" className={BAR_ACTION} asChild>
               <Link href={buildShareableUrl("", { author: [profile.openalex], sort: "cited_by_count:desc" })}>
                 <Search aria-hidden />
-                <span className={BAR_LABEL}>Search papers</span>
+                <span className={BAR_LABEL}>{tCard("searchPapers")}</span>
               </Link>
             </Button>}
             <Button

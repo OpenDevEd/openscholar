@@ -1,12 +1,9 @@
 "use client";
 
-import { useContext } from "react";
 import { useTranslations } from "next-intl";
-import { TopicHoverCard } from "@/components/entity-cards";
-import { FocusModeClose } from "@/components/focus-mode/close-context";
+import { TopicHoverCard, useCloseFocus } from "@/components/entity-cards";
 import { useTopicFilter } from "@/components/paper-card/hooks";
 import { FilterName } from "@/components/paper-card/shared";
-import { useUIStore } from "@/lib/store";
 
 /**
  * A paper's topic or research area. Like an author's name, it narrows the page's search, or
@@ -18,8 +15,7 @@ export function TopicLink({ topic, className = "" }: {
 }) {
   const t = useTranslations("searchFilters");
   const filter = useTopicFilter();
-  // In focus mode, a new search closes it, whichever focus mode it is.
-  const closeFocus = useContext(FocusModeClose);
+  const closeFocus = useCloseFocus();
   const id = topic.id.replace(/^https?:\/\/openalex\.org\//, "");
   const name = topic.display_name;
   return (
@@ -29,7 +25,8 @@ export function TopicLink({ topic, className = "" }: {
         label={t("filterByTopic", { name })}
         className={className}
         onToggle={() => {
-          if (!filter.canFilter) (closeFocus ?? (() => useUIStore.getState().setIsFocusModeOpen(false)))();
+          // A new search leaves the page, and the focus mode over it.
+          if (!filter.canFilter) closeFocus();
           filter.toggle({ value: id, name });
         }}
       >

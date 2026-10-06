@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactElement, ReactNode } from "react";
-import { useTranslations } from "next-intl";
+import { useContext, type ReactElement, type ReactNode } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 import { readAuthorCard } from "@/app/actions/author-card";
 import { readTopic } from "@/app/actions/topics";
@@ -13,12 +13,20 @@ import { FadeRow } from "@/components/assistant/parts";
 import { useAuthorFilter, useTopicFilter } from "@/components/paper-card/hooks";
 import { Button } from "@/components/ui/button";
 import { CountryFlag } from "@/components/ui/country-flag";
+import { FocusModeClose } from "@/components/focus-mode/close-context";
+import { useUIStore } from "@/lib/store";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { unlessLimited } from "@/lib/openalex/limited";
 import { catalogNode } from "@/lib/topics/search";
 import { topicHref } from "@/lib/topics/links";
 import { cn } from "@/lib/utils";
+
+/** Closes the focus mode the card sits in, whichever it is, before the card leaves the page. */
+export function useCloseFocus() {
+  const closeFocus = useContext(FocusModeClose);
+  return closeFocus ?? (() => useUIStore.getState().setIsFocusModeOpen(false));
+}
 
 /** A card's chips: one line that scrolls sideways, each a link. */
 const CHIP = "shrink-0 rounded-md bg-inset px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring";
@@ -34,7 +42,7 @@ function EntityHoverCard({ trigger, children }: { trigger: ReactElement; childre
       <HoverCardTrigger asChild>{trigger}</HoverCardTrigger>
       <HoverCardContent
         align="start"
-        className="w-80 overflow-hidden p-0"
+        className="w-88 overflow-hidden p-0"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
       >
@@ -58,10 +66,11 @@ function CardHeader({ icon, name, line }: { icon: ReactNode; name: string; line:
 
 /** A count and what it counts; the count fades in once it is known, in the space kept for it. */
 function Stat({ value, label }: { value: number | null | undefined; label: string }) {
+  const locale = useLocale();
   return (
     <div className="min-w-0">
       <div aria-hidden={value == null} className={cn("h-6 text-base font-semibold tabular-nums transition-opacity duration-300", value == null ? "opacity-0" : "opacity-100")}>
-        {value == null ? "0" : value.toLocaleString()}
+        {value == null ? "0" : value.toLocaleString(locale)}
       </div>
       <div className="truncate text-xs text-muted-foreground">{label}</div>
     </div>
@@ -82,19 +91,23 @@ function CardActions({ filter, value, name, page, openAlex }: {
 }) {
   const t = useTranslations("entityCards");
   const pressed = filter.selected.includes(value);
+  const closeFocus = useCloseFocus();
   return (
     <div className="mt-4 flex items-center gap-2 bg-inset/60 px-3 py-2.5">
-      <Button size="sm" variant={pressed ? "outline" : "default"} aria-pressed={pressed} onClick={() => filter.toggle({ value, name })}>
+      <Button size="sm" variant={pressed ? "outline" : "default"} className="min-w-0" aria-pressed={pressed} onClick={() => {
+        if (!filter.canFilter) closeFocus();
+        filter.toggle({ value, name });
+      }}>
         {filter.canFilter ? <Filter aria-hidden /> : <Search aria-hidden />}
-        {filter.canFilter ? (pressed ? t("removeFilter") : t("filterResults")) : t("searchPapers")}
+        <span className="truncate">{filter.canFilter ? (pressed ? t("removeFilter") : t("filterResults")) : t("searchPapers")}</span>
       </Button>
       {page && (
-        <Button size="sm" variant="ghost" className="fade-enter" asChild>
-          <Link href={page.href}>{page.label}<ArrowUpRight aria-hidden /></Link>
+        <Button size="sm" variant="ghost" className="fade-enter min-w-0" asChild>
+          <Link href={page.href} onNavigate={closeFocus}><span className="truncate">{page.label}</span><ArrowUpRight aria-hidden /></Link>
         </Button>
       )}
       <TooltipHint label={t("openOnOpenAlex")}>
-        <Button size="icon-sm" variant="ghost" className="ml-auto" asChild>
+        <Button size="icon-sm" variant="ghost" className="ml-auto shrink-0" asChild>
           <a href={openAlex} target="_blank" rel="noreferrer" aria-label={t("openOnOpenAlex")}><OpenAlexIcon className="size-4" /></a>
         </Button>
       </TooltipHint>
@@ -104,6 +117,7 @@ function CardActions({ filter, value, name, page, openAlex }: {
 
 function AuthorCardBody({ id, name }: { id: string; name: string }) {
   const t = useTranslations("entityCards");
+  const closeFocus = useCloseFocus();
   const filter = useAuthorFilter();
   const card = useSWR(["author-card", id], ([, author]) => unlessLimited(readAuthorCard(author)), { revalidateOnFocus: false });
   const author = card.data;
@@ -111,7 +125,7 @@ function AuthorCardBody({ id, name }: { id: string; name: string }) {
     <>
       <CardHeader
         icon={<AuthorAvatar className="size-10" />}
-        name={author?.name ?? name}
+        name={name}
         line={author?.institution ? (
           <>
             {author.institution.country && <CountryFlag countryCode={author.institution.country} className="shrink-0" />}
@@ -120,7 +134,7 @@ function AuthorCardBody({ id, name }: { id: string; name: string }) {
         ) : author ? <span>{t("noInstitution")}</span> : null}
       />
       {card.error ? (
-        <div role="alert" className="mx-4 mt-3 flex h-[5.75rem] flex-col items-start justify-center gap-2 text-sm text-muted-foreground">
+        <div role="alert" className="mx-4 mt-3 flex h-20 flex-col items-start justify-center gap-2 text-sm text-muted-foreground">
           {t("authorFailed")}
           <Button size="sm" variant="outline" onClick={() => void card.mutate()}>{t("tryAgain")}</Button>
         </div>
@@ -133,7 +147,7 @@ function AuthorCardBody({ id, name }: { id: string; name: string }) {
           </div>
           <FadeRow scrolls className="mt-3 h-7 px-4">
             <div className="flex w-max items-center gap-1.5">
-              {author?.topics.map((topic) => <Link key={topic.id} href={`/topics/${topic.id}`} className={CHIP}>{topic.name}</Link>)}
+              {author?.topics.map((topic) => <Link key={topic.id} href={`/topics/${topic.id}`} onNavigate={closeFocus} className={CHIP}>{topic.name}</Link>)}
               {author && !author.topics.length && <span className="text-xs text-muted-foreground">{t("noTopics")}</span>}
             </div>
           </FadeRow>
