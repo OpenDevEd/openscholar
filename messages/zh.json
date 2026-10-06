@@ -562,8 +562,8 @@
     "defineQuestions": "定义问题",
     "whatToExtract": "提取内容",
     "preflight": {
-      "sufficient": "约 {estimate} 积分",
-      "insufficient": "需要约 {estimate} 积分，您现有 {balance}"
+      "sufficient": "最多 {estimate} 积分",
+      "insufficient": "最多需要 {estimate} 积分，您现有 {balance}"
     },
     "creditsExhausted": {
       "title": "提取已暂停 — 积分已用尽",
@@ -2025,7 +2025,9 @@
     "after": "在 {name} 之后",
     "readingPapers": "正在读取论文…",
     "screenPapers": "筛选 {count, plural, other {# 篇}}",
-    "startFailed": "无法开始筛选"
+    "startFailed": "无法开始筛选",
+    "showAnswers": "显示 {title} 的回答",
+    "hideAnswers": "隐藏 {title} 的回答"
   },
   "connectionsPage": {
     "connectedApps": "已连接的应用",

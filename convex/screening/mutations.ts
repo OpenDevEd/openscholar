@@ -13,7 +13,8 @@ import {
 } from "./validators";
 import { requireActiveUser, requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { resolveTaskPick, serverStamp } from "../ai/serverModel";
+import { pricingOf, resolveTaskPick, serverStamp } from "../ai/serverModel";
+import { screeningPaperCredits } from "../../lib/pricing";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { screeningPool } from "../workpool";
 import {
@@ -29,7 +30,7 @@ import { newCollection } from "../library/collections";
 import { searchSnapshotValidator } from "../paperSets/openalex";
 import { bookkeepLater } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
-import { estimateScreening } from "./estimate";
+import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { applyCommand } from "../research/records";
 
 import { availableCredits } from "../billing/accounts";
@@ -120,10 +121,14 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, sa
   return jobId;
 }
 
-/** Whether the person can pay for screening `papers` papers, with the figures a refusal names. */
-async function affords(ctx: MutationCtx, userId: Id<"users">, papers: number) {
+/**
+ * Whether the person can pay for screening `papers` papers, with the figures a refusal names: on the
+ * model the job was stamped with when it has one, else what their Screen all runs on now.
+ */
+async function affords(ctx: MutationCtx, userId: Id<"users">, papers: number, job?: Doc<"screeningJobs">) {
   const available = await availableCredits(ctx, userId);
-  const estimate = estimateScreening(papers, available).credits;
+  const perPaper = job ? screeningPaperCredits(await pricingOf(ctx, job.serverModelId)) : await screeningPaperCreditsFor(ctx, userId);
+  const estimate = estimateScreening(papers, available, perPaper).credits;
   return { affordable: available >= estimate, estimate, available };
 }
 
@@ -215,7 +220,7 @@ export const fillScreeningJob = internalMutation({
     if (!reading?.reading || reading.status !== "processing") return null;
     // The person may have been suspended while the papers were read.
     await requireActiveUser(ctx, reading.userId);
-    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.userId, papers.length - answered)).affordable;
+    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.userId, papers.length - answered, reading)).affordable;
     const now = Date.now();
     const made = affordable && reading.newCollection ? { targetCollectionId: await newCollection(ctx, reading.userId, reading.newCollection), newCollection: undefined } : {};
     await ctx.db.patch("screeningJobs", jobId, { reading: undefined, totalPapers: papers.length, first, last, through, resume, updatedAt: now, ...made, ...(affordable ? {} : { status: "creditsExhausted" as const }) });

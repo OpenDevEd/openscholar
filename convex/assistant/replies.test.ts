@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
+import { CALL_TOKENS, estimateCredits } from "../../lib/pricing";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import schema from "../schema";
 import { SERVER_MODEL_SLUG } from "../ai/config";
@@ -196,6 +197,13 @@ describe("assistant replies", () => {
   it("are limited to so many at once for one person, which a deployment's actions are shared by", async () => {
     const t = convexTest(schema);
     const { asAda, ada, threadId } = await sharedChat(t);
+    // Enough for every reply to hold the most a request costs on the chat's model.
+    const enough = ASSISTANT_REPLIES_AT_ONCE * estimateCredits({ input: 1_000, output: 2_000 }, CALL_TOKENS.chatRequest);
+    await t.run(async (ctx) => {
+      fakeAutumn.setBalance(ada, { free: enough });
+      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      await ctx.db.patch("billingAccounts", account!._id, { balance: enough });
+    });
     const others = await Promise.all(Array.from({ length: ASSISTANT_REPLIES_AT_ONCE }, (_, index) => asAda.mutation(api.assistant.threads.create, { title: `Chat ${index + 2}` })));
     mockDoStream.mockImplementation(hangingDoStream());
 

@@ -20,7 +20,7 @@ import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
-import { extractionStamp, resolveTaskPick } from "../../ai/serverModel";
+import { extractionPricing, extractionStamp, resolveTaskPick } from "../../ai/serverModel";
 import { requireAvailableModel, requireTaskModel } from "../../models/catalog";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
@@ -37,10 +37,7 @@ import {
 } from "../validators";
 import { writeJobSources, type BucketItemInput } from "../jobSources";
 import { cloneChatPapersForDuplicate } from "../../chat/chatPapersDuplicate";
-import {
-  estimateExtractionCredits,
-  type ExtractionCostEstimate,
-} from "../../../lib/extraction/cost-estimate";
+import { extractionPaperCredits } from "../../../lib/pricing";
 import { cancelPaperQueueRowsForJobTx } from "../queue/mutations";
 import { refillPerson } from "../queue/dispatcher";
 import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
@@ -77,11 +74,10 @@ const startArgs = {
 
 /**
  * Starts a job from its sources. `spend` is the hold of a job the person approved up to a
- * figure (#328), that figure, and the price scale it was worked out at (../start.ts): the
- * hold already has the credits, so the balance isn't checked again, and the job's papers
- * are charged under it.
+ * figure (#328), and that figure (../start.ts): the hold already has the credits, so the
+ * balance isn't checked again, and the job's papers are charged under it.
  */
-export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: ObjectType<typeof startArgs>, spend?: { hold: string; cap: number; scale: number }, chatStep?: Id<"assistantSteps">): Promise<{ jobId: Id<"extractionJobs"> }> {
+export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: ObjectType<typeof startArgs>, spend?: { hold: string; cap: number }, chatStep?: Id<"assistantSteps">): Promise<{ jobId: Id<"extractionJobs"> }> {
   await requireFeature(ctx, "extraction.enabled", userId);
   if (args.mode === "extraction") {
     await requireFeature(ctx, "extraction.start", userId);
@@ -112,9 +108,11 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
   const bucketLimits = assertBucketWithinLimits(deduped);
   const sourceType = deriveSourceType(deduped);
 
+  // Stamp what extraction runs on (credits path), read back at run by paperWorker.
+  const stamp = args.mode === "extraction" ? await extractionStamp(ctx, userId) : {};
+
   // Extraction-mode question validation happens after bucket validation
   // so an empty bucket throws first (consistent with the old path).
-  let estimate: ExtractionCostEstimate | undefined;
   if (args.mode === "extraction") {
     const qs = args.questions ?? [];
     if (qs.length > MAX_QUESTIONS_PER_JOB) {
@@ -132,24 +130,15 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
       }
     }
 
-    // Pre-flight credit check. Block against the high end of the estimate
-    // — better to block at submission than fail mid-run. Mirrors the
-    // screening pattern at convex/screening/mutations.ts:93-108 (reads
-    // the credits row directly — avoids a sub-transaction round-trip).
-    const usePdfs = args.usePdfs ?? false;
-    estimate = estimateExtractionCredits({
-      papers: bucketLimits.effectiveCount,
-      questions: qs.length,
-      usePdfs,
-      avgPaperKind: usePdfs ? "pdf" : "abstract",
-    });
-
-    if (estimate.high > 0 && !spend) {
+    // The most the job costs, on the models just stamped, against the balance: better to refuse
+    // it now than stop it part way. A job with a hold has its credits already.
+    if (!spend) {
+      const credits = bucketLimits.effectiveCount * extractionPaperCredits(await extractionPricing(ctx, stamp), qs, args.usePdfs ?? false);
       const totalAvailable = await readAvailableCredits(ctx, userId);
-      if (totalAvailable < estimate.high) {
+      if (totalAvailable < credits) {
         throw createError(
           "INSUFFICIENT_CREDITS",
-          `Need ~${estimate.mid} credits (up to ${estimate.high}) for ${bucketLimits.effectiveCount} papers × ${qs.length} questions but only have ${totalAvailable}`,
+          `Need up to ${credits} credits for ${bucketLimits.effectiveCount} papers × ${qs.length} questions but only have ${totalAvailable}`,
         );
       }
     }
@@ -166,9 +155,6 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
     : args.chatModelId !== undefined ? { modelId: args.chatModelId }
     : await resolveTaskPick(ctx, userId, "chat");
 
-  // Stamp what extraction runs on (credits path), read back at run by paperWorker.
-  const stamp = args.mode === "extraction" ? await extractionStamp(ctx, userId) : {};
-
   const now = Date.now();
   const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
     userId,
@@ -184,8 +170,7 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
           runEpoch: 0,
           usePdfs: args.usePdfs ?? false,
           ...stamp,
-          ...(estimate !== undefined && { estimatedCredits: estimate }),
-          ...(spend ? { spendHold: spend.hold, spendCap: spend.cap, spendScale: spend.scale } : {}),
+          ...(spend ? { spendHold: spend.hold, spendCap: spend.cap } : {}),
           ...(chatStep ? { chatStep } : {}),
         }
       : {

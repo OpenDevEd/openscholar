@@ -28,7 +28,9 @@ import { jobModel, screeningRevision } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { availableCredits } from "../billing/accounts";
-import { estimateScreening } from "./estimate";
+import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
+import { pricingOf } from "../ai/serverModel";
+import { screeningPaperCredits } from "../../lib/pricing";
 import { countRow } from "../research/recordCounts";
 import { buildScreeningProgressSnapshot, readScreeningProgressCounts } from "./progress";
 
@@ -265,7 +267,7 @@ export const getScreeningJobAction = defineUserQuery({
       unsaved: job.unsaved,
       prune: job.prune,
       ...(job.set ? { saved: kept?.saved ?? 0, removed: kept?.removed ?? 0 } : {}),
-      credits: { spent: kept?.credits ?? (job.set ? 0 : undefined), estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0).credits },
+      credits: { spent: kept?.credits ?? (job.set ? 0 : undefined), estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0, screeningPaperCredits(await pricingOf(ctx, job.serverModelId))).credits },
       outcomes: { included: counts.qualifiedCount, unclear, excluded: Math.max(0, counts.completedCount - counts.qualifiedCount - unclear), failed: counts.failedCount },
       tallies: kept?.tallies,
       _id: job._id,
@@ -586,7 +588,7 @@ export const estimateAction = defineUserQuery({
   description: "Estimates the credits screening a number of papers holds, against the person's balance, and how many papers that balance covers.",
   args: { papers: v.number() },
   returns: v.object({ credits: v.number(), available: v.number(), affordablePapers: v.number() }),
-  run: async (ctx, userId, args) => estimateScreening(args.papers, await availableCredits(ctx, userId)),
+  run: async (ctx, userId, args) => estimateScreening(args.papers, await availableCredits(ctx, userId), await screeningPaperCreditsFor(ctx, userId)),
 });
 export const estimate = userQuery(estimateAction);
 export const estimateForAssistant = assistantQuery(estimateAction);

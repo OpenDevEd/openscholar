@@ -27,6 +27,8 @@ import { ANSWERS, OUTCOMES, answerOf, doneOf, maxScore, questionsOf, valueOf, ty
 import { useSearchHistoryStore } from "@/lib/store";
 import { getErrorMessage, useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { ListFocus, openListFocus } from "@/components/focus-mode/list-focus";
+import { PaperTitle } from "@/components/focus-mode/paper-title";
 import { ANSWER, AnimatedNumber, AnswerMark, Chip, ClippedChip, Meter, OUTCOME, OutcomeBar, ProgressRing, SOURCE_ICON, Stars } from "./parts";
 
 /** The chip on a paper about to move to another outcome, in that outcome's colour. */
@@ -370,14 +372,18 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
                     transition={{ duration: 0.35, ease: EASE }}
                     className="overflow-hidden"
                   >
-                    <button
-                      type="button"
-                      aria-expanded={expanded}
-                      onClick={() => { if (paper.openalexId !== held?.paper.openalexId) setHeld(null); setOpen(expanded ? null : paper.openalexId); }}
-                      className="flex w-full items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-muted"
-                    >
+                    {/* The whole row opens the paper's answers, from a button under it; its title, above that button, opens the paper in focus mode. */}
+                    {/* What else the row shows lets clicks through to that button, whatever it draws on its own layer. */}
+                    <div className="relative flex w-full items-center gap-4 px-4 py-3 transition-colors hover:bg-muted [&>:not(button)]:pointer-events-none">
+                      <button
+                        type="button"
+                        aria-expanded={expanded}
+                        aria-label={t(expanded ? "hideAnswers" : "showAnswers", { title: paper.title })}
+                        onClick={() => { if (paper.openalexId !== held?.paper.openalexId) setHeld(null); setOpen(expanded ? null : paper.openalexId); }}
+                        className="absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
+                      />
                       <div className={cn("min-w-0 flex-1 transition-opacity duration-300", leaving && "opacity-50")}>
-                        <p className="truncate text-sm font-medium">{paper.title}</p>
+                        <PaperTitle title={paper.title} onOpen={() => openListFocus(index)} className="truncate leading-5" />
                         <p className="truncate text-xs text-muted-foreground">
                           {[authors.length > 2 ? t("andOthers", { authors: authors.slice(0, 2).join(", ") }) : authors.join(", ") || paper.authorsUnparsed, paper.publicationYear].filter(Boolean).join(", ")}
                         </p>
@@ -394,7 +400,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
                       </div>
                       <Stars count={paper.stars ?? 0} />
                       <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform duration-200", expanded && "rotate-180")} />
-                    </button>
+                    </div>
                     <AnimatePresence initial={false}>
                       {expanded ? (
                         <motion.div key="detail" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }} className="overflow-hidden">
@@ -420,6 +426,8 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
           onNext={() => { setHeld(null); list.next(); }}
         />
       ) : null}
+      {/* Focus mode steps through the papers this page of the outcome lists. */}
+      <ListFocus papers={rows} />
     </Zone>
   );
 }

@@ -17,7 +17,7 @@ import {
   type EnhancedUsage,
 } from "./cost";
 import { mapFinishReason } from "./constants";
-import { buildCallOptions, withWebPlugin } from "./handler";
+import { buildCallOptions, requestText, withWebPlugin } from "./handler";
 import { generateText } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
@@ -2203,5 +2203,19 @@ describe("normalizeSchemaForStrictMode", () => {
       { description: "some metadata" },
       { type: "null" },
     ]);
+  });
+});
+
+describe("requestText", () => {
+  it("counts a request's text and tools towards its hold, and not an image's encoded bytes", () => {
+    const image = { type: "image_url" as const, image_url: { url: `data:image/png;base64,${"A".repeat(100_000)}` } };
+    const text = requestText({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: [{ type: "text", text: "What is in this chart?" }, image] }],
+      tools: [{ type: "function", function: { name: "lookup", parameters: { type: "object" } } }],
+    });
+    expect(text).toContain("What is in this chart?");
+    expect(text).toContain("lookup");
+    expect(text.length).toBeLessThan(1_000);
   });
 });

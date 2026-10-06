@@ -25,6 +25,7 @@ import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-p
 import { HighlightedText } from "./highlighted-text";
 import { PaperQuestionProgress } from "@/components/extraction/paper-question-progress";
 import { PaperDetails, ResultCell } from "./result-parts";
+import { PaperTitle } from "@/components/focus-mode/paper-title";
 
 interface TableViewProps {
   papers: PaperWithResults[];
@@ -38,6 +39,8 @@ interface TableViewProps {
   usePdfs: boolean;
   /** Plan-04: opt-in per-paper Credits column, toggled via toolbar. */
   showCredits?: boolean;
+  /** Opens focus mode on a paper, by its place in `papers`. */
+  onOpenPaper: (index: number) => void;
 }
 
 /** A row's height before it is measured: a paper with three lines of answers. */
@@ -57,6 +60,7 @@ const PaperRow = memo(function PaperRow({
   pinnedShadow,
   openAnswer,
   onOpenAnswer,
+  onOpenPaper,
 }: {
   index: number;
   measureRef: (row: HTMLTableRowElement | null) => void;
@@ -70,6 +74,7 @@ const PaperRow = memo(function PaperRow({
   pinnedShadow: string;
   openAnswer: string | null;
   onOpenAnswer: (answer: OpenAnswer) => void;
+  onOpenPaper: (index: number) => void;
 }) {
   const completedCount = paper.results.filter((r) => r.status === "completed").length;
   const questionProgress = `${completedCount}/${Math.max(questions.length, paper.results.length)}`;
@@ -97,9 +102,9 @@ const PaperRow = memo(function PaperRow({
           />
           <div className="min-w-0 space-y-1.5">
             <TooltipHint label={paper.title} onlyWhenClipped>
-              <p className="line-clamp-4 text-sm font-medium leading-snug">
+              <PaperTitle title={paper.title} onOpen={() => onOpenPaper(index)} className="line-clamp-4">
                 <HighlightedText text={paper.title} query={searchQuery} />
-              </p>
+              </PaperTitle>
             </TooltipHint>
             <PaperDetails paper={paper} pdfEnabled={pdfEnabled} />
             <div onClick={(e) => e.stopPropagation()}>
@@ -144,6 +149,7 @@ export const TableView = memo(function TableView({
   openAnswer,
   usePdfs,
   showCredits = false,
+  onOpenPaper,
 }: TableViewProps) {
   // React Compiler skips this component, as TanStack Virtual is on its list of
   // incompatible libraries, so the callbacks the rows get are memoised by hand.
@@ -307,6 +313,7 @@ export const TableView = memo(function TableView({
                 <PaperRow
                   index={index}
                   measureRef={rows.measureElement}
+                  onOpenPaper={onOpenPaper}
                   paper={paper}
                   questions={questions}
                   isSelected={selectedIds.has(paper._id)}

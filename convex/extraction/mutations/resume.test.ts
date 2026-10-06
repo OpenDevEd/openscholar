@@ -16,7 +16,11 @@ import type { Id } from "../../_generated/dataModel";
 import {
   seedCreditsForTest,
 } from "../../billing/billing.test-support";
+import { extractionPaperCredits } from "../../../lib/pricing";
 import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
+
+/** The price of the model the jobs are stamped with: GPT-6 Luna's. */
+const PRICE = { input: 0.1, output: 0.5 };
 
 const CLERK = "clerk_resume_owner";
 const OWNER_IDENTITY = {
@@ -76,8 +80,10 @@ async function seedJob(
 ): Promise<Id<"extractionJobs">> {
   return await t.run(async (ctx) => {
     const now = Date.now();
+    const serverModelId = await ctx.db.insert("models", { modelId: "test/extraction", name: "Extraction model", provider: "test", inputPricePerMillion: PRICE.input, outputPricePerMillion: PRICE.output, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: ["structured_outputs"], syncedAt: 1, createdAt: 1, updatedAt: 1 });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
+      serverModelId,
       mode: "extraction" as const,
       name: "Resume Test Job",
       sourceType: "history" as const,
@@ -261,7 +267,8 @@ describe("resumeExtraction — happy paths", () => {
 describe("resumeExtraction — credit pre-flight (creditsExhausted path)", () => {
   it("throws INSUFFICIENT_CREDITS when the balance cannot cover the next paper", async () => {
     const t = convexTest(schema);
-    const userId = await seedUserAndCredits(t, { paid: 0, free: 5 });
+    // A credit short of the next paper's five questions on the job's model.
+    const userId = await seedUserAndCredits(t, { paid: 0, free: extractionPaperCredits({ model: PRICE }, Array.from({ length: 5 }, () => ({ type: "string" })), false) - 1 });
     const jobId = await seedJob(t, userId, {
       jobStatus: "creditsExhausted",
       usePdfs: false,

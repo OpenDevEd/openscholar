@@ -14,8 +14,6 @@ import { PermanentFailuresCallout } from "@/components/extraction/permanent-fail
 
 export interface RetrySummaryProps {
   jobId: Id<"extractionJobs">;
-  /** Mirrors `extractionJobs.usePdfs`; drives the PDF-tier retry cost. */
-  usePdfs?: boolean;
 }
 
 /**
@@ -33,7 +31,7 @@ export interface RetrySummaryProps {
  * intentionally not folded into this component so it stays focused on
  * the retryable CTA.
  */
-export function RetrySummary({ jobId, usePdfs = false }: RetrySummaryProps) {
+export function RetrySummary({ jobId }: RetrySummaryProps) {
   const t = useTranslations("extraction.retry");
   const { data: failures } = useProtectedQuery(api.extraction.queries.countJobFailures, { jobId });
   const summary = failures && summarizeRetryable(failures);
@@ -71,8 +69,8 @@ export function RetrySummary({ jobId, usePdfs = false }: RetrySummaryProps) {
             <RetryConfirmDialog
               open={dialogOpen}
               onOpenChange={setDialogOpen}
+              jobId={jobId}
               retryableCount={retryableCount}
-              usePdfs={usePdfs}
               onConfirm={async () => {
                 await retryFailed({ jobId });
               }}

@@ -11,7 +11,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { effortValidator } from "../aiModelConfig/validators";
 import { refreshAccount } from "../billing/accounts";
-import { ASSISTANT_HOLD_CREDITS, ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
+import { CALL_TOKENS, estimateCredits, type Pricing } from "../../lib/pricing";
 import { errorToLogString } from "../lib/errors";
 import { internalAction } from "../lib/functions";
 import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
@@ -75,16 +75,19 @@ export const reply = internalAction({
         console.error("[assistant] owed compaction failed", { threadId, error: errorToLogString(error) });
       }
     }
-    // What this request holds: a hold's worth, or what the person has when that's less, down to the
-    // least a reply starts on. It settles to what it cost, and the next request holds again, so what a
-    // reply may cost in all is the person's credits and nothing else.
+    // What this request holds, on the model it runs on: the most a request costs, or what the person
+    // has when that's less, down to the least a reply starts on. It settles to what it cost, and the
+    // next request holds again, so what a reply may cost in all is the person's credits and nothing else.
     let balance = (await ctx.runQuery(internal.billing.accounts.forUser, { userId: senderId }))?.balance;
-    // The account's copy of the balance can be behind a top-up. When it says the request can't hold a whole hold, it's read again from Autumn.
-    if (balance !== undefined && balance < ASSISTANT_HOLD_CREDITS) balance = (await refreshAccount(ctx, senderId).catch(() => null))?.balance ?? balance;
-    // A reply that is under way holds whatever the person has left: its first request settled to what
-    // it cost, and the least a reply starts on, asked for again, could stop one the balance still covers.
-    const least = used.rounds === 0 ? ESTIMATED_CREDITS_PER_CHAT_MESSAGE : 1;
-    const cap = Math.max(least, Math.min(ASSISTANT_HOLD_CREDITS, balance ?? ASSISTANT_HOLD_CREDITS));
+    const cap = async (pricing: Pricing) => {
+      const most = estimateCredits(pricing, CALL_TOKENS.chatRequest);
+      // The account's copy of the balance can be behind a top-up. When it says the request can't hold the most, it's read again from Autumn.
+      if (balance !== undefined && balance < most) balance = (await refreshAccount(ctx, senderId).catch(() => null))?.balance ?? balance;
+      // A reply that is under way holds whatever the person has left: its first request settled to what
+      // it cost, and the least a reply starts on, asked for again, could stop one the balance still covers.
+      const least = used.rounds === 0 ? estimateCredits(pricing, CALL_TOKENS.chatMessage) : 1;
+      return Math.max(least, Math.min(most, balance ?? most));
+    };
     // A reply makes as many requests as its work takes. One whose actions have all failed, request
     // after request, or whose requests keep doing the same thing to the same end, is going round in
     // circles: this request is its answer, and its actions are refused with the reason, so it says so.
