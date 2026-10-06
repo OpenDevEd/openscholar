@@ -4201,6 +4201,7 @@
       "domain": "क्षेत्र",
       "field": "उपक्षेत्र",
       "subfield": "विषय"
-    }
+    },
+    "topicPapers": "{name}, {count} शोध-पत्र"
   }
 }
