@@ -2,7 +2,8 @@ import posthog from "posthog-js";
 
 /** Session replays show no text inside an element with this attribute. */
 const REPLAY_MASK_ATTRIBUTE = "data-ph-mask";
-const EMAIL = /\S+@\S+\.\S+/g;
+const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+const hideEmails = (value: string) => value.replace(EMAIL, (match) => "*".repeat(match.length));
 
 // A local dev server sends nothing: its traffic isn't the product's.
 if (process.env.NEXT_PUBLIC_POSTHOG_KEY && !/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)) {
@@ -19,13 +20,18 @@ if (process.env.NEXT_PUBLIC_POSTHOG_KEY && !/^(localhost|127\.0\.0\.1)$/.test(wi
     debug: process.env.NODE_ENV === "development",
     person_profiles: "always",
     capture_heatmaps: true,
+    // Every event names the site it came from, as the server's do (convex/lib/analytics.ts). Set here, not
+    // with register(), whose properties don't survive the switch to cookies when someone accepts them.
+    before_send: (event) => {
+      if (event) event.properties.environment = window.location.host;
+      return event;
+    },
     session_recording: {
-      // Replays show no email address anywhere, and no text at all where the page marks it (account, billing).
+      // Replays show no email address anywhere, as text or in an attribute such as a mailto link,
+      // and no text at all where the page marks it (account, billing).
       maskTextSelector: "*",
-      maskTextFn: (text, element) =>
-        element?.closest(`[${REPLAY_MASK_ATTRIBUTE}]`) ? "*".repeat(text.length) : text.replace(EMAIL, (match) => "*".repeat(match.length)),
+      maskTextFn: (text, element) => (element?.closest(`[${REPLAY_MASK_ATTRIBUTE}]`) ? "*".repeat(text.length) : hideEmails(text)),
+      maskAttributeFn: (_name, value) => hideEmails(value),
     },
   });
-  // Every event names the site it came from, as the server's do (convex/lib/analytics.ts).
-  posthog.register({ environment: window.location.host });
 }
