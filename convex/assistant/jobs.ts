@@ -169,8 +169,16 @@ export async function progressOf(ctx: QueryCtx, row: Doc<"assistantJobs">): Prom
     const id = ctx.db.normalizeId("screeningJobs", row.jobId);
     const job = id ? await ctx.db.get("screeningJobs", id) : null;
     if (!job) return null;
-    const counts = await readScreeningProgressCounts(ctx, job);
-    return { done: counts.completedCount + counts.failedCount, total: job.totalPapers };
+    // A request of several jobs, as its card counts it: every job it has run so far (`screeningFacts`).
+    const chatStep = job.chatStep;
+    const jobs = chatStep ? await ctx.db.query("screeningJobs").withIndex("by_chatStep", (q) => q.eq("chatStep", chatStep)).take(MAX_SCREENING_JOBS_PER_REQUEST) : [job];
+    let [done, total] = [0, 0];
+    for (const one of jobs) {
+      const counts = await readScreeningProgressCounts(ctx, one);
+      done += counts.completedCount + counts.failedCount;
+      total += one.totalPapers;
+    }
+    return { done, total };
   }
   const id = ctx.db.normalizeId("extractionJobs", row.jobId);
   const job = id ? await ctx.db.get("extractionJobs", id) : null;

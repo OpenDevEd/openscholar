@@ -72,7 +72,8 @@ export async function checkScreening(ctx: QueryCtx, userId: Id<"users">, { set, 
   requireMinimum(scoringConfig);
   if (questions.length > MAX_QUESTIONS) throw createError("VALIDATION_ERROR", `A screening asks up to ${MAX_QUESTIONS} questions.`);
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
-  const most = MAX_SCREENING_PAPERS_PER_JOB * MAX_SCREENING_JOBS_PER_REQUEST;
+  // One job short of the most jobs a request runs: a search's first job ends on one of its pages (./start.ts `jobEnd`), so it can hold fewer than a job's papers.
+  const most = MAX_SCREENING_PAPERS_PER_JOB * (MAX_SCREENING_JOBS_PER_REQUEST - 1);
   if (last - first + 1 > most) throw createError("VALIDATION_ERROR", `A screening started here takes up to ${most.toLocaleString("en")} papers. Screen papers ${first} to ${(first + most - 1).toLocaleString("en")} first, then the rest.`);
   if (prune && set.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
   if (set.kind === "search") {
