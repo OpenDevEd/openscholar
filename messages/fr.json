@@ -3453,7 +3453,7 @@
     "foldIntoBubble": "Réduire en bulle",
     "newChat": "Nouvelle discussion",
     "emptyTitle": "Posez vos questions ici",
-    "emptyBody": "Je peux parcourir vos recherches, votre bibliothèque, vos collections, vos sélections et vos extractions, créer et modifier des recherches et lire leurs résultats, enregistrer, noter et classer des articles, et lancer des sélections et des extractions pour vous. Je vous demande avant tout ce qui consomme des crédits.",
+    "emptyBody": "Je peux parcourir vos recherches, votre bibliothèque, vos collections, vos sélections et vos extractions, créer et modifier des recherches et lire leurs résultats, enregistrer, noter et classer des articles, et lancer des sélections et des extractions pour vous. Les sélections et les extractions consomment des crédits : je vous demande avant d'en lancer une.",
     "placeholder": "Écrivez, ou tapez @ pour désigner un élément",
     "readOnly": "Vous pouvez lire cette discussion, mais pas y écrire",
     "messageLabel": "Écrire à l'assistant",
