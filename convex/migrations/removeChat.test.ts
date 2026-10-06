@@ -16,7 +16,7 @@ it("deletes the chat jobs and what points at them, and leaves every extraction j
       const sourceId = await ctx.db.insert("extractionJobSources", { jobId: chatId, position: 0, bucketKey: "history:W1", source: "history", sourceRefId: "W1", title: "Paper", authors: [] });
       await ctx.db.insert("chatPapers", { jobId: chatId, sourceId, included: true });
       await ctx.db.insert("chatSourceEvents", { jobId: chatId, threadId, kind: "sources_updated", boundaryOrder: 1, createdAt: 1 });
-      const extractionId = await ctx.db.insert("extractionJobs", { userId, mode: "extraction", name: "Extraction", sourceType: "history", status: "completed", totalPapers: 0, createdAt: 1, updatedAt: 1 });
+      const extractionId = await ctx.db.insert("extractionJobs", { userId, mode: "extraction", name: "Extraction", sourceType: "history", status: "completed", totalPapers: 0, lastMessageAt: 1, chatSourceFingerprint: "f", createdAt: 1, updatedAt: 1 });
       const data = { id: "s1", query: "tutoring", field: "title_and_abstract" as const, count: 3, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-10-01T00:00:00Z", updatedAt: "2026-10-01T00:00:00Z", chatJobIdsByAccountId: { [userId]: chatId } };
       const searchId = await ctx.db.insert("searches", { userId, localId: "s1", revision: 1, data });
       await ctx.db.insert("searchRevisions", { userId, searchId, revision: 0, author: "user", data, deleted: false, createdAt: 1 });
@@ -36,8 +36,8 @@ it("deletes the chat jobs and what points at them, and leaves every extraction j
     }
     await t.finishAllScheduledFunctions(vi.runAllTimers);
 
-    expect(await t.action(internal.migrations.removeChat.verify, { jobIds: before.tally.extractionJobIds, threadIds: [threadId] }))
-      .toEqual({ chatJobs: 0, jobsWithChatFields: 0, searchesLinked: 0, revisionsLinked: 0, missingJobs: [], threadsLeft: [] });
+    expect(await t.action(internal.migrations.removeChat.verify, { jobIds: before.tally.extractionJobIds, chatJobIds: [ids.chatId], threadIds: [threadId] }))
+      .toEqual({ chatJobs: 0, jobsWithChatFields: 0, searchesLinked: 0, revisionsLinked: 0, missingJobs: [], threadsLeft: [], cascade: { chatPapers: 0, sourceEvents: 0, sources: 0 } });
     const left = await t.run(async (ctx) => ({
       chatPapers: await ctx.db.query("chatPapers").collect(),
       events: await ctx.db.query("chatSourceEvents").collect(),

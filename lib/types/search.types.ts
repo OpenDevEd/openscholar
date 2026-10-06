@@ -203,7 +203,6 @@ export interface SearchResult {
   includeRetracted?: boolean;
   language?: string; // ISO 639-1 language code
   page?: number; // Last viewed page for this search
-  chatJobIdsByAccountId?: Record<string, string>; // Per-account chat job links for this search
   createdAt: string;
   updatedAt: string;
 }

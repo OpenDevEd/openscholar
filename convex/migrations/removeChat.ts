@@ -16,7 +16,7 @@ import { internalMutation } from "../lib/functions";
  *   npx convex run migrations/removeChat:dryRun                      what goes, and every extraction job's ID
  *   npx convex run migrations/removeChat:deleteChats '{"count": N}'  the N chat jobs the dry run listed
  *   npx convex run migrations/removeChat:run                         the fields, once the chats are gone
- *   npx convex run migrations/removeChat:verify '{"jobIds": [...], "threadIds": [...]}'
+ *   npx convex run migrations/removeChat:verify '{"jobIds": [...], "chatJobIds": [...], "threadIds": [...]}'
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
@@ -29,7 +29,8 @@ const LIVE_REPLY_MS = 5 * 60 * 1000;
 const hasChatFields = (job: Doc<"extractionJobs">) =>
   job.mode !== undefined || job.chatThreadId !== undefined || job.chatModelId !== undefined || job.chatEffort !== undefined ||
   job.messageCount !== undefined || job.isGenerating !== undefined || job.generatingStartedAt !== undefined ||
-  job.chatGenerationAttemptId !== undefined || job.webSearchEnabled !== undefined;
+  job.chatGenerationAttemptId !== undefined || job.webSearchEnabled !== undefined || job.lastMessageAt !== undefined ||
+  job.shouldAbort !== undefined || job.chatSourceFingerprint !== undefined || job.chatSourceOpenAlexIds !== undefined;
 
 const chatValidator = v.object({
   jobId: v.id("extractionJobs"), userId: v.id("users"), name: v.string(), threadId: v.optional(v.string()),
@@ -159,6 +160,7 @@ export const jobs = migrations.define({
     return {
       mode: undefined, chatThreadId: undefined, chatModelId: undefined, chatEffort: undefined, messageCount: undefined,
       isGenerating: undefined, generatingStartedAt: undefined, chatGenerationAttemptId: undefined, webSearchEnabled: undefined,
+      lastMessageAt: undefined, shouldAbort: undefined, chatSourceFingerprint: undefined, chatSourceOpenAlexIds: undefined,
     };
   },
 });
@@ -179,11 +181,31 @@ export const revisions = migrations.define({
 
 export const run = migrations.runner([internal.migrations.removeChat.jobs, internal.migrations.removeChat.searches, internal.migrations.removeChat.revisions]);
 
-/** What is left: 0 of everything when done, `jobIds` (the dry run's) all still there, and none of `threadIds`. */
+type Cascade = { chatPapers: number; sourceEvents: number; sources: number };
+
+/** Rows the job delete cascade has still to delete: every `chatPapers` and `chatSourceEvents` row, and the deleted chats' sources. */
+export const cascadeLeft = internalQuery({
+  args: { chatJobIds: v.array(v.id("extractionJobs")) },
+  returns: v.object({ chatPapers: v.number(), sourceEvents: v.number(), sources: v.number() }),
+  handler: async (ctx, { chatJobIds }) => {
+    let sources = 0;
+    for (const jobId of chatJobIds) sources += (await ctx.db.query("extractionJobSources").withIndex("by_job_and_position", (q) => q.eq("jobId", jobId)).take(ROWS_COUNTED)).length;
+    return {
+      chatPapers: (await ctx.db.query("chatPapers").take(ROWS_COUNTED)).length,
+      sourceEvents: (await ctx.db.query("chatSourceEvents").take(ROWS_COUNTED)).length,
+      sources,
+    };
+  },
+});
+
+/** What is left: 0 of everything when done, `jobIds` (the dry run's extraction jobs) all still there, and none of `threadIds`. */
 export const verify = internalAction({
-  args: { jobIds: v.array(v.id("extractionJobs")), threadIds: v.array(v.string()) },
-  returns: v.object({ chatJobs: v.number(), jobsWithChatFields: v.number(), searchesLinked: v.number(), revisionsLinked: v.number(), missingJobs: v.array(v.id("extractionJobs")), threadsLeft: v.array(v.string()) }),
-  handler: async (ctx, { jobIds, threadIds }) => {
+  args: { jobIds: v.array(v.id("extractionJobs")), chatJobIds: v.array(v.id("extractionJobs")), threadIds: v.array(v.string()) },
+  returns: v.object({
+    chatJobs: v.number(), jobsWithChatFields: v.number(), searchesLinked: v.number(), revisionsLinked: v.number(), missingJobs: v.array(v.id("extractionJobs")), threadsLeft: v.array(v.string()),
+    cascade: v.object({ chatPapers: v.number(), sourceEvents: v.number(), sources: v.number() }),
+  }),
+  handler: async (ctx, { jobIds, chatJobIds, threadIds }): Promise<Omit<Tally, "extractionJobIds"> & { missingJobs: Array<Id<"extractionJobs">>; threadsLeft: string[]; cascade: Cascade }> => {
     const now = await tally(ctx);
     const kept = new Set(now.extractionJobIds);
     const threadsLeft: string[] = [];
@@ -191,6 +213,7 @@ export const verify = internalAction({
       if (await ctx.runQuery(components.agent.threads.getThread, { threadId })) threadsLeft.push(threadId);
     }
     const { extractionJobIds: _ids, ...counts } = now;
-    return { ...counts, missingJobs: jobIds.filter((id) => !kept.has(id)), threadsLeft };
+    const cascade: Cascade = await ctx.runQuery(internal.migrations.removeChat.cascadeLeft, { chatJobIds });
+    return { ...counts, missingJobs: jobIds.filter((id) => !kept.has(id)), threadsLeft, cascade };
   },
 });

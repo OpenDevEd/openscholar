@@ -3,8 +3,8 @@
  * settles the turns that stop or fail after OpenRouter started a generation: the
  * generation record is looked up with retries, and its cost is charged.
  */
-import { internalAction } from "../_generated/server";
-import { v } from "convex/values";
+import { internalAction, type ActionCtx } from "../_generated/server";
+import { v, type ObjectType } from "convex/values";
 import { internal } from "../_generated/api";
 import { convertUsdToCredits } from "@/lib/pricing";
 import { settleCredits } from "../billing/charge";
@@ -159,57 +159,57 @@ async function fetchOpenRouterGeneration(
   }
 }
 
-export const settleFromOpenRouter = internalAction({
-  args: {
-    userId: v.id("users"),
-    chargeId: v.string(),
-    generationId: v.string(),
-    /** Cost already known outside this generation: its earlier steps. */
-    extraUsd: v.number(),
-    /** The assistant reply the request was part of, whose cost its sender's record keeps (convex/assistant/spending.ts). */
-    reply: v.optional(v.string()),
-    /** Token details of the steps that finished before this one; absent on retries scheduled before it existed. */
-    earlierTokens: v.optional(v.object({ cacheReadTokens: v.number(), cacheWriteTokens: v.number(), reasoningTokens: v.number() })),
-    attempt: v.number(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const earlier = args.earlierTokens ?? { cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 };
-    const result = await fetchOpenRouterGeneration(args.generationId);
-    if (result.kind === "retryable") {
-      const delayMs = getGenerationRetryDelayMs(args.attempt);
-      if (delayMs !== null) {
-        await ctx.scheduler.runAfter(delayMs, internal.billing.openRouter.settleFromOpenRouter, {
-          ...args,
-          attempt: args.attempt + 1,
-        });
-        return null;
-      }
+export const settleArgs = {
+  userId: v.id("users"),
+  chargeId: v.string(),
+  generationId: v.string(),
+  /** Cost already known outside this generation: its earlier steps. */
+  extraUsd: v.number(),
+  /** The assistant reply the request was part of, whose cost its sender's record keeps (convex/assistant/spending.ts). */
+  reply: v.optional(v.string()),
+  /** Token details of the steps that finished before this one; absent on retries scheduled before it existed. */
+  earlierTokens: v.optional(v.object({ cacheReadTokens: v.number(), cacheWriteTokens: v.number(), reasoningTokens: v.number() })),
+  attempt: v.number(),
+};
+
+export async function settle(ctx: ActionCtx, args: ObjectType<typeof settleArgs>): Promise<null> {
+  const earlier = args.earlierTokens ?? { cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 };
+  const result = await fetchOpenRouterGeneration(args.generationId);
+  if (result.kind === "retryable") {
+    const delayMs = getGenerationRetryDelayMs(args.attempt);
+    if (delayMs !== null) {
+      await ctx.scheduler.runAfter(delayMs, internal.billing.openRouter.settleFromOpenRouter, {
+        ...args,
+        attempt: args.attempt + 1,
+      });
+      return null;
     }
-    if (result.kind !== "ok") {
-      console.error(
-        `[openrouter billing] no OpenRouter cost for ${args.generationId}; charging only the known ${args.extraUsd} USD for ${args.chargeId}: ${result.message}`,
-      );
-    }
-    const usd = (result.kind === "ok" ? result.generation.totalCostUsd : 0) + args.extraUsd;
-    await settleCredits(ctx, {
-      userId: args.userId,
-      chargeId: args.chargeId,
-      credits: convertUsdToCredits({ usd }),
-      usage: {
-        kind: "chat",
-        description: "Chat message",
-        ...(result.kind === "ok" ? { model: result.generation.model } : {}),
-        costUsd: usd,
-        // OpenRouter's generation record has no cache-write count.
-        cacheReadTokens: earlier.cacheReadTokens + (result.kind === "ok" ? result.generation.cachedPromptTokens : 0),
-        cacheWriteTokens: earlier.cacheWriteTokens,
-        reasoningTokens: earlier.reasoningTokens + (result.kind === "ok" ? result.generation.reasoningTokens : 0),
-      },
-    });
-    // The reply reported what its finished steps cost when it ended. The rest of this charge is added to it now.
-    const late = convertUsdToCredits({ usd }) - convertUsdToCredits({ usd: args.extraUsd });
-    if (args.reply && late > 0) await ctx.runMutation(internal.assistant.spending.settledLate, { userId: args.userId, reply: args.reply, credits: late });
-    return null;
-  },
-});
+  }
+  if (result.kind !== "ok") {
+    console.error(
+      `[openrouter billing] no OpenRouter cost for ${args.generationId}; charging only the known ${args.extraUsd} USD for ${args.chargeId}: ${result.message}`,
+    );
+  }
+  const usd = (result.kind === "ok" ? result.generation.totalCostUsd : 0) + args.extraUsd;
+  await settleCredits(ctx, {
+    userId: args.userId,
+    chargeId: args.chargeId,
+    credits: convertUsdToCredits({ usd }),
+    usage: {
+      kind: "chat",
+      description: "Chat message",
+      ...(result.kind === "ok" ? { model: result.generation.model } : {}),
+      costUsd: usd,
+      // OpenRouter's generation record has no cache-write count.
+      cacheReadTokens: earlier.cacheReadTokens + (result.kind === "ok" ? result.generation.cachedPromptTokens : 0),
+      cacheWriteTokens: earlier.cacheWriteTokens,
+      reasoningTokens: earlier.reasoningTokens + (result.kind === "ok" ? result.generation.reasoningTokens : 0),
+    },
+  });
+  // The reply reported what its finished steps cost when it ended. The rest of this charge is added to it now.
+  const late = convertUsdToCredits({ usd }) - convertUsdToCredits({ usd: args.extraUsd });
+  if (args.reply && late > 0) await ctx.runMutation(internal.assistant.spending.settledLate, { userId: args.userId, reply: args.reply, credits: late });
+  return null;
+}
+
+export const settleFromOpenRouter = internalAction({ args: settleArgs, returns: v.null(), handler: settle });

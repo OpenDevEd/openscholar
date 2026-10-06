@@ -31,7 +31,6 @@ const IGNORE = new Set([
   "questionText",
   "screeningQuestions",
   "screeningResponses",
-  "chatJobIdsByAccountId",
 ]);
 
 function isoDate(value: unknown): string | null {
