@@ -183,6 +183,7 @@ export const begin = internalMutation({
     credits: v.optional(v.number()),
     batch: v.optional(v.number()),
     variant: v.optional(v.string()),
+    reads: v.optional(v.literal(true)),
   },
   returns: v.id("assistantSteps"),
   handler: async (ctx, args) => {

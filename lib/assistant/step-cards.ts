@@ -34,3 +34,13 @@ export function runsOf<S extends CardStep>(steps: S[]): S[][] {
   }
   return runs;
 }
+
+/**
+ * The steps a reply shows, in the order they ran: a read that failed is left out once the same
+ * action ran again later and worked. The assistant recovered, and the error was written for it
+ * ("`about` takes at most 100 countries"), not for the person reading. A failed read it never got
+ * past, and every failed change, stays.
+ */
+export function shownSteps<S extends CardStep & { reads?: true }>(steps: S[]): S[] {
+  return steps.filter((step, i) => !(step.reads && step.status === "failed" && steps.slice(i + 1).some((later) => later.action === step.action && later.variant === step.variant && later.status === "done")));
+}

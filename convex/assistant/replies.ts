@@ -587,6 +587,8 @@ const stepValidator = v.object({
   order: v.number(),
   /** The action it ran, by its path in the registry. */
   action: v.string(),
+  /** Its action only reads. */
+  reads: v.optional(v.literal(true)),
   /** Which of its several jobs the action did, for one that has more than one (lib/assistant/actions.ts). */
   variant: v.optional(v.string()),
   /** What it was about: a title, a name or a query from its arguments, or the title or name of what it returned. */
@@ -868,6 +870,7 @@ function shownStep(
     role: "step" as const,
     order: step.order,
     action: step.path,
+    ...(step.reads ? { reads: true as const } : {}),
     ...variantOf(step),
     ...(step.subject ? { subject: step.subject, ...hrefOf(step) } : {}),
     ...(step.count === undefined ? {} : { count: step.count }),
