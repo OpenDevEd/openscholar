@@ -38,6 +38,12 @@ describe("createSearchParameters — wildcard field routing", () => {
     });
   });
 
+  it("treats a blank query as no search, listing every work", () => {
+    const params = createSearchParameters("   ", baseFilters);
+    expect(params.filter).not.toHaveProperty("title_and_abstract");
+    expect(params.search).toBeUndefined();
+  });
+
   it("routes an unquoted wildcard query to title_and_abstract.search.exact", () => {
     const params = createSearchParameters(
       '(AI OR "artificial intelligence") AND (impact OR transform* OR evolution)',
