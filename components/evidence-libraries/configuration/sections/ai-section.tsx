@@ -19,7 +19,7 @@ import { getModelIcon, OpenRouterIcon } from "@/components/icons/provider-icons"
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { AI_PROVIDER_KEY_PATH } from "@/lib/evidence-libraries/configuration/ai";
-import { stripProviderPrefix } from "@/lib/chat/model-display";
+import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { Field } from "../section-card";
 import {
   EmptyList,

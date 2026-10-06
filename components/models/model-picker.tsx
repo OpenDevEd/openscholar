@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { getModelIcon } from "@/components/icons/provider-icons";
-import { stripProviderPrefix } from "@/lib/chat/model-display";
+import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { isVariant } from "@/lib/ai/native-model-id";
 import { usableFor, type AiTask } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";

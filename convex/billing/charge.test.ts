@@ -36,7 +36,6 @@ async function seedChat(t: ReturnType<typeof convexTest>, credits: number) {
     await seedCreditsForTest(ctx, { userId, free: credits });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "chat" as const,
       sourceType: "history" as const,
       status: "completed" as const,
       totalPapers: 0,
@@ -78,12 +77,11 @@ describe("settling a charge", () => {
   it("charges above the reservation, stopping at a zero balance", async () => {
     vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.1)));
     const t = convexTest(schema);
-    const { userId, jobId } = await seedChat(t, 1_000);
+    const { userId } = await seedChat(t, 1_000);
     await hold(t, userId, "chat:over", 200);
 
-    await t.action(internal.chat.billing.settleFromOpenRouter, {
+    await t.action(internal.billing.openRouter.settleFromOpenRouter, {
       userId,
-      jobId,
       chargeId: "chat:over",
       generationId: "gen_1",
       extraUsd: 0,
@@ -101,12 +99,11 @@ describe("settling a charge", () => {
   it("records the cache and reasoning tokens of the earlier steps and the stopped one", async () => {
     vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.01)));
     const t = convexTest(schema);
-    const { userId, jobId } = await seedChat(t, 1_000);
+    const { userId } = await seedChat(t, 1_000);
     await hold(t, userId, "chat:stopped", 200);
 
-    await t.action(internal.chat.billing.settleFromOpenRouter, {
+    await t.action(internal.billing.openRouter.settleFromOpenRouter, {
       userId,
-      jobId,
       chargeId: "chat:stopped",
       generationId: "gen_1",
       extraUsd: 0,
@@ -120,15 +117,14 @@ describe("settling a charge", () => {
   it("still charges once when the hold was released before the work finished", async () => {
     vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.01)));
     const t = convexTest(schema);
-    const { userId, jobId } = await seedChat(t, 1_000);
+    const { userId } = await seedChat(t, 1_000);
     await hold(t, userId, "chat:late", 200);
     await t.action(internal.billing.charge.releaseLock, { userId, chargeId: "chat:late", attempt: 0 });
     expect(fakeAutumn.balance(userId)).toBe(1_000);
 
     const settle = () =>
-      t.action(internal.chat.billing.settleFromOpenRouter, {
+      t.action(internal.billing.openRouter.settleFromOpenRouter, {
         userId,
-        jobId,
         chargeId: "chat:late",
         generationId: "gen_1",
         extraUsd: 0,
@@ -144,14 +140,13 @@ describe("settling a charge", () => {
   it("retries a settle that failed and charges it once", async () => {
     vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.01)));
     const t = convexTest(schema);
-    const { userId, jobId } = await seedChat(t, 1_000);
+    const { userId } = await seedChat(t, 1_000);
     await hold(t, userId, "chat:retry", 200);
     fakeAutumn.failNext = "balances.finalize";
 
     vi.useFakeTimers();
-    await t.action(internal.chat.billing.settleFromOpenRouter, {
+    await t.action(internal.billing.openRouter.settleFromOpenRouter, {
       userId,
-      jobId,
       chargeId: "chat:retry",
       generationId: "gen_1",
       extraUsd: 0,

@@ -45,7 +45,6 @@ async function seedJobWithProjectionCorpus(t: ReturnType<typeof convexTest>) {
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       name: "Results Page Test",
       sourceType: "history" as const,
       status: "completed" as const,

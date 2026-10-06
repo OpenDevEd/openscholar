@@ -31,7 +31,6 @@ async function seedLeasedPaperQueueItem(
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       sourceType: "history" as const,
       status: jobStatus,
       runEpoch: 0,
@@ -84,7 +83,6 @@ async function seedLeasedUnprocessablePaper(
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       sourceType: "history" as const,
       status: "extracting" as const,
       runEpoch: 0,
@@ -143,7 +141,6 @@ async function seedAlreadyAnsweredPaper(
     if (opts.priced) await ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: LUNA.input, outputPricePerMillion: LUNA.output, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: ["structured_outputs"], syncedAt: 1, createdAt: 1, updatedAt: 1 });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       sourceType: "history" as const,
       status: "extracting" as const,
       runEpoch: 0,
@@ -226,7 +223,6 @@ async function seedQueueRefillJob(
     await seedCreditsForTest(ctx, { userId, paid: 100_000, now });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       sourceType: "history" as const,
       status: "extracting" as const,
       runEpoch: 0,

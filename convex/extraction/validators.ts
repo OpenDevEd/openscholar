@@ -288,7 +288,8 @@ export const storedSearchFiltersValidator = v.union(
 
 export const extractionJobFields = {
   userId: v.id("users"),
-  mode: v.union(v.literal("extraction"), v.literal("chat")),
+  // The paper chat's fields, going with its last data (#325, migrations/removeChat.ts): nothing writes them.
+  mode: v.optional(v.union(v.literal("extraction"), v.literal("chat"))),
   sourceType: v.optional(sourceTypeValidator),
   status: v.optional(jobStatusValidator),
   totalPapers: v.optional(v.number()),
@@ -305,8 +306,7 @@ export const extractionJobFields = {
   chatModelId: v.optional(v.id("models")),
   /** The chat's reasoning effort; none means the model's default. */
   chatEffort: v.optional(effortValidator),
-  // Resolved per-user server model for extraction-mode runs (credits path).
-  // Separate from chatModelId (chat-mode, user-swappable per conversation).
+  // Resolved per-user server model for the run (credits path).
   serverModelId: v.optional(v.id("models")),
   serverEffort: v.optional(effortValidator),
   /** When the user screens with a decision model (Jev), yes/no questions go to it too. */

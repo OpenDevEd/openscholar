@@ -3,7 +3,7 @@
  * normalises into and the bucket store keys by. One dedupe key ties
  * every source into the same set.
  */
-import type { BucketSearchFilters } from "@/lib/chat/params-to-bucket-filters";
+import type { BucketSearchFilters } from "@/lib/bucket/search-filters";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { buildDedupeKey } from "./dedupe";
 import { authorMetadata, sourceMetadata, type PaperSourceMetadata } from "../library/paper-metadata";

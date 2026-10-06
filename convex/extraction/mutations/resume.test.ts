@@ -84,7 +84,6 @@ async function seedJob(
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
       serverModelId,
-      mode: "extraction" as const,
       name: "Resume Test Job",
       sourceType: "history" as const,
       status: opts.jobStatus,
@@ -411,25 +410,6 @@ describe("resumeExtraction — auth + mode guards", () => {
         jobId,
       }),
     ).rejects.toThrow(/NOT_FOUND|not found/i);
-  });
-
-  it("rejects resume on chat-mode jobs", async () => {
-    const t = convexTest(schema);
-    const userId = await seedUserAndCredits(t);
-    const jobId = await t.run((ctx) =>
-      ctx.db.insert("extractionJobs", {
-        userId,
-        mode: "chat" as const,
-        name: "Chat Job",
-        messageCount: 0,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }),
-    );
-    const auth = t.withIdentity(OWNER_IDENTITY);
-    await expect(
-      auth.mutation(api.extraction.mutations.resume.resumeExtraction, { jobId }),
-    ).rejects.toThrow(/extraction/i);
   });
 });
 

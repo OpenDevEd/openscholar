@@ -96,7 +96,6 @@ describe("OpenRouter catalog refresh", () => {
     expect(await t.query(internal.models.queries.listServed, {})).toEqual([]);
     expect(await t.query(internal.models.queries.getServedByModelId, {modelId: "openai/old"})).toBeNull();
     expect((await t.query(api.models.queries.listCatalogOptions, {})).map(m => m.modelId)).not.toContain("openai/old");
-    expect((await t.query(api.chat.model.listChatModels, {})).map(m => m.modelId)).toEqual([RAW_BASE.id]);
     expect(await t.query(internal.models.queries.resolveEvidenceLibrarySelection, {modelIds: ["openai/old"]})).toEqual({catalogReady: true, allowedModelIds: [], modelMetadata: {}});
     expect(await t.query(internal.models.queries.getPricing, {modelId: "openai/old"})).toEqual({input: 1, output: 2});
     expect(await t.run(ctx => ctx.db.system.query("_scheduled_functions").collect())).toEqual([]);

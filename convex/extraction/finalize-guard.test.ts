@@ -28,7 +28,6 @@ async function seedJob(
     await seedCreditsForTest(ctx, { userId, free: 0, paid: 1000, now });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       sourceType: "history" as const,
       status: jobStatus,
       totalPapers: 1,

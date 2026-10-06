@@ -23,7 +23,6 @@ describe("cleanupOldPdfs", () => {
       });
       const jobId = await ctx.db.insert("extractionJobs", {
         userId,
-        mode: "extraction" as const,
         sourceType: "history" as const,
         status: "completed" as const,
         totalPapers: 10,
@@ -108,7 +107,6 @@ describe("cleanupOldPdfs", () => {
       });
       const jobId = await ctx.db.insert("extractionJobs", {
         userId,
-        mode: "extraction" as const,
         sourceType: "history" as const,
         status: "completed" as const,
         totalPapers: 501,

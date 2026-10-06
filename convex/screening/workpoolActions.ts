@@ -15,7 +15,7 @@ import type { Id } from "../_generated/dataModel";
 import { processScreeningBatch } from "../../lib/ai/core/batch";
 import { withUserCredits } from "../ai/helpers";
 import { screeningPaperCredits } from "../../lib/pricing";
-import { openRouterModel, resolveOpenRouterModel } from "../chat/provider";
+import { openRouterModel, resolveOpenRouterModel } from "../ai/provider";
 import { MODEL_UNAVAILABLE_MESSAGE } from "../models/catalog";
 import { createError } from "../lib/errors";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";

@@ -12,7 +12,7 @@ import {
   serializeChatError,
   type ChatErrorEnvelope,
 } from "@/lib/errors/taxonomy";
-import { ABORT_ERROR_STRING } from "@/lib/chat/abort-signal";
+import { ABORT_ERROR_STRING } from "@/lib/ai/abort-signal";
 
 describe("ERROR_CODES taxonomy", () => {
   it("is a 19-entry tuple covering chat + extraction codes", () => {

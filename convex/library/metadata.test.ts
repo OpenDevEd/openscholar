@@ -25,7 +25,7 @@ it("keeps a rated paper intact through screening, repeated saves and extraction 
   expect(saved!.searchableText).toContain("Smith, Jr., John");
   const expanded = await expandJobSources([{ source: "library", sourceRefId: id, bucketKey: "W7", title: "Browser copy", authors: [] }], { readLibraryItems: (ids) => t.query(internal.extraction.queries.internal.ownedLibraryItems, { userId, ids }), fetchPapersFromHistory: async () => [], resolveZoteroUserId: async () => undefined });
   // The actual paper-writing mutation must keep the expanded metadata too.
-  const jobId = await t.run((ctx) => ctx.db.insert("extractionJobs", { userId, name: "Metadata QA", mode: "extraction", status: "pending", totalPapers: 0, processedPapers: 0, failedPapers: 0, createdAt: 1, updatedAt: 1 }));
+  const jobId = await t.run((ctx) => ctx.db.insert("extractionJobs", { userId, name: "Metadata QA", status: "pending", totalPapers: 0, processedPapers: 0, failedPapers: 0, createdAt: 1, updatedAt: 1 }));
   await t.run((ctx) => ctx.db.insert("featureFlags", { key: "extraction.pdf", enabled: false, updatedAt: 1 }));
   const { paperIds } = await t.mutation(internal.extraction.mutations.papers.createPaperRecords, { jobId, papers: expanded.map(({ paper }) => ({ ...paper, storageId: undefined })) });
   expect(await t.run((ctx) => ctx.db.get("extractionPapers", paperIds[0]))).toMatchObject({ authors: ["Smith, Jr., John", "ليلى"], citedByCount: 0, isOpenAccess: false, venueName: "Trial journal", workType: "preprint", pdfUrl: "https://example.test/retained.pdf", processable: true });

@@ -135,7 +135,7 @@ export async function noteReply(ctx: MutationCtx, userId: Id<"users">, reply: st
   else await ctx.db.insert("assistantSpenders", { userId, recent });
 }
 
-/** A request of a reply that was stopped or failed partway is settled once OpenRouter says what it cost (convex/chat/billing.ts). */
+/** A request of a reply that was stopped or failed partway is settled once OpenRouter says what it cost (convex/billing/openRouter.ts). */
 export const settledLate = internalMutation({
   args: { userId: v.id("users"), reply: v.string(), credits: v.number() },
   returns: v.null(),

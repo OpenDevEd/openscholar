@@ -3,7 +3,7 @@
 import { useConvex, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useTranslations, useFormatter, useNow } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,7 +62,6 @@ import { RESULTS_PAGE_SIZE_MAX } from "@/lib/extraction/limits";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
 import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
-import { ChatJobView } from "@/components/extraction/chat/chat-job-view";
 import { CostBadge } from "@/components/extraction/cost-badge";
 import { CreditsExhaustedBanner } from "@/components/extraction/credits-exhausted-banner";
 import { JobStatusBanner } from "@/components/extraction/job-status-banner";
@@ -95,7 +94,6 @@ export default function JobDetailPage() {
   const tConfirm = useTranslations('confirmations');
   const tView = useTranslations('extractionView');
   const tExtraction = useTranslations('extraction');
-  const tErrors = useTranslations('errors');
   const tc = useTranslations('common');
   const tPdf = useTranslations('pdfViewer');
   const format = useFormatter();
@@ -103,11 +101,8 @@ export default function JobDetailPage() {
   
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const isMobile = useIsMobile();
   const jobId = params.jobId as Id<"extractionJobs">;
-  // Wizard hands off `?mode=chat` so the destination shows "Preparing chat…" copy from frame zero instead of the generic spinner that flips to the chat label once the shell resolves.
-  const modeHint = searchParams.get("mode");
 
   const viewModeSerialize = useCallback((v: 'table' | 'cards' | 'split') => v, []);
   const viewModeDeserialize = useCallback((v: string) => v as 'table' | 'cards' | 'split', []);
@@ -167,8 +162,7 @@ export default function JobDetailPage() {
   const hasCurrentJobShell =
     jobShell?.status !== "ok" || jobShell.job._id === jobId;
   const shellJob = jobShell?.status === "ok" ? jobShell.job : undefined;
-  const isExtractionJob =
-    hasCurrentJobShell && shellJob?.mode === "extraction";
+  const isExtractionJob = hasCurrentJobShell && shellJob !== undefined;
   const jobDetailsQuery = useProtectedQuery(
     api.extraction.queries.getJobDetails,
     isExtractionJob ? { jobId } : "skip",
@@ -387,24 +381,10 @@ export default function JobDetailPage() {
         jobDetails === undefined ||
         !hasCurrentJobDetails))
   ) {
-    const showChatPreparingHint = modeHint === "chat" && jobShell === undefined;
-    // A chat has its own full-height layout; everything else loads inside the
-    // page frame it will end up in, so nothing jumps when the job arrives.
-    if (!showChatPreparingHint) {
-      return (
-        <PageWrapper>
-          <PageFrameLoading label={tJob("loadingExtractionResults")} />
-        </PageWrapper>
-      );
-    }
+    // The page loads inside the frame it will end up in, so nothing jumps when the job arrives.
     return (
       <PageWrapper>
-        <AuthStatePanel
-          variant="loading"
-          layout="fullscreen"
-          loadingStyle="spinner"
-          title={showChatPreparingHint ? tExtraction("chatPreparing") : undefined}
-        />
+        <PageFrameLoading label={tJob("loadingExtractionResults")} />
       </PageWrapper>
     );
   }
@@ -438,48 +418,6 @@ export default function JobDetailPage() {
           />
         </div>
       </PageWrapper>
-    );
-  }
-
-  if (shellJob?.mode === "chat") {
-    if (!shellJob.chatThreadId) {
-      return (
-        <PageWrapper>
-          {shellJob.error ? (
-            <div
-              role="alert"
-              className="flex min-h-[60vh] flex-col items-center justify-center gap-2 p-8 text-center text-destructive"
-              data-chat-state="error"
-              data-error-code={shellJob.error.code}
-            >
-              <strong>
-                {tErrors(`title.${shellJob.error.code}` as never)}
-              </strong>
-              <span className="text-sm text-muted-foreground">
-                {tErrors(`body.${shellJob.error.code}` as never)}
-              </span>
-            </div>
-          ) : (
-            <div data-chat-state="preparing">
-              <AuthStatePanel
-                variant="loading"
-                layout="fullscreen"
-                loadingStyle="spinner"
-                title={tExtraction("chatPreparing")}
-              />
-            </div>
-          )}
-        </PageWrapper>
-      );
-    }
-    return (
-      <div
-        // Fit the chat below whichever navigation the app shell is showing.
-        className="flex h-[calc(100dvh-var(--app-navbar-height))] w-full flex-col overflow-hidden"
-        data-job-mode="chat"
-      >
-        <ChatJobView job={shellJob} threadId={shellJob.chatThreadId} />
-      </div>
     );
   }
 
@@ -630,7 +568,7 @@ export default function JobDetailPage() {
                   </Tooltip>
                 )}
 
-                {/* Less frequent and destructive actions stay one click away, like the chat's menu. */}
+                {/* Less frequent and destructive actions stay one click away. */}
                 <DropdownMenu>
                   <Tooltip>
                     <TooltipTrigger asChild>

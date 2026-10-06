@@ -108,7 +108,6 @@ export async function refillPerson(ctx: MutationCtx, userId: Id<"users">) {
   ).flat().sort((a, b) => a._creationTime - b._creationTime);
   const dispatched = new Map<Id<"extractionJobs">, number>();
   for (const job of jobs) {
-    if (job.mode !== "extraction") continue;
     const window = await refillJob(ctx, job, pdfFlag);
     dispatched.set(job._id, window.dispatched);
     if (window.capacity === 0 && window.dispatched === 0) break;

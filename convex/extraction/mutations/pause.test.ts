@@ -54,7 +54,6 @@ async function seedJob(
     const now = Date.now();
     return await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       name: "Pause Test Job",
       sourceType: "history" as const,
       status,
@@ -206,24 +205,5 @@ describe("pauseExtraction — auth + mode guards", () => {
         jobId,
       }),
     ).rejects.toThrow(/NOT_FOUND|not found/i);
-  });
-
-  it("rejects pause on chat-mode jobs", async () => {
-    const t = convexTest(schema);
-    const userId = await seedUser(t);
-    const jobId = await t.run((ctx) =>
-      ctx.db.insert("extractionJobs", {
-        userId,
-        mode: "chat" as const,
-        name: "Chat Job",
-        messageCount: 0,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }),
-    );
-    const auth = t.withIdentity(OWNER_IDENTITY);
-    await expect(
-      auth.mutation(api.extraction.mutations.pause.pauseExtraction, { jobId }),
-    ).rejects.toThrow(/extraction/i);
   });
 });

@@ -34,7 +34,7 @@ export async function screeningInputs(count = 2) {
     const job = (await as.query(api.screening.queries.getScreeningJob, { jobId }))!;
     return { source: "screening", bucketKey: `screening:${jobId}`, sourceRefId: jobId, title: "Browser title", authors: ["Browser author"], abstract: "Browser abstract", screeningSelection: { jobId, revision: job.revision, count: job.qualifiedPapers } };
   };
-  const start = async (items?: SourceInput[]) => as.mutation(api.extraction.mutations.startJob, { name: "Included snapshot", mode: "extraction", bucketItems: items ?? [await selection()], questions: [{ key: "answer", question: "What was measured?", type: "string" }], usePdfs: false });
+  const start = async (items?: SourceInput[]) => as.mutation(api.extraction.mutations.startJob, { name: "Included snapshot", bucketItems: items ?? [await selection()], questions: [{ key: "answer", question: "What was measured?", type: "string" }], usePdfs: false });
   const snapshot = (extractionJobId: Id<"extractionJobs">) => t.action(internal.extraction.actions.fetchAndPersistPapers, { jobId: extractionJobId });
   const papers = (extractionJobId: Id<"extractionJobs">) => t.run(ctx => ctx.db.query("extractionPapers").withIndex("by_job", q => q.eq("jobId", extractionJobId)).take(count + 1));
   return { t, as, userId, jobId, selection, start, snapshot, papers };

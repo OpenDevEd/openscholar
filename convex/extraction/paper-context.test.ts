@@ -22,7 +22,6 @@ async function seedPaperContextFixture(t: ReturnType<typeof convexTest>) {
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       sourceType: "history" as const,
       status: "extracting" as const,
       runEpoch: 0,
@@ -129,7 +128,6 @@ describe("paper extraction context", () => {
       const now = Date.now();
       const otherJobId = await ctx.db.insert("extractionJobs", {
         userId: ids.userId,
-        mode: "extraction" as const,
         sourceType: "history" as const,
         status: "extracting" as const,
         totalPapers: 1,

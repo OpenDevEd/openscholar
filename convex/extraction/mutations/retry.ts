@@ -152,13 +152,6 @@ export const retryFailedQuestions = mutation({
 
     const job = await assertJobOwnership(ctx, user._id, jobId);
 
-    if (job.mode !== "extraction") {
-      throw createError(
-        "VALIDATION_ERROR",
-        "Retry only applies to extraction jobs",
-      );
-    }
-
     await requireFeature(ctx, "extraction.start", user._id);
     await rateLimit(ctx, {
       name: "start-extraction",

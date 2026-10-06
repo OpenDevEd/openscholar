@@ -101,9 +101,6 @@ describe("SN-1 public query routing", () => {
 // Extraction-mode jobs schedule the app-owned paper queue setup action. The
 // public mutation should complete cleanly, persist the job/questions/sources,
 // and leave no external orchestration handle on the job row.
-//
-// Chat-mode jobs schedule `internal.chat.threads.ensureThreadForJob`, so they
-// complete cleanly against convex-test and support direct state assertions.
 // ============================================================================
 
 const STARTJOB_CLERK = "clerk_startjob";
@@ -115,7 +112,6 @@ const STARTJOB_IDENTITY = {
 type FlagSeed = Partial<{
   enabled: boolean;
   start: boolean;
-  chat: boolean;
 }>;
 
 async function seedUserAndFlags(
@@ -144,11 +140,6 @@ async function seedUserAndFlags(
     await ctx.db.insert("featureFlags", {
       key: "extraction.start",
       enabled: flags.start ?? true,
-      updatedAt: now,
-    });
-    await ctx.db.insert("featureFlags", {
-      key: "extraction.chat",
-      enabled: flags.chat ?? false,
       updatedAt: now,
     });
     // Seed a large credit balance so plan-03's preflight gate in
@@ -213,7 +204,6 @@ describe("startJob — extraction mode", () => {
 
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
       name: "Extraction Job",
-      mode: "extraction",
       bucketItems: [BUCKET_ITEM_HISTORY],
       questions: [
         { key: "q1", question: "What is the outcome?", type: "string" },
@@ -248,163 +238,6 @@ describe("startJob — extraction mode", () => {
   });
 });
 
-describe("startJob — chat mode", () => {
-  // What startJob schedules must not run after the test ends, in a later test.
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
-
-  it("creates a chat job with messageCount initialised when the chat flag is ON", async () => {
-    const t = convexTest(schema);
-    await seedUserAndFlags(t, { chat: true });
-    const auth = t.withIdentity(STARTJOB_IDENTITY);
-
-    const { jobId } = (await auth.mutation(api.extraction.mutations.startJob, {
-      name: "Chat Job",
-      mode: "chat",
-      bucketItems: [BUCKET_ITEM_HISTORY],
-    })) as { jobId: Id<"extractionJobs"> };
-    expect(jobId).toBeTruthy();
-
-    const job = await t.run((ctx) => ctx.db.get(jobId));
-    expect(job?.mode).toBe("chat");
-    expect(job?.status).toBeUndefined();
-    expect(job?.messageCount).toBe(0);
-  });
-
-  it("rejects chat mode when the extraction.chat flag is OFF", async () => {
-    const t = convexTest(schema);
-    await seedUserAndFlags(t, { chat: false });
-    const auth = t.withIdentity(STARTJOB_IDENTITY);
-
-    await expect(
-      auth.mutation(api.extraction.mutations.startJob, {
-        name: "Chat Job",
-        mode: "chat",
-        bucketItems: [BUCKET_ITEM_HISTORY],
-      }),
-    ).rejects.toThrow(/disabled/i);
-  });
-});
-
-describe("startJob — chat source preparation", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-    delete process.env.OPENALEX_CONTACT_EMAIL;
-  });
-
-  it("expands saved-search history rows before creating the chat thread", async () => {
-    const t = createTestConvex();
-    await seedUserAndFlags(t, { chat: true });
-    const auth = t.withIdentity(STARTJOB_IDENTITY);
-    process.env.OPENALEX_CONTACT_EMAIL = "test@example.com";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            results: [
-              {
-                id: "https://openalex.org/W100",
-                display_name: "Expanded paper one",
-                publication_year: 2022,
-                authorships: [{ author: { display_name: "Alpha" } }],
-                abstract_inverted_index: { Expanded: [0], paper: [1], one: [2] },
-                open_access: { oa_url: "https://example.com/one.pdf", is_oa: true },
-              },
-              {
-                id: "https://openalex.org/W200",
-                display_name: "Expanded paper two",
-                publication_year: 2021,
-                authorships: [{ author: { display_name: "Beta" } }],
-                abstract_inverted_index: { Expanded: [0], paper: [1], two: [2] },
-                open_access: { oa_url: "https://example.com/two.pdf", is_oa: true },
-              },
-            ],
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      ),
-    );
-
-    const { jobId } = (await auth.mutation(api.extraction.mutations.startJob, {
-      name: "Chat Job",
-      mode: "chat",
-      bucketItems: [BUCKET_ITEM_SAVED_SEARCH],
-    })) as { jobId: Id<"extractionJobs"> };
-
-    let job = await t.run((ctx) => ctx.db.get(jobId));
-    expect(job?.chatThreadId).toBeUndefined();
-
-    await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
-
-    job = await t.run((ctx) => ctx.db.get(jobId));
-    expect(job?.chatThreadId).toBeTruthy();
-    expect(job?.error).toBeUndefined();
-
-    const sources = await t.run((ctx) =>
-      ctx.db
-        .query("extractionJobSources")
-        .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-        .collect(),
-    );
-    expect(sources).toHaveLength(2);
-    expect(sources.map((source) => source.title)).toEqual([
-      "Expanded paper one",
-      "Expanded paper two",
-    ]);
-    expect(sources.every((source) => source.searchFilters === undefined)).toBe(
-      true,
-    );
-    expect(sources.every((source) => source.openalexId?.startsWith("W"))).toBe(
-      true,
-    );
-  });
-
-  it("normalizes zotero rows before creating the chat thread", async () => {
-    const t = createTestConvex();
-    const { userId } = await seedUserAndFlags(t, { chat: true });
-    const auth = t.withIdentity(STARTJOB_IDENTITY);
-
-    await t.run(async (ctx) => {
-      await ctx.db.insert("zoteroConnections", {
-        userId,
-        zoteroUserId: "98765",
-        encryptedApiKey: "encrypted",
-        keyPrefix: "zot",
-        connectedAt: Date.now(),
-      });
-    });
-
-    const { jobId } = (await auth.mutation(api.extraction.mutations.startJob, {
-      name: "Zotero Chat Job",
-      mode: "chat",
-      bucketItems: [BUCKET_ITEM_ZOTERO],
-    })) as { jobId: Id<"extractionJobs"> };
-
-    await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
-
-    const job = await t.run((ctx) => ctx.db.get(jobId));
-    expect(job?.chatThreadId).toBeTruthy();
-    expect(job?.error).toBeUndefined();
-
-    const sources = await t.run((ctx) =>
-      ctx.db
-        .query("extractionJobSources")
-        .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-        .collect(),
-    );
-    expect(sources).toHaveLength(1);
-    expect(sources[0].openalexId).toBe("zotero:user:item_1");
-    expect(sources[0].pdfUrl).toBe("zotero://select/users/98765/items/item_1");
-    expect(sources[0].searchFilters).toBeUndefined();
-  });
-});
-
 describe("duplicateJob", () => {
   it("duplicates an extraction job and schedules queue setup", async () => {
     const t = convexTest(schema);
@@ -416,7 +249,6 @@ describe("duplicateJob", () => {
       const now = Date.now();
       const jobId = await ctx.db.insert("extractionJobs", {
         userId,
-        mode: "extraction" as const,
         sourceType: "history" as const,
         status: "completed" as const,
         totalPapers: 1,
@@ -478,120 +310,6 @@ describe("duplicateJob", () => {
       ).toBe(true);
     });
   });
-
-  it("rejects chat-mode duplicate when the extraction.chat flag is OFF", async () => {
-    const t = convexTest(schema);
-    const { userId } = await seedUserAndFlags(t, { chat: false });
-
-    const chatJobId = await t.run(async (ctx) => {
-      const now = Date.now();
-      return await ctx.db.insert("extractionJobs", {
-        userId,
-        mode: "chat" as const,
-        name: "Chat Base",
-        messageCount: 0,
-        createdAt: now,
-        updatedAt: now,
-      });
-    });
-
-    const auth = t.withIdentity(STARTJOB_IDENTITY);
-    await expect(
-      auth.mutation(api.extraction.mutations.duplicateJob, {
-        jobId: chatJobId,
-      }),
-    ).rejects.toThrow(/extraction\.chat/i);
-  });
-
-  it("duplicates a chat-mode job with sources and chatPapers when extraction.chat is ON", async () => {
-    const t = convexTest(schema);
-    const { userId } = await seedUserAndFlags(t, { chat: true });
-
-    const { chatJobId, oldSourceIds } = await t.run(async (ctx) => {
-      const now = Date.now();
-      const chatJobId = await ctx.db.insert("extractionJobs", {
-        userId,
-        mode: "chat" as const,
-        name: "Chat Base",
-        sourceType: "history" as const,
-        messageCount: 0,
-        createdAt: now,
-        updatedAt: now,
-      });
-      const s1 = await ctx.db.insert("extractionJobSources", {
-        jobId: chatJobId,
-        position: 0,
-        bucketKey: BUCKET_ITEM_HISTORY.bucketKey,
-        source: "history" as const,
-        sourceRefId: BUCKET_ITEM_HISTORY.sourceRefId,
-        title: BUCKET_ITEM_HISTORY.title,
-        authors: BUCKET_ITEM_HISTORY.authors,
-        openalexId: BUCKET_ITEM_HISTORY.openalexId,
-        searchFilters: BUCKET_ITEM_HISTORY.searchFilters,
-      });
-      const s2 = await ctx.db.insert("extractionJobSources", {
-        jobId: chatJobId,
-        position: 1,
-        bucketKey: "history:W2",
-        source: "history" as const,
-        sourceRefId: "W2",
-        title: "Paper Two",
-        authors: ["B"],
-        openalexId: "W2",
-        searchFilters: BUCKET_ITEM_HISTORY.searchFilters,
-      });
-      await ctx.db.insert("chatPapers", {
-        jobId: chatJobId,
-        sourceId: s1,
-        included: true,
-      });
-      await ctx.db.insert("chatPapers", {
-        jobId: chatJobId,
-        sourceId: s2,
-        included: false,
-      });
-      return { chatJobId, oldSourceIds: [s1, s2] };
-    });
-
-    const auth = t.withIdentity(STARTJOB_IDENTITY);
-    const { jobId: newJobId } = await auth.mutation(
-      api.extraction.mutations.duplicateJob,
-      { jobId: chatJobId },
-    );
-
-    await t.run(async (ctx) => {
-      const newJob = await ctx.db.get("extractionJobs", newJobId);
-      expect(newJob).not.toBeNull();
-      expect(newJob!.mode).toBe("chat");
-      expect(newJob!.name).toBe("Chat Base (Copy)");
-
-      const newSources = await ctx.db
-        .query("extractionJobSources")
-        .withIndex("by_job_and_position", (q) => q.eq("jobId", newJobId))
-        .collect();
-      expect(newSources).toHaveLength(2);
-
-      const newPapers = await ctx.db
-        .query("chatPapers")
-        .withIndex("by_job", (q) => q.eq("jobId", newJobId))
-        .collect();
-      expect(newPapers).toHaveLength(2);
-      const bySourceIncluded = new Map(
-        newPapers.map((p) => [p.sourceId, p.included]),
-      );
-      const newBySourceRef = new Map(
-        newSources.map((s) => [s.sourceRefId, s._id]),
-      );
-      expect(bySourceIncluded.get(newBySourceRef.get("W1")!)).toBe(true);
-      expect(bySourceIncluded.get(newBySourceRef.get("W2")!)).toBe(false);
-
-      // New chatPapers must NOT reference the old sourceIds — they were
-      // remapped to the cloned sources.
-      for (const oldId of oldSourceIds) {
-        expect(bySourceIncluded.has(oldId)).toBe(false);
-      }
-    });
-  });
 });
 
 describe("searches saved before exact OpenAlex requests", () => {
@@ -605,7 +323,6 @@ describe("searches saved before exact OpenAlex requests", () => {
     await expect(
       auth.mutation(api.extraction.mutations.startJob, {
         name: "Old search",
-        mode: "extraction",
         bucketItems: [
           { ...BUCKET_ITEM_SAVED_SEARCH, searchFilters: oldSearch as never },
         ],
@@ -622,7 +339,6 @@ describe("searches saved before exact OpenAlex requests", () => {
       const now = Date.now();
       const jobId = await ctx.db.insert("extractionJobs", {
         userId,
-        mode: "extraction" as const,
         sourceType: "history" as const,
         status: "completed" as const,
         name: "Old",

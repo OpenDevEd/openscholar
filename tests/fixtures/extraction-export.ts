@@ -4,7 +4,7 @@ import { mockId } from "../factories";
 
 export const exportJob: Doc<"extractionJobs"> = {
   _id: mockId("extractionJobs", "export"), _creationTime: 1, userId: mockId("users", "export"),
-  name: "Research QA", mode: "extraction", sourceType: "manual", status: "completed", usePdfs: false, runEpoch: 2, createdAt: 1, updatedAt: 2,
+  name: "Research QA", sourceType: "manual", status: "completed", usePdfs: false, runEpoch: 2, createdAt: 1, updatedAt: 2,
 };
 export const exportQuestions: Question[] = [
   { key: "zero", type: "number", question: "Reported outcome", description: "Adverse events" },

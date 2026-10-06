@@ -3,8 +3,9 @@
  * model here only fills the constructor.
  */
 import { Agent } from "@convex-dev/agent";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { components } from "../_generated/api";
-import { defaultLanguageModel } from "../chat/agent";
+import { SERVER_MODEL_SLUG } from "../ai/config";
 
 /**
  * Fixed text: no time, page, person or record state, so every chat's requests begin with
@@ -45,7 +46,7 @@ export const INSTRUCTIONS =
 
 export const assistant: Agent = new Agent(components.agent, {
   name: "Assistant",
-  languageModel: defaultLanguageModel,
+  languageModel: createOpenRouter().chat(SERVER_MODEL_SLUG),
   instructions: INSTRUCTIONS,
   // Each reply builds its own context (./context.ts); the agent only looks up the message it answers.
   contextOptions: { recentMessages: 1, excludeToolMessages: false },

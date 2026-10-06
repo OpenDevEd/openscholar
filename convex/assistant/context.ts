@@ -27,11 +27,11 @@ import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
 import { releaseCredits, reserveCredits, settleCredits, tokenDetails } from "../billing/charge";
-import { resolveOpenRouterModel } from "../chat/provider";
+import { resolveOpenRouterModel } from "../ai/provider";
 import { callOptions, type Effort } from "../../lib/ai/core/call-options";
 import { calculateCostInDollars, usageOf } from "../../lib/ai/core/cost";
-import { startAbortPoller } from "../../lib/chat/abort-poller";
-import { pickProviderCostUsd } from "../../lib/chat/pick-provider-cost";
+import { startAbortPoller } from "../../lib/ai/abort-poller";
+import { pickProviderCostUsd } from "../../lib/ai/pick-provider-cost";
 import { convertUsdToCredits } from "../../lib/pricing";
 import { INSTRUCTIONS } from "./agent";
 

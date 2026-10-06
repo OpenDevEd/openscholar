@@ -144,7 +144,7 @@ export const begin = internalMutation({
   returns: v.object({ jobId: v.id("extractionJobs") }),
   handler: async (ctx, { userId, spend, chatStep, ...args }) => {
     await checkPdfs(ctx, args.usePdfs);
-    return await startJobFor(ctx, userId, { ...args, mode: "extraction" }, spend, chatStep);
+    return await startJobFor(ctx, userId, args, spend, chatStep);
   },
 });
 

@@ -35,7 +35,6 @@ async function seedJob(t: ReturnType<typeof convexTest>) {
     });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
       name: "Now Processing Test",
       sourceType: "history" as const,
       status: "extracting" as const,
