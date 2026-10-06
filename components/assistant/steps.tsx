@@ -386,7 +386,18 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   const stepTitle = useStepTitle();
   // The folded runs the person opened, each by a step of it: by its first when it was opened, which stays in the run when earlier steps load in front of it.
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
-  const isOpen = (run: StepItem[]) => run.length > 1 && run.some((one) => opened.has(one.id));
+  /** Each step of a folded run as its line: what it was about, or where its card's action looks. */
+  const linesOf = (run: StepItem[]) => run.map((one) => one.subject ?? t(`steps.${viewOf(one.action, one.variant).words}.where`));
+  /** What tells a folded run of searches apart: each one's settings the others don't share. */
+  const toldOf = (run: StepItem[]) => {
+    const searches = run.length > 1 ? run.map((one) => (one.href ? searchOf(one.href) : null)) : [];
+    return searches.length && searches.every((search) => search !== null) ? differences(searches as NonNullable<(typeof searches)[number]>[]) : null;
+  };
+  // A run opens into its steps only when they say something its card doesn't: what each was about, or the
+  // filters its searches differ by. Six lines that all read "Extraction" tell the person nothing more.
+  const opensOf = (run: StepItem[]) => run.length > 1 && (new Set(linesOf(run)).size > 1 || (toldOf(run)?.filters.some((filters) => filters !== undefined) ?? false));
+  // One that stops opening, when the step that told it apart fails and leaves it, closes with it.
+  const isOpen = (run: StepItem[]) => opensOf(run) && run.some((one) => opened.has(one.id));
   const runs = runsOf(steps);
   const heights = runs.map((run) => CARD + (isOpen(run) ? run.length * LINE + LINES_END : 0));
   const tops = heights.map((_, i) => heights.slice(0, i).reduce((top, above) => top + above + GAP, ORIGIN));
@@ -442,13 +453,9 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
             const title = stepTitle(words, step);
             const folded = run.length > 1;
             const open = isOpen(run);
-            const lines = run.map((one) => one.subject ?? t(`steps.${words}.where`));
-            // What tells a run of searches apart: each one's settings the others don't share.
-            const searches = folded ? run.map((one) => (one.href ? searchOf(one.href) : null)) : [];
-            const told = folded && searches.every((search) => search !== null) ? differences(searches as NonNullable<(typeof searches)[number]>[]) : null;
-            // A run opens into its steps only when they say something its card doesn't: what each was about, or the
-            // filters its searches differ by. Six lines that all read "Extraction" tell the person nothing more.
-            const opens = folded && (new Set(lines).size > 1 || (told?.filters.some((filters) => filters !== undefined) ?? false));
+            const lines = linesOf(run);
+            const told = toldOf(run);
+            const opens = opensOf(run);
             return (
               <motion.div
                 key={run[0].id}
