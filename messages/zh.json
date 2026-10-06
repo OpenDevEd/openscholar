@@ -3846,6 +3846,11 @@
         "did": "已估算筛选费用",
         "where": "筛选"
       },
+      "extraction": {
+        "doing": "正在读取提取",
+        "did": "已读取提取",
+        "where": "提取"
+      },
       "extractionResults": {
         "doing": "正在读取提取结果",
         "did": "已读取提取结果",
