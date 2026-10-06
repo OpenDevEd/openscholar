@@ -146,7 +146,9 @@ export const card = query({
 });
 
 /** One ended job as the assistant is told it: what it found, what it cost, and where its page is. */
-async function told(ctx: QueryCtx, end: Doc<"assistantJobEnds">) {
+async function told(ctx: QueryCtx, end: Doc<"assistantJobEnds">, quiet: boolean) {
+  // Stopped for: whatever is left of the job, nothing is owed for it.
+  if (quiet) return `<job_ended quiet>${end.kind} ${end.jobId} ended (${end.status}) before someone pressed Stop: no readout is owed for it unless the person asks.</job_ended>`;
   const facts = end.kind === "screening" ? await screeningFacts(ctx, end.userId, end.jobId as Id<"screeningJobs">) : await extractionFacts(ctx, end.userId, end.jobId as Id<"extractionJobs">);
   if (!facts) return `<job_ended>${end.kind} ${end.jobId} ended (${end.status}); it can no longer be read.</job_ended>`;
   const spent = `credits: ${facts.credits}${facts.cap === undefined ? "" : ` of ${facts.cap} approved`}`;
@@ -178,6 +180,19 @@ export const deliver = internalMutation({
       else live.push(end);
     }
     if (!live.length) return null;
+    // Ends of jobs that ended before someone last pressed Stop are told first, together, with no readout.
+    const quiet = live.filter((end) => thread.stoppedAt !== undefined && end.endedAt <= thread.stoppedAt);
+    if (quiet.length) {
+      // As before any message: a reply stopped as it called actions can leave calls without their results.
+      await settleAsked(ctx, threadId);
+      await healCalls(ctx, thread.agentThreadId);
+      const note = (await Promise.all(quiet.map((end) => told(ctx, end, true)))).join("\n");
+      const [message] = (await saveMessages(ctx, components.agent, { threadId: thread.agentThreadId, userId: quiet[0].userId, agentName: JOB_ENDED, messages: [{ role: "user", content: note }] })).messages;
+      for (const end of quiet) await ctx.db.patch("assistantJobEnds", end._id, { pending: undefined, order: message.order });
+      // Whatever else waits, quiet or not, is told next, a batch at a time.
+      await ctx.scheduler.runAfter(0, internal.assistant.jobs.deliver, { threadId });
+      return null;
+    }
     const userId = live[0].userId;
     const ends = live.filter((end) => end.userId === userId);
     // Lost access to the chat, or the assistant, since: the end stays on its card, and nobody is answered for it.
@@ -197,7 +212,7 @@ export const deliver = internalMutation({
     }
     await settleAsked(ctx, threadId);
     await healCalls(ctx, thread.agentThreadId);
-    const note = (await Promise.all(ends.map((end) => told(ctx, end)))).join("\n");
+    const note = (await Promise.all(ends.map((end) => told(ctx, end, false)))).join("\n");
     const [message] = (await saveMessages(ctx, components.agent, { threadId: thread.agentThreadId, userId, agentName: JOB_ENDED, messages: [{ role: "user", content: note }] })).messages;
     for (const end of ends) await ctx.db.patch("assistantJobEnds", end._id, { pending: undefined, order: message.order });
     try {

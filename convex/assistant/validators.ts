@@ -138,6 +138,8 @@ export const assistantThreadFields = {
    */
   undone: capped(v.optional(v.array(v.object({ userId: v.id("users"), stepId: v.id("assistantSteps") }))), UNDONE_TOLD),
   undoneMore: capped(v.optional(v.array(v.object({ userId: v.id("users"), count: v.number() }))), UNDONE_TOLD),
+  /** When someone last pressed Stop here: the jobs that ended before it are told with no readout (#328, ./jobs.ts). */
+  stoppedAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
