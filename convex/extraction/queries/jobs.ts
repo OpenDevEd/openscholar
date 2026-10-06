@@ -14,8 +14,8 @@ import { paginationOptsValidator, paginationResultValidator } from "convex/serve
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import schema from "../../schema";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { ok, statusResultValidator } from "../../lib/query_states";
-import { resolveOwnedJob, type OwnedJobResolution } from "../access";
+import { noAccess, ok, statusResultValidator, unauthenticated } from "../../lib/query_states";
+import { ownJob, resolveOwnedJob, type OwnedJobResolution } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
 import { assistantQuery, defineUserQuery, userQuery } from "../../lib/userActions";
 import { countRow } from "../../research/recordCounts";
@@ -106,29 +106,30 @@ export const countJobsAction = defineUserQuery({
 export const countJobs = userQuery(countJobsAction);
 export const countJobsForAssistant = assistantQuery(countJobsAction);
 
-export const getJobDetails = query({
+export const getJobDetailsAction = defineUserQuery({
+  path: "extraction/queries:getJobDetails",
+  description:
+    "Reads one of the person's extraction jobs with its questions, in order: each question's `key`, text, `type` and `description`. " +
+    "Use it to say what an extraction asks, and for a question's `key` to summarize or filter its answers by.",
   args: { jobId: v.id("extractionJobs") },
   returns: statusResultValidator({
     job: extractionJobValidator,
     questions: jobQuestionsValidator,
   }),
-  handler: async (ctx, args) => {
-    const access = await resolveReadableJob(ctx, args.jobId);
-    if (access.status !== "ok") return access;
-    const { job } = access;
-
+  run: async (ctx, userId, { jobId }) => {
+    const job = await ownJob(ctx, userId, jobId);
+    if (!job) return noAccess();
+    await requireFeature(ctx, "extraction.enabled", userId);
     const questions = await ctx.db
       .query("extractionQuestions")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .withIndex("by_job", (q) => q.eq("jobId", jobId))
       .order("asc")
       .take(MAX_QUESTIONS_PER_JOB);
-
-    return ok({
-      job,
-      questions,
-    });
+    return ok({ job, questions });
   },
 });
+export const getJobDetails = userQuery(getJobDetailsAction, { signedOut: unauthenticated() });
+export const getJobDetailsForAssistant = assistantQuery(getJobDetailsAction);
 
 export const getJobShell = query({
   args: { jobId: v.id("extractionJobs") },
