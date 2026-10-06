@@ -109,17 +109,18 @@ byId("generate").addEventListener("click", () => {
 // Translation: each card runs ready (load, then hover), translating and translated on repeat.
 // Pressing Translate jumps the card to translating, or back to ready once it has translated.
 const translations = [
-  { id: "translate", name: "Lettered globe", detail: "An A tile in front of the globe. Hover flips it to 文 and back; translating flips it through A, अ, あ and 文, the app's own scripts." },
+  { id: "translate", name: "Lettered globe", labels: ["Translate", "Translating", "Translated"], done: "Translated", check: true, detail: "Translating what you read. An A tile in front of the globe: hover flips it to 文 and back, and translating flips it through A, अ, あ and 文, the app's own scripts." },
+  { id: "search-language", name: "Lettered magnifier", labels: ["Any language", "Translating", "Search in Spanish"], done: "Language set", check: false, detail: "Searching in a language: the search bar's language picker, which rewrites the keywords so the search finds papers written in it. The same tile, on a magnifier round the AI star." },
 ];
 const phaseLength = { load: 1500, hover: 1500, translating: 2700, translated: 1800 };
 const nextPhase = { load: "hover", hover: "translating", translating: "translated", translated: "load" };
 byId("translations").innerHTML = translations.map((item) => `
-  <div class="translation" data-shape="${item.id}">
-    <div class="translation-art"><span>${aiMark.html(168, { shape: item.id, label: `${item.name} translation mark` })}</span><span class="translation-small">${aiMark.html(48, { shape: item.id })}${aiMark.html(24, { shape: item.id })}${aiMark.html(16, { shape: item.id })}</span></div>
+  <div class="translation" data-shape="${item.id}"${item.check ? "" : " data-keeps-mark"}>
+    <div class="translation-art"><span>${aiMark.html(168, { shape: item.id, label: item.name })}</span><span class="translation-small">${aiMark.html(48, { shape: item.id })}${aiMark.html(24, { shape: item.id })}${aiMark.html(16, { shape: item.id })}</span></div>
     <div><div class="translation-name">${item.name}</div><p class="translation-detail">${item.detail}</p></div>
     <div class="translation-demo">
-      <button class="os-button os-outline translate-button" data-state="ready"><span class="translate-icon">${aiMark.html(16, { shape: item.id })}<svg class="translate-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="translate-label"><span data-label="ready">Translate</span><span data-label="translating">Translating</span><span data-label="translated">Translated</span></span></button>
-      <span class="variant-phase" aria-hidden="true"><i data-phase="load">Load</i><i data-phase="hover">Hover</i><i data-phase="translating">Translating</i><i data-phase="translated">Translated</i></span>
+      <button class="os-button os-outline translate-button" data-state="ready"><span class="translate-icon">${aiMark.html(16, { shape: item.id })}<svg class="translate-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="translate-label"><span data-label="ready">${item.labels[0]}</span><span data-label="translating">${item.labels[1]}</span><span data-label="translated">${item.labels[2]}</span></span></button>
+      <span class="variant-phase" aria-hidden="true"><i data-phase="load">Load</i><i data-phase="hover">Hover</i><i data-phase="translating">Translating</i><i data-phase="translated">${item.done}</i></span>
     </div>
   </div>`).join("");
 

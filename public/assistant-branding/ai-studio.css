@@ -74,6 +74,10 @@
 .translation-detail { font-size: 12px; line-height: 1.5; color: var(--muted); margin: 6px 0 0; max-width: 40ch; }
 .translation-demo { display: flex; flex-direction: column; justify-content: flex-end; gap: 16px; }
 .translate-button[data-state="translated"] { color: var(--success); border-color: color-mix(in oklab, var(--success) 45%, transparent); }
+/* Searching in a language has no finished state: the picker keeps its mark and names the language. */
+.translation[data-keeps-mark] .translate-check { display: none; }
+.translation[data-keeps-mark] .translate-button[data-state="translated"] { color: inherit; border-color: var(--line); }
+.translation[data-keeps-mark] .translate-button[data-state="translated"] .ai-mark { visibility: visible; }
 .translate-icon, .translate-label { display: inline-grid; }
 .translate-icon > *, .translate-label > * { grid-area: 1 / 1; }
 .translate-icon svg { width: 16px; height: 16px; }
