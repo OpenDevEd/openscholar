@@ -78,4 +78,39 @@ it("runs a request bigger than one job under the one figure the person approved:
   expect(card?.card).toMatchObject({ kind: "screening", jobId: jobs[1]._id, status: "completed", total: 2, credits: 2, cap: 10 });
   // The chat hears the request ended once, with its last job, not after the first.
   expect((await t.run((ctx) => ctx.db.query("assistantJobEnds").collect())).map(({ jobId, status }) => ({ jobId, status }))).toEqual([{ jobId: jobs[1]._id, status: "completed" }]);
+  // The request kept one dock row across its jobs, and gave it up when it ended.
+  expect(await t.run((ctx) => ctx.db.query("assistantJobs").collect())).toEqual([]);
+});
+
+it("ends a request whose next job never came, once: its dock row goes and the chat hears it ended", async () => {
+  vi.useFakeTimers();
+  const t = convexTest(schema);
+  setupScreeningWorkpool(t);
+  const { userId, stepId } = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { clerkId: "clerk_hand_off", email: "hand@test.local", state: "active", createdAt: 1, updatedAt: 1 });
+    await seedCreditsForTest(ctx, { userId, free: 100 });
+    const threadId = await ctx.db.insert("assistantThreads", { ownerId: userId, title: "Screening", agentThreadId: "agent", lastMessageAt: 1, createdAt: 1, updatedAt: 1 });
+    const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1 });
+    return { userId, stepId };
+  });
+  // The first job of a request through paper 2, started from the chat.
+  const { jobId } = await t.mutation(internal.screening.mutations.createScreeningJobForUser, {
+    userId, author: "assistant", papers: [{ openalexId: "https://openalex.org/W1", title: "Trial 1" }], set: { kind: "saved" }, first: 1, last: 1, through: 2,
+    questions: [{ key: "q1", question: "Is this relevant?" }],
+    scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [{ minScore: 0, stars: 1 }] },
+    chatStep: stepId,
+  });
+  const docked = () => t.run((ctx) => ctx.db.query("assistantJobs").withIndex("by_step", (q) => q.eq("stepId", stepId)).collect());
+  const ends = () => t.run((ctx) => ctx.db.query("assistantJobEnds").collect());
+  expect(await docked()).toHaveLength(1);
+
+  // It completes and hands the request on, and the action meant to start the next job never runs.
+  await t.run((ctx) => ctx.db.patch("screeningJobs", jobId, { status: "completed", completedAt: 2 }));
+  expect(await docked()).toHaveLength(1);
+  expect(await ends()).toEqual([]);
+
+  await t.mutation(internal.screening.start.watchHandOff, { jobId });
+  await t.mutation(internal.screening.start.watchHandOff, { jobId });
+  expect(await docked()).toEqual([]);
+  expect((await ends()).map(({ jobId: ended, status }) => ({ ended, status }))).toEqual([{ ended: jobId, status: "completed" }]);
 });

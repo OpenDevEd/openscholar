@@ -5,6 +5,8 @@ import { collectionCount, libraryCountRow } from "../library/counter";
 import { collectionAllowed } from "../library/collections";
 import { requestOf, snapshotOf } from "../paperSets/search";
 import { currentSearch } from "../../lib/research/records";
+import { MAX_QUESTIONS } from "../lib/listCaps";
+import { MAX_SCREENING_JOBS_PER_REQUEST, MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { taskPricing } from "../ai/serverModel";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { createError } from "../lib/errors";
@@ -66,15 +68,21 @@ export async function papersIn(ctx: QueryCtx, userId: Id<"users">, set: Infer<ty
  * rules, its range, its set, and where its papers go. Only what OpenAlex says of a search, and a
  * balance that changed since, are left.
  */
-export async function checkScreening(ctx: QueryCtx, userId: Id<"users">, { set, first, last, scoringConfig, saveTo, prune }: { set: Infer<typeof paperSetValidator>; first: number; last: number; scoringConfig: Infer<typeof screeningScoringConfigValidator>; saveTo?: Infer<typeof saveToValidator>; prune?: boolean }) {
+export async function checkScreening(ctx: QueryCtx, userId: Id<"users">, { set, first, last, questions, scoringConfig, saveTo, prune }: { set: Infer<typeof paperSetValidator>; first: number; last: number; questions: Array<{ question: string }>; scoringConfig: Infer<typeof screeningScoringConfigValidator>; saveTo?: Infer<typeof saveToValidator>; prune?: boolean }) {
   requireMinimum(scoringConfig);
+  if (questions.length > MAX_QUESTIONS) throw createError("VALIDATION_ERROR", `A screening asks up to ${MAX_QUESTIONS} questions.`);
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
+  const most = MAX_SCREENING_PAPERS_PER_JOB * MAX_SCREENING_JOBS_PER_REQUEST;
+  if (last - first + 1 > most) throw createError("VALIDATION_ERROR", `A screening started here takes up to ${most.toLocaleString("en")} papers. Screen papers ${first} to ${(first + most - 1).toLocaleString("en")} first, then the rest.`);
   if (prune && set.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
   if (set.kind === "search") {
     const row = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", set.searchId)).unique();
     if (!row) throw createError("NOT_FOUND", "Search not found");
     // A query the results page can't make is refused as the start would refuse it; only what OpenAlex makes of one it can is left to the start.
     snapshotOf(await requestOf(ctx, userId, currentSearch(row.data), row.revision));
+    // The search's page takes on the questions it doesn't ask yet (./mutations.ts `insertJob`), and holds MAX_QUESTIONS.
+    const asked = new Set([...row.data.screeningQuestions.map(({ question }) => question), ...questions.map(({ question }) => question)]);
+    if (asked.size > MAX_QUESTIONS) throw createError("VALIDATION_ERROR", `This search's page already asks ${row.data.screeningQuestions.length} screening questions, and holds up to ${MAX_QUESTIONS}: ask fewer new ones, or ask the ones it has.`);
   } else {
     const owner = set.kind === "collection" ? (await ctx.db.get("collections", set.collectionId))?.userId : set.kind === "screening" ? (await ctx.db.get("screeningJobs", set.jobId))?.userId : userId;
     if (owner !== userId) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");

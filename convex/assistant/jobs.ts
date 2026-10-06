@@ -19,6 +19,7 @@ import { readScreeningProgressCounts } from "../screening/progress";
 import { requireThread } from "./access";
 import { extractionCardValidator, JOBS_DOCKED, JOBS_TOLD_AT_ONCE, runningJobsValidator, screeningCardValidator } from "./validators";
 import { hasEnded, JOB_ENDED, STARTS } from "./jobEnds";
+import { MAX_SCREENING_JOBS_PER_REQUEST } from "../lib/queryBounds";
 import { admit, startReply } from "./replies";
 import { healCalls, settleAsked } from "./steps";
 import { writing } from "./threads";
@@ -53,9 +54,6 @@ async function jobOf(ctx: QueryCtx, step: Doc<"assistantSteps">) {
   }
 }
 
-/** Jobs of one request read for its card at most: a request of this many thousand papers. */
-const REQUEST_JOBS = 50;
-
 /**
  * What a screening has come to, as its card and its readout say it. A request bigger than one
  * job runs as several, one after another (../screening/start.ts `next`), under the one figure
@@ -65,7 +63,7 @@ const REQUEST_JOBS = 50;
 async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"screeningJobs">): Promise<Infer<typeof screeningCardValidator> | null> {
   const asked = await ctx.db.get("screeningJobs", jobId);
   const chatStep = asked?.chatStep;
-  const ran = chatStep ? await ctx.db.query("screeningJobs").withIndex("by_chatStep", (q) => q.eq("chatStep", chatStep)).take(REQUEST_JOBS) : [];
+  const ran = chatStep ? await ctx.db.query("screeningJobs").withIndex("by_chatStep", (q) => q.eq("chatStep", chatStep)).take(MAX_SCREENING_JOBS_PER_REQUEST) : [];
   const jobs = (await Promise.all((ran.length ? ran : [{ _id: jobId }]).map((one) => getScreeningJobAction.run(ctx, userId, { jobId: one._id })))).filter((one) => one !== null);
   if (!jobs.length) return null;
   const job = jobs.at(-1)!;

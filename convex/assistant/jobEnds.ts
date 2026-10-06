@@ -68,10 +68,11 @@ export async function noteRunningJob(ctx: MutationCtx, kind: Doc<"assistantJobs"
   if (await ctx.db.query("assistantJobs").withIndex("by_job", (q) => q.eq("jobId", job._id)).first()) return;
   const step = await ctx.db.get("assistantSteps", job.chatStep!);
   if (!step) return;
+  // The next job of a request takes the row its last job kept (`trackChatJob`): the request was let in, and approved, once, and keeps its place in the dock.
+  const kept = await ctx.db.query("assistantJobs").withIndex("by_step", (q) => q.eq("stepId", step._id)).first();
+  if (kept) return void (await ctx.db.patch("assistantJobs", kept._id, { jobId: job._id }));
   const running = await ctx.db.query("assistantJobs").withIndex("by_thread", (q) => q.eq("threadId", step.threadId)).take(JOBS_DOCKED);
-  // The next job of a screening request the chat already docked takes its place, whatever else started since: the request was let in, and approved, once.
-  const continues = kind === "screening" && (await ctx.db.query("screeningJobs").withIndex("by_chatStep", (q) => q.eq("chatStep", job.chatStep!)).take(2)).some((other) => other._id !== job._id);
-  if (!continues && running.length >= JOBS_DOCKED) throw createError("VALIDATION_ERROR", DOCK_FULL);
+  if (running.length >= JOBS_DOCKED) throw createError("VALIDATION_ERROR", DOCK_FULL);
   await ctx.db.insert("assistantJobs", { threadId: step.threadId, stepId: step._id, userId: step.userId, kind, jobId: job._id });
 }
 
@@ -85,9 +86,18 @@ export const trackChatJob =
   async (ctx: MutationCtx, { oldDoc, newDoc }: { oldDoc: Job | null; newDoc: Job | null }) => {
     if (runs(oldDoc) === runs(newDoc)) return;
     if (newDoc && runs(newDoc)) return noteRunningJob(ctx, kind, newDoc);
+    // One that hands its request on keeps the request's row for the next job (../billing/spend.ts `handsOn`, `releaseDock` when no job takes it).
+    if (handsOn(newDoc)) return;
     const row = await ctx.db.query("assistantJobs").withIndex("by_job", (q) => q.eq("jobId", oldDoc!._id)).first();
     if (row) await ctx.db.delete("assistantJobs", row._id);
   };
+
+/** Gives up the dock row a request kept for its next job, when none took it. */
+export async function releaseDock(ctx: MutationCtx, chatStep: Id<"assistantSteps"> | undefined) {
+  if (!chatStep) return;
+  const row = await ctx.db.query("assistantJobs").withIndex("by_step", (q) => q.eq("stepId", chatStep)).first();
+  if (row) await ctx.db.delete("assistantJobs", row._id);
+}
 
 /** A trigger that tells a chat the ends that waited for it, when it stops writing a reply or waiting for an answer. */
 export async function tellIdleChat(ctx: MutationCtx, { oldDoc, newDoc }: { oldDoc: Doc<"assistantThreads"> | null; newDoc: Doc<"assistantThreads"> | null }) {

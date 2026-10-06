@@ -180,6 +180,9 @@ export const withMoved = (progress: Pick<Doc<"screeningJobProgress">, "saved" | 
   ...(moved.removed ? { removed: Math.max(0, (progress.removed ?? 0) + moved.removed) } : {}),
 });
 
+/** How long a job that handed its request on waits for the next job before the request is ended without it (./start.ts `watchHandOff`): longer than reading the next job's papers can take. */
+export const HAND_OFF_MS = 15 * 60_000;
+
 /** Finishes a processing job once its progress counts every paper. */
 export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
   const job = await ctx.db.get("screeningJobs", jobId);
@@ -192,6 +195,8 @@ export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">)
   // A request bigger than one job: the job for its next papers starts now.
   if (job.last !== undefined && job.through !== undefined && job.last < job.through) {
     await ctx.scheduler.runAfter(0, internal.screening.start.next, { jobId, first: job.last + 1 });
+    // One the person approved, or a chat started, is ended without its next job if that never comes (`watchHandOff`).
+    if (job.spendHold || job.chatStep) await ctx.scheduler.runAfter(HAND_OFF_MS, internal.screening.start.watchHandOff, { jobId });
   }
   const user = await ctx.db.get("users", job.userId);
   if (user?.clerkId) {

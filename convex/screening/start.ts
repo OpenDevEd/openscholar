@@ -1,7 +1,7 @@
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { internalAction, internalMutation, type ActionCtx } from "../lib/functions";
+import { internalAction, internalMutation, type ActionCtx, type MutationCtx } from "../lib/functions";
 import type { ChangeCall } from "../lib/userActions";
 import { startHeld } from "../billing/charge";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
@@ -11,7 +11,10 @@ import { heldPapers } from "../paperSets/held";
 import { countSearch, PAGE_SIZE, searchSnapshotValidator, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest } from "../paperSets/search";
 import { requireMinimum, screeningHold } from "./estimate";
-import { writeEnd } from "../assistant/jobEnds";
+import { releaseDock, writeEnd } from "../assistant/jobEnds";
+import { HAND_OFF_MS } from "./bookkeeping";
+import { handsOn, holdOpen } from "../billing/spend";
+import type { Doc } from "../_generated/dataModel";
 import { paperSetValidator, saveToValidator, screeningQuestionValidator, screeningScoringConfigValidator } from "./validators";
 
 type PaperSet = Infer<typeof paperSetValidator>;
@@ -109,19 +112,62 @@ async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assi
   throw createError("VALIDATION_ERROR", "There are no papers in that range");
 }
 
+/** Whether a job that handed its request on has a job after it, under the same approval. */
+async function handedOn(ctx: MutationCtx, job: Doc<"screeningJobs">) {
+  const chatStep = job.chatStep;
+  const later = chatStep
+    ? await ctx.db.query("screeningJobs").withIndex("by_chatStep", (q) => q.eq("chatStep", chatStep)).order("desc").first()
+    : await ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", job.userId)).order("desc").first();
+  return later !== null && later._id !== job._id && later._creationTime > job._creationTime && later.spendHold === job.spendHold;
+}
+
 /**
  * Ends a request that a completed job handed on (../billing/spend.ts `handsOn`) when no job
- * took it: the set ran out, or the next job couldn't start. Its hold is settled, and with
- * `tell`, the chat that started it hears that it ended with that job.
+ * took it: its hold is settled, the dock row it kept for the next job goes, and with `tell`,
+ * the chat that started it hears that it ended with that job, once.
  */
-export const endRequest = internalMutation({
-  args: { jobId: v.id("screeningJobs"), tell: v.boolean() },
+export async function endRequest(ctx: MutationCtx, job: Doc<"screeningJobs">, tell: boolean) {
+  if (job.spendHold) await ctx.scheduler.runAfter(0, internal.screening.start.settleHold, { jobId: job._id, hold: job.spendHold, waited: 0 });
+  await releaseDock(ctx, job.chatStep);
+  if (tell && !(await ctx.db.query("assistantJobEnds").withIndex("by_job", (q) => q.eq("jobId", job._id)).first())) await writeEnd(ctx, "screening", job);
+}
+
+/** Ends the request after `jobId`: the set ran out of papers, so no job takes it. */
+export const endedRequest = internalMutation({
+  args: { jobId: v.id("screeningJobs") },
   returns: v.null(),
-  handler: async (ctx, { jobId, tell }) => {
+  handler: async (ctx, { jobId }) => {
     const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job) return null;
-    if (job.spendHold) await ctx.scheduler.runAfter(0, internal.screening.start.settleHold, { jobId, hold: job.spendHold, waited: 0 });
-    if (tell) await writeEnd(ctx, "screening", job);
+    if (job) await endRequest(ctx, job, true);
+    return null;
+  },
+});
+
+/**
+ * Looks, a while after a job handed its request on, for the job after it, and ends the request
+ * without one if none came: the action starting it can stop part way, and Convex doesn't run
+ * an action again. A request already ended is left alone.
+ */
+export const watchHandOff = internalMutation({
+  args: { jobId: v.id("screeningJobs") },
+  returns: v.null(),
+  handler: async (ctx, { jobId }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    if (!job || !handsOn(job) || (await handedOn(ctx, job))) return null;
+    if (job.spendHold && !(await holdOpen(ctx, job.spendHold))) return null;
+    console.error(`[screening] No job took the request after ${jobId}; it ends there`);
+    await endRequest(ctx, job, true);
+    return null;
+  },
+});
+
+/** Passes over a stretch of the set with no papers: the next stretch is looked at, and the request's wait for its next job starts again. */
+export const passOver = internalMutation({
+  args: { jobId: v.id("screeningJobs"), first: v.number(), resume: v.optional(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.scheduler.runAfter(0, internal.screening.start.next, args);
+    await ctx.scheduler.runAfter(HAND_OFF_MS, internal.screening.start.watchHandOff, { jobId: args.jobId });
     return null;
   },
 });
@@ -245,14 +291,13 @@ export const next = internalAction({
     try {
       const { papers, ended, range } = await jobPapers(ctx, userId, { set, first, through, resume, snapshot }, config.questions);
       if (papers.length) await ctx.runMutation(internal.screening.mutations.createScreeningJobForUser, { userId, author: "user", papers, chained: true, ...range, ...config });
-      else if (!ended && through > last) await ctx.scheduler.runAfter(0, internal.screening.start.next, { jobId, first: last + 1, ...(range.resume ? { resume: range.resume } : {}) });
+      else if (!ended && through > last) await ctx.runMutation(internal.screening.start.passOver, { jobId, first: last + 1, ...(range.resume ? { resume: range.resume } : {}) });
       // The set has no more papers: the request ends with the job before.
-      else await ctx.runMutation(internal.screening.start.endRequest, { jobId, tell: true });
+      else await ctx.runMutation(internal.screening.start.endedRequest, { jobId });
     } catch (error) {
       console.error(`[screening] The job after ${jobId} couldn't start`, error);
-      const { questions, scoringConfig, chatStep } = config;
-      await ctx.runMutation(internal.screening.mutations.stopRequest, { userId, set, first, last, ...(through > last ? { through } : {}), questions, scoringConfig, ...(label ? { label } : {}), ...(chatStep ? { chatStep } : {}) });
-      await ctx.runMutation(internal.screening.start.endRequest, { jobId, tell: false });
+      const { questions, scoringConfig } = config;
+      await ctx.runMutation(internal.screening.mutations.stopRequest, { userId, set, first, last, ...(through > last ? { through } : {}), questions, scoringConfig, ...(label ? { label } : {}), after: jobId });
     }
     return null;
   },
