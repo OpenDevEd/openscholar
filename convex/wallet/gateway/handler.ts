@@ -17,7 +17,10 @@ import {
 } from "./cost";
 import type { AIProvider } from "../../../lib/types/ai.types";
 import {
+  CALL_TOKENS,
   convertUsdToCredits,
+  estimateCredits,
+  tokensIn,
   WEB_SEARCH_ENGINE,
   WEB_SEARCH_MAX_RESULTS,
   WEB_SEARCH_USD,
@@ -25,7 +28,6 @@ import {
 import { autumn } from "../../billing/autumn";
 import { reserveCredits, releaseCredits, settleCredits } from "../../billing/charge";
 import type { Id, Doc } from "../../_generated/dataModel";
-import { ESTIMATED_CREDITS_PER_WALLET_API_CALL } from "../../lib/constants";
 
 // ─── CORS helpers ───────────────────────────────────────────
 
@@ -180,9 +182,15 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     );
   }
 
-  // 8. Hold the estimate, plus the search a web-search call runs.
+  // 8. Hold what the call can cost, as OpenRouter does: its messages and the reply it allows at the
+  // model's price, plus the search a web-search call runs. It settles to what it really cost.
   const requiredCredits =
-    ESTIMATED_CREDITS_PER_WALLET_API_CALL +
+    estimateCredits(
+      { input: walletModel.inputPricePerMillion, output: walletModel.outputPricePerMillion },
+      { input: tokensIn(JSON.stringify(req.messages)), output: req.max_completion_tokens ?? req.max_tokens ?? CALL_TOKENS.chatMessage.output },
+      1,
+      walletModel.costMarkup,
+    ) +
     (webSearch ? convertUsdToCredits({ usd: WEB_SEARCH_USD, markup: walletModel.costMarkup }) : 0);
   const chargeId = `wallet:${crypto.randomUUID()}`;
   if (

@@ -29,7 +29,7 @@ import { newCollection } from "../library/collections";
 import { searchSnapshotValidator } from "../paperSets/openalex";
 import { bookkeepLater } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
-import { estimateScreening } from "./estimate";
+import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { applyCommand } from "../research/records";
 
 import { availableCredits } from "../billing/accounts";
@@ -123,7 +123,7 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, sa
 /** Whether the person can pay for screening `papers` papers, with the figures a refusal names. */
 async function affords(ctx: MutationCtx, userId: Id<"users">, papers: number) {
   const available = await availableCredits(ctx, userId);
-  const estimate = estimateScreening(papers, available).credits;
+  const estimate = estimateScreening(papers, available, await screeningPaperCreditsFor(ctx, userId)).credits;
   return { affordable: available >= estimate, estimate, available };
 }
 

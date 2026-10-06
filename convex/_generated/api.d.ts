@@ -14,6 +14,7 @@ import type * as admins_mutations from "../admins/mutations.js";
 import type * as admins_queries from "../admins/queries.js";
 import type * as ai_actions from "../ai/actions.js";
 import type * as ai_config from "../ai/config.js";
+import type * as ai_estimates from "../ai/estimates.js";
 import type * as ai_helpers from "../ai/helpers.js";
 import type * as ai_serverModel from "../ai/serverModel.js";
 import type * as ai_validators from "../ai/validators.js";
@@ -298,6 +299,7 @@ import type * as migrations_calendarDayDates from "../migrations/calendarDayDate
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
 import type * as migrations_countBillingUsage from "../migrations/countBillingUsage.js";
 import type * as migrations_countScreeningJobs from "../migrations/countScreeningJobs.js";
+import type * as migrations_estimateFields from "../migrations/estimateFields.js";
 import type * as migrations_expireInvitations from "../migrations/expireInvitations.js";
 import type * as migrations_extractionAnswers from "../migrations/extractionAnswers.js";
 import type * as migrations_extractionEvidence from "../migrations/extractionEvidence.js";
@@ -406,6 +408,7 @@ declare const fullApi: ApiFromModules<{
   "admins/queries": typeof admins_queries;
   "ai/actions": typeof ai_actions;
   "ai/config": typeof ai_config;
+  "ai/estimates": typeof ai_estimates;
   "ai/helpers": typeof ai_helpers;
   "ai/serverModel": typeof ai_serverModel;
   "ai/validators": typeof ai_validators;
@@ -690,6 +693,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
   "migrations/countBillingUsage": typeof migrations_countBillingUsage;
   "migrations/countScreeningJobs": typeof migrations_countScreeningJobs;
+  "migrations/estimateFields": typeof migrations_estimateFields;
   "migrations/expireInvitations": typeof migrations_expireInvitations;
   "migrations/extractionAnswers": typeof migrations_extractionAnswers;
   "migrations/extractionEvidence": typeof migrations_extractionEvidence;

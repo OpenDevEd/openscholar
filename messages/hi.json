@@ -562,8 +562,8 @@
     "defineQuestions": "प्रश्न परिभाषित करें",
     "whatToExtract": "क्या निकालना है",
     "preflight": {
-      "sufficient": "~{estimate} क्रेडिट",
-      "insufficient": "~{estimate} क्रेडिट आवश्यक, आपके पास {balance} हैं"
+      "sufficient": "अधिकतम {estimate} क्रेडिट",
+      "insufficient": "अधिकतम {estimate} क्रेडिट आवश्यक, आपके पास {balance} हैं"
     },
     "creditsExhausted": {
       "title": "निष्कर्षण रोक दिया गया — क्रेडिट समाप्त",

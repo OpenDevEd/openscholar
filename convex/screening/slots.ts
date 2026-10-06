@@ -9,7 +9,8 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { planConcurrency } from "../billing/accounts";
-import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
+import { pricingOf } from "../ai/serverModel";
+import { screeningPaperCredits } from "../../lib/pricing";
 import { SCREENING_POOL_SIZE, screeningPool } from "../workpool";
 import { progressOf } from "./bookkeeping";
 
@@ -38,7 +39,7 @@ async function startPaper(ctx: MutationCtx, result: Doc<"screeningResults">) {
 
 /**
  * What a job with a spending limit has left (#328): how many more of its papers may start,
- * each held at the estimate, with those started and not counted yet held the same way. So
+ * each held at the most a paper costs on the job's model, with those started and not counted yet held the same way. So
  * papers running together can't spend past the limit between them, as Roo Code checks its
  * cost limit before each request and not after. `taken` is how many this pass started.
  */
@@ -48,7 +49,7 @@ async function budgetOf(ctx: MutationCtx, jobId: Id<"screeningJobs">): Promise<B
   const job = await ctx.db.get("screeningJobs", jobId);
   if (job?.spendCap === undefined) return null;
   const progress = await progressOf(ctx, jobId);
-  const affordable = Math.floor((job.spendCap - (progress.credits ?? 0)) / ESTIMATED_CREDITS_PER_PAPER);
+  const affordable = Math.floor((job.spendCap - (progress.credits ?? 0)) / screeningPaperCredits(await pricingOf(ctx, job.serverModelId)));
   return { job, progress, room: job.capped ? 0 : affordable - (progress.running ?? 0), taken: 0 };
 }
 

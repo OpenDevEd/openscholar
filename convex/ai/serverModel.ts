@@ -6,6 +6,8 @@ import { DEFAULT_PRESET, presetConfigKey, usableFor, type AiTask, type PresetKey
 import type { Effort } from "../../lib/ai/core/call-options";
 import { isDecisionModel } from "../../lib/ai/decisions";
 import { aiTaskValidator, taskPickValidator } from "../aiModelConfig/validators";
+import type { ExtractionPricing, Pricing } from "../../lib/pricing";
+import { SERVER_MODEL_SLUG } from "./config";
 
 /** A model a task runs on, and its reasoning effort (none: the model's default). */
 export type TaskPick = { modelId: Id<"models">; effort?: Effort };
@@ -87,4 +89,20 @@ export async function modelSummary(ctx: QueryCtx, id: Id<"models"> | null) {
   if (!model) return null;
   const { _id, modelId, name, inputPricePerMillion, outputPricePerMillion, reasoningEfforts, defaultEffort, reasoningMandatory, intelligenceIndex } = model;
   return { _id, modelId, name, inputPricePerMillion, outputPricePerMillion, reasoningEfforts, defaultEffort, reasoningMandatory, intelligenceIndex };
+}
+
+/** A model's price, or the server model's when there's none: what `resolveOpenRouterModel` runs and charges at. */
+export async function pricingOf(ctx: QueryCtx | MutationCtx, id: Id<"models"> | null | undefined): Promise<Pricing> {
+  const model = id ? await ctx.db.get("models", id) : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
+  return model ? { input: model.inputPricePerMillion, output: model.outputPricePerMillion } : { input: 0, output: 0 };
+}
+
+/** The price of what a user's `task` runs on. */
+export async function taskPricing(ctx: QueryCtx | MutationCtx, userId: Id<"users">, task: AiTask): Promise<Pricing> {
+  return await pricingOf(ctx, (await resolveTaskPick(ctx, userId, task))?.modelId);
+}
+
+/** The prices of the models an extraction sends its questions to (`extractionStamp`, or a job stamped with it). */
+export async function extractionPricing(ctx: QueryCtx | MutationCtx, stamp: { serverModelId?: Id<"models">; decisionModelId?: Id<"models"> }): Promise<ExtractionPricing> {
+  return { model: await pricingOf(ctx, stamp.serverModelId), ...(stamp.decisionModelId && { decision: await pricingOf(ctx, stamp.decisionModelId) }) };
 }

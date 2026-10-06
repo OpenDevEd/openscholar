@@ -8,7 +8,6 @@ import { AiIcon, Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { MAX_SCREENING_PAPERS_PER_JOB as JOB_LIMIT } from "@/convex/lib/queryBounds";
-import { estimateScreening } from "@/convex/screening/estimate";
 import { Button } from "@/components/ui/button";
 import { FilterChips } from "@/components/ui/filter-display";
 import { Input } from "@/components/ui/input";
@@ -167,7 +166,9 @@ export function SetupView({
   const { data: account } = useProtectedQuery(api.billing.accounts.mine, {});
   const { data: slots } = useProtectedQuery(api.screening.queries.slots, {});
   const balance = account?.balance ?? 0;
-  const credits = estimateScreening(papers, balance).credits;
+  // The most these papers cost on the model Screen all runs on: what the job holds when it starts.
+  const { data: estimate } = useProtectedQuery(api.screening.queries.estimate, { papers });
+  const credits = estimate?.credits ?? 0;
   const enough = credits <= balance;
   // The server reads the saved search, so edits still being saved would be screened without.
   const { pending: savingEdits } = useResearchStatus();

@@ -8,13 +8,19 @@ import schema from "../schema";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
+import { SERVER_MODEL_SLUG } from "../ai/config";
+import { extractionPaperCredits } from "../../lib/pricing";
 
 /**
- * Plan-03 preflight credit check on startJob. Mirrors screening's preflight
- * at convex/screening/mutations.ts:93-108 but uses extraction's cost
- * estimator (lib/extraction/cost-estimate.ts) instead of the flat
- * ESTIMATED_CREDITS_PER_PAPER constant.
+ * The credit check on startJob: the most the job costs on the model its extractions run on
+ * (lib/pricing/estimate.ts), against the balance.
  */
+
+/** The model a person who picked none runs on, at GPT-6 Luna's price, and Claude Sonnet's. */
+const LUNA = { input: 0.1, output: 0.5 };
+const SONNET = { input: 2, output: 10 };
+const perPaper = (questions: number, pdf = false, price = LUNA) =>
+  extractionPaperCredits({ model: price }, Array.from({ length: questions }, () => ({ type: "string" })), pdf);
 
 const CLERK = "clerk_extraction_preflight";
 const IDENTITY = {
@@ -78,6 +84,7 @@ async function seedUserFlagsAndCredits(
       paid: opts.paid,
       now,
     });
+    await ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: LUNA.input, outputPricePerMillion: LUNA.output, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: ["structured_outputs"], syncedAt: 1, createdAt: 1, updatedAt: 1 });
     return { userId };
   });
 }
@@ -97,9 +104,9 @@ async function expectQueueSetupScheduled(
 }
 
 describe("startJob — pre-flight credit check", () => {
-  it("throws INSUFFICIENT_CREDITS when totalAvailable < estimate.high; no job is inserted", async () => {
+  it("throws INSUFFICIENT_CREDITS when the balance is below the most the job costs; no job is inserted", async () => {
     const t = convexTest(schema);
-    const { userId } = await seedUserFlagsAndCredits(t, { paid: 3 }); // way below new HIGH=5
+    const { userId } = await seedUserFlagsAndCredits(t, { paid: perPaper(1) - 1 });
     const auth = t.withIdentity(IDENTITY);
 
     await expect(
@@ -124,7 +131,7 @@ describe("startJob — pre-flight credit check", () => {
     expect(jobs).toHaveLength(0);
   });
 
-  it("passes preflight and schedules queue setup when balance >= estimate.high", async () => {
+  it("passes preflight and schedules queue setup when the balance covers the most the job costs", async () => {
     const t = convexTest(schema);
     await seedUserFlagsAndCredits(t, { paid: 100_000 });
     const auth = t.withIdentity(IDENTITY);
@@ -147,11 +154,9 @@ describe("startJob — pre-flight credit check", () => {
 
   it("counts saved-search history placeholders by expanded paper count, not row count", async () => {
     const t = convexTest(schema);
-    // 200 papers × 1 Q × ABSTRACT_Q_CREDIT_HIGH=5 = 1000 estimate. Seed
-    // below that so the expanded count drives a real preflight block;
-    // if the placeholder were counted as 1 row the estimate would be 5
-    // and this would pass preflight.
-    await seedUserFlagsAndCredits(t, { paid: 500 });
+    // Enough for far more than one paper and less than 200: counted as one row, the
+    // placeholder would pass.
+    await seedUserFlagsAndCredits(t, { paid: 100 * perPaper(1) });
     const auth = t.withIdentity(IDENTITY);
 
     await expect(
@@ -189,7 +194,6 @@ describe("startJob — pre-flight credit check", () => {
     expect(jobId).toBeTruthy();
     const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.mode).toBe("chat");
-    expect(job?.estimatedCredits).toBeUndefined();
   });
 
   it("zero questions short-circuits the preflight (estimator returns zero; insufficient balance still allowed)", async () => {
@@ -211,15 +215,9 @@ describe("startJob — pre-flight credit check", () => {
   });
 
   it("PDF-tier estimate is materially higher than abstract-tier for the same job shape", async () => {
-    // Sanity check: usePdfs=true blocks at a higher threshold than
-    // usePdfs=false, proving the estimator branch is exercised through
-    // the mutation.
+    // Just enough for the one paper's two questions from its abstract, not from its PDF.
     const t = convexTest(schema);
-    // Give just enough credits for the 1-paper / 2-question abstract-tier
-    // estimate (= 10 under current constants: 2 × ABSTRACT_Q_CREDIT_HIGH=5)
-    // but not enough for the PDF-tier estimate (= 101.5 under current
-    // constants: 1 × INDEX_PDF_CREDIT=1.5 + 2 × PDF_Q_CREDIT_HIGH=50).
-    await seedUserFlagsAndCredits(t, { paid: 30 });
+    await seedUserFlagsAndCredits(t, { paid: perPaper(2) });
     const auth = t.withIdentity(IDENTITY);
 
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
@@ -250,5 +248,28 @@ describe("startJob — pre-flight credit check", () => {
         usePdfs: true,
       }),
     ).rejects.toThrow(/INSUFFICIENT_CREDITS|credits/i);
+  });
+
+  it("holds the job to the price of the model it runs on", async () => {
+    // Enough for a paper on GPT-6 Luna, a fraction of one on Claude Sonnet.
+    const t = convexTest(schema);
+    await seedUserFlagsAndCredits(t, { paid: perPaper(1) });
+    const auth = t.withIdentity(IDENTITY);
+    const start = () =>
+      auth.mutation(api.extraction.mutations.startJob, {
+        name: "One paper",
+        mode: "extraction",
+        bucketItems: [BUCKET_ITEM_HISTORY],
+        questions: [{ key: "q1", question: "What is the outcome?", type: "string" }],
+        usePdfs: false,
+      });
+    await expect(start()).resolves.toMatchObject({ jobId: expect.any(String) });
+
+    await t.run(async (ctx) => {
+      const model = (await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique())!;
+      await ctx.db.patch("models", model._id, { inputPricePerMillion: SONNET.input, outputPricePerMillion: SONNET.output });
+    });
+    expect(perPaper(1, false, SONNET)).toBeGreaterThan(perPaper(1));
+    await expect(start()).rejects.toThrow(/INSUFFICIENT_CREDITS|credits/i);
   });
 });
