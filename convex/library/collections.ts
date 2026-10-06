@@ -26,8 +26,8 @@ export { collectionSortName };
 // COLLECTION CRUD (Plan 01 prerequisites)
 // ═══════════════════════════════════════════════════════════════
 
-/** Makes an empty collection of `userId`'s named `name`, and counts it. */
-export async function newCollection(ctx: MutationCtx, userId: Id<"users">, name: string) {
+/** Whether `userId` can make a collection named `name`: its name trimmed, and their collections, read for the cap. */
+export async function collectionAllowed(ctx: QueryCtx, userId: Id<"users">, name: string) {
   const trimmed = name.trim();
   if (!trimmed) {
     throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
@@ -36,6 +36,12 @@ export async function newCollection(ctx: MutationCtx, userId: Id<"users">, name:
   if (existing.length >= MAX_COLLECTIONS_PER_USER) {
     throw createError("VALIDATION_ERROR", `You can have up to ${MAX_COLLECTIONS_PER_USER} collections. Delete one to make another.`);
   }
+  return { trimmed, existing };
+}
+
+/** Makes an empty collection of `userId`'s named `name`, and counts it. */
+export async function newCollection(ctx: MutationCtx, userId: Id<"users">, name: string) {
+  const { trimmed, existing } = await collectionAllowed(ctx, userId, name);
   // Every collection was just read for the cap, so a missing count starts exact.
   const counted = await collectionCountRow(ctx, userId);
   if (counted) await ctx.db.patch("collectionCounts", counted._id, { count: counted.count + 1 });

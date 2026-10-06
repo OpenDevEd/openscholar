@@ -32,6 +32,7 @@ import { bookkeepLater } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { applyCommand } from "../research/records";
+import { writeEnd } from "../assistant/jobEnds";
 
 import { availableCredits } from "../billing/accounts";
 import { MAX_AUTHORS } from "../lib/listCaps";
@@ -302,6 +303,8 @@ export const stopRequest = internalMutation({
     label: v.optional(v.string()),
     questions: v.array(screeningQuestionValidator),
     scoringConfig: screeningScoringConfigValidator,
+    // The chat that started the request: it hears the request ended here, with this job.
+    chatStep: v.optional(v.id("assistantSteps")),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -309,6 +312,7 @@ export const stopRequest = internalMutation({
     const screeningId = await ctx.db.insert("screenings", { userId: args.userId, version: 0, createdAt: now });
     const jobId = await ctx.db.insert("screeningJobs", { ...args, screeningId, status: "failed", totalPapers: args.last - args.first + 1, createdAt: now, updatedAt: now });
     await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0 });
+    if (args.chatStep) await writeEnd(ctx, "screening", { _id: jobId, status: "failed", chatStep: args.chatStep });
     return null;
   },
 });

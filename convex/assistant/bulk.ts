@@ -10,7 +10,7 @@
  * loads, because this loads the registry.
  */
 import { makeFunctionReference } from "convex/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import { internalMutation } from "../lib/functions";
@@ -79,6 +79,39 @@ export const apply = internalMutation({
     // Undo is offered once there's a change it can take back.
     if (made) await ctx.db.patch("assistantSteps", stepId, { count: (step.count ?? 0) + made, ...(reversible || step.undo ? { undo: { path: UNDO_BULK, args: JSON.stringify({ change: stepId }) } } : {}) });
     return { took, made, reversible, failed, ...(why ? { why } : {}) };
+  },
+});
+
+/** The code of the error `tryChanges` always ends with, which carries what it found. */
+export const TRIED = "TRIED";
+
+/**
+ * Tries changes the person is about to be asked about, as `userId`, and undoes them: each is
+ * the action's own mutation, as a yes would run it, inside this one, which always ends by
+ * throwing, so Convex keeps none of their writes or what they scheduled. What would refuse
+ * them (a name already taken, an email with no account, a paper never screened) is then told
+ * to the model before anyone is asked, never after they said yes. Only the first CHUNK of a
+ * bulk change are tried. The error's message holds how many were tried, how many failed, and
+ * why the first of those failed, as JSON.
+ */
+export const tryChanges = internalMutation({
+  args: { userId: v.id("users"), path: v.string(), items: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { userId, path, items }) => {
+    const action = mutationAt(path);
+    const each = (JSON.parse(items) as Record<string, unknown>[]).slice(0, CHUNK);
+    let failed = 0;
+    let why: string | undefined;
+    for (const [at, item] of each.entries()) {
+      try {
+        await ctx.runMutation(action!.ref, { ...item, ...(action!.entry.retryKey ? { [action!.entry.retryKey]: `tried:${at}` } : {}), userId, approved: true });
+      } catch (error) {
+        if (at > 0 && outOfRoom(error)) break;
+        failed += 1;
+        why ??= messageOf(error);
+      }
+    }
+    throw new ConvexError({ code: TRIED, message: JSON.stringify({ tried: each.length, failed, ...(why ? { why } : {}) }) });
   },
 });
 

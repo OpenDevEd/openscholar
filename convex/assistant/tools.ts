@@ -13,7 +13,8 @@ import { assistantTools, inputSchema, runAction, toolName } from "../lib/assista
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { ASKS_FIRST, type UserAction } from "../lib/userActions";
 import { variantIn, viewOf } from "../../lib/assistant/actions";
-import { CHUNK } from "./bulk";
+import { CHUNK, TRIED } from "./bulk";
+import { readConvexErrorData } from "../lib/errors";
 import { COLLIDED, messageOf } from "./failures";
 import { PAPERS_MAX, changeOf, changePapersSchema, papersOf, type ChangePapers } from "./paperChanges";
 import { BULK, DONE, MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, UNDO_BULK, forModel } from "./steps";
@@ -381,7 +382,8 @@ export function toolsFor(
   const call = async (entry: UserAction, input: Record<string, unknown>, toolCallId: string, allowed?: Id<"assistantSteps">, approvedFor?: number) => {
     const approved = allowed !== undefined;
     // A call that spends credits and wasn't asked about runs only when the person's allowance covers what it holds.
-    const read = approved || entry.kind === "query" || !entry.spendsCredits ? undefined : holds.get(sameCall(entry.path, input));
+    // What the call holds, or why it's refused, read before the person would have been asked about it (`hold`, `asks`).
+    const read = approved || entry.kind === "query" ? undefined : holds.get(sameCall(entry.path, input));
     const within = read && "credits" in read ? read : undefined;
     if (!approved) {
       // One that asks first only gets here allowed. The rest is refused: an action that spends credits past what the person allowed, or with no estimate to ask them with, or a call nothing asked about.
@@ -431,7 +433,28 @@ export function toolsFor(
       const held = await hold(entry, input);
       return held !== null && "credits" in held && !held.covered;
     }
-    return !runsWithoutAsking(entry) || (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) }));
+    if (runsWithoutAsking(entry) && !(await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) }))) return false;
+    // A change the person would be asked about is tried first, and undone: what would refuse it is told to the model instead of asked about.
+    const refused = entry.kind === "mutation" ? await tried(entry.path, [input]) : await ctx.runQuery(internal.assistant.asking.check, { userId, path: entry.path, input: JSON.stringify(input) });
+    if (refused) {
+      holds.set(sameCall(entry.path, input), { refused });
+      return false;
+    }
+    return true;
+  };
+  /** Why changes would all be refused, from trying them and undoing it (./bulk.ts `tryChanges`). Null when one of them would be made, or trying says nothing. */
+  const tried = async (path: string, items: unknown[]): Promise<string | null> => {
+    try {
+      await ctx.runMutation(internal.assistant.bulk.tryChanges, { userId, path, items: JSON.stringify(items) });
+    } catch (error) {
+      const data = readConvexErrorData(error);
+      if (data?.code === TRIED && data.message) {
+        const found = JSON.parse(data.message) as { tried: number; failed: number; why?: string };
+        return found.tried > 0 && found.failed === found.tried ? (found.why ?? null) : null;
+      }
+      console.error(`[assistant] ${path} couldn't be tried before asking`, error);
+    }
+    return null;
   };
   /**
    * A call of run_many or change_papers as the bulk change it is. A set of papers is read
@@ -587,6 +610,13 @@ export function toolsFor(
     const many = toolCall.toolName === RUN_MANY || toolCall.toolName === CHANGE_PAPERS ? await planOf(toolCall.toolCallId, toolCall.toolName, toolCall.input) : null;
     // One that can't be planned says why when it's run.
     if (many && ("error" in many || !(await asksPlan(many)))) return undefined;
+    // One whose changes would all be refused says why when it's run, instead of being asked about.
+    const refused = many && many.entry.kind === "mutation" ? await tried(many.entry.path, many.items) : null;
+    if (refused) {
+      plans.set(toolCall.toolCallId, Promise.resolve({ error: refused }));
+      planned.delete(toolCall.toolCallId);
+      return undefined;
+    }
     const call = many ? null : called(toolCall.toolName, toolCall.input);
     if (!many && (!call || !(await asks(call.entry, call.input)))) return undefined;
     // What it's given waits on its step for the answer, so it has to fit there.

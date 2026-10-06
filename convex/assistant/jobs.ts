@@ -18,14 +18,13 @@ import { readJobCounters } from "../extraction/jobCounters";
 import { readScreeningProgressCounts } from "../screening/progress";
 import { requireThread } from "./access";
 import { extractionCardValidator, JOBS_DOCKED, JOBS_TOLD_AT_ONCE, runningJobsValidator, screeningCardValidator } from "./validators";
-import { hasEnded, JOB_ENDED } from "./jobEnds";
+import { hasEnded, JOB_ENDED, STARTS } from "./jobEnds";
 import { admit, startReply } from "./replies";
 import { healCalls, settleAsked } from "./steps";
 import { writing } from "./threads";
 
 const FLAG = "assistant.enabled";
 /** The actions that start a job, and the kind each starts. */
-const STARTS: Record<string, Doc<"assistantJobEnds">["kind"]> = { "screening/start:screen": "screening", "extraction/start:extract": "extraction" };
 /** How long a chat whose person has as many replies going as they may waits before it's told again. */
 const BUSY_RETRY_MS = 60_000;
 
@@ -54,28 +53,45 @@ async function jobOf(ctx: QueryCtx, step: Doc<"assistantSteps">) {
   }
 }
 
-/** What a screening has come to, as its card and its readout say it. */
+/** Jobs of one request read for its card at most: a request of this many thousand papers. */
+const REQUEST_JOBS = 50;
+
+/**
+ * What a screening has come to, as its card and its readout say it. A request bigger than one
+ * job runs as several, one after another (../screening/start.ts `next`), under the one figure
+ * the person approved: it is told as one, its papers, answers and credits added up over its
+ * jobs, against what was approved, with the job running now (or the last) for its state.
+ */
 async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"screeningJobs">): Promise<Infer<typeof screeningCardValidator> | null> {
-  const job = await getScreeningJobAction.run(ctx, userId, { jobId });
-  if (!job) return null;
+  const asked = await ctx.db.get("screeningJobs", jobId);
+  const chatStep = asked?.chatStep;
+  const ran = chatStep ? await ctx.db.query("screeningJobs").withIndex("by_chatStep", (q) => q.eq("chatStep", chatStep)).take(REQUEST_JOBS) : [];
+  const jobs = (await Promise.all((ran.length ? ran : [{ _id: jobId }]).map((one) => getScreeningJobAction.run(ctx, userId, { jobId: one._id })))).filter((one) => one !== null);
+  if (!jobs.length) return null;
+  const job = jobs.at(-1)!;
+  const sum = (of: (one: (typeof jobs)[number]) => number) => jobs.reduce((total, one) => total + of(one), 0);
   const done = job.outcomes.included + job.outcomes.unclear + job.outcomes.excluded + job.outcomes.failed;
   // Its papers wait in the person's queue (#335) while their others hold the slots: the queue says so, and the screening
   // ahead of it, when one is being read, names what it waits for. Nothing read and nothing queued is a job starting.
   const queued =
     job.status === "processing" && done === 0 && job.running === 0
-      ? (await ctx.db.query("screeningResults").withIndex("by_job_and_status_and_waitingUser", (q) => q.eq("jobId", jobId).eq("status", "processing").eq("waitingUser", userId)).first()) !== null
+      ? (await ctx.db.query("screeningResults").withIndex("by_job_and_status_and_waitingUser", (q) => q.eq("jobId", job._id).eq("status", "processing").eq("waitingUser", userId)).first()) !== null
       : false;
-  const ahead = queued ? ((await screeningAhead(ctx, userId, jobId)) ?? { done: 0, total: 0 }) : null;
+  const ahead = queued ? ((await screeningAhead(ctx, userId, job._id)) ?? { done: 0, total: 0 }) : null;
   return {
     kind: "screening",
-    jobId,
+    jobId: job._id,
     status: job.status,
     ...(job.label ? { label: job.label } : {}),
-    total: job.totalPapers,
-    ...job.outcomes,
-    credits: job.credits.spent ?? 0,
-    ...(job.spendCap === undefined ? {} : { cap: job.spendCap }),
-    ...(job.capped ? { capped: true } : {}),
+    total: sum((one) => one.totalPapers),
+    included: sum((one) => one.outcomes.included),
+    unclear: sum((one) => one.outcomes.unclear),
+    excluded: sum((one) => one.outcomes.excluded),
+    failed: sum((one) => one.outcomes.failed),
+    credits: sum((one) => one.credits.spent ?? 0),
+    // What the person approved is the first job's cap: each job after holds what was left of it.
+    ...(jobs[0].spendCap === undefined ? {} : { cap: jobs[0].spendCap }),
+    ...(jobs.some((one) => one.capped) ? { capped: true } : {}),
     ...(ahead ? { waiting: ahead } : {}),
     ...(job.failure ? { failure: job.failure } : {}),
   };

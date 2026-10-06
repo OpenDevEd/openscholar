@@ -15,7 +15,7 @@ import { trimPaperData, type WorkInput } from "../../lib/library/trim-paper-data
 import { OPENALEX_WORK_SELECT_FIELDS } from "../../lib/openalex/search-params";
 import { workUrl } from "../../lib/openalex/work-id";
 import { followed } from "./followed";
-import { canonical, findItem, saveAsksFirst, savedByIdValidator, setPaperInCollectionAction } from "./mutations";
+import { canonical, checkSave, findItem, saveAsksFirst, savedByIdValidator, setPaperInCollectionAction } from "./mutations";
 
 export const saveAction = defineUserAction({
   path: "library/papers:save",
@@ -36,6 +36,10 @@ export const saveAction = defineUserAction({
     const openalexId = workUrl(id);
     // A library may follow the collection, which shows the paper outside the account.
     return openalexId !== null && ((await saveAsksFirst(ctx, userId, openalexId, rating ?? undefined)) || (collectionId != null && (await followed(ctx, collectionId))));
+  },
+  check: async (ctx, userId, { id, rating, collectionId }) => {
+    const openalexId = workUrl(id);
+    if (openalexId) await checkSave(ctx, userId, { openalexId, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }) });
   },
   run: async (ctx, userId, { id, rating, collectionId }, author, call) => {
     const openalexId = workUrl(id);

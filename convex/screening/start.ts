@@ -11,6 +11,7 @@ import { heldPapers } from "../paperSets/held";
 import { countSearch, PAGE_SIZE, searchSnapshotValidator, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest } from "../paperSets/search";
 import { requireMinimum, screeningHold } from "./estimate";
+import { writeEnd } from "../assistant/jobEnds";
 import { paperSetValidator, saveToValidator, screeningQuestionValidator, screeningScoringConfigValidator } from "./validators";
 
 type PaperSet = Infer<typeof paperSetValidator>;
@@ -75,10 +76,7 @@ async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assi
     throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   }
   requireMinimum(config.scoringConfig);
-  // What the person approved is one job's to spend. The jobs that would follow it in a longer request start later, by themselves, with no figure of their own.
-  if (spendCap !== undefined && through > jobEnd(first, through)) {
-    throw createError("VALIDATION_ERROR", `A screening started here takes up to ${MAX_SCREENING_PAPERS_PER_JOB.toLocaleString("en")} papers. Screen papers ${first} to ${jobEnd(first, through)} first, then the rest.`);
-  }
+  // What the person approved is the whole request's to spend, however many jobs it takes: the first job holds it, and each job after takes the hold on (`next`).
   // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
   type Made = { jobId: Id<"screeningJobs"> };
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
@@ -110,6 +108,23 @@ async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assi
   }
   throw createError("VALIDATION_ERROR", "There are no papers in that range");
 }
+
+/**
+ * Ends a request that a completed job handed on (../billing/spend.ts `handsOn`) when no job
+ * took it: the set ran out, or the next job couldn't start. Its hold is settled, and with
+ * `tell`, the chat that started it hears that it ended with that job.
+ */
+export const endRequest = internalMutation({
+  args: { jobId: v.id("screeningJobs"), tell: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, { jobId, tell }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    if (!job) return null;
+    if (job.spendHold) await ctx.scheduler.runAfter(0, internal.screening.start.settleHold, { jobId, hold: job.spendHold, waited: 0 });
+    if (tell) await writeEnd(ctx, "screening", job);
+    return null;
+  },
+});
 
 /** How often an ended job is looked at again while a paper of it is still being read, and for how long at most: longer than a paper's worker can run. */
 const RUNNING_CHECK_MS = 15_000;
@@ -231,10 +246,13 @@ export const next = internalAction({
       const { papers, ended, range } = await jobPapers(ctx, userId, { set, first, through, resume, snapshot }, config.questions);
       if (papers.length) await ctx.runMutation(internal.screening.mutations.createScreeningJobForUser, { userId, author: "user", papers, chained: true, ...range, ...config });
       else if (!ended && through > last) await ctx.scheduler.runAfter(0, internal.screening.start.next, { jobId, first: last + 1, ...(range.resume ? { resume: range.resume } : {}) });
+      // The set has no more papers: the request ends with the job before.
+      else await ctx.runMutation(internal.screening.start.endRequest, { jobId, tell: true });
     } catch (error) {
       console.error(`[screening] The job after ${jobId} couldn't start`, error);
-      const { questions, scoringConfig } = config;
-      await ctx.runMutation(internal.screening.mutations.stopRequest, { userId, set, first, last, ...(through > last ? { through } : {}), questions, scoringConfig, ...(label ? { label } : {}) });
+      const { questions, scoringConfig, chatStep } = config;
+      await ctx.runMutation(internal.screening.mutations.stopRequest, { userId, set, first, last, ...(through > last ? { through } : {}), questions, scoringConfig, ...(label ? { label } : {}), ...(chatStep ? { chatStep } : {}) });
+      await ctx.runMutation(internal.screening.start.endRequest, { jobId, tell: false });
     }
     return null;
   },

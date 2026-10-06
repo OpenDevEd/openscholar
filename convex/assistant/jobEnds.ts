@@ -8,12 +8,18 @@
 import { makeFunctionReference } from "convex/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { ENDED } from "../billing/spend";
+import { ENDED, handsOn } from "../billing/spend";
 import { createError } from "../lib/errors";
 import { JOBS_DOCKED } from "./validators";
 
 /** Whether a job's status is one it ends in (../billing/spend.ts): a job carried on since has another. */
 export const hasEnded = (status: string | undefined) => ENDED.has(status ?? "");
+
+/** The actions that start a job a chat docks, and the kind of job each starts. */
+export const STARTS: Record<string, Doc<"assistantJobEnds">["kind"]> = { "screening/start:screen": "screening", "extraction/start:extract": "extraction" };
+
+/** Why a chat that docks as many jobs as it may starts no more. */
+export const DOCK_FULL = `This chat already has ${JOBS_DOCKED} jobs running. Start this one once one of them ends, or from another chat.`;
 
 /** The chat message that tells a chat its jobs ended: the app's own, which the chat shows as an event (./replies.ts). */
 export const JOB_ENDED = "job-ended";
@@ -21,24 +27,30 @@ export const JOB_ENDED = "job-ended";
 // Named by its path: the module that defines it is built with these triggers.
 const deliver = makeFunctionReference<"mutation", { threadId: Id<"assistantThreads"> }>("assistant/jobs:deliver");
 
-type Job = { _id: string; status?: string; chatStep?: Id<"assistantSteps"> };
+type Job = { _id: string; status?: string; chatStep?: Id<"assistantSteps">; last?: number; through?: number };
 
-/** A trigger that writes the end of a job a reply started, once, and wakes its chat. A job deleted before it ended isn't told. */
+/** A trigger that writes the end of a job a reply started, once, and wakes its chat. A job deleted before it ended isn't told, nor one that hands its request on to the next (../billing/spend.ts `handsOn`): its request is told when it ends. */
 export const noteEndedJob =
   (kind: Doc<"assistantJobEnds">["kind"]) =>
   async (ctx: MutationCtx, { oldDoc, newDoc }: { oldDoc: Job | null; newDoc: Job | null }) => {
-    if (!newDoc?.chatStep || !oldDoc || ENDED.has(oldDoc.status ?? "") || !ENDED.has(newDoc.status ?? "")) return;
-    // One end of it still waits to be told: it's told as it ends now. One already told was that end; this is a new one.
-    const waiting = (await ctx.db.query("assistantJobEnds").withIndex("by_job", (q) => q.eq("jobId", newDoc._id)).take(20)).find((end) => end.pending);
-    if (waiting) {
-      await ctx.db.patch("assistantJobEnds", waiting._id, { status: newDoc.status!, endedAt: Date.now() });
-      return;
-    }
-    const step = await ctx.db.get("assistantSteps", newDoc.chatStep);
-    if (!step) return;
-    await ctx.db.insert("assistantJobEnds", { threadId: step.threadId, stepId: step._id, userId: step.userId, kind, jobId: newDoc._id, status: newDoc.status!, endedAt: Date.now(), pending: true });
-    await ctx.scheduler.runAfter(0, deliver, { threadId: step.threadId });
+    if (!newDoc?.chatStep || !oldDoc || ENDED.has(oldDoc.status ?? "") || !ENDED.has(newDoc.status ?? "") || handsOn(newDoc)) return;
+    await writeEnd(ctx, kind, newDoc);
   };
+
+/** Writes the end of a job a reply started, once, and wakes its chat: as the job ends, or as the request it handed on ends with no job after it. */
+export async function writeEnd(ctx: MutationCtx, kind: Doc<"assistantJobEnds">["kind"], job: Job) {
+  if (!job.chatStep || !job.status) return;
+  // One end of it still waits to be told: it's told as it ends now. One already told was that end; this is a new one.
+  const waiting = (await ctx.db.query("assistantJobEnds").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(20)).find((end) => end.pending);
+  if (waiting) {
+    await ctx.db.patch("assistantJobEnds", waiting._id, { status: job.status, endedAt: Date.now() });
+    return;
+  }
+  const step = await ctx.db.get("assistantSteps", job.chatStep);
+  if (!step) return;
+  await ctx.db.insert("assistantJobEnds", { threadId: step.threadId, stepId: step._id, userId: step.userId, kind, jobId: job._id, status: job.status, endedAt: Date.now(), pending: true });
+  await ctx.scheduler.runAfter(0, deliver, { threadId: step.threadId });
+}
 
 /**
  * Whether a job a reply started is running: it hasn't ended, and no one paused it from its
@@ -57,7 +69,9 @@ export async function noteRunningJob(ctx: MutationCtx, kind: Doc<"assistantJobs"
   const step = await ctx.db.get("assistantSteps", job.chatStep!);
   if (!step) return;
   const running = await ctx.db.query("assistantJobs").withIndex("by_thread", (q) => q.eq("threadId", step.threadId)).take(JOBS_DOCKED);
-  if (running.length >= JOBS_DOCKED) throw createError("VALIDATION_ERROR", `This chat already has ${JOBS_DOCKED} jobs running. Start this one once one of them ends, or from another chat.`);
+  // The next job of a screening request the chat already docked takes its place, whatever else started since: the request was let in, and approved, once.
+  const continues = kind === "screening" && (await ctx.db.query("screeningJobs").withIndex("by_chatStep", (q) => q.eq("chatStep", job.chatStep!)).take(2)).some((other) => other._id !== job._id);
+  if (!continues && running.length >= JOBS_DOCKED) throw createError("VALIDATION_ERROR", DOCK_FULL);
   await ctx.db.insert("assistantJobs", { threadId: step.threadId, stepId: step._id, userId: step.userId, kind, jobId: job._id });
 }
 
