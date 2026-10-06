@@ -35,14 +35,18 @@ export const Conversation = ({
  * use-stick-to-bottom follows growing content one animation frame late, so
  * every growth step (streamed text, a panel opening) paints once too low and
  * then snaps back. ResizeObserver callbacks run before paint, so pinning
- * there keeps the view still.
+ * there keeps the view still. The scroller is watched too: when it grows (the
+ * composer below it shrinking), the browser moves the view up a pixel a frame,
+ * which the library takes for the person scrolling up and stops following.
+ * Pinning it marks that move as the library's own.
  */
 const PinToBottomBeforePaint = () => {
-  const { contentRef, state } = useStickToBottomContext();
-  // Outside system: a ResizeObserver on the conversation content.
+  const { contentRef, scrollRef, state } = useStickToBottomContext();
+  // Outside system: a ResizeObserver on the conversation content and its scroller.
   useEffect(() => {
     const content = contentRef.current;
-    if (!content) {
+    const scroller = scrollRef.current;
+    if (!content || !scroller) {
       return;
     }
     const observer = new ResizeObserver(() => {
@@ -51,8 +55,9 @@ const PinToBottomBeforePaint = () => {
       }
     });
     observer.observe(content);
+    observer.observe(scroller);
     return () => observer.disconnect();
-  }, [contentRef, state]);
+  }, [contentRef, scrollRef, state]);
   return null;
 };
 

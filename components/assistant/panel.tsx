@@ -18,6 +18,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ASSISTANT_REQUESTS_BEFORE_ASKING } from "@/convex/lib/constants";
 import { Conversation, ConversationContent } from "@/components/ai-elements/conversation";
+import type { StickToBottomContext } from "use-stick-to-bottom";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { LinkSafetyDialog } from "@/components/extraction/chat/link-safety-dialog";
 import { getModelIcon } from "@/components/icons/provider-icons";
@@ -453,6 +454,8 @@ function Chat({
   // The message on its way to the server, and the chat it's for: Stop pressed before its reply shows waits for it.
   const outgoing = useRef<Promise<ThreadId | null> | null>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
+  // The thread's scroller: sending a message takes the person to the end of the chat, where its reply comes.
+  const scroller = useRef<StickToBottomContext>(null);
   const convex = useConvex();
 
   const create = useMutation(api.assistant.threads.create);
@@ -503,6 +506,8 @@ function Chat({
     const text = withTokens(typed, sentPicks);
     const from = threadId;
     drafts.set(from, "");
+    // However far back they had scrolled, or however the chat above moved, the reply to this is what they want to see.
+    void scroller.current?.scrollToBottom();
     // This send's own mark, so that finishing it doesn't clear a later one in another chat.
     let mine: Sending = { threadId: from };
     onSending(() => mine);
@@ -578,6 +583,7 @@ function Chat({
           <Thread
             // A different chat starts at its own newest message. A new chat that has just become a real one is the same thread.
             key={threadId === null || threadId === born ? NEW : threadId}
+            scroller={scroller}
             threadId={threadId}
             // An open chat shows once it's known which of its jobs are docked, so no job's card moves out of it after it shows.
             messages={threadId && !jobsKnown ? sent : [...messages, ...sent]}
@@ -658,12 +664,14 @@ function Launcher({ orbit, clock, onComplete, onOpen }: { orbit: OrbitMotion; cl
 }
 
 function Thread({
+  scroller,
   threadId,
   messages,
   live,
   fresh,
   older,
 }: {
+  scroller: RefObject<StickToBottomContext | null>;
   threadId: ThreadId | null;
   /** Oldest first: each message, then the steps of the reply to it, then the reply's text. */
   messages: Item[];
@@ -703,6 +711,7 @@ function Thread({
   return (
     // Both edges fade; the content's bottom padding keeps the last message clear of the fade.
     <Conversation
+      contextRef={scroller}
       className="min-h-0 flex-1"
       style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)` }}
       // The messages before these load as the person scrolls back towards them, as the app's other lists do.
