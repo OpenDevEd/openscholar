@@ -26,6 +26,7 @@ import { useSavePaper } from "@/components/library/save-control";
 import { useRatePaper } from "@/components/rating-selector";
 import { FocusModeSettings } from "@/components/focus-mode/focus-mode-settings";
 import type { PaperResult } from "@/lib/types";
+import { workUrl } from "@/lib/openalex/work-id";
 import { FocusModeClose } from "@/components/focus-mode/close-context";
 
 interface FocusModeProps {
@@ -78,6 +79,8 @@ export function FocusMode({
 
   const currentPaper = papers[currentIndex];
   const savePaper = useSavePaper(currentPaper);
+  // A paper with no OpenAlex record, such as one an extraction read from Zotero, can't be rated, saved or opened on OpenAlex.
+  const onOpenAlex = currentPaper ? workUrl(currentPaper.id) !== null : false;
   const authorFilter = useAuthorFilter();
   const journalFilter = useJournalFilter();
   const institutionFilter = useInstitutionFilter();
@@ -296,7 +299,7 @@ export function FocusMode({
         case "o":
         case "O":
           e.preventDefault();
-          window.open(currentPaper.id, "_blank");
+          if (onOpenAlex) window.open(currentPaper.id, "_blank");
           break;
         case "a":
         case "A":
@@ -318,11 +321,11 @@ export function FocusMode({
         case "x":
         case "X":
           e.preventDefault();
-          handleRatingChange(currentPaper.id, "no-rating");
+          if (onOpenAlex) handleRatingChange(currentPaper.id, "no-rating");
           break;
         case "0":
           e.preventDefault();
-          handleRatingChange(currentPaper.id, "0");
+          if (onOpenAlex) handleRatingChange(currentPaper.id, "0");
           break;
         case "1":
         case "2":
@@ -330,12 +333,12 @@ export function FocusMode({
         case "4":
         case "5":
           e.preventDefault();
-          handleRatingChange(currentPaper.id, e.key);
+          if (onOpenAlex) handleRatingChange(currentPaper.id, e.key);
           break;
         case "b":
         case "B":
           e.preventDefault();
-          savePaper.toggle();
+          if (onOpenAlex) savePaper.toggle();
           break;
         case "s":
         case "S":
@@ -363,6 +366,7 @@ export function FocusMode({
     showTranslated,
     handleRatingChange,
     savePaper.toggle,
+    onOpenAlex,
   ]);
 
   const goToIndex = (index: number) => {

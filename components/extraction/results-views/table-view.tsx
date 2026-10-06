@@ -24,6 +24,7 @@ import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-p
 import { HighlightedText } from "./highlighted-text";
 import { PaperQuestionProgress } from "@/components/extraction/paper-question-progress";
 import { PaperDetails, ResultCell } from "./result-parts";
+import { PaperTitle } from "@/components/focus-mode/paper-title";
 
 interface TableViewProps {
   papers: PaperWithResults[];
@@ -37,6 +38,8 @@ interface TableViewProps {
   usePdfs: boolean;
   /** Plan-04: opt-in per-paper Credits column, toggled via toolbar. */
   showCredits?: boolean;
+  /** Opens focus mode on a paper, by its place in `papers`. */
+  onOpenPaper: (index: number) => void;
 }
 
 /** One paper's row. Memoised, so a change to another row, or a resize, leaves it alone. */
@@ -51,6 +54,8 @@ const PaperRow = memo(function PaperRow({
   pinnedShadow,
   openAnswer,
   onOpenAnswer,
+  index,
+  onOpenPaper,
 }: {
   paper: PaperWithResults;
   questions: Question[];
@@ -62,6 +67,8 @@ const PaperRow = memo(function PaperRow({
   pinnedShadow: string;
   openAnswer: string | null;
   onOpenAnswer: (answer: OpenAnswer) => void;
+  index: number;
+  onOpenPaper: (index: number) => void;
 }) {
   const completedCount = paper.results.filter((r) => r.status === "completed").length;
   const questionProgress = `${completedCount}/${Math.max(questions.length, paper.results.length)}`;
@@ -86,9 +93,9 @@ const PaperRow = memo(function PaperRow({
           />
           <div className="min-w-0 space-y-1.5">
             <TooltipHint label={paper.title} onlyWhenClipped>
-              <p className="line-clamp-4 text-sm font-medium leading-snug">
+              <PaperTitle title={paper.title} onOpen={() => onOpenPaper(index)} className="line-clamp-4">
                 <HighlightedText text={paper.title} query={searchQuery} />
-              </p>
+              </PaperTitle>
             </TooltipHint>
             <PaperDetails paper={paper} pdfEnabled={pdfEnabled} />
             <div onClick={(e) => e.stopPropagation()}>
@@ -133,6 +140,7 @@ export const TableView = memo(function TableView({
   openAnswer,
   usePdfs,
   showCredits = false,
+  onOpenPaper,
 }: TableViewProps) {
   const tc = useTranslations("common");
   const pdfEnabled = usePdfs;
@@ -228,9 +236,11 @@ export const TableView = memo(function TableView({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {papers.map((paper) => (
+          {papers.map((paper, index) => (
             <PaperRow
               key={paper._id}
+              index={index}
+              onOpenPaper={onOpenPaper}
               paper={paper}
               questions={questions}
               isSelected={selectedIds.has(paper._id)}

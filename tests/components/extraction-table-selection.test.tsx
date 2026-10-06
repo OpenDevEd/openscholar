@@ -22,7 +22,7 @@ const papers: PaperWithResults[] = ["First paper", "Second paper"].map((title, i
   results: [],
 }));
 
-function SelectionTable() {
+function SelectionTable({ onOpenPaper = () => {} }: { onOpenPaper?: (index: number) => void }) {
   const [selectedIds, setSelectedIds] = useState(new Set<string>());
   const [visible, setVisible] = useState(papers);
   return <NextIntlClientProvider locale="en-US" messages={messages}><TooltipProvider>
@@ -30,7 +30,7 @@ function SelectionTable() {
     <button onClick={() => setVisible(papers)}>Show all</button>
     <button onClick={() => setVisible([])}>Show none</button>
     <TableView papers={visible} questions={[]} selectedIds={selectedIds}
-      onSelectionChange={setSelectedIds} onOpenAnswer={() => {}} usePdfs={false} />
+      onSelectionChange={setSelectedIds} onOpenAnswer={() => {}} onOpenPaper={onOpenPaper} usePdfs={false} />
   </TooltipProvider></NextIntlClientProvider>;
 }
 
@@ -53,4 +53,12 @@ it("selects and deselects visible papers without losing hidden selections", () =
   expect(row("First paper")).toBeChecked();
   expect(row("Second paper")).not.toBeChecked();
   expect(all()).toBePartiallyChecked();
+});
+
+it("opens a paper's title in focus mode at its place in the list, without selecting its row", () => {
+  const onOpenPaper = vi.fn();
+  render(<SelectionTable onOpenPaper={onOpenPaper} />);
+  fireEvent.click(screen.getByRole("button", { name: "Second paper" }));
+  expect(onOpenPaper).toHaveBeenCalledWith(1);
+  expect(screen.getByRole("checkbox", { name: "Second paper" })).not.toBeChecked();
 });
