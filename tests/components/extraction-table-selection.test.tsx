@@ -30,7 +30,7 @@ function SelectionTable() {
     <button onClick={() => setVisible(papers)}>Show all</button>
     <button onClick={() => setVisible([])}>Show none</button>
     <TableView papers={visible} questions={[]} selectedIds={selectedIds}
-      onSelectionChange={setSelectedIds} onOpenAnswer={() => {}} usePdfs={false} />
+      onSelectionChange={setSelectedIds} onOpenAnswer={() => {}} onOpenPaper={() => {}} usePdfs={false} />
   </TooltipProvider></NextIntlClientProvider>;
 }
 

@@ -64,9 +64,9 @@ type Sending = { threadId: ThreadId | null };
 /** One reply as the thread draws it: the exchange of the message it answers, the first thing of it on the page, its steps, and how many messages of it are placed. */
 type Run = { order: number; head: Item; steps: StepItem[]; said: number };
 
-const PANEL_W = 440;
+export const PANEL_W = 440;
 /** How far the chips above the composer hang over the thread: half their height. */
-const CHIP_HANG = 16;
+export const CHIP_HANG = 16;
 const SHELL_SPRING = { type: "spring" as const, stiffness: 380, damping: 36, mass: 0.9 };
 const FIRST_MESSAGES = 30;
 /** How near the thread's top the person scrolls before the messages before these load, so they're there by the time they get to them. */
@@ -880,7 +880,7 @@ function FailedRow({ error }: { error: Message["error"] }) {
  * A message someone sent. In a shared chat, another person's carries their name. It rises
  * in as it's sent; the server's copy then takes its place without moving.
  */
-function UserBubble({ message }: { message: Message }) {
+export function UserBubble({ message }: { message: Message }) {
   return (
     <motion.div
       initial={message.id.startsWith(SENDING) ? { opacity: 0, y: 8 } : false}
@@ -922,7 +922,7 @@ function Empty() {
   );
 }
 
-function Header({ title, onHistory, onShare, onSpending, onRestart, onFold }: { title: string; onHistory: () => void; onShare: () => void; onSpending: () => void; onRestart: () => void; onFold: () => void }) {
+export function Header({ title, onHistory, onShare, onSpending, onRestart, onFold }: { title: string; onHistory: () => void; onShare: () => void; onSpending: () => void; onRestart: () => void; onFold: () => void }) {
   const t = useTranslations("assistant");
   return (
     <div className="border-b border-border/50 px-4 pb-3 pt-3.5">
@@ -1048,7 +1048,7 @@ function useViewName() {
   return t("page");
 }
 
-function Footer({
+export function Footer({
   composer,
   draft,
   setDraft,

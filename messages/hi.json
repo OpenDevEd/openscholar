@@ -4036,7 +4036,14 @@
         "failed": "एक्सट्रैक्शन विफल रहा",
         "cancel": "एक्सट्रैक्शन रद्द करें"
       },
-      "ended": "{kind, select, screening {आपकी स्क्रीनिंग} other {आपका एक्सट्रैक्शन}} {status, select, completed {पूरा हुआ} creditsExhausted {आपके दिए क्रेडिट पर रुका} cancelled {रद्द हुआ} other {विफल रहा}}"
-    }
+      "ended": "{kind, select, screening {आपकी स्क्रीनिंग} other {आपका एक्सट्रैक्शन}} {status, select, completed {पूरा हुआ} creditsExhausted {आपके दिए क्रेडिट पर रुका} cancelled {रद्द हुआ} other {विफल रहा}}",
+      "read": "पढ़े गए",
+      "failedCount": "विफल"
+    },
+    "jobKind": {
+      "screening": "स्क्रीनिंग",
+      "extraction": "एक्सट्रैक्शन"
+    },
+    "moreJobs": "{count} और कार्य"
   }
 }

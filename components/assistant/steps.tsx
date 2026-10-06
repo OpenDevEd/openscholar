@@ -161,7 +161,7 @@ export function Steps({
       {steps
         .filter((step) => JOB_STARTS.has(step.action) && step.status === "done")
         .map((step) => (
-          <JobCard key={`job:${step.id}`} threadId={threadId} stepId={step.id} kind={step.action === "screening/start:screen" ? "screening" : "extraction"} />
+          <JobCard key={`job:${step.id}`} threadId={threadId} stepId={step.id} />
         ))}
     </div>
   );
@@ -381,7 +381,7 @@ function runsOf(steps: StepItem[]) {
   return runs;
 }
 
-function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">; steps: StepItem[]; /** Loads the steps before these, when the reply ran more. */ earlier: (() => void) | "loading" | null }) {
+export function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">; steps: StepItem[]; /** Loads the steps before these, when the reply ran more. */ earlier: (() => void) | "loading" | null }) {
   const t = useTranslations("assistant");
   const format = useFormatter();
   // A count as the search history writes one: compact past a thousand, so a broad query's 329.5M fits its line.

@@ -4036,7 +4036,14 @@
         "failed": "L'extraction a échoué",
         "cancel": "Annuler l'extraction"
       },
-      "ended": "{kind, select, screening {Votre tri} other {Votre extraction}} {status, select, completed {est terminé} creditsExhausted {s'est arrêté aux crédits autorisés} cancelled {a été annulé} other {a échoué}}"
-    }
+      "ended": "{kind, select, screening {Votre tri} other {Votre extraction}} {status, select, completed {est terminé} creditsExhausted {s'est arrêté aux crédits autorisés} cancelled {a été annulé} other {a échoué}}",
+      "read": "lus",
+      "failedCount": "en échec"
+    },
+    "jobKind": {
+      "screening": "Tri",
+      "extraction": "Extraction"
+    },
+    "moreJobs": "{count, plural, one {# autre tâche} other {# autres tâches}}"
   }
 }

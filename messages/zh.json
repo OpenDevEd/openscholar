@@ -4036,7 +4036,14 @@
         "failed": "提取失败",
         "cancel": "取消提取"
       },
-      "ended": "{kind, select, screening {你的筛选} other {你的提取}}{status, select, completed {已完成} creditsExhausted {已在你允许的积分处停止} cancelled {已取消} other {失败}}"
-    }
+      "ended": "{kind, select, screening {你的筛选} other {你的提取}}{status, select, completed {已完成} creditsExhausted {已在你允许的积分处停止} cancelled {已取消} other {失败}}",
+      "read": "已读",
+      "failedCount": "失败"
+    },
+    "jobKind": {
+      "screening": "筛选",
+      "extraction": "提取"
+    },
+    "moreJobs": "另外 {count} 个任务"
   }
 }

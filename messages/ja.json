@@ -4036,7 +4036,14 @@
         "failed": "抽出に失敗しました",
         "cancel": "抽出をキャンセル"
       },
-      "ended": "{kind, select, screening {スクリーニング} other {抽出}}{status, select, completed {が完了しました} creditsExhausted {は許可したクレジットで停止しました} cancelled {はキャンセルされました} other {に失敗しました}}"
-    }
+      "ended": "{kind, select, screening {スクリーニング} other {抽出}}{status, select, completed {が完了しました} creditsExhausted {は許可したクレジットで停止しました} cancelled {はキャンセルされました} other {に失敗しました}}",
+      "read": "読了",
+      "failedCount": "失敗"
+    },
+    "jobKind": {
+      "screening": "スクリーニング",
+      "extraction": "抽出"
+    },
+    "moreJobs": "他 {count} 件のジョブ"
   }
 }

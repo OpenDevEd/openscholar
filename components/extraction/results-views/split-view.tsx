@@ -12,15 +12,17 @@ import {
 } from "@/lib/extraction/citations";
 import type { CitationLocation } from "@/lib/extraction/citations";
 import type { OpenAnswer } from "@/components/extraction/answer-panel";
-import { answeredConfidence, ConfidenceValue, PaperDetails, ResultAnswer, ResultMeta } from "./result-parts";
+import { answeredConfidence, ConfidenceValue, PaperDetails, PaperTitle, ResultAnswer, ResultMeta } from "./result-parts";
 
 interface SplitViewProps {
   papers: PaperWithResults[];
   questions: Question[];
   onOpenAnswer: (answer: OpenAnswer) => void;
+  /** Opens focus mode on a paper, by its place in `papers`. */
+  onOpenPaper: (index: number) => void;
 }
 
-export const SplitView = memo(function SplitView({ papers, questions, onOpenAnswer }: SplitViewProps) {
+export const SplitView = memo(function SplitView({ papers, questions, onOpenAnswer, onOpenPaper }: SplitViewProps) {
   const t = useTranslations("extraction");
   const pdfEnabled = useFeatureFlag("extraction.pdf");
   const [selectedPaperId, setSelectedPaperId] = useState<string | null>(
@@ -59,7 +61,9 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenAnsw
         {selectedPaper ? (
           <div className="divide-y divide-border-subtle">
             <div className="space-y-1.5 p-4 md:px-6">
-              <h2 className="text-base font-semibold leading-snug">{selectedPaper.title}</h2>
+              <h2>
+                <PaperTitle title={selectedPaper.title} onOpen={() => onOpenPaper(papers.indexOf(selectedPaper))} className="text-base font-semibold" />
+              </h2>
               <PaperDetails paper={selectedPaper} pdfEnabled={pdfEnabled} />
             </div>
             {questions.map((q) => {

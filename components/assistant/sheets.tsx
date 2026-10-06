@@ -28,7 +28,7 @@ import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { OrbitMark } from "./orbit-mark";
 import { IconButton, WorkingText } from "./parts";
-import { KindTile, type Waiting } from "./steps";
+import { KIND, KindTile, type Waiting } from "./steps";
 
 /** A sheet open over the panel. */
 export type OpenSheet =
@@ -77,7 +77,7 @@ export function Dim({ on }: { on: boolean }) {
   );
 }
 
-function SheetHeader({ title, detail, onBack }: { title: string; detail?: string; onBack: () => void }) {
+export function SheetHeader({ title, detail, onBack }: { title: string; detail?: string; onBack: () => void }) {
   const t = useTranslations("assistant");
   return (
     <div className="flex items-center gap-2 border-b border-border/50 px-3 py-3">
@@ -96,7 +96,9 @@ function SheetHeader({ title, detail, onBack }: { title: string; detail?: string
 }
 
 type ThreadId = Id<"assistantThreads">;
-type Chat = FunctionReturnType<typeof api.assistant.threads.list>["page"][number];
+/** A job a chat's replies started that is still running, as its row shows it. */
+export type ChatJob = { id: string; kind: "screening" | "extraction"; done: number; total: number };
+export type Chat = FunctionReturnType<typeof api.assistant.threads.list>["page"][number] & { jobs?: ChatJob[] };
 type Member = Chat["members"][number];
 type Scope = "all" | "mine" | "shared";
 
@@ -153,7 +155,27 @@ function Members({ members, organization }: { members: Member[]; organization?: 
   );
 }
 
-/** What a chat's row says under its title: a reply being written, who is in it, or its newest message. */
+/** The most running jobs a chat's row lists, one line each; past them it counts the rest. */
+const JOBS_ON_ROW = 2;
+
+/** A running job on a chat's row: its kind, a thin bar, and how far it has got. */
+function JobLine({ job }: { job: ChatJob }) {
+  const t = useTranslations("assistant");
+  return (
+    <span className="flex h-6 min-w-0 items-center gap-2 text-xs">
+      <KindTile kind={job.kind} size="sm" working />
+      <span className="min-w-0 truncate font-medium text-foreground/90">{t(`jobKind.${job.kind}`)}</span>
+      <span className="h-1.5 w-20 shrink-0 overflow-hidden rounded-full bg-foreground/10">
+        <motion.span className="block h-full rounded-full" style={{ backgroundColor: KIND[job.kind].tint }} initial={false} animate={{ width: `${job.total ? (job.done / job.total) * 100 : 0}%` }} transition={{ duration: 0.3, ease: EASE }} />
+      </span>
+      <span className="shrink-0 tabular-nums text-muted-foreground">
+        <span className="font-medium text-foreground">{job.done}</span> / {job.total}
+      </span>
+    </span>
+  );
+}
+
+/** What a chat's row says under its title: its running jobs, a reply being written, who is in it, or its newest message. */
 function Status({ chat }: { chat: Chat }) {
   const t = useTranslations("assistant");
   const format = useFormatter();
@@ -170,7 +192,7 @@ function Status({ chat }: { chat: Chat }) {
   return <span className="truncate text-xs text-muted-foreground">{chat.preview}</span>;
 }
 
-function ChatRow({ chat, index, current, when, onOpen, onShare }: { chat: Chat; index: number; current: boolean; when: string; onOpen: () => void; onShare: () => void }) {
+export function ChatRow({ chat, index, current, when, onOpen, onShare }: { chat: Chat; index: number; current: boolean; when: string; onOpen: () => void; onShare: () => void }) {
   const t = useTranslations("assistant");
   return (
     <motion.div
@@ -190,6 +212,14 @@ function ChatRow({ chat, index, current, when, onOpen, onShare }: { chat: Chat; 
           </span>
           <Members members={chat.members} organization={chat.organization} />
         </span>
+        {chat.jobs?.length ? (
+          <span className="mt-1 block">
+            {chat.jobs.slice(0, JOBS_ON_ROW).map((job) => (
+              <JobLine key={job.id} job={job} />
+            ))}
+            {chat.jobs.length > JOBS_ON_ROW ? <span className="flex h-6 items-center pl-7 text-xs text-muted-foreground">{t("moreJobs", { count: chat.jobs.length - JOBS_ON_ROW })}</span> : null}
+          </span>
+        ) : null}
       </button>
       {/* Out of the flow, so the hover action never adds height to the row. */}
       <div className="absolute right-2 top-2 hidden group-focus-within:block group-hover:block">
@@ -233,7 +263,7 @@ export function HistorySheet({
   const { results, status, loadMore } = usePaginatedQuery(api.assistant.threads.list, { scope, ...(text ? { text } : {}) }, { initialNumItems: CHATS_PER_PAGE });
 
   const today = new Date(now).setHours(0, 0, 0, 0);
-  const live = (chat: Chat) => chat.writing || chat.members.some((member) => member.here);
+  const live = (chat: Chat) => chat.writing || Boolean(chat.jobs?.length) || chat.members.some((member) => member.here);
   const when = (at: number) =>
     at >= today ? format.dateTime(at, { hour: "numeric", minute: "2-digit" }) : at >= today - 6 * DAY ? format.dateTime(at, { weekday: "short" }) : format.dateTime(at, { day: "numeric", month: "short" });
   const groups = [

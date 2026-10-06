@@ -7,7 +7,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-panel";
-import { PaperDetails, ResultCell } from "./result-parts";
+import { PaperDetails, PaperTitle, ResultCell } from "./result-parts";
 import { CircleDashed, CircleX } from "@/components/icons";
 import { getCitationStatus } from "@/lib/extraction/citations";
 
@@ -19,6 +19,8 @@ interface CardViewProps {
   onOpenAnswer: (answer: OpenAnswer) => void;
   /** The answer open in the side panel, to highlight its cell. */
   openAnswer?: string | null;
+  /** Opens focus mode on a paper, by its place in `papers`. */
+  onOpenPaper: (index: number) => void;
 }
 
 /** One paper's card. Memoised, so opening an answer on another card leaves it alone. */
@@ -30,6 +32,8 @@ const PaperCard = memo(function PaperCard({
   pdfEnabled,
   openAnswer,
   onOpenAnswer,
+  index,
+  onOpenPaper,
 }: {
   paper: PaperWithResults;
   questions: Question[];
@@ -38,6 +42,8 @@ const PaperCard = memo(function PaperCard({
   pdfEnabled: boolean;
   openAnswer: string | null;
   onOpenAnswer: (answer: OpenAnswer) => void;
+  index: number;
+  onOpenPaper: (index: number) => void;
 }) {
   const tc = useTranslations("common");
   const tErrorTitle = useTranslations("errors.title");
@@ -79,7 +85,7 @@ const PaperCard = memo(function PaperCard({
         />
         <div className="min-w-0 flex-1 space-y-1">
           <TooltipHint label={paper.title} onlyWhenClipped>
-            <p className="line-clamp-2 text-sm font-medium leading-snug">{paper.title}</p>
+            <PaperTitle title={paper.title} onOpen={() => onOpenPaper(index)} className="line-clamp-2" />
           </TooltipHint>
           <PaperDetails paper={paper} pdfEnabled={pdfEnabled} />
         </div>
@@ -150,6 +156,7 @@ export const CardView = memo(function CardView({
   onSelectionChange,
   onOpenAnswer,
   openAnswer,
+  onOpenPaper,
 }: CardViewProps) {
   const pdfEnabled = useFeatureFlag("extraction.pdf");
   const toggleSelect = (id: string) => {
@@ -164,9 +171,11 @@ export const CardView = memo(function CardView({
 
   return (
     <ul className="grid gap-4 p-4 md:p-6 @4xl:grid-cols-2">
-      {papers.map((paper) => (
+      {papers.map((paper, index) => (
         <PaperCard
           key={paper._id}
+          index={index}
+          onOpenPaper={onOpenPaper}
           paper={paper}
           questions={questions}
           isSelected={selectedIds.has(paper._id)}

@@ -52,7 +52,7 @@ import {
 import { useState, useMemo, useCallback } from "react";
 import { useAppToast } from "@/lib/toast";
 import { ResultsColumnsMenu, ResultsFilterMenu, ResultsFilters, ResultsViewSwitch, type ResultsSortBy } from "@/components/extraction/results-toolbar";
-import { TableView, CardView, SplitView } from "@/components/extraction/results-views";
+import { TableView, CardView, SplitView, PaperFocus, openPaperFocus } from "@/components/extraction/results-views";
 import { SmartPagination } from "@/components/extraction/smart-pagination";
 import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
 import { ExportDialog } from "@/components/extraction/export-dialog";
@@ -831,6 +831,7 @@ export default function JobDetailPage() {
                           openAnswer={openAnswerKey(openAnswer)}
                           usePdfs={job.usePdfs ?? false}
                           showCredits={showCreditsColumn}
+                          onOpenPaper={openPaperFocus}
                         />
                       )}
                       {viewMode === 'cards' && (
@@ -841,6 +842,7 @@ export default function JobDetailPage() {
                           onSelectionChange={handleCardSelectionChange}
                           onOpenAnswer={openAnswerPanel}
                           openAnswer={openAnswerKey(openAnswer)}
+                          onOpenPaper={openPaperFocus}
                         />
                       )}
                       {viewMode === 'split' && (
@@ -848,8 +850,10 @@ export default function JobDetailPage() {
                           papers={displayedPapers}
                           questions={questions}
                           onOpenAnswer={openAnswerPanel}
+                          onOpenPaper={openPaperFocus}
                         />
                       )}
+                      <PaperFocus papers={displayedPapers} />
                     </>
                   )}
                 </div>

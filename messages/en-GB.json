@@ -4028,7 +4028,14 @@
         "failed": "The extraction failed",
         "cancel": "Cancel the extraction"
       },
-      "ended": "{kind, select, screening {Your screening} other {Your extraction}} {status, select, completed {finished} creditsExhausted {stopped at the credits you allowed} cancelled {was cancelled} other {failed}}"
-    }
+      "ended": "{kind, select, screening {Your screening} other {Your extraction}} {status, select, completed {finished} creditsExhausted {stopped at the credits you allowed} cancelled {was cancelled} other {failed}}",
+      "read": "read",
+      "failedCount": "failed"
+    },
+    "jobKind": {
+      "screening": "Screening",
+      "extraction": "Extraction"
+    },
+    "moreJobs": "{count, plural, one {# more job} other {# more jobs}}"
   }
 }

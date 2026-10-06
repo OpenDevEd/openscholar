@@ -1,5 +1,6 @@
 "use client";
 
+import type { ComponentProps, ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { ExternalLink, PanelLeftOpen, Quote } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
@@ -164,6 +165,27 @@ export function ResultCell({ result, type, searchQuery = "", clamp, selected = f
           selected ? "text-primary opacity-100" : "opacity-0 group-hover/cell:opacity-100 group-focus-visible/cell:opacity-100",
         )}
       />
+    </button>
+  );
+}
+
+/** A paper's title, which opens the paper in focus mode, stepping through the list it's in. */
+export function PaperTitle({ title, onOpen, className, children, ...props }: { title: string; onOpen: () => void; className?: string; children?: ReactNode } & Omit<ComponentProps<"button">, "title" | "onClick">) {
+  return (
+    <button
+      type="button"
+      {...props}
+      onClick={(event) => {
+        // A row that selects its paper on a click leaves this one to the title.
+        event.stopPropagation();
+        onOpen();
+      }}
+      className={cn(
+        "block text-left text-sm font-medium leading-snug underline decoration-transparent underline-offset-2 transition-colors hover:decoration-muted-foreground/60 focus-visible:decoration-foreground",
+        className,
+      )}
+    >
+      {children ?? title}
     </button>
   );
 }
