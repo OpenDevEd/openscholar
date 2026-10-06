@@ -61,6 +61,44 @@ export const classifiedErrorValidator = v.object({
 
 export const MAX_QUESTIONS_PER_JOB = MAX_QUESTIONS;
 
+/** Characters of an answer, or of one item of a list answer, an answer row keeps; and items it keeps. */
+export const ANSWER_TEXT_MAX = 200;
+export const ITEM_TEXT_MAX = 80;
+export const ANSWER_ITEMS_MAX = 10;
+/**
+ * One paper's finished answer to one question, short, for counting a job's answers
+ * (listProjection.ts `writeAnswerRows`): what the answer is, normalised, as the results page
+ * groups it (null when the paper didn't say), how the page shows it, the items of a list
+ * answer, and the paper's status and confidence, which the results page filters by. One row
+ * a paper and question, written with the paper's projection, so a question's summary reads
+ * small rows and never another paper's.
+ */
+export const extractionAnswerRowFields = {
+  jobId: v.id("extractionJobs"),
+  paperId: v.id("extractionPapers"),
+  questionKey: v.string(),
+  key: v.union(v.string(), v.null()),
+  shown: v.string(),
+  items: capped(v.array(v.string()), ANSWER_ITEMS_MAX),
+  status: v.string(),
+  confidence: v.number(),
+};
+
+/** Answers, or items of list answers, one summary names: the most common, the rest counted. */
+export const SUMMARY_GROUPS = 25;
+/** One question's answers across every paper a set of filters keeps, grouped and counted (queries/results.ts). */
+export const resultsSummaryValidator = v.object({
+  question: v.string(),
+  /** Papers the filters keep that have finished this question, and how many of them answered it. */
+  papers: v.number(),
+  answered: v.number(),
+  /** Each answer as the job's page shows it, with how many papers gave it, most first. */
+  answers: capped(v.array(v.object({ answer: v.string(), papers: v.number() })), SUMMARY_GROUPS),
+  moreAnswers: v.number(),
+  /** For a question answered with a list: each item, with how many papers name it, most first. */
+  items: capped(v.array(v.object({ item: v.string(), papers: v.number() })), SUMMARY_GROUPS),
+});
+
 /** Papers picked at once for a job or chat, which holds at most this many. */
 export function paperSelectionValidator<V extends Validator<any, "required", any>>(paper: V) {
   return capped(v.array(paper), MAX_CHAT_PAPERS);

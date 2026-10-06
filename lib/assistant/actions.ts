@@ -58,6 +58,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "extraction/queries:countJobs": { kind: "extraction", words: "extractions" },
   "extraction/queries:listJobResults": { kind: "extraction", words: "extractionResults" },
   "extraction/queries:countJobResults": { kind: "extraction", words: "extractionResults" },
+  "extraction/queries:summarizeJobResults": { kind: "extraction", words: "extractionResults" },
   "extraction/queries:countJobFailures": { kind: "extraction", words: "extractionResults" },
   "library/papers:collect": { kind: "collection", words: "collect" },
   "library/papers:collect#in": { kind: "collection", words: "collectIn" },

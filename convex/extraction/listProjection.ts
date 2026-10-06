@@ -1,6 +1,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { MAX_QUESTIONS_PER_JOB } from "./validators";
+import { ANSWER_ITEMS_MAX, ANSWER_TEXT_MAX, ITEM_TEXT_MAX, MAX_QUESTIONS_PER_JOB } from "./validators";
+import { formatAnswerForDisplay, normalizeAnswer, parseAnswerEntities } from "../../lib/extraction/analysis";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 
 const SEARCH_TEXT_MAX_CHARS = 6000;
@@ -224,4 +225,42 @@ export async function recomputePaperListProjection(
       paper.pdfUrl || paper.storageId || paper.ragEntryId || paper.isIndexed,
     ),
   });
+  await writeAnswerRows(ctx, paper, results, avgConfidence);
+}
+
+/**
+ * Keeps a paper's answer rows (validators.ts `extractionAnswerRowFields`) as its finished
+ * results are: one a question it has finished, written only where something changed, and
+ * none for a question it hasn't. They're the paper's alone, so papers finishing together
+ * never write the same document.
+ */
+export async function writeAnswerRows(ctx: MutationCtx, paper: Doc<"extractionPapers">, results: ReadonlyArray<Doc<"extractionResults">>, confidence: number) {
+  const wanted = new Map(
+    results
+      .filter((result) => result.status === "completed")
+      .map((result) => {
+        const key = normalizeAnswer(result.answer);
+        return [
+          result.questionKey,
+          {
+            jobId: paper.jobId,
+            paperId: paper._id,
+            questionKey: result.questionKey,
+            key: key === null ? null : key.slice(0, ANSWER_TEXT_MAX),
+            shown: key === null ? "" : formatAnswerForDisplay(result.answer).slice(0, ANSWER_TEXT_MAX),
+            items: Array.isArray(result.answer) ? parseAnswerEntities(result.answer).slice(0, ANSWER_ITEMS_MAX).map((item) => item.slice(0, ITEM_TEXT_MAX)) : [],
+            status: paper.status ?? "pending",
+            confidence,
+          },
+        ] as const;
+      }),
+  );
+  const kept = await ctx.db.query("extractionAnswerRows").withIndex("by_paper", (q) => q.eq("paperId", paper._id)).take(MAX_QUESTIONS_PER_JOB);
+  for (const row of kept) {
+    const next = wanted.get(row.questionKey);
+    wanted.delete(row.questionKey);
+    if (!next) await ctx.db.delete("extractionAnswerRows", row._id);
+    else if (next.key !== row.key || next.shown !== row.shown || next.status !== row.status || next.confidence !== row.confidence || next.items.join("\u0000") !== row.items.join("\u0000")) await ctx.db.replace("extractionAnswerRows", row._id, next);
+  }
+  for (const row of wanted.values()) await ctx.db.insert("extractionAnswerRows", row);
 }

@@ -20,7 +20,7 @@ import {
   screeningSelectionValidator,
   extractionPaperQueueFields,
   extractionQuestionFields,
-  extractionResultFields,
+  extractionResultFields, extractionAnswerRowFields,
   storedSearchFiltersValidator,
 } from "./extraction/validators";
 import {
@@ -953,6 +953,8 @@ export default defineSchema({
     revertedAt: v.optional(v.number()),
   }).index("by_job", ["jobId"]),
 
+  // Each paper's finished answer to each question, short, for counting a job's answers (convex/extraction/listProjection.ts).
+  extractionAnswerRows: defineTable(extractionAnswerRowFields).index("by_job_question", ["jobId", "questionKey"]).index("by_paper", ["paperId"]),
   extractionResults: defineTable(extractionResultFields)
     .index("by_paper", ["paperId"])
     .index("by_paper_question", ["paperId", "questionKey"])
