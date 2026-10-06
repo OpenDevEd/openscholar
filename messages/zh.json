@@ -4084,6 +4084,7 @@
       "field": "子领域",
       "subfield": "主题"
     },
-    "topicPapers": "{name}，{count} 篇论文"
+    "topicPapers": "{name}，{count} 篇论文",
+    "noAuthorRecord": "OpenAlex 中无作者记录"
   }
 }
