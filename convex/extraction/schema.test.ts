@@ -28,7 +28,6 @@ describe("extractionJobs schema", () => {
         updatedAt: 0,
       });
       const job = await ctx.db.get(jobId);
-      expect(job?.mode).toBe("extraction");
       expect(job?.usePdfs).toBe(true);
       expect(job?.status).toBe("pending");
     });

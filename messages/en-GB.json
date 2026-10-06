@@ -491,7 +491,6 @@
     "usePdfsTitle": "Use PDFs",
     "usePdfsDescription": "Include full PDF content for richer extraction. Abstract-only otherwise.",
     "usePdfsAriaLabel": "Include PDF content in extraction",
-    "pleaseSelectModel": "Please select a chat model",
     "abstractMissingTitle": "Some papers are missing an abstract",
     "abstractMissingDescription": "{missing} of {total} selected papers have no abstract. Chat answers may be less useful for those papers.",
     "suggestionSummarise": "Summarise these papers",

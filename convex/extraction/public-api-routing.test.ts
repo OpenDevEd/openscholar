@@ -225,7 +225,6 @@ describe("startJob — extraction mode", () => {
         .query("_scheduled_functions")
         .collect();
 
-      expect(job?.mode).toBe("extraction");
       expect(job?.status).toBe("pending");
       expect(questions).toHaveLength(1);
       expect(sources).toHaveLength(1);
@@ -298,7 +297,6 @@ describe("duplicateJob", () => {
         .query("_scheduled_functions")
         .collect();
 
-      expect(newJob?.mode).toBe("extraction");
       expect(newJob?.name).toBe("Base (Copy)");
       expect(newJob?.status).toBe("pending");
       expect(questions).toHaveLength(1);

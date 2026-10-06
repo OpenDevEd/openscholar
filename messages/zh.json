@@ -491,7 +491,6 @@
     "usePdfsTitle": "使用 PDF",
     "usePdfsDescription": "包含完整 PDF 内容以获得更丰富的提取结果。否则仅使用摘要。",
     "usePdfsAriaLabel": "在提取中包含 PDF 内容",
-    "pleaseSelectModel": "请选择一个对话模型",
     "abstractMissingTitle": "部分论文缺少摘要",
     "abstractMissingDescription": "已选择的 {total} 篇论文中有 {missing} 篇没有摘要。对于这些论文，对话回答可能帮助有限。",
     "suggestionSummarise": "总结这些论文",

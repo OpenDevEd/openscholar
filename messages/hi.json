@@ -491,7 +491,6 @@
     "usePdfsTitle": "PDF का उपयोग करें",
     "usePdfsDescription": "समृद्ध निष्कर्षण के लिए पूरी PDF सामग्री शामिल करें। अन्यथा केवल सारांश।",
     "usePdfsAriaLabel": "निष्कर्षण में PDF सामग्री शामिल करें",
-    "pleaseSelectModel": "कृपया एक चैट मॉडल चुनें",
     "abstractMissingTitle": "कुछ पेपरों में सार (abstract) नहीं है",
     "abstractMissingDescription": "चयनित {total} पेपरों में से {missing} में कोई सार नहीं है। उन पेपरों के लिए चैट उत्तर कम उपयोगी हो सकते हैं।",
     "suggestionSummarise": "इन पेपरों का सारांश दें",

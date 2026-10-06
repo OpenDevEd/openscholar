@@ -491,7 +491,6 @@
     "usePdfsTitle": "Utiliser les PDF",
     "usePdfsDescription": "Inclure le contenu complet des PDF pour une extraction plus riche. Sinon, résumé uniquement.",
     "usePdfsAriaLabel": "Inclure le contenu des PDF dans l'extraction",
-    "pleaseSelectModel": "Veuillez sélectionner un modèle de conversation",
     "abstractMissingTitle": "Certains articles n'ont pas de résumé",
     "abstractMissingDescription": "{missing} des {total} articles sélectionnés n'ont pas de résumé. Les réponses de la conversation peuvent être moins utiles pour ces articles.",
     "suggestionSummarise": "Résumer ces articles",
