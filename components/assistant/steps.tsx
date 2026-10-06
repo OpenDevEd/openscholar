@@ -30,7 +30,7 @@ import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { viewOf, type Kind } from "@/lib/assistant/actions";
 import { OrbitMark } from "./orbit-mark";
-import { CARD_SPRING, cardLayoutId, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
+import { CARD_SPRING, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
 import { FadeRow, WorkingText } from "./parts";
 
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -149,7 +149,7 @@ export function Steps({
   const all = [...new Map([...results.toReversed(), ...newest].map((step) => [step.id, step])).values()].sort((a, b) => a.order - b.order || a.at - b.at);
   const asked = all.filter((step) => step.canAnswer);
   const steps = all.filter((step) => !step.canAnswer);
-  const docked = useContext(DockedJobs);
+  const { docked, flying } = useContext(DockedJobs);
   const reduceMotion = useReducedMotion();
   return (
     <div className="space-y-3">
@@ -159,19 +159,17 @@ export function Steps({
           <ApprovalCard key={step.id} threadId={threadId} step={step} />
         ))}
       </AnimatePresence>
-      {/* Each job the reply started, under its map, once it has ended: while it runs, its card is docked over the message box. A card
-          that ends flies here as its place opens; the ones already here when the chat shows are in place. Each place holds its own gap,
-          so a first card opens all of its room smoothly. */}
+      {/* Each job the reply started, under its map, once it has ended: while it runs, its card is docked over the message box. As it
+          ends, its place opens here and the card flies in from the dock (JobFlight), showing here once it lands; the ones already here
+          when the chat shows are in place. Each place holds its own gap, so a first card opens all of its room smoothly. */}
       <div className="!mt-0">
         <AnimatePresence initial={false}>
           {steps
             .filter((step) => JOB_STARTS.has(step.action) && step.status === "done" && !docked.has(step.id))
             .map((step) => (
-              <motion.div key={`job:${step.id}`} initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} transition={reduceMotion ? { duration: 0 } : CARD_SPRING}>
-                <div className="pt-3">
-                  <motion.div layoutId={cardLayoutId(step.id)} transition={reduceMotion ? { duration: 0 } : CARD_SPRING} exit={{ opacity: 0, transition: { duration: 0 } }} className="rounded-2xl bg-card">
-                    <JobCard threadId={threadId} stepId={step.id} />
-                  </motion.div>
+              <motion.div key={`job:${step.id}`} data-job-slot={step.id} initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} transition={reduceMotion ? { duration: 0 } : CARD_SPRING} className="overflow-hidden">
+                <div className={cn("pt-3", flying.has(step.id) && "invisible")}>
+                  <JobCard threadId={threadId} stepId={step.id} />
                 </div>
               </motion.div>
             ))}

@@ -4,12 +4,12 @@
 // an extraction fills each paper's answers as they're read. Each reads the job's own progress
 // (convex/assistant/jobs.ts) and keeps one size from its first frame, whatever arrives.
 
-import { createContext, useRef, type ReactNode } from "react";
+import { createContext, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { animate, AnimatePresence, motion, useAnimationFrame, useMotionValue, useReducedMotion } from "motion/react";
 import { Ban, Check, ChevronDown, CircleAlert, CircleHelp, Coins, ExternalLink, Hourglass, X } from "@/components/icons";
 import { EASE } from "@/components/settings/model-map";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -40,13 +40,17 @@ export function JobCard({ threadId, stepId }: { threadId: Id<"assistantThreads">
   return read.card.kind === "screening" ? <ScreeningCard job={read.card} mine={read.mine} /> : <ExtractionCard job={read.card} mine={read.mine} />;
 }
 
-/** The steps whose jobs are running, whose cards the chat docks over its message box instead of showing them under their steps. */
-export const DockedJobs = createContext<ReadonlySet<string>>(new Set());
+/**
+ * The steps whose jobs are running, whose cards the chat docks over its message box instead of
+ * showing them under their steps, and the ones whose cards are flying from the dock to their
+ * place in the chat, which holds its card back until it lands.
+ */
+export const DockedJobs = createContext<{ docked: ReadonlySet<string>; flying: ReadonlySet<string> }>({ docked: new Set(), flying: new Set() });
 
 /** The spring a job's card moves on: into the dock, between its places in it, and back into the chat once it ends. */
 export const CARD_SPRING = { type: "spring" as const, stiffness: 420, damping: 36 };
-/** Each card's name for motion, shared by its place in the dock and its place in the chat, so it flies from one to the other. */
-export const cardLayoutId = (stepId: string) => `job:${stepId}`;
+/** Each card's name for motion in the dock, shared by its place in the folded stack and in the opened list, so it moves between them. */
+const cardLayoutId = (stepId: string) => `dock:${stepId}`;
 
 const GAP = 8;
 /** How far each card behind the front one shows above it while the stack is folded. */
@@ -73,11 +77,17 @@ export function JobDock({ threadId, jobs, open, onOpen }: { threadId: Id<"assist
   const spring = reduceMotion ? { duration: 0 } : CARD_SPRING;
   const stacked = jobs.length > 1;
   const opened = open && stacked;
-  // Folding the list from the keyboard puts focus back on the stack it came from.
+  // Opening or folding it from the keyboard takes focus along: into the list, or back to the stack it came from.
   const refocus = useRef(false);
-  const fold = (byKeyboard: boolean) => {
+  const toggle = (open: boolean, byKeyboard: boolean) => {
     refocus.current = byKeyboard;
-    onOpen(false);
+    onOpen(open);
+  };
+  const focusIfAsked = (element: HTMLElement | null) => {
+    if (element && refocus.current) {
+      refocus.current = false;
+      element.focus();
+    }
   };
   const card = (stepId: string, inert: boolean) => (
     <div inert={inert} aria-hidden={inert || undefined} className="h-full">
@@ -94,18 +104,17 @@ export function JobDock({ threadId, jobs, open, onOpen }: { threadId: Id<"assist
           onKeyDown={(event) => {
             if (event.key !== "Escape") return;
             event.stopPropagation();
-            fold(true);
+            toggle(false, true);
           }}
         >
           <motion.button
             type="button"
-            // Opened by the person, so the keyboard goes with them into the list.
-            autoFocus
+            ref={focusIfAsked}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, ease: EASE }}
             // A click from the keyboard has no pointer behind it (`detail` 0).
-            onClick={(event) => fold(event.detail === 0)}
+            onClick={(event) => toggle(false, event.detail === 0)}
             className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-card px-3 text-xs font-medium text-foreground/80 shadow-xs ring-1 ring-border/60 hover:text-foreground"
           >
             {t("showLess")} <ChevronDown className="size-3" />
@@ -113,7 +122,7 @@ export function JobDock({ threadId, jobs, open, onOpen }: { threadId: Id<"assist
           {/* Newest at the bottom, where the stack's front card was; the list scrolls up through the older ones. */}
           <motion.div layoutScroll className="scrollbar-hover flex w-full flex-col-reverse gap-2 overflow-y-auto overscroll-contain" style={{ maxHeight: `min(${Math.round(LISTED * (JOB_CARD_H + GAP))}px, calc(100dvh - 22rem))` }}>
             {jobs.map((job) => (
-              <motion.div key={job.stepId} layoutId={cardLayoutId(job.stepId)} transition={spring} className="shrink-0 rounded-2xl bg-card shadow-[0_10px_30px_-12px_rgb(0_0_0/0.35)]" style={{ height: JOB_CARD_H }}>
+              <motion.div key={job.stepId} data-job-card={job.stepId} layoutId={cardLayoutId(job.stepId)} transition={spring} className="shrink-0 rounded-2xl bg-card shadow-[0_10px_30px_-12px_rgb(0_0_0/0.35)]" style={{ height: JOB_CARD_H }}>
                 {card(job.stepId, false)}
               </motion.div>
             ))}
@@ -121,7 +130,6 @@ export function JobDock({ threadId, jobs, open, onOpen }: { threadId: Id<"assist
         </div>
       ) : (
         // Cards already here when the stack shows (the chat opening, the list folding) are in place; a job started after rises in.
-        // A card that leaves has ended: it flies to its place in the chat.
         <AnimatePresence initial={false}>
         {jobs.map((job, i) => {
           // The front card at the bottom, each one behind it a step up and a step smaller.
@@ -132,32 +140,28 @@ export function JobDock({ threadId, jobs, open, onOpen }: { threadId: Id<"assist
           return (
             <motion.div
               key={job.stepId}
+              data-job-card={job.stepId}
               layoutId={cardLayoutId(job.stepId)}
               className={cn("absolute inset-x-0 origin-top rounded-2xl bg-card shadow-[0_10px_30px_-12px_rgb(0_0_0/0.35)]", stacked && "cursor-pointer", hidden && "pointer-events-none")}
               style={{ height: JOB_CARD_H, bottom: GAP, zIndex: jobs.length - i }}
               initial={{ opacity: 0, y: 24, scale: 0.96 }}
               animate={{ y: -depth * PEEK, scale: 1 - depth * 0.05, opacity: hidden ? 0 : 1 }}
-              // It leaves at once: its place in the chat takes the card on, and a copy fading here would show it twice.
+              // It leaves at once: a copy of it flies to its place in the chat (JobFlight).
               exit={{ opacity: 0, transition: { duration: 0 } }}
               transition={spring}
               onClickCapture={(event) => {
                 // A tap anywhere on a stack but a link or a button opens it.
                 if (!stacked || (event.target as HTMLElement).closest("a,button")) return;
                 event.stopPropagation();
-                onOpen(true);
+                toggle(true, false);
               }}
             >
               {/* The front card names the rest, and a keyboard opens the stack from it. */}
               {stacked && i === 0 ? (
                 <button
                   type="button"
-                  ref={(button) => {
-                    if (button && refocus.current) {
-                      refocus.current = false;
-                      button.focus();
-                    }
-                  }}
-                  onClick={() => onOpen(true)}
+                  ref={focusIfAsked}
+                  onClick={(event) => toggle(true, event.detail === 0)}
                   className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:bottom-2 focus-visible:left-1/2 focus-visible:z-10 focus-visible:-translate-x-1/2 focus-visible:whitespace-nowrap focus-visible:rounded-full focus-visible:bg-card focus-visible:px-3 focus-visible:py-1 focus-visible:text-xs focus-visible:font-medium focus-visible:shadow-xs focus-visible:ring-1 focus-visible:ring-border/60">
                   {t("showAll", { count: jobs.length })}
                 </button>
@@ -171,6 +175,74 @@ export function JobDock({ threadId, jobs, open, onOpen }: { threadId: Id<"assist
     </motion.div>
   );
 }
+
+/** A card leaving the dock, from where it was. */
+export type Flight = { stepId: string; from: DOMRect };
+
+/**
+ * A card that left the dock as its job ended, flying to its place in the chat on a layer over
+ * the panel: inside the chat's scroller it would make the chat taller while it was still below
+ * it, and the chat would scroll after it. It follows its place each frame, which opens as it
+ * flies, so it lands on it whatever the chat does meanwhile. A place out of sight gets no
+ * flight: the card fades where it was.
+ */
+export function JobFlight({ threadId, flight, layer, onLanded }: { threadId: Id<"assistantThreads">; flight: Flight; layer: RefObject<HTMLDivElement | null>; onLanded: () => void }) {
+  const card = useRef<HTMLDivElement>(null);
+  const progress = useMotionValue(0);
+  // Whether its place was in sight as it left, decided on its first frame.
+  const [aim, setAim] = useState<"slot" | "fade" | null>(null);
+  const place = () => document.querySelector<HTMLElement>(`[data-job-slot="${flight.stepId}"]`);
+  // A layout read and an animation frame: whether its place is in sight as it leaves, then its flight, which each frame follows that place.
+  useLayoutEffect(() => {
+    const slot = place();
+    const scroller = slot?.closest<HTMLElement>("[role='log']");
+    const at = slot?.getBoundingClientRect();
+    const view = scroller?.getBoundingClientRect();
+    const seen = at && view && at.top >= view.top && at.top + JOB_CARD_H <= view.bottom + JOB_CARD_H / 2;
+    setAim(seen ? "slot" : "fade");
+    // From the frame it's first drawn on, so a busy frame as the dock changes doesn't start it partway.
+    let controls: ReturnType<typeof animate> | undefined;
+    const frame = requestAnimationFrame(() => {
+      controls = animate(progress, 1, { ...(seen ? CARD_SPRING : { duration: 0.25, ease: EASE }), onComplete: onLanded });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      controls?.stop();
+    };
+    // Measured once, as it leaves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useAnimationFrame(() => {
+    const element = card.current;
+    const base = layer.current?.getBoundingClientRect();
+    if (!element || !base || aim === null) return;
+    const p = progress.get();
+    if (aim === "fade") {
+      element.style.transform = `translate(${flight.from.left - base.left}px, ${flight.from.top - base.top}px) scale(${1 - 0.04 * p})`;
+      element.style.opacity = String(1 - p);
+      return;
+    }
+    const slot = place()?.getBoundingClientRect();
+    if (!slot) return;
+    // The card sits under its place's gap (pt-3).
+    const top = flight.from.top + (slot.top + GAP_ABOVE - flight.from.top) * p;
+    const left = flight.from.left + (slot.left - flight.from.left) * p;
+    element.style.width = `${flight.from.width + (slot.width - flight.from.width) * p}px`;
+    element.style.transform = `translate(${left - base.left}px, ${top - base.top}px)`;
+  });
+  return (
+    <div
+      ref={card}
+      className="absolute left-0 top-0 rounded-2xl bg-card shadow-[0_10px_30px_-12px_rgb(0_0_0/0.35)]"
+      style={{ height: JOB_CARD_H, width: flight.from.width, transform: `translate(-9999px, 0)` }}
+    >
+      <JobCard threadId={threadId} stepId={flight.stepId} />
+    </div>
+  );
+}
+
+/** The gap a card's place in the chat holds above it. */
+const GAP_ABOVE = 12;
 
 /** Cancel while it runs, and how it ended after: one slot, one size, so nothing beside it moves. */
 function EndSlot({ running, status, capped, cancelLabel, onCancel, mine }: { running: boolean; status: string; capped?: boolean; cancelLabel: string; onCancel: () => void; mine: boolean }) {
