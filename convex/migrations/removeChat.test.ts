@@ -24,10 +24,11 @@ it("deletes the chat jobs and what points at them, and leaves every extraction j
       return { chatId, extractionId, searchId };
     });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
+    vi.setSystemTime(Date.now() + 60_000);
 
     const before = await t.action(internal.migrations.removeChat.dryRun, {});
     expect(before.chats).toEqual([expect.objectContaining({ jobId: ids.chatId, threadId, chatPapers: 1, sourceEvents: 1, sources: 1 })]);
-    expect(before.tally).toEqual({ extractionJobIds: [ids.extractionId], chatJobs: 1, jobsWithChatFields: 1, searchesLinked: 1, revisionsLinked: 1 });
+    expect(before.tally).toEqual({ extractionJobs: { at: expect.any(Number), count: 1, sha256: expect.stringMatching(/^[0-9a-f]{64}$/) }, chatJobs: 1, jobsWithChatFields: 1, searchesLinked: 1, revisionsLinked: 1 });
 
     await expect(t.action(internal.migrations.removeChat.deleteChats, { count: 2 })).rejects.toThrow(/not the 2 expected/);
     expect(await t.action(internal.migrations.removeChat.deleteChats, { count: 1 })).toEqual([ids.chatId]);
@@ -36,8 +37,10 @@ it("deletes the chat jobs and what points at them, and leaves every extraction j
     }
     await t.finishAllScheduledFunctions(vi.runAllTimers);
 
-    expect(await t.action(internal.migrations.removeChat.verify, { jobIds: before.tally.extractionJobIds, chatJobIds: [ids.chatId], threadIds: [threadId] }))
-      .toEqual({ chatJobs: 0, jobsWithChatFields: 0, searchesLinked: 0, revisionsLinked: 0, missingJobs: [], threadsLeft: [], cascade: { chatPapers: 0, sourceEvents: 0, sources: 0 } });
+    expect(await t.action(internal.migrations.removeChat.verify, { jobs: before.tally.extractionJobs, chatJobIds: [ids.chatId], threadIds: [threadId] }))
+      .toEqual({ chatJobs: 0, jobsWithChatFields: 0, searchesLinked: 0, revisionsLinked: 0, jobsKept: true, threadsLeft: [], cascade: { chatPapers: 0, sourceEvents: 0, sources: 0 } });
+    const lost = { ...before.tally.extractionJobs, count: 2 };
+    expect((await t.action(internal.migrations.removeChat.verify, { jobs: lost, chatJobIds: [ids.chatId], threadIds: [threadId] })).jobsKept).toBe(false);
     const left = await t.run(async (ctx) => ({
       chatPapers: await ctx.db.query("chatPapers").collect(),
       events: await ctx.db.query("chatSourceEvents").collect(),

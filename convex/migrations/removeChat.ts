@@ -13,10 +13,10 @@ import { internalMutation } from "../lib/functions";
  * and their revisions the chats started from them, and the chat's switch its row. Every other
  * record stays.
  *
- *   npx convex run migrations/removeChat:dryRun                      what goes, and every extraction job's ID
+ *   npx convex run migrations/removeChat:dryRun                      what goes, and a fingerprint of the extraction jobs
  *   npx convex run migrations/removeChat:deleteChats '{"count": N}'  the N chat jobs the dry run listed
  *   npx convex run migrations/removeChat:run                         the fields, once the chats are gone
- *   npx convex run migrations/removeChat:verify '{"jobIds": [...], "chatJobIds": [...], "threadIds": [...]}'
+ *   npx convex run migrations/removeChat:verify '{"jobs": <the dry run's extractionJobs>, "chatJobIds": [...], "threadIds": [...]}'
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
@@ -53,14 +53,20 @@ export const chatJobs = internalQuery({
   },
 });
 
-/** One page of jobs: the extraction jobs' IDs, the chats among them, and the extraction jobs still carrying a chat field. */
+/** One page of jobs, oldest first: the IDs of its extraction jobs made by `until`, its chats, and its extraction jobs still carrying a chat field. */
 export const jobPage = internalQuery({
-  args: { cursor: v.union(v.string(), v.null()) },
+  args: { cursor: v.union(v.string(), v.null()), until: v.number() },
   returns: v.object({ ids: v.array(v.id("extractionJobs")), chats: v.number(), withFields: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
-  handler: async (ctx, { cursor }) => {
+  handler: async (ctx, { cursor, until }) => {
     const page = await ctx.db.query("extractionJobs").paginate({ cursor, numItems: 100, maximumBytesRead: 4 * 1024 * 1024 });
     const extraction = page.page.filter((job) => job.mode !== "chat");
-    return { ids: extraction.map((job) => job._id), chats: page.page.length - extraction.length, withFields: extraction.filter(hasChatFields).length, isDone: page.isDone, continueCursor: page.continueCursor };
+    return {
+      ids: extraction.filter((job) => job._creationTime <= until).map((job) => job._id),
+      chats: page.page.length - extraction.length,
+      withFields: extraction.filter(hasChatFields).length,
+      isDone: page.isDone,
+      continueCursor: page.continueCursor,
+    };
   },
 });
 
@@ -74,16 +80,25 @@ export const searchPage = internalQuery({
   },
 });
 
-const tallyValidator = v.object({
-  extractionJobIds: v.array(v.id("extractionJobs")), chatJobs: v.number(), jobsWithChatFields: v.number(), searchesLinked: v.number(), revisionsLinked: v.number(),
-});
+/**
+ * The extraction jobs made by `at`: how many, and a SHA-256 of their IDs oldest first. The same
+ * figures after the deletion mean every one of them is still there, however many there are.
+ */
+const jobsValidator = v.object({ at: v.number(), count: v.number(), sha256: v.string() });
+const tallyValidator = v.object({ extractionJobs: jobsValidator, chatJobs: v.number(), jobsWithChatFields: v.number(), searchesLinked: v.number(), revisionsLinked: v.number() });
 type Tally = typeof tallyValidator.type;
 
-async function tally(ctx: ActionCtx): Promise<Tally> {
-  const result: Tally = { extractionJobIds: [], chatJobs: 0, jobsWithChatFields: 0, searchesLinked: 0, revisionsLinked: 0 };
+async function sha256(text: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function tally(ctx: ActionCtx, at: number): Promise<Tally> {
+  const ids: Array<Id<"extractionJobs">> = [];
+  const result: Omit<Tally, "extractionJobs"> = { chatJobs: 0, jobsWithChatFields: 0, searchesLinked: 0, revisionsLinked: 0 };
   for (let cursor: string | null = null; ;) {
-    const page: { ids: Array<Id<"extractionJobs">>; chats: number; withFields: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.removeChat.jobPage, { cursor });
-    result.extractionJobIds.push(...page.ids);
+    const page: { ids: Array<Id<"extractionJobs">>; chats: number; withFields: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.removeChat.jobPage, { cursor, until: at });
+    ids.push(...page.ids);
     result.chatJobs += page.chats;
     result.jobsWithChatFields += page.withFields;
     if (page.isDone) break;
@@ -97,7 +112,7 @@ async function tally(ctx: ActionCtx): Promise<Tally> {
       cursor = page.continueCursor;
     }
   }
-  return result;
+  return { ...result, extractionJobs: { at, count: ids.length, sha256: await sha256(ids.join("\n")) } };
 }
 
 /** Changes nothing: lists the chat jobs and what points at them, and counts the rest. */
@@ -106,7 +121,7 @@ export const dryRun = internalAction({
   returns: v.object({ chats: v.array(chatValidator), tally: tallyValidator }),
   handler: async (ctx): Promise<{ chats: Array<typeof chatValidator.type>; tally: Tally }> => ({
     chats: await ctx.runQuery(internal.migrations.removeChat.chatJobs, {}),
-    tally: await tally(ctx),
+    tally: await tally(ctx, Date.now()),
   }),
 });
 
@@ -198,22 +213,21 @@ export const cascadeLeft = internalQuery({
   },
 });
 
-/** What is left: 0 of everything when done, `jobIds` (the dry run's extraction jobs) all still there, and none of `threadIds`. */
+/** What is left: 0 of everything when done, the dry run's extraction jobs (`jobs`) all still there, and none of `threadIds`. */
 export const verify = internalAction({
-  args: { jobIds: v.array(v.id("extractionJobs")), chatJobIds: v.array(v.id("extractionJobs")), threadIds: v.array(v.string()) },
+  args: { jobs: jobsValidator, chatJobIds: v.array(v.id("extractionJobs")), threadIds: v.array(v.string()) },
   returns: v.object({
-    chatJobs: v.number(), jobsWithChatFields: v.number(), searchesLinked: v.number(), revisionsLinked: v.number(), missingJobs: v.array(v.id("extractionJobs")), threadsLeft: v.array(v.string()),
+    chatJobs: v.number(), jobsWithChatFields: v.number(), searchesLinked: v.number(), revisionsLinked: v.number(), jobsKept: v.boolean(), threadsLeft: v.array(v.string()),
     cascade: v.object({ chatPapers: v.number(), sourceEvents: v.number(), sources: v.number() }),
   }),
-  handler: async (ctx, { jobIds, chatJobIds, threadIds }): Promise<Omit<Tally, "extractionJobIds"> & { missingJobs: Array<Id<"extractionJobs">>; threadsLeft: string[]; cascade: Cascade }> => {
-    const now = await tally(ctx);
-    const kept = new Set(now.extractionJobIds);
+  handler: async (ctx, { jobs, chatJobIds, threadIds }): Promise<Omit<Tally, "extractionJobs"> & { jobsKept: boolean; threadsLeft: string[]; cascade: Cascade }> => {
+    const now = await tally(ctx, jobs.at);
     const threadsLeft: string[] = [];
     for (const threadId of threadIds) {
       if (await ctx.runQuery(components.agent.threads.getThread, { threadId })) threadsLeft.push(threadId);
     }
-    const { extractionJobIds: _ids, ...counts } = now;
+    const { extractionJobs, ...counts } = now;
     const cascade: Cascade = await ctx.runQuery(internal.migrations.removeChat.cascadeLeft, { chatJobIds });
-    return { ...counts, missingJobs: jobIds.filter((id) => !kept.has(id)), threadsLeft, cascade };
+    return { ...counts, jobsKept: extractionJobs.count === jobs.count && extractionJobs.sha256 === jobs.sha256, threadsLeft, cascade };
   },
 });

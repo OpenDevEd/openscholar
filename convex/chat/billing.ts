@@ -7,7 +7,7 @@ import { settle, settleArgs } from "../billing/openRouter";
  * here, for up to its 2.5 minutes of retries after the deploy. Goes with the chat's schema.
  */
 export const settleFromOpenRouter = internalAction({
-  args: { ...settleArgs, jobId: v.optional(v.id("extractionJobs")) },
+  args: settleArgs,
   returns: v.null(),
-  handler: (ctx, { jobId: _job, ...args }) => settle(ctx, args),
+  handler: (ctx, args) => settle(ctx, args),
 });

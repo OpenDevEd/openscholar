@@ -161,6 +161,8 @@ async function fetchOpenRouterGeneration(
 
 export const settleArgs = {
   userId: v.id("users"),
+  /** The paper chat of a retry scheduled before #325, which its charge keeps. Goes with the chat's schema. */
+  jobId: v.optional(v.id("extractionJobs")),
   chargeId: v.string(),
   generationId: v.string(),
   /** Cost already known outside this generation: its earlier steps. */
@@ -198,6 +200,7 @@ export async function settle(ctx: ActionCtx, args: ObjectType<typeof settleArgs>
     usage: {
       kind: "chat",
       description: "Chat message",
+      ...(args.jobId ? { jobId: args.jobId } : {}),
       ...(result.kind === "ok" ? { model: result.generation.model } : {}),
       costUsd: usd,
       // OpenRouter's generation record has no cache-write count.
@@ -212,4 +215,4 @@ export async function settle(ctx: ActionCtx, args: ObjectType<typeof settleArgs>
   return null;
 }
 
-export const settleFromOpenRouter = internalAction({ args: settleArgs, returns: v.null(), handler: settle });
+export const settleFromOpenRouter = internalAction({ args: settleArgs, returns: v.null(), handler: (ctx, args) => settle(ctx, args) });
