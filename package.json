@@ -59,7 +59,7 @@
     "@solar-icons/react": "^2.3.2",
     "@streamdown/cjk": "^1.0.4",
     "@streamdown/code": "^2.0.0",
-    "@tanstack/react-virtual": "^3.13.24",
+    "@tanstack/react-virtual": "^3.14.13",
     "@tiptap/core": "^3.31.3",
     "@tiptap/extension-placeholder": "^3.31.3",
     "@tiptap/markdown": "^3.31.3",
