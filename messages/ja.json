@@ -1300,7 +1300,6 @@
     "noFileSelected": "ファイルが選択されていません",
     "unsupportedFileType": "サポートされていないファイルタイプです。JSONまたはCSVファイルをアップロードしてください。",
     "csvFormatError": "CSVファイルにはヘッダーと少なくとも1行のデータが必要です",
-    "singleCharSearch": "1文字の検索はサポートされていません。2文字以上を使用してください。",
     "selectAtLeastOneSource": "少なくとも1つのソースを選択してください",
     "completeAllSteps": "すべてのステップを完了してください",
     "noQueryToSave": "保存するクエリがありません。",
