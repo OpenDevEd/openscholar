@@ -56,6 +56,10 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   // The shortcuts the box names are read as they're typed, for the suggestion and the actions below.
   useQueryShortcuts(localInputValue);
   const [isTranslating, setIsTranslating] = useState(false);
+  // The keywords before the first translation and what the last one produced. While the box still holds that
+  // translation, another language starts from the original, and clearing the language puts the original back.
+  const [translation, setTranslation] = useState<{ original: string; result: string } | null>(null);
+  const untouchedTranslation = translation && localInputValue === translation.result ? translation : null;
 
   // Sync local input + global store when URL query changes (e.g. history nav, AI enhance, translation)
   useEffect(() => {
@@ -167,21 +171,23 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   // Shared translation logic
   const performTranslation = useCallback(
     async (targetLanguage: string) => {
-      if (!search || !targetLanguage || !localInputValue.trim()) return;
+      const source = untouchedTranslation?.original ?? localInputValue;
+      if (!search || !targetLanguage || !source.trim()) return;
       if (!isTranslateConfigured) {
         toast.ai.configRequired(tValidation("aiConfigRequired"));
         return;
       }
       setIsTranslating(true);
       try {
-        await ensureQueryShortcuts(localInputValue);
-        const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
+        await ensureQueryShortcuts(source);
+        const { expandedQuery } = validateAndExpandKeywordsSilently(source);
         const result = await translateQueryFn({
           query: expandedQuery,
           targetLanguage,
           syntax,
         });
         search.setQuery(result.translatedQuery);
+        setTranslation({ original: source, result: result.translatedQuery });
         posthog.capture("query_translated", {
           original_query: expandedQuery,
           translated_query: result.translatedQuery,
@@ -189,7 +195,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         });
       } catch (error) {
         posthog.capture("query_translation_failed", {
-          original_query: localInputValue,
+          original_query: source,
           target_language: targetLanguage,
           error_message: getErrorMessage(error, te("translationFailed")),
         });
@@ -204,6 +210,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     [
       search,
       localInputValue,
+      untouchedTranslation,
       isTranslateConfigured,
       translateQueryFn,
       syntax,
@@ -219,6 +226,10 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     async (language: string) => {
       if (!search || language === selectedLanguage) return;
       search.setLanguage(language || null);
+      if (!language) {
+        if (untouchedTranslation) search.setQuery(untouchedTranslation.original);
+        setTranslation(null);
+      }
       posthog.capture("language_selected", {
         language: language || "none",
         previous_language: selectedLanguage || "none",
@@ -228,7 +239,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         await performTranslation(language);
       }
     },
-    [search, selectedLanguage, localInputValue, performTranslation]
+    [search, selectedLanguage, localInputValue, untouchedTranslation, performTranslation]
   );
 
   // Handle translate button click
