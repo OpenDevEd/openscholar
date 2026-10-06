@@ -2025,7 +2025,9 @@
     "after": "Après {name}",
     "readingPapers": "Lecture des articles…",
     "screenPapers": "Cribler {count, plural, one {# article} other {# articles}}",
-    "startFailed": "Impossible de démarrer le criblage"
+    "startFailed": "Impossible de démarrer le criblage",
+    "showAnswers": "Afficher les réponses pour {title}",
+    "hideAnswers": "Masquer les réponses pour {title}"
   },
   "connectionsPage": {
     "connectedApps": "Applications connectées",

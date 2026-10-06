@@ -2025,7 +2025,9 @@
     "after": "{name} के बाद",
     "readingPapers": "लेख पढ़े जा रहे हैं…",
     "screenPapers": "{count, plural, one {# लेख} other {# लेख}} स्क्रीन करें",
-    "startFailed": "स्क्रीनिंग शुरू नहीं हो सकी"
+    "startFailed": "स्क्रीनिंग शुरू नहीं हो सकी",
+    "showAnswers": "{title} के उत्तर दिखाएँ",
+    "hideAnswers": "{title} के उत्तर छिपाएँ"
   },
   "connectionsPage": {
     "connectedApps": "कनेक्टेड ऐप्स",
