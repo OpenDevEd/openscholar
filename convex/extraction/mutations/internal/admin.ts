@@ -122,10 +122,6 @@ export const deleteExtractionInternal = internalMutation({
       ["extractionEvidenceUnits", "by_job", "jobId"],
       ["extractionResults", "by_job", "jobId"],
       ["extractionQuestions", "by_job", "jobId"],
-      ["chatSourceEvents", "by_job_createdAt", "jobId"],
-      // Drain chatPapers before extractionJobSources so sourceId bridge rows
-      // do not outlive the source snapshot they point at.
-      ["chatPapers", "by_job", "jobId"],
       ["extractionJobSources", "by_job_and_position", "jobId"],
     ];
     for (const [table, indexName, field] of byJobDrains) {

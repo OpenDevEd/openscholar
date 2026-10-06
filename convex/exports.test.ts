@@ -78,7 +78,7 @@ describe("search history export", () => {
       await ctx.db.insert("queryShortcuts", { userId, data: { shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1 } });
       for (const [i, query] of queries.entries()) {
         const at = `2026-09-0${i + 1}T00:00:00.000Z`;
-        const data = { id: `${clerkId}-${i}`, query, field: "title" as const, count: 10 + i, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: at, updatedAt: at, dateRange: { from: "2020-01-01", to: "2025-12-31" }, yearRange: [2020, 2025], workTypes: ["article", "preprint"], openAccessOnly: true, sortBy: "cited_by_count:desc", chatJobIdsByAccountId: { owner: "private-chat" } };
+        const data = { id: `${clerkId}-${i}`, query, field: "title" as const, count: 10 + i, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: at, updatedAt: at, dateRange: { from: "2020-01-01", to: "2025-12-31" }, yearRange: [2020, 2025], workTypes: ["article", "preprint"], openAccessOnly: true, sortBy: "cited_by_count:desc" };
         await ctx.db.insert("searches", { userId, localId: data.id, revision: 1, data });
       }
     });
@@ -101,7 +101,6 @@ describe("search history export", () => {
         { count: 10, field: "title", query: "tutoring" },
       ]);
       expect(rows[1]).toMatchObject({ id: "import:owner-1", createdAt: "2026-09-02T00:00:00.000Z", dateRange: { from: "2020-01-01", to: "2025-12-31" }, yearRange: [2020, 2025], workTypes: ["article", "preprint"], openAccessOnly: true, sortBy: "cited_by_count:desc", importSource: { query: "rct... AND reading, phonics", resolution: "at_export" } });
-      expect(rows[1]).not.toHaveProperty("chatJobIdsByAccountId");
       expect(rows[1].screeningResponses).toEqual([]);
     }
     expect(JSON.parse(json.text)).toMatchObject({ format: "openscholar.searches", version: 1, scope: "current search specifications" });

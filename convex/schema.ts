@@ -25,7 +25,6 @@ import {
 } from "./extraction/validators";
 import {
   chatGenerationUsageFields,
-  chatPaperFields,
   creditsFields,
   creditTransactionFields,
   subscriptionFields,
@@ -551,8 +550,6 @@ export default defineSchema({
     .index("by_charge", ["chargeId"])
     .index("by_queuedAt", ["queuedAt"])
     .index("by_user_and_createdAt", ["userId", "createdAt"])
-    // `by_job` stays for the chat's tests, which go with chat mode (#325); the charge list reads `by_job_and_createdAt`.
-    .index("by_job", ["jobId"])
     .index("by_job_and_createdAt", ["jobId", "createdAt"])
     .index("by_stripe_charge", ["stripeChargeId"]),
   billingHolds: defineTable({
@@ -743,9 +740,7 @@ export default defineSchema({
     .index("by_expiry", ["expiresAt"]),
 
   // ═══════════════════════════════════════════════════════════════
-  // EXTRACTION JOBS - Dual-mode job rows: "extraction" (data pipeline)
-  //                   and "chat" (conversational Q&A over papers).
-  //                   One table, one set of URLs, mode-discriminated.
+  // EXTRACTION JOBS - data extraction over a set of papers.
   //
   // Field-object SSOT lives in convex/extraction/validators.ts as
   // `extractionJobFields`; spread there into the row-mirror validator
@@ -756,17 +751,7 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
     // The job list ordered by name.
-    .index("by_user_and_sortName", ["userId", "sortName"])
-    // Unified history list + single-mode scoping (count user's chats).
-    .index("by_user_mode_updated", ["userId", "mode", "updatedAt"])
-    // Cross-user iteration by mode (admin backfills, ops tooling).
-    .index("by_mode", ["mode"])
-    // Chats generating now, per user and across users, oldest first: the concurrency
-    // check and the stale lock sweep read only these (#355).
-    .index("by_user_and_mode_and_isGenerating_and_generatingStartedAt", ["userId", "mode", "isGenerating", "generatingStartedAt"])
-    .index("by_mode_and_isGenerating_and_generatingStartedAt", ["mode", "isGenerating", "generatingStartedAt"])
-    // Reverse lookup: thread -> job (auth + lock acquisition).
-    .index("by_chatThread", ["chatThreadId"]),
+    .index("by_user_and_sortName", ["userId", "sortName"]),
 
   // ═══════════════════════════════════════════════════════════════
   // CHAT GENERATION USAGE - Provider-authoritative chat billing ledger
@@ -805,8 +790,7 @@ export default defineSchema({
     openalexId: v.optional(v.string()),
     abstract: v.optional(v.string()),
     storageId: v.optional(v.id("_storage")),
-    // Per-paper signals surfaced to the chat-mode AI context. Optional
-    // because non-OpenAlex sources (zotero/upload) cannot populate them.
+    // Per-paper signals. Optional because non-OpenAlex sources (zotero/upload) cannot populate them.
     citedByCount: v.optional(v.number()),
     venueName: v.optional(v.string()), // primary_location.source.display_name
     // history: saved-search placeholder that expands during queue setup
@@ -820,36 +804,6 @@ export default defineSchema({
   })
     .index("by_job_and_position", ["jobId", "position"])
     .index("by_job_and_source", ["jobId", "source"]),
-
-  // ═══════════════════════════════════════════════════════════════
-  // CHAT PAPERS - Live inclusion bridge for chat-mode jobs.
-  // 1:1 with extractionJobSources (for chat jobs only). Seeded
-  // included=true at ensureThreadForJob; toggled by the Sources panel;
-  // read at every stream-start to filter the <papers> prompt block.
-  // Kept separate so the frozen source snapshot stays immutable and
-  // high-frequency toggle writes do not touch the audit table.
-  // ═══════════════════════════════════════════════════════════════
-  chatPapers: defineTable(chatPaperFields)
-    .index("by_job", ["jobId"])
-    .index("by_job_included", ["jobId", "included"])
-    .index("by_job_source", ["jobId", "sourceId"])
-    .index("by_source", ["sourceId"]),
-
-  // ═══════════════════════════════════════════════════════════════
-  // CHAT SOURCE EVENTS - app-owned timeline boundaries.
-  // Inserted when a Continue Chat source refresh changes the ordered
-  // OpenAlex id set. The UI uses boundaryOrder to render all earlier
-  // assistant citations as historical/deprecated.
-  // ═══════════════════════════════════════════════════════════════
-  chatSourceEvents: defineTable({
-    jobId: v.id("extractionJobs"),
-    threadId: v.string(),
-    kind: v.literal("sources_updated"),
-    boundaryOrder: v.number(),
-    createdAt: v.number(),
-  })
-    .index("by_job_createdAt", ["jobId", "createdAt"])
-    .index("by_thread_createdAt", ["threadId", "createdAt"]),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION QUESTIONS - User-defined questions for data extraction

@@ -2,7 +2,7 @@ import { v, type Infer } from "convex/values";
 import { format, parseISO } from "date-fns";
 import { partial, validate } from "convex-helpers/validators";
 import type { SearchResult } from "../types/search.types";
-import { MAX_FILTER_VALUES, MAX_LEGACY_ENTRIES, MAX_LINKED_ACCOUNTS, MAX_PENDING_REMOVALS, MAX_QUESTIONS, RANGE_ENDS, capped, listsIn, overCap } from "../../convex/lib/listCaps";
+import { MAX_FILTER_VALUES, MAX_LEGACY_ENTRIES, MAX_PENDING_REMOVALS, MAX_QUESTIONS, RANGE_ENDS, capped, listsIn, overCap } from "../../convex/lib/listCaps";
 
 const strings = v.array(v.string());
 // Each stored list gets its own validator: a cap sticks to the one it's set on, and
@@ -94,14 +94,12 @@ export const storedSearchValidator = v.object({
   screeningResponses: capped(v.array(v.object({ paperId: v.string(), responses: answers })), MAX_LEGACY_ENTRIES),
   queryHistory: capped(v.optional(v.array(queryHistoryEntryValidator)), MAX_LEGACY_ENTRIES),
   questionHistory: capped(v.optional(v.array(questionHistoryEntryValidator)), MAX_LEGACY_ENTRIES),
-  // The paper chats started from the search, gone with them (#325): migrations/removeChat clears them, and nothing reads them.
-  chatJobIdsByAccountId: capped(v.optional(v.record(v.string(), v.string())), MAX_LINKED_ACCOUNTS),
 });
 export type StoredSearch = Infer<typeof storedSearchValidator>;
 
 /** A stored search as the app reads it: its history summarised, never the arrays. */
 export function currentSearch(stored: StoredSearch): SavedSearch {
-  const { queryHistory, questionHistory, chatJobIdsByAccountId: _chats, ...rest } = stored;
+  const { queryHistory, questionHistory, ...rest } = stored;
   if (!queryHistory && !questionHistory && rest.queryHistoryCount !== undefined) return rest as SavedSearch;
   return { ...rest, ...historySummary(queryHistory ?? [], questionHistory ?? []) };
 }

@@ -57,20 +57,6 @@ export async function seedFullJobGraph(t: ReturnType<typeof convexTest>) {
       openalexId: "oa:test1",
     });
 
-    const chatPaperId = await ctx.db.insert("chatPapers", {
-      jobId,
-      sourceId,
-      included: true,
-    });
-
-    const chatSourceEventId = await ctx.db.insert("chatSourceEvents", {
-      jobId,
-      threadId: "thread_test",
-      kind: "sources_updated" as const,
-      boundaryOrder: 1,
-      createdAt: now,
-    });
-
     let storageId: Id<"_storage"> | undefined = undefined;
     try {
       storageId = await ctx.storage.store(new Blob(["test pdf content"]));
@@ -139,8 +125,6 @@ export async function seedFullJobGraph(t: ReturnType<typeof convexTest>) {
       paperId,
       questionId,
       sourceId,
-      chatPaperId,
-      chatSourceEventId,
       resultId,
       evidenceUnitId,
       queueId,
