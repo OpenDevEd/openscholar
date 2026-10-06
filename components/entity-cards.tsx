@@ -18,6 +18,7 @@ import { useUIStore } from "@/lib/store";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
+import { isAuthorId } from "@/lib/openalex/author-filter";
 import { unlessLimited } from "@/lib/openalex/limited";
 import { catalogNode } from "@/lib/topics/search";
 import { topicHref } from "@/lib/topics/links";
@@ -85,7 +86,8 @@ function CardActions({ filter, value, name, page, openAlex }: {
   value: string;
   name: string;
   page: { href: string; label: string } | null;
-  openAlex: string;
+  /** The record on OpenAlex; none for a name it has no record for. */
+  openAlex: string | null;
 }) {
   const t = useTranslations("entityCards");
   const pressed = filter.selected.includes(value);
@@ -104,11 +106,11 @@ function CardActions({ filter, value, name, page, openAlex }: {
           <Link href={page.href} onNavigate={closeFocus}><span className="truncate">{page.label}</span><ArrowUpRight aria-hidden /></Link>
         </Button>
       )}
-      <TooltipHint label={t("openOnOpenAlex")}>
+      {openAlex && <TooltipHint label={t("openOnOpenAlex")}>
         <Button size="icon-sm" variant="ghost" className="ml-auto shrink-0" asChild>
           <a href={openAlex} target="_blank" rel="noreferrer" aria-label={t("openOnOpenAlex")}><OpenAlexIcon className="size-4" /></a>
         </Button>
-      </TooltipHint>
+      </TooltipHint>}
     </div>
   );
 }
@@ -190,10 +192,29 @@ function AuthorCardBody({ id, name }: { id: string; name: string }) {
 }
 
 /** An OpenAlex author's name with their card. */
-export function AuthorHoverCard({ id, name, children }: { id: string; name: string; children: ReactElement }) {
+/**
+ * A name OpenAlex has no author record for, such as an organisation printed as an author or an
+ * unmatched person: what the card can say is that, and the search by the name as printed.
+ */
+function UnmatchedAuthorBody({ value, name }: { value: string; name: string }) {
+  const t = useTranslations("entityCards");
+  const filter = useAuthorFilter();
+  return (
+    <>
+      <CardHeader icon={<AuthorAvatar className="size-10" />} name={name} line={<span>{t("noAuthorRecord")}</span>} />
+      <CardActions filter={filter} value={value} name={name} page={null} openAlex={null} />
+    </>
+  );
+}
+
+/**
+ * An author's name with their card, by the value the search keeps for them: an OpenAlex id
+ * (A5023888391) opens their record, a name OpenAlex has no record for a smaller card.
+ */
+export function AuthorHoverCard({ value, name, children }: { value: string; name: string; children: ReactElement }) {
   return (
     <EntityHoverCard trigger={children}>
-      <AuthorCardBody id={id} name={name} />
+      {isAuthorId(value) ? <AuthorCardBody id={value} name={name} /> : <UnmatchedAuthorBody value={value} name={name} />}
     </EntityHoverCard>
   );
 }

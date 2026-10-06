@@ -4202,6 +4202,7 @@
       "field": "उपक्षेत्र",
       "subfield": "विषय"
     },
-    "topicPapers": "{name}, {count} शोध-पत्र"
+    "topicPapers": "{name}, {count} शोध-पत्र",
+    "noAuthorRecord": "OpenAlex पर कोई लेखक रिकॉर्ड नहीं"
   }
 }

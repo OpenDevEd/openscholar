@@ -22,7 +22,6 @@ import {
 import { cn } from "@/lib/utils";
 import { authorValue, useScreening, type FilterValue } from "./hooks";
 import { institutionId, sourceId } from "@/lib/openalex/ids";
-import { isAuthorId } from "@/lib/openalex/author-filter";
 import { AuthorHoverCard } from "@/components/entity-cards";
 import type { TranslationContent } from "./hooks";
 import { useUIStore } from "@/lib/store";
@@ -684,8 +683,8 @@ export function AuthorNames({ authorships, unparsed, maxLength = Infinity, selec
         return (
           <React.Fragment key={`${value}-${index}`}>
             {index > 0 && ", "}
-            {name && value && isAuthorId(value) ? (
-              <AuthorHoverCard id={value} name={author.display_name}>{name}</AuthorHoverCard>
+            {name && value ? (
+              <AuthorHoverCard value={value} name={author.display_name}>{name}</AuthorHoverCard>
             ) : name ?? (
               author.display_name
             )}

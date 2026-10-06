@@ -4202,6 +4202,7 @@
       "field": "Subfields",
       "subfield": "Topics"
     },
-    "topicPapers": "{name}, {count, plural, one {# paper} other {# papers}}"
+    "topicPapers": "{name}, {count, plural, one {# paper} other {# papers}}",
+    "noAuthorRecord": "No OpenAlex author record"
   }
 }

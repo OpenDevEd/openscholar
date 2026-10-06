@@ -4202,6 +4202,7 @@
       "field": "Sous-domaines",
       "subfield": "Sujets"
     },
-    "topicPapers": "{name}, {count, plural, one {# article} other {# articles}}"
+    "topicPapers": "{name}, {count, plural, one {# article} other {# articles}}",
+    "noAuthorRecord": "Aucune fiche d'auteur sur OpenAlex"
   }
 }
