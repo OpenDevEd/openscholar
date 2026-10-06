@@ -4,7 +4,6 @@ import schema from "../schema";
 
 import {
   chatGenerationUsageFields,
-  chatPaperFields,
   creditsFields,
   creditTransactionFields,
   subscriptionFields,
@@ -25,7 +24,6 @@ const ssotTables = {
   credits: creditsFields,
   subscriptions: subscriptionFields,
   creditTransactions: creditTransactionFields,
-  chatPapers: chatPaperFields,
   chatGenerationUsages: chatGenerationUsageFields,
   extractionJobs: extractionJobFields,
   extractionQuestions: extractionQuestionFields,

@@ -10,7 +10,7 @@ import { effortValidator } from "../aiModelConfig/validators";
 import { errorCodeValidator } from "@/lib/errors/taxonomy";
 import { type AssertExactDoc } from "../lib/validators";
 import {
-  MAX_ANSWER_ITEMS, MAX_AUTHORS, MAX_CHAT_PAPERS, MAX_CITATIONS, MAX_ERROR_CONTEXT_BYTES, MAX_FILTER_VALUES, MAX_QUESTIONS, MAX_UNIT_TOKENS, RANGE_ENDS, capped, sized,
+  MAX_ANSWER_ITEMS, MAX_AUTHORS, MAX_CITATIONS, MAX_JOB_PAPERS, MAX_ERROR_CONTEXT_BYTES, MAX_FILTER_VALUES, MAX_QUESTIONS, MAX_UNIT_TOKENS, RANGE_ENDS, capped, sized,
 } from "../lib/listCaps";
 
 /**
@@ -110,9 +110,9 @@ export const resultsSummaryValidator = v.object({
   items: capped(v.array(v.object({ item: v.string(), papers: v.number() })), SUMMARY_GROUPS),
 });
 
-/** Papers picked at once for a job or chat, which holds at most this many. */
+/** Papers picked at once for a job, which holds at most this many. */
 export function paperSelectionValidator<V extends Validator<any, "required", any>>(paper: V) {
-  return capped(v.array(paper), MAX_CHAT_PAPERS);
+  return capped(v.array(paper), MAX_JOB_PAPERS);
 }
 export const MAX_QUESTION_TEXT_LENGTH = 2000;
 export const MAX_PAPER_TITLE_LENGTH = 500;
@@ -288,8 +288,6 @@ export const storedSearchFiltersValidator = v.union(
 
 export const extractionJobFields = {
   userId: v.id("users"),
-  // The paper chat's fields, going with its last data (#325, migrations/removeChat.ts): nothing writes them.
-  mode: v.optional(v.union(v.literal("extraction"), v.literal("chat"))),
   sourceType: v.optional(sourceTypeValidator),
   status: v.optional(jobStatusValidator),
   totalPapers: v.optional(v.number()),
@@ -302,24 +300,11 @@ export const extractionJobFields = {
   // Set while a retry resets failed results in batches (#351); the job doesn't finish until it clears.
   /** Set while a retry resets the job's failures a batch at a time; where the next batch starts. */
   retryReset: v.optional(v.object({ cursor: v.union(v.string(), v.null()) })),
-  chatThreadId: v.optional(v.string()),
-  chatModelId: v.optional(v.id("models")),
-  /** The chat's reasoning effort; none means the model's default. */
-  chatEffort: v.optional(effortValidator),
   // Resolved per-user server model for the run (credits path).
   serverModelId: v.optional(v.id("models")),
   serverEffort: v.optional(effortValidator),
   /** When the user screens with a decision model (Jev), yes/no questions go to it too. */
   decisionModelId: v.optional(v.id("models")),
-  lastMessageAt: v.optional(v.number()),
-  messageCount: v.optional(v.number()),
-  isGenerating: v.optional(v.boolean()),
-  generatingStartedAt: v.optional(v.number()),
-  chatGenerationAttemptId: v.optional(v.string()),
-  shouldAbort: v.optional(v.boolean()),
-  webSearchEnabled: v.optional(v.boolean()),
-  chatSourceFingerprint: v.optional(v.string()),
-  chatSourceOpenAlexIds: capped(v.optional(v.array(v.string())), MAX_CHAT_PAPERS),
   name: v.string(),
   // The name as the job list orders it, ignoring case and accents; a trigger keeps it
   // (../extraction/jobList.ts). Missing until migrations/pagedExtractionJobs has run.

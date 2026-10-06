@@ -223,7 +223,7 @@ describe("extraction full flow with mocked provider I/O", () => {
           .collect(),
         ctx.db
           .query("billingUsage")
-          .withIndex("by_job", (q) => q.eq("jobId", jobId))
+          .withIndex("by_job_and_createdAt", (q) => q.eq("jobId", jobId))
           .collect(),
       ]);
       return { papers, results, queueRows, usage };
@@ -356,7 +356,7 @@ describe("extraction full flow with mocked provider I/O", () => {
     const state = await t.run(async (ctx) => ({
       job: await ctx.db.get("extractionJobs", jobId),
       papers: await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect(),
-      usage: await ctx.db.query("billingUsage").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect(),
+      usage: await ctx.db.query("billingUsage").withIndex("by_job_and_createdAt", (q) => q.eq("jobId", jobId)).collect(),
       holds: await ctx.db.query("billingHolds").collect(),
       items: await ctx.db.query("billingHoldItems").collect(),
     }));

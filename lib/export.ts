@@ -58,7 +58,7 @@ export type ExportedSearch = Pick<SavedSearch, "query" | "count" | "field"> & Pa
 
 /** One exported search, under the names the history page's upload reads back. */
 export function historyRow(search: ExportedSearch) {
-  const omitted = new Set(['chatJobIdsByAccountId', 'screeningResponses', 'queryHistoryCount', 'questionCount', 'questionText', 'latestQuestion', 'importSource']);
+  const omitted = new Set(['screeningResponses', 'queryHistoryCount', 'questionCount', 'questionText', 'latestQuestion', 'importSource']);
   const spec = Object.fromEntries(Object.entries(search).filter(([key]) => key in searchFields && !omitted.has(key)));
   const id = search.id ?? '';
   const resolvedQuery = search.resolvedQuery ?? search.query;

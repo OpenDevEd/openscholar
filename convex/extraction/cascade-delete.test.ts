@@ -79,19 +79,6 @@ describe("deleteExtractionInternal cascade", () => {
         .withIndex("by_job_and_position", (q) => q.eq("jobId", ids.jobId))
         .collect();
       expect(sources).toHaveLength(0);
-
-      const chatPapers = await ctx.db
-        .query("chatPapers")
-        .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
-        .collect();
-      expect(chatPapers).toHaveLength(0);
-
-      const chatSourceEvents = await ctx.db
-        .query("chatSourceEvents")
-        .withIndex("by_job_createdAt", (q) => q.eq("jobId", ids.jobId))
-        .collect();
-      expect(chatSourceEvents).toHaveLength(0);
-
       // 8. The job itself
       const job = await ctx.db.get("extractionJobs", ids.jobId);
       expect(job).toBeNull();
@@ -224,13 +211,6 @@ describe("deleteExtractionInternal cascade", () => {
           .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
           .collect();
         expect(paperErrors).toHaveLength(0);
-
-        const sourceEvents = await ctx.db
-          .query("chatSourceEvents")
-          .withIndex("by_job_createdAt", (q) => q.eq("jobId", ids.jobId))
-          .collect();
-        expect(sourceEvents).toHaveLength(0);
-
         const job = await ctx.db.get("extractionJobs", ids.jobId);
         expect(job).toBeNull();
       });
@@ -293,19 +273,6 @@ describe("deleteExtractionInternal cascade", () => {
           .withIndex("by_job_and_position", (q) => q.eq("jobId", ids.jobId))
           .collect();
         expect(sources).toHaveLength(0);
-
-        const chatPapers = await ctx.db
-          .query("chatPapers")
-          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
-          .collect();
-        expect(chatPapers).toHaveLength(0);
-
-        const chatSourceEvents = await ctx.db
-          .query("chatSourceEvents")
-          .withIndex("by_job_createdAt", (q) => q.eq("jobId", ids.jobId))
-          .collect();
-        expect(chatSourceEvents).toHaveLength(0);
-
         // Job itself
         const job = await ctx.db.get("extractionJobs", ids.jobId);
         expect(job).toBeNull();

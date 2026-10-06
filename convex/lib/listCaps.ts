@@ -114,8 +114,6 @@ export const MAX_BATCH_PAPERS = 200;
 export const MAX_STARS = 5;
 /** OpenAlex lists at most 100 authorships for a work; longer author lists are cut to these. */
 export const MAX_AUTHORS = 100;
-/** People whose chats one shared search links to. */
-export const MAX_LINKED_ACCOUNTS = 100;
 /**
  * Legacy lists that nothing adds to any more: the history arrays on searches saved before
  * #354 (dropped by #373) and the answer chunks moved out by #334. Shared dev holds 40 at most.
@@ -157,8 +155,8 @@ export const MAX_BILLING_FEATURES = 200;
 export const MAX_PLAN_DETAILS = 50;
 /** Fields of one audit log or credit transaction's metadata. */
 export const MAX_METADATA_FIELDS = 50;
-/** Papers one chat reads from (lib/extraction/limits.ts PAPER_LIMIT). */
-export const MAX_CHAT_PAPERS = 1_000;
+/** Papers one job reads from (lib/extraction/limits.ts PAPER_LIMIT). */
+export const MAX_JOB_PAPERS = 1_000;
 /**
  * Buckets an extraction job counts in (convex/extraction/counts.ts): five by status, and a
  * `permanent:` and an `error:` bucket for each error code.

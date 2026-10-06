@@ -74,7 +74,6 @@ import type * as billing_stripeWebhook from "../billing/stripeWebhook.js";
 import type * as billing_usage from "../billing/usage.js";
 import type * as billing_usageLog from "../billing/usageLog.js";
 import type * as billing_validators from "../billing/validators.js";
-import type * as chat_billing from "../chat/billing.js";
 import type * as crons from "../crons.js";
 import type * as debug_papers from "../debug_papers.js";
 import type * as evidenceLibraries_access from "../evidenceLibraries/access.js";
@@ -301,7 +300,6 @@ import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibrar
 import type * as migrations_pagedRecords from "../migrations/pagedRecords.js";
 import type * as migrations_paperMetadata from "../migrations/paperMetadata.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
-import type * as migrations_removeChat from "../migrations/removeChat.js";
 import type * as migrations_removeOrphanLibraryAccess from "../migrations/removeOrphanLibraryAccess.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
@@ -455,7 +453,6 @@ declare const fullApi: ApiFromModules<{
   "billing/usage": typeof billing_usage;
   "billing/usageLog": typeof billing_usageLog;
   "billing/validators": typeof billing_validators;
-  "chat/billing": typeof chat_billing;
   crons: typeof crons;
   debug_papers: typeof debug_papers;
   "evidenceLibraries/access": typeof evidenceLibraries_access;
@@ -682,7 +679,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedRecords": typeof migrations_pagedRecords;
   "migrations/paperMetadata": typeof migrations_paperMetadata;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
-  "migrations/removeChat": typeof migrations_removeChat;
   "migrations/removeOrphanLibraryAccess": typeof migrations_removeOrphanLibraryAccess;
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
