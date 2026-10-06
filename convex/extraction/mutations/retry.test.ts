@@ -334,11 +334,11 @@ describe("retry reset — state changes", () => {
     const owner = t.withIdentity(OWNER_IDENTITY);
     await owner.mutation(api.extraction.mutations.retry.retryFailedQuestions, { jobId });
     await t.mutation(internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch: 1 });
-    expect(await pendingResults(t, jobId)).toBe(25);
+    expect(await pendingResults(t, jobId)).toBe(20);
 
     await owner.mutation(api.extraction.mutations.pause.pauseExtraction, { jobId });
     await runRetryBatches(t);
-    expect(await pendingResults(t, jobId)).toBe(25);
+    expect(await pendingResults(t, jobId)).toBe(20);
 
     await owner.mutation(api.extraction.mutations.resume.resumeExtraction, { jobId });
     await runRetryBatches(t);
@@ -347,7 +347,7 @@ describe("retry reset — state changes", () => {
     expect(job?.retryReset).toBeUndefined();
     // Papers reset before the pause are queued again for their retried question only.
     const queued = await t.run((ctx) => ctx.db.query("extractionPaperQueue").withIndex("by_job_and_epoch_and_status", (q) => q.eq("jobId", jobId).eq("runEpoch", job!.runEpoch!)).collect());
-    expect(queued.length).toBeGreaterThanOrEqual(25);
+    expect(queued.length).toBeGreaterThanOrEqual(20);
     expect(queued.every((row) => row.kind === "retry" && row.questionKeys?.join() === "q1")).toBe(true);
   });
 

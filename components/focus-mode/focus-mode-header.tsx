@@ -21,6 +21,7 @@ import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { useEffectiveRating } from "@/components/results-contexts";
 import type { PaperResult } from "@/lib/types";
+import { workUrl } from "@/lib/openalex/work-id";
 
 export interface FocusModeHeaderProps {
   currentPaper: PaperResult;
@@ -62,6 +63,8 @@ export function FocusModeHeader({
   tAccessibility,
 }: FocusModeHeaderProps) {
   const effectiveRating = useEffectiveRating(currentPaper.id);
+  // A paper with no OpenAlex record, such as one an extraction read from Zotero, has nothing to rate, save or open there.
+  const onOpenAlex = workUrl(currentPaper.id) !== null;
 
   return (
     <SheetHeader className="flex-shrink-0 p-3 border-b">
@@ -76,95 +79,99 @@ export function FocusModeHeader({
             </div>
           ) : null}
           {/* Star rating buttons - hidden on mobile */}
-          <div className="hidden md:flex items-center gap-0.5">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() =>
-                  onRatingChange(currentPaper.id, "no-rating")
-                }
-                className="hover:scale-110 transition-transform relative"
-              >
-                <Star
-                  className={cn(
-                    "h-3 w-3",
-                    effectiveRating === undefined
-                      ? "text-rating hover:text-rating"
-                      : "text-muted-foreground/40 hover:text-muted-foreground/60"
-                  )}
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-3 h-px bg-muted-foreground/60 rotate-45"></div>
-                </div>
-              </button>
-              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                X
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => onRatingChange(currentPaper.id, "0")}
-                className="hover:scale-110 transition-transform"
-              >
-                <Star
-                  className={cn(
-                    "h-3 w-3",
-                    effectiveRating === 0
-                      ? "text-rating hover:text-rating"
-                      : "text-muted-foreground hover:text-rating"
-                  )}
-                />
-              </button>
-              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                0
-              </span>
-            </div>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <div key={star} className="flex items-center gap-1">
+          {onOpenAlex ? (
+            <div className="hidden md:flex items-center gap-0.5">
+              <div className="flex items-center gap-1">
                 <button
-                  onClick={() => {
-                    if (effectiveRating === star) {
-                      onRatingChange(currentPaper.id, "no-rating");
-                    } else {
-                      onRatingChange(
-                        currentPaper.id,
-                        star.toString()
-                      );
-                    }
-                  }}
+                  onClick={() =>
+                    onRatingChange(currentPaper.id, "no-rating")
+                  }
+                  className="hover:scale-110 transition-transform relative"
+                >
+                  <Star
+                    className={cn(
+                      "h-3 w-3",
+                      effectiveRating === undefined
+                        ? "text-rating hover:text-rating"
+                        : "text-muted-foreground/40 hover:text-muted-foreground/60"
+                    )}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-3 h-px bg-muted-foreground/60 rotate-45"></div>
+                  </div>
+                </button>
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                  X
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => onRatingChange(currentPaper.id, "0")}
                   className="hover:scale-110 transition-transform"
                 >
                   <Star
                     className={cn(
                       "h-3 w-3",
-                      effectiveRating !== undefined &&
-                        effectiveRating >= star
-                        ? "fill-rating text-rating"
-                        : "fill-muted-foreground text-muted-foreground hover:fill-rating hover:text-rating"
+                      effectiveRating === 0
+                        ? "text-rating hover:text-rating"
+                        : "text-muted-foreground hover:text-rating"
                     )}
                   />
                 </button>
                 <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                  {star}
+                  0
                 </span>
               </div>
-            ))}
-            <div className="ml-3 flex items-center gap-1">
-              <SaveControl paper={currentPaper} />
-              <span className="text-xs text-muted-foreground bg-muted px-1 rounded">
-                B
-              </span>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <div key={star} className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      if (effectiveRating === star) {
+                        onRatingChange(currentPaper.id, "no-rating");
+                      } else {
+                        onRatingChange(
+                          currentPaper.id,
+                          star.toString()
+                        );
+                      }
+                    }}
+                    className="hover:scale-110 transition-transform"
+                  >
+                    <Star
+                      className={cn(
+                        "h-3 w-3",
+                        effectiveRating !== undefined &&
+                          effectiveRating >= star
+                          ? "fill-rating text-rating"
+                          : "fill-muted-foreground text-muted-foreground hover:fill-rating hover:text-rating"
+                      )}
+                    />
+                  </button>
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                    {star}
+                  </span>
+                </div>
+              ))}
+              <div className="ml-3 flex items-center gap-1">
+                <SaveControl paper={currentPaper} />
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded">
+                  B
+                </span>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
 
         {/* Second row: Navigation and actions */}
         {/* Phones wrap this into two rows: rating, save and navigation, then the tools */}
         <div className="flex flex-wrap items-center gap-1 md:flex-nowrap md:justify-end md:mr-8">
           {/* Compact rating selector - only on mobile */}
-          <div className="order-1 flex items-center gap-1 md:hidden">
-            <RatingSelector paper={currentPaper} variant="compact" />
-            <SaveControl paper={currentPaper} compact />
-          </div>
+          {onOpenAlex ? (
+            <div className="order-1 flex items-center gap-1 md:hidden">
+              <RatingSelector paper={currentPaper} variant="compact" />
+              <SaveControl paper={currentPaper} compact />
+            </div>
+          ) : null}
 
           <div className="order-4 flex items-center gap-1 md:order-none">
             <Button
@@ -238,18 +245,20 @@ export function FocusModeHeader({
           <div className="order-3 basis-full md:hidden" />
           <div className="order-5 w-px h-4 bg-border mx-1 md:order-none"></div>
           <div className="order-6 flex items-center gap-1 md:order-none">
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(currentPaper.id, "_blank")}
-              >
-                <ExternalLink className="h-3 w-3" />
-              </Button>
-              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                O
-              </span>
-            </div>
+            {onOpenAlex ? (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(currentPaper.id, "_blank")}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                  O
+                </span>
+              </div>
+            ) : null}
             <CitationControl paper={currentPaper} compact={false} />
             <div className="flex items-center gap-1">
               <DownloadMenu

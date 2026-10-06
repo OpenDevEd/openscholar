@@ -14,15 +14,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
-import { estimateRetryCredits } from "@/lib/extraction/cost-estimate";
+import type { Id } from "@/convex/_generated/dataModel";
 import { ExtractionPreflightBanner } from "@/components/extraction/preflight-banner";
 
 export interface RetryConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  jobId: Id<"extractionJobs">;
   retryableCount: number;
-  /** Mirrors `extractionJobs.usePdfs`; drives the PDF-tier cost. */
-  usePdfs: boolean;
   onConfirm: () => void | Promise<void>;
 }
 
@@ -34,28 +33,24 @@ export interface RetryConfirmDialogProps {
  * balance + the Buy Credits CTA if short. The Continue button is
  * disabled until the preflight banner reports `hasEnough`.
  *
- * Balance is only queried while the dialog is open (cheap compared to
+ * The figure and the balance are only queried while the dialog is open (cheap compared to
  * subscribing on every job-detail page load).
  */
 export function RetryConfirmDialog({
   open,
   onOpenChange,
+  jobId,
   retryableCount,
-  usePdfs,
   onConfirm,
 }: RetryConfirmDialogProps) {
   const t = useTranslations("extraction.retry.confirmDialog");
   const tc = useTranslations("common");
 
-  const estimate = estimateRetryCredits({
-    retryableCount,
-    usePdfs,
-    avgPaperKind: usePdfs ? "pdf" : "abstract",
-  });
-
+  // The most the retry costs, on the job's model: the figure the retry checks the balance against.
+  const { data: credits } = useProtectedQuery(api.extraction.queries.costs.estimateRetry, open ? { jobId } : "skip");
   const { data: balance } = useProtectedQuery(
     api.billing.accounts.checkBalance,
-    open && estimate.high > 0 ? { requiredAmount: estimate.high } : "skip",
+    open && credits ? { requiredAmount: credits } : "skip",
   );
 
   const [submitting, setSubmitting] = useState(false);
@@ -86,7 +81,7 @@ export function RetryConfirmDialog({
           <AlertDialogDescription>{t("body")}</AlertDialogDescription>
         </AlertDialogHeader>
         <ExtractionPreflightBanner
-          estimate={estimate}
+          credits={credits}
           balance={balance}
           onBeforeNavigate={() => onOpenChange(false)}
         />

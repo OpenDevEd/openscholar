@@ -8,7 +8,7 @@ import { RAG } from "@convex-dev/rag";
 import { openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { z } from "zod";
-import { convertUsdToCredits, creditsForUsage } from "../../lib/pricing";
+import { creditsForUsage, EMBEDDING_PRICING } from "../../lib/pricing";
 import { resolveOpenRouterModel } from "../chat/provider";
 type ExtractionModel = Awaited<ReturnType<typeof resolveOpenRouterModel>>["model"];
 type ExtractionPricing = Awaited<ReturnType<typeof resolveOpenRouterModel>>["pricing"];
@@ -84,26 +84,6 @@ const DENSE_THRESHOLD = 0.05;
 const RRF_CONSTANT = 30;
 const FUSED_TOP_N = 48;
 const EVIDENCE_POOL_N = 16;
-const DEFAULT_EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS = 0.02;
-function parsePositiveFloat(
-  input: string | undefined,
-  fallback: number,
-): number {
-  if (!input) return fallback;
-  const parsed = Number.parseFloat(input);
-  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-  return parsed;
-}
-
-const EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS = parsePositiveFloat(
-  process.env.EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS,
-  DEFAULT_EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS,
-);
-
-function estimateEmbeddingCostDollars(tokens: number): number {
-  if (!Number.isFinite(tokens) || tokens <= 0) return 0;
-  return (tokens / 1_000_000) * EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS;
-}
 
 /**
  * Build a fully classified error from anything an action catch site
@@ -834,9 +814,8 @@ export async function runDownloadAndIndexPdf(
       });
 
       const embeddingTokens = ragResult.usage?.tokens ?? 0;
-      const embeddingCostDollars =
-        estimateEmbeddingCostDollars(embeddingTokens);
-      embeddingCredits = convertUsdToCredits({ usd: embeddingCostDollars });
+      // At the price the estimate holds it at (lib/pricing/estimate.ts).
+      embeddingCredits = embeddingTokens > 0 ? creditsForUsage({ inputTokens: embeddingTokens, outputTokens: 0 }, EMBEDDING_PRICING) : 0;
 
       // A job cancelled mid-indexing is free: flip isIndexed without charging.
       const freshControl = await ctx.runQuery(

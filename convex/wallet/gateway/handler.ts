@@ -3,6 +3,7 @@ import { internal } from "../../_generated/api";
 import { streamText, generateText } from "ai";
 import { getProviderModel } from "../../../lib/ai/server/providers";
 import { parseAndValidateRequest, convertToAISdkParams } from "./parseRequest";
+import type { ChatCompletionRequest } from "./types";
 import {
   generateResponseId,
   formatNonStreamingResponse,
@@ -17,7 +18,10 @@ import {
 } from "./cost";
 import type { AIProvider } from "../../../lib/types/ai.types";
 import {
+  CALL_TOKENS,
   convertUsdToCredits,
+  estimateCredits,
+  tokensIn,
   WEB_SEARCH_ENGINE,
   WEB_SEARCH_MAX_RESULTS,
   WEB_SEARCH_USD,
@@ -25,7 +29,6 @@ import {
 import { autumn } from "../../billing/autumn";
 import { reserveCredits, releaseCredits, settleCredits } from "../../billing/charge";
 import type { Id, Doc } from "../../_generated/dataModel";
-import { ESTIMATED_CREDITS_PER_WALLET_API_CALL } from "../../lib/constants";
 
 // ─── CORS helpers ───────────────────────────────────────────
 
@@ -180,10 +183,19 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     );
   }
 
-  // 8. Hold the estimate, plus the search a web-search call runs.
+  // 8. Hold what the call can cost, as OpenRouter does: its text and tools, and the longest reply it
+  // allows (the model's own most when it sets none, else its context), at the model's price with
+  // reasoning at its own rate, plus the search a web-search call or a web plugin of the caller's runs.
+  // It settles to what it really cost.
+  const searches = webSearch || hasWebPlugin(req.provider_options?.openrouter?.plugins);
   const requiredCredits =
-    ESTIMATED_CREDITS_PER_WALLET_API_CALL +
-    (webSearch ? convertUsdToCredits({ usd: WEB_SEARCH_USD, markup: walletModel.costMarkup }) : 0);
+    estimateCredits(
+      { input: walletModel.inputPricePerMillion, output: Math.max(walletModel.outputPricePerMillion, walletModel.reasoningPricePerMillion ?? 0) },
+      { input: tokensIn(requestText(req)), output: req.max_completion_tokens ?? req.max_tokens ?? walletModel.maxCompletionTokens ?? walletModel.contextLength ?? CALL_TOKENS.chatMessage.output },
+      1,
+      walletModel.costMarkup,
+    ) +
+    (searches ? convertUsdToCredits({ usd: WEB_SEARCH_USD, markup: walletModel.costMarkup }) : 0);
   const chargeId = `wallet:${crypto.randomUUID()}`;
   if (
     !(await reserveCredits(ctx, {
@@ -258,16 +270,29 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
   }
 });
 
+/** The text a request sends the model: its messages' text parts and calls, and its tools. Images are priced by the provider, not by length. */
+export function requestText(req: ChatCompletionRequest): string {
+  const parts = req.messages.flatMap((message) => {
+    const text = typeof message.content === "string" ? [message.content] : (message.content ?? []).flatMap((part) => (part.type === "text" ? [part.text] : []));
+    return "tool_calls" in message && message.tool_calls ? [...text, JSON.stringify(message.tool_calls)] : text;
+  });
+  return parts.join("\n") + (req.tools ? JSON.stringify(req.tools) : "") + (req.response_format ? JSON.stringify(req.response_format) : "");
+}
+
 /**
  * The caller's OpenRouter plugins plus the web plugin, which runs one search on
  * Exa before the model answers. A web plugin the caller configured wins.
  */
 export function withWebPlugin(callerPlugins: unknown): unknown[] {
   const plugins = Array.isArray(callerPlugins) ? callerPlugins : [];
-  const hasWeb = plugins.some((plugin) => (plugin as { id?: unknown } | null)?.id === "web");
-  return hasWeb
+  return hasWebPlugin(plugins)
     ? plugins
     : [...plugins, { id: "web", engine: WEB_SEARCH_ENGINE, max_results: WEB_SEARCH_MAX_RESULTS }];
+}
+
+/** Whether the caller's OpenRouter plugins include the web plugin, which runs a paid search. */
+function hasWebPlugin(callerPlugins: unknown): boolean {
+  return Array.isArray(callerPlugins) && callerPlugins.some((plugin) => (plugin as { id?: unknown } | null)?.id === "web");
 }
 
 // ─── Credit charge helper ───────────────────────────────────

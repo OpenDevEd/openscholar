@@ -33,6 +33,8 @@ import {
   paperStatusValidator,
 } from "../validators";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
+import { extractionPricing } from "../../ai/serverModel";
+import { extractionPaperCredits } from "../../../lib/pricing";
 
 export const getJobInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
@@ -54,15 +56,23 @@ export const approvalOf = internalQuery({
   },
 });
 
-export const getQuestionCount = internalQuery({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.number(),
-  handler: async (ctx, args) => {
-    const questions = await ctx.db
+/**
+ * What a paper of a job holds before it runs (../paperWorker.ts): its questions, or the ones a
+ * retry asks again, on the models the job was stamped with, and how many there are.
+ */
+export const paperCredits = internalQuery({
+  args: { jobId: v.id("extractionJobs"), questionKeys: v.optional(v.array(v.string())), pdf: v.boolean() },
+  returns: v.object({ credits: v.number(), questions: v.number() }),
+  handler: async (ctx, { jobId, questionKeys, pdf }) => {
+    const job = await ctx.db.get("extractionJobs", jobId);
+    if (!job) return { credits: 0, questions: 0 };
+    const all = await ctx.db
       .query("extractionQuestions")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .withIndex("by_job", (q) => q.eq("jobId", jobId))
       .take(MAX_QUESTIONS_PER_JOB);
-    return questions.length;
+    // A retry asks some of them again, of a paper already read.
+    const asked = questionKeys ? all.filter((question) => questionKeys.includes(question.key)) : all;
+    return { credits: extractionPaperCredits(await extractionPricing(ctx, job), asked, pdf, pdf && !questionKeys), questions: asked.length };
   },
 });
 

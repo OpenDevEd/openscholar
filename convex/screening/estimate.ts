@@ -2,7 +2,8 @@ import type { Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { collectionCount, libraryCountRow } from "../library/counter";
-import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
+import { taskPricing } from "../ai/serverModel";
+import { screeningPaperCredits } from "../../lib/pricing";
 import { createError } from "../lib/errors";
 import type { paperSetValidator, screeningScoringConfigValidator } from "./validators";
 
@@ -18,16 +19,22 @@ export function requireMinimum(config: Infer<typeof screeningScoringConfigValida
 }
 
 /**
- * What screening `papers` papers holds against an `available` balance, and how many papers
- * that balance covers: the hold a job takes when it starts. The Screen all dialog and the
- * assistant's approval card both show it.
+ * What screening `papers` papers holds against an `available` balance at `perPaper` credits a
+ * paper (lib/pricing/estimate.ts `screeningPaperCredits`), and how many papers that balance
+ * covers: the hold a job takes when it starts. The Screen all dialog and the assistant's
+ * approval card both show it.
  */
-export function estimateScreening(papers: number, available: number) {
+export function estimateScreening(papers: number, available: number, perPaper: number) {
   return {
-    credits: Math.ceil(Math.max(0, papers) * ESTIMATED_CREDITS_PER_PAPER),
+    credits: Math.max(0, papers) * perPaper,
     available,
-    affordablePapers: Math.floor(available / ESTIMATED_CREDITS_PER_PAPER),
+    affordablePapers: Math.floor(available / perPaper),
   };
+}
+
+/** What screening one paper costs a person at most, on the model their Screen all runs on. */
+export async function screeningPaperCreditsFor(ctx: QueryCtx, userId: Id<"users">) {
+  return screeningPaperCredits(await taskPricing(ctx, userId, "screenAll"));
 }
 
 /**
@@ -58,5 +65,5 @@ export async function papersIn(ctx: QueryCtx, userId: Id<"users">, set: Infer<ty
 export async function screeningHold(ctx: QueryCtx, userId: Id<"users">, { set, first, last, scoringConfig }: { set: Infer<typeof paperSetValidator>; first: number; last: number; scoringConfig: Infer<typeof screeningScoringConfigValidator> }) {
   requireMinimum(scoringConfig);
   const held = await papersIn(ctx, userId, set);
-  return estimateScreening(Math.max(0, Math.min(last, held ?? last) - first + 1), 0).credits;
+  return estimateScreening(Math.max(0, Math.min(last, held ?? last) - first + 1), 0, await screeningPaperCreditsFor(ctx, userId)).credits;
 }

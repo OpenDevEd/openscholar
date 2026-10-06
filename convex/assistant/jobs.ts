@@ -15,9 +15,9 @@ import { internalMutation, query } from "../lib/functions";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { getScreeningJobAction } from "../screening/queries";
 import { readJobCounters } from "../extraction/jobCounters";
-import { formatAnswerForDisplay } from "../../lib/extraction/analysis";
+import { readScreeningProgressCounts } from "../screening/progress";
 import { requireThread } from "./access";
-import { extractionCardValidator, JOB_CARD_ROWS, JOBS_TOLD_AT_ONCE, screeningCardValidator } from "./validators";
+import { extractionCardValidator, JOBS_DOCKED, JOBS_TOLD_AT_ONCE, runningJobsValidator, screeningCardValidator } from "./validators";
 import { hasEnded, JOB_ENDED } from "./jobEnds";
 import { admit, startReply } from "./replies";
 import { healCalls, settleAsked } from "./steps";
@@ -31,10 +31,19 @@ const BUSY_RETRY_MS = 60_000;
 
 const cardValidator = v.union(screeningCardValidator, extractionCardValidator);
 
-/** The job a step started, from what it returned. */
+/**
+ * The job a step started: from what it returned, or, while the step is still finishing, from
+ * the running job's row, which the job's own insert writes (./jobEnds.ts).
+ */
 async function jobOf(ctx: QueryCtx, step: Doc<"assistantSteps">) {
   const kind = STARTS[step.path];
-  if (!kind || step.status !== "done") return null;
+  if (!kind) return null;
+  const running = await ctx.db.query("assistantJobs").withIndex("by_step", (q) => q.eq("stepId", step._id)).first();
+  if (running) {
+    const id = ctx.db.normalizeId(kind === "screening" ? "screeningJobs" : "extractionJobs", running.jobId);
+    return id ? { kind, id } : null;
+  }
+  if (step.status !== "done") return null;
   const row = await ctx.db.query("assistantStepResults").withIndex("by_step", (q) => q.eq("stepId", step._id)).unique();
   try {
     const { jobId } = JSON.parse(row?.result ?? "null") as { jobId?: string };
@@ -84,46 +93,28 @@ async function screeningAhead(ctx: QueryCtx, userId: Id<"users">, waiting: Id<"s
   return null;
 }
 
-/** What an extraction has come to, with its first papers' answers. */
+/** What an extraction has come to: how many papers it has read, and the questions it asks. */
 async function extractionFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"extractionJobs">): Promise<Infer<typeof extractionCardValidator> | null> {
   const job = await ctx.db.get("extractionJobs", jobId);
   if (!job || job.userId !== userId) return null;
-  const [counters, credits, questions, papers] = await Promise.all([
+  const [counters, credits, questions] = await Promise.all([
     readJobCounters(ctx, jobId),
     creditsAgg.sum(ctx, { namespace: jobId }),
     ctx.db.query("extractionQuestions").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(MAX_QUESTIONS_PER_JOB),
-    ctx.db.query("extractionPapers").withIndex("by_job_processable", (q) => q.eq("jobId", jobId).eq("processable", true)).take(JOB_CARD_ROWS),
   ]);
-  const asked = questions.sort((a, b) => a.order - b.order);
-  const types = new Map(asked.map((question) => [question.key, question.type]));
-  const rows = await Promise.all(
-    papers.map(async (paper) => {
-      const results = await ctx.db.query("extractionResults").withIndex("by_paper", (q) => q.eq("paperId", paper._id)).take(MAX_QUESTIONS_PER_JOB);
-      const answers = Object.fromEntries(
-        results
-          .filter((result) => result.status === "completed")
-          .map((result) => {
-            const missing = result.answer === null || result.answer === "" || (Array.isArray(result.answer) && !result.answer.length);
-            return [result.questionKey, { text: missing ? "" : formatAnswerForDisplay(result.answer, types.get(result.questionKey) as Parameters<typeof formatAnswerForDisplay>[1]), missing }];
-          }),
-      );
-      return { id: paper._id, title: paper.title, answers, done: paper.status === "completed", titleOnly: !paper.abstract && !paper.storageId };
-    }),
-  );
   return {
     kind: "extraction",
     jobId,
     status: job.status ?? "pending",
     name: job.name,
     total: job.totalPapers ?? 0,
-    // Papers, as the job's page counts them: its counts row has each answer too.
+    // Papers, as the job's page counts them.
     done: counters.processed,
     failed: counters.failed,
     credits,
     ...(job.spendCap === undefined ? {} : { cap: job.spendCap }),
     ...(job.error?.message && job.status !== "completed" ? { stopped: job.error.message } : {}),
-    questions: asked.map(({ key, question }) => ({ key, question })),
-    rows,
+    questions: questions.sort((a, b) => a.order - b.order).map(({ key, question }) => ({ key, question })),
   };
 }
 
@@ -145,8 +136,40 @@ export const card = query({
   },
 });
 
+/** The jobs this chat's replies started that are still running, newest first: the chat docks their live cards. */
+export const running = query({
+  args: { threadId: v.id("assistantThreads") },
+  returns: runningJobsValidator,
+  handler: async (ctx, { threadId }) => {
+    const userId = (await requireAuth(ctx))._id;
+    await requireFeature(ctx, FLAG, userId);
+    await requireThread(ctx, userId, threadId);
+    const rows = await ctx.db.query("assistantJobs").withIndex("by_thread", (q) => q.eq("threadId", threadId)).order("desc").take(JOBS_DOCKED);
+    return rows.map(({ stepId, kind }) => ({ stepId, kind }));
+  },
+});
+
+/** How far a running job has got, in papers, for a chat's row in the list. Null for a job that's gone. */
+export async function progressOf(ctx: QueryCtx, row: Doc<"assistantJobs">): Promise<{ done: number; total: number } | null> {
+  if (row.kind === "screening") {
+    const id = ctx.db.normalizeId("screeningJobs", row.jobId);
+    const job = id ? await ctx.db.get("screeningJobs", id) : null;
+    if (!job) return null;
+    const counts = await readScreeningProgressCounts(ctx, job);
+    return { done: counts.completedCount + counts.failedCount, total: job.totalPapers };
+  }
+  const id = ctx.db.normalizeId("extractionJobs", row.jobId);
+  const job = id ? await ctx.db.get("extractionJobs", id) : null;
+  if (!job) return null;
+  // Papers it answered and papers that failed are both finished.
+  const counters = await readJobCounters(ctx, job._id);
+  return { done: counters.processed + counters.failed, total: job.totalPapers ?? 0 };
+}
+
 /** One ended job as the assistant is told it: what it found, what it cost, and where its page is. */
-async function told(ctx: QueryCtx, end: Doc<"assistantJobEnds">) {
+async function told(ctx: QueryCtx, end: Doc<"assistantJobEnds">, quiet: boolean) {
+  // Stopped for: whatever is left of the job, nothing is owed for it.
+  if (quiet) return `<job_ended quiet>${end.kind} ${end.jobId} ended (${end.status}) before someone pressed Stop: no readout is owed for it unless the person asks.</job_ended>`;
   const facts = end.kind === "screening" ? await screeningFacts(ctx, end.userId, end.jobId as Id<"screeningJobs">) : await extractionFacts(ctx, end.userId, end.jobId as Id<"extractionJobs">);
   if (!facts) return `<job_ended>${end.kind} ${end.jobId} ended (${end.status}); it can no longer be read.</job_ended>`;
   const spent = `credits: ${facts.credits}${facts.cap === undefined ? "" : ` of ${facts.cap} approved`}`;
@@ -178,6 +201,19 @@ export const deliver = internalMutation({
       else live.push(end);
     }
     if (!live.length) return null;
+    // Ends of jobs that ended before someone last pressed Stop are told first, together, with no readout.
+    const quiet = live.filter((end) => thread.stoppedAt !== undefined && end.endedAt <= thread.stoppedAt);
+    if (quiet.length) {
+      // As before any message: a reply stopped as it called actions can leave calls without their results.
+      await settleAsked(ctx, threadId);
+      await healCalls(ctx, thread.agentThreadId);
+      const note = (await Promise.all(quiet.map((end) => told(ctx, end, true)))).join("\n");
+      const [message] = (await saveMessages(ctx, components.agent, { threadId: thread.agentThreadId, userId: quiet[0].userId, agentName: JOB_ENDED, messages: [{ role: "user", content: note }] })).messages;
+      for (const end of quiet) await ctx.db.patch("assistantJobEnds", end._id, { pending: undefined, order: message.order });
+      // Whatever else waits, quiet or not, is told next, a batch at a time.
+      await ctx.scheduler.runAfter(0, internal.assistant.jobs.deliver, { threadId });
+      return null;
+    }
     const userId = live[0].userId;
     const ends = live.filter((end) => end.userId === userId);
     // Lost access to the chat, or the assistant, since: the end stays on its card, and nobody is answered for it.
@@ -197,7 +233,7 @@ export const deliver = internalMutation({
     }
     await settleAsked(ctx, threadId);
     await healCalls(ctx, thread.agentThreadId);
-    const note = (await Promise.all(ends.map((end) => told(ctx, end)))).join("\n");
+    const note = (await Promise.all(ends.map((end) => told(ctx, end, false)))).join("\n");
     const [message] = (await saveMessages(ctx, components.agent, { threadId: thread.agentThreadId, userId, agentName: JOB_ENDED, messages: [{ role: "user", content: note }] })).messages;
     for (const end of ends) await ctx.db.patch("assistantJobEnds", end._id, { pending: undefined, order: message.order });
     try {

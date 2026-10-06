@@ -1,7 +1,8 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
+import { defaultRangeExtractor, useVirtualizer, useWindowVirtualizer, type Range } from "@tanstack/react-virtual";
 import {
   Table,
   TableBody,
@@ -24,6 +25,7 @@ import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-p
 import { HighlightedText } from "./highlighted-text";
 import { PaperQuestionProgress } from "@/components/extraction/paper-question-progress";
 import { PaperDetails, ResultCell } from "./result-parts";
+import { PaperTitle } from "@/components/focus-mode/paper-title";
 
 interface TableViewProps {
   papers: PaperWithResults[];
@@ -37,10 +39,17 @@ interface TableViewProps {
   usePdfs: boolean;
   /** Plan-04: opt-in per-paper Credits column, toggled via toolbar. */
   showCredits?: boolean;
+  /** Opens focus mode on a paper, by its place in `papers`. */
+  onOpenPaper: (index: number) => void;
 }
+
+/** A row's height before it is measured: a paper with three lines of answers. */
+const ROW_ESTIMATE = 140;
 
 /** One paper's row. Memoised, so a change to another row, or a resize, leaves it alone. */
 const PaperRow = memo(function PaperRow({
+  index,
+  measureRef,
   paper,
   questions,
   isSelected,
@@ -51,7 +60,10 @@ const PaperRow = memo(function PaperRow({
   pinnedShadow,
   openAnswer,
   onOpenAnswer,
+  onOpenPaper,
 }: {
+  index: number;
+  measureRef: (row: HTMLTableRowElement | null) => void;
   paper: PaperWithResults;
   questions: Question[];
   isSelected: boolean;
@@ -62,11 +74,15 @@ const PaperRow = memo(function PaperRow({
   pinnedShadow: string;
   openAnswer: string | null;
   onOpenAnswer: (answer: OpenAnswer) => void;
+  onOpenPaper: (index: number) => void;
 }) {
   const completedCount = paper.results.filter((r) => r.status === "completed").length;
   const questionProgress = `${completedCount}/${Math.max(questions.length, paper.results.length)}`;
   return (
     <TableRow
+      ref={measureRef}
+      data-index={index}
+      aria-rowindex={index + 2}
       data-paper-id={paper._id}
       data-paper-status={paper.status}
       data-question-progress={questionProgress}
@@ -86,9 +102,9 @@ const PaperRow = memo(function PaperRow({
           />
           <div className="min-w-0 space-y-1.5">
             <TooltipHint label={paper.title} onlyWhenClipped>
-              <p className="line-clamp-4 text-sm font-medium leading-snug">
+              <PaperTitle title={paper.title} onOpen={() => onOpenPaper(index)} className="line-clamp-4">
                 <HighlightedText text={paper.title} query={searchQuery} />
-              </p>
+              </PaperTitle>
             </TooltipHint>
             <PaperDetails paper={paper} pdfEnabled={pdfEnabled} />
             <div onClick={(e) => e.stopPropagation()}>
@@ -107,7 +123,7 @@ const PaperRow = memo(function PaperRow({
       {questions.map((q) => {
         const result = paper.results.find((r) => r.questionKey === q.key);
         return (
-          <TableCell key={q.key} className="relative isolate max-w-[320px] py-4 pl-4 pr-9 align-top whitespace-normal" onClick={(e) => e.stopPropagation()}>
+          <TableCell key={q.key} className="relative isolate py-4 pl-4 pr-9 align-top whitespace-normal" onClick={(e) => e.stopPropagation()}>
             <ResultCell
               result={result}
               type={q.type}
@@ -133,7 +149,11 @@ export const TableView = memo(function TableView({
   openAnswer,
   usePdfs,
   showCredits = false,
+  onOpenPaper,
 }: TableViewProps) {
+  // React Compiler skips this component, as TanStack Virtual is on its list of
+  // incompatible libraries, so the callbacks the rows get are memoised by hand.
+  "use no memo";
   const tc = useTranslations("common");
   const pdfEnabled = usePdfs;
   const allSelected = papers.length > 0 && papers.every(p => selectedIds.has(p._id));
@@ -148,7 +168,7 @@ export const TableView = memo(function TableView({
     onSelectionChange(next);
   };
 
-  const toggleSelect = (id: string) => {
+  const toggleSelect = useCallback((id: string) => {
     const newSet = new Set(selectedIds);
     if (newSet.has(id)) {
       newSet.delete(id);
@@ -156,7 +176,52 @@ export const TableView = memo(function TableView({
       newSet.add(id);
     }
     onSelectionChange(newSet);
+  }, [selectedIds, onSelectionChange]);
+
+  // Only the rows near the screen are drawn. A page holds hundreds of papers, and
+  // drawing all of them made every frame of a side panel's slide re-lay and
+  // repaint the whole table. The rows scroll with the page, or inside the results
+  // pane on a phone with an answer open, so the virtualizer needs that scroller and
+  // where the rows start in it; anything above them can grow, so its size is watched.
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
+  const [pane, setPane] = useState<HTMLElement | null>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    const scroller = body.closest<HTMLElement>("[data-results-scroller]");
+    setPane(scroller);
+    const measure = () => {
+      const top = scroller ? scroller.getBoundingClientRect().top - scroller.scrollTop : -window.scrollY;
+      setScrollMargin(Math.round(body.getBoundingClientRect().top - top));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(scroller?.firstElementChild ?? document.body);
+    return () => observer.disconnect();
+  }, []);
+  // A row holding keyboard focus stays drawn after it scrolls away, so focus is not
+  // dropped, and so do its neighbours, so Tab and Shift+Tab still reach the next and previous paper.
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const focused = focusedId ? papers.findIndex((paper) => paper._id === focusedId) : -1;
+  const options = {
+    count: papers.length,
+    estimateSize: () => ROW_ESTIMATE,
+    overscan: 6,
+    scrollMargin,
+    getItemKey: (index: number) => papers[index]._id,
+    rangeExtractor: (range: Range) => {
+      const indexes = new Set(defaultRangeExtractor(range));
+      if (focused >= 0) for (const index of [focused - 1, focused, focused + 1]) if (index >= 0 && index < papers.length) indexes.add(index);
+      return [...indexes].sort((a, b) => a - b);
+    },
   };
+  const windowRows = useWindowVirtualizer({ ...options, enabled: !pane });
+  const paneRows = useVirtualizer({ ...options, getScrollElement: () => pane, enabled: !!pane });
+  const rows = pane ? paneRows : windowRows;
+  const columnCount = 1 + (showCredits ? 1 : 0) + questions.length;
+  const spacer = (height: number) => height > 0 ? <tr aria-hidden style={{ height }}><td colSpan={columnCount} className="p-0" /></tr> : null;
+  let drawnTo = scrollMargin;
 
   // Edge fades while there is more to scroll to. The table's own scroll box
   // is outside React, so a listener and resize observer keep this in step.
@@ -189,11 +254,17 @@ export const TableView = memo(function TableView({
   );
 
   return (
-    <div ref={scrollRef} className="relative">
-      {/* Opaque, so the pinned paper column matches the cells scrolling under it. */}
-      <Table className="bg-card">
+    // The virtualizer keeps the rows in place as they are measured, so the browser's own scroll anchoring stays out of the table.
+    <div ref={scrollRef} className="relative [overflow-anchor:none]">
+      {/* Opaque, so the pinned paper column matches the cells scrolling under it.
+          Fixed layout, so column widths never change as rows come and go: the answers share what the paper column leaves, at least 240px each. */}
+      <Table
+        aria-rowcount={papers.length + 1}
+        className="table-fixed bg-card [--paper-column:220px] sm:[--paper-column:320px]"
+        style={{ minWidth: `calc(var(--paper-column) + ${(showCredits ? 100 : 0) + questions.length * 240}px)` } as CSSProperties}
+      >
         <TableHeader>
-          <TableRow className="hover:bg-transparent">
+          <TableRow aria-rowindex={1} className="hover:bg-transparent">
             <TableHead className={cn(pinnedShadow, "sticky left-0 z-10 w-[220px] min-w-[220px] bg-card pl-4 pr-4 sm:w-[320px] sm:min-w-[320px] md:pl-6")}>
               <div className="flex items-center gap-3">
                 <Checkbox
@@ -209,7 +280,7 @@ export const TableView = memo(function TableView({
               </TableHead>
             )}
             {questions.map((q) => (
-              <TableHead key={q.key} className="min-w-[240px] max-w-[320px] whitespace-normal">
+              <TableHead key={q.key} className="whitespace-normal">
                 <div className="flex items-center gap-1.5">
                   <TooltipHint label={q.question} onlyWhenClipped>
                     <span className="line-clamp-1">{q.question}</span>
@@ -227,23 +298,40 @@ export const TableView = memo(function TableView({
             ))}
           </TableRow>
         </TableHeader>
-        <TableBody>
-          {papers.map((paper) => (
-            <PaperRow
-              key={paper._id}
-              paper={paper}
-              questions={questions}
-              isSelected={selectedIds.has(paper._id)}
-              onToggleSelect={toggleSelect}
-              searchQuery={searchQuery}
-              pdfEnabled={pdfEnabled}
-              showCredits={showCredits}
-              pinnedShadow={pinnedShadow}
-              // Only the row that holds the open answer hears about it, so opening one redraws two rows, not all.
-              openAnswer={openAnswer?.startsWith(`${paper._id}:`) ? openAnswer : null}
-              onOpenAnswer={onOpenAnswer}
-            />
-          ))}
+        <TableBody
+          ref={bodyRef}
+          onFocus={(event) => setFocusedId(event.target.closest<HTMLElement>("tr[data-paper-id]")?.dataset.paperId ?? null)}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setFocusedId(null);
+          }}
+        >
+          {rows.getVirtualItems().map(({ index, key, start, end }) => {
+            const paper = papers[index];
+            const gap = start - drawnTo;
+            drawnTo = end;
+            return (
+              <Fragment key={key}>
+                {spacer(gap)}
+                <PaperRow
+                  index={index}
+                  measureRef={rows.measureElement}
+                  onOpenPaper={onOpenPaper}
+                  paper={paper}
+                  questions={questions}
+                  isSelected={selectedIds.has(paper._id)}
+                  onToggleSelect={toggleSelect}
+                  searchQuery={searchQuery}
+                  pdfEnabled={pdfEnabled}
+                  showCredits={showCredits}
+                  pinnedShadow={pinnedShadow}
+                  // Only the row that holds the open answer hears about it, so opening one redraws two rows, not all.
+                  openAnswer={openAnswer?.startsWith(`${paper._id}:`) ? openAnswer : null}
+                  onOpenAnswer={onOpenAnswer}
+                />
+              </Fragment>
+            );
+          })}
+          {spacer(scrollMargin + rows.getTotalSize() - drawnTo)}
         </TableBody>
       </Table>
       {/* More columns off to the right. */}

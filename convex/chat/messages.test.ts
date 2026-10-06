@@ -12,7 +12,7 @@ import { paperChat } from "./agent";
 import { startAbortPoller } from "../../lib/chat/abort-poller";
 import { STOP_ABORT_POLL_INTERVAL_MS } from "../assistant/turn";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
-import { convertUsdToCredits, creditsForUsage } from "../../lib/pricing";
+import { CALL_TOKENS, convertUsdToCredits, creditsForUsage, estimateCredits } from "../../lib/pricing";
 import { parseChatError } from "../../lib/errors/taxonomy";
 import { finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, partialDeltasThenHangDoStream, waitFor } from "../assistant/turn.test-support";
 
@@ -981,10 +981,12 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
       isGenerating: true,
     });
+    // What the turn holds on this model, and 10,000 more.
+    const balance = estimateCredits({ input: 1_000, output: 2_000 }, CALL_TOKENS.chatMessage) + 10_000;
     const { modelId } = await seedModelAndCredits(t, userId, {
       inputPricePerMillion: 1_000,
       outputPricePerMillion: 2_000,
-      freeBalance: 10_000,
+      freeBalance: balance,
     });
     await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
     const promptMessageId = await seedUserMessage(t, threadId, "ping");
@@ -1004,7 +1006,7 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     expect(usage[0]?.kind).toBe("chat");
     expect(usage[0]?.userId).toBe(userId);
     expect(usage[0]?.credits).toBe(expected);
-    expect(fakeAutumn.balance(userId)).toBe(10_000 - (usage[0]?.credits ?? 0));
+    expect(fakeAutumn.balance(userId)).toBe(balance - (usage[0]?.credits ?? 0));
     expect(fakeAutumn.locks.size).toBe(0);
   });
 
@@ -1637,6 +1639,9 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     });
     const promptMessageId = await seedUserMessage(t, threadId, "hello");
     const caller = asCaller(t, "c_msg");
+    // A chat on GPT-6 Luna's price: the turn holds a message's worth on it.
+    providerState.pricing = { input: 0.1, output: 0.5 };
+    const required = estimateCredits(providerState.pricing, CALL_TOKENS.chatMessage);
 
     await expect(
       t.action(internal.chat.messages.generateResponse, {
@@ -1660,9 +1665,9 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     const errorEnvelope = parseChatError(failedAssistant?.error);
     expect(errorEnvelope?.class).toBe("insufficient_credits");
     expect(errorEnvelope?.creditEstimate).toEqual({
-      required: 200,
+      required,
       available: 0,
-      deficit: 200,
+      deficit: required,
     });
     expect(jobAfterFailure?.isGenerating).toBe(false);
     expect(jobAfterFailure?.error?.code).toBe("insufficient_credits");

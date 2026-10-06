@@ -41,7 +41,8 @@ import {
   type JobStatus,
 } from "../stateMachine";
 import { validateResumeTransition } from "../../../lib/extraction/transitions";
-import { estimatePaperCredits } from "../../../lib/extraction/cost-estimate";
+import { extractionPaperCredits } from "../../../lib/pricing";
+import { extractionPricing } from "../../ai/serverModel";
 import { approvalLeft } from "../../billing/spend";
 import {
   EXTRACTION_PAPER_CONCURRENCY,
@@ -94,10 +95,8 @@ export const resumeExtraction = mutation({
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", jobId))
         .take(MAX_QUESTIONS_PER_JOB);
-      remainingEstimateHigh = estimatePaperCredits({
-        questionCount: questions.length,
-        pdf: job.usePdfs ?? false,
-      });
+      // The next paper, on the models the job was stamped with.
+      remainingEstimateHigh = extractionPaperCredits(await extractionPricing(ctx, job), questions, job.usePdfs ?? false);
     }
 
     const decision = validateResumeTransition({

@@ -562,8 +562,8 @@
     "defineQuestions": "質問を定義",
     "whatToExtract": "抽出する内容",
     "preflight": {
-      "sufficient": "約{estimate}クレジット",
-      "insufficient": "約{estimate}クレジット必要、現在{balance}保有"
+      "sufficient": "最大{estimate}クレジット",
+      "insufficient": "最大{estimate}クレジット必要、現在{balance}保有"
     },
     "creditsExhausted": {
       "title": "抽出を一時停止しました — クレジット不足",
@@ -2028,7 +2028,9 @@
     "after": "{name} の後",
     "readingPapers": "論文を読み込み中…",
     "screenPapers": "{count, plural, other {# 件}}をスクリーニング",
-    "startFailed": "スクリーニングを開始できませんでした"
+    "startFailed": "スクリーニングを開始できませんでした",
+    "showAnswers": "{title} の回答を表示",
+    "hideAnswers": "{title} の回答を隠す"
   },
   "connectionsPage": {
     "connectedApps": "接続済みアプリ",
@@ -4011,11 +4013,6 @@
       "excluded": "除外",
       "unclear": "不明",
       "open": "開く",
-      "question": "質問",
-      "missing": "記載なし",
-      "noAnswer": "回答なし",
-      "titleOnly": "タイトルのみ",
-      "more": "残り {count} 件はページで",
       "finished": "完了",
       "cancelled": "キャンセル済み",
       "stopped": "停止",
@@ -4039,7 +4036,16 @@
         "failed": "抽出に失敗しました",
         "cancel": "抽出をキャンセル"
       },
-      "ended": "{kind, select, screening {スクリーニング} other {抽出}}{status, select, completed {が完了しました} creditsExhausted {は許可したクレジットで停止しました} cancelled {はキャンセルされました} other {に失敗しました}}"
-    }
+      "ended": "{kind, select, screening {スクリーニング} other {抽出}}{status, select, completed {が完了しました} creditsExhausted {は許可したクレジットで停止しました} cancelled {はキャンセルされました} other {に失敗しました}}",
+      "read": "読了",
+      "failedCount": "失敗",
+      "showLess": "表示を減らす",
+      "showAll": "実行中の {count} 件のジョブをすべて表示"
+    },
+    "jobKind": {
+      "screening": "スクリーニング",
+      "extraction": "抽出"
+    },
+    "moreJobs": "他 {count} 件のジョブ"
   }
 }

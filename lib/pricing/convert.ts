@@ -27,13 +27,15 @@ export function convertUsdToCredits(args: ConvertUsdToCreditsArgs): number {
   return Math.max(1, Math.ceil(raw));
 }
 
-/** Credits for a model call priced in USD per million tokens. A call that
- *  used tokens costs at least 1 credit, even before the model's price syncs. */
+/** Credits for a model call priced in USD per million tokens, at `markup` (the
+ *  global one by default). A call that used tokens costs at least 1 credit, even
+ *  before the model's price syncs. */
 export function creditsForUsage(
   usage: Usage,
   pricing: { input: number; output: number },
+  markup?: number,
 ): number {
-  const credits = convertUsdToCredits({ usd: calculateCostInDollars(usage, pricing) });
+  const credits = convertUsdToCredits({ usd: calculateCostInDollars(usage, pricing), markup });
   if (credits > 0) return credits;
   const tokens =
     (usage.inputTokens ?? usage.promptTokens ?? 0) +

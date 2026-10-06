@@ -5,6 +5,12 @@ import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
 import { setupExtractionPaperWorkpool } from "./workpool.test-support";
 import { fakeAutumn, installFakeAutumn, seedCreditsForTest } from "../../billing/billing.test-support";
+import { SERVER_MODEL_SLUG } from "../../ai/config";
+import { extractionPaperCredits } from "../../../lib/pricing";
+
+/** GPT-6 Luna's price, for the model the jobs run on when a test prices it, and what the seeded paper's one question holds on it. */
+const LUNA = { input: 0.1, output: 0.5 };
+const PAPER_HOLDS = extractionPaperCredits({ model: LUNA }, [{ type: "string" }], false);
 
 async function seedLeasedPaperQueueItem(
   t: ReturnType<typeof convexTest>,
@@ -115,7 +121,7 @@ async function seedLeasedUnprocessablePaper(
 
 async function seedAlreadyAnsweredPaper(
   t: ReturnType<typeof convexTest>,
-  opts: { credits?: number; answered?: boolean } = {},
+  opts: { credits?: number; answered?: boolean; priced?: boolean } = {},
 ): Promise<{
   userId: Id<"users">;
   jobId: Id<"extractionJobs">;
@@ -134,6 +140,7 @@ async function seedAlreadyAnsweredPaper(
       updatedAt: now,
     });
     await seedCreditsForTest(ctx, { userId, paid: credits, now });
+    if (opts.priced) await ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: LUNA.input, outputPricePerMillion: LUNA.output, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: ["structured_outputs"], syncedAt: 1, createdAt: 1, updatedAt: 1 });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
       mode: "extraction" as const,
@@ -336,8 +343,9 @@ describe("extraction paper queue worker", () => {
   it("pauses the job and parks the paper when its credits can't be reserved", async () => {
     const t = convexTest(schema);
     const { userId, jobId, paperId, queueId } = await seedAlreadyAnsweredPaper(t, {
-      credits: 2,
+      credits: PAPER_HOLDS - 1,
       answered: false,
+      priced: true,
     });
 
     await t.action(internal.extraction.paperWorker.runPaperQueueItem, {
@@ -364,15 +372,16 @@ describe("extraction paper queue worker", () => {
     expect(queueRow?.status).toBe("parked");
     expect(paper?.status).toBe("pending");
     expect(results).toHaveLength(0);
-    expect(fakeAutumn.balance(userId)).toBe(2);
+    expect(fakeAutumn.balance(userId)).toBe(PAPER_HOLDS - 1);
     expect(fakeAutumn.locks.size).toBe(0);
   });
 
   it("stops a job at the credits it was allowed, taking nothing more for the paper, and gives its hold back when nothing was spent under it", async () => {
     vi.useFakeTimers();
     const t = convexTest(schema);
-    const { userId, jobId, paperId, queueId } = await seedAlreadyAnsweredPaper(t, { credits: 1_000, answered: false });
-    // Approved up to 3 credits from a chat, and held: one question holds 5 at most, so there's no room for this paper.
+    const { userId, jobId, paperId, queueId } = await seedAlreadyAnsweredPaper(t, { credits: 1_000, answered: false, priced: true });
+    // Approved up to 3 credits from a chat, and held: the paper's one question holds more, so there's no room for it.
+    expect(PAPER_HOLDS).toBeGreaterThan(3);
     await t.mutation(internal.billing.charge.hold, { userId, chargeId: "extraction-job:1", credits: 3, expiresAt: Date.now() + 86_400_000, spend: true });
     await fetch("https://autumn.test/v1/balances.check", { method: "POST", body: JSON.stringify({ customer_id: userId, feature_id: "credits", required_balance: 3, lock: { enabled: true, lock_id: "extraction-job:1", expires_at: Date.now() + 86_400_000 } }) });
     await t.run((ctx) => ctx.db.patch(jobId, { spendHold: "extraction-job:1", spendCap: 3 }));

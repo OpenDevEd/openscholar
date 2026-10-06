@@ -4,7 +4,7 @@
 // top, a tinted curve out to each step's card, one card per action it ran. An action it
 // asks the person about first shows under the map as the mock's approval card.
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { SearchHoverCard } from "@/components/search-tooltip-content";
 import { FilterChips } from "@/components/ui/filter-display";
@@ -30,8 +30,8 @@ import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { viewOf, type Kind } from "@/lib/assistant/actions";
 import { OrbitMark } from "./orbit-mark";
-import { JOB_STARTS, JobCard } from "./job-cards";
-import { WorkingText } from "./parts";
+import { CARD_SPRING, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
+import { FadeRow, WorkingText } from "./parts";
 
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
 export type StepItem = Extract<Item, { role: "step" }>;
@@ -82,9 +82,10 @@ function Subject({ text, step, chips, className = "truncate" }: { text: string; 
       {chips ? (
         <Link href={step.href} className={cn(className, "group flex items-center gap-1.5")}>
           {text ? <span className={cn("min-w-0 truncate", underlined)}>{text}</span> : null}
-          <ChipRow narrow={Boolean(text)}>
+          {/* One row, faded where it runs on: the search's card shows them all. Beside a query it takes at most part of the line. */}
+          <FadeRow className={cn("shrink-0 transition-colors group-hover:[&_[data-slot=badge]]:text-foreground", text ? "max-w-[60%]" : "max-w-full")}>
             <FilterChips filters={chips} size="compact" singleLine valuesOnly />
-          </ChipRow>
+          </FadeRow>
         </Link>
       ) : (
         <Link href={step.href} className={cn(className, underlined)}>
@@ -92,28 +93,6 @@ function Subject({ text, step, chips, className = "truncate" }: { text: string; 
         </Link>
       )}
     </SearchHoverCard>
-  );
-}
-
-/**
- * A row of chips on one line, faded at its end only while they run past it: the search's
- * card shows them all. Beside a query it takes at most part of the line.
- */
-function ChipRow({ narrow, children }: { narrow: boolean; children: ReactNode }) {
-  const row = useRef<HTMLSpanElement>(null);
-  const [clipped, setClipped] = useState(false);
-  // A ResizeObserver: the row's width changes with the panel's and with the query beside it.
-  useEffect(() => {
-    const element = row.current;
-    if (!element) return;
-    const observer = new ResizeObserver(() => setClipped(element.scrollWidth > element.clientWidth));
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return (
-    <span ref={row} className={cn("min-w-0 shrink-0 overflow-hidden transition-colors group-hover:[&_[data-slot=badge]]:text-foreground", narrow ? "max-w-[60%]" : "max-w-full", clipped && "mask-r-from-[calc(100%-1.5rem)]")}>
-      {children}
-    </span>
   );
 }
 
@@ -170,6 +149,8 @@ export function Steps({
   const all = [...new Map([...results.toReversed(), ...newest].map((step) => [step.id, step])).values()].sort((a, b) => a.order - b.order || a.at - b.at);
   const asked = all.filter((step) => step.canAnswer);
   const steps = all.filter((step) => !step.canAnswer);
+  const { docked, flying } = useContext(DockedJobs);
+  const reduceMotion = useReducedMotion();
   return (
     <div className="space-y-3">
       {steps.length ? <RunMap threadId={threadId} steps={steps} earlier={status === "CanLoadMore" ? () => loadMore(STEPS_SHOWN) : status === "LoadingMore" ? "loading" : null} /> : null}
@@ -178,12 +159,22 @@ export function Steps({
           <ApprovalCard key={step.id} threadId={threadId} step={step} />
         ))}
       </AnimatePresence>
-      {/* Each job the reply started, live, under its map. */}
-      {steps
-        .filter((step) => JOB_STARTS.has(step.action) && step.status === "done")
-        .map((step) => (
-          <JobCard key={`job:${step.id}`} threadId={threadId} stepId={step.id} kind={step.action === "screening/start:screen" ? "screening" : "extraction"} />
-        ))}
+      {/* Each job the reply started, under its map, once it has ended: while it runs, its card is docked over the message box. As it
+          ends, its place opens here and the card flies in from the dock (JobFlight), showing here once it lands; the ones already here
+          when the chat shows are in place. Each place holds its own gap, so a first card opens all of its room smoothly. */}
+      <div className="!mt-0">
+        <AnimatePresence initial={false}>
+          {steps
+            .filter((step) => JOB_STARTS.has(step.action) && step.status === "done" && !docked.has(step.id))
+            .map((step) => (
+              <motion.div key={`job:${step.id}`} data-job-slot={step.id} initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} transition={reduceMotion ? { duration: 0 } : CARD_SPRING} className="overflow-hidden">
+                <div className={cn("pt-3", flying.has(step.id) && "invisible")}>
+                  <JobCard threadId={threadId} stepId={step.id} />
+                </div>
+              </motion.div>
+            ))}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

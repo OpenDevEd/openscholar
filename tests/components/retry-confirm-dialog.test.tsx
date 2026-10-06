@@ -21,8 +21,9 @@ vi.mock("next/navigation", () => ({
 }));
 
 const balanceStore = { data: undefined as unknown };
+// The retry's figure comes from the server (convex/extraction/queries/costs.ts); the balance is checked against it.
 vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: () => balanceStore,
+  useProtectedQuery: (ref: string) => (ref === "estimateRetry" ? { data: 90 } : balanceStore),
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
@@ -30,6 +31,7 @@ vi.mock("@/convex/_generated/api", () => ({
     billing: {
       accounts: { checkBalance: "checkBalance" },
     },
+    extraction: { queries: { costs: { estimateRetry: "estimateRetry" } } },
   },
 }));
 
@@ -55,7 +57,7 @@ describe("<RetryConfirmDialog>", () => {
         open={false}
         onOpenChange={() => {}}
         retryableCount={3}
-        usePdfs={false}
+        jobId={"job" as never}
         onConfirm={() => {}}
       />,
     );
@@ -69,7 +71,7 @@ describe("<RetryConfirmDialog>", () => {
         open={true}
         onOpenChange={() => {}}
         retryableCount={3}
-        usePdfs={false}
+        jobId={"job" as never}
         onConfirm={() => {}}
       />,
     );
@@ -87,7 +89,7 @@ describe("<RetryConfirmDialog>", () => {
         open={true}
         onOpenChange={() => {}}
         retryableCount={2}
-        usePdfs={false}
+        jobId={"job" as never}
         onConfirm={() => {}}
       />,
     );
@@ -102,7 +104,7 @@ describe("<RetryConfirmDialog>", () => {
         open={true}
         onOpenChange={() => {}}
         retryableCount={10}
-        usePdfs={true}
+        jobId={"job" as never}
         onConfirm={() => {}}
       />,
     );
@@ -118,7 +120,7 @@ describe("<RetryConfirmDialog>", () => {
         open={true}
         onOpenChange={() => {}}
         retryableCount={3}
-        usePdfs={false}
+        jobId={"job" as never}
         onConfirm={() => {}}
       />,
     );
@@ -136,7 +138,7 @@ describe("<RetryConfirmDialog>", () => {
         open={true}
         onOpenChange={onOpenChange}
         retryableCount={3}
-        usePdfs={false}
+        jobId={"job" as never}
         onConfirm={onConfirm}
       />,
     );
@@ -154,7 +156,7 @@ describe("<RetryConfirmDialog>", () => {
         open={true}
         onOpenChange={onOpenChange}
         retryableCount={3}
-        usePdfs={false}
+        jobId={"job" as never}
         onConfirm={onConfirm}
       />,
     );

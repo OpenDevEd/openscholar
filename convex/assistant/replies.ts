@@ -353,7 +353,10 @@ export const stop = mutation({
     // was pressed on it waiting. A reply that has ended, or a later exchange's, isn't this Stop's to stop.
     else if (thread.reply && (thread.reply.attemptId === attemptId || attemptId.startsWith(waitingPrefix(thread.reply.order)))) {
       await ctx.db.patch("assistantThreads", threadId, { reply: { ...thread.reply, stop: true } });
-    }
+    } else return null;
+    // Stop drops what the chat would have gone on to: every job that ended before it is told with no readout (./jobs.ts).
+    // A job that ends after it is told as usual, and a job still running keeps going, with its own Cancel.
+    await ctx.db.patch("assistantThreads", threadId, { stoppedAt: Date.now() });
     return null;
   },
 });

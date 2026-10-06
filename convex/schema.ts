@@ -20,7 +20,7 @@ import {
   screeningSelectionValidator,
   extractionPaperQueueFields,
   extractionQuestionFields,
-  extractionResultFields,
+  extractionResultFields, extractionAnswerRowFields, extractionPaperFactFields,
   storedSearchFiltersValidator,
 } from "./extraction/validators";
 import {
@@ -58,7 +58,7 @@ import { authorContentFields, authorProfileInvitationFields } from "./authors/va
 
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
-import { assistantLimitFields, assistantSpenderFields, assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantStepUndoFields } from "./assistant/validators";
+import { assistantLimitFields, assistantSpenderFields, assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
@@ -216,6 +216,8 @@ export default defineSchema({
     .index("by_thread_user_credits", ["threadId", "userId", "credits"]),
   assistantStepResults: defineTable(assistantStepResultFields).index("by_step", ["stepId"]).index("by_thread", ["threadId"]),
   // Jobs replies started that have ended, each told to its chat once (convex/assistant/jobs.ts).
+  // Jobs replies started that are still running, which their chats dock (convex/assistant/jobEnds.ts keeps them).
+  assistantJobs: defineTable(assistantJobFields).index("by_job", ["jobId"]).index("by_step", ["stepId"]).index("by_thread", ["threadId"]),
   assistantJobEnds: defineTable(assistantJobEndFields).index("by_job", ["jobId"]).index("by_thread_and_pending", ["threadId", "pending"]).index("by_thread_and_order", ["threadId", "order"]),
   // What reverses each change of a bulk change (convex/assistant/bulk.ts).
   assistantStepUndos: defineTable(assistantStepUndoFields).index("by_step", ["stepId"]),
@@ -953,6 +955,9 @@ export default defineSchema({
     revertedAt: v.optional(v.number()),
   }).index("by_job", ["jobId"]),
 
+  // Each paper's finished answer to each question, short, for counting a job's answers (convex/extraction/listProjection.ts).
+  extractionAnswerRows: defineTable(extractionAnswerRowFields).index("by_job_question", ["jobId", "questionKey"]).index("by_paper", ["paperId"]),
+  extractionPaperFacts: defineTable(extractionPaperFactFields).index("by_job", ["jobId"]).index("by_paper", ["paperId"]),
   extractionResults: defineTable(extractionResultFields)
     .index("by_paper", ["paperId"])
     .index("by_paper_question", ["paperId", "questionKey"])

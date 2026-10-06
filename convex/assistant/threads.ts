@@ -21,7 +21,8 @@ import { NEW_CHAT_TITLE } from "../../lib/assistant/title";
 import { accessRows, best, deleteThread, personName, principalOf, principalsOf, requireThread, userPrincipal, type AssistantRole } from "./access";
 import { viewers } from "./presence";
 import { startWith } from "./spending";
-import { ASSISTANT_MEMBERS_SHOWN, assistantMembersValidator, assistantRoleValidator } from "./validators";
+import { ASSISTANT_MEMBERS_SHOWN, assistantMembersValidator, assistantRoleValidator, JOBS_DOCKED, JOBS_LISTED, listedJobsValidator } from "./validators";
+import { progressOf } from "./jobs";
 
 const FLAG = "assistant.enabled";
 const TITLE_MAX = 120;
@@ -88,6 +89,9 @@ const listedValidator = v.object({
   preview: v.string(),
   /** A reply is being written in it now. */
   writing: v.boolean(),
+  /** The first of the jobs its replies started that are still running, newest first, with how far each has got; `moreJobs` counts the rest. */
+  jobs: listedJobsValidator,
+  moreJobs: v.number(),
   /** The first few people in it besides the reader, those who have it open now first, then its owner. */
   members: assistantMembersValidator,
   /** The first organization it's shared with, by name. */
@@ -235,6 +239,7 @@ export const listAction = defineUserQuery({
             ...shown(thread, found.role),
             preview: thread.preview ?? "",
             writing: await writing(ctx, thread.reply),
+            ...(await runningJobs(ctx, thread._id)),
             members: members.flat(),
             ...(organization ? { organization: organization.name } : {}),
           },
@@ -246,6 +251,18 @@ export const listAction = defineUserQuery({
 });
 export const list = userQuery(listAction);
 export const listForAssistant = assistantQuery(listAction);
+
+/** A chat's running jobs as its row names them: the newest few with how far each has got, and how many more. */
+async function runningJobs(ctx: QueryCtx, threadId: Id<"assistantThreads">) {
+  const rows = await ctx.db.query("assistantJobs").withIndex("by_thread", (q) => q.eq("threadId", threadId)).order("desc").take(JOBS_DOCKED);
+  const listed = await Promise.all(
+    rows.slice(0, JOBS_LISTED).map(async (row) => {
+      const progress = await progressOf(ctx, row);
+      return progress ? [{ id: row.jobId, kind: row.kind, ...progress }] : [];
+    }),
+  );
+  return { jobs: listed.flat(), moreJobs: Math.max(0, rows.length - JOBS_LISTED) };
+}
 
 const shown = (thread: Doc<"assistantThreads">, role: AssistantRole) => ({
   _id: thread._id,

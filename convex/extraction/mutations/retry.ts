@@ -21,8 +21,8 @@
  *   - Indexing is NEVER re-run. Retry reuses the paper's existing
  *     `ragEntryId` and `isIndexed`; retry rows skip download
  *     and indexing.
- *   - Pre-flight credit check via `estimateRetryCredits` × balance, from the
- *     job's retryable count (`../resultCounts.ts`).
+ *   - Pre-flight credit check: the retryable questions on the job's model
+ *     (`../queries/costs.ts` `retryCredits`) against the balance.
  */
 
 import { internalMutation, mutation } from "../../lib/functions";
@@ -45,7 +45,7 @@ import {
   EXTRACTION_QUESTION_CONCURRENCY,
 } from "../../../lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
-import { estimateRetryCredits } from "../../../lib/extraction/cost-estimate";
+import { retryCredits } from "../queries/costs";
 import { approvalLeft } from "../../billing/spend";
 import { availableCredits as readAvailableCredits } from "../../billing/accounts";
 import { isResultRetryableFailure } from "../../../lib/extraction/retry-summary";
@@ -64,11 +64,12 @@ const ALLOWED_RETRY_STATUSES: readonly JobStatus[] = [
 
 /**
  * Papers reset per batch. Each batch reads a paper's results (at most
- * MAX_QUESTIONS_PER_JOB), resets its retryable failures and recomputes its list
- * projection, so a batch stays far inside a transaction's limits however many of the
- * job's results failed (#351).
+ * MAX_QUESTIONS_PER_JOB), resets its retryable failures (each one a counts change,
+ * ../counts.ts) and recomputes its list projection and answer rows. A 50-question job
+ * whose every result failed reads about 160 index ranges a paper, so 20 a batch stays
+ * inside a transaction's 4,096 however many of the job's results failed (#351).
  */
-const RETRY_PAPERS_PER_BATCH = 25;
+const RETRY_PAPERS_PER_BATCH = 20;
 
 /**
  * Resets one batch of a job's papers for a retry: their retryable failures go back to
@@ -182,21 +183,13 @@ export const retryFailedQuestions = mutation({
       throw createError("VALIDATION_ERROR", "No retryable failures to retry");
     }
 
-    const usePdfs = job.usePdfs ?? false;
-    const estimate = estimateRetryCredits({
-      retryableCount,
-      usePdfs,
-      avgPaperKind: usePdfs ? "pdf" : "abstract",
-    });
-
-    if (estimate.high > 0) {
-      const totalAvailable = await readAvailableCredits(ctx, user._id);
-      if (totalAvailable < estimate.high) {
-        throw createError(
-          "INSUFFICIENT_CREDITS",
-          `Retry needs ~${estimate.mid} credits (up to ${estimate.high}) for ${retryableCount} questions but only have ${totalAvailable}`,
-        );
-      }
+    const credits = await retryCredits(ctx, job, retryableCount);
+    const totalAvailable = await readAvailableCredits(ctx, user._id);
+    if (totalAvailable < credits) {
+      throw createError(
+        "INSUFFICIENT_CREDITS",
+        `Retry needs up to ${credits} credits for ${retryableCount} questions but only have ${totalAvailable}`,
+      );
     }
 
     assertValidJobTransition(job.status as JobStatus, "extracting");

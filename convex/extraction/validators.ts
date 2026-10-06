@@ -61,6 +61,55 @@ export const classifiedErrorValidator = v.object({
 
 export const MAX_QUESTIONS_PER_JOB = MAX_QUESTIONS;
 
+/** Characters of an answer, or of an item of a list answer, an answer row shows; and the items of one answer it counts. */
+export const ANSWER_TEXT_MAX = 200;
+export const ITEM_TEXT_MAX = 80;
+export const ANSWER_ITEMS_MAX = 100;
+/**
+ * One paper's finished answer to one question, short, for counting a job's answers
+ * (listProjection.ts `writeAnswerRows`): the results page's token for the answer, which is its
+ * filter's identity for it (null when the paper didn't say), how the page shows it, and each
+ * item of a list answer by its full text. One row a paper and question, so a question's summary
+ * reads small rows and a paper's answers never share a row with another paper's.
+ */
+export const extractionAnswerRowFields = {
+  jobId: v.id("extractionJobs"),
+  paperId: v.id("extractionPapers"),
+  questionKey: v.string(),
+  token: v.union(v.string(), v.null()),
+  shown: v.string(),
+  items: capped(v.array(v.object({ key: v.string(), shown: v.string() })), ANSWER_ITEMS_MAX),
+};
+/**
+ * What the results page's filters read of a paper (queries/results.ts `matchesProjectionFilters`),
+ * kept small beside it for a summary to filter by, written with the paper's projection.
+ */
+export const extractionPaperFactFields = {
+  jobId: v.id("extractionJobs"),
+  paperId: v.id("extractionPapers"),
+  avgConfidence: v.number(),
+  hasPdfSource: v.boolean(),
+  hasErrors: v.boolean(),
+  pdfContentUsed: v.optional(v.boolean()),
+  isOpenAccess: v.optional(v.boolean()),
+  questionAnswerTokens: capped(v.array(v.string()), MAX_QUESTIONS),
+};
+
+/** Answers, or items of list answers, one summary names: the most common, the rest counted. */
+export const SUMMARY_GROUPS = 25;
+/** One question's answers across every paper a set of filters keeps, grouped and counted (queries/results.ts). */
+export const resultsSummaryValidator = v.object({
+  question: v.string(),
+  /** Papers the filters keep that have finished this question, and how many of them answered it. */
+  papers: v.number(),
+  answered: v.number(),
+  /** Each answer as the job's page shows it, with how many papers gave it, most first. */
+  answers: capped(v.array(v.object({ answer: v.string(), papers: v.number() })), SUMMARY_GROUPS),
+  moreAnswers: v.number(),
+  /** For a question answered with a list: each item, with how many papers name it, most first. */
+  items: capped(v.array(v.object({ item: v.string(), papers: v.number() })), SUMMARY_GROUPS),
+});
+
 /** Papers picked at once for a job or chat, which holds at most this many. */
 export function paperSelectionValidator<V extends Validator<any, "required", any>>(paper: V) {
   return capped(v.array(paper), MAX_CHAT_PAPERS);
@@ -252,13 +301,6 @@ export const extractionJobFields = {
   // Set while a retry resets failed results in batches (#351); the job doesn't finish until it clears.
   /** Set while a retry resets the job's failures a batch at a time; where the next batch starts. */
   retryReset: v.optional(v.object({ cursor: v.union(v.string(), v.null()) })),
-  estimatedCredits: v.optional(
-    v.object({
-      low: v.number(),
-      mid: v.number(),
-      high: v.number(),
-    })
-  ),
   chatThreadId: v.optional(v.string()),
   chatModelId: v.optional(v.id("models")),
   /** The chat's reasoning effort; none means the model's default. */
@@ -294,8 +336,6 @@ export const extractionJobFields = {
    */
   spendHold: v.optional(v.string()),
   spendCap: v.optional(v.number()),
-  /** With them: how many times the measured rates a question of the job costs on the models it runs on, as its figure was worked out (../extraction/start.ts). */
-  spendScale: v.optional(v.number()),
   /** The step of the assistant's reply that started it (#328): its chat hears when it ends (convex/assistant/jobs.ts). */
   chatStep: v.optional(v.id("assistantSteps")),
 };

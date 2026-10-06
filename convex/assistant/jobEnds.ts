@@ -9,6 +9,8 @@ import { makeFunctionReference } from "convex/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { ENDED } from "../billing/spend";
+import { createError } from "../lib/errors";
+import { JOBS_DOCKED } from "./validators";
 
 /** Whether a job's status is one it ends in (../billing/spend.ts): a job carried on since has another. */
 export const hasEnded = (status: string | undefined) => ENDED.has(status ?? "");
@@ -36,6 +38,41 @@ export const noteEndedJob =
     if (!step) return;
     await ctx.db.insert("assistantJobEnds", { threadId: step.threadId, stepId: step._id, userId: step.userId, kind, jobId: newDoc._id, status: newDoc.status!, endedAt: Date.now(), pending: true });
     await ctx.scheduler.runAfter(0, deliver, { threadId: step.threadId });
+  };
+
+/**
+ * Whether a job a reply started is running: it hasn't ended, and no one paused it from its
+ * page. A paused job waits for the person, so its chat doesn't dock it until it carries on.
+ */
+const runs = (job: Job | null) => Boolean(job?.chatStep) && !ENDED.has(job?.status ?? "") && job?.status !== "paused";
+
+/**
+ * Writes the running row of a job a reply started, if it runs and has none: its chat docks the
+ * job's card from it. A chat runs at most JOBS_DOCKED at once, so its dock and its row in the
+ * list always show them all; one more is refused in the transaction that would start it.
+ */
+export async function noteRunningJob(ctx: MutationCtx, kind: Doc<"assistantJobs">["kind"], job: Job) {
+  if (!runs(job)) return;
+  if (await ctx.db.query("assistantJobs").withIndex("by_job", (q) => q.eq("jobId", job._id)).first()) return;
+  const step = await ctx.db.get("assistantSteps", job.chatStep!);
+  if (!step) return;
+  const running = await ctx.db.query("assistantJobs").withIndex("by_thread", (q) => q.eq("threadId", step.threadId)).take(JOBS_DOCKED);
+  if (running.length >= JOBS_DOCKED) throw createError("VALIDATION_ERROR", `This chat already has ${JOBS_DOCKED} jobs running. Start this one once one of them ends, or from another chat.`);
+  await ctx.db.insert("assistantJobs", { threadId: step.threadId, stepId: step._id, userId: step.userId, kind, jobId: job._id });
+}
+
+/**
+ * A trigger that keeps the row of each job a reply started while it runs (`noteRunningJob`):
+ * written as the job starts or carries on, deleted as it ends or is paused. A job's progress
+ * changes it often; only a change between running and not writes.
+ */
+export const trackChatJob =
+  (kind: Doc<"assistantJobs">["kind"]) =>
+  async (ctx: MutationCtx, { oldDoc, newDoc }: { oldDoc: Job | null; newDoc: Job | null }) => {
+    if (runs(oldDoc) === runs(newDoc)) return;
+    if (newDoc && runs(newDoc)) return noteRunningJob(ctx, kind, newDoc);
+    const row = await ctx.db.query("assistantJobs").withIndex("by_job", (q) => q.eq("jobId", oldDoc!._id)).first();
+    if (row) await ctx.db.delete("assistantJobs", row._id);
   };
 
 /** A trigger that tells a chat the ends that waited for it, when it stops writing a reply or waiting for an answer. */

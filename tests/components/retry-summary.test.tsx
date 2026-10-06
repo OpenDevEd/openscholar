@@ -49,7 +49,7 @@ vi.mock("convex/react", () => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     extraction: {
-      queries: { countJobFailures: "countJobFailures" },
+      queries: { countJobFailures: "countJobFailures", costs: { estimateRetry: "estimateRetry" } },
       mutations: { retryFailedQuestions: "retryFailedQuestions" },
     },
     billing: {

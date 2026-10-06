@@ -14,7 +14,6 @@ import { useAIConfigStore } from "@/lib/store";
 import { getProviderConfig } from "@/lib/ai-models";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { resolveCreditsAvailability } from "@/lib/credits/availability";
-import { ESTIMATED_CREDITS_PER_QUERY } from "@/convex/lib/constants";
 import { useAppToast } from "@/lib/toast";
 import { AI_TASKS, BROWSER_TASKS, type AiTask, type ModelChoice } from "@/lib/ai/tasks";
 import { keyFor, type KeyProvider } from "@/lib/ai/keys";
@@ -45,6 +44,7 @@ export default function AISettingsPage() {
   const [hover, setHover] = useState<Hover>(null);
 
   const account = useOptionalAuthQuery(api.billing.accounts.mine, creditsEnabled ? {} : "skip");
+  const figures = useOptionalAuthQuery(api.ai.estimates.mine, creditsEnabled ? {} : "skip");
   const isCustom = choice === "custom";
   // Signed-out users can only run on a key: the default preset's picks, on theirs.
   const onKeys = isCustom || !signedIn;
@@ -57,9 +57,10 @@ export default function AISettingsPage() {
     signedIn &&
     resolveCreditsAvailability({
       isAuthenticated: signedIn,
-      settlement: account.settlement === "ready" ? "settled" : "loading",
+      settlement: account.settlement === "ready" && figures.settlement === "ready" ? "settled" : "loading",
       totalCredits: account.data?.balance,
-      requiredCredits: ESTIMATED_CREDITS_PER_QUERY,
+      // A search helper, the browser task run most, on the model it runs on.
+      requiredCredits: figures.data?.questionToQuery?.helper ?? 0,
     }) !== "unavailable";
   // Presets always run on credits; your own keys are part of Custom.
   const browserOn: AIKeyMode = !signedIn ? "local" : !isCustom ? "credits" : !creditsEnabled || (pay === "smart" && !creditsRun) ? "local" : pay;

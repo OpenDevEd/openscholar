@@ -12,6 +12,7 @@
  */
 
 import { internalMutation, type MutationCtx } from "../../lib/functions";
+import { writeAnswerRows } from "../listProjection";
 import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { internal } from "../../_generated/api";
@@ -467,6 +468,8 @@ export const recordQuestionBatch = internalMutation({
       failed.push(item.questionKey);
     }
 
+    // The batch's finished answers reach their answer rows now: a paper the worker stops before finalizing keeps them.
+    await writeAnswerRows(ctx, paper, completed.flatMap((questionKey) => existingByQuestion.get(questionKey) ?? []), false);
     return {
       status: "ok" as const,
       completed,

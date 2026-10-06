@@ -15,7 +15,6 @@ import { resolveOpenRouterModel } from "../chat/provider";
 import { reserveCredits, settleUnder, tokenDetails } from "../billing/charge";
 import { aggregateUsage } from "../../lib/ai/core/cost";
 import type { Usage } from "../../lib/ai/core/types";
-import { estimatePaperCredits } from "../../lib/extraction/cost-estimate";
 import {
   batchSkipReasonToWorkerSkipReason,
   captureCompletedQuestionTracking,
@@ -346,17 +345,10 @@ async function reservePaperCredits(
   },
 ): Promise<PaperReservation | null> {
   const { job, paper, queueRow } = args;
-  const questionCount =
-    queueRow.kind === "initial"
-      ? await ctx.runQuery(internal.extraction.queries.internal.getQuestionCount, {
-          jobId: job._id,
-        })
-      : (queueRow.questionKeys?.length ?? 0);
-  const reserved = estimatePaperCredits({
-    questionCount,
+  const { credits: reserved, questions: questionCount } = await ctx.runQuery(internal.extraction.queries.internal.paperCredits, {
+    jobId: job._id,
+    ...(queueRow.kind === "initial" ? {} : { questionKeys: queueRow.questionKeys ?? [] }),
     pdf: args.pdfEnabled && Boolean(paper.pdfUrl || paper.oaUrl || paper.storageId),
-    // A job approved up to a figure measures its papers against it at the price the figure was worked out at (./start.ts).
-    scale: job.spendScale,
   });
   const reservation = {
     chargeId: `extraction:${queueRow._id}:${crypto.randomUUID()}`,
