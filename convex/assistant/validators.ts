@@ -138,6 +138,8 @@ export const assistantThreadFields = {
    */
   undone: capped(v.optional(v.array(v.object({ userId: v.id("users"), stepId: v.id("assistantSteps") }))), UNDONE_TOLD),
   undoneMore: capped(v.optional(v.array(v.object({ userId: v.id("users"), count: v.number() }))), UNDONE_TOLD),
+  /** When someone last pressed Stop here: the jobs that ended before it are told with no readout (#328, ./jobs.ts). */
+  stoppedAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
@@ -223,8 +225,6 @@ export const assistantJobEndFields = {
   endedAt: v.number(),
   /** Set until it's told to the chat. */
   pending: v.optional(v.literal(true)),
-  /** Someone pressed Stop while it waited: the chat is told it ended, with no readout (#328). */
-  quiet: v.optional(v.literal(true)),
   /** The chat message it was told in, by its order. */
   order: v.optional(v.number()),
 };

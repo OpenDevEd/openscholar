@@ -637,12 +637,28 @@ describe("a job a reply started", () => {
     await ended(t, threadId);
     await waitFor(async () => (await t.run((ctx) => ctx.db.query("assistantJobEnds").collect()))[0]?.pending === undefined);
     const [end] = await t.run((ctx) => ctx.db.query("assistantJobEnds").collect());
-    expect(end).toMatchObject({ quiet: true, status: "creditsExhausted" });
+    expect(end).toMatchObject({ status: "creditsExhausted" });
     expect(end.order).toBeDefined();
     expect((await chat(t, threadId))?.reply).toBeUndefined();
     expect(mockDoStream).toHaveBeenCalledTimes(1);
     const page = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page;
     expect(page[0]).toMatchObject({ role: "event", ended: [{ jobId, status: "creditsExhausted" }] });
+
+    // A job that ends after the Stop is told as usual, with its readout.
+    const later = await t.run(async (ctx) => {
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "screen-2", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
+      return insertJob(ctx, {
+        userId: ada, status: "processing", totalPapers: 2, chatStep: stepId,
+        questions: [{ key: "q1", question: "Is this a trial?" }],
+        scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [{ minScore: 0, stars: 1 }] },
+        createdAt: 1, updatedAt: 1,
+      });
+    });
+    mockDoStream.mockImplementationOnce(finishingDoStream(["The second screening stopped at its credits."]));
+    await t.mutation(internal.screening.mutations.markScreeningJobCreditsExhausted, { jobId: later });
+    await waitFor(() => mockDoStream.mock.calls.length === 2);
+    await ended(t, threadId);
+    expect(JSON.stringify(mockDoStream.mock.calls[1][0].prompt)).toContain(`<job_ended>screening ${later}`);
   });
 
   it("takes its end back when it's carried on before the chat is told, and goes with a deleted chat", async () => {

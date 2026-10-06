@@ -62,8 +62,6 @@ const DELTAS_PER_READ = 100;
 const LIVE_READS = 30;
 /** Chats writing a reply that one sweep checks, oldest first. */
 const SWEEP_BATCH = 200;
-/** Ends of jobs one Stop drops the readouts of: more than a chat starts jobs in a sitting. */
-const JOB_ENDS_STOPPED = 500;
 
 
 /**
@@ -356,10 +354,9 @@ export const stop = mutation({
     else if (thread.reply && (thread.reply.attemptId === attemptId || attemptId.startsWith(waitingPrefix(thread.reply.order)))) {
       await ctx.db.patch("assistantThreads", threadId, { reply: { ...thread.reply, stop: true } });
     } else return null;
-    // Stop drops what the chat would have gone on to: the ends of jobs waiting to be told are told with no readout.
-    // A job that ends after this is told as usual, and a job still running keeps going, with its own Cancel.
-    const waiting = await ctx.db.query("assistantJobEnds").withIndex("by_thread_and_pending", (q) => q.eq("threadId", threadId).eq("pending", true)).take(JOB_ENDS_STOPPED);
-    for (const end of waiting) await ctx.db.patch("assistantJobEnds", end._id, { quiet: true });
+    // Stop drops what the chat would have gone on to: every job that ended before it is told with no readout (./jobs.ts).
+    // A job that ends after it is told as usual, and a job still running keeps going, with its own Cancel.
+    await ctx.db.patch("assistantThreads", threadId, { stoppedAt: Date.now() });
     return null;
   },
 });
