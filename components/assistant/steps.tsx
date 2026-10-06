@@ -29,6 +29,7 @@ import { STEPS_SHOWN } from "@/lib/assistant/steps";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { viewOf, type Kind } from "@/lib/assistant/actions";
+import { runsOf } from "@/lib/assistant/step-cards";
 import { OrbitMark } from "./orbit-mark";
 import { CARD_SPRING, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
 import { FadeRow, WorkingText } from "./parts";
@@ -372,25 +373,6 @@ function Spending({ credits, sent, onAllow, onAlways, onDecline, onAddCredits }:
       </div>
     </>
   );
-}
-
-/** Whether a step leaves its card nothing to press and nothing to read but that it ran: no undo, no error, no answer it waits for, no credits. */
-const folds = (step: StepItem) => (step.status === "done" || step.status === "running") && !step.canUndo && !step.undone && !step.error && step.batch === undefined && step.credits === undefined;
-
-/**
- * The steps as the map's cards: steps in a row that ran the same action, and that fold, are
- * one card that says how many times. A reply that counted papers thirty-nine times ran
- * thirty-nine cards down the page. opencode folds a run of reads into one row the same way
- * (its context tool group). A step with an undo, an error or a question is always its own card.
- */
-function runsOf(steps: StepItem[]) {
-  const runs: StepItem[][] = [];
-  for (const step of steps) {
-    const run = runs.at(-1);
-    if (run && folds(step) && folds(run[0]) && run[0].action === step.action && run[0].variant === step.variant) run.push(step);
-    else runs.push([step]);
-  }
-  return runs;
 }
 
 function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">; steps: StepItem[]; /** Loads the steps before these, when the reply ran more. */ earlier: (() => void) | "loading" | null }) {
