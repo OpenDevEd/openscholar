@@ -14,9 +14,12 @@ import type { Doc, Id } from "../../_generated/dataModel";
 import { ownJob } from "../access";
 import { exportRevision } from "../counts";
 import { requireFeature } from "../../featureFlags/guard";
+import { createError } from "../../lib/errors";
 import { PAPER_LIMIT, RESULTS_PAGE_SIZE_MAX } from "@/lib/extraction/limits";
 import {
   paginatedPaperWithResultsValidator,
+  resultsSummaryValidator,
+  SUMMARY_GROUPS,
   resultsPageFiltersValidator,
   resultsSortByValidator,
   paperSelectionValidator,
@@ -94,15 +97,18 @@ function assertProjectionReady(
   );
 }
 
-function getPaperAvgConfidence(paper: Doc<"extractionPapers">) {
+/** What the page's filters read of a paper: a paper, or its facts row (validators.ts `extractionPaperFactFields`). */
+type FilterFields = Pick<Doc<"extractionPapers">, "avgConfidence" | "hasPdfSource" | "hasErrors" | "pdfContentUsed" | "isOpenAccess" | "questionAnswerTokens">;
+
+function getPaperAvgConfidence(paper: FilterFields) {
   return paper.avgConfidence as number;
 }
 
-function getPaperHasPdfSource(paper: Doc<"extractionPapers">) {
+function getPaperHasPdfSource(paper: FilterFields) {
   return paper.hasPdfSource as boolean;
 }
 
-function getPaperHasErrors(paper: Doc<"extractionPapers">) {
+function getPaperHasErrors(paper: FilterFields) {
   return paper.hasErrors as boolean;
 }
 
@@ -111,7 +117,7 @@ function getPaperSortTitle(paper: Doc<"extractionPapers">) {
 }
 
 function matchesStatusFilters(
-  paper: Doc<"extractionPapers">,
+  paper: FilterFields,
   statusFilters: ReadonlyArray<string>,
 ) {
   if (statusFilters.length === 0) return true;
@@ -129,7 +135,7 @@ function matchesStatusFilters(
 }
 
 function matchesQuestionFilters(
-  paper: Doc<"extractionPapers">,
+  paper: FilterFields,
   questionFilters: ReadonlyArray<{ questionKey: string; token: string | null }>,
 ) {
   if (questionFilters.length === 0) return true;
@@ -138,7 +144,7 @@ function matchesQuestionFilters(
 }
 
 function matchesProjectionFilters(
-  paper: Doc<"extractionPapers">,
+  paper: FilterFields,
   filters: NormalizedResultsFilters,
 ) {
   const avgConfidence = getPaperAvgConfidence(paper);
@@ -346,3 +352,63 @@ export const countJobResultsAction = defineUserQuery({
 });
 export const countJobResults = userQuery(countJobResultsAction);
 export const countJobResultsForAssistant = assistantQuery(countJobResultsAction);
+
+type Counted = { shown: string; papers: Set<string> };
+/** Counts a paper under a key, once however often it says it. */
+const count = (groups: Map<string, Counted>, key: string, shown: string, paperId: string) => {
+  const group = groups.get(key) ?? { shown, papers: new Set<string>() };
+  group.papers.add(paperId);
+  groups.set(key, group);
+};
+/** Groups, most papers first: the first SUMMARY_GROUPS of them, and how many more there are. */
+const largest = (groups: Map<string, Counted>) => {
+  const sorted = [...groups.values()].sort((a, b) => b.papers.size - a.papers.size || a.shown.localeCompare(b.shown));
+  return { top: sorted.slice(0, SUMMARY_GROUPS), more: Math.max(0, sorted.length - SUMMARY_GROUPS) };
+};
+
+export const summarizeJobResultsAction = defineUserQuery({
+  path: "extraction/queries:summarizeJobResults",
+  description:
+    "Groups and counts an extraction job's answers to one question across every paper that has finished it: how many papers, how many answered, each answer with how many papers gave it, most first, and for a question answered with a list, each item with how many papers name it. " +
+    "The filters listJobResults takes narrow it, by status, confidence and other questions' answers (a paper's answer to that question, as listJobResults shows it); its text search isn't one. Use it to compare, tally or describe a job's answers, never pages of its results. `questionKey` is the question's `key` in the job.",
+  args: { jobId: v.id("extractionJobs"), questionKey: v.string(), filters: v.optional(resultsPageFiltersValidator) },
+  returns: resultsSummaryValidator,
+  run: async (ctx, userId, { jobId, questionKey, filters }) => {
+    const job = await ownJob(ctx, userId, jobId);
+    if (!job) throw createError("NOT_FOUND", "There's no extraction job of yours with that ID.");
+    await requireFeature(ctx, "extraction.enabled", userId);
+    if (filters?.searchQuery.trim()) throw createError("VALIDATION_ERROR", "A summary can't be narrowed by text search: narrow it by status, confidence or other questions' answers.");
+    const question = await ctx.db.query("extractionQuestions").withIndex("by_job_key", (q) => q.eq("jobId", jobId).eq("key", questionKey)).unique();
+    if (!question) throw createError("VALIDATION_ERROR", `This job has no question with the key ${questionKey}.`);
+    // One small row a paper for this question, and with a filter each paper's facts: a job holds at most PAPER_LIMIT papers.
+    // The page's own filter keeps them, by the page's tokens and tags.
+    const rows = await ctx.db.query("extractionAnswerRows").withIndex("by_job_question", (q) => q.eq("jobId", jobId).eq("questionKey", questionKey)).take(PAPER_LIMIT);
+    let kept = rows;
+    if (filters) {
+      const normalized = await normalizeResultsFilters(filters);
+      const facts = new Map((await ctx.db.query("extractionPaperFacts").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(PAPER_LIMIT)).map((fact) => [fact.paperId as string, fact]));
+      kept = rows.filter((row) => {
+        const fact = facts.get(row.paperId);
+        return fact !== undefined && matchesProjectionFilters(fact, normalized);
+      });
+    }
+    const answers = new Map<string, Counted>();
+    const items = new Map<string, Counted>();
+    for (const row of kept) {
+      if (row.token === null) continue;
+      count(answers, row.token, row.shown, row.paperId);
+      for (const item of row.items) count(items, item.key, item.shown, row.paperId);
+    }
+    const grouped = largest(answers);
+    return {
+      question: question.question,
+      papers: kept.length,
+      answered: kept.filter((row) => row.token !== null).length,
+      answers: grouped.top.map((group) => ({ answer: group.shown, papers: group.papers.size })),
+      moreAnswers: grouped.more,
+      items: largest(items).top.map((group) => ({ item: group.shown, papers: group.papers.size })),
+    };
+  },
+});
+export const summarizeJobResults = userQuery(summarizeJobResultsAction);
+export const summarizeJobResultsForAssistant = assistantQuery(summarizeJobResultsAction);

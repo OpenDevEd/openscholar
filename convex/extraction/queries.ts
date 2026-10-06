@@ -22,4 +22,4 @@ export {
 } from "./queries/jobs";
 
 export { countJobFailures, countJobFailuresForAssistant } from "./queries/failures";
-export { listJobResults, listJobResultsForAssistant, countJobResults, countJobResultsForAssistant } from "./queries/results";
+export { listJobResults, listJobResultsForAssistant, countJobResults, countJobResultsForAssistant, summarizeJobResults, summarizeJobResultsForAssistant } from "./queries/results";

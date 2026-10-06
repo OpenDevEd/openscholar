@@ -11,7 +11,7 @@ import { setLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemActi
 import { collectAction as libraryCollectAction, saveAction as librarySaveAction } from "../library/papers";
 import { countJobsAction as extractionJobCountAction, listJobsAction as extractionJobsAction } from "../extraction/queries/jobs";
 import { countJobFailuresAction as extractionFailureCountAction } from "../extraction/queries/failures";
-import { countJobResultsAction as extractionResultCountAction, listJobResultsAction as extractionResultsAction } from "../extraction/queries/results";
+import { countJobResultsAction as extractionResultCountAction, listJobResultsAction as extractionResultsAction, summarizeJobResultsAction as extractionSummaryAction } from "../extraction/queries/results";
 import { candidatesAction as chatCandidatesAction, grantAction as chatGrantAction, listAccessAction as chatAccessAction, revokeAction as chatRevokeAction } from "../assistant/sharing";
 import { undoAction as bulkUndoAction } from "../assistant/batches";
 import { messagesAction as chatMessagesAction, stepsAction as chatStepsAction } from "../assistant/replies";
@@ -52,6 +52,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   extractionJobCountAction,
   extractionResultsAction,
   extractionResultCountAction,
+  extractionSummaryAction,
   extractionFailureCountAction,
   listedSearchesAction,
   countSearchesAction,

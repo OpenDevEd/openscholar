@@ -191,6 +191,8 @@ describe("paper list projection write maintenance", () => {
       ],
       failed: [],
     });
+    // The batch's answer reaches its answer row as it's saved, whether or not the paper is ever finalized.
+    expect(await t.run((ctx) => ctx.db.query("extractionAnswerRows").withIndex("by_paper", (q) => q.eq("paperId", paperId)).collect())).toMatchObject([{ questionKey: "q1", token: answerToken("q1", "cafe au lait"), shown: "Café au lait" }]);
 
     await t.run((ctx) => recomputePaperListProjection(ctx, paperId));
 
