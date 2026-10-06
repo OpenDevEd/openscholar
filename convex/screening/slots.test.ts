@@ -7,7 +7,7 @@ import schema from "../schema";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { SCREENING_POOL_SIZE } from "../workpool";
 import { createJob } from "./createJob.test-support";
-import { estimateScreening } from "./estimate";
+import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 
 const questions = [{ key: "q1", question: "Is this relevant?" }];
@@ -124,8 +124,8 @@ describe("each person's paper slots", () => {
   it("starts only the papers a job's spending limit has room for, and stops the job there with the rest unread", async () => {
     const { t, person } = await setup();
     const ada = await person("ada");
-    // Ada said yes to what three papers are estimated to cost; the job found twelve.
-    const spendCap = estimateScreening(3, 0).credits;
+    // Ada said yes to what three papers cost at most; the job found twelve.
+    const spendCap = estimateScreening(3, 0, await t.run((ctx) => screeningPaperCreditsFor(ctx, ada.userId))).credits;
     const { jobId } = await createJob(ada.as, { papers: papers(12, "a"), questions, scoringConfig, spendCap });
     const other = await createJob(ada.as, { papers: papers(4, "b"), questions, scoringConfig });
     const finish = async (ids: Id<"screeningResults">[], creditsUsed: number) => {
@@ -158,7 +158,7 @@ describe("each person's paper slots", () => {
     const { t, person } = await setup();
     const ada = await person("ada");
     // Room for one paper of twenty-five: the rest wait at the head of Ada's queue, ahead of her next job's.
-    const first = await createJob(ada.as, { papers: papers(25, "a"), questions, scoringConfig, spendCap: estimateScreening(1, 0).credits });
+    const first = await createJob(ada.as, { papers: papers(25, "a"), questions, scoringConfig, spendCap: estimateScreening(1, 0, await t.run((ctx) => screeningPaperCreditsFor(ctx, ada.userId))).credits });
     const next = await createJob(ada.as, { papers: papers(3, "b"), questions, scoringConfig });
     expect((await papersOf(t, next.jobId)).started).toHaveLength(0);
 

@@ -14,7 +14,7 @@ import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { processScreeningBatch } from "../../lib/ai/core/batch";
 import { withUserCredits } from "../ai/helpers";
-import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
+import { screeningPaperCredits } from "../../lib/pricing";
 import { openRouterModel, resolveOpenRouterModel } from "../chat/provider";
 import { MODEL_UNAVAILABLE_MESSAGE } from "../models/catalog";
 import { createError } from "../lib/errors";
@@ -123,7 +123,7 @@ export const screenPaperAction = internalAction({
         {
           userId: job.userId as Id<"users">,
           chargeId: `screening:${args.resultId}:${crypto.randomUUID()}`,
-          estimate: Math.ceil(ESTIMATED_CREDITS_PER_PAPER),
+          estimate: screeningPaperCredits(serverPricing),
           hold: false,
           // A job the person approved up to a figure holds it once: its papers are charged under that hold.
           ...(job.spendHold ? { under: job.spendHold } : {}),

@@ -562,8 +562,8 @@
     "defineQuestions": "Définir les questions",
     "whatToExtract": "Qu'extraire",
     "preflight": {
-      "sufficient": "~{estimate} crédits",
-      "insufficient": "Besoin de ~{estimate} crédits, vous en avez {balance}"
+      "sufficient": "Jusqu'à {estimate} crédits",
+      "insufficient": "Jusqu'à {estimate} crédits nécessaires, vous en avez {balance}"
     },
     "creditsExhausted": {
       "title": "Extraction en pause — crédits épuisés",
@@ -2025,7 +2025,9 @@
     "after": "Après {name}",
     "readingPapers": "Lecture des articles…",
     "screenPapers": "Cribler {count, plural, one {# article} other {# articles}}",
-    "startFailed": "Impossible de démarrer le criblage"
+    "startFailed": "Impossible de démarrer le criblage",
+    "showAnswers": "Afficher les réponses pour {title}",
+    "hideAnswers": "Masquer les réponses pour {title}"
   },
   "connectionsPage": {
     "connectedApps": "Applications connectées",

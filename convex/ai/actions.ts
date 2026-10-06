@@ -22,7 +22,7 @@ import {
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { toExtractionQuestions } from "../../lib/ai/core/schemas";
 import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
-import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
+import { CALL_TOKENS } from "../../lib/pricing";
 import { internal } from "../_generated/api";
 import { BATCH_LOCK_TTL_MS } from "../lib/locks";
 import { createError } from "../lib/errors";
@@ -176,7 +176,8 @@ export const generateBatchTranslations = action({
           description: `Batch translation (${papers.length} papers)`,
           kind: "translation",
           task: "translate",
-          estimate: Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
+          calls: papers.length,
+          tokens: CALL_TOKENS.helper,
         },
         async (_user, model, effort) => {
           const { results, errors, usages, usageByItemId, trackingByItemId } = await processTranslationBatch({
@@ -267,7 +268,8 @@ export const generateBatchScreeningResponses = action({
           description: `Batch screening (${papers.length} papers)`,
           kind: "screening",
           task: "screening",
-          estimate: Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
+          calls: papers.length,
+          tokens: CALL_TOKENS.paper,
         },
         async (_user, model, effort) => {
           const { results, errors, usages, usageByItemId, trackingByItemId } = await processScreeningBatch({

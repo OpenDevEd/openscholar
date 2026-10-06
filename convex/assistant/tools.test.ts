@@ -11,7 +11,9 @@ import schema from "../schema";
 import { inputSchema } from "../lib/assistantTools";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
-import { screeningHold } from "../screening/estimate";
+import { screeningHold, screeningPaperCreditsFor } from "../screening/estimate";
+import { CALL_TOKENS, estimateCredits } from "../../lib/pricing";
+import { SERVER_MODEL_SLUG } from "../ai/config";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { screeningPool } from "../workpool";
 import { people } from "./assistant.test-support";
@@ -721,8 +723,11 @@ describe("the assistant's tools", () => {
   it("ask before an action that spends credits, with the most it holds, and run it unasked once the person allows that much in the chat", async () => {
     const t = convexTest(schema);
     setupScreeningWorkpool(t);
-    const { asAda, threadId, say, sayUntilAsked, settled, steps } = await chatOf(t);
+    const { ada, asAda, threadId, say, sayUntilAsked, settled, steps } = await chatOf(t);
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
+    // Screen all runs on the server's model, at GPT-6 Luna's price: what a paper holds on it.
+    await t.run((ctx) => ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: 0.1, outputPricePerMillion: 0.5, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: ["tools", "structured_outputs"], contextLength: 400_000, syncedAt: 1, createdAt: 1, updatedAt: 1 }));
+    const perPaper = await t.run((ctx) => screeningPaperCreditsFor(ctx, ada));
     for (const n of [1, 2, 3]) await asAda.mutation(api.library.mutations.setPaperInCollection, { paper: { openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, abstract: "A trial of tutoring." }, collectionId, inCollection: true });
     const screen = (id: string, last = 3) => ({
       id,
@@ -740,7 +745,7 @@ describe("the assistant's tools", () => {
     await sayUntilAsked("Screen my trials");
     expect(await jobs()).toBe(0);
     const asked = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step" && item.status === "asking");
-    expect(asked).toMatchObject({ action: "screening/start:screen", canAnswer: true, credits: 14 });
+    expect(asked).toMatchObject({ action: "screening/start:screen", canAnswer: true, credits: 3 * perPaper });
     // She is asked about the papers and the question, with her collection by its name, and not about how each answer scores.
     expect(asked && "details" in asked && asked.details).toEqual([{ name: "collection", value: "Trials" }, { name: "first", value: "1" }, { name: "last", value: "500" }, { name: "question", value: "Is this a trial?" }]);
 
@@ -761,12 +766,12 @@ describe("the assistant's tools", () => {
     mockDoStream.mockImplementationOnce(calling(screen("second"))).mockImplementationOnce(finishingDoStream(["And again."]));
     await say("Screen them again");
     expect(await jobs()).toBe(2);
-    expect((await steps()).filter((step) => step.path === "screening/start:screen").map((step) => [step.status, step.credits])).toEqual([["done", 14], ["done", 14]]);
+    expect((await steps()).filter((step) => step.path === "screening/start:screen").map((step) => [step.status, step.credits])).toEqual([["done", 3 * perPaper], ["done", 3 * perPaper]]);
     // Each job may spend what she let it hold, asked or allowed, and stops there.
-    expect(await t.run(async (ctx) => (await ctx.db.query("screeningJobs").collect()).map((job) => job.spendCap))).toEqual([14, 14]);
+    expect(await t.run(async (ctx) => (await ctx.db.query("screeningJobs").collect()).map((job) => job.spendCap))).toEqual([3 * perPaper, 3 * perPaper]);
     // The Spending sheet lists them under the settings that decide for them.
     const listed = await asAda.query(api.assistant.spending.jobs, { threadId, paginationOpts: { cursor: null, numItems: 1 } });
-    expect(listed).toMatchObject({ page: [{ action: "screening/start:screen", credits: 14 }], isDone: false });
+    expect(listed).toMatchObject({ page: [{ action: "screening/start:screen", credits: 3 * perPaper }], isDone: false });
     expect((await asAda.query(api.assistant.spending.jobs, { threadId, paginationOpts: { cursor: listed.continueCursor, numItems: 5 } })).page).toHaveLength(1);
 
     // A yes while her balance can't cover what the call holds starts nothing, and keeps no allowance: it waits for credits.
@@ -805,7 +810,7 @@ describe("the assistant's tools", () => {
     expect(await always(300, 400)).toEqual({ cap: 1_000 });
     expect(await always(300, 5_000)).toEqual({});
     // A search's papers are OpenAlex's to count, so its hold is for the whole range asked for, whatever count the account last saw.
-    expect(await t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } }))).toBe(450);
+    expect(await t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } }))).toBe(100 * perPaper);
     // Rules with no least score include every paper whatever it's answered: refused before anyone is asked to pay for it.
     await expect(t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, scoringConfig: { rules: [], starThresholds: [] } }))).rejects.toThrow(/minimumScore/);
     // A collection saved before counts were kept is counted from its papers, not taken for an empty one that would cost nothing.
@@ -818,7 +823,7 @@ describe("the assistant's tools", () => {
       }
       return screeningHold(ctx, userId, { set: { kind: "collection", collectionId }, first: 1, last: 100, scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } });
     });
-    expect(uncounted).toBe(14);
+    expect(uncounted).toBe(3 * perPaper);
 
     // Asked before every job again, and an action that spends credits with no estimate to ask with isn't run at all.
     await asAda.mutation(api.assistant.spending.setAllowance, { threadId, allowance: null });
@@ -1467,11 +1472,13 @@ describe("the assistant's tools", () => {
   it("hold what the person really has when the account's copy of the balance is behind a charge", async () => {
     const t = convexTest(schema);
     const { ada, say } = await chatOf(t);
-    // The account's copy says 1,500 credits. The billing service has 900: a charge was just made.
+    // The most a request holds on the chat's model. The account's copy says 500 more than that; the billing
+    // service has 100 less: a charge was just made.
+    const most = estimateCredits({ input: 1, output: 2 }, CALL_TOKENS.chatRequest);
     await t.run(async (ctx) => {
-      fakeAutumn.setBalance(ada, { free: 900, paid: 0 });
+      fakeAutumn.setBalance(ada, { free: most - 100, paid: 0 });
       const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
-      await ctx.db.patch("billingAccounts", account!._id, { balance: 1_500 });
+      await ctx.db.patch("billingAccounts", account!._id, { balance: most + 500 });
     });
     let held: number[] = [];
     mockDoStream.mockImplementationOnce(async () => {
@@ -1479,8 +1486,8 @@ describe("the assistant's tools", () => {
       return finishingDoStream(["Here."])();
     });
     await say("Hello");
-    // A hold of 1,000 was refused, so the request held the 900 there are, and went ahead.
-    expect(held).toEqual([900]);
+    // A hold of the most was refused, so the request held what there is, and went ahead.
+    expect(held).toEqual([most - 100]);
   });
 
   it("are undone by the person they ran for, once, and by no one else in the chat", async () => {

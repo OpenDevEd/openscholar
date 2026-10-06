@@ -1,10 +1,6 @@
 'use client'
 
 import { api } from '@/convex/_generated/api'
-import {
-  ESTIMATED_CREDITS_PER_PAPER,
-  ESTIMATED_CREDITS_PER_QUERY,
-} from '@/convex/lib/constants'
 import * as clientExecutor from './executor'
 import { createAIHook } from './hook-factory'
 import { decodeQuestionResponseMap } from '../core/question-key-codec'
@@ -41,7 +37,7 @@ export const useEnhanceSearchQuery = createAIHook(
   api.ai.actions.enhanceSearchQuery,
   clientExecutor.enhanceSearchQuery,
   undefined,
-  { task: (params) => params.task ?? 'questionToQuery', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
+  { task: (params) => params.task ?? 'questionToQuery' },
 )
 
 export const useGenerateScreeningQuestions = createAIHook(
@@ -49,28 +45,28 @@ export const useGenerateScreeningQuestions = createAIHook(
   clientExecutor.generateScreeningQuestions,
   undefined,
   // Writing questions needs a text model; the Screening pick may be Jev, which only answers them.
-  { task: 'extraction', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
+  { task: 'extraction' },
 )
 
 export const useGenerateExtractionQuestions = createAIHook(
   api.ai.actions.generateExtractionQuestions,
   clientExecutor.generateExtractionQuestions,
   undefined,
-  { task: 'extraction', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
+  { task: 'extraction' },
 )
 
 export const useTranslateQuery = createAIHook(
   api.ai.actions.translateQuery,
   clientExecutor.translateQuery,
   undefined,
-  { task: 'translate', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
+  { task: 'translate' },
 )
 
 export const useTranslatePaperContent = createAIHook(
   api.ai.actions.translatePaperContent,
   clientExecutor.translatePaperContent,
   undefined,
-  { task: 'translate', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
+  { task: 'translate' },
 )
 
 export const useBatchScreeningResponses = createAIHook(
@@ -92,8 +88,7 @@ export const useBatchScreeningResponses = createAIHook(
   {
     task: 'screening',
     allowSmartLocalFallback: false,
-    estimateCredits: (params) =>
-      Math.ceil(params.papers.length * ESTIMATED_CREDITS_PER_PAPER),
+    estimate: (params) => ({ kind: 'paper', calls: params.papers.length }),
   },
 )
 
@@ -107,7 +102,7 @@ export const useBatchTranslations = createAIHook(
   undefined,
   {
     task: 'translate',
-    estimateCredits: (params) =>
-      Math.ceil(params.papers.length * ESTIMATED_CREDITS_PER_PAPER),
+    // A paper's title and abstract translated is a helper call (convex/ai/actions.ts).
+    estimate: (params) => ({ kind: 'helper', calls: params.papers.length }),
   },
 )

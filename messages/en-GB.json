@@ -574,8 +574,8 @@
     "defineQuestions": "Define questions",
     "whatToExtract": "What to extract",
     "preflight": {
-      "sufficient": "~{estimate} credits",
-      "insufficient": "Need ~{estimate} credits, you have {balance}"
+      "sufficient": "Up to {estimate} credits",
+      "insufficient": "Needs up to {estimate} credits, you have {balance}"
     },
     "creditsExhausted": {
       "title": "Extraction paused — out of credits",
@@ -2017,7 +2017,9 @@
     "after": "After {name}",
     "readingPapers": "Reading papers…",
     "screenPapers": "Screen {count, plural, one {# paper} other {# papers}}",
-    "startFailed": "Couldn't start the screening"
+    "startFailed": "Couldn't start the screening",
+    "showAnswers": "Show the answers for {title}",
+    "hideAnswers": "Hide the answers for {title}"
   },
   "connectionsPage": {
     "connectedApps": "Connected Apps",

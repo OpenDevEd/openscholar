@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Coins } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import type { ExtractionCostEstimate } from "@/lib/extraction/cost-estimate";
 
 type BalanceCheck = {
   hasEnough: boolean;
@@ -14,7 +13,8 @@ type BalanceCheck = {
 };
 
 export interface ExtractionPreflightBannerProps {
-  estimate: ExtractionCostEstimate;
+  /** The most the job costs (convex/extraction/queries/costs.ts); undefined while it loads. */
+  credits: number | undefined;
   balance: BalanceCheck | null | undefined;
   onBeforeNavigate?: () => void;
 }
@@ -28,7 +28,7 @@ export interface ExtractionPreflightBannerProps {
  * utilities.
  */
 export function ExtractionPreflightBanner({
-  estimate,
+  credits,
   balance,
   onBeforeNavigate,
 }: ExtractionPreflightBannerProps) {
@@ -36,9 +36,9 @@ export function ExtractionPreflightBanner({
   const tc = useTranslations("common");
   const router = useRouter();
 
-  // No questions / no papers → no estimate → nothing to say.
-  if (estimate.high <= 0) return null;
-  // Waiting for the credits query.
+  // No questions or no papers, or the figure still loading: nothing to say.
+  if (!credits) return null;
+  // Waiting for the balance.
   if (balance === undefined) return null;
 
   const total = balance?.total ?? 0;
@@ -62,7 +62,7 @@ export function ExtractionPreflightBanner({
             <>
               <span className="font-semibold">
                 {t("preflight.sufficient", {
-                  estimate: Math.round(estimate.mid).toLocaleString(),
+                  estimate: credits.toLocaleString(),
                 })}
               </span>
               <span className="text-muted-foreground">
@@ -72,7 +72,7 @@ export function ExtractionPreflightBanner({
             </>
           ) : (
             t("preflight.insufficient", {
-              estimate: Math.round(estimate.high).toLocaleString(),
+              estimate: credits.toLocaleString(),
               balance: total.toLocaleString(),
             })
           )}

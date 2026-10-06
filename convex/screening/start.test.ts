@@ -7,6 +7,8 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { seedCreditsForTest } from "../billing/billing.test-support";
+import { SERVER_MODEL_SLUG } from "../ai/config";
+import { screeningPaperCredits } from "../../lib/pricing";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { answerPaper } from "../research/answers";
 import { collectionSortName } from "../library/collections";
@@ -26,6 +28,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+/** The price of the model Screen all runs on when a person picked none, and what a paper costs at most on it. */
+const PRICE = { input: 0.1, output: 0.5 };
+const PER_PAPER = screeningPaperCredits(PRICE);
+
 /** Alice, with credits, `saved` papers saved one a millisecond (W1 first), and a collection holding the first `inCollection` of them. */
 async function setup({ saved = 6, inCollection = 4, credits = 100_000 } = {}) {
   const t = convexTest(schema);
@@ -34,6 +40,7 @@ async function setup({ saved = 6, inCollection = 4, credits = 100_000 } = {}) {
     const userId = await ctx.db.insert("users", { libraryItemCount: saved, clerkId: "alice", email: "alice@example.com", state: "active", createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "bob", email: "bob@example.com", state: "active", createdAt: 1, updatedAt: 1 });
     await seedCreditsForTest(ctx, { userId, free: credits });
+    await ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: PRICE.input, outputPricePerMillion: PRICE.output, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: [], syncedAt: 1, createdAt: 1, updatedAt: 1 });
     const collectionId = await ctx.db.insert("collections", { userId, name: "Reading trials", sortName: collectionSortName("Reading trials"), itemCount: inCollection, createdAt: 1, updatedAt: 1 });
     for (let i = 1; i <= saved; i++) {
       const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: W(i), title: `Paper ${i}`, authors: ["Ada Lovelace", "Alan Turing"], abstract: "Tutoring works", journal: "A journal", citedByCount: i, publicationYear: 2020, searchableText: `Paper ${i}`, savedAt: i, updatedAt: i });
@@ -73,7 +80,7 @@ describe("Screen all on papers the account holds", () => {
     const papers = await results(jobId);
     expect(papers.map((paper) => paper.openalexId)).toEqual([W(3), W(2)]);
     expect(papers[0]).toMatchObject({ title: "Paper 3", abstract: "Tutoring works", authors: ["Ada Lovelace", "Alan Turing"], venue: "A journal", citedByCount: 3, publicationYear: 2020 });
-    expect(await read(jobId)).toMatchObject({ set: { kind: "collection", collectionId }, label: "Reading trials", first: 2, last: 3, totalPapers: 2, unsaved: true, credits: { spent: 0, estimate: 9 } });
+    expect(await read(jobId)).toMatchObject({ set: { kind: "collection", collectionId }, label: "Reading trials", first: 2, last: 3, totalPapers: 2, unsaved: true, credits: { spent: 0, estimate: 2 * PER_PAPER } });
   });
 
   it("reads every saved paper, and an earlier job's included papers in that job's order", async () => {
@@ -109,7 +116,7 @@ describe("where a job's papers go", () => {
     await answerAll(jobId, [4, 1], 3);
 
     const made = await t.run((ctx) => ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", userId).eq("sortName", "included trials")).unique());
-    expect(await read(jobId)).toMatchObject({ status: "completed", targetCollectionName: "Included trials", prune: true, outcomes: { included: 2, excluded: 2 }, credits: { spent: 12, estimate: 18 }, saved: 2, removed: 2 });
+    expect(await read(jobId)).toMatchObject({ status: "completed", targetCollectionName: "Included trials", prune: true, outcomes: { included: 2, excluded: 2 }, credits: { spent: 12, estimate: 4 * PER_PAPER }, saved: 2, removed: 2 });
     expect(await inCollectionNow(made!._id)).toEqual([W(1), W(4)]);
     expect(await inCollectionNow(collectionId)).toEqual([W(1), W(4)]);
 
@@ -222,7 +229,8 @@ describe("a request bigger than one job", () => {
   });
 
   it("shows where the request stopped when the person can't pay for its next job", async () => {
-    const { t, userId, answerAll } = await setup({ credits: 10 });
+    // Enough for the first job's two papers, not the next job's three.
+    const { t, userId, answerAll } = await setup({ credits: 2 * PER_PAPER + 1 });
     const papers = [6, 5].map((i) => ({ openalexId: W(i), title: `Paper ${i}` }));
     const first = await t.mutation(internal.screening.mutations.createScreeningJobForUser, { userId, author: "user", papers, set: { kind: "saved" }, first: 1, last: 2, through: 5, ...job });
 
@@ -242,7 +250,7 @@ describe("a job on a search whose page already answered some papers", () => {
 
   it("keeps those papers' answers without asking the model, and counts them", async () => {
     // Credits for the one new paper only: the two already answered cost nothing.
-    const { t, alice, userId, results, answerAll, read } = await setup({ credits: 5 });
+    const { t, alice, userId, results, answerAll, read } = await setup({ credits: PER_PAPER });
     await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: [{ search }], shortcuts: [], ratings: [] });
     const papers = [1, 2, 3].map((i) => ({ openalexId: W(i), title: `Paper ${i}` }));
     // The search's page answered W1 (by a person) and W2 (by the model); W3 is new.
@@ -259,7 +267,7 @@ describe("a job on a search whose page already answered some papers", () => {
 
     // Only the new paper took a slot; the estimate covers it alone.
     expect((await results(jobId)).map((paper) => [paper.status, paper.workId === undefined])).toEqual([["completed", true], ["completed", true], ["processing", false]]);
-    expect(await read(jobId)).toMatchObject({ label: "tutoring trials", running: 1, credits: { estimate: 5 } });
+    expect(await read(jobId)).toMatchObject({ label: "tutoring trials", running: 1, credits: { estimate: PER_PAPER } });
 
     await answerAll(jobId, [3]);
     expect(await read(jobId)).toMatchObject({ status: "completed", running: 0, outcomes: { included: 2, excluded: 1, unclear: 0, failed: 0 }, tallies: [{ key: "q1", yes: 2, no: 1, unclear: 0 }] });

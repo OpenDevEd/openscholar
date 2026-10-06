@@ -301,6 +301,7 @@ export const extractionJobFields = {
   // Set while a retry resets failed results in batches (#351); the job doesn't finish until it clears.
   /** Set while a retry resets the job's failures a batch at a time; where the next batch starts. */
   retryReset: v.optional(v.object({ cursor: v.union(v.string(), v.null()) })),
+  /** No longer written: convex/migrations/estimateFields.ts clears it, and the field goes once it has run. */
   estimatedCredits: v.optional(
     v.object({
       low: v.number(),
@@ -343,7 +344,7 @@ export const extractionJobFields = {
    */
   spendHold: v.optional(v.string()),
   spendCap: v.optional(v.number()),
-  /** With them: how many times the measured rates a question of the job costs on the models it runs on, as its figure was worked out (../extraction/start.ts). */
+  /** No longer written: convex/migrations/estimateFields.ts clears it, and the field goes once it has run. */
   spendScale: v.optional(v.number()),
   /** The step of the assistant's reply that started it (#328): its chat hears when it ends (convex/assistant/jobs.ts). */
   chatStep: v.optional(v.id("assistantSteps")),

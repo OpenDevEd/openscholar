@@ -73,7 +73,8 @@ export function PanelHeader({
       {tabs ? <div className="hidden shrink-0 border-l border-border-subtle pl-4 @3xl:block">{tabs}</div> : null}
       {filters || children ? (
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          {filters ? <div className="hidden items-center gap-2 @6xl:flex">{filters}</div> : null}
+          {/* Filters are inset wells, made for a white card. The light bar is the page's grey, so here they take the card's white. */}
+          {filters ? <div className="hidden items-center gap-2 not-dark:[--inset:var(--card)] @6xl:flex">{filters}</div> : null}
           {children}
         </div>
       ) : null}

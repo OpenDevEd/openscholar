@@ -365,6 +365,11 @@ vi.mock("@/components/extraction/results-views", () => ({
   SplitView: () => <div>split view</div>,
 }));
 
+vi.mock("@/components/focus-mode/list-focus", () => ({
+  ListFocus: () => null,
+  openListFocus: () => {},
+}));
+
 vi.mock("@/components/extraction/smart-pagination", () => ({
   SmartPagination: smartPaginationSpy,
 }));

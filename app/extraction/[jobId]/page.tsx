@@ -53,6 +53,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useAppToast } from "@/lib/toast";
 import { ResultsColumnsMenu, ResultsFilterMenu, ResultsFilters, ResultsViewSwitch, type ResultsSortBy } from "@/components/extraction/results-toolbar";
 import { TableView, CardView, SplitView } from "@/components/extraction/results-views";
+import { ListFocus, openListFocus } from "@/components/focus-mode/list-focus";
 import { SmartPagination } from "@/components/extraction/smart-pagination";
 import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
 import { ExportDialog } from "@/components/extraction/export-dialog";
@@ -268,6 +269,8 @@ export default function JobDetailPage() {
   });
 
   const displayedPapers = papersWithResults;
+  // Focus mode steps through the papers as the page lists them; an extraction calls a paper's venue its `venueName`.
+  const focusPapers = useMemo(() => displayedPapers.map((paper) => ({ ...paper, venue: paper.venueName })), [displayedPapers]);
 
 
   const paperIds = useMemo(
@@ -762,7 +765,7 @@ export default function JobDetailPage() {
             {(job.status === "completed" ||
               job.status === "failed" ||
               job.status === "creditsExhausted") && (
-              <RetrySummary jobId={jobId} usePdfs={job.usePdfs ?? false} />
+              <RetrySummary jobId={jobId} />
             )}
 
 
@@ -831,6 +834,7 @@ export default function JobDetailPage() {
                           openAnswer={openAnswerKey(openAnswer)}
                           usePdfs={job.usePdfs ?? false}
                           showCredits={showCreditsColumn}
+                          onOpenPaper={openListFocus}
                         />
                       )}
                       {viewMode === 'cards' && (
@@ -841,6 +845,7 @@ export default function JobDetailPage() {
                           onSelectionChange={handleCardSelectionChange}
                           onOpenAnswer={openAnswerPanel}
                           openAnswer={openAnswerKey(openAnswer)}
+                          onOpenPaper={openListFocus}
                         />
                       )}
                       {viewMode === 'split' && (
@@ -848,8 +853,10 @@ export default function JobDetailPage() {
                           papers={displayedPapers}
                           questions={questions}
                           onOpenAnswer={openAnswerPanel}
+                          onOpenPaper={openListFocus}
                         />
                       )}
+                      <ListFocus papers={focusPapers} />
                     </>
                   )}
                 </div>
