@@ -553,6 +553,8 @@ function Chat({
       <Header title={threadId ? (thread?.title ?? (threadId === born && first?.threadId === threadId ? first.title : "")) : t("newChat")} onHistory={onHistory} onShare={share} onSpending={spend} onRestart={restart} onFold={onFold} />
       <DockedJobs.Provider value={docked}>
         <div className="relative flex min-h-0 flex-1 flex-col">
+          {/* Under the dock's opened list, the chat takes no keyboard focus or clicks; the layer over it folds the list. */}
+          <div className="flex min-h-0 flex-1 flex-col" inert={stackOpen}>
           <Thread
             // A different chat starts at its own newest message. A new chat that has just become a real one is the same thread.
             key={threadId === null || threadId === born ? NEW : threadId}
@@ -564,6 +566,7 @@ function Chat({
             // An open chat's first page is still on its way, unless it's the chat this message just started.
             older={threadId && (status === "LoadingFirstPage" || !jobsKnown) && !sent.length ? "first" : status === "CanLoadMore" ? () => loadMore(FIRST_MESSAGES) : status === "LoadingMore" ? "loading" : null}
           />
+          </div>
           {/* The dock's opened list lies over the chat, which fades back; a tap on it folds the list again. */}
           <AnimatePresence>
             {stackOpen ? (

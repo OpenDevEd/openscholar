@@ -274,8 +274,12 @@ export const mentionablesValidator = capped(
   MENTIONS_EACH * MENTION_KINDS.length,
 );
 
-/** Running jobs a chat docks at most; a chat runs few at once, and each holds credits it was allowed. */
-export const JOBS_DOCKED = 10;
+/**
+ * Running jobs a chat docks at most, newest first: its opened list scrolls through them. Each
+ * was allowed its credits, so a chat runs few at once.
+ * ponytail: a job past these keeps its live card in the chat instead; page the dock if chats ever run more.
+ */
+export const JOBS_DOCKED = 50;
 /** Running jobs a chat's row in the list names, one line each; it counts the rest. */
 export const JOBS_LISTED = 2;
 const jobKindValidator = v.union(v.literal("screening"), v.literal("extraction"));

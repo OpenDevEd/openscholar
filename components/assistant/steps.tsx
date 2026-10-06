@@ -159,14 +159,24 @@ export function Steps({
           <ApprovalCard key={step.id} threadId={threadId} step={step} />
         ))}
       </AnimatePresence>
-      {/* Each job the reply started, under its map, once it has ended: while it runs, its card is docked over the message box, and it flies here as it ends. */}
-      {steps
-        .filter((step) => JOB_STARTS.has(step.action) && step.status === "done" && !docked.has(step.id))
-        .map((step) => (
-          <motion.div key={`job:${step.id}`} layoutId={cardLayoutId(step.id)} transition={reduceMotion ? { duration: 0 } : CARD_SPRING} className="rounded-2xl bg-card">
-            <JobCard threadId={threadId} stepId={step.id} />
-          </motion.div>
-        ))}
+      {/* Each job the reply started, under its map, once it has ended: while it runs, its card is docked over the message box. A card
+          that ends flies here as its place opens; the ones already here when the chat shows are in place. Each place holds its own gap,
+          so a first card opens all of its room smoothly. */}
+      <div className="!mt-0">
+        <AnimatePresence initial={false}>
+          {steps
+            .filter((step) => JOB_STARTS.has(step.action) && step.status === "done" && !docked.has(step.id))
+            .map((step) => (
+              <motion.div key={`job:${step.id}`} initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} transition={reduceMotion ? { duration: 0 } : CARD_SPRING}>
+                <div className="pt-3">
+                  <motion.div layoutId={cardLayoutId(step.id)} transition={reduceMotion ? { duration: 0 } : CARD_SPRING} exit={{ opacity: 0, transition: { duration: 0 } }} className="rounded-2xl bg-card">
+                    <JobCard threadId={threadId} stepId={step.id} />
+                  </motion.div>
+                </div>
+              </motion.div>
+            ))}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

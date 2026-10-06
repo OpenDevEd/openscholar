@@ -4,7 +4,7 @@
 // an extraction fills each paper's answers as they're read. Each reads the job's own progress
 // (convex/assistant/jobs.ts) and keeps one size from its first frame, whatever arrives.
 
-import { createContext, type ReactNode } from "react";
+import { createContext, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery } from "convex/react";
@@ -35,7 +35,8 @@ const RUNNING = new Set(["processing", "pending", "downloading_pdfs", "indexing"
 export function JobCard({ threadId, stepId }: { threadId: Id<"assistantThreads">; stepId: string }) {
   const read = useQuery(api.assistant.jobs.card, { threadId, stepId: stepId as Id<"assistantSteps"> });
   if (read === undefined) return <div className="rounded-2xl border border-border/60 bg-muted/40" style={{ height: JOB_CARD_H }} />;
-  if (read === null) return null;
+  // A job deleted since: its frame folds away, so the chat under it closes up rather than jumps.
+  if (read === null) return <motion.div aria-hidden initial={{ height: JOB_CARD_H, opacity: 1 }} animate={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="rounded-2xl bg-muted/40" />;
   return read.card.kind === "screening" ? <ScreeningCard job={read.card} mine={read.mine} /> : <ExtractionCard job={read.card} mine={read.mine} />;
 }
 
@@ -72,6 +73,12 @@ export function JobDock({ threadId, jobs, open, onOpen }: { threadId: Id<"assist
   const spring = reduceMotion ? { duration: 0 } : CARD_SPRING;
   const stacked = jobs.length > 1;
   const opened = open && stacked;
+  // Folding the list from the keyboard puts focus back on the stack it came from.
+  const refocus = useRef(false);
+  const fold = (byKeyboard: boolean) => {
+    refocus.current = byKeyboard;
+    onOpen(false);
+  };
   const card = (stepId: string, inert: boolean) => (
     <div inert={inert} aria-hidden={inert || undefined} className="h-full">
       <JobCard threadId={threadId} stepId={stepId} />
@@ -81,13 +88,24 @@ export function JobDock({ threadId, jobs, open, onOpen }: { threadId: Id<"assist
     // Only the folded stack takes room: the opened list rises over the chips and the chat.
     <motion.div className="relative z-20" initial={false} animate={{ height: dockHeight(jobs.length) }} transition={spring}>
       {opened ? (
-        <div className="absolute inset-x-0 flex flex-col items-end gap-2" style={{ bottom: GAP }}>
+        <div
+          className="absolute inset-x-0 flex flex-col items-end gap-2"
+          style={{ bottom: GAP }}
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") return;
+            event.stopPropagation();
+            fold(true);
+          }}
+        >
           <motion.button
             type="button"
+            // Opened by the person, so the keyboard goes with them into the list.
+            autoFocus
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, ease: EASE }}
-            onClick={() => onOpen(false)}
+            // A click from the keyboard has no pointer behind it (`detail` 0).
+            onClick={(event) => fold(event.detail === 0)}
             className="flex h-7 shrink-0 items-center gap-1 rounded-full bg-card px-3 text-xs font-medium text-foreground/80 shadow-xs ring-1 ring-border/60 hover:text-foreground"
           >
             {t("showLess")} <ChevronDown className="size-3" />
@@ -103,20 +121,24 @@ export function JobDock({ threadId, jobs, open, onOpen }: { threadId: Id<"assist
         </div>
       ) : (
         // Cards already here when the stack shows (the chat opening, the list folding) are in place; a job started after rises in.
-        // A card that leaves has ended: it flies to its place in the chat, so it has no exit of its own.
+        // A card that leaves has ended: it flies to its place in the chat.
         <AnimatePresence initial={false}>
         {jobs.map((job, i) => {
           // The front card at the bottom, each one behind it a step up and a step smaller.
-          const depth = Math.min(i, PEEKING + 1);
+          // Past the edges the stack shows, a card sits hidden behind the last one and takes no clicks.
+          const depth = Math.min(i, PEEKING);
+          const hidden = i > PEEKING;
           const behind = i > 0;
           return (
             <motion.div
               key={job.stepId}
               layoutId={cardLayoutId(job.stepId)}
-              className={cn("absolute inset-x-0 origin-top rounded-2xl bg-card shadow-[0_10px_30px_-12px_rgb(0_0_0/0.35)]", stacked && "cursor-pointer")}
+              className={cn("absolute inset-x-0 origin-top rounded-2xl bg-card shadow-[0_10px_30px_-12px_rgb(0_0_0/0.35)]", stacked && "cursor-pointer", hidden && "pointer-events-none")}
               style={{ height: JOB_CARD_H, bottom: GAP, zIndex: jobs.length - i }}
               initial={{ opacity: 0, y: 24, scale: 0.96 }}
-              animate={{ y: -depth * PEEK, scale: 1 - depth * 0.05, opacity: i > PEEKING ? 0 : 1 }}
+              animate={{ y: -depth * PEEK, scale: 1 - depth * 0.05, opacity: hidden ? 0 : 1 }}
+              // It leaves at once: its place in the chat takes the card on, and a copy fading here would show it twice.
+              exit={{ opacity: 0, transition: { duration: 0 } }}
               transition={spring}
               onClickCapture={(event) => {
                 // A tap anywhere on a stack but a link or a button opens it.
@@ -127,7 +149,16 @@ export function JobDock({ threadId, jobs, open, onOpen }: { threadId: Id<"assist
             >
               {/* The front card names the rest, and a keyboard opens the stack from it. */}
               {stacked && i === 0 ? (
-                <button type="button" onClick={() => onOpen(true)} className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:bottom-2 focus-visible:left-1/2 focus-visible:z-10 focus-visible:-translate-x-1/2 focus-visible:whitespace-nowrap focus-visible:rounded-full focus-visible:bg-card focus-visible:px-3 focus-visible:py-1 focus-visible:text-xs focus-visible:font-medium focus-visible:shadow-xs focus-visible:ring-1 focus-visible:ring-border/60">
+                <button
+                  type="button"
+                  ref={(button) => {
+                    if (button && refocus.current) {
+                      refocus.current = false;
+                      button.focus();
+                    }
+                  }}
+                  onClick={() => onOpen(true)}
+                  className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:bottom-2 focus-visible:left-1/2 focus-visible:z-10 focus-visible:-translate-x-1/2 focus-visible:whitespace-nowrap focus-visible:rounded-full focus-visible:bg-card focus-visible:px-3 focus-visible:py-1 focus-visible:text-xs focus-visible:font-medium focus-visible:shadow-xs focus-visible:ring-1 focus-visible:ring-border/60">
                   {t("showAll", { count: jobs.length })}
                 </button>
               ) : null}
@@ -323,12 +354,13 @@ function ExtractionCard({ job, mine }: { job: Extraction; mine: boolean }) {
   const cancel = useCancel(useMutation(api.extraction.mutations.jobs.cancelExtraction).bind(null, { jobId: job.jobId }));
   const running = RUNNING.has(job.status);
   const stopped = job.status === "creditsExhausted" || job.status === "paused";
-  const read = job.done - job.failed;
+  // `done` counts the papers it answered; a paper that failed is counted apart, and both are finished.
+  const finished = job.done + job.failed;
   const title =
     job.status === "cancelled"
-      ? t("extraction.cancelled", { done: job.done, total: job.total })
+      ? t("extraction.cancelled", { done: finished, total: job.total })
       : stopped
-        ? t("extraction.stopped", { done: job.done, total: job.total })
+        ? t("extraction.stopped", { done: finished, total: job.total })
         : job.status === "failed"
           ? t("extraction.failed")
           : running
@@ -340,7 +372,7 @@ function ExtractionCard({ job, mine }: { job: Extraction; mine: boolean }) {
       title={title}
       running={running}
       credits={job.credits}
-      done={job.done}
+      done={finished}
       total={job.total}
       href={mine ? `/extraction/${job.jobId}` : null}
       end={<EndSlot running={running} status={job.status} capped={stopped} cancelLabel={t("extraction.cancel")} onCancel={cancel} mine={mine} />}
@@ -348,14 +380,14 @@ function ExtractionCard({ job, mine }: { job: Extraction; mine: boolean }) {
         <Track
           total={job.total}
           parts={[
-            { n: read, className: "bg-[var(--kind-extraction)]" },
+            { n: job.done, className: "bg-[var(--kind-extraction)]" },
             { n: job.failed, className: "bg-destructive/70" },
           ]}
         />
       }
       legend={
         <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1"><Check className="size-3 text-[var(--kind-extraction)]" /> <span className="tabular-nums">{read}</span> {t("read")}</span>
+          <span className="flex items-center gap-1"><Check className="size-3 text-[var(--kind-extraction)]" /> <span className="tabular-nums">{job.done}</span> {t("read")}</span>
           {job.failed ? <span className="flex items-center gap-1"><CircleAlert className="size-3 text-destructive" /> <span className="tabular-nums">{job.failed}</span> {t("failedCount")}</span> : null}
         </div>
       }

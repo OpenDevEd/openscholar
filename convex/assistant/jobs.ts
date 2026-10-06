@@ -159,7 +159,9 @@ export async function progressOf(ctx: QueryCtx, row: Doc<"assistantJobs">): Prom
   }
   const job = await ctx.db.get("extractionJobs", row.jobId as Id<"extractionJobs">);
   if (!job) return null;
-  return { done: (await readJobCounters(ctx, job._id)).processed, total: job.totalPapers ?? 0 };
+  // Papers it answered and papers that failed are both finished.
+  const counters = await readJobCounters(ctx, job._id);
+  return { done: counters.processed + counters.failed, total: job.totalPapers ?? 0 };
 }
 
 /** One ended job as the assistant is told it: what it found, what it cost, and where its page is. */
