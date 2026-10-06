@@ -82,6 +82,8 @@ export function ExtractionResultsShell({
                   exit="exit"
                   transition={subtleSpring}
                   className="absolute inset-0 overflow-auto"
+                  // The results table draws the rows in view of this pane.
+                  data-results-scroller
                 >
                   {children}
                 </motion.div>
