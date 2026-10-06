@@ -20,15 +20,10 @@ import { SERVER_AI_CONFIG } from "./config";
 import { getProviderModel } from "../../lib/ai/server/providers";
 import { resolveOpenRouterModel } from "../chat/provider";
 import type { AIProvider } from "../../lib/types/ai.types";
-import type { ServerAIGenerationParams } from "../../lib/posthog-server";
 import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType, type GenericValidator } from "convex/values";
-import {
-  type AITrackingEntry,
-  truncateForTracking,
-  extractHttpStatus,
-  extractErrorCode,
-} from "../../lib/posthog-ai-shared";
+import { type AITrackingEntry, extractHttpStatus, extractErrorCode } from "../../lib/posthog-ai-shared";
+import { captureGenerationLater, captureGenerationsLater } from "../lib/analyticsEvents";
 import { createError } from "../lib/errors";
 import { CALL_TOKENS, creditsForUsage, estimateCredits, type CallTokens } from "../../lib/pricing";
 import { reserveCredits, releaseCredits, settleUnder, tokenDetails } from "../billing/charge";
@@ -158,22 +153,6 @@ export async function resolveUserServerModel(
 ): Promise<ServerModel> {
   const pick = await ctx.runQuery(internal.ai.serverModel.resolveForUser, { userId, task });
   return { ...(await resolveOpenRouterModel(ctx, pick?.modelId ?? null)), effort: pick?.effort };
-}
-
-/** Schedules a `$ai_generation` capture. Analytics never fails the paid work it describes. */
-export async function captureGenerationLater(ctx: ActionCtx, params: ServerAIGenerationParams) {
-  await ctx.scheduler
-    .runAfter(0, internal.lib.analytics.captureAIGeneration, { params })
-    .catch((error) => console.error("[analytics] scheduling $ai_generation failed", error));
-}
-
-async function captureGenerationsLater(
-  ctx: ActionCtx,
-  args: { distinctId: string; provider: string; modelId: string; entries: AITrackingEntry[] },
-) {
-  await ctx.scheduler
-    .runAfter(0, internal.lib.analytics.captureAIGenerationBatch, args)
-    .catch((error) => console.error("[analytics] scheduling $ai_generation failed", error));
 }
 
 export type CreditTarget = {
@@ -317,8 +296,6 @@ export async function withAuthAndCreditsBatch<T>(
         feature: operation.description,
         usage: tokenCounts(usage),
         latencyMs: Date.now() - start,
-        input: `Batch: ${operation.description}`,
-        output: "Completed (aggregated)",
         creditsDeducted: credits,
       });
     }
@@ -389,10 +366,6 @@ export function createAIAction<
         const task = typeof options.task === "function" ? options.task(args) : options.task;
         const { model, pricing, modelSlug, effort } = await resolveUserServerModel(ctx, user._id, task);
         const config = configFactory(args);
-        const prompts = config.buildPrompts(config.input, 0);
-        const inputForTracking = truncateForTracking(
-          `[system] ${prompts.system}\n[user] ${prompts.prompt}`
-        );
         const start = Date.now();
         try {
           const { result, credits, usage } = await withCredits<AIOutput>(
@@ -418,8 +391,6 @@ export function createAIAction<
             feature: description,
             usage: tokenCounts(usage),
             latencyMs: Date.now() - start,
-            input: inputForTracking,
-            output: truncateForTracking(JSON.stringify(result)),
             temperature: config.temperature,
             creditsDeducted: credits,
           });
@@ -432,10 +403,7 @@ export function createAIAction<
             feature: description,
             usage: { inputTokens: 0, outputTokens: 0 },
             latencyMs: Date.now() - start,
-            input: inputForTracking,
-            output: "",
             isError: true,
-            errorMessage: error instanceof Error ? error.message : String(error),
             httpStatus: extractHttpStatus(error),
             errorCode: extractErrorCode(error),
             temperature: config.temperature,

@@ -1,15 +1,12 @@
 /**
  * Shared logic for PostHog $ai_generation payloads.
- * Used by both client (posthog-ai) and server (posthog-server).
+ * Used by both client (posthog-ai) and server (convex/lib/analytics.ts).
+ *
+ * An event says which model ran, what it cost and how long it took, never what
+ * it was asked or answered: no prompt, output or error text leaves OpenScholar.
  */
 
 import type { AIProvider } from "./types";
-
-// ═══════════════════════════════════════════════════════════════
-// CONSTANTS
-// ═══════════════════════════════════════════════════════════════
-
-export const MAX_TRACKING_CONTENT_LENGTH = 2000;
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -21,10 +18,7 @@ export interface AIGenerationParams {
   feature: string;
   usage: { inputTokens?: number; outputTokens?: number };
   latencyMs: number;
-  input: string;
-  output: string;
   isError?: boolean;
-  errorMessage?: string;
   metadata?: Record<string, unknown>;
   /** Shared trace ID for multi-step operations. Auto-generated if omitted. */
   traceId?: string;
@@ -46,15 +40,17 @@ export interface AIGenerationParams {
   creditsRawCost?: number;
 }
 
+/** A server-side generation: whose it was. */
+export interface ServerAIGenerationParams extends AIGenerationParams {
+  distinctId: string;
+}
+
 /** Per-item tracking entry for batch operations. */
 export interface AITrackingEntry {
   feature: string;
   usage: { inputTokens: number; outputTokens: number };
   latencyMs: number;
-  input: string;
-  output: string;
   isError?: boolean;
-  errorMessage?: string;
   errorCode?: string;
   httpStatus?: number;
   temperature?: number;
@@ -68,12 +64,6 @@ export interface AITrackingEntry {
 // ═══════════════════════════════════════════════════════════════
 // UTILITIES
 // ═══════════════════════════════════════════════════════════════
-
-/** Truncate content for tracking to avoid oversized PostHog events. */
-export function truncateForTracking(s: string): string {
-  if (s.length <= MAX_TRACKING_CONTENT_LENGTH) return s;
-  return s.slice(0, MAX_TRACKING_CONTENT_LENGTH) + "...[truncated]";
-}
 
 /**
  * Extracts HTTP status code from provider errors.
@@ -120,25 +110,19 @@ export function extractErrorCode(error: unknown): string | undefined {
  * Shared between client and server capture.
  */
 export function buildAIGenerationProperties(params: AIGenerationParams): Record<string, unknown> {
-  const promptTokens = params.usage.inputTokens ?? 0;
-  const completionTokens = params.usage.outputTokens ?? 0;
-
   return {
     $ai_trace_id: params.traceId ?? crypto.randomUUID(),
     ...(params.sessionId && { $ai_session_id: params.sessionId }),
     $ai_provider: params.provider,
     $ai_model: params.modelId,
-    $ai_input_tokens: promptTokens,
-    $ai_output_tokens: completionTokens,
+    $ai_input_tokens: params.usage.inputTokens ?? 0,
+    $ai_output_tokens: params.usage.outputTokens ?? 0,
     $ai_latency: params.latencyMs / 1000,
     $ai_is_error: params.isError ?? false,
     $ai_http_status: params.httpStatus ?? (params.isError ? 500 : 200),
-    $ai_input: [{ role: "user" as const, content: params.input }],
-    $ai_output_choices: [{ role: "assistant" as const, content: params.output }],
     feature: params.feature,
     ...(params.temperature !== undefined && { $ai_temperature: params.temperature }),
     ...(params.maxTokens !== undefined && { $ai_max_tokens: params.maxTokens }),
-    ...(params.errorMessage && { $ai_error: params.errorMessage }),
     ...(params.errorCode && { $ai_error_code: params.errorCode }),
     ...(params.creditsDeducted !== undefined && { credits_deducted: params.creditsDeducted }),
     ...(params.creditsRawCost !== undefined && { credits_raw_cost: params.creditsRawCost }),

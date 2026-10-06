@@ -41,8 +41,6 @@ describe("captureAIGeneration", () => {
       feature: "test_feature",
       usage: { inputTokens: 100, outputTokens: 50 },
       latencyMs: 1000,
-      input: "test",
-      output: "result",
     });
 
     expect(mockCapture).toHaveBeenCalledOnce();
@@ -66,8 +64,6 @@ describe("captureAIGeneration", () => {
       feature: "test",
       usage: { inputTokens: 10, outputTokens: 5 },
       latencyMs: 100,
-      input: "i",
-      output: "o",
     });
 
     const props = propsAt(0);
@@ -81,8 +77,6 @@ describe("captureAIGeneration", () => {
       feature: "test",
       usage: { inputTokens: 10, outputTokens: 5 },
       latencyMs: 100,
-      input: "i",
-      output: "o",
       sessionId: "explicit-session",
     });
 
@@ -97,8 +91,6 @@ describe("captureAIGeneration", () => {
       feature: "screening",
       usage: { inputTokens: 0, outputTokens: 0 },
       latencyMs: 500,
-      input: "p",
-      output: "",
       isError: true,
       httpStatus: 429,
       errorCode: "AI_PROVIDER_ERROR",
@@ -129,15 +121,11 @@ describe("captureAIGenerationBatch", () => {
         feature: "screening",
         usage: { inputTokens: 100, outputTokens: 50 },
         latencyMs: 500,
-        input: "paper 1",
-        output: "result 1",
       },
       {
         feature: "screening",
         usage: { inputTokens: 200, outputTokens: 80 },
         latencyMs: 600,
-        input: "paper 2",
-        output: "result 2",
       },
     ]);
 
@@ -148,8 +136,8 @@ describe("captureAIGenerationBatch", () => {
 
   it("all entries share the same session ID from PostHog", () => {
     captureAIGenerationBatch("openai", "gpt-4o", [
-      { feature: "a", usage: { inputTokens: 1, outputTokens: 1 }, latencyMs: 10, input: "i1", output: "o1" },
-      { feature: "b", usage: { inputTokens: 2, outputTokens: 2 }, latencyMs: 20, input: "i2", output: "o2" },
+      { feature: "a", usage: { inputTokens: 1, outputTokens: 1 }, latencyMs: 10 },
+      { feature: "b", usage: { inputTokens: 2, outputTokens: 2 }, latencyMs: 20 },
     ]);
 
     expect(propsAt(0).$ai_session_id).toBe(MOCK_SESSION_ID);
@@ -162,15 +150,11 @@ describe("captureAIGenerationBatch", () => {
         feature: "a",
         usage: { inputTokens: 1, outputTokens: 1 },
         latencyMs: 10,
-        input: "i1",
-        output: "o1",
       },
       {
         feature: "b",
         usage: { inputTokens: 2, outputTokens: 2 },
         latencyMs: 20,
-        input: "i2",
-        output: "o2",
       },
     ]);
 
@@ -187,8 +171,6 @@ describe("captureAIGenerationBatch", () => {
         feature: "extraction",
         usage: { inputTokens: 500, outputTokens: 100 },
         latencyMs: 1000,
-        input: "q",
-        output: "a",
       },
     ]);
 
@@ -203,15 +185,11 @@ describe("captureAIGenerationBatch", () => {
         feature: "extraction_question_pdf",
         usage: { inputTokens: 100, outputTokens: 50 },
         latencyMs: 500,
-        input: "i",
-        output: "o",
       },
       {
         feature: "extraction_question_abstract",
         usage: { inputTokens: 80, outputTokens: 40 },
         latencyMs: 300,
-        input: "i2",
-        output: "o2",
       },
     ]);
 
@@ -225,20 +203,15 @@ describe("captureAIGenerationBatch", () => {
         feature: "ok",
         usage: { inputTokens: 100, outputTokens: 50 },
         latencyMs: 500,
-        input: "i",
-        output: "o",
         temperature: 0.7,
       },
       {
         feature: "err",
         usage: { inputTokens: 0, outputTokens: 0 },
         latencyMs: 100,
-        input: "i",
-        output: "",
         isError: true,
         httpStatus: 503,
         errorCode: "AI_PROVIDER_ERROR",
-        errorMessage: "Down",
       },
     ]);
 
@@ -254,6 +227,5 @@ describe("captureAIGenerationBatch", () => {
     expect(errProps.$ai_is_error).toBe(true);
     expect(errProps.$ai_http_status).toBe(503);
     expect(errProps.$ai_error_code).toBe("AI_PROVIDER_ERROR");
-    expect(errProps.$ai_error).toBe("Down");
   });
 });

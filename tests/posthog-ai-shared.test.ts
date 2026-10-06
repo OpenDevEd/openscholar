@@ -2,10 +2,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import {
   buildAIGenerationProperties,
-  truncateForTracking,
   extractHttpStatus,
   extractErrorCode,
-  MAX_TRACKING_CONTENT_LENGTH,
   type AIGenerationParams,
 } from "../lib/posthog-ai-shared";
 
@@ -14,39 +12,6 @@ const MOCK_UUID = "00000000-1111-2222-3333-444444444444";
 
 beforeEach(() => {
   vi.spyOn(crypto, "randomUUID").mockReturnValue(MOCK_UUID as `${string}-${string}-${string}-${string}-${string}`);
-});
-
-// ═══════════════════════════════════════════════════════════════
-// truncateForTracking
-// ═══════════════════════════════════════════════════════════════
-
-describe("truncateForTracking", () => {
-  it("returns short strings unchanged", () => {
-    expect(truncateForTracking("hello")).toBe("hello");
-  });
-
-  it("returns empty string unchanged", () => {
-    expect(truncateForTracking("")).toBe("");
-  });
-
-  it("returns string at exactly the limit unchanged", () => {
-    const exact = "a".repeat(MAX_TRACKING_CONTENT_LENGTH);
-    expect(truncateForTracking(exact)).toBe(exact);
-  });
-
-  it("truncates string one char over the limit", () => {
-    const over = "a".repeat(MAX_TRACKING_CONTENT_LENGTH + 1);
-    const result = truncateForTracking(over);
-    expect(result).toBe("a".repeat(MAX_TRACKING_CONTENT_LENGTH) + "...[truncated]");
-    expect(result.length).toBe(MAX_TRACKING_CONTENT_LENGTH + "...[truncated]".length);
-  });
-
-  it("truncates very long strings", () => {
-    const long = "x".repeat(50_000);
-    const result = truncateForTracking(long);
-    expect(result.startsWith("x".repeat(MAX_TRACKING_CONTENT_LENGTH))).toBe(true);
-    expect(result.endsWith("...[truncated]")).toBe(true);
-  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -207,8 +172,6 @@ describe("buildAIGenerationProperties", () => {
     feature: "enhance_search_query",
     usage: { inputTokens: 1000, outputTokens: 500 },
     latencyMs: 2500,
-    input: "test input",
-    output: "test output",
   };
 
   // ── Required fields ──────────────────────────────────────
@@ -241,14 +204,11 @@ describe("buildAIGenerationProperties", () => {
       expect(props.feature).toBe("enhance_search_query");
     });
 
-    it("formats $ai_input as message array", () => {
-      const props = buildAIGenerationProperties(baseParams);
-      expect(props.$ai_input).toEqual([{ role: "user", content: "test input" }]);
-    });
-
-    it("formats $ai_output_choices as message array", () => {
-      const props = buildAIGenerationProperties(baseParams);
-      expect(props.$ai_output_choices).toEqual([{ role: "assistant", content: "test output" }]);
+    it("never carries what the model was asked or answered, or the error text", () => {
+      const props = buildAIGenerationProperties({ ...baseParams, isError: true, httpStatus: 400 });
+      expect(props).not.toHaveProperty("$ai_input");
+      expect(props).not.toHaveProperty("$ai_output_choices");
+      expect(props).not.toHaveProperty("$ai_error");
     });
   });
 
@@ -457,41 +417,16 @@ describe("buildAIGenerationProperties", () => {
       expect(props.$ai_is_error).toBe(true);
     });
 
-    it("includes $ai_error when errorMessage provided", () => {
-      const props = buildAIGenerationProperties({
-        ...baseParams,
-        isError: true,
-        errorMessage: "Rate limit exceeded",
-      });
-      expect(props.$ai_error).toBe("Rate limit exceeded");
-    });
-
-    it("omits $ai_error when no errorMessage", () => {
-      const props = buildAIGenerationProperties(baseParams);
-      expect(props).not.toHaveProperty("$ai_error");
-    });
-
-    it("omits $ai_error for empty errorMessage", () => {
-      const props = buildAIGenerationProperties({
-        ...baseParams,
-        isError: true,
-        errorMessage: "",
-      });
-      expect(props).not.toHaveProperty("$ai_error");
-    });
-
     it("includes all error fields together for a full error event", () => {
       const props = buildAIGenerationProperties({
         ...baseParams,
         isError: true,
         httpStatus: 429,
         errorCode: "AI_PROVIDER_ERROR",
-        errorMessage: "Rate limit exceeded",
       });
       expect(props.$ai_is_error).toBe(true);
       expect(props.$ai_http_status).toBe(429);
       expect(props.$ai_error_code).toBe("AI_PROVIDER_ERROR");
-      expect(props.$ai_error).toBe("Rate limit exceeded");
     });
   });
 
@@ -596,8 +531,6 @@ describe("buildAIGenerationProperties", () => {
         feature: "screening",
         usage: { inputTokens: 500, outputTokens: 200 },
         latencyMs: 1234,
-        input: "screen this paper",
-        output: '{"responses": {}}',
         traceId,
         sessionId: "session-xyz",
         temperature: 0.1,
@@ -618,8 +551,6 @@ describe("buildAIGenerationProperties", () => {
         $ai_latency: 1.234,
         $ai_is_error: false,
         $ai_http_status: 200,
-        $ai_input: [{ role: "user", content: "screen this paper" }],
-        $ai_output_choices: [{ role: "assistant", content: '{"responses": {}}' }],
         feature: "screening",
         $ai_temperature: 0.1,
         $ai_max_tokens: 2048,
@@ -637,19 +568,15 @@ describe("buildAIGenerationProperties", () => {
         feature: "extraction",
         usage: { inputTokens: 0, outputTokens: 0 },
         latencyMs: 500,
-        input: "extract data",
-        output: "",
         isError: true,
         httpStatus: 429,
         errorCode: "AI_PROVIDER_ERROR",
-        errorMessage: "Rate limit exceeded",
         temperature: 0,
       });
 
       expect(props.$ai_is_error).toBe(true);
       expect(props.$ai_http_status).toBe(429);
       expect(props.$ai_error_code).toBe("AI_PROVIDER_ERROR");
-      expect(props.$ai_error).toBe("Rate limit exceeded");
       expect(props.$ai_temperature).toBe(0);
     });
   });
