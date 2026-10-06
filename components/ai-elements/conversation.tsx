@@ -38,7 +38,7 @@ export const Conversation = ({
  * there keeps the view still. The scroller is watched too: when it grows (the
  * composer below it shrinking), the browser moves the view up a pixel a frame,
  * which the library takes for the person scrolling up and stops following.
- * Pinning it marks that move as the library's own.
+ * Recording it as a resize marks that move as the library's own.
  */
 const PinToBottomBeforePaint = () => {
   const { contentRef, scrollRef, state } = useStickToBottomContext();
@@ -49,10 +49,25 @@ const PinToBottomBeforePaint = () => {
     if (!content || !scroller) {
       return;
     }
-    const observer = new ResizeObserver(() => {
-      if (state.isAtBottom && !state.escapedFromLock) {
-        state.scrollTop = state.calculatedTargetScrollTop;
+    let scrollerHeight = scroller.clientHeight;
+    const observer = new ResizeObserver((entries) => {
+      if (!state.isAtBottom || state.escapedFromLock) {
+        scrollerHeight = scroller.clientHeight;
+        return;
       }
+      // A scroller resize is recorded as the library records a content resize, whichever of it and the
+      // scroll event it causes comes first, so the scroll isn't taken for the person's.
+      if (entries.some((entry) => entry.target === scroller)) {
+        const difference = scroller.clientHeight - scrollerHeight;
+        scrollerHeight = scroller.clientHeight;
+        if (difference) {
+          state.resizeDifference = difference;
+          requestAnimationFrame(() => setTimeout(() => {
+            if (state.resizeDifference === difference) state.resizeDifference = 0;
+          }, 1));
+        }
+      }
+      state.scrollTop = state.calculatedTargetScrollTop;
     });
     observer.observe(content);
     observer.observe(scroller);

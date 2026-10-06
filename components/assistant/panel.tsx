@@ -506,8 +506,12 @@ function Chat({
     const text = withTokens(typed, sentPicks);
     const from = threadId;
     drafts.set(from, "");
-    // However far back they had scrolled, or however the chat above moved, the reply to this is what they want to see.
-    void scroller.current?.scrollToBottom();
+    // However far back they had scrolled, or however the chat above moved, the reply to this is what they want to see:
+    // the chat follows it again, which scrolling to the end alone doesn't undo once they had scrolled away.
+    if (scroller.current) {
+      scroller.current.state.escapedFromLock = false;
+      void scroller.current.scrollToBottom();
+    }
     // This send's own mark, so that finishing it doesn't clear a later one in another chat.
     let mine: Sending = { threadId: from };
     onSending(() => mine);
