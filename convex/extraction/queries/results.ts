@@ -4,6 +4,7 @@
  * sorts them. A filtered view is counted apart, and an export reads the pages one by one.
  */
 
+import { getStatusFilterOptionIds } from "../../../lib/extraction/status-filter-options";
 import type { QueryCtx } from "../../_generated/server";
 import { compareValues, getDocumentSize, v, type Infer } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
@@ -294,13 +295,22 @@ const RESULTS_ORDER = {
   "confidence-low": ["by_job_processable_and_avgConfidence", "asc"],
 } as const;
 
+/**
+ * What each of the results page's filters takes, for the assistant: guessing, it read confidence as
+ * 0 to 1 and gave a status of "completed", and every paper was filtered out.
+ */
+const FILTERS_HELP =
+  `\`filters\`: \`searchQuery\` is text to find in the papers, "" for none; \`confidenceRange\` is [least, most] in percent, [0, 100] for every paper; ` +
+  `\`statusFilters\` keeps papers with any of these tags: ${getStatusFilterOptionIds(true).join(", ")}, [] for every paper; \`questionFilters\` keeps papers by their answer to a question, [] for none.`;
+
 const resultsViewArgs = { jobId: v.id("extractionJobs"), filters: resultsPageFiltersValidator, selectedPaperIds: v.optional(paperSelectionValidator(v.id("extractionPapers"))) };
 
 export const listJobResultsAction = defineUserQuery({
   path: "extraction/queries:listJobResults",
   description:
     "Lists an extraction job's papers with their answers, a page at a time: in the order they were added, by title, or by confidence. " +
-    "Filters keep papers by search text, confidence range, status and the answer to a question.",
+    "Filters keep papers by search text, confidence range, status and the answer to a question. " +
+    FILTERS_HELP,
   args: { ...resultsViewArgs, sortBy: resultsSortByValidator, paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(paginatedPaperWithResultsValidator),
   run: async (ctx, userId, args) => {
@@ -339,7 +349,7 @@ export const listJobResultsForAssistant = assistantQuery(listJobResultsAction);
 
 export const countJobResultsAction = defineUserQuery({
   path: "extraction/queries:countJobResults",
-  description: "Counts an extraction job's papers, and how many of them a set of filters keeps.",
+  description: `Counts an extraction job's papers, and how many of them a set of filters keeps. ${FILTERS_HELP}`,
   args: { ...resultsViewArgs, includeRevision: v.optional(v.boolean()) },
   returns: v.object({ all: v.number(), matching: v.number(), revision: v.union(v.number(), v.null()) }),
   run: async (ctx, userId, args) => {
