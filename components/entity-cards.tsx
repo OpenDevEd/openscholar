@@ -17,6 +17,7 @@ import { FocusModeClose } from "@/components/focus-mode/close-context";
 import { useUIStore } from "@/lib/store";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { TooltipHint } from "@/components/ui/tooltip";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { unlessLimited } from "@/lib/openalex/limited";
 import { catalogNode } from "@/lib/topics/search";
 import { topicHref } from "@/lib/topics/links";
@@ -61,13 +62,13 @@ function CardHeader({ icon, name, line }: { icon: ReactNode; name: string; line:
   );
 }
 
-/** A count and what it counts; the count fades in once it is known, in the space kept for it. */
-function Stat({ value, label }: { value: number | null | undefined; label: string }) {
+/** A count and what it counts. While it loads, a bar holds its place; then it fades in there. */
+function Stat({ value, label, loading = false }: { value: number | null | undefined; label: string; loading?: boolean }) {
   const locale = useLocale();
   return (
     <div className="min-w-0">
-      <div aria-hidden={value == null} className={cn("h-6 text-base font-semibold tabular-nums transition-opacity duration-300", value == null ? "opacity-0" : "opacity-100")}>
-        {value == null ? "0" : value.toLocaleString(locale)}
+      <div className="flex h-6 items-center text-base font-semibold tabular-nums">
+        {loading ? <SkeletonBar className="h-4 w-14" /> : value != null && <span className="fade-enter">{value.toLocaleString(locale)}</span>}
       </div>
       <div className="truncate text-xs text-muted-foreground">{label}</div>
     </div>
@@ -122,6 +123,8 @@ function TopTopics({ topics, onNavigate }: { topics: AuthorCard["topics"] | unde
   const most = Math.max(1, ...(topics ?? []).map((topic) => topic.papers));
   return (
     <div className="mt-3 -mx-2 space-y-0.5">
+      {/* Bars the shape of the rows to come, longest first. */}
+      {!topics && ["w-full", "w-3/5", "w-2/5"].map((width) => <SkeletonBar key={width} className={cn("h-7 rounded-md", width)} />)}
       {topics?.map((topic) => (
         <TooltipHint key={topic.id} label={topic.name} onlyWhenClipped>
           <Link
@@ -157,7 +160,7 @@ function AuthorCardBody({ id, name }: { id: string; name: string }) {
             {author.institution.country && <CountryFlag countryCode={author.institution.country} className="shrink-0" />}
             <span className="truncate">{author.institution.name}</span>
           </>
-        ) : author ? <span>{t("noInstitution")}</span> : null}
+        ) : author ? <span>{t("noInstitution")}</span> : <SkeletonBar className="h-3 w-44" />}
       />
       {/* Counts and top topics, at one height whether loading, loaded, empty or failed. */}
       {card.error ? (
@@ -168,9 +171,9 @@ function AuthorCardBody({ id, name }: { id: string; name: string }) {
       ) : (
         <div className="mt-3 h-[8.75rem] px-4">
           <div className="grid grid-cols-3 gap-3">
-            <Stat value={author?.works} label={t("papers")} />
-            <Stat value={author?.citations} label={t("citations")} />
-            <Stat value={author?.hIndex} label={t("hIndex")} />
+            <Stat value={author?.works} label={t("papers")} loading={!author} />
+            <Stat value={author?.citations} label={t("citations")} loading={!author} />
+            <Stat value={author?.hIndex} label={t("hIndex")} loading={!author} />
           </div>
           <TopTopics topics={author?.topics} onNavigate={closeFocus} />
         </div>
@@ -218,14 +221,21 @@ function TopicCardBody({ id, name }: { id: string; name: string }) {
       />
       {isTopic ? (
         <>
-          <p className={cn("mx-4 mt-3 line-clamp-3 h-[3lh] text-xs leading-relaxed text-muted-foreground transition-opacity duration-300", detail.data || detail.error ? "opacity-100" : "opacity-0")}>
-            {detail.error ? t("topicFailed") : detail.data?.description || t("noDescription")}
-          </p>
+          {detail.data || detail.error ? (
+            <p className="fade-enter mx-4 mt-3 line-clamp-3 h-[3lh] text-xs leading-relaxed text-muted-foreground">
+              {detail.error ? t("topicFailed") : detail.data?.description || t("noDescription")}
+            </p>
+          ) : (
+            // Three lines of bars in the description's three lines.
+            <div className="mx-4 mt-3 flex h-[3lh] flex-col justify-around text-xs leading-relaxed">
+              {["w-full", "w-full", "w-2/3"].map((width, index) => <SkeletonBar key={index} className={width} />)}
+            </div>
+          )}
           {/* A failed read offers to try again in the count's place, the same height. */}
           <div className="mt-3 grid h-10 grid-cols-3 items-center gap-3 px-4">
             {detail.error
               ? <Button size="xs" variant="outline" className="justify-self-start" onClick={() => void detail.mutate()}>{t("tryAgain")}</Button>
-              : <Stat value={detail.data?.worksCount} label={t("papers")} />}
+              : <Stat value={detail.data?.worksCount} label={t("papers")} loading={!detail.data} />}
           </div>
         </>
       ) : (
