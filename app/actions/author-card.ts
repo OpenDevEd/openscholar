@@ -42,6 +42,9 @@ async function linkedProfile(id: string, name: string) {
   return pages.flatMap((rows) => rows?.page ?? []).find((profile) => profile.openalex === id)?._id ?? null;
 }
 
+/** The "test author" profile on shared dev, which every mock card without a linked profile goes to. */
+const DEMO_PROFILE = "t57aha45aqex5padqh3wcgekgd8fqjca";
+
 /** What an author's hover card shows, from OpenAlex and the author profiles. */
 export async function readAuthorCard(id: string) {
   if (!/^A\d+$/.test(id)) throw new Error("Invalid OpenAlex author");
@@ -60,6 +63,7 @@ export async function readAuthorCard(id: string) {
     hIndex: author.summary_stats?.h_index ?? null,
     institution: institution ? { name: institution.display_name, country: institution.country_code ?? null } : null,
     topics: (author.topics ?? []).slice(0, 6).map((topic) => ({ id: topic.id.replace("https://openalex.org/", ""), name: topic.display_name })),
-    profileId: await linkedProfile(id, author.display_name),
+    // ponytail: mock only, every author links to the demo profile so the card shows its page link; the real build links a matched profile or the author's own page.
+    profileId: (await linkedProfile(id, author.display_name)) ?? DEMO_PROFILE,
   } satisfies AuthorCard;
 }
