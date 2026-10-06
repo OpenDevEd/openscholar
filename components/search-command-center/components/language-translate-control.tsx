@@ -3,7 +3,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "motion/react";
-import { X, TranslateIcon } from "@/components/icons";
+import { RefreshCw, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { LanguageSelector } from "@/components/language-selector";
 import { cn } from "@/lib/utils";
@@ -55,7 +55,7 @@ export function LanguageTranslateControl({
           className="flex items-center border-r border-current/20"
           style={{ width: ACTIONS_WIDTH }}
         >
-          <TooltipHint label={t("translate")}>
+          <TooltipHint label={t("translateAgain")}>
             <span className="inline-flex">
               <Button
                 type="button"
@@ -63,10 +63,10 @@ export function LanguageTranslateControl({
                 variant="ghost"
                 disabled={disabled || translateDisabled || !hasValue}
                 onClick={onTranslate}
-                aria-label={t("translate")}
+                aria-label={t("translateAgain")}
                 className="size-8 p-0 rounded-none text-primary hover:bg-primary/12"
               >
-                <TranslateIcon working={isTranslating} size={14} className="h-3.5 w-3.5" />
+                <RefreshCw className="h-3.5 w-3.5" />
               </Button>
             </span>
           </TooltipHint>
@@ -91,8 +91,8 @@ export function LanguageTranslateControl({
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        compact
-        className="border-0 rounded-none min-w-[2.5rem] shrink-0"
+        working={isTranslating}
+        className="border-0 rounded-none shrink-0"
       />
     </div>
   );

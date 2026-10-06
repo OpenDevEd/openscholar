@@ -1,6 +1,7 @@
-// The AI mark: open layers round a four-point star, for every feature that uses AI, and its translation
-// form, a globe behind a letter tile that flips through the app's scripts. The app's AiMark component and the
-// design preview both draw from this file and ai-mark.css.
+// The AI mark: open layers round a four-point star, for every feature that uses AI, and its two lettered
+// forms: translation (a globe behind a letter tile that flips through the app's scripts) and searching in a
+// language (a magnifier with the same tile). The app's AiMark component and the design preview both draw
+// from this file and ai-mark.css.
 // Every layer is a tapered ribbon on a circle round the centre (64, 64), so any rotation stays true.
 // Below 28px a compact drawing takes over: heavier ribbons with round ends and a larger star.
 
@@ -62,16 +63,62 @@ function aiBody(drawing, variant, id) {
   return `${defs}${shapes}${glow}<path class="part star" d="${drawing.star}"/>`;
 }
 
+// Searching in a language: the AI mark's two layers as a magnifier's lens round the star, with a handle.
+// --lens-origin is the lens centre, which the lens turns and moves about.
+const lens = {
+  "full": {
+    "origin": "46px 62px",
+    "top": "M13.1 81A38 38 0 0 1 78.9 43A6 6 0 0 1 68.5 49A26 26 0 0 0 23.5 75A6 6 0 0 1 13.1 81Z",
+    "bottom": "M82.7 52.2A38 38 0 0 1 19.1 88.9A6 6 0 0 1 27.6 80.4A26 26 0 0 0 71.1 55.3A6 6 0 0 1 82.7 52.2Z",
+    "handle": "M65.8 93.1L91.3 118.6A8 8 0 0 0 102.6 107.3L77.1 81.8A8 8 0 0 0 65.8 93.1Z",
+    "star": "M46 45C49.4 56.9 51.1 58.6 63 62C51.1 65.4 49.4 67.1 46 79C42.6 67.1 40.9 65.4 29 62C40.9 58.6 42.6 56.9 46 45Z",
+    "tile": {
+      "x": 70,
+      "y": 4,
+      "size": 52,
+      "glyph": 30
+    }
+  },
+  "compact": {
+    "origin": "44px 62px",
+    "top": "M11.5 80.8A37.5 37.5 0 0 1 76.5 43.2A7.5 7.5 0 0 1 63.5 50.7A22.5 22.5 0 0 0 24.5 73.3A7.5 7.5 0 0 1 11.5 80.8Z",
+    "bottom": "M80.2 52.3A37.5 37.5 0 0 1 17.5 88.5A7.5 7.5 0 0 1 28.1 77.9A22.5 22.5 0 0 0 65.7 56.2A7.5 7.5 0 0 1 80.2 52.3Z",
+    "handle": "M62.4 93.8L87.8 119.3A9.5 9.5 0 0 0 101.3 105.8L75.8 80.4A9.5 9.5 0 0 0 62.4 93.8Z",
+    "star": "M44 43C47.8 56.3 49.7 58.2 63 62C49.7 65.8 47.8 67.7 44 81C40.2 67.7 38.3 65.8 25 62C38.3 58.2 40.2 56.3 44 43Z",
+    "tile": {
+      "x": 68,
+      "y": 2,
+      "size": 58,
+      "glyph": 34
+    }
+  }
+};
+
+// A rounded tile with the script letter knocked through it, plus a mask that cuts whatever sits behind the tile
+// away round it. Both lettered marks use it; CSS flips the tile and steps through the scripts.
+function letterTile(tile, id) {
+  const radius = tile.size * 0.26, cx = tile.x + tile.size / 2, cy = tile.y + tile.size / 2;
+  const glyphs = scripts.map(({ char, d }, index) => `<path class="script script-${index}" data-char="${char}" fill="#000" transform="translate(${cx - tile.glyph / 2} ${cy - tile.glyph / 2}) scale(${tile.glyph / 100})" d="${d}"/>`).join("");
+  return {
+    masks: `<mask id="${id}-gap" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128"><rect width="128" height="128" fill="#fff"/><rect x="${tile.x - 6}" y="${tile.y - 6}" width="${tile.size + 12}" height="${tile.size + 12}" rx="${radius + 6}" fill="#000"/></mask><mask id="${id}-glyph" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128"><rect width="128" height="128" fill="#fff"/>${glyphs}</mask>`,
+    tile: `<g class="tile"><rect class="part tile-face" x="${tile.x}" y="${tile.y}" width="${tile.size}" height="${tile.size}" rx="${radius}" mask="url(#${id}-glyph)"/></g>`,
+  };
+}
+
 // Six meridians 60 degrees apart, so the globe looks the same after every sixth of a turn.
 // --at is each meridian's longitude at rest; CSS projects it from the turning --lon.
 function translateBody(scale, id) {
   const drawing = globe[scale], outline = drawings[scale];
-  const [place, tile] = scale === "full" ? ["translate(2 2) scale(.76)", { x: 64, y: 64, size: 60, glyph: 34 }] : ["scale(.74)", { x: 58, y: 58, size: 68, glyph: 40 }];
-  const radius = tile.size * 0.26, cx = tile.x + tile.size / 2, cy = tile.y + tile.size / 2;
+  const [place, box] = scale === "full" ? ["translate(2 2) scale(.76)", { x: 64, y: 64, size: 60, glyph: 34 }] : ["scale(.74)", { x: 58, y: 58, size: 68, glyph: 40 }];
+  const { masks, tile } = letterTile(box, id);
   const meridians = [20, 80, 140, 200, 260, 320].map((at) => `<use class="part meridian" href="#${id}-meridian" style="--at:${at}deg"/>`).join("");
-  const glyphs = scripts.map(({ char, d }, index) => `<path class="script script-${index}" data-char="${char}" fill="#000" transform="translate(${cx - tile.glyph / 2} ${cy - tile.glyph / 2}) scale(${tile.glyph / 100})" d="${d}"/>`).join("");
-  // The gap mask cuts the globe away round the tile; the glyph mask punches the letter through the tile.
-  return `<defs><path id="${id}-meridian" d="${drawing.meridian}"/><mask id="${id}-gap" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128"><rect width="128" height="128" fill="#fff"/><rect x="${tile.x - 6}" y="${tile.y - 6}" width="${tile.size + 12}" height="${tile.size + 12}" rx="${radius + 6}" fill="#000"/></mask><mask id="${id}-glyph" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128"><rect width="128" height="128" fill="#fff"/>${glyphs}</mask></defs><g mask="url(#${id}-gap)"><g transform="${place}"><path class="part equator" d="${drawing.equator}"/>${meridians}<path class="part ring ring-top" d="${outline.top.shape}"/><path class="part ring ring-bottom" d="${outline.bottom.shape}"/><path class="part star" d="${drawing.star}"/></g></g><g class="tile"><rect class="part tile-face" x="${tile.x}" y="${tile.y}" width="${tile.size}" height="${tile.size}" rx="${radius}" mask="url(#${id}-glyph)"/></g>`;
+  return `<defs><path id="${id}-meridian" d="${drawing.meridian}"/>${masks}</defs><g mask="url(#${id}-gap)"><g transform="${place}"><path class="part equator" d="${drawing.equator}"/>${meridians}<path class="part ring ring-top" d="${outline.top.shape}"/><path class="part ring ring-bottom" d="${outline.bottom.shape}"/><path class="part star" d="${drawing.star}"/></g></g>${tile}`;
+}
+
+function searchLanguageBody(scale, id) {
+  const drawing = lens[scale];
+  const { masks, tile } = letterTile(drawing.tile, id);
+  return `<defs>${masks}</defs><g mask="url(#${id}-gap)"><g class="lens" style="--lens-origin:${drawing.origin}"><path class="part handle" d="${drawing.handle}"/><path class="part ring ring-top" d="${drawing.top}"/><path class="part ring ring-bottom" d="${drawing.bottom}"/><path class="part star" d="${drawing.star}"/></g></g>${tile}`;
 }
 
 /**
@@ -80,9 +127,10 @@ function translateBody(scale, id) {
  */
 export function aiMarkParts(size, { shape = "ai", variant = "orbit", id }) {
   const scale = size < 28 ? "compact" : "full";
+  const body = shape === "translate" ? translateBody(scale, id) : shape === "search-language" ? searchLanguageBody(scale, id) : aiBody(drawings[scale], variant, id);
   return {
-    body: shape === "translate" ? translateBody(scale, id) : aiBody(drawings[scale], variant, id),
-    attributes: { "data-shape": shape, ...(shape === "ai" && { "data-variant": variant }), "data-scale": scale },
+    body,
+    attributes: { "data-shape": shape, ...(shape === "ai" ? { "data-variant": variant } : { "data-lettered": "" }), "data-scale": scale },
   };
 }
 

@@ -107,6 +107,9 @@
 /* Seen from the front, a meridian at longitude L is a half ellipse sin(L) wide; it fades at the edge and hides behind. */
 .ai-mark .meridian { transform: scaleX(sin(calc(var(--lon) + var(--at)))); opacity: clamp(0, cos(calc(var(--lon) + var(--at))) * 4 - .6, 1); }
 .ai-mark .tile { transform-box: fill-box; transform-origin: center; }
+/* Searching in a language: the lens turns and moves about its own centre, set per drawing as --lens-origin. */
+.ai-mark .handle { --base: var(--logo-b); }
+.ai-mark .lens, .ai-mark .lens .part { transform-box: view-box; transform-origin: var(--lens-origin); }
 /* One script at a time, A at rest. Each swaps in at the moment the tile is edge-on. */
 .ai-mark .script { opacity: 0; }
 .ai-mark .script-0 { opacity: 1; }
@@ -116,18 +119,26 @@
 .ai-mark[data-shape="translate"][data-play="load"] .ring-bottom { animation: ai-mark-fade-in 120ms linear 60ms both, ai-mark-gather-in 900ms var(--settle) 60ms both; }
 .ai-mark[data-shape="translate"][data-play="load"] :is(.meridian, .equator) { animation: ai-mark-fade-in 320ms linear 120ms both; }
 .ai-mark[data-shape="translate"][data-play="load"] .star { animation: ai-mark-fade-in 160ms linear 380ms both, ai-mark-star-in 720ms var(--spring) 380ms both; }
-.ai-mark[data-shape="translate"][data-play="load"] .tile { animation: ai-mark-fade-in 160ms linear 300ms both, ai-mark-tile-in 720ms var(--spring) 300ms both; }
+.ai-mark[data-lettered][data-play="load"] .tile { animation: ai-mark-fade-in 160ms linear 300ms both, ai-mark-tile-in 720ms var(--spring) 300ms both; }
 .ai-mark[data-shape="translate"][data-play="hover"] { animation: ai-mark-globe-turn 1000ms var(--spring); }
 .ai-mark[data-shape="translate"][data-play="hover"] .star { animation: ai-mark-pulse 760ms var(--impulse) 80ms; }
-.ai-mark[data-shape="translate"][data-play="hover"] .tile { animation: ai-mark-flip-there-and-back 900ms ease-in-out; }
-.ai-mark[data-shape="translate"][data-play="hover"] .script-0 { animation: ai-mark-shown-outside 900ms linear; }
-.ai-mark[data-shape="translate"][data-play="hover"] .script-3 { animation: ai-mark-shown-inside 900ms linear; }
+.ai-mark[data-lettered][data-play="hover"] .tile { animation: ai-mark-flip-there-and-back 900ms ease-in-out; }
+.ai-mark[data-lettered][data-play="hover"] .script-0 { animation: ai-mark-shown-outside 900ms linear; }
+.ai-mark[data-lettered][data-play="hover"] .script-3 { animation: ai-mark-shown-inside 900ms linear; }
 .ai-mark[data-shape="translate"][data-play="loop"] { animation: ai-mark-globe-spin .8s linear infinite; }
-.ai-mark[data-shape="translate"][data-play="loop"] .tile { animation: ai-mark-tile-flips 2.4s ease-in-out infinite; }
-.ai-mark[data-shape="translate"][data-play="loop"] .script-0 { animation: ai-mark-letter-0 2.4s linear infinite; }
-.ai-mark[data-shape="translate"][data-play="loop"] .script-1 { animation: ai-mark-letter-1 2.4s linear infinite; }
-.ai-mark[data-shape="translate"][data-play="loop"] .script-2 { animation: ai-mark-letter-2 2.4s linear infinite; }
-.ai-mark[data-shape="translate"][data-play="loop"] .script-3 { animation: ai-mark-letter-3 2.4s linear infinite; }
+.ai-mark[data-lettered][data-play="loop"] .tile { animation: ai-mark-tile-flips 2.4s ease-in-out infinite; }
+.ai-mark[data-lettered][data-play="loop"] .script-0 { animation: ai-mark-letter-0 2.4s linear infinite; }
+.ai-mark[data-lettered][data-play="loop"] .script-1 { animation: ai-mark-letter-1 2.4s linear infinite; }
+.ai-mark[data-lettered][data-play="loop"] .script-2 { animation: ai-mark-letter-2 2.4s linear infinite; }
+.ai-mark[data-lettered][data-play="loop"] .script-3 { animation: ai-mark-letter-3 2.4s linear infinite; }
+.ai-mark[data-shape="search-language"][data-play="load"] :is(.ring-top, .ring-bottom) { animation: ai-mark-fade-in 120ms linear both, ai-mark-gather-in 900ms var(--settle) both; }
+.ai-mark[data-shape="search-language"][data-play="load"] .handle { animation: ai-mark-fade-in 120ms linear 220ms both, ai-mark-handle-in 640ms var(--settle) 220ms both; }
+.ai-mark[data-shape="search-language"][data-play="load"] .star { animation: ai-mark-fade-in 160ms linear 380ms both, ai-mark-star-in 720ms var(--spring) 380ms both; }
+.ai-mark[data-shape="search-language"][data-play="hover"] .lens { animation: ai-mark-tilt 820ms var(--impulse); }
+.ai-mark[data-shape="search-language"][data-play="loop"] .lens { animation: ai-mark-scan 1.2s ease-in-out infinite; }
+@keyframes ai-mark-handle-in { from { transform: scale(.3); } }
+@keyframes ai-mark-tilt { to { transform: rotate(-14deg); } }
+@keyframes ai-mark-scan { 25% { transform: translate(-3px, -2px); } 50% { transform: translate(0, -4px); } 75% { transform: translate(3px, -2px); } }
 @keyframes ai-mark-globe-in { from { --lon: -120deg; } }
 @keyframes ai-mark-globe-turn { to { --lon: 120deg; } }
 @keyframes ai-mark-globe-spin { to { --lon: 60deg; } }
@@ -141,4 +152,4 @@
 @keyframes ai-mark-letter-2 { 0%, 29.9% { opacity: 0; } 30%, 54.9% { opacity: 1; } 55%, 100% { opacity: 0; } }
 @keyframes ai-mark-letter-3 { 0%, 54.9% { opacity: 0; } 55%, 79.9% { opacity: 1; } 80%, 100% { opacity: 0; } }
 
-@media (prefers-reduced-motion: reduce) { .ai-mark, .ai-mark .part, .ai-mark .tile, .ai-mark .script, .ai-mark .draw, .ai-mark .glow { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .ai-mark, .ai-mark .part, .ai-mark .lens, .ai-mark .tile, .ai-mark .script, .ai-mark .draw, .ai-mark .glow { animation: none !important; } }

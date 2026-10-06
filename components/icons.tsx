@@ -15,9 +15,10 @@ import { StarIcon as StarOutline } from "@solar-icons/react/linear/star";
 /** Any icon component the app can place. */
 export type AppIcon = ComponentType<ComponentPropsWithoutRef<"svg"> & { size?: string | number }>;
 
-// AI: the animated AI mark and its translation form, never a sparkle, wand or robot. Set `working`
-// while AI acts; the mark loops, then settles when it stops.
-export { AiMark as AiIcon, TranslateMark as TranslateIcon } from "@/components/ai-mark";
+// AI: the animated AI mark and its lettered forms, never a sparkle, wand or robot. Translate is for
+// reading text in another language, SearchLanguage for searching in one. Set `working` while AI acts; the
+// mark loops, then settles when it stops.
+export { AiMark as AiIcon, SearchLanguageMark as SearchLanguageIcon, TranslateMark as TranslateIcon } from "@/components/ai-mark";
 
 // Plans: each plan's own icon (see components/billing/plan-icon.ts), an up arrow to upgrade, and a ticket
 // for plans that have no icon of their own. Stars stay out: the four-point star means AI.
