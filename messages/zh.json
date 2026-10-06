@@ -1170,7 +1170,8 @@
       "melanesia": "美拉尼西亚",
       "micronesia": "密克罗尼西亚",
       "polynesia": "波利尼西亚"
-    }
+    },
+    "filterByTopic": "仅限关于 {name} 的作品"
   },
   "paperCard": {
     "screeningResponses": "筛选响应",
@@ -3076,7 +3077,8 @@
     "loadingLibrary": "正在加载文献库中的文献",
     "noPageMatches": "本页没有匹配项。请继续加载文献。",
     "noLibraryMatches": "没有与搜索匹配的文献。",
-    "noLibraryRecords": "还没有已发布的 Evidence Library 记录使用此主题。"
+    "noLibraryRecords": "还没有已发布的 Evidence Library 记录使用此主题。",
+    "searchPapers": "搜索论文"
   },
   "evidenceLibraries": {
     "list": {
@@ -4053,5 +4055,34 @@
       "extraction": "提取"
     },
     "moreJobs": "另外 {count} 个任务"
+  },
+  "entityCards": {
+    "papers": "论文",
+    "citations": "被引次数",
+    "hIndex": "h 指数",
+    "noInstitution": "无当前机构",
+    "noTopics": "未列出主题",
+    "authorFailed": "无法加载该作者。",
+    "topicFailed": "无法加载描述。",
+    "noDescription": "暂无描述。",
+    "tryAgain": "重试",
+    "filterResults": "筛选结果",
+    "removeFilter": "移除筛选",
+    "searchPapers": "搜索论文",
+    "authorPage": "作者页面",
+    "topicPage": "主题页面",
+    "browseTopics": "浏览主题",
+    "openOnOpenAlex": "在 OpenAlex 中打开",
+    "level": {
+      "topic": "主题",
+      "subfield": "子领域",
+      "field": "领域",
+      "domain": "大领域"
+    },
+    "below": {
+      "domain": "领域",
+      "field": "子领域",
+      "subfield": "主题"
+    }
   }
 }

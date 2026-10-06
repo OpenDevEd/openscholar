@@ -1160,7 +1160,8 @@
       "melanesia": "Melanesia",
       "micronesia": "Micronesia",
       "polynesia": "Polynesia"
-    }
+    },
+    "filterByTopic": "Only works on {name}"
   },
   "paperCard": {
     "screeningResponses": "Screening Responses",
@@ -3066,7 +3067,8 @@
     "loadingLibrary": "Loading library publications",
     "noPageMatches": "No matches on this page. Continue loading publications.",
     "noLibraryMatches": "No publications match your search.",
-    "noLibraryRecords": "No published Evidence Library records use this topic yet."
+    "noLibraryRecords": "No published Evidence Library records use this topic yet.",
+    "searchPapers": "Search papers"
   },
   "evidenceLibraries": {
     "list": {
@@ -4043,5 +4045,34 @@
       "extraction": "Extraction"
     },
     "moreJobs": "{count, plural, one {# more job} other {# more jobs}}"
+  },
+  "entityCards": {
+    "papers": "Papers",
+    "citations": "Citations",
+    "hIndex": "h-index",
+    "noInstitution": "No current institution",
+    "noTopics": "No topics listed",
+    "authorFailed": "This author could not be loaded.",
+    "topicFailed": "The description could not be loaded.",
+    "noDescription": "No description yet.",
+    "tryAgain": "Try again",
+    "filterResults": "Filter results",
+    "removeFilter": "Remove filter",
+    "searchPapers": "Search papers",
+    "authorPage": "Author page",
+    "topicPage": "Topic page",
+    "browseTopics": "Browse topics",
+    "openOnOpenAlex": "Open on OpenAlex",
+    "level": {
+      "topic": "Topic",
+      "subfield": "Subfield",
+      "field": "Field",
+      "domain": "Domain"
+    },
+    "below": {
+      "domain": "Fields",
+      "field": "Subfields",
+      "subfield": "Topics"
+    }
   }
 }

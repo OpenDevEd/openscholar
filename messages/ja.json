@@ -1170,7 +1170,8 @@
       "melanesia": "メラネシア",
       "micronesia": "ミクロネシア",
       "polynesia": "ポリネシア"
-    }
+    },
+    "filterByTopic": "{name} の論文のみ"
   },
   "paperCard": {
     "screeningResponses": "スクリーニング回答",
@@ -3076,7 +3077,8 @@
     "loadingLibrary": "ライブラリの文献を読み込み中",
     "noPageMatches": "このページに一致するものはありません。続けて文献を読み込んでください。",
     "noLibraryMatches": "検索に一致する文献はありません。",
-    "noLibraryRecords": "このトピックを使う公開済みの Evidence Library レコードはまだありません。"
+    "noLibraryRecords": "このトピックを使う公開済みの Evidence Library レコードはまだありません。",
+    "searchPapers": "論文を検索"
   },
   "evidenceLibraries": {
     "list": {
@@ -4053,5 +4055,34 @@
       "extraction": "抽出"
     },
     "moreJobs": "他 {count} 件のジョブ"
+  },
+  "entityCards": {
+    "papers": "論文",
+    "citations": "被引用数",
+    "hIndex": "h指数",
+    "noInstitution": "現在の所属なし",
+    "noTopics": "トピックなし",
+    "authorFailed": "この著者を読み込めませんでした。",
+    "topicFailed": "説明を読み込めませんでした。",
+    "noDescription": "説明はまだありません。",
+    "tryAgain": "再試行",
+    "filterResults": "結果を絞り込む",
+    "removeFilter": "絞り込みを解除",
+    "searchPapers": "論文を検索",
+    "authorPage": "著者ページ",
+    "topicPage": "トピックページ",
+    "browseTopics": "トピックを見る",
+    "openOnOpenAlex": "OpenAlex で開く",
+    "level": {
+      "topic": "トピック",
+      "subfield": "サブフィールド",
+      "field": "分野",
+      "domain": "領域"
+    },
+    "below": {
+      "domain": "分野",
+      "field": "サブフィールド",
+      "subfield": "トピック"
+    }
   }
 }
