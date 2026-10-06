@@ -199,6 +199,13 @@ function Overlay({
   const [sheets, setSheets] = useState<OpenSheet[]>([]);
   const depth = sheets.length;
   const push = (sheet: OpenSheet) => setSheets((all) => [...all, sheet]);
+  // A chat started about a record elsewhere opens on its message box, over any sheet left open.
+  const seed = useSyncExternalStore(panelSeed.subscribe, panelSeed.get, panelSeed.onServer);
+  const [seenSeed, setSeenSeed] = useState(seed?.id ?? 0);
+  if ((seed?.id ?? 0) !== seenSeed) {
+    setSeenSeed(seed?.id ?? 0);
+    setSheets([]);
+  }
   // A purchase of credits belongs to the panel, not to the sheet that started it: the sheet can be closed and opened
   // again while the purchase is on its way, and a second one started then would charge the card twice.
   const buyCredits = useAction(api.billing.actions.buyCredits);
