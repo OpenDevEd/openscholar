@@ -569,3 +569,23 @@ describe("envelope-bound chat helpers", () => {
     expect(requiresAdminAction(envelope)).toBe(admin);
   });
 });
+
+describe("a model that stops answering", () => {
+  it("is ended by the SDK's stream timeout, as an abort", async () => {
+    const { streamText } = await import("ai");
+    const { MockLanguageModelV3 } = await import("ai/test");
+    // A stream that opens and then sends nothing, as the provider did for seven minutes. Like the provider's fetch, it ends when the request is aborted.
+    const silent = new MockLanguageModelV3({
+      doStream: async ({ abortSignal }) => ({
+        stream: new ReadableStream({ start: (controller) => abortSignal?.addEventListener("abort", () => controller.error(abortSignal.reason)) }),
+      }),
+    });
+    let aborted = false;
+    await streamText({ model: silent, prompt: "hi", timeout: { firstChunkMs: 50 }, onAbort: () => { aborted = true; } }).consumeStream();
+    expect(aborted).toBe(true);
+  });
+
+  it("shows as the model service's error once the reply is failed with it (convex/assistant/turn.ts)", () => {
+    expect(classifyChatError(Object.assign(new Error("The model stopped answering."), { name: "TimeoutError" }))).toMatchObject({ class: "provider_5xx" });
+  });
+});

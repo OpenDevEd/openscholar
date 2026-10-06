@@ -28,6 +28,11 @@ import { classifyChatError, serializeChatError } from "../../lib/errors/taxonomy
 import { convertUsdToCredits } from "../../lib/pricing";
 
 export const STOP_ABORT_POLL_INTERVAL_MS = 500;
+/** How long a request waits for the model to start answering, reasoning included, and then between parts of its answer. */
+const FIRST_CHUNK_MS = 120_000;
+const CHUNK_MS = 90_000;
+/** What a request those ended fails with: shown as the model service's error (lib/errors/taxonomy.ts). */
+const STALLED = Object.assign(new Error("The model stopped answering."), { name: "TimeoutError" });
 
 export type Turn = {
   agent: Agent;
@@ -233,6 +238,9 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           // abort over a ~2s wait for a retry that mid-stream can't
           // salvage anyway.
           maxRetries: 0,
+          // A provider that stops streaming leaves the person on "Thinking" for as long as the action may run: one
+          // request sat for seven minutes. The request ends here instead, and fails in onAbort, so they can send again.
+          timeout: { firstChunkMs: FIRST_CHUNK_MS, chunkMs: CHUNK_MS },
           // Claude caches the context and earlier turns; the thread id keeps
           // every turn on the same upstream host so that cache stays warm.
           providerOptions: callOptions(model, { cache: turn.cache ?? true, sessionId: threadId, effort: turn.effort }),
@@ -259,7 +267,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           onEnd: async () => {
             finished = true;
           },
-          onAbort: ({ steps }) => {
+          onAbort: async ({ steps }) => {
             // The SDK awaits this callback. Leave billing and finalization
             // to the action body after the stream has been consumed.
             // A stream ends this way for a Stop, and also when the agent's own writer gives
@@ -271,7 +279,11 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
               console.info("[chat] stream aborted by user", { ...log, threadId, stepCount: steps.length });
             } else {
               streamErrored = true;
-              console.error("[chat] stream ended by its writer, not by a stop: the reply's message has the reason", { ...log, threadId, stepCount: steps.length });
+              // Or the timeout above ended it, with the reply still pending: it fails with the model service's error.
+              // The writer's own failure has already marked the reply, which this leaves as it is.
+              const stalled = await patchLastAssistantAsFailed(ctx, threadId, promptMessageId, STALLED, { model: capturedModelSlug, provider: "openrouter" }).catch(() => false);
+              if (stalled) await recordError(STALLED).catch(() => {});
+              console.error(stalled ? "[chat] the model stopped answering: the request timed out" : "[chat] stream ended by its writer, not by a stop: the reply's message has the reason", { ...log, threadId, stepCount: steps.length });
             }
           },
           onError: async ({ error }) => {

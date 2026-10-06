@@ -228,6 +228,24 @@ describe("assistant replies", () => {
     await ended(t, others.at(-1)!);
   });
 
+  it("fail when the model stops answering, with the model service's error, instead of thinking for good", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const t = convexTest(schema);
+      const { asAda, threadId } = await sharedChat(t);
+      // The stream opens and sends nothing more, as one request did for seven minutes.
+      mockDoStream.mockImplementationOnce(hangingDoStream());
+      await asAda.mutation(api.assistant.replies.send, { threadId, text: "How many searches have I saved?" });
+      await waitFor(() => mockDoStream.mock.calls.length === 1);
+      await vi.advanceTimersByTimeAsync(121_000);
+      await ended(t, threadId);
+      const reply = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "assistant");
+      expect(reply).toMatchObject({ status: "failed", error: { code: "provider_5xx" } });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("say why when they fail, and charge nothing", async () => {
     const t = convexTest(schema);
     const { asAda, asBen, asCy, threadId } = await sharedChat(t);
