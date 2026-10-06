@@ -49,7 +49,7 @@ import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { OrbitMark, type OrbitClock } from "./orbit-mark";
 import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
-import { panelPlace } from "@/lib/assistant/place";
+import { panelPlace, panelSeed } from "@/lib/assistant/place";
 import { AddCredits, KIND, KindTile, Steps, type StepItem } from "./steps";
 import { DockedJobs, JobDock, JobFlight, type Flight } from "./job-cards";
 import { IconButton, WorkingText } from "./parts";
@@ -106,6 +106,14 @@ export function AssistantPanel() {
   // Kept here, above the panel, so folding it away keeps what was typed.
   const [typed, setTyped] = useState<Record<string, string>>({});
   const [picked, setPicked] = useState<Record<string, Mention[]>>({});
+  // A chat started about a record elsewhere ("Start chat" on a search): its new chat's box names the record, picked, ready for the first message.
+  const seed = useSyncExternalStore(panelSeed.subscribe, panelSeed.get, panelSeed.onServer);
+  const [seeded, setSeeded] = useState(0);
+  if (seed && seed.id !== seeded) {
+    setSeeded(seed.id);
+    setTyped((all) => ({ ...all, [NEW]: `@${seed.mention.label} ` }));
+    setPicked((all) => ({ ...all, [NEW]: [seed.mention] }));
+  }
   if (!enabled || !canRunProtectedQueries) return null;
   const drafts: Drafts = {
     of: (id) => typed[id ?? NEW] ?? "",
@@ -454,6 +462,14 @@ function Chat({
   // The message on its way to the server, and the chat it's for: Stop pressed before its reply shows waits for it.
   const outgoing = useRef<Promise<ThreadId | null> | null>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
+  // Outside system: focus. A chat started about a record elsewhere ("Start chat") takes the keyboard, its cursor after the record, so the first message is typed at once.
+  const seed = useSyncExternalStore(panelSeed.subscribe, panelSeed.get, panelSeed.onServer);
+  useEffect(() => {
+    const box = composer.current;
+    if (!seed || !box) return;
+    box.focus();
+    box.setSelectionRange(box.value.length, box.value.length);
+  }, [seed]);
   // The thread's scroller: sending a message takes the person to the end of the chat, where its reply comes.
   const scroller = useRef<StickToBottomContext>(null);
   const convex = useConvex();
