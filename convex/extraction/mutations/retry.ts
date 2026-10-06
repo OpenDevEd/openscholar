@@ -64,11 +64,12 @@ const ALLOWED_RETRY_STATUSES: readonly JobStatus[] = [
 
 /**
  * Papers reset per batch. Each batch reads a paper's results (at most
- * MAX_QUESTIONS_PER_JOB), resets its retryable failures and recomputes its list
- * projection, so a batch stays far inside a transaction's limits however many of the
- * job's results failed (#351).
+ * MAX_QUESTIONS_PER_JOB), resets its retryable failures (each one a counts change,
+ * ../counts.ts) and recomputes its list projection and answer rows. A 50-question job
+ * whose every result failed reads about 160 index ranges a paper, so 20 a batch stays
+ * inside a transaction's 4,096 however many of the job's results failed (#351).
  */
-const RETRY_PAPERS_PER_BATCH = 25;
+const RETRY_PAPERS_PER_BATCH = 20;
 
 /**
  * Resets one batch of a job's papers for a retry: their retryable failures go back to

@@ -62,6 +62,7 @@ export const deleteExtractionInternal = internalMutation({
       ["extractionEvidenceUnits", "by_paper"],
       ["extractionResults", "by_paper"],
       ["extractionAnswerRows", "by_paper"],
+      ["extractionPaperFacts", "by_paper"],
     ];
     for (const [table, indexName] of perPaperChildTables) {
       for (const paper of papers) {

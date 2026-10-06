@@ -1,7 +1,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { ANSWER_ITEMS_MAX, ANSWER_TEXT_MAX, ITEM_TEXT_MAX, MAX_QUESTIONS_PER_JOB } from "./validators";
-import { formatAnswerForDisplay, normalizeAnswer, parseAnswerEntities } from "../../lib/extraction/analysis";
+import { formatAnswerForDisplay, parseAnswerEntities } from "../../lib/extraction/analysis";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 
 const SEARCH_TEXT_MAX_CHARS = 6000;
@@ -217,50 +217,73 @@ export async function recomputePaperListProjection(
     paper.status === "failed" ||
     paper.lastError !== undefined;
 
-  await ctx.db.patch("extractionPapers", paperId, {
+  const projected = {
     ...await paperSearchProjection(paper, results),
     avgConfidence,
     hasErrors: hasPaperError || errorQuestionKeys.length > 0,
     hasPdfSource: Boolean(
       paper.pdfUrl || paper.storageId || paper.ragEntryId || paper.isIndexed,
     ),
-  });
-  await writeAnswerRows(ctx, paper, results, avgConfidence);
+  };
+  await ctx.db.patch("extractionPapers", paperId, projected);
+  // The small rows a summary reads (validators.ts): the paper's answers and what the page's filters read of it.
+  await writeAnswerRows(ctx, paper, results, true);
+  await writePaperFacts(ctx, { ...paper, ...projected });
+}
+
+/** Results a paper has finished: one with no status is from before results had one, and finished (results.ts `finalizePaper`). */
+const finished = (result: Doc<"extractionResults">) => (result.status ?? "completed") === "completed";
+
+/** A finished result's answer row, keyed as the results page's answer filter keys it. */
+async function answerRowOf(paper: Doc<"extractionPapers">, result: Doc<"extractionResults">) {
+  const token = await buildQuestionAnswerToken(result.questionKey, result.answer as ProjectionAnswer);
+  const items = Array.isArray(result.answer) ? parseAnswerEntities(result.answer).slice(0, ANSWER_ITEMS_MAX) : [];
+  return {
+    jobId: paper.jobId,
+    paperId: paper._id,
+    questionKey: result.questionKey,
+    token,
+    shown: token === null ? "" : formatAnswerForDisplay(result.answer).slice(0, ANSWER_TEXT_MAX),
+    items: items.map((item) => ({ key: item, shown: item.slice(0, ITEM_TEXT_MAX) })),
+  };
 }
 
 /**
  * Keeps a paper's answer rows (validators.ts `extractionAnswerRowFields`) as its finished
- * results are: one a question it has finished, written only where something changed, and
- * none for a question it hasn't. They're the paper's alone, so papers finishing together
- * never write the same document.
+ * results: written where something changed, never for a result that isn't finished. `all`:
+ * `results` are all the paper's, and a row of a question with no finished result goes; a batch
+ * of answers passes only its own, and touches only their rows, so batches never share one.
  */
-export async function writeAnswerRows(ctx: MutationCtx, paper: Doc<"extractionPapers">, results: ReadonlyArray<Doc<"extractionResults">>, confidence: number) {
-  const wanted = new Map(
-    results
-      .filter((result) => result.status === "completed")
-      .map((result) => {
-        const key = normalizeAnswer(result.answer);
-        return [
-          result.questionKey,
-          {
-            jobId: paper.jobId,
-            paperId: paper._id,
-            questionKey: result.questionKey,
-            key: key === null ? null : key.slice(0, ANSWER_TEXT_MAX),
-            shown: key === null ? "" : formatAnswerForDisplay(result.answer).slice(0, ANSWER_TEXT_MAX),
-            items: Array.isArray(result.answer) ? parseAnswerEntities(result.answer).slice(0, ANSWER_ITEMS_MAX).map((item) => item.slice(0, ITEM_TEXT_MAX)) : [],
-            status: paper.status ?? "pending",
-            confidence,
-          },
-        ] as const;
-      }),
-  );
+export async function writeAnswerRows(ctx: MutationCtx, paper: Doc<"extractionPapers">, results: ReadonlyArray<Doc<"extractionResults">>, all: boolean) {
+  const wanted = new Map(await Promise.all(results.filter(finished).map(async (result) => [result.questionKey, await answerRowOf(paper, result)] as const)));
   const kept = await ctx.db.query("extractionAnswerRows").withIndex("by_paper", (q) => q.eq("paperId", paper._id)).take(MAX_QUESTIONS_PER_JOB);
   for (const row of kept) {
-    const next = wanted.get(row.questionKey);
+    if (!wanted.has(row.questionKey)) {
+      if (all) await ctx.db.delete("extractionAnswerRows", row._id);
+      continue;
+    }
+    const next = wanted.get(row.questionKey)!;
     wanted.delete(row.questionKey);
-    if (!next) await ctx.db.delete("extractionAnswerRows", row._id);
-    else if (next.key !== row.key || next.shown !== row.shown || next.status !== row.status || next.confidence !== row.confidence || next.items.join("\u0000") !== row.items.join("\u0000")) await ctx.db.replace("extractionAnswerRows", row._id, next);
+    if (next.token !== row.token || next.shown !== row.shown || JSON.stringify(next.items) !== JSON.stringify(row.items)) await ctx.db.replace("extractionAnswerRows", row._id, next);
   }
   for (const row of wanted.values()) await ctx.db.insert("extractionAnswerRows", row);
 }
+
+/** Keeps the paper's facts row (validators.ts `extractionPaperFactFields`) as the paper's projection is. */
+export async function writePaperFacts(ctx: MutationCtx, paper: Doc<"extractionPapers">) {
+  const next = {
+    jobId: paper.jobId,
+    paperId: paper._id,
+    avgConfidence: paper.avgConfidence ?? 0,
+    hasPdfSource: paper.hasPdfSource ?? false,
+    hasErrors: paper.hasErrors ?? false,
+    ...(paper.pdfContentUsed === undefined ? {} : { pdfContentUsed: paper.pdfContentUsed }),
+    ...(paper.isOpenAccess === undefined ? {} : { isOpenAccess: paper.isOpenAccess }),
+    questionAnswerTokens: paper.questionAnswerTokens ?? [],
+  };
+  const row = await ctx.db.query("extractionPaperFacts").withIndex("by_paper", (q) => q.eq("paperId", paper._id)).unique();
+  if (!row) await ctx.db.insert("extractionPaperFacts", next);
+  else if (JSON.stringify({ ...row, _id: undefined, _creationTime: undefined }) !== JSON.stringify({ ...next, _id: undefined, _creationTime: undefined })) await ctx.db.replace("extractionPaperFacts", row._id, next);
+}
+
+
