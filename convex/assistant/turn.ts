@@ -16,7 +16,7 @@ import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
 import { releaseCredits, reserveCredits, settleCredits, tokenCounts, tokenDetails } from "../billing/charge";
 import { LEASE_RENEW_MS } from "../chat/concurrency";
-import { resolveOpenRouterModel } from "../chat/provider";
+import { resolveOpenRouterModel, type Pricing } from "../chat/provider";
 import { createError, errorToLogString } from "../lib/errors";
 import { callOptions, type Effort } from "../../lib/ai/core/call-options";
 import { aggregateUsage, calculateCostInDollars, usageOf } from "../../lib/ai/core/cost";
@@ -43,8 +43,8 @@ export type Turn = {
   attemptId?: string;
   /** The reply this request is part of, for its sender's record of what replies cost, when a charge is settled after it ended. */
   replyId?: string;
-  /** Credits held before the reply starts. */
-  credits: number;
+  /** Credits held before the reply starts, worked out at the price of the model it runs on (lib/pricing/estimate.ts). */
+  credits: (pricing: Pricing) => number | Promise<number>;
   /** Asked when that hold is refused: what to hold in its place, when the person turns out to have less. */
   lesser?: () => Promise<number | undefined>;
   tools?: ToolSet;
@@ -175,26 +175,6 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   let finished = false;
 
   try {
-    // The account's copy of the balance can be behind a charge just made. A hold it led to that is refused is tried again at what the person really has.
-    const lesser = async () => {
-      const credits = await turn.lesser?.();
-      return credits !== undefined && credits > 0 && credits < turn.credits && (await reserveCredits(ctx, { userId, chargeId, credits }));
-    };
-    if (!(await reserveCredits(ctx, { userId, chargeId, credits: turn.credits })) && !(await lesser())) {
-      const account = await ctx.runQuery(internal.billing.accounts.forUser, { userId });
-      const availableCredits = account?.balance ?? 0;
-      throw createError(
-        "AI_INSUFFICIENT_CREDITS",
-        "Not enough credits for this chat message.",
-        {
-          requiredCredits: turn.credits,
-          availableCredits,
-          deficitCredits: Math.max(0, turn.credits - availableCredits),
-        },
-      );
-    }
-    reserved = true;
-
     const { model, modelSlug, pricing } = await resolveOpenRouterModel(
       ctx,
       turn.modelId,
@@ -205,6 +185,27 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       },
     );
     capturedModelSlug = modelSlug;
+
+    const held = await turn.credits(pricing);
+    // The account's copy of the balance can be behind a charge just made. A hold it led to that is refused is tried again at what the person really has.
+    const lesser = async () => {
+      const credits = await turn.lesser?.();
+      return credits !== undefined && credits > 0 && credits < held && (await reserveCredits(ctx, { userId, chargeId, credits }));
+    };
+    if (!(await reserveCredits(ctx, { userId, chargeId, credits: held })) && !(await lesser())) {
+      const account = await ctx.runQuery(internal.billing.accounts.forUser, { userId });
+      const availableCredits = account?.balance ?? 0;
+      throw createError(
+        "AI_INSUFFICIENT_CREDITS",
+        "Not enough credits for this chat message.",
+        {
+          requiredCredits: held,
+          availableCredits,
+          deficitCredits: Math.max(0, held - availableCredits),
+        },
+      );
+    }
+    reserved = true;
 
     try {
       await agent.streamText(

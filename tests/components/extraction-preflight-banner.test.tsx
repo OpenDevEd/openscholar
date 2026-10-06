@@ -27,7 +27,7 @@ describe("<ExtractionPreflightBanner>", () => {
   it("renders nothing when the estimate is zero (no questions or no papers)", () => {
     const { container } = render(
       <ExtractionPreflightBanner
-        estimate={{ low: 0, mid: 0, high: 0 }}
+        credits={0}
         balance={{ hasEnough: true, total: 500, deficit: 0, required: 0 }}
       />,
     );
@@ -37,7 +37,7 @@ describe("<ExtractionPreflightBanner>", () => {
   it("renders nothing while the credits query is loading (balance undefined)", () => {
     const { container } = render(
       <ExtractionPreflightBanner
-        estimate={{ low: 100, mid: 200, high: 300 }}
+        credits={300}
         balance={undefined}
       />,
     );
@@ -47,7 +47,7 @@ describe("<ExtractionPreflightBanner>", () => {
   it("sufficient: data-preflight-ok=true, role=status, and no Buy Credits button", () => {
     render(
       <ExtractionPreflightBanner
-        estimate={{ low: 100, mid: 200, high: 300 }}
+        credits={300}
         balance={{ hasEnough: true, total: 500, deficit: 0, required: 300 }}
       />,
     );
@@ -59,7 +59,7 @@ describe("<ExtractionPreflightBanner>", () => {
   it("insufficient: data-preflight-ok=false, role=status, Buy Credits button present", () => {
     render(
       <ExtractionPreflightBanner
-        estimate={{ low: 100, mid: 200, high: 300 }}
+        credits={300}
         balance={{ hasEnough: false, total: 50, deficit: 250, required: 300 }}
       />,
     );
@@ -73,7 +73,7 @@ describe("<ExtractionPreflightBanner>", () => {
     const onBeforeNavigate = vi.fn();
     render(
       <ExtractionPreflightBanner
-        estimate={{ low: 100, mid: 200, high: 300 }}
+        credits={300}
         balance={{ hasEnough: false, total: 50, deficit: 250, required: 300 }}
         onBeforeNavigate={onBeforeNavigate}
       />,
@@ -86,7 +86,7 @@ describe("<ExtractionPreflightBanner>", () => {
   it("null balance (unauthenticated / query returns null) is treated as insufficient when estimate > 0", () => {
     render(
       <ExtractionPreflightBanner
-        estimate={{ low: 100, mid: 200, high: 300 }}
+        credits={300}
         balance={null}
       />,
     );

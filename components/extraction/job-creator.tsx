@@ -35,7 +35,6 @@ import { PdfToggle } from "./pdf-toggle";
 import { AbstractMissingBanner } from "./chat/abstract-missing-banner";
 import { ChatStartReview } from "./chat/chat-start-review";
 import { ExtractionPreflightBanner } from "./preflight-banner";
-import { estimateExtractionCredits } from "@/lib/extraction/cost-estimate";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { useAppToast } from "@/lib/toast";
@@ -145,28 +144,21 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
     [bucketOrder, bucketItemsMap],
   );
 
-  // Plan-03: live preflight estimate + balance check.
-  const preflightEstimate = useMemo(
-    () => {
-      const paperCount = readyBucketPaperCount(readyBucketItems);
-      return estimateExtractionCredits({
-        papers: paperCount,
-        questions: draftJob.questions.length,
-        usePdfs: draftJob.usePdfs,
-        avgPaperKind: draftJob.usePdfs ? "pdf" : "abstract",
-      });
-    },
-    [readyBucketItems, draftJob.questions.length, draftJob.usePdfs],
+  // The most the job costs, on the models the person's extractions run on, against their balance: the figure its start checks.
+  const paperCount = readyBucketPaperCount(readyBucketItems);
+  const { data: preflightCredits } = useProtectedQuery(
+    api.extraction.queries.costs.estimateJob,
+    effectiveMode === "extraction" && paperCount > 0 && draftJob.questions.length > 0
+      ? { papers: paperCount, questions: draftJob.questions.map((question) => question.type), usePdfs: draftJob.usePdfs }
+      : "skip",
   );
   const { data: preflightBalance } = useProtectedQuery(
     api.billing.accounts.checkBalance,
-    effectiveMode === "extraction" && preflightEstimate.high > 0
-      ? { requiredAmount: preflightEstimate.high }
-      : "skip",
+    preflightCredits ? { requiredAmount: preflightCredits } : "skip",
   );
   const preflightBlocked =
     effectiveMode === "extraction" &&
-    preflightEstimate.high > 0 &&
+    !!preflightCredits &&
     preflightBalance !== undefined &&
     (preflightBalance === null || !preflightBalance.hasEnough);
 
@@ -391,7 +383,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
                 {draftJob.questions.length > 0 && (
                   <div className="mt-6">
                     <ExtractionPreflightBanner
-                      estimate={preflightEstimate}
+                      credits={preflightCredits ?? undefined}
                       balance={preflightBalance}
                     />
                   </div>

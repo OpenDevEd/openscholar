@@ -7,6 +7,7 @@ import { readScreeningProgressCounts } from "./progress";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 import { createJob, insertJob } from "./createJob.test-support";
+import { screeningPaperCreditsFor } from "./estimate";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { SCREENING_POOL_SIZE } from "../workpool";
 
@@ -373,8 +374,8 @@ describe("createScreeningJob", () => {
     const t = convexTest(schema);
     setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
-    // 200 papers * ESTIMATED_CREDITS_PER_PAPER (4.5) = 900 credits needed
-    await seedCredits(t, user._id, 900, 0);
+    // Exactly what 200 papers hold.
+    await seedCredits(t, user._id, 200 * (await t.run((ctx) => screeningPaperCreditsFor(ctx, user._id))), 0);
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
     const result = await createJob(asUser, {
@@ -386,12 +387,13 @@ describe("createScreeningJob", () => {
     expect(result.jobId).toBeDefined();
   });
 
-  it("credit check uses freeBalance + paidBalance (125 free + 100 paid = 225 total)", async () => {
+  it("credit check uses freeBalance + paidBalance, neither enough alone", async () => {
     const t = convexTest(schema);
     setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_test");
-    // 50 papers * ESTIMATED_CREDITS_PER_PAPER (4.5) = 225 credits needed
-    await seedCredits(t, user._id, 125, 100); // 225 total
+    // What 50 papers hold, half of it free and half paid.
+    const needed = 50 * (await t.run((ctx) => screeningPaperCreditsFor(ctx, user._id)));
+    await seedCredits(t, user._id, needed / 2, needed / 2);
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
     const result = await createJob(asUser, {

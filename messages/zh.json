@@ -562,8 +562,8 @@
     "defineQuestions": "定义问题",
     "whatToExtract": "提取内容",
     "preflight": {
-      "sufficient": "约 {estimate} 积分",
-      "insufficient": "需要约 {estimate} 积分，您现有 {balance}"
+      "sufficient": "最多 {estimate} 积分",
+      "insufficient": "最多需要 {estimate} 积分，您现有 {balance}"
     },
     "creditsExhausted": {
       "title": "提取已暂停 — 积分已用尽",

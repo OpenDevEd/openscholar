@@ -8,7 +8,6 @@ import { useAuthReadiness } from '@/components/providers/convex-provider'
 import { useOptionalAuthQuery } from '@/lib/auth/use-auth-query'
 import { useAIConfigStore } from '@/lib/store'
 import { useFeatureFlag } from '@/lib/feature-flags/hook'
-import { ESTIMATED_CREDITS_PER_QUERY } from '@/convex/lib/constants'
 import {
   AIApiKeyRequiredError,
   AICreditsDisabledError,
@@ -37,7 +36,8 @@ export interface AIHookResult<TParams, TResult> {
 export interface AIHookOptions<TParams> {
   /** Which task this is, which picks its model and key. */
   task: AiTask | ((params: TParams) => AiTask)
-  estimateCredits?: (params: TParams) => number
+  /** What the work is, which prices it on the task's model (convex/ai/estimates.ts): one helper call unless it says otherwise. */
+  estimate?: (params: TParams) => { kind: 'helper' | 'paper'; calls: number }
   allowSmartLocalFallback?: boolean
 }
 
@@ -103,6 +103,7 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
     // Presets run on credits; paying with your own key is part of Custom.
     const apiKeyMode = onCredits ? 'credits' : chosenMode
     const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, {})
+    const figures = useOptionalAuthQuery(api.ai.estimates.mine, {})
     const isConfigured = useMemo(
       () =>
         resolveModeConfigurability({
@@ -124,17 +125,13 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
           const task = typeof options.task === 'function' ? options.task(params) : options.task
           const localConfig = configFor(task)
           const hasApiKey = Boolean(localConfig.apiKey)
-          const requiredCredits = Math.max(
-            0,
-            Math.ceil(
-              options.estimateCredits?.(params) ?? ESTIMATED_CREDITS_PER_QUERY
-            )
-          )
+          const work = options.estimate?.(params) ?? { kind: 'helper', calls: 1 }
+          const requiredCredits = work.calls * (figures.data?.[task]?.[work.kind] ?? 0)
           // Adapter: useOptionalAuthQuery's settlement union doesn't match the
           // CreditsSettlement union. "ready" is the only "settled" state; every
           // other auth/query phase reads as "loading" for the credit check.
           const settlement: CreditsSettlement =
-            creditsQuery.settlement === 'ready' ? 'settled' : 'loading'
+            creditsQuery.settlement === 'ready' && figures.settlement === 'ready' ? 'settled' : 'loading'
           const creditsAvailability = resolveCreditsAvailability({
             isAuthenticated,
             settlement,
@@ -199,6 +196,8 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
         creditsEnabled,
         creditsQuery.data?.balance,
         creditsQuery.settlement,
+        figures.data,
+        figures.settlement,
         configFor,
         executorFn,
         isAuthenticated,

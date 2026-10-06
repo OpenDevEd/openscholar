@@ -44,7 +44,6 @@ import { paperChat } from "./agent";
 import { authorizeThreadAccess } from "./auth";
 import { buildOpenRouterWebSearchTool } from "./tools/openrouterWebSearch";
 import { chatSearchesWeb } from "../../lib/chat/web-search-capability";
-import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
 import {
   classifyChatError,
   errorCodeValidator,
@@ -57,7 +56,9 @@ import {
 import { resolveLatestAssistantTurn } from "../../lib/chat/latest-assistant-turn";
 import { assertChatConcurrencyAvailable } from "./concurrency";
 import {
+  CALL_TOKENS,
   CHAT_WEB_SEARCHES_PER_REPLY,
+  estimateCredits,
   WEB_SEARCH_CREDITS,
 } from "../../lib/pricing";
 import { CHAT_PROMPT_MAX_CHARS } from "@/lib/extraction/limits";
@@ -294,8 +295,8 @@ export const generateResponse = internalAction({
       effort: chatEffort,
       attemptId: generationAttemptId,
       // A web-search reply can run every search it's allowed.
-      credits:
-        ESTIMATED_CREDITS_PER_CHAT_MESSAGE +
+      credits: (pricing) =>
+        estimateCredits(pricing, CALL_TOKENS.chatMessage) +
         (webSearch ? WEB_SEARCH_CREDITS * CHAT_WEB_SEARCHES_PER_REPLY : 0),
       tools: webSearch
         ? ({ web_search: buildOpenRouterWebSearchTool() } as ToolSet)

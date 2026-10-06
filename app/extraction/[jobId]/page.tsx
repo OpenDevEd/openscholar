@@ -762,7 +762,7 @@ export default function JobDetailPage() {
             {(job.status === "completed" ||
               job.status === "failed" ||
               job.status === "creditsExhausted") && (
-              <RetrySummary jobId={jobId} usePdfs={job.usePdfs ?? false} />
+              <RetrySummary jobId={jobId} />
             )}
 
 

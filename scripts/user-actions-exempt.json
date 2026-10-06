@@ -1,5 +1,6 @@
 {
   "plumbing": {
+    "ai/estimates:mine": "The browser's balance check before it asks for AI work. The server holds the same figures when the work runs (lib/pricing/estimate.ts).",
     "apiKeys/actions:encryptAndSave": "User API keys never reach the assistant (plan decision 5).",
     "apiKeys/mutations:markUsed": "User API keys never reach the assistant (plan decision 5).",
     "apiKeys/mutations:remove": "User API keys never reach the assistant (plan decision 5).",
@@ -22,6 +23,8 @@
     "evidenceLibraries/uploads:generateUploadUrl": "A storage URL for a file the person picks in their browser.",
     "exports:progress": "Tells the browser downloading an export when its next part is ready.",
     "exports:start": "Registers an export the person's browser downloads at once, a part at a time.",
+    "extraction/queries/costs:estimateJob": "The extraction page's figure for a job before it starts. The assistant is given the same figure with extraction/start:extract, as the most it asks the person to approve.",
+    "extraction/queries/costs:estimateRetry": "The retry dialog's figure, the one extraction/mutations/retry:retryFailedQuestions checks the balance against.",
     "extraction/uploads:generateUploadUrl": "A storage URL for a file the person picks in their browser.",
     "featureFlags/queries:list": "Feature flags the pages check before showing a feature.",
     "openalex/limits:spend": "Counts a signed-in account's OpenAlex requests for the server actions that make them.",

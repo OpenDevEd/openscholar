@@ -574,8 +574,8 @@
     "defineQuestions": "Define questions",
     "whatToExtract": "What to extract",
     "preflight": {
-      "sufficient": "~{estimate} credits",
-      "insufficient": "Need ~{estimate} credits, you have {balance}"
+      "sufficient": "Up to {estimate} credits",
+      "insufficient": "Needs up to {estimate} credits, you have {balance}"
     },
     "creditsExhausted": {
       "title": "Extraction paused — out of credits",

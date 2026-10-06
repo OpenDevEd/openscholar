@@ -562,8 +562,8 @@
     "defineQuestions": "質問を定義",
     "whatToExtract": "抽出する内容",
     "preflight": {
-      "sufficient": "約{estimate}クレジット",
-      "insufficient": "約{estimate}クレジット必要、現在{balance}保有"
+      "sufficient": "最大{estimate}クレジット",
+      "insufficient": "最大{estimate}クレジット必要、現在{balance}保有"
     },
     "creditsExhausted": {
       "title": "抽出を一時停止しました — クレジット不足",

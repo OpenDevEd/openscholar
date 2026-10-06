@@ -29,9 +29,8 @@ import {
   extractHttpStatus,
   extractErrorCode,
 } from "../../lib/posthog-ai-shared";
-import { ESTIMATED_CREDITS_PER_QUERY } from "../lib/constants";
 import { createError } from "../lib/errors";
-import { creditsForUsage } from "../../lib/pricing";
+import { CALL_TOKENS, creditsForUsage, estimateCredits, type CallTokens } from "../../lib/pricing";
 import { reserveCredits, releaseCredits, settleUnder, tokenDetails } from "../billing/charge";
 import type { Effort } from "../../lib/ai/core/call-options";
 import type { UsageKind } from "../billing/validators";
@@ -273,7 +272,8 @@ async function requireAIUser(ctx: ActionCtx): Promise<Doc<"users">> {
  */
 export async function withAuthAndCreditsBatch<T>(
   ctx: ActionCtx,
-  operation: { description: string; kind: UsageKind; task: AiTask; estimate: number },
+  /** `calls` calls of `tokens` each: what the work holds, on the model the task runs on. */
+  operation: { description: string; kind: UsageKind; task: AiTask; calls: number; tokens: CallTokens },
   handler: (user: Doc<"users">, model: ServerModel["model"], effort: Effort | undefined) => Promise<{
     result: T;
     totalUsage: Usage;
@@ -290,7 +290,7 @@ export async function withAuthAndCreditsBatch<T>(
       {
         userId: user._id,
         chargeId: `${operation.kind}:${crypto.randomUUID()}`,
-        estimate: operation.estimate,
+        estimate: estimateCredits(pricing, operation.tokens, operation.calls),
         kind: operation.kind,
         description: operation.description,
         model: modelSlug,
@@ -400,7 +400,7 @@ export function createAIAction<
             {
               userId: user._id,
               chargeId: `${options.kind}:${crypto.randomUUID()}`,
-              estimate: ESTIMATED_CREDITS_PER_QUERY,
+              estimate: estimateCredits(pricing, CALL_TOKENS.helper),
               kind: options.kind,
               description,
               model: modelSlug,
