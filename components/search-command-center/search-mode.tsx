@@ -33,6 +33,11 @@ interface SearchModeProps {
   isValidating?: boolean;
 }
 
+// The keywords before a search's first translation and what its last translation produced, by search. It
+// outlives switching modes and browser history: while the box still holds that translation, another language
+// starts from the original and clearing the language puts the original back.
+const translations = new Map<string, { original: string; result: string }>();
+
 export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const toast = useAppToast();
   const t = useTranslations("searchCommand");
@@ -56,10 +61,8 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   // The shortcuts the box names are read as they're typed, for the suggestion and the actions below.
   useQueryShortcuts(localInputValue);
   const [isTranslating, setIsTranslating] = useState(false);
-  // The keywords before the first translation and what the last one produced. While the box still holds that
-  // translation, another language starts from the original, and clearing the language puts the original back.
-  const [translation, setTranslation] = useState<{ original: string; result: string } | null>(null);
-  const untouchedTranslation = translation && localInputValue === translation.result ? translation : null;
+  const saved = effectiveSearchId ? translations.get(effectiveSearchId) : undefined;
+  const untouchedTranslation = saved && localInputValue === saved.result ? saved : null;
 
   // Sync local input + global store when URL query changes (e.g. history nav, AI enhance, translation)
   useEffect(() => {
@@ -187,7 +190,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
           syntax,
         });
         search.setQuery(result.translatedQuery);
-        setTranslation({ original: source, result: result.translatedQuery });
+        if (effectiveSearchId) translations.set(effectiveSearchId, { original: source, result: result.translatedQuery });
         posthog.capture("query_translated", {
           original_query: expandedQuery,
           translated_query: result.translatedQuery,
@@ -211,6 +214,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       search,
       localInputValue,
       untouchedTranslation,
+      effectiveSearchId,
       isTranslateConfigured,
       translateQueryFn,
       syntax,
@@ -226,10 +230,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     async (language: string) => {
       if (!search || language === selectedLanguage) return;
       search.setLanguage(language || null);
-      if (!language) {
-        if (untouchedTranslation) search.setQuery(untouchedTranslation.original);
-        setTranslation(null);
-      }
+      if (!language && untouchedTranslation) search.setQuery(untouchedTranslation.original);
       posthog.capture("language_selected", {
         language: language || "none",
         previous_language: selectedLanguage || "none",
