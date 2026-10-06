@@ -29,10 +29,8 @@ describe("validateAndExpandKeywords", () => {
     });
   });
 
-  it("rejects single character query", () => {
-    const result = validateAndExpandKeywords("a", expand);
-    expect(result.isValid).toBe(false);
-    expect(result.warnings).toHaveLength(1);
+  it("accepts a one-character query: any query is a search", () => {
+    expect(validateAndExpandKeywords("a", expand)).toEqual({ isValid: true, expandedQuery: "a", warnings: [] });
   });
 
   it("accepts normal query", () => {
@@ -69,10 +67,10 @@ describe("validateAndExpandKeywords", () => {
     expect(result.warnings).toHaveLength(1);
   });
 
-  it("uses getMessage callback for single char warning", () => {
-    const result = validateAndExpandKeywords("x", expand, {
+  it("uses getMessage callback for a missing bookmark's warning", () => {
+    const result = validateAndExpandKeywords("unknown...", expand, {
       getMessage: (key) =>
-        key === "singleCharSearch" ? "Custom msg" : "fallback",
+        key === "bookmarkNotFound" ? "Custom msg" : "fallback",
     });
     expect(result.isValid).toBe(false);
     expect(result.warnings).toContain("Custom msg");
@@ -80,7 +78,7 @@ describe("validateAndExpandKeywords", () => {
 
   it("invokes onWarning callback", () => {
     const onWarning = vi.fn();
-    validateAndExpandKeywords("x", expand, { onWarning });
+    validateAndExpandKeywords("unknown...", expand, { onWarning });
     expect(onWarning).toHaveBeenCalledOnce();
   });
 });
@@ -91,9 +89,8 @@ describe("validateAndExpandKeywordsSilently", () => {
     expect(result.isValid).toBe(true);
   });
 
-  it("rejects single character", () => {
-    const result = validateAndExpandKeywordsSilently("x", expand);
-    expect(result.isValid).toBe(false);
+  it("accepts a one-character query", () => {
+    expect(validateAndExpandKeywordsSilently("x", expand).isValid).toBe(true);
   });
 
   it("expands known bookmark", () => {

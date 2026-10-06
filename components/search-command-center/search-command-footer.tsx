@@ -278,7 +278,7 @@ Return a more targeted version of this query.`;
     await ensureQueryShortcuts(params.q);
     const searchFilters = paramsToBucketSearchFilters(params, {
       expand: browserExpand,
-      getMessage: (key, values) => tv(key as "singleCharSearch", values),
+      getMessage: (key, values) => tv(key as "bookmarkNotFound", values),
       onWarning: (message) => toast.validation.failed(message),
     });
     if (!searchFilters) return;

@@ -12,10 +12,8 @@ export interface KeywordValidationResult {
   warnings: string[];
 }
 
-const FALLBACK_SINGLE_CHAR = 'Single character searches are not supported. Please use at least 2 characters.';
-
 export interface ValidateAndExpandKeywordsOptions {
-  /** Returns localized message for a key (e.g. validation.singleCharSearch) */
+  /** Returns localized message for a key (e.g. validation.bookmarkNotFound) */
   getMessage?: (key: string, params?: Record<string, string>) => string;
   /** Optional callback for warning messages */
   onWarning?: (message: string) => void;
@@ -32,24 +30,12 @@ export function validateAndExpandKeywords(
 ): KeywordValidationResult {
   const { getMessage, onWarning } = options ?? {};
 
-  // Allow empty queries - they are valid for browsing all papers
-  const trimmedQuery = query.trim();
-  if (trimmedQuery.length === 0) {
+  // Any query is a search, an empty one included: the results are paged, so it lists every work the filters leave.
+  if (query.trim().length === 0) {
     return {
       isValid: true,
       expandedQuery: query,
       warnings: [],
-    };
-  }
-
-  // Check for minimum query length (only for non-empty queries)
-  if (trimmedQuery.length === 1) {
-    const warning = getMessage?.('singleCharSearch') ?? FALLBACK_SINGLE_CHAR;
-    onWarning?.(warning);
-    return {
-      isValid: false,
-      expandedQuery: query,
-      warnings: [warning],
     };
   }
 
@@ -87,16 +73,6 @@ export function validateAndExpandKeywordsSilently(query: string, expand: ExpandS
       isValid: true,
       expandedQuery: query,
       warnings: [],
-    };
-  }
-
-  // Check for minimum query length (only for non-empty queries)
-  if (trimmedQuery.length === 1) {
-    const warning = 'Single character searches are not supported. Please use at least 2 characters.';
-    return {
-      isValid: false,
-      expandedQuery: query,
-      warnings: [warning],
     };
   }
 

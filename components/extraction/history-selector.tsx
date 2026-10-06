@@ -112,7 +112,7 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
         { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(entry) },
         {
           expand: browserExpand,
-          getMessage: (key, values) => tv(key as "singleCharSearch", values),
+          getMessage: (key, values) => tv(key as "bookmarkNotFound", values),
           onWarning: (message) => toast.validation.failed(message),
         },
       );

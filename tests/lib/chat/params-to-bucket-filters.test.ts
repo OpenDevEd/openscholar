@@ -34,9 +34,9 @@ describe("paramsToBucketSearchFilters", () => {
     expect(stored?.openAlexQuery.sort).toBe("publication_date:desc");
   });
 
-  it("returns nothing for an invalid query and says why", () => {
+  it("stores a one-character query as a search", () => {
     const onWarning = vi.fn();
-    expect(paramsToBucketSearchFilters({ ...DEFAULT_SEARCH_PARAMS, q: "a" }, { expand: noShortcuts, onWarning })).toBeNull();
-    expect(onWarning).toHaveBeenCalledWith(expect.stringContaining("Single character"));
+    expect(paramsToBucketSearchFilters({ ...DEFAULT_SEARCH_PARAMS, q: "a" }, { expand: noShortcuts, onWarning })).not.toBeNull();
+    expect(onWarning).not.toHaveBeenCalled();
   });
 });

@@ -152,7 +152,7 @@ export function SearchInput({
               <Button
                 type="button"
                 onClick={handleSubmit}
-                disabled={disabled || !query.trim()}
+                disabled={disabled}
                 size="lg"
                 className={cn(
                   "rounded-xl px-6 min-h-[44px] sm:min-h-0 transition-all duration-300 gap-2 overflow-hidden",

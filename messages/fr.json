@@ -1300,7 +1300,6 @@
     "noFileSelected": "Aucun fichier sélectionné",
     "unsupportedFileType": "Type de fichier non pris en charge. Veuillez téléverser un fichier JSON ou CSV.",
     "csvFormatError": "Le fichier CSV doit avoir au moins un en-tête et une ligne de données",
-    "singleCharSearch": "Les recherches d'un seul caractère ne sont pas prises en charge. Veuillez utiliser au moins 2 caractères.",
     "selectAtLeastOneSource": "Veuillez sélectionner au moins une source",
     "completeAllSteps": "Veuillez compléter toutes les étapes",
     "noQueryToSave": "Aucune requête à enregistrer.",
