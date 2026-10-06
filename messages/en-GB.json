@@ -3935,7 +3935,7 @@
       "allow": "Allow once",
       "notNow": "Not now",
       "decline": "Don't do this",
-      "whyOutside": "It changes what other people can see, so it asks every time.",
+      "whyOutside": "This can't be undone, and it can change what people you share with see, so it asks every time.",
       "whyUndo": "This can't be undone, so it asks every time.",
       "whyMany": "It changes many records at once, so it asks first.",
       "more": "and {count, number} more",

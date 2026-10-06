@@ -178,7 +178,7 @@ export const assistantStepFields = {
    * once the person allows it.
    */
   batch: v.optional(v.number()),
-  /** On a call that asks first because what it does reaches other people (sharing a chat, deleting one), rather than because it can't be undone. */
+  /** On a call that asks first because what it does can reach other people (sharing a chat, deleting one) as well as because it can't be undone. */
   outside: v.optional(v.literal(true)),
   /** Which of its several jobs its action does (lib/assistant/actions.ts), where its arguments don't say it one by one: a bulk change. */
   variant: v.optional(v.string()),

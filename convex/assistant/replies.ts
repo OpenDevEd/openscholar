@@ -597,7 +597,7 @@ const stepValidator = v.object({
   count: v.optional(v.number()),
   /** The most it holds, on a call that spends credits (#328). */
   credits: v.optional(v.number()),
-  /** On a call that asks first: what it does reaches other people, which is why it asks. Otherwise it asks because it can't be undone. */
+  /** On a call that asks first: what it does can reach other people too. Otherwise it asks because it can't be undone. */
   outside: v.optional(v.literal(true)),
   /**
    * `failed` also covers a step whose reply died while it ran. `asking`: the person is asked before it runs.
@@ -750,7 +750,7 @@ export const messagesAction = defineUserQuery({
     const reader = thread.asking?.senderId === userId ? await ctx.db.get("users", userId) : null;
     const mine = reader ? await stepsAt(ctx, threadId, "asking") : [];
     const details = new Map(
-      await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: withoutVariant(await detailsOf(ctx, reader!, step.shown ?? step.input), step) } : await bulkOf(ctx, reader!, step)] as const)),
+      await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: withoutVariant(await detailsOf(ctx, reader!, step.shown ?? step.input), step) } : bulkWithoutVariant(await bulkOf(ctx, reader!, step), step)] as const)),
     );
     // The jobs each of the app's job-ended messages told the chat of.
     const told = new Map<string, Doc<"assistantJobEnds">[]>(
@@ -821,6 +821,11 @@ export const messages = userQuery(messagesAction);
 function withoutVariant(details: Array<{ name: string; value: string }>, step: Doc<"assistantSteps">) {
   const { variant } = variantOf(step);
   return variant ? details.filter((detail) => !(detail.name === "kind" && detail.value === variant)) : details;
+}
+
+/** A bulk change's details, shared and each, without that `kind` either. */
+function bulkWithoutVariant(bulk: { details: Array<{ name: string; value: string }>; each: Array<Array<{ name: string; value: string }>> }, step: Doc<"assistantSteps">) {
+  return { details: withoutVariant(bulk.details, step), each: bulk.each.map((change) => withoutVariant(change, step)) };
 }
 
 function variantOf(step: Doc<"assistantSteps">) {
