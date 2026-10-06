@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import { useQueryState } from "nuqs";
-import { CircleCheck, CircleX, FileSearch, Hourglass, ListChecks, LoaderCircle, Plus, Square, type AppIcon } from "@/components/icons";
+import { AiIcon, CircleCheck, CircleX, FileSearch, Hourglass, ListChecks, Plus, Square, type AppIcon } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -30,8 +30,11 @@ const RAIL_PAGE = 12;
 /** Screenings in progress read to tell the running from the waiting: far more than a person has at once. */
 const ACTIVE_MAX = 50;
 
+/** A running screening is AI at work, so its row loops the AI mark. */
+const RunningScreeningIcon: AppIcon = (props) => <AiIcon working {...props} />;
+
 const ICON: Record<Exclude<Phase, "processing">, AppIcon> = {
-  running: LoaderCircle, waiting: Hourglass, reading: FileSearch, completed: CircleCheck, cancelled: Square, failed: CircleX, creditsExhausted: CircleX,
+  running: RunningScreeningIcon, waiting: Hourglass, reading: FileSearch, completed: CircleCheck, cancelled: Square, failed: CircleX, creditsExhausted: CircleX,
 };
 
 export function ScreeningPage() {

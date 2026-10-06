@@ -9,8 +9,23 @@ import posthog from "posthog-js";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { toast as sonnerToast } from "sonner";
 import {
-  AlertCircle, ArrowRight, CalendarClock, CheckCircle2, Coins, CreditCard, FileSearch, KeyRound, Languages,
-  ListFilter, Loader2, MessageSquare, Repeat, Search, Undo2, X, type AppIcon,
+  AlertCircle,
+  ArrowRight,
+  CalendarClock,
+  CheckCircle2,
+  Coins,
+  CreditCard,
+  FileSearch,
+  KeyRound,
+  ListFilter,
+  Loader2,
+  MessageSquare,
+  Repeat,
+  Search,
+  Undo2,
+  X,
+  type AppIcon,
+  TranslateIcon,
 } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -30,7 +45,7 @@ const KINDS: Record<Kind, { icon: AppIcon; tint: string }> = {
   extraction: { icon: FileSearch, tint: "#60a5fa" },
   screening: { icon: ListFilter, tint: "#34d399" },
   search: { icon: Search, tint: "#d9a27c" },
-  translation: { icon: Languages, tint: "#f472b6" },
+  translation: { icon: TranslateIcon, tint: "#f472b6" },
   wallet_api: { icon: KeyRound, tint: "#2dd4bf" },
   refund: { icon: Undo2, tint: "#94a3b8" },
 };

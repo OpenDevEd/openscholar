@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Languages } from "@/components/icons";
+import { TranslateIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { languageOptions } from "@/lib/ai/core/languages";
 import { useTranslations } from "next-intl";
@@ -94,7 +94,7 @@ export function LanguageSelector({
                   transition={transition}
                   className="absolute inset-0 flex items-center justify-center"
                 >
-                  <Languages className="h-3 w-3" />
+                  <TranslateIcon size={12} className="h-3 w-3" />
                   <SelectValue placeholder="" />
                 </motion.span>
               )}
