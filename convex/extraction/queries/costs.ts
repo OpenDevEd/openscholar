@@ -8,7 +8,7 @@ import { extractionPricing, extractionStamp } from "../../ai/serverModel";
 import { extractionPaperCredits, extractionRetryCredits } from "../../../lib/pricing";
 import { resolveOwnedJob } from "../access";
 import { creditsAgg } from "../aggregates";
-import { questionTypeValidator } from "../validators";
+import { MAX_QUESTIONS_PER_JOB, questionTypeValidator } from "../validators";
 import { readResultCounts } from "../resultCounts";
 
 /**
@@ -49,7 +49,9 @@ export const estimateJob = query({
 
 /** The most retrying a job's `count` failed questions costs (../mutations/retry.ts). */
 export async function retryCredits(ctx: QueryCtx, job: Doc<"extractionJobs">, count: number) {
-  return extractionRetryCredits(await extractionPricing(ctx, job), count, job.usePdfs ?? false);
+  const questions = await ctx.db.query("extractionQuestions").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(MAX_QUESTIONS_PER_JOB);
+  const textPerPaper = questions.filter((question) => question.type !== "boolean").length;
+  return extractionRetryCredits(await extractionPricing(ctx, job), count, job.usePdfs ?? false, { textPerPaper, papers: job.totalPapers || count });
 }
 
 /** What retrying a job's failures costs, for the retry dialog. Zero for an unowned or missing job. */

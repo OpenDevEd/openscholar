@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { creditsForUsage } from "./convert";
-import { extractionPaperCredits } from "./estimate";
+import { extractionPaperCredits, extractionRetryCredits } from "./estimate";
 
 // Measured on 2026-10-06 with the real abstract extraction prompt, 16 calls a model: the dearest call and the average one.
 const measured = [
@@ -28,5 +28,13 @@ describe("extractionPaperCredits", () => {
     const fromPdf = extractionPaperCredits({ model: luna }, [{ type: "string" }], true);
     expect(fromPdf).toBeGreaterThan(extractionPaperCredits({ model: luna }, [{ type: "string" }], false));
     expect(extractionPaperCredits({ model: luna }, [{ type: "string" }], true, false)).toBeLessThan(fromPdf);
+  });
+
+  it("holds a retry's yes/no failures on Jev once a paper's other questions are all counted", () => {
+    const sonnet = measured[1]!.pricing;
+    // One text question and four yes/no ones a paper, ten papers: of 30 failures, at most 10 can be text questions.
+    const retry = extractionRetryCredits({ model: sonnet, decision: jev }, 30, false, { textPerPaper: 1, papers: 10 });
+    expect(retry).toBeLessThan(extractionRetryCredits({ model: sonnet }, 30, false, { textPerPaper: 1, papers: 10 }));
+    expect(retry).toBeGreaterThanOrEqual(10 * extractionPaperCredits({ model: sonnet, decision: jev }, [{ type: "string" }, { type: "boolean" }], false, false));
   });
 });

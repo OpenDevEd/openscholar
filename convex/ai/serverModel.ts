@@ -91,10 +91,14 @@ export async function modelSummary(ctx: QueryCtx, id: Id<"models"> | null) {
   return { _id, modelId, name, inputPricePerMillion, outputPricePerMillion, reasoningEfforts, defaultEffort, reasoningMandatory, intelligenceIndex };
 }
 
-/** A model's price, or the server model's when there's none: what `resolveOpenRouterModel` runs and charges at. */
+/**
+ * A model's price for an estimate, or the server model's when there's none: what
+ * `resolveOpenRouterModel` runs. Output is priced at the model's reasoning rate where that's
+ * higher, since the output an estimate holds may all be reasoning.
+ */
 export async function pricingOf(ctx: QueryCtx | MutationCtx, id: Id<"models"> | null | undefined): Promise<Pricing> {
   const model = id ? await ctx.db.get("models", id) : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
-  return model ? { input: model.inputPricePerMillion, output: model.outputPricePerMillion } : { input: 0, output: 0 };
+  return model ? { input: model.inputPricePerMillion, output: Math.max(model.outputPricePerMillion, model.reasoningPricePerMillion ?? 0) } : { input: 0, output: 0 };
 }
 
 /** The price of what a user's `task` runs on. */

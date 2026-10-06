@@ -59,12 +59,18 @@ export function extractionPaperCredits(pricing: ExtractionPricing, questions: Re
 }
 
 /**
- * The most asking `count` of an extraction's failed questions again costs, before they're read:
- * each on the job's model, the PDF already indexed. Each paper then holds its own questions
- * exactly (`extractionPaperCredits`), which is never more.
+ * The most asking `count` of an extraction's failed questions again costs, before they're read,
+ * the PDF already indexed. Which questions failed isn't counted, so as many as can be are taken
+ * to be ones the job's model answers, at most `textPerPaper` a paper of `papers`; the rest are
+ * yes/no questions, each at most one call to Jev. Each paper then holds its own questions exactly
+ * (`extractionPaperCredits`), which is never more.
  */
-export function extractionRetryCredits(pricing: ExtractionPricing, count: number, pdf: boolean): number {
-  return estimateCredits(pricing.model, pdf ? CALL_TOKENS.pdfQuestion : CALL_TOKENS.paper, count);
+export function extractionRetryCredits(pricing: ExtractionPricing, count: number, pdf: boolean, { textPerPaper, papers }: { textPerPaper: number; papers: number }): number {
+  const text = pricing.decision ? Math.min(count, textPerPaper * papers) : count;
+  return (
+    estimateCredits(pricing.model, pdf ? CALL_TOKENS.pdfQuestion : CALL_TOKENS.paper, text) +
+    (pricing.decision ? estimateCredits(pricing.decision, pdf ? CALL_TOKENS.pdfDecision : CALL_TOKENS.paper, count - text) : 0)
+  );
 }
 
 /** What screening one paper costs at most on a model: one call about its abstract, every question answered in it. */
