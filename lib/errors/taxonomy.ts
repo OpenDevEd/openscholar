@@ -493,6 +493,11 @@ export function classifyChatError(error: unknown): ChatErrorEnvelope {
     }
   }
 
+  // The AI SDK's stream timeout (convex/assistant/turn.ts): the model service stopped answering.
+  if (rec.name === "TimeoutError") {
+    return envelope("provider_5xx", message, { providerName });
+  }
+
   // Network / fetch failures — no statusCode available.
   if (isNetworkError(rec)) {
     return envelope("network", message, { providerName });

@@ -28,6 +28,11 @@ import { classifyChatError, serializeChatError } from "../../lib/errors/taxonomy
 import { convertUsdToCredits } from "../../lib/pricing";
 
 export const STOP_ABORT_POLL_INTERVAL_MS = 500;
+/** How long a request waits for the model to start answering, reasoning included, and then between parts of its answer. */
+const FIRST_CHUNK_MS = 120_000;
+const CHUNK_MS = 90_000;
+/** What a request those ended fails with: shown as the model service's error (lib/errors/taxonomy.ts). */
+const STALLED = Object.assign(new Error("The model stopped answering."), { name: "TimeoutError" });
 
 export type Turn = {
   agent: Agent;
@@ -151,6 +156,8 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   let capturedGenerationId: string | undefined;
   let capturedModelSlug: string | undefined;
   let streamErrored = false;
+  // The stream ended without the person's Stop: its writer gave up on it, or the timeout ended it.
+  let endedUnstopped = false;
   let streamAbortedByUser = false;
   let streamReturned = false;
   // Credits for this turn are held under chargeId until the turn settles.
@@ -233,6 +240,9 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           // abort over a ~2s wait for a retry that mid-stream can't
           // salvage anyway.
           maxRetries: 0,
+          // A provider that stops streaming leaves the person on "Thinking" for as long as the action may run: one
+          // request sat for seven minutes. The request ends here instead, and fails (failStalledReply), so they can send again.
+          timeout: { firstChunkMs: FIRST_CHUNK_MS, chunkMs: CHUNK_MS },
           // Claude caches the context and earlier turns; the thread id keeps
           // every turn on the same upstream host so that cache stays warm.
           providerOptions: callOptions(model, { cache: turn.cache ?? true, sessionId: threadId, effort: turn.effort }),
@@ -271,7 +281,10 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
               console.info("[chat] stream aborted by user", { ...log, threadId, stepCount: steps.length });
             } else {
               streamErrored = true;
-              console.error("[chat] stream ended by its writer, not by a stop: the reply's message has the reason", { ...log, threadId, stepCount: steps.length });
+              // Or the timeout above ended it. Which one is told once the stream has returned (failStalledReply):
+              // the SDK doesn't wait for what this callback starts.
+              endedUnstopped = true;
+              console.error("[chat] stream ended without a stop: by its writer, or by the timeout", { ...log, threadId, stepCount: steps.length });
             }
           },
           onError: async ({ error }) => {
@@ -314,6 +327,11 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
         },
       );
       streamReturned = true;
+      // A reply the timeout ended is still pending: its text so far is kept, and it fails with the model service's error.
+      if (endedUnstopped && (await failStalledReply(ctx, threadId, promptMessageId, { model: capturedModelSlug, provider: "openrouter" }).catch(() => false))) {
+        console.error("[chat] the model stopped answering: the request timed out", { ...log, threadId });
+        await recordError(STALLED).catch(() => {});
+      }
     } catch (err) {
       // A cancellation after Stop is the stop arriving (see isStop), handled below with every other stop.
       const stopped = isStop(err);
@@ -534,7 +552,8 @@ async function findPendingAssistantForPrompt(
   ctx: ActionCtx,
   threadId: string,
   promptMessageId: string,
-): Promise<{ _id: string } | null> {
+  statuses: Array<"pending" | "failed"> = ["pending", "failed"],
+): Promise<{ _id: string; status?: string; error?: string } | null> {
   const promptMessages = await ctx.runQuery(
     components.agent.messages.getMessagesByIds,
     { messageIds: [promptMessageId as never] },
@@ -543,7 +562,7 @@ async function findPendingAssistantForPrompt(
   const { page } = await listMessages(ctx, components.agent, {
     threadId,
     paginationOpts: { numItems: 20, cursor: null },
-    statuses: ["pending", "failed"],
+    statuses,
   });
   return (
     page.find(
@@ -621,6 +640,30 @@ async function patchLastAssistantAsFailed(
  * `reason?.toString()` returns the string itself. Duplicate patches
  * write identical values.
  */
+/** What the agent fails a reply with when its stream was aborted by anything but its own signal (@convex-dev/agent streamText). */
+const AGENT_ABORTED = "streamText aborted";
+
+/**
+ * Fails a reply the stream timeout ended (`timeout` in runTurn) with the model service's error,
+ * keeping what it had written: finalizeMessage consolidates its stream deltas into it first, as a
+ * stopped reply's are (persistAssistantAbortSentinel). The agent has usually failed it already,
+ * with its generic abort text. A reply its writer failed keeps the writer's own reason, and is
+ * left as it is. Returns whether it failed one.
+ */
+async function failStalledReply(ctx: ActionCtx, threadId: string, promptMessageId: string, metadata: { model?: string; provider?: string }): Promise<boolean> {
+  const target = await findPendingAssistantForPrompt(ctx, threadId, promptMessageId);
+  if (!target || (target.status === "failed" && target.error !== AGENT_ABORTED)) return false;
+  const error = serializeChatError(classifyChatError(STALLED));
+  await ctx
+    .runMutation(components.agent.messages.finalizeMessage, { messageId: target._id as never, result: { status: "failed", error } })
+    .catch((err) => console.error("[chat] failed to finalize a reply that timed out", { threadId, err: errorToLogString(err) }));
+  await ctx.runMutation(components.agent.messages.updateMessage, {
+    messageId: target._id,
+    patch: { status: "failed", error, ...(metadata.model ? { model: metadata.model } : {}), ...(metadata.provider ? { provider: metadata.provider } : {}) },
+  });
+  return true;
+}
+
 async function persistAssistantAbortSentinel(
   ctx: ActionCtx,
   threadId: string,
