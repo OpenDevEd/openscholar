@@ -33,6 +33,8 @@ import { calculateCostInDollars, usageOf } from "../../lib/ai/core/cost";
 import { startAbortPoller } from "../../lib/ai/abort-poller";
 import { pickProviderCostUsd } from "../../lib/ai/pick-provider-cost";
 import { convertUsdToCredits } from "../../lib/pricing";
+import { captureUserGenerationLater } from "../lib/analyticsEvents";
+import { extractErrorCode, extractHttpStatus } from "../../lib/posthog-ai-shared";
 import { INSTRUCTIONS } from "./agent";
 
 /** A reply whose last request read more input than this is followed by a compaction. */
@@ -171,6 +173,8 @@ export async function summarize(
   const stopped = new AbortController();
   const stopPolling = startAbortPoller({ readFlag: args.shouldStop, onAbort: () => stopped.abort() });
   let settled = false;
+  const startedAt = Date.now();
+  const generation = { provider: "openrouter" as const, modelId: modelSlug, feature: "assistant_summary", traceId: args.chargeId, sessionId: args.agentThreadId };
   try {
     const result = await generateText({
       model,
@@ -193,7 +197,25 @@ export async function summarize(
       usage: { kind: "chat", description: "Conversation summary", model: modelSlug, ...tokenDetails(usage), costUsd: usd },
     });
     settled = true;
+    await captureUserGenerationLater(ctx, args.senderId, {
+      ...generation,
+      usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
+      latencyMs: Date.now() - startedAt,
+      creditsDeducted: credits,
+      metadata: { $ai_cache_read_input_tokens: usage.cacheReadTokens, $ai_cache_creation_input_tokens: usage.cacheWriteTokens, $ai_reasoning_tokens: usage.reasoningTokens },
+    });
     return { summary: result.text.trim(), credits };
+  } catch (error) {
+    // A summary the person stopped didn't fail.
+    await captureUserGenerationLater(ctx, args.senderId, {
+      ...generation,
+      usage: {},
+      latencyMs: Date.now() - startedAt,
+      ...(stopped.signal.aborted
+        ? { metadata: { stopped: true } }
+        : { isError: true, httpStatus: extractHttpStatus(error), errorCode: extractErrorCode(error) }),
+    });
+    throw error;
   } finally {
     await stopPolling();
     if (!settled) await releaseCredits(ctx, { userId: args.senderId, chargeId: args.chargeId }).catch(() => {});

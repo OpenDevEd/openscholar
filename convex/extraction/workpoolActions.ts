@@ -3,7 +3,7 @@
 import type { ActionCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { components, internal } from "../_generated/api";
-import { captureGenerationLater } from "../ai/helpers";
+import { captureGenerationLater } from "../lib/analyticsEvents";
 import { RAG } from "@convex-dev/rag";
 import { openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
@@ -16,10 +16,7 @@ import { callOptions, type Effort } from "../../lib/ai/core/call-options";
 import { decideYesNo, paperState } from "../../lib/ai/decisions";
 import { usageOf } from "../../lib/ai/core/cost";
 import type { Usage } from "../../lib/ai/core/types";
-import {
-  truncateForTracking,
-  type AITrackingEntry,
-} from "../../lib/posthog-ai-shared";
+import type { AITrackingEntry } from "../../lib/posthog-ai-shared";
 import type { AIProvider } from "../../lib/types";
 import { createError } from "../lib/errors";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
@@ -252,7 +249,6 @@ function toEvidenceContext(candidates: RetrievalCandidate[]) {
 type ExtractionWithUsage = {
   result: ExtractionQuestionResult;
   usage: Usage;
-  prompt: string;
 };
 
 async function extractQuestionAnswer(params: {
@@ -324,7 +320,6 @@ async function extractQuestionAnswer(params: {
     return {
       result,
       usage: usageOf(generated.finalStep),
-      prompt,
     };
   } catch (error) {
     return {
@@ -343,7 +338,6 @@ async function extractQuestionAnswer(params: {
         pdfContentUsed: false,
       },
       usage: { inputTokens: 0, outputTokens: 0 },
-      prompt: "",
     };
   }
 }
@@ -412,7 +406,6 @@ async function extractQuestionAnswerFromAbstract(params: {
         pdfContentUsed: false,
       },
       usage: usageOf(generated.finalStep),
-      prompt,
     };
   } catch (error) {
     return {
@@ -434,7 +427,6 @@ async function extractQuestionAnswerFromAbstract(params: {
         pdfContentUsed: false,
       },
       usage: { inputTokens: 0, outputTokens: 0 },
-      prompt: "",
     };
   }
 }
@@ -903,7 +895,7 @@ async function runOneQuestionExtraction(params: {
   if (units.length === 0) {
     if (abstractText) {
       const qStart = Date.now();
-      const { result, usage, prompt } = await extractQuestionAnswerFromAbstract(
+      const { result, usage } = await extractQuestionAnswerFromAbstract(
         {
           model,
           effort,
@@ -938,8 +930,6 @@ async function runOneQuestionExtraction(params: {
             outputTokens: usage.outputTokens ?? 0,
           },
           latencyMs: qLatency,
-          input: truncateForTracking(prompt),
-          output: truncateForTracking(JSON.stringify(result)),
           temperature: 0,
         },
       };
@@ -1021,7 +1011,7 @@ async function runOneQuestionExtraction(params: {
   };
 
   const qStart = Date.now();
-  const { result, usage, prompt } = await extractQuestionAnswer({
+  const { result, usage } = await extractQuestionAnswer({
     model,
     effort,
     question,
@@ -1056,8 +1046,6 @@ async function runOneQuestionExtraction(params: {
         outputTokens: usage.outputTokens ?? 0,
       },
       latencyMs: qLatency,
-      input: truncateForTracking(prompt),
-      output: truncateForTracking(JSON.stringify(result)),
       temperature: 0,
     },
   };
@@ -1161,8 +1149,6 @@ export async function captureCompletedQuestionTracking(ctx: ActionCtx, {
         feature: outcome.trackingEntry.feature,
         usage: outcome.trackingEntry.usage,
         latencyMs: outcome.trackingEntry.latencyMs,
-        input: outcome.trackingEntry.input,
-        output: outcome.trackingEntry.output,
         temperature: outcome.trackingEntry.temperature,
         creditsDeducted: outcome.creditsUsed,
       });
@@ -1365,8 +1351,6 @@ export async function runDecisionQuestions({
               feature: "extraction_question_decision",
               usage: { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 },
               latencyMs: Date.now() - startedAt,
-              input: truncateForTracking(JSON.stringify({ questions: prompts })),
-              output: truncateForTracking(JSON.stringify(answers)),
               temperature: 0,
             }
           : null,

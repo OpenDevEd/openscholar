@@ -21,7 +21,7 @@ import {
 } from "./helpers";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { toExtractionQuestions } from "../../lib/ai/core/schemas";
-import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
+import type { AITrackingEntry } from "../../lib/posthog-ai-shared";
 import { CALL_TOKENS } from "../../lib/pricing";
 import { internal } from "../_generated/api";
 import { BATCH_LOCK_TTL_MS } from "../lib/locks";
@@ -197,8 +197,6 @@ export const generateBatchTranslations = action({
                   outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
                 },
                 latencyMs: tracking.latencyMs,
-                input: truncateForTracking(tracking.input),
-                output: truncateForTracking(tracking.output),
                 temperature: tracking.temperature,
               };
             },
@@ -301,8 +299,6 @@ export const generateBatchScreeningResponses = action({
                   outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
                 },
                 latencyMs: tracking.latencyMs,
-                input: truncateForTracking(tracking.input),
-                output: truncateForTracking(tracking.output),
                 temperature: tracking.temperature,
               };
             },

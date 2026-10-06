@@ -14,7 +14,7 @@ function openRouterGeneration(usd: number) {
   return async () =>
     new Response(
       JSON.stringify({
-        data: { id: "gen_1", model: "openai/gpt-6-luna", total_cost: usd, native_tokens_cached: 300, native_tokens_reasoning: 20 },
+        data: { id: "gen_1", model: "openai/gpt-6-luna", total_cost: usd, native_tokens_prompt: 900, native_tokens_completion: 50, native_tokens_cached: 300, native_tokens_reasoning: 20 },
       }),
       { status: 200 },
     );
@@ -112,6 +112,44 @@ describe("settling a charge", () => {
     });
 
     expect(await usageFor(t, "chat:stopped")).toMatchObject({ cacheReadTokens: 4_300, cacheWriteTokens: 150, reasoningTokens: 60 });
+  });
+
+  it("sends a stopped request's $ai_generation once, with OpenRouter's tokens and what it was charged", async () => {
+    vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.01)));
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 1_000);
+    await hold(t, userId, "chat:tracked", 200);
+    // What the request's finished steps used, as runTurn hands it over.
+    const analytics = JSON.stringify({ provider: "openrouter", modelId: "openai/gpt-6-luna", feature: "assistant", usage: { inputTokens: 1_000, outputTokens: 10 }, latencyMs: 2_000, metadata: { stopped: true } });
+
+    const settle = () =>
+      t.action(internal.billing.openRouter.settleFromOpenRouter, {
+        userId,
+        chargeId: "chat:tracked",
+        generationId: "gen_1",
+        extraUsd: 0,
+        earlierTokens: { cacheReadTokens: 4_000, cacheWriteTokens: 0, reasoningTokens: 40 },
+        analytics,
+        attempt: 0,
+      });
+    // Settled twice, as a retry can: charged once, and counted once.
+    await settle();
+    await settle();
+
+    const scheduled = await t.run(async (ctx) => (await ctx.db.system.query("_scheduled_functions").collect()).filter((job) => job.name === "lib/analytics:capture"));
+    expect(scheduled).toHaveLength(1);
+    const { events } = scheduled[0]!.args[0] as { events: Array<{ event: string; properties: string }> };
+    expect(events.map((sent) => sent.event)).toEqual(["$ai_generation"]);
+    // $0.01 is 130 credits.
+    expect(JSON.parse(events[0]!.properties)).toMatchObject({
+      feature: "assistant",
+      $ai_input_tokens: 1_900,
+      $ai_output_tokens: 60,
+      credits_deducted: 130,
+      $ai_cache_read_input_tokens: 4_300,
+      $ai_reasoning_tokens: 60,
+      stopped: true,
+    });
   });
 
   it("still charges once when the hold was released before the work finished", async () => {

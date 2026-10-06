@@ -1,55 +1,42 @@
 "use node";
 
+import { PostHog } from "posthog-node";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
-import {
-  captureAIGenerationBatchServer,
-  captureAIGenerationServer,
-  captureServerEvent,
-  type ServerAIGenerationParams,
-} from "../../lib/posthog-server";
-import type { AITrackingEntry } from "../../lib/posthog-ai-shared";
-import type { AIProvider } from "../../lib/types/ai.types";
+import { analyticsEventValidator } from "./analyticsEvents";
+import { requireAppUrl } from "./env";
+
+/** The site these events came from, or none where the deployment doesn't say: analytics never fails. */
+function site() {
+  try {
+    return new URL(requireAppUrl()).host;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
- * Fire-and-forget PostHog event capture from Convex mutations.
- * Schedule via `ctx.scheduler.runAfter(0, internal.lib.analytics.captureEvent, {...})`.
+ * Sends events to PostHog after the work that made them (./analyticsEvents.ts
+ * schedules it), so the work never waits on PostHog.
+ *
+ * posthog-node gives each event an ID that its retries keep, and leaves GeoIP
+ * off: these requests come from this server, not from the person. Every event
+ * names the site it came from in `environment`, as the browser's events do.
  */
-export const captureEvent = internalAction({
-  args: {
-    distinctId: v.string(),
-    event: v.string(),
-    properties: v.optional(v.record(v.string(), v.any())),
-  },
+export const capture = internalAction({
+  args: { events: v.array(analyticsEventValidator) },
   returns: v.null(),
-  handler: async (_ctx, args) => {
-    await captureServerEvent(
-      args.distinctId,
-      args.event,
-      (args.properties as Record<string, unknown>) ?? {},
-    );
-    return null;
-  },
-});
-
-/**
- * Sends `$ai_generation` events after the work that made them, so AI work
- * doesn't wait on PostHog. Schedule via `ctx.scheduler.runAfter(0, ...)`.
- */
-export const captureAIGeneration = internalAction({
-  args: { params: v.any() },
-  returns: v.null(),
-  handler: async (_ctx, { params }) => {
-    await captureAIGenerationServer(params as ServerAIGenerationParams);
-    return null;
-  },
-});
-
-export const captureAIGenerationBatch = internalAction({
-  args: { distinctId: v.string(), provider: v.string(), modelId: v.string(), entries: v.array(v.any()) },
-  returns: v.null(),
-  handler: async (_ctx, args) => {
-    await captureAIGenerationBatchServer(args.distinctId, args.provider as AIProvider, args.modelId, args.entries as AITrackingEntry[]);
+  handler: async (_ctx, { events }) => {
+    const key = process.env.POSTHOG_KEY;
+    if (!key) return null;
+    // OpenScholar's project is in PostHog's EU region, where the browser's /data proxy sends too (next.config.ts).
+    const client = new PostHog(key, { host: process.env.POSTHOG_HOST || "https://eu.i.posthog.com" });
+    client.on("error", (error) => console.error("[analytics] PostHog refused events", error));
+    const environment = site();
+    for (const { distinctId, event, properties, timestamp } of events) {
+      client.capture({ distinctId, event, properties: { ...JSON.parse(properties), environment }, timestamp: new Date(timestamp) });
+    }
+    await client.shutdown();
     return null;
   },
 });

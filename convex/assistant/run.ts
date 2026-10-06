@@ -112,6 +112,7 @@ export const reply = internalAction({
     }
     await runTurn(ctx, {
       agent: assistant,
+      feature: "assistant",
       threadId: agentThreadId,
       promptMessageId,
       userId: senderId,

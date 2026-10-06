@@ -20,7 +20,8 @@ import { MODEL_UNAVAILABLE_MESSAGE } from "../models/catalog";
 import { createError } from "../lib/errors";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import type { ScreeningResultData } from "../../lib/ai/core/batch-types";
-import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
+import type { AITrackingEntry } from "../../lib/posthog-ai-shared";
+import { captureLater } from "../lib/analyticsEvents";
 
 type ScreeningActionResult = {
   model?: string;
@@ -167,8 +168,6 @@ export const screenPaperAction = internalAction({
                   outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
                 },
                 latencyMs: tracking.latencyMs,
-                input: truncateForTracking(tracking.input),
-                output: truncateForTracking(tracking.output),
                 temperature: tracking.temperature,
               }]
             : [];
@@ -224,11 +223,12 @@ export const screenPaperAction = internalAction({
         );
 
         // Track credits exhaustion for screening job
-        await ctx.scheduler.runAfter(0, internal.lib.analytics.captureEvent, {
+        await captureLater(ctx, [{
           distinctId: context.clerkId,
           event: "screening_job_failed",
           properties: { reason: "credits_exhausted", job_id: args.jobId, total_papers: job.totalPapers },
-        });
+          timestamp: Date.now(),
+        }]);
       }
 
       throw error;

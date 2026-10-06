@@ -19,7 +19,6 @@ import type { Effort } from '../core/call-options'
 import type { AIProvider } from '@/lib/types'
 import { captureAIGeneration, captureAIGenerationBatch } from '@/lib/posthog-ai'
 import {
-  truncateForTracking,
   extractHttpStatus,
   extractErrorCode,
   type AITrackingEntry,
@@ -56,10 +55,6 @@ export function createClientExecutor<TParams, TOutput, TResult>(
     }
     const model = await getProviderModel(config.provider, config.apiKey, config.model)
     const operationConfig = configFactory(params)
-    const prompts = operationConfig.buildPrompts(operationConfig.input, 0)
-    const inputForTracking = truncateForTracking(
-      `[system] ${prompts.system}\n[user] ${prompts.prompt}`
-    )
 
     const start = performance.now()
     try {
@@ -69,7 +64,6 @@ export function createClientExecutor<TParams, TOutput, TResult>(
         ...operationConfig,
       })
       const latencyMs = performance.now() - start
-      const outputForTracking = truncateForTracking(JSON.stringify(output))
 
       // Tracking is fire-and-forget: never let a PostHog failure crash a
       // successful AI operation (e.g., consent denied, SDK not initialized).
@@ -83,8 +77,6 @@ export function createClientExecutor<TParams, TOutput, TResult>(
             outputTokens: usage.outputTokens ?? usage.completionTokens,
           },
           latencyMs,
-          input: inputForTracking,
-          output: outputForTracking,
           temperature: operationConfig.temperature,
         })
       } catch {
@@ -101,10 +93,7 @@ export function createClientExecutor<TParams, TOutput, TResult>(
           feature,
           usage: { inputTokens: 0, outputTokens: 0 },
           latencyMs,
-          input: inputForTracking,
-          output: '',
           isError: true,
-          errorMessage: error instanceof Error ? error.message : String(error),
           httpStatus: extractHttpStatus(error),
           errorCode: extractErrorCode(error),
           temperature: operationConfig.temperature,
@@ -204,8 +193,6 @@ export async function generateBatchScreeningResponses(
             outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
           },
           latencyMs: tracking.latencyMs,
-          input: truncateForTracking(tracking.input),
-          output: truncateForTracking(tracking.output),
           temperature: tracking.temperature,
         }
       }
@@ -223,10 +210,7 @@ export async function generateBatchScreeningResponses(
         feature: 'batch_screening_responses',
         usage: { inputTokens: 0, outputTokens: 0 },
         latencyMs,
-        input: `Batch screening: ${papers.length} papers, ${questions.length} questions`,
-        output: '',
         isError: true,
-        errorMessage: error instanceof Error ? error.message : String(error),
         httpStatus: extractHttpStatus(error),
         errorCode: extractErrorCode(error),
       })
@@ -275,8 +259,6 @@ export async function generateBatchTranslations(
             outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
           },
           latencyMs: tracking.latencyMs,
-          input: truncateForTracking(tracking.input),
-          output: truncateForTracking(tracking.output),
           temperature: tracking.temperature,
         }
       }
@@ -294,10 +276,7 @@ export async function generateBatchTranslations(
         feature: 'batch_translations',
         usage: { inputTokens: 0, outputTokens: 0 },
         latencyMs,
-        input: `Batch translation: ${papers.length} papers -> ${targetLanguage ?? 'auto'}`,
-        output: '',
         isError: true,
-        errorMessage: error instanceof Error ? error.message : String(error),
         httpStatus: extractHttpStatus(error),
         errorCode: extractErrorCode(error),
       })

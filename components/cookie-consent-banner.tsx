@@ -84,7 +84,8 @@ export function CookieConsentBanner() {
 
   const shouldShowBanner = useCallback(() => {
     if (typeof window === "undefined") return false;
-    if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return false;
+    // Nothing to consent to where PostHog didn't start (instrumentation-client.ts).
+    if (!posthog.__loaded) return false;
 
     const stored = getStoredConsent();
     if (stored) return false;
