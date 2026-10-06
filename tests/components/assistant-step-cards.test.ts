@@ -25,14 +25,16 @@ describe("the step map's cards", () => {
     ])).toEqual([["a", "c"], ["b"], ["d"]]);
   });
 
-  it("hides a failed read once the same read ran again and worked, and keeps every other failure", () => {
+  it("hides a failed read once the same read worked in a later request, and keeps every other failure", () => {
     const failed = { status: "failed", error: "`about` takes at most 100 countries" };
     expect(shownSteps([
-      step("a", "research/papers:search", { reads: true, ...failed }),
-      step("b", "research/papers:search", { reads: true }),
-      step("c", "research/papers:get", { reads: true, ...failed }),
-      step("d", "library/papers:save", failed),
-      step("e", "library/papers:save", { canUndo: true }),
-    ]).map((one) => one.id)).toEqual(["b", "c", "d", "e"]);
+      step("a", "research/papers:search", { reads: true, request: 0, ...failed }),
+      // Called with the failed one, before the model heard of it: not a recovery.
+      step("b", "research/papers:get", { reads: true, request: 0, ...failed }),
+      step("c", "research/papers:get", { reads: true, request: 0 }),
+      step("d", "research/papers:search", { reads: true, request: 2 }),
+      step("e", "library/papers:save", failed),
+      step("f", "library/papers:save", { canUndo: true }),
+    ]).map((one) => one.id)).toEqual(["b", "c", "d", "e", "f"]);
   });
 });

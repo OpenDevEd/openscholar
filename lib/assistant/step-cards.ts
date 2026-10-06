@@ -37,10 +37,12 @@ export function runsOf<S extends CardStep>(steps: S[]): S[][] {
 
 /**
  * The steps a reply shows, in the order they ran: a read that failed is left out once the same
- * action ran again later and worked. The assistant recovered, and the error was written for it
- * ("`about` takes at most 100 countries"), not for the person reading. A failed read it never got
- * past, and every failed change, stays.
+ * action worked in a later request of the reply, after the model was told of the failure. The
+ * assistant recovered, and the error was written for it ("`about` takes at most 100 countries"),
+ * not for the person reading. A failed read it never got past, one beside a call of the same
+ * action that worked in the same request, and every failed change, stay.
  */
-export function shownSteps<S extends CardStep & { reads?: true }>(steps: S[]): S[] {
-  return steps.filter((step, i) => !(step.reads && step.status === "failed" && steps.slice(i + 1).some((later) => later.action === step.action && later.variant === step.variant && later.status === "done")));
+export function shownSteps<S extends CardStep & { reads?: true; request?: number }>(steps: S[]): S[] {
+  const recovered = (step: S, later: S) => later.action === step.action && later.variant === step.variant && later.status === "done" && (later.request ?? -1) > (step.request ?? Infinity);
+  return steps.filter((step, i) => !(step.reads && step.status === "failed" && steps.slice(i + 1).some((later) => recovered(step, later))));
 }

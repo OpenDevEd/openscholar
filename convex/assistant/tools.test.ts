@@ -1109,7 +1109,7 @@ describe("the assistant's tools", () => {
       .mockImplementationOnce(calling({ id: "list", name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } }))
       .mockImplementationOnce(finishingDoStream(["You have none."]));
     await say("What collections do I have?");
-    expect(await steps()).toMatchObject([{ path: "library/collections:listCollections", status: "done", reads: true }]);
+    expect(await steps()).toMatchObject([{ path: "library/collections:listCollections", status: "done", reads: true, request: 0 }]);
   });
 
   it("show a step whose reply died as failed, not as running for ever, and stop a reply that goes round in circles", async () => {

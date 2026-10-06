@@ -403,7 +403,7 @@ export function toolsFor(
     const subject = subjectOf(input);
     const stepId =
       allowed ??
-      (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(within ? { credits: within.credits } : {}), ...(onlyReads(entry) ? { reads: true as const } : {}) }));
+      (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(within ? { credits: within.credits } : {}), ...(onlyReads(entry) ? { reads: true as const, request: made } : {}) }));
     try {
       // A change ends its step in its own transaction, so the two are saved together. A read's step is ended here.
       const change = changesSomething(entry);

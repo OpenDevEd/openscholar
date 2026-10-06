@@ -184,6 +184,8 @@ export const assistantStepFields = {
   variant: v.optional(v.string()),
   /** Its action only reads (./tools.ts `onlyReads`): one that failed and was run again with success is hidden from the chat (lib/assistant/step-cards.ts). */
   reads: v.optional(v.literal(true)),
+  /** On a step that only reads: the reply's request it was called in, by how many calls the reply made before that request. */
+  request: v.optional(v.number()),
   /** Set while a bulk change's undo is putting its changes back (./bulk.ts): what would undo it is the reversal's to read until it's done. */
   reverting: v.optional(v.boolean()),
   /**
