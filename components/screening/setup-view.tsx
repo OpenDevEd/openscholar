@@ -168,8 +168,9 @@ export function SetupView({
   const balance = account?.balance ?? 0;
   // The most these papers cost on the model Screen all runs on: what the job holds when it starts.
   const { data: estimate } = useProtectedQuery(api.screening.queries.estimate, { papers });
+  // Until the figure for these papers arrives, nothing can start.
   const credits = estimate?.credits ?? 0;
-  const enough = credits <= balance;
+  const enough = estimate !== undefined && credits <= balance;
   // The server reads the saved search, so edits still being saved would be screened without.
   const { pending: savingEdits } = useResearchStatus();
   const screen = useAction(api.screening.start.screen);
@@ -605,7 +606,7 @@ export function SetupView({
             ) : null}
           </div>
           {/* A search's papers can cost less than the estimate: its page's answers are reused and its rating filter drops papers. The server checks what's left. */}
-          <Button disabled={busy || unscored || (!enough && source?.kind !== "search") || papers < 1 || Boolean(savingEdits)} onClick={start}>
+          <Button disabled={busy || unscored || estimate === undefined || (!enough && source?.kind !== "search") || papers < 1 || Boolean(savingEdits)} onClick={start}>
             {busy ? t("readingPapers") : t("screenPapers", { count: papers })}
           </Button>
         </div>

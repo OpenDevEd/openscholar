@@ -23,8 +23,10 @@ describe("extractionPaperCredits", () => {
     expect(oneYesNo).toBeLessThan(extractionPaperCredits({ model: sonnet }, [{ type: "string" }, { type: "boolean" }], false));
   });
 
-  it("holds more for a paper read from its PDF than from its abstract", () => {
+  it("holds more for a paper read from its PDF than from its abstract, and less again once the PDF is indexed", () => {
     const luna = measured[0]!.pricing;
-    expect(extractionPaperCredits({ model: luna }, [{ type: "string" }], true)).toBeGreaterThan(extractionPaperCredits({ model: luna }, [{ type: "string" }], false));
+    const fromPdf = extractionPaperCredits({ model: luna }, [{ type: "string" }], true);
+    expect(fromPdf).toBeGreaterThan(extractionPaperCredits({ model: luna }, [{ type: "string" }], false));
+    expect(extractionPaperCredits({ model: luna }, [{ type: "string" }], true, false)).toBeLessThan(fromPdf);
   });
 });

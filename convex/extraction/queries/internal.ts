@@ -34,7 +34,7 @@ import {
 } from "../validators";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { extractionPricing } from "../../ai/serverModel";
-import { extractionPaperCredits, extractionRetryCredits } from "../../../lib/pricing";
+import { extractionPaperCredits } from "../../../lib/pricing";
 
 export const getJobInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
@@ -70,10 +70,9 @@ export const paperCredits = internalQuery({
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
       .take(MAX_QUESTIONS_PER_JOB);
-    const pricing = await extractionPricing(ctx, job);
-    if (!questionKeys) return { credits: extractionPaperCredits(pricing, all, pdf), questions: all.length };
     // A retry asks some of them again, of a paper already read.
-    return { credits: extractionRetryCredits(pricing, questionKeys.length, pdf), questions: questionKeys.length };
+    const asked = questionKeys ? all.filter((question) => questionKeys.includes(question.key)) : all;
+    return { credits: extractionPaperCredits(await extractionPricing(ctx, job), asked, pdf, pdf && !questionKeys), questions: asked.length };
   },
 });
 

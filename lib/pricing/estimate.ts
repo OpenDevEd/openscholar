@@ -14,6 +14,8 @@ export const CALL_TOKENS = {
   paper: { input: 3_500, output: 600 },
   /** One question answered from a PDF: the abstract prompt with up to 16 passages of 900 characters. */
   pdfQuestion: { input: 11_000, output: 600 },
+  /** Jev's yes/no answers for a paper read from its full text: up to the 28,000 tokens a decision request takes (lib/ai/decisions.ts). */
+  pdfDecision: { input: 28_000, output: 600 },
   /** Indexing one PDF's text for its questions to search, at the embedding model's price: a paper of about 60 pages. */
   pdfIndex: { input: 50_000, output: 0 },
   /** One search, translation or question-writing helper, or one paper's title and abstract translated: at most 1,960 in and 1,433 out. */
@@ -44,18 +46,23 @@ export type ExtractionPricing = { model: Pricing; decision?: Pricing };
 
 /**
  * What one paper of an extraction costs at most: each question on the job's model, its yes/no
- * questions in one call to Jev when it has one, and indexing the paper's PDF when it reads one.
+ * questions in one call to Jev when it has one, and indexing the paper's PDF when it reads one and
+ * hasn't yet (a retry asks again of a paper already read).
  */
-export function extractionPaperCredits(pricing: ExtractionPricing, questions: ReadonlyArray<{ type: string }>, pdf: boolean): number {
+export function extractionPaperCredits(pricing: ExtractionPricing, questions: ReadonlyArray<{ type: string }>, pdf: boolean, index = pdf): number {
   const yesNo = pricing.decision ? questions.filter((asked) => asked.type === "boolean").length : 0;
   return (
     estimateCredits(pricing.model, pdf ? CALL_TOKENS.pdfQuestion : CALL_TOKENS.paper, questions.length - yesNo) +
-    (yesNo && pricing.decision ? estimateCredits(pricing.decision, CALL_TOKENS.paper) : 0) +
-    (pdf ? estimateCredits(EMBEDDING_PRICING, CALL_TOKENS.pdfIndex) : 0)
+    (yesNo && pricing.decision ? estimateCredits(pricing.decision, pdf ? CALL_TOKENS.pdfDecision : CALL_TOKENS.paper) : 0) +
+    (index ? estimateCredits(EMBEDDING_PRICING, CALL_TOKENS.pdfIndex) : 0)
   );
 }
 
-/** What asking `count` of an extraction's questions again costs at most: each on the job's model, its PDF already indexed. */
+/**
+ * The most asking `count` of an extraction's failed questions again costs, before they're read:
+ * each on the job's model, the PDF already indexed. Each paper then holds its own questions
+ * exactly (`extractionPaperCredits`), which is never more.
+ */
 export function extractionRetryCredits(pricing: ExtractionPricing, count: number, pdf: boolean): number {
   return estimateCredits(pricing.model, pdf ? CALL_TOKENS.pdfQuestion : CALL_TOKENS.paper, count);
 }

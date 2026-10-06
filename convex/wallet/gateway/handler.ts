@@ -3,6 +3,7 @@ import { internal } from "../../_generated/api";
 import { streamText, generateText } from "ai";
 import { getProviderModel } from "../../../lib/ai/server/providers";
 import { parseAndValidateRequest, convertToAISdkParams } from "./parseRequest";
+import type { ChatCompletionRequest } from "./types";
 import {
   generateResponseId,
   formatNonStreamingResponse,
@@ -182,12 +183,13 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     );
   }
 
-  // 8. Hold what the call can cost, as OpenRouter does: its messages and the reply it allows at the
-  // model's price, plus the search a web-search call runs. It settles to what it really cost.
+  // 8. Hold what the call can cost, as OpenRouter does: its text and tools, and the longest reply it
+  // allows, the model's own most when it sets none, at the model's price, plus the search a web-search
+  // call runs. It settles to what it really cost.
   const requiredCredits =
     estimateCredits(
       { input: walletModel.inputPricePerMillion, output: walletModel.outputPricePerMillion },
-      { input: tokensIn(JSON.stringify(req.messages)), output: req.max_completion_tokens ?? req.max_tokens ?? CALL_TOKENS.chatMessage.output },
+      { input: tokensIn(requestText(req)), output: req.max_completion_tokens ?? req.max_tokens ?? walletModel.maxCompletionTokens ?? CALL_TOKENS.chatMessage.output },
       1,
       walletModel.costMarkup,
     ) +
@@ -270,6 +272,15 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
  * The caller's OpenRouter plugins plus the web plugin, which runs one search on
  * Exa before the model answers. A web plugin the caller configured wins.
  */
+/** The text a request sends the model: its messages' text parts and calls, and its tools. Images are priced by the provider, not by length. */
+export function requestText(req: ChatCompletionRequest): string {
+  const parts = req.messages.flatMap((message) => {
+    const text = typeof message.content === "string" ? [message.content] : (message.content ?? []).flatMap((part) => (part.type === "text" ? [part.text] : []));
+    return "tool_calls" in message && message.tool_calls ? [...text, JSON.stringify(message.tool_calls)] : text;
+  });
+  return parts.join("\n") + (req.tools ? JSON.stringify(req.tools) : "") + (req.response_format ? JSON.stringify(req.response_format) : "");
+}
+
 export function withWebPlugin(callerPlugins: unknown): unknown[] {
   const plugins = Array.isArray(callerPlugins) ? callerPlugins : [];
   const hasWeb = plugins.some((plugin) => (plugin as { id?: unknown } | null)?.id === "web");
