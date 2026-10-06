@@ -1461,9 +1461,6 @@
     "screenAllCredits": "क्रेडिट",
     "creditsTooltip": "ये क्रियाएँ क्रेडिट का उपयोग करती हैं।",
     "startChat": "चैट शुरू करें",
-    "continueChat": "चैट जारी रखें",
-    "untitledChat": "अनाम चैट",
-    "startChatFailed": "चैट शुरू करने में विफल",
     "placeholder": {
       "researchQuestion": "चिंता पर माइंडफुलनेस के प्रभाव क्या हैं?",
       "keywords": "mindfulness AND (anxiety OR stress)",

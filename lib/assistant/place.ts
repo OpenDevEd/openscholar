@@ -1,3 +1,5 @@
+import type { Mention } from "./mentions";
+
 /**
  * Where a tab's assistant panel is: open or folded, and on which chat. It lives in the
  * tab's session storage, so a reload, or a page opened by its address, comes back to the
@@ -74,3 +76,28 @@ export const panelPlace = {
     for (const listener of listeners) listener();
   },
 };
+
+/**
+ * A chat to start about a record from elsewhere in the app ("Start chat" on a search): the
+ * panel opens on a new chat with the record mentioned in its box. `id` tells one start from
+ * the next, so starting about the same search again puts it back.
+ */
+export type Seed = { id: number; mention: Mention };
+let seed: Seed | null = null;
+const seedListeners = new Set<() => void>();
+
+export const panelSeed = {
+  subscribe(listener: () => void) {
+    seedListeners.add(listener);
+    return () => void seedListeners.delete(listener);
+  },
+  get: () => seed,
+  onServer: (): Seed | null => null,
+};
+
+/** Opens the assistant on a new chat about a record, mentioned in the box for the person's first message. */
+export function chatAbout(mention: Mention) {
+  seed = { id: (seed?.id ?? 0) + 1, mention };
+  for (const listener of seedListeners) listener();
+  panelPlace.set(() => ({ open: true, threadId: null }));
+}
