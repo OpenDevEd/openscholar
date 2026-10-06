@@ -3,25 +3,22 @@
 // Small pieces the assistant's panel and its sheets share.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { useReducedMotion } from "motion/react";
+import { Shimmer } from "@/components/ai-elements/shimmer";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 /**
- * Text that a light sweeps across while work runs. It never drops below the muted
- * text colour, so the words stay readable mid-sweep; it holds still when motion is reduced.
+ * Text that AI Elements' shimmer sweeps across while work runs. It holds still when motion is
+ * reduced. Inline, so a line it's in still ends in an ellipsis when it's cut.
  */
 export function WorkingText({ children }: { children: string }) {
   const reduceMotion = useReducedMotion();
   if (reduceMotion) return <span className="text-muted-foreground">{children}</span>;
   return (
-    <motion.span
-      className="bg-[linear-gradient(90deg,var(--muted-foreground)_0%,var(--muted-foreground)_38%,var(--foreground)_50%,var(--muted-foreground)_62%,var(--muted-foreground)_100%)] bg-[length:250%_100%] bg-clip-text text-transparent"
-      animate={{ backgroundPosition: ["100% 0%", "-150% 0%"] }}
-      transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
-    >
+    <Shimmer as="span" duration={1.4} className="inline">
       {children}
-    </motion.span>
+    </Shimmer>
   );
 }
 

@@ -4010,11 +4010,6 @@
       "excluded": "除外",
       "unclear": "不明",
       "open": "開く",
-      "question": "質問",
-      "missing": "記載なし",
-      "noAnswer": "回答なし",
-      "titleOnly": "タイトルのみ",
-      "more": "残り {count} 件はページで",
       "finished": "完了",
       "cancelled": "キャンセル済み",
       "stopped": "停止",
@@ -4038,7 +4033,16 @@
         "failed": "抽出に失敗しました",
         "cancel": "抽出をキャンセル"
       },
-      "ended": "{kind, select, screening {スクリーニング} other {抽出}}{status, select, completed {が完了しました} creditsExhausted {は許可したクレジットで停止しました} cancelled {はキャンセルされました} other {に失敗しました}}"
-    }
+      "ended": "{kind, select, screening {スクリーニング} other {抽出}}{status, select, completed {が完了しました} creditsExhausted {は許可したクレジットで停止しました} cancelled {はキャンセルされました} other {に失敗しました}}",
+      "read": "読了",
+      "failedCount": "失敗",
+      "showLess": "表示を減らす",
+      "showAll": "実行中の {count} 件のジョブをすべて表示"
+    },
+    "jobKind": {
+      "screening": "スクリーニング",
+      "extraction": "抽出"
+    },
+    "moreJobs": "他 {count} 件のジョブ"
   }
 }

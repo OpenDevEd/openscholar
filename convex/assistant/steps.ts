@@ -383,11 +383,14 @@ export const forget = internalMutation({
       }
       await ctx.db.delete("assistantSteps", step._id);
     }
-    // What people let the assistant spend in it goes too (./spending.ts), and the ends of the jobs it started (./jobs.ts).
+    // What people let the assistant spend in it goes too (./spending.ts), and the ends and running rows of the jobs it started (./jobs.ts).
     const limitsLeft = await forgetLimits(ctx, threadId);
     const ends = await ctx.db.query("assistantJobEnds").withIndex("by_thread_and_pending", (q) => q.eq("threadId", threadId)).take(FORGET_STEPS);
     for (const end of ends) await ctx.db.delete("assistantJobEnds", end._id);
-    if (results.length === FORGET_RESULTS || undosLeft || steps.length === FORGET_STEPS || limitsLeft || ends.length === FORGET_STEPS) await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId });
+    // The jobs themselves run on; the chat that docked them is gone.
+    const running = await ctx.db.query("assistantJobs").withIndex("by_thread", (q) => q.eq("threadId", threadId)).take(FORGET_STEPS);
+    for (const row of running) await ctx.db.delete("assistantJobs", row._id);
+    if (results.length === FORGET_RESULTS || undosLeft || steps.length === FORGET_STEPS || limitsLeft || ends.length === FORGET_STEPS || running.length === FORGET_STEPS) await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId });
     return null;
   },
 });
