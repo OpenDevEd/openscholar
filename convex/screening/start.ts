@@ -10,7 +10,7 @@ import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { heldPapers } from "../paperSets/held";
 import { countSearch, PAGE_SIZE, searchSnapshotValidator, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest } from "../paperSets/search";
-import { screeningHold } from "./estimate";
+import { requireMinimum, screeningHold } from "./estimate";
 import { paperSetValidator, saveToValidator, screeningQuestionValidator, screeningScoringConfigValidator } from "./validators";
 
 type PaperSet = Infer<typeof paperSetValidator>;
@@ -74,6 +74,7 @@ async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assi
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(through) || first < 1 || through < first) {
     throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   }
+  requireMinimum(config.scoringConfig);
   // What the person approved is one job's to spend. The jobs that would follow it in a longer request start later, by themselves, with no figure of their own.
   if (spendCap !== undefined && through > jobEnd(first, through)) {
     throw createError("VALIDATION_ERROR", `A screening started here takes up to ${MAX_SCREENING_PAPERS_PER_JOB.toLocaleString("en")} papers. Screen papers ${first} to ${jobEnd(first, through)} first, then the rest.`);

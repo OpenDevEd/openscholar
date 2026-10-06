@@ -727,7 +727,7 @@ describe("the assistant's tools", () => {
     const screen = (id: string, last = 3) => ({
       id,
       name: "run_action",
-      input: { name: "screening/start:screen", arguments: { set: { kind: "collection", collectionId }, first: 1, last, questions: [{ key: "q1", question: "Is this a trial?" }], scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] }, saveTo: { kind: "none" } } },
+      input: { name: "screening/start:screen", arguments: { set: { kind: "collection", collectionId }, first: 1, last, questions: [{ key: "q1", question: "Is this a trial?" }], scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [{ minScore: 0, stars: 1 }] }, saveTo: { kind: "none" } } },
     });
     const jobs = () => t.run(async (ctx) => (await ctx.db.query("screeningJobs").collect()).length);
     const limits = async () => {
@@ -805,7 +805,9 @@ describe("the assistant's tools", () => {
     expect(await always(300, 400)).toEqual({ cap: 1_000 });
     expect(await always(300, 5_000)).toEqual({});
     // A search's papers are OpenAlex's to count, so its hold is for the whole range asked for, whatever count the account last saw.
-    expect(await t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100 }))).toBe(450);
+    expect(await t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } }))).toBe(450);
+    // Rules with no least score include every paper whatever it's answered: refused before anyone is asked to pay for it.
+    await expect(t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, scoringConfig: { rules: [], starThresholds: [] } }))).rejects.toThrow(/minimumScore/);
     // A collection saved before counts were kept is counted from its papers, not taken for an empty one that would cost nothing.
     const uncounted = await t.run(async (ctx) => {
       const userId = (await ctx.db.get("assistantThreads", threadId))!.ownerId;
@@ -814,7 +816,7 @@ describe("the assistant's tools", () => {
         const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId, title: openalexId, searchableText: openalexId, rating: 0, savedAt: 1, updatedAt: 1 });
         await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: 1 });
       }
-      return screeningHold(ctx, userId, { set: { kind: "collection", collectionId }, first: 1, last: 100 });
+      return screeningHold(ctx, userId, { set: { kind: "collection", collectionId }, first: 1, last: 100, scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } });
     });
     expect(uncounted).toBe(14);
 

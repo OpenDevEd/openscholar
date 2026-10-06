@@ -18,7 +18,7 @@ const search: SavedSearch = {
 const shortcuts = [{ shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1 }];
 const job = {
   questions: [{ key: "q1", question: "Is this a trial?" }],
-  scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] },
+  scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [{ minScore: 0, stars: 1 }] },
 };
 
 type Request = { url: URL; init?: RequestInit };
