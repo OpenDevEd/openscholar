@@ -1300,7 +1300,6 @@
     "noFileSelected": "ファイルが選択されていません",
     "unsupportedFileType": "サポートされていないファイルタイプです。JSONまたはCSVファイルをアップロードしてください。",
     "csvFormatError": "CSVファイルにはヘッダーと少なくとも1行のデータが必要です",
-    "singleCharSearch": "1文字の検索はサポートされていません。2文字以上を使用してください。",
     "selectAtLeastOneSource": "少なくとも1つのソースを選択してください",
     "completeAllSteps": "すべてのステップを完了してください",
     "noQueryToSave": "保存するクエリがありません。",
@@ -1462,9 +1461,6 @@
     "screenAllCredits": "クレジット",
     "creditsTooltip": "これらの操作にはクレジットが必要です。",
     "startChat": "チャットを開始",
-    "continueChat": "チャットを再開",
-    "untitledChat": "無題のチャット",
-    "startChatFailed": "チャットの開始に失敗しました",
     "placeholder": {
       "researchQuestion": "マインドフルネスが不安に与える影響は？",
       "keywords": "mindfulness AND (anxiety OR stress)",

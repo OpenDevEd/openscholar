@@ -1300,7 +1300,6 @@
     "noFileSelected": "未选择文件",
     "unsupportedFileType": "不支持的文件类型。请上传 JSON 或 CSV 文件。",
     "csvFormatError": "CSV 文件必须至少包含标题行和一个数据行",
-    "singleCharSearch": "不支持单个字符搜索。请至少使用 2 个字符。",
     "selectAtLeastOneSource": "请至少选择一个来源",
     "completeAllSteps": "请完成所有步骤",
     "noQueryToSave": "没有查询可保存。",
@@ -1462,9 +1461,6 @@
     "screenAllCredits": "积分",
     "creditsTooltip": "这些操作会消耗积分。",
     "startChat": "开始聊天",
-    "continueChat": "继续聊天",
-    "untitledChat": "无标题对话",
-    "startChatFailed": "无法开始聊天",
     "placeholder": {
       "researchQuestion": "冥想对焦虑有什么影响？",
       "keywords": "mindfulness AND (anxiety OR stress)",

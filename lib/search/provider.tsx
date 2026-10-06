@@ -432,7 +432,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     try {
       const result = await getSearchResultsWithFilters(searchParams, {
         getMessage: (key, params) =>
-          tValidation(key as "singleCharSearch", params as Record<string, string>),
+          tValidation(key as "bookmarkNotFound", params as Record<string, string>),
       });
       captureSearchExecuted(basePayload);
       captureSearchSucceeded({

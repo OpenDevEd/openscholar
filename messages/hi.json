@@ -1300,7 +1300,6 @@
     "noFileSelected": "कोई फ़ाइल चयनित नहीं",
     "unsupportedFileType": "असमर्थित फ़ाइल प्रकार। कृपया JSON या CSV फ़ाइल अपलोड करें।",
     "csvFormatError": "CSV फ़ाइल में कम से कम एक हेडर और एक डेटा पंक्ति होनी चाहिए",
-    "singleCharSearch": "एकल वर्ण खोज समर्थित नहीं हैं। कृपया कम से कम 2 अक्षर उपयोग करें।",
     "selectAtLeastOneSource": "कृपया कम से कम एक स्रोत चुनें",
     "completeAllSteps": "कृपया सभी चरण पूरे करें",
     "noQueryToSave": "सहेजने के लिए कोई क्वेरी नहीं।",
@@ -1462,9 +1461,6 @@
     "screenAllCredits": "क्रेडिट",
     "creditsTooltip": "ये क्रियाएँ क्रेडिट का उपयोग करती हैं।",
     "startChat": "चैट शुरू करें",
-    "continueChat": "चैट जारी रखें",
-    "untitledChat": "अनाम चैट",
-    "startChatFailed": "चैट शुरू करने में विफल",
     "placeholder": {
       "researchQuestion": "चिंता पर माइंडफुलनेस के प्रभाव क्या हैं?",
       "keywords": "mindfulness AND (anxiety OR stress)",

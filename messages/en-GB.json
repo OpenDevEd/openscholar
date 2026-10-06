@@ -1290,7 +1290,6 @@
     "noFileSelected": "No file selected",
     "unsupportedFileType": "Unsupported file type. Please upload a JSON or CSV file.",
     "csvFormatError": "CSV file must have at least a header and one data row",
-    "singleCharSearch": "Single character searches are not supported. Please use at least 2 characters.",
     "selectAtLeastOneSource": "Please select at least one source",
     "completeAllSteps": "Please complete all steps",
     "noQueryToSave": "No query to save.",
@@ -1452,9 +1451,6 @@
     "screenAllCredits": "Credits",
     "creditsTooltip": "These actions use credits to run.",
     "startChat": "Start Chat",
-    "continueChat": "Continue Chat",
-    "untitledChat": "Untitled chat",
-    "startChatFailed": "Failed to start chat",
     "placeholder": {
       "researchQuestion": "What are the effects of mindfulness on anxiety?",
       "keywords": "mindfulness AND (anxiety OR stress)",

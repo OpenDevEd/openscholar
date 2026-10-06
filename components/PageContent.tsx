@@ -66,9 +66,11 @@ function PageContent() {
     let originalQuery = currentQuery;
 
     // Check if we need to do AI enhancement (Research Mode)
-    // Research mode is triggered if manually selected OR if query is detected as a question
+    // Research mode is triggered if manually selected OR if query is detected as a question.
+    // A blank submission has no question to convert, so it lists every work.
     const isResearchMode =
-      mode === "research" || detectSearchMode(currentQuery, locale) === "research";
+      currentQuery.trim() !== "" &&
+      (mode === "research" || detectSearchMode(currentQuery, locale) === "research");
 
     if (isResearchMode) {
       try {

@@ -317,7 +317,7 @@ export async function downloadWithMetadata(
  * the default search page.
  */
 export function createSearchParameters(
-  query: string,
+  rawQuery: string,
   filters: SearchFilters,
   options?: { perPageOverride?: number }
 ) {
@@ -337,7 +337,8 @@ export function createSearchParameters(
   // Build filter object
   const apiFilters: Record<string, unknown> = {};
 
-  // Handle search based on field type
+  // Handle search based on field type. A blank query lists every work.
+  const query = rawQuery.trim();
   if (query) {
     // Map search fields to SDK filter format
     const searchFilterMap = {

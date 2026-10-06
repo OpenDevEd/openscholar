@@ -3,8 +3,6 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
-import { useAction, useMutation } from "convex/react";
 import { useTranslations, useLocale, useFormatter } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import posthog from "posthog-js";
@@ -12,7 +10,6 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   Expand,
   Minimize2,
-  Loader2,
   Eye,
   ChevronDown,
   ListChecks,
@@ -29,26 +26,18 @@ import {
 } from "@/components/ui/tooltip";
 import { AnimatedCount } from "./components/animated-count";
 import { useSearchOptional } from "@/lib/search";
-import { useCurrentQuestionStore, useSearchHistoryStore } from "@/lib/store";
+import { useCurrentQuestionStore } from "@/lib/store";
 import { useAppToast, getErrorMessage } from "@/lib/toast";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
-import { browserExpand, ensureQueryShortcuts, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
+import { ensureQueryShortcuts, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { cn } from "@/lib/utils";
 import { OQL_FIELD } from "@/lib/openalex/oql";
 import { subtleSpring } from "@/lib/animation-config";
 import { ResultsTranslationControl } from "./components/results-translation-control";
-import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
-import { fromSavedSearchQuery } from "@/lib/bucket/bucketItem";
-import { bucketItemToServerInput } from "@/lib/bucket/to-server-input";
-import { deriveChatName } from "@/lib/chat/chat-name";
-import { paramsToBucketSearchFilters } from "@/lib/chat/params-to-bucket-filters";
-import { deriveStartChatButtonState } from "@/lib/chat/start-chat-button-state";
-import { buildChatSourceFingerprint } from "@/lib/chat/source-request";
-import { api } from "@/convex/_generated/api";
-import { PAPER_PULL_DEFAULT } from "@/lib/extraction/limits";
+import { chatAbout } from "@/lib/assistant/place";
 
 interface SearchCommandFooterProps {
   totalCount: number;
@@ -85,37 +74,14 @@ export function SearchCommandFooter({
   // AI rewrites in the search's own query language.
   const syntax = search?.params?.field === OQL_FIELD ? ("oql" as const) : undefined;
   const { currentQuestion } = useCurrentQuestionStore();
-  const { user } = useUser();
 
   const { phase } = useAuthReadiness();
-  const currentAccountId = user?.id ?? null;
   const goToSignIn = useSignInRedirect();
   const router = useRouter();
 
   const [isBroadening, setIsBroadening] = useState(false);
   const [isNarrowing, setIsNarrowing] = useState(false);
-  const [isStartingChat, setIsStartingChat] = useState(false);
-
-  const startJob = useMutation(api.extraction.mutations.startJob);
-  const continueChatWithSourceRefresh = useAction(
-    api.chat.threads.continueChatWithSourceRefresh,
-  );
-  const pullDefault = PAPER_PULL_DEFAULT;
-  const chatFlag = useFeatureFlag("extraction.chat");
-  const { data: features } = useOrganizationFeatures();
-  const chatFlagEnabled = chatFlag && features?.extraction === true;
-
-  const linkedChatJobIdsByAccountId = useSearchHistoryStore((state) =>
-    state.searchHistory.find((item) => item.id === searchId)
-      ?.chatJobIdsByAccountId,
-  );
-  const updateSearchResult = useSearchHistoryStore(
-    (state) => state.updateSearchResult,
-  );
-  const chatButtonState = deriveStartChatButtonState({
-    chatJobIdsByAccountId: linkedChatJobIdsByAccountId,
-    currentAccountId,
-  });
+  const assistantEnabled = useFeatureFlag("assistant.enabled");
 
   // Use the new router hook
   const { execute: enhanceQuery, isConfigured } = useEnhanceSearchQuery();
@@ -254,99 +220,14 @@ Return a more targeted version of this query.`;
     }
   };
 
-  const handleStartChat = async () => {
+  // A chat about this search, in the assistant: a new chat opens with the search mentioned, so the first message carries its ID.
+  const handleStartChat = () => {
     if (phase !== "authenticated") {
       goToSignIn();
       return;
     }
-    if (!currentAccountId) {
-      goToSignIn();
-      return;
-    }
-
-    if (!search) return;
-    if (!effectiveQuery.trim()) {
-      toast.validation.failed(tv("noQueryToBroaden"));
-      return;
-    }
-
-    const initialCount = Math.min(
-      pullDefault,
-      Math.max(0, totalCount ?? pullDefault),
-    );
-    const params = search.params;
-    await ensureQueryShortcuts(params.q);
-    const searchFilters = paramsToBucketSearchFilters(params, {
-      expand: browserExpand,
-      getMessage: (key, values) => tv(key as "singleCharSearch", values),
-      onWarning: (message) => toast.validation.failed(message),
-    });
-    if (!searchFilters) return;
-
-    const placeholder = fromSavedSearchQuery({
-      id: searchId,
-      query: params.q ?? "",
-      count: initialCount,
-      searchFilters,
-    });
-    const bucketItem = bucketItemToServerInput(placeholder);
-    const sourceFingerprint = buildChatSourceFingerprint({
-      searchFilters,
-      limit: initialCount,
-    });
-
-    const name = deriveChatName({
-      currentQuestion,
-      query: params.q,
-      fallback: tsc("untitledChat"),
-    });
-
-    setIsStartingChat(true);
-    try {
-      if (chatButtonState.mode === "continue") {
-        const result = await continueChatWithSourceRefresh({
-          jobId: chatButtonState.jobId as never,
-          bucketItems: [bucketItem as never],
-          sourceFingerprint,
-        });
-        posthog.capture("chat_continued_from_results", {
-          search_id: searchId,
-          job_id: chatButtonState.jobId,
-          sources_changed: result.sourcesChanged,
-          refreshed: result.changed,
-        });
-        router.push(`/extraction/${chatButtonState.jobId}?mode=chat`);
-        return;
-      }
-
-      const result = await startJob({
-        name,
-        mode: "chat",
-        bucketItems: [bucketItem as never],
-      });
-
-      updateSearchResult(searchId, {
-        chatJobIdsByAccountId: {
-          ...(linkedChatJobIdsByAccountId ?? {}),
-          [currentAccountId]: result.jobId,
-        },
-      });
-
-      posthog.capture("chat_started_from_results", {
-        search_id: searchId,
-        total_count: totalCount,
-        pulled_count: initialCount,
-      });
-
-      router.push(`/extraction/${result.jobId}?mode=chat`);
-    } catch (error) {
-      toast.error(
-        tsc("startChatFailed"),
-        getErrorMessage(error, te("unexpectedErrorRetry")),
-      );
-    } finally {
-      setIsStartingChat(false);
-    }
+    chatAbout({ kind: "search", id: searchId, label: effectiveQuery.trim() || currentQuestion.trim() || t("common.noQuery") });
+    posthog.capture("chat_started_from_results", { search_id: searchId, total_count: totalCount });
   };
 
   return (
@@ -449,31 +330,17 @@ Return a more targeted version of this query.`;
                 className="inline-flex items-center gap-0.5 rounded-xl bg-accent pr-1.5"
                 data-group="ai-actions"
               >
-                {chatFlagEnabled && (
+                {assistantEnabled && (
                   <Button
                     variant="ghost"
                     size="sm"
                     type="button"
                     onClick={handleStartChat}
-                    disabled={Boolean(isLoading) || isStartingChat}
-                    aria-label={
-                      chatButtonState.mode === "continue"
-                        ? tsc("continueChat")
-                        : tsc("startChat")
-                    }
-                    data-chat-button-mode={chatButtonState.mode}
+                    aria-label={tsc("startChat")}
                     className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
-                    {isStartingChat ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <MessageSquare className="h-3.5 w-3.5" />
-                    )}
-                    <span className="hidden text-sm font-medium sm:inline">
-                      {chatButtonState.mode === "continue"
-                        ? tsc("continueChat")
-                        : tsc("startChat")}
-                    </span>
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    <span className="hidden text-sm font-medium sm:inline">{tsc("startChat")}</span>
                   </Button>
                 )}
 

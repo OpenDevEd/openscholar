@@ -5,6 +5,7 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { SearchCommandFooter } from "@/components/search-command-center/search-command-footer";
+import { panelPlace, panelSeed } from "@/lib/assistant/place";
 
 const {
   authReadinessRef,
@@ -292,89 +293,13 @@ describe("<SearchCommandFooter> auth-gated limits", () => {
     expect(goToSignInMock).toHaveBeenCalledTimes(1);
   });
 
-  it("shows Start Chat when the saved chat belongs to a different account", () => {
+  it("opens the assistant on a new chat with the search mentioned when Start Chat is pressed", () => {
     authReadinessRef.current = {
       phase: "authenticated",
       isBootstrapping: false,
       canRunProtectedQueries: true,
       retryUserSync: vi.fn(),
     };
-    currentUserIdRef.current = "acct_y";
-    searchHistoryRef.current = [
-      {
-        id: "search_1",
-        chatJobIdsByAccountId: { acct_x: "job_for_account_x" },
-      },
-    ];
-
-    render(
-      <SearchCommandFooter
-        totalCount={500}
-        currentQuery="graph neural networks"
-        isScreeningOpen={false}
-        onScreeningToggle={vi.fn()}
-        screeningPanelId="screening-panel"
-        screeningQuestionCount={0}
-        searchId="search_1"
-      />,
-    );
-
-    expect(
-      screen.getByRole("button", { name: "startChat" }),
-    ).toHaveAttribute("data-chat-button-mode", "start");
-    expect(screen.queryByRole("button", { name: "continueChat" })).toBeNull();
-  });
-
-  it("shows Continue Chat for the current account's saved chat", () => {
-    authReadinessRef.current = {
-      phase: "authenticated",
-      isBootstrapping: false,
-      canRunProtectedQueries: true,
-      retryUserSync: vi.fn(),
-    };
-    currentUserIdRef.current = "acct_y";
-    searchHistoryRef.current = [
-      {
-        id: "search_1",
-        chatJobIdsByAccountId: {
-          acct_x: "job_for_account_x",
-          acct_y: "job_for_account_y",
-        },
-      },
-    ];
-
-    render(
-      <SearchCommandFooter
-        totalCount={500}
-        currentQuery="graph neural networks"
-        isScreeningOpen={false}
-        onScreeningToggle={vi.fn()}
-        screeningPanelId="screening-panel"
-        screeningQuestionCount={0}
-        searchId="search_1"
-      />,
-    );
-
-    expect(
-      screen.getByRole("button", { name: "continueChat" }),
-    ).toHaveAttribute("data-chat-button-mode", "continue");
-    expect(screen.queryByRole("button", { name: "startChat" })).toBeNull();
-  });
-
-  it("stores a newly started chat under the current account without overwriting another account", async () => {
-    authReadinessRef.current = {
-      phase: "authenticated",
-      isBootstrapping: false,
-      canRunProtectedQueries: true,
-      retryUserSync: vi.fn(),
-    };
-    currentUserIdRef.current = "acct_y";
-    searchHistoryRef.current = [
-      {
-        id: "search_1",
-        chatJobIdsByAccountId: { acct_x: "job_for_account_x" },
-      },
-    ];
 
     render(
       <SearchCommandFooter
@@ -389,14 +314,7 @@ describe("<SearchCommandFooter> auth-gated limits", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "startChat" }));
-
-    await waitFor(() => {
-      expect(updateSearchResultMock).toHaveBeenCalledWith("search_1", {
-        chatJobIdsByAccountId: {
-          acct_x: "job_for_account_x",
-          acct_y: "job_for_current_account",
-        },
-      });
-    });
+    expect(panelSeed.get()?.mention).toEqual({ kind: "search", id: "search_1", label: "graph neural networks" });
+    expect(panelPlace.get()).toMatchObject({ open: true, threadId: null });
   });
 });
