@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { FocusMode } from "@/components/ui/focus-mode";
 import { downloadLibraryEssentialItem, downloadLibraryItem } from "@/lib/library/download-handlers";
 import { useRatedPapers } from "@/lib/research/reads";
@@ -57,10 +57,20 @@ export const openListFocus = (index: number) => {
   ui.setIsFocusModeOpen(true);
 };
 
-/** Focus mode over the papers a page lists: its arrows step through that list, in that order. */
+/**
+ * Focus mode over the papers a page lists: its arrows step through that list, in that order.
+ * The order is held from the moment it opens, so a list that reorders as a job's results
+ * arrive never swaps the paper being read; each paper still shows its newest data.
+ */
 export function ListFocus({ papers }: { papers: StoredPaper[] }) {
   const open = useUIStore((state) => state.isFocusModeOpen);
   const read = useMemo(() => papers.map(storedPaperResult), [papers]);
-  const rated = useRatedPapers(read);
-  return <FocusMode isOpen={open} onClose={() => useUIStore.getState().setIsFocusModeOpen(false)} papers={rated.papers} onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />;
+  // Watched while the page shows, so a paper's rating is known when it opens.
+  useRatedPapers(read);
+  // The list as it was when focus mode opened, kept while it slides out after closing.
+  const [held, setHeld] = useState<{ open: boolean; papers: PaperResult[] }>({ open: false, papers: [] });
+  if (open !== held.open) setHeld({ open, papers: open ? read : held.papers });
+  const latest = new Map(read.map((paper) => [paper.id, paper]));
+  const shown = held.papers.length ? held.papers.map((paper) => latest.get(paper.id) ?? paper) : read;
+  return <FocusMode isOpen={open} onClose={() => useUIStore.getState().setIsFocusModeOpen(false)} papers={shown} onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />;
 }

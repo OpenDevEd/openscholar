@@ -373,7 +373,8 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
                     className="overflow-hidden"
                   >
                     {/* The whole row opens the paper's answers, from a button under it; its title, above that button, opens the paper in focus mode. */}
-                    <div className="relative flex w-full items-center gap-4 px-4 py-3 transition-colors hover:bg-muted">
+                    {/* What else the row shows lets clicks through to that button, whatever it draws on its own layer. */}
+                    <div className="relative flex w-full items-center gap-4 px-4 py-3 transition-colors hover:bg-muted [&>:not(button)]:pointer-events-none">
                       <button
                         type="button"
                         aria-expanded={expanded}

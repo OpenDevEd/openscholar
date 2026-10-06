@@ -17,8 +17,8 @@ export function PaperTitle({ title, onOpen, className, children, ...props }: { t
         event.stopPropagation();
         onOpen();
       }}
-      // Positioned, so it sits above a row-wide button that a list draws under its rows.
-      className="group/title relative block max-w-full rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      // Positioned and taking the pointer, so it sits above a row-wide button that a list draws under its rows.
+      className="group/title pointer-events-auto relative block max-w-full rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
     >
       <span
         className={cn(
