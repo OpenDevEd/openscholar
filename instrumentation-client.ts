@@ -3,7 +3,11 @@ import posthog from "posthog-js";
 /** Session replays show no text inside an element with this attribute. */
 const REPLAY_MASK_ATTRIBUTE = "data-ph-mask";
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
-const hideEmails = (value: string) => value.replace(EMAIL, (match) => "*".repeat(match.length));
+const stars = (value: string) => "*".repeat(value.length);
+const hideEmails = (value: string) => value.replace(EMAIL, stars);
+/** Attributes that carry words a person reads or hears, as text does. */
+const TEXT_ATTRIBUTES = new Set(["aria-label", "aria-description", "aria-valuetext", "title", "alt", "placeholder", "value", "data-value"]);
+const masked = (element?: Element) => Boolean(element?.closest(`[${REPLAY_MASK_ATTRIBUTE}]`));
 
 // A local dev server sends nothing: its traffic isn't the product's.
 if (process.env.NEXT_PUBLIC_POSTHOG_KEY && !/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)) {
@@ -27,11 +31,11 @@ if (process.env.NEXT_PUBLIC_POSTHOG_KEY && !/^(localhost|127\.0\.0\.1)$/.test(wi
       return event;
     },
     session_recording: {
-      // Replays show no email address anywhere, as text or in an attribute such as a mailto link,
-      // and no text at all where the page marks it (account, billing).
+      // Replays show no email address anywhere, as text or in an attribute such as a mailto link, and no
+      // words at all where the page marks it (settings, the assistant), in its text or its labels.
       maskTextSelector: "*",
-      maskTextFn: (text, element) => (element?.closest(`[${REPLAY_MASK_ATTRIBUTE}]`) ? "*".repeat(text.length) : hideEmails(text)),
-      maskAttributeFn: (_name, value) => hideEmails(value),
+      maskTextFn: (text, element) => (masked(element) ? stars(text) : hideEmails(text)),
+      maskAttributeFn: (name, value, element) => (masked(element) && TEXT_ATTRIBUTES.has(name) ? stars(value) : hideEmails(value)),
     },
   });
 }

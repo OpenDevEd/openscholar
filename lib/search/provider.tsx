@@ -380,7 +380,6 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       }),
     };
 
-    captureSearchExecuted(basePayload);
     const startedAt = Date.now();
     previousTrackedParamsRef.current = cloneSearchParams(params);
     
@@ -428,12 +427,14 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       filters,
     };
 
-    // Every search that starts says how it ended, whether or not its results are still the ones on screen.
+    // A search is counted with how it ended, whether or not its results are still the ones on screen. One the
+    // page left before it ended isn't counted: its start would have no end.
     try {
       const result = await getSearchResultsWithFilters(searchParams, {
         getMessage: (key, params) =>
           tValidation(key as "singleCharSearch", params as Record<string, string>),
       });
+      captureSearchExecuted(basePayload);
       captureSearchSucceeded({
         ...basePayload,
         duration_ms: Date.now() - startedAt,
@@ -444,6 +445,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       return { ...result, paramsKey: paramsJson };
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
+      captureSearchExecuted(basePayload);
       captureSearchFailed({
         ...basePayload,
         duration_ms: Date.now() - startedAt,

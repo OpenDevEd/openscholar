@@ -26,7 +26,7 @@ import { ABORT_ERROR_STRING, isAbortLike } from "../../lib/chat/abort-signal";
 import { pickProviderCostUsd } from "../../lib/chat/pick-provider-cost";
 import { classifyChatError, serializeChatError } from "../../lib/errors/taxonomy";
 import { convertUsdToCredits } from "../../lib/pricing";
-import { extractErrorCode, extractHttpStatus } from "../../lib/posthog-ai-shared";
+import { extractErrorCode, extractHttpStatus, type AIGenerationParams } from "../../lib/posthog-ai-shared";
 import { captureUserGenerationLater } from "../lib/analyticsEvents";
 
 export const STOP_ABORT_POLL_INTERVAL_MS = 500;
@@ -188,6 +188,31 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   let allFailed = false;
   const completedGenerations = new Set<string>();
   let finished = false;
+  // The request's `$ai_generation`, as far as this action knows it. A request stopped or failed partway is
+  // charged later, from OpenRouter's record, and its event goes with that charge (chat/billing.ts).
+  const generation = (): AIGenerationParams => {
+    const usage = aggregateUsage(stepUsages);
+    return {
+      provider: "openrouter",
+      modelId: capturedModelSlug ?? "",
+      feature: turn.feature,
+      usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
+      latencyMs: Date.now() - startedAt,
+      isError: failure !== undefined,
+      httpStatus: extractHttpStatus(failure),
+      errorCode: extractErrorCode(failure),
+      traceId: turn.replyId ?? chargeId,
+      sessionId: threadId,
+      creditsDeducted: charged,
+      metadata: {
+        $ai_cache_read_input_tokens: usage.cacheReadTokens,
+        $ai_cache_creation_input_tokens: usage.cacheWriteTokens,
+        $ai_reasoning_tokens: usage.reasoningTokens,
+        stopped: streamAbortedByUser,
+      },
+    };
+  };
+  let generationSentLater = false;
 
   try {
     const { model, modelSlug, pricing } = await resolveOpenRouterModel(
@@ -469,8 +494,10 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
         extraUsd: completedUsd,
         earlierTokens: tokenCounts(aggregateUsage(stepUsages)),
         attempt: 0,
+        analytics: JSON.stringify(generation()),
       });
       settledOrScheduled = true;
+      generationSentLater = true;
     } else if (completedTokens > 0) {
       const usd = completedUsd;
       charged = convertUsdToCredits({ usd }) || 1;
@@ -543,29 +570,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       failed: allFailed,
     });
     // Every request on a resolved model sends its `$ai_generation`, a failed one and one refused for credits included.
-    // One stopped or failed partway is charged later, from OpenRouter's record, so its event has no credits.
-    if (capturedModelSlug) {
-      const usage = aggregateUsage(stepUsages);
-      await captureUserGenerationLater(ctx, userId, {
-        provider: "openrouter",
-        modelId: capturedModelSlug,
-        feature: turn.feature,
-        usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
-        latencyMs: Date.now() - startedAt,
-        isError: failure !== undefined,
-        httpStatus: extractHttpStatus(failure),
-        errorCode: extractErrorCode(failure),
-        traceId: turn.replyId ?? chargeId,
-        sessionId: threadId,
-        creditsDeducted: charged,
-        metadata: {
-          $ai_cache_read_input_tokens: usage.cacheReadTokens,
-          $ai_cache_creation_input_tokens: usage.cacheWriteTokens,
-          $ai_reasoning_tokens: usage.reasoningTokens,
-          stopped: streamAbortedByUser,
-        },
-      });
-    }
+    if (capturedModelSlug && !generationSentLater) await captureUserGenerationLater(ctx, userId, generation());
   }
 }
 

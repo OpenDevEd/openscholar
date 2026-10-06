@@ -123,9 +123,12 @@ export function AssistantPanel() {
     unpick: (id, sent) => setPicked((all) => ({ ...all, [id ?? NEW]: (all[id ?? NEW] ?? []).filter((m) => !sent.includes(m)) })),
   };
   return (
-    <Lost onLost={() => setThreadId(null)}>
-      <Overlay open={place.open} setOpen={setOpen} threadId={place.threadId as ThreadId | null} setThreadId={setThreadId} drafts={drafts} />
-    </Lost>
+    // Session replays show none of the conversation (instrumentation-client.ts).
+    <div data-ph-mask className="contents">
+      <Lost onLost={() => setThreadId(null)}>
+        <Overlay open={place.open} setOpen={setOpen} threadId={place.threadId as ThreadId | null} setThreadId={setThreadId} drafts={drafts} />
+      </Lost>
+    </div>
   );
 }
 

@@ -9,6 +9,8 @@ import { internal } from "../_generated/api";
 import { convertUsdToCredits } from "@/lib/pricing";
 import { settleCredits } from "../billing/charge";
 import { errorToLogString } from "../lib/errors";
+import { captureUserGenerationLater } from "../lib/analyticsEvents";
+import type { AIGenerationParams } from "@/lib/posthog-ai-shared";
 
 const OPENROUTER_GENERATION_URL = "https://openrouter.ai/api/v1/generation";
 // Back-off schedule for /api/v1/generation lookups. OpenRouter takes a
@@ -172,6 +174,8 @@ export const settleFromOpenRouter = internalAction({
     reply: v.optional(v.string()),
     /** Token details of the steps that finished before this one; absent on retries scheduled before it existed. */
     earlierTokens: v.optional(v.object({ cacheReadTokens: v.number(), cacheWriteTokens: v.number(), reasoningTokens: v.number() })),
+    /** The request's `$ai_generation` (AIGenerationParams as JSON), sent with its real tokens and cost once they're known. */
+    analytics: v.optional(v.string()),
     attempt: v.number(),
   },
   returns: v.null(),
@@ -213,6 +217,23 @@ export const settleFromOpenRouter = internalAction({
     // The reply reported what its finished steps cost when it ended. The rest of this charge is added to it now.
     const late = convertUsdToCredits({ usd }) - convertUsdToCredits({ usd: args.extraUsd });
     if (args.reply && late > 0) await ctx.runMutation(internal.assistant.spending.settledLate, { userId: args.userId, reply: args.reply, credits: late });
+    if (args.analytics) {
+      const params = JSON.parse(args.analytics) as AIGenerationParams;
+      const generation = result.kind === "ok" ? result.generation : undefined;
+      await captureUserGenerationLater(ctx, args.userId, {
+        ...params,
+        usage: {
+          inputTokens: (params.usage.inputTokens ?? 0) + (generation?.promptTokens ?? 0),
+          outputTokens: (params.usage.outputTokens ?? 0) + (generation?.completionTokens ?? 0),
+        },
+        creditsDeducted: convertUsdToCredits({ usd }),
+        metadata: {
+          ...params.metadata,
+          $ai_cache_read_input_tokens: earlier.cacheReadTokens + (generation?.cachedPromptTokens ?? 0),
+          $ai_reasoning_tokens: earlier.reasoningTokens + (generation?.reasoningTokens ?? 0),
+        },
+      });
+    }
     return null;
   },
 });
