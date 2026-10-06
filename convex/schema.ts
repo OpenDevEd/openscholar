@@ -980,7 +980,9 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
-    .index("by_user_status", ["userId", "status"]),
+    .index("by_user_status", ["userId", "status"])
+    // The jobs of one request a reply started, in the order they ran: its card and its readout count them as one (convex/assistant/jobs.ts).
+    .index("by_chatStep", ["chatStep"]),
 
   // ═══════════════════════════════════════════════════════════════
   // SCREENING RESULTS - individual paper screening outcomes

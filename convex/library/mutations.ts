@@ -183,6 +183,26 @@ export async function saveAsksFirst(ctx: Pick<QueryCtx, "db">, userId: Id<"users
 }
 
 /** Saves a paper, rated when a rating is given, and says what reverses it. */
+/**
+ * What a save of a paper by its ID refuses before it reads anything from outside, and the
+ * paper as the library has it already: a rating out of range, a collection that isn't the
+ * person's, and a saved paper given a collection and a rating that changes anything, in the
+ * library or on search cards, which would be two changes with one undo between them.
+ */
+export async function checkSave(ctx: QueryCtx, userId: Id<"users">, { openalexId, rating, collectionId }: { openalexId: string; rating?: number; collectionId?: Id<"collections"> }) {
+  if (rating !== undefined) requireRating(rating);
+  if (collectionId !== undefined) {
+    const collection = await ctx.db.get("collections", collectionId);
+    if (!collection) throw createError("NOT_FOUND", "Collection not found");
+    if (collection.userId !== userId) throw createError("FORBIDDEN", "Not your collection");
+  }
+  const before = await findItem(ctx, userId, openalexId);
+  if (before && collectionId !== undefined && rating !== undefined && (rating !== (before.rating ?? null) || rating !== (await researchRating(ctx, userId, canonical(openalexId))))) {
+    throw createError("VALIDATION_ERROR", "This paper is already saved. Rate it with library/mutations:setLibraryRating and put it in the collection with library/papers:collect, one change at a time, so each can be undone.");
+  }
+  return before;
+}
+
 async function savePaper(ctx: MutationCtx, userId: Id<"users">, given: Infer<typeof libraryPaper>, rating: number | undefined, author: Author): Promise<{ id: Id<"libraryItems">; undo?: Infer<typeof saveUndo> }> {
   if (rating !== undefined) requireRating(rating);
   const paper = { ...given, openalexId: canonical(given.openalexId) };
@@ -217,12 +237,7 @@ async function saveInto(
   { paper, rating, collectionId }: { paper: Infer<typeof libraryPaper>; rating?: number; collectionId?: Id<"collections"> },
   author: "user" | "assistant",
 ) {
-  const before = await findItem(ctx, userId, paper.openalexId);
-  // One reversal has to take back everything a call did. A saved paper given a collection and a rating that changes anything,
-  // in the library or on search cards, would be two changes with one undo between them.
-  if (before && collectionId !== undefined && rating !== undefined && (rating !== (before.rating ?? null) || rating !== (await researchRating(ctx, userId, canonical(paper.openalexId))))) {
-    throw createError("VALIDATION_ERROR", "This paper is already saved. Rate it with library/mutations:setLibraryRating and put it in the collection with library/papers:collect, one change at a time, so each can be undone.");
-  }
+  const before = await checkSave(ctx, userId, { openalexId: paper.openalexId, rating, collectionId });
   const saved = await savePaper(ctx, userId, paper, rating, author);
   const placed = collectionId === undefined ? undefined : await setPaperInCollectionAction.run(ctx, userId, { paper: { openalexId: canonical(paper.openalexId) }, collectionId, inCollection: true }, author);
   // What takes back all of it. A paper that was saved already leaves the collection again, or gets back the rating this changed.

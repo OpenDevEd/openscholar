@@ -157,11 +157,18 @@ export const requestJob = internalQuery({
       scoringConfig: screeningScoringConfigValidator,
       saveTo: v.optional(saveToValidator),
       prune: v.optional(v.boolean()),
+      // The request's hold and the chat that started it, with what the person approved still to spend: they go to the next job.
+      spendHold: v.optional(v.string()),
+      spendCap: v.optional(v.number()),
+      chatStep: v.optional(v.id("assistantSteps")),
     }),
   ),
   handler: async (ctx, { jobId }) => {
     const job = await ctx.db.get("screeningJobs", jobId);
     if (!job || job.status !== "completed" || !job.set || job.through === undefined) return null;
+    // What the job could have cost at most: its papers at the most a paper costs on its model, the figure the approval was worked out from. Its last
+    // papers' costs are recorded a moment after it completes, so what it spent isn't known yet; the next job's share of the approval is still whole.
+    const spent = job.spendCap === undefined ? 0 : job.totalPapers * screeningPaperCredits(await pricingOf(ctx, job.serverModelId));
     const saveTo = job.unsaved ? { kind: "none" as const } : job.targetCollectionId ? { kind: "collection" as const, collectionId: job.targetCollectionId } : undefined;
     return {
       userId: job.userId, set: job.set, through: job.through, questions: job.questions, scoringConfig: job.scoringConfig,
@@ -170,6 +177,9 @@ export const requestJob = internalQuery({
       ...(job.snapshot ? { snapshot: job.snapshot } : {}),
       ...(saveTo ? { saveTo } : {}),
       ...(job.prune ? { prune: true } : {}),
+      ...(job.spendHold ? { spendHold: job.spendHold } : {}),
+      ...(job.spendCap === undefined ? {} : { spendCap: Math.max(0, job.spendCap - spent) }),
+      ...(job.chatStep ? { chatStep: job.chatStep } : {}),
     };
   },
 });

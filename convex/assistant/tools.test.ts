@@ -17,6 +17,7 @@ import { SERVER_MODEL_SLUG } from "../ai/config";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { screeningPool } from "../workpool";
 import { people } from "./assistant.test-support";
+import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { detailsOf } from "./details";
 import { onlyReads } from "./tools";
 import { allowAlways, carriedOn, pausedAt } from "./spending";
@@ -146,6 +147,13 @@ async function chatOf(t: Test) {
       .reverse();
   return { ...who, threadId, say, sayUntilAsked, settled, stop, thread, steps, results, shown };
 }
+
+/** Extraction switched on, with Ada in an organization that has it. */
+const extractionOn = (t: ReturnType<typeof convexTest>) =>
+  t.run(async (ctx) => {
+    for (const key of ["extraction.enabled", "extraction.start"]) await ctx.db.insert("featureFlags", { key, enabled: true, updatedAt: 1 });
+    await seedOrganizationFeatures(ctx, ["ada"], { extraction: true });
+  });
 
 describe("the assistant's tools", () => {
   it("run an action as the person who sent the message, keep it as a step, and tell the model what came of it", async () => {
@@ -734,12 +742,48 @@ describe("the assistant's tools", () => {
     const { asAda, say, steps } = await chatOf(t);
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
     // Full texts are turned off here, and the model asks for them.
+    await extractionOn(t);
     await t.run(async (ctx) => ctx.db.insert("featureFlags", { key: "extraction.pdf", enabled: false, updatedAt: 1 }));
     const extract = { name: "extraction/start:extract", arguments: { name: "Sample sizes", set: { kind: "collection", collectionId }, first: 1, last: 5, questions: [{ question: "What was the sample size?", type: "number" }], usePdfs: true } };
     mockDoStream.mockImplementationOnce(calling({ id: "pdfs", name: "run_action", input: extract })).mockImplementationOnce(finishingDoStream(["Full texts are off here."]));
     await say("Extract the sample sizes from my trials, from the full texts");
     // Not "this asks first", which it can do nothing with: what to change.
     expect(told(1, "pdfs")).toEqual({ error: expect.stringContaining("without `usePdfs`") });
+    expect(await steps()).toEqual([]);
+  });
+
+  it("tell the model what a change it would ask about refuses, instead of asking the person to allow something that then fails", async () => {
+    const t = convexTest(schema);
+    const { asBen, say, steps, thread } = await chatOf(t);
+    const { id: theirs } = await asBen.mutation(api.library.collections.createCollection, { name: "Ben's" });
+    mockDoStream
+      .mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "library/collections:deleteCollection", arguments: { collectionId: theirs } } }))
+      .mockImplementationOnce(finishingDoStream(["That collection isn't yours."]));
+    await say("Delete Ben's collection");
+
+    // Tried and undone before anyone was asked: nobody is asked, no step runs, and the collection is still there.
+    expect(told(1, "delete")).toEqual({ error: "Not your collection" });
+    expect(await steps()).toEqual([]);
+    expect((await thread())?.asking).toBeUndefined();
+    expect(await t.run((ctx) => ctx.db.get("collections", theirs))).not.toBeNull();
+  });
+
+  it("refuse a screening or an extraction whose start would refuse it before the person is asked to pay for it", async () => {
+    const t = convexTest(schema);
+    const { asAda, say, steps } = await chatOf(t);
+    const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
+    await asAda.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W1", title: "Tutoring at scale", collectionId });
+    await extractionOn(t);
+    const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [{ minScore: 0, stars: 1 }] };
+    const screen = { name: "screening/start:screen", arguments: { set: { kind: "collection", collectionId }, first: 1, last: 5, questions: [{ key: "q1", question: "Randomized?" }], scoringConfig, saveTo: { kind: "new", name: "  " } } };
+    const extract = { name: "extraction/start:extract", arguments: { name: "Sample sizes", set: { kind: "collection", collectionId }, first: 1, last: 1500, questions: [{ question: "What was the sample size?", type: "number" }] } };
+    mockDoStream
+      .mockImplementationOnce(calling({ id: "screen", name: "run_action", input: screen }, { id: "extract", name: "run_action", input: extract }))
+      .mockImplementationOnce(finishingDoStream(["Neither can start as asked."]));
+    await say("Screen my trials into a new collection, and extract sample sizes from 1,500 of them");
+
+    expect(told(1, "screen")).toEqual({ error: "Collection name cannot be empty" });
+    expect(told(1, "extract")).toEqual({ error: "An extraction takes up to 1,000 papers." });
     expect(await steps()).toEqual([]);
   });
 
@@ -833,9 +877,10 @@ describe("the assistant's tools", () => {
     expect(await always(300, 400)).toEqual({ cap: 1_000 });
     expect(await always(300, 5_000)).toEqual({});
     // A search's papers are OpenAlex's to count, so its hold is for the whole range asked for, whatever count the account last saw.
-    expect(await t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } }))).toBe(100 * perPaper);
+    await asAda.mutation(api.research.records.importBatch, { accountId: "ada", searches: [{ search: { id: "not-counted-yet", query: "tutoring", field: "title_and_abstract", count: 0, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z" } }], shortcuts: [], ratings: [] });
+    expect(await t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } }))).toBe(100 * perPaper);
     // Rules with no least score include every paper whatever it's answered: refused before anyone is asked to pay for it.
-    await expect(t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, scoringConfig: { rules: [], starThresholds: [] } }))).rejects.toThrow(/minimumScore/);
+    await expect(t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [] } }))).rejects.toThrow(/minimumScore/);
     // A collection saved before counts were kept is counted from its papers, not taken for an empty one that would cost nothing.
     const uncounted = await t.run(async (ctx) => {
       const userId = (await ctx.db.get("assistantThreads", threadId))!.ownerId;
@@ -844,7 +889,7 @@ describe("the assistant's tools", () => {
         const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId, title: openalexId, searchableText: openalexId, rating: 0, savedAt: 1, updatedAt: 1 });
         await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: 1 });
       }
-      return screeningHold(ctx, userId, { set: { kind: "collection", collectionId }, first: 1, last: 100, scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } });
+      return screeningHold(ctx, userId, { set: { kind: "collection", collectionId }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } });
     });
     expect(uncounted).toBe(3 * perPaper);
 

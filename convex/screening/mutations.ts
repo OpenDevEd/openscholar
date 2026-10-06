@@ -32,6 +32,8 @@ import { bookkeepLater } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { applyCommand } from "../research/records";
+import { writeEnd } from "../assistant/jobEnds";
+import { endRequest } from "./start";
 
 import { availableCredits } from "../billing/accounts";
 import { MAX_AUTHORS } from "../lib/listCaps";
@@ -302,13 +304,20 @@ export const stopRequest = internalMutation({
     label: v.optional(v.string()),
     questions: v.array(screeningQuestionValidator),
     scoringConfig: screeningScoringConfigValidator,
+    // The job that handed the request on: its approval ends here, settled, and the chat that started it hears the request ended with this job.
+    after: v.optional(v.id("screeningJobs")),
   },
   returns: v.null(),
-  handler: async (ctx, args) => {
+  handler: async (ctx, { after, ...args }) => {
     const now = Date.now();
+    const before = after ? await ctx.db.get("screeningJobs", after) : null;
     const screeningId = await ctx.db.insert("screenings", { userId: args.userId, version: 0, createdAt: now });
-    const jobId = await ctx.db.insert("screeningJobs", { ...args, screeningId, status: "failed", totalPapers: args.last - args.first + 1, createdAt: now, updatedAt: now });
+    const jobId = await ctx.db.insert("screeningJobs", { ...args, screeningId, status: "failed", totalPapers: args.last - args.first + 1, ...(before?.chatStep ? { chatStep: before.chatStep } : {}), createdAt: now, updatedAt: now });
     await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0 });
+    if (before) {
+      await endRequest(ctx, before, false);
+      if (before.chatStep) await writeEnd(ctx, "screening", { _id: jobId, status: "failed", chatStep: before.chatStep });
+    }
     return null;
   },
 });

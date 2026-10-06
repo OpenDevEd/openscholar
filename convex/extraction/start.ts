@@ -11,7 +11,8 @@ import { internalMutation, internalQuery, type ActionCtx, type QueryCtx } from "
 import { assistantAction, defineUserAction, userAction, type ChangeCall } from "../lib/userActions";
 import { createError } from "../lib/errors";
 import { extractionPricing, extractionStamp } from "../ai/serverModel";
-import { getFlag } from "../featureFlags/guard";
+import { getFlag, requireFeature } from "../featureFlags/guard";
+import { checkRateLimit } from "../lib/rateLimit";
 import { startHeld } from "../billing/charge";
 import { heldPapers } from "../paperSets/held";
 import { filtersOf } from "../paperSets/search";
@@ -25,7 +26,7 @@ import { extractionPaperCredits } from "../../lib/pricing";
 import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { startJobFor } from "./mutations/jobs";
 import { checkScreeningSelection } from "./sources/screening";
-import { MAX_QUESTIONS_PER_JOB, bucketItemInputValidator, questionInputValidator, questionTypeValidator, searchFiltersValidator } from "./validators";
+import { MAX_QUESTIONS_PER_JOB, MAX_QUESTION_TEXT_LENGTH, bucketItemInputValidator, questionInputValidator, questionTypeValidator, searchFiltersValidator } from "./validators";
 
 type PaperSet = Infer<typeof paperSetValidator>;
 /** A source as a start is given it. */
@@ -49,6 +50,42 @@ async function checkPdfs(ctx: QueryCtx, usePdfs: boolean | undefined) {
   if (usePdfs && (await getFlag(ctx, "extraction.pdf"))?.enabled === false) throw invalid("Full texts are turned off here. Start it without `usePdfs`, from abstracts.");
 }
 
+/** The questions a job takes: at least one, at most MAX_QUESTIONS_PER_JOB, none too long to keep. */
+function checkQuestions(questions: Array<{ question: string }>) {
+  if (!questions.length) throw invalid("Give at least one question to answer for each paper.");
+  if (questions.length > MAX_QUESTIONS_PER_JOB) throw invalid(`An extraction takes up to ${MAX_QUESTIONS_PER_JOB} questions.`);
+  if (questions.some((asked) => asked.question.length > MAX_QUESTION_TEXT_LENGTH)) throw invalid(`A question can be at most ${MAX_QUESTION_TEXT_LENGTH.toLocaleString("en")} characters.`);
+}
+
+/** Papers `first` to `last` of a collection, the library or a search: from 1 up, at most PAPER_LIMIT, and a search from its first. */
+function checkRange(set: PaperSet, first: number, last: number) {
+  if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw invalid("Pick papers from 1 up, with the first before the last");
+  if (last - first + 1 > PAPER_LIMIT) throw invalid(`An extraction takes up to ${PAPER_LIMIT.toLocaleString("en")} papers.`);
+  // The job reads a search's papers itself, from the first.
+  if (set.kind === "search" && first !== 1) throw invalid("An extraction reads a search from its first paper: give `first` as 1.");
+}
+
+/**
+ * What starting an extraction refuses that can be read before the person is asked to pay for
+ * it (see `start`), so that a yes is never followed by a refusal: its switches, its questions,
+ * and its papers. Only what OpenAlex says of a search, and a balance that changed since, are left.
+ */
+async function checkExtraction(ctx: QueryCtx, userId: Id<"users">, { set, first, last, questions, usePdfs }: { set: PaperSet; first: number; last: number; questions: Array<{ question: string }>; usePdfs?: boolean }) {
+  await requireFeature(ctx, "extraction.enabled", userId);
+  await requireFeature(ctx, "extraction.start", userId);
+  // Read, not spent: the start spends it (./mutations/jobs.ts).
+  const limited = await checkRateLimit(ctx, { name: "start-extraction", key: userId });
+  if (!limited.ok) throw createError("CONFLICT", `This account has started as many extractions as an hour allows. This one can start in ${Math.max(1, Math.ceil(((limited.retryAt ?? Date.now()) - Date.now()) / 60_000))} minutes.`);
+  await checkPdfs(ctx, usePdfs);
+  checkQuestions(questions);
+  if (set.kind === "screening") return void (await screeningPicked(ctx, userId, set.jobId));
+  checkRange(set, first, last);
+  if (set.kind === "search") return void (await searchFilters(ctx, userId, set.searchId));
+  if (set.kind === "collection" && (await ctx.db.get("collections", set.collectionId))?.userId !== userId) throw createError("NOT_FOUND", "Collection not found");
+  const held = await papersIn(ctx, userId, set);
+  if (held !== null && first > held) throw invalid("There are no papers in that range");
+}
+
 /** How many papers a request is for. A screening is all its included papers; a search is read from its first paper. */
 async function papersOf(ctx: QueryCtx, userId: Id<"users">, { set, first, last }: { set: PaperSet; first: number; last: number }) {
   const held = await papersIn(ctx, userId, set);
@@ -57,8 +94,8 @@ async function papersOf(ctx: QueryCtx, userId: Id<"users">, { set, first, last }
 }
 
 /** The most an extraction of these papers holds: every paper at its most, on the models the job sends its questions to (../ai/serverModel.ts `extractionStamp`). */
-async function extractionHold(ctx: QueryCtx, userId: Id<"users">, { questions, usePdfs, ...range }: { set: PaperSet; first: number; last: number; questions: Array<{ type: string }>; usePdfs?: boolean }) {
-  await checkPdfs(ctx, usePdfs);
+async function extractionHold(ctx: QueryCtx, userId: Id<"users">, { questions, usePdfs, ...range }: { set: PaperSet; first: number; last: number; questions: Array<{ type: string; question: string }>; usePdfs?: boolean }) {
+  await checkExtraction(ctx, userId, { ...range, questions, usePdfs });
   const pricing = await extractionPricing(ctx, await extractionStamp(ctx, userId));
   return (await papersOf(ctx, userId, range)) * extractionPaperCredits(pricing, questions, usePdfs === true);
 }
@@ -74,28 +111,32 @@ export const figure = internalQuery({
 export const searchSource = internalQuery({
   args: { userId: v.id("users"), searchId: v.string() },
   returns: searchFiltersValidator,
-  handler: async (ctx, { userId, searchId }) => {
-    const row = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", searchId)).unique();
-    if (!row) throw createError("NOT_FOUND", "Search not found");
-    const { params, filters } = await filtersOf(ctx, userId, currentSearch(row.data));
-    if (!filters) throw invalid("This search's query isn't one OpenAlex can read. Check its brackets and quotes.");
-    // Which papers a person rated is theirs, not OpenAlex's: the job reads the search from OpenAlex, and would read the papers the filter leaves out.
-    if (isRatingFilterActive([params.rmin, params.rmax], params.rated)) throw invalid("This search keeps papers by the person's ratings, which an extraction can't read from the search. Put its papers in a collection first, then extract from the collection.");
-    return filters;
-  },
+  handler: (ctx, { userId, searchId }) => searchFilters(ctx, userId, searchId),
 });
+
+async function searchFilters(ctx: QueryCtx, userId: Id<"users">, searchId: string) {
+  const row = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", searchId)).unique();
+  if (!row) throw createError("NOT_FOUND", "Search not found");
+  const { params, filters } = await filtersOf(ctx, userId, currentSearch(row.data));
+  if (!filters) throw invalid("This search's query isn't one OpenAlex can read. Check its brackets and quotes.");
+  // Which papers a person rated is theirs, not OpenAlex's: the job reads the search from OpenAlex, and would read the papers the filter leaves out.
+  if (isRatingFilterActive([params.rmin, params.rmax], params.rated)) throw invalid("This search keeps papers by the person's ratings, which an extraction can't read from the search. Put its papers in a collection first, then extract from the collection.");
+  return filters;
+}
 
 /** A screening as an extraction's source: its included papers as they are now, how many, and what it's called. */
 export const screeningSource = internalQuery({
   args: { userId: v.id("users"), jobId: v.id("screeningJobs") },
   returns: v.object({ revision: v.string(), count: v.number(), label: v.string() }),
-  handler: async (ctx, { userId, jobId }) => {
-    const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || job.userId !== userId) throw createError("NOT_FOUND", "Screening not found");
-    const revision = await screeningRevision(ctx, job);
-    return { revision, count: await checkScreeningSelection(ctx, userId, jobId, revision), label: job.label ?? "Screening" };
-  },
+  handler: (ctx, { userId, jobId }) => screeningPicked(ctx, userId, jobId),
 });
+
+async function screeningPicked(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"screeningJobs">) {
+  const job = await ctx.db.get("screeningJobs", jobId);
+  if (!job || job.userId !== userId) throw createError("NOT_FOUND", "Screening not found");
+  const revision = await screeningRevision(ctx, job);
+  return { revision, count: await checkScreeningSelection(ctx, userId, jobId, revision), label: job.label ?? "Screening" };
+}
 
 /** The person's library papers among these, by paper ID, as an extraction's sources name them. */
 export const libraryItems = internalQuery({
@@ -119,11 +160,8 @@ async function sourcesOf(ctx: ActionCtx, userId: Id<"users">, { set, first, last
     const picked: { revision: string; count: number; label: string } = await ctx.runQuery(internal.extraction.start.screeningSource, { userId, jobId: set.jobId });
     return [{ bucketKey: `screening:${set.jobId}`, source: "screening", sourceRefId: set.jobId, title: picked.label, authors: [], screeningSelection: { jobId: set.jobId, revision: picked.revision, count: picked.count } }];
   }
-  if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw invalid("Pick papers from 1 up, with the first before the last");
-  if (last - first + 1 > PAPER_LIMIT) throw invalid(`An extraction takes up to ${PAPER_LIMIT.toLocaleString("en")} papers.`);
+  checkRange(set, first, last);
   if (set.kind === "search") {
-    // The job reads a search's papers itself, from the first.
-    if (first !== 1) throw invalid("An extraction reads a search from its first paper: give `first` as 1.");
     const filters: Infer<typeof searchFiltersValidator> = await ctx.runQuery(internal.extraction.start.searchSource, { userId, searchId: set.searchId });
     return [{ bucketKey: `history:${set.searchId}`, source: "history", sourceRefId: set.searchId, title: filters.query, authors: [], searchFilters: { ...filters, limit: last } }];
   }
@@ -172,8 +210,7 @@ export const settleHold = internalMutation({
  */
 async function start(ctx: ActionCtx, userId: Id<"users">, { name, questions, usePdfs, ...range }: { name: string; set: PaperSet; first: number; last: number; questions: Array<Infer<typeof askedValidator>>; usePdfs?: boolean }, call?: ChangeCall): Promise<{ jobId: Id<"extractionJobs"> }> {
   const cap = call?.credits;
-  if (!questions.length) throw invalid("Give at least one question to answer for each paper.");
-  if (questions.length > MAX_QUESTIONS_PER_JOB) throw invalid(`An extraction takes up to ${MAX_QUESTIONS_PER_JOB} questions.`);
+  checkQuestions(questions);
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
   const job = { userId, name, bucketItems: await sourcesOf(ctx, userId, range), questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true, ...(call?.from ? { chatStep: call.from } : {}) };
   if (cap === undefined) return await ctx.runMutation(internal.extraction.start.begin, job);
