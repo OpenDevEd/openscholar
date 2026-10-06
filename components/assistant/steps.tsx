@@ -446,6 +446,9 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
             // What tells a run of searches apart: each one's settings the others don't share.
             const searches = folded ? run.map((one) => (one.href ? searchOf(one.href) : null)) : [];
             const told = folded && searches.every((search) => search !== null) ? differences(searches as NonNullable<(typeof searches)[number]>[]) : null;
+            // A run opens into its steps only when they say something its card doesn't: what each was about, or the
+            // filters its searches differ by. Six lines that all read "Extraction" tell the person nothing more.
+            const opens = folded && (new Set(lines).size > 1 || (told?.filters.some((filters) => filters !== undefined) ?? false));
             return (
               <motion.div
                 key={run[0].id}
@@ -485,7 +488,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                       </div>
                     </div>
                     {/* A folded run opens into its steps. A bulk change that ended partway made some of its changes: those can still be undone. */}
-                    {folded ? (
+                    {opens ? (
                       <TooltipHint label={t(open ? "steps.fold" : "steps.unfold")}>
                         <button
                           type="button"
@@ -511,7 +514,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                       <Check className="size-4 shrink-0 text-success" aria-label={t("steps.done")} />
                     ) : null}
                   </div>
-                  {folded ? (
+                  {opens ? (
                     // Each step of the run as a line, under the card's text: what it was about, and how many it found.
                     <ol inert={!open} className="pl-[60px] pr-3 text-xs text-muted-foreground">
                       {run.map((one, at) => (
