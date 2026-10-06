@@ -29,7 +29,7 @@ import { STEPS_SHOWN } from "@/lib/assistant/steps";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { viewOf, type Kind } from "@/lib/assistant/actions";
-import { runsOf } from "@/lib/assistant/step-cards";
+import { runsOf, shownSteps } from "@/lib/assistant/step-cards";
 import { OrbitMark } from "./orbit-mark";
 import { CARD_SPRING, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
 import { FadeRow, WorkingText } from "./parts";
@@ -149,7 +149,7 @@ export function Steps({
   // In the order they ran, whichever page brought them. The page's copy of a step is the one kept: it says what a step that waits for the person would do.
   const all = [...new Map([...results.toReversed(), ...newest].map((step) => [step.id, step])).values()].sort((a, b) => a.order - b.order || a.at - b.at);
   const asked = all.filter((step) => step.canAnswer);
-  const steps = all.filter((step) => !step.canAnswer);
+  const steps = shownSteps(all.filter((step) => !step.canAnswer));
   const { docked, flying } = useContext(DockedJobs);
   const reduceMotion = useReducedMotion();
   return (

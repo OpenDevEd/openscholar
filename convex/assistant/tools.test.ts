@@ -18,6 +18,7 @@ import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { screeningPool } from "../workpool";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
+import { onlyReads } from "./tools";
 import { allowAlways, carriedOn, pausedAt } from "./spending";
 import { MAX_ASKS, MODEL_READS, STEPS_SHOWN, forModel } from "./steps";
 import { notePart } from "../../lib/assistant/view";
@@ -1093,7 +1094,22 @@ describe("the assistant's tools", () => {
     expect(told(1, "add")).toEqual({ error: "Not your collection" });
     expect(await steps()).toMatchObject([{ path: "library/mutations:setPaperInCollection", status: "failed", error: "Not your collection" }]);
     expect(await shown()).toEqual(["user: Add it to Ben's collection", "step: library/mutations:setPaperInCollection failed", "assistant: That collection isn't yours."]);
+    // A failed change stays in the chat however the reply goes on (lib/assistant/step-cards.ts).
+    expect((await steps())[0].reads).toBeUndefined();
     expect(await t.run(async (ctx) => ctx.db.query("libraryItems").collect())).toEqual([]);
+  });
+
+  it("mark the steps that only read, so the chat can hide one that failed once a retry of it works", async () => {
+    const entry = (path: string) => USER_ACTIONS.find((one) => one.path === path)!;
+    // An OpenAlex search is an action, and reads all the same; a change, or a call that spends credits, doesn't.
+    expect(["research/papers:search", "library/collections:listCollections", "library/mutations:saveToLibrary", "extraction/start:extract"].map((path) => onlyReads(entry(path)))).toEqual([true, true, false, false]);
+    const t = convexTest(schema);
+    const { say, steps } = await chatOf(t);
+    mockDoStream
+      .mockImplementationOnce(calling({ id: "list", name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } }))
+      .mockImplementationOnce(finishingDoStream(["You have none."]));
+    await say("What collections do I have?");
+    expect(await steps()).toMatchObject([{ path: "library/collections:listCollections", status: "done", reads: true, request: 0 }]);
   });
 
   it("show a step whose reply died as failed, not as running for ever, and stop a reply that goes round in circles", async () => {
