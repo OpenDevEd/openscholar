@@ -200,7 +200,8 @@ export const TableView = memo(function TableView({
     observer.observe(scroller?.firstElementChild ?? document.body);
     return () => observer.disconnect();
   }, []);
-  // A row holding keyboard focus stays drawn after it scrolls away, so focus is not dropped.
+  // A row holding keyboard focus stays drawn after it scrolls away, so focus is not
+  // dropped, and so do its neighbours, so Tab and Shift+Tab still reach the next and previous paper.
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const focused = focusedId ? papers.findIndex((paper) => paper._id === focusedId) : -1;
   const options = {
@@ -210,8 +211,9 @@ export const TableView = memo(function TableView({
     scrollMargin,
     getItemKey: (index: number) => papers[index]._id,
     rangeExtractor: (range: Range) => {
-      const indexes = defaultRangeExtractor(range);
-      return focused < 0 || indexes.includes(focused) ? indexes : [...indexes, focused].sort((a, b) => a - b);
+      const indexes = new Set(defaultRangeExtractor(range));
+      if (focused >= 0) for (const index of [focused - 1, focused, focused + 1]) if (index >= 0 && index < papers.length) indexes.add(index);
+      return [...indexes].sort((a, b) => a - b);
     },
   };
   const windowRows = useWindowVirtualizer({ ...options, enabled: !pane });
