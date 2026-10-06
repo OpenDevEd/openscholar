@@ -378,7 +378,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
                       <button
                         type="button"
                         aria-expanded={expanded}
-                        aria-label={paper.title}
+                        aria-label={t(expanded ? "hideAnswers" : "showAnswers", { title: paper.title })}
                         onClick={() => { if (paper.openalexId !== held?.paper.openalexId) setHeld(null); setOpen(expanded ? null : paper.openalexId); }}
                         className="absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
                       />

@@ -2015,7 +2015,9 @@
     "after": "After {name}",
     "readingPapers": "Reading papers…",
     "screenPapers": "Screen {count, plural, one {# paper} other {# papers}}",
-    "startFailed": "Couldn't start the screening"
+    "startFailed": "Couldn't start the screening",
+    "showAnswers": "Show the answers for {title}",
+    "hideAnswers": "Hide the answers for {title}"
   },
   "connectionsPage": {
     "connectedApps": "Connected Apps",

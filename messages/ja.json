@@ -2025,7 +2025,9 @@
     "after": "{name} の後",
     "readingPapers": "論文を読み込み中…",
     "screenPapers": "{count, plural, other {# 件}}をスクリーニング",
-    "startFailed": "スクリーニングを開始できませんでした"
+    "startFailed": "スクリーニングを開始できませんでした",
+    "showAnswers": "{title} の回答を表示",
+    "hideAnswers": "{title} の回答を隠す"
   },
   "connectionsPage": {
     "connectedApps": "接続済みアプリ",
