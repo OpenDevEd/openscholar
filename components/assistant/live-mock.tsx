@@ -20,7 +20,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { ExtractionCard, JOB_CARD_H, ScreeningCard, type Extraction, type Screening } from "./job-cards";
 import { OrbitMark } from "./orbit-mark";
-import { CHIP_HANG, Footer, Header, PANEL_W, UserBubble } from "./panel";
+import { Footer, Header, PANEL_W, UserBubble } from "./panel";
 import { WorkingText } from "./parts";
 import { ChatRow, Dim, SHEET_SPRING, Sheet, SheetHeader, stackedUnder, type Chat } from "./sheets";
 import { RunMap, type StepItem } from "./steps";
@@ -31,8 +31,6 @@ type Job = (Screening & { started: number }) | (Extraction & { started: number }
 const GAP = 8;
 /** How far a card behind the front one shows above it while the stack is folded. */
 const PEEK = 16;
-/** The "Show less" row above an opened stack. */
-const LESS_H = 28;
 
 const T0 = Date.now();
 const screening = (): Job => ({ kind: "screening", jobId: "mock-screening" as Id<"screeningJobs">, status: "processing", label: "Loot boxes", total: 1000, included: 212, excluded: 7, unclear: 51, failed: 0, credits: 272, started: 1 });
@@ -89,6 +87,9 @@ export function LiveMock() {
   const [ask, setAsk] = useState<{ phase: "thinking" | "answering"; thought: string; answer: string; started: number; done?: boolean } | null>(null);
   const [history, setHistory] = useState(false);
   const [draft, setDraft] = useState("");
+  // The dock's stack, opened into a list over the chat.
+  const [stackOpen, setStackOpen] = useState(false);
+  const [allowed, setAllowed] = useState(true);
   const composer = useRef<HTMLTextAreaElement>(null);
 
   // A timer: the jobs fill in as real ones do.
@@ -138,11 +139,25 @@ export function LiveMock() {
           <Header title="Loot box screening" onHistory={() => setHistory(true)} onShare={() => {}} onSpending={() => {}} onRestart={() => {}} onFold={() => {}} />
           <LayoutGroup>
             <div className="relative flex min-h-0 flex-1 flex-col">
-              <Thread variant={variant} ask={ask} ended={ended} dockH={dockHeight(docked.length)} />
-              <Dock jobs={docked} />
+              <Thread variant={variant} ask={ask} ended={ended} />
+              {/* Opened, the chat behind the dock's list fades back, and a tap on it folds the list again. */}
+              <AnimatePresence>
+                {stackOpen && docked.length > 1 ? (
+                  <motion.div
+                    key="scrim"
+                    aria-hidden
+                    className="absolute inset-0 z-10 bg-card/80"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25, ease: EASE }}
+                    onClick={() => setStackOpen(false)}
+                  />
+                ) : null}
+              </AnimatePresence>
             </div>
-          </LayoutGroup>
           <Footer
+            dock={<Dock jobs={docked} open={stackOpen} setOpen={setStackOpen} />}
             composer={composer}
             draft={draft}
             setDraft={setDraft}
@@ -157,12 +172,14 @@ export function LiveMock() {
             model={null}
             onModel={() => {}}
             presetModel={undefined}
-            meter={null}
-            allowance={{ cap: 1500 }}
-            onStopAllowance={() => {}}
+            // The reply's meter while the follow-up is answered, as the real one shows.
+            meter={busy ? { spent: Math.round(ask.thought.length / 60 + ask.answer.length / 80), cap: 10, paused: null, limit: 10 } : null}
+            allowance={allowed ? { cap: 1500 } : null}
+            onStopAllowance={() => setAllowed(false)}
             onCarryOn={() => {}}
             onSpending={() => {}}
           />
+          </LayoutGroup>
           <Dim on={history} />
         </motion.div>
         <AnimatePresence>
@@ -177,6 +194,8 @@ export function LiveMock() {
         variant={variant}
         setVariant={setVariant}
         onAsk={send}
+        allowed={allowed}
+        onAllowed={() => setAllowed((now) => !now)}
         onFinish={() => setJobs((all) => all.map((job) => (job.kind === "screening" && running(job) ? { ...job, included: job.total - job.excluded - job.unclear, credits: job.total, status: "completed" } : job)))}
         onAdd={() => setJobs((all) => (all.some((job) => job.jobId === "mock-screening-2") ? all : [...all, another()]))}
         onReplay={() => {
@@ -188,45 +207,21 @@ export function LiveMock() {
   );
 }
 
-/** The dock's height: a folded stack is its front card with the peek of the ones behind. */
+/** The dock's height: a folded stack is its front card with the peek of up to two behind it, and the gap over the message box. */
 const dockHeight = (count: number) => (count === 0 ? 0 : JOB_CARD_H + Math.min(count - 1, 2) * PEEK + GAP);
 
 /**
- * Running jobs, docked on the chat's bottom edge above the chips, the way a live activity
- * sits on a lock screen. One shows whole; more fold into a stack, newest in front, that opens
- * into a list when tapped. A job that ends leaves the dock and settles into the chat under the
- * steps that started it.
+ * Running jobs, docked right above the message box, the way a live activity sits on a lock
+ * screen; the chips sit above them. One shows whole; more fold into a stack, newest in front,
+ * that opens upward into a list over the chat when tapped. A job that ends leaves the dock and
+ * settles into the chat under the steps that started it.
  */
-function Dock({ jobs }: { jobs: Job[] }) {
-  const [open, setOpen] = useState(false);
+function Dock({ jobs, open, setOpen }: { jobs: Job[]; open: boolean; setOpen: (open: boolean) => void }) {
   const stacked = jobs.length > 1;
   const opened = open && stacked;
-  const height = opened ? LESS_H + jobs.length * JOB_CARD_H + (jobs.length - 1) * GAP + GAP : dockHeight(jobs.length);
   return (
-    <>
-    {/* Opened, the chat behind the list fades back, and a tap on it folds the list again. */}
-    <AnimatePresence>
-      {opened ? (
-        <motion.div
-          key="scrim"
-          aria-hidden
-          className="absolute inset-0 z-10 bg-card/80"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25, ease: EASE }}
-          onClick={() => setOpen(false)}
-        />
-      ) : null}
-    </AnimatePresence>
-    <motion.div
-      className="pointer-events-none absolute inset-x-3 z-10"
-      style={{ bottom: CHIP_HANG + 6 }}
-      initial={false}
-      animate={{ height }}
-      transition={{ type: "spring", stiffness: 380, damping: 36 }}
-    >
-      {/* Opened, the chat behind it dims so the list reads as one layer. */}
+    // Only the folded stack takes room: the opened list rises over the chips and the chat.
+    <motion.div className="relative z-20" initial={false} animate={{ height: dockHeight(jobs.length) }} transition={{ type: "spring", stiffness: 380, damping: 36 }}>
       <AnimatePresence>
         {opened ? (
           <motion.button
@@ -237,7 +232,8 @@ function Dock({ jobs }: { jobs: Job[] }) {
             exit={{ opacity: 0, y: 6 }}
             transition={{ duration: 0.2, ease: EASE }}
             onClick={() => setOpen(false)}
-            className="pointer-events-auto absolute right-0 top-0 flex h-7 items-center gap-1 rounded-full bg-card/90 px-3 text-xs font-medium text-foreground/80 shadow-xs ring-1 ring-border/60 backdrop-blur hover:text-foreground"
+            className="absolute right-0 flex h-7 items-center gap-1 rounded-full bg-card px-3 text-xs font-medium text-foreground/80 shadow-xs ring-1 ring-border/60 hover:text-foreground"
+            style={{ bottom: GAP + jobs.length * (JOB_CARD_H + GAP) }}
           >
             Show less <ChevronDown className="size-3" />
           </motion.button>
@@ -245,33 +241,32 @@ function Dock({ jobs }: { jobs: Job[] }) {
       </AnimatePresence>
       {/* A card that leaves the dock has ended: it flies to its place in the chat (layoutId), so it has no exit of its own. */}
       {jobs.map((job, i) => {
-          // Folded: the front card at the bottom, each one behind it a step up and a step smaller.
-          const folded = { y: -i * PEEK, scale: 1 - i * 0.05, opacity: i > 2 ? 0 : 1 };
-          const listed = { y: -i * (JOB_CARD_H + GAP), scale: 1, opacity: 1 };
-          return (
-            <motion.div
-              key={job.jobId}
-              layoutId={`job:${job.jobId}`}
-              className={cn("pointer-events-auto absolute inset-x-0 bottom-0 origin-top rounded-2xl bg-card shadow-[0_10px_30px_-12px_rgb(0_0_0/0.35)]", stacked && !opened && i === 0 && "cursor-pointer")}
-              style={{ height: JOB_CARD_H, zIndex: jobs.length - i }}
-              initial={{ opacity: 0, y: 24, scale: 0.96 }}
-              animate={opened ? listed : folded}
-              transition={{ type: "spring", stiffness: 420, damping: 34 }}
-              onClickCapture={(event) => {
-                // Folded, a tap anywhere but a control opens the stack.
-                if (!stacked || opened || (event.target as HTMLElement).closest("a,button")) return;
-                event.stopPropagation();
-                setOpen(true);
-              }}
-            >
-              <div inert={stacked && !opened && i > 0} className="h-full">
-                <JobBody job={job} />
-              </div>
-            </motion.div>
-          );
-        })}
+        // Folded: the front card at the bottom, each one behind it a step up and a step smaller.
+        const folded = { y: -i * PEEK, scale: 1 - i * 0.05, opacity: i > 2 ? 0 : 1 };
+        const listed = { y: -i * (JOB_CARD_H + GAP), scale: 1, opacity: 1 };
+        return (
+          <motion.div
+            key={job.jobId}
+            layoutId={`job:${job.jobId}`}
+            className={cn("absolute inset-x-0 origin-top rounded-2xl bg-card shadow-[0_10px_30px_-12px_rgb(0_0_0/0.35)]", stacked && !opened && i === 0 && "cursor-pointer")}
+            style={{ height: JOB_CARD_H, bottom: GAP, zIndex: jobs.length - i }}
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={opened ? listed : folded}
+            transition={{ type: "spring", stiffness: 420, damping: 34 }}
+            onClickCapture={(event) => {
+              // Folded, a tap anywhere but a control opens the stack.
+              if (!stacked || opened || (event.target as HTMLElement).closest("a,button")) return;
+              event.stopPropagation();
+              setOpen(true);
+            }}
+          >
+            <div inert={stacked && !opened && i > 0} className="h-full">
+              <JobBody job={job} />
+            </div>
+          </motion.div>
+        );
+      })}
     </motion.div>
-    </>
   );
 }
 
@@ -279,13 +274,13 @@ function JobBody({ job }: { job: Job }) {
   return job.kind === "screening" ? <ScreeningCard job={job} mine /> : <ExtractionCard job={job} mine />;
 }
 
-function Thread({ variant, ask, ended, dockH }: { variant: Variant; ask: { phase: "thinking" | "answering"; thought: string; answer: string; started: number; done?: boolean } | null; ended: Job[]; dockH: number }) {
+function Thread({ variant, ask, ended }: { variant: Variant; ask: { phase: "thinking" | "answering"; thought: string; answer: string; started: number; done?: boolean } | null; ended: Job[] }) {
   return (
     <Conversation
       className="min-h-0 flex-1"
-      style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${CHIP_HANG + EDGE_FADE}px), transparent calc(100% - ${CHIP_HANG}px))` }}
+      style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)` }}
     >
-      <ConversationContent className="gap-5 overflow-x-clip px-4 pt-4" style={{ paddingBottom: CHIP_HANG + EDGE_FADE + 8 + dockH, transition: "padding-bottom 0.35s cubic-bezier(0.22, 1, 0.36, 1)" }}>
+      <ConversationContent className="gap-5 overflow-x-clip px-4 pt-4" style={{ paddingBottom: EDGE_FADE + 8 }}>
         <UserBubble message={{ id: "m1", role: "user", order: 1, text: "Screen the 1,000 loot box papers in my search against my questions, and pull study design and sample size from the 60 I saved last week.", status: "done", mine: true, at: T0 }} />
         <div className="space-y-3">
           <RunMap threadId={"mock" as Id<"assistantThreads">} steps={STEPS} earlier={null} />
@@ -417,7 +412,7 @@ function ChatsMock({ jobs, onBack }: { jobs: Job[]; onBack: () => void }) {
 }
 
 /** The mock's own controls, outside the panel. */
-function Controls({ variant, setVariant, onAsk, onFinish, onAdd, onReplay }: { variant: Variant; setVariant: (v: Variant) => void; onAsk: () => void; onFinish: () => void; onAdd: () => void; onReplay: () => void }) {
+function Controls({ variant, setVariant, onAsk, allowed, onAllowed, onFinish, onAdd, onReplay }: { variant: Variant; setVariant: (v: Variant) => void; onAsk: () => void; allowed: boolean; onAllowed: () => void; onFinish: () => void; onAdd: () => void; onReplay: () => void }) {
   const button = "h-8 rounded-full px-3 text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground";
   return (
     <div className="fixed bottom-4 left-4 z-50 flex items-center gap-1 rounded-2xl border border-border/70 bg-card p-1.5 shadow-lg">
@@ -434,6 +429,9 @@ function Controls({ variant, setVariant, onAsk, onFinish, onAdd, onReplay }: { v
       />
       <button type="button" className={button} onClick={onAsk}>
         Ask a follow-up
+      </button>
+      <button type="button" className={button} onClick={onAllowed}>
+        {allowed ? "Hide the allowance chip" : "Show the allowance chip"}
       </button>
       <button type="button" className={button} onClick={onAdd}>
         Start a third job

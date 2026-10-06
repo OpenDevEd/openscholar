@@ -66,7 +66,8 @@ type Run = { order: number; head: Item; steps: StepItem[]; said: number };
 
 export const PANEL_W = 440;
 /** How far the chips above the composer hang over the thread: half their height. */
-export const CHIP_HANG = 16;
+/** The chips' row over the message box: a chip's height and the gap under it. */
+const CHIP_ROW = 40;
 const SHELL_SPRING = { type: "spring" as const, stiffness: 380, damping: 36, mass: 0.9 };
 const FIRST_MESSAGES = 30;
 /** How near the thread's top the person scrolls before the messages before these load, so they're there by the time they get to them. */
@@ -638,18 +639,17 @@ function Thread({
   }
   const loading = older === "loading";
   return (
-    // Both edges fade. The bottom one is clear under the hanging chips, then fades the usual
-    // distance; the content's bottom padding keeps the last message clear of both.
+    // Both edges fade; the content's bottom padding keeps the last message clear of the fade.
     <Conversation
       className="min-h-0 flex-1"
-      style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${CHIP_HANG + EDGE_FADE}px), transparent calc(100% - ${CHIP_HANG}px))` }}
+      style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)` }}
       // The messages before these load as the person scrolls back towards them, as the app's other lists do.
       // The scroller is the conversation's first element; a table or a code block scrolling inside a reply isn't it.
       onScrollCapture={(event) => {
         if (typeof older === "function" && event.target === event.currentTarget.firstElementChild && event.currentTarget.firstElementChild.scrollTop < LOAD_AHEAD) older();
       }}
     >
-      <ConversationContent className="gap-5 overflow-x-clip px-4 pt-4" style={{ paddingBottom: CHIP_HANG + EDGE_FADE + 8 }}>
+      <ConversationContent className="gap-5 overflow-x-clip px-4 pt-4" style={{ paddingBottom: EDGE_FADE + 8 }}>
         {fresh ? <Empty /> : null}
         {typeof older === "function" || loading ? (
           <button
@@ -1068,6 +1068,7 @@ export function Footer({
   onStopAllowance,
   onCarryOn,
   onSpending,
+  dock,
 }: {
   composer: RefObject<HTMLTextAreaElement | null>;
   draft: string;
@@ -1093,14 +1094,17 @@ export function Footer({
   onStopAllowance: () => void;
   onCarryOn: () => void;
   onSpending: () => void;
+  /** The chat's running jobs, between the chips and the message box. */
+  dock?: ReactNode;
 }) {
   const t = useTranslations("assistant");
   const view = useViewName();
+  const chips = meter !== null || allowance !== null;
   return (
-    <div className="space-y-2 p-3 pt-0">
-      {/* The chips hang from their middle on the thread's bottom edge; their frame is the lower half. */}
-      <div className="relative" style={{ height: CHIP_HANG }}>
-        <div className="absolute inset-x-0 flex h-8 items-center gap-2" style={{ top: -CHIP_HANG }}>
+    <div className="p-3 pt-0">
+      {/* The chips' row takes room only while a chip shows, and opens and closes as one does. */}
+      <motion.div className="overflow-hidden" initial={false} animate={{ height: chips ? CHIP_ROW : 0 }} transition={{ duration: 0.3, ease: EASE }}>
+        <div className="flex h-8 items-center gap-2">
           <div className="min-w-0 flex-1">
             <AnimatePresence mode="wait" initial={false}>
               {meter ? (
@@ -1133,7 +1137,8 @@ export function Footer({
             ) : null}
           </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
+      {dock}
       <div className="rounded-2xl border border-border/60 bg-background shadow-xs focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
         <MentionComposer
           composer={composer}
