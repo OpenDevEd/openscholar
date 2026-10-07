@@ -44,16 +44,32 @@ export const users = migrations.define({
   migrateOne: async (_ctx, user) => (user.libraryItemCount === undefined ? undefined : { libraryItemCount: undefined }),
 });
 
-export const run = migrations.runner([internal.migrations.libraryFacets.memberships, internal.migrations.libraryFacets.items, internal.migrations.libraryFacets.users]);
+/** A removal from before places were kept as rows: its places become rows, as Undo reads them. */
+export const removals = migrations.define({
+  table: "libraryRemovals",
+  migrateOne: async (ctx, removal) => {
+    if (removal.collectionIds === undefined) return;
+    for (const [i, collectionId] of removal.collectionIds.entries()) {
+      await ctx.db.insert("removedPlaces", { removalId: removal._id, collectionId, assignedAt: removal.assignedAts?.[i] ?? removal._creationTime });
+    }
+    return { collectionIds: undefined, assignedAts: undefined };
+  },
+});
 
-const tableValidator = v.union(v.literal("libraryItemCollections"), v.literal("libraryItems"), v.literal("users"));
+export const run = migrations.runner([internal.migrations.libraryFacets.memberships, internal.migrations.libraryFacets.items, internal.migrations.libraryFacets.users, internal.migrations.libraryFacets.removals]);
 
-/** Rows on one page of `table` the backfill hasn't reached: a membership without its paper's fields, a row not counted, a user row with the old count. */
+const tableValidator = v.union(v.literal("libraryItemCollections"), v.literal("libraryItems"), v.literal("users"), v.literal("libraryRemovals"));
+
+/** Rows on one page of `table` the backfill hasn't reached: a membership without its paper's fields, a row not counted, a user row with the old count, a removal with its places in a list. */
 export const verifyPage = internalQuery({
   args: { table: tableValidator, cursor: v.union(v.string(), v.null()) },
   returns: v.object({ wrong: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
   handler: async (ctx, { table, cursor }) => {
     const opts = { cursor, numItems: 100 };
+    if (table === "libraryRemovals") {
+      const page = await ctx.db.query("libraryRemovals").paginate(opts);
+      return { wrong: page.page.filter((removal) => removal.collectionIds !== undefined).length, isDone: page.isDone, continueCursor: page.continueCursor };
+    }
     if (table === "users") {
       const page = await ctx.db.query("users").paginate(opts);
       return { wrong: page.page.filter((user) => user.libraryItemCount !== undefined).length, isDone: page.isDone, continueCursor: page.continueCursor };
@@ -70,13 +86,13 @@ export const verifyPage = internalQuery({
   },
 });
 
-/** How many rows `verifyPage` finds wrong across the three tables; 0 when done. */
+/** How many rows `verifyPage` finds wrong across the tables; 0 when done. */
 export const verify = internalAction({
   args: {},
   returns: v.number(),
   handler: async (ctx): Promise<number> => {
     let wrong = 0;
-    for (const table of ["libraryItemCollections", "libraryItems", "users"] as const) {
+    for (const table of ["libraryItemCollections", "libraryItems", "users", "libraryRemovals"] as const) {
       for (let cursor: string | null = null; ;) {
         const page: { wrong: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.libraryFacets.verifyPage, { table, cursor });
         wrong += page.wrong;

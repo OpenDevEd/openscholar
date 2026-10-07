@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
 import { libraryItemFields, removedItemValidator } from "./library/validators";
 import { v } from "convex/values";
+import { MAX_COLLECTIONS_PER_USER } from "./lib/queryBounds";
 import { sourceMetadataFields } from "./lib/paperMetadata";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
@@ -1162,8 +1163,12 @@ export default defineSchema({
   libraryRemovals: defineTable({
     userId: v.id("users"),
     item: removedItemValidator,
-    // The removed paper's ID, which its places not moved yet still name.
-    itemId: v.id("libraryItems"),
+    // The removed paper's ID, which its places not moved yet still name. A removal from before
+    // places were kept as rows has none, and its places in `collectionIds`, with when the paper
+    // was put in each in `assignedAts`, until migrations/libraryFacets moves them (#638 narrows).
+    itemId: v.optional(v.id("libraryItems")),
+    collectionIds: capped(v.optional(v.array(v.id("collections"))), MAX_COLLECTIONS_PER_USER),
+    assignedAts: capped(v.optional(v.array(v.number())), MAX_COLLECTIONS_PER_USER),
     expiresAt: v.number(),
     // The paper Undo put back; the removal is kept until it expires.
     restoredAs: v.optional(v.id("libraryItems")),
