@@ -3926,7 +3926,6 @@
       "notUploaded": "{count, plural, other {# 个文件未能上传}}。请移除或重新添加。",
       "tooMany": "每条消息最多 {count} 个文件",
       "tooLargePdf": "超过 {mb} MB",
-      "unreadablePdf": "无法打开此 PDF",
       "pages": "{count, plural, other {# 页}}",
       "aPdf": "一个 PDF",
       "modelCantPdf": "{model} 无法读取 PDF。请选择其他模型来添加。",

@@ -3926,7 +3926,6 @@
       "notUploaded": "{count, plural, one {एक फ़ाइल अपलोड नहीं हुई} other {# फ़ाइलें अपलोड नहीं हुईं}}। उन्हें हटाएँ या फिर से जोड़ें।",
       "tooMany": "एक संदेश में अधिकतम {count} फ़ाइलें",
       "tooLargePdf": "{mb} MB से अधिक",
-      "unreadablePdf": "यह PDF खुल नहीं सकता",
       "pages": "{count, plural, one {# पृष्ठ} other {# पृष्ठ}}",
       "aPdf": "एक PDF",
       "modelCantPdf": "{model} PDF नहीं पढ़ सकता। उन्हें जोड़ने के लिए कोई दूसरा मॉडल चुनें।",

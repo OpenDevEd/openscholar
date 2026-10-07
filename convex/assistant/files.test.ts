@@ -7,7 +7,7 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
-import { FILE_IDLE_MS, pdfTag } from "../../lib/assistant/files";
+import { FILE_IDLE_MS } from "../../lib/assistant/files";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { people } from "./assistant.test-support";
 import { MODEL_READS } from "./steps";
@@ -237,56 +237,78 @@ async function pdfOf(pages: number) {
   for (let i = 1; i <= pages; i += 1) doc.addPage().drawText(`Page ${i}`, { x: 50, y: 700, font, size: 24 });
   return await doc.save();
 }
-/** Stores bytes as an upload address does, with `tag` at their end as the browser adds it. */
-const storePdf = (t: Test, bytes: Uint8Array, tag = "") => t.run((ctx) => ctx.storage.store(new Blob([bytes as Uint8Array<ArrayBuffer>, tag], { type: "application/pdf" })));
-const exists = (t: Test, storageId: Id<"_storage">) => t.run(async (ctx) => (await ctx.storage.get(storageId)) !== null);
+/** Posts a PDF's bytes to the upload route as the browser does, in `parts` pieces, and returns the last answer. */
+async function postPdf(t: Test, token: string, bytes: Uint8Array, parts = 1) {
+  const size = Math.ceil(bytes.length / parts);
+  let answer: Response | undefined;
+  for (let part = 0; part < parts; part += 1) {
+    const body = new Blob([bytes.slice(part * size, (part + 1) * size) as Uint8Array<ArrayBuffer>]);
+    answer = await t.fetch(`/assistant/upload?token=${token}&part=${part}${part === parts - 1 ? "&last=1" : ""}`, { method: "POST", headers: { "Content-Type": "application/pdf" }, body });
+    if (!answer.ok) return answer;
+  }
+  return answer!;
+}
 
-/** Attaches a PDF as the browser does: its row, the bytes with its row's tag to the upload address, then the check that opens it. */
+/** Starts a PDF's upload as the browser does: a token of its own, whose digest makes the file's row. */
+async function startPdf(as: Person, bytes: Uint8Array) {
+  const token = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+  const { fileId } = await as.mutation(api.assistant.files.startUpload, { name: "trial.pdf", digest: await digestOpaqueToken(token), pdfBytes: bytes.length });
+  return { fileId, token };
+}
+
+/** Attaches a PDF as the browser does: its row, then its bytes, in parts, to the upload route. */
 async function attachPdf(t: Test, as: Person, bytes: Uint8Array) {
-  const { fileId } = await as.mutation(api.assistant.files.startUpload, { name: "trial.pdf", pdfBytes: bytes.length });
-  const storageId = await storePdf(t, bytes, pdfTag(fileId));
-  const { pages } = await as.action(api.assistant.pdf.pdfReady, { fileId, storageId });
-  return { fileId, storageId, pages };
+  const { fileId, token } = await startPdf(as, bytes);
+  const answer = await postPdf(t, token, bytes);
+  expect(answer.status).toBe(200);
+  return { fileId, ...((await answer.json()) as { pages: number }) };
 }
 
 describe("PDFs and text files (#648)", () => {
-  it("binds only bytes uploaded for the row, and never deletes anyone else's", async () => {
+  it("joins a PDF sent in parts, counts its pages, and keeps none of the parts", async () => {
     const t = convexTest(schema);
-    const { asAda, asBen } = await people(t);
+    const { asAda } = await people(t);
     const bytes = await pdfOf(3);
-    // Ben's PDF, stored after Ada's row was made, even the same file: it isn't hers to bind or delete.
-    const { fileId } = await asAda.mutation(api.assistant.files.startUpload, { name: "trial.pdf", pdfBytes: bytes.length });
-    const bens = await storePdf(t, bytes);
-    await expect(asAda.action(api.assistant.pdf.pdfReady, { fileId, storageId: bens })).rejects.toThrow(/isn't yours/);
-    // Nor is the upload for her row Ben's to finish.
-    const hers = await storePdf(t, bytes, pdfTag(fileId));
-    await expect(asBen.action(api.assistant.pdf.pdfReady, { fileId, storageId: hers })).rejects.toThrow();
-    expect(await exists(t, bens)).toBe(true);
-    expect(await exists(t, hers)).toBe(true);
-
-    expect(await asAda.action(api.assistant.pdf.pdfReady, { fileId, storageId: hers })).toEqual({ pages: 3 });
-    expect(await t.run((ctx) => ctx.db.get("assistantFiles", fileId))).toMatchObject({ storageId: hers, pages: 3, mediaType: "application/pdf" });
-    // Removing it deletes only its own bytes.
-    await asAda.mutation(api.assistant.files.remove, { fileId });
-    expect(await exists(t, hers)).toBe(false);
-    expect(await exists(t, bens)).toBe(true);
+    const { fileId, token } = await startPdf(asAda, bytes);
+    const answer = await postPdf(t, token, bytes, 3);
+    expect(await answer.json()).toEqual({ fileId, pages: 3 });
+    expect(await t.run((ctx) => ctx.db.get("assistantFiles", fileId))).toMatchObject({ pages: 3, bytes: bytes.length, mediaType: "application/pdf", storageId: expect.any(String) });
+    expect(await storedFiles(t)).toBe(1);
+    // The token is spent with the last part.
+    expect((await postPdf(t, token, bytes)).status).toBe(410);
   });
 
-  it("deletes a PDF's bytes when it was removed before they were checked, and bytes that don't open", async () => {
+  it("deletes the parts of a PDF removed while it uploads, and of one that doesn't open", async () => {
     const t = convexTest(schema);
     const { asAda } = await people(t);
     const bytes = await pdfOf(2);
-    const { fileId } = await asAda.mutation(api.assistant.files.startUpload, { name: "trial.pdf", pdfBytes: bytes.length });
-    const stored = await storePdf(t, bytes, pdfTag(fileId));
+    const { fileId, token } = await startPdf(asAda, bytes);
+    const half = Math.ceil(bytes.length / 2);
+    const first = await t.fetch(`/assistant/upload?token=${token}&part=0`, { method: "POST", body: new Blob([bytes.slice(0, half) as Uint8Array<ArrayBuffer>]) });
+    expect(first.status).toBe(200);
+    expect(await storedFiles(t)).toBe(1);
     await asAda.mutation(api.assistant.files.remove, { fileId });
-    await expect(asAda.action(api.assistant.pdf.pdfReady, { fileId, storageId: stored })).rejects.toThrow(/removed/);
-    expect(await exists(t, stored)).toBe(false);
+    expect(await storedFiles(t)).toBe(0);
+    const second = await t.fetch(`/assistant/upload?token=${token}&part=1&last=1`, { method: "POST", body: new Blob([bytes.slice(half) as Uint8Array<ArrayBuffer>]) });
+    expect(second.status).toBe(410);
 
-    const broken = await asAda.mutation(api.assistant.files.startUpload, { name: "broken.pdf", pdfBytes: 10 });
-    const junk = await storePdf(t, new TextEncoder().encode("not a pdf"), pdfTag(broken.fileId));
-    await expect(asAda.action(api.assistant.pdf.pdfReady, { fileId: broken.fileId, storageId: junk })).rejects.toThrow(/can't be opened/);
-    expect(await exists(t, junk)).toBe(false);
+    const junk = new TextEncoder().encode("not a pdf");
+    const broken = await startPdf(asAda, junk);
+    const refused = await postPdf(t, broken.token, junk);
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toMatchObject({ error: expect.stringMatching(/can't be opened/) });
     expect(await t.run((ctx) => ctx.db.get("assistantFiles", broken.fileId))).toBeNull();
+    expect(await storedFiles(t)).toBe(0);
+  });
+
+  it("takes a PDF's parts only in order", async () => {
+    const t = convexTest(schema);
+    const { asAda } = await people(t);
+    const bytes = await pdfOf(2);
+    const { token } = await startPdf(asAda, bytes);
+    const skipped = await t.fetch(`/assistant/upload?token=${token}&part=1`, { method: "POST", body: new Blob([bytes as Uint8Array<ArrayBuffer>]) });
+    expect(skipped.status).toBe(410);
+    expect(await storedFiles(t)).toBe(0);
   });
 
   it("reads the pages asked for into a PDF of their own, kept with the chat", async () => {
@@ -305,6 +327,8 @@ describe("PDFs and text files (#648)", () => {
     const cited = await asAda.query(api.assistant.files.cited, { threadId, fileIds: [fileId, read.pdfPages!, "not-an-id"] });
     expect(cited).toEqual([{ id: fileId, name: "trial.pdf", url: expect.any(String) }]);
     expect(read).toMatchObject({ file: fileId, pages: "2-4", of: 5 });
+    // The same pages read again are the ones already cut, not another copy.
+    expect((await asAda.action(api.assistant.files.read, { file: fileId, range: "2-4" })).pdfPages).toBe(read.pdfPages);
     const part = await t.run((ctx) => ctx.db.get("assistantFiles", read.pdfPages!));
     expect(part).toMatchObject({ parentId: fileId, range: "2-4", threadId, state: "sent" });
     const { PDFDocument } = await import("@cantoo/pdf-lib");

@@ -8,14 +8,14 @@
 import { createContext, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useAction, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
 import { FileText, Hourglass, ImageIcon, Paperclip, TriangleAlert, X } from "@/components/icons";
 import { EASE } from "@/components/settings/model-map";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { digestOpaqueToken } from "@/convex/lib/opaqueTokenDigest";
-import { MAX_FILES_PER_MESSAGE, MAX_IMAGE_BYTES, MAX_IMAGE_MB, MAX_PDF_BYTES, MAX_PDF_MB, MAX_TEXT_BYTES, MAX_TEXT_MB, isPdf, isText, pdfTag, textTypeOf } from "@/lib/assistant/files";
+import { MAX_FILES_PER_MESSAGE, MAX_IMAGE_BYTES, MAX_IMAGE_MB, MAX_PDF_BYTES, MAX_PDF_MB, MAX_TEXT_BYTES, MAX_TEXT_MB, isPdf, isText, PDF_CHUNK_BYTES, textTypeOf } from "@/lib/assistant/files";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { FadeRow } from "./parts";
@@ -91,8 +91,8 @@ function send(url: string, blob: Blob, onProgress: (share: number) => void, sign
     request.send(blob);
   });
 }
-/** An image's or a text file's bytes go to the upload route with its one-time token (convex/assistant/files.ts `upload`). */
-const imageRoute = (token: string) => `${process.env.NEXT_PUBLIC_CONVEX_SITE_URL}/assistant/upload?token=${encodeURIComponent(token)}`;
+/** A file's bytes go to the upload route with its one-time token (convex/assistant/files.ts `upload`). */
+const uploadRoute = (token: string) => `${process.env.NEXT_PUBLIC_CONVEX_SITE_URL}/assistant/upload?token=${encodeURIComponent(token)}`;
 
 /** A file once it's up: its ID, and how its message shows it. */
 type Uploaded = { fileId: Id<"assistantFiles">; shown: SentFile };
@@ -124,7 +124,6 @@ export function useAttach(add: (files: Attachment[]) => void, patch: (key: strin
   const t = useTranslations("assistant.files");
   const startUpload = useMutation(api.assistant.files.startUpload);
   const remove = useMutation(api.assistant.files.remove);
-  const pdfReady = useAction(api.assistant.pdf.pdfReady);
   /**
    * `attached`: files already going with the draft, which count towards what one message carries.
    * `reads`: what the chat's model takes, and its name for saying it doesn't.
@@ -161,15 +160,19 @@ export function useAttach(add: (files: Attachment[]) => void, patch: (key: strin
         // After the tray has opened, so reading the file costs none of its frames.
         await new Promise((resolve) => setTimeout(resolve, 350));
         if (isPdf(one.mediaType)) {
-          // A PDF goes as it is to an upload address, ending with its row's tag, which binds it there; the server then opens it and counts its pages.
-          const { fileId, url } = await startUpload({ name: one.name, pdfBytes: one.file.size });
+          // A PDF goes as it is, in parts, the way an image does; the server joins them, opens it and counts its pages.
+          const token = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+          const { fileId } = await startUpload({ name: one.name, digest: await digestOpaqueToken(token), pdfBytes: one.file.size });
           patch(one.key, { fileId });
           await removedMeanwhile(fileId);
-          const tagged = new Blob([one.file, pdfTag(fileId)], { type: "application/pdf" });
-          const { storageId } = JSON.parse(await send(url!, tagged, progress, stop.signal)) as { storageId: Id<"_storage"> };
-          const { pages } = await pdfReady({ fileId, storageId }).catch((error: unknown) => {
-            throw new Error(getErrorMessage(error, t("unreadablePdf")));
-          });
+          const count = Math.max(1, Math.ceil(one.file.size / PDF_CHUNK_BYTES));
+          let answer = "";
+          for (let part = 0; part < count; part += 1) {
+            const chunk = one.file.slice(part * PDF_CHUNK_BYTES, (part + 1) * PDF_CHUNK_BYTES, "application/pdf");
+            const sent = part * PDF_CHUNK_BYTES;
+            answer = await send(`${uploadRoute(token)}&part=${part}${part === count - 1 ? "&last=1" : ""}`, chunk, (share) => progress((sent + share * chunk.size) / one.file.size), stop.signal);
+          }
+          const { pages } = JSON.parse(answer) as { pages: number };
           patch(one.key, { progress: 1, pages });
           return { fileId, shown: { id: one.key, name: one.name, bytes: one.file.size, mediaType: one.mediaType, url: "", pages } };
         }
@@ -180,7 +183,7 @@ export function useAttach(add: (files: Attachment[]) => void, patch: (key: strin
           const { fileId } = await startUpload({ name: one.name, digest: await digestOpaqueToken(token), text });
           patch(one.key, { fileId });
           await removedMeanwhile(fileId);
-          const { lines } = JSON.parse(await send(imageRoute(token), new Blob([one.file], { type: text }), progress, stop.signal)) as { lines?: number };
+          const { lines } = JSON.parse(await send(uploadRoute(token), new Blob([one.file], { type: text }), progress, stop.signal)) as { lines?: number };
           patch(one.key, { progress: 1, lines });
           return { fileId, shown: { id: one.key, name: one.name, bytes: one.file.size, mediaType: text, url: "", ...(lines === undefined ? {} : { lines }) } };
         }
@@ -194,7 +197,7 @@ export function useAttach(add: (files: Attachment[]) => void, patch: (key: strin
         const { fileId } = await startUpload({ name: one.name, digest: await digestOpaqueToken(token) });
         patch(one.key, { fileId });
         await removedMeanwhile(fileId);
-        await send(imageRoute(token), small, progress, stop.signal);
+        await send(uploadRoute(token), small, progress, stop.signal);
         patch(one.key, { progress: 1 });
         return { fileId, shown: { id: one.key, name: one.name, bytes: small.size, mediaType: small.type, url: preview } };
       })().catch((error: unknown) => {

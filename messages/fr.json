@@ -3926,7 +3926,6 @@
       "notUploaded": "{count, plural, one {Un fichier n’a pas été envoyé} other {# fichiers n’ont pas été envoyés}}. Retirez-{count, plural, one {le} other {les}} ou joignez-{count, plural, one {le} other {les}} à nouveau.",
       "tooMany": "{count} fichiers au plus par message",
       "tooLargePdf": "Plus de {mb} Mo",
-      "unreadablePdf": "Ce PDF ne peut pas être ouvert",
       "pages": "{count, plural, one {# page} other {# pages}}",
       "aPdf": "un PDF",
       "modelCantPdf": "{model} ne lit pas les PDF. Choisissez un autre modèle pour les joindre.",

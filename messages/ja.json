@@ -3926,7 +3926,6 @@
       "notUploaded": "{count, plural, other {# 件のファイルをアップロードできませんでした}}。削除するか、もう一度添付してください。",
       "tooMany": "1 件のメッセージにつき {count} 件まで",
       "tooLargePdf": "{mb} MB を超えています",
-      "unreadablePdf": "この PDF は開けません",
       "pages": "{count, plural, other {# ページ}}",
       "aPdf": "PDF 1 件",
       "modelCantPdf": "{model} は PDF を読めません。添付するには別のモデルを選んでください。",

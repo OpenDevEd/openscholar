@@ -42,13 +42,13 @@ export const readsImages = (inputs: readonly string[] | undefined) => inputs?.in
 export const readsPdfs = (inputs: readonly string[] | undefined) => inputs?.includes("file") ?? false;
 export const isPdf = (mediaType: string) => mediaType === "application/pdf";
 /**
- * What the browser adds to the end of a PDF it uploads, after its last line: a PDF comment
- * naming the file's row. Bytes that end with it were uploaded for that row, so they're the
- * only ones it binds or deletes (convex/assistant/pdf.ts).
+ * A PDF is uploaded in parts of this size, each a request of its own to the upload route,
+ * which takes no more than 20 MB a request (convex/assistant/files.ts `upload`).
  */
-export const pdfTag = (fileId: string) => `\n%openscholar-file ${fileId}\n`;
-/** The longest a tag is, past the PDF it ends. */
-export const PDF_TAG_BYTES = 64;
+export const PDF_CHUNK_BYTES = 8 * 1024 * 1024;
+export const MAX_PDF_CHUNKS = Math.ceil(MAX_PDF_BYTES / PDF_CHUNK_BYTES);
+/** Reads of PDF pages one person can have cut an hour; a read of pages already cut sends those again and counts for none. */
+export const PDF_CUTS_PER_HOUR = 120;
 export const isText = (mediaType: string) => mediaType.startsWith("text/");
 
 /** The most a text file can be: what one upload request takes (convex/assistant/files.ts `upload`). */

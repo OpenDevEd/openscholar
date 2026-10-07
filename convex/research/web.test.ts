@@ -83,6 +83,27 @@ describe("web search", () => {
     expect(fetchMock.mock.calls.filter(([input]) => String(input).startsWith("https://openrouter.ai"))).toHaveLength(2);
   });
 
+  it("allows another waiting search with Always allow only while the balance covers both", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await chat(t);
+    mockDoStream
+      .mockImplementationOnce(callingDoStream({ id: "web-1", name: "research_web_search", input: { query: "loot boxes UK" } }, { id: "web-2", name: "research_web_search", input: { query: "loot boxes Belgium" } }))
+      .mockImplementation(finishingDoStream(["Done."]));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "What have regulators done?" });
+    await replied(t, threadId);
+    const asking = await t.run((ctx) => ctx.db.query("assistantSteps").withIndex("by_thread_and_status", (q) => q.eq("threadId", threadId).eq("status", "asking")).collect());
+    expect(asking).toHaveLength(2);
+    // Enough for one search's hold, not two.
+    await t.run(async (ctx) => {
+      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      await ctx.db.patch("billingAccounts", account!._id, { balance: Math.floor(asking[0].credits! * 1.5) });
+    });
+
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking[0]._id, allow: true, always: true });
+    const other = await t.run((ctx) => ctx.db.get("assistantSteps", asking[1]._id));
+    expect(other?.status).toBe("asking");
+  });
+
   it("asks first in a chat, and Always allow lets later searches run without asking, but not jobs", async () => {
     const t = convexTest(schema);
     const { asAda, threadId } = await chat(t);

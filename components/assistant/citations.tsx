@@ -45,17 +45,21 @@ export function useCited(href: string | undefined, children: ReactNode) {
   return source ? <WebCitation source={source} /> : null;
 }
 
-/** A page a search found by its path alone: a model sometimes drops the site from an address it cites, which would make it a page of the app. */
+/**
+ * A page a search found by its path alone: a model sometimes drops the site from an address it
+ * cites, which would make it a page of the app. Only when one page found has that path: two
+ * sites' pages could share it, and the citation can't say which.
+ */
 function sourceAt(sources: ReadonlyMap<string, WebSource>, path: string) {
-  for (const source of sources.values()) {
+  const matches = [...sources.values()].filter((source) => {
     try {
       const url = new URL(source.url);
-      if (url.pathname + url.search === path) return source;
+      return url.pathname + url.search === path;
     } catch {
-      // Not an address: it can't be this one.
+      return false;
     }
-  }
-  return undefined;
+  });
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
 /** A page of a PDF: opens it in a new tab at that page, while the PDF is still in the chat. */

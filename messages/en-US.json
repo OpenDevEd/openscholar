@@ -3926,7 +3926,6 @@
       "notUploaded": "{count, plural, one {A file didn’t upload} other {# files didn’t upload}}. Remove or attach {count, plural, one {it} other {them}} again.",
       "tooMany": "Up to {count} files a message",
       "tooLargePdf": "Over {mb} MB",
-      "unreadablePdf": "This PDF can't be opened",
       "pages": "{count, plural, one {# page} other {# pages}}",
       "aPdf": "a PDF",
       "modelCantPdf": "{model} can't read PDFs. Pick another model to attach them.",

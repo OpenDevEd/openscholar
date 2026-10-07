@@ -4,7 +4,9 @@
  * An upload starts with `startUpload`, which counts it against the person's plan and makes
  * the file's row, keyed by the digest of a one-time token only their browser holds. The
  * browser then posts the bytes to `upload` with the token, and the server stores them itself
- * once they read as an image. So every file of ours is one the server stored for that row:
+ * once they read as an image or text. A PDF, larger than one request takes, comes in parts on
+ * the same token, each stored and kept on the row as it arrives, then joined (./pdf.ts). So
+ * every file of ours is one the server stored for that row:
  * an image's address shows its storage ID to anyone in the chat, and storage another part of
  * the app keeps (an author's photo, say) is never taken for an upload and deleted with it.
  *
@@ -12,8 +14,8 @@
  * their account. One no reply has sent to the model for 30 days loses its bytes and stays
  * as a name (`expire`), so its message says it expired and the model is told so.
  *
- *   startUpload   a file's row, for the token whose digest it's given, or a PDF's upload address
- *   upload        (HTTP) the bytes, stored once they read as an image
+ *   startUpload   a file's row, for the token whose digest it's given
+ *   upload        (HTTP) the bytes, stored once they read as an image or text; a PDF's, a part at a time
  *   remove        a file attached and not yet sent
  */
 import { v, type Infer } from "convex/values";
@@ -31,7 +33,7 @@ import { SERVER_MODEL_SLUG } from "../ai/config";
 import { detectEvidenceLibraryUploadContent } from "../../lib/evidence-libraries/configuration/uploads";
 import { rateLimit } from "../lib/rateLimit";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
-import { FILE_IDLE_MS, MAX_FILE_NAME, MAX_FILES_PER_MESSAGE, MAX_IMAGE_BYTES, MAX_IMAGE_MB, MAX_PDF_BYTES, MAX_PDF_MB, MAX_PENDING_FILES, MAX_TEXT_BYTES, MAX_TEXT_MB, PDF_PAGE_TOKENS, PDF_PAGES_PER_READ, PENDING_FILE_MS, TEXT_CHARS_PER_READ, TEXT_LINES_PER_READ, isPdf, isText, linesIn, pagesIn, readsImages, readsPdfs } from "../../lib/assistant/files";
+import { FILE_IDLE_MS, MAX_FILE_NAME, MAX_FILES_PER_MESSAGE, MAX_IMAGE_BYTES, MAX_IMAGE_MB, MAX_PDF_BYTES, MAX_PDF_CHUNKS, MAX_PDF_MB, MAX_PENDING_FILES, PDF_CHUNK_BYTES, PDF_CUTS_PER_HOUR, MAX_TEXT_BYTES, MAX_TEXT_MB, PDF_PAGE_TOKENS, PDF_PAGES_PER_READ, PENDING_FILE_MS, TEXT_CHARS_PER_READ, TEXT_LINES_PER_READ, isPdf, isText, linesIn, pagesIn, readsImages, readsPdfs } from "../../lib/assistant/files";
 import { convertUsdToCredits } from "../../lib/pricing";
 import { pricingOf } from "../ai/serverModel";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
@@ -48,23 +50,23 @@ const FORGET_FILES = 100;
 const TOUCH_AFTER_MS = 24 * 60 * 60 * 1000;
 /** How long a file attached and not sent counts as a draft still open somewhere, before a new upload may take its place. */
 const ABANDONED_MS = 60 * 60 * 1000;
-/** How long an upload's token can be used. */
+/** How long an upload's token can be used: a PDF's, for all its parts, longer. */
 const UPLOAD_TOKEN_MS = 15 * 60 * 1000;
+const PDF_UPLOAD_MS = 60 * 60 * 1000;
 
 const pendingOf = (ctx: QueryCtx, userId: Id<"users">) =>
   ctx.db.query("assistantFiles").withIndex("by_user_and_state", (q) => q.eq("userId", userId).eq("state", "pending"));
 
 export const startUpload = mutation({
-  // An image: `digest`, the SHA-256 of the token the browser posts its bytes with (convex/lib/opaqueTokenDigest.ts).
-  // A PDF (#648), which can be larger than one request takes: `pdfBytes`, its size. It goes to the upload address returned,
-  // ending with the tag that names this row (lib/assistant/files.ts `pdfTag`), and `./pdf.ts` binds it.
-  // A text file (plain text, Markdown, CSV) goes the way an image does; `text` is its type, which the upload route holds it to.
-  args: { name: v.string(), digest: v.optional(v.string()), pdfBytes: v.optional(v.number()), text: v.optional(v.union(v.literal("text/plain"), v.literal("text/markdown"), v.literal("text/csv"))) },
-  returns: v.object({ fileId: v.id("assistantFiles"), url: v.optional(v.string()) }),
+  // `digest`: the SHA-256 of the token the browser posts the file's bytes with (convex/lib/opaqueTokenDigest.ts).
+  // A PDF (#648): `pdfBytes`, its size; it comes in parts (lib/assistant/files.ts `PDF_CHUNK_BYTES`).
+  // A text file (plain text, Markdown, CSV): `text`, its type, which the upload route holds it to.
+  args: { name: v.string(), digest: v.string(), pdfBytes: v.optional(v.number()), text: v.optional(v.union(v.literal("text/plain"), v.literal("text/markdown"), v.literal("text/csv"))) },
+  returns: v.object({ fileId: v.id("assistantFiles") }),
   handler: async (ctx, { name, digest, pdfBytes, text }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
-    if (pdfBytes === undefined && (!digest || !/^[0-9a-f]{64}$/.test(digest))) throw createError("VALIDATION_ERROR", "An upload needs a SHA-256 digest.");
+    if (!/^[0-9a-f]{64}$/.test(digest)) throw createError("VALIDATION_ERROR", "An upload needs a SHA-256 digest.");
     if (pdfBytes !== undefined && pdfBytes > MAX_PDF_BYTES) throw createError("VALIDATION_ERROR", `A PDF can be up to ${MAX_PDF_MB} MB.`);
     const clean = name.trim().slice(0, MAX_FILE_NAME);
     if (!clean) throw createError("VALIDATION_ERROR", "A file needs a name.");
@@ -83,45 +85,35 @@ export const startUpload = mutation({
         throw createError("VALIDATION_ERROR", `Your plan lets you attach ${perHour} files an hour. You can attach more in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`);
       }
     }
-    const row = { userId, name: clean, bytes: 0, mediaType: "", state: "pending" as const, usedAt: Date.now() };
-    if (pdfBytes !== undefined) return { fileId: await ctx.db.insert("assistantFiles", row), url: await ctx.storage.generateUploadUrl() };
-    return { fileId: await ctx.db.insert("assistantFiles", { ...row, ...(text ? { mediaType: text } : {}), uploadDigest: digest }) };
+    const mediaType = pdfBytes !== undefined ? "application/pdf" : (text ?? "");
+    return { fileId: await ctx.db.insert("assistantFiles", { userId, name: clean, bytes: 0, mediaType, state: "pending", usedAt: Date.now(), uploadDigest: digest }) };
   },
 });
 
-/** How large an upload is, from what Convex stored, before any of it is read; null when there's none. */
-export const uploadSize = internalQuery({
-  args: { storageId: v.id("_storage") },
-  returns: v.union(v.number(), v.null()),
-  handler: async (ctx, { storageId }) => (await ctx.db.system.get(storageId))?.size ?? null,
+/** A PDF's parts, in order, for ./pdf.ts to join. */
+export const chunksOf = internalQuery({
+  args: { fileId: v.id("assistantFiles") },
+  returns: v.array(v.id("_storage")),
+  handler: async (ctx, { fileId }) => (await ctx.db.get("assistantFiles", fileId))?.chunks ?? [],
 });
 
 /**
- * Binds a PDF's bytes to the person's row once ./pdf.ts has found they end with its tag, so
- * were uploaded for it: with how many pages it has, or with null for bytes that don't open,
- * which go with the row. Bytes whose row was removed while they were on the way go too. It
- * returns what happened rather than throwing, so a delete here is never undone.
+ * Binds a PDF its parts were joined into, with how many pages it has, and deletes the parts.
+ * A file removed meanwhile takes the joined PDF with it. Returns rather than throws, so a
+ * delete here is never undone.
  */
-export const claimPdf = internalMutation({
-  args: { fileId: v.id("assistantFiles"), storageId: v.id("_storage"), pages: v.union(v.number(), v.null()) },
-  returns: v.union(v.literal("bound"), v.literal("unreadable"), v.literal("removed")),
-  handler: async (ctx, { fileId, storageId, pages }) => {
-    const userId = (await requireAuth(ctx))._id;
+export const joinChunks = internalMutation({
+  args: { fileId: v.id("assistantFiles"), storageId: v.id("_storage"), pages: v.number(), bytes: v.number() },
+  returns: v.boolean(),
+  handler: async (ctx, { fileId, storageId, pages, bytes }) => {
     const file = await ctx.db.get("assistantFiles", fileId);
-    if (file && file.userId !== userId) throw createError("NOT_FOUND", "That upload isn't yours to attach.");
-    if (file?.storageId === storageId) return "bound";
     if (!file || file.state !== "pending" || file.storageId) {
       await ctx.storage.delete(storageId);
-      return "removed";
+      return false;
     }
-    if (pages === null) {
-      await ctx.storage.delete(storageId);
-      await ctx.db.delete("assistantFiles", fileId);
-      return "unreadable";
-    }
-    const stored = await ctx.db.system.get(storageId);
-    await ctx.db.patch("assistantFiles", fileId, { storageId, bytes: stored?.size ?? 0, mediaType: "application/pdf", pages, usedAt: Date.now() });
-    return "bound";
+    for (const chunk of file.chunks ?? []) await ctx.storage.delete(chunk);
+    await ctx.db.patch("assistantFiles", fileId, { storageId, pages, bytes, chunks: undefined, usedAt: Date.now() });
+    return true;
   },
 });
 
@@ -136,14 +128,19 @@ export const uploadOptions = httpAction(async () => new Response(null, { status:
 
 /**
  * Takes a file's bytes for the token its row was made for, once: they're stored by the
- * server, so the file is one only that row holds. Bytes that don't read as an image, or are
- * too large, are refused, and the row goes with them.
+ * server, so the file is one only that row holds. Bytes that don't read as an image or text,
+ * or are too large, are refused, and the row goes with them. A PDF's come a part at a time
+ * (`part`, from 0, and `last`), each kept on the row as it arrives; the last joins them.
  */
 export const upload = httpAction(async (ctx, request) => {
-  const token = new URL(request.url).searchParams.get("token");
-  const redeemed = token ? await ctx.runMutation(internal.assistant.files.redeem, { digest: await digestOpaqueToken(token) }) : null;
+  const params = new URL(request.url).searchParams;
+  const token = params.get("token");
+  const part = Number(params.get("part") ?? Number.NaN);
+  const last = params.get("last") === "1";
+  const redeemed = token ? await ctx.runMutation(internal.assistant.files.redeem, { digest: await digestOpaqueToken(token), ...(Number.isInteger(part) ? { part } : {}), last }) : null;
   if (!redeemed) return reply(410, { error: "This upload has expired. Attach the file again." });
-  const { fileId, text } = redeemed;
+  const { fileId, text, pdf } = redeemed;
+  if (pdf) return await uploadPart(ctx, request, { fileId, part, last, stored: pdf.stored });
   const most = text ? MAX_TEXT_BYTES : MAX_IMAGE_BYTES;
   const declared = Number(request.headers.get("content-length") ?? 0);
   const bytes = declared > most ? null : new Uint8Array(await request.arrayBuffer());
@@ -175,15 +172,53 @@ function linesOf(bytes: Uint8Array) {
   }
 }
 
-/** The pending file a token was made for, once: the token can't be used again. */
+/** One part of a PDF: stored and kept on its row, and with the last, the parts joined into the PDF. */
+async function uploadPart(ctx: ActionCtx, request: Request, { fileId, part, last, stored }: { fileId: Id<"assistantFiles">; part: number; last: boolean; stored: number }) {
+  const room = Math.min(PDF_CHUNK_BYTES, MAX_PDF_BYTES - stored);
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  const bytes = declared > room ? null : new Uint8Array(await request.arrayBuffer());
+  if (!bytes || bytes.byteLength > room) {
+    await ctx.runMutation(internal.assistant.files.drop, { fileId });
+    return reply(400, { error: `A PDF can be up to ${MAX_PDF_MB} MB.` });
+  }
+  const storageId = await ctx.storage.store(new Blob([bytes], { type: "application/pdf" }));
+  const kept = await ctx.runMutation(internal.assistant.files.addChunk, { fileId, storageId, part, bytes: bytes.byteLength }).catch(async (error: unknown) => {
+    await ctx.storage.delete(storageId);
+    throw error;
+  });
+  if (!kept) return reply(410, { error: "This file was removed." });
+  if (!last) return reply(200, { fileId });
+  const joined = await ctx.runAction(internal.assistant.pdf.join, { fileId });
+  return "pages" in joined ? reply(200, { fileId, pages: joined.pages }) : reply(400, { error: joined.error });
+}
+
+/** Keeps a PDF's part on its row, after the ones before it. One for a row that's gone, or out of turn, is deleted. */
+export const addChunk = internalMutation({
+  args: { fileId: v.id("assistantFiles"), storageId: v.id("_storage"), part: v.number(), bytes: v.number() },
+  returns: v.boolean(),
+  handler: async (ctx, { fileId, storageId, part, bytes }) => {
+    const file = await ctx.db.get("assistantFiles", fileId);
+    const chunks = file?.chunks ?? [];
+    if (!file || file.state !== "pending" || file.storageId || chunks.length !== part || chunks.length >= MAX_PDF_CHUNKS) {
+      await ctx.storage.delete(storageId);
+      return false;
+    }
+    await ctx.db.patch("assistantFiles", fileId, { chunks: [...chunks, storageId], bytes: file.bytes + bytes });
+    return true;
+  },
+});
+
+/** The pending file a token was made for, once: the token can't be used again. A PDF's is used for each of its parts in turn, and spent with the last. */
 export const redeem = internalMutation({
-  args: { digest: v.string() },
-  returns: v.union(v.object({ fileId: v.id("assistantFiles"), text: v.optional(v.string()) }), v.null()),
-  handler: async (ctx, { digest }) => {
+  args: { digest: v.string(), part: v.optional(v.number()), last: v.optional(v.boolean()) },
+  returns: v.union(v.object({ fileId: v.id("assistantFiles"), text: v.optional(v.string()), pdf: v.optional(v.object({ stored: v.number() })) }), v.null()),
+  handler: async (ctx, { digest, part, last }) => {
     const file = await ctx.db.query("assistantFiles").withIndex("by_uploadDigest", (q) => q.eq("uploadDigest", digest)).unique();
-    if (!file || file.state !== "pending" || file.storageId || file._creationTime < Date.now() - UPLOAD_TOKEN_MS) return null;
-    await ctx.db.patch("assistantFiles", file._id, { uploadDigest: undefined });
-    return { fileId: file._id, ...(isText(file.mediaType) ? { text: file.mediaType } : {}) };
+    const pdf = file ? isPdf(file.mediaType) : false;
+    if (!file || file.state !== "pending" || file.storageId || file._creationTime < Date.now() - (pdf ? PDF_UPLOAD_MS : UPLOAD_TOKEN_MS)) return null;
+    if (pdf && part !== (file.chunks?.length ?? 0)) return null;
+    if (!pdf || last) await ctx.db.patch("assistantFiles", file._id, { uploadDigest: undefined });
+    return { fileId: file._id, ...(isText(file.mediaType) ? { text: file.mediaType } : {}), ...(pdf ? { pdf: { stored: file.bytes } } : {}) };
   },
 });
 
@@ -227,6 +262,7 @@ export const remove = mutation({
 
 async function deleteFile(ctx: MutationCtx, file: Doc<"assistantFiles">) {
   if (file.storageId) await ctx.storage.delete(file.storageId);
+  for (const chunk of file.chunks ?? []) await ctx.storage.delete(chunk);
   await ctx.db.delete("assistantFiles", file._id);
 }
 
@@ -446,6 +482,23 @@ export const expire = internalMutation({
   },
 });
 
+/**
+ * Before a read cuts pages from a PDF: the same pages, when a read already cut them, to send
+ * again. Otherwise it counts against the person's cuts this hour, and refuses past them.
+ */
+export const cutting = internalMutation({
+  args: { userId: v.id("users"), fileId: v.id("assistantFiles"), range: v.string() },
+  returns: v.union(v.id("assistantFiles"), v.null()),
+  handler: async (ctx, { userId, fileId, range }) => {
+    const done = await ctx.db.query("assistantFiles").withIndex("by_parent_and_range", (q) => q.eq("parentId", fileId).eq("range", range)).first();
+    if (done?.storageId) return done._id;
+    const { ok, retryAt } = await rateLimit(ctx, { name: "assistant-pdf-cut", key: userId, config: { kind: "token bucket", rate: PDF_CUTS_PER_HOUR, period: HOUR, capacity: PDF_CUTS_PER_HOUR } });
+    if (ok) return null;
+    const minutes = Math.max(1, Math.ceil(((retryAt ?? Date.now()) - Date.now()) / 60_000));
+    throw createError("VALIDATION_ERROR", `Up to ${PDF_CUTS_PER_HOUR} reads of PDF pages can run an hour. More can in ${minutes} ${minutes === 1 ? "minute" : "minutes"}; pages already read can be read again now.`);
+  },
+});
+
 /** Pages a read cut from a PDF, kept as a file of the PDF's chat: deleted with it, and expired as it is. Null, with the pages deleted, once the PDF is gone. */
 export const addPart = internalMutation({
   args: { fileId: v.id("assistantFiles"), storageId: v.id("_storage"), range: v.string(), bytes: v.number() },
@@ -486,8 +539,8 @@ async function readable(ctx: QueryCtx, userId: Id<"users">, { file: fileId, rang
   const of = file.lines ?? 0;
   const lines = linesIn(range, of);
   if (!lines) throw createError("VALIDATION_ERROR", `"${file.name}" has ${of} lines. Ask for a range within them, such as "1-${Math.min(of, TEXT_LINES_PER_READ)}".`);
-  // At most what one read returns, about four characters a token.
-  const chars = Math.min(TEXT_CHARS_PER_READ, Math.ceil((file.bytes * (lines.last - lines.first + 1)) / Math.max(of, 1)));
+  // The most one read returns, whatever its lines' lengths, at about four characters a token.
+  const chars = Math.min(TEXT_CHARS_PER_READ, file.bytes);
   return { file, of, ...lines, credits: convertUsdToCredits({ usd: (Math.ceil(chars / 4) * price) / 1_000_000 }) };
 }
 
@@ -556,8 +609,9 @@ export const readAction = defineUserAction({
     // A file read is one in use: it doesn't expire while a chat reads it.
     await ctx.runMutation(internal.assistant.files.touch, { fileIds: [file] });
     if (read.pdf) {
-      const pdfPages = await ctx.runAction(internal.assistant.pdf.cut, { fileId: file, storageId: read.storageId, first: read.first, last: read.last });
-      return { file, name: read.name, pages: span(read.first, read.last), pdfPages, of: read.of };
+      const pages = span(read.first, read.last);
+      const pdfPages = (await ctx.runMutation(internal.assistant.files.cutting, { userId, fileId: file, range: pages })) ?? (await ctx.runAction(internal.assistant.pdf.cut, { fileId: file, storageId: read.storageId, first: read.first, last: read.last }));
+      return { file, name: read.name, pages, pdfPages, of: read.of };
     }
     const blob = await ctx.storage.get(read.storageId);
     if (!blob) throw createError("NOT_FOUND", `"${read.name}" has expired. Ask the person to attach it again.`);

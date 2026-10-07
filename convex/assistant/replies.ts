@@ -237,16 +237,19 @@ export const answer = mutation({
     const balance = allow && step.credits !== undefined ? await availableCredits(ctx, userId) : 0;
     if (allow && step.credits !== undefined && step.credits > balance) throw createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
     const tool = TOOL_OF[step.path];
+    // What else waits is allowed with it only while the balance covers this call and each one allowed before it.
+    let room = balance - (step.credits ?? 0);
+    const fits = (credits: number) => credits <= room && ((room -= credits), true);
     if (allow && always && tool) {
       // A web search or a PDF read is allowed by its own switch, and so is whatever else waits of the same kind.
       await allowTool(ctx, threadId, userId, tool, true);
-      const covered = left.filter((other) => TOOL_OF[other.path] === tool && (other.credits ?? 0) <= balance);
+      const covered = left.filter((other) => TOOL_OF[other.path] === tool && fits(other.credits ?? 0));
       for (const other of covered) await ctx.db.patch("assistantSteps", other._id, { status: "allowed" });
       left = left.filter((other) => !covered.includes(other));
     } else if (allow && always && step.credits !== undefined) {
       // As opencode's "always" does for a session: the rule is kept, and what else waits that it now covers is allowed with it.
       const allowance = await allowAlways(ctx, threadId, userId, step.credits);
-      const covered = left.filter((other) => other.credits !== undefined && !TOOL_OF[other.path] && covers(allowance, other.credits, balance));
+      const covered = left.filter((other) => other.credits !== undefined && !TOOL_OF[other.path] && covers(allowance, other.credits, room) && fits(other.credits));
       for (const other of covered) await ctx.db.patch("assistantSteps", other._id, { status: "allowed" });
       left = left.filter((other) => !covered.includes(other));
     }

@@ -6,7 +6,7 @@ import { v } from "convex/values";
 import { effortValidator } from "../aiModelConfig/validators";
 import { capped } from "../lib/listCaps";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
-import { MAX_FILES_PER_MESSAGE } from "../../lib/assistant/files";
+import { MAX_FILES_PER_MESSAGE, MAX_PDF_CHUNKS } from "../../lib/assistant/files";
 import { MENTION_KINDS } from "../../lib/assistant/mentions";
 
 /** What someone may do in a chat: the owner also shares, renames and deletes it; `write` sends messages; `read` only reads. */
@@ -370,6 +370,8 @@ export const assistantFileFields = {
   usedAt: v.number(),
   /** The digest of the token its bytes are uploaded with, until they are. */
   uploadDigest: v.optional(v.string()),
+  /** A PDF's parts as they arrive (./files.ts `upload`), until they're joined into one file. */
+  chunks: capped(v.optional(v.array(v.id("_storage"))), MAX_PDF_CHUNKS),
   /** A PDF's (#648): how many pages it has. */
   pages: v.optional(v.number()),
   /** A text file's: how many lines it has. */
