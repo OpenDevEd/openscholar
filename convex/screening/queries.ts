@@ -56,7 +56,6 @@ const jobFacts = {
   label: v.optional(v.string()),
   first: v.optional(v.number()),
   last: v.optional(v.number()),
-  through: v.optional(v.number()),
   // Papers that failed, papers skipped because the job ended first, and papers the model is reading now.
   failedPapers: v.number(),
   skippedPapers: v.number(),
@@ -85,7 +84,6 @@ async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
     label: job.label,
     first: job.first,
     last: job.last,
-    through: job.through,
     failedPapers: counts.failedCount,
     skippedPapers: counts.skippedCount,
     running: reading.length,
@@ -128,58 +126,30 @@ export const answeredCount = internalQuery({
   },
 });
 
-/** Whether a job is still waiting for its papers: not cancelled, failed or given them meanwhile. */
-export const awaitsPapers = internalQuery({
-  args: { jobId: v.id("screeningJobs") },
-  returns: v.boolean(),
-  handler: async (ctx, { jobId }) => {
-    const job = await ctx.db.get("screeningJobs", jobId);
-    return Boolean(job?.reading && job.status === "processing");
-  },
-});
-
-/**
- * A completed job of a request that goes on past it, as the request's next job takes it
- * over: its papers' set, where the request ends, and the questions, rules and destination.
- */
-export const requestJob = internalQuery({
+/** What a reading job reads next: its set and range, how far it has read, and its questions. Null once it isn't reading. */
+export const readingJob = internalQuery({
   args: { jobId: v.id("screeningJobs") },
   returns: v.union(
     v.null(),
     v.object({
       userId: v.id("users"),
       set: paperSetValidator,
-      through: v.number(),
-      label: v.optional(v.string()),
+      first: v.number(),
+      last: v.number(),
+      read: v.number(),
       resume: v.optional(v.string()),
       snapshot: v.optional(searchSnapshotValidator),
-      questions: screeningQuestionsValidator,
-      scoringConfig: screeningScoringConfigValidator,
-      saveTo: v.optional(saveToValidator),
-      prune: v.optional(v.boolean()),
-      // The request's hold and the chat that started it, with what the person approved still to spend: they go to the next job.
-      spendHold: v.optional(v.string()),
-      spendCap: v.optional(v.number()),
-      chatStep: v.optional(v.id("assistantSteps")),
+      questions: v.array(v.string()),
     }),
   ),
   handler: async (ctx, { jobId }) => {
     const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || job.status !== "completed" || !job.set || job.through === undefined) return null;
-    // What the job could have cost at most: its papers at the most a paper costs on its model, the figure the approval was worked out from. Its last
-    // papers' costs are recorded a moment after it completes, so what it spent isn't known yet; the next job's share of the approval is still whole.
-    const spent = job.spendCap === undefined ? 0 : job.totalPapers * screeningPaperCredits(await pricingOf(ctx, job.serverModelId));
-    const saveTo = job.unsaved ? { kind: "none" as const } : job.targetCollectionId ? { kind: "collection" as const, collectionId: job.targetCollectionId } : undefined;
+    if (!job?.reading || job.status !== "processing" || !job.set || job.first === undefined || job.last === undefined) return null;
     return {
-      userId: job.userId, set: job.set, through: job.through, questions: job.questions, scoringConfig: job.scoringConfig,
-      ...(job.label ? { label: job.label } : {}),
+      userId: job.userId, set: job.set, first: job.first, last: job.last, read: job.readPlace?.read ?? 0,
       ...(job.resume ? { resume: job.resume } : {}),
       ...(job.snapshot ? { snapshot: job.snapshot } : {}),
-      ...(saveTo ? { saveTo } : {}),
-      ...(job.prune ? { prune: true } : {}),
-      ...(job.spendHold ? { spendHold: job.spendHold } : {}),
-      ...(job.spendCap === undefined ? {} : { spendCap: Math.max(0, job.spendCap - spent) }),
-      ...(job.chatStep ? { chatStep: job.chatStep } : {}),
+      questions: job.questions.map((asked) => asked.question),
     };
   },
 });

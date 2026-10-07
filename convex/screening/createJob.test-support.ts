@@ -5,12 +5,20 @@ import { requireAuth } from "../lib/auth";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 
-type JobArgs = Omit<FunctionArgs<typeof internal.screening.mutations.createScreeningJobForUser>, "userId" | "author">;
+type OpenArgs = FunctionArgs<typeof internal.screening.mutations.openScreeningJob>;
+type FillArgs = FunctionArgs<typeof internal.screening.mutations.fillScreeningJob>;
+type JobArgs = Omit<OpenArgs, "userId" | "author" | "papers" | "first" | "last"> & { papers: FillArgs["papers"]; answered?: number; first?: number; last?: number };
 
-/** Starts a job as the signed-in person, as `screening/start:screen` does once it has read the papers. */
-export async function createJob(as: TestConvexForDataModel<DataModel>, args: JobArgs) {
+/**
+ * Starts a job as the signed-in person with these papers, as `screening/start:screen` does: it
+ * opens the job, and the papers come in one step, its last. The job's own reading finds it
+ * already read.
+ */
+export async function createJob(as: TestConvexForDataModel<DataModel>, { papers, answered = 0, first = 1, last, ...args }: JobArgs) {
   const user = await as.run((ctx) => requireAuth(ctx));
-  return await as.mutation(internal.screening.mutations.createScreeningJobForUser, { userId: user._id, author: "user", ...args });
+  const { jobId } = await as.mutation(internal.screening.mutations.openScreeningJob, { userId: user._id, author: "user", first, last: last ?? first + papers.length - 1, papers: papers.length, ...args });
+  await as.mutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: papers.length, answered, ended: true });
+  return { jobId };
 }
 
 type JobFields = Omit<Doc<"screeningJobs">, "_id" | "_creationTime" | "screeningId"> & { screeningId?: Id<"screenings"> };

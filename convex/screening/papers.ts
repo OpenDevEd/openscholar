@@ -6,15 +6,12 @@ import { paginationOptsValidator, paginationResultValidator } from "convex/serve
 import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
-import { stream } from "convex-helpers/server/stream";
 import { createError } from "../lib/errors";
-import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { answerAt, answerPaper, paperAnswers, restoreAnswer, restoreModelAnswer } from "../research/answers";
 import { answerSourceValidator } from "../../lib/research/records";
 import { sourceMetadata } from "../../lib/library/paper-metadata";
 import { workUrl } from "../../lib/openalex/work-id";
-import schema from "../schema";
 import { account, answersNow, jobAnswers, shown, stood, withDeltas } from "./accounting";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { moveResultAnswers } from "./drain";
@@ -48,19 +45,16 @@ export const listAction = defineUserQuery({
   path: "screening/papers:list",
   description:
     "Lists the papers of one of the person's screening jobs that landed in one outcome (included, unclear, excluded or failed), a page at a time in the order the job took them, " +
-    "each with its score, stars and the answer to every question it was scored on. Given `text`, only papers whose title or authors contain it.",
+    "each with its score, stars and the answer to every question it was scored on. Given `text`, the papers whose title or authors best match its words, best first.",
   args: { jobId: v.id("screeningJobs"), outcome: screeningOutcomeValidator, text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(screeningJobPaperValidator),
   run: async (ctx, userId, { jobId, outcome, text, paginationOpts }) => {
     const job = await ctx.db.get("screeningJobs", jobId);
     if (!job || job.userId !== userId) return { page: [], isDone: true, continueCursor: "" };
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX), maximumBytesRead: PAGE_BYTES };
-    const needle = text?.trim().toLowerCase();
+    const needle = text?.trim();
     const page = await (needle
-      ? stream(ctx.db, schema).query("screeningResults").withIndex("by_job_and_outcome", (q) => q.eq("jobId", jobId).eq("outcome", outcome))
-          .filterWith(async (row) => row.title.toLowerCase().includes(needle) || (row.authors ?? []).some((author) => author.toLowerCase().includes(needle)))
-          // A job holds at most this many papers, so a search looks through all of them.
-          .paginate({ ...opts, maximumRowsRead: MAX_SCREENING_PAPERS_PER_JOB })
+      ? ctx.db.query("screeningResults").withSearchIndex("search_text", (q) => q.search("searchText", needle).eq("jobId", jobId).eq("outcome", outcome)).paginate(opts)
       : ctx.db.query("screeningResults").withIndex("by_job_and_outcome", (q) => q.eq("jobId", jobId).eq("outcome", outcome)).paginate(opts));
     return { ...page, page: await Promise.all(page.page.map((result) => paperOf(ctx, job, result, outcome))) };
   },

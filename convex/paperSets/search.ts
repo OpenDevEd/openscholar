@@ -10,7 +10,6 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { spendOpenAlexRequests } from "../lib/rateLimit";
-import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { screeningPaperInputValidator } from "../screening/validators";
 import { currentSearch, restoreSearch, type SavedSearch } from "../../lib/research/records";
 import { DEFAULT_SEARCH_PARAMS } from "../../lib/search-params/parsers";
@@ -71,7 +70,7 @@ export const ratingsOf = internalQuery({
   args: { userId: v.id("users"), paperIds: v.array(v.string()) },
   returns: v.array(v.object({ paperId: v.string(), rating: v.number() })),
   handler: async (ctx, { userId, paperIds }) => {
-    if (paperIds.length > MAX_SCREENING_PAPERS_PER_JOB) throw new Error(`Rated papers are read ${MAX_SCREENING_PAPERS_PER_JOB} at a time`);
+    if (paperIds.length > PAPERS_A_READ) throw new Error(`Rated papers are read ${PAPERS_A_READ} at a time`);
     return await ratingsAmong(ctx, userId, paperIds);
   },
 });
@@ -141,13 +140,16 @@ export function toPaper(work: Work): SearchPaper {
   };
 }
 
-/** Refuses a range that isn't papers `first` to `last` from 1 up, or holds more than one job screens. */
+/** Papers one read of a set takes at most: a step of a job's reading takes far fewer, and a bulk change this many. */
+export const PAPERS_A_READ = 1_000;
+
+/** Refuses a range that isn't papers `first` to `last` from 1 up, or holds more than one read takes. */
 export function checkRange(first: number, last: number) {
   if (!Number.isInteger(first) || !Number.isInteger(last) || first < 1 || last < first) {
     throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   }
-  if (last - first + 1 > MAX_SCREENING_PAPERS_PER_JOB) {
-    throw createError("VALIDATION_ERROR", `Cannot screen more than ${MAX_SCREENING_PAPERS_PER_JOB} papers per job`);
+  if (last - first + 1 > PAPERS_A_READ) {
+    throw createError("VALIDATION_ERROR", `Read up to ${PAPERS_A_READ.toLocaleString("en")} papers at a time`);
   }
 }
 

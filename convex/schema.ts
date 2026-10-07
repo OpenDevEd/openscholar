@@ -976,15 +976,16 @@ export default defineSchema({
     label: v.optional(v.string()),
     first: v.optional(v.number()),
     last: v.optional(v.number()),
-    // The last paper of the whole request when one job can't hold it: the job for the next
-    // papers starts when this one completes.
+    // From before a job held its whole request, when the job after it read on to here; read by nothing.
     through: v.optional(v.number()),
-    // Where a collection, the saved papers or a job's papers go on after this job's (./paperSets/held.ts), or a search's cursor pages do (./paperSets/openalex.ts).
+    // Where its set goes on after the papers it has read (./paperSets/held.ts), or its search's cursor pages do (./paperSets/openalex.ts).
     resume: v.optional(v.string()),
-    // The search as it was when the request began, which its later jobs read their papers from.
+    // The search as it was when the job began, which it reads its papers from.
     snapshot: v.optional(searchSnapshotValidator),
-    // Made before its papers were read from its search (`screening/start:read`): it has none yet, and `totalPapers` is the most it may get.
+    // Set while it reads its papers, a step at a time (`screening/start:read`): `totalPapers` is the most it may get until it's done.
     reading: v.optional(v.literal(true)),
+    // How far it has read: the set's papers past `first`, and the papers it took of them (a search's rating filter can leave some out).
+    readPlace: v.optional(v.object({ read: v.number(), papers: v.number() })),
     // Why it failed, when it couldn't get its papers, in words for the person.
     failure: v.optional(v.string()),
     // The name of the new collection its included papers go to, which is made once it has its papers.
@@ -1014,9 +1015,7 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
-    .index("by_user_status", ["userId", "status"])
-    // The jobs of one request a reply started, in the order they ran: its card and its readout count them as one (convex/assistant/jobs.ts).
-    .index("by_chatStep", ["chatStep"]),
+    .index("by_user_status", ["userId", "status"]),
 
   // ═══════════════════════════════════════════════════════════════
   // SCREENING RESULTS - individual paper screening outcomes
@@ -1066,6 +1065,9 @@ export default defineSchema({
     ),
     venue: v.optional(v.string()),
     citedByCount: v.optional(v.number()),
+    // Its title and authors, which a job's list searches (convex/screening/papers.ts). Results
+    // from before it was kept get theirs from migrations/screeningSearch.
+    searchText: v.optional(v.string()),
     aiMetadata: v.optional(
       v.object({
         reasoning: v.optional(v.string()),
@@ -1099,7 +1101,8 @@ export default defineSchema({
     // A job's papers the model is reading: processing, and no longer waiting for a slot.
     .index("by_job_and_status_and_waitingUser", ["jobId", "status", "waitingUser"])
     .index("by_waitingUser_and_waitingSince", ["waitingUser", "waitingSince"])
-    .index("by_doneAt", ["doneAt"]),
+    .index("by_doneAt", ["doneAt"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["jobId", "outcome"] }),
   // How many of a person's Screen all papers are running (#335). Written by job creation and
   // the bookkeeping worker, which start a person's waiting papers while this is under their
   // plan's limit, as Firecrawl's per-team semaphore does.

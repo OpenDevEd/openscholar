@@ -13,15 +13,7 @@ import { createError } from "../lib/errors";
  */
 export const ENDED = new Set(["completed", "failed", "cancelled", "creditsExhausted"]);
 
-type Job = { _id: string; status?: string; spendHold?: string; last?: number; through?: number };
-
-/**
- * Whether a job that just ended hands its request on to the next job (../screening/start.ts
- * `next`): it completed, and the request it is part of goes past its last paper. Its hold,
- * and the chat that started it, go with that job, so a request the person approved once is
- * one approval, one hold and one end, however many jobs it takes.
- */
-export const handsOn = (job: Job | null) => job?.status === "completed" && job.last !== undefined && job.through !== undefined && job.last < job.through;
+type Job = { _id: string; status?: string; spendHold?: string };
 
 /** Whether a job's hold still takes its items: one settled, or settling, at the job's end or when it expired, takes none. */
 export async function holdOpen(ctx: QueryCtx, hold: string) {
@@ -54,5 +46,5 @@ export const settleEndedJob =
   <Id extends string>(settle: FunctionReference<"mutation", "public" | "internal", { jobId: Id; hold: string; waited: number }>) =>
   async (ctx: MutationCtx, { oldDoc, newDoc }: { oldDoc: (Job & { _id: Id }) | null; newDoc: (Job & { _id: Id }) | null }) => {
     const ended = (job: Job | null) => job === null || ENDED.has(job.status ?? "");
-    if (oldDoc?.spendHold && !ended(oldDoc) && ended(newDoc) && !handsOn(newDoc)) await ctx.scheduler.runAfter(0, settle, { jobId: oldDoc._id, hold: oldDoc.spendHold, waited: 0 });
+    if (oldDoc?.spendHold && !ended(oldDoc) && ended(newDoc)) await ctx.scheduler.runAfter(0, settle, { jobId: oldDoc._id, hold: oldDoc.spendHold, waited: 0 });
   };

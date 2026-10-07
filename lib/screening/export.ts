@@ -339,8 +339,8 @@ const XLSX_PAGE_SIZE = 200;
 
 /**
  * Downloads a job's results as an XLSX file, read a page at a time.
- * ponytail: the workbook is built whole in the browser, as XLSX needs. A job holds at most
- * MAX_SCREENING_PAPERS_PER_JOB papers; larger jobs would need a format that streams.
+ * ponytail: the workbook is built whole in the browser, as XLSX needs, so a very large job
+ * holds the browser's memory for a while; CSV and JSON exports stream in parts instead.
  */
 export async function exportScreeningToXLSX(convex: ConvexReactClient, jobId: Id<"screeningJobs">): Promise<void> {
   const job = await convex.query(api.screening.queries.getScreeningJob, { jobId });

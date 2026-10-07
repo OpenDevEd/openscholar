@@ -1,6 +1,6 @@
 // Screen all on any paper set (#341): a collection, saved papers or an earlier job's included
-// papers, read on the server in a fixed order; where included papers go; and a request too
-// big for one job running as several, one after another.
+// papers, read on the server in a fixed order, a step at a time, into one job however many
+// there are (#635); and where included papers go.
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
@@ -15,6 +15,7 @@ import { collectionSortName } from "../library/collections";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 import type { SavedSearch } from "../../lib/research/records";
 import { exportParts } from "../exports.test-support";
+import { createJob } from "./createJob.test-support";
 
 const questions = [{ key: "q1", question: "Randomized?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 };
@@ -40,6 +41,7 @@ async function setup({ saved = 6, inCollection = 4, credits = 100_000 } = {}) {
     const userId = await ctx.db.insert("users", { libraryItemCount: saved, clerkId: "alice", email: "alice@example.com", state: "active", createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "bob", email: "bob@example.com", state: "active", createdAt: 1, updatedAt: 1 });
     await seedCreditsForTest(ctx, { userId, free: credits });
+    await ctx.db.insert("libraryCounts", { userId, count: saved });
     await ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: PRICE.input, outputPricePerMillion: PRICE.output, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: [], syncedAt: 1, createdAt: 1, updatedAt: 1 });
     const collectionId = await ctx.db.insert("collections", { userId, name: "Reading trials", sortName: collectionSortName("Reading trials"), itemCount: inCollection, createdAt: 1, updatedAt: 1 });
     for (let i = 1; i <= saved; i++) {
@@ -68,14 +70,20 @@ async function setup({ saved = 6, inCollection = 4, credits = 100_000 } = {}) {
       return (await Promise.all(rows.map((row) => ctx.db.get("libraryItems", row.libraryItemId)))).map((item) => item!.openalexId).sort();
     });
   const read = (jobId: Id<"screeningJobs">) => alice.query(api.screening.queries.getScreeningJob, { jobId });
-  return { t, alice, ...seeded, results, answerAll, inCollectionNow, read };
+  /** Starts a job as Alice, and runs its reading, which the start schedules. */
+  const screen = async (args: Parameters<typeof alice.action<typeof api.screening.start.screen>>[1]) => {
+    const made = await alice.action(api.screening.start.screen, args);
+    await t.action(internal.screening.start.read, { jobId: made.jobId });
+    return made;
+  };
+  return { t, alice, ...seeded, results, answerAll, inCollectionNow, read, screen };
 }
 
 describe("Screen all on papers the account holds", () => {
   it("reads a range of a collection, newest saved first, with what the list shows of each paper", async () => {
-    const { alice, collectionId, results, read } = await setup();
+    const { alice, screen, collectionId, results, read } = await setup();
 
-    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "collection", collectionId }, first: 2, last: 3, ...job, saveTo: { kind: "none" } });
+    const { jobId } = await screen({ set: { kind: "collection", collectionId }, first: 2, last: 3, ...job, saveTo: { kind: "none" } });
 
     const papers = await results(jobId);
     expect(papers.map((paper) => paper.openalexId)).toEqual([W(3), W(2)]);
@@ -84,21 +92,21 @@ describe("Screen all on papers the account holds", () => {
   });
 
   it("reads every saved paper, and an earlier job's included papers in that job's order", async () => {
-    const { alice, results, answerAll, read } = await setup();
+    const { alice, screen, results, answerAll, read } = await setup();
 
-    const first = await alice.action(api.screening.start.screen, { set: { kind: "saved" }, first: 1, last: 50, ...job, saveTo: { kind: "none" } });
+    const first = await screen({ set: { kind: "saved" }, first: 1, last: 50, ...job, saveTo: { kind: "none" } });
     expect((await results(first.jobId)).map((paper) => paper.openalexId)).toEqual([6, 5, 4, 3, 2, 1].map(W));
     await answerAll(first.jobId, [5, 2, 1]);
 
-    const second = await alice.action(api.screening.start.screen, { set: { kind: "screening", jobId: first.jobId }, first: 2, last: 3, ...job, saveTo: { kind: "none" } });
+    const second = await screen({ set: { kind: "screening", jobId: first.jobId }, first: 2, last: 3, ...job, saveTo: { kind: "none" } });
     expect((await results(second.jobId)).map((paper) => paper.openalexId)).toEqual([W(2), W(1)]);
     expect(await read(second.jobId)).toMatchObject({ set: { kind: "screening", jobId: first.jobId }, totalPapers: 2 });
   });
 
   it("refuses another person's collection or job, and a range with no papers", async () => {
-    const { t, alice, collectionId } = await setup();
+    const { t, alice, screen, collectionId } = await setup();
     const bob = t.withIdentity({ subject: "bob" });
-    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "saved" }, first: 1, last: 2, ...job, saveTo: { kind: "none" } });
+    const { jobId } = await screen( { set: { kind: "saved" }, first: 1, last: 2, ...job, saveTo: { kind: "none" } });
 
     await expect(bob.action(api.screening.start.screen, { set: { kind: "collection", collectionId }, first: 1, last: 2, ...job, saveTo: { kind: "none" } })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
     await expect(bob.action(api.screening.start.screen, { set: { kind: "screening", jobId }, first: 1, last: 2, ...job, saveTo: { kind: "none" } })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
@@ -110,9 +118,9 @@ describe("Screen all on papers the account holds", () => {
 
 describe("where a job's papers go", () => {
   it("saves included papers to a new collection, and takes the excluded ones from the collection it read when asked to", async () => {
-    const { t, alice, userId, collectionId, answerAll, inCollectionNow, read } = await setup();
+    const { t, alice, screen, userId, collectionId, answerAll, inCollectionNow, read } = await setup();
 
-    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "collection", collectionId }, first: 1, last: 4, ...job, saveTo: { kind: "new", name: " Included trials " }, prune: true });
+    const { jobId } = await screen({ set: { kind: "collection", collectionId }, first: 1, last: 4, ...job, saveTo: { kind: "new", name: " Included trials " }, prune: true });
     await answerAll(jobId, [4, 1], 3);
 
     const made = await t.run((ctx) => ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", userId).eq("sortName", "included trials")).unique());
@@ -133,8 +141,8 @@ describe("where a job's papers go", () => {
   });
 
   it("leaves papers it never screened in the collection when a pruning job is cancelled, and keeps what a late paper cost", async () => {
-    const { t, alice, collectionId, results, inCollectionNow, read } = await setup();
-    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "collection", collectionId }, first: 1, last: 4, ...job, saveTo: { kind: "none" }, prune: true });
+    const { t, screen, collectionId, results, inCollectionNow, read } = await setup();
+    const { jobId } = await screen({ set: { kind: "collection", collectionId }, first: 1, last: 4, ...job, saveTo: { kind: "none" }, prune: true });
     const [late] = await results(jobId);
 
     // Cancelled while its papers are queued; one paper's answer and its charge arrive after.
@@ -152,8 +160,8 @@ describe("where a job's papers go", () => {
   });
 
   it("keeps the paper that found the credits spent in the collection of a pruning job", async () => {
-    const { t, alice, collectionId, results, inCollectionNow } = await setup();
-    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "collection", collectionId }, first: 1, last: 4, ...job, saveTo: { kind: "none" }, prune: true });
+    const { t, screen, collectionId, results, inCollectionNow } = await setup();
+    const { jobId } = await screen({ set: { kind: "collection", collectionId }, first: 1, last: 4, ...job, saveTo: { kind: "none" }, prune: true });
     const [unlucky] = await results(jobId);
 
     // As the paper's action does when the balance runs out: the job ends, then its own work fails.
@@ -166,7 +174,7 @@ describe("where a job's papers go", () => {
   });
 
   it("saves nothing, and leaves the collection it read alone, when told to", async () => {
-    const { t, alice, userId, collectionId, answerAll, inCollectionNow } = await setup({ saved: 0, inCollection: 0 });
+    const { t, screen, userId, collectionId, answerAll, inCollectionNow } = await setup({ saved: 0, inCollection: 0 });
     // Papers from a job, which aren't saved yet.
     const source = await t.run(async (ctx) => {
       const screeningId = await ctx.db.insert("screenings", { userId, version: 0, createdAt: 1 });
@@ -175,7 +183,7 @@ describe("where a job's papers go", () => {
       return jobId;
     });
 
-    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "screening", jobId: source }, first: 1, last: 2, ...job, saveTo: { kind: "none" } });
+    const { jobId } = await screen({ set: { kind: "screening", jobId: source }, first: 1, last: 2, ...job, saveTo: { kind: "none" } });
     await answerAll(jobId, [1, 2]);
 
     expect(await t.run((ctx) => ctx.db.query("libraryItems").withIndex("by_user", (q) => q.eq("userId", userId)).take(5))).toEqual([]);
@@ -183,61 +191,31 @@ describe("where a job's papers go", () => {
   });
 });
 
-describe("a request bigger than one job", () => {
-  it("starts the job for the next papers when one completes, with the same questions, rules and destination", async () => {
-    const { t, userId, collectionId, results, answerAll } = await setup();
-    // One job holds 1,000 papers, so a small request is cut by hand: papers 1 to 2 of a request through 5.
-    const papers = [6, 5].map((i) => ({ openalexId: W(i), title: `Paper ${i}` }));
-    const first = await t.mutation(internal.screening.mutations.createScreeningJobForUser, { userId, author: "user", papers, set: { kind: "saved" }, first: 1, last: 2, through: 5, ...job, saveTo: { kind: "collection", collectionId } });
-    const jobs = () => t.run((ctx) => ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", userId)).order("asc").take(10));
+describe("a job of any size", () => {
+  it("reads all its papers a step at a time into one job, past the old 1,000 a job held", async () => {
+    const { t, results, read, screen } = await setup({ saved: 1_250, inCollection: 0 });
+    const { jobId } = await screen({ set: { kind: "saved" }, first: 1, last: 1_250, ...job, saveTo: { kind: "none" } });
+    expect(await read(jobId)).toMatchObject({ totalPapers: 1_250 });
+    expect((await read(jobId))?.reading).toBeUndefined();
+    const ids = new Set((await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1_300))).map((paper) => paper.openalexId));
+    expect(ids.size).toBe(1_250);
+    expect((await results(jobId)).length).toBe(50);
+  }, 120_000);
 
-    await answerAll(first.jobId, []);
-    const [, second] = await jobs();
-    expect(second).toMatchObject({ set: { kind: "saved" }, first: 3, last: 5, totalPapers: 3, targetCollectionId: collectionId, questions, scoringConfig });
-    expect(second.through).toBeUndefined();
-    expect((await results(second._id)).map((paper) => paper.openalexId)).toEqual([4, 3, 2].map(W));
+  it("stops where the person's credits run out, and holds the papers it took", async () => {
+    // Enough for one step of papers, not two.
+    const { read, screen } = await setup({ saved: 450, inCollection: 0, credits: 250 * PER_PAPER });
+    const { jobId } = await screen({ set: { kind: "saved" }, first: 1, last: 450, ...job, saveTo: { kind: "none" } });
+    expect(await read(jobId)).toMatchObject({ status: "creditsExhausted", totalPapers: 200 });
+  }, 120_000);
 
-    await answerAll(second._id, []);
-    expect(await jobs()).toHaveLength(2);
-  });
-
-  it("reads on from where the last job stopped, so a collection it prunes keeps its unread papers in place", async () => {
-    const { t, userId, collectionId, results, answerAll, inCollectionNow } = await setup();
-    // The first job as `screen` makes it for a request through paper 4: papers 1 to 2, and where the collection goes on.
-    const head = await t.query(internal.paperSets.held.page, { userId, set: { kind: "collection", collectionId }, cursor: null, numItems: 2 });
-    const first = await t.mutation(internal.screening.mutations.createScreeningJobForUser, {
-      userId, author: "user", papers: head.page, set: { kind: "collection", collectionId }, first: 1, last: 2, through: 4, resume: head.continueCursor, ...job, saveTo: { kind: "none" }, prune: true,
-    });
-
-    // Both excluded (W4 and W3, the newest saved): they leave the collection, which now holds only the two papers still to come.
-    await answerAll(first.jobId, []);
-    const [, second] = await t.run((ctx) => ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", userId)).order("asc").take(10));
-    expect((await results(second._id)).map((paper) => paper.openalexId)).toEqual([W(2), W(1)]);
-    expect(second).toMatchObject({ first: 3, last: 4, prune: true });
-    expect(await inCollectionNow(collectionId)).toEqual(expect.not.arrayContaining([W(3), W(4)]));
-  });
-
-  it("ends with a job that's cancelled", async () => {
-    const { t, alice, userId } = await setup();
-    const papers = [6, 5].map((i) => ({ openalexId: W(i), title: `Paper ${i}` }));
-    const { jobId } = await t.mutation(internal.screening.mutations.createScreeningJobForUser, { userId, author: "user", papers, set: { kind: "saved" }, first: 1, last: 2, through: 5, ...job });
-
+  it("stops reading when it's cancelled", async () => {
+    const { t, alice, read } = await setup({ saved: 450, inCollection: 0 });
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "saved" }, first: 1, last: 450, ...job, saveTo: { kind: "none" } });
     await alice.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-
-    expect(await t.run((ctx) => ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", userId)).take(10))).toHaveLength(1);
-  });
-
-  it("shows where the request stopped when the person can't pay for its next job", async () => {
-    // Enough for the first job's two papers, not the next job's three.
-    const { t, userId, answerAll } = await setup({ credits: 2 * PER_PAPER + 1 });
-    const papers = [6, 5].map((i) => ({ openalexId: W(i), title: `Paper ${i}` }));
-    const first = await t.mutation(internal.screening.mutations.createScreeningJobForUser, { userId, author: "user", papers, set: { kind: "saved" }, first: 1, last: 2, through: 5, ...job });
-
-    await answerAll(first.jobId, []);
-
-    const [, second] = await t.run((ctx) => ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", userId)).order("asc").take(10));
-    expect(second).toMatchObject({ status: "creditsExhausted", first: 3, last: 5, totalPapers: 3 });
+    await t.action(internal.screening.start.read, { jobId });
+    expect(await read(jobId)).toMatchObject({ status: "cancelled" });
+    expect(await t.run(async (ctx) => (await ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1)).length)).toBe(0);
   });
 });
 
@@ -263,7 +241,7 @@ describe("a job on a search whose page already answered some papers", () => {
 
     // What `screen` counts before it makes the job, so the credit check leaves these papers out.
     expect(await t.query(internal.screening.queries.answeredCount, { userId, searchId: search.id, questions: ["Randomized?"], paperIds: papers.map((paper) => paper.openalexId) })).toBe(2);
-    const { jobId } = await t.mutation(internal.screening.mutations.createScreeningJobForUser, { userId, author: "user", papers, set: { kind: "search", searchId: search.id }, first: 1, last: 3, answered: 2, ...job, saveTo: { kind: "none" } });
+    const { jobId } = await createJob(alice, { papers, set: { kind: "search", searchId: search.id }, answered: 2, ...job, saveTo: { kind: "none" } });
 
     // Only the new paper took a slot; the estimate covers it alone.
     expect((await results(jobId)).map((paper) => [paper.status, paper.workId === undefined])).toEqual([["completed", true], ["completed", true], ["processing", false]]);

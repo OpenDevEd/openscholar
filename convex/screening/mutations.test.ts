@@ -8,7 +8,6 @@ import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 import { createJob, insertJob } from "./createJob.test-support";
 import { screeningPaperCreditsFor } from "./estimate";
-import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { SCREENING_POOL_SIZE } from "../workpool";
 
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
@@ -169,54 +168,6 @@ describe("createScreeningJob", () => {
         scoringConfig: defaultScoringConfig,
       })
     ).rejects.toThrow();
-  });
-
-  it("rejects when papers array is empty", async () => {
-    const t = convexTest(schema);
-    setupScreeningWorkpool(t);
-    const user = await seedUser(t, "clerk_test");
-    await seedCredits(t, user._id, 100, 0);
-    const asUser = t.withIdentity({ subject: "clerk_test" });
-
-    await expect(
-      createJob(asUser, {
-        papers: [],
-        questions: defaultQuestions,
-        scoringConfig: defaultScoringConfig,
-      })
-    ).rejects.toThrow("VALIDATION_ERROR");
-  });
-
-  it("rejects when papers exceed MAX_SCREENING_PAPERS_PER_JOB", async () => {
-    const t = convexTest(schema);
-    setupScreeningWorkpool(t);
-    const user = await seedUser(t, "clerk_test");
-    await seedCredits(t, user._id, 1000, 0);
-    const asUser = t.withIdentity({ subject: "clerk_test" });
-
-    await expect(
-      createJob(asUser, {
-        papers: makePapers(MAX_SCREENING_PAPERS_PER_JOB + 1),
-        questions: defaultQuestions,
-        scoringConfig: defaultScoringConfig,
-      })
-    ).rejects.toThrow("VALIDATION_ERROR");
-  });
-
-  it("rejects when user has insufficient credits", async () => {
-    const t = convexTest(schema);
-    setupScreeningWorkpool(t);
-    const user = await seedUser(t, "clerk_test");
-    await seedCredits(t, user._id, 5, 5); // 10 total, but wants 50 papers
-    const asUser = t.withIdentity({ subject: "clerk_test" });
-
-    await expect(
-      createJob(asUser, {
-        papers: makePapers(50),
-        questions: defaultQuestions,
-        scoringConfig: defaultScoringConfig,
-      })
-    ).rejects.toThrow("INSUFFICIENT_CREDITS");
   });
 
   it("succeeds when user has a completed job (not blocking)", async () => {
@@ -459,26 +410,27 @@ describe("Screen all on a saved search", () => {
 });
 
 describe("creating a large Screen all job", () => {
-  it(`creates every result of a ${MAX_SCREENING_PAPERS_PER_JOB}-paper job within Convex's limits, a batch at a time`, async () => {
+  const JOB_PAPERS = 1_000;
+  it(`creates every result of a ${JOB_PAPERS}-paper job within Convex's limits, a batch at a time`, async () => {
     const t = convexTest({ schema, transactionLimits: true });
     setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_big");
     await seedCredits(t, user._id, 100_000, 0);
     const { jobId } = await createJob(t.withIdentity({ subject: "clerk_big" }), {
-      papers: makePapers(MAX_SCREENING_PAPERS_PER_JOB), questions: defaultQuestions, scoringConfig: defaultScoringConfig,
+      papers: makePapers(JOB_PAPERS), questions: defaultQuestions, scoringConfig: defaultScoringConfig,
     });
     // Each later batch is its own scheduled transaction, run here without the papers' screening.
-    for (let batch = 1; batch < MAX_SCREENING_PAPERS_PER_JOB / 250; batch++) {
+    for (let batch = 1; batch < JOB_PAPERS / 250; batch++) {
       const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
       const next = scheduled.filter((fn) => fn.name === "screening/mutations:createScreeningResults").at(-1);
       await t.mutation(internal.screening.mutations.createScreeningResults, next!.args[0] as never);
     }
     const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect());
-    expect(results).toHaveLength(MAX_SCREENING_PAPERS_PER_JOB);
-    expect(new Set(results.map((r) => r.openalexId)).size).toBe(MAX_SCREENING_PAPERS_PER_JOB);
+    expect(results).toHaveLength(JOB_PAPERS);
+    expect(new Set(results.map((r) => r.openalexId)).size).toBe(JOB_PAPERS);
     // The person's slots' worth start; the rest wait their turn (./slots.ts).
     expect(results.filter((r) => r.workId)).toHaveLength(SCREENING_POOL_SIZE);
-    expect(results.filter((r) => r.waitingSince !== undefined)).toHaveLength(MAX_SCREENING_PAPERS_PER_JOB - SCREENING_POOL_SIZE);
+    expect(results.filter((r) => r.waitingSince !== undefined)).toHaveLength(JOB_PAPERS - SCREENING_POOL_SIZE);
   }, 300_000);
 
   it("creates no more results once the job is cancelled", async () => {

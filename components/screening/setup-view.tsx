@@ -4,10 +4,9 @@ import { useRef, useState, type ReactNode } from "react";
 import { useAction } from "convex/react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { AiIcon, Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X, Zap } from "@/components/icons";
+import { AiIcon, Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { MAX_SCREENING_PAPERS_PER_JOB as JOB_LIMIT } from "@/convex/lib/queryBounds";
 import { Button } from "@/components/ui/button";
 import { FilterChips } from "@/components/ui/filter-display";
 import { Input } from "@/components/ui/input";
@@ -112,7 +111,7 @@ export function SetupView({
   const source = picked?.kind === kind ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : (lists[kind].rows.find((row) => row.id === againId) ?? lists[kind].rows[0]);
   // Opened from a results page, it starts on the page the person was reading; run again, on the job's own papers.
   const [scope, setScope] = useState<"all" | "page" | "range">(again?.first ? "range" : fromSearchId && !again ? "page" : again?.set && again.set.kind !== "search" ? "all" : "range");
-  const [range, setRange] = useState<[number, number]>(again?.first && again.last ? [again.first, again.through ?? again.last] : [1, 300]);
+  const [range, setRange] = useState<[number, number]>(again?.first && again.last ? [again.first, again.last] : [1, 300]);
   // Untouched, the questions are the selected search's own: the ones its results page screens with.
   const [edited, setEdited] = useState<Question[] | null>(again ? questionsOf(again) : null);
   const own: Question[] = source?.kind === "search" ? source.search.screeningQuestions.map((q, i) => ({ key: `own${i}`, text: q.question, yes: 1, no: 0, unclear: 0 })) : [];
@@ -132,13 +131,12 @@ export function SetupView({
   const [prune, setPrune] = useState(again?.prune ?? false);
   const [busy, setBusy] = useState(false);
 
-  // A range can reach the last paper: past a job's limit it runs as several jobs, as all of them does.
+  // A range can reach the last paper: one job takes however many.
   const top = source?.count ?? 0;
   const page = source?.kind === "search" ? (source.search.page ?? 1) : 1;
   const [first, last] =
     scope === "all" ? [1, top] : scope === "page" && source?.kind === "search" ? [(page - 1) * ITEMS_PER_PAGE + 1, Math.min(page * ITEMS_PER_PAGE, top)] : [Math.min(range[0], top), Math.min(range[1], top)];
   const papers = top ? last - first + 1 : 0;
-  const jobs = Math.ceil(papers / JOB_LIMIT);
   const max = maxScore(questions);
   // With no question there's nothing to score: Keep and Stars wait, at the size they'll have.
   const unscored = questions.length === 0;
@@ -331,21 +329,7 @@ export function SetupView({
                                       />
                                       {t("rangeOf", { total: top })}
                                     </span>
-                                    {jobs > 1 ? (
-                                      <span className="flex flex-wrap items-center gap-1.5">
-                                        <Chip icon={Zap} className="text-foreground"><span>{t.rich("jobsInTurn", { count: jobs, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span></Chip>
-                                        <Chip icon={Check}>{t("oneApproval")}</Chip>
-                                      </span>
-                                    ) : (
-                                      <Chip>{t("upToPerJob", { limit: JOB_LIMIT })}</Chip>
-                                    )}
                                   </div>
-                                </div>
-                              ) : scope === "all" && jobs > 1 ? (
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <Chip icon={Zap} className="text-foreground"><span>{t.rich("jobsInTurn", { count: jobs, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span></Chip>
-                                  <Chip>{t("upToEach", { limit: JOB_LIMIT })}</Chip>
-                                  <Chip icon={Check}>{t("oneApproval")}</Chip>
                                 </div>
                               ) : scope === "all" ? (
                                 <div className="flex flex-wrap items-center gap-1.5">

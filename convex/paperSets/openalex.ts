@@ -147,7 +147,7 @@ async function readFrom<Work>(request: SearchRequest, at: Place, count: number, 
 }
 
 /** Whether works up to `last` can come by numbered page, in the results page's order. */
-const numbered = (request: SearchRequest, last: number) => request.sort === PAGE_ORDERED_SORT && last <= PAGED_MAX;
+export const numbered = (request: SearchRequest, last: number) => request.sort === PAGE_ORDERED_SORT && last <= PAGED_MAX;
 
 /**
  * Works `first` to `last` (counting from 1), how many works came before the first one
