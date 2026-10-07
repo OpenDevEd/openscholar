@@ -36,8 +36,9 @@ belonged to a person.
 - Anyone can create an organization, through Clerk. A free organization has up
   to 5 members.
 - People outside a workspace can be invited to one item, as with Evidence
-  Library invitations today. They see it under "Shared with me" in every
-  workspace, and work they run on it uses the workspace they're in.
+  Library invitations today. Guest access is given to a person, so the item
+  shows under "Shared with me" in their personal workspace only, and work they
+  run on it uses their own credits. Organizations show only their own work.
 - An organization pays for a Team plan per seat. Its credits are one pool, with
   an optional monthly cap per member.
 - Features come from the workspace's plan. The hand-set organization switches
@@ -61,6 +62,10 @@ Replaced decisions:
 - 2026-10-07: a layout with no switcher, listing every workspace's items
   together like Google Drive or Zotero, was proposed and rejected by the user in
   favour of the switcher.
+- 2026-10-07: items shared with you showed under "Shared with me" in every
+  workspace and ran on the workspace you were in. The user moved them to the
+  personal workspace, so an organization never pays for, or lists, work on
+  items only one of its members can open.
 
 ## What to reuse
 
@@ -197,7 +202,7 @@ still open.
   accounts. One creates an organization and invites the other. They switch
   workspaces, work in the organization, and see each other's work, attribution
   and presence. A third account, invited to one item only, sees it under
-  "Shared with me".
+  "Shared with me" in its personal workspace and not in its organizations.
 - #652: a real charge on the e2e Autumn setup, taken from an organization's pool
   and refused past a member's cap.
 - The full CI suite gates each PR.
