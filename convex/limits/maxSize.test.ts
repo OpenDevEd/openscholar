@@ -9,7 +9,10 @@ import { exportLibrary, exportParts, exportedTitles } from "../exports.test-supp
 import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { replaceJobSources, writeJobSources } from "../extraction/jobSources";
 import { collectionSortName } from "../library/collections";
-import { MAX_COLLECTIONS_PER_USER, MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
+import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
+
+/** Collections a person keeps in the test below: past a page many times over. */
+const COLLECTIONS = 500;
 import { MAX_CATALOG_MODELS } from "../models/catalog";
 import { MAX_SIZE, insertMany, seedAccount, seedExtractionJob, seedLibrary, text } from "../lib/maxSize.test-support";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
@@ -84,14 +87,14 @@ describe("at the largest sizes the product allows", () => {
     const { userId, as } = await seedAccount(t);
     // seedLibrary makes the first collection, which holds its paper.
     await seedLibrary(t, userId, { items: 1 });
-    await insertMany(t, "collections", Array.from({ length: MAX_COLLECTIONS_PER_USER - 1 }, (_, i) => {
+    await insertMany(t, "collections", Array.from({ length: COLLECTIONS - 1 }, (_, i) => {
       const name = `Reading list ${i}: ${text(200, i)}`;
       return { userId, name, sortName: collectionSortName(name), itemCount: 0, createdAt: 1, updatedAt: 1 };
     }));
-    await t.run((ctx) => ctx.db.insert("collectionCounts", { userId, count: MAX_COLLECTIONS_PER_USER }));
-    expect(await as.query(api.library.collections.countCollections, {})).toBe(MAX_COLLECTIONS_PER_USER);
+    await t.run((ctx) => ctx.db.insert("collectionCounts", { userId, count: COLLECTIONS }));
+    expect(await as.query(api.library.collections.countCollections, {})).toBe(COLLECTIONS);
     // Asking for more than the largest page gets the largest page.
-    const page = await as.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: MAX_COLLECTIONS_PER_USER }, openalexId: "https://openalex.org/W0" });
+    const page = await as.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: COLLECTIONS }, openalexId: "https://openalex.org/W0" });
     expect(page.page).toHaveLength(50);
     expect(page.isDone).toBe(false);
     expect(page.page.filter((collection) => collection.containsItem).map((collection) => collection.name)).toEqual(["Everything"]);

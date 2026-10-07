@@ -1,6 +1,10 @@
 import { v, type Infer } from "convex/values";
 import { MAX_BILLING_FEATURES, MAX_BILLING_PLANS, MAX_PLAN_DETAILS, capped } from "../lib/listCaps";
 
+/** A plan's limit on each of lib/billing/plans.ts PLAN_LIMITS it sets: a number, or null for unlimited. A limit left out isn't set. */
+const limitValue = v.optional(v.union(v.number(), v.null()));
+export const planLimitsValidator = v.object({ collections: limitValue, concurrency: limitValue, assistant_replies: limitValue, request_papers: limitValue });
+
 export const billingAccountSnapshotValidator = v.object({
   /** The customer's main plan id in Autumn; absent if they have none. */
   plan: v.optional(v.string()),
@@ -20,11 +24,8 @@ export const billingAccountSnapshotValidator = v.object({
    */
   features: capped(v.optional(v.array(v.string())), MAX_BILLING_FEATURES),
   balance: v.number(),
-  /**
-   * Papers the person may have running at once (#335), from the plan's `concurrency`
-   * balance in Autumn, as Firecrawl reads its `CONCURRENCY`. Absent when the plan sets none.
-   */
-  concurrency: v.optional(v.number()),
+  /** What the customer's plans allow, from their balances in Autumn (#632); absent on a snapshot cached before limits existed. */
+  limits: v.optional(planLimitsValidator),
   /** Top-up credits, which never expire; included in `balance`. */
   purchased: v.number(),
   card: v.optional(v.object({ brand: v.string(), last4: v.string() })),
@@ -39,8 +40,14 @@ export const billingAccountFields = {
   ...billingAccountSnapshotValidator.fields,
   userId: v.id("users"),
   refreshedAt: v.number(),
+  /** When the snapshot was read from Autumn: a refresh read before it is older, and is dropped. Unlike `refreshedAt`, zeroing the balance leaves it. */
+  fetchedAt: v.optional(v.number()),
+  /** When the cached `card` was read from Autumn: an older refresh that read the card still brings a newer one than this. */
+  cardFetchedAt: v.optional(v.number()),
   /** Set while a refresh from Autumn is scheduled, so charges don't schedule more. */
   refreshQueuedAt: v.optional(v.number()),
+  /** The papers-at-once limit before `limits` held it; read by nothing, cleared by migrations/planLimits. */
+  concurrency: v.optional(v.number()),
 };
 
 export const usageKindValidator = v.union(
@@ -102,6 +109,8 @@ export const catalogPlanValidator = v.object({
   ),
   /** Boolean features the plan grants, such as "extraction". */
   features: capped(v.array(v.string()), MAX_PLAN_DETAILS),
+  /** What the plan allows (#632). */
+  limits: v.optional(planLimitsValidator),
   /** Metadata `popular: true` marks the plan as the one to recommend. */
   popular: v.boolean(),
   /** Metadata `highlights`: extra lines for the pricing card. */

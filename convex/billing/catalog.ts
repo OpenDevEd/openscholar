@@ -14,7 +14,7 @@ import {
 import { internal } from "../_generated/api";
 import { autumn, type AutumnFeature, type AutumnPlan } from "./autumn";
 import { billingCatalogValidator, type BillingCatalog, type CatalogPlan } from "./validators";
-import { CREDITS_FEATURE } from "../../lib/billing/plans";
+import { CREDITS_FEATURE, PLAN_LIMITS } from "../../lib/billing/plans";
 import { MAX_BILLING_FEATURES, MAX_BILLING_PLANS, MAX_PLAN_DETAILS } from "../lib/listCaps";
 
 function metadataList(value: unknown): string[] | undefined {
@@ -63,6 +63,7 @@ export function catalogPlan(plan: AutumnPlan, booleanFeatures: Set<string>): Cat
       .map((item) => item.feature_id)
       .filter((featureId) => booleanFeatures.has(featureId))
       .slice(0, MAX_PLAN_DETAILS),
+    limits: Object.fromEntries(plan.items.filter((item) => (PLAN_LIMITS as readonly string[]).includes(item.feature_id)).map((item) => [item.feature_id, item.unlimited ? null : item.included])),
     popular: metadata.popular === true || metadata.popular === "true",
     ...(metadataList(metadata.highlights) ? { highlights: metadataList(metadata.highlights)!.slice(0, MAX_PLAN_DETAILS) } : {}),
     ...(bundles && bundles.length > 0 ? { bundles: bundles.slice(0, MAX_PLAN_DETAILS) } : {}),

@@ -15,9 +15,6 @@ export const MAX_ORGANIZATION_MEMBERS_READ = 1_000;
 /** Most Evidence Libraries one organization can make, so its library list reads in one query. */
 export const MAX_LIBRARIES_PER_ORGANIZATION = 200;
 
-/** Most collections one user can make, so every list of their collections stays small. */
-export const MAX_COLLECTIONS_PER_USER = 500;
-
 /** Maximum extraction jobs listed per user.
  * Users accumulate jobs over time; 500 is generous for any reasonable usage. */
 export const MAX_EXTRACTION_JOBS_PER_USER = 500;

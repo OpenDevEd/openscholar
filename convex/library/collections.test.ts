@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { ConvexError } from "convex/values";
 import { api } from "../_generated/api";
 import schema from "../schema";
-import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import { collectionSortName } from "./collections";
 import type { Doc, Id } from "../_generated/dataModel";
 
@@ -156,16 +155,19 @@ describe("createCollection", () => {
     ).rejects.toThrow();
   });
 
-  it("refuses a collection past the per-user cap, so a user's collection lists stay small", async () => {
+  it("refuses a collection past what the person's plan allows, and makes any number on a plan that sets none (#632)", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
-    await t.run(async (ctx) => {
-      for (let i = 0; i < MAX_COLLECTIONS_PER_USER; i++) await ctx.db.insert("collections", { userId: user!._id, name: `c${i}`, sortName: `c${i}`, itemCount: 0, createdAt: 1, updatedAt: 1 });
-      await ctx.db.insert("collectionCounts", { userId: user!._id, count: MAX_COLLECTIONS_PER_USER });
-    });
-    await expect(asUser.mutation(api.library.collections.createCollection, { name: "One more" })).rejects.toThrow(/VALIDATION_ERROR/);
-    expect(await t.run(async (ctx) => (await ctx.db.query("collections").take(MAX_COLLECTIONS_PER_USER + 1)).length)).toBe(MAX_COLLECTIONS_PER_USER);
+    const account = await t.run((ctx) => ctx.db.insert("billingAccounts", { userId: user!._id, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { collections: 2 } }));
+    await asUser.mutation(api.library.collections.createCollection, { name: "One" });
+    await asUser.mutation(api.library.collections.createCollection, { name: "Two" });
+    await expect(asUser.mutation(api.library.collections.createCollection, { name: "Three" })).rejects.toThrow(/plan allows 2 collections/);
+
+    // Unlimited on the plan.
+    await t.run((ctx) => ctx.db.patch("billingAccounts", account, { limits: { collections: null } }));
+    await asUser.mutation(api.library.collections.createCollection, { name: "Three" });
+    expect(await asUser.query(api.library.collections.countCollections, {})).toBe(3);
   });
 
   it("rejects empty name (ConvexError with VALIDATION_ERROR)", async () => {

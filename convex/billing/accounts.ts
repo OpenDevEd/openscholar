@@ -13,13 +13,15 @@ import {
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
+import { createError } from "../lib/errors";
 import { autumn, type AutumnCustomer } from "./autumn";
 import {
   billingAccountFields,
   billingAccountSnapshotValidator,
   type BillingAccountSnapshot,
 } from "./validators";
-import { SIGNUP_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
+import { PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
+import { readCatalog } from "./catalog";
 
 /** Reads what OpenScholar needs from an Autumn customer. */
 export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSnapshot {
@@ -39,7 +41,11 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
     nextPlan: scheduled?.plan_id,
     features: Object.keys(customer.flags ?? {}),
     balance: customer.balances.credits?.remaining ?? 0,
-    concurrency: customer.balances.concurrency?.remaining,
+    // A limit is never used up, so what the plans grant is the limit itself.
+    limits: Object.fromEntries(PLAN_LIMITS.flatMap((limit) => {
+      const balance = customer.balances[limit];
+      return balance ? [[limit, balance.unlimited ? null : (balance.granted ?? balance.remaining)]] : [];
+    })),
     purchased: (customer.balances.credits?.breakdown ?? [])
       .filter((balance) => balance.plan_id === TOPUP_PLAN)
       .reduce((sum, balance) => sum + balance.remaining, 0),
@@ -65,11 +71,26 @@ export async function availableCredits(ctx: QueryCtx | MutationCtx, userId: Id<"
 }
 
 /**
- * Papers the person may have running at once in each paper pool (#335): their plan's
- * `concurrency` balance in Autumn, or undefined when it sets none.
+ * What the person's plan allows of `limit` (#632), or undefined when it sets none. Their
+ * cached snapshot says, unless their plan's version predates the limit or nothing is cached
+ * yet: then their plan in the synced catalog does, or, with no plan, the plan every new
+ * customer gets. A plan the catalog no longer lists sets none.
  */
-export async function planConcurrency(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
-  return (await readAccount(ctx, userId))?.concurrency;
+export async function planLimit(ctx: QueryCtx | MutationCtx, userId: Id<"users">, limit: PlanLimit): Promise<number | undefined> {
+  const account = await readAccount(ctx, userId);
+  const own = account?.limits?.[limit];
+  if (own !== undefined) return own ?? undefined;
+  const plans = (await readCatalog(ctx))?.plans ?? [];
+  const plan = account?.plan ? plans.find((candidate) => candidate.id === account.plan) : plans.find((candidate) => candidate.autoEnable && !candidate.addOn);
+  return plan?.limits?.[limit] ?? undefined;
+}
+
+/** Refuses a request for more papers than the person's plan takes in one (#632). */
+export async function checkRequestPapers(ctx: QueryCtx | MutationCtx, userId: Id<"users">, papers: number, what: "screening" | "extraction") {
+  const most = await planLimit(ctx, userId, "request_papers");
+  if (most !== undefined && papers > most) {
+    throw createError("VALIDATION_ERROR", `Your plan takes up to ${most.toLocaleString("en")} papers in one ${what}. Pick fewer, or change plan for more.`);
+  }
 }
 
 /** Whether the user's plans grant `featureId`, per the cached snapshot. */
@@ -91,13 +112,19 @@ export const writeSnapshot = internalMutation({
   returns: v.null(),
   handler: async (ctx, { userId, snapshot, withCard, fetchedAt }) => {
     const existing = await readAccount(ctx, userId);
+    // A snapshot read before the one cached would bring back an older plan and its limits. Its card can still be the newest read.
+    if (existing?.fetchedAt !== undefined && existing.fetchedAt > fetchedAt) {
+      if (withCard && (existing.cardFetchedAt ?? 0) < fetchedAt) await ctx.db.patch("billingAccounts", existing._id, { card: snapshot.card, cardFetchedAt: fetchedAt });
+      return null;
+    }
     const newer = existing !== null && existing.refreshedAt > fetchedAt;
     const row = {
       ...snapshot,
-      card: withCard ? snapshot.card : existing?.card,
+      ...(withCard ? { card: snapshot.card, cardFetchedAt: fetchedAt } : { card: existing?.card, cardFetchedAt: existing?.cardFetchedAt }),
       ...(newer && { balance: existing.balance, purchased: existing.purchased }),
       userId,
       refreshedAt: newer ? existing.refreshedAt : fetchedAt,
+      fetchedAt,
     };
     if (existing) await ctx.db.replace(existing._id, row);
     else await ctx.db.insert("billingAccounts", row);

@@ -11,7 +11,7 @@ import {
   shouldClearQueueLease,
   type ExtractionQueueStatus,
 } from "./status";
-import { planConcurrency } from "../../billing/accounts";
+import { planLimit } from "../../billing/accounts";
 import { PAPER_LIMIT } from "../../../lib/extraction/limits";
 
 type QueueKind = Doc<"extractionPaperQueue">["kind"];
@@ -344,7 +344,7 @@ export const leaseNextPaperQueueRows = internalMutation({
  * leased or running in any job. Firecrawl's per-team limit (`apps/api/src/lib/concurrency-limit.ts`).
  */
 async function personCapacity(ctx: MutationCtx, userId: Id<"users">, window: number) {
-  const limit = Math.max(1, Math.min(window, (await planConcurrency(ctx, userId)) ?? window));
+  const limit = Math.max(1, Math.min(window, (await planLimit(ctx, userId, "concurrency")) ?? window));
   let held = 0;
   for (const status of ["leased", "running"] as const) {
     if (held >= limit) break;

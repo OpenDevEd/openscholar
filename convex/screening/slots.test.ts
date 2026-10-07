@@ -96,7 +96,7 @@ describe("each person's paper slots", () => {
     const ada = await person("ada");
     await t.run(async (ctx) => {
       const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada.userId)).unique();
-      await ctx.db.patch("billingAccounts", account!._id, { concurrency: 5 });
+      await ctx.db.patch("billingAccounts", account!._id, { limits: { concurrency: 5 } });
     });
 
     const { jobId } = await createJob(ada.as, { papers: papers(20, "a"), questions, scoringConfig });

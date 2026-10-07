@@ -12,3 +12,14 @@ export const SIGNUP_PLAN = "signup_credits";
 
 /** Add-on sold in bundles; its credits never expire. */
 export const TOPUP_PLAN = "top_up";
+
+/**
+ * What a plan allows, each a metered feature in Autumn that is never used up: its amount on
+ * the plan is the limit, and an unlimited one sets none (#632).
+ * - collections: collections a person may have.
+ * - concurrency: papers a person may have running at once in each pool (screening, extraction).
+ * - assistant_replies: replies the assistant may be writing for a person at once.
+ * - request_papers: papers one screening or extraction request may take.
+ */
+export const PLAN_LIMITS = ["collections", "concurrency", "assistant_replies", "request_papers"] as const;
+export type PlanLimit = (typeof PLAN_LIMITS)[number];

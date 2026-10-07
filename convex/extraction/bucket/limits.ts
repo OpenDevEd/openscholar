@@ -23,7 +23,7 @@ import { createError } from "../../lib/errors";
  * Throws the project-standard `VALIDATION_ERROR` so callers don't have
  * to handle it.
  */
-export function assertBucketWithinLimits(items: ReadonlyArray<EffectiveCountItem>): {
+export function assertBucketWithinLimits(items: ReadonlyArray<EffectiveCountItem>, planPapers?: number): {
   effectiveCount: number;
 } {
   const overIndex = findOverPullCapIndex(items, PAPER_PULL_CAP);
@@ -43,6 +43,9 @@ export function assertBucketWithinLimits(items: ReadonlyArray<EffectiveCountItem
   // sees a synchronous VALIDATION_ERROR and no job is ever created.
   if (count === 0) {
     throw createError("VALIDATION_ERROR", "Bucket must include at least one paper");
+  }
+  if (planPapers !== undefined && count > planPapers) {
+    throw createError("VALIDATION_ERROR", `Your plan takes up to ${planPapers.toLocaleString("en")} papers in one extraction. Pick fewer, or change plan for more.`);
   }
   if (count > PAPER_LIMIT) {
     throw createError(

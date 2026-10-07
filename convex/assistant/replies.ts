@@ -31,6 +31,7 @@ import { notePart, viewOf } from "../../lib/assistant/view";
 import { hasVariants, variantIn, viewOf as actionView } from "../../lib/assistant/actions";
 import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
+import { planLimit } from "../billing/accounts";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
@@ -65,12 +66,15 @@ const SWEEP_BATCH = 200;
 
 
 /**
- * Refuses a reply that would be one too many being written for a person at once. A reply
- * that waits for an answer runs nothing and isn't one of them; carrying it on is.
+ * Refuses a reply that would be one too many being written for a person at once: as many as
+ * their plan allows (#632), and never more than their share of the deployment's actions. A
+ * reply that waits for an answer runs nothing and isn't one of them; carrying it on is.
  */
 export async function admit(ctx: MutationCtx, userId: Id<"users">) {
-  // Twice the limit, so locks whose action died can't hide live ones behind them. The dead
-  // ones found are released here, which keeps the next count honest too.
+  const plan = await planLimit(ctx, userId, "assistant_replies");
+  const most = Math.min(ASSISTANT_REPLIES_AT_ONCE, plan ?? ASSISTANT_REPLIES_AT_ONCE);
+  // Twice the deployment's share, whatever the plan: locks whose action died can't hide live
+  // ones behind them. The dead ones found are released here, which keeps the next count honest too.
   const mine = await ctx.db
     .query("assistantThreads")
     .withIndex("by_replySender", (q) => q.eq("reply.senderId", userId))
@@ -80,8 +84,10 @@ export async function admit(ctx: MutationCtx, userId: Id<"users">) {
     if (await writing(ctx, other.reply)) stillWriting++;
     else await endDead(ctx, other);
   }
-  if (stillWriting >= ASSISTANT_REPLIES_AT_ONCE) {
-    throw createError("CONFLICT", `The assistant is already writing ${ASSISTANT_REPLIES_AT_ONCE} replies for you. Wait for one to finish.`);
+  if (stillWriting >= most) {
+    throw createError("CONFLICT", most < ASSISTANT_REPLIES_AT_ONCE
+      ? `Your plan lets the assistant write ${most} ${most === 1 ? "reply" : "replies"} for you at once. Wait for one to finish, or change plan for more.`
+      : `The assistant is already writing ${most} replies for you. Wait for one to finish.`);
   }
 }
 
