@@ -2,7 +2,6 @@ import { defineSchema, defineTable } from "convex/server";
 import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
 import { libraryItemFields, removedItemValidator } from "./library/validators";
 import { v } from "convex/values";
-import { MAX_COLLECTIONS_PER_USER } from "./lib/queryBounds";
 import { sourceMetadataFields } from "./lib/paperMetadata";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
@@ -60,6 +59,9 @@ import { billingAccountFields, billingCatalogValidator, billingUsageFields } fro
 import { assistantLimitFields, assistantSpenderFields, assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
+
+/** The most collections a removal from before #633 listed: the cap a person had then. */
+const OLD_REMOVAL_PLACES = 500;
 
 export default defineSchema({
   searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator })
@@ -1132,8 +1134,8 @@ export default defineSchema({
     // places were kept as rows has none, and its places in `collectionIds`, with when the paper
     // was put in each in `assignedAts`, until migrations/libraryFacets moves them (#638 narrows).
     itemId: v.optional(v.id("libraryItems")),
-    collectionIds: capped(v.optional(v.array(v.id("collections"))), MAX_COLLECTIONS_PER_USER),
-    assignedAts: capped(v.optional(v.array(v.number())), MAX_COLLECTIONS_PER_USER),
+    collectionIds: capped(v.optional(v.array(v.id("collections"))), OLD_REMOVAL_PLACES),
+    assignedAts: capped(v.optional(v.array(v.number())), OLD_REMOVAL_PLACES),
     expiresAt: v.number(),
     // The paper Undo put back; the removal is kept until it expires.
     restoredAs: v.optional(v.id("libraryItems")),
