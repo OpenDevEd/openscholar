@@ -4,7 +4,8 @@ import { convexTest } from "convex-test";
 import { afterAll, afterEach, beforeEach, describe, it, vi } from "vitest";
 import schema from "../schema";
 import { listAction } from "../screening/papers";
-import { fillScreeningJob, openScreeningJob } from "../screening/mutations";
+import { fillScreeningJob, openScreeningJob, searchTextOf } from "../screening/mutations";
+import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { getScreeningJobAction, listScreeningResultsAction } from "../screening/queries";
 import { insertMany, seedAccount, text } from "../lib/maxSize.test-support";
 import { insertJob } from "../screening/createJob.test-support";
@@ -27,6 +28,7 @@ describe("screening reads by job size", () => {
   for (const size of SIZES) {
     it(`${size} papers`, async () => {
       const t = convexTest(schema);
+      setupScreeningWorkpool(t);
       const { userId } = await seedAccount(t);
       // Credits enough for any size, so only the job's own limits can refuse it.
       await t.run((ctx) => ctx.db.insert("billingAccounts", { userId, plan: "pro", pastDue: false, balance: 1e9, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: 1 }));
@@ -59,7 +61,7 @@ describe("screening reads by job size", () => {
       await insertMany(t, "screeningResults", Array.from({ length: size }, (_, i) => ({
         jobId, openalexId: `W${i}`, title: text(120, i), abstract: text(1_200, i), authors: [text(40, i), text(40, i + 3)], publicationYear: 2000 + (i % 25),
         status: "completed", answers: { "Is this a randomized trial?": i % 4 === 0 }, outcome: OUTCOMES[i % 4], qualified: i % 4 === 0, score: i % 4 === 0 ? 1 : 0, stars: 1, createdAt: 1,
-      })));
+      })).map((row) => ({ ...row, searchText: searchTextOf(row) })));
       const rows = (read: { page: unknown[] } | undefined) => `${read?.page.length ?? 0} rows`;
       await measure(t, at("page of included papers"), (ctx) => listAction.run(ctx, userId, { jobId, outcome: "included", paginationOpts: { cursor: null, numItems: 50 } }), rows);
       // A word in one paper title in ten.
