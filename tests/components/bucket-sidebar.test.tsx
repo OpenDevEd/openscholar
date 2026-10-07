@@ -85,13 +85,13 @@ afterEach(() => {
 
 describe("<BucketSidebar> mount", () => {
   it("desktop viewport: renders the complementary aside", () => {
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     expect(screen.getByRole("complementary")).toBeTruthy();
   });
 
   it("mobile viewport: returns null after effect resolves", async () => {
     setMobileMatchMedia(true);
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     await waitFor(() =>
       expect(screen.queryByRole("complementary")).toBeNull(),
     );
@@ -99,7 +99,7 @@ describe("<BucketSidebar> mount", () => {
 
   it("pre-hydration: returns null even on desktop", () => {
     useBucketSidebarStore.setState({ _hasHydrated: false });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     expect(screen.queryByRole("complementary")).toBeNull();
   });
 });
@@ -107,14 +107,14 @@ describe("<BucketSidebar> mount", () => {
 describe("<BucketSidebar> collapse control", () => {
   it("sliver button expands a collapsed sidebar", () => {
     useBucketSidebarStore.setState({ isCollapsed: true });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     const sliver = screen.getByRole("button", { name: /open bucket/i });
     fireEvent.click(sliver);
     expect(useBucketSidebarStore.getState().isCollapsed).toBe(false);
   });
 
   it("panel collapse button collapses an expanded sidebar", () => {
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     const collapseBtn = screen.getByRole("button", {
       name: /collapse bucket sidebar/i,
     });
@@ -123,7 +123,7 @@ describe("<BucketSidebar> collapse control", () => {
   });
 
   it("Ctrl+Shift+B toggles collapse state", () => {
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     act(() => {
       window.dispatchEvent(
         new KeyboardEvent("keydown", {
@@ -148,7 +148,7 @@ describe("<BucketSidebar> collapse control", () => {
   });
 
   it("Escape collapses when expanded", () => {
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     });
@@ -157,7 +157,7 @@ describe("<BucketSidebar> collapse control", () => {
 
   it("Escape does nothing when already collapsed", () => {
     useBucketSidebarStore.setState({ isCollapsed: true });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     });
@@ -167,7 +167,7 @@ describe("<BucketSidebar> collapse control", () => {
 
 describe("<BucketSidebar> panel body", () => {
   it("renders the empty state when no items are staged", () => {
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     expect(
       screen.getByText(/the bucket is empty/i),
     ).toBeTruthy();
@@ -182,7 +182,7 @@ describe("<BucketSidebar> panel body", () => {
           1000,
         );
     });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     expect(screen.getByText("Alpha Paper")).toBeTruthy();
     expect(screen.getByText("Beta Paper")).toBeTruthy();
   });
@@ -196,7 +196,7 @@ describe("<BucketSidebar> panel body", () => {
           1000,
         );
     });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     fireEvent.click(
       screen.getByRole("button", { name: /remove alpha paper/i }),
     );
@@ -204,7 +204,7 @@ describe("<BucketSidebar> panel body", () => {
   });
 
   it("Clear-all disabled with no items, enabled with items", () => {
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     const btn = screen.getByRole("button", { name: /^clear all$/i });
     expect(btn).toHaveAttribute("disabled");
   });
@@ -217,7 +217,7 @@ describe("<BucketSidebar> capacity signals", () => {
         .getState()
         .addMany([makeItem("k:a", "Alpha")], 1000);
     });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     const capacity = screen.getByTestId("bucket-sidebar-capacity");
     expect(capacity).toHaveAttribute("data-capacity-state", "normal");
     expect(screen.queryByRole("status")).toBeNull();
@@ -230,7 +230,7 @@ describe("<BucketSidebar> capacity signals", () => {
     act(() => {
       useBucketStore.getState().addMany(items, 1000);
     });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     expect(screen.getByTestId("bucket-sidebar-capacity")).toHaveAttribute(
       "data-capacity-state",
       "near",
@@ -247,7 +247,7 @@ describe("<BucketSidebar> capacity signals", () => {
     act(() => {
       useBucketStore.getState().addMany(items, 1000);
     });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     expect(screen.getByTestId("bucket-sidebar-capacity")).toHaveAttribute(
       "data-capacity-state",
       "at",
@@ -265,7 +265,7 @@ describe("<BucketSidebar> panel row structure", () => {
     act(() => {
       useBucketStore.getState().addMany([makeItem("k:a", longTitle)], 1000);
     });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     // The full title text reaches the DOM; visual 2-line clamping is a
     // browser-rendering concern and belongs in a visual-regression test,
     // not a JSDOM unit test.
@@ -276,7 +276,7 @@ describe("<BucketSidebar> panel row structure", () => {
     act(() => {
       useBucketStore.getState().addMany([makeItem("k:a", "Alpha")], 1000);
     });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     const title = screen.getByText("Alpha");
     const trash = screen.getByRole("button", { name: /remove alpha/i });
     // Structural invariant: the trash button is not nested inside the
@@ -291,7 +291,7 @@ describe("<BucketSidebar> panel row structure", () => {
         .getState()
         .addMany([makeItem("k:a", "Alpha", { status: "uploading" })], 1000);
     });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     expect(screen.getByText(/uploading/i)).toBeTruthy();
   });
 
@@ -301,7 +301,7 @@ describe("<BucketSidebar> panel row structure", () => {
         .getState()
         .addMany([makeItem("k:a", "Alpha", { status: "failed" })], 1000);
     });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     expect(screen.getByText(/upload failed/i)).toBeTruthy();
   });
 });

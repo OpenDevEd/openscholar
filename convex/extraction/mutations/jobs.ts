@@ -16,8 +16,8 @@ import { extractionPricing, extractionStamp } from "../../ai/serverModel";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { assertBucketWithinLimits } from "../bucket/limits";
-import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import { availableCredits as readAvailableCredits, planLimit } from "../../billing/accounts";
+import { papersIn } from "../../screening/estimate";
 import { dedupeBucketItems } from "../../../lib/bucket/dedupe";
 import { assertValidJobTransition, type JobStatus } from "../stateMachine";
 import {
@@ -26,7 +26,7 @@ import {
   MAX_QUESTIONS_PER_JOB,
   MAX_QUESTION_TEXT_LENGTH,
 } from "../validators";
-import { writeJobSources, type BucketItemInput } from "../jobSources";
+import { MAX_JOB_SOURCES, writeJobSources, type BucketItemInput } from "../jobSources";
 import { extractionPaperCredits } from "../../../lib/pricing";
 import { cancelPaperQueueRowsForJobTx } from "../queue/mutations";
 import { refillPerson } from "../queue/dispatcher";
@@ -73,7 +73,6 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
   });
 
   // Shared: bucket validation + source persistence.
-  if (args.bucketItems.length > PAPER_LIMIT) throw createError("VALIDATION_ERROR", `An extraction can hold up to ${PAPER_LIMIT} sources.`);
   const deduped = dedupeBucketItems(args.bucketItems.map(item => item.source === "screening" && item.screeningSelection
     ? { ...item, bucketKey: `screening:${item.screeningSelection.jobId}` }
     : item));
@@ -85,6 +84,15 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
     const selection = item.screeningSelection;
     selection.count = await checkScreeningSelection(ctx, userId, selection.jobId, selection.revision);
     item.sourceRefId = selection.jobId;
+  }
+  // A range of a collection or the library holds what the server counts in it now, never what it was sent.
+  for (const item of deduped) {
+    if (!item.librarySet) continue;
+    const { collectionId, first, last } = item.librarySet;
+    const held = await papersIn(ctx, userId, collectionId ? { kind: "collection", collectionId } : { kind: "saved" });
+    if (held === null) throw createError("NOT_FOUND", "Collection not found");
+    if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
+    item.librarySet = { ...item.librarySet, count: Math.max(0, Math.min(last, held) - first + 1) };
   }
   const bucketLimits = assertBucketWithinLimits(deduped, await planLimit(ctx, userId, "request_papers"));
   const sourceType = deriveSourceType(deduped);
@@ -132,6 +140,8 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
     status: "pending",
     totalPapers: 0,
     runEpoch: 0,
+    // Its setup reads its sources from the first (../actions.ts).
+    setup: { position: 0, read: 0, papers: 0, processable: 0 },
     usePdfs: args.usePdfs ?? false,
     ...stamp,
     ...(spend ? { spendHold: spend.hold, spendCap: spend.cap } : {}),
@@ -202,7 +212,7 @@ export const duplicateJobAction = defineUserMutation({
     const oldSourceRows = await ctx.db
       .query("extractionJobSources")
       .withIndex("by_job_and_position", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT * 2);
+      .take(MAX_JOB_SOURCES);
     const bucketItems = oldSourceRows.map(bucketItemFromRow);
     for (const item of bucketItems) {
       if (item.source === "screening" && item.screeningSelection) await checkScreeningSelection(ctx, userId, item.screeningSelection.jobId, item.screeningSelection.revision);
@@ -225,6 +235,7 @@ export const duplicateJobAction = defineUserMutation({
       status: "pending",
       totalPapers: 0,
       runEpoch: 0,
+      setup: { position: 0, read: 0, papers: 0, processable: 0 },
       usePdfs: oldJob.usePdfs ?? false,
       ...dupStamp,
       createdAt: now,

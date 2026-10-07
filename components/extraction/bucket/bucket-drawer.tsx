@@ -20,7 +20,6 @@ import { bucketCleared } from "@/lib/toast/bucket";
 import { AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { BucketPaperRow } from "./bucket-paper-row";
-import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 export function BucketDrawer({
   open,
@@ -36,9 +35,9 @@ export function BucketDrawer({
    * screen-reader reset that's easy to miss.
    */
   onClearReturnFocus?: () => void;
-  paperLimit?: number;
+  paperLimit: number;
 }) {
-  const limit = paperLimit ?? PAPER_LIMIT;
+  const limit = paperLimit;
   const order = useBucketStore((s) => s.order);
   const itemsMap = useBucketStore((s) => s.items);
   const remove = useBucketStore((s) => s.remove);
@@ -72,7 +71,7 @@ export function BucketDrawer({
         <DrawerHeader>
           <DrawerTitle>Bucket</DrawerTitle>
           <DrawerDescription>
-            {readyCount} / {limit} papers ready to submit
+            {Number.isFinite(limit) ? `${readyCount} / ${limit}` : readyCount} papers ready to submit
           </DrawerDescription>
           {(nearCap || atCap) && (
             <div

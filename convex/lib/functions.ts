@@ -9,23 +9,23 @@ import { customMutation } from "convex-helpers/server/customFunctions";
 import { internalMutation as rawInternalMutation, mutation as rawMutation, type MutationCtx } from "../_generated/server";
 import { capWrites } from "./capWrites";
 import { triggers } from "./triggers";
-import { flushFacetQueue, type FacetQueue } from "../library/facets";
+import { flushCountQueue, type CountQueue } from "./countQueue";
 
 export * from "../_generated/server";
 
 /**
  * The writes a mutation makes: through the triggers, then capped (#426). The caps sit under
- * the triggers, so a trigger's own writes are capped too. The library's count writes the
- * triggers gather are queued once, when the mutation ends (../library/facets.ts).
+ * the triggers, so a trigger's own writes are capped too. The count writes the triggers
+ * gather are queued once, when the mutation ends (./countQueue.ts).
  */
 const writes = {
   args: {},
   input: async (ctx: MutationCtx) => {
-    const facetQueue: FacetQueue = [];
+    const countQueue: CountQueue = new Map();
     return {
-      ctx: { db: triggers.wrapDB({ ...ctx, db: capWrites(ctx.db), facetQueue }).db, facetQueue },
+      ctx: { db: triggers.wrapDB({ ...ctx, db: capWrites(ctx.db), countQueue }).db, countQueue },
       args: {},
-      onSuccess: () => flushFacetQueue(ctx, facetQueue),
+      onSuccess: () => flushCountQueue(ctx, countQueue),
     };
   },
 };

@@ -57,18 +57,24 @@ describe("extraction from Included screening papers", () => {
     expect(await t.run(ctx => ctx.db.query("extractionJobs").take(1))).toEqual([]);
   });
 
-  it("rejects empty and oversized inclusions and uses the server count for the combined cap", async () => {
+  it("rejects empty inclusions, and counts a screening by the server's count against the plan (#632)", async () => {
     const empty = await screeningInputs(0);
     await expect(empty.start()).rejects.toThrow(/no Included papers/);
     const full = await screeningInputs(1000);
+    // A plan that takes 1,000 papers in one extraction.
+    await full.t.run(async ctx => {
+      const account = await ctx.db.query("billingAccounts").withIndex("by_user", q => q.eq("userId", full.userId)).unique();
+      await ctx.db.patch("billingAccounts", account!._id, { limits: { request_papers: 1000 } });
+    });
     const source = await full.selection();
+    // The browser's count is replaced by the server's: 1,000, and one more paper is past the plan.
     source.screeningSelection!.count = 1;
-    await expect(full.start([source, { source: "upload", bucketKey: "extra", sourceRefId: "extra", title: "Extra paper", authors: [] }])).rejects.toThrow(/1001 papers/);
+    await expect(full.start([source, { source: "upload", bucketKey: "extra", sourceRefId: "extra", title: "Extra paper", authors: [] }])).rejects.toThrow(/plan takes up to 1,000 papers/);
     await full.t.run(async ctx => {
       const progress = (await ctx.db.query("screeningJobProgress").withIndex("by_job", q => q.eq("jobId", full.jobId)).unique())!;
       await ctx.db.patch("screeningJobProgress", progress._id, { qualified: 1001 });
     });
-    await expect(full.start()).rejects.toThrow(/includes 1001/);
+    await expect(full.start()).rejects.toThrow(/plan takes up to 1,000 papers/);
     expect(await full.t.run(ctx => ctx.db.query("extractionJobs").take(1))).toEqual([]);
   });
 

@@ -14,16 +14,13 @@ import { extractionPricing, extractionStamp } from "../ai/serverModel";
 import { getFlag, requireFeature } from "../featureFlags/guard";
 import { checkRateLimit } from "../lib/rateLimit";
 import { startHeld } from "../billing/charge";
-import { heldPapers } from "../paperSets/held";
 import { filtersOf } from "../paperSets/search";
 import { screeningRevision } from "../screening/accounting";
 import { papersIn } from "../screening/estimate";
 import { paperSetValidator } from "../screening/validators";
 import { currentSearch } from "../../lib/research/records";
 import { isRatingFilterActive } from "../../lib/utils";
-import { buildDedupeKey } from "../../lib/bucket/dedupe";
 import { extractionPaperCredits } from "../../lib/pricing";
-import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { startJobFor } from "./mutations/jobs";
 import { checkScreeningSelection } from "./sources/screening";
 import { MAX_QUESTIONS_PER_JOB, MAX_QUESTION_TEXT_LENGTH, bucketItemInputValidator, questionInputValidator, questionTypeValidator, searchFiltersValidator } from "./validators";
@@ -36,8 +33,6 @@ type Source = Infer<typeof bucketItemInputValidator>;
 const askedValidator = v.object({ question: v.string(), type: questionTypeValidator, description: v.optional(v.string()) });
 const extractArgs = { name: v.string(), set: paperSetValidator, first: v.number(), last: v.number(), questions: v.array(askedValidator), usePdfs: v.optional(v.boolean()) };
 
-/** Library papers looked up in one read. */
-const ITEMS_A_READ = 200;
 /** How often an ended job is looked at again while a paper of it is still being read, and for how long at most: longer than a paper's worker can run. */
 const RUNNING_CHECK_MS = 15_000;
 const RUNNING_WAIT_MS = 12 * 60_000;
@@ -58,10 +53,9 @@ function checkQuestions(questions: Array<{ question: string }>) {
   if (questions.some((asked) => asked.question.length > MAX_QUESTION_TEXT_LENGTH)) throw invalid(`A question can be at most ${MAX_QUESTION_TEXT_LENGTH.toLocaleString("en")} characters.`);
 }
 
-/** Papers `first` to `last` of a collection, the library or a search: from 1 up, at most PAPER_LIMIT, and a search from its first. */
+/** Papers `first` to `last` of a collection, the library or a search: from 1 up, and a search from its first. The plan caps how many. */
 function checkRange(set: PaperSet, first: number, last: number) {
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw invalid("Pick papers from 1 up, with the first before the last");
-  if (last - first + 1 > PAPER_LIMIT) throw invalid(`An extraction takes up to ${PAPER_LIMIT.toLocaleString("en")} papers.`);
   // The job reads a search's papers itself, from the first.
   if (set.kind === "search" && first !== 1) throw invalid("An extraction reads a search from its first paper: give `first` as 1.");
 }
@@ -98,7 +92,7 @@ async function checkExtraction(ctx: QueryCtx, userId: Id<"users">, { set, first,
 async function papersOf(ctx: QueryCtx, userId: Id<"users">, { set, first, last }: { set: PaperSet; first: number; last: number }) {
   const held = await papersIn(ctx, userId, set);
   if (set.kind === "screening") return held ?? 0;
-  return Math.min(PAPER_LIMIT, Math.max(0, Math.min(last, held ?? last) - first + 1));
+  return Math.max(0, Math.min(last, held ?? last) - first + 1);
 }
 
 /** The most an extraction of these papers holds: every paper at its most, on the models the job sends its questions to (../ai/serverModel.ts `extractionStamp`). */
@@ -146,16 +140,6 @@ async function screeningPicked(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"sc
   return { revision, count: await checkScreeningSelection(ctx, userId, jobId, revision), label: job.label ?? "Screening" };
 }
 
-/** The person's library papers among these, by paper ID, as an extraction's sources name them. */
-export const libraryItems = internalQuery({
-  args: { userId: v.id("users"), openalexIds: v.array(v.string()) },
-  returns: v.array(v.object({ id: v.id("libraryItems"), openalexId: v.string(), title: v.string(), doi: v.optional(v.string()), year: v.optional(v.number()) })),
-  handler: async (ctx, { userId, openalexIds }) => {
-    if (openalexIds.length > ITEMS_A_READ) throw new Error(`Library papers are read ${ITEMS_A_READ} at a time`);
-    const found = await Promise.all(openalexIds.map((openalexId) => ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", openalexId)).first()));
-    return found.flatMap((item) => (item ? [{ id: item._id, openalexId: item.openalexId, title: item.title, ...(item.doi ? { doi: item.doi } : {}), ...(item.publicationYear == null ? {} : { year: item.publicationYear }) }] : []));
-  },
-});
 
 /**
  * The set as the sources an extraction starts from (./expandSources.ts), which the job reads
@@ -173,15 +157,9 @@ async function sourcesOf(ctx: ActionCtx, userId: Id<"users">, { set, first, last
     const filters: Infer<typeof searchFiltersValidator> = await ctx.runQuery(internal.extraction.start.searchSource, { userId, searchId: set.searchId });
     return [{ bucketKey: `history:${set.searchId}`, source: "history", sourceRefId: set.searchId, title: filters.query, authors: [], searchFilters: { ...filters, limit: last } }];
   }
-  const { papers } = await heldPapers(ctx, userId, set, { first, last });
-  const items: Source[] = [];
-  for (let from = 0; from < papers.length; from += ITEMS_A_READ) {
-    const found: Array<{ id: Id<"libraryItems">; openalexId: string; title: string; doi?: string; year?: number }> = await ctx.runQuery(internal.extraction.start.libraryItems, { userId, openalexIds: papers.slice(from, from + ITEMS_A_READ).map((paper) => paper.openalexId) });
-    // The job reads each paper from the library again, so a source says only which it is.
-    items.push(...found.map(({ id, ...paper }) => ({ bucketKey: buildDedupeKey(paper), source: set.kind === "collection" ? ("collection" as const) : ("library" as const), sourceRefId: id, title: paper.title, authors: [], openalexId: paper.openalexId })));
-  }
-  if (!items.length) throw invalid("There are no papers in that range");
-  return items;
+  // One source for the whole range: the job reads its papers a page at a time when it's set up.
+  const collectionId = set.kind === "collection" ? set.collectionId : undefined;
+  return [{ bucketKey: `library:${collectionId ?? "all"}:${first}-${last}`, source: collectionId ? "collection" : "library", sourceRefId: collectionId ?? "library", title: collectionId ? "Collection" : "Library", authors: [], librarySet: { ...(collectionId ? { collectionId } : {}), first, last, count: 0 } }];
 }
 
 /** Starts the job from the sources the action read, as the page's start does, with the hold it's charged under when it has one. */
@@ -234,7 +212,7 @@ export const extractAction = defineUserAction({
     "Starts an extraction: answers each question for each paper of a paper set, with the passage each answer rests on. The set is one of the person's collections or all their saved papers, newest saved first, papers `first` to `last` (from 1); " +
     "one of their saved searches, its first `last` papers in its results page's order (`first` is 1); or a finished screening, all its included papers, whatever `first` and `last` say. " +
     "It reads abstracts, or with `usePdfs` the full text of papers that have one, which costs a few times as much. A question's `type` is string, number, boolean or array, and `description` says what counts as an answer. " +
-    `Up to ${PAPER_LIMIT.toLocaleString("en")} papers and ${MAX_QUESTIONS_PER_JOB} questions. Spends credits. Returns the job, which runs after the reply: read its results later with extraction/queries:listJobResults.`,
+    `As many papers as the person's plan takes in one request, and up to ${MAX_QUESTIONS_PER_JOB} questions. Spends credits. Returns the job, which runs after the reply: read its results later with extraction/queries:listJobResults.`,
   args: extractArgs,
   returns: v.object({ jobId: v.id("extractionJobs") }),
   spendsCredits: true,

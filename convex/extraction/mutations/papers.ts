@@ -2,7 +2,7 @@
  * Extraction paper internal mutations.
  *
  * The queue setup and paper workers write each paper through these:
- * createPaperRecords bulk-inserts rows as the source fetcher yields them;
+ * createPaperRecords saves each step of papers the setup reads, once per paper;
  * updatePaperStatus routes terminal transitions through markPaperTerminalTx
  * (shared with results.ts); setPaperStorage re-evaluates processable when a
  * PDF lands; markPaperIndexed flips isIndexed and deducts embedding credits
@@ -10,11 +10,12 @@
  */
 
 import { internalMutation } from "../../lib/functions";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { getFlag } from "../../featureFlags/guard";
 import { getProcessableFlags } from "../content";
-import { errorCodeValidator, paperSourceTypeValidator } from "../validators";
+import { errorCodeValidator, paperSourceTypeValidator, setupPlaceValidator } from "../validators";
+import { buildDedupeKey } from "../dedupe";
 import { isTerminalPaperStatus, markPaperTerminalTx } from "../paperLifecycle";
 import { isRetryable, type ClassifiedError } from "@/lib/errors/taxonomy";
 import { recomputePaperListProjection } from "../listProjection";
@@ -30,41 +31,50 @@ function matchesExpectedEpoch(
   return (job?.runEpoch ?? 0) === expectedEpoch;
 }
 
+/** A paper a setup step saves, as its source gave it. */
+const setupPaperValidator = v.object({
+  ...sourceMetadataFields,
+  citedByCount: v.optional(v.number()),
+  venueName: v.optional(v.string()),
+  openalexId: v.string(),
+  title: v.string(),
+  doi: v.optional(v.string()),
+  publicationYear: v.optional(v.number()),
+  abstract: v.optional(v.string()),
+  authors: v.optional(v.array(v.string())),
+  storageId: v.optional(v.id("_storage")),
+  sourceType: v.optional(paperSourceTypeValidator),
+  sourceId: v.optional(v.string()),
+  screeningRevision: v.optional(v.string()),
+});
+
+/**
+ * Saves a step of a job's papers (#634). A paper another source already brought is saved
+ * once, by its identity across sources, and a screening's copy takes the place of another
+ * source's, as long as that copy hasn't run: it keeps the screened metadata and decision
+ * provenance, and a screening copy the job can't read takes the other copy out too. With
+ * `setup`, the step is part of the job's setup, and the job records where its setup goes on
+ * from, with its papers counted, in the same transaction, so a step is never saved twice or
+ * half. Its papers are queued once every source is read (../actions.ts), so a screening copy
+ * read later still finds the other copy waiting.
+ */
 export const createPaperRecords = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
-    papers: v.array(
-      v.object({
-        ...sourceMetadataFields,
-        citedByCount: v.optional(v.number()),
-        venueName: v.optional(v.string()),
-        openalexId: v.string(),
-        title: v.string(),
-        doi: v.optional(v.string()),
-        publicationYear: v.optional(v.number()),
-        abstract: v.optional(v.string()),
-        authors: v.optional(v.array(v.string())),
-        storageId: v.optional(v.id("_storage")),
-        sourceType: v.optional(paperSourceTypeValidator),
-        sourceId: v.optional(v.string()),
-        screeningRevision: v.optional(v.string()),
-      }),
-    ),
+    papers: v.array(setupPaperValidator),
+    setup: v.optional(v.object({ expectedEpoch: v.number(), next: setupPlaceValidator })),
   },
-  returns: v.object({
-    paperIds: v.array(v.id("extractionPapers")),
-    processableCount: v.number(),
-  }),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<{
-    paperIds: Array<Id<"extractionPapers">>;
-    processableCount: number;
-  }> => {
+  returns: v.object({ paperIds: v.array(v.id("extractionPapers")), processableCount: v.number() }),
+  handler: async (ctx, args) => {
+    const job = await ctx.db.get("extractionJobs", args.jobId);
+    if (!job) return { paperIds: [], processableCount: 0 };
+    // A setup step for a run that was cancelled, paused or restarted since saves nothing.
+    if (args.setup && (job.runEpoch ?? 0) !== args.setup.expectedEpoch) return { paperIds: [], processableCount: 0 };
     const pdfFlag = await getFlag(ctx, "extraction.pdf");
     const pdfEnabled = pdfFlag?.enabled ?? true;
     const paperIds: Array<Id<"extractionPapers">> = [];
+    // How the step moved the job's papers, and its processable ones.
+    let papers = 0;
     let processableCount = 0;
     for (const paper of args.papers) {
       const sanitizedPdfUrl = pdfEnabled ? paper.pdfUrl : undefined;
@@ -76,38 +86,62 @@ export const createPaperRecords = internalMutation({
         abstract: paper.abstract,
         pdfEnabled,
       });
-
-      if (!pdfEnabled && !processable) {
+      // Without full texts, a paper with nothing to read isn't saved at all.
+      const kept = pdfEnabled || processable;
+      const dedupeKey = buildDedupeKey({ openalexId: paper.openalexId, doi: paper.doi, title: paper.title, year: paper.publicationYear });
+      const existing = await ctx.db.query("extractionPapers").withIndex("by_job_dedupeKey", (q) => q.eq("jobId", args.jobId).eq("dedupeKey", dedupeKey)).first();
+      if (existing) {
+        // Only a screening's copy takes the place of another source's, before either has run.
+        if (paper.sourceType !== "screening" || existing.sourceType === "screening" || existing.status !== "pending") continue;
+        const wasProcessable = existing.processable === true;
+        if (!kept) {
+          await ctx.db.delete("extractionPapers", existing._id);
+          papers -= 1;
+          if (wasProcessable) processableCount -= 1;
+          continue;
+        }
+        await ctx.db.patch("extractionPapers", existing._id, paperFields(paper, sanitizedStorageId, processable));
+        await recomputePaperListProjection(ctx, existing._id);
+        processableCount += Number(processable) - Number(wasProcessable);
         continue;
       }
-
-      const paperId = await ctx.db.insert("extractionPapers", {
-        ...sourceMetadata(paper),
-        citedByCount: paper.citedByCount,
-        venueName: paper.venueName,
-        jobId: args.jobId,
-        openalexId: paper.openalexId,
-        title: paper.title,
-        doi: paper.doi,
-        publicationYear: paper.publicationYear,
-        abstract: paper.abstract,
-        authors: paper.authors?.slice(0, MAX_AUTHORS),
-        pdfUrl: paper.pdfUrl,
-        storageId: sanitizedStorageId,
-        isOpenAccess: paper.isOpenAccess,
-        sourceType: paper.sourceType,
-        sourceId: paper.sourceId,
-        screeningRevision: paper.screeningRevision,
-        processable,
-        status: "pending",
-      });
+      if (!kept) continue;
+      const paperId = await ctx.db.insert("extractionPapers", { ...paperFields(paper, sanitizedStorageId, processable), jobId: args.jobId, dedupeKey, status: "pending" });
       paperIds.push(paperId);
+      papers += 1;
       if (processable) processableCount += 1;
       await recomputePaperListProjection(ctx, paperId);
+    }
+    if (args.setup) {
+      const { next } = args.setup;
+      await ctx.db.patch("extractionJobs", args.jobId, { setup: { ...next, papers: next.papers + papers, processable: next.processable + processableCount }, updatedAt: Date.now() });
     }
     return { paperIds, processableCount };
   },
 });
+
+/** A saved paper's fields, as its source gave it. */
+function paperFields(paper: Infer<typeof setupPaperValidator>, storageId: Id<"_storage"> | undefined, processable: boolean) {
+  return {
+    ...sourceMetadata(paper),
+    citedByCount: paper.citedByCount,
+    venueName: paper.venueName,
+    openalexId: paper.openalexId,
+    title: paper.title,
+    doi: paper.doi,
+    publicationYear: paper.publicationYear,
+    abstract: paper.abstract,
+    authors: paper.authors?.slice(0, MAX_AUTHORS),
+    // The source's PDF address is kept whether or not full texts are read now.
+    pdfUrl: paper.pdfUrl,
+    storageId,
+    isOpenAccess: paper.isOpenAccess,
+    sourceType: paper.sourceType,
+    sourceId: paper.sourceId,
+    screeningRevision: paper.screeningRevision,
+    processable,
+  };
+}
 
 export const updatePaperStatus = internalMutation({
   args: {

@@ -1,7 +1,7 @@
 /**
  * extractionJobSources helpers — bucket-native.
  *
- * Every row is a frozen BucketItem. writeJobSources / readJobSources are
+ * Every row is a frozen BucketItem. writeJobSources and the setup's step read are
  * the only callers that touch the table outside the schema-level index
  * queries in queries/internal.ts. Consumers (queue setup, duplicate,
  * templates, fixtures) work exclusively with BucketItemInput[].
@@ -11,7 +11,6 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { MAX_AUTHORS } from "../lib/listCaps";
-import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { sourceMetadata, type PaperSourceMetadata } from "../../lib/library/paper-metadata";
 import type { BucketSource } from "../../lib/bucket/bucketItem";
 export type { BucketSource } from "../../lib/bucket/bucketItem";
@@ -22,6 +21,12 @@ export type JobSourceSearchFilters = NonNullable<
 
 export const OLD_SEARCH_MESSAGE =
   "This search was saved before chat and extraction kept its exact request. Add it again from your search history.";
+
+/**
+ * Most sources one job has: what one start's arguments can hold, Convex's 8,192 items an
+ * array may have. A source that brings many papers, a search or a screening, is one.
+ */
+export const MAX_JOB_SOURCES = 8_192;
 
 /**
  * Server-side BucketItem shape. Mirrors `lib/bucket/bucketItem.ts::BucketItem`
@@ -49,6 +54,7 @@ export type BucketItemInput = PaperSourceMetadata & {
   zoteroUserId?: string;
   collectionKey?: string;
   includeDescendants?: boolean;
+  librarySet?: Doc<"extractionJobSources">["librarySet"];
 };
 
 export function rowFromBucketItem(
@@ -82,6 +88,7 @@ export function rowFromBucketItem(
     zoteroUserId: item.zoteroUserId,
     collectionKey: item.collectionKey,
     includeDescendants: item.includeDescendants,
+    librarySet: item.librarySet,
   };
 }
 
@@ -109,6 +116,7 @@ export function bucketItemFromRow(row: Doc<"extractionJobSources">): BucketItemI
     zoteroUserId: row.zoteroUserId,
     collectionKey: row.collectionKey,
     includeDescendants: row.includeDescendants,
+    librarySet: row.librarySet,
   };
 }
 
@@ -126,11 +134,6 @@ export async function writeJobSources(
   ) {
     throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
   }
-  // Every source brings at least one paper, and a job holds PAPER_LIMIT papers, so it holds
-  // no more sources than that; its source rows then read in one query.
-  if (items.length > PAPER_LIMIT) {
-    throw createError("VALIDATION_ERROR", `A job can have up to ${PAPER_LIMIT.toLocaleString("en")} sources.`);
-  }
   const inserted: Id<"extractionJobSources">[] = [];
   let position = 0;
   for (const item of items) {
@@ -141,37 +144,4 @@ export async function writeJobSources(
     inserted.push(id);
   }
   return inserted;
-}
-
-export async function replaceJobSources(
-  ctx: MutationCtx,
-  jobId: Id<"extractionJobs">,
-  items: ReadonlyArray<BucketItemInput>,
-): Promise<Id<"extractionJobSources">[]> {
-  // A job holds at most PAPER_LIMIT sources now, so this is one batch; a job seeded with
-  // more before that limit takes another, and ends up with only the new ones.
-  for (;;) {
-    const existing = await ctx.db
-      .query("extractionJobSources")
-      .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-      .take(PAPER_LIMIT);
-    for (const row of existing) {
-      await ctx.db.delete(row._id);
-    }
-    if (existing.length < PAPER_LIMIT) break;
-  }
-
-  return await writeJobSources(ctx, jobId, items);
-}
-
-export async function readJobSources(
-  ctx: QueryCtx | MutationCtx,
-  jobId: Id<"extractionJobs">,
-  limit: number,
-): Promise<BucketItemInput[]> {
-  const rows = await ctx.db
-    .query("extractionJobSources")
-    .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-    .take(limit);
-  return rows.map(bucketItemFromRow);
 }

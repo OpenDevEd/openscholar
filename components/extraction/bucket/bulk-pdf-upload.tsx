@@ -15,7 +15,6 @@ import { validatePdfFile } from "@/lib/bucket/bulk-upload";
 import { useBucketStore } from "@/lib/store/bucket";
 import { fromUpload } from "@/lib/bucket/bucketItem";
 import { FileUp, Loader2, RefreshCw, Trash2 } from "@/components/icons";
-import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 const CONCURRENCY = 3;
 
@@ -37,10 +36,10 @@ function makeUploadId(): string {
   return `up_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function BulkPdfUpload({ paperLimit }: { paperLimit?: number }) {
+export function BulkPdfUpload({ paperLimit }: { paperLimit: number }) {
   const toast = useAppToast();
   const pdfEnabled = useFeatureFlag("extraction.pdf");
-  const resolvedPaperLimit = paperLimit ?? PAPER_LIMIT;
+  const resolvedPaperLimit = paperLimit;
   const bucketAdd = useBucketStore((s) => s.addMany);
   const bucketRemove = useBucketStore((s) => s.remove);
 

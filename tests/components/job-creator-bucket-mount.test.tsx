@@ -76,16 +76,17 @@ function JobCreatorHarness() {
   return (
     <TooltipProvider>
       {isMobile && (
-        <BucketIndicator ref={ref} onClick={() => setOpen(true)} />
+        <BucketIndicator ref={ref} onClick={() => setOpen(true)} paperLimit={1000} />
       )}
       {isMobile && (
         <BucketDrawer
           open={open}
           onOpenChange={setOpen}
+          paperLimit={1000}
           onClearReturnFocus={() => ref.current?.focus()}
         />
       )}
-      <BucketSidebar />
+      <BucketSidebar paperLimit={1000} />
       <Toaster />
     </TooltipProvider>
   );
@@ -217,7 +218,7 @@ describe("Bucket mount — mobile viewport", () => {
       captured = ref.current ?? captured;
       return (
         <TooltipProvider>
-          <BucketIndicator ref={ref} onClick={() => undefined} />
+          <BucketIndicator ref={ref} onClick={() => undefined} paperLimit={1000} />
         </TooltipProvider>
       );
     }

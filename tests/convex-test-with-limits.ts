@@ -18,7 +18,7 @@ import { register as registerMigrations } from "@convex-dev/migrations/test";
 import { convexTest as baseConvexTest } from "convex-test/dist/index.js";
 import { capWrites } from "../convex/lib/capWrites";
 import { triggers } from "../convex/lib/triggers";
-import { flushFacetQueue, type FacetQueue } from "../convex/library/facets";
+import { flushCountQueue, type CountQueue } from "../convex/lib/countQueue";
 
 export * from "convex-test/dist/index.js";
 
@@ -86,9 +86,9 @@ function withTriggersInRun<T extends Runner>(target: T): T {
   const withIdentity = target.withIdentity.bind(target);
   target.run = (fn) =>
     run(async (ctx) => {
-      const facetQueue: FacetQueue = [];
-      const result = await fn(triggers.wrapDB({ ...ctx, db: capWrites(ctx.db), facetQueue }));
-      await flushFacetQueue(ctx, facetQueue);
+      const countQueue: CountQueue = new Map();
+      const result = await fn(triggers.wrapDB({ ...ctx, db: capWrites(ctx.db), countQueue }));
+      await flushCountQueue(ctx, countQueue);
       return result;
     });
   target.runUncapped = (fn) => run((ctx) => fn(triggers.wrapDB(ctx)));

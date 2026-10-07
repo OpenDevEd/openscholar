@@ -4,7 +4,6 @@ import { internalQuery, type QueryCtx } from "../../lib/functions";
 import { createError } from "../../lib/errors";
 import { screeningRevision } from "../../screening/accounting";
 import { readScreeningProgressCounts } from "../../screening/progress";
-import { PAPER_LIMIT } from "../../../lib/extraction/limits";
 
 /** Counts come from the owned job, never from the browser's bucket. */
 export async function checkScreeningSelection(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"screeningJobs">, revision: string) {
@@ -16,7 +15,6 @@ export async function checkScreeningSelection(ctx: QueryCtx, userId: Id<"users">
   }
   const { qualifiedCount } = await readScreeningProgressCounts(ctx, job);
   if (qualifiedCount < 1) throw createError("VALIDATION_ERROR", "This screening has no Included papers.");
-  if (qualifiedCount > PAPER_LIMIT) throw createError("VALIDATION_ERROR", `This screening includes ${qualifiedCount} papers. An extraction can hold up to ${PAPER_LIMIT}.`);
   return qualifiedCount;
 }
 

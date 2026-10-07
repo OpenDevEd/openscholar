@@ -20,7 +20,7 @@ import {
   extractionPaperQueueFields,
   extractionQuestionFields,
   extractionResultFields, extractionAnswerRowFields, extractionPaperFactFields,
-  storedSearchFiltersValidator,
+  storedSearchFiltersValidator, librarySetValidator,
 } from "./extraction/validators";
 import {
   chatGenerationUsageFields,
@@ -803,6 +803,8 @@ export default defineSchema({
     zoteroUserId: v.optional(v.string()),
     collectionKey: v.optional(v.string()),
     includeDescendants: v.optional(v.boolean()),
+    // A collection's or the library's papers, a range of them, as one source (convex/extraction/validators.ts).
+    librarySet: v.optional(librarySetValidator),
   })
     .index("by_job_and_position", ["jobId", "position"])
     .index("by_job_and_source", ["jobId", "source"]),
@@ -824,6 +826,7 @@ export default defineSchema({
   extractionPapers: defineTable(extractionPaperFields)
     .index("by_job", ["jobId"])
     .index("by_job_processable", ["jobId", "processable"])
+    .index("by_job_dedupeKey", ["jobId", "dedupeKey"])
     // A job's processable papers in the orders its results list in.
     .index("by_job_processable_and_sortTitle", ["jobId", "processable", "sortTitle"])
     .index("by_job_processable_and_avgConfidence", ["jobId", "processable", "avgConfidence"])
@@ -912,7 +915,39 @@ export default defineSchema({
   }).index("by_job", ["jobId"]),
 
   // Each paper's finished answer to each question, short, for counting a job's answers (convex/extraction/listProjection.ts).
-  extractionAnswerRows: defineTable(extractionAnswerRowFields).index("by_job_question", ["jobId", "questionKey"]).index("by_paper", ["paperId"]),
+  extractionAnswerRows: defineTable(extractionAnswerRowFields)
+    .index("by_job_question", ["jobId", "questionKey"])
+    .index("by_paper", ["paperId"])
+    .index("by_paper_question", ["paperId", "questionKey"]),
+  // How many papers gave each answer to a question, and named each item of a list answer
+  // (convex/extraction/tallies.ts): answer rows append their changes, and one worker folds
+  // them, so papers finishing at once never write the same tally.
+  extractionTallyChanges: defineTable({
+    jobId: v.id("extractionJobs"),
+    questionKey: v.string(),
+    kind: v.union(v.literal("answer"), v.literal("item")),
+    key: v.string(),
+    shown: v.string(),
+    delta: v.number(),
+    queuedAt: v.commitTs(),
+  }).index("by_queuedAt", ["queuedAt"]),
+  extractionAnswerTallies: defineTable({
+    jobId: v.id("extractionJobs"),
+    questionKey: v.string(),
+    kind: v.union(v.literal("answer"), v.literal("item")),
+    key: v.string(),
+    shown: v.string(),
+    papers: v.number(),
+  })
+    .index("by_group", ["jobId", "questionKey", "kind", "key"])
+    .index("by_size", ["jobId", "questionKey", "kind", "papers"]),
+  // How many different answers, and items, a question has: what a summary counts past its largest groups.
+  extractionAnswerTotals: defineTable({
+    jobId: v.id("extractionJobs"),
+    questionKey: v.string(),
+    answers: v.number(),
+    items: v.number(),
+  }).index("by_job_question", ["jobId", "questionKey"]),
   extractionPaperFacts: defineTable(extractionPaperFactFields).index("by_job", ["jobId"]).index("by_paper", ["paperId"]),
   extractionResults: defineTable(extractionResultFields)
     .index("by_paper", ["paperId"])

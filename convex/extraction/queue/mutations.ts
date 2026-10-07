@@ -12,7 +12,6 @@ import {
   type ExtractionQueueStatus,
 } from "./status";
 import { planLimit } from "../../billing/accounts";
-import { PAPER_LIMIT } from "../../../lib/extraction/limits";
 
 type QueueKind = Doc<"extractionPaperQueue">["kind"];
 
@@ -65,20 +64,17 @@ async function loadQueueRowsByStatus(
     jobId: Id<"extractionJobs">;
     runEpoch: number;
     status: ExtractionQueueStatus;
-    limit?: number;
+    limit: number;
   },
 ): Promise<Array<Doc<"extractionPaperQueue">>> {
-  const normalizedLimit =
-    limit === undefined ? undefined : Math.max(0, Math.floor(limit));
+  const normalizedLimit = Math.max(0, Math.floor(limit));
   if (normalizedLimit === 0) return [];
   const query = ctx.db
     .query("extractionPaperQueue")
     .withIndex("by_job_and_epoch_and_status", (q) =>
       q.eq("jobId", jobId).eq("runEpoch", runEpoch).eq("status", status),
     );
-  return normalizedLimit === undefined
-    ? await query.take(PAPER_LIMIT)
-    : await query.take(normalizedLimit);
+  return await query.take(normalizedLimit);
 }
 
 async function loadPendingQueueRowsForLease(

@@ -5,12 +5,13 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { recomputePaperListProjection } from "./listProjection";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { catchUp } from "../lib/catchUp.test-support";
 
 type Row = { title: string; country: string | null; outcomes: string[]; confidence?: number; status?: "completed" };
 
 /** A finished job: one paper a row, answering where it was done and what it measured, written through the paper's projection. */
 async function seedJob(t: ReturnType<typeof convexTest>, rows: Row[], project = true) {
-  return await t.run(async (ctx) => {
+  const seeded = await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", { clerkId: "clerk_summary", email: "summary@test.com", state: "active", createdAt: now, updatedAt: now });
     await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: now });
@@ -29,6 +30,9 @@ async function seedJob(t: ReturnType<typeof convexTest>, rows: Row[], project = 
     }
     return { userId, jobId, papers };
   });
+  // The job's counts and tallies are a moment behind its writes.
+  await catchUp(t);
+  return seeded;
 }
 const filters = (more: object) => ({ searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [], ...more });
 
@@ -80,12 +84,12 @@ it("writes a batch's answers as it's saved, and backfills papers from before, on
   const rows = () => t.run((ctx) => ctx.db.query("extractionAnswerRows").withIndex("by_paper", (q) => q.eq("paperId", papers[0])).collect());
   expect(await rows()).toHaveLength(0);
   await t.mutation(internal.migrations.extractionAnswers.run, {});
-  await t.finishAllScheduledFunctions(() => {});
+  await catchUp(t);
   const written = await rows();
   expect(written.map((row) => row.questionKey).sort()).toEqual(["country", "outcomes"]);
   expect(await t.run((ctx) => ctx.db.query("extractionPaperFacts").withIndex("by_paper", (q) => q.eq("paperId", papers[0])).unique())).not.toBeNull();
   await t.mutation(internal.migrations.extractionAnswers.run, {});
-  await t.finishAllScheduledFunctions(() => {});
+  await catchUp(t);
   expect(await rows()).toEqual(written);
   expect(await t.query(internal.extraction.queries.summarizeJobResultsForAssistant, { userId, jobId, questionKey: "country" } as never)).toMatchObject({ papers: 1, answers: [{ answer: "Ghana" }] });
 });

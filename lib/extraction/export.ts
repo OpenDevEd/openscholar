@@ -1,8 +1,7 @@
 import type { PaperWithResults, Question } from './filtering';
-import { PAPER_LIMIT } from './limits';
 
 export class ExtractionExportError extends Error {
-  constructor(readonly code: "exportChanged" | "excelCellLimit" | "excelRowLimit") { super(code); }
+  constructor(readonly code: "exportChanged" | "excelCellLimit" | "excelRowLimit" | "searchTooBroad") { super(code); }
 }
 
 type ResultsPage<Item> = { page: Item[]; isDone: boolean; continueCursor: string };
@@ -10,7 +9,7 @@ type ResultsPage<Item> = { page: Item[]; isDone: boolean; continueCursor: string
 /** Metadata and all pages belong to one saved revision, including same-count edits. */
 export async function readExtractionExport<Item extends { _id: string }, Metadata extends object>(
   readPage: (cursor: string | null) => Promise<ResultsPage<Item>>,
-  readState: () => Promise<{ matching: number; revision: number | null }>,
+  readState: () => Promise<{ matching: number; atLeast?: true; searchCapped?: true; revision: number | null }>,
   readMetadata: () => Promise<Metadata>,
   options: { attempts?: number; signal?: AbortSignal } = {},
 ): Promise<Metadata & { papers: Item[] }> {
@@ -18,11 +17,14 @@ export async function readExtractionExport<Item extends { _id: string }, Metadat
     options.signal?.throwIfAborted();
     const before = await readState();
     if (before.revision === null) throw new ExtractionExportError("exportChanged");
+    // A search matching more papers than the search engine returns can't be exported whole.
+    if (before.searchCapped) throw new ExtractionExportError("searchTooBroad");
     const metadata = await readMetadata();
     const items = await walkResultsPages(async cursor => { options.signal?.throwIfAborted(); return readPage(cursor); });
     const after = await readState();
     options.signal?.throwIfAborted();
-    if (items && items.length === after.matching && before.revision === after.revision) return { ...metadata, papers: items };
+    // A count that stopped short is only a floor: the revision alone says nothing changed meanwhile.
+    if (items && (after.atLeast ? items.length >= after.matching : items.length === after.matching) && before.revision === after.revision) return { ...metadata, papers: items };
   }
   throw new ExtractionExportError("exportChanged");
 }
@@ -30,19 +32,18 @@ export async function readExtractionExport<Item extends { _id: string }, Metadat
 /** A view's pages, one read each. */
 async function* resultsPages<Item>(readPage: (cursor: string | null) => Promise<ResultsPage<Item>>) {
   let cursor: string | null = null;
-  let pages = 0;
   do {
     const result = await readPage(cursor);
     yield result.page;
-    if (!result.isDone && (!result.continueCursor || result.continueCursor === cursor || ++pages > PAPER_LIMIT)) throw new ExtractionExportError("exportChanged");
+    if (!result.isDone && (!result.continueCursor || result.continueCursor === cursor)) throw new ExtractionExportError("exportChanged");
     cursor = result.isDone ? null : result.continueCursor;
   } while (cursor !== null);
 }
 
 /**
  * One walk over every page, or null when a paper came back twice.
- * ponytail: the papers are held whole in the browser, as the file formats need. A job holds
- * at most PAPER_LIMIT papers; larger jobs would need a format that streams.
+ * ponytail: the papers are held whole in the browser, as the file formats need: a job of tens
+ * of thousands of papers needs an export built on the server in parts, as the library's is.
  */
 async function walkResultsPages<Item extends { _id: string }>(readPage: (cursor: string | null) => Promise<ResultsPage<Item>>) {
   const items: Item[] = [];
@@ -52,7 +53,6 @@ async function walkResultsPages<Item extends { _id: string }>(readPage: (cursor:
       if (seen.has(item._id)) return null;
       seen.add(item._id);
       items.push(item);
-      if (items.length > PAPER_LIMIT) throw new ExtractionExportError("exportChanged");
     }
   }
   return items;

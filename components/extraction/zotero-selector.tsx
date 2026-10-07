@@ -31,7 +31,6 @@ import {
 import type { BucketSource } from "@/lib/bucket/bucketItem";
 import { BUCKET_SOURCE_LABELS } from "@/lib/bucket/source-labels";
 import { bucketAdded } from "@/lib/toast/bucket";
-import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 type ZoteroGroup = {
   id: string;
@@ -61,7 +60,7 @@ type ZoteroItem = {
   hasPdfChild: boolean;
 };
 
-export function ZoteroSelector({ paperLimit }: { paperLimit?: number }) {
+export function ZoteroSelector({ paperLimit }: { paperLimit: number }) {
   const toast = useAppToast();
   const t = useTranslations('zotero');
   const tToast = useTranslations("toast");
@@ -73,7 +72,7 @@ export function ZoteroSelector({ paperLimit }: { paperLimit?: number }) {
   const bucketKeys = useMemo(() => new Set(bucketOrder), [bucketOrder]);
   const dedupeKeys = useBucketStore((s) => s.dedupeKeys);
   const dedupeKeyToSource = useBucketStore((s) => s.dedupeKeyToSource);
-  const resolvedPaperLimit = paperLimit ?? PAPER_LIMIT;
+  const resolvedPaperLimit = paperLimit;
   const meQuery = useProtectedQuery(api.users.queries.me, {});
   const me = meQuery.data;
   const connectionStatusQuery = useProtectedQuery(

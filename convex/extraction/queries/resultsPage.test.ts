@@ -5,6 +5,7 @@ import { api } from "../../_generated/api";
 import type { Doc } from "../../_generated/dataModel";
 import schema from "../../schema";
 import { foldCounts } from "../counts.test-support";
+import { catchUp } from "../../lib/catchUp.test-support";
 import { readExtractionExport } from "../../../lib/extraction/export";
 import { buildQuestionAnswerToken, recomputePaperListProjection } from "../listProjection";
 
@@ -26,7 +27,7 @@ const DEFAULT_FILTERS = {
 };
 
 async function seedJobWithProjectionCorpus(t: ReturnType<typeof convexTest>) {
-  return await t.run(async (ctx) => {
+  const seeded = await t.run(async (ctx) => {
     const now = Date.now();
     await seedOrganizationFeatures(ctx, [CLERK_OWNER], { extraction: true });
     const userId = await ctx.db.insert("users", {
@@ -85,6 +86,8 @@ async function seedJobWithProjectionCorpus(t: ReturnType<typeof convexTest>) {
       });
 
       if (i === 52) {
+        // Its answer row, as the paper's projection writes it.
+        await ctx.db.insert("extractionAnswerRows", { jobId, paperId, questionKey: "q1", token: (await buildQuestionAnswerToken("q1", "yes"))!, shown: "Yes", items: [] });
         const resultId = await ctx.db.insert("extractionResults", {
           jobId,
           paperId,
@@ -101,6 +104,9 @@ async function seedJobWithProjectionCorpus(t: ReturnType<typeof convexTest>) {
 
     return { jobId };
   });
+  // The job's counts are a moment behind its writes.
+  await catchUp(t);
+  return seeded;
 }
 
 type View = Partial<{ cursor: string | null; numItems: number; selectedPaperIds: Doc<"extractionPapers">["_id"][]; filters: typeof DEFAULT_FILTERS; sortBy: "default" | "title-asc" | "title-desc" | "confidence-high" | "confidence-low" }>;
@@ -148,6 +154,7 @@ describe("listJobResults", () => {
         await recomputePaperListProjection(ctx, paper._id);
       }
     });
+    await catchUp(t);
     for (const [i, value] of answers.entries()) {
       const filters = { ...DEFAULT_FILTERS, questionFilters: [{ questionKey: "q1", value }] };
       expect((await listResults(auth, jobId, { filters })).page.map(p => p._id)).toEqual([papers[i]._id]);
@@ -192,6 +199,7 @@ describe("listJobResults", () => {
       });
       await recomputePaperListProjection(ctx, first._id);
     });
+    await catchUp(t);
     for (const searchQuery of ["مدارس", "التأثير", "データ", "학교교육", "éducation", "山田太郎", "शिक्षा", "学校教育"]) {
       const filters = { ...DEFAULT_FILTERS, searchQuery };
       expect((await listResults(auth, jobId, { filters })).page.map(paper => paper._id)).toEqual([first._id]);

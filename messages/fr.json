@@ -458,6 +458,7 @@
     "exportChanged": "Les résultats ont changé pendant l’exportation. Réessayez une fois le traitement terminé.",
     "excelCellLimit": "Un champ dépasse la limite de 32 767 caractères d’Excel. Choisissez CSV ou JSON pour conserver le texte complet.",
     "excelRowLimit": "Les citations dépassent la limite de 1 048 576 lignes d’Excel. Choisissez CSV ou JSON pour toutes les conserver.",
+    "searchTooBroad": "Cette recherche correspond à plus d’articles qu’un export ne peut en lire. Affinez la recherche, ou effacez-la pour exporter tous les articles.",
     "exportDescription": "Choisissez le format d'exportation et les options pour {label}",
     "exportFormat": "Format d'exportation",
     "csvLabel": "CSV (compatible Excel)",

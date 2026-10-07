@@ -103,7 +103,7 @@ describe("<BucketSidebar> Clear-all undo flow", () => {
           1000,
         );
     });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     fireEvent.click(screen.getByRole("button", { name: /^clear all$/i }));
 
     await waitFor(() => {
@@ -121,7 +121,7 @@ describe("<BucketSidebar> Clear-all undo flow", () => {
           1000,
         );
     });
-    render(withProviders(<BucketSidebar />));
+    render(withProviders(<BucketSidebar paperLimit={1000} />));
     fireEvent.click(screen.getByRole("button", { name: /^clear all$/i }));
     expect(useBucketStore.getState().order).toEqual([]);
 
@@ -140,7 +140,7 @@ describe("<BucketDrawer> mobile Clear-all flow", () => {
         .addMany([makeItem("k:a", "Alpha")], 1000);
     });
     render(
-      withProviders(<BucketDrawer open={true} onOpenChange={() => {}} />),
+      withProviders(<BucketDrawer open={true} onOpenChange={() => {}} paperLimit={1000} />),
     );
     fireEvent.click(screen.getByRole("button", { name: /^clear all$/i }));
     await waitFor(() => {

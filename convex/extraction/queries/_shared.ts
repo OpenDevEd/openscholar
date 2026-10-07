@@ -8,7 +8,6 @@
 import type { QueryCtx } from "../../_generated/server";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { MIN_ABSTRACT_LENGTH } from "../content";
-import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 export function hasUsableAbstract(abstract?: string) {

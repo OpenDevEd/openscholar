@@ -774,6 +774,13 @@ describe("the assistant's tools", () => {
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
     await asAda.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W1", title: "Tutoring at scale", collectionId });
     await extractionOn(t);
+    // A plan that takes 1,000 papers in one extraction, and a collection the account counts at 1,500.
+    await t.run(async (ctx) => {
+      await ctx.db.patch("collections", collectionId, { itemCount: 1500 });
+      const userId = (await ctx.db.get("collections", collectionId))!.userId;
+      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+      await ctx.db.patch("billingAccounts", account!._id, { limits: { request_papers: 1000 } });
+    });
     const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [{ minScore: 0, stars: 1 }] };
     const screen = { name: "screening/start:screen", arguments: { set: { kind: "collection", collectionId }, first: 1, last: 5, questions: [{ key: "q1", question: "Randomized?" }], scoringConfig, saveTo: { kind: "new", name: "  " } } };
     const extract = { name: "extraction/start:extract", arguments: { name: "Sample sizes", set: { kind: "collection", collectionId }, first: 1, last: 1500, questions: [{ question: "What was the sample size?", type: "number" }] } };
@@ -783,7 +790,7 @@ describe("the assistant's tools", () => {
     await say("Screen my trials into a new collection, and extract sample sizes from 1,500 of them");
 
     expect(told(1, "screen")).toEqual({ error: "Collection name cannot be empty" });
-    expect(told(1, "extract")).toEqual({ error: "An extraction takes up to 1,000 papers." });
+    expect(told(1, "extract")).toEqual({ error: "Your plan takes up to 1,000 papers in one extraction. Pick fewer, or change plan for more." });
     expect(await steps()).toEqual([]);
   });
 

@@ -6,11 +6,14 @@ import { seedCreditsForTest } from "../../billing/billing.test-support";
 import { insertJob } from "../../screening/createJob.test-support";
 import type { FunctionArgs } from "convex/server";
 import type { Id } from "../../_generated/dataModel";
+import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
 
 type SourceInput = FunctionArgs<typeof api.extraction.mutations.startJob>["bucketItems"][number];
 
 export async function screeningInputs(count = 2) {
   const t = convexTest(schema);
+  // The job's setup hands its papers to the paper pool.
+  setupExtractionPaperWorkpool(t);
   const { userId, as } = await seedAccount(t, "screening_owner");
   const jobId = await t.run(async ctx => {
     await seedCreditsForTest(ctx, { userId, free: 100_000 });
@@ -35,7 +38,14 @@ export async function screeningInputs(count = 2) {
     return { source: "screening", bucketKey: `screening:${jobId}`, sourceRefId: jobId, title: "Browser title", authors: ["Browser author"], abstract: "Browser abstract", screeningSelection: { jobId, revision: job.revision, count: job.qualifiedPapers } };
   };
   const start = async (items?: SourceInput[]) => as.mutation(api.extraction.mutations.startJob, { name: "Included snapshot", bucketItems: items ?? [await selection()], questions: [{ key: "answer", question: "What was measured?", type: "string" }], usePdfs: false });
-  const snapshot = (extractionJobId: Id<"extractionJobs">) => t.action(internal.extraction.actions.fetchAndPersistPapers, { jobId: extractionJobId });
   const papers = (extractionJobId: Id<"extractionJobs">) => t.run(ctx => ctx.db.query("extractionPapers").withIndex("by_job", q => q.eq("jobId", extractionJobId)).take(count + 1));
+  // Runs the job's setup, which reads its sources and saves its papers; a setup that failed throws why.
+  const snapshot = async (extractionJobId: Id<"extractionJobs">) => {
+    const before = (await t.run(ctx => ctx.db.get("extractionJobs", extractionJobId)))!;
+    await t.action(internal.extraction.actions.setupExtractionQueueJob, { jobId: extractionJobId, expectedEpoch: before.runEpoch ?? 0 });
+    const job = (await t.run(ctx => ctx.db.get("extractionJobs", extractionJobId)))!;
+    if (job.status === "failed") throw new Error(job.error?.message);
+    return { totalPapers: (await papers(extractionJobId)).length, processableCount: job.totalPapers };
+  };
   return { t, as, userId, jobId, selection, start, snapshot, papers };
 }

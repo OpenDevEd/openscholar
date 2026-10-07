@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useBucketStore } from "@/lib/store/bucket";
 import { AnimatedCount } from "./animated-count";
-import { PAPER_LIMIT } from "@/lib/extraction/limits";
+import { stagedOf } from "@/lib/extraction/limits";
 
 export function BucketIndicator({
   ref,
@@ -15,9 +15,9 @@ export function BucketIndicator({
 }: {
   ref?: Ref<HTMLButtonElement>;
   onClick: () => void;
-  paperLimit?: number;
+  paperLimit: number;
 }) {
-  const limit = paperLimit ?? PAPER_LIMIT;
+  const limit = paperLimit;
   // Sum `paperCount` (default 1) rather than row count — a staged
   // saved-search entry contributes its expansion size, not 1.
   const readyCount = useBucketStore((s) =>
@@ -40,7 +40,7 @@ export function BucketIndicator({
       size="sm"
       onClick={onClick}
       className={cn("gap-2", atCap && "border-destructive text-destructive")}
-      aria-label={`Open bucket — ${readyCount} of ${limit} papers staged`}
+      aria-label={`Open bucket — ${stagedOf(readyCount, limit)} papers staged`}
     >
       <Package className="h-4 w-4" />
       <AnimatedCount
@@ -55,7 +55,7 @@ export function BucketIndicator({
         rapid bulk selects don't flood the assistive-tech queue.
       */}
       <span className="sr-only" aria-live="polite">
-        {readyCount} of {limit} papers staged
+        {stagedOf(readyCount, limit)} papers staged
       </span>
     </Button>
   );

@@ -43,7 +43,6 @@ import {
   getExtractionSourceSidebarDimensions,
   useExtractionSourceSidebarStore,
 } from "@/lib/store";
-import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 type LibItem = Doc<"libraryItems">;
 type ViewId = "all" | "unfiled" | Id<"collections">;
@@ -53,7 +52,7 @@ const SIDEBAR_PAGE_SIZE = 20;
 /** A row and the gap under it, measured: a paged list keeps a full page's height, so the pager stays put. */
 const SIDEBAR_ROW_PX = 34;
 
-export function LibraryTab({ paperLimit }: { paperLimit?: number }) {
+export function LibraryTab({ paperLimit }: { paperLimit: number }) {
   const [view, setView] = useState<ViewId>("all");
   const [viewName, setViewName] = useState<string | undefined>(undefined);
   const [searchInput, setSearchInput] = useState("");
@@ -71,7 +70,7 @@ export function LibraryTab({ paperLimit }: { paperLimit?: number }) {
   );
 
   const convex = useConvex();
-  const limit = paperLimit ?? PAPER_LIMIT;
+  const limit = paperLimit;
   const addMany = useBucketStore((s) => s.addMany);
   const removeMany = useBucketStore((s) => s.removeMany);
   const order = useBucketStore((s) => s.order);

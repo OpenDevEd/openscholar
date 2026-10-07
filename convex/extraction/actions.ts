@@ -10,26 +10,23 @@ import { internalAction, type ActionCtx } from "../_generated/server";
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import { storedSearchFiltersValidator } from "./validators";
-import { sourceMetadataFields } from "../lib/paperMetadata";
+import type { setupPlaceValidator } from "./validators";
 import {
   mapOpenAlexWorkToPaperData,
   type OpenAlexWork,
   type PaperDataOut,
 } from "../../lib/openalex/work-mapper";
-import { readSearchWorks } from "../paperSets/openalex";
+import { PAGE_SIZE, readSearchRun } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
-import { dedupeExpandedSources, expandJobSources, readLibraryInBatches } from "./expandSources";
+import { expandJobSources, readLibraryInBatches } from "./expandSources";
+import { paperCountForItem } from "../../lib/bucket/effective-paper-count";
 import { LIBRARY_READ_BATCH } from "./queries/internal";
-import { OLD_SEARCH_MESSAGE } from "./jobSources";
+import { OLD_SEARCH_MESSAGE, type BucketItemInput } from "./jobSources";
 import { heldPapers } from "../paperSets/held";
 import { createError } from "../lib/errors";
 import {
   EXTRACTION_PAPER_CONCURRENCY,
   EXTRACTION_QUESTION_CONCURRENCY,
-  EXTRACTION_QUEUE_LEASE_MS,
-  PAPER_LIMIT,
-  PAPER_PULL_CAP,
 } from "../../lib/extraction/limits";
 import { OPENALEX_WORK_SELECT_FIELDS } from "../../lib/openalex/search-params";
 import {
@@ -37,17 +34,6 @@ import {
   type ClassifiedError,
 } from "@/lib/errors/taxonomy";
 
-
-// Bound each paper-writing transaction; titles and abstracts dominate its size.
-const CREATE_PAPER_CHUNK_SIZE = 100;
-
-type StoredSearchFilters = Infer<typeof storedSearchFiltersValidator>;
-
-type FetchAndPersistPapersResult = {
-  paperIds: Array<Id<"extractionPapers">>;
-  totalPapers: number;
-  processableCount: number;
-};
 
 type SetupRuntime = {
   pdfEnabled: boolean;
@@ -200,160 +186,87 @@ function setupRuntime(pdfEnabled: boolean): SetupRuntime {
   };
 }
 
+/** Papers one setup step reads of a set or the bucket's own papers, and saves in one transaction. */
+const SETUP_STEP = 100;
+/** A search's step is one of OpenAlex's pages: a step of part of one would ask for the page again. */
+const SEARCH_STEP = PAGE_SIZE;
+/** How long one setup action reads before it hands on to the next: well inside an action's ten minutes. */
+const SETUP_ACTION_MS = 4 * 60_000;
+
+type SetupPlace = Infer<typeof setupPlaceValidator>;
+type StepSource = { position: number; item: BucketItemInput };
+type SetupPaper = PaperDataOut & { storageId?: Id<"_storage">; sourceType: "history" | "zotero" | "manual" | "screening"; sourceId: string; screeningRevision?: string };
+
+/** A search or a screening reads its papers a page at a time; every other source is one paper. */
+const pagedSource = (item: BucketItemInput) => item.source === "screening" || item.librarySet !== undefined || (item.source === "history" && item.searchFilters !== undefined);
+
 /**
- * A saved search's papers for extraction or chat: the first `limit` of them, in its results
- * page's order (convex/paperSets/openalex.ts), spending the person's OpenAlex allowance.
+ * The next step of a job's papers from `place`, and where its setup goes on after it; null
+ * once every source is read. A search reads on from its place in OpenAlex and a screening
+ * from its place in its included papers, so neither is ever held whole; the bucket's own
+ * papers are read up to the next of those.
  */
-export async function runFetchPapersFromHistory(
-  ctx: ActionCtx,
-  userId: Id<"users">,
-  searchFilters: StoredSearchFilters,
-): Promise<PaperDataOut[]> {
-  if (!("openAlexQuery" in searchFilters)) {
-    throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
-  }
-  // An unset limit pulls the cap, as the bucket's limits count it (lib/bucket/effective-paper-count.ts).
-  const last = Math.min(PAPER_PULL_CAP, Math.floor(searchFilters.limit ?? PAPER_PULL_CAP));
-  if (last < 1) return [];
+async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: string, place: SetupPlace): Promise<{ papers: SetupPaper[]; next: SetupPlace } | null> {
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  const user: Doc<"users"> | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
-  if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
-  const works = await readSearchWorks<unknown>(searchFilters.openAlexQuery, { first: 1, last, select: OPENALEX_WORK_SELECT_FIELDS.join(",") }, spender(ctx, user.clerkId));
-  return works.map((work) => mapOpenAlexWorkToPaperData(toOpenAlexWork(work)));
-}
-
-export const fetchPapersFromHistory = internalAction({
-  args: {
-    userId: v.id("users"),
-    searchFilters: storedSearchFiltersValidator,
-  },
-  returns: v.array(
-    v.object({
-      ...sourceMetadataFields,
-      openalexId: v.string(),
-      title: v.string(),
-      doi: v.optional(v.string()),
-      publicationYear: v.optional(v.number()),
-      abstract: v.optional(v.string()),
-      authors: v.optional(v.array(v.string())),
-      citedByCount: v.optional(v.number()),
-      venueName: v.optional(v.string()),
-    }),
-  ),
-  handler: async (ctx, args): Promise<PaperDataOut[]> => {
-    return await runFetchPapersFromHistory(ctx, args.userId, args.searchFilters);
-  },
-});
-
-/**
- * Expands job bucket sources, dedupes papers, persists paper rows, and
- * returns only inserted IDs plus small counts. Paper payloads stay in the
- * database so the setup action never carries a large in-memory handoff.
- */
-export async function runFetchAndPersistPapers(
-  ctx: ActionCtx,
-  { jobId }: { jobId: Id<"extractionJobs"> },
-): Promise<FetchAndPersistPapersResult> {
-  const bucketItems = await ctx.runQuery(
-    internal.extraction.queries.internal.getJobSourcesInternal,
-    { jobId },
-  );
-  const job: Doc<"extractionJobs"> | null = await ctx.runQuery(internal.extraction.queries.internal.getJobInternal, { jobId });
-  if (!job) throw createError("NOT_FOUND", "Job not found");
-
-  let cachedZoteroUserId: string | undefined;
-  const expandedSources = await expandJobSources(bucketItems, {
-    readScreening: async (selection) => {
-      const count: number = await ctx.runQuery(internal.extraction.sources.screening.check, { userId: job.userId, jobId: selection.jobId, revision: selection.revision });
-      const { papers, resume } = await heldPapers(ctx, job.userId, { kind: "screening", jobId: selection.jobId }, { first: 1, last: count }, undefined, selection.revision);
-      const extra = resume ? await ctx.runQuery(internal.paperSets.held.page, { userId: job.userId, set: { kind: "screening", jobId: selection.jobId }, revision: selection.revision, cursor: resume, numItems: 1 }) : null;
-      if (papers.length !== count || extra?.page.length) throw createError("CONFLICT", "Screening inputs changed. Select the screening again before starting extraction.");
-      return papers.map(({ venue, ...paper }) => ({ ...paper, venueName: venue }));
-    },
-    fetchPapersFromHistory: (searchFilters) => runFetchPapersFromHistory(ctx, job.userId, searchFilters),
-    readLibraryItems: (ids) =>
-      readLibraryInBatches(ids, LIBRARY_READ_BATCH, (batch) => ctx.runQuery(internal.extraction.queries.internal.ownedLibraryItems, { userId: job.userId, ids: batch })),
+  const sources: StepSource[] = await ctx.runQuery(internal.extraction.queries.internal.jobSourcesFrom, { jobId: job._id, position: place.position, numItems: SETUP_STEP });
+  if (!sources.length) return null;
+  const [{ position, item }] = sources;
+  const onTo = (next: number): SetupPlace => ({ position: next, read: 0, papers: place.papers, processable: place.processable });
+  if (item.source === "history" && item.searchFilters) {
+    const filters = item.searchFilters;
+    if (!("openAlexQuery" in filters)) throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
+    // As many papers as the bucket counted it for (lib/bucket/effective-paper-count.ts).
+    const wanted = paperCountForItem(item);
+    const first = place.read + 1;
+    const last = Math.min(wanted, place.read + SEARCH_STEP);
+    if (last < first) return { papers: [], next: onTo(position + 1) };
+    const run = await readSearchRun<unknown>(filters.openAlexQuery, { first, last, select: OPENALEX_WORK_SELECT_FIELDS.join(","), resume: place.resume, goesOn: true }, spender(ctx, clerkId));
+    const papers = run.works.map((work): SetupPaper => ({ ...mapOpenAlexWorkToPaperData(toOpenAlexWork(work)), sourceType: "history", sourceId: item.sourceRefId }));
+    const read = place.read + papers.length;
+    return { papers, next: run.ended || !run.resume || read >= wanted ? onTo(position + 1) : { ...place, read, resume: run.resume } };
+  }
+  if (item.librarySet) {
+    const range = item.librarySet;
+    const first = range.first + place.read;
+    const last = Math.min(range.first + range.count - 1, first + SETUP_STEP - 1);
+    if (last < first) return { papers: [], next: onTo(position + 1) };
+    const set = range.collectionId ? { kind: "collection" as const, collectionId: range.collectionId } : { kind: "saved" as const };
+    const { papers: held, resume } = await heldPapers(ctx, job.userId, set, { first, last }, place.resume);
+    const papers = held.map(({ venue, ...paper }): SetupPaper => ({ ...paper, venueName: venue, sourceType: "manual", sourceId: range.collectionId ?? "library" }));
+    const read = place.read + papers.length;
+    return { papers, next: resume && read < range.count ? { ...place, read, resume } : onTo(position + 1) };
+  }
+  if (item.source === "screening") {
+    const selection = item.screeningSelection;
+    if (!selection) throw createError("VALIDATION_ERROR", "Screening selection is missing.");
+    const { papers: held, resume } = await heldPapers(ctx, job.userId, { kind: "screening", jobId: selection.jobId }, { first: place.read + 1, last: place.read + SETUP_STEP }, place.resume, selection.revision);
+    const papers = held.map(({ venue, ...paper }): SetupPaper => ({ ...paper, venueName: venue, sourceType: "screening", sourceId: selection.jobId, screeningRevision: selection.revision }));
+    const read = place.read + papers.length;
+    if (resume) return { papers, next: { ...place, read, resume } };
+    if (read !== selection.count) throw createError("CONFLICT", "Screening inputs changed. Select the screening again before starting extraction.");
+    return { papers, next: onTo(position + 1) };
+  }
+  const pagedAt = sources.findIndex((source) => pagedSource(source.item));
+  const own = pagedAt === -1 ? sources : sources.slice(0, pagedAt);
+  let zoteroUserId: string | null | undefined;
+  const expanded = await expandJobSources(own.map((source) => source.item), {
+    fetchPapersFromHistory: () => { throw new Error("A search is read a page at a time"); },
+    readLibraryItems: (ids) => readLibraryInBatches(ids, LIBRARY_READ_BATCH, (batch) => ctx.runQuery(internal.extraction.queries.internal.ownedLibraryItems, { userId: job.userId, ids: batch })),
     resolveZoteroUserId: async () => {
-      if (cachedZoteroUserId !== undefined) return cachedZoteroUserId;
-      try {
-        const resolved = await ctx.runQuery(
-          internal.zotero.queries.getZoteroUserIdInternal,
-          {},
-        );
-        cachedZoteroUserId = resolved ?? undefined;
-      } catch {
-        cachedZoteroUserId = undefined;
-      }
-      return cachedZoteroUserId;
+      if (zoteroUserId === undefined) zoteroUserId = (await ctx.runQuery(internal.zotero.queries.getZoteroUserIdInternal, {}).catch(() => null)) ?? null;
+      return zoteroUserId ?? undefined;
     },
   });
-
-  if (expandedSources.length === 0) {
-    throw createError("VALIDATION_ERROR", "No sources selected");
-  }
-
-  // Check again after the other sources finish, before saving any extraction input.
-  for (const item of bucketItems) {
-    if (item.source === "screening" && item.screeningSelection) {
-      await ctx.runQuery(internal.extraction.sources.screening.check, { userId: job.userId, jobId: item.screeningSelection.jobId, revision: item.screeningSelection.revision });
-    }
-  }
-
-  const dedupedPapers = dedupeExpandedSources(expandedSources).map(
-    ({ paper, sourceType, sourceId, screeningRevision }) => {
-      return {
-        ...paper,
-        storageId: paper.storageId as Id<"_storage"> | undefined,
-        sourceType,
-        sourceId,
-        screeningRevision,
-      };
-    },
-  );
-
-  if (dedupedPapers.length > PAPER_LIMIT) throw createError("VALIDATION_ERROR", `An extraction can hold up to ${PAPER_LIMIT} papers.`);
-
-  console.log(
-    `[fetchAndPersistPapers] Fetched ${expandedSources.length} papers (${dedupedPapers.length} deduped); persisting in chunks of ${CREATE_PAPER_CHUNK_SIZE}`,
-  );
-
-  const allPaperIds: Array<Id<"extractionPapers">> = [];
-  let processableCount = 0;
-  for (let i = 0; i < dedupedPapers.length; i += CREATE_PAPER_CHUNK_SIZE) {
-    const batch = dedupedPapers.slice(i, i + CREATE_PAPER_CHUNK_SIZE);
-    const result = await ctx.runMutation(
-      internal.extraction.mutations.papers.createPaperRecords,
-      { jobId, papers: batch },
-    );
-    allPaperIds.push(...result.paperIds);
-    processableCount += result.processableCount;
-  }
-
-  console.log(
-    `[fetchAndPersistPapers] Persisted ${allPaperIds.length} papers (${processableCount} processable)`,
-  );
-
-  return {
-    paperIds: allPaperIds,
-    totalPapers: dedupedPapers.length,
-    processableCount,
-  };
+  const papers = expanded.map(({ paper, sourceType, sourceId, screeningRevision }): SetupPaper => ({ ...paper, storageId: paper.storageId as Id<"_storage"> | undefined, sourceType, sourceId, screeningRevision }));
+  return { papers, next: onTo(own.at(-1)!.position + 1) };
 }
 
-export const fetchAndPersistPapers = internalAction({
-  args: {
-    jobId: v.id("extractionJobs"),
-  },
-  returns: v.object({
-    paperIds: v.array(v.id("extractionPapers")),
-    totalPapers: v.number(),
-    processableCount: v.number(),
-  }),
-  handler: async (ctx, args): Promise<FetchAndPersistPapersResult> => {
-    return await runFetchAndPersistPapers(ctx, args);
-  },
-});
-
+/**
+ * Sets a job up (#634): reads its sources a step at a time and saves each step, queueing its
+ * processable papers, then runs them. Each step saves where setup goes on from with its
+ * papers, so a job of any size is never held whole: past a few minutes the action hands on to
+ * another, and a pause or restart stops it where it was.
+ */
 export async function runSetupExtractionQueueJob(
   ctx: ActionCtx,
   {
@@ -364,6 +277,7 @@ export async function runSetupExtractionQueueJob(
     expectedEpoch: number;
   },
 ): Promise<void> {
+  const started = Date.now();
   const initialControl = await loadActiveSetupControl(ctx, {
     jobId,
     expectedEpoch,
@@ -372,20 +286,21 @@ export async function runSetupExtractionQueueJob(
 
   try {
     const runtime = setupRuntime(initialControl.pdfEnabled);
-    const persisted = await runFetchAndPersistPapers(ctx, { jobId });
-
-    if (persisted.totalPapers > PAPER_LIMIT) {
-      throw createError(
-        "VALIDATION_ERROR",
-        `Job would produce ${persisted.totalPapers} papers, exceeding the limit of ${PAPER_LIMIT}`,
-      );
+    // Typed here: the generated API's types depend on this module, so inference would loop.
+    const user: Doc<"users"> | null = await ctx.runQuery(internal.users.internal.getUserById, { userId: initialControl.job.userId });
+    if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
+    let place: SetupPlace = initialControl.job.setup ?? { position: 0, read: 0, papers: 0, processable: 0 };
+    while (!place.done) {
+      if (Date.now() - started > SETUP_ACTION_MS) {
+        await ctx.scheduler.runAfter(0, internal.extraction.actions.setupExtractionQueueJob, { jobId, expectedEpoch });
+        return;
+      }
+      const step = await readStep(ctx, initialControl.job, user.clerkId, place);
+      await ctx.runMutation(internal.extraction.mutations.papers.createPaperRecords, { jobId, papers: step?.papers ?? [], setup: { expectedEpoch, next: step ? step.next : { ...place, done: true } } });
+      const control = await loadActiveSetupControl(ctx, { jobId, expectedEpoch });
+      if (!control?.job.setup) return;
+      place = control.job.setup;
     }
-
-    const afterExpansionControl = await loadActiveSetupControl(ctx, {
-      jobId,
-      expectedEpoch,
-    });
-    if (!afterExpansionControl) return;
 
     await ctx.runMutation(
       internal.extraction.mutations.results.updateJobStatus,
@@ -393,11 +308,11 @@ export async function runSetupExtractionQueueJob(
         jobId,
         expectedEpoch,
         status: runtime.pdfEnabled ? "downloading_pdfs" : "indexing",
-        totalPapers: persisted.processableCount,
+        totalPapers: place.processable,
       },
     );
 
-    if (persisted.paperIds.length === 0 || persisted.processableCount === 0) {
+    if (place.papers === 0 || place.processable === 0) {
       await ctx.runMutation(
         internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob,
         { jobId, expectedEpoch },
@@ -420,36 +335,16 @@ export async function runSetupExtractionQueueJob(
       },
     );
 
-    const queued = await ctx.runMutation(
-      internal.extraction.queue.mutations.enqueueInitialPapersForJob,
-      {
-        jobId,
-        paperIds: persisted.paperIds,
-        expectedEpoch,
-        priority: 0,
-      },
-    );
-
-    if (queued.enqueued + queued.existing === 0) {
-      await ctx.runMutation(
-        internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob,
-        { jobId, expectedEpoch },
-      );
-      return;
-    }
-
-    await ctx.runMutation(
-      internal.extraction.queue.mutations.dispatchPaperQueueWindow,
-      {
-        jobId,
-        expectedEpoch,
-        paperConcurrency: runtime.paperConcurrency,
-        leaseOwner: `setup:${jobId}:${expectedEpoch}`,
-        leaseMs: EXTRACTION_QUEUE_LEASE_MS,
-        questionConcurrency: runtime.questionConcurrency,
-        pdfEnabled: runtime.pdfEnabled,
-      },
-    );
+    // Every source read, each paper is the copy that runs: they're queued a page at a time, and the last page starts the run.
+    await ctx.runMutation(internal.extraction.mutations.resume.requeueLater, {
+      jobId,
+      epoch: expectedEpoch,
+      pdfEnabled: runtime.pdfEnabled,
+      paperConcurrency: runtime.paperConcurrency,
+      questionConcurrency: runtime.questionConcurrency,
+      cursor: null,
+      queued: 0,
+    });
   } catch (error) {
     const classified = classifyUnknownError(error);
     await ctx.runMutation(

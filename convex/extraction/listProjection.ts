@@ -245,6 +245,7 @@ async function answerRowOf(paper: Doc<"extractionPapers">, result: Doc<"extracti
     token,
     shown: token === null ? "" : formatAnswerForDisplay(result.answer).slice(0, ANSWER_TEXT_MAX),
     items: items.map((item) => ({ key: item, shown: item.slice(0, ITEM_TEXT_MAX) })),
+    tallied: true as const,
   };
 }
 
@@ -264,7 +265,7 @@ export async function writeAnswerRows(ctx: MutationCtx, paper: Doc<"extractionPa
     }
     const next = wanted.get(row.questionKey)!;
     wanted.delete(row.questionKey);
-    if (next.token !== row.token || next.shown !== row.shown || JSON.stringify(next.items) !== JSON.stringify(row.items)) await ctx.db.replace("extractionAnswerRows", row._id, next);
+    if (next.token !== row.token || next.shown !== row.shown || JSON.stringify(next.items) !== JSON.stringify(row.items) || !row.tallied) await ctx.db.replace("extractionAnswerRows", row._id, next);
   }
   for (const row of wanted.values()) await ctx.db.insert("extractionAnswerRows", row);
 }

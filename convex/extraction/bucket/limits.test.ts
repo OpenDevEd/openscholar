@@ -3,48 +3,31 @@ import { assertBucketWithinLimits } from "./limits";
 import type { EffectiveCountItem } from "../../../lib/bucket/effective-paper-count";
 
 describe("assertBucketWithinLimits", () => {
-  function historyRow(limit: number): EffectiveCountItem {
-    return { source: "history", searchFilters: { limit } };
-  }
-  function libraryRow(): EffectiveCountItem {
-    return { source: "library" };
-  }
+  const historyRow = (limit: number): EffectiveCountItem => ({ source: "history", searchFilters: { limit } });
+  const libraryRow = (): EffectiveCountItem => ({ source: "library" });
 
-  it("accepts a small honest bucket", () => {
+  it("counts a search by the papers it pulls and every other row as one", () => {
     expect(assertBucketWithinLimits([libraryRow(), historyRow(50)]).effectiveCount).toBe(51);
   });
 
-  it("rejects a single placeholder whose limit exceeds the per-row pull cap", () => {
-    // One row, but searchFilters.limit (9999) is over the pull cap (200).
-    expect(() => assertBucketWithinLimits([historyRow(9999)])).toThrow(/per-row pull cap/);
-  });
-
-  it("rejects placeholders whose post-expansion sum exceeds the paper cap", () => {
-    // 10 history rows × 200 papers each = 2000 effective papers, over 1000.
+  it("refuses a bucket past the plan's papers, counted after expansion, and takes one at it", () => {
     const items = Array.from({ length: 10 }, () => historyRow(200));
-    expect(() => assertBucketWithinLimits(items)).toThrow(/exceeding the limit/);
+    expect(() => assertBucketWithinLimits(items, 1_999)).toThrow(/plan takes up to 1,999 papers/);
+    expect(assertBucketWithinLimits(items, 2_000).effectiveCount).toBe(2_000);
   });
 
-  it("accepts a bucket exactly at the paper cap", () => {
-    const items = Array.from({ length: 5 }, () => historyRow(200));
-    expect(assertBucketWithinLimits(items).effectiveCount).toBe(1000);
+  it("takes any number of papers on a plan that sets no limit", () => {
+    expect(assertBucketWithinLimits([historyRow(250_000)]).effectiveCount).toBe(250_000);
   });
 
-  it("counts non-history rows as 1 each, even when bucket has many of them", () => {
-    const items = Array.from({ length: 999 }, () => libraryRow());
-    expect(assertBucketWithinLimits(items).effectiveCount).toBe(999);
-  });
-
-  it("rejects an empty bucket", () => {
+  it("refuses an empty bucket, and one whose every search pulls nothing", () => {
     expect(() => assertBucketWithinLimits([])).toThrow(/at least one paper/);
+    expect(() => assertBucketWithinLimits([historyRow(0), historyRow(-5)])).toThrow(/at least one paper/);
   });
+});
 
-  it("rejects a bucket whose every history row has limit <= 0", () => {
-    // Every row contributes 0 effective papers. Without the count===0
-    // guard, this bucket would start queue setup that would then strand
-    // the job in downloading_pdfs/indexing.
-    expect(() => assertBucketWithinLimits([historyRow(0), historyRow(-5)])).toThrow(
-      /at least one paper/,
-    );
+describe("a search's paper count", () => {
+  it("is refused when it isn't a number, so setup never reads a search to its end unasked", () => {
+    expect(() => assertBucketWithinLimits([{ source: "history", searchFilters: { limit: Infinity } }, { source: "library" }], 1_000)).toThrow(/must be a number/);
   });
 });

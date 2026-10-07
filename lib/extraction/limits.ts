@@ -1,18 +1,12 @@
 /**
- * Extraction and chat limits. They're the same on every plan, so they're
- * constants shared by the server and the UI.
+ * Extraction limits shared by the server and the UI. How many papers one extraction takes is
+ * the person's plan's (convex/billing/accounts.ts `planLimit`, "request_papers").
  */
 
-/** Most papers one extraction job or chat can hold. */
-export const PAPER_LIMIT = 1000;
+/** "12 of 1,000", or "12" when the plan sets no limit. */
+export const stagedOf = (count: number, limit: number) => (Number.isFinite(limit) ? `${count} of ${limit}` : `${count}`);
 
-/**
- * Most papers one search in the bucket can pull from OpenAlex: a whole job's worth, read
- * page by page on the server (convex/paperSets/openalex.ts).
- */
-export const PAPER_PULL_CAP = PAPER_LIMIT;
-
-/** Papers a search pulls when it's first picked; the count can be raised to the cap. */
+/** Papers a search pulls when it's first picked, and what a search saved without a count pulls; the count can be raised to the plan's limit. */
 export const PAPER_PULL_DEFAULT = 200;
 
 /** Most papers one results page shows; an export reads pages of this size. */

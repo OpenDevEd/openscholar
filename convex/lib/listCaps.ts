@@ -155,8 +155,8 @@ export const MAX_BILLING_FEATURES = 200;
 export const MAX_PLAN_DETAILS = 50;
 /** Fields of one audit log or credit transaction's metadata. */
 export const MAX_METADATA_FIELDS = 50;
-/** Papers one job reads from (lib/extraction/limits.ts PAPER_LIMIT). */
-export const MAX_JOB_PAPERS = 1_000;
+/** Papers one hand-picked selection holds, sent or returned as one list: the longest a list may be. A whole collection or library is a source of its own, not a selection. */
+export const MAX_SELECTED_PAPERS = MAX_LIST_CAP;
 /**
  * Buckets an extraction job counts in (convex/extraction/counts.ts): five by status, and a
  * `permanent:` and an `error:` bucket for each error code.

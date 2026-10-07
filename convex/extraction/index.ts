@@ -17,7 +17,6 @@
  *       internal.extraction.workpoolActions.*
  *
  *   - Dev-only (gated by assertNonProd at each handler):
- *       internal.extraction.debug.*
  *       internal.extraction.debug_*.*
  *       internal.extraction.tests.fixtures.*
  *       internal.extraction.tests.runners.*
