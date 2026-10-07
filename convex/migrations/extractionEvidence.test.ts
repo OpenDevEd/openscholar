@@ -6,7 +6,7 @@ import schema from "../schema";
 it("repairs unsupported evidence labels without rewriting answers, and guards rollback", async () => {
   const t = convexTest(schema);
   const ids = await t.run(async ctx => {
-    const userId = await ctx.db.insert("users", { clerkId: "evidence-repair", email: "repair@test", state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 });
+    const userId = await ctx.db.insert("users", { clerkId: "evidence-repair", email: "repair@test", state: "active", createdAt: 1, updatedAt: 1 });
     const jobId = await ctx.db.insert("extractionJobs", { userId, name: "Evidence repair", sourceType: "history", status: "completed", totalPapers: 1, createdAt: 1, updatedAt: 1 });
     const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: "W1", title: "Trial", abstract: "The trial assigned 120 schools to tutoring.", status: "completed" });
     const citation = { evidenceId: "pdf-unit", page: 2, charRange: [10, 30], quote: "A saved PDF passage.", retrieval: {}, validated: true };

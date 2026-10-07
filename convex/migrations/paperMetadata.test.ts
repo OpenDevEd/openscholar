@@ -6,7 +6,7 @@ import schema from "../schema";
 it("migrates retained authors without crossing owners or guessing, and guards rollback", async () => {
   const t = convexTest(schema);
   const seeded = await t.run(async (ctx) => {
-    const person = (clerkId: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@test`, state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 });
+    const person = (clerkId: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@test`, state: "active", createdAt: 1, updatedAt: 1 });
     const owner = await person("owner"), foreign = await person("foreign");
     const job = async (userId: typeof owner) => {
       const screeningId = await ctx.db.insert("screenings", { userId, version: 0, createdAt: 1 });

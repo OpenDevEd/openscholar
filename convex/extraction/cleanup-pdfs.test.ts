@@ -11,7 +11,7 @@ describe("cleanupOldPdfs", () => {
     const fresh = Date.now() - 60_000;
 
     const { oldPaperIds, freshPaperId } = await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {libraryItemCount: 0, 
+      const userId = await ctx.db.insert("users", {
         clerkId: "clerk_cleanup",
         email: "c@test.com",
         firstName: "C",
@@ -95,7 +95,7 @@ describe("cleanupOldPdfs", () => {
     const old = Date.now() - maxAgeHours * 60 * 60 * 1000 - 60_000;
 
     const storedPaperId = await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {libraryItemCount: 0, 
+      const userId = await ctx.db.insert("users", {
         clerkId: "clerk_cleanup_cursor",
         email: "cursor@test.com",
         firstName: "Cursor",

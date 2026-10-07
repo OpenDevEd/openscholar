@@ -31,7 +31,7 @@ async function seedJobWithProjectionCorpus(t: ReturnType<typeof convexTest>) {
     const now = Date.now();
     await seedOrganizationFeatures(ctx, [CLERK_OWNER], { extraction: true });
     const userId = await ctx.db.insert("users", {
-      libraryItemCount: 0,
+      
       clerkId: CLERK_OWNER,
       email: "results-page@test.com",
       state: "active" as const,
@@ -292,7 +292,7 @@ describe("listJobResults", () => {
   it("shows someone else nothing of the job", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedJobWithProjectionCorpus(t);
-    await t.run((ctx) => ctx.db.insert("users", { libraryItemCount: 0, clerkId: "clerk_someone_else", email: "else@test.com", state: "active" as const, createdAt: 1, updatedAt: 1 }));
+    await t.run((ctx) => ctx.db.insert("users", { clerkId: "clerk_someone_else", email: "else@test.com", state: "active" as const, createdAt: 1, updatedAt: 1 }));
     const other = t.withIdentity({ tokenIdentifier: "https://test.clerk.local|clerk_someone_else", subject: "clerk_someone_else", issuer: "https://test.clerk.local" });
 
     expect(await listResults(other, jobId)).toMatchObject({ page: [], isDone: true });

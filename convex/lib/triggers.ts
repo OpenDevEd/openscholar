@@ -16,8 +16,8 @@ import { countChange } from "../research/recordCounts";
 import { copyChangedFacets, countItemChange, fillAndCountMembership } from "../library/facets";
 import { countAnswerChange, countPaperChange as countPaperFacets } from "../extraction/facets";
 import { tallyAnswerChange } from "../extraction/tallies";
-import { adminText, jobText, keepAdminTextOfUser, keepSearchText, searchText, shortcutText } from "./searchText";
-import { ADMIN_LIST, countList, libraryVersionList, organizationLibrariesOf, walletKeyList } from "./listCounts";
+import { adminText, jobText, keepSearchText, keepTextOfUser, memberText, searchText, shortcutText } from "./searchText";
+import { ADMIN_LIST, countList, libraryMembersOf, personGrantsOf, libraryVersionList, organizationLibrariesOf, walletKeyList } from "./listCounts";
 
 export const triggers = new Triggers<DataModel>();
 
@@ -59,4 +59,8 @@ triggers.register("searches", keepSearchText("searches", (_ctx, row) => searchTe
 triggers.register("queryShortcuts", keepSearchText("queryShortcuts", (_ctx, row) => shortcutText(row.data)));
 triggers.register("extractionJobs", keepSearchText("extractionJobs", (_ctx, row) => jobText(row)));
 triggers.register("admins", keepSearchText("admins", adminText));
-triggers.register("users", keepAdminTextOfUser);
+triggers.register("organizationMemberships", keepSearchText("organizationMemberships", memberText));
+triggers.register("users", keepTextOfUser);
+// A library's people and a person's libraries, which granting another checks against its cap (convex/evidenceLibraries/members.ts).
+triggers.register("evidenceLibraryMembers", countList((grant) => libraryMembersOf(grant.libraryId)));
+triggers.register("evidenceLibraryMembers", countList((grant) => personGrantsOf(grant.clerkUserId)));

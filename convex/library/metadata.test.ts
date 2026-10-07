@@ -7,7 +7,7 @@ import { expandJobSources } from "../extraction/expandSources";
 
 it("keeps a rated paper intact through screening, repeated saves and extraction persistence", async () => {
   const t = convexTest(schema);
-  const userId = await t.run((ctx) => ctx.db.insert("users", { clerkId: "metadata-owner", email: "metadata@test", state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 }));
+  const userId = await t.run((ctx) => ctx.db.insert("users", { clerkId: "metadata-owner", email: "metadata@test", state: "active", createdAt: 1, updatedAt: 1 }));
   const owner = t.withIdentity({ subject: "metadata-owner" });
   const abstract = "Saved abstract: This randomized school trial measured literacy outcomes in two groups of pupils over one school term, using the same assessment before and after teaching.";
   const { id } = await owner.mutation(api.library.mutations.saveToLibrary, { openalexId: "W7", title: "Saved title", abstract, authors: ["Smith, Jr., John", "ليلى"], citedByCount: 0, isOpenAccess: false, pdfUrl: "https://example.test/retained.pdf", rating: 4 });

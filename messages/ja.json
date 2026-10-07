@@ -3270,7 +3270,10 @@
     "free": "無料",
     "source": "Artificial Analysis の Intelligence Index",
     "back": "モデル一覧に戻る",
-    "default": "デフォルト"
+    "default": "デフォルト",
+    "reads": "入力",
+    "readsImages": "画像を読める",
+    "readsPdfs": "PDF を読める"
   },
   "assistant": {
     "activity": {
@@ -3780,6 +3783,18 @@
         "doing": "アカウント内を探しています",
         "did": "アカウント内で見つけました",
         "where": "あなたのアカウント"
+      },
+      "webSearch": {
+        "doing": "ウェブを検索中",
+        "did": "ウェブを検索しました",
+        "where": "ウェブ",
+        "ask": "ウェブを検索"
+      },
+      "readFile": {
+        "doing": "ファイルを読んでいます",
+        "did": "ファイルを読みました",
+        "where": "添付ファイル",
+        "ask": "ファイルを読む"
       }
     },
     "asks": {
@@ -3816,7 +3831,11 @@
         "prune": "除外した論文を外す",
         "rating": "評価",
         "change": "変更",
-        "usePdfs": "全文"
+        "usePdfs": "全文",
+        "query": "検索語",
+        "file": "ファイル",
+        "pages": "ページ",
+        "range": "範囲"
       }
     },
     "topUp": {
@@ -3890,6 +3909,37 @@
       "screening": "スクリーニング",
       "extraction": "抽出"
     },
-    "moreJobs": "他 {count} 件のジョブ"
+    "moreJobs": "他 {count} 件のジョブ",
+    "files": {
+      "attach": "ファイルを添付",
+      "pasted": "貼り付けた画像",
+      "onlyImages": "画像、PDF、テキストファイルのみ",
+      "tooLarge": "{mb} MB を超えています",
+      "unreadable": "この画像は読み込めません",
+      "failed": "このファイルをアップロードできませんでした",
+      "remove": "削除",
+      "removeNamed": "{name} を削除",
+      "expired": "期限切れです。もう一度添付してください",
+      "drop": "ファイルをドロップして添付",
+      "anImage": "画像 1 枚",
+      "modelCant": "{model} は画像を読めません。添付するには別のモデルを選んでください。",
+      "notUploaded": "{count, plural, other {# 件のファイルをアップロードできませんでした}}。削除するか、もう一度添付してください。",
+      "tooMany": "1 件のメッセージにつき {count} 件まで",
+      "tooLargePdf": "{mb} MB を超えています",
+      "pages": "{count, plural, other {# ページ}}",
+      "aPdf": "PDF 1 件",
+      "modelCantPdf": "{model} は PDF を読めません。添付するには別のモデルを選んでください。",
+      "openPage": "{name} の {page} ページを開く",
+      "tooLargeText": "{mb} MB を超えています",
+      "lines": "{count, plural, other {# 行}}",
+      "aTextFile": "テキストファイル 1 件"
+    },
+    "allowed": {
+      "web": "ウェブ検索",
+      "stopWeb": "ウェブ検索の前に確認する",
+      "files": "ファイルの読み取り",
+      "stopFiles": "ファイルを読む前に確認する"
+    },
+    "webSources": "{count, plural, other {ウェブの出典 # 件}}"
   }
 }

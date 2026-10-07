@@ -89,6 +89,8 @@
   --kind-library: #e87ba4;
   --kind-topic: #008300;
   --kind-screening: #4a3aa7;
+  --kind-web: #0e8fb3;
+  --kind-file: #d4483f;
 
   /* Charts */
   --chart-1: var(--primary);
@@ -157,6 +159,8 @@
   --kind-library: #d55181;
   --kind-topic: #008300;
   --kind-screening: #9085e9;
+  --kind-web: #2bb0d4;
+  --kind-file: #e5655c;
   --primary: #fafafa;
   --primary-bright: #ffffff;
   --primary-deep: #a3a3a3;

@@ -83,7 +83,7 @@ async function setup(saved: SavedSearch = search, ratings: Array<{ paperId: stri
   instances.push(t);
   setupScreeningWorkpool(t);
   const userId = await t.run(async (ctx) => {
-    const id = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "alice", email: "alice@example.com", state: "active", createdAt: 1, updatedAt: 1 });
+    const id = await ctx.db.insert("users", { clerkId: "alice", email: "alice@example.com", state: "active", createdAt: 1, updatedAt: 1 });
     await seedCreditsForTest(ctx, { userId: id, free: credits });
     return id;
   });
@@ -439,7 +439,7 @@ describe("Screen all on a saved search, read on the server", () => {
 
   it("refuses another account's search", async () => {
     const { t } = await setup();
-    await t.run((ctx) => ctx.db.insert("users", { libraryItemCount: 0, clerkId: "bob", email: "bob@example.com", state: "active", createdAt: 1, updatedAt: 1 }));
+    await t.run((ctx) => ctx.db.insert("users", { clerkId: "bob", email: "bob@example.com", state: "active", createdAt: 1, updatedAt: 1 }));
 
     await expect(t.withIdentity({ subject: "bob" }).action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
     expect(requests).toHaveLength(0);

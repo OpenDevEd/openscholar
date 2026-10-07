@@ -65,6 +65,7 @@ import {
 } from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 import { MAX_LIBRARIES_PER_ORGANIZATION } from "../lib/queryBounds";
+import { countOf, organizationLibrariesOf } from "../lib/listCounts";
 import {
   configurationSnapshotsEqual,
   loadDraftConfigurationSnapshot,
@@ -148,8 +149,7 @@ export async function createEvidenceLibrarySetup(
     return toSetupDraftResult(setup, identity);
   }
 
-  const libraries = await ctx.db.query("evidenceLibraries").withIndex("by_organizationId", (q) => q.eq("organizationId", access.organization._id)).take(MAX_LIBRARIES_PER_ORGANIZATION);
-  if (libraries.length >= MAX_LIBRARIES_PER_ORGANIZATION) {
+  if ((await countOf(ctx, organizationLibrariesOf(access.organization._id))) >= MAX_LIBRARIES_PER_ORGANIZATION) {
     throw createError("VALIDATION_ERROR", `An organization can have up to ${MAX_LIBRARIES_PER_ORGANIZATION} libraries. Delete one to make another.`);
   }
 

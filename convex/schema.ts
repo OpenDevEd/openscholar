@@ -56,12 +56,10 @@ import { authorContentFields, authorProfileInvitationFields } from "./authors/va
 
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
-import { assistantLimitFields, assistantSpenderFields, assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields } from "./assistant/validators";
+import { assistantLimitFields, assistantSpenderFields, assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields, assistantFileFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
-/** The most collections a removal from before #633 listed: the cap a person had then. */
-const OLD_REMOVAL_PLACES = 500;
 
 export default defineSchema({
   // `searchText`: what its list's search matches, kept by a trigger (convex/lib/searchText.ts); missing until migrations/searchText reaches a row from before.
@@ -190,8 +188,11 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .index("by_state", ["state"]),
 
-  organizationMemberships: defineTable(organizationMembershipFields)
+  // `searchText`: the member's name and email, which a library's team picker searches (convex/lib/searchText.ts).
+  organizationMemberships: defineTable({ ...organizationMembershipFields, searchText: v.optional(v.string()) })
     .index("by_clerkMembershipId", ["clerkMembershipId"])
+    .index("by_organizationId_and_state_and_role", ["organizationId", "state", "role"])
+    .searchIndex("search_member_text", { searchField: "searchText", filterFields: ["organizationId", "state"] })
     .index("by_organizationId_and_clerkUserId_and_state", [
       "organizationId",
       "clerkUserId",
@@ -225,9 +226,20 @@ export default defineSchema({
   assistantJobEnds: defineTable(assistantJobEndFields).index("by_job", ["jobId"]).index("by_thread_and_pending", ["threadId", "pending"]).index("by_thread_and_order", ["threadId", "order"]),
   // What reverses each change of a bulk change (convex/assistant/bulk.ts).
   assistantStepUndos: defineTable(assistantStepUndoFields).index("by_step", ["stepId"]),
+  // A big bulk change's changes, waiting for the person's answer (convex/assistant/bulkPapers.ts).
+  assistantBulkPapers: defineTable({ userId: v.id("users"), key: v.string(), first: v.number(), items: v.string(), runningSince: v.optional(v.number()) }).index("by_key_and_first", ["key", "first"]),
   // What each person lets the assistant spend in a chat, and each person's own record (convex/assistant/spending.ts).
   assistantLimits: defineTable(assistantLimitFields).index("by_thread_and_user", ["threadId", "userId"]).index("by_user", ["userId"]),
   assistantSpenders: defineTable(assistantSpenderFields).index("by_user", ["userId"]),
+  // Files attached to chats (convex/assistant/files.ts): a message's, a chat's and a person's, and the ones due to expire.
+  assistantFiles: defineTable(assistantFileFields)
+    .index("by_message", ["messageId"])
+    .index("by_thread", ["threadId"])
+    .index("by_user_and_state", ["userId", "state"])
+    .index("by_uploadDigest", ["uploadDigest"])
+    .index("by_state_and_usedAt", ["state", "usedAt"])
+    .index("by_parent_and_range", ["parentId", "range"])
+    .index("by_thread_and_name", ["threadId", "name"]),
   assistantThreadAccess: defineTable(assistantThreadAccessFields)
     // A person's chats, newest first, through each of their principals.
     .index("by_principal_and_lastMessageAt", ["principal", "lastMessageAt"])
@@ -1144,8 +1156,7 @@ export default defineSchema({
 
   // How many papers a person has saved. It has its own row, not a field on `users`, because
   // every mutation of the person's reads their user row: a bulk save rewriting it would make
-  // their other edits conflict (#383). `users.libraryItemCount` is read until
-  // migrations/moveLibraryCounts gives everyone a row.
+  // their other edits conflict (#383).
   libraryCounts: defineTable({ userId: v.id("users"), count: v.number() }).index("by_user", ["userId"]),
 
   // ═══════════════════════════════════════════════════════════════
@@ -1178,12 +1189,8 @@ export default defineSchema({
   libraryRemovals: defineTable({
     userId: v.id("users"),
     item: removedItemValidator,
-    // The removed paper's ID, which its places not moved yet still name. A removal from before
-    // places were kept as rows has none, and its places in `collectionIds`, with when the paper
-    // was put in each in `assignedAts`, until migrations/libraryFacets moves them (#638 narrows).
-    itemId: v.optional(v.id("libraryItems")),
-    collectionIds: capped(v.optional(v.array(v.id("collections"))), OLD_REMOVAL_PLACES),
-    assignedAts: capped(v.optional(v.array(v.number())), OLD_REMOVAL_PLACES),
+    // The removed paper's ID, which its places not moved yet still name.
+    itemId: v.id("libraryItems"),
     expiresAt: v.number(),
     // The paper Undo put back; the removal is kept until it expires.
     restoredAs: v.optional(v.id("libraryItems")),

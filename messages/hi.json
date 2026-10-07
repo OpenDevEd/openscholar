@@ -3270,7 +3270,10 @@
     "free": "निःशुल्क",
     "source": "Artificial Analysis का इंटेलिजेंस इंडेक्स",
     "back": "मॉडल पर वापस जाएँ",
-    "default": "डिफ़ॉल्ट"
+    "default": "डिफ़ॉल्ट",
+    "reads": "पढ़ता है",
+    "readsImages": "चित्र पढ़ता है",
+    "readsPdfs": "PDF पढ़ता है"
   },
   "assistant": {
     "activity": {
@@ -3780,6 +3783,18 @@
         "doing": "आपके खाते में खोज रहा है",
         "did": "आपके खाते में मिला",
         "where": "आपका खाता"
+      },
+      "webSearch": {
+        "doing": "वेब पर खोज रहा है",
+        "did": "वेब पर खोजा",
+        "where": "वेब",
+        "ask": "वेब पर खोजें"
+      },
+      "readFile": {
+        "doing": "फ़ाइल पढ़ रहा है",
+        "did": "फ़ाइल पढ़ी",
+        "where": "संलग्न फ़ाइलें",
+        "ask": "फ़ाइल पढ़ें"
       }
     },
     "asks": {
@@ -3816,7 +3831,11 @@
         "prune": "बाहर किए गए पेपर हटेंगे",
         "rating": "रेटिंग",
         "change": "बदलाव",
-        "usePdfs": "पूरा पाठ"
+        "usePdfs": "पूरा पाठ",
+        "query": "खोज",
+        "file": "फ़ाइल",
+        "pages": "पृष्ठ",
+        "range": "भाग"
       }
     },
     "topUp": {
@@ -3890,6 +3909,37 @@
       "screening": "स्क्रीनिंग",
       "extraction": "एक्सट्रैक्शन"
     },
-    "moreJobs": "{count} और कार्य"
+    "moreJobs": "{count} और कार्य",
+    "files": {
+      "attach": "फ़ाइलें जोड़ें",
+      "pasted": "चिपकाया गया चित्र",
+      "onlyImages": "केवल चित्र, PDF और टेक्स्ट फ़ाइलें",
+      "tooLarge": "{mb} MB से अधिक",
+      "unreadable": "यह चित्र पढ़ा नहीं जा सकता",
+      "failed": "यह फ़ाइल अपलोड नहीं हो सकी",
+      "remove": "हटाएँ",
+      "removeNamed": "{name} हटाएँ",
+      "expired": "समय सीमा समाप्त, फिर से जोड़ें",
+      "drop": "जोड़ने के लिए फ़ाइलें यहाँ छोड़ें",
+      "anImage": "एक चित्र",
+      "modelCant": "{model} चित्र नहीं पढ़ सकता। उन्हें जोड़ने के लिए कोई दूसरा मॉडल चुनें।",
+      "notUploaded": "{count, plural, one {एक फ़ाइल अपलोड नहीं हुई} other {# फ़ाइलें अपलोड नहीं हुईं}}। उन्हें हटाएँ या फिर से जोड़ें।",
+      "tooMany": "एक संदेश में अधिकतम {count} फ़ाइलें",
+      "tooLargePdf": "{mb} MB से अधिक",
+      "pages": "{count, plural, one {# पृष्ठ} other {# पृष्ठ}}",
+      "aPdf": "एक PDF",
+      "modelCantPdf": "{model} PDF नहीं पढ़ सकता। उन्हें जोड़ने के लिए कोई दूसरा मॉडल चुनें।",
+      "openPage": "{name} को पृष्ठ {page} पर खोलें",
+      "tooLargeText": "{mb} MB से अधिक",
+      "lines": "{count, plural, one {# पंक्ति} other {# पंक्तियाँ}}",
+      "aTextFile": "एक टेक्स्ट फ़ाइल"
+    },
+    "allowed": {
+      "web": "वेब खोज",
+      "stopWeb": "वेब पर खोजने से पहले पूछें",
+      "files": "फ़ाइलें पढ़ना",
+      "stopFiles": "फ़ाइल पढ़ने से पहले पूछें"
+    },
+    "webSources": "{count, plural, one {# वेब स्रोत} other {# वेब स्रोत}}"
   }
 }

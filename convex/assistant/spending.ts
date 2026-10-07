@@ -19,6 +19,7 @@
  *   setReplyLimit     sets or lifts a reply's
  *   setAllowance      whether jobs run without asking, and the most one may hold
  *   setForNewChats    whether the chats they start begin with this chat's
+ *   setTool           whether web searches, or reads of attached files, run in the chat without asking
  */
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
@@ -60,6 +61,25 @@ const limitsIn = (row: Limits | null | undefined): Limits => ({ ...(row?.replyLi
 /** What jobs that spend credits may hold in this chat without this person being asked. Undefined when each one asks. */
 export async function allowanceOf(ctx: Reader, threadId: Id<"assistantThreads">, userId: Id<"users">) {
   return (await limitOf(ctx, threadId, userId))?.jobs;
+}
+
+/**
+ * The actions a person allows on their own in a chat (#648), each by its own switch, apart from
+ * jobs: "Always allow" on a web search allows searches, not screenings of the same price.
+ */
+export const TOOL_OF: Partial<Record<string, Tool>> = { "research/web:search": "web", "assistant/files:read": "files" };
+type Tool = "web" | "files";
+
+/** Whether the person lets the assistant use `tool` in this chat without asking. */
+export async function toolAllowed(ctx: Reader, threadId: Id<"assistantThreads">, userId: Id<"users">, tool: Tool) {
+  return (await limitOf(ctx, threadId, userId))?.[tool] === true;
+}
+
+/** Allows `tool` in this chat without asking, or asks for it again. */
+export async function allowTool(ctx: MutationCtx, threadId: Id<"assistantThreads">, userId: Id<"users">, tool: Tool, on: boolean) {
+  const row = await limitOf(ctx, threadId, userId);
+  if (row) await ctx.db.patch("assistantLimits", row._id, { [tool]: on ? true : undefined });
+  else if (on) await ctx.db.insert("assistantLimits", { threadId, userId, [tool]: true });
 }
 
 /** Whether a call that holds `credits` runs without asking: jobs are allowed, this one is within what one may hold, and the balance covers it. */
@@ -176,13 +196,16 @@ export const get = query({
     newChats: v.optional(v.object({ replyLimit: v.union(v.number(), v.null()), allowance: v.union(v.null(), v.object({ cap: v.union(v.number(), v.null()) })) })),
     /** What their last replies cost, oldest first. */
     recent: recentCostsValidator,
+    /** Whether web searches and reads of attached files run in this chat without asking (#648). */
+    web: v.boolean(),
+    files: v.boolean(),
   }),
   handler: async (ctx, { threadId }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);
     const [limit, spender] = await Promise.all([limitOf(ctx, threadId, userId), spenderOf(ctx, userId)]);
-    return { replyLimit: limit?.replyLimit ?? null, allowance: limit?.jobs ? { cap: limit.jobs.cap ?? null } : null, ...(spender?.newChats === undefined ? {} : { newChats: { replyLimit: spender.newChats.replyLimit ?? null, allowance: spender.newChats.jobs ? { cap: spender.newChats.jobs.cap ?? null } : null } }), recent: (spender?.recent ?? []).map((entry) => entry.credits) };
+    return { replyLimit: limit?.replyLimit ?? null, allowance: limit?.jobs ? { cap: limit.jobs.cap ?? null } : null, ...(spender?.newChats === undefined ? {} : { newChats: { replyLimit: spender.newChats.replyLimit ?? null, allowance: spender.newChats.jobs ? { cap: spender.newChats.jobs.cap ?? null } : null } }), recent: (spender?.recent ?? []).map((entry) => entry.credits), web: limit?.web === true, files: limit?.files === true };
   },
 });
 
@@ -248,6 +271,18 @@ export const setForNewChats = mutation({
     const spender = await spenderOf(ctx, userId);
     if (spender) await ctx.db.patch("assistantSpenders", spender._id, { newChats });
     else if (newChats) await ctx.db.insert("assistantSpenders", { userId, newChats, recent: [] });
+    return null;
+  },
+});
+
+export const setTool = mutation({
+  args: { threadId: v.id("assistantThreads"), tool: v.union(v.literal("web"), v.literal("files")), allowed: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, { threadId, tool, allowed }) => {
+    const userId = (await requireAuth(ctx))._id;
+    await requireFeature(ctx, FLAG, userId);
+    await requireThread(ctx, userId, threadId);
+    await allowTool(ctx, threadId, userId, tool, allowed);
     return null;
   },
 });

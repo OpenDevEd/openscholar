@@ -21,6 +21,7 @@ import { workUrl } from "../../lib/openalex/work-id";
 import { ABORT_ERROR_STRING } from "../../lib/ai/abort-signal";
 import { assistant } from "./agent";
 import { forgetLimits, noteReply } from "./spending";
+import { WEB_SOURCES_KEPT } from "./validators";
 
 /** Characters of an action's arguments, of what reverses it, and of why it failed, that a step keeps. */
 export const STEP_TEXT_MAX = 16_000;
@@ -152,6 +153,17 @@ async function answerCalls(ctx: MutationCtx, steps: Step[], output: (step: Step)
  * reverses it and how many things it lists. A change calls this in its own transaction
  * (convex/lib/userActions.ts), so a change and the record of it are saved together or not at all.
  */
+/** The action that searches the web (convex/research/web.ts). */
+export const WEB_SEARCH_PATH = "research/web:search";
+/** What a web search found, as its step keeps it: a short excerpt of each page, enough for a citation's card. */
+function sourcesOf(result: unknown) {
+  const results = result && typeof result === "object" && "results" in result && Array.isArray(result.results) ? (result.results as Array<{ title?: unknown; url?: unknown; excerpt?: unknown }>) : [];
+  return results
+    .filter((one) => typeof one.url === "string")
+    .slice(0, WEB_SOURCES_KEPT)
+    .map((one) => ({ title: cut(String(one.title ?? one.url), 200), url: cut(String(one.url), 2_000), excerpt: cut(String(one.excerpt ?? ""), 300) }));
+}
+
 export async function endStep(ctx: MutationCtx, stepId: Id<"assistantSteps">, result: unknown) {
   const step = await ctx.db.get("assistantSteps", stepId);
   // Its chat was deleted while it ran.
@@ -159,7 +171,9 @@ export async function endStep(ctx: MutationCtx, stepId: Id<"assistantSteps">, re
   const [undo, count] = [undoOf(result), countOf(result)];
   // A call that names a paper by its ID alone is about the paper it returned.
   const subject = step.subject ? undefined : namedBy(result);
-  await ctx.db.patch("assistantSteps", stepId, { status: "done", ...(count === undefined ? {} : { count }), ...(undo ? { undo } : {}), ...(subject ? { subject } : {}), endedAt: Date.now() });
+  // A web search keeps what it found, for the reply's citations and its list of sources (#648).
+  const sources = step.path === WEB_SEARCH_PATH ? sourcesOf(result) : undefined;
+  await ctx.db.patch("assistantSteps", stepId, { status: "done", ...(count === undefined ? {} : { count }), ...(undo ? { undo } : {}), ...(subject ? { subject } : {}), ...(sources ? { sources } : {}), endedAt: Date.now() });
   await ctx.db.insert("assistantStepResults", { threadId: step.threadId, stepId, result: cut(JSON.stringify(result ?? null), STEP_RESULT_MAX) });
   const read = forModel(result);
   await answerCalls(ctx, [step], () => (typeof read === "string" ? { type: "text", value: read } : { type: "json", value: read }));

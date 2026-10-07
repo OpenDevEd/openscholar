@@ -5,7 +5,7 @@ import {
   SECTION_REGISTRY,
   type SectionKey,
 } from "../../lib/evidence-libraries/configuration/section-registry";
-import { MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
+import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
 import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
 
 export type { SectionKey };
@@ -1075,7 +1075,6 @@ export const teamPersonValidator = v.object({
   imageUrl: v.optional(v.string()),
 });
 /** People of the library's organization: its owners, or those who could be added. A team page reads no more members than this and refuses a larger organization. */
-export const organizationPeopleValidator = capped(v.array(teamPersonValidator), MAX_ORGANIZATION_MEMBERS_READ);
 /** People a library grants a role to directly: granting another past this is refused. */
 export const grantedPeopleValidator = capped(v.array(teamPersonValidator), MAX_LIBRARY_MEMBERS);
 /** A library's invitations waiting: inviting another past this is refused. */

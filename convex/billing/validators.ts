@@ -3,7 +3,7 @@ import { MAX_BILLING_FEATURES, MAX_BILLING_PLANS, MAX_PLAN_DETAILS, capped } fro
 
 /** A plan's limit on each of lib/billing/plans.ts PLAN_LIMITS it sets: a number, or null for unlimited. A limit left out isn't set. */
 const limitValue = v.optional(v.union(v.number(), v.null()));
-export const planLimitsValidator = v.object({ collections: limitValue, concurrency: limitValue, assistant_replies: limitValue, request_papers: limitValue });
+export const planLimitsValidator = v.object({ collections: limitValue, concurrency: limitValue, assistant_replies: limitValue, request_papers: limitValue, bulk_papers: limitValue, uploads_per_hour: limitValue });
 
 export const billingAccountSnapshotValidator = v.object({
   /** The customer's main plan id in Autumn; absent if they have none. */
@@ -46,8 +46,6 @@ export const billingAccountFields = {
   cardFetchedAt: v.optional(v.number()),
   /** Set while a refresh from Autumn is scheduled, so charges don't schedule more. */
   refreshQueuedAt: v.optional(v.number()),
-  /** The papers-at-once limit before `limits` held it; read by nothing, cleared by migrations/planLimits. */
-  concurrency: v.optional(v.number()),
 };
 
 export const usageKindValidator = v.union(

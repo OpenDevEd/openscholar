@@ -13,7 +13,7 @@ const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const };
 
 async function seed(t: ReturnType<typeof convexTest>, clerkId: string, titles: string[]) {
   return await t.run(async (ctx) => {
-    const userId = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", libraryItemCount: titles.length, createdAt: 1, updatedAt: 1 });
+    const userId = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 });
     for (const [i, title] of titles.entries()) {
       await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${clerkId}${i}`, title, searchableText: title, savedAt: 1_000 + i, updatedAt: 1_000 + i });
     }
@@ -74,7 +74,7 @@ describe("library export", () => {
 describe("search history export", () => {
   async function seedSearches(t: ReturnType<typeof convexTest>, clerkId: string, queries: string[]) {
     await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 });
+      const userId = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("queryShortcuts", { userId, data: { shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1 } });
       for (const [i, query] of queries.entries()) {
         const at = `2026-09-0${i + 1}T00:00:00.000Z`;
@@ -112,7 +112,7 @@ describe("shortcut export", () => {
     const t = convexTest(schema);
     await t.run(async (ctx) => {
       for (const clerkId of ["owner", "someone_else"]) {
-        const userId = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 });
+        const userId = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 });
         await ctx.db.insert("queryShortcuts", { userId, data: { shorthand: "rct", expansion: `randomized, "controlled" trial by ${clerkId}`, createdAt: 1_700_000_000_000 }, sortName: "rct" });
       }
     });
@@ -131,7 +131,7 @@ describe("screening export", () => {
   it("writes the owner's job a page of results at a time, and nothing of anyone else's", async () => {
     const t = convexTest(schema);
     const jobId = await t.run(async (ctx) => {
-      const user = (clerkId: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 });
+      const user = (clerkId: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 });
       const userId = await user("owner");
       await user("someone_else");
       const jobId = await insertJob(ctx, {

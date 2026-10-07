@@ -18,14 +18,15 @@ import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
-import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
+import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
+import { searchTerms } from "../lib/searchText";
 import {
   draftSectionsValidator,
   evidenceLibraryTeardownStepValidator,
   grantedPeopleValidator,
-  organizationPeopleValidator,
   revisionSectionsValidator,
   teamInvitationsValidator,
+  teamPersonValidator,
 } from "./validators";
 import {
   readLibraryRole,
@@ -831,46 +832,96 @@ export const getRevision = query({
   handler: readEvidenceLibraryRevision,
 });
 
+/** A person as the team page shows them, from their user. */
+const personOf = (clerkUserId: string, user: Doc<"users"> | null) => ({ clerkUserId, name: [user?.firstName, user?.lastName].filter(Boolean).join(" "), email: user?.email ?? "", imageUrl: user?.avatarUrl });
+const userOf = (ctx: QueryCtx, clerkUserId: string) => ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
+
 /**
- * Everyone who is, or could be added to, the library's team: active members of
- * its organization and people with a library grant, each with their role.
+ * Everyone with a role on the library, each with it: its organization's owners, read by their
+ * role, and the people it grants a role to. The organization's other members aren't read: the
+ * team picker searches them a page at a time (`listOrganizationPeople`).
  */
 async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
-  const [memberships, assignments] = await Promise.all([
+  const [owners, assignments] = await Promise.all([
+    // ponytail: an organization's owners are a handful; past MAX_LIBRARY_MEMBERS the page lists the first.
     ctx.db.query("organizationMemberships")
-      .withIndex("by_organizationId_and_state", q => q.eq("organizationId", library.organizationId).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS_READ + 1),
+      .withIndex("by_organizationId_and_state_and_role", q => q.eq("organizationId", library.organizationId).eq("state", "active").eq("role", "org:admin")).take(MAX_LIBRARY_MEMBERS),
     // A library grants at most MAX_LIBRARY_MEMBERS people (./members.ts).
     ctx.db.query("evidenceLibraryMembers")
       .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id)).take(MAX_LIBRARY_MEMBERS),
   ]);
-  if (memberships.length > MAX_ORGANIZATION_MEMBERS_READ) {
-    throw createError("VALIDATION_ERROR", `This organization has more than ${MAX_ORGANIZATION_MEMBERS_READ.toLocaleString("en")} members, more than the team page lists.`);
-  }
-  const membershipOf = new Map(memberships.map(m => [m.clerkUserId, m]));
-  const assignmentOf = new Map(assignments.map(m => [m.clerkUserId, m]));
-  const memberIds = new Set(membershipOf.keys());
-  const userIds = new Set([...memberIds, ...assignmentOf.keys()]);
-  // Roles come from the rows read above, so each person costs one more read: their user.
+  const ownerOf = new Map(owners.map(m => [m.clerkUserId, m]));
   const organization = await ctx.db.get("organizations", library.organizationId);
-  return await Promise.all([...userIds].map(async clerkUserId => {
-    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
-    return {
-      role: libraryRoleFrom(library, organization, { user, membership: membershipOf.get(clerkUserId) ?? null, assignment: assignmentOf.get(clerkUserId) ?? null }),
-      canAdd: memberIds.has(clerkUserId) && user?.state !== "deleted" && library.state !== "disabled",
-      person: { clerkUserId, name: [user?.firstName, user?.lastName].filter(Boolean).join(" "), email: user?.email ?? "", imageUrl: user?.avatarUrl },
-    };
+  const people = [...new Set([...ownerOf.keys(), ...assignments.map(a => a.clerkUserId)])];
+  return await Promise.all(people.map(async clerkUserId => {
+    const assignment = assignments.find(a => a.clerkUserId === clerkUserId) ?? null;
+    // Only an owner's membership changes their role; a grant holder's role is their grant's, in the organization or not.
+    const user = await userOf(ctx, clerkUserId);
+    return { role: libraryRoleFrom(library, organization, { user, membership: ownerOf.get(clerkUserId) ?? null, assignment }), person: personOf(clerkUserId, user) };
   }));
 }
+
+/** Members an email's words match that the invite form compares with it. */
+const MEMBERS_MATCHED = 20;
+
+/** Most people one page of the team picker holds. */
+const PEOPLE_PAGE_MAX = 50;
+
+/**
+ * Members of the library's organization who could be added to its team, a page at a time: by
+ * the words of their name or email, or as they joined. Those with a role on the library already
+ * are left off their page, which can come back short without being the last.
+ */
+export const listOrganizationPeople = query({
+  args: { libraryId: v.id("evidenceLibraries"), search: v.optional(v.string()), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(teamPersonValidator),
+  handler: async (ctx, { libraryId, search, paginationOpts }) => {
+    const { library } = await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
+    if (library.state === "disabled") return { page: [], isDone: true, continueCursor: "" };
+    const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PEOPLE_PAGE_MAX) };
+    const terms = searchTerms(search);
+    const read = await (terms
+      ? ctx.db.query("organizationMemberships").withSearchIndex("search_member_text", q => q.search("searchText", terms).eq("organizationId", library.organizationId).eq("state", "active"))
+      : ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", q => q.eq("organizationId", library.organizationId).eq("state", "active"))
+    ).paginate(opts);
+    const page = await Promise.all(read.page.map(async membership => {
+      if (membership.role === "org:admin") return [];
+      const user = await userOf(ctx, membership.clerkUserId);
+      if (user?.state === "deleted") return [];
+      const granted = await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", libraryId).eq("clerkUserId", membership.clerkUserId)).first();
+      return granted ? [] : [personOf(membership.clerkUserId, user)];
+    }));
+    return { ...read, page: page.flat() };
+  },
+});
+
+/** Whether someone with this email is an active member of the library's organization: they're added from it, not invited. */
+export const isOrganizationPerson = query({
+  args: { libraryId: v.id("evidenceLibraries"), email: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { libraryId, email }) => {
+    const { library } = await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
+    // Clerk keeps an email in the case it was given: the organization's members are searched by its words, and compared whatever the case.
+    const wanted = email.trim().toLowerCase();
+    const terms = searchTerms(wanted);
+    if (!terms) return false;
+    const found = await ctx.db.query("organizationMemberships").withSearchIndex("search_member_text", q => q.search("searchText", terms).eq("organizationId", library.organizationId).eq("state", "active")).take(MEMBERS_MATCHED);
+    for (const membership of found) {
+      const user = await userOf(ctx, membership.clerkUserId);
+      if (user && user.state !== "deleted" && user.email.toLowerCase() === wanted) return true;
+    }
+    return false;
+  },
+});
 
 /** Owners manage explicit library grants and inherited organization owners. */
 export const listTeam = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.object({
     organizationName: v.string(),
-    owners: organizationPeopleValidator,
+    owners: grantedPeopleValidator,
     editors: grantedPeopleValidator,
     creators: grantedPeopleValidator,
-    availablePeople: organizationPeopleValidator,
     invitations: teamInvitationsValidator,
   }),
   handler: async (ctx, args) => {
@@ -884,7 +935,6 @@ export const listTeam = query({
       owners: people.filter(p => p.role === "owner").map(p => p.person),
       editors: people.filter(p => p.role === "editor").map(p => p.person),
       creators: people.filter(p => p.role === "creator").map(p => p.person),
-      availablePeople: people.filter(p => !p.role && p.canAdd).map(p => p.person),
     };
   },
 });

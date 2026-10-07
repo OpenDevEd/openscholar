@@ -38,6 +38,8 @@ export type MapModel = {
   defaultEffort?: Effort;
   /** Artificial Analysis Intelligence Index; absent when unmeasured. */
   intelligenceIndex?: number;
+  /** What the model takes in besides text, as OpenRouter lists it: "image", "file" and so on. */
+  inputs?: string[];
 };
 
 /** Whether a model takes a reasoning effort. */
@@ -80,6 +82,9 @@ export function toMapModel(
     reasoningEfforts?: Effort[];
     defaultEffort?: Effort;
     intelligenceIndex?: number;
+    /** As the model summary has them, or as the catalog's modality string says ("text+image+file->text"). */
+    inputModalities?: string[];
+    modality?: string;
   },
   effort?: Effort | null,
 ): PickedModel {
@@ -92,6 +97,7 @@ export function toMapModel(
     reasoningEfforts: row.reasoningEfforts,
     defaultEffort: row.defaultEffort,
     intelligenceIndex: row.intelligenceIndex,
+    inputs: row.inputModalities ?? row.modality?.split("->")[0]?.split("+"),
     ...(effort && { effort }),
   };
 }

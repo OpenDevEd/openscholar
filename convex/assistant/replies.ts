@@ -37,10 +37,13 @@ import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
 import { JOB_ENDED } from "./jobEnds";
 import { bulkOf, detailsOf } from "./details";
-import { allowAlways, carriedOn, covers, noteReply, pausedAt, replyLimitOf } from "./spending";
+import { TOOL_OF, allowAlways, allowTool, carriedOn, covers, noteReply, pausedAt, replyLimitOf } from "./spending";
 import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
-import { askedDetailsValidator, askedEachValidator, assistantPausedValidator, jobsEndedValidator, JOBS_TOLD_AT_ONCE } from "./validators";
+import { filesOf, partsFor, sent } from "./files";
+import { readsImages, readsPdfs } from "../../lib/assistant/files";
+import { stripProviderPrefix } from "../../lib/ai/model-display";
+import { askedDetailsValidator, askedEachValidator, assistantPausedValidator, attachedFilesValidator, jobsEndedValidator, JOBS_TOLD_AT_ONCE, sentFileIdsValidator, webSourcesValidator } from "./validators";
 import { searchHref } from "../research/searches";
 import { searchSettings } from "../research/searchValidators";
 
@@ -98,10 +101,10 @@ async function endDead(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
 }
 
 export const send = mutation({
-  // `view`: the address of the page the message is sent from, its path and parameters.
-  args: { threadId: v.id("assistantThreads"), text: v.string(), view: v.optional(v.string()) },
+  // `view`: the address of the page the message is sent from, its path and parameters. `files`: what the person attached to it (./files.ts).
+  args: { threadId: v.id("assistantThreads"), text: v.string(), view: v.optional(v.string()), files: sentFileIdsValidator },
   returns: v.null(),
-  handler: async (ctx, { threadId, text, view: address }) => {
+  handler: async (ctx, { threadId, text, view: address, files = [] }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     if (!text.trim()) throw createError("VALIDATION_ERROR", "Write a message first.");
@@ -113,6 +116,16 @@ export const send = mutation({
     if (thread.asking?.paused) throw createError("CONFLICT", "The assistant's reply is paused in this chat. Carry it on, or stop it.");
     if (thread.asking) throw createError("CONFLICT", "The assistant is waiting for an answer in this chat. Answer it, or stop the reply.");
     await admit(ctx, userId);
+    // The model reads what the person attached with the message: images as they are, PDFs a range of pages at a time.
+    const attached = files.length ? await partsFor(ctx, userId, files) : { parts: [], images: false, pdfs: false };
+    const images = attached.parts;
+    if (attached.images || attached.pdfs) {
+      const { modelId } = await chatModel(ctx, thread, userId);
+      const model = modelId ? await ctx.db.get("models", modelId) : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
+      const name = model ? stripProviderPrefix(model.name) : "This chat's model";
+      if (attached.images && !readsImages(model?.inputModalities)) throw createError("VALIDATION_ERROR", `${name} can't read images. Pick another model for this chat to send them.`);
+      if (attached.pdfs && !readsPdfs(model?.inputModalities)) throw createError("VALIDATION_ERROR", `${name} can't read PDFs. Pick another model for this chat to send them.`);
+    }
     // A reply that was stopped, or died, around asking the person can leave calls without their results.
     await settleAsked(ctx, threadId);
     await healCalls(ctx, thread.agentThreadId);
@@ -147,12 +160,13 @@ export const send = mutation({
     const { messageId, message } = await assistant.saveMessage(ctx, {
       threadId: thread.agentThreadId,
       userId,
-      // What this person undid goes with their message, whether or not the place changed.
-      ...(moved || undone.length
-        ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: notePart({ page: view ?? undefined, today, chat: threadId, undone }) }] } }
+      // What this person undid goes with their message, whether or not the place changed. Their words come first, which is what the chat shows (`typed`).
+      ...(moved || undone.length || images.length
+        ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, ...images, ...(moved || undone.length ? [{ type: "text" as const, text: notePart({ page: view ?? undefined, today, chat: threadId, undone }) }] : [])] } }
         : { prompt: text }),
       skipEmbeddings: true,
     });
+    if (files.length) await sent(ctx, files, { threadId, messageId });
     if (mine.length || more) {
       const counts = (thread.undoneMore ?? []).filter((entry) => entry.userId !== userId);
       await ctx.db.patch("assistantThreads", threadId, { undone: others.length ? others : undefined, undoneMore: counts.length ? counts : undefined });
@@ -222,10 +236,20 @@ export const answer = mutation({
     // A yes to a call that holds more than the person has starts nothing: it waits while they add credits, as its card says.
     const balance = allow && step.credits !== undefined ? await availableCredits(ctx, userId) : 0;
     if (allow && step.credits !== undefined && step.credits > balance) throw createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
-    if (allow && always && step.credits !== undefined) {
+    const tool = TOOL_OF[step.path];
+    // What else waits is allowed with it only while the balance covers this call and each one allowed before it.
+    let room = balance - (step.credits ?? 0);
+    const fits = (credits: number) => credits <= room && ((room -= credits), true);
+    if (allow && always && tool) {
+      // A web search or a PDF read is allowed by its own switch, and so is whatever else waits of the same kind.
+      await allowTool(ctx, threadId, userId, tool, true);
+      const covered = left.filter((other) => TOOL_OF[other.path] === tool && fits(other.credits ?? 0));
+      for (const other of covered) await ctx.db.patch("assistantSteps", other._id, { status: "allowed" });
+      left = left.filter((other) => !covered.includes(other));
+    } else if (allow && always && step.credits !== undefined) {
       // As opencode's "always" does for a session: the rule is kept, and what else waits that it now covers is allowed with it.
       const allowance = await allowAlways(ctx, threadId, userId, step.credits);
-      const covered = left.filter((other) => other.credits !== undefined && covers(allowance, other.credits, balance));
+      const covered = left.filter((other) => other.credits !== undefined && !TOOL_OF[other.path] && covers(allowance, other.credits, room) && fits(other.credits));
       for (const other of covered) await ctx.db.patch("assistantSteps", other._id, { status: "allowed" });
       left = left.filter((other) => !covered.includes(other));
     }
@@ -605,6 +629,8 @@ const stepValidator = v.object({
   href: v.optional(v.string()),
   /** How many things it found, when its result lists any. */
   count: v.optional(v.number()),
+  /** On a web search (#648): the pages it found, which the reply cites. */
+  sources: webSourcesValidator,
   /** The most it holds, on a call that spends credits (#328). */
   credits: v.optional(v.number()),
   /** On a call that asks first: what it does can reach other people too. Otherwise it asks because it can't be undone. */
@@ -662,6 +688,8 @@ const messageValidator = v.object({
   model: v.optional(v.string()),
   /** A reply's message that also ran actions: the reply goes on after it. */
   acted: v.optional(v.boolean()),
+  /** What a person's message carried (./files.ts). */
+  files: attachedFilesValidator,
   at: v.number(),
 });
 
@@ -762,6 +790,12 @@ export const messagesAction = defineUserQuery({
     const details = new Map(
       await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: withoutVariant(await detailsOf(ctx, reader!, step.shown ?? step.input), step) } : bulkWithoutVariant(await bulkOf(ctx, reader!, step), step)] as const)),
     );
+    // What each person's message carried: images as parts of it, PDFs as notes the model reads them by.
+    const attached = new Map(
+      await Promise.all(
+        asked.filter((row) => Array.isArray(row.message?.content) && row.message.content.length > 1).map(async (row) => [row._id, await filesOf(ctx, row._id)] as const),
+      ),
+    );
     // The jobs each of the app's job-ended messages told the chat of.
     const told = new Map<string, Doc<"assistantJobEnds">[]>(
       await Promise.all(
@@ -798,6 +832,7 @@ export const messagesAction = defineUserQuery({
           role,
           order: row.order,
           text: role === "user" ? typed(row) : (row.text ?? ""),
+          ...(attached.get(row._id)?.length ? { files: attached.get(row._id) } : {}),
           status: pending ? ("pending" as const) : stopped ? ("stopped" as const) : row.status === "success" ? ("done" as const) : ("failed" as const),
           ...(error && !stopped
             ? {
@@ -883,6 +918,7 @@ function shownStep(
     ...variantOf(step),
     ...(step.subject ? { subject: step.subject, ...hrefOf(step) } : {}),
     ...(step.count === undefined ? {} : { count: step.count }),
+    ...(step.sources?.length ? { sources: step.sources } : {}),
     ...(step.credits === undefined ? {} : { credits: step.credits }),
     ...(step.outside ? { outside: true as const } : {}),
     status: shownStatus(step.status, answering === step.order),

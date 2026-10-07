@@ -135,6 +135,7 @@ export const reply = internalAction({
         compactedThrough: read.compactedThrough,
         agentThreadId,
         promptMessageId,
+        modelId,
         onHistory: (read) => {
           history = read;
         },
@@ -196,7 +197,7 @@ export const compact = internalAction({
     try {
       if (!(await shouldStop())) {
         // A reply can be summarized more than once as it goes, and one that couldn't be written is tried again after its next request: each try is a charge of its own.
-        written = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, chargeId: `chat:${attemptId}:through:${through}:${resume?.used.rounds ?? "end"}:summary`, shouldStop });
+        written = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, midReply: resume !== undefined, chargeId: `chat:${attemptId}:through:${through}:${resume?.used.rounds ?? "end"}:summary`, shouldStop });
       }
     } catch (error) {
       console.error("[assistant] compaction failed", { threadId, error: errorToLogString(error) });

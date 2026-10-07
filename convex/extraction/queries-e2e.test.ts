@@ -71,7 +71,7 @@ describe("SN-3 public queries resolve against a seeded job graph", () => {
     const { t, ids } = await seedAndAuth();
     const res = await t.query(internal.extraction.queries.getJobDetailsForAssistant, { userId: ids.userId, jobId: ids.jobId } as never);
     expect(res).toMatchObject({ status: "ok", job: { name: "Test Job" }, questions: [{ key: expect.any(String), question: expect.any(String) }] });
-    const stranger = await t.run((ctx) => ctx.db.insert("users", { libraryItemCount: 0, clerkId: "clerk_stranger", email: "stranger@test.com", state: "active", createdAt: 1, updatedAt: 1 }));
+    const stranger = await t.run((ctx) => ctx.db.insert("users", { clerkId: "clerk_stranger", email: "stranger@test.com", state: "active", createdAt: 1, updatedAt: 1 }));
     expect(await t.query(internal.extraction.queries.getJobDetailsForAssistant, { userId: stranger, jobId: ids.jobId } as never)).toMatchObject({ status: "no_access" });
   });
 

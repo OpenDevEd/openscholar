@@ -20,6 +20,7 @@ export const TOPUP_PLAN = "top_up";
  * - concurrency: papers a person may have running at once in each pool (screening, extraction).
  * - assistant_replies: replies the assistant may be writing for a person at once.
  * - request_papers: papers one screening or extraction request may take.
+ * - uploads_per_hour: files a person may attach to assistant chats in an hour (#647).
  */
-export const PLAN_LIMITS = ["collections", "concurrency", "assistant_replies", "request_papers"] as const;
+export const PLAN_LIMITS = ["collections", "concurrency", "assistant_replies", "request_papers", "bulk_papers", "uploads_per_hour"] as const;
 export type PlanLimit = (typeof PLAN_LIMITS)[number];

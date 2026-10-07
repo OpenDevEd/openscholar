@@ -142,7 +142,7 @@ describe("what the assistant's model is sent", () => {
     mockDoStream.mockImplementation(finishingDoStream(["Answer"]));
     await say("And now?", "/library?col=collection-9");
     await say("And again?", "/library?col=collection-9");
-    expect(asked(requests.at(-1) as Sent)).toEqual([`user: And now?${note("/library?col=collection-9")}`, "user: And again?"]);
+    expect(asked(requests.at(-1) as Sent)).toEqual([expect.stringMatching(/^user: [\s\S]*summary:\n\nDecisions\nNone$/), `user: And now?${note("/library?col=collection-9")}`, "user: And again?"]);
 
     // A new day is said once too, with the page they're still on, and a message sent from no page of the app says the date alone.
     await t.run(async (ctx) => {
@@ -176,7 +176,7 @@ describe("what the assistant's model is sent", () => {
     // The next request starts from the summary, and the ones after it grow from there.
     mockDoStream.mockImplementation(finishingDoStream(["Answer 3"]));
     await say("Question 3");
-    expect(said(sent(3))).toEqual([`system: ${INSTRUCTIONS}`, expect.stringMatching(/^system: .*summary:\n\nDecisions\nKeep trials only\.$/s), "user: Question 3"]);
+    expect(said(sent(3))).toEqual([`system: ${INSTRUCTIONS}`, expect.stringMatching(/^user: .*summary:\n\nDecisions\nKeep trials only\.$/s), "user: Question 3"]);
     mockDoStream.mockImplementation(finishingDoStream(["Answer 4"]));
     await say("Question 4");
     expect(JSON.stringify(sent(4).slice(0, sent(3).length))).toBe(JSON.stringify(sent(3)));
@@ -217,7 +217,7 @@ describe("what the assistant's model is sent", () => {
     expect(JSON.stringify(sent(1))).toContain('"toolCallId":"first"');
     expect(await thread()).toMatchObject({ summary: expect.stringContaining("List the collections once more."), compactedThrough: 1 });
     // The reply goes on in an exchange of its own: the summary, then a message that tells it to carry on.
-    expect(said(sent(2))).toEqual([`system: ${INSTRUCTIONS}`, expect.stringMatching(/^system: [\s\S]*summary:\n\nDecisions/), `user: ${CARRY_ON}`]);
+    expect(said(sent(2))).toEqual([`system: ${INSTRUCTIONS}`, expect.stringMatching(/^user: [\s\S]*summary:\n\nDecisions/), `user: ${CARRY_ON}`]);
     // The request after it grows from there: the second action and its result.
     expect(JSON.stringify(sent(3).slice(0, 3))).toBe(JSON.stringify(sent(2)));
     expect(JSON.stringify(sent(3))).toContain('"toolCallId":"second"');
@@ -230,7 +230,7 @@ describe("what the assistant's model is sent", () => {
     // A later message reads the summary, then what the reply went on to write, whole.
     mockDoStream.mockImplementation(finishingDoStream(["Answer 3"]));
     await say("Question 3");
-    expect(said(sent(4)).filter((line) => /^(user|assistant): ./.test(line))).toEqual([`user: ${CARRY_ON}`, "assistant: Answer 2", "user: Question 3"]);
+    expect(said(sent(4)).filter((line) => /^(user|assistant): ./.test(line))).toEqual([expect.stringMatching(/^user: [\s\S]*summary:\n\nDecisions/), `user: ${CARRY_ON}`, "assistant: Answer 2", "user: Question 3"]);
     expect(JSON.stringify(sent(4))).toContain('"toolCallId":"second"');
     expect(JSON.stringify(sent(4))).not.toContain('"toolCallId":"first"');
 

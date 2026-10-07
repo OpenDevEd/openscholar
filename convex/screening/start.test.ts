@@ -38,8 +38,8 @@ async function setup({ saved = 6, inCollection = 4, credits = 100_000 } = {}) {
   const t = convexTest(schema);
   setupScreeningWorkpool(t);
   const seeded = await t.run(async (ctx) => {
-    const userId = await ctx.db.insert("users", { libraryItemCount: saved, clerkId: "alice", email: "alice@example.com", state: "active", createdAt: 1, updatedAt: 1 });
-    await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "bob", email: "bob@example.com", state: "active", createdAt: 1, updatedAt: 1 });
+    const userId = await ctx.db.insert("users", { clerkId: "alice", email: "alice@example.com", state: "active", createdAt: 1, updatedAt: 1 });
+    await ctx.db.insert("users", { clerkId: "bob", email: "bob@example.com", state: "active", createdAt: 1, updatedAt: 1 });
     await seedCreditsForTest(ctx, { userId, free: credits });
     await ctx.db.insert("libraryCounts", { userId, count: saved });
     await ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: PRICE.input, outputPricePerMillion: PRICE.output, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: [], syncedAt: 1, createdAt: 1, updatedAt: 1 });

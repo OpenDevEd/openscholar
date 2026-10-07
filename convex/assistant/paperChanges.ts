@@ -10,12 +10,15 @@ import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { heldPapers } from "../paperSets/held";
-import { readSearchWorks } from "../paperSets/openalex";
-import { PAPERS_A_READ, SCREENING_FIELDS, checkRange, keptByRating, searchPapers, spender, toPaper, type SavedSearchRequest, type SearchPaper, type Work } from "../paperSets/search";
+import { readSearchRun, readSearchWorks, type SearchSnapshot } from "../paperSets/openalex";
+import { PAPERS_A_READ, SCREENING_FIELDS, keptByRating, searchPapers, spender, toPaper, type SavedSearchRequest, type SearchPaper, type Work } from "../paperSets/search";
 import { workUrl } from "../../lib/openalex/work-id";
 
-/** Papers one bulk change takes: as many as one read of a set. */
-export const PAPERS_MAX = PAPERS_A_READ;
+/**
+ * Papers one bulk change takes at most, whatever the person's plan allows (`bulk_papers`):
+ * the reply reads them all, and makes every change, before it goes on.
+ */
+export const BULK_CEILING = 10_000;
 /** Papers OpenAlex is asked for by ID in one request: its filter takes this many values. */
 const IDS_A_REQUEST = 50;
 
@@ -58,17 +61,44 @@ export type ChangePapers = { papers: PaperSet; first?: number | null; last?: num
 const invalid = (message: string) => createError("VALIDATION_ERROR", message);
 
 /**
+ * Papers of a set one bulk change looks through at most: a rating filter that keeps few of a
+ * broad query's papers would otherwise read page after page of OpenAlex for them.
+ */
+const SCANNED_MAX = 20_000;
+
+/** Reads a set a piece at a time, each carrying on from where the last stopped, until `last`, the set's end, or `enough` papers. */
+async function readPieces(first: number, last: number, enough: number, piece: (from: number, to: number, resume?: string) => Promise<{ papers: SearchPaper[]; taken: number; resume?: string; ended: boolean }>) {
+  const papers: SearchPaper[] = [];
+  let resume: string | undefined;
+  for (let from = first; from <= last; ) {
+    if (from - first >= SCANNED_MAX) throw invalid(`Its rating filter keeps few of the first ${SCANNED_MAX.toLocaleString("en")} papers, so a change can't go through them all. Name a range with first and last, or narrow the query.`);
+    // No more than the papers still wanted: a page that skips to `first` takes none, and the read carries on from where it stopped.
+    const read = await piece(from, Math.min(last, from + Math.min(PAPERS_A_READ, enough - papers.length) - 1), resume);
+    papers.push(...read.papers);
+    if (read.ended || !read.resume || papers.length >= enough) break;
+    resume = read.resume;
+    from += read.taken;
+  }
+  return papers;
+}
+
+/**
  * The set's papers `first` to `last` (from 1), in its own order: a query's and a saved
  * search's as their results list them, a collection's and the library's newest saved first, a
- * screening's included papers in the order it took them. Left out, they are the whole set,
- * as far as one bulk change goes: the person is asked with how many that is. Papers named by
- * ID come as OpenAlex has them. Each page read from OpenAlex counts against the person's allowance.
+ * screening's included papers in the order it took them. Left out, they are the whole set.
+ * Either way no more than the person's plan changes in one go (`bulk_papers`): a range or set
+ * past it is refused, read no further than one paper past it. Papers named by ID come as
+ * OpenAlex has them. Each page read from OpenAlex counts against the person's allowance.
  */
 export async function papersOf(ctx: ActionCtx, userId: Id<"users">, { papers: set, first: start, last: end }: Pick<ChangePapers, "papers" | "first" | "last">): Promise<SearchPaper[]> {
+  // Typed here: the generated API's types depend on this module, so inference would loop.
+  const allowed: number | null = await ctx.runQuery(internal.billing.accounts.planLimitOf, { userId, limit: "bulk_papers" });
+  const most = Math.min(allowed ?? BULK_CEILING, BULK_CEILING);
+  const tooMany = () => invalid(`The person's plan changes up to ${most.toLocaleString("en")} papers in one go. Name a range of the set with first and last, or a smaller set.`);
   if (set.kind === "ids") {
     const ids = [...new Set(set.ids.map((id) => workUrl(id)?.split("/").at(-1)))].filter((id): id is string => id !== undefined);
     if (!ids.length) throw invalid("None of these is a paper's ID, such as W2741809807.");
-    if (ids.length > PAPERS_MAX) throw invalid(`One call changes up to ${PAPERS_MAX.toLocaleString("en")} papers.`);
+    if (ids.length > most) throw tooMany();
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
@@ -81,18 +111,39 @@ export async function papersOf(ctx: ActionCtx, userId: Id<"users">, { papers: se
     return found.map(toPaper);
   }
   const first = start ?? 1;
-  const last = end ?? first + PAPERS_MAX - 1;
-  checkRange(first, last);
+  if (!Number.isSafeInteger(first) || first < 1 || (end != null && (!Number.isSafeInteger(end) || end < first))) throw invalid("Pick papers from 1 up, with the first before the last.");
+  if (end != null && end - first + 1 > most) throw tooMany();
+  // Left out, the whole set, read until one paper past what the plan allows says it holds more: papers a rating filter drops don't count.
+  const last = end ?? Number.MAX_SAFE_INTEGER;
+  const enough = most + 1;
+  let papers: SearchPaper[];
   if (set.kind === "query") {
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, query: set.query ?? undefined, settings: (set.filters ?? {}) as never });
     if (!found.request) throw invalid("This query isn't one OpenAlex can read. Check its brackets and quotes.");
-    const works = await readSearchWorks<Work>(found.request, { first, last, select: SCREENING_FIELDS }, spender(ctx, found.clerkId));
-    return keptByRating(ctx, userId, works.map(toPaper), found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined);
+    const request = found.request;
+    const rating = found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined;
+    papers = await readPieces(first, last, enough, async (from, to, resume) => {
+      const { works, ended, resume: next } = await readSearchRun<Work>(request, { first: from, last: to, select: SCREENING_FIELDS, resume, goesOn: true }, spender(ctx, found.clerkId));
+      return { papers: await keptByRating(ctx, userId, works.map(toPaper), rating), taken: works.length, ended, ...(next ? { resume: next } : {}) };
+    });
+  } else if (set.kind === "search") {
+    // Every piece reads the search as the first found it.
+    let snapshot: SearchSnapshot | undefined;
+    papers = await readPieces(first, last, enough, async (from, to, resume) => {
+      const read = await searchPapers(ctx, userId, { searchId: set.searchId, first: from, last: to }, snapshot, { resume, goesOn: true });
+      snapshot = read.snapshot;
+      return read;
+    });
+  } else {
+    const held = set.kind === "collection" ? { kind: set.kind, collectionId: set.collectionId as Id<"collections"> } : set.kind === "screening" ? { kind: set.kind, jobId: set.jobId as Id<"screeningJobs"> } : { kind: "saved" as const };
+    papers = await readPieces(first, last, enough, async (from, to, resume) => {
+      const read = await heldPapers(ctx, userId, held, { first: from, last: to }, resume);
+      return { papers: read.papers, taken: to - from + 1, ended: !read.resume, ...(read.resume ? { resume: read.resume } : {}) };
+    });
   }
-  if (set.kind === "search") return (await searchPapers(ctx, userId, { searchId: set.searchId, first, last })).papers;
-  const held = set.kind === "collection" ? { kind: set.kind, collectionId: set.collectionId as Id<"collections"> } : set.kind === "screening" ? { kind: set.kind, jobId: set.jobId as Id<"screeningJobs"> } : { kind: "saved" as const };
-  return (await heldPapers(ctx, userId, held, { first, last })).papers;
+  if (papers.length > most) throw tooMany();
+  return papers;
 }
 
 /** A paper as the library keeps it: what a results card holds, with the venue as its journal. */

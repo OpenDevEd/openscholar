@@ -3270,7 +3270,10 @@
     "free": "免费",
     "source": "Artificial Analysis 智能指数",
     "back": "返回模型列表",
-    "default": "默认"
+    "default": "默认",
+    "reads": "可读取",
+    "readsImages": "可读取图片",
+    "readsPdfs": "可读取 PDF"
   },
   "assistant": {
     "activity": {
@@ -3780,6 +3783,18 @@
         "doing": "正在你的账户中查找",
         "did": "已在你的账户中找到",
         "where": "你的账户"
+      },
+      "webSearch": {
+        "doing": "正在搜索网页",
+        "did": "已搜索网页",
+        "where": "网页",
+        "ask": "搜索网页"
+      },
+      "readFile": {
+        "doing": "正在阅读文件",
+        "did": "已阅读文件",
+        "where": "附件",
+        "ask": "阅读文件"
       }
     },
     "asks": {
@@ -3816,7 +3831,11 @@
         "prune": "排除的论文移出",
         "rating": "评分",
         "change": "更改",
-        "usePdfs": "全文"
+        "usePdfs": "全文",
+        "query": "查询",
+        "file": "文件",
+        "pages": "页",
+        "range": "范围"
       }
     },
     "topUp": {
@@ -3890,6 +3909,37 @@
       "screening": "筛选",
       "extraction": "提取"
     },
-    "moreJobs": "另外 {count} 个任务"
+    "moreJobs": "另外 {count} 个任务",
+    "files": {
+      "attach": "添加文件",
+      "pasted": "粘贴的图片",
+      "onlyImages": "仅限图片、PDF 和文本文件",
+      "tooLarge": "超过 {mb} MB",
+      "unreadable": "无法读取此图片",
+      "failed": "无法上传此文件",
+      "remove": "移除",
+      "removeNamed": "移除 {name}",
+      "expired": "已过期，请重新添加",
+      "drop": "拖放文件即可添加",
+      "anImage": "一张图片",
+      "modelCant": "{model} 无法读取图片。请选择其他模型来添加图片。",
+      "notUploaded": "{count, plural, other {# 个文件未能上传}}。请移除或重新添加。",
+      "tooMany": "每条消息最多 {count} 个文件",
+      "tooLargePdf": "超过 {mb} MB",
+      "pages": "{count, plural, other {# 页}}",
+      "aPdf": "一个 PDF",
+      "modelCantPdf": "{model} 无法读取 PDF。请选择其他模型来添加。",
+      "openPage": "在第 {page} 页打开 {name}",
+      "tooLargeText": "超过 {mb} MB",
+      "lines": "{count, plural, other {# 行}}",
+      "aTextFile": "一个文本文件"
+    },
+    "allowed": {
+      "web": "网页搜索",
+      "stopWeb": "搜索网页前先询问",
+      "files": "阅读文件",
+      "stopFiles": "阅读文件前先询问"
+    },
+    "webSources": "{count, plural, other {# 个网页来源}}"
   }
 }

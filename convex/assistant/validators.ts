@@ -6,6 +6,7 @@ import { v } from "convex/values";
 import { effortValidator } from "../aiModelConfig/validators";
 import { capped } from "../lib/listCaps";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
+import { MAX_FILES_PER_MESSAGE, MAX_PDF_CHUNKS } from "../../lib/assistant/files";
 import { MENTION_KINDS } from "../../lib/assistant/mentions";
 
 /** What someone may do in a chat: the owner also shares, renames and deletes it; `write` sends messages; `read` only reads. */
@@ -85,6 +86,9 @@ export const assistantLimitFields = {
   replyLimit: v.optional(v.number()),
   /** Set while jobs that spend credits run in this chat without asking (#328): the most one may hold, or any amount with no `cap`. */
   jobs: v.optional(assistantAllowanceValidator),
+  /** Set while the assistant searches the web, or reads attached files, in this chat without asking (#648). */
+  web: v.optional(v.literal(true)),
+  files: v.optional(v.literal(true)),
 };
 
 /** A person's own record with the assistant: what the chats they start take, and what their last replies cost. */
@@ -145,12 +149,20 @@ export const assistantThreadFields = {
 };
 
 /** One action the assistant ran in a reply (./steps.ts). */
+/** The most web sources one search keeps for its citations. */
+export const WEB_SOURCES_KEPT = 10;
+/** A web page a search found: its title, address and a few lines of what it says. */
+export const webSourceValidator = v.object({ title: v.string(), url: v.string(), excerpt: v.string() });
+export const webSourcesValidator = capped(v.optional(v.array(webSourceValidator)), WEB_SOURCES_KEPT);
+
 export const assistantStepFields = {
   threadId: v.id("assistantThreads"),
   /** The exchange it belongs to: the agent component's order of the message being answered. */
   order: v.number(),
   /** Who it ran as: the person whose message was being answered. Only they can undo it. */
   userId: v.id("users"),
+  /** On a web search (#648): what it found, for the reply's citations and its list of sources. */
+  sources: webSourcesValidator,
   /** The model's ID for the call. Models reuse these, so nothing is looked up by it. */
   toolCallId: v.string(),
   /**
@@ -335,3 +347,45 @@ export const jobsEndedValidator = capped(
   v.array(v.object({ kind: v.union(v.literal("screening"), v.literal("extraction")), jobId: v.string(), status: v.string(), stepId: v.id("assistantSteps") })),
   JOBS_TOLD_AT_ONCE,
 );
+
+/**
+ * A file a person attached to an assistant chat (#647, ./files.ts). It belongs to them until
+ * it's sent, then to the chat and the message it went with, and goes when the chat does.
+ * One no reply has read for a while loses its bytes and stays as a name, so its message can
+ * say it expired.
+ */
+export const assistantFileFields = {
+  userId: v.id("users"),
+  /** Set once it's sent. */
+  threadId: v.optional(v.id("assistantThreads")),
+  /** The agent's ID for the message it went with. */
+  messageId: v.optional(v.string()),
+  /** Absent once it has expired. */
+  storageId: v.optional(v.id("_storage")),
+  name: v.string(),
+  bytes: v.number(),
+  mediaType: v.string(),
+  state: v.union(v.literal("pending"), v.literal("sent"), v.literal("expired")),
+  /** When it was attached, or last went to the model. */
+  usedAt: v.number(),
+  /** The digest of the token its bytes are uploaded with, until they are. */
+  uploadDigest: v.optional(v.string()),
+  /** A PDF's parts as they arrive (./files.ts `upload`), until they're joined into one file. */
+  chunks: capped(v.optional(v.array(v.id("_storage"))), MAX_PDF_CHUNKS),
+  /** A PDF's (#648): how many pages it has. */
+  pages: v.optional(v.number()),
+  /** A text file's: how many lines it has. */
+  lines: v.optional(v.number()),
+  /** Pages a read cut from a PDF (`readPdf`): the PDF, and which pages, such as "3-7". */
+  parentId: v.optional(v.id("assistantFiles")),
+  range: v.optional(v.string()),
+};
+
+/** A file a person's message carried, as the chat shows it: no address once it expired (./files.ts). */
+export const attachedFileValidator = v.object({ id: v.string(), name: v.string(), bytes: v.number(), mediaType: v.string(), url: v.union(v.string(), v.null()), pages: v.optional(v.number()), lines: v.optional(v.number()) });
+export const attachedFilesValidator = capped(v.optional(v.array(attachedFileValidator)), MAX_FILES_PER_MESSAGE);
+/** The PDFs a reply cites that the panel can't place (./files.ts `cited`), by ID or name: asked for, and found, a message's worth at a time. */
+export const citedFileIdsValidator = capped(v.array(v.string()), MAX_FILES_PER_MESSAGE);
+export const citedFilesValidator = capped(v.array(v.object({ id: v.string(), name: v.string(), url: v.union(v.string(), v.null()) })), MAX_FILES_PER_MESSAGE);
+/** The files a message is sent with. */
+export const sentFileIdsValidator = capped(v.optional(v.array(v.id("assistantFiles"))), MAX_FILES_PER_MESSAGE);

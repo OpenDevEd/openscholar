@@ -13,7 +13,7 @@ import { setupScreeningWorkpool } from "./workpool.test-support";
 describe("Screen all answers next to a person's", () => {
   async function seedJob(t: TestConvex<typeof schema>, questions: Array<{ key: string; question: string }>) {
     return t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "alice", email: "a@test", state: "active", createdAt: 1, updatedAt: 1 });
+      const userId = await ctx.db.insert("users", { clerkId: "alice", email: "a@test", state: "active", createdAt: 1, updatedAt: 1 });
       const screeningId = await ctx.db.insert("screenings", { userId, version: 0, createdAt: 1 });
       const jobId = await insertJob(ctx, { userId, status: "completed", totalPapers: 1, questions, scoringConfig: { rules: [], starThresholds: [] }, screeningId, createdAt: 1, updatedAt: 1 });
       return { userId, screeningId, jobId };
@@ -80,7 +80,7 @@ describe("a model answer saved before the model's own part existed", () => {
   it("keeps it as the model's when a person changes it", async () => {
     const t = convexTest(schema);
     const screeningId = await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "alice", email: "a@test", state: "active", createdAt: 1, updatedAt: 1 });
+      const userId = await ctx.db.insert("users", { clerkId: "alice", email: "a@test", state: "active", createdAt: 1, updatedAt: 1 });
       const screeningId = await ctx.db.insert("screenings", { userId, version: 1, createdAt: 1 });
       await ctx.db.insert("screeningAnswers", { screeningId, paperId: "https://openalex.org/W1", answers: [{ question: "Randomized?", answer: true, setBy: "model", updatedAt: 5 }] });
       return screeningId;

@@ -29,5 +29,76 @@
   },
   "argumentSizedTakes": {
     "bounded": {}
+  },
+  "caps": {
+    "enforced": {
+      "MAX_LIBRARY_MEMBERS": "convex/evidenceLibraries/members.ts:assertLibraryHasRoom",
+      "MAX_LIBRARY_GRANTS_PER_PERSON": "convex/evidenceLibraries/members.ts:assertPersonHasRoom",
+      "MAX_FEATURE_FLAGS": "convex/featureFlags/internal.ts",
+      "MAX_PENDING_INVITATIONS_PER_EMAIL": "convex/evidenceLibraries/invitations.ts",
+      "MAX_PENDING_INVITATIONS_PER_LIBRARY": "convex/evidenceLibraries/invitations.ts",
+      "MAX_PENDING_INVITATIONS_PER_PROFILE": "convex/authors/invitations.ts",
+      "MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL": "convex/authors/invitations.ts",
+      "MAX_PROFILE_MEMBERS": "convex/authors/invitations.ts",
+      "MAX_ZOTERO_GROUPS_PER_LIBRARY": "convex/zotero/libraryGroups.ts",
+      "MAX_EVIDENCE_LIBRARY_DOMAINS": "convex/evidenceLibraries/domains.ts",
+      "MAX_CATALOG_MODELS": "convex/models/mutations.ts",
+      "MAX_ASSISTANT_THREAD_GRANTS": "convex/assistant/sharing.ts",
+      "MAX_CREDENTIALS_PER_LIBRARY": "convex/evidenceLibraries/credentials.ts",
+      "MAX_QUESTIONS_PER_JOB": "convex/extraction/mutations/jobs.ts",
+      "MAX_AUTHORS_PER_PUBLICATION": "convex/authors/publications.ts",
+      "MAX_EVIDENCE_UNITS_PER_PAPER": "convex/extraction/mutations/evidence.ts:replacePaperEvidenceUnits",
+      "MAX_JOB_SOURCES": "convex/extraction/jobSources.ts:writeJobSources",
+      "MAX_PENDING_FILES": "convex/assistant/files.ts:startUpload",
+      "MAX_FILES_PER_MESSAGE": "convex/assistant/files.ts:partsFor"
+    },
+    "refused": {
+      "MAX_ACCOUNTS_PER_EMAIL": "reads one past it and refuses the invitation, naming why",
+      "MAX_ACTIVE_OPERATIONS_READ": "reads one past it and refuses the change until operations finish",
+      "MAX_ORGANIZATIONS_PER_PERSON": "reads one past it and refuses: Clerk's webhooks write memberships, so no write here can",
+      "UNRECORDED_REVISIONS_MAX": "reads one past it and throws, naming the migration that records them",
+      "COPY_HISTORY_MAX": "reads one past it and refuses the copy",
+      "DRAFT_ROWS_REPLACED": "reads one past it and refuses the restore over a draft with extra rows",
+      "SUBSCRIPTIONS_READ": "reads one past it and stops the billing migration for that account",
+      "SECTION_REGISTRY.length": "a draft or revision holds one row a section; reads one past it and throws on a different row",
+      "RECOVERY_LIMIT": "reads one past it and stops the recovery as unsafe, naming why"
+    },
+    "windows": {
+      "JOBS_DOCKED": "the few jobs a chat docks at once; older ones are on the jobs page",
+      "STEPS_SHOWN": "the newest steps a reply shows; the rest are paged in the chat",
+      "JOBS_TOLD_AT_ONCE": "the job ends one reply tells its model; the rest are told on the next",
+      "EACH": "the first matches the @ picker shows per kind; typing narrows them",
+      "NEWEST_PUBLISHES_READ": "the newest publishes a library's status looks at",
+      "RUNTIME_ARRIVALS_READ": "the newest runtime arrivals the activation looks at",
+      "SEARCH_RESULTS_MAX": "Convex's full text search returns at most 1,024 results",
+      "SCREENING_POOL_SIZE": "the papers running at once in the screening pool, which the pool keeps",
+      "ASSISTANT_REPLIES_AT_ONCE": "the replies a person runs at once, which admission keeps within it",
+      "MAX_ASKS": "the questions one reply asks at a time; the reply refuses to ask more",
+      "MEMBERS_COUNTED": "an organization's members are counted up to one past it and shown as more than it",
+      "MEMBERS_MATCHED": "the best search matches of an email the invite check compares; an exact email is among the first",
+      "SINGLE_ROW_CLEANUP": "rows meant to be one per key: a duplicate or two a race left are cleared, and more wait for the next write",
+      "MAX_API_KEYS_PER_USER": "a person has one key per provider, since saving one replaces the provider's, so this many is all of them"
+    },
+    "batches": {
+      "BATCH": "a worker's batch; it pings itself for the next",
+      "BATCH_SIZE": "a cascade's batch; it reschedules itself until nothing is left",
+      "CANCEL_BATCH": "a cancel's batch; it reschedules itself",
+      "FORGET_BATCH": "a cleanup's batch; it reschedules itself",
+      "FORGET_LIMITS": "a cleanup's batch; it reschedules itself",
+      "FORGET_RESULTS": "a cleanup's batch; it reschedules itself",
+      "FORGET_STEPS": "a cleanup's batch; it reschedules itself",
+      "PURGE_BATCH": "a purge's batch; it reschedules itself",
+      "SWEEP_BATCH": "a sweep's batch; it reschedules itself",
+      "MEMBERSHIP_DELETE_BATCH": "a collection deletion's batch; it reschedules itself",
+      "MEMBERSHIP_REVOKE_BATCH": "a revocation's batch; it reschedules itself",
+      "PLACES_BATCH": "a removal's or restore's batch of places; it reschedules itself",
+      "PAPERS_A_PASS": "a job deletion's pass; it reschedules itself",
+      "SERVED_HOSTS_BATCH": "a host sync's batch; it reschedules itself",
+      "JOBS_WOKEN": "the jobs one dispatch wakes; the next dispatch wakes more",
+      "SPENT_PAGE": "a hold cleanup's batch; it reschedules itself",
+      "FACET_COPY_INLINE": "the memberships a paper's change copies inline; more are copied by a scheduled batch",
+      "MEMBERSHIPS_INLINE": "the memberships a user's change updates inline; more are updated by a scheduled page at a time",
+      "FORGET_FILES": "a cleanup batch of attached files; it reschedules itself until nothing is left"
+    }
   }
 }
