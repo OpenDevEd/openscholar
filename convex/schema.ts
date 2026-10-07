@@ -190,8 +190,11 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .index("by_state", ["state"]),
 
-  organizationMemberships: defineTable(organizationMembershipFields)
+  // `searchText`: the member's name and email, which a library's team picker searches (convex/lib/searchText.ts).
+  organizationMemberships: defineTable({ ...organizationMembershipFields, searchText: v.optional(v.string()) })
     .index("by_clerkMembershipId", ["clerkMembershipId"])
+    .index("by_organizationId_and_state_and_role", ["organizationId", "state", "role"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["organizationId", "state"] })
     .index("by_organizationId_and_clerkUserId_and_state", [
       "organizationId",
       "clerkUserId",

@@ -237,24 +237,24 @@ export async function clearPaperAnswers(ctx: Write, searchId: Id<"searches">, pa
   await apply(ctx, screening, [{ paperId, answers: [] }], await settledRow(ctx, screening, paperId), at);
 }
 
-/**
- * Papers a new search can come with answers for. Each writes its row and its history, and
- * one transaction writes 16,000 documents.
- * ponytail: a search with more is refused by name; seed in batches if anyone brings one.
- */
-export const SEEDED_PAPERS_MAX = 5_000;
+/** Papers whose answers one transaction seeds: each writes its row and its history, well inside 16,000 documents. */
+const SEED_BATCH = 1_000;
 
 /**
- * Gives a search that has just been made the answers it came with, from an import or the
- * assistant. It has no answers yet, so nothing is read. A paper listed twice takes its last entry.
+ * Gives a search the answers it came with, from an import or the assistant, a batch at a time:
+ * the first with the search, which has no answers yet, so nothing is read. A paper listed twice
+ * takes its last entry. Returns the answers still to seed, for the caller to schedule.
+ * A later batch (`later`) leaves a paper that was answered meanwhile as it is.
  */
-export async function seedAnswers(ctx: Write, userId: Id<"users">, searchId: Id<"searches">, answers: Responses, setBy: AnswerSource, at: number) {
-  const papers = new Map(answers.map(({ paperId, responses }) => [paperId, responses] as const));
-  if (papers.size === 0) return;
-  if (papers.size > SEEDED_PAPERS_MAX) throw new Error(`A search can be saved with answers for up to ${SEEDED_PAPERS_MAX.toLocaleString("en")} papers.`);
+export async function seedAnswers(ctx: Write, userId: Id<"users">, searchId: Id<"searches">, answers: Responses, setBy: AnswerSource, at: number, later = false): Promise<Responses> {
+  const papers = [...new Map(answers.map(({ paperId, responses }) => [paperId, responses] as const))];
+  if (papers.length === 0) return [];
   const screening = await ensureScreening(ctx, userId, searchId);
-  const updates = Array.from(papers, ([paperId, responses]) => ({ paperId, answers: responses.map(({ question, response }) => ({ question, answer: response, setBy, updatedAt: at })) }));
+  const batch = papers.slice(0, SEED_BATCH);
+  const answered = later ? await Promise.all(batch.map(([paperId]) => paperRow(ctx, screening._id, paperId))) : [];
+  const updates = batch.filter((_, i) => !answered[i]).map(([paperId, responses]) => ({ paperId, answers: responses.map(({ question, response }) => ({ question, answer: response, setBy, updatedAt: at })) }));
   await apply(ctx, screening, updates, new Map(), at);
+  return papers.slice(SEED_BATCH).map(([paperId, responses]) => ({ paperId, responses }));
 }
 
 /** Papers one page of a sweep reads, and the bytes of them. */

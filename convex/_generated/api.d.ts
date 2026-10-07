@@ -309,6 +309,7 @@ import type * as migrations_revokeDeletedOrganizationMemberships from "../migrat
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
 import type * as migrations_screeningSearch from "../migrations/screeningSearch.js";
 import type * as migrations_searchText from "../migrations/searchText.js";
+import type * as migrations_teamLists from "../migrations/teamLists.js";
 import type * as migrations_versionChangedSections from "../migrations/versionChangedSections.js";
 import type * as models_admin from "../models/admin.js";
 import type * as models_catalog from "../models/catalog.js";
@@ -694,6 +695,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
   "migrations/screeningSearch": typeof migrations_screeningSearch;
   "migrations/searchText": typeof migrations_searchText;
+  "migrations/teamLists": typeof migrations_teamLists;
   "migrations/versionChangedSections": typeof migrations_versionChangedSections;
   "models/admin": typeof models_admin;
   "models/catalog": typeof models_catalog;

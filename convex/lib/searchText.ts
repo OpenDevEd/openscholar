@@ -49,7 +49,13 @@ export const SEARCH_TERMS_MAX = 16;
 /** Text a person typed, as a full text search takes it: its first 16 words, or undefined for none. */
 export const searchTerms = (text: string | undefined) => text?.trim().split(/\s+/).filter(Boolean).slice(0, SEARCH_TERMS_MAX).join(" ") || undefined;
 
-type Searched = "searches" | "queryShortcuts" | "extractionJobs" | "admins";
+/** An organization member's name and email, from their user. */
+export async function memberText(ctx: QueryCtx, row: { clerkUserId: string }) {
+  const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", row.clerkUserId)).unique();
+  return [user?.firstName, user?.lastName, user?.email].filter(Boolean).join(" ");
+}
+
+type Searched = "searches" | "queryShortcuts" | "extractionJobs" | "admins" | "organizationMemberships";
 
 /** Keeps a row's `searchText` equal to `textOf` it. */
 export const keepSearchText =
@@ -62,8 +68,8 @@ export const keepSearchText =
     if (was !== text) await ctx.db.patch(table, row._id, { searchText: text } as never);
   };
 
-/** A user whose name or email changed, or who was deleted: their admin row's text follows. */
-export async function keepAdminTextOfUser(ctx: MutationCtx, change: Change<DataModel, "users">) {
+/** A user whose name or email changed, or who was deleted: their admin row's and organization memberships' text follows. */
+export async function keepTextOfUser(ctx: MutationCtx, change: Change<DataModel, "users">) {
   const [was, now] = [change.oldDoc, change.newDoc];
   if (now && was && was.firstName === now.firstName && was.lastName === now.lastName && was.email === now.email) return;
   const userId = (now ?? was)!._id;
@@ -71,5 +77,11 @@ export async function keepAdminTextOfUser(ctx: MutationCtx, change: Change<DataM
   if (admin) {
     const text = await adminText(ctx, admin);
     if (admin.searchText !== text) await ctx.db.patch("admins", admin._id, { searchText: text });
+  }
+  // Every organization the person belongs to: a handful.
+  const clerkUserId = (now ?? was)!.clerkId;
+  for await (const membership of ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", clerkUserId))) {
+    const text = await memberText(ctx, membership);
+    if (membership.searchText !== text) await ctx.db.patch("organizationMemberships", membership._id, { searchText: text });
   }
 }

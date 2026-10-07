@@ -30,7 +30,7 @@ export function TeamSection({ libraryId }: { libraryId: Id<"evidenceLibraries"> 
   const roleOf = (member: AccessMember) => member.role === "Editor" ? "editor" as const : "creator" as const;
   const resend = async (member: AccessMember) => { await invite({ libraryId, email: member.email, role: roleOf(member) }); };
   return <TeamAccess scope="library" members={members}
-    organizationPeople={data.availablePeople.map(person => ({ ...person, id: person.clerkUserId }))}
+    libraryId={libraryId}
     onResend={resend}
     onMembersChange={async next => {
       for (const member of next) {

@@ -34,6 +34,11 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useConvex } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import {
   Popover,
   PopoverContent,
@@ -79,17 +84,21 @@ const roleHint: Record<Role, string> = {
   Creator: "Create and edit items, upload files and submit for review.",
 };
 
+/** Organization members one page of the picker shows; typing narrows them. */
+const PEOPLE_PAGE_SIZE = 20;
+
 export function TeamAccess({
   scope,
   members,
   onMembersChange,
-  organizationPeople,
+  libraryId,
   onResend,
 }: {
   scope: "library" | "profile";
   members: AccessMember[];
   onMembersChange: (members: AccessMember[]) => Promise<void>;
-  organizationPeople: Pick<AccessMember, "id" | "name" | "email" | "imageUrl">[];
+  /** The library whose organization's members can be added; a profile has none. */
+  libraryId?: Id<"evidenceLibraries">;
   onResend: (member: AccessMember) => Promise<void>;
 }) {
   const isProfile = scope === "profile";
@@ -113,16 +122,16 @@ export function TeamAccess({
   const [notice, setNotice] = useState("");
   const [addMode, setAddMode] = useState<"existing" | "new">(scope === "profile" ? "new" : "existing");
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState("");
-  const availablePeople = organizationPeople.filter(
-    (person) =>
-      !members.some(
-        (member) => member.email.toLowerCase() === person.email.toLowerCase(),
-      ),
-  );
-  const selected = availablePeople.find(
-    (person) => person.id === selectedPerson,
-  );
+  const [selected, setSelected] = useState<Pick<AccessMember, "id" | "name" | "email" | "imageUrl"> | null>(null);
+  // The organization's members, searched on the server a page at a time: an organization can have any number.
+  const convex = useConvex();
+  const [peopleQuery, setPeopleQuery] = useState("");
+  const peopleSearch = useDebouncedValue(peopleQuery.trim(), 300);
+  const orgPeople = useCursorPage(api.evidenceLibraries.queries.listOrganizationPeople, libraryId && pickerOpen ? { libraryId, search: peopleSearch || undefined } : "skip", PEOPLE_PAGE_SIZE);
+  // Invited people aren't members yet, so the server doesn't know to leave them off.
+  const availablePeople = orgPeople.items
+    .map((person) => ({ ...person, id: person.clerkUserId }))
+    .filter((person) => !members.some((member) => member.email.toLowerCase() === person.email.toLowerCase()));
   const [view, setView] = useState<"members" | "invitations">("members");
   const [rolesOpen, setRolesOpen] = useState(false);
   const filtered = members.filter((member) =>
@@ -281,7 +290,7 @@ export function TeamAccess({
               size="sm"
               onClick={() => {
                 setError("");
-                setSelectedPerson("");
+                setSelected(null);
                 setPickerOpen(false);
               }}
             >
@@ -307,9 +316,7 @@ export function TeamAccess({
               if (pendingRef.current) return;
               try {
               if (addMode === "existing") {
-                const person = availablePeople.find(
-                  (person) => person.id === selectedPerson,
-                );
+                const person = selected;
                 if (!person) {
                   setError(
                     isProfile
@@ -330,17 +337,12 @@ export function TeamAccess({
                   `${person.name} added to this ${scope}.`,
                 );
                 setInvite(false);
-                setSelectedPerson("");
+                setSelected(null);
                 setView("members");
                 setSearch("");
                 return;
               }
-              if (
-                organizationPeople.some(
-                  (person) =>
-                    person.email.toLowerCase() === email.trim().toLowerCase(),
-                )
-              ) {
+              if (libraryId && (await convex.query(api.evidenceLibraries.queries.isOrganizationPerson, { libraryId, email }))) {
                 setError(
                   isProfile
                     ? "This person is already listed. Choose them under Existing person."
@@ -449,17 +451,17 @@ export function TeamAccess({
                       align="start"
                       className="w-[var(--radix-popover-trigger-width)] p-0"
                     >
-                      <Command>
-                        <CommandInput placeholder="Search name or email" />
+                      <Command shouldFilter={false}>
+                        <CommandInput placeholder="Search name or email" value={peopleQuery} onValueChange={setPeopleQuery} />
                         <CommandList>
-                          <CommandEmpty>No people available.</CommandEmpty>
+                          {!orgPeople.isLoading && <CommandEmpty>No people available.</CommandEmpty>}
                           <CommandGroup>
                             {availablePeople.map((person) => (
                               <CommandItem
                                 key={person.id}
                                 value={`${person.name} ${person.email}`}
                                 onSelect={() => {
-                                  setSelectedPerson(person.id);
+                                  setSelected(person);
                                   setPickerOpen(false);
                                   setError("");
                                 }}
@@ -474,7 +476,7 @@ export function TeamAccess({
                                     {person.email}
                                   </span>
                                 </span>
-                                {selectedPerson === person.id && (
+                                {selected?.id === person.id && (
                                   <Check className="size-4" />
                                 )}
                               </CommandItem>
@@ -524,7 +526,7 @@ export function TeamAccess({
               </DialogClose>
               <Button
                 type="submit"
-                disabled={pending || (addMode === "existing" && !selectedPerson)}
+                disabled={pending || (addMode === "existing" && !selected)}
                 aria-busy={pending}
               >
                 {addMode === "existing" ? <Plus /> : <Mail />}

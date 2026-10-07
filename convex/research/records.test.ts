@@ -367,6 +367,20 @@ describe("account research records", () => {
     expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "oldest", exclude: "few", paginationOpts: { cursor: null, numItems: 2 } })).page.map(row => row.id)).toEqual(["many", "some"]);
   });
 
+  it("saves a search with answers for any number of papers, a batch at a time, and keeps an answer given meanwhile (#637)", async () => {
+    const { t, alice } = await setup();
+    const papers = 2_500;
+    const answered = { ...record, id: "many-answers", screeningResponses: Array.from({ length: papers }, (_, i) => ({ paperId: `W${i}`, responses: [{ question: "Randomized?", response: true }] })) };
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "create-many", command: { kind: "createSearch", search: answered } });
+    // Before the later batches land, the person answers a paper of the last one.
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "meanwhile", command: { kind: "editSearch", id: answered.id, edit: { kind: "responses", paperId: "W2499", responses: [{ question: "Randomized?", response: false }], by: "person" } } });
+    await t.finishAllScheduledFunctions(() => {});
+
+    const rows = await t.run((ctx) => ctx.db.query("screeningAnswers").take(papers + 10));
+    expect(rows).toHaveLength(papers);
+    expect(rows.find((row) => row.paperId === "W2499")?.answers[0]).toMatchObject({ answer: false, setBy: "person" });
+  });
+
   it("counts a person's searches as they're made and deleted, and clears them all a batch at a time", async () => {
     const { alice, bob, t } = await setup();
     const count = (as: typeof alice, accountId: string) => as.query(api.research.records.countSearches, { accountId });
