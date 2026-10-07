@@ -3814,6 +3814,7 @@
       "failed": "回答を送信できませんでした",
       "unnamed": "名前なし",
       "upTo": "最大 {credits, number} クレジット",
+      "about": "約 {credits, number} クレジット",
       "short": "{credits, number} 不足",
       "left": "残り <n></n>",
       "always": "このチャットでは常に許可",

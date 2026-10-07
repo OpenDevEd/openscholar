@@ -17,6 +17,7 @@ import { chatModel } from "../assistant/threads";
 import { pricingOf, resolveTaskPick } from "../ai/serverModel";
 import { convertUsdToCredits } from "../../lib/pricing";
 import { PDF_PAGE_TOKENS } from "../../lib/assistant/files";
+import { safeFetchPdf } from "../../lib/pdf/url-allowlist";
 
 export const searchAction = defineUserAction({
   path: "research/papers:search",
@@ -164,15 +165,13 @@ const PDF_CHECK_MS = 15_000;
 /**
  * Whether an address answers with a PDF, by its first bytes, not the file: one that answers
  * with a page or an error would fail the model's whole request when its provider fetches it.
+ * Fetched as any untrusted address is (lib/pdf/url-allowlist.ts): no private or internal
+ * address, at the first request or after a redirect.
  */
 async function servesPdf(url: string) {
   try {
-    const response = await fetch(url, { headers: { Range: "bytes=0-1023", "User-Agent": "OpenScholar (https://openscholar.ai)" }, signal: AbortSignal.timeout(PDF_CHECK_MS) });
-    const reader = response.ok ? response.body?.getReader() : undefined;
-    if (!reader) return false;
-    const { value } = await reader.read();
-    await reader.cancel().catch(() => {});
-    return value !== undefined && new TextDecoder().decode(value.subarray(0, 1024)).includes("%PDF");
+    const { response, body } = await safeFetchPdf(url, { allowHttp: true, firstBytes: 1024, timeoutMs: PDF_CHECK_MS, headers: { Range: "bytes=0-1023", "User-Agent": "OpenScholar (https://openscholar.ai)" } });
+    return response.ok && new TextDecoder().decode(await body.arrayBuffer()).includes("%PDF");
   } catch {
     return false;
   }
@@ -183,6 +182,7 @@ export const readPdfAction = defineUserAction({
   description:
     "Reads a paper's open-access PDF, by its ID as results give it (such as W2741809807) or its DOI, with its `title` as they give it, which the person is shown when asked: you get the PDF itself, its text, tables and figures, for the rest of this reply. " +
     "Search results, a paper's record and the person's saved papers say `pdf` when OpenAlex knows of one. For a paper without one, ask the person to attach its PDF to the chat. " +
+    "OpenAlex sometimes links the wrong file: check the PDF is the paper you asked for, and if it isn't, say so and use nothing from it. " +
     "Cite what you take from it by page, as a link to its address with the page: [p. 7](PDF_ADDRESS#page=7). A later reply that needs it again reads it again. " +
     "The person is asked first, with what the read may cost. One request against the person's OpenAlex allowance.",
   args: { id: v.string(), title: v.optional(v.string()) },

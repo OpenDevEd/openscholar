@@ -3814,6 +3814,7 @@
       "failed": "Couldn't send your answer",
       "unnamed": "No name",
       "upTo": "Up to {credits, plural, one {# credit} other {# credits}}",
+      "about": "About {credits, plural, one {# credit} other {# credits}}",
       "short": "{credits, number} short",
       "left": "<n></n> left",
       "always": "Always allow in this chat",

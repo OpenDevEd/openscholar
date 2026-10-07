@@ -3814,6 +3814,7 @@
       "failed": "无法发送你的回答",
       "unnamed": "未命名",
       "upTo": "最多 {credits, number} 积分",
+      "about": "约 {credits, number} 积分",
       "short": "还差 {credits, number}",
       "left": "剩余 <n></n>",
       "always": "在此对话中始终允许",

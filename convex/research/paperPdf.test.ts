@@ -9,12 +9,13 @@ import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/bill
 import schema from "../schema";
 import { people } from "../assistant/assistant.test-support";
 import { callingDoStream, finishingDoStream, waitFor } from "../assistant/turn.test-support";
+import { COMPACT_AT_TOKENS } from "../assistant/context";
 
-const { mockDoStream, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), fetchMock: vi.fn() }));
+const { mockDoStream, mockDoGenerate, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), mockDoGenerate: vi.fn(), fetchMock: vi.fn() }));
 vi.mock("../ai/provider", async () => {
   const { MockLanguageModelV3 } = await import("ai/test");
   // PDF addresses go to OpenRouter as they are, as its provider declares, so the SDK doesn't download them.
-  return { resolveOpenRouterModel: async () => ({ model: new MockLanguageModelV3({ modelId: "mock/model", doStream: mockDoStream, supportedUrls: { "application/*": [/^https?:\/\/.+$/] } }), modelSlug: "mock/model", pricing: { input: 1_000, output: 2_000 } }) };
+  return { resolveOpenRouterModel: async () => ({ model: new MockLanguageModelV3({ modelId: "mock/model", doStream: mockDoStream, doGenerate: mockDoGenerate, supportedUrls: { "application/*": [/^https?:\/\/.+$/] } }), modelSlug: "mock/model", pricing: { input: 1_000, output: 2_000 } }) };
 });
 
 const PDF = "https://example.org/loot-boxes.pdf";
@@ -28,6 +29,7 @@ const pdfChecks: Array<string | null> = [];
 
 beforeEach(() => {
   mockDoStream.mockReset();
+  mockDoGenerate.mockReset();
   fakeAutumn.reset();
   pdfChecks.length = 0;
   vi.stubEnv("OPENALEX_API_KEY", "platform-key");
@@ -57,9 +59,9 @@ type Test = ReturnType<typeof convexTest>;
 const replied = (t: Test, threadId: Id<"assistantThreads">) => waitFor(async () => !(await t.run((ctx) => ctx.db.get("assistantThreads", threadId)))?.reply);
 
 /** A chat on a model that reads PDFs, with reading files allowed in it, so a read runs without asking. */
-async function chat(t: Test) {
+async function chat(t: Test, free = 100_000) {
   const who = await people(t);
-  await t.run((ctx) => seedCreditsForTest(ctx, { userId: who.ada, free: 100_000 }));
+  await t.run((ctx) => seedCreditsForTest(ctx, { userId: who.ada, free }));
   const modelId = await t.run((ctx) =>
     ctx.db.insert("models", { modelId: "mock/model", name: "Mock", provider: "openrouter", inputPricePerMillion: 1, outputPricePerMillion: 2, costMarkup: 1, contextLength: 200_000, supportedParameters: ["tools"], inputModalities: ["text", "image", "file"], isServed: true, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1 }),
   );
@@ -82,6 +84,31 @@ describe("reading a paper's PDF", () => {
     expect(pdfChecks).toEqual(["bytes=0-1023"]);
     await expect(asAda.action(api.research.papers.readPdf, { id: "W2" })).rejects.toThrow(/no open-access PDF/);
     await expect(asAda.action(api.research.papers.readPdf, { id: "W3" })).rejects.toThrow(/couldn't be opened/);
+  });
+
+  it("never fetches a private address, at first or after a redirect, and takes a signature split across chunks", async () => {
+    const t = convexTest(schema);
+    const { asAda } = await people(t);
+    WORKS.W4 = { id: "https://openalex.org/W4", display_name: "Internal", best_oa_location: { pdf_url: "http://127.0.0.1/paper.pdf" } };
+    WORKS.W5 = { id: "https://openalex.org/W5", display_name: "Redirected", best_oa_location: { pdf_url: "https://example.org/moved.pdf" } };
+    WORKS.W6 = { id: "https://openalex.org/W6", display_name: "Chunked", best_oa_location: { pdf_url: "https://example.org/chunked.pdf" } };
+    const fetched: string[] = [];
+    const answer = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      fetched.push(url);
+      if (url === "https://example.org/moved.pdf") return new Response(null, { status: 302, headers: { location: "http://169.254.169.254/latest/meta-data/" } });
+      if (url === "https://example.org/chunked.pdf") {
+        const parts = ["%P", "DF-1.7\n", "1 0 obj"].map((part) => new TextEncoder().encode(part));
+        return new Response(new ReadableStream({ pull: (controller) => (parts.length ? controller.enqueue(parts.shift()!) : controller.close()) }), { status: 200 });
+      }
+      return answer(input, init);
+    });
+
+    await expect(asAda.action(api.research.papers.readPdf, { id: "W4" })).rejects.toThrow(/couldn't be opened/);
+    await expect(asAda.action(api.research.papers.readPdf, { id: "W5" })).rejects.toThrow(/couldn't be opened/);
+    expect(fetched.some((url) => url.includes("127.0.0.1") || url.includes("169.254.169.254"))).toBe(false);
+    expect(await asAda.action(api.research.papers.readPdf, { id: "W6" })).toMatchObject({ paperPdf: "https://example.org/chunked.pdf" });
   });
 
   it("asks first, and once allowed, the reply goes on with the PDF in view", async () => {
@@ -127,5 +154,21 @@ describe("reading a paper's PDF", () => {
     expect(later?.type).toBe("text");
     expect(String(later?.value)).toMatch(/earlier reply/);
     expect(JSON.stringify(mockDoStream.mock.lastCall![0].prompt)).not.toContain('"type":"file"');
+  });
+
+  it("lets a summary written partway read the PDF the reply read, so what it says isn't lost", async () => {
+    const t = convexTest(schema);
+    // A request past the budget, at the mock's price, costs a great deal.
+    const { asAda, threadId } = await chat(t, 100_000_000);
+    // The request that reads the PDF is past the budget, so the reply is summarized before any request shows the model the PDF.
+    mockDoStream
+      .mockImplementationOnce(callingDoStream({ id: "pdf-1", name: "research_papers_readPdf", input: { id: "W1" }, read: COMPACT_AT_TOKENS + 1 }))
+      .mockImplementation(finishingDoStream(["It reports a link (p. 5)."]));
+    mockDoGenerate.mockImplementation(async () => ({ content: [{ type: "text", text: "Decisions\nNone.\nNext step\nAnswer from the paper's p. 5." }], finishReason: "stop", usage: { inputTokens: { total: 60_000, noCache: 0, cacheRead: 60_000, cacheWrite: 0 }, outputTokens: { total: 40, text: 40, reasoning: 0 } }, warnings: [] }));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "What are this paper's methods?" });
+    await replied(t, threadId);
+
+    expect(mockDoGenerate).toHaveBeenCalled();
+    expect(JSON.stringify(mockDoGenerate.mock.lastCall![0].prompt)).toContain(`"url":"${PDF}"`);
   });
 });

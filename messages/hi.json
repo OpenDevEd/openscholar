@@ -3814,6 +3814,7 @@
       "failed": "आपका जवाब भेजा नहीं जा सका",
       "unnamed": "कोई नाम नहीं",
       "upTo": "अधिकतम {credits, number} क्रेडिट",
+      "about": "लगभग {credits, number} क्रेडिट",
       "short": "{credits, number} कम",
       "left": "<n></n> बचेंगे",
       "always": "इस चैट में हमेशा अनुमति दें",

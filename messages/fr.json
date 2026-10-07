@@ -3814,6 +3814,7 @@
       "failed": "Impossible d'envoyer votre réponse",
       "unnamed": "Sans nom",
       "upTo": "Jusqu'à {credits, plural, one {# crédit} other {# crédits}}",
+      "about": "Environ {credits, plural, one {# crédit} other {# crédits}}",
       "short": "il manque {credits, number}",
       "left": "reste <n></n>",
       "always": "Toujours autoriser dans cette conversation",
