@@ -73,7 +73,8 @@
       "SCREENING_POOL_SIZE": "the papers running at once in the screening pool, which the pool keeps",
       "ASSISTANT_REPLIES_AT_ONCE": "the replies a person runs at once, which admission keeps within it",
       "MAX_ASKS": "the questions one reply asks at a time; the reply refuses to ask more",
-      "MEMBERS_COUNTED": "an organization's members are counted up to one past it and shown as more than it"
+      "MEMBERS_COUNTED": "an organization's members are counted up to one past it and shown as more than it",
+      "MEMBERS_MATCHED": "the best search matches of an email the invite check compares; an exact email is among the first"
     },
     "batches": {
       "BATCH": "a worker's batch; it pings itself for the next",
