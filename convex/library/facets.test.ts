@@ -89,6 +89,8 @@ describe("library facets", () => {
       const removed = await as.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper(1).openalexId });
       await nextBatches();
       const { id: restored } = await as.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
+      // The removal's day ends while its places are still going back: it waits for them.
+      await t.mutation(internal.library.mutations.forgetRemoval, removed.undo!.args);
       await nextBatches();
 
       const back = await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", restored)).take(places + 1)).map((row) => row.assignedAt));
@@ -224,6 +226,8 @@ describe("library facets", () => {
         }
         return id;
       });
+      // A removal from before, its places in a list.
+      const removalId = await runUntriggered(t, (ctx) => ctx.db.insert("libraryRemovals", { userId, item: { ...paper(9), searchableText: "Paper 9", savedAt: 9, updatedAt: 1 }, collectionIds: [collectionId], assignedAts: [7], expiresAt: Date.now() + 30 * 86_400_000 }));
       expect(await t.action(internal.migrations.libraryFacets.verify, {})).toBeGreaterThan(0);
 
       for (let runs = 0; runs < 2; runs++) {
@@ -235,6 +239,9 @@ describe("library facets", () => {
       expect(await as.query(api.library.queries.countPapers, { minRating: 5 })).toEqual({ count: 2 });
       expect(await as.query(api.library.queries.countPapers, { collectionId, minRating: 5 })).toEqual({ count: 2 });
       expect((await as.query(api.library.queries.papers, { collectionId, sort: "rating", ascending: true })).papers.map((row) => row.rating)).toEqual([2, 5, 5]);
+      // Its Undo puts the paper back where it was.
+      const { id: restored } = await as.mutation(api.library.mutations.restoreLibraryItem, { removalId });
+      expect(await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", restored)).collect())).toMatchObject([{ collectionId, assignedAt: 7 }]);
     } finally {
       vi.useRealTimers();
     }
