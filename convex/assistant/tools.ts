@@ -16,7 +16,8 @@ import { variantIn, viewOf } from "../../lib/assistant/actions";
 import { CHUNK, TRIED } from "./bulk";
 import { readConvexErrorData } from "../lib/errors";
 import { COLLIDED, messageOf } from "./failures";
-import { PAPERS_MAX, changeOf, changePapersSchema, papersOf, type ChangePapers } from "./paperChanges";
+import { changeOf, changePapersSchema, papersOf, type ChangePapers } from "./paperChanges";
+import { PART_ITEMS } from "./bulkPapers";
 import { BULK, DONE, MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, UNDO_BULK, forModel } from "./steps";
 import { ASKED_EACH_MAX } from "./validators";
 
@@ -475,7 +476,15 @@ export function toolsFor(
         const change = changeOf(given, papers);
         const entry = entryAt(change.path)!;
         // What it was asked with, and the papers it found: the reply runs it from these once the person allows it, on those papers and no others.
-        const kept = JSON.stringify({ given, ids: papers.map((paper) => paper.openalexId.split("/").at(-1)) });
+        let kept = JSON.stringify({ given, ids: papers.map((paper) => paper.openalexId.split("/").at(-1)) });
+        // Too many to keep on the step: their changes wait in parts (./bulkPapers.ts), and the step keeps where.
+        if (kept.length > STEP_TEXT_MAX) {
+          const key = crypto.randomUUID();
+          for (let at = 0; at < change.items.length; at += PART_ITEMS) {
+            await ctx.runMutation(internal.assistant.bulkPapers.keep, { userId, key, part: at / PART_ITEMS, items: JSON.stringify(change.items.slice(at, at + PART_ITEMS)) });
+          }
+          kept = JSON.stringify({ given, stored: key, count: change.items.length });
+        }
         found = { entry, items: change.items, kept, about: change.shared, shown: JSON.stringify({ shared: change.shared, each: papers.slice(0, ASKED_EACH_MAX).map((paper) => cut(paper.title, 200)) }) };
       }
       const about = JSON.stringify(found.about);
@@ -631,10 +640,23 @@ export function toolsFor(
   };
   /** The bulk change a step the person allowed is, from what it kept. One over a set of papers reads the set again, for the papers' records, and changes only the ones they were asked about. */
   const kept = async (step: { toolCallId: string; input: string }): Promise<Plan | { error: string }> => {
-    const { given, ids } = JSON.parse(step.input) as { given: ChangePapers; ids: string[] };
+    const { given, ids, stored } = JSON.parse(step.input) as { given: ChangePapers; ids?: string[]; stored?: string };
+    if (stored) {
+      // A big one runs the changes it kept, as the person was asked about them.
+      const items: Record<string, unknown>[] = [];
+      for (let cursor: string | null = null; ;) {
+        const page: { parts: string[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.assistant.bulkPapers.read, { userId, key: stored, cursor });
+        for (const part of page.parts) items.push(...(JSON.parse(part) as Record<string, unknown>[]));
+        if (page.isDone) break;
+        cursor = page.continueCursor;
+      }
+      if (!items.length) return { error: "The papers the person was asked about were forgotten: a day has passed. Ask again." };
+      const change = changeOf(given, []);
+      return { tool: CHANGE_PAPERS, entry: entryAt(change.path)!, items, kept: step.input, about: JSON.stringify(change.shared) };
+    }
     const again = await plan(CHANGE_PAPERS, given);
     if ("error" in again) return again;
-    const approved = new Set(ids);
+    const approved = new Set(ids ?? []);
     const at = (item: Record<string, unknown>) => String((item.paper as { openalexId?: unknown } | undefined)?.openalexId ?? item.openalexId).split("/").at(-1)!;
     return { ...again, items: again.items.filter((item) => approved.has(at(item))) };
   };
@@ -694,7 +716,7 @@ export function toolsFor(
       description:
         "Makes one change to many papers in one go, without reading them first. `papers` is the set: what a query finds ({kind: \"query\", query, filters}, where filters are the settings research_papers_search takes, such as {minCitations: 11}), a saved search's results ({kind: \"search\", searchId}), " +
         "a collection ({kind: \"collection\", collectionId}), every saved paper ({kind: \"saved\"}), a screening's included papers ({kind: \"screening\", jobId}), or papers you name ({kind: \"ids\", ids}). " +
-        `\`first\` and \`last\` say which of the set, counting from 1. Left out, it is the whole set, up to ${PAPERS_MAX.toLocaleString("en")} papers. ` +
+        `\`first\` and \`last\` say which of the set, counting from 1. Left out, it is the whole set. One change takes as many papers as the person's plan allows; a set or range past that is refused, with the number. ` +
         "`do` is what happens to each paper: \"save\" to the library (with `collectionId`, into that collection too), \"collect\" into `collectionId`, \"uncollect\" out of `collectionId`, \"remove\" from the library, or \"rate\" with `rating`. " +
         `It is one change, with one undo. More than ${BULK} papers and the person is asked once, with how many and the first titles. Use it whenever a change is to more than a few papers: never read a set page by page to change its papers one by one.`,
       inputSchema: changePapersSchema(),

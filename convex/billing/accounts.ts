@@ -240,6 +240,13 @@ export const refreshMine = action({
   },
 });
 
+/** What the person's plan allows of `limit`, for an action: a number, or null for none. */
+export const planLimitOf = internalQuery({
+  args: { userId: v.id("users"), limit: v.union(...PLAN_LIMITS.map((limit) => v.literal(limit))) },
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx, { userId, limit }) => (await planLimit(ctx, userId, limit)) ?? null,
+});
+
 export const forUser = internalQuery({
   args: { userId: v.id("users") },
   returns: v.union(v.object(billingAccountFields), v.null()),

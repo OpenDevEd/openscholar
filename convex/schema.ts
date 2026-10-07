@@ -228,6 +228,8 @@ export default defineSchema({
   assistantJobEnds: defineTable(assistantJobEndFields).index("by_job", ["jobId"]).index("by_thread_and_pending", ["threadId", "pending"]).index("by_thread_and_order", ["threadId", "order"]),
   // What reverses each change of a bulk change (convex/assistant/bulk.ts).
   assistantStepUndos: defineTable(assistantStepUndoFields).index("by_step", ["stepId"]),
+  // A big bulk change's changes, waiting for the person's answer (convex/assistant/bulkPapers.ts).
+  assistantBulkPapers: defineTable({ userId: v.id("users"), key: v.string(), part: v.number(), items: v.string() }).index("by_key_and_part", ["key", "part"]),
   // What each person lets the assistant spend in a chat, and each person's own record (convex/assistant/spending.ts).
   assistantLimits: defineTable(assistantLimitFields).index("by_thread_and_user", ["threadId", "userId"]).index("by_user", ["userId"]),
   assistantSpenders: defineTable(assistantSpenderFields).index("by_user", ["userId"]),

@@ -32,6 +32,7 @@ import type * as assistant_agent from "../assistant/agent.js";
 import type * as assistant_asking from "../assistant/asking.js";
 import type * as assistant_batches from "../assistant/batches.js";
 import type * as assistant_bulk from "../assistant/bulk.js";
+import type * as assistant_bulkPapers from "../assistant/bulkPapers.js";
 import type * as assistant_context from "../assistant/context.js";
 import type * as assistant_details from "../assistant/details.js";
 import type * as assistant_failures from "../assistant/failures.js";
@@ -418,6 +419,7 @@ declare const fullApi: ApiFromModules<{
   "assistant/asking": typeof assistant_asking;
   "assistant/batches": typeof assistant_batches;
   "assistant/bulk": typeof assistant_bulk;
+  "assistant/bulkPapers": typeof assistant_bulkPapers;
   "assistant/context": typeof assistant_context;
   "assistant/details": typeof assistant_details;
   "assistant/failures": typeof assistant_failures;
