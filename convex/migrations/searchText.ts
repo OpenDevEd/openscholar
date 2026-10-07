@@ -13,13 +13,16 @@ import { adminText, jobText, searchText, shortcutText } from "../lib/searchText"
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
+// A search or bookmark can be most of a MiB, read again by its trigger: a few a batch stay inside 16 MiB.
 export const searches = migrations.define({
   table: "searches",
+  batchSize: 5,
   migrateOne: async (_ctx, row) => (row.searchText === searchText(row.data) ? undefined : { searchText: searchText(row.data) }),
 });
 
 export const shortcuts = migrations.define({
   table: "queryShortcuts",
+  batchSize: 5,
   migrateOne: async (_ctx, row) => (row.searchText === shortcutText(row.data) ? undefined : { searchText: shortcutText(row.data) }),
 });
 

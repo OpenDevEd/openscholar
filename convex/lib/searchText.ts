@@ -9,15 +9,22 @@ import type { DataModel, Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { currentSearch } from "../../lib/research/records";
 
+/**
+ * Characters of a row's text its search matches: the row keeps them beside what they're taken
+ * from, so a long query or expansion must not double it past Convex's 1 MiB a document.
+ */
+const SEARCH_TEXT_MAX = 32_000;
+const bounded = (text: string) => text.slice(0, SEARCH_TEXT_MAX);
+
 /** A saved search's query and questions. */
 export const searchText = (data: Doc<"searches">["data"]) => {
   const search = currentSearch(data);
-  return `${search.query}\n${search.questionText}`;
+  return bounded(`${search.query}\n${search.questionText}`);
 };
 /** A bookmark's name and what it expands to. */
-export const shortcutText = (data: Doc<"queryShortcuts">["data"]) => `${data.shorthand}\n${data.expansion}`;
+export const shortcutText = (data: Doc<"queryShortcuts">["data"]) => bounded(`${data.shorthand}\n${data.expansion}`);
 /** An extraction job's name and description. */
-export const jobText = (job: { name: string; description?: string }) => `${job.name}\n${job.description ?? ""}`;
+export const jobText = (job: { name: string; description?: string }) => bounded(`${job.name}\n${job.description ?? ""}`);
 /** An admin's name and email, from their user once they've signed up. */
 export async function adminText(ctx: QueryCtx, row: { email: string; userId?: Doc<"admins">["userId"] }) {
   const user = row.userId ? await ctx.db.get("users", row.userId) : null;

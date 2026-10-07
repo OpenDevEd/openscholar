@@ -51,7 +51,7 @@ export const listedSearchesAction = defineUserQuery({
     const order = sort === "oldest" || sort === "least" ? "asc" : "desc";
     const needle = text?.trim();
     const read = await (needle
-      ? ctx.db.query("searches").withSearchIndex("search_text", q => q.search("searchText", needle).eq("userId", userId)).paginate(opts)
+      ? ctx.db.query("searches").withSearchIndex("search_text", q => q.search("searchText", needle).eq("userId", userId)).paginate({ ...opts, maximumBytesRead: LISTED_BYTES })
       : exclude !== undefined
         ? stream(ctx.db, schema).query("searches").withIndex(index, q => q.eq("userId", userId)).order(order)
             .filterWith(async row => row.localId !== exclude)

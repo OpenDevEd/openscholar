@@ -41,3 +41,13 @@ it("the backfill makes rows from before findable, and an admin is found by the n
     vi.useRealTimers();
   }
 });
+
+it("a bookmark near Convex's document limit still saves, and is found by its first words", async () => {
+  const t = convexTest(schema);
+  await t.run((ctx) => ctx.db.insert("users", { clerkId: "big", email: "big@test.local", state: "active", createdAt: 1, updatedAt: 1 }));
+  const as = t.withIdentity({ subject: "big" });
+  const expansion = `malaria ${"x".repeat(600_000)}`;
+  await as.mutation(api.research.records.change, { accountId: "big", requestId: "save", command: { kind: "shortcut", shorthand: "huge", value: { expansion, createdAt: 1 } } });
+  const found = await as.query(api.research.records.listedShortcuts, { accountId: "big", sort: "recent", text: "malaria", paginationOpts: { cursor: null, numItems: 10 } });
+  expect(found.page.map((row) => row.shorthand)).toEqual(["huge"]);
+});
