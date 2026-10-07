@@ -4,6 +4,7 @@
  * on 2026-09-30; the content is synthetic.
  */
 import type { convexTest } from "convex-test";
+import { vi } from "vitest";
 import { facetsOf } from "../library/facets";
 import { createHash } from "node:crypto";
 import type { Id, TableNames } from "../_generated/dataModel";
@@ -95,6 +96,8 @@ export async function seedLibrary(t: Test, userId: Id<"users">, { items = MAX_SI
   // Each membership with its paper's fields, as convex/library/facets.ts gives it.
   await insertMany(t, "libraryItemCollections", itemIds.map((libraryItemId, i) => ({ userId, collectionId, libraryItemId, assignedAt: 1, ...facetsOf(docs[i] as never) })));
   await t.run((ctx) => ctx.db.insert("libraryCounts", { userId, count: items }));
+  // The library's filtered counts are a moment behind its writes: let their queue catch up.
+  await t.finishAllScheduledFunctions(vi.isFakeTimers() ? vi.runAllTimers : () => {});
   return { itemIds, collectionId };
 }
 
