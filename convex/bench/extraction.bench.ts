@@ -65,6 +65,7 @@ describe("extraction reads by job size", () => {
       let exported = 0;
       const started = now();
       let ok = true;
+      let error: string | undefined;
       do {
         let read: { page: unknown[]; isDone: boolean; continueCursor: string } | undefined;
         const before = { documentsRead: 0, bytesRead: 0 };
@@ -77,8 +78,9 @@ describe("extraction reads by job size", () => {
           read = result.out;
           before.documentsRead = result.m.documentsRead.used;
           before.bytesRead = result.m.bytesRead.used;
-        } catch {
+        } catch (thrown) {
           ok = false;
+          error = `call ${calls + 1}: ${String((thrown as Error).message ?? thrown).split("\n")[0]}`;
           break;
         }
         calls += 1;
@@ -86,7 +88,7 @@ describe("extraction reads by job size", () => {
         most = { documentsRead: Math.max(most.documentsRead, before.documentsRead), bytesRead: Math.max(most.bytesRead, before.bytesRead) };
         cursor = read!.isDone ? null : read!.continueCursor;
       } while (cursor !== null);
-      record({ ...at("export, every page"), ok: ok && exported === size, ...most, ms: Math.round(now() - started), result: `${exported} papers in ${calls} calls` });
+      record({ ...at("export, every page"), ok: ok && exported === size, ...most, ms: Math.round(now() - started), result: `${exported} papers in ${calls} calls`, ...(error ? { error } : {}) });
     });
   }
 });
