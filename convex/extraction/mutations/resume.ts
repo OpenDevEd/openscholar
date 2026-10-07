@@ -191,13 +191,16 @@ export const resumeExtraction = mutation({
     const questionConcurrency = EXTRACTION_QUESTION_CONCURRENCY;
     const paperConcurrency = EXTRACTION_PAPER_CONCURRENCY;
 
-    const run = { jobId, epoch: nextEpoch, pdfEnabled, paperConcurrency, questionConcurrency };
-    // A setup stopped partway reads on from where it was; the papers it saved run again too.
-    const setupLeft = job.setup !== undefined && !job.setup.done;
-    if (setupLeft || (await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).first()) === null) {
+    // A setup stopped partway reads on from where it was, and queues every paper when it ends:
+    // a paper run before then could miss a screening copy still to come.
+    // A job paused before any of its papers was saved, from before jobs kept their setup's place, sets up from the start.
+    const unread = job.setup === undefined && (await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).first()) === null;
+    if (unread) await ctx.db.patch(jobId, { setup: { position: 0, read: 0, papers: 0, processable: 0 } });
+    if (unread || (job.setup !== undefined && !job.setup.done)) {
       await ctx.scheduler.runAfter(0, internal.extraction.actions.setupExtractionQueueJob, { jobId, expectedEpoch: nextEpoch });
+    } else {
+      await requeuePage(ctx, { jobId, epoch: nextEpoch, pdfEnabled, paperConcurrency, questionConcurrency, cursor: null, queued: 0 });
     }
-    if (!setupLeft || job.setup!.papers > 0) await requeuePage(ctx, { ...run, cursor: null, queued: 0 });
 
     // A retry stopped while it reset the job's failures carries on where it stopped.
     if (job.retryReset && decision.nextStatus === "extracting") {

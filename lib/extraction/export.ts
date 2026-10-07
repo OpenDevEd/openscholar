@@ -1,7 +1,7 @@
 import type { PaperWithResults, Question } from './filtering';
 
 export class ExtractionExportError extends Error {
-  constructor(readonly code: "exportChanged" | "excelCellLimit" | "excelRowLimit") { super(code); }
+  constructor(readonly code: "exportChanged" | "excelCellLimit" | "excelRowLimit" | "searchTooBroad") { super(code); }
 }
 
 type ResultsPage<Item> = { page: Item[]; isDone: boolean; continueCursor: string };
@@ -9,7 +9,7 @@ type ResultsPage<Item> = { page: Item[]; isDone: boolean; continueCursor: string
 /** Metadata and all pages belong to one saved revision, including same-count edits. */
 export async function readExtractionExport<Item extends { _id: string }, Metadata extends object>(
   readPage: (cursor: string | null) => Promise<ResultsPage<Item>>,
-  readState: () => Promise<{ matching: number; revision: number | null }>,
+  readState: () => Promise<{ matching: number; atLeast?: true; revision: number | null }>,
   readMetadata: () => Promise<Metadata>,
   options: { attempts?: number; signal?: AbortSignal } = {},
 ): Promise<Metadata & { papers: Item[] }> {
@@ -17,6 +17,8 @@ export async function readExtractionExport<Item extends { _id: string }, Metadat
     options.signal?.throwIfAborted();
     const before = await readState();
     if (before.revision === null) throw new ExtractionExportError("exportChanged");
+    // A search matching more papers than the search engine returns can't be exported whole.
+    if (before.atLeast) throw new ExtractionExportError("searchTooBroad");
     const metadata = await readMetadata();
     const items = await walkResultsPages(async cursor => { options.signal?.throwIfAborted(); return readPage(cursor); });
     const after = await readState();

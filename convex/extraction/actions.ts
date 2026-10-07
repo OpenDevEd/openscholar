@@ -19,6 +19,7 @@ import {
 import { PAGE_SIZE, readSearchRun } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
 import { expandJobSources, readLibraryInBatches } from "./expandSources";
+import { paperCountForItem } from "../../lib/bucket/effective-paper-count";
 import { LIBRARY_READ_BATCH } from "./queries/internal";
 import { OLD_SEARCH_MESSAGE, type BucketItemInput } from "./jobSources";
 import { heldPapers } from "../paperSets/held";
@@ -26,8 +27,6 @@ import { createError } from "../lib/errors";
 import {
   EXTRACTION_PAPER_CONCURRENCY,
   EXTRACTION_QUESTION_CONCURRENCY,
-  EXTRACTION_QUEUE_LEASE_MS,
-  PAPER_PULL_DEFAULT,
 } from "../../lib/extraction/limits";
 import { OPENALEX_WORK_SELECT_FIELDS } from "../../lib/openalex/search-params";
 import {
@@ -199,7 +198,7 @@ type StepSource = { position: number; item: BucketItemInput };
 type SetupPaper = PaperDataOut & { storageId?: Id<"_storage">; sourceType: "history" | "zotero" | "manual" | "screening"; sourceId: string; screeningRevision?: string };
 
 /** A search or a screening reads its papers a page at a time; every other source is one paper. */
-const pagedSource = (item: BucketItemInput) => item.source === "screening" || (item.source === "history" && item.searchFilters !== undefined);
+const pagedSource = (item: BucketItemInput) => item.source === "screening" || item.librarySet !== undefined || (item.source === "history" && item.searchFilters !== undefined);
 
 /**
  * The next step of a job's papers from `place`, and where its setup goes on after it; null
@@ -216,8 +215,8 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
   if (item.source === "history" && item.searchFilters) {
     const filters = item.searchFilters;
     if (!("openAlexQuery" in filters)) throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
-    // A search saved without a count pulls the default, as the bucket counts it (lib/bucket/effective-paper-count.ts).
-    const wanted = Math.floor(filters.limit ?? PAPER_PULL_DEFAULT);
+    // As many papers as the bucket counted it for (lib/bucket/effective-paper-count.ts).
+    const wanted = paperCountForItem(item);
     const first = place.read + 1;
     const last = Math.min(wanted, place.read + SEARCH_STEP);
     if (last < first) return { papers: [], next: onTo(position + 1) };
@@ -225,6 +224,17 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
     const papers = run.works.map((work): SetupPaper => ({ ...mapOpenAlexWorkToPaperData(toOpenAlexWork(work)), sourceType: "history", sourceId: item.sourceRefId }));
     const read = place.read + papers.length;
     return { papers, next: run.ended || !run.resume || read >= wanted ? onTo(position + 1) : { ...place, read, resume: run.resume } };
+  }
+  if (item.librarySet) {
+    const range = item.librarySet;
+    const first = range.first + place.read;
+    const last = Math.min(range.first + range.count - 1, first + SETUP_STEP - 1);
+    if (last < first) return { papers: [], next: onTo(position + 1) };
+    const set = range.collectionId ? { kind: "collection" as const, collectionId: range.collectionId } : { kind: "saved" as const };
+    const { papers: held, resume } = await heldPapers(ctx, job.userId, set, { first, last }, place.resume);
+    const papers = held.map(({ venue, ...paper }): SetupPaper => ({ ...paper, venueName: venue, sourceType: "manual", sourceId: range.collectionId ?? "library" }));
+    const read = place.read + papers.length;
+    return { papers, next: resume && read < range.count ? { ...place, read, resume } : onTo(position + 1) };
   }
   if (item.source === "screening") {
     const selection = item.screeningSelection;
@@ -325,18 +335,16 @@ export async function runSetupExtractionQueueJob(
       },
     );
 
-    await ctx.runMutation(
-      internal.extraction.queue.mutations.dispatchPaperQueueWindow,
-      {
-        jobId,
-        expectedEpoch,
-        paperConcurrency: runtime.paperConcurrency,
-        leaseOwner: `setup:${jobId}:${expectedEpoch}`,
-        leaseMs: EXTRACTION_QUEUE_LEASE_MS,
-        questionConcurrency: runtime.questionConcurrency,
-        pdfEnabled: runtime.pdfEnabled,
-      },
-    );
+    // Every source read, each paper is the copy that runs: they're queued a page at a time, and the last page starts the run.
+    await ctx.runMutation(internal.extraction.mutations.resume.requeueLater, {
+      jobId,
+      epoch: expectedEpoch,
+      pdfEnabled: runtime.pdfEnabled,
+      paperConcurrency: runtime.paperConcurrency,
+      questionConcurrency: runtime.questionConcurrency,
+      cursor: null,
+      queued: 0,
+    });
   } catch (error) {
     const classified = classifyUnknownError(error);
     await ctx.runMutation(

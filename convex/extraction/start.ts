@@ -14,14 +14,12 @@ import { extractionPricing, extractionStamp } from "../ai/serverModel";
 import { getFlag, requireFeature } from "../featureFlags/guard";
 import { checkRateLimit } from "../lib/rateLimit";
 import { startHeld } from "../billing/charge";
-import { heldPapers } from "../paperSets/held";
 import { filtersOf } from "../paperSets/search";
 import { screeningRevision } from "../screening/accounting";
 import { papersIn } from "../screening/estimate";
 import { paperSetValidator } from "../screening/validators";
 import { currentSearch } from "../../lib/research/records";
 import { isRatingFilterActive } from "../../lib/utils";
-import { buildDedupeKey } from "../../lib/bucket/dedupe";
 import { extractionPaperCredits } from "../../lib/pricing";
 import { startJobFor } from "./mutations/jobs";
 import { checkScreeningSelection } from "./sources/screening";
@@ -35,8 +33,6 @@ type Source = Infer<typeof bucketItemInputValidator>;
 const askedValidator = v.object({ question: v.string(), type: questionTypeValidator, description: v.optional(v.string()) });
 const extractArgs = { name: v.string(), set: paperSetValidator, first: v.number(), last: v.number(), questions: v.array(askedValidator), usePdfs: v.optional(v.boolean()) };
 
-/** Library papers looked up in one read. */
-const ITEMS_A_READ = 200;
 /** How often an ended job is looked at again while a paper of it is still being read, and for how long at most: longer than a paper's worker can run. */
 const RUNNING_CHECK_MS = 15_000;
 const RUNNING_WAIT_MS = 12 * 60_000;
@@ -144,16 +140,6 @@ async function screeningPicked(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"sc
   return { revision, count: await checkScreeningSelection(ctx, userId, jobId, revision), label: job.label ?? "Screening" };
 }
 
-/** The person's library papers among these, by paper ID, as an extraction's sources name them. */
-export const libraryItems = internalQuery({
-  args: { userId: v.id("users"), openalexIds: v.array(v.string()) },
-  returns: v.array(v.object({ id: v.id("libraryItems"), openalexId: v.string(), title: v.string(), doi: v.optional(v.string()), year: v.optional(v.number()) })),
-  handler: async (ctx, { userId, openalexIds }) => {
-    if (openalexIds.length > ITEMS_A_READ) throw new Error(`Library papers are read ${ITEMS_A_READ} at a time`);
-    const found = await Promise.all(openalexIds.map((openalexId) => ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", openalexId)).first()));
-    return found.flatMap((item) => (item ? [{ id: item._id, openalexId: item.openalexId, title: item.title, ...(item.doi ? { doi: item.doi } : {}), ...(item.publicationYear == null ? {} : { year: item.publicationYear }) }] : []));
-  },
-});
 
 /**
  * The set as the sources an extraction starts from (./expandSources.ts), which the job reads
@@ -171,15 +157,9 @@ async function sourcesOf(ctx: ActionCtx, userId: Id<"users">, { set, first, last
     const filters: Infer<typeof searchFiltersValidator> = await ctx.runQuery(internal.extraction.start.searchSource, { userId, searchId: set.searchId });
     return [{ bucketKey: `history:${set.searchId}`, source: "history", sourceRefId: set.searchId, title: filters.query, authors: [], searchFilters: { ...filters, limit: last } }];
   }
-  const { papers } = await heldPapers(ctx, userId, set, { first, last });
-  const items: Source[] = [];
-  for (let from = 0; from < papers.length; from += ITEMS_A_READ) {
-    const found: Array<{ id: Id<"libraryItems">; openalexId: string; title: string; doi?: string; year?: number }> = await ctx.runQuery(internal.extraction.start.libraryItems, { userId, openalexIds: papers.slice(from, from + ITEMS_A_READ).map((paper) => paper.openalexId) });
-    // The job reads each paper from the library again, so a source says only which it is.
-    items.push(...found.map(({ id, ...paper }) => ({ bucketKey: buildDedupeKey(paper), source: set.kind === "collection" ? ("collection" as const) : ("library" as const), sourceRefId: id, title: paper.title, authors: [], openalexId: paper.openalexId })));
-  }
-  if (!items.length) throw invalid("There are no papers in that range");
-  return items;
+  // One source for the whole range: the job reads its papers a page at a time when it's set up.
+  const collectionId = set.kind === "collection" ? set.collectionId : undefined;
+  return [{ bucketKey: `library:${collectionId ?? "all"}:${first}-${last}`, source: collectionId ? "collection" : "library", sourceRefId: collectionId ?? "library", title: collectionId ? "Collection" : "Library", authors: [], librarySet: { ...(collectionId ? { collectionId } : {}), first, last, count: 0 } }];
 }
 
 /** Starts the job from the sources the action read, as the page's start does, with the hold it's charged under when it has one. */

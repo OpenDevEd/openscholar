@@ -13,6 +13,7 @@ import { createError } from "../../lib/errors";
 export function assertBucketWithinLimits(items: ReadonlyArray<EffectiveCountItem>, planPapers?: number): {
   effectiveCount: number;
 } {
+  if (items.some((item) => item.searchFilters?.limit !== undefined && !Number.isFinite(item.searchFilters.limit))) throw createError("VALIDATION_ERROR", "A search's paper count must be a number");
   const count = effectivePaperCount(items);
   // An empty bucket would set a job up only to find nothing to read: refused before it's made.
   if (count === 0) throw createError("VALIDATION_ERROR", "Bucket must include at least one paper");

@@ -355,6 +355,13 @@ void _check_extractionJobValidator;
 
 export const screeningSelectionValidator = v.object({ jobId: v.id("screeningJobs"), revision: v.string(), count: v.number() });
 
+/**
+ * Papers `first` to `last` of a collection, or of the whole library without one, as one
+ * source (#634): the job reads them a page at a time when it's set up, however many there
+ * are. `count` is how many the range holds, as the server counted it.
+ */
+export const librarySetValidator = v.object({ collectionId: v.optional(v.id("collections")), first: v.number(), last: v.number(), count: v.number() });
+
 const bucketItemFields = {
   ...sourceMetadataFields,
   bucketKey: v.string(),
@@ -382,6 +389,7 @@ const bucketItemFields = {
   zoteroUserId: v.optional(v.string()),
   collectionKey: v.optional(v.string()),
   includeDescendants: v.optional(v.boolean()),
+  librarySet: v.optional(librarySetValidator),
 };
 
 /**

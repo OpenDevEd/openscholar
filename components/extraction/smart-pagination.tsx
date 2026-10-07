@@ -26,6 +26,8 @@ interface SmartPaginationProps {
   onPageSizeChange: (pageSize: number) => void;
   totalCount: number;
   filteredCount: number;
+  /** The count stopped short: a search reached the search engine's limit. */
+  filteredAtLeast?: boolean;
   /** The counts are a view behind, still being counted for the filters now set. */
   stale?: boolean;
   /** How many papers the pages before this one held. */
@@ -44,6 +46,7 @@ export function SmartPagination({
   onPageSizeChange,
   totalCount,
   filteredCount,
+  filteredAtLeast,
   stale,
   offset,
   displayedCount,
@@ -56,7 +59,7 @@ export function SmartPagination({
       {/* Left: Results info */}
       {/* The sides share the row evenly, so the steps stay put when the count's text changes width. */}
       <p className="text-xs tabular-nums text-muted-foreground sm:flex-1">
-        {t("showingRange", { start: displayedCount === 0 ? 0 : offset + 1, end: endIdx, total: Math.max(filteredCount, endIdx) })}
+        {t("showingRange", { start: displayedCount === 0 ? 0 : offset + 1, end: endIdx, total: filteredAtLeast ? `${Math.max(filteredCount, endIdx).toLocaleString()}+` : Math.max(filteredCount, endIdx) })}
         {filteredCount < totalCount && (
           <span className="text-xs ml-2">{t("filteredFrom", { total: totalCount })}</span>
         )}

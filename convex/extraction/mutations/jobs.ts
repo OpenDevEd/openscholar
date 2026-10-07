@@ -17,6 +17,7 @@ import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { assertBucketWithinLimits } from "../bucket/limits";
 import { availableCredits as readAvailableCredits, planLimit } from "../../billing/accounts";
+import { papersIn } from "../../screening/estimate";
 import { dedupeBucketItems } from "../../../lib/bucket/dedupe";
 import { assertValidJobTransition, type JobStatus } from "../stateMachine";
 import {
@@ -84,6 +85,15 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
     selection.count = await checkScreeningSelection(ctx, userId, selection.jobId, selection.revision);
     item.sourceRefId = selection.jobId;
   }
+  // A range of a collection or the library holds what the server counts in it now, never what it was sent.
+  for (const item of deduped) {
+    if (!item.librarySet) continue;
+    const { collectionId, first, last } = item.librarySet;
+    const held = await papersIn(ctx, userId, collectionId ? { kind: "collection", collectionId } : { kind: "saved" });
+    if (held === null) throw createError("NOT_FOUND", "Collection not found");
+    if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
+    item.librarySet = { ...item.librarySet, count: Math.max(0, Math.min(last, held) - first + 1) };
+  }
   const bucketLimits = assertBucketWithinLimits(deduped, await planLimit(ctx, userId, "request_papers"));
   const sourceType = deriveSourceType(deduped);
 
@@ -130,6 +140,8 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
     status: "pending",
     totalPapers: 0,
     runEpoch: 0,
+    // Its setup reads its sources from the first (../actions.ts).
+    setup: { position: 0, read: 0, papers: 0, processable: 0 },
     usePdfs: args.usePdfs ?? false,
     ...stamp,
     ...(spend ? { spendHold: spend.hold, spendCap: spend.cap } : {}),
@@ -223,6 +235,7 @@ export const duplicateJobAction = defineUserMutation({
       status: "pending",
       totalPapers: 0,
       runEpoch: 0,
+      setup: { position: 0, read: 0, papers: 0, processable: 0 },
       usePdfs: oldJob.usePdfs ?? false,
       ...dupStamp,
       createdAt: now,

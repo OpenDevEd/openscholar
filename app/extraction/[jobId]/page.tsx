@@ -811,6 +811,7 @@ export default function JobDetailPage() {
                     onPageSizeChange={setPageSize}
                     totalCount={authoritativeTotalPapers}
                     filteredCount={authoritativeFilteredPapers}
+                    filteredAtLeast={hasActiveResultFilters && resultCounts?.atLeast === true}
                     stale={countsAreStale || results.isStale}
                     offset={results.offset}
                     displayedCount={displayedPapers.length}

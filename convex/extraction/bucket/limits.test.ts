@@ -25,3 +25,9 @@ describe("assertBucketWithinLimits", () => {
     expect(() => assertBucketWithinLimits([historyRow(0), historyRow(-5)])).toThrow(/at least one paper/);
   });
 });
+
+describe("a search's paper count", () => {
+  it("is refused when it isn't a number, so setup never reads a search to its end unasked", () => {
+    expect(() => assertBucketWithinLimits([{ source: "history", searchFilters: { limit: Infinity } }, { source: "library" }], 1_000)).toThrow(/must be a number/);
+  });
+});

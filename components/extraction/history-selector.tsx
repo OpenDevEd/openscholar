@@ -104,7 +104,7 @@ export function HistorySelector({ paperLimit }: { paperLimit: number }) {
     [order],
   );
 
-  // A picked search starts at `pullDefault` papers (fewer if it has fewer), which the
+  // A picked search starts at `pullDefault` papers (fewer if it has fewer, or the plan has room for fewer), which the
   // CountChip can raise to `pullCap`; the chip refines downward if the fresh count is lower.
   // Null for a saved search whose query is no longer valid; the toast says why.
   const toBucketItem = useCallback(
@@ -124,13 +124,17 @@ export function HistorySelector({ paperLimit }: { paperLimit: number }) {
         count: entry.count,
         searchFilters,
       });
+      // No more than the plan has room for beside what's staged already.
+      const { order: staged, items } = useBucketStore.getState();
+      const room = limit - staged.reduce((n, key) => (items[key]?.status === "ready" ? n + (items[key]?.paperCount ?? 1) : n), 0);
       const initial = Math.min(
         pullDefault,
         Math.max(0, seeded.paperCount ?? pullDefault),
+        Math.max(1, room),
       );
       return { ...seeded, paperCount: initial };
     },
-    [pullDefault, tv, toast],
+    [limit, pullDefault, tv, toast],
   );
 
   if (!ready || searches.isLoading) return <ListLoading label={tc("loading")} />;

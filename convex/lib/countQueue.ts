@@ -20,12 +20,17 @@ export type QueueingCtx = MutationCtx & { countQueue?: CountQueue };
 /** Queues `operations` for `aggregate`; a write outside the app's builders, such as a test's uncapped seed, queues its own at once. */
 export async function queueCounts(ctx: QueueingCtx, aggregate: AnyAggregate, operations: Operation[]) {
   if (operations.length === 0) return;
-  if (!ctx.countQueue) return void (await aggregate.enqueueBatch(ctx, operations));
+  if (!ctx.countQueue) return void (await flushCountQueue(ctx, new Map([[aggregate, operations]])));
   ctx.countQueue.set(aggregate, [...(ctx.countQueue.get(aggregate) ?? []), ...operations]);
 }
 
-/** Queues every write gathered, one call per aggregate. */
+/** Writes one call queues at most: an argument holds 8,192 items. */
+const FLUSH_CHUNK = 4_000;
+
+/** Queues every write gathered, in order, a chunk per call. */
 export async function flushCountQueue(ctx: MutationCtx, queue: CountQueue) {
-  for (const [aggregate, operations] of queue) await aggregate.enqueueBatch(ctx, operations);
+  for (const [aggregate, operations] of queue) {
+    for (let at = 0; at < operations.length; at += FLUSH_CHUNK) await aggregate.enqueueBatch(ctx, operations.slice(at, at + FLUSH_CHUNK));
+  }
   queue.clear();
 }

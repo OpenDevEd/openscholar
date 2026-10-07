@@ -148,8 +148,13 @@ const SEARCH_RESULTS_MAX = 1_024;
 const IN_MEMORY_PAPERS = 1_000;
 /** Rows a filtered page reads along its order when its filters keep more papers than that: they then fill a page well within it. */
 const FILTERED_PAGE_ROWS = 4_000;
-/** Papers of the narrowest filter a count of several filters, or a summary with filters, reads at most. */
-const READ_PAPERS = 8_000;
+/**
+ * Papers of the narrowest filter a count of several filters reads at most, one index read
+ * each, and a summary with filters, two each: well within the 4,096 index reads a query
+ * may make. Past them, the count says `atLeast` and the summary `partial`.
+ */
+const COUNT_PAPERS = 3_000;
+const SUMMARY_PAPERS = 1_500;
 /** Ids read from the counts at a time. */
 const IDS_PAGE = 1_000;
 
@@ -316,7 +321,8 @@ export const listJobResultsAction = defineUserQuery({
     const narrowest = cursor === null ? await narrowestOf(ctx, parts) : null;
     if (sorted || (narrowest && narrowest.count <= IN_MEMORY_PAPERS)) {
       const part = narrowest?.part ?? (await narrowestOf(ctx, parts))!.part;
-      const { ids } = await idsOf(ctx, part, Number.MAX_SAFE_INTEGER);
+      // Read whole: as few papers as chose this way, or, as later pages of a running job find more, no more than twice that.
+      const { ids } = await idsOf(ctx, part, 2 * IN_MEMORY_PAPERS);
       const papers = (await Promise.all(ids.map((id) => ctx.db.get(id as Id<"extractionPapers">))))
         .filter((paper): paper is Doc<"extractionPapers"> => paper !== null && paper.processable === true && matchesProjectionFilters(paper, filters));
       const read = await pageInMemory(ctx, sortFilteredPapers(papers.sort((a, b) => compareValues([a._creationTime, a._id], [b._creationTime, b._id])), args.sortBy), sorted ? cursor!.slice(SORTED.length) : null, numItems);
@@ -351,7 +357,7 @@ async function countView(ctx: QueryCtx, job: Doc<"extractionJobs">, filters: Nor
   if (!narrowest) return { all, matching: all, atLeast: false };
   // One filter, with one range: its count. Status tags together overlap, so they're read.
   if (parts.length === 1 && narrowest.part.ranges.length <= 1) return { all, matching: narrowest.count, atLeast: false };
-  const { ids, all: readAll } = await idsOf(ctx, narrowest.part, READ_PAPERS);
+  const { ids, all: readAll } = await idsOf(ctx, narrowest.part, COUNT_PAPERS);
   const facts = await Promise.all(ids.map((id) => ctx.db.query("extractionPaperFacts").withIndex("by_paper", (q) => q.eq("paperId", id as Id<"extractionPapers">)).unique()));
   return { all, matching: facts.filter((fact) => fact !== null && matchesProjectionFilters(fact, filters)).length, atLeast: !readAll };
 }
@@ -421,7 +427,7 @@ export const summarizeJobResultsAction = defineUserQuery({
     }
 
     // The papers the filters keep, read from the narrowest, each with its answer to this question.
-    const { ids, all } = await idsOf(ctx, (await narrowestOf(ctx, parts))!.part, READ_PAPERS);
+    const { ids, all } = await idsOf(ctx, (await narrowestOf(ctx, parts))!.part, SUMMARY_PAPERS);
     const rows: Doc<"extractionAnswerRows">[] = [];
     for (const id of ids) {
       const paperId = id as Id<"extractionPapers">;

@@ -20,7 +20,7 @@ import {
   extractionPaperQueueFields,
   extractionQuestionFields,
   extractionResultFields, extractionAnswerRowFields, extractionPaperFactFields,
-  storedSearchFiltersValidator,
+  storedSearchFiltersValidator, librarySetValidator,
 } from "./extraction/validators";
 import {
   chatGenerationUsageFields,
@@ -800,6 +800,8 @@ export default defineSchema({
     zoteroUserId: v.optional(v.string()),
     collectionKey: v.optional(v.string()),
     includeDescendants: v.optional(v.boolean()),
+    // A collection's or the library's papers, a range of them, as one source (convex/extraction/validators.ts).
+    librarySet: v.optional(librarySetValidator),
   })
     .index("by_job_and_position", ["jobId", "position"])
     .index("by_job_and_source", ["jobId", "source"]),
