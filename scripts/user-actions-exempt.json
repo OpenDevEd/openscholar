@@ -1,10 +1,12 @@
 {
   "plumbing": {
     "ai/estimates:mine": "The browser's balance check before it asks for AI work. The server holds the same figures when the work runs (lib/pricing/estimate.ts).",
-    "billing/accounts:myLimits": "What the person's plan allows, for the extraction page to size its bucket. Every start checks the plan itself (convex/billing/accounts.ts `planLimit`).",
     "apiKeys/actions:encryptAndSave": "User API keys never reach the assistant (plan decision 5).",
     "apiKeys/mutations:markUsed": "User API keys never reach the assistant (plan decision 5).",
     "apiKeys/mutations:remove": "User API keys never reach the assistant (plan decision 5).",
+    "assistant/files:ready": "Binds a file the person's browser uploaded to its upload. The assistant doesn't upload files.",
+    "assistant/files:remove": "Removes a file the person attached and hasn't sent. The assistant doesn't attach files.",
+    "assistant/files:uploadUrl": "Where the person's browser uploads a file they attach to a message. The assistant reads attached files; it doesn't attach its own.",
     "assistant/jobs:card": "A job's live card in the chat that started it. The assistant reads the same job through screening/queries:getScreeningJob and extraction/queries:listJobResults.",
     "assistant/jobs:running": "Which of a chat's jobs are running, for the panel to dock their live cards. The assistant hears when each ends, and reads them through screening/queries:getScreeningJob and extraction/queries:listJobResults.",
     "assistant/presence:heartbeat": "The browser's own signal that a chat is still open in it.",
@@ -21,6 +23,7 @@
     "assistant/spending:setForNewChats": "Whether the person's new chats take this chat's spending limit. The assistant doesn't set its own.",
     "assistant/spending:setReplyLimit": "The person's limit on what the assistant spends of their credits. The assistant doesn't set its own.",
     "assistant/undo:run": "Undoes a step the assistant took, by running the reversing action the step kept. The assistant runs that action itself.",
+    "billing/accounts:myLimits": "What the person's plan allows, for the extraction page to size its bucket. Every start checks the plan itself (convex/billing/accounts.ts `planLimit`).",
     "billing/catalog:get": "The plan catalog the billing pages render from Autumn's copy.",
     "evidenceLibraries/uploads:generateUploadUrl": "A storage URL for a file the person picks in their browser.",
     "exports:progress": "Tells the browser downloading an export when its next part is ready.",

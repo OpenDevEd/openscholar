@@ -3270,7 +3270,10 @@
     "free": "Gratuit",
     "source": "Indice d'intelligence par Artificial Analysis",
     "back": "Retour aux modèles",
-    "default": "Par défaut"
+    "default": "Par défaut",
+    "reads": "Lit",
+    "readsImages": "Lit les images",
+    "readsPdfs": "Lit les PDF"
   },
   "assistant": {
     "activity": {
@@ -3890,6 +3893,20 @@
       "screening": "Tri",
       "extraction": "Extraction"
     },
-    "moreJobs": "{count, plural, one {# autre tâche} other {# autres tâches}}"
+    "moreJobs": "{count, plural, one {# autre tâche} other {# autres tâches}}",
+    "files": {
+      "attach": "Joindre des images",
+      "pasted": "Image collée",
+      "onlyImages": "Seules les images peuvent être jointes pour l'instant",
+      "tooLarge": "Plus de {mb} Mo",
+      "unreadable": "Cette image est illisible",
+      "failed": "Impossible d'envoyer ce fichier",
+      "remove": "Retirer",
+      "removeNamed": "Retirer {name}",
+      "expired": "Expiré, joignez-le à nouveau",
+      "drop": "Déposez des images pour les joindre",
+      "anImage": "une image",
+      "modelCant": "{model} ne lit pas les images. Choisissez un autre modèle pour les joindre."
+    }
   }
 }

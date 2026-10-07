@@ -5,7 +5,7 @@
 // This is the chat itself. The run map, the cards, the sheets and the spending controls
 // arrive with the issues that build what they show; the @ picker is ./mentions.tsx.
 
-import { Component, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
+import { Component, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
 import { insertAtTop, useAction, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -36,6 +36,8 @@ import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { titleFrom } from "@/lib/assistant/title";
 import { stillNamed, withTokens, type Mention } from "@/lib/assistant/mentions";
 import { MentionComposer, MessageText, RECORD_CHIP, recordChipStyle } from "./mentions";
+import { AttachButton, DropZone, Reattach, SentFiles, Tray, sendingOf, startShrinker, uploaded, useAttach, useRemove, type Attachment } from "./attachments";
+import { readsImages } from "@/lib/assistant/files";
 import { inApp, recordOf } from "@/lib/assistant/view";
 import useSWR, { preload } from "swr";
 import { readWork } from "@/app/actions/topics";
@@ -92,6 +94,12 @@ type Drafts = {
   pick: (id: ThreadId | null, mention: Mention) => void;
   /** Lets go of the picks a message was sent with, once it's in. */
   unpick: (id: ThreadId | null, sent: readonly Mention[]) => void;
+  /** The files attached to a chat's draft (./attachments.tsx). */
+  files: (id: ThreadId | null) => Attachment[];
+  addFiles: (id: ThreadId | null, files: Attachment[]) => void;
+  /** Changes a file wherever its draft is now: a new chat's files move into the chat it becomes while they upload. */
+  patchFile: (key: string, change: Partial<Attachment>) => void;
+  dropFiles: (id: ThreadId | null, keys: readonly string[]) => void;
 };
 
 const setOpen = (update: (open: boolean) => boolean) => panelPlace.set((now) => ({ ...now, open: update(now.open) }));
@@ -106,6 +114,7 @@ export function AssistantPanel() {
   // Kept here, above the panel, so folding it away keeps what was typed.
   const [typed, setTyped] = useState<Record<string, string>>({});
   const [picked, setPicked] = useState<Record<string, Mention[]>>({});
+  const [attached, setAttached] = useState<Record<string, Attachment[]>>({});
   // A chat started about a record elsewhere ("Start chat" on a search): its new chat's box names the record, picked, ready for the first message.
   const seed = useSyncExternalStore(panelSeed.subscribe, panelSeed.get, panelSeed.onServer);
   const [seeded, setSeeded] = useState(0);
@@ -122,6 +131,7 @@ export function AssistantPanel() {
     adopt: (id) => {
       setTyped(({ [NEW]: text, ...rest }) => (text ? { ...rest, [id]: rest[id] || text } : rest));
       setPicked(({ [NEW]: mine, ...rest }) => (mine ? { ...rest, [id]: [...(rest[id] ?? []), ...mine] } : rest));
+      setAttached(({ [NEW]: mine, ...rest }) => (mine ? { ...rest, [id]: [...(rest[id] ?? []), ...mine] } : rest));
     },
     picks: (id) => picked[id ?? NEW] ?? [],
     // A pick keeps the earlier ones its draft still names. A failed send keeps them, so the draft put back still draws them.
@@ -129,6 +139,10 @@ export function AssistantPanel() {
       setPicked((all) => ({ ...all, [id ?? NEW]: [...stillNamed(typed[id ?? NEW] ?? "", all[id ?? NEW] ?? []).filter((m) => m.kind !== mention.kind || m.id !== mention.id), mention] })),
     // By the picks themselves: one made again for the next draft is a new pick, and stays.
     unpick: (id, sent) => setPicked((all) => ({ ...all, [id ?? NEW]: (all[id ?? NEW] ?? []).filter((m) => !sent.includes(m)) })),
+    files: (id) => attached[id ?? NEW] ?? [],
+    addFiles: (id, files) => setAttached((all) => ({ ...all, [id ?? NEW]: [...(all[id ?? NEW] ?? []), ...files] })),
+    patchFile: (key, change) => setAttached((all) => Object.fromEntries(Object.entries(all).map(([id, files]) => [id, files.map((file) => (file.key === key ? { ...file, ...change } : file))]))),
+    dropFiles: (id, keys) => setAttached((all) => ({ ...all, [id ?? NEW]: (all[id ?? NEW] ?? []).filter((file) => !keys.includes(file.key)) })),
   };
   return (
     // Session replays show none of the conversation (instrumentation-client.ts).
@@ -435,7 +449,7 @@ function Chat({
   const draft = drafts.of(threadId);
   // A new chat's first message, shown from the moment it's sent until the server's copy of it loads.
   // `title` is the one the chat is made with, which its header shows until the chat's record arrives.
-  const [first, setFirst] = useState<{ threadId: ThreadId | null; text: string; title: string } | null>(null);
+  const [first, setFirst] = useState<{ threadId: ThreadId | null; text: string; title: string; files?: Message["files"] } | null>(null);
   // The chat the open new chat became when its first message was sent. It's the thread already on screen, so the thread isn't built again for it.
   const [born, setBorn] = useState<ThreadId | null>(null);
   // The jobs its replies started that are still running, newest first: their cards dock over the message box.
@@ -487,6 +501,8 @@ function Chat({
   const create = useMutation(api.assistant.threads.create);
   const setModel = useMutation(api.assistant.threads.setModel);
   const stopReply = useMutation(api.assistant.replies.stop);
+  // The files of the message on its way, which its bubble shows with their pictures in this browser.
+  const going = useRef<Message["files"]>(undefined);
   // The message shows the moment it's sent, ahead of the server's copy.
   const sendMessage = useMutation(api.assistant.replies.send).withOptimisticUpdate((localQueryStore, args) =>
     insertAtTop({
@@ -494,7 +510,7 @@ function Chat({
       argsToMatch: { threadId: args.threadId },
       localQueryStore,
       // Convex works this out again on every update until the send lands. The same ID each time keeps it one bubble, which rises in once.
-      item: { id: SENDING_ID, role: "user", order: Number.MAX_SAFE_INTEGER, text: args.text, status: "done", mine: true, at: 0 },
+      item: { id: SENDING_ID, role: "user", order: Number.MAX_SAFE_INTEGER, text: args.text, status: "done", mine: true, at: 0, ...(going.current?.length ? { files: going.current } : {}) },
     }),
   );
 
@@ -506,6 +522,23 @@ function Chat({
 
   const busy = sending || live !== null;
   const canWrite = thread?.role !== "read";
+  // What's attached to this chat's draft, and why nothing can be, when that's so: a model that takes no images, or a chat the person only reads.
+  const files = drafts.files(threadId);
+  const filesOff = !canWrite ? t("readOnly") : model && !readsImages(model.inputs) ? t("files.modelCant", { model: stripProviderPrefix(model.name) }) : null;
+  const picker = useRef<HTMLInputElement>(null);
+  const attach = useAttach((list) => drafts.addFiles(threadId, list), drafts.patchFile);
+  const removeUpload = useRemove();
+  // Files dragged over the panel: enter and leave fire for each element crossed, so they're counted.
+  const [dragging, setDragging] = useState(0);
+  // Outside systems: the browser's idle callback and the image worker, started before a file arrives so none of its frames go to starting it.
+  useEffect(() => {
+    if (!("requestIdleCallback" in window)) {
+      const timer = setTimeout(startShrinker, 1500);
+      return () => clearTimeout(timer);
+    }
+    const handle = requestIdleCallback(startShrinker);
+    return () => cancelIdleCallback(handle);
+  }, []);
   /** The open chat, made on the model the composer shows if it hasn't started. */
   const started = (title?: string) => {
     if (threadId) return Promise.resolve(threadId);
@@ -532,6 +565,8 @@ function Chat({
     const text = withTokens(typed, sentPicks);
     const from = threadId;
     drafts.set(from, "");
+    // The files go with it; a refused one is let go of when it's sent.
+    const attachedNow = files;
     // However far back they had scrolled, or however the chat above moved, the reply to this is what they want to see:
     // the chat follows it again, which scrolling to the end alone doesn't undo once they had scrolled away.
     if (scroller.current) {
@@ -542,7 +577,7 @@ function Chat({
     let mine: Sending = { threadId: from };
     onSending(() => mine);
     const title = titleFrom(typed);
-    if (!from) setFirst({ threadId: null, text, title });
+    if (!from) setFirst({ threadId: null, text, title, files: sendingOf(attachedNow) });
     // The chat the message ends up in: a new chat has its ID once it's made.
     let into = from;
     const sent = (async () => {
@@ -551,14 +586,20 @@ function Chat({
       const before = mine;
       mine = { threadId: id };
       onSending((now) => (now === before ? mine : now));
+      // Its files once they're up; it waits for the ones still uploading.
+      const up = await uploaded(attachedNow);
+      const fileIds = up.map((file) => file.fileId);
+      going.current = up.length ? up.map((file) => file.shown) : undefined;
+      setFirst((now) => (now && now.text === text ? { ...now, files: up.map((file) => file.shown) } : now));
       // Where it's sent from goes with it, so "this" and "here" mean the page the person is on.
-      await sendMessage({ threadId: id, text, view: window.location.pathname + window.location.search });
+      await sendMessage({ threadId: id, text, view: window.location.pathname + window.location.search, ...(fileIds.length ? { files: fileIds } : {}) });
       return id;
     })();
     outgoing.current = sent.catch(() => null);
     try {
       await sent;
       drafts.unpick(into, sentPicks);
+      drafts.dropFiles(into, attachedNow.map((file) => file.key));
     } catch (error) {
       // The message goes back in the box of its chat, unless something new was typed there meanwhile.
       drafts.set(into, (now) => now || typed);
@@ -599,11 +640,44 @@ function Chat({
   const messages = [...new Map(results.map((item) => [item.id, item])).values()].reverse();
   const sent: Message[] =
     first && first.threadId === threadId && results.length === 0
-      ? [{ id: SENDING_ID, role: "user", order: Number.MAX_SAFE_INTEGER, text: first.text, status: "done", mine: true, at: 0 }]
+      ? [{ id: SENDING_ID, role: "user", order: Number.MAX_SAFE_INTEGER, text: first.text, status: "done", mine: true, at: 0, ...(first.files?.length ? { files: first.files } : {}) }]
       : [];
 
+  // Files the person picked, dropped or pasted, when the chat can take them.
+  const take = (list: FileList | null | undefined) => {
+    if (list?.length && !filesOff) attach([...list]);
+  };
+  const removeFile = (file: Attachment) => {
+    removeUpload(file);
+    drafts.dropFiles(threadId, [file.key]);
+  };
+
   return (
-    <>
+    <Reattach.Provider value={filesOff ? null : () => picker.current?.click()}>
+    {/* Files dragged over the panel can be dropped anywhere on it. */}
+    <div
+      className="contents"
+      onDragEnter={(event) => {
+        if (!event.dataTransfer.types.includes("Files")) return;
+        event.preventDefault();
+        setDragging((n) => n + 1);
+      }}
+      onDragOver={(event) => {
+        if (event.dataTransfer.types.includes("Files")) event.preventDefault();
+      }}
+      onDragLeave={() => setDragging((n) => Math.max(0, n - 1))}
+      onDrop={(event) => {
+        if (!event.dataTransfer.types.includes("Files")) return;
+        event.preventDefault();
+        setDragging(0);
+        take(event.dataTransfer.files);
+      }}
+      onPasteCapture={(event) => {
+        if (!event.clipboardData.files.length || filesOff) return;
+        event.preventDefault();
+        take(event.clipboardData.files);
+      }}
+    >
       {/* A chat that has just been made is named by its first message until its record arrives, as the server names it, so "New chat" changes once. */}
       <Header title={threadId ? (thread?.title ?? (threadId === born && first?.threadId === threadId ? first.title : "")) : t("newChat")} onHistory={onHistory} onShare={share} onSpending={spend} onRestart={restart} onFold={onFold} />
       <DockedJobs.Provider value={jobsShown}>
@@ -665,8 +739,23 @@ function Chat({
             });
         }}
         onSpending={spend}
+        attach={<AttachButton off={filesOff} onPick={() => picker.current?.click()} />}
+        attachments={<Tray files={files} onRemove={removeFile} />}
       />
-    </>
+      <input
+        ref={picker}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(event) => {
+          take(event.target.files);
+          event.target.value = "";
+        }}
+      />
+      <DropZone on={dragging > 0} off={filesOff} />
+    </div>
+    </Reattach.Provider>
   );
 }
 
@@ -982,6 +1071,7 @@ function FailedRow({ error }: { error: Message["error"] }) {
  * in as it's sent; the server's copy then takes its place without moving.
  */
 function UserBubble({ message }: { message: Message }) {
+  const reattach = useContext(Reattach);
   return (
     <motion.div
       initial={message.id.startsWith(SENDING) ? { opacity: 0, y: 8 } : false}
@@ -990,6 +1080,7 @@ function UserBubble({ message }: { message: Message }) {
       className="ml-10 self-end"
     >
       {!message.mine && message.sender?.name ? <p className="mb-1 pr-1 text-right text-2xs text-muted-foreground">{message.sender.name}</p> : null}
+      {message.files?.length ? <SentFiles files={message.files} onReattach={reattach ?? undefined} /> : null}
       <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-primary/10 px-4 py-2.5 text-sm leading-6">
         <MessageText text={message.text} />
       </div>
@@ -1170,6 +1261,8 @@ function Footer({
   onCarryOn,
   onSpending,
   dock,
+  attach,
+  attachments,
 }: {
   composer: RefObject<HTMLTextAreaElement | null>;
   draft: string;
@@ -1197,6 +1290,9 @@ function Footer({
   onSpending: () => void;
   /** The chat's running jobs, between the chips and the message box. */
   dock?: ReactNode;
+  /** The attach button, before the page chip, and the files waiting to be sent, over the text (./attachments.tsx). */
+  attach?: ReactNode;
+  attachments?: ReactNode;
 }) {
   const t = useTranslations("assistant");
   const view = useViewName();
@@ -1241,6 +1337,7 @@ function Footer({
       </motion.div>
       {dock}
       <div className="rounded-2xl border border-border/60 bg-background shadow-xs focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
+        {attachments}
         <MentionComposer
           composer={composer}
           draft={draft}
@@ -1253,6 +1350,7 @@ function Footer({
           placeholder={!canWrite ? t("readOnly") : summarizing ? t("summarizing") : t("placeholder")}
         />
         <div className="flex items-center gap-2 px-2 pb-2">
+          {attach}
           <span className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground">
             <Eye className="size-3" /> {t("sees", { view })}
           </span>

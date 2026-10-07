@@ -3270,7 +3270,10 @@
     "free": "免费",
     "source": "Artificial Analysis 智能指数",
     "back": "返回模型列表",
-    "default": "默认"
+    "default": "默认",
+    "reads": "可读取",
+    "readsImages": "可读取图片",
+    "readsPdfs": "可读取 PDF"
   },
   "assistant": {
     "activity": {
@@ -3890,6 +3893,20 @@
       "screening": "筛选",
       "extraction": "提取"
     },
-    "moreJobs": "另外 {count} 个任务"
+    "moreJobs": "另外 {count} 个任务",
+    "files": {
+      "attach": "添加图片",
+      "pasted": "粘贴的图片",
+      "onlyImages": "目前只能添加图片",
+      "tooLarge": "超过 {mb} MB",
+      "unreadable": "无法读取此图片",
+      "failed": "无法上传此文件",
+      "remove": "移除",
+      "removeNamed": "移除 {name}",
+      "expired": "已过期，请重新添加",
+      "drop": "拖放图片即可添加",
+      "anImage": "一张图片",
+      "modelCant": "{model} 无法读取图片。请选择其他模型来添加图片。"
+    }
   }
 }

@@ -3270,7 +3270,10 @@
     "free": "निःशुल्क",
     "source": "Artificial Analysis का इंटेलिजेंस इंडेक्स",
     "back": "मॉडल पर वापस जाएँ",
-    "default": "डिफ़ॉल्ट"
+    "default": "डिफ़ॉल्ट",
+    "reads": "पढ़ता है",
+    "readsImages": "चित्र पढ़ता है",
+    "readsPdfs": "PDF पढ़ता है"
   },
   "assistant": {
     "activity": {
@@ -3890,6 +3893,20 @@
       "screening": "स्क्रीनिंग",
       "extraction": "एक्सट्रैक्शन"
     },
-    "moreJobs": "{count} और कार्य"
+    "moreJobs": "{count} और कार्य",
+    "files": {
+      "attach": "चित्र जोड़ें",
+      "pasted": "चिपकाया गया चित्र",
+      "onlyImages": "अभी केवल चित्र जोड़े जा सकते हैं",
+      "tooLarge": "{mb} MB से अधिक",
+      "unreadable": "यह चित्र पढ़ा नहीं जा सकता",
+      "failed": "यह फ़ाइल अपलोड नहीं हो सकी",
+      "remove": "हटाएँ",
+      "removeNamed": "{name} हटाएँ",
+      "expired": "समय सीमा समाप्त, फिर से जोड़ें",
+      "drop": "जोड़ने के लिए चित्र यहाँ छोड़ें",
+      "anImage": "एक चित्र",
+      "modelCant": "{model} चित्र नहीं पढ़ सकता। उन्हें जोड़ने के लिए कोई दूसरा मॉडल चुनें।"
+    }
   }
 }

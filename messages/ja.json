@@ -3270,7 +3270,10 @@
     "free": "無料",
     "source": "Artificial Analysis の Intelligence Index",
     "back": "モデル一覧に戻る",
-    "default": "デフォルト"
+    "default": "デフォルト",
+    "reads": "入力",
+    "readsImages": "画像を読める",
+    "readsPdfs": "PDF を読める"
   },
   "assistant": {
     "activity": {
@@ -3890,6 +3893,20 @@
       "screening": "スクリーニング",
       "extraction": "抽出"
     },
-    "moreJobs": "他 {count} 件のジョブ"
+    "moreJobs": "他 {count} 件のジョブ",
+    "files": {
+      "attach": "画像を添付",
+      "pasted": "貼り付けた画像",
+      "onlyImages": "現在は画像のみ添付できます",
+      "tooLarge": "{mb} MB を超えています",
+      "unreadable": "この画像は読み込めません",
+      "failed": "このファイルをアップロードできませんでした",
+      "remove": "削除",
+      "removeNamed": "{name} を削除",
+      "expired": "期限切れです。もう一度添付してください",
+      "drop": "画像をドロップして添付",
+      "anImage": "画像 1 枚",
+      "modelCant": "{model} は画像を読めません。添付するには別のモデルを選んでください。"
+    }
   }
 }
