@@ -51,7 +51,7 @@ function files(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const file = path.join(dir, entry.name);
     if (entry.isDirectory()) return entry.name === "_generated" ? [] : files(file);
-    return /\.ts$/.test(file) && !/\.test\.|\.test-support\.|\.d\.ts$/.test(file) ? [file] : [];
+    return /\.ts$/.test(file) && !/\.test\.|\.test-support\.|\.bench\.|\.d\.ts$/.test(file) ? [file] : [];
   });
 }
 

@@ -31,7 +31,7 @@ const registered = new Map<string, string>(); // public function ID → the entr
 const twins = new Map<string, string>(); // entry path → its internal twin's ID
 
 // Convex: import every module and read what it exports.
-const convexModules = files("convex", (f) => /\.(ts|js)$/.test(f) && !/\.test\.|\.test-support\./.test(f) && f !== "convex/convex.config.ts");
+const convexModules = files("convex", (f) => /\.(ts|js)$/.test(f) && !/\.test\.|\.test-support\.|\.bench\./.test(f) && f !== "convex/convex.config.ts");
 for (const file of convexModules) {
   const module = file.slice("convex/".length).replace(/\.(ts|js)$/, "");
   const exports = (await import(path.resolve(file))) as Record<string, ConvexFunction>;

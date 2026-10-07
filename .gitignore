@@ -50,3 +50,4 @@ next-env.d.ts
 /playwright-report
 /blob-report
 .claude/scheduled_tasks.lock
+bench-results/local.json
