@@ -60,11 +60,18 @@ export type ChangePapers = { papers: PaperSet; first?: number | null; last?: num
 
 const invalid = (message: string) => createError("VALIDATION_ERROR", message);
 
+/**
+ * Papers of a set one bulk change looks through at most: a rating filter that keeps few of a
+ * broad query's papers would otherwise read page after page of OpenAlex for them.
+ */
+const SCANNED_MAX = 20_000;
+
 /** Reads a set a piece at a time, each carrying on from where the last stopped, until `last`, the set's end, or `enough` papers. */
 async function readPieces(first: number, last: number, enough: number, piece: (from: number, to: number, resume?: string) => Promise<{ papers: SearchPaper[]; taken: number; resume?: string; ended: boolean }>) {
   const papers: SearchPaper[] = [];
   let resume: string | undefined;
   for (let from = first; from <= last; ) {
+    if (from - first >= SCANNED_MAX) throw invalid(`Its rating filter keeps few of the first ${SCANNED_MAX.toLocaleString("en")} papers, so a change can't go through them all. Name a range with first and last, or narrow the query.`);
     // No more than the papers still wanted: a page that skips to `first` takes none, and the read carries on from where it stopped.
     const read = await piece(from, Math.min(last, from + Math.min(PAPERS_A_READ, enough - papers.length) - 1), resume);
     papers.push(...read.papers);

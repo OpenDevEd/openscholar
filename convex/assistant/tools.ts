@@ -663,6 +663,8 @@ export function toolsFor(
       const { count } = JSON.parse(step.input) as { count: number };
       const first: { first: number; items: string } | null = await ctx.runQuery(internal.assistant.bulkPapers.part, { userId, key: stored, at: 0 });
       if (first === null) return { error: "The papers the person was asked about were forgotten: a day has passed. Ask again." };
+      // Their cleanup waits while they're run.
+      await ctx.runMutation(internal.assistant.bulkPapers.claim, { userId, key: stored });
       const change = changeOf(given, []);
       return { tool: CHANGE_PAPERS, entry: entryAt(change.path)!, items: JSON.parse(first.items) as Record<string, unknown>[], kept: step.input, about: JSON.stringify(change.shared), stored: { key: stored, count } };
     }

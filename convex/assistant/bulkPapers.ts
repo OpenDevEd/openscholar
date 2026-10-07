@@ -55,11 +55,27 @@ export const part = internalQuery({
   },
 });
 
-/** Deletes a bulk change's parts, a batch at a time. */
+/** How long a run that started keeps its parts past their day: a run takes minutes at most. */
+const RUN_MS = 60 * 60_000;
+
+/** Marks a bulk change's parts as being run, so their cleanup waits for the run. */
+export const claim = internalMutation({
+  args: { userId: v.id("users"), key: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { userId, key }) => {
+    const first = await ctx.db.query("assistantBulkPapers").withIndex("by_key_and_first", (q) => q.eq("key", key).eq("first", 0)).unique();
+    if (first?.userId === userId) await ctx.db.patch("assistantBulkPapers", first._id, { runningSince: Date.now() });
+    return null;
+  },
+});
+
+/** Deletes a bulk change's parts, a batch at a time; while a run of them is going, an hour later. */
 export const forget = internalMutation({
   args: { key: v.string() },
   returns: v.null(),
   handler: async (ctx, { key }) => {
+    const first = await ctx.db.query("assistantBulkPapers").withIndex("by_key_and_first", (q) => q.eq("key", key).eq("first", 0)).unique();
+    if (first?.runningSince !== undefined && Date.now() - first.runningSince < RUN_MS) return void (await ctx.scheduler.runAfter(RUN_MS, internal.assistant.bulkPapers.forget, { key }));
     const parts = await ctx.db.query("assistantBulkPapers").withIndex("by_key_and_first", (q) => q.eq("key", key)).take(FORGET_BATCH);
     for (const part of parts) await ctx.db.delete("assistantBulkPapers", part._id);
     if (parts.length === FORGET_BATCH) await ctx.scheduler.runAfter(0, internal.assistant.bulkPapers.forget, { key });

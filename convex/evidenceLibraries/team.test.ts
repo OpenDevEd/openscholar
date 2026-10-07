@@ -82,6 +82,10 @@ describe("listTeam", () => {
       { clerkUserId: "user_editor", name: "Grace", email: "grace@example.org", imageUrl: "https://images.example.org/grace.png" },
     ]));
     expect(candidates.page).toHaveLength(2);
+    // The invite form finds a member by an email Clerk keeps in capitals, whatever its case.
+    await fixture.t.run(async (ctx) => { const user = (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "user_editor")).unique())!; await ctx.db.patch("users", user._id, { email: "Grace@Example.org" }); });
+    expect(await fixture.admin.query(api.evidenceLibraries.queries.isOrganizationPerson, { libraryId, email: "grace@example.org" })).toBe(true);
+    expect(await fixture.admin.query(api.evidenceLibraries.queries.isOrganizationPerson, { libraryId, email: "nobody@example.org" })).toBe(false);
     // Found by a word of their name.
     expect((await fixture.admin.query(api.evidenceLibraries.queries.listOrganizationPeople, { libraryId, search: "grace", paginationOpts: { cursor: null, numItems: 20 } })).page.map((person) => person.clerkUserId)).toEqual(["user_editor"]);
 

@@ -835,8 +835,6 @@ export const getRevision = query({
 /** A person as the team page shows them, from their user. */
 const personOf = (clerkUserId: string, user: Doc<"users"> | null) => ({ clerkUserId, name: [user?.firstName, user?.lastName].filter(Boolean).join(" "), email: user?.email ?? "", imageUrl: user?.avatarUrl });
 const userOf = (ctx: QueryCtx, clerkUserId: string) => ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
-const activeMembership = (ctx: QueryCtx, organizationId: Id<"organizations">, clerkUserId: string) =>
-  ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", q => q.eq("organizationId", organizationId).eq("clerkUserId", clerkUserId).eq("state", "active")).first();
 
 /**
  * Everyone with a role on the library, each with it: its organization's owners, read by their
@@ -862,6 +860,9 @@ async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries"
     return { role: libraryRoleFrom(library, organization, { user, membership: ownerOf.get(clerkUserId) ?? null, assignment }), person: personOf(clerkUserId, user) };
   }));
 }
+
+/** Members an email's words match that the invite form compares with it. */
+const MEMBERS_MATCHED = 20;
 
 /** Most people one page of the team picker holds. */
 const PEOPLE_PAGE_MAX = 50;
@@ -900,8 +901,15 @@ export const isOrganizationPerson = query({
   returns: v.boolean(),
   handler: async (ctx, { libraryId, email }) => {
     const { library } = await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
-    const users = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", email.trim().toLowerCase())).take(5);
-    for (const user of users) if (user.state !== "deleted" && (await activeMembership(ctx, library.organizationId, user.clerkId))) return true;
+    // Clerk keeps an email in the case it was given: the organization's members are searched by its words, and compared whatever the case.
+    const wanted = email.trim().toLowerCase();
+    const terms = searchTerms(wanted);
+    if (!terms) return false;
+    const found = await ctx.db.query("organizationMemberships").withSearchIndex("search_member_text", q => q.search("searchText", terms).eq("organizationId", library.organizationId).eq("state", "active")).take(MEMBERS_MATCHED);
+    for (const membership of found) {
+      const user = await userOf(ctx, membership.clerkUserId);
+      if (user && user.state !== "deleted" && user.email.toLowerCase() === wanted) return true;
+    }
     return false;
   },
 });

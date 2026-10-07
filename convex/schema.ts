@@ -229,7 +229,7 @@ export default defineSchema({
   // What reverses each change of a bulk change (convex/assistant/bulk.ts).
   assistantStepUndos: defineTable(assistantStepUndoFields).index("by_step", ["stepId"]),
   // A big bulk change's changes, waiting for the person's answer (convex/assistant/bulkPapers.ts).
-  assistantBulkPapers: defineTable({ userId: v.id("users"), key: v.string(), first: v.number(), items: v.string() }).index("by_key_and_first", ["key", "first"]),
+  assistantBulkPapers: defineTable({ userId: v.id("users"), key: v.string(), first: v.number(), items: v.string(), runningSince: v.optional(v.number()) }).index("by_key_and_first", ["key", "first"]),
   // What each person lets the assistant spend in a chat, and each person's own record (convex/assistant/spending.ts).
   assistantLimits: defineTable(assistantLimitFields).index("by_thread_and_user", ["threadId", "userId"]).index("by_user", ["userId"]),
   assistantSpenders: defineTable(assistantSpenderFields).index("by_user", ["userId"]),
