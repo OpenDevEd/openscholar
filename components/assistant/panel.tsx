@@ -36,7 +36,7 @@ import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { titleFrom } from "@/lib/assistant/title";
 import { stillNamed, withTokens, type Mention } from "@/lib/assistant/mentions";
 import { MentionComposer, MessageText, RECORD_CHIP, recordChipStyle } from "./mentions";
-import { CITED_PDF, Cited, WebSources, useCited } from "./citations";
+import { CITED_PDF, Cited, WebSources, safeDecode, useCited } from "./citations";
 import { AttachButton, DropZone, Reattach, SentFiles, Tray, freePreviews, release, sendingOf, startShrinker, uploaded, useAttach, useRemove, type Attachment } from "./attachments";
 import { MAX_FILES_PER_MESSAGE, readsImages, readsPdfs } from "@/lib/assistant/files";
 import { inApp, recordOf } from "@/lib/assistant/view";
@@ -824,14 +824,10 @@ function Thread({
   const rows: Item[] = waiting && older !== "first" ? [...messages, { id: `${SENDING}reply`, role: "assistant", order: live.order, text: "", status: "pending", mine: false, at: 0 }] : messages;
   // What the chat's replies cite: the files its messages carried, and what its searches found (./citations.tsx).
   // A PDF whose message isn't loaded yet is looked up by the ID its citation names.
-  // A model sometimes cites a PDF by its name in place of its ID: a name only one of the chat's files has finds it too.
-  const carried = useMemo(() => {
-    const files = messages.flatMap((m) => (m.role === "user" ? (m.files ?? []) : []));
-    const named = Map.groupBy(files, (file) => file.name);
-    return new Map([...files.flatMap((file) => (named.get(file.name)!.length === 1 ? [[file.name, file] as const] : [])), ...files.map((file) => [file.id, file] as const)].map(([key, file]) => [key, { name: file.name, url: file.url }] as const));
-  }, [messages]);
+  // A PDF it can't place, whose message isn't loaded or which a model named in place of its ID, the server finds in the whole chat.
+  const carried = useMemo(() => new Map(messages.flatMap((m) => (m.role === "user" ? (m.files ?? []).map((file) => [file.id, { name: file.name, url: file.url }] as const) : []))), [messages]);
   const unloaded = useMemo(
-    () => [...new Set(messages.flatMap((m) => (m.role === "assistant" ? [...m.text.matchAll(CITED_PDF)].map((match) => match[1]) : [])))].filter((id) => !carried.has(id)).slice(0, MAX_FILES_PER_MESSAGE),
+    () => [...new Set(messages.flatMap((m) => (m.role === "assistant" ? [...m.text.matchAll(CITED_PDF)].map((match) => safeDecode(match[1])) : [])))].filter((id) => !carried.has(id)).slice(0, MAX_FILES_PER_MESSAGE),
     [messages, carried],
   );
   const looked = useQuery(api.assistant.files.cited, threadId && unloaded.length ? { threadId, fileIds: unloaded } : "skip");

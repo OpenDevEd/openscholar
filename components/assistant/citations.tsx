@@ -38,7 +38,7 @@ export function useCited(href: string | undefined, children: ReactNode) {
   const { files, sources } = useContext(Cited);
   const page = href?.match(/^\/files\/([^/#?]+)#page=(\d+)$/);
   if (page) {
-    // By ID, or by a name the model wrote into the address, escaped or not.
+    // By ID, or by the name a model wrote into the address in its place, escaped or not (convex/assistant/files.ts `cited`).
     const file = files.get(page[1]) ?? files.get(safeDecode(page[1]));
     return <PageChip url={file?.url ?? null} page={Number(page[2])}>{children}</PageChip>;
   }
@@ -63,7 +63,8 @@ function sourceAt(sources: ReadonlyMap<string, WebSource>, path: string) {
   return matches.length === 1 ? matches[0] : undefined;
 }
 
-const safeDecode = (text: string) => {
+/** A part of an address as written, unescaped; as it is when it isn't escaped right. */
+export const safeDecode = (text: string) => {
   try {
     return decodeURIComponent(text);
   } catch {
