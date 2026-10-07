@@ -9,6 +9,7 @@ import { getScreeningJobAction, listScreeningResultsAction } from "../screening/
 import { insertMany, seedAccount, text } from "../lib/maxSize.test-support";
 import { insertJob } from "../screening/createJob.test-support";
 import { measure, now, record, save } from "./measure.test-support";
+import { runUntriggered } from "../../tests/convex-test-with-limits";
 
 const SIZES = (process.env.BENCH_SIZES ?? "1000,5000,10000").split(",").map(Number);
 const OUTCOMES = ["included", "excluded", "excluded", "unclear"] as const;
@@ -32,7 +33,9 @@ describe("screening reads by job size", () => {
       const at = (scenario: string) => ({ area: "screening", scenario, size });
       // Starting a job of this many papers, as screening/start:screen does once it has read them.
       const papers = Array.from({ length: size }, (_, i) => ({ openalexId: `W${i}`, title: text(120, i) }));
-      await measure(t, at("start a job"), (ctx) => (createScreeningJobForUser as unknown as { _handler: (ctx: unknown, args: unknown) => Promise<{ jobId: string }> })._handler(ctx, { userId, author: "user", papers, set: { kind: "saved" }, first: 1, last: size, questions, scoringConfig }), () => "started");
+      // The mutation's own handler wraps the database in the triggers: run it on the bare one, so they apply once.
+      const bare = { run: <T,>(fn: (ctx: any) => Promise<T>) => runUntriggered(t, fn) };
+      await measure(bare, at("start a job"), (ctx) => (createScreeningJobForUser as unknown as { _handler: (ctx: unknown, args: unknown) => Promise<{ jobId: string }> })._handler(ctx, { userId, author: "user", papers, set: { kind: "saved" }, first: 1, last: size, questions, scoringConfig }), () => "started");
 
       // A finished job of this size, seeded as rows.
       const jobId = await t.run((ctx) => insertJob(ctx, { userId, status: "completed", totalPapers: size, questions, scoringConfig, createdAt: 1, updatedAt: 1 } as never));
@@ -53,6 +56,7 @@ describe("screening reads by job size", () => {
       let exported = 0;
       let most = { documentsRead: 0, bytesRead: 0 };
       let ok = true;
+      let error: string | undefined;
       const started = now();
       do {
         try {
@@ -64,12 +68,13 @@ describe("screening reads by job size", () => {
           exported += read.page.length;
           most = { documentsRead: Math.max(most.documentsRead, m.documentsRead.used), bytesRead: Math.max(most.bytesRead, m.bytesRead.used) };
           cursor = read.isDone ? null : read.continueCursor;
-        } catch {
+        } catch (thrown) {
           ok = false;
+          error = `call ${calls + 1}: ${String((thrown as Error).message ?? thrown).split("\n")[0]}`;
           break;
         }
       } while (cursor !== null);
-      record({ ...at("export, every page"), ok: ok && exported === size, ...most, ms: Math.round(now() - started), result: `${exported} results in ${calls} calls` });
+      record({ ...at("export, every page"), ok: ok && exported === size, ...most, ms: Math.round(now() - started), result: `${exported} results in ${calls} calls`, ...(error ? { error } : {}) });
     });
   }
 });
