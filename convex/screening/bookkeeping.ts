@@ -136,7 +136,7 @@ export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">,
     { preserveRating: true },
   );
   const collection = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
-  if (collection) await addCollectionMembership(ctx, { userId: job.userId, collection, libraryItemId });
+  if (collection) await addCollectionMembership(ctx, { userId: job.userId, collection, item: (await ctx.db.get("libraryItems", libraryItemId))! });
   await ctx.db.patch("screeningResults", result._id, { savedToLibrary: true, libraryItemId });
 }
 
@@ -165,7 +165,7 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   }
   const collection = becameIncluded && !membership ? await ctx.db.get("collections", collectionId) : null;
   if (collection) {
-    await addCollectionMembership(ctx, { userId: job.userId, collection, libraryItemId: item._id });
+    await addCollectionMembership(ctx, { userId: job.userId, collection, item });
     if (result.pruned) {
       await ctx.db.patch("screeningResults", result._id, { pruned: undefined });
       moved.removed = -1;

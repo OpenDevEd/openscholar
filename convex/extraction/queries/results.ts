@@ -8,7 +8,8 @@ import { getStatusFilterOptionIds } from "../../../lib/extraction/status-filter-
 import type { QueryCtx } from "../../_generated/server";
 import { compareValues, getDocumentSize, v, type Infer } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
-import { QueryStream, stream } from "convex-helpers/server/stream";
+import { stream } from "convex-helpers/server/stream";
+import { JoinStream } from "../../lib/joinStream";
 import schema from "../../schema";
 import { assistantQuery, defineUserQuery, userQuery } from "../../lib/userActions";
 import type { Doc, Id } from "../../_generated/dataModel";
@@ -238,34 +239,6 @@ async function loadPaperResults(ctx: QueryCtx, paper: Doc<"extractionPapers">) {
   return { ...paper, results: results.get(paper._id) ?? [] };
 }
 
-/** Keep joined-answer bytes in the existing stream's cursor and split handling. */
-class ResultStream extends QueryStream<Infer<typeof paginatedPaperWithResultsValidator>> {
-  constructor(private ctx: QueryCtx, private papers: QueryStream<Doc<"extractionPapers">>) { super(); }
-  getOrder() { return this.papers.getOrder(); }
-  getIndexFields() { return this.papers.getIndexFields(); }
-  getEqualityIndexFilter() { return this.papers.getEqualityIndexFilter(); }
-  narrow(bounds: Parameters<QueryStream<Doc<"extractionPapers">>["narrow"]>[0]): ResultStream {
-    return new ResultStream(this.ctx, this.papers.narrow(bounds));
-  }
-  iterWithKeys(trackBandwidth = false): ReturnType<QueryStream<Infer<typeof paginatedPaperWithResultsValidator>>["iterWithKeys"]> {
-    const { ctx, papers } = this;
-    return {
-      [Symbol.asyncIterator]() {
-        const iterator = papers.iterWithKeys(trackBandwidth)[Symbol.asyncIterator]();
-        return {
-          async next() {
-            const next = await iterator.next();
-            if (next.done) return { done: true as const, value: undefined };
-            const [paper, key, bytes] = next.value;
-            const item = paper ? await loadPaperResults(ctx, paper) : null;
-            return { done: false as const, value: [item, key, bytes + (item && trackBandwidth ? getDocumentSize({ results: item.results }) : 0)] as const };
-          },
-        };
-      },
-    };
-  }
-}
-
 function sortFilteredPapers(
   papers: Doc<"extractionPapers">[],
   sortBy: ResultsSortBy,
@@ -340,7 +313,9 @@ export const listJobResultsAction = defineUserQuery({
         return matchesProjectionFilters(paper, filters);
       });
       // A job holds at most PAPER_LIMIT papers, so a filter reads each once at most.
-    const read = await new ResultStream(ctx, papers).paginate({ ...args.paginationOpts, numItems, maximumRowsRead: PAPER_LIMIT, maximumBytesRead: RESULTS_PAGE_BYTES });
+    // The answers each paper is joined to count toward the page's bytes; the paper's own bytes already do.
+    const joined = new JoinStream(papers, (paper) => loadPaperResults(ctx, paper), (item) => getDocumentSize({ results: item.results }));
+    const read = await joined.paginate({ ...args.paginationOpts, numItems, maximumRowsRead: PAPER_LIMIT, maximumBytesRead: RESULTS_PAGE_BYTES });
     return read;
   },
 });

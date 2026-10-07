@@ -343,18 +343,31 @@ const PLACES_BATCH = 250;
  * Takes a batch of a removed paper out of its collections, and keeps each place in a
  * collection that still exists as one of the removal's places, for Undo. A removal undone
  * before this batch puts the place straight back on the restored paper. A deleted
- * collection's places just go. Says whether more are left.
+ * collection's places just go. Marks the removal `moving` while batches are left.
  */
-async function movePlaces(ctx: MutationCtx, libraryItemId: Id<"libraryItems">, removalId: Id<"libraryRemovals">) {
-  const memberships = await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", libraryItemId)).take(PLACES_BATCH);
-  const removal = await ctx.db.get("libraryRemovals", removalId);
+async function movePlaces(ctx: MutationCtx, removalId: Id<"libraryRemovals">) {
+  const removal = (await ctx.db.get("libraryRemovals", removalId))!;
+  const memberships = await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", removal.itemId)).take(PLACES_BATCH);
+  const target = removal.restoredAs === undefined ? null : await ctx.db.get("libraryItems", removal.restoredAs);
   for (const membership of memberships) {
-    if (!(await removeCollectionMembership(ctx, membership)) || !removal) continue;
+    if (!(await removeCollectionMembership(ctx, membership))) continue;
     const { collectionId, assignedAt } = membership;
-    if (removal.restoredAs === undefined) await ctx.db.insert("removedPlaces", { removalId, collectionId, assignedAt });
-    else await addCollectionMembership(ctx, { userId: removal.userId, collection: (await ctx.db.get("collections", collectionId))!, libraryItemId: removal.restoredAs, assignedAt });
+    if (!target) await ctx.db.insert("removedPlaces", { removalId, collectionId, assignedAt });
+    else await addCollectionMembership(ctx, { userId: removal.userId, collection: (await ctx.db.get("collections", collectionId))!, item: target, assignedAt });
   }
-  return memberships.length === PLACES_BATCH;
+  const more = memberships.length === PLACES_BATCH;
+  if (more !== (removal.moving === true)) await ctx.db.patch("libraryRemovals", removalId, { moving: more ? true : undefined });
+  return more;
+}
+
+/** A removal of this paper still putting it back in its collections, or taking an earlier copy out of them for it: removing it now would leave places behind. */
+async function stillPlacing(ctx: QueryCtx, libraryItemId: Id<"libraryItems">) {
+  const removal = await stream(ctx.db, schema)
+    .query("libraryRemovals")
+    .withIndex("by_restoredAs", (q) => q.eq("restoredAs", libraryItemId))
+    .filterWith(async (row) => row.moving === true || row.placing === true)
+    .first();
+  return removal !== null;
 }
 
 export const removeFromLibraryAction = defineUserMutation({
@@ -376,6 +389,7 @@ export const removeFromLibraryAction = defineUserMutation({
   run: async (ctx, userId, args, author) => {
     const item = await findItem(ctx, userId, args.openalexId);
     if (!item) return {};
+    if (await stillPlacing(ctx, item._id)) throw createError("CONFLICT", "This paper is still going back into its collections. Try again in a moment.");
     // Undoing a save leaves a paper that isn't as the save left it: the same save, with that
     // rating in the library and on search cards, in no collection.
     // The paper's places have to be as the save being undone left them: none, or the one it gave. Another place, that one
@@ -389,9 +403,9 @@ export const removeFromLibraryAction = defineUserMutation({
     }
     const { _id, _creationTime, userId: _owner, ...kept } = item;
     const expiresAt = Date.now() + REMOVAL_KEPT_MS;
-    const removalId = await ctx.db.insert("libraryRemovals", { userId, item: kept, expiresAt });
+    const removalId = await ctx.db.insert("libraryRemovals", { userId, item: kept, itemId: item._id, expiresAt });
     // Its places in collections: this batch now, the rest in the batches it schedules.
-    if (await movePlaces(ctx, item._id, removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.movePlacesLater, { libraryItemId: item._id, removalId });
+    if (await movePlaces(ctx, removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.movePlacesLater, { removalId });
     await countedWrite(ctx, userId, -1, () => ctx.db.delete("libraryItems", item._id));
     await setResearchRating(ctx, userId, item.openalexId, null, author);
     await ctx.scheduler.runAt(expiresAt, internal.library.mutations.forgetRemoval, { removalId });
@@ -403,10 +417,12 @@ export const removeFromLibraryForAssistant = assistantMutation(removeFromLibrary
 
 /** Moves the next batch of a removed paper's places into its removal, until none are left. */
 export const movePlacesLater = internalMutation({
-  args: { libraryItemId: v.id("libraryItems"), removalId: v.id("libraryRemovals") },
+  args: { removalId: v.id("libraryRemovals") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    if (await movePlaces(ctx, args.libraryItemId, args.removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.movePlacesLater, args);
+    // Its day for Undo may be over: what's left of the paper's places just goes, a batch at a time.
+    if (!(await ctx.db.get("libraryRemovals", args.removalId))) return null;
+    if (await movePlaces(ctx, args.removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.movePlacesLater, args);
     return null;
   },
 });
@@ -424,24 +440,29 @@ export const forgetRemoval = internalMutation({
   },
 });
 
-/** Puts a batch of a removal's places back, in the collections of the person's that still exist. Says whether more are left. */
-async function restorePlaces(ctx: MutationCtx, args: { removalId: Id<"libraryRemovals">; userId: Id<"users">; libraryItemId: Id<"libraryItems"> }) {
-  const places = await ctx.db.query("removedPlaces").withIndex("by_removal", (q) => q.eq("removalId", args.removalId)).take(PLACES_BATCH);
+/** Puts a batch of a removal's places back on the restored paper, in the person's collections that still exist. Marks the removal `placing` while batches are left. */
+async function restorePlaces(ctx: MutationCtx, removalId: Id<"libraryRemovals">) {
+  const removal = (await ctx.db.get("libraryRemovals", removalId))!;
+  const item = (await ctx.db.get("libraryItems", removal.restoredAs!))!;
+  const places = await ctx.db.query("removedPlaces").withIndex("by_removal", (q) => q.eq("removalId", removalId)).take(PLACES_BATCH);
   for (const place of places) {
     const collection = await ctx.db.get("collections", place.collectionId);
     // Collections deleted since the removal stay deleted.
-    if (collection?.userId === args.userId) await addCollectionMembership(ctx, { userId: args.userId, collection, libraryItemId: args.libraryItemId, assignedAt: place.assignedAt });
+    if (collection?.userId === removal.userId) await addCollectionMembership(ctx, { userId: removal.userId, collection, item, assignedAt: place.assignedAt });
     await ctx.db.delete("removedPlaces", place._id);
   }
-  return places.length === PLACES_BATCH;
+  const more = places.length === PLACES_BATCH;
+  if (more !== (removal.placing === true)) await ctx.db.patch("libraryRemovals", removalId, { placing: more ? true : undefined });
+  return more;
 }
 
-/** Puts the next batch of a restored paper's places back, until none are left. */
+/** Puts the next batch of a restored paper's places back, until none are left. The paper can't be removed again meanwhile (`stillPlacing`). */
 export const restorePlacesLater = internalMutation({
-  args: { removalId: v.id("libraryRemovals"), userId: v.id("users"), libraryItemId: v.id("libraryItems") },
+  args: { removalId: v.id("libraryRemovals") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    if (await restorePlaces(ctx, args)) await ctx.scheduler.runAfter(0, internal.library.mutations.restorePlacesLater, args);
+    if (!(await ctx.db.get("libraryRemovals", args.removalId))) return null;
+    if (await restorePlaces(ctx, args.removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.restorePlacesLater, args);
     return null;
   },
 });
@@ -463,7 +484,10 @@ export const restoreLibraryItemAction = defineUserMutation({
       .withIndex("by_removal", (q) => q.eq("removalId", removalId))
       .filterWith((row) => followed(ctx, row.collectionId))
       .first();
-    return place !== null;
+    if (place !== null) return true;
+    // Places still being moved off the removed paper come back too.
+    const removal = await ctx.db.get("libraryRemovals", removalId);
+    return removal?.moving === true && (await inFollowedCollection(ctx, removal.itemId));
   },
   run: async (ctx, userId, { removalId }, author) => {
     const removal = await ctx.db.get("libraryRemovals", removalId);
@@ -488,8 +512,7 @@ export const restoreLibraryItemAction = defineUserMutation({
     // Kept until its day is over, so places still being moved off the removed paper come back too.
     await ctx.db.patch("libraryRemovals", removalId, { restoredAs: libraryItemId });
     // Its places: this batch now, the rest in the batches it schedules.
-    const placed = { removalId, userId, libraryItemId };
-    if (await restorePlaces(ctx, placed)) await ctx.scheduler.runAfter(0, internal.library.mutations.restorePlacesLater, placed);
+    if (await restorePlaces(ctx, removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.restorePlacesLater, { removalId });
     return { id: libraryItemId };
   },
 });
@@ -520,7 +543,7 @@ export const setPaperInCollectionAction = defineUserMutation({
     const reverse = (at: number) => ({ undo: { path: IN_COLLECTION, args: { paper: { openalexId: paper.openalexId, savedAt: item!.savedAt }, collectionId, inCollection: !inCollection, assignedAt: at } } });
     if (inCollection) {
       if (!item) throw createError("NOT_FOUND", "This paper is no longer in the library.");
-      const at = await addCollectionMembership(ctx, { userId, collection, libraryItemId: item._id, assignedAt });
+      const at = await addCollectionMembership(ctx, { userId, collection, item, assignedAt });
       return at === null ? {} : reverse(at);
     }
     if (!item) return {};

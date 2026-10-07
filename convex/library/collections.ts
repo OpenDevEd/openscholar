@@ -208,7 +208,7 @@ export const addToCollectionAction = defineUserMutation({
     if (!item || item.userId !== userId) {
       throw createError("FORBIDDEN", "Not your library item");
     }
-    const assignedAt = await addCollectionMembership(ctx, { userId, collection, libraryItemId: args.libraryItemId, assignedAt: args.assignedAt });
+    const assignedAt = await addCollectionMembership(ctx, { userId, collection, item, assignedAt: args.assignedAt });
     return assignedAt === null ? {} : { undo: { path: REMOVE, args: { collectionId: args.collectionId, libraryItemId: args.libraryItemId, assignedAt } } };
   },
 });

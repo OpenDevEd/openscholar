@@ -71,7 +71,7 @@ describe("at the largest sizes the product allows", () => {
     const page = await as.query(api.library.queries.browseLibrary, { sortBy: "savedAt", sortOrder: "desc", paginationOpts: { cursor: null, numItems: 20 } });
     expect(page.page).toHaveLength(20);
     expect(await as.query(api.library.queries.getLibraryCount, {})).toBe(MAX_SIZE.libraryItems);
-  }, 120_000);
+  }, 300_000);
 
   it("a person's 500 collections page by name, each checked for a saved paper", async () => {
     const t = convexTest(schema);

@@ -2,7 +2,7 @@ import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { paginationOptsValidator, paginationResultValidator, type Cursor, type PaginationOptions } from "convex/server";
 import { v, type ObjectType } from "convex/values";
-import { stream } from "convex-helpers/server/stream";
+import { stream, type QueryStream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -10,6 +10,7 @@ import { findItem } from "./mutations";
 import { authorDisplay } from "../../lib/library/paper-metadata";
 import { libraryCount } from "./counter";
 import { livePlaces } from "./collectionMembership";
+import { JoinStream } from "../lib/joinStream";
 import { countInRange, type CountedField, type Range } from "./facets";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { LIBRARY_SEARCH_RESULTS_MAX as SEARCH_RESULTS_MAX } from "../../lib/library/limits";
@@ -176,10 +177,11 @@ type Scope = { userId: Id<"users"> } | { collectionId: Id<"collections"> };
 function along(ctx: QueryCtx, scope: Scope, field: LibrarySortBy, order: "asc" | "desc", args: SharedLibraryFilterArgs) {
   const [lower, upper] = filterRange(field, args);
   // One builder for every index whose second field is `field`.
-  type Range = { eq(f: string, v: unknown): Range; gte(f: string, v: number): Range; lte(f: string, v: number): Range };
+  type Range = { eq(f: string, v: unknown): Range; gt(f: string, v: number): Range; gte(f: string, v: number): Range; lte(f: string, v: number): Range };
   const narrow = (range: Range) => {
     if (field === "rating" && args.unrated) return range.eq("rating", undefined);
-    const from = lower === undefined ? range : range.gte(field, lower);
+    // An upper bound alone starts past the unset values, which sort first and never match it.
+    const from = lower !== undefined ? range.gte(field, lower) : upper !== undefined ? range.gt(field, null as never) : range;
     return upper === undefined ? from : from.lte(field, upper);
   };
   const rows = "collectionId" in scope
@@ -255,10 +257,10 @@ export async function readLibraryPage(ctx: QueryCtx, userId: Id<"users">, view: 
 
   const page = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LIBRARY_PAGE_MAX) };
   if (collection) {
-    const read = await along(ctx, { collectionId: collection._id }, view.sortBy, view.sortOrder, view)
-      .paginate({ ...page, maximumRowsRead: FILTERED_PAGE_ROWS, maximumBytesRead: FILTERED_BYTES });
-    const items = await Promise.all(read.page.map((membership) => ctx.db.get("libraryItems", (membership as Doc<"libraryItemCollections">).libraryItemId)));
-    return { ...read, page: items.filter((item): item is LibraryItem => item !== null) };
+    // Each membership joined to its paper, whose bytes count toward the page's.
+    const memberships = along(ctx, { collectionId: collection._id }, view.sortBy, view.sortOrder, view) as unknown as QueryStream<Doc<"libraryItemCollections">>;
+    return (await new JoinStream(memberships, (membership) => ctx.db.get("libraryItems", membership.libraryItemId))
+      .paginate({ ...page, maximumRowsRead: FILTERED_PAGE_ROWS, maximumBytesRead: FILTERED_BYTES })) as LibraryPage;
   }
   if (!hasNonCollectionLibraryFilters(view)) {
     return await ctx.db
@@ -345,11 +347,11 @@ async function countLibraryView(ctx: QueryCtx, userId: Id<"users">, args: Omit<L
   const scope: Scope = collection ? { collectionId: collection._id } : { userId };
   const counts = await Promise.all(filters.map(({ field, range }) => countInRange(ctx, collection?._id ?? userId, field, range)));
   if (filters.length === 1) return { count: counts[0], capped: false };
-  // Several filters: read the papers the narrowest one matches, applying the rest.
-  const narrowest = counts.indexOf(Math.min(...counts));
-  if (counts[narrowest] === 0) return { count: 0, capped: false };
-  const counted = await along(ctx, scope, filters[narrowest].field, "asc", args)
-    .paginate({ cursor: null, numItems: counts[narrowest], maximumRowsRead: FILTERED_COUNT_ROWS, maximumBytesRead: FILTERED_BYTES });
+  // Several filters: read the papers the narrowest one matches, applying the rest, to the end
+  // or the read budget. The counts only choose the index; they may be a moment behind.
+  const narrowest = filters[counts.indexOf(Math.min(...counts))].field;
+  const counted = await along(ctx, scope, narrowest, "asc", args)
+    .paginate({ cursor: null, numItems: FILTERED_COUNT_ROWS, maximumRowsRead: FILTERED_COUNT_ROWS, maximumBytesRead: FILTERED_BYTES });
   return { count: counted.page.length, capped: !counted.isDone };
 }
 
