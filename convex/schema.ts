@@ -1018,6 +1018,9 @@ export default defineSchema({
     spendHold: v.optional(v.string()),
     // Set once it has: its papers that haven't started are skipped, those running finish and are kept, and it ends as one that stopped at its limit.
     capped: v.optional(v.literal(true)),
+    // Set when the person's credits ran out before it had read all its papers: it screens the
+    // ones it took, then ends out of credits (convex/screening/bookkeeping.ts).
+    outOfCredits: v.optional(v.literal(true)),
     // The step of the assistant's reply that started it (#328): its chat hears when it ends (convex/assistant/jobs.ts).
     chatStep: v.optional(v.id("assistantSteps")),
     createdAt: v.number(),

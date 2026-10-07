@@ -111,7 +111,7 @@ export function SetupView({
   const source = picked?.kind === kind ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : (lists[kind].rows.find((row) => row.id === againId) ?? lists[kind].rows[0]);
   // Opened from a results page, it starts on the page the person was reading; run again, on the job's own papers.
   const [scope, setScope] = useState<"all" | "page" | "range">(again?.first ? "range" : fromSearchId && !again ? "page" : again?.set && again.set.kind !== "search" ? "all" : "range");
-  const [range, setRange] = useState<[number, number]>(again?.first && again.last ? [again.first, again.last] : [1, 300]);
+  const [range, setRange] = useState<[number, number]>(again?.first && again.last ? [again.first, again.through ?? again.last] : [1, 300]);
   // Untouched, the questions are the selected search's own: the ones its results page screens with.
   const [edited, setEdited] = useState<Question[] | null>(again ? questionsOf(again) : null);
   const own: Question[] = source?.kind === "search" ? source.search.screeningQuestions.map((q, i) => ({ key: `own${i}`, text: q.question, yes: 1, no: 0, unclear: 0 })) : [];
