@@ -35,20 +35,24 @@ describe("plan limits", () => {
 
   it("fall back to the person's plan in the catalog, then the plan every customer gets, and set none past that", async () => {
     const t = convexTest(schema);
-    const { fresh, onGo, cached } = await t.run(async (ctx) => {
+    const { fresh, onGo, cached, archived } = await t.run(async (ctx) => {
       await ctx.db.insert("billingCatalog", { ...catalog, syncedAt: 1 });
       const user = (clerkId: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@test.local`, state: "active", createdAt: 1, updatedAt: 1 });
       const account = { pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1 };
-      const [fresh, onGo, cached] = [await user("fresh"), await user("go"), await user("cached")];
+      const [fresh, onGo, cached, archived] = [await user("fresh"), await user("go"), await user("cached"), await user("archived")];
       // Their plan's version predates the limits: the snapshot has none.
       await ctx.db.insert("billingAccounts", { ...account, userId: onGo, plan: "go" });
       await ctx.db.insert("billingAccounts", { ...account, userId: cached, plan: "go", limits: { collections: 50 } });
-      return { fresh, onGo, cached };
+      // A plan taken off the catalog, its snapshot from before the limits.
+      await ctx.db.insert("billingAccounts", { ...account, userId: archived, plan: "legacy_pro" });
+      return { fresh, onGo, cached, archived };
     });
     const limits = (userId: typeof fresh) => t.run(async (ctx) => Promise.all((["collections", "concurrency", "request_papers"] as const).map(async (limit) => (await planLimit(ctx, userId, limit)) ?? "none")));
     expect(await limits(fresh)).toEqual([20, "none", 1_000]);
     expect(await limits(onGo)).toEqual([200, "none", "none"]);
     expect(await limits(cached)).toEqual([50, "none", "none"]);
+    // Not the new customer's plan: none of its limits.
+    expect(await limits(archived)).toEqual(["none", "none", "none"]);
 
     await t.run(async (ctx) => {
       await checkRequestPapers(ctx, fresh, 1_000, "screening");
@@ -66,6 +70,12 @@ describe("plan limits over time", () => {
     await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot: snapshot("go", 200), withCard: false, fetchedAt: 2_000 });
     await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot: snapshot("pro", 1_000), withCard: false, fetchedAt: 1_000 });
     expect(await t.run((ctx) => planLimit(ctx, userId, "collections"))).toBe(200);
+    // One that read the card brings it, though its plan is older.
+    await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot: { ...snapshot("pro", 1_000), card: { brand: "visa", last4: "4242" } }, withCard: true, fetchedAt: 1_500 });
+    expect(await t.run((ctx) => ctx.db.query("billingAccounts").unique())).toMatchObject({ plan: "go", card: { last4: "4242" } });
+    // And a card read before that one doesn't replace it.
+    await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot: { ...snapshot("pro", 1_000), card: { brand: "visa", last4: "1111" } }, withCard: true, fetchedAt: 1_200 });
+    expect((await t.run((ctx) => ctx.db.query("billingAccounts").unique()))?.card?.last4).toBe("4242");
   });
 
   it("refuse a screening request past the plan before it reads a paper", async () => {
