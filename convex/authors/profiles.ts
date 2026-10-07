@@ -1,4 +1,5 @@
 import { requireOrganizationFeature } from "../organizationFeatures";
+import { searchTerms } from "../lib/searchText";
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import schema from "../schema";
 import { v, type Infer } from "convex/values";
@@ -63,7 +64,7 @@ export const get = query({
 });
 
 export function searchProfilePage(ctx: QueryCtx, term: string, paginationOpts: PaginationOptions) {
-  const search = term.trim().slice(0, 200);
+  const search = searchTerms(term.slice(0, 200)) ?? "";
   const query = search
     ? ctx.db.query("authorProfiles").withSearchIndex("search_name", q => q.search("name", search))
     : ctx.db.query("authorProfiles").order("desc");

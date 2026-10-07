@@ -6,7 +6,7 @@
  */
 import { v } from "convex/values";
 import { requireFeature } from "../featureFlags/guard";
-import { SEARCH_TERMS_MAX } from "../library/collections";
+import { searchTerms } from "../lib/searchText";
 import { readLibraryPage } from "../library/queries";
 import { listedSearchesAction } from "../research/records";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
@@ -33,7 +33,7 @@ export const findAction = defineUserQuery({
           listedSearchesAction.run(ctx, userId, { paginationOpts: first, sort: "recent", text: needle }).then(({ page }) => page)
         : ctx.db.query("searches").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)).order("desc").take(EACH).then((rows) => rows.map(({ data }) => data)),
       (needle
-        ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", needle.split(/\s+/).slice(0, SEARCH_TERMS_MAX).join(" ")).eq("userId", userId))
+        ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", searchTerms(needle)!).eq("userId", userId))
         : ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", userId))
       ).take(EACH),
       readLibraryPage(ctx, userId, { ...(needle ? { searchText: needle } : {}), sortBy: "savedAt", sortOrder: "desc" }, first),

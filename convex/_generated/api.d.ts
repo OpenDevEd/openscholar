@@ -264,6 +264,7 @@ import type * as lib_queryBounds from "../lib/queryBounds.js";
 import type * as lib_query_states from "../lib/query_states.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as lib_retryOnConflict from "../lib/retryOnConflict.js";
+import type * as lib_searchText from "../lib/searchText.js";
 import type * as lib_triggers from "../lib/triggers.js";
 import type * as lib_userActionRegistry from "../lib/userActionRegistry.js";
 import type * as lib_userActions from "../lib/userActions.js";
@@ -307,6 +308,7 @@ import type * as migrations_removeOrphanLibraryAccess from "../migrations/remove
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
 import type * as migrations_screeningSearch from "../migrations/screeningSearch.js";
+import type * as migrations_searchText from "../migrations/searchText.js";
 import type * as migrations_versionChangedSections from "../migrations/versionChangedSections.js";
 import type * as models_admin from "../models/admin.js";
 import type * as models_catalog from "../models/catalog.js";
@@ -647,6 +649,7 @@ declare const fullApi: ApiFromModules<{
   "lib/query_states": typeof lib_query_states;
   "lib/rateLimit": typeof lib_rateLimit;
   "lib/retryOnConflict": typeof lib_retryOnConflict;
+  "lib/searchText": typeof lib_searchText;
   "lib/triggers": typeof lib_triggers;
   "lib/userActionRegistry": typeof lib_userActionRegistry;
   "lib/userActions": typeof lib_userActions;
@@ -690,6 +693,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
   "migrations/screeningSearch": typeof migrations_screeningSearch;
+  "migrations/searchText": typeof migrations_searchText;
   "migrations/versionChangedSections": typeof migrations_versionChangedSections;
   "models/admin": typeof models_admin;
   "models/catalog": typeof models_catalog;

@@ -326,6 +326,8 @@ export const extractionJobFields = {
   // The name as the job list orders it, ignoring case and accents; a trigger keeps it
   // (../extraction/jobList.ts). Missing until migrations/pagedExtractionJobs has run.
   sortName: v.optional(v.string()),
+  // Its name and description, which the job list's search matches (convex/lib/searchText.ts).
+  searchText: v.optional(v.string()),
   description: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),

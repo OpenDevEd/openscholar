@@ -28,6 +28,7 @@ import {
 } from "../validators";
 import { MAX_JOB_SOURCES, writeJobSources, type BucketItemInput } from "../jobSources";
 import { extractionPaperCredits } from "../../../lib/pricing";
+import { jobText } from "../../lib/searchText";
 import { cancelPaperQueueRowsForJobTx } from "../queue/mutations";
 import { refillPerson } from "../queue/dispatcher";
 import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
@@ -134,6 +135,7 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
   const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
     userId,
     name: args.name,
+    searchText: jobText({ name: args.name }),
     sourceType,
     createdAt: now,
     updatedAt: now,
@@ -173,7 +175,7 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
 
 export const startJobAction = defineUserMutation({
   path: "extraction/mutations:startJob",
-  description: "Start an extraction from the sources picked on the extraction page. From a chat, an extraction over a collection, saved papers, a search or a screening is extraction/start:extract. Screening sources use the owned job's current Included papers and require its decision revision. Extraction saves those papers unchanged by later screening edits. At most 1,000 papers per job.",
+  description: "Start an extraction from the sources picked on the extraction page. From a chat, an extraction over a collection, saved papers, a search or a screening is extraction/start:extract. Screening sources use the owned job's current Included papers and require its decision revision. Extraction saves those papers unchanged by later screening edits. The person's plan sets how many papers one job takes.",
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
@@ -231,6 +233,7 @@ export const duplicateJobAction = defineUserMutation({
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId,
       name: `${oldJob.name} (Copy)`,
+      searchText: jobText({ name: `${oldJob.name} (Copy)` }),
       sourceType: oldJob.sourceType,
       status: "pending",
       totalPapers: 0,

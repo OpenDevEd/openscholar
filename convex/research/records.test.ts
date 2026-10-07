@@ -356,10 +356,12 @@ describe("account research records", () => {
     expect((await listed({ sort: "oldest" })).map(row => row.id)).toEqual(["few", "many", "some"]);
     expect((await listed({ sort: "most" })).map(row => row.id)).toEqual(["many", "some", "few"]);
     expect((await listed({ sort: "least" })).map(row => row.id)).toEqual(["few", "some", "many"]);
-    // Any part of the text matches, whatever its case, and the matches keep the sort.
+    // Words match from their start, whatever their case, in the query or the questions.
     expect((await listed({ sort: "recent", text: "PHON" })).map(row => row.id)).toEqual(["few"]);
     expect((await listed({ sort: "recent", text: "smaller classes" })).map(row => row.id)).toEqual(["some"]);
-    expect((await listed({ sort: "most", text: "in" })).map(row => row.id)).toEqual(["many", "few"]);
+    expect((await listed({ sort: "most", text: "instr" })).map(row => row.id)).toEqual(["few"]);
+    // A search left out of its matches too.
+    expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", text: "phonics", exclude: "few", paginationOpts })).page).toEqual([]);
     expect((await listed({ sort: "recent" }))[0]).not.toHaveProperty("screeningResponses");
     // A search left out doesn't take a place on the page.
     expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "oldest", exclude: "few", paginationOpts: { cursor: null, numItems: 2 } })).page.map(row => row.id)).toEqual(["many", "some"]);
@@ -413,7 +415,7 @@ describe("account research records", () => {
     expect(await listed({ sort: "alpha" })).toEqual(["Africa", "ml", "rct"]);
     expect(await listed({ sort: "alpha-desc" })).toEqual(["rct", "ml", "Africa"]);
     expect(await listed({ sort: "alpha", text: "LEARN" })).toEqual(["ml"]);
-    expect(await listed({ sort: "alpha", text: "r" })).toEqual(["Africa", "ml", "rct"]);
+    expect(await listed({ sort: "alpha", text: "ken" })).toEqual(["Africa"]);
     expect(await alice.query(api.research.records.countShortcuts, { accountId: "alice" })).toBe(3);
 
     expect((await alice.query(api.research.records.shortcutsOf, { accountId: "alice", names: ["rct", "nope", "ml"] })).page).toEqual([

@@ -7,6 +7,7 @@ import { listedSearchesAction, listedShortcutsAction } from "../research/records
 import { listJobsAction } from "../extraction/queries/jobs";
 import { insertMany, seedAccount, text } from "../lib/maxSize.test-support";
 import { measure, save } from "./measure.test-support";
+import { jobText, searchText, shortcutText } from "../lib/searchText";
 
 const SIZES = (process.env.BENCH_LIST_SIZES ?? "500,5000,10000").split(",").map(Number);
 const page = { cursor: null, numItems: 20 };
@@ -27,12 +28,16 @@ describe("text search of a person's lists by size", () => {
       const { userId } = await seedAccount(t);
       const at = (scenario: string) => ({ area: "text search", scenario, size });
       const day = "2026-10-01T00:00:00Z";
-      await insertMany(t, "searches", Array.from({ length: size }, (_, i) => ({
-        userId, localId: `s${i}`, revision: 1,
-        data: { id: `s${i}`, query: words(i, 60), field: "title_and_abstract", count: i, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: day, updatedAt: day },
-      })));
-      await insertMany(t, "queryShortcuts", Array.from({ length: size }, (_, i) => ({ userId, sortName: `b${i}`, data: { shorthand: `b${i}`, expansion: words(i, 80), createdAt: i } })));
-      await insertMany(t, "extractionJobs", Array.from({ length: size }, (_, i) => ({ userId, name: words(i, 50), sourceType: "history", status: "completed", totalPapers: 10, createdAt: i, updatedAt: i })));
+      // Each row with its search text, as the app writes it (../lib/searchText.ts).
+      await insertMany(t, "searches", Array.from({ length: size }, (_, i) => {
+        const data = { id: `s${i}`, query: words(i, 60), field: "title_and_abstract" as const, count: i, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: day, updatedAt: day };
+        return { userId, localId: `s${i}`, revision: 1, data, searchText: searchText(data) };
+      }));
+      await insertMany(t, "queryShortcuts", Array.from({ length: size }, (_, i) => {
+        const data = { shorthand: `b${i}`, expansion: words(i, 80), createdAt: i };
+        return { userId, sortName: `b${i}`, data, searchText: shortcutText(data) };
+      }));
+      await insertMany(t, "extractionJobs", Array.from({ length: size }, (_, i) => ({ userId, name: words(i, 50), searchText: jobText({ name: words(i, 50) }), sourceType: "history", status: "completed", totalPapers: 10, createdAt: i, updatedAt: i })));
       const rows = (read: { page: unknown[] } | undefined) => `${read?.page.length ?? 0} rows`;
       // The right first page: 20 rows when 1 in 100 match and there are that many, or every match, done.
       const want = (label: string) => (read: { page: unknown[]; isDone: boolean }) => (label === "none" ? read.page.length === 0 && read.isDone : read.page.length === Math.min(page.numItems, Math.ceil(size / 100)));

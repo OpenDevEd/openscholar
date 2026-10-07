@@ -7,6 +7,7 @@ import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
+import { searchTerms } from "../lib/searchText";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { answerAt, answerPaper, paperAnswers, restoreAnswer, restoreModelAnswer } from "../research/answers";
 import { answerSourceValidator } from "../../lib/research/records";
@@ -52,7 +53,7 @@ export const listAction = defineUserQuery({
     const job = await ctx.db.get("screeningJobs", jobId);
     if (!job || job.userId !== userId) return { page: [], isDone: true, continueCursor: "" };
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX), maximumBytesRead: PAGE_BYTES };
-    const needle = text?.trim();
+    const needle = searchTerms(text);
     const page = await (needle
       ? ctx.db.query("screeningResults").withSearchIndex("search_text", (q) => q.search("searchText", needle).eq("jobId", jobId).eq("outcome", outcome)).paginate(opts)
       : ctx.db.query("screeningResults").withIndex("by_job_and_outcome", (q) => q.eq("jobId", jobId).eq("outcome", outcome)).paginate(opts));

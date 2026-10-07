@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { searchTerms } from "../lib/searchText";
 import { action, internalMutation, internalQuery, type ActionCtx } from "../lib/functions";
 import { internal } from "../_generated/api";
 import { topicCatalogRequestSchema, type TopicNode } from "../../lib/topics/contract";
@@ -57,8 +58,9 @@ export const serviceBrowse = internalQuery({
       const nodes = await Promise.all([...new Set(input.ids)].map(id => ctx.db.query("topicCatalog").withIndex("by_external_id", q => q.eq("id", id)).unique()));
       return {contractVersion: 1 as const, nodes: nodes.flatMap(node => node ? [output(node)] : []), revision: CATALOG_REVISION, nextCursor: null, publicBaseUrl: requireAppUrl()};
     }
-    const request = input.query?.trim()
-      ? ctx.db.query("topicCatalog").withSearchIndex("search_text", q => q.search("searchText", input.query!.trim()))
+    const terms = searchTerms(input.query);
+    const request = terms
+      ? ctx.db.query("topicCatalog").withSearchIndex("search_text", q => q.search("searchText", terms))
       : ctx.db.query("topicCatalog").withIndex("by_parent_and_name", q => q.eq("parent", input.parent ?? null));
     const page = await request.paginate({cursor: input.cursor, numItems: input.limit});
     return {contractVersion: 1 as const, nodes: page.page.map(output), revision: CATALOG_REVISION, nextCursor: page.isDone ? null : page.continueCursor, publicBaseUrl: requireAppUrl()};

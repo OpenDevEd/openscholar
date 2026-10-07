@@ -26,6 +26,7 @@ import {
 } from "../../validators";
 import { readJobCounters } from "../../jobCounters";
 import { hasWaitingChanges } from "../../counts";
+import { jobText } from "../../../lib/searchText";
 
 export const maybeFinalizeJob = internalMutation({
   args: {
@@ -114,6 +115,7 @@ export const createJobDirect = internalMutation({
     const jobId = await ctx.db.insert("extractionJobs", {
       userId: args.userId,
       name: args.name,
+      searchText: jobText({ name: args.name }),
       sourceType: args.sourceType,
       status: "pending",
       totalPapers: 0,
