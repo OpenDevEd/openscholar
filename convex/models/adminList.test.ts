@@ -10,7 +10,7 @@ async function setup() {
   const t = convexTest(schema);
   await t.run(async (ctx) => {
     for (const clerkId of ["clerk_admin", "clerk_member"]) {
-      await ctx.db.insert("users", { libraryItemCount: 0, clerkId, email: `${clerkId}@test.local`, state: "active" as const, createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("users", { clerkId, email: `${clerkId}@test.local`, state: "active" as const, createdAt: 1, updatedAt: 1 });
     }
     // Five providers: openai 3, anthropic 2, google 2, qwen 2, and acme 1, which falls under "other".
     const catalog = ["openai/gpt-a", "anthropic/sonnet", "google/flash", "openai/gpt-b", "qwen/turbo", "acme/mini", "anthropic/haiku", "google/pro", "qwen/max", "openai/gpt-c"];

@@ -347,8 +347,7 @@ const PLACES_BATCH = 250;
  */
 async function movePlaces(ctx: MutationCtx, removalId: Id<"libraryRemovals">) {
   const removal = (await ctx.db.get("libraryRemovals", removalId))!;
-  // Only a removal that kept the paper's ID moves its places.
-  const memberships = await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", removal.itemId!)).take(PLACES_BATCH);
+  const memberships = await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", removal.itemId)).take(PLACES_BATCH);
   const target = removal.restoredAs === undefined ? null : await ctx.db.get("libraryItems", removal.restoredAs);
   for (const membership of memberships) {
     if (!(await removeCollectionMembership(ctx, membership))) continue;
@@ -493,7 +492,7 @@ export const restoreLibraryItemAction = defineUserMutation({
     if (place !== null) return true;
     // Places still being moved off the removed paper come back too.
     const removal = await ctx.db.get("libraryRemovals", removalId);
-    return removal?.moving === true && removal.itemId !== undefined && (await inFollowedCollection(ctx, removal.itemId));
+    return removal?.moving === true && (await inFollowedCollection(ctx, removal.itemId));
   },
   run: async (ctx, userId, { removalId }, author) => {
     const removal = await ctx.db.get("libraryRemovals", removalId);

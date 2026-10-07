@@ -15,8 +15,8 @@ async function setup() {
     await seedOrganizationFeatures(ctx, ["owner", "editor"], { authors: true });
     const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
     return {
-      owner: await ctx.db.insert("users", {libraryItemCount: 0, ...fields, clerkId: "owner", email: "owner@example.org"}),
-      editor: await ctx.db.insert("users", {libraryItemCount: 0, ...fields, clerkId: "editor", email: "editor@example.org"}),
+      owner: await ctx.db.insert("users", {...fields, clerkId: "owner", email: "owner@example.org"}),
+      editor: await ctx.db.insert("users", {...fields, clerkId: "editor", email: "editor@example.org"}),
     };
   });
   const owner = t.withIdentity({subject: "owner"});
@@ -94,7 +94,7 @@ describe("author profiles", () => {
 
     // A deleted account's place is given up, so the next person can accept.
     await t.run(async ctx => {
-      const gone = await ctx.db.insert("users", {libraryItemCount: 0, state: "deleted", createdAt: 1, updatedAt: 1, clerkId: "gone", email: "gone@example.org"});
+      const gone = await ctx.db.insert("users", {state: "deleted", createdAt: 1, updatedAt: 1, clerkId: "gone", email: "gone@example.org"});
       const place = (await ctx.db.query("authorProfileMembers").withIndex("by_profileId_and_userId", q => q.eq("profileId", profileId)).first())!;
       await ctx.db.patch(place._id, {userId: gone});
     });

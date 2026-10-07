@@ -10,7 +10,7 @@ describe("extractionJobs schema", () => {
   it("accepts an extraction-mode job with all counter fields populated", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {libraryItemCount: 0, 
+      const userId = await ctx.db.insert("users", {
         clerkId: "c_ext",
         email: "e@test",
         state: "active",

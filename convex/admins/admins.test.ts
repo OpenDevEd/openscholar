@@ -5,7 +5,7 @@ import schema from "../schema";
 
 async function seedUser(t: ReturnType<typeof convexTest>, clerkId: string, email: string) {
   return await t.run((ctx) =>
-    ctx.db.insert("users", { libraryItemCount: 0, clerkId, email, state: "active" as const, createdAt: 1, updatedAt: 1 }),
+    ctx.db.insert("users", { clerkId, email, state: "active" as const, createdAt: 1, updatedAt: 1 }),
   );
 }
 
@@ -115,7 +115,7 @@ describe("admin access", () => {
     const { t, admin } = await setup();
     for (const name of ["cara", "ben", "abe"]) await seedUser(t, `clerk_${name}`, `${name}@test.local`);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "clerk_gone", email: "bea@test.local", state: "deleted" as const, createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("users", { clerkId: "clerk_gone", email: "bea@test.local", state: "deleted" as const, createdAt: 1, updatedAt: 1 });
     });
     const emails = async (search: string, paginationOpts: { cursor: string | null; numItems: number }) => {
       const read = await admin.query(api.admins.queries.listCandidates, { search, paginationOpts });

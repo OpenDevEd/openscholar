@@ -98,7 +98,7 @@ describe("Evidence Library limits", () => {
   it("refuses to invite an address more accounts have used than it reads (#427)", async () => {
     const fixture = await createReadySetupFixture("invite_accounts");
     const invite = () => fixture.admin.mutation(internal.evidenceLibraries.invitations.prepare, { libraryId: fixture.created.libraryId, email: "serial@example.org", role: "editor" });
-    const accounts = (from: number, count: number) => insertMany(fixture.t, "users", Array.from({ length: count }, (_, i) => ({ libraryItemCount: 0, clerkId: `serial_${from + i}`, email: "serial@example.org", state: "deleted", createdAt: 1, updatedAt: 1 })));
+    const accounts = (from: number, count: number) => insertMany(fixture.t, "users", Array.from({ length: count }, (_, i) => ({ clerkId: `serial_${from + i}`, email: "serial@example.org", state: "deleted", createdAt: 1, updatedAt: 1 })));
     await accounts(0, MAX_ACCOUNTS_PER_EMAIL);
     await expect(invite()).resolves.toBeDefined();
     await accounts(MAX_ACCOUNTS_PER_EMAIL, 1);

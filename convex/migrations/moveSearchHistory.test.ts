@@ -19,7 +19,7 @@ describe("moveSearchHistory", () => {
     try {
       const t = convexTest(schema);
       await t.run(async (ctx) => {
-        const userId = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "alice", email: "a@test", state: "active", createdAt: 1, updatedAt: 1 });
+        const userId = await ctx.db.insert("users", { clerkId: "alice", email: "a@test", state: "active", createdAt: 1, updatedAt: 1 });
         for (const id of ["edited", "untouched"]) await ctx.db.insert("searches", { userId, localId: id, data: legacy(id), revision: 1 });
       });
       const alice = t.withIdentity({ subject: "alice" });
@@ -51,7 +51,7 @@ describe("moveSearchHistory", () => {
       const many = Array.from({ length: 4_200 }, (_, i) => ({ query: `q${i}`, timestamp: "2026-08-01T10:00:00Z" }));
       // Saved before list caps (#426): a legacy search may hold more than the cap.
       await runUncapped(t, async (ctx) => {
-        const userId = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "alice", email: "a@test", state: "active", createdAt: 1, updatedAt: 1 });
+        const userId = await ctx.db.insert("users", { clerkId: "alice", email: "a@test", state: "active", createdAt: 1, updatedAt: 1 });
         await ctx.db.insert("searches", { userId, localId: "many", data: { ...legacy("many"), queryHistory: many }, revision: 1 });
       });
       await t.mutation(internal.migrations.moveSearchHistory.run, {});

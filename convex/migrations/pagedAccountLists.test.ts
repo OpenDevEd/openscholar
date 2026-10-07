@@ -11,7 +11,7 @@ it("counts the keys and admins saved before, once however often it runs, and rep
     const t = convexTest(schema);
     // As rows saved before the counts: written without the triggers that keep them.
     await runUntriggered(t, async (ctx) => {
-      const userId = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "clerk_before", email: "before@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 });
+      const userId = await ctx.db.insert("users", { clerkId: "clerk_before", email: "before@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 });
       const key = { userId, keyPrefix: "sk_", appName: "app", redirectOrigin: "manual", createdAt: 1 };
       await ctx.db.insert("walletKeys", { ...key, hashedKey: "a", isActive: true });
       await ctx.db.insert("walletKeys", { ...key, hashedKey: "b", isActive: true });

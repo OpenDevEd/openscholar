@@ -8,7 +8,7 @@ import { insertUsage } from "./ledger";
 async function setup() {
   const t = convexTest(schema);
   const { userId, jobId } = await t.run(async (ctx) => {
-    const userId = await ctx.db.insert("users", {libraryItemCount: 0,  clerkId: "clerk_pages", email: "pages@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 });
+    const userId = await ctx.db.insert("users", {clerkId: "clerk_pages", email: "pages@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 });
     const jobId = await ctx.db.insert("extractionJobs", { userId, sourceType: "history", name: "c", createdAt: 0, updatedAt: 0 });
     return { userId, jobId };
   });
@@ -50,7 +50,7 @@ describe("charge pages", () => {
     expect((await page(null, 10, { jobId })).page.map((r) => r.credits)).toEqual([10, 8, 6, 4, 2]);
 
     // Someone else reads none of the job's charges.
-    await t.run((ctx) => ctx.db.insert("users", { libraryItemCount: 0, clerkId: "clerk_other", email: "other@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }));
+    await t.run((ctx) => ctx.db.insert("users", { clerkId: "clerk_other", email: "other@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }));
     const other = t.withIdentity({ subject: "clerk_other" });
     expect((await other.query(api.billing.usage.listCharges, { jobId, paginationOpts: { cursor: null, numItems: 10 } })).page).toEqual([]);
     expect(await other.query(api.billing.usage.countCharges, { jobId })).toBe(0);

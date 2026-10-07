@@ -81,7 +81,6 @@ export const userFields = {
   avatarUrl: v.optional(v.string()),
   state: userStateValidator,
   lastLoginAt: v.optional(v.number()),
-  libraryItemCount: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
