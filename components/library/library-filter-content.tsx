@@ -56,6 +56,8 @@ interface LibraryFilterContentProps {
   savedDateRange: DateRange | undefined;
   onSavedDateRangeChange: (range: DateRange | undefined) => void;
   isSavedDateActive: boolean;
+  /** When each paper in view was saved, for the presets' counts and the year's timeline. */
+  savedDates?: number[];
   yearRange: [number, number];
   onYearRangeChange: (range: [number, number]) => void;
   onYearToggleEnabled: (enabled: boolean) => void;
@@ -79,6 +81,7 @@ export function LibraryFilterContent({
   savedDateRange,
   onSavedDateRangeChange,
   isSavedDateActive,
+  savedDates,
   yearRange,
   onYearRangeChange,
   onYearToggleEnabled,
@@ -139,6 +142,7 @@ export function LibraryFilterContent({
           value={savedDateRange}
           onValueChange={onSavedDateRangeChange}
           presets={savedDatePresets}
+          dates={savedDates}
         />
       </FilterSection>
 
