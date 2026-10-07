@@ -273,6 +273,7 @@ import type * as library_backfillMutations from "../library/backfillMutations.js
 import type * as library_collectionMembership from "../library/collectionMembership.js";
 import type * as library_collections from "../library/collections.js";
 import type * as library_counter from "../library/counter.js";
+import type * as library_facets from "../library/facets.js";
 import type * as library_followed from "../library/followed.js";
 import type * as library_mutations from "../library/mutations.js";
 import type * as library_papers from "../library/papers.js";
@@ -281,7 +282,6 @@ import type * as library_sortName from "../library/sortName.js";
 import type * as library_validators from "../library/validators.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_assistantJobs from "../migrations/assistantJobs.js";
-import type * as migrations_backfillLibraryCounters from "../migrations/backfillLibraryCounters.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
 import type * as migrations_countBillingUsage from "../migrations/countBillingUsage.js";
@@ -290,10 +290,9 @@ import type * as migrations_expireInvitations from "../migrations/expireInvitati
 import type * as migrations_extractionAnswers from "../migrations/extractionAnswers.js";
 import type * as migrations_extractionEvidence from "../migrations/extractionEvidence.js";
 import type * as migrations_extractionSearch from "../migrations/extractionSearch.js";
-import type * as migrations_moveLibraryCounts from "../migrations/moveLibraryCounts.js";
+import type * as migrations_libraryFacets from "../migrations/libraryFacets.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
 import type * as migrations_pagedAccountLists from "../migrations/pagedAccountLists.js";
-import type * as migrations_pagedCollections from "../migrations/pagedCollections.js";
 import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
 import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryList.js";
 import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
@@ -652,6 +651,7 @@ declare const fullApi: ApiFromModules<{
   "library/collectionMembership": typeof library_collectionMembership;
   "library/collections": typeof library_collections;
   "library/counter": typeof library_counter;
+  "library/facets": typeof library_facets;
   "library/followed": typeof library_followed;
   "library/mutations": typeof library_mutations;
   "library/papers": typeof library_papers;
@@ -660,7 +660,6 @@ declare const fullApi: ApiFromModules<{
   "library/validators": typeof library_validators;
   "maintenance/mutations": typeof maintenance_mutations;
   "migrations/assistantJobs": typeof migrations_assistantJobs;
-  "migrations/backfillLibraryCounters": typeof migrations_backfillLibraryCounters;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
   "migrations/countBillingUsage": typeof migrations_countBillingUsage;
@@ -669,10 +668,9 @@ declare const fullApi: ApiFromModules<{
   "migrations/extractionAnswers": typeof migrations_extractionAnswers;
   "migrations/extractionEvidence": typeof migrations_extractionEvidence;
   "migrations/extractionSearch": typeof migrations_extractionSearch;
-  "migrations/moveLibraryCounts": typeof migrations_moveLibraryCounts;
+  "migrations/libraryFacets": typeof migrations_libraryFacets;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
   "migrations/pagedAccountLists": typeof migrations_pagedAccountLists;
-  "migrations/pagedCollections": typeof migrations_pagedCollections;
   "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
   "migrations/pagedLibraryList": typeof migrations_pagedLibraryList;
   "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
@@ -796,6 +794,7 @@ export declare const components: {
   creditsAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"creditsAgg">;
   usageAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"usageAgg">;
   listCounts: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"listCounts">;
+  libraryFacetCounts: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"libraryFacetCounts">;
   batchWorker: import("@convex-dev/batch-worker/_generated/component.js").ComponentApi<"batchWorker">;
   presence: import("@convex-dev/presence/_generated/component.js").ComponentApi<"presence">;
 };

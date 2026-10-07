@@ -25,9 +25,8 @@ async function seedUser(
       createdAt: Date.now(),
       updatedAt: Date.now(),
       lastLoginAt: Date.now(),
-      libraryItemCount:
-        "libraryItemCount" in overrides ? overrides.libraryItemCount : 0,
     });
+    await ctx.db.insert("libraryCounts", { userId, count: overrides.libraryItemCount ?? 0 });
     return await ctx.db.get("users", userId);
   });
 }
@@ -552,48 +551,7 @@ describe("getLibraryCount", () => {
     expect(count).toBe(3);
   });
 
-  it("returns the live item count when the stored counter is missing", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
-      libraryItemCount: undefined,
-    });
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
 
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W1",
-    });
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W2",
-    });
-
-    const count = await asUser.query(api.library.queries.getLibraryCount, {});
-
-    expect(count).toBe(2);
-  });
-
-  it("returns the repaired count after the counter migration runs", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
-      libraryItemCount: undefined,
-    });
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W1",
-    });
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W2",
-    });
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W3",
-    });
-
-    await t.action(internal.migrations.backfillLibraryCounters.backfillUsers, {});
-
-    const count = await asUser.query(api.library.queries.getLibraryCount, {});
-
-    expect(count).toBe(3);
-  });
   it("does NOT count items belonging to other users", async () => {
     const t = convexTest(schema);
     const user1 = await seedUser(t, "clerk_user1", "user1@test.com", {
@@ -714,49 +672,9 @@ describe("getLibraryFilteredCount", () => {
     expect(count).toEqual({ count: 2, capped: false });
   });
 
-  it("returns the live item count when no filters are active and the stored counter is missing", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
-      libraryItemCount: undefined,
-    });
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    await seedLibraryItem(t, user!._id, {
-      title: "Paper 1",
-      openalexId: "https://openalex.org/W1",
-    });
-    await seedLibraryItem(t, user!._id, {
-      title: "Paper 2",
-      openalexId: "https://openalex.org/W2",
-    });
-
-    const count = await asUser.query(api.library.queries.getLibraryFilteredCount, {
-      sortBy: "savedAt",
-      sortOrder: "desc",
-    });
-
-    expect(count).toEqual({ count: 2, capped: false });
-  });
 });
 
 describe("library counter", () => {
-  it("ensureUser initializes libraryItemCount for fresh users", async () => {
-    const t = convexTest(schema);
-    // ensureUser → createCreditsForUser → recordTransactionCounters writes
-    // the initial monthly free grant to the balance sharded counters, so the
-    // counters must be registered on this handle.
-    const asUser = t.withIdentity({
-      subject: "clerk_user1",
-      email: "user1@test.com",
-      givenName: "Test",
-      familyName: "User",
-    });
-
-    const userId = await asUser.mutation(api.users.mutations.ensureUser, {});
-    const user = await t.run(async (ctx) => await ctx.db.get("users", userId));
-
-    expect(user?.libraryItemCount).toBe(0);
-  });
 
   it("saveToLibrary increments counter for new items", async () => {
     const t = convexTest(schema);
@@ -901,51 +819,7 @@ describe("library counter", () => {
     expect(count).toBe(2);
   });
 
-  it("saveToLibrary repairs a missing counter before incrementing", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
-      libraryItemCount: undefined,
-    });
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
 
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W-existing",
-      title: "Existing paper",
-    });
-
-    await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/W-new",
-      rating: 4,
-      title: "New paper",
-    });
-
-    const count = await asUser.query(api.library.queries.getLibraryCount, {});
-    expect(count).toBe(2);
-  });
-
-  it("removeFromLibrary repairs a missing counter before decrementing", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
-      libraryItemCount: undefined,
-    });
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W-remove",
-      title: "Remove me",
-    });
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W-keep",
-      title: "Keep me",
-    });
-
-    await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      openalexId: "https://openalex.org/W-remove",
-    });
-
-    const count = await asUser.query(api.library.queries.getLibraryCount, {});
-    expect(count).toBe(1);
-  });
 });
 
 describe("removeFromLibrary", () => {
@@ -964,7 +838,7 @@ describe("removeFromLibrary", () => {
     });
 
     // What Undo needs is kept on the server, under the ID the removal returns.
-    expect(await t.run(async (ctx) => await ctx.db.get("libraryRemovals", removed.undo!.args.removalId))).toMatchObject({ item: { openalexId: "https://openalex.org/W1", rating: 4, savedAt: item!.savedAt }, collectionIds: [] });
+    expect(await t.run(async (ctx) => await ctx.db.get("libraryRemovals", removed.undo!.args.removalId))).toMatchObject({ item: { openalexId: "https://openalex.org/W1", rating: 4, savedAt: item!.savedAt } });
     const deleted = await t.run(async (ctx) => await ctx.db.get("libraryItems", item!._id));
     expect(deleted).toBeNull();
   });
@@ -1369,15 +1243,17 @@ describe("the library as the assistant reads it", () => {
     const collectionId = await t.run(async (ctx) => {
       // The second paper was saved without a rating.
       await ctx.db.patch("libraryItems", phones!._id, { rating: undefined });
-      const id = await ctx.db.insert("collections", { userId: user!._id, name: "Chapter 2", itemCount: 2, createdAt: 1, updatedAt: 1 });
+      const id = await ctx.db.insert("collections", { userId: user!._id, name: "Chapter 2", sortName: ("Chapter 2").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
       for (const item of [tutoring!, phones!]) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: id, libraryItemId: item._id, assignedAt: 1 });
       // A place in a collection deleted since, not yet cleared away, isn't one.
-      const gone = await ctx.db.insert("collections", { userId: user!._id, name: "Deleted", itemCount: 1, createdAt: 1, updatedAt: 1 });
+      const gone = await ctx.db.insert("collections", { userId: user!._id, name: "Deleted", sortName: ("Deleted").toLowerCase(), itemCount: 1, createdAt: 1, updatedAt: 1 });
       const feeding = await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", user!._id).eq("openalexId", "https://openalex.org/W3")).unique();
       await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: gone, libraryItemId: feeding!._id, assignedAt: 1 });
       await ctx.db.delete("collections", gone);
       return id;
     });
+    // Filtered counts are a moment behind the writes: let the count queue catch up.
+    await t.finishAllScheduledFunctions(() => {});
 
     // The whole library, newest saved first, each paper with what the assistant needs to act on it.
     const all = await papers();
@@ -1407,7 +1283,10 @@ describe("the library as the assistant reads it", () => {
 
     // More than a page: the next one carries on where this stopped.
     for (let i = 0; i < 22; i++) await seedLibraryItem(t, user!._id, { title: `Paper ${i}`, savedAt: Date.UTC(2026, 9, 1) + i, openalexId: `https://openalex.org/W${100 + i}` });
-    await t.run(async (ctx) => ctx.db.patch("users", user!._id, { libraryItemCount: 25 }));
+    await t.run(async (ctx) => {
+      const row = await ctx.db.query("libraryCounts").withIndex("by_user", (q) => q.eq("userId", user!._id)).unique();
+      await ctx.db.patch("libraryCounts", row!._id, { count: 25 });
+    });
     const first = await papers();
     expect(first).toMatchObject({ total: 25, next: expect.any(String) });
     expect(first.papers).toHaveLength(20);

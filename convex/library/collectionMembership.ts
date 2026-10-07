@@ -1,5 +1,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
+import { stream } from "convex-helpers/server/stream";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
+import schema from "../schema";
 
 /**
  * Every change to a collection's items goes through here, so its item count
@@ -12,7 +14,7 @@ async function touchCollection(
   countChange: 1 | -1,
 ) {
   await ctx.db.patch("collections", collection._id, {
-    itemCount: Math.max(0, (collection.itemCount ?? 0) + countChange),
+    itemCount: Math.max(0, collection.itemCount + countChange),
     membershipRevision: (collection.membershipRevision ?? 0) + 1,
   });
 }
@@ -51,7 +53,15 @@ export async function addCollectionMembership(
   return assignedAt;
 }
 
-/** Removes one membership row and counts it off its collection, if the collection still exists. */
+/** A saved paper's places in collections that still exist. A deleted collection's places go after it, in batches. */
+export function livePlaces(ctx: Pick<QueryCtx, "db">, libraryItemId: Id<"libraryItems">) {
+  return stream(ctx.db, schema)
+    .query("libraryItemCollections")
+    .withIndex("by_item", (q) => q.eq("libraryItemId", libraryItemId))
+    .filterWith(async (membership) => (await ctx.db.get("collections", membership.collectionId)) !== null);
+}
+
+/** Removes one membership row and counts it off its collection, if the collection still exists: says whether it does. */
 export async function removeCollectionMembership(
   ctx: MutationCtx,
   membership: Doc<"libraryItemCollections">,
@@ -59,4 +69,5 @@ export async function removeCollectionMembership(
   await ctx.db.delete("libraryItemCollections", membership._id);
   const collection = await ctx.db.get("collections", membership.collectionId);
   if (collection) await touchCollection(ctx, collection, -1);
+  return collection !== null;
 }

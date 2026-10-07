@@ -26,7 +26,7 @@ it("migrates retained authors without crossing owners or guessing, and guards ro
     await saved("W5");
     const longAuthors = Array.from({ length: 101 }, (_, i) => `Author ${i}`);
     const long = await saved("W6", longAuthors.join(", "), JSON.stringify({ authorships: longAuthors.map(display_name => ({ author: { display_name } })) }));
-    const removal = await ctx.db.insert("libraryRemovals", { userId: owner, item: { openalexId: "W4", title: "Removed", authorsUnparsed: "Doe, Jane", paperData: JSON.stringify({ authorships: [{ author: { display_name: "Doe, Jane" } }] }), searchableText: "Removed Doe, Jane", savedAt: 1, updatedAt: 2 }, collectionIds: [], expiresAt: Date.now() + 100_000 });
+    const removal = await ctx.db.insert("libraryRemovals", { userId: owner, item: { openalexId: "W4", title: "Removed", authorsUnparsed: "Doe, Jane", paperData: JSON.stringify({ authorships: [{ author: { display_name: "Doe, Jane" } }] }), searchableText: "Removed Doe, Jane", savedAt: 1, updatedAt: 2 }, expiresAt: Date.now() + 100_000 });
     return { retained, foreignOnly, ambiguous, raw, removal, long, longAuthors };
   });
   const migrate = async () => {

@@ -9,6 +9,7 @@ import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
 import { followed } from "./followed";
+import { copyFacetBatch } from "./facets";
 import { collectionSortName } from "./sortName";
 
 /** Most collections one page holds. */
@@ -26,26 +27,25 @@ export { collectionSortName };
 // COLLECTION CRUD (Plan 01 prerequisites)
 // ═══════════════════════════════════════════════════════════════
 
-/** Whether `userId` can make a collection named `name`: its name trimmed, and their collections, read for the cap. */
+/** Whether `userId` can make a collection named `name`: its name trimmed, and their count row, read for the cap. */
 export async function collectionAllowed(ctx: QueryCtx, userId: Id<"users">, name: string) {
   const trimmed = name.trim();
   if (!trimmed) {
     throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
   }
-  const existing = await ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", userId)).take(MAX_COLLECTIONS_PER_USER);
-  if (existing.length >= MAX_COLLECTIONS_PER_USER) {
+  // Someone with no count row has never made a collection.
+  const counted = await collectionCountRow(ctx, userId);
+  if ((counted?.count ?? 0) >= MAX_COLLECTIONS_PER_USER) {
     throw createError("VALIDATION_ERROR", `You can have up to ${MAX_COLLECTIONS_PER_USER} collections. Delete one to make another.`);
   }
-  return { trimmed, existing };
+  return { trimmed, counted };
 }
 
 /** Makes an empty collection of `userId`'s named `name`, and counts it. */
 export async function newCollection(ctx: MutationCtx, userId: Id<"users">, name: string) {
-  const { trimmed, existing } = await collectionAllowed(ctx, userId, name);
-  // Every collection was just read for the cap, so a missing count starts exact.
-  const counted = await collectionCountRow(ctx, userId);
+  const { trimmed, counted } = await collectionAllowed(ctx, userId, name);
   if (counted) await ctx.db.patch("collectionCounts", counted._id, { count: counted.count + 1 });
-  else await ctx.db.insert("collectionCounts", { userId, count: existing.length + 1 });
+  else await ctx.db.insert("collectionCounts", { userId, count: 1 });
   return await ctx.db.insert("collections", {
     userId,
     name: trimmed,
@@ -133,6 +133,16 @@ async function deleteMembershipBatch(ctx: MutationCtx, collectionId: Id<"collect
   return memberships.length === MEMBERSHIP_DELETE_BATCH;
 }
 
+/** Gives the next batch of a paper's memberships its changed fields (convex/library/facets.ts). */
+export const copyFacets = internalMutation({
+  args: { libraryItemId: v.id("libraryItems"), cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { libraryItemId, cursor }) => {
+    await copyFacetBatch(ctx, libraryItemId, cursor);
+    return null;
+  },
+});
+
 /** Deletes the next batch of a deleted collection's memberships, until none are left. */
 export const deleteMemberships = internalMutation({
   args: { collectionId: v.id("collections") },
@@ -158,7 +168,7 @@ export const deleteCollectionAction = defineUserMutation({
   undoable: false,
   run: async (ctx, userId, args) => {
     const collection = await ownCollection(ctx, userId, args.collectionId);
-    if (args.expect && (collection.name !== args.expect.name || (collection.itemCount ?? 0) !== 0)) {
+    if (args.expect && (collection.name !== args.expect.name || collection.itemCount !== 0)) {
       throw createError("CONFLICT", "This collection has been renamed or holds papers now, so it was left as it is.");
     }
     // Its papers' places in it go with it: this batch now, the rest in the batches it schedules.
@@ -283,8 +293,7 @@ export const listCollectionsAction = defineUserQuery({
         page.page.map(async (collection) => ({
           _id: collection._id,
           name: collection.name,
-          // Until migrations/backfillLibraryCounters has run everywhere, a collection may have no count yet.
-          itemCount: collection.itemCount ?? 0,
+          itemCount: collection.itemCount,
           containsItem:
             libraryItemId !== undefined &&
             (await ctx.db
@@ -304,7 +313,7 @@ export const countCollectionsAction = defineUserQuery({
   description: "How many collections the person has.",
   args: {},
   returns: v.number(),
-  // Until migrations/pagedCollections has run everywhere, someone may have no count yet.
+  // Someone with no count row has never made a collection.
   run: async (ctx, userId) => (await collectionCountRow(ctx, userId))?.count ?? 0,
 });
 export const countCollections = userQuery(countCollectionsAction);
@@ -318,7 +327,7 @@ export const getCollectionAction = defineUserQuery({
   run: async (ctx, userId, args) => {
     const collection = await ctx.db.get("collections", args.collectionId);
     if (!collection || collection.userId !== userId) return null;
-    return { _id: collection._id, name: collection.name, itemCount: collection.itemCount ?? 0 };
+    return { _id: collection._id, name: collection.name, itemCount: collection.itemCount };
   },
 });
 export const getCollection = userQuery(getCollectionAction);

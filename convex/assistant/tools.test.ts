@@ -884,7 +884,7 @@ describe("the assistant's tools", () => {
     // A collection saved before counts were kept is counted from its papers, not taken for an empty one that would cost nothing.
     const uncounted = await t.run(async (ctx) => {
       const userId = (await ctx.db.get("assistantThreads", threadId))!.ownerId;
-      const collectionId = await ctx.db.insert("collections", { userId, name: "Saved long ago", createdAt: 1, updatedAt: 1 });
+      const collectionId = await ctx.db.insert("collections", { userId, name: "Saved long ago", sortName: "saved long ago", itemCount: 0, createdAt: 1, updatedAt: 1 });
       for (const openalexId of ["W91", "W92", "W93"]) {
         const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId, title: openalexId, searchableText: openalexId, rating: 0, savedAt: 1, updatedAt: 1 });
         await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: 1 });

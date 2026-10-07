@@ -26,6 +26,8 @@ describe("library reads by size", () => {
       const { itemIds, collectionId } = await seedLibrary(t, userId, { items: size });
       const [small] = await insertMany(t, "collections", [{ userId, name: "Shortlist", sortName: "shortlist", itemCount: 50, createdAt: 1, updatedAt: 1 }]);
       await insertMany(t, "libraryItemCollections", itemIds.filter((_, i) => i % Math.floor(size / 50) === 0).slice(0, 50).map((libraryItemId) => ({ userId, collectionId: small, libraryItemId, assignedAt: 1 })));
+      // Filtered counts are a moment behind the writes: let the count queue catch up.
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
       const at = (scenario: string) => ({ area: "library", scenario, size });
       const papers = (given: Record<string, unknown>) => (ctx: any) => papersAction.run(ctx, userId, given as never);
       const shown = (read: { papers: unknown[] } | undefined) => `${read?.papers.length ?? 0} rows`;

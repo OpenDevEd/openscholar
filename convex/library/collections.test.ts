@@ -161,7 +161,8 @@ describe("createCollection", () => {
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
     await t.run(async (ctx) => {
-      for (let i = 0; i < MAX_COLLECTIONS_PER_USER; i++) await ctx.db.insert("collections", { userId: user!._id, name: `c${i}`, itemCount: 0, createdAt: 1, updatedAt: 1 });
+      for (let i = 0; i < MAX_COLLECTIONS_PER_USER; i++) await ctx.db.insert("collections", { userId: user!._id, name: `c${i}`, sortName: `c${i}`, itemCount: 0, createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("collectionCounts", { userId: user!._id, count: MAX_COLLECTIONS_PER_USER });
     });
     await expect(asUser.mutation(api.library.collections.createCollection, { name: "One more" })).rejects.toThrow(/VALIDATION_ERROR/);
     expect(await t.run(async (ctx) => (await ctx.db.query("collections").take(MAX_COLLECTIONS_PER_USER + 1)).length)).toBe(MAX_COLLECTIONS_PER_USER);
@@ -434,17 +435,16 @@ describe("countCollections and getCollection", () => {
     expect(await asUser1.query(api.library.collections.getCollection, { collectionId: theirs!._id })).toBeNull();
   });
 
-  it("keeps the count as collections are made and deleted, starting exact for someone counted before", async () => {
+  it("keeps the count as collections are made and deleted", async () => {
     const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
-    // Saved before counts existed: no count row.
-    await seedCollection(t, user!._id, "Old one");
-    await seedCollection(t, user!._id, "Old two");
-    const made = (await asUser.mutation(api.library.collections.createCollection, { name: "New" })).id;
-    expect(await asUser.query(api.library.collections.countCollections, {})).toBe(3);
-    await asUser.mutation(api.library.collections.deleteCollection, { collectionId: made });
+    expect(await asUser.query(api.library.collections.countCollections, {})).toBe(0);
+    await asUser.mutation(api.library.collections.createCollection, { name: "One" });
+    const made = (await asUser.mutation(api.library.collections.createCollection, { name: "Two" })).id;
     expect(await asUser.query(api.library.collections.countCollections, {})).toBe(2);
+    await asUser.mutation(api.library.collections.deleteCollection, { collectionId: made });
+    expect(await asUser.query(api.library.collections.countCollections, {})).toBe(1);
   });
 });
 

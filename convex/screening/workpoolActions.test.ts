@@ -124,7 +124,7 @@ describe("charging a Screen all paper", () => {
     const { userId, collectionId } = await t.run(async (ctx) => {
       const userId = await ctx.db.insert("users", { clerkId: "clerk_held", email: "held@test.local", state: "active", createdAt: 1, updatedAt: 1 });
       await seedCreditsForTest(ctx, { userId, free: 100 });
-      const collectionId = await ctx.db.insert("collections", { userId, name: "Trials", itemCount: 2, createdAt: 1, updatedAt: 1 });
+      const collectionId = await ctx.db.insert("collections", { userId, name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
       for (const n of [1, 2]) {
         const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
         await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: n });

@@ -295,7 +295,7 @@ describe("extraction full flow with mocked provider I/O", () => {
     // Two saved papers in a collection: the set the assistant names.
     const collectionId = await t.run(async (ctx) => {
       const now = Date.now();
-      const id = await ctx.db.insert("collections", { userId, name: "Trials", itemCount: 2, createdAt: now, updatedAt: now });
+      const id = await ctx.db.insert("collections", { userId, name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: now, updatedAt: now });
       for (const n of [1, 2]) {
         const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: ["Fixture Author"], abstract, searchableText: `Trial ${n}`, savedAt: now + n, updatedAt: now });
         await ctx.db.insert("libraryItemCollections", { userId, collectionId: id, libraryItemId, assignedAt: now + n });
