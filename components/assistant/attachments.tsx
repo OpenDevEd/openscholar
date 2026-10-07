@@ -15,7 +15,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { digestOpaqueToken } from "@/convex/lib/opaqueTokenDigest";
-import { MAX_IMAGE_BYTES, MAX_IMAGE_MB } from "@/lib/assistant/files";
+import { MAX_FILES_PER_MESSAGE, MAX_IMAGE_BYTES, MAX_IMAGE_MB } from "@/lib/assistant/files";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { FadeRow } from "./parts";
@@ -106,6 +106,8 @@ export async function uploaded(files: readonly Attachment[]) {
 }
 /** Lets go of these files' uploads, once their message is sent or they're removed. */
 export const release = (keys: readonly string[]) => keys.forEach((key) => jobs.delete(key));
+/** Frees the pictures of files their message was sent with: the chat shows the server's copies by then. */
+export const freePreviews = (files: readonly Attachment[]) => files.forEach((file) => file.preview && URL.revokeObjectURL(file.preview));
 /** How a message shows files still on their way. */
 export const sendingOf = (files: readonly Attachment[]) => files.filter((file) => !file.error).map((file) => shownOf(file));
 
@@ -117,10 +119,14 @@ export function useAttach(add: (files: Attachment[]) => void, patch: (key: strin
   const t = useTranslations("assistant.files");
   const startUpload = useMutation(api.assistant.files.startUpload);
   const remove = useMutation(api.assistant.files.remove);
-  return (picked: readonly File[]) => {
+  /** `attached`: files already going with the draft, which count towards what one message carries. */
+  return (picked: readonly File[], attached: number) => {
+    let room = MAX_FILES_PER_MESSAGE - attached;
     const files = picked.map((file): Attachment & { file: File } => {
       const base = { key: crypto.randomUUID(), name: file.name || t("pasted"), bytes: file.size, mediaType: file.type, progress: 0, file };
       if (!file.type.startsWith("image/")) return { ...base, error: t("onlyImages") };
+      if (room <= 0) return { ...base, error: t("tooMany", { count: MAX_FILES_PER_MESSAGE }) };
+      room -= 1;
       if (file.size > MAX_IMAGE_BYTES) return { ...base, error: t("tooLarge", { mb: MAX_IMAGE_MB }) };
       return base;
     });

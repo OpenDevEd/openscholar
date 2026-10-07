@@ -3907,7 +3907,8 @@
       "drop": "拖放图片即可添加",
       "anImage": "一张图片",
       "modelCant": "{model} 无法读取图片。请选择其他模型来添加图片。",
-      "notUploaded": "{count, plural, other {# 个文件未能上传}}。请移除或重新添加。"
+      "notUploaded": "{count, plural, other {# 个文件未能上传}}。请移除或重新添加。",
+      "tooMany": "每条消息最多 {count} 个文件"
     }
   }
 }

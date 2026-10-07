@@ -132,6 +132,23 @@ describe("attaching a file", () => {
     expect(await storedFiles(t)).toBe(0);
   });
 
+  it("lets a file left unsent for an hour make room once the person has 20 waiting", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const t = convexTest(schema);
+      const { asAda } = await people(t);
+      const first = await start(asAda, "first.png");
+      for (let i = 1; i < 20; i += 1) await start(asAda, `f${i}.png`);
+      await expect(start(asAda, "one-more.png")).rejects.toThrow(/up to 20 files/);
+
+      vi.advanceTimersByTime(61 * 60 * 1000);
+      await start(asAda, "one-more.png");
+      expect(await t.run((ctx) => ctx.db.get("assistantFiles", first.fileId))).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("allows as many uploads an hour as the person's plan", async () => {
     const t = convexTest(schema);
     const { asAda, ada } = await people(t);

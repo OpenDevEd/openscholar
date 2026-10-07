@@ -40,7 +40,7 @@ crons.interval(
 // Files attached to assistant chats that no reply has read for 30 days, or that were never sent (#647).
 crons.interval(
   "expire assistant chat files",
-  { hours: 24 },
+  { hours: 1 },
   internal.assistant.files.expire,
   {},
 );

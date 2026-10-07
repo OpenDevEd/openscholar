@@ -39,6 +39,8 @@ const HOUR = 60 * 60 * 1000;
 const FORGET_FILES = 100;
 /** How stale a file's last use is before a reply that sends it writes it down again. */
 const TOUCH_AFTER_MS = 24 * 60 * 60 * 1000;
+/** How long a file attached and not sent counts as a draft still open somewhere, before a new upload may take its place. */
+const ABANDONED_MS = 60 * 60 * 1000;
 /** How long an upload's token can be used. */
 const UPLOAD_TOKEN_MS = 15 * 60 * 1000;
 
@@ -55,8 +57,12 @@ export const startUpload = mutation({
     if (!/^[0-9a-f]{64}$/.test(digest)) throw createError("VALIDATION_ERROR", "An upload needs a SHA-256 digest.");
     const clean = name.trim().slice(0, MAX_FILE_NAME);
     if (!clean) throw createError("VALIDATION_ERROR", "A file needs a name.");
-    if ((await pendingOf(ctx, userId).take(MAX_PENDING_FILES)).length >= MAX_PENDING_FILES) {
-      throw createError("VALIDATION_ERROR", `You can have up to ${MAX_PENDING_FILES} files waiting to be sent. Send or remove some first.`);
+    // At the limit, the oldest file left unsent for an hour makes room: a draft lost to a reload or a closed tab holds its place until then.
+    const pending = await pendingOf(ctx, userId).take(MAX_PENDING_FILES);
+    if (pending.length >= MAX_PENDING_FILES) {
+      const oldest = pending.reduce((a, b) => (a._creationTime <= b._creationTime ? a : b));
+      if (oldest._creationTime > Date.now() - ABANDONED_MS) throw createError("VALIDATION_ERROR", `You can have up to ${MAX_PENDING_FILES} files waiting to be sent. Send or remove some first.`);
+      await deleteFile(ctx, oldest);
     }
     const perHour = await planLimit(ctx, userId, "uploads_per_hour");
     if (perHour !== undefined) {
@@ -97,7 +103,11 @@ export const upload = httpAction(async (ctx, request) => {
     return reply(400, { error: refused });
   }
   const storageId = await ctx.storage.store(new Blob([bytes!], { type: mediaType }));
-  const kept = await ctx.runMutation(internal.assistant.files.bind, { fileId, storageId, bytes: bytes!.byteLength, mediaType: mediaType! });
+  // Bytes no row holds would never be deleted, so a bind that fails takes them with it.
+  const kept = await ctx.runMutation(internal.assistant.files.bind, { fileId, storageId, bytes: bytes!.byteLength, mediaType: mediaType! }).catch(async (error: unknown) => {
+    await ctx.storage.delete(storageId);
+    throw error;
+  });
   return kept ? reply(200, { fileId }) : reply(410, { error: "This file was removed." });
 });
 
@@ -284,7 +294,7 @@ export async function purgeFiles(ctx: MutationCtx, userId: Id<"users">) {
 }
 
 /**
- * Daily: a sent file no reply has used for 30 days loses its bytes, and a file attached and
+ * Hourly: a sent file no reply has used for 30 days loses its bytes, and a file attached and
  * never sent goes after a day. A batch at a time, each run carrying on until none are due.
  */
 export const expire = internalMutation({

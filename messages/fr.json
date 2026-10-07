@@ -3907,7 +3907,8 @@
       "drop": "Déposez des images pour les joindre",
       "anImage": "une image",
       "modelCant": "{model} ne lit pas les images. Choisissez un autre modèle pour les joindre.",
-      "notUploaded": "{count, plural, one {Un fichier n’a pas été envoyé} other {# fichiers n’ont pas été envoyés}}. Retirez-{count, plural, one {le} other {les}} ou joignez-{count, plural, one {le} other {les}} à nouveau."
+      "notUploaded": "{count, plural, one {Un fichier n’a pas été envoyé} other {# fichiers n’ont pas été envoyés}}. Retirez-{count, plural, one {le} other {les}} ou joignez-{count, plural, one {le} other {les}} à nouveau.",
+      "tooMany": "{count} fichiers au plus par message"
     }
   }
 }

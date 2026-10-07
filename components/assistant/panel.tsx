@@ -36,7 +36,7 @@ import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { titleFrom } from "@/lib/assistant/title";
 import { stillNamed, withTokens, type Mention } from "@/lib/assistant/mentions";
 import { MentionComposer, MessageText, RECORD_CHIP, recordChipStyle } from "./mentions";
-import { AttachButton, DropZone, Reattach, SentFiles, Tray, release, sendingOf, startShrinker, uploaded, useAttach, useRemove, type Attachment } from "./attachments";
+import { AttachButton, DropZone, Reattach, SentFiles, Tray, freePreviews, release, sendingOf, startShrinker, uploaded, useAttach, useRemove, type Attachment } from "./attachments";
 import { readsImages } from "@/lib/assistant/files";
 import { inApp, recordOf } from "@/lib/assistant/view";
 import useSWR, { preload } from "swr";
@@ -603,6 +603,8 @@ function Chat({
       drafts.unpick(into, sentPicks);
       drafts.dropFiles(into, attachedNow.map((file) => file.key));
       release(attachedNow.map((file) => file.key));
+      // A send resolves once the chat shows its message, so the server's copies have taken the previews' place.
+      freePreviews(attachedNow);
     } catch (error) {
       // The message goes back in the box of its chat, unless something new was typed there meanwhile.
       drafts.set(into, (now) => now || typed);
@@ -648,7 +650,7 @@ function Chat({
 
   // Files the person picked, dropped or pasted, when the chat can take them.
   const take = (list: FileList | null | undefined) => {
-    if (list?.length && !filesOff) attach([...list]);
+    if (list?.length && !filesOff) attach([...list], files.filter((file) => !file.error).length);
   };
   const removeFile = (file: Attachment) => {
     removeUpload(file);

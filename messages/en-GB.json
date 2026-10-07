@@ -3909,7 +3909,8 @@
       "drop": "Drop images to attach them",
       "anImage": "an image",
       "modelCant": "{model} can't read images. Pick another model to attach them.",
-      "notUploaded": "{count, plural, one {A file didn’t upload} other {# files didn’t upload}}. Remove or attach {count, plural, one {it} other {them}} again."
+      "notUploaded": "{count, plural, one {A file didn’t upload} other {# files didn’t upload}}. Remove or attach {count, plural, one {it} other {them}} again.",
+      "tooMany": "Up to {count} files a message"
     }
   }
 }
