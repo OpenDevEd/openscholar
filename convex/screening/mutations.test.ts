@@ -124,6 +124,7 @@ async function seedCollection(
     const collectionId = await ctx.db.insert("collections", {
       userId,
       name: "Screening Target",
+      sortName: "screening target",
       itemCount: 0,
       createdAt: now,
       updatedAt: now,

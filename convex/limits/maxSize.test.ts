@@ -108,11 +108,16 @@ describe("at the largest sizes the product allows", () => {
       // Rating 5 and year 1990 never meet in the seed: a filter that matches nothing.
       { ...sorted, minRating: 5, yearTo: 1990 },
     ];
+    // The seed's papers: rating (i % 5) + 1, published 1990 + (i % 35), saved at 1_700_000_000_000 + i, all in the collection.
+    const seeded = Array.from({ length: MAX_SIZE.libraryItems }, (_, i) => ({ rating: (i % 5) + 1, year: 1990 + (i % 35), savedAt: 1_700_000_000_000 + i }));
     for (const view of views) {
       const page = await as.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { cursor: null, numItems: 20 } });
       const count = await as.query(api.library.queries.getLibraryFilteredCount, view);
-      if (count.capped) expect(count.count).toBe(1_000);
-      else expect(page.isDone ? page.page.length : Infinity).toBeGreaterThanOrEqual(count.count);
+      const v = view as { minRating?: number; maxRating?: number; yearFrom?: number; yearTo?: number; savedAfter?: number };
+      const matching = seeded.filter((p) => p.rating >= (v.minRating ?? 0) && p.rating <= (v.maxRating ?? 5) && p.year >= (v.yearFrom ?? 0) && p.year <= (v.yearTo ?? 9999) && p.savedAt >= (v.savedAfter ?? 0)).length;
+      // Every count is exact, at any size.
+      expect(count).toEqual({ count: matching, capped: false });
+      expect(page.page).toHaveLength(Math.min(20, matching));
     }
     expect(await as.query(api.library.queries.getLibraryFilteredCount, { ...sorted, collectionId })).toEqual({ count: MAX_SIZE.libraryItems, capped: false });
     expect(await as.query(api.library.queries.getLibraryFilteredCount, { ...sorted, minRating: 5, yearTo: 1990 })).toEqual({ count: 0, capped: false });
@@ -141,9 +146,9 @@ describe("at the largest sizes the product allows", () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
     await seedLibrary(t, userId, { abstractChars: 4_500 });
-    // Rating 4 and up never meets year 1990 in the seed: the count reads past 4,000 large papers.
+    // Rating 4 and up never meets year 1990 in the seed: the count reads only the papers of the narrower filter, the year's.
     const count = await as.query(api.library.queries.getLibraryFilteredCount, { sortBy: "savedAt", sortOrder: "desc", minRating: 4, yearTo: 1990 });
-    expect(count).toEqual({ count: 0, capped: true });
+    expect(count).toEqual({ count: 0, capped: false });
   }, 300_000);
 
   it("a search of the longest OQL query edited 200 times, and a history page of 25 such searches, load (#354)", async () => {
