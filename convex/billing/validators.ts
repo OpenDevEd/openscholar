@@ -42,6 +42,8 @@ export const billingAccountFields = {
   refreshedAt: v.number(),
   /** Set while a refresh from Autumn is scheduled, so charges don't schedule more. */
   refreshQueuedAt: v.optional(v.number()),
+  /** The papers-at-once limit before `limits` held it; read by nothing, cleared by migrations/planLimits. */
+  concurrency: v.optional(v.number()),
 };
 
 export const usageKindValidator = v.union(
