@@ -33,6 +33,12 @@
 //   extra fields on any value that isn't a fresh object literal, such as a row with some
 //   fields destructured away; the validator rejects them at runtime, so a new column on the
 //   row breaks the function only when that column is set.
+// - Every named cap a read takes (`.take(CAP)`, `.take(CAP + 1)`) is listed under caps (#638):
+//   `enforced` with the write that keeps the set within it ("file:function", or "file" for a
+//   validator), whose code names the cap; `refused` when the read itself refuses a set past it;
+//   `windows` when the read deliberately shows the first or newest few; `batches` for the batch
+//   size of work that reschedules itself. A cap that isn't listed, or is listed but taken by no
+//   read, fails, and so does a cap in convex/lib/queryBounds.ts or listCaps.ts that nothing uses.
 // - Mutations run through the database triggers (#351): `mutation` and `internalMutation`
 //   come from convex/lib/functions.ts, never from `_generated/server`, and every
 //   `new Migrations(...)` is given that `internalMutation`.
@@ -508,6 +514,35 @@ const reads: string[] = [];
 const missingReturns: string[] = [];
 const problems: string[] = [];
 const verbose = process.argv.includes("--verbose");
+/**
+ * Whether `scope`'s code uses `cap`: a reference in an expression, not a comment, an import,
+ * the constant's own declaration, or the `.take()` of a read, which is what the cap bounds.
+ */
+function usesCap(scope: ts.Node, cap: string): boolean {
+  let used = false;
+  const visit = (node: ts.Node) => {
+    if (used || ts.isImportDeclaration(node)) return;
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "take") {
+      ts.forEachChild(node.expression, visit);
+      return;
+    }
+    if (ts.isIdentifier(node) && node.text === cap && !(ts.isVariableDeclaration(node.parent) && node.parent.name === node)) used = true;
+    ts.forEachChild(node, visit);
+  };
+  visit(scope);
+  return used;
+}
+
+/** Each named cap a read takes, with the files that take it. */
+const takenCaps = new Map<string, Set<string>>();
+/** The cap a `.take()` names: `CAP`, `CAP + 1` or `REGISTRY.length`; undefined for a literal or a local value. */
+function capTaken(arg: ts.Expression | undefined): string | undefined {
+  if (!arg) return undefined;
+  if (ts.isBinaryExpression(arg)) return capTaken(arg.left);
+  if (ts.isParenthesizedExpression(arg)) return capTaken(arg.expression);
+  const text = arg.getText();
+  return /^[A-Z][A-Z0-9_]*(\.length)?$/.test(text) ? text : undefined;
+}
 
 for (const tree of program.getSourceFiles().filter((file) => sources.includes(relative(file.fileName)))) {
   const file = relative(tree.fileName);
@@ -524,6 +559,10 @@ for (const tree of program.getSourceFiles().filter((file) => sources.includes(re
       add(node, tableOf(node.expression.expression));
     }
     if (ts.isForOfStatement(node) && node.awaitModifier && isDatabaseQuery(node.expression)) add(node, tableOf(node.expression));
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "take" && isDatabaseQuery(node.expression.expression)) {
+      const cap = capTaken(node.arguments[0]);
+      if (cap) takenCaps.set(cap, (takenCaps.get(cap) ?? new Set()).add(file));
+    }
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && /_generated\/server$/.test(node.moduleSpecifier.text) && file !== "convex/lib/functions.ts" && !node.importClause?.isTypeOnly) {
       const bindings = node.importClause?.namedBindings;
       if (bindings && ts.isNamedImports(bindings)) for (const element of bindings.elements) {
@@ -588,7 +627,8 @@ if (process.argv.includes("--list")) {
 }
 
 type Pending = { pending: Record<string, string> };
-type Rules = { unboundedReads: Pending & { bounded?: Record<string, string> }; listReturns: Pending; untypedReturns?: Pending; everyPage: Pending; missingReturns: Pending; argumentSizedTakes: { bounded: Record<string, string> } };
+type Caps = { enforced: Record<string, string>; refused: Record<string, string>; windows: Record<string, string>; batches: Record<string, string> };
+type Rules = { unboundedReads: Pending & { bounded?: Record<string, string> }; listReturns: Pending; untypedReturns?: Pending; everyPage: Pending; missingReturns: Pending; argumentSizedTakes: { bounded: Record<string, string> }; caps: Caps };
 const rules = JSON.parse(readFileSync("scripts/convex-rules.json", "utf8")) as Rules;
 // An issue, optionally followed by a note for whoever fixes it: "#427" or "#427: a user's keys".
 const issue = /^#\d+(: .+)?$/;
@@ -641,6 +681,42 @@ for (const fn of argumentSizedTakes) if (!(fn in rules.argumentSizedTakes.bounde
 for (const [fn, reason] of Object.entries(rules.argumentSizedTakes.bounded)) {
   if (!sizedByArguments.has(fn)) problems.push(`${fn}: listed as an argument-sized take but no longer is; remove it.`);
   if (reason.trim().length < 15) problems.push(`${fn}: say why its size stays small.`);
+}
+
+// Caps a read takes, each with what keeps it honest (#638).
+const listedCaps = new Map<string, keyof Caps>();
+for (const kind of ["enforced", "refused", "windows", "batches"] as const) {
+  for (const [cap, value] of Object.entries(rules.caps[kind])) {
+    if (listedCaps.has(cap)) problems.push(`${cap}: listed under caps.${listedCaps.get(cap)} and caps.${kind}; list it once.`);
+    listedCaps.set(cap, kind);
+    if (!takenCaps.has(cap)) problems.push(`${cap}: listed under caps.${kind} but no read takes it; remove it.`);
+    if (kind === "enforced") {
+      const [where, fn] = value.split(":");
+      const tree = program.getSourceFiles().find((source) => relative(source.fileName) === where);
+      if (!tree) problems.push(`${cap}: caps.enforced names ${where}, which isn't a file under convex/.`);
+      else {
+        let scope: ts.Node | undefined = fn ? undefined : tree;
+        const find = (node: ts.Node) => {
+          if ((ts.isFunctionDeclaration(node) || ts.isVariableDeclaration(node)) && node.name && ts.isIdentifier(node.name) && node.name.text === fn) scope = node;
+          ts.forEachChild(node, find);
+        };
+        if (fn) find(tree);
+        if (scope === undefined) problems.push(`${cap}: caps.enforced names ${value}, which ${where} doesn't define.`);
+        else if (!usesCap(scope, cap.split(".")[0])) problems.push(`${cap}: ${value} doesn't use the cap in its code, so it doesn't keep the set within it; name the write or validator that does.`);
+      }
+    } else if (value.trim().length < 15) problems.push(`${cap}: say why caps.${kind} fits it.`);
+  }
+}
+for (const [cap, where] of takenCaps) {
+  if (!listedCaps.has(cap)) problems.push(`${cap}: taken by ${[...where].join(", ")}; list it under caps.enforced with the write that keeps the set within it, or under refused, windows or batches with why.`);
+}
+// A cap nothing uses is a promise nothing keeps.
+const everything = [...sources, ...clientSources].map((file) => [file, readFileSync(file, "utf8")] as const);
+for (const capsFile of ["convex/lib/queryBounds.ts", "convex/lib/listCaps.ts"]) {
+  for (const [, name] of readFileSync(capsFile, "utf8").matchAll(/^export const ([A-Z][A-Z0-9_]*)\b/gm)) {
+    const used = everything.some(([file, text]) => file !== capsFile && new RegExp(`\\b${name}\\b`).test(text)) || new RegExp(`\\b${name}\\b`).test(readFileSync(capsFile, "utf8").replace(new RegExp(`export const ${name}\\b`), ""));
+    if (!used) problems.push(`${capsFile}:${name}: nothing uses it; delete it.`);
+  }
 }
 
 if (problems.length) {

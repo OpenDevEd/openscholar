@@ -134,6 +134,8 @@ export async function writeJobSources(
   ) {
     throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
   }
+  // A job reads its sources up to MAX_JOB_SOURCES; one argument array holds no more anyway.
+  if (items.length > MAX_JOB_SOURCES) throw createError("VALIDATION_ERROR", `A job takes up to ${MAX_JOB_SOURCES.toLocaleString("en")} sources.`);
   const inserted: Id<"extractionJobSources">[] = [];
   let position = 0;
   for (const item of items) {

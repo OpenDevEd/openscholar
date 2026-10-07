@@ -156,11 +156,8 @@ export async function exportRevision(ctx: QueryCtx, jobId: Id<"extractionJobs">)
   return ((await countsRow(ctx, jobId))?.counts.exportRevision ?? 0) + (pending.exportRevision ?? 0);
 }
 
-/** A deleted job's counts row and waiting changes. */
+/** A deleted job's counts row. Its waiting changes go with the job's cascade, a batch at a time (./mutations/internal/admin.ts). */
 async function clearCounts(ctx: MutationCtx, jobId: Id<"extractionJobs">) {
   const row = await countsRow(ctx, jobId);
   if (row) await ctx.db.delete(row._id);
-  for (const change of await ctx.db.query("extractionCountChanges").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(RECOUNT_MAX_ROWS)) {
-    await ctx.db.delete(change._id);
-  }
 }
