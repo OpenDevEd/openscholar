@@ -75,10 +75,14 @@ Replaced decisions:
   `convex/authors/access.ts`, `convex/evidenceLibraries/access.ts`
   (`readLibraryRole`, invitations). These merge into one access table and one
   check.
-- User actions: every action runs through `userMutation`, `accountMutation` and
-  `assistantMutation` in `convex/lib/userActions.ts`, which know the action, the
-  person, and whether the assistant made the change. They are the single place
-  for the workspace check and for writing activity.
+- User actions: `convex/lib/userActions.ts` builds every user action through
+  its wrappers (`userQuery`, `accountQuery`, `assistantQuery`, `userMutation`,
+  `accountMutation`, `assistantMutation`, `userAction`, `assistantAction`), which
+  know the action, the person, and whether the assistant made the change. All of
+  them, not only the mutations, take the workspace and check it, and write
+  activity. Functions listed in `scripts/user-actions-exempt.json` that read or
+  change workspace data (such as `assistant/replies:send`) get the same check,
+  and `npm run check:user-actions` fails on a workspace-data function without it.
 - Presence: `convex/assistant/presence.ts` on `@convex-dev/presence`, a
   10-second heartbeat (`lib/assistant/presence.ts`) and the avatar ring in
   `components/assistant/sheets.tsx`.
@@ -93,9 +97,10 @@ Replaced decisions:
 ## Data
 
 What stays with the person: the account, platform admin rights, personal
-ratings, model API keys and "My key" settings (personal workspace only),
-connected apps (`walletKeys`), the Zotero connection, request receipts and undo,
-export downloads and resource locks.
+ratings, connected apps (`walletKeys`), the Zotero connection, request receipts
+and undo, export downloads and resource locks. `userAiConfig` (the preset, custom
+task picks and "My key" settings) stays the person's and applies in their
+personal workspace only.
 
 What moves to the workspace: library papers, collections and their memberships,
 removals and counts, searches with their revisions, history, screenings and
@@ -104,37 +109,83 @@ jobs, queues and slots, assistant chats, author profiles, Evidence Libraries,
 and billing (accounts, holds, usage, transactions).
 
 - A `workspaces` table: `kind` (personal or organization), the account or the
-  organization, and its Autumn customer ID. A personal workspace keeps the
-  existing Autumn customer, the user's ID, so no Autumn customer moves.
+  organization, and its Autumn customer ID. #650 makes a personal workspace for
+  every account and an organization workspace for every existing organization,
+  so every record, Evidence Libraries included, has its workspace from the
+  first migration. A personal workspace keeps the existing Autumn customer, the
+  user's ID, so no Autumn customer moves; an organization gets its own Autumn
+  customer on the free organization plan.
 - Each moved record gets `workspaceId` and `createdBy`. `createdBy` takes the
   old `userId`, which is what makes "who started it" possible. `by_user` indexes
   become `by_workspace` ones.
+- An organization's AI preset is its own record, keyed by workspace, set by
+  admins and defaulting to the default preset. It holds a preset only: no custom
+  picks and no keys.
 - Evidence Libraries change from `organizationId` to `workspaceId`. This is saved
   library data, so it follows the migration rules in `docs/agents/project.md`.
-  Names and addresses become unique per workspace. new-el has no notion of
-  organizations, so it doesn't change.
+  Library names become unique per workspace. Public addresses
+  (`evidenceLibraryRuntimeBindings.by_targetBaseUrl`) and custom domains
+  (`evidenceLibraryDomains.by_host`) stay unique across the platform, because an
+  incoming host names no workspace. new-el has no notion of organizations, so it
+  doesn't change.
+- Deleting an account deletes its personal workspace only. Records in an
+  organization stay the organization's, and their `createdBy` and activity show
+  a kept name for a deleted member instead of pointing at a missing user. The
+  30-day cleanup of deleted accounts (`convex/maintenance/mutations.ts`, which
+  deletes their extraction jobs, chats and billing) is narrowed to the personal
+  workspace.
 - Every change widens, migrates with `@convex-dev/migrations` (audit and dry run
   first, then verified on shared dev and e2e), then narrows. Nothing is wiped,
   and no field stays as a fallback.
 
+## Roles
+
+Workspace roles are Admin and Member. Item roles for guests keep each kind's
+capabilities, mapped without anyone gaining a permission:
+
+| Kind | Today | Guest roles after #653 |
+|---|---|---|
+| Collection, search, screening, extraction | none | Viewer, Editor |
+| Assistant chat | read, write, owner | read becomes Viewer, write becomes Editor; owner becomes the workspace's |
+| Author profile | owner, editor | editor becomes Editor; owner becomes the workspace's |
+| Evidence Library | owner, editor, creator | Editor and Creator stay as they are (a Creator still can't publish); owner becomes the workspace's admins |
+
+#653 ships a test per row proving each old grant keeps exactly its old
+capabilities.
+
 ## Order and owners
 
+Each step deploys on its own and keeps the decisions true while later steps are
+still open.
+
 1. #649: upgrade to Clerk 7 (Core 3).
-2. #650: workspace ownership with personal workspaces only. No visible change.
-   Owner of the invariant "every record has exactly one workspace and every
+2. #650: workspaces for every account and every existing organization, with
+   billing keyed by workspace. No visible change: the switcher doesn't exist yet,
+   so everyone works in their personal workspace, and organizations keep their
+   Evidence Libraries. Owner of "every record has exactly one workspace and every
    action checks it": `convex/lib/userActions.ts` and a new `convex/workspaces/`.
-3. #651: organizations in OpenScholar, the switcher, the workspace in the URL,
-   Account and Workspace settings, and the organization's AI preset.
-4. #652: Team plan, workspace billing, and features from plans. Owner of "the
-   workspace you're in pays": `convex/billing/accounts.ts`. The Team plan's price,
-   credits, limits and features need the user's decision first.
-5. #653: guests. One access table replaces the three; owner `convex/sharing/`.
-6. #654: moving items between workspaces. Evidence Libraries move through #46.
-7. #655: ratings in one table, plus collection ratings.
+   Owner of "the workspace you're in pays": `convex/billing/accounts.ts`.
+3. #655: ratings in one table, personal per person, plus collection ratings.
+   It lands before organizations open, so members never share one rating.
+4. #651: organizations in OpenScholar, the switcher, the workspace in the URL,
+   Account and Workspace settings, and the organization's AI preset. An
+   organization works on the free organization plan and its own credits from
+   the start. Deletion goes through OpenScholar, which refuses while the
+   organization has an Evidence Library; deleting from Clerk's own components is
+   switched off in the instance's organization settings.
+5. #652: the Team plan, seats, credit caps per member, and features from plans
+   in place of the organization switches. The Team plan's price, credits, limits
+   and features need the user's decision first.
+6. #653: guests. One access table replaces the three, with the roles above;
+   owner `convex/sharing/`.
+7. #654: moving items between workspaces. An Evidence Library moves through the
+   ownership transfer in #46. A collection an Evidence Library follows can't
+   leave the library's workspace while the library follows it; the move names
+   the library to stop following it first.
 8. #656: who started what, and activity per item.
 9. #657: presence on every item.
 
-#653 to #657 depend on #651 and can run in parallel after it.
+#652, #653, #654, #656 and #657 depend on #651 and can run in parallel after it.
 
 ## Checks
 
