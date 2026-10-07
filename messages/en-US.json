@@ -3273,7 +3273,10 @@
     "free": "Free",
     "source": "Intelligence Index by Artificial Analysis",
     "back": "Back to models",
-    "default": "Default"
+    "default": "Default",
+    "reads": "Reads",
+    "readsImages": "Reads images",
+    "readsPdfs": "Reads PDFs"
   },
   "assistant": {
     "activity": {

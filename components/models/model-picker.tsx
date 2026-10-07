@@ -9,7 +9,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { Command as CommandPrimitive } from "cmdk";
-import { ArrowLeft, ArrowUpRight, Check, Search } from "@/components/icons";
+import { ArrowLeft, ArrowUpRight, Check, FileText, ImageIcon, Search } from "@/components/icons";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
@@ -50,9 +50,27 @@ function contextLabel(tokens: number | undefined) {
   return `${Math.round(tokens / 1_000)}K`;
 }
 
-// Name, intelligence, context, cost, check. Context drops out when the picker is narrow.
+// Name, what it reads, intelligence, context, cost, check. Context drops out when the picker is narrow.
 const GRID =
-  "grid grid-cols-[minmax(0,1fr)_6.5rem_6rem_1rem] items-center gap-3 @[32rem]/picker:grid-cols-[minmax(0,1fr)_6.5rem_3rem_6rem_1rem]";
+  "grid grid-cols-[minmax(0,1fr)_2.5rem_6.5rem_6rem_1rem] items-center gap-3 @[32rem]/picker:grid-cols-[minmax(0,1fr)_2.5rem_6.5rem_3rem_6rem_1rem]";
+
+/** What a model takes in besides text, from OpenRouter's modality ("text+image+file->text"). */
+const inputsOf = (modality: string | undefined) => new Set((modality?.split("->")[0] ?? "").split("+"));
+
+/** Whether a model reads images and PDFs: one slot each, so the icons line up down the list. */
+function Reads({ model }: { model: CatalogModel | undefined }) {
+  const t = useTranslations("modelPicker");
+  const inputs = inputsOf(model?.modality);
+  const image = inputs.has("image");
+  const file = inputs.has("file");
+  const label = [image && t("readsImages"), file && t("readsPdfs")].filter(Boolean).join(", ");
+  return (
+    <span className="flex items-center gap-1.5 text-foreground/60" aria-label={label || undefined}>
+      <ImageIcon className={cn("size-4", !image && "invisible")} aria-hidden />
+      <FileText className={cn("size-4", !file && "invisible")} aria-hidden />
+    </span>
+  );
+}
 const CONTEXT_CELL = "hidden text-right @[32rem]/picker:block";
 
 /** The intelligence meter, context and cost of a model, as row cells. */
@@ -61,6 +79,7 @@ function Stats({ model }: { model: CatalogModel | undefined }) {
   const free = model && model.inputPricePerMillion === 0 && model.outputPricePerMillion === 0;
   return (
     <>
+      <Reads model={model} />
       <IntelligenceMeter index={model?.intelligenceIndex} />
       <span className={cn(CONTEXT_CELL, "text-xs tabular-nums text-muted-foreground")}>{contextLabel(model?.contextLength)}</span>
       <span className="text-right text-xs tabular-nums text-muted-foreground">
@@ -387,6 +406,7 @@ export function ModelPicker({
           </div>
           <div className={cn(GRID, "border-y border-border-subtle bg-inset px-4 py-1.5 text-2xs font-medium text-muted-foreground")}>
             <span>{t("model")}</span>
+            <span>{t("reads")}</span>
             <a
               href="https://artificialanalysis.ai/methodology/intelligence-benchmarking"
               target="_blank"
