@@ -85,6 +85,7 @@ export const deleteExtractionInternal = internalMutation({
     // orphaned rows left by an interrupted or older cascade.
     const byJobDrains: Array<[string, string, string]> = [
       ["extractionEvidenceChanges", "by_job", "jobId"],
+      ["extractionCountChanges", "by_job", "jobId"],
       ["extractionPaperQueue", "by_job_and_status", "jobId"],
       ["extractionPaperErrors", "by_job", "jobId"],
       ["extractionEvidenceUnits", "by_job", "jobId"],

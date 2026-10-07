@@ -38,13 +38,14 @@ export const replacePaperEvidenceUnits = internalMutation({
       return null;
     }
 
-    const existing = await ctx.db
-      .query("extractionEvidenceUnits")
-      .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
-      .take(MAX_EVIDENCE_UNITS_PER_PAPER);
-
-    for (const row of existing) {
-      await ctx.db.delete("extractionEvidenceUnits", row._id);
+    // Every unit the paper had goes: a paper indexed before the cap can hold more than one batch of them.
+    for (;;) {
+      const existing = await ctx.db
+        .query("extractionEvidenceUnits")
+        .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
+        .take(MAX_EVIDENCE_UNITS_PER_PAPER);
+      for (const row of existing) await ctx.db.delete("extractionEvidenceUnits", row._id);
+      if (existing.length < MAX_EVIDENCE_UNITS_PER_PAPER) break;
     }
 
     // A paper keeps its first MAX_EVIDENCE_UNITS_PER_PAPER units: what its readers take.

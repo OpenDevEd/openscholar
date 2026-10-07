@@ -514,6 +514,25 @@ const reads: string[] = [];
 const missingReturns: string[] = [];
 const problems: string[] = [];
 const verbose = process.argv.includes("--verbose");
+/**
+ * Whether `scope`'s code uses `cap`: a reference in an expression, not a comment, an import,
+ * the constant's own declaration, or the `.take()` of a read, which is what the cap bounds.
+ */
+function usesCap(scope: ts.Node, cap: string): boolean {
+  let used = false;
+  const visit = (node: ts.Node) => {
+    if (used || ts.isImportDeclaration(node)) return;
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "take") {
+      ts.forEachChild(node.expression, visit);
+      return;
+    }
+    if (ts.isIdentifier(node) && node.text === cap && !(ts.isVariableDeclaration(node.parent) && node.parent.name === node)) used = true;
+    ts.forEachChild(node, visit);
+  };
+  visit(scope);
+  return used;
+}
+
 /** Each named cap a read takes, with the files that take it. */
 const takenCaps = new Map<string, Set<string>>();
 /** The cap a `.take()` names: `CAP`, `CAP + 1` or `REGISTRY.length`; undefined for a literal or a local value. */
@@ -540,7 +559,7 @@ for (const tree of program.getSourceFiles().filter((file) => sources.includes(re
       add(node, tableOf(node.expression.expression));
     }
     if (ts.isForOfStatement(node) && node.awaitModifier && isDatabaseQuery(node.expression)) add(node, tableOf(node.expression));
-    if (!file.startsWith("convex/migrations/") && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "take" && isDatabaseQuery(node.expression.expression)) {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "take" && isDatabaseQuery(node.expression.expression)) {
       const cap = capTaken(node.arguments[0]);
       if (cap) takenCaps.set(cap, (takenCaps.get(cap) ?? new Set()).add(file));
     }
@@ -676,14 +695,14 @@ for (const kind of ["enforced", "refused", "windows", "batches"] as const) {
       const tree = program.getSourceFiles().find((source) => relative(source.fileName) === where);
       if (!tree) problems.push(`${cap}: caps.enforced names ${where}, which isn't a file under convex/.`);
       else {
-        let body = fn ? undefined : tree.getText();
+        let scope: ts.Node | undefined = fn ? undefined : tree;
         const find = (node: ts.Node) => {
-          if ((ts.isFunctionDeclaration(node) || ts.isVariableDeclaration(node)) && node.name && ts.isIdentifier(node.name) && node.name.text === fn) body = node.getText();
+          if ((ts.isFunctionDeclaration(node) || ts.isVariableDeclaration(node)) && node.name && ts.isIdentifier(node.name) && node.name.text === fn) scope = node;
           ts.forEachChild(node, find);
         };
         if (fn) find(tree);
-        if (body === undefined) problems.push(`${cap}: caps.enforced names ${value}, which ${where} doesn't define.`);
-        else if (!new RegExp(`\\b${cap.replace(".", "\\.")}\\b`).test(fn ? body : body.replace(new RegExp(`\\.take\\(${cap}`, "g"), ""))) problems.push(`${cap}: ${value} doesn't name the cap, so it doesn't keep the set within it; name the write that does.`);
+        if (scope === undefined) problems.push(`${cap}: caps.enforced names ${value}, which ${where} doesn't define.`);
+        else if (!usesCap(scope, cap.split(".")[0])) problems.push(`${cap}: ${value} doesn't use the cap in its code, so it doesn't keep the set within it; name the write or validator that does.`);
       }
     } else if (value.trim().length < 15) problems.push(`${cap}: say why caps.${kind} fits it.`);
   }
