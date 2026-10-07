@@ -228,6 +228,21 @@ describe("assistant replies", () => {
     await ended(t, others.at(-1)!);
   });
 
+  it("are limited to as many at once as the person's plan allows (#632)", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await sharedChat(t);
+    await t.run(async (ctx) => {
+      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      await ctx.db.patch("billingAccounts", account!._id, { limits: { assistant_replies: 1 } });
+    });
+    const other = await asAda.mutation(api.assistant.threads.create, { title: "Chat 2" });
+    mockDoStream.mockImplementation(hangingDoStream());
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Go" });
+    await expect(asAda.mutation(api.assistant.replies.send, { threadId: other, text: "Go" })).rejects.toThrow(/plan lets the assistant write 1 reply/);
+    await asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: (await chat(t, threadId))!.reply!.attemptId });
+    await ended(t, threadId);
+  });
+
   it("fail when the model stops answering, with the model service's error, instead of thinking for good", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {

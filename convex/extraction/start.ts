@@ -27,6 +27,7 @@ import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { startJobFor } from "./mutations/jobs";
 import { checkScreeningSelection } from "./sources/screening";
 import { MAX_QUESTIONS_PER_JOB, MAX_QUESTION_TEXT_LENGTH, bucketItemInputValidator, questionInputValidator, questionTypeValidator, searchFiltersValidator } from "./validators";
+import { checkRequestPapers } from "../billing/accounts";
 
 type PaperSet = Infer<typeof paperSetValidator>;
 /** A source as a start is given it. */
@@ -78,12 +79,19 @@ async function checkExtraction(ctx: QueryCtx, userId: Id<"users">, { set, first,
   if (!limited.ok) throw createError("CONFLICT", `This account has started as many extractions as an hour allows. This one can start in ${Math.max(1, Math.ceil(((limited.retryAt ?? Date.now()) - Date.now()) / 60_000))} minutes.`);
   await checkPdfs(ctx, usePdfs);
   checkQuestions(questions);
-  if (set.kind === "screening") return void (await screeningPicked(ctx, userId, set.jobId));
+  if (set.kind === "screening") {
+    await screeningPicked(ctx, userId, set.jobId);
+    return void (await checkRequestPapers(ctx, userId, (await papersIn(ctx, userId, set)) ?? 0, "extraction"));
+  }
   checkRange(set, first, last);
-  if (set.kind === "search") return void (await searchFilters(ctx, userId, set.searchId));
+  if (set.kind === "search") {
+    await searchFilters(ctx, userId, set.searchId);
+    return void (await checkRequestPapers(ctx, userId, last - first + 1, "extraction"));
+  }
   if (set.kind === "collection" && (await ctx.db.get("collections", set.collectionId))?.userId !== userId) throw createError("NOT_FOUND", "Collection not found");
   const held = await papersIn(ctx, userId, set);
   if (held !== null && first > held) throw invalid("There are no papers in that range");
+  await checkRequestPapers(ctx, userId, Math.min(last, held ?? last) - first + 1, "extraction");
 }
 
 /** How many papers a request is for. A screening is all its included papers; a search is read from its first paper. */

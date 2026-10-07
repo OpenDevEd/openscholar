@@ -8,6 +8,7 @@ import { currentSearch } from "../../lib/research/records";
 import { MAX_QUESTIONS } from "../lib/listCaps";
 import { MAX_SCREENING_JOBS_PER_REQUEST, MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { taskPricing } from "../ai/serverModel";
+import { checkRequestPapers } from "../billing/accounts";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { createError } from "../lib/errors";
 import type { paperSetValidator, saveToValidator, screeningScoringConfigValidator } from "./validators";
@@ -84,11 +85,13 @@ export async function checkScreening(ctx: QueryCtx, userId: Id<"users">, { set, 
     // The search's page takes on the questions it doesn't ask yet (./mutations.ts `insertJob`), and holds MAX_QUESTIONS.
     const asked = new Set([...row.data.screeningQuestions.map(({ question }) => question), ...questions.map(({ question }) => question)]);
     if (asked.size > MAX_QUESTIONS) throw createError("VALIDATION_ERROR", `This search's page already asks ${row.data.screeningQuestions.length} screening questions, and holds up to ${MAX_QUESTIONS}: ask fewer new ones, or ask the ones it has.`);
+    await checkRequestPapers(ctx, userId, last - first + 1, "screening");
   } else {
     const owner = set.kind === "collection" ? (await ctx.db.get("collections", set.collectionId))?.userId : set.kind === "screening" ? (await ctx.db.get("screeningJobs", set.jobId))?.userId : userId;
     if (owner !== userId) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");
     const held = await papersIn(ctx, userId, set);
     if (held !== null && first > held) throw createError("VALIDATION_ERROR", "There are no papers in that range");
+    await checkRequestPapers(ctx, userId, Math.min(last, held ?? last) - first + 1, "screening");
   }
   if (saveTo?.kind === "new") await collectionAllowed(ctx, userId, saveTo.name);
   if (saveTo?.kind === "collection" && (await ctx.db.get("collections", saveTo.collectionId))?.userId !== userId) throw createError("NOT_FOUND", "Collection not found");

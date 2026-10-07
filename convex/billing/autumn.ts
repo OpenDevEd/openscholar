@@ -5,6 +5,9 @@
 
 export type AutumnBalance = {
   remaining: number;
+  /** What the customer's plans grant of the feature. */
+  granted?: number;
+  unlimited?: boolean;
   breakdown?: Array<{
     id: string;
     plan_id: string | null;
@@ -30,7 +33,7 @@ export type AutumnCustomer = {
   stripe_id: string | null;
   subscriptions: AutumnSubscription[];
   purchases?: Array<{ plan_id: string }>;
-  balances: { credits?: AutumnBalance; concurrency?: AutumnBalance };
+  balances: Partial<Record<string, AutumnBalance>>;
   /** Boolean features the customer has, keyed by feature id. */
   flags?: Record<string, unknown>;
   payment_method?: { card?: { brand: string; last4: string } | null } | null;

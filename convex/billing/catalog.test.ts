@@ -48,7 +48,14 @@ const plans: AutumnPlan[] = [
       { feature_id: "extraction", included: 0, unlimited: false, reset: null, price: null },
     ],
   }),
-  plan({ id: "free", auto_enable: true }),
+  plan({
+    id: "free",
+    auto_enable: true,
+    items: [
+      { feature_id: "collections", included: 20, unlimited: false, reset: null, price: null },
+      { feature_id: "assistant_replies", included: 0, unlimited: true, reset: null, price: null },
+    ],
+  }),
   plan({ id: "go", price: { amount: 5, interval: "month" }, items: [monthlyCredits(3_000, 3_000)] }),
   plan({ id: "team", price: { amount: 180, interval: "year" }, items: [monthlyCredits(20_000, 0)] }),
   plan({ id: "legacy", archived: true, price: { amount: 1, interval: "month" } }),
@@ -90,6 +97,11 @@ describe("the billing catalog", () => {
     expect(pro.popular).toBe(true);
     expect(pro.highlights).toEqual(["Priority support", "All Go features"]);
     expect(plansWithFeature(catalog, "extraction").map((p) => p.id)).toEqual(["pro"]);
+  });
+
+  it("reads what each plan allows: an amount, or null for unlimited, and nothing for a limit it leaves out (#632)", () => {
+    expect(catalog.plans.find((p) => p.id === "free")!.limits).toEqual({ collections: 20, assistant_replies: null });
+    expect(catalog.plans.find((p) => p.id === "pro")!.limits).toEqual({});
   });
 
   it("caps plan credits at the refill plus rollover, or the signup credits without a refill", () => {

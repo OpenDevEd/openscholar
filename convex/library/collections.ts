@@ -5,7 +5,7 @@ import { internal } from "../_generated/api";
 import { internalMutation, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
-import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
+import { planLimit } from "../billing/accounts";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
 import { followed } from "./followed";
@@ -35,8 +35,9 @@ export async function collectionAllowed(ctx: QueryCtx, userId: Id<"users">, name
   }
   // Someone with no count row has never made a collection.
   const counted = await collectionCountRow(ctx, userId);
-  if ((counted?.count ?? 0) >= MAX_COLLECTIONS_PER_USER) {
-    throw createError("VALIDATION_ERROR", `You can have up to ${MAX_COLLECTIONS_PER_USER} collections. Delete one to make another.`);
+  const most = await planLimit(ctx, userId, "collections");
+  if (most !== undefined && (counted?.count ?? 0) >= most) {
+    throw createError("VALIDATION_ERROR", `Your plan allows ${most.toLocaleString("en")} collections. Delete one to make another, or change plan for more.`);
   }
   return { trimmed, counted };
 }
@@ -76,7 +77,7 @@ const asCreated = v.object({ name: v.string() });
 
 export const createCollectionAction = defineUserMutation({
   path: CREATE,
-  description: `Makes a new, empty collection in the person's library, named as given. A person has up to ${MAX_COLLECTIONS_PER_USER}. Returns \`undo\`, which deletes it while it's empty and still has that name.`,
+  description: `Makes a new, empty collection in the person's library, named as given, as many as their plan allows. Returns \`undo\`, which deletes it while it's empty and still has that name.`,
   args: { name: v.string() },
   returns: v.object({ id: v.id("collections"), undo: reversedBy(DELETE, { collectionId: v.id("collections"), expect: asCreated }) }),
   spendsCredits: false,
