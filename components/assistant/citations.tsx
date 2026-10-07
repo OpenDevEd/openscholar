@@ -41,8 +41,21 @@ export function useCited(href: string | undefined, children: ReactNode) {
     const file = files.get(page[1]);
     return <PageChip url={file?.url ?? null} page={Number(page[2])}>{children}</PageChip>;
   }
-  const source = href ? sources.get(href) : undefined;
+  const source = href ? (sources.get(href) ?? (href.startsWith("/") ? sourceAt(sources, href) : undefined)) : undefined;
   return source ? <WebCitation source={source} /> : null;
+}
+
+/** A page a search found by its path alone: a model sometimes drops the site from an address it cites, which would make it a page of the app. */
+function sourceAt(sources: ReadonlyMap<string, WebSource>, path: string) {
+  for (const source of sources.values()) {
+    try {
+      const url = new URL(source.url);
+      if (url.pathname + url.search === path) return source;
+    } catch {
+      // Not an address: it can't be this one.
+    }
+  }
+  return undefined;
 }
 
 /** A page of a PDF: opens it in a new tab at that page, while the PDF is still in the chat. */

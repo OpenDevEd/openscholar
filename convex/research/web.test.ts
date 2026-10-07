@@ -69,6 +69,20 @@ describe("web search", () => {
     expect(charged).toMatchObject([{ kind: "search", costUsd: 0.0081 }]);
   });
 
+  it("tries again when the provider is down for a moment", async () => {
+    const t = convexTest(schema);
+    const { asAda } = await chat(t);
+    const answer = fetchMock.getMockImplementation()!;
+    let busy = 1;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).startsWith("https://openrouter.ai") && busy-- > 0 ? new Response(JSON.stringify({ error: { code: 503, message: "Provider returned error" } }), { status: 503 }) : answer(input, init),
+    );
+
+    const read = await asAda.action(api.research.web.search, { query: "loot box regulation" });
+    expect(read.results).toHaveLength(2);
+    expect(fetchMock.mock.calls.filter(([input]) => String(input).startsWith("https://openrouter.ai"))).toHaveLength(2);
+  });
+
   it("asks first in a chat, and Always allow lets later searches run without asking, but not jobs", async () => {
     const t = convexTest(schema);
     const { asAda, threadId } = await chat(t);

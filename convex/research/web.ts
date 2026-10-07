@@ -21,24 +21,33 @@ const QUERY_MAX = 400;
 type Result = { title: string; url: string; excerpt: string };
 type Annotation = { type?: string; url_citation?: { url?: string; title?: string; content?: string } };
 
+/** Waits before each retry of a search the provider was too busy for, as the AI SDK does for model calls. */
+const RETRY_MS = [1_000, 2_000];
+
 /** One search: the pages it found, and what OpenRouter says it cost. Logged in full when it fails, so a failure says why. */
 async function searchWeb(query: string): Promise<{ results: Result[]; usd: number | null }> {
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "X-Title": "OpenScholar assistant web search" },
-    body: JSON.stringify({
-      model: WEB_SEARCH_MODEL,
-      max_tokens: WEB_SEARCH_MODEL_TOKENS,
-      usage: { include: true },
-      plugins: [{ id: "web", engine: WEB_SEARCH_ENGINE, max_results: WEB_SEARCH_MAX_RESULTS }],
-      messages: [{ role: "user", content: `List the sources you found, one line each: ${query}` }],
-    }),
-    signal: AbortSignal.timeout(60_000),
-  });
-  const body = (await response.json().catch(() => null)) as { choices?: Array<{ message?: { annotations?: Annotation[] } }>; usage?: { cost?: number }; error?: unknown } | null;
-  if (!response.ok || !body?.choices) {
-    console.error("[web search] OpenRouter failed", { status: response.status, error: body?.error ?? body });
-    throw createError("AI_PROVIDER_ERROR", "The web search didn't go through. Try again in a moment.");
+  type Body = { choices?: Array<{ message?: { annotations?: Annotation[] } }>; usage?: { cost?: number }; error?: unknown } | null;
+  let body: Body;
+  for (let attempt = 0; ; attempt += 1) {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "X-Title": "OpenScholar assistant web search" },
+      body: JSON.stringify({
+        model: WEB_SEARCH_MODEL,
+        max_tokens: WEB_SEARCH_MODEL_TOKENS,
+        usage: { include: true },
+        plugins: [{ id: "web", engine: WEB_SEARCH_ENGINE, max_results: WEB_SEARCH_MAX_RESULTS }],
+        messages: [{ role: "user", content: `List the sources you found, one line each: ${query}` }],
+      }),
+      signal: AbortSignal.timeout(60_000),
+    });
+    body = (await response.json().catch(() => null)) as Body;
+    if (response.ok && body?.choices) break;
+    console.error("[web search] OpenRouter failed", { attempt, status: response.status, error: body?.error ?? body });
+    // Busy or down for a moment (one provider serves the model): tried again. A failed request costs nothing.
+    const wait = response.status === 429 || response.status >= 500 ? RETRY_MS[attempt] : undefined;
+    if (wait === undefined) throw createError("AI_PROVIDER_ERROR", "The web search didn't go through. Try again in a moment.");
+    await new Promise((resolve) => setTimeout(resolve, wait));
   }
   const seen = new Set<string>();
   const results = (body.choices[0]?.message?.annotations ?? []).flatMap((annotation) => {
