@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
+import { jobText } from "../../lib/searchText";
 import { seedAccount } from "../../lib/maxSize.test-support";
 import { runUntriggered } from "../../../tests/convex-test-with-limits";
 
@@ -84,7 +85,7 @@ describe("the extraction job list", () => {
     expect(page.page.map((job) => job.name)).toEqual(["zeta notes", "Charlie study"]);
   });
 
-  it("keeps only jobs whose name or description contains the text, in the order asked for, and shows no one else's", async () => {
+  it("finds jobs by the words of their name or description, whatever their case, and shows no one else's", async () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
     await seedJobs(t, userId, JOBS);
@@ -95,18 +96,21 @@ describe("the extraction job list", () => {
 
     expect(await names("ALPHA")).toEqual(["Alpha review"]);
     expect(await names("primary schools")).toEqual(["Alpha review"]);
-    expect(await names("ta", "status")).toEqual(["delta cohort", "beta trials", "zeta notes"]);
+    // Words match from their start, under any sort.
+    expect(await names("tri", "status")).toEqual(["beta trials"]);
     expect(await names("nothing like this")).toEqual([]);
   });
 
-  it("finds the one match among thousands of jobs over several reads, each within its allowance", async () => {
+  it("finds the one match among thousands of jobs in one read", async () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
     // The match is the oldest completed job: last in the status order, behind 2,299 others.
     for (let from = 0; from < 2_300; from += 460) {
       await t.run(async (ctx) => {
         for (let i = from; i < from + 460; i++) {
-          await ctx.db.insert("extractionJobs", { userId, totalPapers: 1, createdAt: i, updatedAt: i, name: i === 0 ? "needle" : `job ${i}`, status: i % 2 ? "pending" : "completed" });
+          const name = i === 0 ? "needle" : `job ${i}`;
+          // With its search text, as starting a job writes it.
+          await ctx.db.insert("extractionJobs", { userId, totalPapers: 1, createdAt: i, updatedAt: i, name, searchText: jobText({ name }), status: i % 2 ? "pending" : "completed" });
         }
       });
     }
@@ -121,7 +125,7 @@ describe("the extraction job list", () => {
       cursor = page.continueCursor;
     }
     expect(seen).toEqual(["needle"]);
-    expect(reads).toBeGreaterThan(0);
+    expect(reads).toBe(0);
   });
 
   it("keeps the count of a person's jobs as they are made and deleted", async () => {

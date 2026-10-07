@@ -16,6 +16,7 @@ import { countChange } from "../research/recordCounts";
 import { copyChangedFacets, countItemChange, fillAndCountMembership } from "../library/facets";
 import { countAnswerChange, countPaperChange as countPaperFacets } from "../extraction/facets";
 import { tallyAnswerChange } from "../extraction/tallies";
+import { adminText, jobText, keepAdminTextOfUser, keepSearchText, searchText, shortcutText } from "./searchText";
 import { ADMIN_LIST, countList, libraryVersionList, organizationLibrariesOf, walletKeyList } from "./listCounts";
 
 export const triggers = new Triggers<DataModel>();
@@ -53,3 +54,9 @@ triggers.register("libraryItemCollections", fillAndCountMembership);
 triggers.register("extractionPapers", countPaperFacets);
 triggers.register("extractionAnswerRows", countAnswerChange);
 triggers.register("extractionAnswerRows", tallyAnswerChange);
+// What each list's search index matches (./searchText.ts).
+triggers.register("searches", keepSearchText("searches", (_ctx, row) => searchText(row.data)));
+triggers.register("queryShortcuts", keepSearchText("queryShortcuts", (_ctx, row) => shortcutText(row.data)));
+triggers.register("extractionJobs", keepSearchText("extractionJobs", (_ctx, row) => jobText(row)));
+triggers.register("admins", keepSearchText("admins", adminText));
+triggers.register("users", keepAdminTextOfUser);

@@ -18,6 +18,7 @@ import { internalMutation } from "../lib/functions";
 import schema from "../schema";
 import { countRecordPage, countRow } from "./recordCounts";
 import { shortcutSortName } from "../../lib/query-shortcuts";
+import { searchText, shortcutText } from "../lib/searchText";
 
 const accountArgs = { accountId: v.string() };
 const pageArgs = { paginationOpts: paginationOptsValidator };
@@ -32,8 +33,8 @@ async function account(ctx: Parameters<typeof requireAuth>[0], expected: string)
 /** Most searches one listed page holds. */
 const LISTED_PAGE_MAX = 50;
 /**
- * Searches a text-filtered read looks through, and bytes any listed read takes, at most. A
- * page that stops there comes back short with a cursor, and the list reads on from it.
+ * Searches a read that leaves one out looks through, and bytes any listed read takes, at most.
+ * A page that stops there comes back short with a cursor, and the list reads on from it.
  */
 const FILTER_ROWS = 1_000;
 const LISTED_BYTES = 8 * 1024 * 1024;
@@ -41,25 +42,24 @@ const LISTED_BYTES = 8 * 1024 * 1024;
 export const listedSearchesAction = defineUserQuery({
   path: "research/records:listedSearches",
   description:
-    "Lists the person's saved searches without their screening answers, a page at a time: newest, oldest, most or fewest results first. Given `text`, only those whose query or questions contain it; given `exclude`, all but the search with that ID. A page can come back short without being the last.",
+    "Lists the person's saved searches without their screening answers, a page at a time: newest, oldest, most or fewest results first. Given `text`, those whose query or questions best match its words, best first; given `exclude`, all but the search with that ID. A page can come back short without being the last.",
   args: { ...pageArgs, sort: listedSortValidator, text: v.optional(v.string()), exclude: v.optional(v.string()) },
   returns: paginationResultValidator(listedSearchValidator),
   run: async (ctx, userId, { paginationOpts, sort, text, exclude }) => {
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LISTED_PAGE_MAX) };
     const index = sort === "most" || sort === "least" ? "by_user_and_count" : "by_user_and_createdAt";
     const order = sort === "oldest" || sort === "least" ? "asc" : "desc";
-    const needle = text?.trim().toLowerCase();
-    const page = await (needle || exclude !== undefined
-      ? stream(ctx.db, schema).query("searches").withIndex(index, q => q.eq("userId", userId)).order(order)
-          .filterWith(async row => {
-            if (row.localId === exclude) return false;
-            if (!needle) return true;
-            const search = currentSearch(row.data);
-            return search.query.toLowerCase().includes(needle) || search.questionText.toLowerCase().includes(needle);
-          })
-          .paginate({ ...opts, maximumRowsRead: FILTER_ROWS, maximumBytesRead: LISTED_BYTES })
-      : ctx.db.query("searches").withIndex(index, q => q.eq("userId", userId)).order(order).paginate({ ...opts, maximumBytesRead: LISTED_BYTES }));
-    return { ...page, page: page.page.map(row => { const { screeningResponses: _answers, ...listed } = currentSearch(row.data); return listed; }) };
+    const needle = text?.trim();
+    const read = await (needle
+      ? ctx.db.query("searches").withSearchIndex("search_text", q => q.search("searchText", needle).eq("userId", userId)).paginate(opts)
+      : exclude !== undefined
+        ? stream(ctx.db, schema).query("searches").withIndex(index, q => q.eq("userId", userId)).order(order)
+            .filterWith(async row => row.localId !== exclude)
+            .paginate({ ...opts, maximumRowsRead: FILTER_ROWS, maximumBytesRead: LISTED_BYTES })
+        : ctx.db.query("searches").withIndex(index, q => q.eq("userId", userId)).order(order).paginate({ ...opts, maximumBytesRead: LISTED_BYTES }));
+    // A search's matches leave the excluded one out of their page.
+    const rows = needle && exclude !== undefined ? read.page.filter(row => row.localId !== exclude) : read.page;
+    return { ...read, page: rows.map(row => { const { screeningResponses: _answers, ...listed } = currentSearch(row.data); return listed; }) };
   },
 });
 export const listedSearches = accountQuery(listedSearchesAction);
@@ -92,18 +92,16 @@ const SHORTCUT_PAGE_MAX = 50;
 export const listedShortcutsAction = defineUserQuery({
   path: "research/records:listedShortcuts",
   description:
-    "Lists the person's query shortcuts (the Bookmarks page), each a short name that expands to a longer query, a page at a time: newest or oldest first, or by name. Given `text`, only those whose name or expansion contain it. A page can come back short without being the last.",
+    "Lists the person's query shortcuts (the Bookmarks page), each a short name that expands to a longer query, a page at a time: newest or oldest first, or by name. Given `text`, those whose name or expansion best match its words, best first.",
   args: { ...pageArgs, sort: shortcutSortValidator, text: v.optional(v.string()) },
   returns: paginationResultValidator(shortcutValidator),
   run: async (ctx, userId, { paginationOpts, sort, text }) => {
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHORTCUT_PAGE_MAX), maximumBytesRead: LISTED_BYTES };
     const index = sort === "alpha" || sort === "alpha-desc" ? "by_user_and_sortName" : "by_user_and_createdAt";
     const order = sort === "oldest" || sort === "alpha" ? "asc" : "desc";
-    const needle = text?.trim().toLowerCase();
+    const needle = text?.trim();
     const page = await (needle
-      ? stream(ctx.db, schema).query("queryShortcuts").withIndex(index, q => q.eq("userId", userId)).order(order)
-          .filterWith(async row => row.data.shorthand.toLowerCase().includes(needle) || row.data.expansion.toLowerCase().includes(needle))
-          .paginate({ ...opts, maximumRowsRead: FILTER_ROWS })
+      ? ctx.db.query("queryShortcuts").withSearchIndex("search_text", q => q.search("searchText", needle).eq("userId", userId)).paginate(opts)
       : ctx.db.query("queryShortcuts").withIndex(index, q => q.eq("userId", userId)).order(order).paginate(opts));
     return { ...page, page: page.page.map(row => row.data) };
   },
@@ -419,7 +417,8 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       // The history it starts with: what came with it, or else its first query.
       const queries = command.history?.queryHistory.length ? command.history.queryHistory : [{ query: command.search.query, field: command.search.field, timestamp: command.search.createdAt }];
       const questions = command.history?.questionHistory ?? [];
-      const id = await ctx.db.insert("searches", { userId, localId: command.search.id, data: { ...command.search, ...historySummary(queries, questions), screeningResponses: [] }, revision: FIRST_REVISION });
+      const stored = { ...command.search, ...historySummary(queries, questions), screeningResponses: [] };
+      const id = await ctx.db.insert("searches", { userId, localId: command.search.id, data: stored, revision: FIRST_REVISION, searchText: searchText(stored) });
       await addHistory(ctx, { _id: id, userId }, "query", queries.map(queryEntry));
       await addHistory(ctx, { _id: id, userId }, "question", questions.map(questionEntry));
       // Answers carried in a new search come from an import or the assistant; neither says who gave them.
@@ -473,7 +472,7 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       }
       // A copy may change only the history rows, so it always makes a revision.
       if (edit.kind !== "copySearch" && !answersChanged && JSON.stringify({ ...data, updatedAt: previous.updatedAt }) === JSON.stringify(previous)) return;
-      await ctx.db.patch("searches", search._id, { data: next.data, revision: next.revision });
+      await ctx.db.patch("searches", search._id, { data: next.data, revision: next.revision, searchText: searchText(next.data) });
       if (edit.kind === "query") await addHistory(ctx, search, "query", [{ text: edit.query, field: edit.field, timestamp: data.updatedAt }]);
       // Going back to an earlier query is one more query the search has had.
       if (edit.kind === "restore" && data.queryHistoryCount > previous.queryHistoryCount) await addHistory(ctx, search, "query", [{ text: data.query, field: data.field, timestamp: data.updatedAt }]);
@@ -526,8 +525,8 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
         : { kind: "shortcut", shorthand: command.shorthand, value: before, expect: command.value };
       if (command.value === null) { if (row) await ctx.db.delete("queryShortcuts", row._id); return undo; }
       const data = { shorthand: command.shorthand, ...command.value };
-      if (row) await ctx.db.patch("queryShortcuts", row._id, { data });
-      else await ctx.db.insert("queryShortcuts", { userId, data, sortName: shortcutSortName(command.shorthand) });
+      if (row) await ctx.db.patch("queryShortcuts", row._id, { data, searchText: shortcutText(data) });
+      else await ctx.db.insert("queryShortcuts", { userId, data, sortName: shortcutSortName(command.shorthand), searchText: shortcutText(data) });
       return undo;
     }
     // A clear takes the rows up to the newest there is now. A clock can't draw that line:

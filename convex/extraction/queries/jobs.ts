@@ -50,20 +50,21 @@ export const listJobsAction = defineUserQuery({
   path: "extraction/queries:listJobs",
   description:
     "Lists the person's extraction jobs and chats, a page at a time: newest or oldest first, by name, or by status (waiting and running, then completed, failed and cancelled). " +
-    "Given `text`, only those whose name or description contains it.",
+    "Given `text`, those whose name or description best match its words, best first.",
   args: { paginationOpts: paginationOptsValidator, sort: jobSortValidator, text: v.optional(v.string()) },
   returns: paginationResultValidator(extractionJobValidator),
   run: async (ctx, userId, { paginationOpts, sort, text }) => {
     await requireFeature(ctx, "extraction.enabled", userId);
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, JOBS_PAGE_MAX), maximumBytesRead: JOBS_PAGE_BYTES };
-    const needle = text?.trim().toLowerCase();
-    // What a filtered page has read so far: the statuses of one page share one allowance.
+    const needle = text?.trim();
+    if (needle) return await ctx.db.query("extractionJobs").withSearchIndex("search_text", (q) => q.search("searchText", needle).eq("userId", userId)).paginate(opts);
+    // What a page by status has read so far: the statuses of one page share one allowance.
     let rows = 0;
     let bytes = 0;
     const matches = async (job: Doc<"extractionJobs">) => {
       rows++;
       bytes += getDocumentSize(job);
-      return !needle || job.name.toLowerCase().includes(needle) || (job.description?.toLowerCase().includes(needle) ?? false);
+      return true;
     };
     if (sort === "status") {
       // One group of statuses after another in the list's order, each newest first. The cursor
@@ -87,9 +88,7 @@ export const listJobsAction = defineUserQuery({
     }
     const index = sort === "name" ? "by_user_and_sortName" : "by_user";
     const order = sort === "recent" ? "desc" : "asc";
-    return await (needle
-      ? stream(ctx.db, schema).query("extractionJobs").withIndex(index, (q) => q.eq("userId", userId)).order(order).filterWith(matches).paginate({ ...opts, maximumRowsRead: JOBS_FILTER_ROWS })
-      : ctx.db.query("extractionJobs").withIndex(index, (q) => q.eq("userId", userId)).order(order).paginate(opts));
+    return await ctx.db.query("extractionJobs").withIndex(index, (q) => q.eq("userId", userId)).order(order).paginate(opts);
   },
 });
 export const listJobs = userQuery(listJobsAction);

@@ -43,24 +43,21 @@ function shown(user: Doc<"users"> | null) {
 export const listAdminsAction = defineUserQuery({
   path: "admins/queries:listAdmins",
   description:
-    "Lists the admins and the people invited to be one, by email, a page at a time. Admins only. Given `search`, only those whose name or email contains it.",
+    "Lists the admins and the people invited to be one, by email, a page at a time. Admins only. Given `search`, those whose name or email best match its words, best first.",
   args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()) },
   returns: paginationResultValidator(adminRowValidator),
   run: async (ctx, userId, { paginationOpts, search }) => {
     await requireAdminUser(ctx, userId);
-    const needle = search?.trim().toLowerCase();
-    const rows = stream(ctx.db, schema)
-      .query("admins")
-      .withIndex("by_email")
-      .map(async (row) => {
-        const user = row.userId ? await ctx.db.get("users", row.userId) : null;
-        return { _id: row._id, email: user?.email ?? row.email, ...shown(user), joined: user !== null, you: row.userId === userId, ...(row.delivery ? { delivery: row.delivery } : {}) };
-      });
-    return await (needle ? rows.filterWith(async (row) => `${row.name ?? ""} ${row.email}`.toLowerCase().includes(needle)) : rows).paginate({
-      ...paginationOpts,
-      numItems: Math.min(paginationOpts.numItems, PAGE_MAX),
-      maximumRowsRead: ROWS_READ,
-    });
+    const needle = search?.trim();
+    const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
+    const read = await (needle
+      ? ctx.db.query("admins").withSearchIndex("search_text", (q) => q.search("searchText", needle)).paginate(opts)
+      : ctx.db.query("admins").withIndex("by_email").paginate(opts));
+    const page = await Promise.all(read.page.map(async (row) => {
+      const user = row.userId ? await ctx.db.get("users", row.userId) : null;
+      return { _id: row._id, email: user?.email ?? row.email, ...shown(user), joined: user !== null, you: row.userId === userId, ...(row.delivery ? { delivery: row.delivery } : {}) };
+    }));
+    return { ...read, page };
   },
 });
 export const listAdmins = userQuery(listAdminsAction);

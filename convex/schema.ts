@@ -64,11 +64,13 @@ import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValid
 const OLD_REMOVAL_PLACES = 500;
 
 export default defineSchema({
-  searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator })
+  // `searchText`: what its list's search matches, kept by a trigger (convex/lib/searchText.ts); missing until migrations/searchText reaches a row from before.
+  searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator, searchText: v.optional(v.string()) })
     .index("by_user", ["userId"])
     .index("by_user_and_createdAt", ["userId", "data.createdAt"])
     .index("by_user_and_count", ["userId", "data.count"])
-    .index("by_user_and_localId", ["userId", "localId"]),
+    .index("by_user_and_localId", ["userId", "localId"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId"] }),
   // How many saved searches, shortcuts and screening jobs a person has, kept by the triggers on those tables
   // (research/recordCounts.ts), for page totals. While a first count is being taken,
   // `countedTo` is the creation time it has reached.
@@ -103,11 +105,12 @@ export default defineSchema({
     // A paper's answers as of a version: what a Screen all job answered, for its export.
     .index("by_screening_and_paper_and_version", ["screeningId", "paperId", "version"]),
   // `sortName` is the name as the Bookmarks page orders it (lower case); optional until migrations/pagedRecords has run.
-  queryShortcuts: defineTable({ userId: v.id("users"), data: shortcutValidator, sortName: v.optional(v.string()) })
+  queryShortcuts: defineTable({ userId: v.id("users"), data: shortcutValidator, sortName: v.optional(v.string()), searchText: v.optional(v.string()) })
     .index("by_user_and_createdAt", ["userId", "data.createdAt"])
     .index("by_user_and_sortName", ["userId", "sortName"])
     .index("by_user", ["userId"])
-    .index("by_user_and_shorthand", ["userId", "data.shorthand"]),
+    .index("by_user_and_shorthand", ["userId", "data.shorthand"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId"] }),
   paperRatings: defineTable({ userId: v.id("users"), data: ratingValidator })
     .index("by_user", ["userId"])
     .index("by_user_and_paperId", ["userId", "data.paperId"]),
@@ -476,9 +479,12 @@ export default defineSchema({
     /** Whether the last invite email went out. */
     delivery: v.optional(v.union(v.literal("sent"), v.literal("failed"))),
     createdAt: v.number(),
+    /** Name and email, which the admin list's search matches (convex/lib/searchText.ts). */
+    searchText: v.optional(v.string()),
   })
     .index("by_email", ["email"])
-    .index("by_userId", ["userId"]),
+    .index("by_userId", ["userId"])
+    .searchIndex("search_text", { searchField: "searchText" }),
 
   // ═══════════════════════════════════════════════════════════════
   // FEATURE FLAGS - Database-driven feature gating
@@ -753,7 +759,8 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
     // The job list ordered by name.
-    .index("by_user_and_sortName", ["userId", "sortName"]),
+    .index("by_user_and_sortName", ["userId", "sortName"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId"] }),
 
   // ═══════════════════════════════════════════════════════════════
   // CHAT GENERATION USAGE - Provider-authoritative chat billing ledger

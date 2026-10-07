@@ -3,6 +3,7 @@ import { internalMutation, internalQuery, mutation, type MutationCtx } from "../
 import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { isAdmin, normalizeEmail, requireAdmin } from "./access";
+import { adminText } from "../lib/searchText";
 
 export const addUser = mutation({
   args: { userId: v.id("users") },
@@ -15,7 +16,7 @@ export const addUser = mutation({
     // A pending invite for the same email becomes this admin; someone else's membership is never reused.
     const invite = await findByEmail(ctx, user.email);
     if (invite && !invite.userId) await ctx.db.patch("admins", invite._id, { userId });
-    else await ctx.db.insert("admins", { email: normalizeEmail(user.email), userId, addedBy: me._id, createdAt: Date.now() });
+    else await ctx.db.insert("admins", { email: normalizeEmail(user.email), userId, addedBy: me._id, createdAt: Date.now(), searchText: await adminText(ctx, { email: normalizeEmail(user.email), userId }) });
     return null;
   },
 });
@@ -52,7 +53,7 @@ export const prepareInvite = internalMutation({
       .withIndex("by_email", (q) => q.eq("email", email))
       .first();
     if (user) throw createError("CONFLICT", "This person already has an account; add them as an existing user");
-    return await ctx.db.insert("admins", { email, addedBy: me._id, createdAt: Date.now() });
+    return await ctx.db.insert("admins", { email, addedBy: me._id, createdAt: Date.now(), searchText: email });
   },
 });
 
@@ -105,7 +106,7 @@ export const grant = internalMutation({
       if (user && !existing.userId) await ctx.db.patch("admins", existing._id, { userId: user._id });
       return null;
     }
-    await ctx.db.insert("admins", { email, ...(user ? { userId: user._id } : {}), createdAt: Date.now() });
+    await ctx.db.insert("admins", { email, ...(user ? { userId: user._id } : {}), createdAt: Date.now(), searchText: await adminText(ctx, { email, ...(user ? { userId: user._id } : {}) }) });
     return null;
   },
 });
