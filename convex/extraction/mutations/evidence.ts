@@ -47,7 +47,8 @@ export const replacePaperEvidenceUnits = internalMutation({
       await ctx.db.delete("extractionEvidenceUnits", row._id);
     }
 
-    for (const unit of args.units) {
+    // A paper keeps its first MAX_EVIDENCE_UNITS_PER_PAPER units: what its readers take.
+    for (const unit of args.units.slice(0, MAX_EVIDENCE_UNITS_PER_PAPER)) {
       await ctx.db.insert("extractionEvidenceUnits", {
         jobId: paper.jobId,
         paperId: args.paperId,
