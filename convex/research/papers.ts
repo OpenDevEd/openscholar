@@ -181,15 +181,17 @@ async function servesPdf(url: string) {
 export const readPdfAction = defineUserAction({
   path: "research/papers:readPdf",
   description:
-    "Reads a paper's open-access PDF, by its ID as results give it (such as W2741809807) or its DOI: you get the PDF itself, its text, tables and figures, for the rest of this reply. " +
+    "Reads a paper's open-access PDF, by its ID as results give it (such as W2741809807) or its DOI, with its `title` as they give it, which the person is shown when asked: you get the PDF itself, its text, tables and figures, for the rest of this reply. " +
     "Search results, a paper's record and the person's saved papers say `pdf` when OpenAlex knows of one. For a paper without one, ask the person to attach its PDF to the chat. " +
     "Cite what you take from it by page, as a link to its address with the page: [p. 7](PDF_ADDRESS#page=7). A later reply that needs it again reads it again. " +
     "The person is asked first, with what the read may cost. One request against the person's OpenAlex allowance.",
-  args: { id: v.string() },
+  args: { id: v.string(), title: v.optional(v.string()) },
   returns: paperPdfValidator,
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
+  // The paper by its title where the model gave one: the person can't tell a paper by its ID.
+  shown: ({ id, title }) => (title ? { title } : { id }),
   // What a paper of typical length costs to read on the chat's model, which is all of what the read spends: its tokens in the reply.
   estimate: async (ctx, userId, _args, chat) => {
     const thread = chat ? await ctx.db.get("assistantThreads", chat.threadId) : null;
