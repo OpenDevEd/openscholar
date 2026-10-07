@@ -347,7 +347,8 @@ const PLACES_BATCH = 250;
  */
 async function movePlaces(ctx: MutationCtx, removalId: Id<"libraryRemovals">) {
   const removal = (await ctx.db.get("libraryRemovals", removalId))!;
-  const memberships = await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", removal.itemId)).take(PLACES_BATCH);
+  // Only a removal that kept the paper's ID moves its places.
+  const memberships = await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", removal.itemId!)).take(PLACES_BATCH);
   const target = removal.restoredAs === undefined ? null : await ctx.db.get("libraryItems", removal.restoredAs);
   for (const membership of memberships) {
     if (!(await removeCollectionMembership(ctx, membership))) continue;
@@ -427,12 +428,17 @@ export const movePlacesLater = internalMutation({
   },
 });
 
-/** Deletes a removal once its day for Undo is over, and its places a batch at a time. */
+/** How long a removal's end waits for its places still moving: batches follow one another at once. */
+const PLACES_WAIT_MS = 60_000;
+
+/** Deletes a removal once its day for Undo is over, and its places a batch at a time. Waits while its places are still moving, so none are left behind. */
 export const forgetRemoval = internalMutation({
   args: { removalId: v.id("libraryRemovals") },
   returns: v.null(),
   handler: async (ctx, { removalId }) => {
-    if (await ctx.db.get("libraryRemovals", removalId)) await ctx.db.delete("libraryRemovals", removalId);
+    const removal = await ctx.db.get("libraryRemovals", removalId);
+    if (removal?.moving || removal?.placing) return void (await ctx.scheduler.runAfter(PLACES_WAIT_MS, internal.library.mutations.forgetRemoval, { removalId }));
+    if (removal) await ctx.db.delete("libraryRemovals", removalId);
     const places = await ctx.db.query("removedPlaces").withIndex("by_removal", (q) => q.eq("removalId", removalId)).take(PLACES_BATCH);
     for (const place of places) await ctx.db.delete("removedPlaces", place._id);
     if (places.length === PLACES_BATCH) await ctx.scheduler.runAfter(0, internal.library.mutations.forgetRemoval, { removalId });
@@ -487,7 +493,7 @@ export const restoreLibraryItemAction = defineUserMutation({
     if (place !== null) return true;
     // Places still being moved off the removed paper come back too.
     const removal = await ctx.db.get("libraryRemovals", removalId);
-    return removal?.moving === true && (await inFollowedCollection(ctx, removal.itemId));
+    return removal?.moving === true && removal.itemId !== undefined && (await inFollowedCollection(ctx, removal.itemId));
   },
   run: async (ctx, userId, { removalId }, author) => {
     const removal = await ctx.db.get("libraryRemovals", removalId);

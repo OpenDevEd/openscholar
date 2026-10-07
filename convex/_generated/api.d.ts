@@ -251,6 +251,7 @@ import type * as lib_envValidation from "../lib/envValidation.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_invitationDelivery from "../lib/invitationDelivery.js";
+import type * as lib_joinStream from "../lib/joinStream.js";
 import type * as lib_libraryServiceHttp from "../lib/libraryServiceHttp.js";
 import type * as lib_listCaps from "../lib/listCaps.js";
 import type * as lib_listCounts from "../lib/listCounts.js";
@@ -629,6 +630,7 @@ declare const fullApi: ApiFromModules<{
   "lib/errors": typeof lib_errors;
   "lib/functions": typeof lib_functions;
   "lib/invitationDelivery": typeof lib_invitationDelivery;
+  "lib/joinStream": typeof lib_joinStream;
   "lib/libraryServiceHttp": typeof lib_libraryServiceHttp;
   "lib/listCaps": typeof lib_listCaps;
   "lib/listCounts": typeof lib_listCounts;
