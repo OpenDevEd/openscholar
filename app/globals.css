@@ -199,10 +199,10 @@
   --sidebar-accent-foreground: #ededed;
 
   /* Edges. */
-  --border: #2e2e2e; /* card and control outlines */
-  --border-subtle: #262626; /* dividers and quiet outlines */
-  --input: #303030; /* the outline of inputs */
-  --sidebar-border: #1f1f1f;
+  --border: #212121; /* card and control outlines */
+  --border-subtle: #1a1a1a; /* dividers and quiet outlines */
+  --input: #262626; /* the outline of inputs */
+  --sidebar-border: #171717;
 
   /* Depth. */
   --shadow-surface: 0 10px 15px -3px oklch(0 0 0 / 0.3), 0 4px 6px -4px oklch(0 0 0 / 0.2);

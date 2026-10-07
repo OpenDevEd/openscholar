@@ -94,7 +94,7 @@ export function DateRangePicker({
               "w-full h-10 justify-start text-left font-normal",
               isActive
                 ? "border-sidebar-primary/50"
-                : "border-dashed border-muted-foreground/30",
+                : "border-dashed border-muted-foreground/30 dark:border-muted-foreground/20",
             )}
           >
             <span className="truncate text-sm">{label}</span>
