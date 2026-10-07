@@ -8,7 +8,7 @@ import schema from "../schema";
 type Test = ReturnType<typeof convexTest>;
 
 const seedUser = (t: Test, clerkId: string) =>
-  t.run((ctx) => ctx.db.insert("users", { libraryItemCount: 0, clerkId, email: `${clerkId}@test.local`, state: "active" as const, createdAt: 1, updatedAt: 1 }));
+  t.run((ctx) => ctx.db.insert("users", { clerkId, email: `${clerkId}@test.local`, state: "active" as const, createdAt: 1, updatedAt: 1 }));
 const addKey = (t: Test, userId: Id<"users">, appName: string) =>
   t.mutation(internal.wallet.internal.insertKey, { userId, hashedKey: `hash_${appName}`, keyPrefix: `sk_${appName}`, appName, redirectOrigin: "manual" });
 

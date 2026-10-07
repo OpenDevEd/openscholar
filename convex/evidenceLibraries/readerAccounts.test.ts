@@ -50,7 +50,7 @@ describe("reader status for a library", () => {
     await t.run(async (ctx) => {
       for (const [clerkId, state] of [["active_reader", "active"], ["gone_reader", "deleted"]] as const) {
         await ctx.db.insert("users", {
-          libraryItemCount: 0, clerkId, email: `${clerkId}@example.org`, state, createdAt: 1, updatedAt: 1,
+          clerkId, email: `${clerkId}@example.org`, state, createdAt: 1, updatedAt: 1,
         });
       }
     });

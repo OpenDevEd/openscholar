@@ -47,7 +47,7 @@ describe("a job's library and collection sources", () => {
   it("reads only the person's own papers", async () => {
     const t = convexTest(schema);
     const { ada, grace, adaPaper, gracePaper } = await t.run(async (ctx) => {
-      const person = (clerkId: string) => ctx.db.insert("users", { libraryItemCount: 0, clerkId, email: `${clerkId}@test`, state: "active", createdAt: 1, updatedAt: 1 });
+      const person = (clerkId: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@test`, state: "active", createdAt: 1, updatedAt: 1 });
       const ada = await person("ada");
       const grace = await person("grace");
       const paper = (userId: typeof ada, title: string) =>

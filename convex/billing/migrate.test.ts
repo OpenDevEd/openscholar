@@ -59,7 +59,7 @@ describe("readLegacyAccounts", () => {
   async function account() {
     const t = convexTest(schema);
     const ids = await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "clerk_ledger", email: "ledger@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 });
+      const userId = await ctx.db.insert("users", { clerkId: "clerk_ledger", email: "ledger@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 });
       return { userId, creditsId: await ctx.db.insert("credits", { userId, createdAt: 1 }) };
     });
     const read = () => readLegacyAccounts({ runQuery: t.query as never }, null);

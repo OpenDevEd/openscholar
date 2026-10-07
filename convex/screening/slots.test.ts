@@ -22,7 +22,7 @@ async function setup() {
   setupScreeningWorkpool(t);
   const person = async (clerkId: string) => {
     const userId = await t.run(async (ctx) => {
-      const id = await ctx.db.insert("users", { libraryItemCount: 0, clerkId, email: `${clerkId}@test`, state: "active", createdAt: 1, updatedAt: 1 });
+      const id = await ctx.db.insert("users", { clerkId, email: `${clerkId}@test`, state: "active", createdAt: 1, updatedAt: 1 });
       await seedCreditsForTest(ctx, { userId: id, free: 100_000 });
       return id;
     });

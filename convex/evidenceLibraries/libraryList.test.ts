@@ -14,7 +14,7 @@ const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1
 async function setup() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async (ctx) => {
-    for (const clerkId of ["me", "someone"]) await ctx.db.insert("users", { libraryItemCount: 0, clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 });
+    for (const clerkId of ["me", "someone"]) await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 });
     const organization = (name: string) => ctx.db.insert("organizations", { clerkOrganizationId: `org_${name}`, evidenceLibrariesEnabled: true, name, slug: name.toLowerCase(), state: "active", ...stamp });
     const [beta, alpha, partner] = [await organization("Beta"), await organization("Alpha"), await organization("Partner")];
     for (const organizationId of [beta, alpha]) await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `membership-${organizationId}`, clerkUserId: "me", role: "org:admin", state: "active", ...stamp });

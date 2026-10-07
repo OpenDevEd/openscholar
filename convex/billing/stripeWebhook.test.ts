@@ -39,7 +39,7 @@ describe("refunding a top-up", () => {
     const t = convexTest(schema);
     const userId = await t.run(async (ctx) => {
       const now = Date.now();
-      const id = await ctx.db.insert("users", {libraryItemCount: 0, 
+      const id = await ctx.db.insert("users", {
         clerkId: "clerk_refund",
         email: "refund@test.local",
         state: "active" as const,

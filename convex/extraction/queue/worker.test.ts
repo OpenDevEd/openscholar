@@ -22,7 +22,7 @@ async function seedLeasedPaperQueueItem(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
-      libraryItemCount: 0,
+      
       clerkId: `clerk_worker_${now}`,
       email: "worker@test.com",
       state: "active" as const,
@@ -74,7 +74,7 @@ async function seedLeasedUnprocessablePaper(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
-      libraryItemCount: 0,
+      
       clerkId: `clerk_worker_unprocessable_${now}`,
       email: "worker-unprocessable@test.com",
       state: "active" as const,
@@ -130,7 +130,7 @@ async function seedAlreadyAnsweredPaper(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
-      libraryItemCount: 0,
+      
       clerkId: `clerk_worker_answered_${now}`,
       email: "worker-answered@test.com",
       state: "active" as const,
@@ -213,7 +213,7 @@ async function seedQueueRefillJob(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
-      libraryItemCount: 0,
+      
       clerkId: `clerk_worker_refill_${now}`,
       email: "worker-refill@test.com",
       state: "active" as const,

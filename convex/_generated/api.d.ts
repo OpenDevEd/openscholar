@@ -304,7 +304,6 @@ import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryLis
 import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
 import type * as migrations_pagedRecords from "../migrations/pagedRecords.js";
 import type * as migrations_paperMetadata from "../migrations/paperMetadata.js";
-import type * as migrations_planLimits from "../migrations/planLimits.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_removeOrphanLibraryAccess from "../migrations/removeOrphanLibraryAccess.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
@@ -692,7 +691,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
   "migrations/pagedRecords": typeof migrations_pagedRecords;
   "migrations/paperMetadata": typeof migrations_paperMetadata;
-  "migrations/planLimits": typeof migrations_planLimits;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/removeOrphanLibraryAccess": typeof migrations_removeOrphanLibraryAccess;
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;

@@ -36,7 +36,7 @@ async function screened({ bookkept = true, before }: { bookkept?: boolean; befor
   const t = convexTest(schema);
   setupScreeningWorkpool(t);
   const userId = await t.run(async (ctx) => {
-    for (const clerkId of ["owner", "someone_else"]) await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 });
+    for (const clerkId of ["owner", "someone_else"]) await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 });
     const owner = (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "owner")).unique())!;
     await seedCreditsForTest(ctx, { userId: owner._id, free: 1_000, paid: 0, now: 1 });
     return owner._id;

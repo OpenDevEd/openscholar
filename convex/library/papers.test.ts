@@ -41,7 +41,7 @@ afterEach(() => {
 describe("saving a paper by its ID", () => {
   it("puts the paper in a collection as it saves it, and one undo takes back what the call did", async () => {
     const t = convexTest(schema);
-    await t.run(async (ctx) => ctx.db.insert("users", { libraryItemCount: 0, clerkId: "ada", email: "ada@example.com", state: "active", createdAt: 1, updatedAt: 1 }));
+    await t.run(async (ctx) => ctx.db.insert("users", { clerkId: "ada", email: "ada@example.com", state: "active", createdAt: 1, updatedAt: 1 }));
     const ada = t.withIdentity({ subject: "ada" });
     const { save } = api.library.papers;
     const { id: collectionId } = await ada.mutation(api.library.collections.createCollection, { name: "Reading" });
@@ -103,7 +103,7 @@ describe("saving a paper by its ID", () => {
 
   it("reads the paper from OpenAlex and saves it as the results page would, under one ID however it's written", async () => {
     const t = convexTest(schema);
-    const userId = await t.run(async (ctx) => ctx.db.insert("users", { libraryItemCount: 0, clerkId: "ada", email: "ada@example.com", state: "active", createdAt: 1, updatedAt: 1 }));
+    const userId = await t.run(async (ctx) => ctx.db.insert("users", { clerkId: "ada", email: "ada@example.com", state: "active", createdAt: 1, updatedAt: 1 }));
     const ada = t.withIdentity({ subject: "ada" });
     const { save } = api.library.papers;
     const items = () => t.run(async (ctx) => ctx.db.query("libraryItems").take(10));

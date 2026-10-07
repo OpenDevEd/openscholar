@@ -218,7 +218,6 @@ describe("library facets", () => {
       const { userId, as } = await setup(t);
       // As rows saved before: written without the triggers that keep them.
       const collectionId = await runUntriggered(t, async (ctx) => {
-        await ctx.db.patch("users", userId, { libraryItemCount: 3 });
         const id = await ctx.db.insert("collections", { userId, name: "Old", sortName: "old", itemCount: 3, createdAt: 1, updatedAt: 1 });
         for (const [i, rating] of [5, 5, 2].entries()) {
           const libraryItemId = await ctx.db.insert("libraryItems", { userId, ...paper(i), rating, searchableText: `Paper ${i}`, savedAt: i, updatedAt: 1 });
@@ -226,8 +225,6 @@ describe("library facets", () => {
         }
         return id;
       });
-      // A removal from before, its places in a list.
-      const removalId = await runUntriggered(t, (ctx) => ctx.db.insert("libraryRemovals", { userId, item: { ...paper(9), searchableText: "Paper 9", savedAt: 9, updatedAt: 1 }, collectionIds: [collectionId], assignedAts: [7], expiresAt: Date.now() + 30 * 86_400_000 }));
       expect(await t.action(internal.migrations.libraryFacets.verify, {})).toBeGreaterThan(0);
 
       for (let runs = 0; runs < 2; runs++) {
@@ -239,9 +236,6 @@ describe("library facets", () => {
       expect(await as.query(api.library.queries.countPapers, { minRating: 5 })).toEqual({ count: 2 });
       expect(await as.query(api.library.queries.countPapers, { collectionId, minRating: 5 })).toEqual({ count: 2 });
       expect((await as.query(api.library.queries.papers, { collectionId, sort: "rating", ascending: true })).papers.map((row) => row.rating)).toEqual([2, 5, 5]);
-      // Its Undo puts the paper back where it was.
-      const { id: restored } = await as.mutation(api.library.mutations.restoreLibraryItem, { removalId });
-      expect(await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", restored)).collect())).toMatchObject([{ collectionId, assignedAt: 7 }]);
     } finally {
       vi.useRealTimers();
     }

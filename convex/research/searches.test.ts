@@ -82,7 +82,7 @@ afterEach(() => {
 async function setup() {
   const t = convexTest(schema);
   await t.run(async (ctx) => {
-    for (const clerkId of ["alice", "bob"]) await ctx.db.insert("users", { libraryItemCount: 0, clerkId, email: `${clerkId}@example.com`, state: "active", createdAt: 1, updatedAt: 1 });
+    for (const clerkId of ["alice", "bob"]) await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.com`, state: "active", createdAt: 1, updatedAt: 1 });
   });
   const alice = t.withIdentity({ subject: "alice" });
   const { create, restore, remove, results } = api.research.searches;
