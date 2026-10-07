@@ -142,8 +142,9 @@ export async function countJobChange(ctx: MutationCtx, change: Change<DataModel,
   if (!change.oldDoc && change.newDoc) await ctx.db.insert("extractionJobCounts", { jobId: change.newDoc._id, counts: {} });
   if (change.oldDoc && !change.newDoc) await clearCounts(ctx, change.oldDoc._id);
   if (change.oldDoc && change.newDoc) {
-    const { sortName: beforeSortName, ...before } = change.oldDoc;
-    const { sortName: afterSortName, ...after } = change.newDoc;
+    // The fields lists keep from the name and description change no exported data.
+    const { sortName: _beforeSortName, searchText: _beforeText, ...before } = change.oldDoc;
+    const { sortName: _afterSortName, searchText: _afterText, ...after } = change.newDoc;
     if (JSON.stringify(convexToJson(before)) !== JSON.stringify(convexToJson(after))) await append(ctx, change.newDoc._id, { exportRevision: 1 });
   }
 }
