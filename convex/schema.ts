@@ -1,8 +1,8 @@
 import { defineSchema, defineTable } from "convex/server";
 import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
 import { libraryItemFields, removedItemValidator } from "./library/validators";
-import { MAX_COLLECTIONS_PER_USER } from "./lib/queryBounds";
 import { v } from "convex/values";
+import { MAX_COLLECTIONS_PER_USER } from "./lib/queryBounds";
 import { sourceMetadataFields } from "./lib/paperMetadata";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
@@ -1123,16 +1123,32 @@ export default defineSchema({
     revertedAt: v.optional(v.number()),
   }).index("by_record", ["table", "recordId"]),
 
-  // A paper removed from a library, with the collections it was in, kept a day so Undo
-  // (the page's or the assistant's) can put it back by this record's ID.
+  // A paper removed from a library, kept a day so Undo (the page's or the assistant's) can
+  // put it back by this record's ID. The collections it was in are its removedPlaces.
   libraryRemovals: defineTable({
     userId: v.id("users"),
     item: removedItemValidator,
-    collectionIds: capped(v.array(v.id("collections")), MAX_COLLECTIONS_PER_USER),
-    // When the paper was put in each of `collectionIds`, in the same order. A removal from before these were kept has none.
+    // The removed paper's ID, which its places not moved yet still name. A removal from before
+    // places were kept as rows has none, and its places in `collectionIds`, with when the paper
+    // was put in each in `assignedAts`, until migrations/libraryFacets moves them (#638 narrows).
+    itemId: v.optional(v.id("libraryItems")),
+    collectionIds: capped(v.optional(v.array(v.id("collections"))), MAX_COLLECTIONS_PER_USER),
     assignedAts: capped(v.optional(v.array(v.number())), MAX_COLLECTIONS_PER_USER),
     expiresAt: v.number(),
-  }),
+    // The paper Undo put back; the removal is kept until it expires.
+    restoredAs: v.optional(v.id("libraryItems")),
+    // Set while batches of the paper's places are still being taken out of its collections,
+    // or put back in them after Undo: the restored paper can't be removed again meanwhile.
+    moving: v.optional(v.literal(true)),
+    placing: v.optional(v.literal(true)),
+  }).index("by_restoredAs", ["restoredAs"]),
+
+  // A collection a removed paper was in, and when it was put there, so Undo puts it back as it was.
+  removedPlaces: defineTable({
+    removalId: v.id("libraryRemovals"),
+    collectionId: v.id("collections"),
+    assignedAt: v.number(),
+  }).index("by_removal", ["removalId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // COLLECTIONS - Named groups for organizing library items
@@ -1140,11 +1156,11 @@ export default defineSchema({
   collections: defineTable({
     userId: v.id("users"),
     name: v.string(),
-    // `name` folded for ordering (collectionSortName); optional until migrations/pagedCollections has run.
-    sortName: v.optional(v.string()),
+    // `name` folded for ordering (collectionSortName).
+    sortName: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
-    itemCount: v.optional(v.number()),
+    itemCount: v.number(),
     // Goes up on every item added or removed; libraries following the collection compare it.
     membershipRevision: v.optional(v.number()),
   })
@@ -1173,16 +1189,28 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEM COLLECTIONS - Junction table for many-to-many
   // ═══════════════════════════════════════════════════════════════
+  // Each carries its paper's sort and filter fields (convex/library/facets.ts), so a collection's
+  // view reads its own index; optional until migrations/libraryFacets has run.
   libraryItemCollections: defineTable({
     userId: v.id("users"),
     collectionId: v.id("collections"),
     libraryItemId: v.id("libraryItems"),
     assignedAt: v.number(),
+    savedAt: v.optional(v.number()),
+    rating: v.optional(v.number()),
+    publicationYear: v.optional(v.number()),
+    citedByCount: v.optional(v.number()),
+    title: v.optional(v.string()),
   })
+    // In the order papers were put in it.
     .index("by_collection", ["collectionId"])
     .index("by_item", ["libraryItemId"])
     .index("by_collection_item", ["collectionId", "libraryItemId"])
-    .index("by_user", ["userId"]),
+    .index("by_collection_savedAt", ["collectionId", "savedAt"])
+    .index("by_collection_rating", ["collectionId", "rating"])
+    .index("by_collection_year", ["collectionId", "publicationYear"])
+    .index("by_collection_citedByCount", ["collectionId", "citedByCount"])
+    .index("by_collection_title", ["collectionId", "title"]),
 
   // ═══════════════════════════════════════════════════════════════
   // USER RESOURCE LOCKS - Per-user concurrency gate for interactive

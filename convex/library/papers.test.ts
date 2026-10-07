@@ -129,7 +129,7 @@ describe("saving a paper by its ID", () => {
     expect(await ada.query(api.library.queries.savedPaper, { openalexId: "W7" })).toMatchObject({ libraryItemId: saved.libraryItemId });
 
     // Into a collection by the same bare ID, and a whole paper put in one under a bare ID is saved under the form the library keeps.
-    const collectionId = await t.run(async (ctx) => ctx.db.insert("collections", { userId, name: "Chapter 2", itemCount: 0, createdAt: 1, updatedAt: 1 }));
+    const collectionId = await t.run(async (ctx) => ctx.db.insert("collections", { userId, name: "Chapter 2", sortName: ("Chapter 2").toLowerCase(), itemCount: 0, createdAt: 1, updatedAt: 1 }));
     const { setPaperInCollection, removeFromLibrary } = api.library.mutations;
     expect((await ada.mutation(setPaperInCollection, { paper: { openalexId: "W7" }, collectionId, inCollection: true })).undo).toMatchObject({ args: { collectionId, inCollection: false } });
     await ada.mutation(setPaperInCollection, { paper: { openalexId: "W8", title: "Another paper" }, collectionId, inCollection: true });

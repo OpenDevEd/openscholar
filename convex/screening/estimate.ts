@@ -1,7 +1,7 @@
 import type { Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
-import { collectionCount, libraryCountRow } from "../library/counter";
+import { libraryCountRow } from "../library/counter";
 import { collectionAllowed } from "../library/collections";
 import { requestOf, snapshotOf } from "../paperSets/search";
 import { currentSearch } from "../../lib/research/records";
@@ -51,7 +51,7 @@ export async function screeningPaperCreditsFor(ctx: QueryCtx, userId: Id<"users"
 export async function papersIn(ctx: QueryCtx, userId: Id<"users">, set: Infer<typeof paperSetValidator>): Promise<number | null> {
   if (set.kind === "collection") {
     const collection = await ctx.db.get("collections", set.collectionId);
-    return collection?.userId === userId ? await collectionCount(ctx, collection) : null;
+    return collection?.userId === userId ? collection.itemCount : null;
   }
   if (set.kind === "saved") return (await libraryCountRow(ctx, userId))?.count ?? null;
   if (set.kind === "screening") {

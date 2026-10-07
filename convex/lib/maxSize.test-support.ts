@@ -4,6 +4,9 @@
  * on 2026-09-30; the content is synthetic.
  */
 import type { convexTest } from "convex-test";
+import { vi } from "vitest";
+import { runUntriggered } from "../../tests/convex-test-with-limits";
+import { facetsOf } from "../library/facets";
 import { createHash } from "node:crypto";
 import type { Id, TableNames } from "../_generated/dataModel";
 import { PAPER_LIMIT } from "../../lib/extraction/limits";
@@ -34,11 +37,12 @@ export function text(length: number, seed = 0) {
 /** Taken before any test fakes timers, so seeding still yields under them. */
 const realSetImmediate = globalThis.setImmediate;
 
-export async function insertMany<T extends TableNames>(t: Test, table: T, docs: Array<Record<string, unknown>>, perTransaction = 1_000) {
+export async function insertMany<T extends TableNames>(t: Test, table: T, docs: Array<Record<string, unknown>>, perTransaction = 1_000, { triggered = true } = {}) {
   const ids: Array<Id<T>> = [];
+  const run = <R,>(fn: (ctx: any) => Promise<R>): Promise<R> => (triggered ? t.run(fn) : runUntriggered(t, fn));
   for (let i = 0; i < docs.length; i += perTransaction) {
     const slice = docs.slice(i, i + perTransaction);
-    ids.push(...(await t.run((ctx) => Promise.all(slice.map((doc) => ctx.db.insert(table, doc as never))))));
+    ids.push(...(await run((ctx) => Promise.all(slice.map((doc) => ctx.db.insert(table, doc as never))))));
     // convex-test runs a transaction as one chain of microtasks; without a turn of the
     // event loop between batches, seeding a job ran past vitest's 60 s RPC timeout on CI.
     await new Promise((resolve) => realSetImmediate(resolve));
@@ -83,15 +87,29 @@ export async function seedExtractionJob(t: Test, userId: Id<"users">, { papers =
  * A library of `items` saved papers, about 2.1 KB each plus an `abstractChars` abstract,
  * with ratings 1 to 5 and every item in one collection.
  */
-export async function seedLibrary(t: Test, userId: Id<"users">, { items = MAX_SIZE.libraryItems as number, abstractChars = 0 } = {}) {
-  const itemIds = await insertMany(t, "libraryItems", Array.from({ length: items }, (_, i) => ({
+/**
+ * A library of `items` papers, all in one collection. `counted` keeps the library's filtered
+ * counts too (convex/library/facets.ts), which the aggregate's worker takes minutes to apply at
+ * full size: a test that reads no filtered count leaves them out.
+ */
+export async function seedLibrary(t: Test, userId: Id<"users">, { items = MAX_SIZE.libraryItems as number, abstractChars = 0, counted = false } = {}) {
+  const docs = Array.from({ length: items }, (_, i) => ({
     userId, openalexId: `https://openalex.org/W${i}`, rating: (i % 5) + 1, title: text(100, i), authors: [text(60, i)], publicationYear: 1990 + (i % 35),
     journal: text(40, i), citedByCount: i % 500, paperData: text(1_700, i), searchableText: text(160, i), savedAt: 1_700_000_000_000 + i, updatedAt: 1,
     ...(abstractChars ? { abstract: text(abstractChars, i) } : {}),
-  })));
+  }));
+  const itemIds = await insertMany(t, "libraryItems", docs, 1_000, { triggered: counted });
   const [collectionId] = await insertMany(t, "collections", [{ userId, name: "Everything", sortName: "everything", itemCount: items, createdAt: 1, updatedAt: 1 }]);
-  await insertMany(t, "libraryItemCollections", itemIds.map((libraryItemId) => ({ userId, collectionId, libraryItemId, assignedAt: 1 })), 3_000);
-  await t.run((ctx) => ctx.db.patch(userId, { libraryItemCount: items }));
+  // Each membership with its paper's fields, as convex/library/facets.ts gives it.
+  await insertMany(t, "libraryItemCollections", itemIds.map((libraryItemId, i) => ({ userId, collectionId, libraryItemId, assignedAt: 1, ...facetsOf(docs[i] as never) })), 1_000, { triggered: counted });
+  await t.run((ctx) => ctx.db.insert("libraryCounts", { userId, count: items }));
+  if (!counted) return { itemIds, collectionId };
+  // The library's filtered counts are a moment behind its writes: let their queue catch up,
+  // on fake timers, since its worker waits a moment between batches.
+  const faked = vi.isFakeTimers();
+  if (!faked) vi.useFakeTimers();
+  await t.finishAllScheduledFunctions(vi.runAllTimers, 10_000);
+  if (!faked) vi.useRealTimers();
   return { itemIds, collectionId };
 }
 

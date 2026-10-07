@@ -471,13 +471,8 @@ export const addToCollectionInternal = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const collection = await ctx.db.get("collections", args.collectionId);
-    if (collection) {
-      await addCollectionMembership(ctx, {
-        userId: args.userId,
-        collection,
-        libraryItemId: args.libraryItemId,
-      });
-    }
+    const item = await ctx.db.get("libraryItems", args.libraryItemId);
+    if (collection && item) await addCollectionMembership(ctx, { userId: args.userId, collection, item });
     return null;
   },
 });

@@ -23,6 +23,8 @@ app.use(aggregate, { name: "creditsAgg" });
 app.use(aggregate, { name: "usageAgg" });
 // listCounts: how many rows each paged list holds, a namespace per list (convex/lib/listCounts.ts).
 app.use(aggregate, { name: "listCounts" });
+// libraryFacetCounts: each library's and collection's papers by rating, year and saved date (convex/library/facets.ts).
+app.use(aggregate, { name: "libraryFacetCounts" });
 // Queues whose one worker each does shared bookkeeping in batches, so parallel work only
 // writes its own rows: Screen all's results (convex/screening/bookkeeping.ts) and the
 // usage ledger (convex/billing/ledger.ts).

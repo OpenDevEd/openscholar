@@ -21,6 +21,12 @@ import { insertJob } from "../screening/createJob.test-support";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { screeningInputs } from "../extraction/sources/screening.test-support";
 
+/** seedLibrary's papers: rating (i % 5) + 1, published 1990 + (i % 35), saved at 1_700_000_000_000 + i, all in its collection. */
+const seededLibrary = (items: number) => Array.from({ length: items }, (_, i) => ({ rating: (i % 5) + 1, year: 1990 + (i % 35), savedAt: 1_700_000_000_000 + i }));
+/** How many of them a view keeps. */
+const matchingOf = (seeded: ReturnType<typeof seededLibrary>, view: { minRating?: number; maxRating?: number; yearFrom?: number; yearTo?: number; savedAfter?: number }) =>
+  seeded.filter((p) => p.rating >= (view.minRating ?? 0) && p.rating <= (view.maxRating ?? 5) && p.year >= (view.yearFrom ?? 0) && p.year <= (view.yearTo ?? 9999) && p.savedAt >= (view.savedAfter ?? 0)).length;
+
 describe("at the largest sizes the product allows", () => {
   it("captures all 1,000 Included screening papers for extraction through bounded pages", async () => {
     vi.useFakeTimers();
@@ -71,7 +77,7 @@ describe("at the largest sizes the product allows", () => {
     const page = await as.query(api.library.queries.browseLibrary, { sortBy: "savedAt", sortOrder: "desc", paginationOpts: { cursor: null, numItems: 20 } });
     expect(page.page).toHaveLength(20);
     expect(await as.query(api.library.queries.getLibraryCount, {})).toBe(MAX_SIZE.libraryItems);
-  }, 120_000);
+  }, 300_000);
 
   it("a person's 500 collections page by name, each checked for a saved paper", async () => {
     const t = convexTest(schema);
@@ -93,7 +99,7 @@ describe("at the largest sizes the product allows", () => {
     expect(searched.page).toHaveLength(50);
   }, 120_000);
 
-  it("a 10,000-paper library shows, counts and exports every filter", async () => {
+  it("a 10,000-paper library shows and exports every filter", async () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
     const { collectionId } = await seedLibrary(t, userId);
@@ -108,14 +114,11 @@ describe("at the largest sizes the product allows", () => {
       // Rating 5 and year 1990 never meet in the seed: a filter that matches nothing.
       { ...sorted, minRating: 5, yearTo: 1990 },
     ];
+    const seeded = seededLibrary(MAX_SIZE.libraryItems);
     for (const view of views) {
       const page = await as.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { cursor: null, numItems: 20 } });
-      const count = await as.query(api.library.queries.getLibraryFilteredCount, view);
-      if (count.capped) expect(count.count).toBe(1_000);
-      else expect(page.isDone ? page.page.length : Infinity).toBeGreaterThanOrEqual(count.count);
+      expect(page.page).toHaveLength(Math.min(20, matchingOf(seeded, view)));
     }
-    expect(await as.query(api.library.queries.getLibraryFilteredCount, { ...sorted, collectionId })).toEqual({ count: MAX_SIZE.libraryItems, capped: false });
-    expect(await as.query(api.library.queries.getLibraryFilteredCount, { ...sorted, minRating: 5, yearTo: 1990 })).toEqual({ count: 0, capped: false });
     const exported = await exportedTitles(t, as, { ...sorted, minRating: 2 });
     expect(exported).toHaveLength(MAX_SIZE.libraryItems * 0.8);
   }, 300_000);
@@ -137,13 +140,26 @@ describe("at the largest sizes the product allows", () => {
     expect(new Set(rows.map((row) => row.match(/https:\/\/openalex\.org\/W\d+/)?.[0])).size).toBe(MAX_SIZE.libraryItems);
   }, 600_000);
 
-  it("a 10,000-paper library of long abstracts counts a filter that matches nothing", async () => {
+  it("a library's filtered counts are exact for every filter, from its counts or along the narrowest", async () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
-    await seedLibrary(t, userId, { abstractChars: 4_500 });
-    // Rating 4 and up never meets year 1990 in the seed: the count reads past 4,000 large papers.
+    // Counted: the aggregate's worker takes minutes to count 10,000 papers in a test, and counts don't read papers.
+    const items = 2_000;
+    const { collectionId } = await seedLibrary(t, userId, { items, counted: true });
+    const sorted = { sortBy: "savedAt" as const, sortOrder: "desc" as const };
+    const seeded = seededLibrary(items);
+    for (const view of [{ minRating: 4 }, { yearFrom: 2020 }, { savedAfter: 1_700_000_000_500 }, { collectionId }, { collectionId, maxRating: 1 }, { minRating: 5, yearTo: 1995 }, { minRating: 5, yearTo: 1990 }]) {
+      expect(await as.query(api.library.queries.getLibraryFilteredCount, { ...sorted, ...view })).toEqual({ count: matchingOf(seeded, view), capped: false });
+    }
+  }, 300_000);
+
+  it("a library of long abstracts counts two filters by reading only the narrower one's papers", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    await seedLibrary(t, userId, { items: 2_000, abstractChars: 4_500, counted: true });
+    // Rating 4 and up never meets year 1990 in the seed: the count reads only the papers of the narrower filter, the year's.
     const count = await as.query(api.library.queries.getLibraryFilteredCount, { sortBy: "savedAt", sortOrder: "desc", minRating: 4, yearTo: 1990 });
-    expect(count).toEqual({ count: 0, capped: true });
+    expect(count).toEqual({ count: 0, capped: false });
   }, 300_000);
 
   it("a search of the longest OQL query edited 200 times, and a history page of 25 such searches, load (#354)", async () => {

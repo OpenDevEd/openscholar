@@ -64,6 +64,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
     const collectionId = await ctx.db.insert("collections", {
       userId,
       name: "Favorites",
+      sortName: "favorites",
       itemCount: 0,
       createdAt: now,
       updatedAt: now,
@@ -71,6 +72,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
     const otherCollectionId = await ctx.db.insert("collections", {
       userId: otherUserId,
       name: "Theirs",
+      sortName: "theirs",
       itemCount: 0,
       createdAt: now,
       updatedAt: now,
