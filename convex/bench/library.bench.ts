@@ -6,6 +6,7 @@ import schema from "../schema";
 import { countPapersAction, papersAction } from "../library/queries";
 import { insertMany, seedAccount, seedLibrary } from "../lib/maxSize.test-support";
 import { measure, now, record, save } from "./measure.test-support";
+import { PAPERS_PAGE } from "../library/validators";
 
 const SIZES = (process.env.BENCH_LIBRARY_SIZES ?? "1000,12000,25000").split(",").map(Number);
 
@@ -28,19 +29,22 @@ describe("library reads by size", () => {
       const at = (scenario: string) => ({ area: "library", scenario, size });
       const papers = (given: Record<string, unknown>) => (ctx: any) => papersAction.run(ctx, userId, given as never);
       const shown = (read: { papers: unknown[] } | undefined) => `${read?.papers.length ?? 0} rows`;
+      // Each view holds more than a page, so the right first page is a full one.
+      const full = (read: { papers: unknown[] }) => read.papers.length === PAPERS_PAGE;
 
-      await measure(t, at("first page"), papers({}), shown);
-      await measure(t, at("page of the collection holding every paper"), papers({ collectionId }), shown);
-      await measure(t, at("page of a 50-paper collection"), papers({ collectionId: small }), shown);
-      await measure(t, at("page rated 5"), papers({ minRating: 5 }), shown);
+      await measure(t, at("first page"), papers({}), shown, full);
+      await measure(t, at("page of the collection holding every paper"), papers({ collectionId }), shown, full);
+      await measure(t, at("page of a 50-paper collection"), papers({ collectionId: small }), shown, full);
+      await measure(t, at("page rated 5"), papers({ minRating: 5 }), shown, full);
       await measure(t, at("count rated 4 or more"), (ctx) => countPapersAction.run(ctx, userId, { minRating: 4 }), (r) => `${r.count}${r.atLeast ? "+" : ""}`, (r) => !r.atLeast && r.count === itemIds.filter((_, i) => (i % 5) + 1 >= 4).length);
-      await measure(t, at("count of the 50-paper collection, rated 5"), (ctx) => countPapersAction.run(ctx, userId, { collectionId: small, minRating: 5 }), (r) => `${r.count}${r.atLeast ? "+" : ""}`);
+      // Every paper in the small collection is rated 1, the first of every five.
+      await measure(t, at("count of the 50-paper collection, rated 1"), (ctx) => countPapersAction.run(ctx, userId, { collectionId: small, maxRating: 1 }), (r) => `${r.count}${r.atLeast ? "+" : ""}`, (r) => !r.atLeast && r.count === 50);
 
       // A view of the collection holding every paper, read to its end: does it reach them all?
       let cursor: string | undefined;
       let reached = 0;
       let calls = 0;
-      let ok = true;
+      let error: string | undefined;
       const started = now();
       do {
         try {
@@ -48,12 +52,12 @@ describe("library reads by size", () => {
           reached += read.papers.length;
           cursor = read.next;
           calls += 1;
-        } catch {
-          ok = false;
+        } catch (thrown) {
+          error = `call ${calls + 1}: ${String((thrown as Error).message ?? thrown).split("\n")[0]}`;
           break;
         }
       } while (cursor && calls < 5_000);
-      record({ ...at("collection view read to its end"), ok: ok && reached === size, ms: Math.round(now() - started), result: `${reached} of ${size} papers in ${calls} calls` });
+      record({ ...at("collection view read to its end"), ok: !error && reached === size, ms: Math.round(now() - started), result: `${reached} of ${size} papers in ${calls} calls`, ...(error ? { error } : {}) });
     });
   }
 });

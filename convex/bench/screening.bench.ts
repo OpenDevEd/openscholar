@@ -27,6 +27,8 @@ describe("screening reads by job size", () => {
     it(`${size} papers`, async () => {
       const t = convexTest(schema);
       const { userId } = await seedAccount(t);
+      // Credits enough for any size, so only the job's own limits can refuse it.
+      await t.run((ctx) => ctx.db.insert("billingAccounts", { userId, plan: "pro", pastDue: false, balance: 1e9, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: 1 }));
       const at = (scenario: string) => ({ area: "screening", scenario, size });
       // Starting a job of this many papers, as screening/start:screen does once it has read them.
       const papers = Array.from({ length: size }, (_, i) => ({ openalexId: `W${i}`, title: text(120, i) }));
