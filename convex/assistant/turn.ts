@@ -237,7 +237,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
         {
           promptMessageId,
           model,
-          // Context is assembled from trusted server-owned system messages.
+          // Stored messages the agent component kept as system ones.
           allowSystemInMessages: true,
           abortSignal: abortController.signal,
           // A reply with tools makes one request to the model here. The tools it calls run in
