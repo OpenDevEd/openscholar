@@ -84,6 +84,24 @@ describe("reading a paper's PDF", () => {
     await expect(asAda.action(api.research.papers.readPdf, { id: "W3" })).rejects.toThrow(/couldn't be opened/);
   });
 
+  it("asks first, and once allowed, the reply goes on with the PDF in view", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await chat(t);
+    await asAda.mutation(api.assistant.spending.setTool, { threadId, tool: "files", allowed: false });
+    mockDoStream
+      .mockImplementationOnce(callingDoStream({ id: "pdf-1", name: "research_papers_readPdf", input: { id: "W1", title: "Loot boxes and problem gambling" } }))
+      .mockImplementation(finishingDoStream(["It reports a link (p. 5)."]));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "What are this paper's methods?" });
+    await replied(t, threadId);
+    const asking = await t.run((ctx) => ctx.db.query("assistantSteps").withIndex("by_thread_and_status", (q) => q.eq("threadId", threadId).eq("status", "asking")).collect());
+    expect(asking).toMatchObject([{ path: "research/papers:readPdf" }]);
+    expect(asking[0].credits).toBeGreaterThan(0);
+
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking[0]._id, allow: true });
+    await replied(t, threadId);
+    expect(JSON.stringify(resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt))).toContain(`"url":"${PDF}"`);
+  });
+
   it("sends the model the PDF by its address in the reply that read it, and only a note in later replies", async () => {
     const t = convexTest(schema);
     const { asAda, threadId } = await chat(t);
