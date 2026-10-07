@@ -56,7 +56,7 @@ describe("library reads by size", () => {
           error = `call ${calls + 1}: ${String((thrown as Error).message ?? thrown).split("\n")[0]}`;
           break;
         }
-      } while (cursor && calls < 5_000);
+      } while (cursor && calls < (size / PAPERS_PAGE) * 3);
       record({ ...at("collection view read to its end"), ok: !error && reached === size, ms: Math.round(now() - started), result: `${reached} of ${size} papers in ${calls} calls`, ...(error ? { error } : {}) });
     });
   }
