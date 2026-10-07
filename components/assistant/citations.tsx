@@ -38,7 +38,8 @@ export function useCited(href: string | undefined, children: ReactNode) {
   const { files, sources } = useContext(Cited);
   const page = href?.match(/^\/files\/([^/#?]+)#page=(\d+)$/);
   if (page) {
-    const file = files.get(page[1]);
+    // By ID, or by a name the model wrote into the address, escaped or not.
+    const file = files.get(page[1]) ?? files.get(safeDecode(page[1]));
     return <PageChip url={file?.url ?? null} page={Number(page[2])}>{children}</PageChip>;
   }
   const source = href ? (sources.get(href) ?? (href.startsWith("/") ? sourceAt(sources, href) : undefined)) : undefined;
@@ -61,6 +62,14 @@ function sourceAt(sources: ReadonlyMap<string, WebSource>, path: string) {
   });
   return matches.length === 1 ? matches[0] : undefined;
 }
+
+const safeDecode = (text: string) => {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
+};
 
 /** A page of a PDF: opens it in a new tab at that page, while the PDF is still in the chat. */
 function PageChip({ url, page, children }: { url: string | null; page: number; children: ReactNode }) {

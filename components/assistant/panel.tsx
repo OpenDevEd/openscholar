@@ -824,7 +824,12 @@ function Thread({
   const rows: Item[] = waiting && older !== "first" ? [...messages, { id: `${SENDING}reply`, role: "assistant", order: live.order, text: "", status: "pending", mine: false, at: 0 }] : messages;
   // What the chat's replies cite: the files its messages carried, and what its searches found (./citations.tsx).
   // A PDF whose message isn't loaded yet is looked up by the ID its citation names.
-  const carried = useMemo(() => new Map(messages.flatMap((m) => (m.role === "user" ? (m.files ?? []).map((file) => [file.id, { name: file.name, url: file.url }] as const) : []))), [messages]);
+  // A model sometimes cites a PDF by its name in place of its ID: a name only one of the chat's files has finds it too.
+  const carried = useMemo(() => {
+    const files = messages.flatMap((m) => (m.role === "user" ? (m.files ?? []) : []));
+    const named = Map.groupBy(files, (file) => file.name);
+    return new Map([...files.flatMap((file) => (named.get(file.name)!.length === 1 ? [[file.name, file] as const] : [])), ...files.map((file) => [file.id, file] as const)].map(([key, file]) => [key, { name: file.name, url: file.url }] as const));
+  }, [messages]);
   const unloaded = useMemo(
     () => [...new Set(messages.flatMap((m) => (m.role === "assistant" ? [...m.text.matchAll(CITED_PDF)].map((match) => match[1]) : [])))].filter((id) => !carried.has(id)).slice(0, MAX_FILES_PER_MESSAGE),
     [messages, carried],
