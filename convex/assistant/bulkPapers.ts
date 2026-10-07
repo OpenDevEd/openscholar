@@ -9,8 +9,6 @@ import { internalMutation, internalQuery } from "../lib/functions";
 
 /** Changes one part holds: each a paper's record, well inside a document. */
 export const PART_ITEMS = 200;
-/** Parts one read returns: inside what a query reads. */
-const PARTS_A_READ = 10;
 /** How long the papers wait for the person's answer. */
 const KEPT_MS = 24 * 60 * 60_000;
 /** Parts one cleanup deletes. */
@@ -27,13 +25,13 @@ export const keep = internalMutation({
   },
 });
 
-/** A page of a bulk change's parts, in order: each a JSON array of changes. Only the person's own. */
-export const read = internalQuery({
-  args: { userId: v.id("users"), key: v.string(), cursor: v.union(v.string(), v.null()) },
-  returns: v.object({ parts: v.array(v.string()), isDone: v.boolean(), continueCursor: v.string() }),
-  handler: async (ctx, { userId, key, cursor }) => {
-    const page = await ctx.db.query("assistantBulkPapers").withIndex("by_key_and_part", (q) => q.eq("key", key)).paginate({ cursor, numItems: PARTS_A_READ });
-    return { parts: page.page.filter((part) => part.userId === userId).map((part) => part.items), isDone: page.isDone, continueCursor: page.continueCursor };
+/** One part of a bulk change's changes, as a JSON array, or null when there's none: forgotten, or not the person's. */
+export const part = internalQuery({
+  args: { userId: v.id("users"), key: v.string(), part: v.number() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { userId, key, part }) => {
+    const row = await ctx.db.query("assistantBulkPapers").withIndex("by_key_and_part", (q) => q.eq("key", key).eq("part", part)).unique();
+    return row?.userId === userId ? row.items : null;
   },
 });
 

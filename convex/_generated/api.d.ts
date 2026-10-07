@@ -258,6 +258,7 @@ import type * as lib_libraryServiceHttp from "../lib/libraryServiceHttp.js";
 import type * as lib_listCaps from "../lib/listCaps.js";
 import type * as lib_listCounts from "../lib/listCounts.js";
 import type * as lib_locks from "../lib/locks.js";
+import type * as lib_memberText from "../lib/memberText.js";
 import type * as lib_opaqueToken from "../lib/opaqueToken.js";
 import type * as lib_opaqueTokenDigest from "../lib/opaqueTokenDigest.js";
 import type * as lib_paperMetadata from "../lib/paperMetadata.js";
@@ -645,6 +646,7 @@ declare const fullApi: ApiFromModules<{
   "lib/listCaps": typeof lib_listCaps;
   "lib/listCounts": typeof lib_listCounts;
   "lib/locks": typeof lib_locks;
+  "lib/memberText": typeof lib_memberText;
   "lib/opaqueToken": typeof lib_opaqueToken;
   "lib/opaqueTokenDigest": typeof lib_opaqueTokenDigest;
   "lib/paperMetadata": typeof lib_paperMetadata;

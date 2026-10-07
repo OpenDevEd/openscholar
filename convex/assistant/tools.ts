@@ -198,7 +198,7 @@ const namedAs = (name: string) => entryAt(name) ?? core().find((entry) => toolNa
  * allow it. `shown` is what its card says in place of its arguments, for one over a set of
  * papers. `about` is what its changes are all given alike, which names the step.
  */
-export type Plan = { tool: string; entry: UserAction; items: Record<string, unknown>[]; kept: string; shown?: string; variant?: string; about: string; subject?: string };
+export type Plan = { tool: string; entry: UserAction; items: Record<string, unknown>[]; kept: string; shown?: string; variant?: string; about: string; subject?: string; stored?: { key: string; count: number } };
 
 /** What every change of a batch is given alike. */
 const shared = (items: Record<string, unknown>[]) => Object.fromEntries(Object.entries(items[0] ?? {}).filter(([key, value]) => items.length > 1 && items.every((item) => JSON.stringify(item[key]) === JSON.stringify(value))));
@@ -528,7 +528,20 @@ export function toolsFor(
    * chunks: what was made stays, and is what the step says and undoes. One that made
    * nothing fails, with why the first of its changes couldn't be made.
    */
-  const runPlan = async ({ entry, items, variant, subject }: Plan, toolCallId: string, asked?: Id<"assistantSteps">) => {
+  const runPlan = async ({ entry, items, variant, subject, stored }: Plan, toolCallId: string, asked?: Id<"assistantSteps">) => {
+    const total = stored?.count ?? items.length;
+    // A kept change's parts are read as the chunks reach them, one part at a time.
+    let held = { part: 0, items };
+    const chunkOf = async (from: number, size: number) => {
+      if (!stored) return items.slice(from, from + size);
+      const part = Math.floor(from / PART_ITEMS);
+      if (held.part !== part) {
+        const text: string | null = await ctx.runQuery(internal.assistant.bulkPapers.part, { userId, key: stored.key, part });
+        held = { part, items: text === null ? [] : (JSON.parse(text) as Record<string, unknown>[]) };
+      }
+      const at = from - part * PART_ITEMS;
+      return held.items.slice(at, Math.min(at + size, PART_ITEMS));
+    };
     const stepId =
       asked ??
       (await ctx.runMutation(internal.assistant.steps.begin, {
@@ -539,7 +552,7 @@ export function toolsFor(
         path: entry.path,
         // The first of them say what kind of change it is; all of them would not fit.
         input: cut(JSON.stringify(items.slice(0, 1)), STEP_TEXT_MAX),
-        batch: items.length,
+        batch: total,
         ...(subject ? { subject } : {}),
         ...(variant ? { variant } : {}),
       }));
@@ -548,12 +561,18 @@ export function toolsFor(
     let stopped = false;
     // Why changes couldn't be made: the first reason of each chunk that had one.
     const why: string[] = [];
-    while (tried < items.length) {
+    while (tried < total) {
       if (await halted()) {
         stopped = true;
         break;
       }
-      const chunk = items.slice(tried, tried + size);
+      const chunk = await chunkOf(tried, size);
+      // A part forgotten under it: what's left can't be made.
+      if (!chunk.length) {
+        failed += total - tried;
+        why.push("The papers the person was asked about were forgotten: a day has passed.");
+        break;
+      }
       try {
         // Typed here: the generated API's types depend on this module, so inference would loop.
         const done: { took: number; made: number; reversible: number; failed: number; why?: string } = await written(() => ctx.runMutation(internal.assistant.bulk.apply, { userId, stepId, path: entry.path, items: JSON.stringify(chunk), approved: asked !== undefined, key: `${key}:${tried}` }));
@@ -575,24 +594,24 @@ export function toolsFor(
       }
     }
     if (made === 0) {
-      const error = !items.length
+      const error = !total
         ? "None of the papers the person was asked about are in that set any more."
         : (why[0] ?? "The person stopped the reply before any of these were made.");
       await ctx.runMutation(internal.assistant.steps.failed, { stepId, error });
-      note(entry.path, items.length, { error });
-      return { error: items.length ? `None of these ${items.length} changes were made. ${error}` : error };
+      note(entry.path, total, { error });
+      return { error: total ? `None of these ${total} changes were made. ${error}` : error };
     }
     const result = {
       made,
       // A few reasons say why; a model that reads hundreds of them reads nothing else.
       ...(failed ? { failed, why: [...new Set(why)].slice(0, 5) } : {}),
-      ...(stopped ? { stopped: `The person stopped the reply: ${items.length - tried} of these weren't made.` } : {}),
+      ...(stopped ? { stopped: `The person stopped the reply: ${total - tried} of these weren't made.` } : {}),
       // Some changes have no undo of their own, and an undo of the step leaves them as they are.
       ...(made > reversible ? { noUndo: made - reversible } : {}),
       ...(reversible ? { undo: { path: UNDO_BULK, args: { change: stepId } } } : {}),
     };
     await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result) });
-    note(entry.path, items.length, "made");
+    note(entry.path, total, "made");
     return forModel(result);
   };
   /** Runs a call of run_many or change_papers that didn't have to ask. */
@@ -642,17 +661,12 @@ export function toolsFor(
   const kept = async (step: { toolCallId: string; input: string }): Promise<Plan | { error: string }> => {
     const { given, ids, stored } = JSON.parse(step.input) as { given: ChangePapers; ids?: string[]; stored?: string };
     if (stored) {
-      // A big one runs the changes it kept, as the person was asked about them.
-      const items: Record<string, unknown>[] = [];
-      for (let cursor: string | null = null; ;) {
-        const page: { parts: string[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.assistant.bulkPapers.read, { userId, key: stored, cursor });
-        for (const part of page.parts) items.push(...(JSON.parse(part) as Record<string, unknown>[]));
-        if (page.isDone) break;
-        cursor = page.continueCursor;
-      }
-      if (!items.length) return { error: "The papers the person was asked about were forgotten: a day has passed. Ask again." };
+      // A big one runs the changes it kept, as the person was asked about them, a part at a time as it goes (`runPlan`).
+      const { count } = JSON.parse(step.input) as { count: number };
+      const first: string | null = await ctx.runQuery(internal.assistant.bulkPapers.part, { userId, key: stored, part: 0 });
+      if (first === null) return { error: "The papers the person was asked about were forgotten: a day has passed. Ask again." };
       const change = changeOf(given, []);
-      return { tool: CHANGE_PAPERS, entry: entryAt(change.path)!, items, kept: step.input, about: JSON.stringify(change.shared) };
+      return { tool: CHANGE_PAPERS, entry: entryAt(change.path)!, items: JSON.parse(first) as Record<string, unknown>[], kept: step.input, about: JSON.stringify(change.shared), stored: { key: stored, count } };
     }
     const again = await plan(CHANGE_PAPERS, given);
     if ("error" in again) return again;

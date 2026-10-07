@@ -7,6 +7,7 @@
 import type { Change } from "convex-helpers/server/triggers";
 import type { DataModel, Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { makeFunctionReference } from "convex/server";
 import { getDocumentSize } from "convex/values";
 import { currentSearch } from "../../lib/research/records";
 
@@ -78,10 +79,6 @@ export async function keepTextOfUser(ctx: MutationCtx, change: Change<DataModel,
     const text = await adminText(ctx, admin);
     if (admin.searchText !== text) await ctx.db.patch("admins", admin._id, { searchText: text });
   }
-  // Every organization the person belongs to: a handful.
-  const clerkUserId = (now ?? was)!.clerkId;
-  for await (const membership of ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", clerkUserId))) {
-    const text = await memberText(ctx, membership);
-    if (membership.searchText !== text) await ctx.db.patch("organizationMemberships", membership._id, { searchText: text });
-  }
+  // Every organization the person belongs to, a page at a time after this write (convex/lib/memberText.ts).
+  await ctx.scheduler.runAfter(0, makeFunctionReference<"mutation">("lib/memberText:refresh"), { clerkUserId: (now ?? was)!.clerkId, cursor: null });
 }
