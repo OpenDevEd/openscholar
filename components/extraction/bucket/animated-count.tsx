@@ -14,7 +14,7 @@ type Props = {
    */
   className?: string;
   /**
-   * Render the `/ total` suffix. Defaults to true. Pass `false` in
+   * Render the `/ total` suffix, when there is a limit. Defaults to true. Pass `false` in
    * the collapsed sliver where 48 px of horizontal space can't fit
    * "N / total".
    */
@@ -40,7 +40,7 @@ export function AnimatedCount({
         )}
       >
         <span>{value}</span>
-        {showTotal && (
+        {showTotal && Number.isFinite(total) && (
           <span className="font-medium text-muted-foreground">/ {total}</span>
         )}
       </span>
@@ -76,7 +76,7 @@ export function AnimatedCount({
           </motion.span>
         </AnimatePresence>
       </span>
-      {showTotal && (
+      {showTotal && Number.isFinite(total) && (
         <span className="font-medium text-muted-foreground">/ {total}</span>
       )}
     </motion.span>

@@ -4,6 +4,7 @@ import { describe, test, expect } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { seedFullJobGraph, SEED_IDENTITY } from "./tests/seed";
+import { recomputePaperListProjection } from "./listProjection";
 
 /**
  * Safety net SN-3 (P3 plan): drive every public query once against a
@@ -31,10 +32,11 @@ async function seedAndAuth() {
       });
     }
   });
-  await t.mutation(
-    internal.extraction.mutations.internal.admin.rebuildJobListProjection,
-    { jobId: ids.jobId },
-  );
+  // Seeded rows, given the list projection their writes keep.
+  await t.run(async (ctx) => {
+    const papers = await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", ids.jobId)).take(100);
+    for (const paper of papers) await recomputePaperListProjection(ctx, paper._id);
+  });
   const auth = t.withIdentity(SEED_IDENTITY);
   return { t, auth, ids };
 }

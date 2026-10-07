@@ -264,6 +264,18 @@ export const mine = query({
   },
 });
 
+/** What the signed-in person's plan allows of each limit (#632): a number, or null for none. Null when signed out. */
+export const myLimits = query({
+  args: {},
+  returns: v.union(v.object({ collections: v.union(v.number(), v.null()), concurrency: v.union(v.number(), v.null()), assistant_replies: v.union(v.number(), v.null()), request_papers: v.union(v.number(), v.null()) }), v.null()),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+    const limit = async (name: PlanLimit) => (await planLimit(ctx, user._id, name)) ?? null;
+    return { collections: await limit("collections"), concurrency: await limit("concurrency"), assistant_replies: await limit("assistant_replies"), request_papers: await limit("request_papers") };
+  },
+});
+
 /** Preflight for dialogs that start paid work. Locks enforce the real limit. */
 export const checkBalance = query({
   args: { requiredAmount: v.number() },

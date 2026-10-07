@@ -5,7 +5,7 @@ import { getDocumentSize } from "convex/values";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
-import { PAPER_LIMIT, RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits";
+import { RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits";
 import { MAX_SIZE, seedAccount, seedExtractionJob, text } from "../lib/maxSize.test-support";
 
 const filters = { searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [] };
@@ -31,8 +31,8 @@ export function pagesAFullExtractionJob(searchQuery: string) {
       }
       const ids: string[] = [];
       let cursor: string | null = null;
-      for (let pages = 0; pages <= PAPER_LIMIT; pages++) {
-        const read: Awaited<ReturnType<typeof as.query<typeof api.extraction.queries.listJobResults>>> = await as.query(api.extraction.queries.listJobResults, { jobId, filters: { ...filters, searchQuery }, sortBy: "default", paginationOpts: { cursor, numItems: cursor ? RESULTS_PAGE_SIZE_MAX : PAPER_LIMIT } });
+      for (let pages = 0; pages <= MAX_SIZE.papersPerJob; pages++) {
+        const read: Awaited<ReturnType<typeof as.query<typeof api.extraction.queries.listJobResults>>> = await as.query(api.extraction.queries.listJobResults, { jobId, filters: { ...filters, searchQuery }, sortBy: "default", paginationOpts: { cursor, numItems: cursor ? RESULTS_PAGE_SIZE_MAX : MAX_SIZE.papersPerJob } });
         if (!cursor) expect(read.page.length).toBeLessThan(RESULTS_PAGE_SIZE_MAX);
         expect(read.page.length).toBeGreaterThan(0);
         expect(read.page.length).toBeLessThanOrEqual(RESULTS_PAGE_SIZE_MAX);
@@ -46,14 +46,14 @@ export function pagesAFullExtractionJob(searchQuery: string) {
         if (read.isDone) break;
         cursor = read.continueCursor;
       }
-      expect(ids).toHaveLength(PAPER_LIMIT);
+      expect(ids).toHaveLength(MAX_SIZE.papersPerJob);
       expect(new Set(ids)).toEqual(new Set(paperIds));
       // Selecting a late, small record never hydrates the unselected large answers.
       const selectedPaperIds = [paperIds.at(-1)!];
       const selected = await as.query(api.extraction.queries.listJobResults, { jobId, filters, selectedPaperIds, sortBy: "default", paginationOpts: { cursor: null, numItems: RESULTS_PAGE_SIZE_MAX } });
       expect(selected.page.map(paper => paper._id)).toEqual(selectedPaperIds);
       expect(selected.isDone).toBe(true);
-      expect(await as.query(api.extraction.queries.countJobResults, { jobId, filters, selectedPaperIds, includeRevision: true })).toMatchObject({ all: PAPER_LIMIT, matching: 1 });
+      expect(await as.query(api.extraction.queries.countJobResults, { jobId, filters, selectedPaperIds, includeRevision: true })).toMatchObject({ all: MAX_SIZE.papersPerJob, matching: 1 });
     }, 300_000);
   });
 }

@@ -16,7 +16,6 @@ import { extractionPricing, extractionStamp } from "../../ai/serverModel";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { assertBucketWithinLimits } from "../bucket/limits";
-import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import { availableCredits as readAvailableCredits, planLimit } from "../../billing/accounts";
 import { dedupeBucketItems } from "../../../lib/bucket/dedupe";
 import { assertValidJobTransition, type JobStatus } from "../stateMachine";
@@ -26,7 +25,7 @@ import {
   MAX_QUESTIONS_PER_JOB,
   MAX_QUESTION_TEXT_LENGTH,
 } from "../validators";
-import { writeJobSources, type BucketItemInput } from "../jobSources";
+import { MAX_JOB_SOURCES, writeJobSources, type BucketItemInput } from "../jobSources";
 import { extractionPaperCredits } from "../../../lib/pricing";
 import { cancelPaperQueueRowsForJobTx } from "../queue/mutations";
 import { refillPerson } from "../queue/dispatcher";
@@ -73,7 +72,6 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
   });
 
   // Shared: bucket validation + source persistence.
-  if (args.bucketItems.length > PAPER_LIMIT) throw createError("VALIDATION_ERROR", `An extraction can hold up to ${PAPER_LIMIT} sources.`);
   const deduped = dedupeBucketItems(args.bucketItems.map(item => item.source === "screening" && item.screeningSelection
     ? { ...item, bucketKey: `screening:${item.screeningSelection.jobId}` }
     : item));
@@ -202,7 +200,7 @@ export const duplicateJobAction = defineUserMutation({
     const oldSourceRows = await ctx.db
       .query("extractionJobSources")
       .withIndex("by_job_and_position", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT * 2);
+      .take(MAX_JOB_SOURCES);
     const bucketItems = oldSourceRows.map(bucketItemFromRow);
     for (const item of bucketItems) {
       if (item.source === "screening" && item.screeningSelection) await checkScreeningSelection(ctx, userId, item.screeningSelection.jobId, item.screeningSelection.revision);

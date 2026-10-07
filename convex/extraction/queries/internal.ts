@@ -17,9 +17,8 @@ import { getFlag } from "../../featureFlags/guard";
 import { holdOpen } from "../../billing/spend";
 import { userValidator } from "../../lib/validators";
 import { getProcessableFlags } from "../content";
-import { readJobSources } from "../jobSources";
+import { bucketItemFromRow } from "../jobSources";
 import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../../lib/queryBounds";
-import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import { creditsAgg } from "../aggregates";
 import {
   errorCodeValidator,
@@ -28,7 +27,7 @@ import {
   extractionPaperValidator,
   extractionQuestionValidator,
   extractionResultValidator,
-  jobSourcesReadValidator,
+  storedBucketItemValidator,
   jobStatusValidator,
   paperStatusValidator,
 } from "../validators";
@@ -96,11 +95,19 @@ export const getJobStatusInternal = internalQuery({
   },
 });
 
-export const getJobSourcesInternal = internalQuery({
-  args: { jobId: v.id("extractionJobs") },
-  returns: jobSourcesReadValidator,
-  handler: async (ctx, args) => {
-    return await readJobSources(ctx, args.jobId, PAPER_LIMIT * 2);
+/** Sources one setup step reads at most. */
+const SOURCES_A_STEP = 100;
+
+/** A job's sources from `position` on, at most `numItems` of them, each with its position: what one setup step reads (../actions.ts). */
+export const jobSourcesFrom = internalQuery({
+  args: { jobId: v.id("extractionJobs"), position: v.number(), numItems: v.number() },
+  returns: v.array(v.object({ position: v.number(), item: storedBucketItemValidator })),
+  handler: async (ctx, { jobId, position, numItems }) => {
+    const rows = await ctx.db
+      .query("extractionJobSources")
+      .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId).gte("position", position))
+      .take(Math.min(numItems, SOURCES_A_STEP));
+    return rows.map((row) => ({ position: row.position, item: bucketItemFromRow(row) }));
   },
 });
 
@@ -187,39 +194,6 @@ export const getPaperExtractionContext = internalQuery({
   },
 });
 
-export const getJobProgressInternal = internalQuery({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.object({
-    totalPapers: v.number(),
-    processedPapers: v.number(),
-    failedPapers: v.number(),
-  }),
-  handler: async (ctx, args) => {
-    const job = await ctx.db.get("extractionJobs", args.jobId);
-    if (!job) return { totalPapers: 0, processedPapers: 0, failedPapers: 0 };
-
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT);
-    const processablePapers = papers.filter((p) => p.processable !== false);
-    const processed = processablePapers.filter(
-      (p) => p.status === "completed",
-    ).length;
-    const failed = processablePapers.filter(
-      (p) =>
-        p.status === "failed" ||
-        p.status === "download_failed" ||
-        p.status === "indexing_failed",
-    ).length;
-
-    return {
-      totalPapers: job.totalPapers || processablePapers.length,
-      processedPapers: processed,
-      failedPapers: failed,
-    };
-  },
-});
 
 export const debugRecentPapers = internalQuery({
   args: {},
@@ -260,81 +234,6 @@ export const debugRecentPapers = internalQuery({
   },
 });
 
-// Debug query to surface per-paper content + status for a job. The
-// return shape is v.any() on purpose — it's an assertNonProd-gated
-// diagnostic that evolves with the extraction pipeline, and no prod
-// caller inspects its shape.
-export const getPapersDebug = internalQuery({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.any(),
-  handler: async (ctx, args) => {
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT);
-
-    const pdfFlag = await getFlag(ctx, "extraction.pdf");
-    const pdfEnabled = pdfFlag?.enabled ?? true;
-
-    const statusCounts: Record<string, number> = {};
-    const contentCounts = {
-      total: papers.length,
-      processable: 0,
-      hasPdfUrl: 0,
-      hasAbstract: 0,
-      abstractOnly: 0,
-      pdfOnly: 0,
-      pdfAndAbstract: 0,
-    };
-    const pendingPapers = [];
-    const papersWithWorkIds = [];
-
-    for (const paper of papers) {
-      statusCounts[paper.status] = (statusCounts[paper.status] || 0) + 1;
-      const { hasPdfUrl, hasAbstract } = getProcessableFlags({
-        pdfUrl: paper.pdfUrl,
-        oaUrl: paper.oaUrl,
-        storageId: paper.storageId,
-        abstract: paper.abstract,
-        pdfEnabled,
-      });
-      const isProcessable = paper.processable !== false;
-
-      if (hasPdfUrl) contentCounts.hasPdfUrl++;
-      if (hasAbstract) contentCounts.hasAbstract++;
-      if (hasPdfUrl && hasAbstract) contentCounts.pdfAndAbstract++;
-      if (hasPdfUrl && !hasAbstract) contentCounts.pdfOnly++;
-      if (!hasPdfUrl && hasAbstract) contentCounts.abstractOnly++;
-      if (isProcessable) contentCounts.processable++;
-
-      if (paper.status === "pending") {
-        pendingPapers.push({
-          id: paper._id,
-          openalexId: paper.openalexId,
-          title: paper.title,
-          pdfUrl: paper.pdfUrl,
-          workId: paper.workId,
-        });
-      }
-      if (paper.workId) {
-        papersWithWorkIds.push({
-          id: paper._id,
-          status: paper.status,
-          workId: paper.workId,
-        });
-      }
-    }
-
-    return {
-      totalPapers: papers.length,
-      statusCounts,
-      contentCounts,
-      pendingPapers: pendingPapers.slice(0, 20),
-      papersWithWorkIds: papersWithWorkIds.slice(0, 20),
-      samplePaper: papers[0] || null,
-    };
-  },
-});
 
 /** Library papers one `ownedLibraryItems` read takes. */
 export const LIBRARY_READ_BATCH = 100;

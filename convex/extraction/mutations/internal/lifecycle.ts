@@ -55,7 +55,9 @@ export const maybeFinalizeJob = internalMutation({
       job.status === "creditsExhausted" ||
       // A retry is still putting papers back to extracting in batches; the last batch
       // clears this and checks again (mutations/retry.ts).
-      job.retryReset
+      job.retryReset ||
+      // Its setup is still reading sources: papers it hasn't saved yet are still to come.
+      (job.setup !== undefined && !job.setup.done)
     ) {
       return null;
     }

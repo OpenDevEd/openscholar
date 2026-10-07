@@ -9,36 +9,17 @@ import { internalMutation } from "../../../lib/functions";
 import { v } from "convex/values";
 import { internal } from "../../../_generated/api";
 import { batchDeleteByIndex } from "../../../lib/cascade";
-import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import { clearJobCredits } from "../../aggregates";
 import { recomputePaperListProjection } from "../../listProjection";
 
-const PROJECTION_REPAIR_BATCH_SIZE = 25;
-
-function paperNeedsListProjectionRepair(paper: {
-  sortTitle?: string;
-  avgConfidence?: number;
-  hasErrors?: boolean;
-  hasPdfSource?: boolean;
-  questionAnswerTokens?: string[];
-  searchText?: string;
-}) {
-  return (
-    typeof paper.sortTitle !== "string" ||
-    typeof paper.avgConfidence !== "number" ||
-    !Number.isFinite(paper.avgConfidence) ||
-    typeof paper.hasErrors !== "boolean" ||
-    typeof paper.hasPdfSource !== "boolean" ||
-    !Array.isArray(paper.questionAnswerTokens) ||
-    typeof paper.searchText !== "string"
-  );
-}
 
 export const deleteExtractionInternal = internalMutation({
   args: { jobId: v.id("extractionJobs") },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
     const BATCH_SIZE = 100;
+    // Papers one pass deletes, each with up to BATCH_SIZE of each kind of child.
+    const PAPERS_A_PASS = 20;
     const { jobId } = args;
 
     const reschedule = async (): Promise<null> => {
@@ -50,57 +31,33 @@ export const deleteExtractionInternal = internalMutation({
       return null;
     };
 
-    // Steps 1-3: delete extractionPapers' children (evidence units, results)
-    // — these hang off paperId, not jobId, so iterate the papers we
-    // have. Each inner drain shares the helper.
+    // Steps 1-4: a pass of the job's papers, each with its evidence, results and facts, then
+    // the paper and its PDF. A paper with more children than a batch takes another pass.
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .take(PAPER_LIMIT);
-
+      .take(PAPERS_A_PASS);
     const perPaperChildTables: Array<[string, string]> = [
       ["extractionEvidenceUnits", "by_paper"],
       ["extractionResults", "by_paper"],
       ["extractionAnswerRows", "by_paper"],
       ["extractionPaperFacts", "by_paper"],
     ];
-    for (const [table, indexName] of perPaperChildTables) {
-      for (const paper of papers) {
-        const deleted = await batchDeleteByIndex(
-          ctx,
-          table,
-          indexName,
-          "paperId",
-          paper._id,
-          BATCH_SIZE,
-        );
-        if (deleted > 0) return reschedule();
+    for (const paper of papers) {
+      for (const [table, indexName] of perPaperChildTables) {
+        const deleted = await batchDeleteByIndex(ctx, table, indexName, "paperId", paper._id, BATCH_SIZE);
+        if (deleted === BATCH_SIZE) return reschedule();
       }
-    }
-
-    // Step 4: delete extractionPapers with inline storage cleanup. Done
-    // inline (not via the helper) because each row also deletes its PDF
-    // blob from storage.
-    const remainingPapers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .take(BATCH_SIZE);
-    if (remainingPapers.length > 0) {
-      for (const paper of remainingPapers) {
-        if (paper.storageId) {
-          try {
-            await ctx.storage.delete(paper.storageId);
-          } catch (e) {
-            console.error(
-              `Failed to delete PDF storage for paper ${paper._id}:`,
-              e,
-            );
-          }
+      if (paper.storageId) {
+        try {
+          await ctx.storage.delete(paper.storageId);
+        } catch (e) {
+          console.error(`Failed to delete PDF storage for paper ${paper._id}:`, e);
         }
-        await ctx.db.delete(paper._id);
       }
-      return reschedule();
+      await ctx.db.delete(paper._id);
     }
+    if (papers.length > 0) return reschedule();
 
     // Plan-04: wipe the creditsAgg namespace for this job so cached
     // per-job totals return 0 immediately. The creditTransactions
@@ -144,76 +101,6 @@ export const deleteExtractionInternal = internalMutation({
   },
 });
 
-export const cleanupFailedPaperStorage = internalMutation({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.object({ cleaned: v.number() }),
-  handler: async (ctx, args): Promise<{ cleaned: number }> => {
-    // Convex guidelines forbid `.filter()` on DB queries; read via index
-    // and skip papers without a storageId in JS. Bounded by
-    // PAPER_LIMIT, so the extra rows read are acceptable.
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT);
-
-    let cleaned = 0;
-    for (const paper of papers) {
-      if (!paper.storageId) continue;
-      try {
-        await ctx.storage.delete(paper.storageId);
-        await ctx.db.patch("extractionPapers", paper._id, {
-          storageId: undefined,
-        });
-        await recomputePaperListProjection(ctx, paper._id);
-        cleaned++;
-      } catch (e) {
-        console.error(`Failed to delete storage for paper ${paper._id}:`, e);
-      }
-    }
-
-    return { cleaned };
-  },
-});
-
-export const rebuildJobListProjection = internalMutation({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.object({
-    scanned: v.number(),
-    rebuilt: v.number(),
-    remaining: v.number(),
-    scheduled: v.boolean(),
-  }),
-  handler: async (ctx, args) => {
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT);
-
-    const missingProjectionPapers = papers.filter(paperNeedsListProjectionRepair);
-    const batch = missingProjectionPapers.slice(0, PROJECTION_REPAIR_BATCH_SIZE);
-
-    for (const paper of batch) {
-      await recomputePaperListProjection(ctx, paper._id);
-    }
-
-    const remaining = Math.max(0, missingProjectionPapers.length - batch.length);
-    const scheduled = remaining > 0;
-    if (scheduled) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.extraction.mutations.internal.admin.rebuildJobListProjection,
-        { jobId: args.jobId },
-      );
-    }
-
-    return {
-      scanned: papers.length,
-      rebuilt: batch.length,
-      remaining,
-      scheduled,
-    };
-  },
-});
 
 export const cleanupOldPdfs = internalMutation({
   args: {

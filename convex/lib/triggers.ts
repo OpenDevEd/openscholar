@@ -14,6 +14,8 @@ import { nameJob } from "../extraction/jobList";
 import { recordRevisionApprovedQueries } from "../evidenceLibraries/approvedQueries";
 import { countChange } from "../research/recordCounts";
 import { copyChangedFacets, countItemChange, fillAndCountMembership } from "../library/facets";
+import { countAnswerChange, countPaperChange as countPaperFacets } from "../extraction/facets";
+import { tallyAnswerChange } from "../extraction/tallies";
 import { ADMIN_LIST, countList, libraryVersionList, organizationLibrariesOf, walletKeyList } from "./listCounts";
 
 export const triggers = new Triggers<DataModel>();
@@ -47,3 +49,7 @@ triggers.register("evidenceLibraries", countList((library) => organizationLibrar
 triggers.register("libraryItems", copyChangedFacets);
 triggers.register("libraryItems", countItemChange);
 triggers.register("libraryItemCollections", fillAndCountMembership);
+// An extraction job's filtered views, counts and summaries read what these keep (convex/extraction/facets.ts, tallies.ts).
+triggers.register("extractionPapers", countPaperFacets);
+triggers.register("extractionAnswerRows", countAnswerChange);
+triggers.register("extractionAnswerRows", tallyAnswerChange);

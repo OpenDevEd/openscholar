@@ -1,7 +1,11 @@
 /**
- * Job-results queries. A page is read by cursor through the index of its order, with the
- * filters applied from each paper's projection as it reads; a search reads its matches and
- * sorts them. A filtered view is counted apart, and an export reads the pages one by one.
+ * Job-results queries, for a job of any size (#634). An unfiltered page reads the index of
+ * its order. A filtered one reads the papers its narrowest filter keeps when they're few,
+ * from the job's counts (../facets.ts), and sorts them; when they're many, it reads its
+ * order's index and applies the filters as it goes, which fills a page quickly. A search
+ * reads its matches, at most the search engine's limit, and sorts them. A filtered count is
+ * exact from the counts for one filter, and read along the narrowest for several; a summary
+ * reads each question's tallies (../tallies.ts).
  */
 
 import { getStatusFilterOptionIds } from "../../../lib/extraction/status-filter-options";
@@ -17,7 +21,9 @@ import { ownJob } from "../access";
 import { exportRevision } from "../counts";
 import { requireFeature } from "../../featureFlags/guard";
 import { createError } from "../../lib/errors";
-import { PAPER_LIMIT, RESULTS_PAGE_SIZE_MAX } from "@/lib/extraction/limits";
+import { RESULTS_PAGE_SIZE_MAX } from "@/lib/extraction/limits";
+import { answerOf, confidenceOf, countIn, idsIn, tagOf, type PaperTag, type Range } from "../facets";
+import { largestGroups } from "../tallies";
 import {
   paginatedPaperWithResultsValidator,
   resultsSummaryValidator,
@@ -69,34 +75,6 @@ async function normalizeResultsFilters(filters: ResultsPageFilters) {
       token: await buildQuestionAnswerToken(filter.questionKey, filter.value),
     }))),
   };
-}
-
-function getMissingProjectionFields(paper: Doc<"extractionPapers">) {
-  const missing: string[] = [];
-  if (typeof paper.sortTitle !== "string") missing.push("sortTitle");
-  if (typeof paper.avgConfidence !== "number" || !Number.isFinite(paper.avgConfidence)) {
-    missing.push("avgConfidence");
-  }
-  if (typeof paper.hasErrors !== "boolean") missing.push("hasErrors");
-  if (typeof paper.hasPdfSource !== "boolean") missing.push("hasPdfSource");
-  if (!Array.isArray(paper.questionAnswerTokens)) {
-    missing.push("questionAnswerTokens");
-  }
-  if (typeof paper.searchText !== "string") missing.push("searchText");
-  return missing;
-}
-
-function assertProjectionReady(
-  jobId: Id<"extractionJobs">,
-  papers: ReadonlyArray<Doc<"extractionPapers">>,
-) {
-  const stalePaper = papers.find((paper) => getMissingProjectionFields(paper).length > 0);
-  if (!stalePaper) return;
-
-  const missing = getMissingProjectionFields(stalePaper).join(", ");
-  throw new Error(
-    `Extraction results projection missing for job ${jobId} on paper ${stalePaper._id} (${missing}). Run internal.extraction.mutations.internal.admin.rebuildJobListProjection({ jobId }) and retry.`,
-  );
 }
 
 /** What the page's filters read of a paper: a paper, or its facts row (validators.ts `extractionPaperFactFields`). */
@@ -164,75 +142,97 @@ function matchesProjectionFilters(
   return matchesQuestionFilters(paper, filters.questionFilters);
 }
 
-async function readFilteredJobPapers(
-  ctx: QueryCtx,
-  args: {
-    job: Doc<"extractionJobs">;
-    filters: NormalizedResultsFilters;
-    sortBy: ResultsSortBy;
-    limit: number;
-    selectedPaperIds?: Id<"extractionPapers">[];
-  },
-) {
-  const jobId = args.job._id;
-  if (args.filters.emptySearch) {
-    return { totalAll: args.job.totalPapers ?? 0, totalFiltered: 0, filteredPapers: [] };
-  }
-  // A search reads only its matches: reading every paper as well would take a
-  // 1,000-paper job's page of 200 past the 16 MiB a query may read. The job's
-  // processable paper count, set when its papers were saved, stands in for the total.
-  const searched = Boolean(args.filters.searchQuery);
-  const candidatePapers = searched
-    ? await ctx.db
-        .query("extractionPapers")
-        .withSearchIndex("search_by_job_text", (q) =>
-          q
-            .search("searchText", args.filters.searchQuery)
-            .eq("jobId", jobId)
-            .eq("processable", true),
-        )
-        .take(args.limit)
-    : args.selectedPaperIds !== undefined
-    ? (await Promise.all([...new Set(args.selectedPaperIds)].map(id => ctx.db.get(id))))
-        .filter((paper): paper is Doc<"extractionPapers"> => paper !== null && paper.jobId === jobId && paper.processable === true)
-        .sort((a, b) => compareValues([a._creationTime, a._id], [b._creationTime, b._id]))
-    : await ctx.db
-        .query("extractionPapers")
-        .withIndex("by_job_processable", (q) =>
-          q.eq("jobId", jobId).eq("processable", true),
-        )
-        .order("asc")
-        .take(args.limit);
+/** The search engine's limit: a search reads at most this many matches, and says so when it reaches it. */
+const SEARCH_RESULTS_MAX = 1_024;
+/** Papers a filtered page reads of its narrowest filter, to sort them itself, when that filter keeps at most this many. */
+const IN_MEMORY_PAPERS = 1_000;
+/** Rows a filtered page reads along its order when its filters keep more papers than that: they then fill a page well within it. */
+const FILTERED_PAGE_ROWS = 4_000;
+/** Papers of the narrowest filter a count of several filters, or a summary with filters, reads at most. */
+const READ_PAPERS = 8_000;
+/** Ids read from the counts at a time. */
+const IDS_PAGE = 1_000;
 
-  assertProjectionReady(jobId, candidatePapers);
-  const selected = args.selectedPaperIds === undefined ? null : new Set(args.selectedPaperIds);
+/**
+ * One of the filters a view's papers must all meet, with how many papers it keeps (a moment
+ * behind the writes) and the ids of those papers. Status tags are one filter: a paper meets
+ * it with any of them, so its count adds up theirs and its ids are theirs together.
+ */
+type Part = { ranges: Array<{ namespace: string; range: Range }> };
 
-  const filteredPapers = sortFilteredPapers(
-    candidatePapers.filter((paper) => (!selected || selected.has(paper._id)) && matchesProjectionFilters(paper, args.filters)),
-    args.sortBy,
-  );
-
-  return {
-    totalAll: searched || args.selectedPaperIds !== undefined ? (args.job.totalPapers ?? 0) : candidatePapers.length,
-    totalFiltered: filteredPapers.length,
-    filteredPapers,
-  };
+function partsOf(jobId: Id<"extractionJobs">, filters: NormalizedResultsFilters): Part[] {
+  const [min, max] = filters.confidenceRange;
+  const confidence: Part[] = min > 0 || max < 1 ? [{ ranges: [{ namespace: confidenceOf(jobId), range: { lower: min, upper: max } }] }] : [];
+  const status = filters.statusFilters.length
+    ? [{ ranges: filters.statusFilters.flatMap((tag): Part["ranges"] => {
+        if (tag === "high-confidence") return [{ namespace: confidenceOf(jobId), range: { lower: 0.8 } }];
+        if (tag === "low-confidence") return [{ namespace: confidenceOf(jobId), range: { below: 0.5 } }];
+        return [{ namespace: tagOf(jobId), range: { eq: tag as PaperTag } }];
+      }) }]
+    : [];
+  // An answer no paper can give (one with no token) matches nothing: an empty part.
+  const answers = filters.questionFilters.map((filter): Part => ({ ranges: filter.token === null ? [] : [{ namespace: answerOf(jobId, filter.questionKey), range: { eq: filter.token } }] }));
+  return [...confidence, ...status, ...answers];
 }
 
-async function loadPaginatedPaperResults(
-  ctx: QueryCtx,
-  papers: ReadonlyArray<Doc<"extractionPapers">>,
-) {
+const countOf = async (ctx: QueryCtx, part: Part) => (await Promise.all(part.ranges.map(({ namespace, range }) => countIn(ctx, namespace, range)))).reduce((sum, count) => sum + count, 0);
+
+/** The ids a part keeps, up to `most` of them: whether it read them all. A paper under two of its tags is read once. */
+async function idsOf(ctx: QueryCtx, part: Part, most: number) {
+  const ids = new Set<string>();
+  for (const { namespace, range } of part.ranges) {
+    for (let cursor: string | undefined; ;) {
+      const page = await idsIn(ctx, namespace, range, cursor, IDS_PAGE);
+      // A tag's entry is "paper:tag"; every other entry's id is the paper's.
+      for (const id of page.ids) ids.add(id.split(":")[0]);
+      if (ids.size > most) return { ids: [...ids].slice(0, most), all: false };
+      if (page.isDone) break;
+      cursor = page.cursor;
+    }
+  }
+  return { ids: [...ids], all: true };
+}
+
+/** The view's narrowest part and how many papers it keeps, or null for a view with no filters. */
+async function narrowestOf(ctx: QueryCtx, parts: Part[]) {
+  if (!parts.length) return null;
+  const counts = await Promise.all(parts.map((part) => countOf(ctx, part)));
+  const at = counts.indexOf(Math.min(...counts));
+  return { part: parts[at], count: counts[at], counts };
+}
+
+/** A search's matches, at most the search engine's limit, and whether it reached it. */
+async function searchMatches(ctx: QueryCtx, jobId: Id<"extractionJobs">, searchQuery: string) {
+  const found = await ctx.db
+    .query("extractionPapers")
+    .withSearchIndex("search_by_job_text", (q) => q.search("searchText", searchQuery).eq("jobId", jobId).eq("processable", true))
+    .take(SEARCH_RESULTS_MAX);
+  return { papers: found, capped: found.length === SEARCH_RESULTS_MAX };
+}
+
+/** The papers picked, as they stand: each of the job's processable ones once, in the order they were added. */
+async function pickedPapers(ctx: QueryCtx, jobId: Id<"extractionJobs">, ids: Id<"extractionPapers">[]) {
+  return (await Promise.all([...new Set(ids)].map((id) => ctx.db.get(id))))
+    .filter((paper): paper is Doc<"extractionPapers"> => paper !== null && paper.jobId === jobId && paper.processable === true)
+    .sort((a, b) => compareValues([a._creationTime, a._id], [b._creationTime, b._id]));
+}
+
+/** A page of papers read in full and sorted here, from `cursor`: how many came before it. */
+async function pageInMemory(ctx: QueryCtx, papers: Doc<"extractionPapers">[], cursor: string | null, numItems: number) {
+  const start = Math.max(0, Math.floor(Number(cursor ?? 0)) || 0);
   const page: Infer<typeof paginatedPaperWithResultsValidator>[] = [];
   let bytes = 0;
-  for (const paper of papers) {
+  for (const paper of papers.slice(start, start + numItems)) {
     const item = await loadPaperResults(ctx, paper);
     page.push(item);
     bytes += getDocumentSize(item);
     if (bytes >= RESULTS_PAGE_BYTES) break;
   }
-  return page;
+  return { page, isDone: start + page.length >= papers.length, continueCursor: String(start + page.length) };
 }
+
+/** A sorted page cursor carries this mark; a cursor along the order's index doesn't. */
+const SORTED = "sorted:";
 
 async function loadPaperResults(ctx: QueryCtx, paper: Doc<"extractionPapers">) {
   const results = await loadResultsByPaperIds(ctx, [paper._id]);
@@ -293,46 +293,80 @@ export const listJobResultsAction = defineUserQuery({
     const filters = await normalizeResultsFilters(args.filters);
     const numItems = normalizePageSize(args.paginationOpts.numItems);
     const { cursor } = args.paginationOpts;
+    if (filters.emptySearch) return { page: [], isDone: true, continueCursor: "" };
 
-    if (filters.searchQuery || filters.emptySearch || args.selectedPaperIds !== undefined) {
-      // A search reads its matches by relevance, at most PAPER_LIMIT of them, so they are
-      // sorted here and the cursor is how many came before.
-      const { filteredPapers } = await readFilteredJobPapers(ctx, { job, filters, sortBy: args.sortBy, limit: PAPER_LIMIT, selectedPaperIds: args.selectedPaperIds });
-      const start = Math.max(0, Math.floor(Number(cursor ?? 0)) || 0);
-      const page = await loadPaginatedPaperResults(ctx, filteredPapers.slice(start, start + numItems));
-      return { page, isDone: start + page.length >= filteredPapers.length, continueCursor: String(start + page.length) };
+    if (filters.searchQuery || args.selectedPaperIds !== undefined) {
+      // A search's matches or the papers picked: few enough to read whole and sort here.
+      const candidates = filters.searchQuery ? (await searchMatches(ctx, job._id, filters.searchQuery)).papers : await pickedPapers(ctx, job._id, args.selectedPaperIds!);
+      const picked = args.selectedPaperIds === undefined ? null : new Set<string>(args.selectedPaperIds);
+      const kept = sortFilteredPapers(candidates.filter((paper) => (!picked || picked.has(paper._id)) && matchesProjectionFilters(paper, filters)), args.sortBy);
+      return await pageInMemory(ctx, kept, cursor, numItems);
     }
 
     const [index, order] = RESULTS_ORDER[args.sortBy];
-    const papers = stream(ctx.db, schema)
+    const along = () => stream(ctx.db, schema)
       .query("extractionPapers")
       .withIndex(index, (q) => q.eq("jobId", job._id).eq("processable", true))
-      .order(order)
-      .filterWith(async (paper) => {
-        assertProjectionReady(job._id, [paper]);
-        return matchesProjectionFilters(paper, filters);
-      });
-      // A job holds at most PAPER_LIMIT papers, so a filter reads each once at most.
-    // The answers each paper is joined to count toward the page's bytes; the paper's own bytes already do.
-    const joined = new JoinStream(papers, (paper) => loadPaperResults(ctx, paper), (item) => getDocumentSize({ results: item.results }));
-    const read = await joined.paginate({ ...args.paginationOpts, numItems, maximumRowsRead: PAPER_LIMIT, maximumBytesRead: RESULTS_PAGE_BYTES });
-    return read;
+      .order(order);
+    const parts = partsOf(job._id, filters);
+    if (!parts.length) return await new JoinStream(along(), (paper) => loadPaperResults(ctx, paper), (item) => getDocumentSize({ results: item.results })).paginate({ ...args.paginationOpts, numItems, maximumBytesRead: RESULTS_PAGE_BYTES });
+
+    // A view whose narrowest filter keeps few papers reads them and sorts them here; it says so in its cursor.
+    const sorted = cursor?.startsWith(SORTED) ?? false;
+    const narrowest = cursor === null ? await narrowestOf(ctx, parts) : null;
+    if (sorted || (narrowest && narrowest.count <= IN_MEMORY_PAPERS)) {
+      const part = narrowest?.part ?? (await narrowestOf(ctx, parts))!.part;
+      const { ids } = await idsOf(ctx, part, Number.MAX_SAFE_INTEGER);
+      const papers = (await Promise.all(ids.map((id) => ctx.db.get(id as Id<"extractionPapers">))))
+        .filter((paper): paper is Doc<"extractionPapers"> => paper !== null && paper.processable === true && matchesProjectionFilters(paper, filters));
+      const read = await pageInMemory(ctx, sortFilteredPapers(papers.sort((a, b) => compareValues([a._creationTime, a._id], [b._creationTime, b._id])), args.sortBy), sorted ? cursor!.slice(SORTED.length) : null, numItems);
+      return { ...read, continueCursor: SORTED + read.continueCursor };
+    }
+    // Its filters keep many papers: along the order's index, applying them as it reads.
+    const kept = along().filterWith(async (paper) => matchesProjectionFilters(paper, filters));
+    return await new JoinStream(kept, (paper) => loadPaperResults(ctx, paper), (item) => getDocumentSize({ results: item.results }))
+      .paginate({ ...args.paginationOpts, numItems, maximumRowsRead: FILTERED_PAGE_ROWS, maximumBytesRead: RESULTS_PAGE_BYTES });
   },
 });
 export const listJobResults = userQuery(listJobResultsAction);
 export const listJobResultsForAssistant = assistantQuery(listJobResultsAction);
 
+/**
+ * How many papers a view keeps: exact from the job's counts for one filter (status tags
+ * together are one); several are counted by reading the papers the narrowest keeps, and
+ * `atLeast` says when it stopped short of them all, as a search that reached the search
+ * engine's limit does.
+ */
+async function countView(ctx: QueryCtx, job: Doc<"extractionJobs">, filters: NormalizedResultsFilters, selectedPaperIds?: Id<"extractionPapers">[]) {
+  const all = job.totalPapers ?? 0;
+  if (filters.emptySearch) return { all, matching: 0, atLeast: false };
+  if (filters.searchQuery) {
+    const { papers, capped } = await searchMatches(ctx, job._id, filters.searchQuery);
+    const picked = selectedPaperIds === undefined ? null : new Set<string>(selectedPaperIds);
+    return { all, matching: papers.filter((paper) => (!picked || picked.has(paper._id)) && matchesProjectionFilters(paper, filters)).length, atLeast: capped };
+  }
+  if (selectedPaperIds !== undefined) return { all, matching: (await pickedPapers(ctx, job._id, selectedPaperIds)).filter((paper) => matchesProjectionFilters(paper, filters)).length, atLeast: false };
+  const parts = partsOf(job._id, filters);
+  const narrowest = await narrowestOf(ctx, parts);
+  if (!narrowest) return { all, matching: all, atLeast: false };
+  // One filter, with one range: its count. Status tags together overlap, so they're read.
+  if (parts.length === 1 && narrowest.part.ranges.length <= 1) return { all, matching: narrowest.count, atLeast: false };
+  const { ids, all: readAll } = await idsOf(ctx, narrowest.part, READ_PAPERS);
+  const facts = await Promise.all(ids.map((id) => ctx.db.query("extractionPaperFacts").withIndex("by_paper", (q) => q.eq("paperId", id as Id<"extractionPapers">)).unique()));
+  return { all, matching: facts.filter((fact) => fact !== null && matchesProjectionFilters(fact, filters)).length, atLeast: !readAll };
+}
+
 export const countJobResultsAction = defineUserQuery({
   path: "extraction/queries:countJobResults",
-  description: `Counts an extraction job's papers, and how many of them a set of filters keeps. ${FILTERS_HELP}`,
+  description: `Counts an extraction job's papers, and how many of them a set of filters keeps. A count that stopped short of them all comes with \`atLeast\`. ${FILTERS_HELP}`,
   args: { ...resultsViewArgs, includeRevision: v.optional(v.boolean()) },
-  returns: v.object({ all: v.number(), matching: v.number(), revision: v.union(v.number(), v.null()) }),
+  returns: v.object({ all: v.number(), matching: v.number(), atLeast: v.optional(v.literal(true)), revision: v.union(v.number(), v.null()) }),
   run: async (ctx, userId, args) => {
     const job = await ownJob(ctx, userId, args.jobId);
     if (!job) return { all: 0, matching: 0, revision: -1 };
     await requireFeature(ctx, "extraction.enabled", userId);
-    const { totalAll, totalFiltered } = await readFilteredJobPapers(ctx, { job, filters: await normalizeResultsFilters(args.filters), sortBy: "default", limit: PAPER_LIMIT, selectedPaperIds: args.selectedPaperIds });
-    return { all: totalAll, matching: totalFiltered, revision: args.includeRevision ? await exportRevision(ctx, job._id) : null };
+    const { all, matching, atLeast } = await countView(ctx, job, await normalizeResultsFilters(args.filters), args.selectedPaperIds);
+    return { all, matching, ...(atLeast ? { atLeast: true as const } : {}), revision: args.includeRevision ? await exportRevision(ctx, job._id) : null };
   },
 });
 export const countJobResults = userQuery(countJobResultsAction);
@@ -365,21 +399,40 @@ export const summarizeJobResultsAction = defineUserQuery({
     if (filters?.searchQuery.trim()) throw createError("VALIDATION_ERROR", "A summary can't be narrowed by text search: narrow it by status, confidence or other questions' answers.");
     const question = await ctx.db.query("extractionQuestions").withIndex("by_job_key", (q) => q.eq("jobId", jobId).eq("key", questionKey)).unique();
     if (!question) throw createError("VALIDATION_ERROR", `This job has no question with the key ${questionKey}.`);
-    // One small row a paper for this question, and with a filter each paper's facts: a job holds at most PAPER_LIMIT papers.
-    // The page's own filter keeps them, by the page's tokens and tags.
-    const rows = await ctx.db.query("extractionAnswerRows").withIndex("by_job_question", (q) => q.eq("jobId", jobId).eq("questionKey", questionKey)).take(PAPER_LIMIT);
-    let kept = rows;
-    if (filters) {
-      const normalized = await normalizeResultsFilters(filters);
-      const facts = new Map((await ctx.db.query("extractionPaperFacts").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(PAPER_LIMIT)).map((fact) => [fact.paperId as string, fact]));
-      kept = rows.filter((row) => {
-        const fact = facts.get(row.paperId);
-        return fact !== undefined && matchesProjectionFilters(fact, normalized);
-      });
+    const normalized = filters ? await normalizeResultsFilters(filters) : null;
+    const parts = normalized ? partsOf(jobId, normalized) : [];
+
+    if (!parts.length) {
+      // Every paper: the question's tallies, largest first, and its counts.
+      const [answers, items, papers, unanswered] = await Promise.all([
+        largestGroups(ctx, jobId, questionKey, "answer", SUMMARY_GROUPS),
+        largestGroups(ctx, jobId, questionKey, "item", SUMMARY_GROUPS),
+        countIn(ctx, answerOf(jobId, questionKey), {}).then(async (answered) => answered + (await countIn(ctx, answerOf(jobId, questionKey), { eq: null }))),
+        countIn(ctx, answerOf(jobId, questionKey), { eq: null }),
+      ]);
+      return {
+        question: question.question,
+        papers,
+        answered: papers - unanswered,
+        answers: answers.top.map((group) => ({ answer: group.shown, papers: group.papers })),
+        moreAnswers: Math.max(0, answers.groups - answers.top.length),
+        items: items.top.map((group) => ({ item: group.shown, papers: group.papers })),
+      };
+    }
+
+    // The papers the filters keep, read from the narrowest, each with its answer to this question.
+    const { ids, all } = await idsOf(ctx, (await narrowestOf(ctx, parts))!.part, READ_PAPERS);
+    const rows: Doc<"extractionAnswerRows">[] = [];
+    for (const id of ids) {
+      const paperId = id as Id<"extractionPapers">;
+      const fact = await ctx.db.query("extractionPaperFacts").withIndex("by_paper", (q) => q.eq("paperId", paperId)).unique();
+      if (!fact || !matchesProjectionFilters(fact, normalized!)) continue;
+      const row = await ctx.db.query("extractionAnswerRows").withIndex("by_paper_question", (q) => q.eq("paperId", paperId).eq("questionKey", questionKey)).unique();
+      if (row) rows.push(row);
     }
     const answers = new Map<string, Counted>();
     const items = new Map<string, Counted>();
-    for (const row of kept) {
+    for (const row of rows) {
       if (row.token === null) continue;
       count(answers, row.token, row.shown, row.paperId);
       for (const item of row.items) count(items, item.key, item.shown, row.paperId);
@@ -387,11 +440,12 @@ export const summarizeJobResultsAction = defineUserQuery({
     const grouped = largest(answers);
     return {
       question: question.question,
-      papers: kept.length,
-      answered: kept.filter((row) => row.token !== null).length,
+      papers: rows.length,
+      answered: rows.filter((row) => row.token !== null).length,
       answers: grouped.top.map((group) => ({ answer: group.shown, papers: group.papers.size })),
       moreAnswers: grouped.more,
       items: largest(items).top.map((group) => ({ item: group.shown, papers: group.papers.size })),
+      ...(all ? {} : { partial: true as const }),
     };
   },
 });

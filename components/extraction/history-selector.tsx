@@ -17,7 +17,7 @@ import { DEFAULT_SEARCH_PARAMS, searchResultToParams } from "@/lib/search-params
 import { useAppToast } from "@/lib/toast";
 import { bucketAdded } from "@/lib/toast/bucket";
 import type { SearchResult } from "@/lib/types";
-import { PAPER_LIMIT, PAPER_PULL_CAP, PAPER_PULL_DEFAULT } from "@/lib/extraction/limits";
+import { PAPER_PULL_DEFAULT } from "@/lib/extraction/limits";
 import { browserExpand, ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 
 const HISTORY_BUCKET_KEY_PREFIX = "history:";
@@ -67,7 +67,7 @@ function HistoryRowChip({
   );
 }
 
-export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
+export function HistorySelector({ paperLimit }: { paperLimit: number }) {
   const format = useFormatter();
   const now = useNow();
   const t = useTranslations("extraction");
@@ -77,8 +77,9 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
   const { ready } = useResearchStatus();
   const searches = useSearchList({ sort: "recent", pageSize: PAGE_SIZE });
   const searchHistory = searches.items;
-  const limit = paperLimit ?? PAPER_LIMIT;
-  const pullCap = PAPER_PULL_CAP;
+  const limit = paperLimit;
+  // One search may pull as many papers as the whole extraction takes.
+  const pullCap = paperLimit;
   const pullDefault = PAPER_PULL_DEFAULT;
   const addMany = useBucketStore((s) => s.addMany);
   const removeMany = useBucketStore((s) => s.removeMany);

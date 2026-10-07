@@ -40,8 +40,6 @@ function resolve(root: unknown, segments: string[]): unknown {
 // [scope, name] — scope is the dotted path under internal.extraction.mutations.
 const INTERNAL_MUTATIONS: ReadonlyArray<readonly [string, string]> = [
   ["internal.admin", "deleteExtractionInternal"],
-  ["internal.admin", "cleanupFailedPaperStorage"],
-  ["internal.admin", "rebuildJobListProjection"],
   ["internal.admin", "cleanupOldPdfs"],
   ["internal.lifecycle", "maybeFinalizeJob"],
   ["internal.lifecycle", "createJobDirect"],
@@ -64,12 +62,10 @@ const INTERNAL_MUTATIONS: ReadonlyArray<readonly [string, string]> = [
 const INTERNAL_QUERIES: ReadonlyArray<readonly [string, string]> = [
   ["internal", "getJobInternal"],
   ["internal", "getJobStatusInternal"],
+  ["internal", "jobSourcesFrom"],
   ["internal", "debugRecentPapers"],
-  ["internal", "getJobSourcesInternal"],
   ["internal", "getJobAndFlagsInternal"],
   ["internal", "getPaperExtractionContext"],
-  ["internal", "getJobProgressInternal"],
-  ["internal", "getPapersDebug"],
   ["papers", "resultsInternal"],
   ["papers", "byId"],
 ];
@@ -78,8 +74,6 @@ const INTERNAL_QUERIES: ReadonlyArray<readonly [string, string]> = [
 // `actions.ts` hosts OpenAlex fetch; `workpoolActions.ts` hosts pipeline
 // actions; `debug_pdfjs_alignment.ts` hosts a debug action.
 const INTERNAL_ACTIONS: ReadonlyArray<readonly [string, string]> = [
-  ["actions", "fetchPapersFromHistory"],
-  ["actions", "fetchAndPersistPapers"],
   ["actions", "setupExtractionQueueJob"],
   ["paperWorker", "runPaperQueueItem"],
   ["debug_pdfjs_alignment", "debugPdfAlignment"],

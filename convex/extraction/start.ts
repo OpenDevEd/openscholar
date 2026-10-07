@@ -23,7 +23,6 @@ import { currentSearch } from "../../lib/research/records";
 import { isRatingFilterActive } from "../../lib/utils";
 import { buildDedupeKey } from "../../lib/bucket/dedupe";
 import { extractionPaperCredits } from "../../lib/pricing";
-import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { startJobFor } from "./mutations/jobs";
 import { checkScreeningSelection } from "./sources/screening";
 import { MAX_QUESTIONS_PER_JOB, MAX_QUESTION_TEXT_LENGTH, bucketItemInputValidator, questionInputValidator, questionTypeValidator, searchFiltersValidator } from "./validators";
@@ -58,10 +57,9 @@ function checkQuestions(questions: Array<{ question: string }>) {
   if (questions.some((asked) => asked.question.length > MAX_QUESTION_TEXT_LENGTH)) throw invalid(`A question can be at most ${MAX_QUESTION_TEXT_LENGTH.toLocaleString("en")} characters.`);
 }
 
-/** Papers `first` to `last` of a collection, the library or a search: from 1 up, at most PAPER_LIMIT, and a search from its first. */
+/** Papers `first` to `last` of a collection, the library or a search: from 1 up, and a search from its first. The plan caps how many. */
 function checkRange(set: PaperSet, first: number, last: number) {
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw invalid("Pick papers from 1 up, with the first before the last");
-  if (last - first + 1 > PAPER_LIMIT) throw invalid(`An extraction takes up to ${PAPER_LIMIT.toLocaleString("en")} papers.`);
   // The job reads a search's papers itself, from the first.
   if (set.kind === "search" && first !== 1) throw invalid("An extraction reads a search from its first paper: give `first` as 1.");
 }
@@ -98,7 +96,7 @@ async function checkExtraction(ctx: QueryCtx, userId: Id<"users">, { set, first,
 async function papersOf(ctx: QueryCtx, userId: Id<"users">, { set, first, last }: { set: PaperSet; first: number; last: number }) {
   const held = await papersIn(ctx, userId, set);
   if (set.kind === "screening") return held ?? 0;
-  return Math.min(PAPER_LIMIT, Math.max(0, Math.min(last, held ?? last) - first + 1));
+  return Math.max(0, Math.min(last, held ?? last) - first + 1);
 }
 
 /** The most an extraction of these papers holds: every paper at its most, on the models the job sends its questions to (../ai/serverModel.ts `extractionStamp`). */
@@ -234,7 +232,7 @@ export const extractAction = defineUserAction({
     "Starts an extraction: answers each question for each paper of a paper set, with the passage each answer rests on. The set is one of the person's collections or all their saved papers, newest saved first, papers `first` to `last` (from 1); " +
     "one of their saved searches, its first `last` papers in its results page's order (`first` is 1); or a finished screening, all its included papers, whatever `first` and `last` say. " +
     "It reads abstracts, or with `usePdfs` the full text of papers that have one, which costs a few times as much. A question's `type` is string, number, boolean or array, and `description` says what counts as an answer. " +
-    `Up to ${PAPER_LIMIT.toLocaleString("en")} papers and ${MAX_QUESTIONS_PER_JOB} questions. Spends credits. Returns the job, which runs after the reply: read its results later with extraction/queries:listJobResults.`,
+    `As many papers as the person's plan takes in one request, and up to ${MAX_QUESTIONS_PER_JOB} questions. Spends credits. Returns the job, which runs after the reply: read its results later with extraction/queries:listJobResults.`,
   args: extractArgs,
   returns: v.object({ jobId: v.id("extractionJobs") }),
   spendsCredits: true,

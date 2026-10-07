@@ -184,7 +184,7 @@ afterEach(() => {
 describe("<HistorySelector> ↔ <CountChip> integration", () => {
   it("renders NO CountChip for an unselected history row", () => {
     historyEntriesRef.current = [makeHistoryEntry("sr_1")];
-    render(<HistorySelector />);
+    render(<HistorySelector paperLimit={1000} />);
     expect(screen.queryByRole("button", { name: /chipLabel/ })).toBeNull();
   });
 
@@ -192,7 +192,7 @@ describe("<HistorySelector> ↔ <CountChip> integration", () => {
     const entry = makeHistoryEntry("sr_1");
     historyEntriesRef.current = [entry];
     stageEntry(entry);
-    render(<HistorySelector />);
+    render(<HistorySelector paperLimit={1000} />);
     const chip = screen.queryByRole("button", { name: /chipLabel/ });
     expect(chip).toBeInTheDocument();
     const label = chip?.getAttribute("aria-label") ?? "";
@@ -209,7 +209,7 @@ describe("<HistorySelector> ↔ <CountChip> integration", () => {
         .getState()
         .updatePaperCount("history:sr_1", 120, 200);
     });
-    render(<HistorySelector />);
+    render(<HistorySelector paperLimit={1000} />);
     const header = document.querySelector("[data-selectable-header]");
     const text = header?.textContent ?? "";
     expect(text).toMatch(/120/);
@@ -220,7 +220,7 @@ describe("<HistorySelector> ↔ <CountChip> integration", () => {
     const entry = makeHistoryEntry("sr_1");
     historyEntriesRef.current = [entry];
     stageEntry(entry);
-    render(<HistorySelector />);
+    render(<HistorySelector paperLimit={1000} />);
     expect(
       screen.queryByRole("button", { name: /chipLabel/ }),
     ).toBeInTheDocument();
@@ -234,7 +234,7 @@ describe("<HistorySelector> ↔ <CountChip> integration", () => {
     const entry = makeHistoryEntry("sr_1");
     historyEntriesRef.current = [entry];
     stageEntry(entry);
-    render(<HistorySelector />);
+    render(<HistorySelector paperLimit={1000} />);
     expect(useBucketStore.getState().items["history:sr_1"]).toBeDefined();
     const chip = screen.getByRole("button", { name: /chipLabel/ });
     fireEvent.click(chip);
@@ -246,7 +246,7 @@ describe("<HistorySelector> ↔ <CountChip> integration", () => {
     const entry = makeHistoryEntry("sr_1");
     historyEntriesRef.current = [entry];
     stageEntry(entry);
-    render(<HistorySelector />);
+    render(<HistorySelector paperLimit={1000} />);
     const chip = screen.getByRole("button", { name: /chipLabel/ });
     fireEvent.keyDown(chip, { key: "Enter" });
     fireEvent.keyDown(chip, { key: " " });
@@ -256,7 +256,7 @@ describe("<HistorySelector> ↔ <CountChip> integration", () => {
   it("clamps the staged paperCount to the per-row pull cap at selection time", async () => {
     const entry = makeHistoryEntry("sr_1", { count: 3000 });
     historyEntriesRef.current = [entry];
-    render(<HistorySelector />);
+    render(<HistorySelector paperLimit={1000} />);
     const row = document.querySelector("[data-selectable-row]");
     expect(row).not.toBeNull();
     fireEvent.click(row!);

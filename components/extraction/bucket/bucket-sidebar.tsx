@@ -20,8 +20,8 @@ import type { BucketItem } from "@/lib/bucket/bucketItem";
 import { bucketCleared } from "@/lib/toast/bucket";
 import { BucketPaperRow } from "./bucket-paper-row";
 import { AnimatedCount } from "./animated-count";
+import { stagedOf } from "@/lib/extraction/limits";
 import { PaperSidebarShell } from "@/components/extraction/sidebar/paper-sidebar-shell";
-import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 type CapacityState = "normal" | "near" | "at";
 
@@ -201,13 +201,13 @@ function BucketFooter() {
   );
 }
 
-export function BucketSidebar({ paperLimit }: { paperLimit?: number }) {
+export function BucketSidebar({ paperLimit }: { paperLimit: number }) {
   const isMobile = useIsMobile();
   const hasHydrated = useBucketSidebarStore((s) => s._hasHydrated);
   const isCollapsed = useBucketSidebarStore((s) => s.isCollapsed);
   const toggle = useBucketSidebarStore((s) => s.toggle);
   const readyCount = useReadyCount();
-  const limit = paperLimit ?? PAPER_LIMIT;
+  const limit = paperLimit;
 
   const state = capacityState(readyCount, limit);
   const tint = CAPACITY_TINT[state];
@@ -224,7 +224,7 @@ export function BucketSidebar({ paperLimit }: { paperLimit?: number }) {
       collapse={{
         isCollapsed,
         toggle,
-        sliverAriaLabel: `Open bucket — ${readyCount} of ${limit} papers staged`,
+        sliverAriaLabel: `Open bucket — ${stagedOf(readyCount, limit)} papers staged`,
         sliverTooltip: "Open bucket (⌘⇧B)",
         shortcut: { meta: true, shift: true, key: "b" },
         sliverFooter: (
@@ -240,7 +240,7 @@ export function BucketSidebar({ paperLimit }: { paperLimit?: number }) {
               />
             </div>
             <span className="sr-only" aria-live="polite">
-              {readyCount} of {limit} papers staged
+              {stagedOf(readyCount, limit)} papers staged
             </span>
           </>
         ),

@@ -38,7 +38,7 @@ export function ScreeningSelector({ paperLimit }: { paperLimit: number }) {
         <div className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground"><span>{format.number(job.qualifiedPapers)} Included</span><span>{format.number(Math.max(0, job.processedPapers - job.skippedPapers))} screened</span><span className="capitalize">{job.status}</span><span>{format.dateTime(job.createdAt, { year: "numeric", month: "short", day: "numeric" })}</span></div>
         {job.qualifiedPapers === 0 && <p className="mt-1 text-sm text-muted-foreground">No Included papers</p>}
         {job.status === "processing" && <p className="mt-1 text-sm text-muted-foreground">Wait for screening to finish.</p>}
-        {job.qualifiedPapers > paperLimit && <p className="mt-1 text-sm text-muted-foreground">Exceeds the {paperLimit.toLocaleString()}-paper extraction limit</p>}
+        {job.qualifiedPapers > paperLimit && <p className="mt-1 text-sm text-muted-foreground">Your plan takes up to {paperLimit.toLocaleString()} papers in one extraction</p>}
         {items[key(job)]?.screeningSelection && items[key(job)].screeningSelection!.revision !== job.revision && <p role="status" className="mt-1 text-sm text-amber-700 dark:text-amber-300">Decisions changed. Remove this source and select it again.</p>}
       </div>}
     />}

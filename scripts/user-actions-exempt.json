@@ -1,6 +1,7 @@
 {
   "plumbing": {
     "ai/estimates:mine": "The browser's balance check before it asks for AI work. The server holds the same figures when the work runs (lib/pricing/estimate.ts).",
+    "billing/accounts:myLimits": "What the person's plan allows, for the extraction page to size its bucket. Every start checks the plan itself (convex/billing/accounts.ts `planLimit`).",
     "apiKeys/actions:encryptAndSave": "User API keys never reach the assistant (plan decision 5).",
     "apiKeys/mutations:markUsed": "User API keys never reach the assistant (plan decision 5).",
     "apiKeys/mutations:remove": "User API keys never reach the assistant (plan decision 5).",

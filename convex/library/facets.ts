@@ -2,12 +2,14 @@
  * What a library view sorts, filters and counts by (#633). Each membership of a collection
  * carries its paper's sort and filter fields, so a collection's view reads its own index
  * instead of the whole collection, and the `libraryFacetCounts` aggregate counts every
- * filter field under its library or collection, so a filtered count reads no papers.
+ * filter field under its library or collection, so a filtered count reads no papers. Its
+ * writes are queued once per mutation (../lib/countQueue.ts).
  * Triggers keep both, whichever write changes a paper or a membership.
  *
  * This module holds no Convex functions, so the triggers can load it.
  */
-import { DirectAggregate, type AggregateOperation } from "@convex-dev/aggregate";
+import { DirectAggregate } from "@convex-dev/aggregate";
+import { queueCounts, type QueueingCtx } from "../lib/countQueue";
 import type { Change } from "convex-helpers/server/triggers";
 import { makeFunctionReference } from "convex/server";
 import { components } from "../_generated/api";
@@ -66,21 +68,6 @@ const namespaceOf = (scope: Id<"users"> | Id<"collections">, field: CountedField
 type Counted = { scope: Id<"users"> | Id<"collections">; savedAt?: number; rating?: number; publicationYear?: number };
 const entries = (row: Counted, id: string) => COUNTED_FIELDS.map((field) => ({ namespace: namespaceOf(row.scope, field), key: row[field] ?? null, id }));
 
-type FacetOperation = AggregateOperation<number | null, string, string>;
-/** A mutation's count writes, gathered as its triggers run and queued once when it ends (convex/lib/functions.ts). */
-export type FacetQueue = FacetOperation[];
-type QueueingCtx = MutationCtx & { facetQueue?: FacetQueue };
-
-/**
- * Queues a mutation's count writes in one call, applied in order by the aggregate's batch
- * worker a moment later. Written in place, a save of a few hundred papers passes the 4,096
- * index ranges one transaction may read; queued one by one, each reads the queue's newest
- * entry again, and a few hundred pass the 16 MiB.
- */
-export async function flushFacetQueue(ctx: MutationCtx, queue: FacetQueue) {
-  if (queue.length > 0) await facetCounts.enqueueBatch(ctx, queue.splice(0));
-}
-
 /** Keeps a row's counted fields counted. Inserting twice or deleting what isn't there does nothing, so a backfill just counts every row again. */
 async function recount(ctx: QueueingCtx, id: string, before: Counted | null, after: Counted | null) {
   const was = before ? entries(before, id) : [];
@@ -90,9 +77,7 @@ async function recount(ctx: QueueingCtx, id: string, before: Counted | null, aft
     ...was.filter((entry, index) => !same(entry, now[index])).map((entry) => ({ type: "deleteIfExists" as const, ...entry })),
     ...now.filter((entry, index) => !same(entry, was[index])).map((entry) => ({ type: "insertIfDoesNotExist" as const, ...entry })),
   ];
-  // A write outside the app's mutation builders, such as a test's uncapped seed, queues its own.
-  if (ctx.facetQueue) ctx.facetQueue.push(...operations);
-  else if (operations.length > 0) await facetCounts.enqueueBatch(ctx, operations);
+  await queueCounts(ctx, facetCounts, operations);
 }
 
 export const countedItem = (item: Doc<"libraryItems">): Counted => ({ scope: item.userId, ...item });

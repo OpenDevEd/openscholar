@@ -19,7 +19,7 @@ import schema from "../../schema";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
 import { createError } from "../../lib/errors";
-import { PAPER_LIMIT } from "@/lib/extraction/limits";
+import { MAX_SELECTED_PAPERS } from "../../lib/listCaps";
 import { paperSelectionValidator } from "../validators";
 import type { Doc, Id } from "../../_generated/dataModel";
 
@@ -146,7 +146,7 @@ export const listAllIds = query({
   handler: async (ctx, args) => {
     await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
-    const limit = PAPER_LIMIT;
+    const limit = MAX_SELECTED_PAPERS;
 
     const search = args.query?.trim();
     const needle = search?.toLowerCase();

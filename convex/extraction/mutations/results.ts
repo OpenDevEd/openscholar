@@ -124,6 +124,8 @@ export const updateJobStatus = internalMutation({
     if (args.totalPapers !== undefined) {
       updates.totalPapers = args.totalPapers;
     }
+    // Every source is read and saved: the setup's place has done its work.
+    if (job.setup?.done) updates.setup = undefined;
     if (args.error !== undefined) {
       updates.error = args.error;
     }

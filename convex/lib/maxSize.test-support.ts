@@ -8,7 +8,6 @@ import { vi } from "vitest";
 import { facetsOf } from "../library/facets";
 import { createHash } from "node:crypto";
 import type { Id, TableNames } from "../_generated/dataModel";
-import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { seedFeatureUser, seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { foldCounts } from "../extraction/counts.test-support";
@@ -17,7 +16,8 @@ type Test = ReturnType<typeof convexTest>;
 
 /** The largest sizes the product allows, and the average row sizes they are measured at. */
 export const MAX_SIZE = {
-  papersPerJob: PAPER_LIMIT,
+  // No plan limit: a large job these tests run at.
+  papersPerJob: 1_000,
   questionsPerJob: MAX_QUESTIONS_PER_JOB,
   libraryItems: 10_000,
   /** The longest OQL query saved on shared dev. */

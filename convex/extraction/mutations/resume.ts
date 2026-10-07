@@ -30,7 +30,8 @@ import { requireOrganizationFeature } from "../../organizationFeatures";
  *   only the questions without a saved answer, then finalises.
  */
 
-import { mutation } from "../../lib/functions";
+import { internalMutation, mutation, type MutationCtx } from "../../lib/functions";
+import type { Id } from "../../_generated/dataModel";
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import { requireAuth } from "../../lib/auth";
@@ -47,7 +48,6 @@ import { approvalLeft } from "../../billing/spend";
 import {
   EXTRACTION_PAPER_CONCURRENCY,
   EXTRACTION_QUESTION_CONCURRENCY,
-  PAPER_LIMIT,
 } from "../../../lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { availableCredits as readAvailableCredits } from "../../billing/accounts";
@@ -57,6 +57,63 @@ import {
   enqueueInitialPapersForJobTx,
   enqueueRetryPapersForJobTx,
 } from "../queue/mutations";
+
+/** Papers one resume requeues in one transaction; a job with more requeues the rest in the pages it schedules. */
+const REQUEUE_PAGE = 200;
+
+type Requeue = { jobId: Id<"extractionJobs">; epoch: number; pdfEnabled: boolean; paperConcurrency: number; questionConcurrency: number; cursor: string | null; queued: number };
+
+/**
+ * Queues a page of a resumed job's unfinished papers for the new run: a paper queued for a
+ * retry before the pause is queued for the same questions again, since a full run would redo
+ * its answered and permanently failed questions. The last page starts the run, or finishes
+ * the job when every paper had finished before the pause took effect.
+ */
+async function requeuePage(ctx: MutationCtx, run: Requeue) {
+  const page = await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", run.jobId)).paginate({ cursor: run.cursor, numItems: REQUEUE_PAGE });
+  const unfinished = page.page.filter((p) => p.status !== "completed" && p.status !== "failed" && p.status !== "download_failed" && p.status !== "indexing_failed").map((p) => p._id);
+  const initialPaperIds: typeof unfinished = [];
+  const retryPapers: Array<{ paperId: (typeof unfinished)[number]; questionKeys: string[] }> = [];
+  for (const paperId of unfinished) {
+    const lastQueued = await ctx.db
+      .query("extractionPaperQueue")
+      .withIndex("by_paper_and_epoch_and_kind", (q) => q.eq("paperId", paperId))
+      .order("desc")
+      .first();
+    if (lastQueued?.kind === "retry" && lastQueued.questionKeys?.length) retryPapers.push({ paperId, questionKeys: lastQueued.questionKeys });
+    else initialPaperIds.push(paperId);
+  }
+  await enqueueInitialPapersForJobTx(ctx, { jobId: run.jobId, paperIds: initialPaperIds, expectedEpoch: run.epoch, priority: 0 });
+  await enqueueRetryPapersForJobTx(ctx, { jobId: run.jobId, retryPapers, expectedEpoch: run.epoch, priority: 0 });
+  const queued = run.queued + unfinished.length;
+  if (!page.isDone) return void (await ctx.scheduler.runAfter(0, internal.extraction.mutations.resume.requeueLater, { ...run, cursor: page.continueCursor, queued }));
+  const job = await ctx.db.get("extractionJobs", run.jobId);
+  if (queued === 0 && !(job?.setup && !job.setup.done)) {
+    await ctx.scheduler.runAfter(0, internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId: run.jobId, expectedEpoch: run.epoch });
+    return;
+  }
+  await dispatchPaperQueueWindowTx(ctx, {
+    jobId: run.jobId,
+    expectedEpoch: run.epoch,
+    paperConcurrency: run.paperConcurrency,
+    leaseOwner: `resume:${run.jobId}:${run.epoch}`,
+    leaseMs: 60_000,
+    questionConcurrency: run.questionConcurrency,
+    pdfEnabled: run.pdfEnabled,
+  });
+}
+
+/** Requeues the next page of a resumed job's papers, until none are left. */
+export const requeueLater = internalMutation({
+  args: { jobId: v.id("extractionJobs"), epoch: v.number(), pdfEnabled: v.boolean(), paperConcurrency: v.number(), questionConcurrency: v.number(), cursor: v.union(v.string(), v.null()), queued: v.number() },
+  returns: v.null(),
+  handler: async (ctx, run) => {
+    // A run paused, cancelled or restarted since requeues nothing more.
+    if (((await ctx.db.get("extractionJobs", run.jobId))?.runEpoch ?? 0) !== run.epoch) return null;
+    await requeuePage(ctx, run);
+    return null;
+  },
+});
 
 export const resumeExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
@@ -134,68 +191,13 @@ export const resumeExtraction = mutation({
     const questionConcurrency = EXTRACTION_QUESTION_CONCURRENCY;
     const paperConcurrency = EXTRACTION_PAPER_CONCURRENCY;
 
-    const papers = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .take(PAPER_LIMIT);
-    const nonTerminalPaperIds = papers
-      .filter(
-        (p) =>
-          p.status !== "completed" &&
-          p.status !== "failed" &&
-          p.status !== "download_failed" &&
-          p.status !== "indexing_failed",
-      )
-      .map((p) => p._id);
-
-    if (papers.length === 0) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.extraction.actions.setupExtractionQueueJob,
-        { jobId, expectedEpoch: nextEpoch },
-      );
-    } else if (nonTerminalPaperIds.length === 0) {
-      // Every paper finished before the pause took effect; nothing will run to finish the job.
-      await ctx.scheduler.runAfter(0, internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId, expectedEpoch: nextEpoch });
-    } else {
-      // A paper queued for a retry before the pause is queued for the same questions
-      // again; a full run would redo its answered and permanently failed questions.
-      const initialPaperIds: typeof nonTerminalPaperIds = [];
-      const retryPapers: Array<{ paperId: (typeof nonTerminalPaperIds)[number]; questionKeys: string[] }> = [];
-      for (const paperId of nonTerminalPaperIds) {
-        const lastQueued = await ctx.db
-          .query("extractionPaperQueue")
-          .withIndex("by_paper_and_epoch_and_kind", (q) => q.eq("paperId", paperId))
-          .order("desc")
-          .first();
-        if (lastQueued?.kind === "retry" && lastQueued.questionKeys?.length) {
-          retryPapers.push({ paperId, questionKeys: lastQueued.questionKeys });
-        } else {
-          initialPaperIds.push(paperId);
-        }
-      }
-      await enqueueInitialPapersForJobTx(ctx, {
-        jobId,
-        paperIds: initialPaperIds,
-        expectedEpoch: nextEpoch,
-        priority: 0,
-      });
-      await enqueueRetryPapersForJobTx(ctx, {
-        jobId,
-        retryPapers,
-        expectedEpoch: nextEpoch,
-        priority: 0,
-      });
-      await dispatchPaperQueueWindowTx(ctx, {
-        jobId,
-        expectedEpoch: nextEpoch,
-        paperConcurrency,
-        leaseOwner: `resume:${jobId}:${nextEpoch}`,
-        leaseMs: 60_000,
-        questionConcurrency,
-        pdfEnabled,
-      });
+    const run = { jobId, epoch: nextEpoch, pdfEnabled, paperConcurrency, questionConcurrency };
+    // A setup stopped partway reads on from where it was; the papers it saved run again too.
+    const setupLeft = job.setup !== undefined && !job.setup.done;
+    if (setupLeft || (await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).first()) === null) {
+      await ctx.scheduler.runAfter(0, internal.extraction.actions.setupExtractionQueueJob, { jobId, expectedEpoch: nextEpoch });
     }
+    if (!setupLeft || job.setup!.papers > 0) await requeuePage(ctx, { ...run, cursor: null, queued: 0 });
 
     // A retry stopped while it reset the job's failures carries on where it stopped.
     if (job.retryReset && decision.nextStatus === "extracting") {

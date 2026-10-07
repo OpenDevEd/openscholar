@@ -63,7 +63,7 @@ describe("<BucketDrawer> row parity with sidebar", () => {
           1000,
         );
     });
-    render(withProviders(<BucketDrawer open={true} onOpenChange={() => {}} />));
+    render(withProviders(<BucketDrawer open={true} onOpenChange={() => {}} paperLimit={1000} />));
     // Lib canonical label is "Collections" (plural); stale local
     // `"Collection"` (singular) no longer exists.
     expect(screen.getByText("Collections")).toBeTruthy();
@@ -81,7 +81,7 @@ describe("<BucketDrawer> row parity with sidebar", () => {
     act(() => {
       useBucketStore.getState().addMany(items, 1000);
     });
-    render(withProviders(<BucketDrawer open={true} onOpenChange={() => {}} />));
+    render(withProviders(<BucketDrawer open={true} onOpenChange={() => {}} paperLimit={1000} />));
     for (const label of [
       "History",
       "Library",
@@ -99,7 +99,7 @@ describe("<BucketIndicator> (mobile) — T9 tint replaces badges", () => {
     act(() => {
       useBucketStore.getState().addMany([makeItem("k:a", "Alpha")], 1000);
     });
-    render(withProviders(<BucketIndicator onClick={() => {}} />));
+    render(withProviders(<BucketIndicator onClick={() => {}} paperLimit={1000} />));
     expect(screen.queryByText(/near cap/i)).toBeNull();
     expect(screen.queryByText(/at cap/i)).toBeNull();
   });
@@ -111,7 +111,7 @@ describe("<BucketIndicator> (mobile) — T9 tint replaces badges", () => {
     act(() => {
       useBucketStore.getState().addMany(items, 1000);
     });
-    render(withProviders(<BucketIndicator onClick={() => {}} />));
+    render(withProviders(<BucketIndicator onClick={() => {}} paperLimit={1000} />));
     expect(screen.queryByText(/near cap/i)).toBeNull();
   });
 
@@ -122,7 +122,7 @@ describe("<BucketIndicator> (mobile) — T9 tint replaces badges", () => {
     act(() => {
       useBucketStore.getState().addMany(items, 1000);
     });
-    render(withProviders(<BucketIndicator onClick={() => {}} />));
+    render(withProviders(<BucketIndicator onClick={() => {}} paperLimit={1000} />));
     expect(screen.queryByText(/at cap/i)).toBeNull();
     expect(screen.getAllByRole("button")).toHaveLength(1);
   });

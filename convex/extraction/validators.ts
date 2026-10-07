@@ -10,7 +10,7 @@ import { effortValidator } from "../aiModelConfig/validators";
 import { errorCodeValidator } from "@/lib/errors/taxonomy";
 import { type AssertExactDoc } from "../lib/validators";
 import {
-  MAX_ANSWER_ITEMS, MAX_AUTHORS, MAX_CITATIONS, MAX_JOB_PAPERS, MAX_ERROR_CONTEXT_BYTES, MAX_FILTER_VALUES, MAX_QUESTIONS, MAX_UNIT_TOKENS, RANGE_ENDS, capped, sized,
+  MAX_ANSWER_ITEMS, MAX_AUTHORS, MAX_CITATIONS, MAX_SELECTED_PAPERS, MAX_ERROR_CONTEXT_BYTES, MAX_FILTER_VALUES, MAX_QUESTIONS, MAX_UNIT_TOKENS, RANGE_ENDS, capped, sized,
 } from "../lib/listCaps";
 
 /**
@@ -55,9 +55,8 @@ export const classifiedErrorValidator = v.object({
 
 // ---- Input-size caps (enforced at mutation boundary) ----
 //
-// The per-bucket cap is `PAPER_LIMIT` (lib/extraction/limits.ts), checked by
-// `assertBucketWithinLimits`. These question-shape caps still apply and are
-// enforced inline.
+// A bucket's papers are capped by the person's plan (convex/extraction/bucket/limits.ts).
+// These question-shape caps still apply and are enforced inline.
 
 export const MAX_QUESTIONS_PER_JOB = MAX_QUESTIONS;
 
@@ -79,6 +78,8 @@ export const extractionAnswerRowFields = {
   token: v.union(v.string(), v.null()),
   shown: v.string(),
   items: capped(v.array(v.object({ key: v.string(), shown: v.string() })), ANSWER_ITEMS_MAX),
+  /** Counted in its question's tallies (../extraction/tallies.ts); missing on a row from before they were kept, until migrations/extractionFacets has run. */
+  tallied: v.optional(v.literal(true)),
 };
 /**
  * What the results page's filters read of a paper (queries/results.ts `matchesProjectionFilters`),
@@ -108,11 +109,13 @@ export const resultsSummaryValidator = v.object({
   moreAnswers: v.number(),
   /** For a question answered with a list: each item, with how many papers name it, most first. */
   items: capped(v.array(v.object({ item: v.string(), papers: v.number() })), SUMMARY_GROUPS),
+  /** Set when the filters keep more papers than a summary reads: it describes the first of them. */
+  partial: v.optional(v.literal(true)),
 });
 
 /** Papers picked at once for a job, which holds at most this many. */
 export function paperSelectionValidator<V extends Validator<any, "required", any>>(paper: V) {
-  return capped(v.array(paper), MAX_JOB_PAPERS);
+  return capped(v.array(paper), MAX_SELECTED_PAPERS);
 }
 export const MAX_QUESTION_TEXT_LENGTH = 2000;
 export const MAX_PAPER_TITLE_LENGTH = 500;
@@ -286,6 +289,20 @@ export const storedSearchFiltersValidator = v.union(
 
 // ---- Full document validators ----
 
+/**
+ * Where a job's setup has read its sources to (#634): the source at `position`, `read`
+ * papers into it, and the search's or set's place after them (`resume`), with the papers
+ * saved so far. `done` once every source is read and saved.
+ */
+export const setupPlaceValidator = v.object({
+  position: v.number(),
+  read: v.number(),
+  resume: v.optional(v.string()),
+  papers: v.number(),
+  processable: v.number(),
+  done: v.optional(v.literal(true)),
+});
+
 export const extractionJobFields = {
   userId: v.id("users"),
   sourceType: v.optional(sourceTypeValidator),
@@ -323,6 +340,8 @@ export const extractionJobFields = {
   spendCap: v.optional(v.number()),
   /** The step of the assistant's reply that started it (#328): its chat hears when it ends (convex/assistant/jobs.ts). */
   chatStep: v.optional(v.id("assistantSteps")),
+  /** Set while its setup reads and saves its papers, a step at a time (convex/extraction/actions.ts). */
+  setup: v.optional(setupPlaceValidator),
 };
 
 export const extractionJobValidator = v.object({
@@ -414,6 +433,8 @@ void _check_extractionQuestionValidator;
 
 export const extractionPaperFields = {
   screeningRevision: v.optional(v.string()),
+  /** The paper's identity across the job's sources (./dedupe.ts), so a paper two sources bring is saved once. */
+  dedupeKey: v.optional(v.string()),
   ...sourceMetadataFields,
   citedByCount: v.optional(v.number()),
   venueName: v.optional(v.string()),
@@ -610,12 +631,6 @@ const _check_extractionEvidenceUnitValidator: AssertExactDoc<
   typeof extractionEvidenceUnitValidator
 > = true;
 void _check_extractionEvidenceUnitValidator;
-
-/**
- * Shape returned by readJobSources — the bucket items that were frozen
- * onto the job at submission time, replayed in insertion order.
- */
-export const jobSourcesReadValidator = v.array(storedBucketItemValidator);
 
 export const resultsSortByValidator = v.union(
   v.literal("default"),
