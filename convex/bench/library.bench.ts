@@ -23,7 +23,7 @@ describe("library reads by size", () => {
       const t = convexTest(schema);
       const { userId } = await seedAccount(t);
       // Every paper in one collection, and a second, small collection of 50, as a person filing a few papers keeps.
-      const { itemIds, collectionId } = await seedLibrary(t, userId, { items: size });
+      const { itemIds, collectionId } = await seedLibrary(t, userId, { items: size, counted: true });
       const [small] = await insertMany(t, "collections", [{ userId, name: "Shortlist", sortName: "shortlist", itemCount: 50, createdAt: 1, updatedAt: 1 }]);
       await insertMany(t, "libraryItemCollections", itemIds.filter((_, i) => i % Math.floor(size / 50) === 0).slice(0, 50).map((libraryItemId) => ({ userId, collectionId: small, libraryItemId, assignedAt: 1 })));
       await t.finishAllScheduledFunctions(vi.runAllTimers);
