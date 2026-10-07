@@ -30,6 +30,8 @@ import type { UserAction } from "./userActions";
 import { startJobAction as extractionStartAction, duplicateJobAction as extractionDuplicateAction } from "../extraction/mutations/jobs";
 import { extractAction } from "../extraction/start";
 import { findAction as mentionFindAction } from "../assistant/mentions";
+import { readAction as fileReadAction } from "../assistant/files";
+import { searchAction as webSearchAction } from "../research/web";
 
 export const USER_ACTIONS: readonly UserAction[] = [
   extractionStartAction,
@@ -43,6 +45,8 @@ export const USER_ACTIONS: readonly UserAction[] = [
   chatMessagesAction,
   chatStepsAction,
   mentionFindAction,
+  webSearchAction,
+  fileReadAction,
   bulkUndoAction,
   chatAccessAction,
   chatCandidatesAction,

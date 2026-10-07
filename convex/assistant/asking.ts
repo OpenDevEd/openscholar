@@ -9,7 +9,7 @@ import { availableCredits } from "../billing/accounts";
 import { readConvexErrorData } from "../lib/errors";
 import { internalQuery } from "../lib/functions";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
-import { allowanceOf, covers } from "./spending";
+import { TOOL_OF, allowanceOf, covers, toolAllowed } from "./spending";
 import { DOCK_FULL, STARTS } from "./jobEnds";
 import { JOBS_DOCKED } from "./validators";
 
@@ -78,6 +78,9 @@ export const spend = internalQuery({
       return null;
     }
     if (!Number.isFinite(credits) || credits < 0) return null;
-    return { credits, covered: covers(await allowanceOf(ctx, threadId, userId), credits, await availableCredits(ctx, userId)) };
+    // A web search or a PDF read is covered by its own switch in the chat; anything else by what jobs may hold.
+    const tool = TOOL_OF[path];
+    const balance = await availableCredits(ctx, userId);
+    return { credits, covered: tool ? (await toolAllowed(ctx, threadId, userId, tool)) && credits <= balance : covers(await allowanceOf(ctx, threadId, userId), credits, balance) };
   },
 });

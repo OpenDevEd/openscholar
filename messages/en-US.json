@@ -3783,6 +3783,18 @@
         "doing": "Finding it in your account",
         "did": "Found it in your account",
         "where": "Your account"
+      },
+      "webSearch": {
+        "doing": "Searching the web",
+        "did": "Searched the web",
+        "where": "The web",
+        "ask": "Search the web"
+      },
+      "readFile": {
+        "doing": "Reading a file",
+        "did": "Read a file",
+        "where": "Attachments",
+        "ask": "Read a file"
       }
     },
     "asks": {
@@ -3819,7 +3831,11 @@
         "prune": "Excluded leave it",
         "rating": "Rating",
         "change": "Changes",
-        "usePdfs": "Full texts"
+        "usePdfs": "Full texts",
+        "query": "Query",
+        "file": "File",
+        "pages": "Pages",
+        "range": "Part"
       }
     },
     "topUp": {
@@ -3895,20 +3911,35 @@
     },
     "moreJobs": "{count, plural, one {# more job} other {# more jobs}}",
     "files": {
-      "attach": "Attach images",
+      "attach": "Attach files",
       "pasted": "Pasted image",
-      "onlyImages": "Images only for now",
+      "onlyImages": "Images, PDFs and text files only",
       "tooLarge": "Over {mb} MB",
       "unreadable": "This image can't be read",
       "failed": "Couldn't upload this file",
       "remove": "Remove",
       "removeNamed": "Remove {name}",
       "expired": "Expired, attach it again",
-      "drop": "Drop images to attach them",
+      "drop": "Drop files to attach them",
       "anImage": "an image",
       "modelCant": "{model} can't read images. Pick another model to attach them.",
       "notUploaded": "{count, plural, one {A file didn’t upload} other {# files didn’t upload}}. Remove or attach {count, plural, one {it} other {them}} again.",
-      "tooMany": "Up to {count} files a message"
-    }
+      "tooMany": "Up to {count} files a message",
+      "tooLargePdf": "Over {mb} MB",
+      "pages": "{count, plural, one {# page} other {# pages}}",
+      "aPdf": "a PDF",
+      "modelCantPdf": "{model} can't read PDFs. Pick another model to attach them.",
+      "openPage": "Open {name} at page {page}",
+      "tooLargeText": "Over {mb} MB",
+      "lines": "{count, plural, one {# line} other {# lines}}",
+      "aTextFile": "a text file"
+    },
+    "allowed": {
+      "web": "Web search",
+      "stopWeb": "Ask before searching the web",
+      "files": "Reading files",
+      "stopFiles": "Ask before reading a file"
+    },
+    "webSources": "{count, plural, one {# web source} other {# web sources}}"
   }
 }

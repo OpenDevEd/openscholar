@@ -17,7 +17,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Check, ChevronDown, CircleAlert, Coins, Compass, Plus, Undo2, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, Check, ChevronDown, CircleAlert, Coins, Compass, FileSearch, Globe, Plus, Undo2, X, type AppIcon } from "@/components/icons";
 import { RECORD_KINDS } from "@/components/record-kinds";
 import { AnimatedNumber } from "@/components/screening/parts";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,8 @@ export type StepItem = Extract<Item, { role: "step" }>;
 
 /** Each kind's icon, the same as everywhere in the app, and its colour, which only the assistant uses (components/record-kinds.ts). `other` is an action on no one record. */
 export const KIND = {
+  web: { icon: Globe, tint: "var(--kind-web)" },
+  file: { icon: FileSearch, tint: "var(--kind-file)" },
   search: RECORD_KINDS.search,
   paper: RECORD_KINDS.paper,
   collection: RECORD_KINDS.collection,
@@ -181,7 +183,7 @@ export function Steps({
 }
 
 /** Names of a call's arguments the card says in the person's language; any other shows as the action names it. */
-const NAMED = ["thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune", "rating", "change", "usePdfs"] as const;
+const NAMED = ["query", "file", "range", "thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune", "rating", "change", "usePdfs"] as const;
 
 /** Arguments that are a setting turned on or off. */
 const SWITCHES = new Set(["prune", "inCollection", "usePdfs", "openAccessOnly", "withAbstractOnly", "reviewsOnly", "includeRetracted", "ratedOnly"]);

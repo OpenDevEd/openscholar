@@ -37,13 +37,13 @@ import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
 import { JOB_ENDED } from "./jobEnds";
 import { bulkOf, detailsOf } from "./details";
-import { allowAlways, carriedOn, covers, noteReply, pausedAt, replyLimitOf } from "./spending";
+import { TOOL_OF, allowAlways, allowTool, carriedOn, covers, noteReply, pausedAt, replyLimitOf } from "./spending";
 import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 import { filesOf, partsFor, sent } from "./files";
-import { readsImages } from "../../lib/assistant/files";
+import { readsImages, readsPdfs } from "../../lib/assistant/files";
 import { stripProviderPrefix } from "../../lib/ai/model-display";
-import { askedDetailsValidator, askedEachValidator, assistantPausedValidator, attachedFilesValidator, jobsEndedValidator, JOBS_TOLD_AT_ONCE, sentFileIdsValidator } from "./validators";
+import { askedDetailsValidator, askedEachValidator, assistantPausedValidator, attachedFilesValidator, jobsEndedValidator, JOBS_TOLD_AT_ONCE, sentFileIdsValidator, webSourcesValidator } from "./validators";
 import { searchHref } from "../research/searches";
 import { searchSettings } from "../research/searchValidators";
 
@@ -116,12 +116,15 @@ export const send = mutation({
     if (thread.asking?.paused) throw createError("CONFLICT", "The assistant's reply is paused in this chat. Carry it on, or stop it.");
     if (thread.asking) throw createError("CONFLICT", "The assistant is waiting for an answer in this chat. Answer it, or stop the reply.");
     await admit(ctx, userId);
-    // The model reads what the person attached with the message, so it has to take images.
-    const images = files.length ? await partsFor(ctx, userId, files) : [];
-    if (images.length) {
+    // The model reads what the person attached with the message: images as they are, PDFs a range of pages at a time.
+    const attached = files.length ? await partsFor(ctx, userId, files) : { parts: [], images: false, pdfs: false };
+    const images = attached.parts;
+    if (attached.images || attached.pdfs) {
       const { modelId } = await chatModel(ctx, thread, userId);
       const model = modelId ? await ctx.db.get("models", modelId) : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
-      if (!readsImages(model?.inputModalities)) throw createError("VALIDATION_ERROR", `${model ? stripProviderPrefix(model.name) : "This chat's model"} can't read images. Pick another model for this chat to send them.`);
+      const name = model ? stripProviderPrefix(model.name) : "This chat's model";
+      if (attached.images && !readsImages(model?.inputModalities)) throw createError("VALIDATION_ERROR", `${name} can't read images. Pick another model for this chat to send them.`);
+      if (attached.pdfs && !readsPdfs(model?.inputModalities)) throw createError("VALIDATION_ERROR", `${name} can't read PDFs. Pick another model for this chat to send them.`);
     }
     // A reply that was stopped, or died, around asking the person can leave calls without their results.
     await settleAsked(ctx, threadId);
@@ -233,10 +236,20 @@ export const answer = mutation({
     // A yes to a call that holds more than the person has starts nothing: it waits while they add credits, as its card says.
     const balance = allow && step.credits !== undefined ? await availableCredits(ctx, userId) : 0;
     if (allow && step.credits !== undefined && step.credits > balance) throw createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
-    if (allow && always && step.credits !== undefined) {
+    const tool = TOOL_OF[step.path];
+    // What else waits is allowed with it only while the balance covers this call and each one allowed before it.
+    let room = balance - (step.credits ?? 0);
+    const fits = (credits: number) => credits <= room && ((room -= credits), true);
+    if (allow && always && tool) {
+      // A web search or a PDF read is allowed by its own switch, and so is whatever else waits of the same kind.
+      await allowTool(ctx, threadId, userId, tool, true);
+      const covered = left.filter((other) => TOOL_OF[other.path] === tool && fits(other.credits ?? 0));
+      for (const other of covered) await ctx.db.patch("assistantSteps", other._id, { status: "allowed" });
+      left = left.filter((other) => !covered.includes(other));
+    } else if (allow && always && step.credits !== undefined) {
       // As opencode's "always" does for a session: the rule is kept, and what else waits that it now covers is allowed with it.
       const allowance = await allowAlways(ctx, threadId, userId, step.credits);
-      const covered = left.filter((other) => other.credits !== undefined && covers(allowance, other.credits, balance));
+      const covered = left.filter((other) => other.credits !== undefined && !TOOL_OF[other.path] && covers(allowance, other.credits, room) && fits(other.credits));
       for (const other of covered) await ctx.db.patch("assistantSteps", other._id, { status: "allowed" });
       left = left.filter((other) => !covered.includes(other));
     }
@@ -616,6 +629,8 @@ const stepValidator = v.object({
   href: v.optional(v.string()),
   /** How many things it found, when its result lists any. */
   count: v.optional(v.number()),
+  /** On a web search (#648): the pages it found, which the reply cites. */
+  sources: webSourcesValidator,
   /** The most it holds, on a call that spends credits (#328). */
   credits: v.optional(v.number()),
   /** On a call that asks first: what it does can reach other people too. Otherwise it asks because it can't be undone. */
@@ -775,10 +790,10 @@ export const messagesAction = defineUserQuery({
     const details = new Map(
       await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: withoutVariant(await detailsOf(ctx, reader!, step.shown ?? step.input), step) } : bulkWithoutVariant(await bulkOf(ctx, reader!, step), step)] as const)),
     );
-    // What each person's message carried, for the ones that carried files.
+    // What each person's message carried: images as parts of it, PDFs as notes the model reads them by.
     const attached = new Map(
       await Promise.all(
-        asked.filter((row) => Array.isArray(row.message?.content) && row.message.content.some((part) => part.type === "file")).map(async (row) => [row._id, await filesOf(ctx, row._id)] as const),
+        asked.filter((row) => Array.isArray(row.message?.content) && row.message.content.length > 1).map(async (row) => [row._id, await filesOf(ctx, row._id)] as const),
       ),
     );
     // The jobs each of the app's job-ended messages told the chat of.
@@ -903,6 +918,7 @@ function shownStep(
     ...variantOf(step),
     ...(step.subject ? { subject: step.subject, ...hrefOf(step) } : {}),
     ...(step.count === undefined ? {} : { count: step.count }),
+    ...(step.sources?.length ? { sources: step.sources } : {}),
     ...(step.credits === undefined ? {} : { credits: step.credits }),
     ...(step.outside ? { outside: true as const } : {}),
     status: shownStatus(step.status, answering === step.order),

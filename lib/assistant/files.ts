@@ -1,8 +1,20 @@
 /**
  * What can be attached to an assistant chat (#647), shared by the composer and the server.
- * Images go to the model with the message. Uploads an hour come from the person's plan
+ * Images go to the model with the message; PDFs and text files (plain text, Markdown, CSV) are
+ * read a range at a time, pages or lines, when the person allows it (#648). Uploads an hour come from the person's plan
  * (lib/billing/plans.ts `uploads_per_hour`).
  */
+import { MAX_PDF_BYTES, MAX_PDF_MB } from "../files/limits";
+
+export { MAX_PDF_BYTES, MAX_PDF_MB };
+/** The most pages one read of a PDF takes. */
+export const PDF_PAGES_PER_READ = 20;
+/**
+ * Input tokens a PDF page comes to when a model reads it as it is, text and picture: Anthropic
+ * counts 1,500 to 3,000 a page (platform.claude.com, PDF support). The upper end, for the most
+ * a read can cost.
+ */
+export const PDF_PAGE_TOKENS = 3_000;
 
 /** Files one message can carry. */
 export const MAX_FILES_PER_MESSAGE = 10;
@@ -26,3 +38,52 @@ export const PENDING_FILE_MS = 24 * 60 * 60 * 1000;
 
 /** Whether a model takes images, from its OpenRouter input types (models.inputModalities). */
 export const readsImages = (inputs: readonly string[] | undefined) => inputs?.includes("image") ?? false;
+/** Whether a model reads PDFs as they are: OpenRouter lists "file" among its input types. */
+export const readsPdfs = (inputs: readonly string[] | undefined) => inputs?.includes("file") ?? false;
+export const isPdf = (mediaType: string) => mediaType === "application/pdf";
+/**
+ * A PDF is uploaded in parts of this size, each a request of its own to the upload route,
+ * which takes no more than 20 MB a request (convex/assistant/files.ts `upload`).
+ */
+export const PDF_CHUNK_BYTES = 8 * 1024 * 1024;
+export const MAX_PDF_CHUNKS = Math.ceil(MAX_PDF_BYTES / PDF_CHUNK_BYTES);
+/** Reads of PDF pages one person can have cut an hour; a read of pages already cut sends those again and counts for none. */
+export const PDF_CUTS_PER_HOUR = 120;
+export const isText = (mediaType: string) => mediaType.startsWith("text/");
+
+/** The most a text file can be: what one upload request takes (convex/assistant/files.ts `upload`). */
+export const MAX_TEXT_MB = 20;
+export const MAX_TEXT_BYTES = MAX_TEXT_MB * 1024 * 1024;
+/** The most one read of a text file returns: whole lines up to this many characters, under what a tool's result carries to the model. */
+export const TEXT_CHARS_PER_READ = 15_000;
+/** The lines a read takes when it names none. */
+export const TEXT_LINES_PER_READ = 500;
+
+/** A text file's type, by its name or what the browser says it is: plain text, Markdown or CSV. Null for anything else. */
+export function textTypeOf(name: string, type: string) {
+  const extension = name.toLowerCase().match(/\.([a-z]+)$/)?.[1];
+  if (type === "text/csv" || extension === "csv" || extension === "tsv") return "text/csv";
+  if (type === "text/markdown" || extension === "md" || extension === "markdown") return "text/markdown";
+  if (type === "text/plain" || extension === "txt") return "text/plain";
+  return null;
+}
+
+/** "120-300" as the lines it names, within a file of `of` lines; without one, the first lines. Null when it names none. */
+export function linesIn(range: string | undefined, of: number): { first: number; last: number } | null {
+  const match = (range ?? "").trim().match(/^(\d+)(?:\s*[-–]\s*(\d+))?$/);
+  if (range !== undefined && !match) return null;
+  const first = match ? Number(match[1]) : 1;
+  const last = match ? Number(match[2] ?? match[1]) : Math.min(of, TEXT_LINES_PER_READ);
+  if (first < 1 || last < first || first > of) return null;
+  return { first, last: Math.min(last, of) };
+}
+
+/** "3-7" as the pages it names, within a PDF of `of` pages; a single page is "5". Null when it names none. */
+export function pagesIn(range: string | undefined, of: number): { first: number; last: number } | null {
+  const match = (range ?? "").trim().match(/^(\d+)(?:\s*[-–]\s*(\d+))?$/);
+  const first = match ? Number(match[1]) : 1;
+  const last = match ? Number(match[2] ?? match[1]) : Math.min(of, PDF_PAGES_PER_READ);
+  if (range !== undefined && !match) return null;
+  if (first < 1 || last < first || first > of) return null;
+  return { first, last: Math.min(last, of, first + PDF_PAGES_PER_READ - 1) };
+}

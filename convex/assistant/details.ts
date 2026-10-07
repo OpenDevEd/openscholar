@@ -68,6 +68,12 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
       const step = await ctx.db.get("assistantSteps", stepId);
       return step && (await roleAmong(ctx, step.threadId, await principalsOf(ctx, reader))) ? [step.count ?? step.batch, step.subject].filter((part) => part !== undefined).join(", ") : null;
     }
+    // A file attached to a chat (#648), to someone who reads the chat.
+    const fileId = ctx.db.normalizeId("assistantFiles", id);
+    if (fileId) {
+      const file = await ctx.db.get("assistantFiles", fileId);
+      return file?.threadId && (await roleAmong(ctx, file.threadId, await principalsOf(ctx, reader))) ? file.name : null;
+    }
     const collectionId = ctx.db.normalizeId("collections", id);
     if (collectionId) {
       const collection = await ctx.db.get("collections", collectionId);
