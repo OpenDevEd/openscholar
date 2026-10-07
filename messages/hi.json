@@ -3931,7 +3931,6 @@
       "aPdf": "एक PDF",
       "modelCantPdf": "{model} PDF नहीं पढ़ सकता। उन्हें जोड़ने के लिए कोई दूसरा मॉडल चुनें।",
       "openPage": "{name} को पृष्ठ {page} पर खोलें",
-      "modelCantFiles": "{model} चित्र या PDF नहीं पढ़ सकता। उन्हें जोड़ने के लिए कोई दूसरा मॉडल चुनें।",
       "tooLargeText": "{mb} MB से अधिक",
       "lines": "{count, plural, one {# पंक्ति} other {# पंक्तियाँ}}",
       "aTextFile": "एक टेक्स्ट फ़ाइल"

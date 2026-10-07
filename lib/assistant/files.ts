@@ -41,6 +41,14 @@ export const readsImages = (inputs: readonly string[] | undefined) => inputs?.in
 /** Whether a model reads PDFs as they are: OpenRouter lists "file" among its input types. */
 export const readsPdfs = (inputs: readonly string[] | undefined) => inputs?.includes("file") ?? false;
 export const isPdf = (mediaType: string) => mediaType === "application/pdf";
+/**
+ * What the browser adds to the end of a PDF it uploads, after its last line: a PDF comment
+ * naming the file's row. Bytes that end with it were uploaded for that row, so they're the
+ * only ones it binds or deletes (convex/assistant/pdf.ts).
+ */
+export const pdfTag = (fileId: string) => `\n%openscholar-file ${fileId}\n`;
+/** The longest a tag is, past the PDF it ends. */
+export const PDF_TAG_BYTES = 64;
 export const isText = (mediaType: string) => mediaType.startsWith("text/");
 
 /** The most a text file can be: what one upload request takes (convex/assistant/files.ts `upload`). */

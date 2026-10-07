@@ -18,6 +18,9 @@ import { RECORD_CHIP, recordChipStyle } from "./mentions";
 export type WebSource = { title: string; url: string; excerpt: string };
 type Cites = { files: ReadonlyMap<string, { name: string; url: string | null }>; sources: ReadonlyMap<string, WebSource> };
 
+/** A reply's citation of a page of a PDF, as its text has it: `[p. 7](/files/FILE_ID#page=7)`. The match's first group is the file's ID. */
+export const CITED_PDF = /\]\(\/files\/([^/#?)\s]+)#page=\d+\)/g;
+
 /** The chat's attached files and what its searches found, which its replies cite. */
 export const Cited = createContext<Cites>({ files: new Map(), sources: new Map() });
 

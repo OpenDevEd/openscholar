@@ -12,13 +12,12 @@
  * their account. One no reply has sent to the model for 30 days loses its bytes and stays
  * as a name (`expire`), so its message says it expired and the model is told so.
  *
- *   startUpload   a file's row, for the token whose digest it's given
+ *   startUpload   a file's row, for the token whose digest it's given, or a PDF's upload address
  *   upload        (HTTP) the bytes, stored once they read as an image
  *   remove        a file attached and not yet sent
  */
 import { v, type Infer } from "convex/values";
 import type { FilePart, ModelMessage, TextPart } from "ai";
-import { convertUint8ArrayToBase64 } from "@ai-sdk/provider-utils";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { ActionCtx, MutationCtx, QueryCtx } from "../_generated/server";
@@ -27,7 +26,7 @@ import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { httpAction } from "../_generated/server";
-import { internalMutation, internalQuery, mutation } from "../lib/functions";
+import { internalMutation, internalQuery, mutation, query } from "../lib/functions";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { detectEvidenceLibraryUploadContent } from "../../lib/evidence-libraries/configuration/uploads";
 import { rateLimit } from "../lib/rateLimit";
@@ -37,6 +36,8 @@ import { convertUsdToCredits } from "../../lib/pricing";
 import { pricingOf } from "../ai/serverModel";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { requireThread } from "./access";
+import { MODEL_READS } from "./steps";
+import { citedFileIdsValidator, citedFilesValidator } from "./validators";
 import { chatModel } from "./threads";
 
 const FLAG = "assistant.enabled";
@@ -55,16 +56,16 @@ const pendingOf = (ctx: QueryCtx, userId: Id<"users">) =>
 
 export const startUpload = mutation({
   // An image: `digest`, the SHA-256 of the token the browser posts its bytes with (convex/lib/opaqueTokenDigest.ts).
-  // A PDF (#648), which can be larger than one request takes: `pdf`, its own SHA-256 as base64 and its size. It goes to
-  // the upload address returned, and `./pdf.ts` binds what was stored only when Convex's SHA-256 of it is the same.
+  // A PDF (#648), which can be larger than one request takes: `pdfBytes`, its size. It goes to the upload address returned,
+  // ending with the tag that names this row (lib/assistant/files.ts `pdfTag`), and `./pdf.ts` binds it.
   // A text file (plain text, Markdown, CSV) goes the way an image does; `text` is its type, which the upload route holds it to.
-  args: { name: v.string(), digest: v.optional(v.string()), pdf: v.optional(v.object({ sha256: v.string(), bytes: v.number() })), text: v.optional(v.union(v.literal("text/plain"), v.literal("text/markdown"), v.literal("text/csv"))) },
+  args: { name: v.string(), digest: v.optional(v.string()), pdfBytes: v.optional(v.number()), text: v.optional(v.union(v.literal("text/plain"), v.literal("text/markdown"), v.literal("text/csv"))) },
   returns: v.object({ fileId: v.id("assistantFiles"), url: v.optional(v.string()) }),
-  handler: async (ctx, { name, digest, pdf, text }) => {
+  handler: async (ctx, { name, digest, pdfBytes, text }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
-    if (pdf ? !/^[A-Za-z0-9+/]{43}=$/.test(pdf.sha256) : !digest || !/^[0-9a-f]{64}$/.test(digest)) throw createError("VALIDATION_ERROR", "An upload needs a SHA-256 digest.");
-    if (pdf && pdf.bytes > MAX_PDF_BYTES) throw createError("VALIDATION_ERROR", `A PDF can be up to ${MAX_PDF_MB} MB.`);
+    if (pdfBytes === undefined && (!digest || !/^[0-9a-f]{64}$/.test(digest))) throw createError("VALIDATION_ERROR", "An upload needs a SHA-256 digest.");
+    if (pdfBytes !== undefined && pdfBytes > MAX_PDF_BYTES) throw createError("VALIDATION_ERROR", `A PDF can be up to ${MAX_PDF_MB} MB.`);
     const clean = name.trim().slice(0, MAX_FILE_NAME);
     if (!clean) throw createError("VALIDATION_ERROR", "A file needs a name.");
     // At the limit, the oldest file left unsent for an hour makes room: a draft lost to a reload or a closed tab holds its place until then.
@@ -83,40 +84,44 @@ export const startUpload = mutation({
       }
     }
     const row = { userId, name: clean, bytes: 0, mediaType: "", state: "pending" as const, usedAt: Date.now() };
-    if (pdf) return { fileId: await ctx.db.insert("assistantFiles", { ...row, sha256: pdf.sha256 }), url: await ctx.storage.generateUploadUrl() };
+    if (pdfBytes !== undefined) return { fileId: await ctx.db.insert("assistantFiles", row), url: await ctx.storage.generateUploadUrl() };
     return { fileId: await ctx.db.insert("assistantFiles", { ...row, ...(text ? { mediaType: text } : {}), uploadDigest: digest }) };
   },
 });
 
+/** How large an upload is, from what Convex stored, before any of it is read; null when there's none. */
+export const uploadSize = internalQuery({
+  args: { storageId: v.id("_storage") },
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx, { storageId }) => (await ctx.db.system.get(storageId))?.size ?? null,
+});
+
 /**
- * Binds a PDF the person's browser uploaded to its row (./pdf.ts): one stored after the row
- * was made whose SHA-256, as Convex computed it, is the one the row was made with. No one can
- * name the hash of a file before it exists, so no one can bind storage that isn't theirs. With
- * `pages`, once the bytes read as a PDF of that many pages, it's bound; without, it's only
- * checked, so the bytes are read only for a file that is theirs.
+ * Binds a PDF's bytes to the person's row once ./pdf.ts has found they end with its tag, so
+ * were uploaded for it: with how many pages it has, or with null for bytes that don't open,
+ * which go with the row. Bytes whose row was removed while they were on the way go too. It
+ * returns what happened rather than throwing, so a delete here is never undone.
  */
 export const claimPdf = internalMutation({
-  args: { fileId: v.id("assistantFiles"), storageId: v.id("_storage"), pages: v.optional(v.number()) },
-  returns: v.object({ bytes: v.number() }),
+  args: { fileId: v.id("assistantFiles"), storageId: v.id("_storage"), pages: v.union(v.number(), v.null()) },
+  returns: v.union(v.literal("bound"), v.literal("unreadable"), v.literal("removed")),
   handler: async (ctx, { fileId, storageId, pages }) => {
     const userId = (await requireAuth(ctx))._id;
     const file = await ctx.db.get("assistantFiles", fileId);
-    if (!file || file.userId !== userId || file.state !== "pending" || file.storageId || !file.sha256) throw createError("NOT_FOUND", "That upload isn't waiting for a file.");
+    if (file && file.userId !== userId) throw createError("NOT_FOUND", "That upload isn't yours to attach.");
+    if (file?.storageId === storageId) return "bound";
+    if (!file || file.state !== "pending" || file.storageId) {
+      await ctx.storage.delete(storageId);
+      return "removed";
+    }
+    if (pages === null) {
+      await ctx.storage.delete(storageId);
+      await ctx.db.delete("assistantFiles", fileId);
+      return "unreadable";
+    }
     const stored = await ctx.db.system.get(storageId);
-    if (!stored || stored._creationTime < file._creationTime || stored.sha256 !== file.sha256) throw createError("NOT_FOUND", "That upload isn't yours to attach.");
-    if (pages !== undefined) await ctx.db.patch("assistantFiles", fileId, { storageId, bytes: stored.size, mediaType: "application/pdf", pages, usedAt: Date.now() });
-    return { bytes: stored.size };
-  },
-});
-
-/** A PDF whose bytes, which were checked as its own, aren't a PDF it can read: they and it go. */
-export const refusePdf = internalMutation({
-  args: { fileId: v.id("assistantFiles"), storageId: v.id("_storage") },
-  returns: v.null(),
-  handler: async (ctx, { fileId, storageId }) => {
-    await ctx.storage.delete(storageId);
-    await ctx.db.delete("assistantFiles", fileId);
-    return null;
+    await ctx.db.patch("assistantFiles", fileId, { storageId, bytes: stored?.size ?? 0, mediaType: "application/pdf", pages, usedAt: Date.now() });
+    return "bound";
   },
 });
 
@@ -281,6 +286,28 @@ export async function filesOf(ctx: QueryCtx, messageId: string) {
   );
 }
 
+/**
+ * PDFs of this chat its replies cite, by the IDs their citations name, when the messages that
+ * carried them aren't loaded in the panel: their names, and where they are unless they expired.
+ * IDs that aren't one of the chat's PDFs are left out.
+ */
+export const cited = query({
+  args: { threadId: v.id("assistantThreads"), fileIds: citedFileIdsValidator },
+  returns: citedFilesValidator,
+  handler: async (ctx, { threadId, fileIds }) => {
+    const userId = (await requireAuth(ctx))._id;
+    await requireThread(ctx, userId, threadId);
+    const files = await Promise.all(
+      fileIds.slice(0, MAX_FILES_PER_MESSAGE).map((id) => {
+        const fileId = ctx.db.normalizeId("assistantFiles", id);
+        return fileId ? ctx.db.get("assistantFiles", fileId) : null;
+      }),
+    );
+    const pdfs = files.filter((file): file is Doc<"assistantFiles"> => file?.threadId === threadId && !file.parentId && isPdf(file.mediaType));
+    return await Promise.all(pdfs.map(async (file) => ({ id: file._id, name: file.name, url: file.storageId ? await ctx.storage.getUrl(file.storageId) : null })));
+  },
+});
+
 /** The file of ours a part is, by the ID `partsFor` gave it. */
 const fileIdOf = (part: FilePart) => (part.providerOptions?.openscholar as { fileId?: Id<"assistantFiles"> } | undefined)?.fileId;
 
@@ -317,7 +344,7 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
             // The pages a read cut from a PDF, sent as they are: text, tables and figures.
             const bytes = read.pdfs ? await bytesOf(fileId) : null;
             if (!bytes) return { ...part, output: { type: "text", value: `${said}\n[These pages ${read.pdfs ? "have expired. Read them again if you need them" : "can't be shown to the model this chat now runs on, which doesn't read PDFs"}.]` } };
-            return { ...part, output: { type: "content", value: [{ type: "text", text: said }, { type: "file-data", data: convertUint8ArrayToBase64(bytes), mediaType: "application/pdf", filename: "pages.pdf" }] } };
+            return { ...part, output: { type: "content", value: [{ type: "text", text: said }, { type: "file", mediaType: "application/pdf", data: { type: "data", data: bytes }, filename: "pages.pdf" }] } };
           }),
         );
         return { ...message, content };
@@ -359,6 +386,7 @@ export const stored = internalQuery({
   },
 });
 
+/** Notes these files as used, so they don't expire. Pages cut from a PDF keep the PDF too, which their citations open. */
 export const touch = internalMutation({
   args: { fileIds: v.array(v.id("assistantFiles")) },
   returns: v.null(),
@@ -366,7 +394,8 @@ export const touch = internalMutation({
     const now = Date.now();
     for (const id of new Set(fileIds)) {
       const file = await ctx.db.get("assistantFiles", id);
-      if (file && file.usedAt < now - TOUCH_AFTER_MS) await ctx.db.patch("assistantFiles", id, { usedAt: now });
+      const pdf = file?.parentId ? await ctx.db.get("assistantFiles", file.parentId) : null;
+      for (const one of [file, pdf]) if (one && one.usedAt < now - TOUCH_AFTER_MS) await ctx.db.patch("assistantFiles", one._id, { usedAt: now });
     }
     return null;
   },
@@ -417,15 +446,16 @@ export const expire = internalMutation({
   },
 });
 
-/** Pages a read cut from a PDF, kept as a file of the PDF's chat: deleted with it, and expired as it is. */
+/** Pages a read cut from a PDF, kept as a file of the PDF's chat: deleted with it, and expired as it is. Null, with the pages deleted, once the PDF is gone. */
 export const addPart = internalMutation({
   args: { fileId: v.id("assistantFiles"), storageId: v.id("_storage"), range: v.string(), bytes: v.number() },
-  returns: v.id("assistantFiles"),
+  returns: v.union(v.id("assistantFiles"), v.null()),
   handler: async (ctx, { fileId, storageId, range, bytes }) => {
     const pdf = await ctx.db.get("assistantFiles", fileId);
     if (!pdf?.threadId) {
+      // Returned, not thrown: a throw would undo the delete.
       await ctx.storage.delete(storageId);
-      throw createError("NOT_FOUND", "This PDF is no longer in the chat.");
+      return null;
     }
     return await ctx.db.insert("assistantFiles", { userId: pdf.userId, threadId: pdf.threadId, storageId, name: `${pdf.name}, pages ${range}`, bytes, mediaType: "application/pdf", state: "sent", usedAt: Date.now(), parentId: fileId, range });
   },
@@ -470,17 +500,27 @@ export const readRange = internalQuery({
   },
 });
 
-/** Lines `first` to `last` of a text file, whole lines up to what one read returns: where it stopped, when it stopped early. */
-function linesFrom(text: string, first: number, last: number) {
+/**
+ * Lines `first` to `last` of a text file: as many whole lines as fit in `room` characters of
+ * the result the model is sent, and where it stopped. A line longer than that comes as its
+ * start, saying so.
+ */
+function linesFrom(text: string, first: number, last: number, room: number) {
   const all = text.split("\n").slice(first - 1, last);
   let size = 0;
   let taken = 0;
+  // In the result, a line takes its escaped text and the "\n" that joins it to the next: its own JSON string's length.
   for (const line of all) {
-    if (taken > 0 && size + line.length + 1 > TEXT_CHARS_PER_READ) break;
-    size += line.length + 1;
+    const cost = JSON.stringify(line).length;
+    if (size + cost > room) break;
+    size += cost;
     taken += 1;
   }
-  return { text: all.slice(0, taken).join("\n").slice(0, TEXT_CHARS_PER_READ), last: first + taken - 1 };
+  if (taken) return { text: all.slice(0, taken).join("\n"), last: first + taken - 1 };
+  const note = `\n[Line ${first} is longer than one read returns. This is its start; the rest of it can't be read.]`;
+  let start = all[0].slice(0, room);
+  while (JSON.stringify(start + note).length > room) start = start.slice(0, Math.floor(start.length * 0.9));
+  return { text: start + note, last: first };
 }
 
 const readResult = v.object({
@@ -513,13 +553,17 @@ export const readAction = defineUserAction({
   run: async (ctx, userId, { file, range }): Promise<Infer<typeof readResult>> => {
     const read = await ctx.runQuery(internal.assistant.files.readRange, { userId, file, range });
     const span = (first: number, last: number) => (first === last ? `${first}` : `${first}-${last}`);
+    // A file read is one in use: it doesn't expire while a chat reads it.
+    await ctx.runMutation(internal.assistant.files.touch, { fileIds: [file] });
     if (read.pdf) {
       const pdfPages = await ctx.runAction(internal.assistant.pdf.cut, { fileId: file, storageId: read.storageId, first: read.first, last: read.last });
       return { file, name: read.name, pages: span(read.first, read.last), pdfPages, of: read.of };
     }
     const blob = await ctx.storage.get(read.storageId);
     if (!blob) throw createError("NOT_FOUND", `"${read.name}" has expired. Ask the person to attach it again.`);
-    const lines = linesFrom(await blob.text(), read.first, read.last);
+    // The lines get what's left of what a result carries to the model once the rest of it is in.
+    const rest = JSON.stringify({ file, name: read.name, lines: span(read.first, read.last), text: "", of: read.of }).length;
+    const lines = linesFrom(await blob.text(), read.first, read.last, MODEL_READS - rest);
     return { file, name: read.name, lines: span(read.first, lines.last), text: lines.text, of: read.of };
   },
 });

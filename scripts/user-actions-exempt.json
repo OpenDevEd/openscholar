@@ -4,6 +4,7 @@
     "apiKeys/actions:encryptAndSave": "User API keys never reach the assistant (plan decision 5).",
     "apiKeys/mutations:markUsed": "User API keys never reach the assistant (plan decision 5).",
     "apiKeys/mutations:remove": "User API keys never reach the assistant (plan decision 5).",
+    "assistant/files:cited": "The PDFs a reply cites whose messages the panel hasn't loaded, for its page citations to open them. The assistant reads files through assistant/files:read.",
     "assistant/files:remove": "Removes a file the person attached and hasn't sent. The assistant doesn't attach files.",
     "assistant/files:startUpload": "Starts an upload of a file the person attaches to a message, for a token their browser holds. The assistant reads attached files; it doesn't attach its own.",
     "assistant/jobs:card": "A job's live card in the chat that started it. The assistant reads the same job through screening/queries:getScreeningJob and extraction/queries:listJobResults.",

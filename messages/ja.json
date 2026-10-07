@@ -3931,7 +3931,6 @@
       "aPdf": "PDF 1 件",
       "modelCantPdf": "{model} は PDF を読めません。添付するには別のモデルを選んでください。",
       "openPage": "{name} の {page} ページを開く",
-      "modelCantFiles": "{model} は画像も PDF も読めません。添付するには別のモデルを選んでください。",
       "tooLargeText": "{mb} MB を超えています",
       "lines": "{count, plural, other {# 行}}",
       "aTextFile": "テキストファイル 1 件"

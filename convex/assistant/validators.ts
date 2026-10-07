@@ -370,8 +370,7 @@ export const assistantFileFields = {
   usedAt: v.number(),
   /** The digest of the token its bytes are uploaded with, until they are. */
   uploadDigest: v.optional(v.string()),
-  /** A PDF's (#648): its SHA-256 as the browser read it, which the stored file has to match; then how many pages it has. */
-  sha256: v.optional(v.string()),
+  /** A PDF's (#648): how many pages it has. */
   pages: v.optional(v.number()),
   /** A text file's: how many lines it has. */
   lines: v.optional(v.number()),
@@ -383,5 +382,8 @@ export const assistantFileFields = {
 /** A file a person's message carried, as the chat shows it: no address once it expired (./files.ts). */
 export const attachedFileValidator = v.object({ id: v.string(), name: v.string(), bytes: v.number(), mediaType: v.string(), url: v.union(v.string(), v.null()), pages: v.optional(v.number()), lines: v.optional(v.number()) });
 export const attachedFilesValidator = capped(v.optional(v.array(attachedFileValidator)), MAX_FILES_PER_MESSAGE);
+/** The PDFs a reply cites that the panel hasn't loaded the messages of (./files.ts `cited`): asked for, and found, a message's worth at a time. */
+export const citedFileIdsValidator = capped(v.array(v.string()), MAX_FILES_PER_MESSAGE);
+export const citedFilesValidator = capped(v.array(v.object({ id: v.string(), name: v.string(), url: v.union(v.string(), v.null()) })), MAX_FILES_PER_MESSAGE);
 /** The files a message is sent with. */
 export const sentFileIdsValidator = capped(v.optional(v.array(v.id("assistantFiles"))), MAX_FILES_PER_MESSAGE);

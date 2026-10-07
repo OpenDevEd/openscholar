@@ -15,7 +15,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { digestOpaqueToken } from "@/convex/lib/opaqueTokenDigest";
-import { MAX_FILES_PER_MESSAGE, MAX_IMAGE_BYTES, MAX_IMAGE_MB, MAX_PDF_BYTES, MAX_PDF_MB, MAX_TEXT_BYTES, MAX_TEXT_MB, isPdf, isText, textTypeOf } from "@/lib/assistant/files";
+import { MAX_FILES_PER_MESSAGE, MAX_IMAGE_BYTES, MAX_IMAGE_MB, MAX_PDF_BYTES, MAX_PDF_MB, MAX_TEXT_BYTES, MAX_TEXT_MB, isPdf, isText, pdfTag, textTypeOf } from "@/lib/assistant/files";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { FadeRow } from "./parts";
@@ -94,12 +94,6 @@ function send(url: string, blob: Blob, onProgress: (share: number) => void, sign
 /** An image's or a text file's bytes go to the upload route with its one-time token (convex/assistant/files.ts `upload`). */
 const imageRoute = (token: string) => `${process.env.NEXT_PUBLIC_CONVEX_SITE_URL}/assistant/upload?token=${encodeURIComponent(token)}`;
 
-/** A file's SHA-256 as base64, the form Convex keeps it in: a PDF is bound to its upload by it (convex/assistant/pdf.ts). */
-async function sha256Of(file: Blob) {
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", await file.arrayBuffer()));
-  return btoa(String.fromCharCode(...digest));
-}
-
 /** A file once it's up: its ID, and how its message shows it. */
 type Uploaded = { fileId: Id<"assistantFiles">; shown: SentFile };
 /**
@@ -167,11 +161,12 @@ export function useAttach(add: (files: Attachment[]) => void, patch: (key: strin
         // After the tray has opened, so reading the file costs none of its frames.
         await new Promise((resolve) => setTimeout(resolve, 350));
         if (isPdf(one.mediaType)) {
-          // A PDF goes as it is, to an upload address, bound to its row by its SHA-256; the server then opens it and counts its pages.
-          const { fileId, url } = await startUpload({ name: one.name, pdf: { sha256: await sha256Of(one.file), bytes: one.file.size } });
+          // A PDF goes as it is to an upload address, ending with its row's tag, which binds it there; the server then opens it and counts its pages.
+          const { fileId, url } = await startUpload({ name: one.name, pdfBytes: one.file.size });
           patch(one.key, { fileId });
           await removedMeanwhile(fileId);
-          const { storageId } = JSON.parse(await send(url!, one.file, progress, stop.signal)) as { storageId: Id<"_storage"> };
+          const tagged = new Blob([one.file, pdfTag(fileId)], { type: "application/pdf" });
+          const { storageId } = JSON.parse(await send(url!, tagged, progress, stop.signal)) as { storageId: Id<"_storage"> };
           const { pages } = await pdfReady({ fileId, storageId }).catch((error: unknown) => {
             throw new Error(getErrorMessage(error, t("unreadablePdf")));
           });

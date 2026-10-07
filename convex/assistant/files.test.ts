@@ -7,9 +7,10 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
-import { FILE_IDLE_MS } from "../../lib/assistant/files";
+import { FILE_IDLE_MS, pdfTag } from "../../lib/assistant/files";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { people } from "./assistant.test-support";
+import { MODEL_READS } from "./steps";
 import { callingDoStream, finishingDoStream, waitFor } from "./turn.test-support";
 
 const { mockDoStream, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), fetchMock: vi.fn() }));
@@ -236,33 +237,56 @@ async function pdfOf(pages: number) {
   for (let i = 1; i <= pages; i += 1) doc.addPage().drawText(`Page ${i}`, { x: 50, y: 700, font, size: 24 });
   return await doc.save();
 }
-const sha256Of = async (bytes: Uint8Array) => btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes as Uint8Array<ArrayBuffer>))));
+/** Stores bytes as an upload address does, with `tag` at their end as the browser adds it. */
+const storePdf = (t: Test, bytes: Uint8Array, tag = "") => t.run((ctx) => ctx.storage.store(new Blob([bytes as Uint8Array<ArrayBuffer>, tag], { type: "application/pdf" })));
+const exists = (t: Test, storageId: Id<"_storage">) => t.run(async (ctx) => (await ctx.storage.get(storageId)) !== null);
 
-/** Attaches a PDF as the browser does: its row by its SHA-256, the bytes to the upload address, then the check that opens it. */
+/** Attaches a PDF as the browser does: its row, the bytes with its row's tag to the upload address, then the check that opens it. */
 async function attachPdf(t: Test, as: Person, bytes: Uint8Array) {
-  const { fileId } = await as.mutation(api.assistant.files.startUpload, { name: "trial.pdf", pdf: { sha256: await sha256Of(bytes), bytes: bytes.length } });
-  const storageId = await t.run((ctx) => ctx.storage.store(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/pdf" })));
+  const { fileId } = await as.mutation(api.assistant.files.startUpload, { name: "trial.pdf", pdfBytes: bytes.length });
+  const storageId = await storePdf(t, bytes, pdfTag(fileId));
   const { pages } = await as.action(api.assistant.pdf.pdfReady, { fileId, storageId });
   return { fileId, storageId, pages };
 }
 
 describe("PDFs and text files (#648)", () => {
-  it("binds a PDF only to the upload whose SHA-256 it has, and counts its pages", async () => {
+  it("binds only bytes uploaded for the row, and never deletes anyone else's", async () => {
     const t = convexTest(schema);
     const { asAda, asBen } = await people(t);
     const bytes = await pdfOf(3);
-    const { fileId } = await asAda.mutation(api.assistant.files.startUpload, { name: "trial.pdf", pdf: { sha256: await sha256Of(bytes), bytes: bytes.length } });
-    const two = await pdfOf(2);
-    const other = await t.run((ctx) => ctx.storage.store(new Blob([two as Uint8Array<ArrayBuffer>], { type: "application/pdf" })));
-    const stored = await t.run((ctx) => ctx.storage.store(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/pdf" })));
+    // Ben's PDF, stored after Ada's row was made, even the same file: it isn't hers to bind or delete.
+    const { fileId } = await asAda.mutation(api.assistant.files.startUpload, { name: "trial.pdf", pdfBytes: bytes.length });
+    const bens = await storePdf(t, bytes);
+    await expect(asAda.action(api.assistant.pdf.pdfReady, { fileId, storageId: bens })).rejects.toThrow(/isn't yours/);
+    // Nor is the upload for her row Ben's to finish.
+    const hers = await storePdf(t, bytes, pdfTag(fileId));
+    await expect(asBen.action(api.assistant.pdf.pdfReady, { fileId, storageId: hers })).rejects.toThrow();
+    expect(await exists(t, bens)).toBe(true);
+    expect(await exists(t, hers)).toBe(true);
 
-    // A file whose hash isn't the one the row was made with, or someone else finishing the upload, binds nothing and deletes nothing.
-    await expect(asAda.action(api.assistant.pdf.pdfReady, { fileId, storageId: other })).rejects.toThrow();
-    await expect(asBen.action(api.assistant.pdf.pdfReady, { fileId, storageId: stored })).rejects.toThrow();
-    expect(await t.run(async (ctx) => (await ctx.storage.get(other)) !== null)).toBe(true);
+    expect(await asAda.action(api.assistant.pdf.pdfReady, { fileId, storageId: hers })).toEqual({ pages: 3 });
+    expect(await t.run((ctx) => ctx.db.get("assistantFiles", fileId))).toMatchObject({ storageId: hers, pages: 3, mediaType: "application/pdf" });
+    // Removing it deletes only its own bytes.
+    await asAda.mutation(api.assistant.files.remove, { fileId });
+    expect(await exists(t, hers)).toBe(false);
+    expect(await exists(t, bens)).toBe(true);
+  });
 
-    expect(await asAda.action(api.assistant.pdf.pdfReady, { fileId, storageId: stored })).toEqual({ pages: 3 });
-    expect(await t.run((ctx) => ctx.db.get("assistantFiles", fileId))).toMatchObject({ storageId: stored, pages: 3, mediaType: "application/pdf" });
+  it("deletes a PDF's bytes when it was removed before they were checked, and bytes that don't open", async () => {
+    const t = convexTest(schema);
+    const { asAda } = await people(t);
+    const bytes = await pdfOf(2);
+    const { fileId } = await asAda.mutation(api.assistant.files.startUpload, { name: "trial.pdf", pdfBytes: bytes.length });
+    const stored = await storePdf(t, bytes, pdfTag(fileId));
+    await asAda.mutation(api.assistant.files.remove, { fileId });
+    await expect(asAda.action(api.assistant.pdf.pdfReady, { fileId, storageId: stored })).rejects.toThrow(/removed/);
+    expect(await exists(t, stored)).toBe(false);
+
+    const broken = await asAda.mutation(api.assistant.files.startUpload, { name: "broken.pdf", pdfBytes: 10 });
+    const junk = await storePdf(t, new TextEncoder().encode("not a pdf"), pdfTag(broken.fileId));
+    await expect(asAda.action(api.assistant.pdf.pdfReady, { fileId: broken.fileId, storageId: junk })).rejects.toThrow(/can't be opened/);
+    expect(await exists(t, junk)).toBe(false);
+    expect(await t.run((ctx) => ctx.db.get("assistantFiles", broken.fileId))).toBeNull();
   });
 
   it("reads the pages asked for into a PDF of their own, kept with the chat", async () => {
@@ -271,8 +295,15 @@ describe("PDFs and text files (#648)", () => {
     const { fileId } = await attachPdf(t, asAda, await pdfOf(5));
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Read this", files: [fileId] });
     await replied(t, threadId);
+    // Unused long enough to expire: the read keeps it, and its pages' citations with it.
+    await t.run((ctx) => ctx.db.patch("assistantFiles", fileId, { usedAt: Date.now() - FILE_IDLE_MS - 1 }));
 
     const read = await asAda.action(api.assistant.files.read, { file: fileId, range: "2-4" });
+    await t.mutation(internal.assistant.files.expire, {});
+    expect(await t.run((ctx) => ctx.db.get("assistantFiles", fileId))).toMatchObject({ state: "sent", storageId: expect.any(String) });
+    // A reply that cites it finds it by the ID the citation names, without the message that carried it; anything else isn't found.
+    const cited = await asAda.query(api.assistant.files.cited, { threadId, fileIds: [fileId, read.pdfPages!, "not-an-id"] });
+    expect(cited).toEqual([{ id: fileId, name: "trial.pdf", url: expect.any(String) }]);
     expect(read).toMatchObject({ file: fileId, pages: "2-4", of: 5 });
     const part = await t.run((ctx) => ctx.db.get("assistantFiles", read.pdfPages!));
     expect(part).toMatchObject({ parentId: fileId, range: "2-4", threadId, state: "sent" });
@@ -288,18 +319,25 @@ describe("PDFs and text files (#648)", () => {
     const { asAda, threadId } = await chatOn(t, ["text"]);
     const token = `${crypto.randomUUID()}${crypto.randomUUID()}`;
     const { fileId } = await asAda.mutation(api.assistant.files.startUpload, { name: "rows.csv", digest: await digestOpaqueToken(token), text: "text/csv" });
-    const rows = ["id,score", ...Array.from({ length: 2_000 }, (_, i) => `${i + 1},${"x".repeat(20)}`)].join("\n");
+    // Tabs and quotes take more room in the result the model is sent than in the file; the last line is longer than a read.
+    const rows = ["id\tquote", ...Array.from({ length: 2_000 }, (_, i) => `${i + 1}\t"${"\t".repeat(10)}"`), "x".repeat(40_000)].join("\n");
     const response = await t.fetch(`/assistant/upload?token=${token}`, { method: "POST", headers: { "Content-Type": "text/csv" }, body: rows });
-    expect(await response.json()).toMatchObject({ fileId, lines: 2_001 });
+    expect(await response.json()).toMatchObject({ fileId, lines: 2_002 });
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Look at this", files: [fileId] });
     await replied(t, threadId);
 
     const read = await asAda.action(api.assistant.files.read, { file: fileId, range: "1-2001" });
     const last = Number(read.lines!.split("-")[1]);
     expect(read.text!.split("\n")).toHaveLength(last);
-    expect(read.text!.length).toBeLessThanOrEqual(15_000);
+    expect(read.text!.split("\n")[0]).toBe("id\tquote");
     expect(last).toBeLessThan(2_001);
-    expect(read.text!.split("\n")[0]).toBe("id,score");
+    // Every line it says it read reaches the model whole.
+    expect(JSON.stringify(read).length).toBeLessThanOrEqual(MODEL_READS);
+
+    const long = await asAda.action(api.assistant.files.read, { file: fileId, range: "2002" });
+    expect(long).toMatchObject({ lines: "2002" });
+    expect(long.text).toMatch(/longer than one read returns/);
+    expect(JSON.stringify(long).length).toBeLessThanOrEqual(MODEL_READS);
   });
 
   it("refuses bytes that aren't text for a text file", async () => {

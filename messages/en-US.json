@@ -3931,7 +3931,6 @@
       "aPdf": "a PDF",
       "modelCantPdf": "{model} can't read PDFs. Pick another model to attach them.",
       "openPage": "Open {name} at page {page}",
-      "modelCantFiles": "{model} can't read images or PDFs. Pick another model to attach them.",
       "tooLargeText": "Over {mb} MB",
       "lines": "{count, plural, one {# line} other {# lines}}",
       "aTextFile": "a text file"

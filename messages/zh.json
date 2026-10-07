@@ -3931,7 +3931,6 @@
       "aPdf": "一个 PDF",
       "modelCantPdf": "{model} 无法读取 PDF。请选择其他模型来添加。",
       "openPage": "在第 {page} 页打开 {name}",
-      "modelCantFiles": "{model} 无法读取图片或 PDF。请选择其他模型来添加。",
       "tooLargeText": "超过 {mb} MB",
       "lines": "{count, plural, other {# 行}}",
       "aTextFile": "一个文本文件"

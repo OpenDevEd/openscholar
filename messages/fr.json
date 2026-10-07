@@ -3931,7 +3931,6 @@
       "aPdf": "un PDF",
       "modelCantPdf": "{model} ne lit pas les PDF. Choisissez un autre modèle pour les joindre.",
       "openPage": "Ouvrir {name} à la page {page}",
-      "modelCantFiles": "{model} ne lit ni les images ni les PDF. Choisissez un autre modèle pour les joindre.",
       "tooLargeText": "Plus de {mb} Mo",
       "lines": "{count, plural, one {# ligne} other {# lignes}}",
       "aTextFile": "un fichier texte"

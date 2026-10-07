@@ -36,9 +36,9 @@ import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { titleFrom } from "@/lib/assistant/title";
 import { stillNamed, withTokens, type Mention } from "@/lib/assistant/mentions";
 import { MentionComposer, MessageText, RECORD_CHIP, recordChipStyle } from "./mentions";
-import { Cited, WebSources, useCited } from "./citations";
+import { CITED_PDF, Cited, WebSources, useCited } from "./citations";
 import { AttachButton, DropZone, Reattach, SentFiles, Tray, freePreviews, release, sendingOf, startShrinker, uploaded, useAttach, useRemove, type Attachment } from "./attachments";
-import { readsImages, readsPdfs } from "@/lib/assistant/files";
+import { MAX_FILES_PER_MESSAGE, readsImages, readsPdfs } from "@/lib/assistant/files";
 import { inApp, recordOf } from "@/lib/assistant/view";
 import useSWR, { preload } from "swr";
 import { readWork } from "@/app/actions/topics";
@@ -528,10 +528,11 @@ function Chat({
 
   const busy = sending || live !== null;
   const canWrite = thread?.role !== "read";
-  // What's attached to this chat's draft, and why nothing can be, when that's so: a model that takes no images, or a chat the person only reads.
+  // What's attached to this chat's draft, and why nothing can be: a chat the person only reads. Any model reads text
+  // files, so each image or PDF is refused on its own when the chat's model can't read it (./attachments.tsx `useAttach`).
   const files = drafts.files(threadId);
   const reads = { images: !model || readsImages(model.inputs), pdfs: !model || readsPdfs(model.inputs), model: model ? stripProviderPrefix(model.name) : "" };
-  const filesOff = !canWrite ? t("readOnly") : !reads.images && !reads.pdfs ? t("files.modelCantFiles", { model: reads.model }) : null;
+  const filesOff = canWrite ? null : t("readOnly");
   const picker = useRef<HTMLInputElement>(null);
   const attach = useAttach((list) => drafts.addFiles(threadId, list), drafts.patchFile);
   const removeUpload = useRemove();
@@ -822,12 +823,19 @@ function Thread({
   const waiting = live !== null && !live.asking && said.every((m) => m.status === "done" && m.acted);
   const rows: Item[] = waiting && older !== "first" ? [...messages, { id: `${SENDING}reply`, role: "assistant", order: live.order, text: "", status: "pending", mine: false, at: 0 }] : messages;
   // What the chat's replies cite: the files its messages carried, and what its searches found (./citations.tsx).
+  // A PDF whose message isn't loaded yet is looked up by the ID its citation names.
+  const carried = useMemo(() => new Map(messages.flatMap((m) => (m.role === "user" ? (m.files ?? []).map((file) => [file.id, { name: file.name, url: file.url }] as const) : []))), [messages]);
+  const unloaded = useMemo(
+    () => [...new Set(messages.flatMap((m) => (m.role === "assistant" ? [...m.text.matchAll(CITED_PDF)].map((match) => match[1]) : [])))].filter((id) => !carried.has(id)).slice(0, MAX_FILES_PER_MESSAGE),
+    [messages, carried],
+  );
+  const looked = useQuery(api.assistant.files.cited, threadId && unloaded.length ? { threadId, fileIds: unloaded } : "skip");
   const cites = useMemo(
     () => ({
-      files: new Map(messages.flatMap((m) => (m.role === "user" ? (m.files ?? []).map((file) => [file.id, { name: file.name, url: file.url }] as const) : []))),
+      files: new Map([...(looked ?? []).map((file) => [file.id, file] as const), ...carried]),
       sources: new Map(messages.flatMap((m) => (m.role === "step" ? (m.sources ?? []).map((source) => [source.url, source] as const) : []))),
     }),
-    [messages],
+    [messages, carried, looked],
   );
   // A reply is everything from one person's message to the next. One that was summarized partway carries on in a later
   // exchange, whose opening message the app wrote and the page leaves out, so its steps are still one map and its
