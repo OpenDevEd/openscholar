@@ -84,6 +84,15 @@ const SUMMARIZE =
   "Under Last exchanges, write the last few exchanges as plain text, who said what. " +
   "Keep every decision and preference from an earlier summary unless the person changed it. " +
   "Don't call a tool, and don't address the person: write only the summary.";
+/**
+ * Added when a reply is summarized partway: it hasn't answered yet, and what its tools found
+ * leaves the model's view with the summary. Without it, GPT-6 Luna summarized a reply that
+ * had read a PDF and searched the web as finished, then carried on by saying so, with no answer.
+ */
+const MID_REPLY =
+  " The last reply isn't finished: the person hasn't been given its answer yet, however much of the work is done. " +
+  "Under Unfinished requests, write the request it is answering. Under Next step, write what is left, at least the answer itself. " +
+  "Under Last exchanges, also keep what the reply's tools found that the answer needs, as found: figures and quotes with the file ID and pages they came from, and each web page's title and address exactly as a search returned it.";
 
 /** Where a chat's history stands: what is summarized, and through which exchange. */
 export type Compacted = { summary?: string; compactedThrough?: number };
@@ -159,6 +168,8 @@ export async function summarize(
     effort?: Effort;
     lastInputTokens: number;
     chargeId: string;
+    /** The reply being summarized hasn't ended, and goes on from the summary (./run.ts `compact` with `resume`). */
+    midReply?: boolean;
     /** Read every half second while the summary is written; true stops it. */
     shouldStop: () => Promise<boolean>;
   },
@@ -181,7 +192,7 @@ export async function summarize(
     const result = await generateText({
       model,
       system: INSTRUCTIONS,
-      messages: await withFiles(ctx, [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), { role: "user", content: SUMMARIZE }], args.modelId),
+      messages: await withFiles(ctx, [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), { role: "user", content: args.midReply ? SUMMARIZE + MID_REPLY : SUMMARIZE }], args.modelId),
       // The earlier summary is a system message of ours.
       allowSystemInMessages: true,
       abortSignal: stopped.signal,
