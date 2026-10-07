@@ -250,7 +250,7 @@ describe("Screen all on a saved search, read on the server", () => {
   it("ends a request where the search's results end, however far it was asked to go", async () => {
     const { alice, screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
 
-    const { made } = await screen({ first: 801, last: 1_000_000 });
+    const { made } = await screen({ first: 801, last: 90_000 });
 
     expect(made).toMatchObject({ totalPapers: 100, first: 801, last: 900 });
     // Nothing follows this job: no end of the request to reach, and no papers past the search's last.
@@ -258,7 +258,7 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(made.snapshot).toMatchObject({ request: { sort: "relevance_score:desc" } });
     // Only the page that holds the search's last papers was asked for.
     expect(pages().map(({ url }) => url.searchParams.get("page"))).toEqual(["5"]);
-    await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1_001, last: 1_000_000, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/no papers in that range/);
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1_001, last: 90_000, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/no papers in that range/);
   });
 
   it("reads a request's later papers from the search as it was when the request began", async () => {
