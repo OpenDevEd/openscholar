@@ -226,6 +226,25 @@ describe("a job on a search whose page already answered some papers", () => {
     createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z", sortBy: "relevance_score:desc",
   };
 
+  it("takes them step after step for nothing, before they're counted as done, with no credits left", async () => {
+    const { t, alice, userId } = await setup({ credits: 0 });
+    await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: [{ search }], shortcuts: [], ratings: [] });
+    const papers = Array.from({ length: 400 }, (_, i) => ({ openalexId: W(i + 1), title: `Paper ${i + 1}` }));
+    await t.run(async (ctx) => {
+      const row = (await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", search.id)).unique())!;
+      const screeningId = await ctx.db.insert("screenings", { userId, searchId: row._id, version: 0, createdAt: 1 });
+      for (const paper of papers) await answerPaper(ctx, screeningId, paper.openalexId, [{ question: "Randomized?", response: true }], "model", 1);
+    });
+
+    const { jobId } = await t.mutation(internal.screening.mutations.openScreeningJob, { userId, author: "user", set: { kind: "search", searchId: search.id }, first: 1, last: 400, papers: 400, ...job, saveTo: { kind: "none" } });
+    await t.mutation(internal.screening.mutations.fillScreeningJob, { jobId, papers: papers.slice(0, 200), read: 200, ended: false });
+    await t.mutation(internal.screening.mutations.fillScreeningJob, { jobId, papers: papers.slice(200), read: 200, ended: true });
+
+    const made = (await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))!;
+    expect(made.status).not.toBe("creditsExhausted");
+    expect(made.totalPapers).toBe(400);
+  });
+
   it("keeps those papers' answers without asking the model, and counts them", async () => {
     // Credits for the one new paper only: the two already answered cost nothing.
     const { t, alice, userId, results, answerAll, read } = await setup({ credits: PER_PAPER });
@@ -239,9 +258,7 @@ describe("a job on a search whose page already answered some papers", () => {
       await answerPaper(ctx, screeningId, W(2), [{ question: "Randomized?", response: false }], "model", 1);
     });
 
-    // What `screen` counts before it makes the job, so the credit check leaves these papers out.
-    expect(await t.query(internal.screening.queries.answeredCount, { userId, searchId: search.id, questions: ["Randomized?"], paperIds: papers.map((paper) => paper.openalexId) })).toBe(2);
-    const { jobId } = await createJob(alice, { papers, set: { kind: "search", searchId: search.id }, answered: 2, ...job, saveTo: { kind: "none" } });
+    const { jobId } = await createJob(alice, { papers, set: { kind: "search", searchId: search.id }, ...job, saveTo: { kind: "none" } });
 
     // Only the new paper took a slot; the estimate covers it alone.
     expect((await results(jobId)).map((paper) => [paper.status, paper.workId === undefined])).toEqual([["completed", true], ["completed", true], ["processing", false]]);

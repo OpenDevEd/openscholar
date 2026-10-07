@@ -130,18 +130,23 @@ const placeOf = (resume: string): Place => ({ taken: Number(resume.slice(0, resu
 
 /**
  * Up to `count` works from a place in the search's cursor pages, the place after them (null
- * when the search has no more), and how many works the search has in all.
+ * when the search has no more), and how many works the search has in all. Given `pages`, it
+ * reads no more pages than that, and the place after says how many works are still to skip.
  */
-async function readFrom<Work>(request: SearchRequest, at: Place, count: number, select: string, spend: (pages: number) => Promise<boolean>): Promise<{ works: Work[]; after: Place | null; total: number }> {
+async function readFrom<Work>(request: SearchRequest, at: Place, count: number, select: string, spend: (pages: number) => Promise<boolean>, pages = Infinity): Promise<{ works: Work[]; after: Place | null; total: number }> {
   const works: Work[] = [];
-  let [toSkip, total] = [at.taken, 0];
+  let [toSkip, total, read] = [at.taken, 0, 0];
   for await (const page of cursorPages<Work>(request, select, spend, at.cursor)) {
     total = page.total;
+    read += 1;
     const skipped = Math.min(toSkip, page.works.length);
     const taken = page.works.slice(skipped, skipped + count - works.length);
     works.push(...taken);
     toSkip -= skipped;
-    if (works.length >= count) return { works, total, after: page.after(skipped + taken.length) };
+    if (works.length >= count || read >= pages) {
+      const after = page.after(skipped + taken.length);
+      return { works, total, after: after && { cursor: after.cursor, taken: after.taken + toSkip } };
+    }
   }
   return { works, total, after: null };
 }
@@ -304,23 +309,24 @@ export async function readSearchWorks<Work>(
 }
 
 /**
- * Works `first` to `last` of the search for one job of a request, and whether the search
- * `ended` with them. A request that `goesOn` after them is read by cursor, and so is one that
- * carries on from the job before (`resume`): each job then starts where the last stopped,
- * however far the request goes and whatever OpenAlex's order does between reads, and the
- * place after these works comes back as `resume`. A job alone reads as `readSearchWorks` does.
+ * Works `first` to `last` of the search for one step of a job's reading, and whether the
+ * search `ended` with them. A job that `goesOn` reads by cursor, one page a step: from where
+ * the step before stopped (`resume`), or from the start, skipping to `first`. The place after
+ * the page comes back as `resume`, however far the job goes and whatever OpenAlex's order does
+ * between reads, and only the works it took count as read. A step alone reads as
+ * `readSearchWorks` does.
  */
 export async function readSearchRun<Work>(
   request: SearchRequest,
   { first, last, select, resume, goesOn }: { first: number; last: number; select: string; resume?: string; goesOn: boolean },
   spend: (pages: number) => Promise<boolean>,
 ): Promise<{ works: Work[]; ended: boolean; resume?: string }> {
-  const asked = last - first + 1;
-  if (!resume && !goesOn) {
-    const works = await readSearchWorks<Work>(request, { first, last, select }, spend);
-    return { works, ended: works.length < asked };
-  }
   contact();
-  const { works, after } = await readFrom<Work>(request, resume ? placeOf(resume) : fromStart(first - 1), asked, select, spend);
+  if (!resume && !goesOn) {
+    const { works, offset, total } = await readWorks<Work>(request, first, last, select, spend);
+    // A short page isn't the search's end: its count is.
+    return { works: works.slice(first - 1 - offset, last - offset), ended: last >= total };
+  }
+  const { works, after } = await readFrom<Work>(request, resume ? placeOf(resume) : fromStart(first - 1), last - first + 1, select, spend, 1);
   return { works, ended: !after, ...(after ? { resume: kept(after) } : {}) };
 }

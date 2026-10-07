@@ -22,7 +22,6 @@ import {
 import { progressRow } from "./bookkeeping";
 import { paperLimit } from "./slots";
 import { searchSnapshotValidator } from "../paperSets/openalex";
-import { answeredFully, screeningFor } from "../research/answers";
 import { SCREENING_POOL_SIZE } from "../workpool";
 import { jobModel, screeningRevision } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
@@ -111,22 +110,7 @@ export const slotsAction = defineUserQuery({
 export const slots = userQuery(slotsAction);
 export const slotsForAssistant = assistantQuery(slotsAction);
 
-/** Papers one read checks for answers: each is an indexed read of a row of up to 50 answers. */
-const ANSWERED_PAPERS_MAX = 250;
-
-/** How many of these papers the person's search already answers every one of `questions` for, on its page. */
-export const answeredCount = internalQuery({
-  args: { userId: v.id("users"), searchId: v.string(), questions: v.array(v.string()), paperIds: v.array(v.string()) },
-  returns: v.number(),
-  handler: async (ctx, { userId, searchId, questions, paperIds }) => {
-    if (paperIds.length > ANSWERED_PAPERS_MAX) throw new Error(`Answered papers are counted ${ANSWERED_PAPERS_MAX} at a time`);
-    const search = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", searchId)).unique();
-    const screening = search && (await screeningFor(ctx, search._id));
-    return screening ? (await answeredFully(ctx, screening, questions, paperIds)).size : 0;
-  },
-});
-
-/** What a reading job reads next: its set and range, how far it has read, and its questions. Null once it isn't reading. */
+/** What a reading job reads next: its set and range, how far it has read. Null once it isn't reading. */
 export const readingJob = internalQuery({
   args: { jobId: v.id("screeningJobs") },
   returns: v.union(
@@ -139,7 +123,6 @@ export const readingJob = internalQuery({
       read: v.number(),
       resume: v.optional(v.string()),
       snapshot: v.optional(searchSnapshotValidator),
-      questions: v.array(v.string()),
     }),
   ),
   handler: async (ctx, { jobId }) => {
@@ -149,7 +132,6 @@ export const readingJob = internalQuery({
       userId: job.userId, set: job.set, first: job.first, last: job.last, read: job.readPlace?.read ?? 0,
       ...(job.resume ? { resume: job.resume } : {}),
       ...(job.snapshot ? { snapshot: job.snapshot } : {}),
-      questions: job.questions.map((asked) => asked.question),
     };
   },
 });

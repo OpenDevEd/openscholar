@@ -168,24 +168,32 @@ export const fillScreeningJob = internalMutation({
     jobId: v.id("screeningJobs"),
     papers: v.array(screeningPaperInputValidator),
     read: v.number(),
-    answered: v.number(),
     resume: v.optional(v.string()),
     ended: v.boolean(),
   },
   returns: v.null(),
-  handler: async (ctx, { jobId, papers, read, answered, resume, ended }) => {
+  handler: async (ctx, { jobId, papers: given, read, resume, ended }) => {
     const reading = await ctx.db.get("screeningJobs", jobId);
     if (!reading?.reading || reading.status !== "processing") return null;
     // The person may have been suspended while the papers were read.
     await requireActiveUser(ctx, reading.userId);
     const place = reading.readPlace ?? { read: 0, papers: 0 };
-    // This step's papers and those it took that aren't done, and so not paid for yet: as a job made with all of them is checked.
+    // A paper an earlier step took already (OpenAlex can list one on two pages) is screened, and paid for, once.
+    const held = await Promise.all(given.map((paper) => ctx.db.query("screeningResults").withIndex("by_job_openalexId", (q) => q.eq("jobId", jobId).eq("openalexId", paper.openalexId)).first()));
+    const papers = given.filter((_, i) => held[i] === null);
+    // Papers its search's page answered every question for cost nothing.
+    const screening = (await ctx.db.get("screenings", reading.screeningId))!;
+    const reused = reading.set?.kind === "search" ? await answeredFully(ctx, screening, reading.questions.map((q) => q.question), papers.map((paper) => paper.openalexId)) : new Set<string>();
+    // The papers it took that cost credits and aren't done, so not paid for yet, and this step's: as a job made with all of them is checked.
+    // Reused papers count as done only once bookkept, so taking them all as done-first can only overstate what's unpaid.
     const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique();
-    const unpaid = Math.max(0, place.papers - (progress ? progress.completed + progress.skipped + progress.failed : 0));
-    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.userId, unpaid + papers.length - answered, reading)).affordable;
+    const free = reading.reused ?? 0;
+    const done = progress ? progress.completed + progress.skipped + progress.failed : 0;
+    const unpaid = Math.max(0, place.papers - free - Math.max(0, done - free));
+    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.userId, unpaid + papers.length - reused.size, reading)).affordable;
     const now = Date.now();
     const taken = { read: place.read + read, papers: place.papers + (affordable ? papers.length : 0) };
-    const done = ended || !affordable;
+    const over = ended || !affordable;
     const made = affordable && papers.length && reading.newCollection ? { targetCollectionId: await newCollection(ctx, reading.userId, reading.newCollection), newCollection: undefined } : {};
     await ctx.db.patch("screeningJobs", jobId, {
       readPlace: taken,
@@ -193,12 +201,12 @@ export const fillScreeningJob = internalMutation({
       updatedAt: now,
       ...made,
       // Done reading: the job holds the papers it took.
-      ...(done ? { reading: undefined, totalPapers: taken.papers } : {}),
+      ...(over ? { reading: undefined, totalPapers: taken.papers } : {}),
       ...(affordable ? {} : { status: "creditsExhausted" as const }),
-      ...(done && affordable && taken.papers === 0 ? { status: "failed" as const, failure: "None of these papers match the search's rating filter" } : {}),
+      ...(over && affordable && taken.papers === 0 ? { status: "failed" as const, failure: "None of these papers match the search's rating filter" } : {}),
     });
-    if (affordable && papers.length) await createResults(ctx, (await ctx.db.get("screeningJobs", jobId))!, papers, now);
-    if (done && affordable) await finishIfDone(ctx, jobId);
+    if (affordable && papers.length) await createResults(ctx, (await ctx.db.get("screeningJobs", jobId))!, papers, now, reused);
+    if (over && affordable) await finishIfDone(ctx, jobId);
     return null;
   },
 });
@@ -237,10 +245,12 @@ type PaperInput = Infer<typeof screeningPaperInputValidator>;
  * already answered every question for is done at once on those answers, takes no slot and
  * costs nothing: the bookkeeping worker scores and counts it.
  */
-async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers: PaperInput[], createdAt: number) {
+async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers: PaperInput[], createdAt: number, answered?: Set<string>) {
   const batch = papers.slice(0, CREATE_BATCH);
   const screening = (await ctx.db.get("screenings", job.screeningId))!;
-  const reused = job.set?.kind === "search" ? await answeredFully(ctx, screening, job.questions.map((q) => q.question), batch.map((paper) => paper.openalexId)) : new Set<string>();
+  const ids = batch.map((paper) => paper.openalexId);
+  // Given which papers are answered already, as their step found them; a later batch looks for itself.
+  const reused = answered ? new Set(ids.filter((id) => answered.has(id))) : job.set?.kind === "search" ? await answeredFully(ctx, screening, job.questions.map((q) => q.question), ids) : new Set<string>();
   for (const paper of batch) {
     const done = reused.has(paper.openalexId);
     await ctx.db.insert("screeningResults", {

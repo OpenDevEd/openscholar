@@ -20,8 +20,6 @@ const jobArgs = {
 };
 type Config = { questions: Infer<typeof jobArgs.questions>; scoringConfig: Infer<typeof jobArgs.scoringConfig>; saveTo?: Infer<typeof saveToValidator>; prune?: boolean };
 
-/** Papers one count of already-answered papers reads (`screening/queries:answeredCount`). */
-const ANSWERED_CHUNK = 250;
 /** Papers one step of a job's reading takes: up to the end of one of OpenAlex's pages, so no page is asked for twice. */
 const READ_STEP = PAGE_SIZE;
 /** How long one reading action reads before it hands on to the next: well inside an action's ten minutes. */
@@ -108,27 +106,23 @@ export const read = internalAction({
     try {
       for (;;) {
         // Typed here: the generated API's types depend on this module, so inference would loop.
-        const job: { userId: Id<"users">; set: PaperSet; first: number; last: number; read: number; resume?: string; snapshot?: SearchSnapshot; questions: string[] } | null = await ctx.runQuery(internal.screening.queries.readingJob, { jobId });
+        const job: { userId: Id<"users">; set: PaperSet; first: number; last: number; read: number; resume?: string; snapshot?: SearchSnapshot } | null = await ctx.runQuery(internal.screening.queries.readingJob, { jobId });
         if (!job) return null;
         if (Date.now() - started > READ_ACTION_MS) return void (await ctx.scheduler.runAfter(0, internal.screening.start.read, { jobId }));
         const from = job.first + job.read;
         const to = Math.min(job.last, Math.ceil(from / READ_STEP) * READ_STEP);
         if (job.set.kind === "search") {
-          // Numbered pages where the search's order has them, each step its own; elsewhere cursor pages, each step carrying on from where the last stopped.
-          const paged = job.snapshot !== undefined && numbered(job.snapshot.request, to);
-          const { papers, ended, resume } = await searchPapers(ctx, job.userId, { searchId: job.set.searchId, first: from, last: to }, job.snapshot, paged ? { goesOn: false } : { resume: job.resume, goesOn: to < job.last });
-          let answered = 0;
-          for (let at = 0; at < papers.length; at += ANSWERED_CHUNK) {
-            const count: number = await ctx.runQuery(internal.screening.queries.answeredCount, { userId: job.userId, searchId: job.set.searchId, questions: job.questions, paperIds: papers.slice(at, at + ANSWERED_CHUNK).map((paper) => paper.openalexId) });
-            answered += count;
-          }
-          const done = ended || to >= job.last;
-          await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: to - from + 1, answered, ...(resume ? { resume } : {}), ended: done });
+          // Numbered pages when the search's order has them as far as the job goes, each step its own; otherwise one cursor page a step, carrying on from where the last stopped.
+          const paged = job.snapshot !== undefined && numbered(job.snapshot.request, job.last);
+          const { papers, ended, resume, taken } = await searchPapers(ctx, job.userId, { searchId: job.set.searchId, first: from, last: to }, job.snapshot, paged ? { goesOn: false } : { resume: job.resume, goesOn: true });
+          const read = paged ? to - from + 1 : taken;
+          const done = ended || from + read > job.last;
+          await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read, ...(resume ? { resume } : {}), ended: done });
           if (done) return null;
         } else {
           const { papers, resume } = await heldPapers(ctx, job.userId, job.set, { first: from, last: to }, job.resume);
           const done = !resume || to >= job.last;
-          await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: to - from + 1, answered: 0, ...(resume ? { resume } : {}), ended: done });
+          await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: to - from + 1, ...(resume ? { resume } : {}), ended: done });
           if (done) return null;
         }
       }

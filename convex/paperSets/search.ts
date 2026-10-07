@@ -173,7 +173,7 @@ export async function searchPapers(
   { searchId, first, last }: { searchId: string; first: number; last: number },
   snapshot?: SearchSnapshot,
   run: { resume?: string; goesOn: boolean } = { goesOn: false },
-): Promise<{ papers: SearchPaper[]; ended: boolean; snapshot: SearchSnapshot; resume?: string }> {
+): Promise<{ papers: SearchPaper[]; ended: boolean; snapshot: SearchSnapshot; resume?: string; taken: number }> {
   checkRange(first, last);
   // Typed here: the generated API's types depend on this module, so inference would loop.
   const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId });
@@ -184,7 +184,7 @@ export async function searchPapers(
   // OpenAlex can return a work twice in one read: a job holds it once, or it is screened and paid for twice.
   const ids = new Set<string>();
   const papers = works.map(toPaper).filter((paper) => !ids.has(paper.openalexId) && ids.add(paper.openalexId));
-  return { papers: await keptByRating(ctx, userId, papers, rating), ended, snapshot: taken, ...(resume ? { resume } : {}) };
+  return { papers: await keptByRating(ctx, userId, papers, rating), ended, snapshot: taken, ...(resume ? { resume } : {}), taken: works.length };
 }
 
 /** The papers a search's rating filter keeps, as its results page does: those the person rated within it. Every paper, when it has none. */

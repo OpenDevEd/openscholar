@@ -295,16 +295,52 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(ids).toContain("https://openalex.org/W201");
   });
 
-  it("reads past the search's 10,000th paper by cursor, where OpenAlex has no numbered pages", async () => {
+  it("reads a range past the search's 10,000th paper by cursor throughout, each page once, where OpenAlex has no numbered pages", async () => {
     total = 10_400;
     const { t, screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
 
-    const { jobId, made } = await screen({ first: 10_001, last: 10_100 });
+    const { jobId, made } = await screen({ first: 9_901, last: 10_100 });
 
-    expect(made).toMatchObject({ status: "processing", totalPapers: 100 });
+    expect(made).toMatchObject({ status: "processing", totalPapers: 200 });
     expect(pages().every(({ url }) => url.searchParams.get("page") === null && url.searchParams.get("cursor") !== null)).toBe(true);
-    const [firstResult] = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1));
-    expect(firstResult?.openalexId).toBe("https://openalex.org/W10001");
+    const cursors = pages().map(({ url }) => url.searchParams.get("cursor"));
+    expect(new Set(cursors).size).toBe(cursors.length);
+    const ids = (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(300))).map((result) => result.openalexId);
+    expect(ids).toEqual(Array.from({ length: 200 }, (_, i) => `https://openalex.org/W${9_901 + i}`));
+  });
+
+  it("carries on past a short numbered page, to the search's last paper", async () => {
+    total = 2_500;
+    const { t, screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    const work = (i: number) => ({ id: `https://openalex.org/W${i}`, display_name: `Paper ${i}` });
+
+    // The count's answer, then a first page one work short.
+    refusals = [
+      new Response(JSON.stringify({ meta: { count: 2_500 }, results: [work(1)] })),
+      new Response(JSON.stringify({ meta: { count: 2_500 }, results: Array.from({ length: 199 }, (_, i) => work(i + 1)) })),
+    ];
+    const { jobId, made } = await screen({ first: 1, last: 2_500 });
+
+    expect(made.totalPapers).toBe(2_499);
+    const last = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job_openalexId", (q) => q.eq("jobId", jobId).eq("openalexId", "https://openalex.org/W2500")).unique());
+    expect(last).not.toBeNull();
+  });
+
+  it("screens a paper OpenAlex lists on two pages once", async () => {
+    const { t, screen } = await setup();
+    const work = (i: number) => ({ id: `https://openalex.org/W${i}`, display_name: `Paper ${i}` });
+
+    // The count's answer, then two cursor pages that both hold W200.
+    refusals = [
+      new Response(JSON.stringify({ meta: { count: 600 }, results: [work(1)] })),
+      new Response(JSON.stringify({ meta: { count: 600, next_cursor: "2" }, results: Array.from({ length: 200 }, (_, i) => work(i + 1)) })),
+      new Response(JSON.stringify({ meta: { count: 600, next_cursor: "3" }, results: Array.from({ length: 200 }, (_, i) => work(i + 200)) })),
+    ];
+    const { jobId, made } = await screen({ first: 1, last: 600 });
+
+    const ids = (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(700))).map((result) => result.openalexId);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(made.totalPapers).toBe(ids.length);
   });
 
   it("holds a paper OpenAlex returns twice in one read once", async () => {
