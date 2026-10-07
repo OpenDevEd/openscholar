@@ -90,6 +90,8 @@ const CORE_PATHS = [
   "screening/papers:list",
   "screening/papers:get",
   "extraction/queries:listJobs",
+  "research/web:search",
+  "assistant/files:read",
 ] as const;
 
 /**
@@ -118,7 +120,10 @@ const entryAt = (path: string) => USER_ACTIONS.find((entry) => entry.path === pa
 export function core() {
   return CORE_PATHS.map((path) => {
     const entry = entryAt(path);
-    if (!entry || !runsWithoutAsking(entry)) throw new Error(`${path} can't be a tool of its own: it isn't registered, or it asks first.`);
+    // One that asks only about what it costs can be a tool of its own: a web search or reading an attached file (#648). The approval
+    // reads a core tool's calls as it does run_action's (`called`), and its step is resumed by path whichever tool asked.
+    const asksOnlyForCredits = entry?.kind === "action" && entry.spendsCredits && entry.estimate !== undefined && !entry.outsideEffect;
+    if (!entry || !(runsWithoutAsking(entry) || asksOnlyForCredits)) throw new Error(`${path} can't be a tool of its own: it isn't registered, or it asks first for more than what it costs.`);
     return entry;
   });
 }

@@ -10,7 +10,7 @@ import schema from "../schema";
 import { FILE_IDLE_MS } from "../../lib/assistant/files";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { people } from "./assistant.test-support";
-import { finishingDoStream, waitFor } from "./turn.test-support";
+import { callingDoStream, finishingDoStream, waitFor } from "./turn.test-support";
 
 const { mockDoStream, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), fetchMock: vi.fn() }));
 vi.stubGlobal("fetch", fetchMock);
@@ -60,7 +60,7 @@ const model = (t: Test, inputs: string[]) =>
 /** Starts an upload as the person's browser does: a token of its own, whose digest makes the file's row. */
 async function start(as: Person, name = "figure.png") {
   const token = `${crypto.randomUUID()}${crypto.randomUUID()}`;
-  const fileId = await as.mutation(api.assistant.files.startUpload, { name, digest: await digestOpaqueToken(token) });
+  const { fileId } = await as.mutation(api.assistant.files.startUpload, { name, digest: await digestOpaqueToken(token) });
   return { fileId, token };
 }
 const post = (t: Test, token: string, bytes: Uint8Array, type = "image/png") => t.fetch(`/assistant/upload?token=${token}`, { method: "POST", headers: { "Content-Type": type }, body: new Blob([bytes as Uint8Array<ArrayBuffer>]) });
@@ -225,5 +225,107 @@ describe("sending files", () => {
     await t.finishAllScheduledFunctions(() => {});
     expect(await t.run((ctx) => ctx.db.get("assistantFiles", fileId))).toBeNull();
     expect(await t.run(async (ctx) => (await ctx.storage.get(storageId)) !== null)).toBe(false);
+  });
+});
+
+/** A PDF of `pages` pages, each saying which it is. */
+async function pdfOf(pages: number) {
+  const { PDFDocument, StandardFonts } = await import("@cantoo/pdf-lib");
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  for (let i = 1; i <= pages; i += 1) doc.addPage().drawText(`Page ${i}`, { x: 50, y: 700, font, size: 24 });
+  return await doc.save();
+}
+const sha256Of = async (bytes: Uint8Array) => btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes as Uint8Array<ArrayBuffer>))));
+
+/** Attaches a PDF as the browser does: its row by its SHA-256, the bytes to the upload address, then the check that opens it. */
+async function attachPdf(t: Test, as: Person, bytes: Uint8Array) {
+  const { fileId } = await as.mutation(api.assistant.files.startUpload, { name: "trial.pdf", pdf: { sha256: await sha256Of(bytes), bytes: bytes.length } });
+  const storageId = await t.run((ctx) => ctx.storage.store(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/pdf" })));
+  const { pages } = await as.action(api.assistant.pdf.pdfReady, { fileId, storageId });
+  return { fileId, storageId, pages };
+}
+
+describe("PDFs and text files (#648)", () => {
+  it("binds a PDF only to the upload whose SHA-256 it has, and counts its pages", async () => {
+    const t = convexTest(schema);
+    const { asAda, asBen } = await people(t);
+    const bytes = await pdfOf(3);
+    const { fileId } = await asAda.mutation(api.assistant.files.startUpload, { name: "trial.pdf", pdf: { sha256: await sha256Of(bytes), bytes: bytes.length } });
+    const two = await pdfOf(2);
+    const other = await t.run((ctx) => ctx.storage.store(new Blob([two as Uint8Array<ArrayBuffer>], { type: "application/pdf" })));
+    const stored = await t.run((ctx) => ctx.storage.store(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: "application/pdf" })));
+
+    // A file whose hash isn't the one the row was made with, or someone else finishing the upload, binds nothing and deletes nothing.
+    await expect(asAda.action(api.assistant.pdf.pdfReady, { fileId, storageId: other })).rejects.toThrow();
+    await expect(asBen.action(api.assistant.pdf.pdfReady, { fileId, storageId: stored })).rejects.toThrow();
+    expect(await t.run(async (ctx) => (await ctx.storage.get(other)) !== null)).toBe(true);
+
+    expect(await asAda.action(api.assistant.pdf.pdfReady, { fileId, storageId: stored })).toEqual({ pages: 3 });
+    expect(await t.run((ctx) => ctx.db.get("assistantFiles", fileId))).toMatchObject({ storageId: stored, pages: 3, mediaType: "application/pdf" });
+  });
+
+  it("reads the pages asked for into a PDF of their own, kept with the chat", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await chatOn(t, ["text", "image", "file"]);
+    const { fileId } = await attachPdf(t, asAda, await pdfOf(5));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Read this", files: [fileId] });
+    await replied(t, threadId);
+
+    const read = await asAda.action(api.assistant.files.read, { file: fileId, range: "2-4" });
+    expect(read).toMatchObject({ file: fileId, pages: "2-4", of: 5 });
+    const part = await t.run((ctx) => ctx.db.get("assistantFiles", read.pdfPages!));
+    expect(part).toMatchObject({ parentId: fileId, range: "2-4", threadId, state: "sent" });
+    const { PDFDocument } = await import("@cantoo/pdf-lib");
+    const bytes = new Uint8Array(await t.run(async (ctx) => await (await ctx.storage.get(part!.storageId!))!.arrayBuffer()));
+    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(3);
+    // A range outside the PDF is refused with how many pages it has.
+    await expect(asAda.action(api.assistant.files.read, { file: fileId, range: "6-8" })).rejects.toThrow(/has 5 pages/);
+  });
+
+  it("reads a text file by lines, as many whole lines as fit, and says where it stopped", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await chatOn(t, ["text"]);
+    const token = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+    const { fileId } = await asAda.mutation(api.assistant.files.startUpload, { name: "rows.csv", digest: await digestOpaqueToken(token), text: "text/csv" });
+    const rows = ["id,score", ...Array.from({ length: 2_000 }, (_, i) => `${i + 1},${"x".repeat(20)}`)].join("\n");
+    const response = await t.fetch(`/assistant/upload?token=${token}`, { method: "POST", headers: { "Content-Type": "text/csv" }, body: rows });
+    expect(await response.json()).toMatchObject({ fileId, lines: 2_001 });
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Look at this", files: [fileId] });
+    await replied(t, threadId);
+
+    const read = await asAda.action(api.assistant.files.read, { file: fileId, range: "1-2001" });
+    const last = Number(read.lines!.split("-")[1]);
+    expect(read.text!.split("\n")).toHaveLength(last);
+    expect(read.text!.length).toBeLessThanOrEqual(15_000);
+    expect(last).toBeLessThan(2_001);
+    expect(read.text!.split("\n")[0]).toBe("id,score");
+  });
+
+  it("refuses bytes that aren't text for a text file", async () => {
+    const t = convexTest(schema);
+    const { asAda } = await people(t);
+    const token = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+    const { fileId } = await asAda.mutation(api.assistant.files.startUpload, { name: "notes.txt", digest: await digestOpaqueToken(token), text: "text/plain" });
+    expect((await post(t, token, new Uint8Array([0xff, 0xfe, 0x00, 0x41]), "text/plain")).status).toBe(400);
+    expect(await t.run((ctx) => ctx.db.get("assistantFiles", fileId))).toBeNull();
+  });
+
+  it("sends the pages a read cut to the model as the PDF itself, on the reply's next request", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await chatOn(t, ["text", "image", "file"]);
+    const { fileId } = await attachPdf(t, asAda, await pdfOf(4));
+    // Reading files runs without asking in this chat, so the call goes straight through.
+    await asAda.mutation(api.assistant.spending.setTool, { threadId, tool: "files", allowed: true });
+    mockDoStream
+      .mockImplementationOnce(callingDoStream({ id: "read-1", name: "assistant_files_read", input: { file: fileId, range: "1-2" } }))
+      .mockImplementation(finishingDoStream(["It says page 1."]));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "What does it say?", files: [fileId] });
+    await replied(t, threadId);
+
+    const prompt = mockDoStream.mock.lastCall![0].prompt as Array<{ role: string; content: Array<{ type: string; output?: { type: string; value: Array<{ type: string; mediaType?: string }> } }> }>;
+    const result = prompt.filter((message) => message.role === "tool").flatMap((message) => message.content).find((part) => part.type === "tool-result");
+    expect(result?.output?.type).toBe("content");
+    expect(result!.output!.value.some((item) => item.mediaType === "application/pdf")).toBe(true);
   });
 });

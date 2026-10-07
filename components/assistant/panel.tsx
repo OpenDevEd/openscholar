@@ -12,7 +12,7 @@ import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUp, ChevronDown, CircleAlert, CirclePause, CircleStop, Coins, ExternalLink, Eye, Gauge, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus, X } from "@/components/icons";
+import { ArrowUp, ChevronDown, CircleAlert, CirclePause, CircleStop, Coins, ExternalLink, Eye, FileSearch, Gauge, Globe, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus, X } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -36,8 +36,9 @@ import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { titleFrom } from "@/lib/assistant/title";
 import { stillNamed, withTokens, type Mention } from "@/lib/assistant/mentions";
 import { MentionComposer, MessageText, RECORD_CHIP, recordChipStyle } from "./mentions";
+import { Cited, WebSources, useCited } from "./citations";
 import { AttachButton, DropZone, Reattach, SentFiles, Tray, freePreviews, release, sendingOf, startShrinker, uploaded, useAttach, useRemove, type Attachment } from "./attachments";
-import { readsImages } from "@/lib/assistant/files";
+import { readsImages, readsPdfs } from "@/lib/assistant/files";
 import { inApp, recordOf } from "@/lib/assistant/view";
 import useSWR, { preload } from "swr";
 import { readWork } from "@/app/actions/topics";
@@ -442,6 +443,11 @@ function Chat({
     const now = store.getQuery(api.assistant.spending.get, { threadId: args.threadId });
     if (now) store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, changed(now, { allowance: args.allowance }));
   });
+  // A web search's or a PDF read's chip X: they're asked about again, which shows at once.
+  const setTool = useMutation(api.assistant.spending.setTool).withOptimisticUpdate((store, args) => {
+    const now = store.getQuery(api.assistant.spending.get, { threadId: args.threadId });
+    if (now) store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, { ...now, [args.tool]: args.allowed });
+  });
   const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.messages, threadId ? { threadId, stepsAhead: true } : "skip", { initialNumItems: FIRST_MESSAGES });
   const presetModel = usePresetModels();
   // The model picked before the chat exists; once it does, the chat keeps its own.
@@ -524,7 +530,8 @@ function Chat({
   const canWrite = thread?.role !== "read";
   // What's attached to this chat's draft, and why nothing can be, when that's so: a model that takes no images, or a chat the person only reads.
   const files = drafts.files(threadId);
-  const filesOff = !canWrite ? t("readOnly") : model && !readsImages(model.inputs) ? t("files.modelCant", { model: stripProviderPrefix(model.name) }) : null;
+  const reads = { images: !model || readsImages(model.inputs), pdfs: !model || readsPdfs(model.inputs), model: model ? stripProviderPrefix(model.name) : "" };
+  const filesOff = !canWrite ? t("readOnly") : !reads.images && !reads.pdfs ? t("files.modelCantFiles", { model: reads.model }) : null;
   const picker = useRef<HTMLInputElement>(null);
   const attach = useAttach((list) => drafts.addFiles(threadId, list), drafts.patchFile);
   const removeUpload = useRemove();
@@ -650,7 +657,7 @@ function Chat({
 
   // Files the person picked, dropped or pasted, when the chat can take them.
   const take = (list: FileList | null | undefined) => {
-    if (list?.length && !filesOff) attach([...list], files.filter((file) => !file.error).length);
+    if (list?.length && !filesOff) attach([...list], files.filter((file) => !file.error).length, reads);
   };
   const removeFile = (file: Attachment) => {
     removeUpload(file);
@@ -732,6 +739,8 @@ function Chat({
         composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} picked={drafts.picks(threadId)} onPick={(mention) => drafts.pick(threadId, mention)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel}
         meter={meter}
         allowance={spending?.allowance ?? null}
+        allowed={{ web: spending?.web ?? false, files: spending?.files ?? false }}
+        onStopTool={(tool) => (threadId ? void setTool({ threadId, tool, allowed: false }).catch((error) => toast.error(t("allowance.failed"), getErrorMessage(error, ""))) : undefined)}
         onStopAllowance={() => (threadId ? void setAllowance({ threadId, allowance: null }).catch((error) => toast.error(t("allowance.failed"), getErrorMessage(error, ""))) : undefined)}
         onCarryOn={() => {
           // Pressed twice, it carries on once: the second would find nothing paused and say it failed.
@@ -750,7 +759,7 @@ function Chat({
       <input
         ref={picker}
         type="file"
-        accept="image/*"
+        accept="image/*,application/pdf,text/plain,text/markdown,text/csv,.txt,.md,.markdown,.csv,.tsv"
         multiple
         hidden
         onChange={(event) => {
@@ -812,6 +821,14 @@ function Thread({
   // It gets its row now, and each message takes that same row as it arrives, so "Thinking" is one row throughout and never starts over.
   const waiting = live !== null && !live.asking && said.every((m) => m.status === "done" && m.acted);
   const rows: Item[] = waiting && older !== "first" ? [...messages, { id: `${SENDING}reply`, role: "assistant", order: live.order, text: "", status: "pending", mine: false, at: 0 }] : messages;
+  // What the chat's replies cite: the files its messages carried, and what its searches found (./citations.tsx).
+  const cites = useMemo(
+    () => ({
+      files: new Map(messages.flatMap((m) => (m.role === "user" ? (m.files ?? []).map((file) => [file.id, { name: file.name, url: file.url }] as const) : []))),
+      sources: new Map(messages.flatMap((m) => (m.role === "step" ? (m.sources ?? []).map((source) => [source.url, source] as const) : []))),
+    }),
+    [messages],
+  );
   // A reply is everything from one person's message to the next. One that was summarized partway carries on in a later
   // exchange, whose opening message the app wrote and the page leaves out, so its steps are still one map and its
   // messages are told apart by their place in the whole of it.
@@ -856,6 +873,7 @@ function Thread({
             {t("earlier")}
           </button>
         ) : null}
+        <Cited.Provider value={cites}>
         {rows.flatMap((m) => {
           if (m.role === "user") return [<UserBubble key={m.id} message={m} />];
           if (m.role === "event") return [<JobsEndedRow key={m.id} event={m} />];
@@ -868,11 +886,14 @@ function Thread({
             ...map,
             <div key={`reply:${reply.order}:${place}`} className="space-y-3">
               <Reply message={m} live={live?.order === m.order ? live.text : ""} acting={reply.steps.some((step) => step.status === "running")} />
+              {/* Under the reply's last words, what its searches found. */}
+              {m.role === "assistant" && m.status === "done" && !m.acted ? <WebSources sources={[...new Map(reply.steps.flatMap((step) => step.sources ?? []).map((source) => [source.url, source])).values()]} /> : null}
               {m.status === "stopped" ? <StoppedRow /> : null}
               {m.status === "failed" ? <FailedRow error={m.error} /> : null}
             </div>,
           ];
         })}
+        </Cited.Provider>
       </ConversationContent>
     </Conversation>
   );
@@ -910,6 +931,8 @@ const readWorkOf = ([, paperId]: ReturnType<typeof workKey>) => unlessLimited(re
  * written by the model, so the person sees where it goes and says yes first.
  */
 function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) {
+  // A page of an attached PDF, or a web page a search found (./citations.tsx).
+  const cited = useCited(href, children);
   const [asking, setAsking] = useState(false);
   // The paper focus mode is on, and whether it's open: it stays mounted once read, so it slides out when closed.
   const [reading, setReading] = useState<{ paperId: string; open: boolean } | null>(null);
@@ -922,6 +945,7 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
       </span>
     );
   }
+  if (cited) return cited;
   const record = recordOf(href);
   const { icon: Icon, tint } = record ? KIND[record.kind] : { icon: ExternalLink, tint: LINK_TINT };
   const inside = (
@@ -1263,6 +1287,8 @@ function Footer({
   meter,
   allowance,
   onStopAllowance,
+  allowed = { web: false, files: false },
+  onStopTool,
   onCarryOn,
   onSpending,
   dock,
@@ -1290,6 +1316,9 @@ function Footer({
   meter: Meter | null;
   /** What jobs that spend credits may hold in this chat without asking, when the person allowed them. The chip opens Spending, and its X turns the allowance off. */
   allowance: { cap: number | null } | null;
+  /** Whether web searches and reads of attached files run in this chat without asking (#648): each a chip whose X asks again. */
+  allowed?: { web: boolean; files: boolean };
+  onStopTool?: (tool: "web" | "files") => void;
   onStopAllowance: () => void;
   onCarryOn: () => void;
   onSpending: () => void;
@@ -1301,7 +1330,7 @@ function Footer({
 }) {
   const t = useTranslations("assistant");
   const view = useViewName();
-  const chips = meter !== null || allowance !== null;
+  const chips = meter !== null || allowance !== null || allowed.web || allowed.files;
   return (
     <div className="p-3 pt-0">
       {/* The chips' row takes room only while a chip shows, and opens and closes as one does. */}
@@ -1337,6 +1366,32 @@ function Footer({
                 </TooltipHint>
               </motion.span>
             ) : null}
+            {(["files", "web"] as const)
+              .filter((tool) => allowed[tool] && !meter?.paused)
+              .map((tool) => {
+                const Icon = tool === "web" ? Globe : FileSearch;
+                const tint = `var(--kind-${tool === "web" ? "web" : "file"})`;
+                const stop = t(tool === "web" ? "allowed.stopWeb" : "allowed.stopFiles");
+                return (
+                  <motion.span
+                    key={tool}
+                    layout="position"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ type: "spring", stiffness: 480, damping: 32 }}
+                    className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full pl-2.5 pr-1 text-xs font-medium"
+                    style={{ ...recordChipStyle(tint), backgroundColor: `color-mix(in oklab, ${tint} 14%, transparent)` }}
+                  >
+                    <Icon className="size-3" /> {t(tool === "web" ? "allowed.web" : "allowed.files")}
+                    <TooltipHint label={stop}>
+                      <button type="button" aria-label={stop} onClick={() => onStopTool?.(tool)} className="flex size-5 items-center justify-center rounded-full hover:bg-foreground/10">
+                        <X className="size-3" />
+                      </button>
+                    </TooltipHint>
+                  </motion.span>
+                );
+              })}
           </AnimatePresence>
         </div>
       </motion.div>

@@ -183,3 +183,8 @@ export const resultsValidator = v.object({
   pages: v.number(),
   papers: capped(v.array(paperValidator), RESULTS_PAGE),
 });
+
+/** The most pages one web search returns (convex/research/web.ts): OpenRouter's plugin returns 5, with room. */
+export const WEB_RESULTS_MAX = 10;
+/** A page a web search found: its title, address and what it says, cut to an excerpt. */
+export const webResultsValidator = capped(v.array(v.object({ title: v.string(), url: v.string(), excerpt: v.string() })), WEB_RESULTS_MAX);

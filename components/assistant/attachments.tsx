@@ -8,14 +8,14 @@
 import { createContext, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useMutation } from "convex/react";
-import { Hourglass, ImageIcon, Paperclip, TriangleAlert, X } from "@/components/icons";
+import { useAction, useMutation } from "convex/react";
+import { FileText, Hourglass, ImageIcon, Paperclip, TriangleAlert, X } from "@/components/icons";
 import { EASE } from "@/components/settings/model-map";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { digestOpaqueToken } from "@/convex/lib/opaqueTokenDigest";
-import { MAX_FILES_PER_MESSAGE, MAX_IMAGE_BYTES, MAX_IMAGE_MB } from "@/lib/assistant/files";
+import { MAX_FILES_PER_MESSAGE, MAX_IMAGE_BYTES, MAX_IMAGE_MB, MAX_PDF_BYTES, MAX_PDF_MB, MAX_TEXT_BYTES, MAX_TEXT_MB, isPdf, isText, textTypeOf } from "@/lib/assistant/files";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { FadeRow } from "./parts";
@@ -32,10 +32,13 @@ export type Attachment = {
   /** 0 to 1 while it uploads; 1 once it's in. */
   progress: number;
   error?: string;
+  /** A PDF's pages, once the server has opened it; a text file's lines. */
+  pages?: number;
+  lines?: number;
 };
 
 /** A file a sent message carried, as the chat lists it: no address (null) once it expired, and an empty one while it's still on its way. */
-export type SentFile = { id: string; name: string; bytes: number; mediaType: string; url: string | null };
+export type SentFile = { id: string; name: string; bytes: number; mediaType: string; url: string | null; pages?: number; lines?: number };
 
 export const isReady = (file: Attachment) => !file.error && file.fileId !== undefined && file.progress >= 1;
 
@@ -64,15 +67,15 @@ function shrink(file: Blob) {
   });
 }
 
-/** Posts a file's bytes to the upload route with its one-time token, telling how far it has got (convex/assistant/files.ts `upload`). */
-function post(token: string, blob: Blob, onProgress: (share: number) => void, signal: AbortSignal) {
-  return new Promise<void>((resolve, reject) => {
+/** Posts a file's bytes to an upload address, telling how far it has got, and returns what the server answered. */
+function send(url: string, blob: Blob, onProgress: (share: number) => void, signal: AbortSignal) {
+  return new Promise<string>((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open("POST", `${process.env.NEXT_PUBLIC_CONVEX_SITE_URL}/assistant/upload?token=${encodeURIComponent(token)}`);
-    request.setRequestHeader("Content-Type", blob.type);
+    request.open("POST", url);
+    request.setRequestHeader("Content-Type", blob.type || "application/octet-stream");
     request.upload.onprogress = (event) => event.lengthComputable && onProgress(event.loaded / event.total);
     request.onload = () => {
-      if (request.status < 300) return resolve();
+      if (request.status < 300) return resolve(request.responseText);
       const said = (() => {
         try {
           return (JSON.parse(request.responseText) as { error?: string }).error;
@@ -88,6 +91,14 @@ function post(token: string, blob: Blob, onProgress: (share: number) => void, si
     request.send(blob);
   });
 }
+/** An image's or a text file's bytes go to the upload route with its one-time token (convex/assistant/files.ts `upload`). */
+const imageRoute = (token: string) => `${process.env.NEXT_PUBLIC_CONVEX_SITE_URL}/assistant/upload?token=${encodeURIComponent(token)}`;
+
+/** A file's SHA-256 as base64, the form Convex keeps it in: a PDF is bound to its upload by it (convex/assistant/pdf.ts). */
+async function sha256Of(file: Blob) {
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", await file.arrayBuffer()));
+  return btoa(String.fromCharCode(...digest));
+}
 
 /** A file once it's up: its ID, and how its message shows it. */
 type Uploaded = { fileId: Id<"assistantFiles">; shown: SentFile };
@@ -97,7 +108,7 @@ type Uploaded = { fileId: Id<"assistantFiles">; shown: SentFile };
  * finds it however long ago it finished.
  */
 const jobs = new Map<string, { done: Promise<Uploaded | null>; stop: AbortController }>();
-const shownOf = (file: Attachment): SentFile => ({ id: file.key, name: file.name, bytes: file.bytes, mediaType: file.mediaType, url: file.preview ?? "" });
+const shownOf = (file: Attachment): SentFile => ({ id: file.key, name: file.name, bytes: file.bytes, mediaType: file.mediaType, url: file.preview ?? "", ...(file.pages === undefined ? {} : { pages: file.pages }), ...(file.lines === undefined ? {} : { lines: file.lines }) });
 /** These files once their uploads are done: the ones in, and the ones that failed on the way. Files refused before they started are neither. */
 export async function uploaded(files: readonly Attachment[]) {
   const going = files.filter((file) => !file.error);
@@ -119,24 +130,65 @@ export function useAttach(add: (files: Attachment[]) => void, patch: (key: strin
   const t = useTranslations("assistant.files");
   const startUpload = useMutation(api.assistant.files.startUpload);
   const remove = useMutation(api.assistant.files.remove);
-  /** `attached`: files already going with the draft, which count towards what one message carries. */
-  return (picked: readonly File[], attached: number) => {
+  const pdfReady = useAction(api.assistant.pdf.pdfReady);
+  /**
+   * `attached`: files already going with the draft, which count towards what one message carries.
+   * `reads`: what the chat's model takes, and its name for saying it doesn't.
+   */
+  return (picked: readonly File[], attached: number, reads: { images: boolean; pdfs: boolean; model: string }) => {
     let room = MAX_FILES_PER_MESSAGE - attached;
     const files = picked.map((file): Attachment & { file: File } => {
-      const base = { key: crypto.randomUUID(), name: file.name || t("pasted"), bytes: file.size, mediaType: file.type, progress: 0, file };
-      if (!file.type.startsWith("image/")) return { ...base, error: t("onlyImages") };
+      // A text file's type comes from its name where the browser gives none, as it often doesn't for Markdown.
+      const text = textTypeOf(file.name, file.type);
+      const base = { key: crypto.randomUUID(), name: file.name || t("pasted"), bytes: file.size, mediaType: text ?? file.type, progress: 0, file };
+      const pdf = isPdf(file.type);
+      if (!pdf && !text && !file.type.startsWith("image/")) return { ...base, error: t("onlyImages") };
       if (room <= 0) return { ...base, error: t("tooMany", { count: MAX_FILES_PER_MESSAGE }) };
       room -= 1;
-      if (file.size > MAX_IMAGE_BYTES) return { ...base, error: t("tooLarge", { mb: MAX_IMAGE_MB }) };
+      if (pdf && !reads.pdfs) return { ...base, error: t("modelCantPdf", { model: reads.model }) };
+      if (!pdf && !text && !reads.images) return { ...base, error: t("modelCant", { model: reads.model }) };
+      if (pdf && file.size > MAX_PDF_BYTES) return { ...base, error: t("tooLargePdf", { mb: MAX_PDF_MB }) };
+      if (text && file.size > MAX_TEXT_BYTES) return { ...base, error: t("tooLargeText", { mb: MAX_TEXT_MB }) };
+      if (!pdf && !text && file.size > MAX_IMAGE_BYTES) return { ...base, error: t("tooLarge", { mb: MAX_IMAGE_MB }) };
       return base;
     });
     add(files.map(({ file: _file, ...attachment }) => attachment));
     for (const one of files) {
       if (one.error) continue;
       const stop = new AbortController();
+      /** Stops here when the file was removed while its row was being made: the row goes too. */
+      const removedMeanwhile = async (fileId: Id<"assistantFiles">) => {
+        if (!stop.signal.aborted) return;
+        await remove({ fileId }).catch(() => {});
+        throw new DOMException("Removed", "AbortError");
+      };
+      const progress = (share: number) => patch(one.key, { progress: Math.min(share, 0.99) });
       const done = (async (): Promise<Uploaded> => {
-        // After the tray has opened, so shrinking costs none of its frames.
+        // After the tray has opened, so reading the file costs none of its frames.
         await new Promise((resolve) => setTimeout(resolve, 350));
+        if (isPdf(one.mediaType)) {
+          // A PDF goes as it is, to an upload address, bound to its row by its SHA-256; the server then opens it and counts its pages.
+          const { fileId, url } = await startUpload({ name: one.name, pdf: { sha256: await sha256Of(one.file), bytes: one.file.size } });
+          patch(one.key, { fileId });
+          await removedMeanwhile(fileId);
+          const { storageId } = JSON.parse(await send(url!, one.file, progress, stop.signal)) as { storageId: Id<"_storage"> };
+          const { pages } = await pdfReady({ fileId, storageId }).catch((error: unknown) => {
+            throw new Error(getErrorMessage(error, t("unreadablePdf")));
+          });
+          patch(one.key, { progress: 1, pages });
+          return { fileId, shown: { id: one.key, name: one.name, bytes: one.file.size, mediaType: one.mediaType, url: "", pages } };
+        }
+        const text = textTypeOf(one.name, one.mediaType);
+        if (text) {
+          // A text file goes as it is, the way an image does; the server checks it's text and counts its lines.
+          const token = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+          const { fileId } = await startUpload({ name: one.name, digest: await digestOpaqueToken(token), text });
+          patch(one.key, { fileId });
+          await removedMeanwhile(fileId);
+          const { lines } = JSON.parse(await send(imageRoute(token), new Blob([one.file], { type: text }), progress, stop.signal)) as { lines?: number };
+          patch(one.key, { progress: 1, lines });
+          return { fileId, shown: { id: one.key, name: one.name, bytes: one.file.size, mediaType: text, url: "", ...(lines === undefined ? {} : { lines }) } };
+        }
         const small = await shrink(one.file).catch(() => {
           throw new Error(t("unreadable"));
         });
@@ -144,14 +196,10 @@ export function useAttach(add: (files: Attachment[]) => void, patch: (key: strin
         patch(one.key, { bytes: small.size, mediaType: small.type, preview });
         // The token stays in this browser; the server keeps its digest.
         const token = `${crypto.randomUUID()}${crypto.randomUUID()}`;
-        const fileId = await startUpload({ name: one.name, digest: await digestOpaqueToken(token) });
+        const { fileId } = await startUpload({ name: one.name, digest: await digestOpaqueToken(token) });
         patch(one.key, { fileId });
-        // Removed while its row was being made: the row goes too.
-        if (stop.signal.aborted) {
-          await remove({ fileId }).catch(() => {});
-          throw new DOMException("Removed", "AbortError");
-        }
-        await post(token, small, (share) => patch(one.key, { progress: Math.min(share, 0.99) }), stop.signal);
+        await removedMeanwhile(fileId);
+        await send(imageRoute(token), small, progress, stop.signal);
         patch(one.key, { progress: 1 });
         return { fileId, shown: { id: one.key, name: one.name, bytes: small.size, mediaType: small.type, url: preview } };
       })().catch((error: unknown) => {
@@ -215,7 +263,13 @@ export function Tray({ files, onRemove }: { files: readonly Attachment[]; onRemo
                 transition={{ duration: 0.25, ease: EASE }}
                 className="shrink-0"
               >
-                {file.error ? <Refused file={file} onRemove={() => onRemove(file)} /> : <ImageChip url={file.preview} name={file.name} progress={file.progress} onRemove={() => onRemove(file)} />}
+                {file.error ? (
+                  <Refused file={file} onRemove={() => onRemove(file)} />
+                ) : isPdf(file.mediaType) || isText(file.mediaType) ? (
+                  <DocChip name={file.name} bytes={file.bytes} pages={file.pages} lines={file.lines} progress={file.progress} onRemove={() => onRemove(file)} />
+                ) : (
+                  <ImageChip url={file.preview} name={file.name} progress={file.progress} onRemove={() => onRemove(file)} />
+                )}
               </motion.div>
             ))}
           </AnimatePresence>
@@ -286,6 +340,43 @@ function NamedChip({ icon, name, line, tone, onRemove, compact }: { icon: ReactN
   );
 }
 
+function useSize() {
+  const format = useFormatter();
+  return (bytes: number) => (bytes >= 1024 * 1024 ? `${format.number(bytes / (1024 * 1024), { maximumFractionDigits: 1 })} MB` : `${format.number(Math.max(1, Math.round(bytes / 1024)))} KB`);
+}
+
+/** A PDF or a text file: its tile, its name, then its pages or lines and its size. The tile is a ring while it uploads. A sent one opens in a new tab. */
+function DocChip({ name, bytes, pages, lines, progress, onRemove, compact, href }: { name: string; bytes: number; pages?: number; lines?: number; progress: number; onRemove?: () => void; compact?: boolean; href?: string }) {
+  const t = useTranslations("assistant.files");
+  const size = useSize();
+  const body = (
+    <>
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: "color-mix(in oklab, var(--kind-file) 16%, transparent)", color: "var(--kind-file)" }}>
+        {progress < 1 ? <Ring progress={progress} /> : <FileText className="size-4" />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <TooltipHint label={name} onlyWhenClipped>
+          <p className="truncate text-xs font-medium">{name}</p>
+        </TooltipHint>
+        <p className="mt-0.5 flex items-center gap-1 overflow-hidden whitespace-nowrap text-2xs text-muted-foreground">
+          {pages !== undefined || lines !== undefined ? <span className="tabular-nums">{pages !== undefined ? t("pages", { count: pages }) : t("lines", { count: lines! })}</span> : null}
+          {pages !== undefined || lines !== undefined ? <span className="text-foreground/30">/</span> : null}
+          <span className="tabular-nums">{size(bytes)}</span>
+        </p>
+      </div>
+      {onRemove ? <RemoveButton name={name} onRemove={onRemove} /> : null}
+    </>
+  );
+  const box = cn("group relative flex items-center gap-2.5 rounded-xl bg-muted/60 pl-1.5 pr-2 text-left", compact ? "h-11 max-w-[15rem]" : "h-12 w-[13.5rem]");
+  return href ? (
+    <a href={href} target="_blank" rel="noreferrer" className={cn(box, "transition-colors hover:bg-muted")}>
+      {body}
+    </a>
+  ) : (
+    <div className={box}>{body}</div>
+  );
+}
+
 function Refused({ file, onRemove }: { file: Attachment; onRemove: () => void }) {
   return <NamedChip icon={<TriangleAlert className="size-4" />} name={file.name} line={file.error ?? ""} tone="refused" onRemove={onRemove} />;
 }
@@ -300,7 +391,9 @@ export function SentFiles({ files, onReattach }: { files: readonly SentFile[]; o
   return (
     <div className="mb-1.5 flex flex-wrap justify-end gap-1.5">
       {files.map((file) =>
-        file.url !== null ? (
+        (isPdf(file.mediaType) || isText(file.mediaType)) && file.url !== null ? (
+          <DocChip key={file.id} name={file.name} bytes={file.bytes} pages={file.pages} lines={file.lines} progress={1} compact href={file.url || undefined} />
+        ) : file.url !== null ? (
           <ImageChip key={file.id} url={file.url} name={file.name} progress={file.url ? 1 : 0} compact />
         ) : onReattach ? (
           <button key={file.id} type="button" onClick={onReattach} className="rounded-xl text-left transition-opacity hover:opacity-80">
@@ -334,9 +427,17 @@ export function DropZone({ on, off }: { on: boolean; off: string | null }) {
           </span>
           <p className="max-w-[18rem] text-sm font-semibold">{off ?? t("drop")}</p>
           {off ? null : (
-            <span className="flex h-6 items-center gap-1 rounded-md bg-foreground/[0.06] px-2 text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground/90">{format.number(MAX_IMAGE_MB)} MB</span> {t("anImage")}
-            </span>
+            <div className="flex gap-1.5 text-xs text-muted-foreground">
+              <span className="flex h-6 items-center gap-1 rounded-md bg-foreground/[0.06] px-2">
+                <span className="font-semibold text-foreground/90">{format.number(MAX_PDF_MB)} MB</span> {t("aPdf")}
+              </span>
+              <span className="flex h-6 items-center gap-1 rounded-md bg-foreground/[0.06] px-2">
+                <span className="font-semibold text-foreground/90">{format.number(MAX_IMAGE_MB)} MB</span> {t("anImage")}
+              </span>
+              <span className="flex h-6 items-center gap-1 rounded-md bg-foreground/[0.06] px-2">
+                <span className="font-semibold text-foreground/90">{format.number(MAX_TEXT_MB)} MB</span> {t("aTextFile")}
+              </span>
+            </div>
           )}
         </motion.div>
       ) : null}

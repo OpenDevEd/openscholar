@@ -3783,6 +3783,18 @@
         "doing": "Recherche dans votre compte",
         "did": "Trouvé dans votre compte",
         "where": "Votre compte"
+      },
+      "webSearch": {
+        "doing": "Recherche sur le web",
+        "did": "Recherche sur le web faite",
+        "where": "Le web",
+        "ask": "Chercher sur le web"
+      },
+      "readFile": {
+        "doing": "Lecture d’un fichier",
+        "did": "Fichier lu",
+        "where": "Pièces jointes",
+        "ask": "Lire un fichier"
       }
     },
     "asks": {
@@ -3819,7 +3831,11 @@
         "prune": "Les exclus en sortent",
         "rating": "Note",
         "change": "Modifications",
-        "usePdfs": "Textes intégraux"
+        "usePdfs": "Textes intégraux",
+        "query": "Requête",
+        "file": "Fichier",
+        "pages": "Pages",
+        "range": "Partie"
       }
     },
     "topUp": {
@@ -3895,20 +3911,37 @@
     },
     "moreJobs": "{count, plural, one {# autre tâche} other {# autres tâches}}",
     "files": {
-      "attach": "Joindre des images",
+      "attach": "Joindre des fichiers",
       "pasted": "Image collée",
-      "onlyImages": "Images seulement pour l’instant",
+      "onlyImages": "Images, PDF et fichiers texte seulement",
       "tooLarge": "Plus de {mb} Mo",
       "unreadable": "Cette image est illisible",
       "failed": "Impossible d'envoyer ce fichier",
       "remove": "Retirer",
       "removeNamed": "Retirer {name}",
       "expired": "Expiré, joignez-le à nouveau",
-      "drop": "Déposez des images pour les joindre",
+      "drop": "Déposez des fichiers pour les joindre",
       "anImage": "une image",
       "modelCant": "{model} ne lit pas les images. Choisissez un autre modèle pour les joindre.",
       "notUploaded": "{count, plural, one {Un fichier n’a pas été envoyé} other {# fichiers n’ont pas été envoyés}}. Retirez-{count, plural, one {le} other {les}} ou joignez-{count, plural, one {le} other {les}} à nouveau.",
-      "tooMany": "{count} fichiers au plus par message"
-    }
+      "tooMany": "{count} fichiers au plus par message",
+      "tooLargePdf": "Plus de {mb} Mo",
+      "unreadablePdf": "Ce PDF ne peut pas être ouvert",
+      "pages": "{count, plural, one {# page} other {# pages}}",
+      "aPdf": "un PDF",
+      "modelCantPdf": "{model} ne lit pas les PDF. Choisissez un autre modèle pour les joindre.",
+      "openPage": "Ouvrir {name} à la page {page}",
+      "modelCantFiles": "{model} ne lit ni les images ni les PDF. Choisissez un autre modèle pour les joindre.",
+      "tooLargeText": "Plus de {mb} Mo",
+      "lines": "{count, plural, one {# ligne} other {# lignes}}",
+      "aTextFile": "un fichier texte"
+    },
+    "allowed": {
+      "web": "Recherche web",
+      "stopWeb": "Demander avant de chercher sur le web",
+      "files": "Lecture de fichiers",
+      "stopFiles": "Demander avant de lire un fichier"
+    },
+    "webSources": "{count, plural, one {# source web} other {# sources web}}"
   }
 }

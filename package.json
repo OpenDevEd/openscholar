@@ -34,6 +34,7 @@
     "@ai-sdk/openai": "^4.0.81",
     "@ai-sdk/provider": "^4.0.19",
     "@ai-sdk/provider-utils": "^5.0.51",
+    "@cantoo/pdf-lib": "^2.11.1",
     "@citation-js/core": "0.9.0",
     "@citation-js/plugin-bibtex": "0.9.0",
     "@clerk/localizations": "^3.37.0",
