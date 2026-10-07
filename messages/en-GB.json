@@ -3899,7 +3899,7 @@
     "files": {
       "attach": "Attach images",
       "pasted": "Pasted image",
-      "onlyImages": "Only images can be attached for now",
+      "onlyImages": "Images only for now",
       "tooLarge": "Over {mb} MB",
       "unreadable": "This image can't be read",
       "failed": "Couldn't upload this file",

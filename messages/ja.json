@@ -3897,7 +3897,7 @@
     "files": {
       "attach": "画像を添付",
       "pasted": "貼り付けた画像",
-      "onlyImages": "現在は画像のみ添付できます",
+      "onlyImages": "現在は画像のみ",
       "tooLarge": "{mb} MB を超えています",
       "unreadable": "この画像は読み込めません",
       "failed": "このファイルをアップロードできませんでした",

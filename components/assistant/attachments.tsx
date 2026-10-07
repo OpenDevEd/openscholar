@@ -224,7 +224,7 @@ function RemoveButton({ name, onRemove }: { name: string; onRemove: () => void }
 function ImageChip({ url, name, progress, onRemove, compact }: { url?: string | null; name: string; progress: number; onRemove?: () => void; compact?: boolean }) {
   return (
     <div className={cn("group relative shrink-0 rounded-xl bg-muted/60", compact ? "size-11" : "size-12")}>
-      {url ? <img src={url} alt={name} className="size-full rounded-xl object-cover" /> : null}
+      {url ? <img src={url} alt={name} className="size-full rounded-xl object-cover ring-1 ring-inset ring-foreground/10" /> : null}
       <AnimatePresence>
         {progress < 1 ? (
           <motion.span key="ring" exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/35 text-white">

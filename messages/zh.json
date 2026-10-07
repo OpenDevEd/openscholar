@@ -3897,7 +3897,7 @@
     "files": {
       "attach": "添加图片",
       "pasted": "粘贴的图片",
-      "onlyImages": "目前只能添加图片",
+      "onlyImages": "目前仅限图片",
       "tooLarge": "超过 {mb} MB",
       "unreadable": "无法读取此图片",
       "failed": "无法上传此文件",
