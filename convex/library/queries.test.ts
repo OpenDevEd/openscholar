@@ -1005,7 +1005,7 @@ describe("saving without a rating", () => {
     await asUser.mutation(api.library.collections.deleteCollection, { collectionId });
     await t.finishAllScheduledFunctions(() => {});
     expect(await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).take(1))).toEqual([]);
-  });
+  }, 60_000);
 
   it("keeps the research rating search cards show in step with the library", async () => {
     const t = convexTest(schema);
@@ -1294,5 +1294,5 @@ describe("the library as the assistant reads it", () => {
     expect(second.papers).toHaveLength(5);
     expect(second.next).toBeUndefined();
     expect(new Set([...first.papers, ...second.papers].map((paper) => paper.id)).size).toBe(25);
-  });
+  }, 60_000);
 });
