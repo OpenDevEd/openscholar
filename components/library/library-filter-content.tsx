@@ -167,7 +167,6 @@ export function LibraryFilterContent({
         <RatingRangePicker
           ratingRange={ratingRange}
           onRatingRangeChange={onRatingRangeChange}
-          minValue={0}
         />
       </FilterSection>
 

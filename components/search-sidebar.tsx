@@ -152,13 +152,10 @@ const RatingFilterPanel = React.memo(function RatingFilterPanel() {
       <RatingRangePicker
         ratingRange={ratingRange}
         onRatingRangeChange={(range) => updateFilter({ ratingRange: range })}
-        minValue={0}
         onlyRatedPapers={onlyRatedPapers}
         onOnlyRatedChange={(checked) =>
           updateFilter({ onlyRatedPapers: checked })
         }
-        showOnlyRatedToggle
-        showActiveIndicator
       />
     </FilterSection>
   );

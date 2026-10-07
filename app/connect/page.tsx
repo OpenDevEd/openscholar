@@ -17,7 +17,7 @@ type ConnectState = "consent" | "creating" | "show_key" | "done" | "error";
 export default function ConnectPage() {
   const searchParams = useSearchParams();
   const redirectUri = searchParams.get("redirect_uri");
-  const appName = searchParams.get("app_name") || "Unknown App";
+  const appName = searchParams.get("app_name") || "Unknown app";
   const isManualMode = !redirectUri || searchParams.get("mode") === "manual";
   const { phase, canRunProtectedQueries } = useAuthReadiness();
 
@@ -148,7 +148,7 @@ export default function ConnectPage() {
 
           <div className="rounded-lg border p-4 space-y-3 bg-inset">
             <label className="text-xs font-medium text-muted-foreground">
-              API Key
+              API key
             </label>
             <div className="flex gap-2">
               <code className="flex-1 rounded-md border bg-background px-3 py-2.5 text-sm font-mono break-all select-all">
@@ -217,7 +217,7 @@ export default function ConnectPage() {
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="max-w-md w-full space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-semibold">Connect App</h1>
+          <h1 className="text-2xl font-semibold">Connect app</h1>
           <p className="text-muted-foreground">
             <strong>{appName}</strong> wants to use AI generation through your OpenScholar credits.
           </p>

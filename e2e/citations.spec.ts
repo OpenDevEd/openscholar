@@ -38,7 +38,7 @@ test("copies the selected citation from every result-card layout", async ({ page
   expect(servedServerSearch, "the search must use the fixed server response").toBe(true);
   const resultsUrl = page.url();
 
-  for (const layout of ["Detailed List", "Simple List", "2 Column Grid", "3 Column Grid"]) {
+  for (const layout of ["Detailed list", "Simple list", "2-column grid", "3-column grid"]) {
     await page.getByRole("button", { name: layout, exact: true }).click();
     await page.getByRole("button", { name: "Cite", exact: true }).first().click();
     const panel = page.getByRole("dialog");

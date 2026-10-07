@@ -234,7 +234,6 @@
   },
   "pricing": {
     "chooseYourPlan": "Choisissez votre forfait",
-    "subtitle": "Passez du gratuit à l'entreprise avec une tarification transparente",
     "perMonth": "/mois",
     "freePrice": "Gratuit",
     "enterprisePlanName": "Entreprise",
@@ -436,19 +435,12 @@
       "cancelled": "Cette opération a été annulée avant d'être terminée."
     }
   },
-  "sidebar": {
-    "expandSidebar": "Développer la barre latérale (Ctrl+B)",
-    "collapseSidebar": "Réduire la barre latérale (Ctrl+B)"
-  },
   "downloads": {
     "downloadAll": "Tout télécharger",
     "downloadEssentialJSON": "Télécharger les infos essentielles en JSON",
     "downloadEssentialCSV": "Télécharger les infos essentielles en CSV"
   },
   "extraction": {
-    "searchJobs": "Rechercher des tâches...",
-    "noExtractionJobs": "Aucune tâche d'extraction",
-    "createJobToStart": "Créez une tâche pour commencer.",
     "extractDescription": "Extraire des données structurées des articles de recherche",
     "noSearchHistoryFound": "Aucun historique de recherche trouvé",
     "performSearchesFirst": "Effectuez d'abord des recherches pour créer une tâche d'extraction.",
@@ -914,12 +906,8 @@
     "enableToggleToCustomize": "Activez le toggle ci-dessus pour personnaliser la plage d'années",
     "defaultAllYears": "Par défaut, toutes les années sont incluses dans votre recherche",
     "yearRangeLabel": "Plage d'années :",
-    "nStars": "{count, plural, one {# étoile} other {# étoiles}}",
-    "zeroStars": "0 étoiles",
     "onlyShowRated": "Afficher uniquement les articles notés",
     "hideUnrated": "Masquer les articles que vous n'avez pas encore notés",
-    "showingRange": "Affichage de {range}",
-    "filterActive": "Filtre actif",
     "searchCountriesPlaceholder": "Rechercher des pays ou régions...",
     "filteringByCountries": "Filtrage par {count} pays au total",
     "regionsGroup": "Régions",
@@ -1160,9 +1148,6 @@
     "bookmarkNotFound": "Favori \"{keyword}\" non trouvé"
   },
   "accessibility": {
-    "toggleTheme": "Basculer le thème",
-    "switchToLightMode": "Passer en mode clair",
-    "switchToDarkMode": "Passer en mode sombre",
     "closeDialog": "Fermer",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "Numéro de page",

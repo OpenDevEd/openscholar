@@ -234,7 +234,6 @@
   },
   "pricing": {
     "chooseYourPlan": "选择您的计划",
-    "subtitle": "从免费版到企业版，价格透明",
     "perMonth": "/月",
     "freePrice": "免费",
     "enterprisePlanName": "企业版",
@@ -436,19 +435,12 @@
       "cancelled": "此操作在完成前已被取消。"
     }
   },
-  "sidebar": {
-    "expandSidebar": "展开侧边栏 (Ctrl+B)",
-    "collapseSidebar": "折叠侧边栏 (Ctrl+B)"
-  },
   "downloads": {
     "downloadAll": "下载全部",
     "downloadEssentialJSON": "将基本信息下载为 JSON",
     "downloadEssentialCSV": "将基本信息下载为 CSV"
   },
   "extraction": {
-    "searchJobs": "搜索任务...",
-    "noExtractionJobs": "无提取任务",
-    "createJobToStart": "创建任务以开始。",
     "extractDescription": "从研究论文中提取结构化数据",
     "noSearchHistoryFound": "未找到搜索历史",
     "performSearchesFirst": "请先执行一些搜索以创建提取任务。",
@@ -914,12 +906,8 @@
     "enableToggleToCustomize": "启用上方的切换以自定义年份范围",
     "defaultAllYears": "默认情况下，您的搜索包含所有年份",
     "yearRangeLabel": "年份范围：",
-    "nStars": "{count, plural, other {# 星}}",
-    "zeroStars": "0 星",
     "onlyShowRated": "仅显示已评分的论文",
     "hideUnrated": "隐藏您尚未评分的论文",
-    "showingRange": "显示 {range}",
-    "filterActive": "筛选已激活",
     "searchCountriesPlaceholder": "搜索国家或地区...",
     "filteringByCountries": "共筛选 {count} 个国家",
     "regionsGroup": "地区",
@@ -1160,9 +1148,6 @@
     "bookmarkNotFound": "未找到书签「{keyword}」"
   },
   "accessibility": {
-    "toggleTheme": "切换主题",
-    "switchToLightMode": "切换到浅色模式",
-    "switchToDarkMode": "切换到深色模式",
     "closeDialog": "关闭",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "页码",
