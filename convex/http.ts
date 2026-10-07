@@ -11,6 +11,7 @@ import { checkAdminSession, checkReaderStatus } from "./evidenceLibraries/servic
 import { receiveSourceStatus } from "./evidenceLibraries/sourceStatus";
 import { readCollectionItems } from "./evidenceLibraries/collectionSources";
 import { download as downloadExport } from "./exports";
+import { upload as uploadAssistantFile, uploadOptions as uploadAssistantFileOptions } from "./assistant/files";
 import { requireAppUrl } from "./lib/env";
 import {
   handleChatCompletions,
@@ -21,6 +22,9 @@ import {
 
 const http = httpRouter();
 http.route({path: "/export", method: "GET", handler: downloadExport});
+// Files attached to assistant chats: their bytes, sent with a one-time token (convex/assistant/files.ts).
+http.route({path: "/assistant/upload", method: "POST", handler: uploadAssistantFile});
+http.route({path: "/assistant/upload", method: "OPTIONS", handler: uploadAssistantFileOptions});
 http.route({path: "/api/v1/evidence-libraries/topics/catalog", method: "POST", handler: topicCatalog});
 http.route({path: "/api/v1/evidence-libraries/topics/detail", method: "POST", handler: topicDetail});
 http.route({path: "/api/v1/evidence-libraries/topic-associations", method: "POST", handler: topicAssociations});

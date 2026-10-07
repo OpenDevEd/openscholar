@@ -357,6 +357,8 @@ export const assistantFileFields = {
   state: v.union(v.literal("pending"), v.literal("sent"), v.literal("expired")),
   /** When it was attached, or last went to the model. */
   usedAt: v.number(),
+  /** The digest of the token its bytes are uploaded with, until they are. */
+  uploadDigest: v.optional(v.string()),
 };
 
 /** A file a person's message carried, as the chat shows it: no address once it expired (./files.ts). */

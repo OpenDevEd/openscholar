@@ -8,12 +8,13 @@
 import { createContext, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useAction, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
 import { Hourglass, ImageIcon, Paperclip, TriangleAlert, X } from "@/components/icons";
 import { EASE } from "@/components/settings/model-map";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { digestOpaqueToken } from "@/convex/lib/opaqueTokenDigest";
 import { MAX_IMAGE_BYTES, MAX_IMAGE_MB } from "@/lib/assistant/files";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
@@ -63,29 +64,48 @@ function shrink(file: Blob) {
   });
 }
 
-/** Uploads to a Convex upload address, telling how far it has got. */
-function upload(url: string, blob: Blob, onProgress: (share: number) => void) {
-  return new Promise<Id<"_storage">>((resolve, reject) => {
+/** Posts a file's bytes to the upload route with its one-time token, telling how far it has got (convex/assistant/files.ts `upload`). */
+function post(token: string, blob: Blob, onProgress: (share: number) => void, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open("POST", url);
+    request.open("POST", `${process.env.NEXT_PUBLIC_CONVEX_SITE_URL}/assistant/upload?token=${encodeURIComponent(token)}`);
     request.setRequestHeader("Content-Type", blob.type);
     request.upload.onprogress = (event) => event.lengthComputable && onProgress(event.loaded / event.total);
-    request.onload = () => (request.status < 300 ? resolve((JSON.parse(request.responseText) as { storageId: Id<"_storage"> }).storageId) : reject(new Error(`Upload failed (${request.status})`)));
+    request.onload = () => {
+      if (request.status < 300) return resolve();
+      const said = (() => {
+        try {
+          return (JSON.parse(request.responseText) as { error?: string }).error;
+        } catch {
+          return undefined;
+        }
+      })();
+      reject(new Error(said ?? `Upload failed (${request.status})`));
+    };
     request.onerror = () => reject(new Error("Upload failed"));
+    request.onabort = () => reject(new DOMException("Removed", "AbortError"));
+    signal.addEventListener("abort", () => request.abort(), { once: true });
     request.send(blob);
   });
 }
 
 /** A file once it's up: its ID, and how its message shows it. */
 type Uploaded = { fileId: Id<"assistantFiles">; shown: SentFile };
-/** Uploads still going, by their key: each ends with the file, or null when it failed. */
-const uploads = new Map<string, Promise<Uploaded | null>>();
+/**
+ * Each file's upload, by its key: it ends with the file, or null when it failed. Kept until the
+ * message that carries it is sent or the file is removed (`release`), so a send that waits on it
+ * finds it however long ago it finished.
+ */
+const jobs = new Map<string, { done: Promise<Uploaded | null>; stop: AbortController }>();
 const shownOf = (file: Attachment): SentFile => ({ id: file.key, name: file.name, bytes: file.bytes, mediaType: file.mediaType, url: file.preview ?? "" });
-/** These files once their uploads are done, leaving out the ones refused or failed. */
+/** These files once their uploads are done: the ones in, and the ones that failed on the way. Files refused before they started are neither. */
 export async function uploaded(files: readonly Attachment[]) {
-  const done = await Promise.all(files.map((file) => (file.error ? null : isReady(file) ? { fileId: file.fileId!, shown: shownOf(file) } : (uploads.get(file.key) ?? null))));
-  return done.filter((file): file is Uploaded => file !== null);
+  const going = files.filter((file) => !file.error);
+  const done = await Promise.all(going.map((file) => (isReady(file) ? { fileId: file.fileId!, shown: shownOf(file) } : (jobs.get(file.key)?.done ?? null))));
+  return { done: done.filter((file): file is Uploaded => file !== null), failed: going.filter((_, i) => done[i] === null) };
 }
+/** Lets go of these files' uploads, once their message is sent or they're removed. */
+export const release = (keys: readonly string[]) => keys.forEach((key) => jobs.delete(key));
 /** How a message shows files still on their way. */
 export const sendingOf = (files: readonly Attachment[]) => files.filter((file) => !file.error).map((file) => shownOf(file));
 
@@ -95,8 +115,8 @@ export const sendingOf = (files: readonly Attachment[]) => files.filter((file) =
  */
 export function useAttach(add: (files: Attachment[]) => void, patch: (key: string, change: Partial<Attachment>) => void) {
   const t = useTranslations("assistant.files");
-  const uploadUrl = useMutation(api.assistant.files.uploadUrl);
-  const ready = useAction(api.assistant.files.ready);
+  const startUpload = useMutation(api.assistant.files.startUpload);
+  const remove = useMutation(api.assistant.files.remove);
   return (picked: readonly File[]) => {
     const files = picked.map((file): Attachment & { file: File } => {
       const base = { key: crypto.randomUUID(), name: file.name || t("pasted"), bytes: file.size, mediaType: file.type, progress: 0, file };
@@ -107,7 +127,8 @@ export function useAttach(add: (files: Attachment[]) => void, patch: (key: strin
     add(files.map(({ file: _file, ...attachment }) => attachment));
     for (const one of files) {
       if (one.error) continue;
-      const job = (async () => {
+      const stop = new AbortController();
+      const done = (async (): Promise<Uploaded> => {
         // After the tray has opened, so shrinking costs none of its frames.
         await new Promise((resolve) => setTimeout(resolve, 350));
         const small = await shrink(one.file).catch(() => {
@@ -115,27 +136,33 @@ export function useAttach(add: (files: Attachment[]) => void, patch: (key: strin
         });
         const preview = URL.createObjectURL(small);
         patch(one.key, { bytes: small.size, mediaType: small.type, preview });
-        const { fileId, url } = await uploadUrl({ name: one.name });
+        // The token stays in this browser; the server keeps its digest.
+        const token = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+        const fileId = await startUpload({ name: one.name, digest: await digestOpaqueToken(token) });
         patch(one.key, { fileId });
-        const storageId = await upload(url, small, (share) => patch(one.key, { progress: Math.min(share, 0.99) }));
-        await ready({ fileId, storageId });
+        // Removed while its row was being made: the row goes too.
+        if (stop.signal.aborted) {
+          await remove({ fileId }).catch(() => {});
+          throw new DOMException("Removed", "AbortError");
+        }
+        await post(token, small, (share) => patch(one.key, { progress: Math.min(share, 0.99) }), stop.signal);
         patch(one.key, { progress: 1 });
         return { fileId, shown: { id: one.key, name: one.name, bytes: small.size, mediaType: small.type, url: preview } };
-      })()
-        .catch((error: unknown) => {
-          patch(one.key, { error: getErrorMessage(error, t("failed")) });
-          return null;
-        })
-        .finally(() => uploads.delete(one.key));
-      uploads.set(one.key, job);
+      })().catch((error: unknown) => {
+        if (!stop.signal.aborted) patch(one.key, { error: getErrorMessage(error, t("failed")) });
+        return null;
+      });
+      jobs.set(one.key, { done, stop });
     }
   };
 }
 
-/** Lets go of a file in a draft: its upload, if it's in, and its picture in this browser. */
+/** Lets go of a file in a draft: stops its upload, deletes it if it's in, and frees its picture in this browser. */
 export function useRemove() {
   const remove = useMutation(api.assistant.files.remove);
   return (file: Attachment) => {
+    jobs.get(file.key)?.stop.abort();
+    release([file.key]);
     if (file.preview) URL.revokeObjectURL(file.preview);
     if (file.fileId) void remove({ fileId: file.fileId }).catch(() => {});
   };

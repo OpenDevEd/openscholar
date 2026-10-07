@@ -36,7 +36,7 @@ import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { titleFrom } from "@/lib/assistant/title";
 import { stillNamed, withTokens, type Mention } from "@/lib/assistant/mentions";
 import { MentionComposer, MessageText, RECORD_CHIP, recordChipStyle } from "./mentions";
-import { AttachButton, DropZone, Reattach, SentFiles, Tray, sendingOf, startShrinker, uploaded, useAttach, useRemove, type Attachment } from "./attachments";
+import { AttachButton, DropZone, Reattach, SentFiles, Tray, release, sendingOf, startShrinker, uploaded, useAttach, useRemove, type Attachment } from "./attachments";
 import { readsImages } from "@/lib/assistant/files";
 import { inApp, recordOf } from "@/lib/assistant/view";
 import useSWR, { preload } from "swr";
@@ -588,9 +588,11 @@ function Chat({
       onSending((now) => (now === before ? mine : now));
       // Its files once they're up; it waits for the ones still uploading.
       const up = await uploaded(attachedNow);
-      const fileIds = up.map((file) => file.fileId);
-      going.current = up.length ? up.map((file) => file.shown) : undefined;
-      setFirst((now) => (now && now.text === text ? { ...now, files: up.map((file) => file.shown) } : now));
+      // A file that failed on the way stops the send: the message goes back with it, and its chip says why.
+      if (up.failed.length) throw new Error(t("files.notUploaded", { count: up.failed.length }));
+      const fileIds = up.done.map((file) => file.fileId);
+      going.current = up.done.length ? up.done.map((file) => file.shown) : undefined;
+      setFirst((now) => (now && now.text === text ? { ...now, files: up.done.map((file) => file.shown) } : now));
       // Where it's sent from goes with it, so "this" and "here" mean the page the person is on.
       await sendMessage({ threadId: id, text, view: window.location.pathname + window.location.search, ...(fileIds.length ? { files: fileIds } : {}) });
       return id;
@@ -600,6 +602,7 @@ function Chat({
       await sent;
       drafts.unpick(into, sentPicks);
       drafts.dropFiles(into, attachedNow.map((file) => file.key));
+      release(attachedNow.map((file) => file.key));
     } catch (error) {
       // The message goes back in the box of its chat, unless something new was typed there meanwhile.
       drafts.set(into, (now) => now || typed);

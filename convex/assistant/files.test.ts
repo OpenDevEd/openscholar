@@ -8,6 +8,7 @@ import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
 import { FILE_IDLE_MS } from "../../lib/assistant/files";
+import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { people } from "./assistant.test-support";
 import { finishingDoStream, waitFor } from "./turn.test-support";
 
@@ -56,11 +57,20 @@ const model = (t: Test, inputs: string[]) =>
     }),
   );
 
-/** Uploads an image as the person's browser does: the row first, then the bytes, then the two bound. */
-async function attach(t: Test, as: Person, bytes = PNG, type = "image/png") {
-  const { fileId } = await as.mutation(api.assistant.files.uploadUrl, { name: "figure.png" });
-  const storageId = await t.run((ctx) => ctx.storage.store(new Blob([bytes], { type })));
-  await as.action(api.assistant.files.ready, { fileId, storageId });
+/** Starts an upload as the person's browser does: a token of its own, whose digest makes the file's row. */
+async function start(as: Person, name = "figure.png") {
+  const token = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+  const fileId = await as.mutation(api.assistant.files.startUpload, { name, digest: await digestOpaqueToken(token) });
+  return { fileId, token };
+}
+const post = (t: Test, token: string, bytes: Uint8Array, type = "image/png") => t.fetch(`/assistant/upload?token=${token}`, { method: "POST", headers: { "Content-Type": type }, body: new Blob([bytes as Uint8Array<ArrayBuffer>]) });
+const storedFiles = (t: Test) => t.run(async (ctx) => (await ctx.db.system.query("_storage").collect()).length);
+
+/** Uploads an image as the person's browser does: the row first, then the bytes with the token. */
+async function attach(t: Test, as: Person, bytes = PNG) {
+  const { fileId, token } = await start(as);
+  expect((await post(t, token, bytes)).status).toBe(200);
+  const storageId = (await t.run((ctx) => ctx.db.get("assistantFiles", fileId)))!.storageId!;
   return { fileId, storageId };
 }
 
@@ -80,36 +90,46 @@ const lastUserParts = () => {
 };
 
 describe("attaching a file", () => {
-  it("binds an upload only to the person who asked for it, and only to a file stored after", async () => {
-    const t = convexTest(schema);
-    const { asAda, asBen } = await people(t);
-    const earlier = await t.run((ctx) => ctx.storage.store(new Blob([PNG], { type: "image/png" })));
-    const { fileId } = await asAda.mutation(api.assistant.files.uploadUrl, { name: "mine.png" });
-    // Ben's upload starts before Ada's file is stored, so only her row holding it can stop him claiming it.
-    const { fileId: bens } = await asBen.mutation(api.assistant.files.uploadUrl, { name: "theirs.png" });
-
-    // Someone else can't finish her upload, and a file stored before the upload began isn't it.
-    const stored = await t.run((ctx) => ctx.storage.store(new Blob([PNG], { type: "image/png" })));
-    await expect(asBen.action(api.assistant.files.ready, { fileId, storageId: stored })).rejects.toThrow();
-    await expect(asAda.action(api.assistant.files.ready, { fileId, storageId: earlier })).rejects.toThrow();
-
-    await asAda.action(api.assistant.files.ready, { fileId, storageId: stored });
-    // A file another row holds can't be claimed, so it can't be removed by someone who saw its address.
-    await expect(asBen.action(api.assistant.files.ready, { fileId: bens, storageId: stored })).rejects.toThrow();
-    await asBen.mutation(api.assistant.files.remove, { fileId: bens });
-    await asBen.mutation(api.assistant.files.remove, { fileId });
-    expect(await t.run(async (ctx) => (await ctx.storage.get(stored)) !== null)).toBe(true);
-  });
-
-  it("refuses a file that isn't an image and deletes what was uploaded", async () => {
+  it("stores the bytes for the token's row, once, and nothing for a token that isn't one", async () => {
     const t = convexTest(schema);
     const { asAda } = await people(t);
-    const { fileId } = await asAda.mutation(api.assistant.files.uploadUrl, { name: "notes.txt" });
-    const storageId = await t.run((ctx) => ctx.storage.store(new Blob(["hello"], { type: "text/plain" })));
+    const { fileId, token } = await start(asAda);
 
-    await expect(asAda.action(api.assistant.files.ready, { fileId, storageId })).rejects.toThrow();
-    expect(await t.run(async (ctx) => (await ctx.storage.get(storageId)) !== null)).toBe(false);
+    expect((await post(t, "not-a-token", PNG)).status).toBe(410);
+    expect(await storedFiles(t)).toBe(0);
+    expect((await post(t, token, PNG)).status).toBe(200);
+    expect(await t.run((ctx) => ctx.db.get("assistantFiles", fileId))).toMatchObject({ state: "pending", mediaType: "image/png", bytes: PNG.length });
+    // The token can't be used again, so nothing else can be stored for the file.
+    expect((await post(t, token, PNG)).status).toBe(410);
+    expect(await storedFiles(t)).toBe(1);
+  });
+
+  it("refuses bytes that aren't an image, and the file with them", async () => {
+    const t = convexTest(schema);
+    const { asAda } = await people(t);
+    const { fileId, token } = await start(asAda, "notes.txt");
+
+    expect((await post(t, token, new TextEncoder().encode("hello"), "image/png")).status).toBe(400);
+    expect(await storedFiles(t)).toBe(0);
     expect(await t.run((ctx) => ctx.db.get("assistantFiles", fileId))).toBeNull();
+  });
+
+  it("keeps nothing of a file removed while its bytes were on the way", async () => {
+    const t = convexTest(schema);
+    const { asAda } = await people(t);
+    const { fileId, token } = await start(asAda);
+
+    await asAda.mutation(api.assistant.files.remove, { fileId });
+    expect((await post(t, token, PNG)).status).toBe(410);
+    expect(await storedFiles(t)).toBe(0);
+
+    // Removed after its token was taken and before its bytes were bound: the bytes stored for it go.
+    const late = await start(asAda);
+    await t.mutation(internal.assistant.files.redeem, { digest: await digestOpaqueToken(late.token) });
+    await asAda.mutation(api.assistant.files.remove, { fileId: late.fileId });
+    const storageId = await t.run((ctx) => ctx.storage.store(new Blob([PNG], { type: "image/png" })));
+    expect(await t.mutation(internal.assistant.files.bind, { fileId: late.fileId, storageId, bytes: PNG.length, mediaType: "image/png" })).toBe(false);
+    expect(await storedFiles(t)).toBe(0);
   });
 
   it("allows as many uploads an hour as the person's plan", async () => {
@@ -120,9 +140,9 @@ describe("attaching a file", () => {
       const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
       await ctx.db.patch("billingAccounts", account!._id, { limits: { uploads_per_hour: 2 } });
     });
-    await asAda.mutation(api.assistant.files.uploadUrl, { name: "a.png" });
-    await asAda.mutation(api.assistant.files.uploadUrl, { name: "b.png" });
-    await expect(asAda.mutation(api.assistant.files.uploadUrl, { name: "c.png" })).rejects.toThrow(/2 files an hour/);
+    await start(asAda, "a.png");
+    await start(asAda, "b.png");
+    await expect(start(asAda, "c.png")).rejects.toThrow(/2 files an hour/);
   });
 });
 
@@ -151,6 +171,21 @@ describe("sending files", () => {
     expect(earlier.some((part) => part.type === "text" && /expired/.test(part.text ?? ""))).toBe(true);
     const { page } = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: { cursor: null, numItems: 20 } });
     expect(page.find((item) => item.role === "user" && "files" in item && item.files)).toMatchObject({ files: [{ id: fileId, url: null }] });
+  });
+
+  it("tells a model that takes no images about the ones already in the chat, instead of sending them", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await chatOn(t, ["text", "image"]);
+    const { fileId } = await attach(t, asAda);
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "What does this show?", files: [fileId] });
+    await replied(t, threadId);
+
+    await asAda.mutation(api.assistant.threads.setModel, { threadId, modelId: await model(t, ["text"]) });
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "And now?" });
+    await replied(t, threadId);
+    const earlier = (mockDoStream.mock.lastCall![0].prompt as Array<{ role: string; content: Array<{ type: string; text?: string }> }>).filter((message) => message.role === "user")[0]!.content;
+    expect(earlier.some((part) => part.type === "file")).toBe(false);
+    expect(earlier.some((part) => part.type === "text" && /can't see images/.test(part.text ?? ""))).toBe(true);
   });
 
   it("refuses files in a chat whose model reads no images", async () => {
