@@ -36,6 +36,7 @@ import { convertUsdToCredits } from "../../lib/pricing";
 import { captureUserGenerationLater } from "../lib/analyticsEvents";
 import { extractErrorCode, extractHttpStatus } from "../../lib/posthog-ai-shared";
 import { INSTRUCTIONS } from "./agent";
+import { withFiles } from "./files";
 
 /** A reply whose last request read more input than this is followed by a compaction. */
 export const COMPACT_AT_TOKENS = 50_000;
@@ -120,7 +121,7 @@ const summaryMessage = (summary: string): ModelMessage => ({ role: "system", con
  * The context of one reply: the summary, then the history since it, then the new message.
  * `onHistory` hears how much history that was, which decides whether a compaction follows.
  */
-export function contextSince(args: Compacted & { agentThreadId: string; promptMessageId: string; onHistory: (history: { messages: number; bytes: number }) => void }): ContextHandler {
+export function contextSince(args: Compacted & { agentThreadId: string; promptMessageId: string; modelId: Id<"models"> | null; onHistory: (history: { messages: number; bytes: number }) => void }): ContextHandler {
   return async (ctx, { inputMessages, inputPrompt, existingResponses }) => {
     const { docs, whole } = await historySince(ctx, { agentThreadId: args.agentThreadId, compactedThrough: args.compactedThrough, before: args.promptMessageId });
     // Answering from part of the conversation would lose the rest without a word.
@@ -128,7 +129,8 @@ export function contextSince(args: Compacted & { agentThreadId: string; promptMe
     // What the reply has written of its own exchange counts with the history: a reply that runs long is most of
     // it. Bytes as Convex counts them: a character outside ASCII is two to four.
     args.onHistory({ messages: docs.length + existingResponses.length, bytes: new TextEncoder().encode(JSON.stringify([docs, existingResponses])).length });
-    return [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), ...inputMessages, ...inputPrompt, ...existingResponses];
+    // Files the person attached go as they are, read from storage (./files.ts).
+    return await withFiles(ctx, [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), ...inputMessages, ...inputPrompt, ...existingResponses], args.modelId);
   };
 }
 
@@ -179,7 +181,7 @@ export async function summarize(
     const result = await generateText({
       model,
       system: INSTRUCTIONS,
-      messages: [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), { role: "user", content: SUMMARIZE }],
+      messages: await withFiles(ctx, [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), { role: "user", content: SUMMARIZE }], args.modelId),
       // The earlier summary is a system message of ours.
       allowSystemInMessages: true,
       abortSignal: stopped.signal,

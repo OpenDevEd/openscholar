@@ -56,7 +56,7 @@ import { authorContentFields, authorProfileInvitationFields } from "./authors/va
 
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
-import { assistantLimitFields, assistantSpenderFields, assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields } from "./assistant/validators";
+import { assistantLimitFields, assistantSpenderFields, assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields, assistantFileFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
@@ -231,6 +231,13 @@ export default defineSchema({
   // What each person lets the assistant spend in a chat, and each person's own record (convex/assistant/spending.ts).
   assistantLimits: defineTable(assistantLimitFields).index("by_thread_and_user", ["threadId", "userId"]).index("by_user", ["userId"]),
   assistantSpenders: defineTable(assistantSpenderFields).index("by_user", ["userId"]),
+  // Files attached to chats (convex/assistant/files.ts): a message's, a chat's and a person's, and the ones due to expire.
+  assistantFiles: defineTable(assistantFileFields)
+    .index("by_message", ["messageId"])
+    .index("by_thread", ["threadId"])
+    .index("by_user_and_state", ["userId", "state"])
+    .index("by_uploadDigest", ["uploadDigest"])
+    .index("by_state_and_usedAt", ["state", "usedAt"]),
   assistantThreadAccess: defineTable(assistantThreadAccessFields)
     // A person's chats, newest first, through each of their principals.
     .index("by_principal_and_lastMessageAt", ["principal", "lastMessageAt"])

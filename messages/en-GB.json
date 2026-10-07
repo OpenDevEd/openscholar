@@ -3272,7 +3272,10 @@
     "free": "Free",
     "source": "Intelligence Index by Artificial Analysis",
     "back": "Back to models",
-    "default": "Default"
+    "default": "Default",
+    "reads": "Reads",
+    "readsImages": "Reads images",
+    "readsPdfs": "Reads PDFs"
   },
   "assistant": {
     "activity": {
@@ -3892,6 +3895,22 @@
       "screening": "Screening",
       "extraction": "Extraction"
     },
-    "moreJobs": "{count, plural, one {# more job} other {# more jobs}}"
+    "moreJobs": "{count, plural, one {# more job} other {# more jobs}}",
+    "files": {
+      "attach": "Attach images",
+      "pasted": "Pasted image",
+      "onlyImages": "Images only for now",
+      "tooLarge": "Over {mb} MB",
+      "unreadable": "This image can't be read",
+      "failed": "Couldn't upload this file",
+      "remove": "Remove",
+      "removeNamed": "Remove {name}",
+      "expired": "Expired, attach it again",
+      "drop": "Drop images to attach them",
+      "anImage": "an image",
+      "modelCant": "{model} can't read images. Pick another model to attach them.",
+      "notUploaded": "{count, plural, one {A file didn’t upload} other {# files didn’t upload}}. Remove or attach {count, plural, one {it} other {them}} again.",
+      "tooMany": "Up to {count} files a message"
+    }
   }
 }

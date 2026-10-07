@@ -40,6 +40,8 @@ export const modelSummaryValidator = v.object({
   defaultEffort: v.optional(effortValidator),
   reasoningMandatory: v.optional(v.boolean()),
   intelligenceIndex: v.optional(v.number()),
+  /** What the model takes in, from OpenRouter: text, image, file and so on. */
+  inputModalities: modelModalitiesValidator,
 });
 
 /** What a task runs on: its model and effort, or null when nothing live is set. */

@@ -40,7 +40,10 @@ import { bulkOf, detailsOf } from "./details";
 import { allowAlways, carriedOn, covers, noteReply, pausedAt, replyLimitOf } from "./spending";
 import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
-import { askedDetailsValidator, askedEachValidator, assistantPausedValidator, jobsEndedValidator, JOBS_TOLD_AT_ONCE } from "./validators";
+import { filesOf, partsFor, sent } from "./files";
+import { readsImages } from "../../lib/assistant/files";
+import { stripProviderPrefix } from "../../lib/ai/model-display";
+import { askedDetailsValidator, askedEachValidator, assistantPausedValidator, attachedFilesValidator, jobsEndedValidator, JOBS_TOLD_AT_ONCE, sentFileIdsValidator } from "./validators";
 import { searchHref } from "../research/searches";
 import { searchSettings } from "../research/searchValidators";
 
@@ -98,10 +101,10 @@ async function endDead(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
 }
 
 export const send = mutation({
-  // `view`: the address of the page the message is sent from, its path and parameters.
-  args: { threadId: v.id("assistantThreads"), text: v.string(), view: v.optional(v.string()) },
+  // `view`: the address of the page the message is sent from, its path and parameters. `files`: what the person attached to it (./files.ts).
+  args: { threadId: v.id("assistantThreads"), text: v.string(), view: v.optional(v.string()), files: sentFileIdsValidator },
   returns: v.null(),
-  handler: async (ctx, { threadId, text, view: address }) => {
+  handler: async (ctx, { threadId, text, view: address, files = [] }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     if (!text.trim()) throw createError("VALIDATION_ERROR", "Write a message first.");
@@ -113,6 +116,13 @@ export const send = mutation({
     if (thread.asking?.paused) throw createError("CONFLICT", "The assistant's reply is paused in this chat. Carry it on, or stop it.");
     if (thread.asking) throw createError("CONFLICT", "The assistant is waiting for an answer in this chat. Answer it, or stop the reply.");
     await admit(ctx, userId);
+    // The model reads what the person attached with the message, so it has to take images.
+    const images = files.length ? await partsFor(ctx, userId, files) : [];
+    if (images.length) {
+      const { modelId } = await chatModel(ctx, thread, userId);
+      const model = modelId ? await ctx.db.get("models", modelId) : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
+      if (!readsImages(model?.inputModalities)) throw createError("VALIDATION_ERROR", `${model ? stripProviderPrefix(model.name) : "This chat's model"} can't read images. Pick another model for this chat to send them.`);
+    }
     // A reply that was stopped, or died, around asking the person can leave calls without their results.
     await settleAsked(ctx, threadId);
     await healCalls(ctx, thread.agentThreadId);
@@ -147,12 +157,13 @@ export const send = mutation({
     const { messageId, message } = await assistant.saveMessage(ctx, {
       threadId: thread.agentThreadId,
       userId,
-      // What this person undid goes with their message, whether or not the place changed.
-      ...(moved || undone.length
-        ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: notePart({ page: view ?? undefined, today, chat: threadId, undone }) }] } }
+      // What this person undid goes with their message, whether or not the place changed. Their words come first, which is what the chat shows (`typed`).
+      ...(moved || undone.length || images.length
+        ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, ...images, ...(moved || undone.length ? [{ type: "text" as const, text: notePart({ page: view ?? undefined, today, chat: threadId, undone }) }] : [])] } }
         : { prompt: text }),
       skipEmbeddings: true,
     });
+    if (files.length) await sent(ctx, files, { threadId, messageId });
     if (mine.length || more) {
       const counts = (thread.undoneMore ?? []).filter((entry) => entry.userId !== userId);
       await ctx.db.patch("assistantThreads", threadId, { undone: others.length ? others : undefined, undoneMore: counts.length ? counts : undefined });
@@ -662,6 +673,8 @@ const messageValidator = v.object({
   model: v.optional(v.string()),
   /** A reply's message that also ran actions: the reply goes on after it. */
   acted: v.optional(v.boolean()),
+  /** What a person's message carried (./files.ts). */
+  files: attachedFilesValidator,
   at: v.number(),
 });
 
@@ -762,6 +775,12 @@ export const messagesAction = defineUserQuery({
     const details = new Map(
       await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: withoutVariant(await detailsOf(ctx, reader!, step.shown ?? step.input), step) } : bulkWithoutVariant(await bulkOf(ctx, reader!, step), step)] as const)),
     );
+    // What each person's message carried, for the ones that carried files.
+    const attached = new Map(
+      await Promise.all(
+        asked.filter((row) => Array.isArray(row.message?.content) && row.message.content.some((part) => part.type === "file")).map(async (row) => [row._id, await filesOf(ctx, row._id)] as const),
+      ),
+    );
     // The jobs each of the app's job-ended messages told the chat of.
     const told = new Map<string, Doc<"assistantJobEnds">[]>(
       await Promise.all(
@@ -798,6 +817,7 @@ export const messagesAction = defineUserQuery({
           role,
           order: row.order,
           text: role === "user" ? typed(row) : (row.text ?? ""),
+          ...(attached.get(row._id)?.length ? { files: attached.get(row._id) } : {}),
           status: pending ? ("pending" as const) : stopped ? ("stopped" as const) : row.status === "success" ? ("done" as const) : ("failed" as const),
           ...(error && !stopped
             ? {

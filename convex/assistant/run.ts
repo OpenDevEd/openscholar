@@ -135,6 +135,7 @@ export const reply = internalAction({
         compactedThrough: read.compactedThrough,
         agentThreadId,
         promptMessageId,
+        modelId,
         onHistory: (read) => {
           history = read;
         },

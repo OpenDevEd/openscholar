@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { purgeAccountChats } from "../assistant/access";
 import { purgeSpending } from "../assistant/spending";
+import { purgeFiles } from "../assistant/files";
 import { collectionCountRow } from "../library/collections";
 import { countRow } from "../research/recordCounts";
 import { libraryCountRow } from "../library/counter";
@@ -83,6 +84,11 @@ export const cleanupDeletedUsers = internalMutation({
         }
         // What they let the assistant spend in other people's chats goes too, and their own record with it.
         if (!(await purgeSpending(ctx, user._id))) {
+          deferred = true;
+          continue; // Skip user delete, process on next run
+        }
+        // The files they attached go too, from their own chats and other people's.
+        if (!(await purgeFiles(ctx, user._id))) {
           deferred = true;
           continue; // Skip user delete, process on next run
         }
