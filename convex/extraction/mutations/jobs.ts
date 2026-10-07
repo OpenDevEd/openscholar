@@ -17,7 +17,7 @@ import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { assertBucketWithinLimits } from "../bucket/limits";
 import { PAPER_LIMIT } from "@/lib/extraction/limits";
-import { availableCredits as readAvailableCredits } from "../../billing/accounts";
+import { availableCredits as readAvailableCredits, planLimit } from "../../billing/accounts";
 import { dedupeBucketItems } from "../../../lib/bucket/dedupe";
 import { assertValidJobTransition, type JobStatus } from "../stateMachine";
 import {
@@ -86,7 +86,7 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
     selection.count = await checkScreeningSelection(ctx, userId, selection.jobId, selection.revision);
     item.sourceRefId = selection.jobId;
   }
-  const bucketLimits = assertBucketWithinLimits(deduped);
+  const bucketLimits = assertBucketWithinLimits(deduped, await planLimit(ctx, userId, "request_papers"));
   const sourceType = deriveSourceType(deduped);
 
   // Stamp what extraction runs on (credits path), read back at run by paperWorker.
@@ -207,7 +207,7 @@ export const duplicateJobAction = defineUserMutation({
     for (const item of bucketItems) {
       if (item.source === "screening" && item.screeningSelection) await checkScreeningSelection(ctx, userId, item.screeningSelection.jobId, item.screeningSelection.revision);
     }
-    assertBucketWithinLimits(bucketItems);
+    assertBucketWithinLimits(bucketItems, await planLimit(ctx, userId, "request_papers"));
 
     const now = Date.now();
 

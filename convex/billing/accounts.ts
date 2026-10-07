@@ -111,6 +111,8 @@ export const writeSnapshot = internalMutation({
   returns: v.null(),
   handler: async (ctx, { userId, snapshot, withCard, fetchedAt }) => {
     const existing = await readAccount(ctx, userId);
+    // A snapshot read before the one cached would bring back an older plan and its limits.
+    if (existing?.fetchedAt !== undefined && existing.fetchedAt > fetchedAt) return null;
     const newer = existing !== null && existing.refreshedAt > fetchedAt;
     const row = {
       ...snapshot,
@@ -118,6 +120,7 @@ export const writeSnapshot = internalMutation({
       ...(newer && { balance: existing.balance, purchased: existing.purchased }),
       userId,
       refreshedAt: newer ? existing.refreshedAt : fetchedAt,
+      fetchedAt,
     };
     if (existing) await ctx.db.replace(existing._id, row);
     else await ctx.db.insert("billingAccounts", row);

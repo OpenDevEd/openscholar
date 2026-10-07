@@ -3,6 +3,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import schema from "../schema";
+import { internal } from "../_generated/api";
 import { checkRequestPapers, planLimit, snapshotFromCustomer } from "./accounts";
 import type { AutumnCustomer } from "./autumn";
 import type { BillingCatalog } from "./validators";
@@ -54,5 +55,29 @@ describe("plan limits", () => {
       await expect(checkRequestPapers(ctx, fresh, 1_001, "screening")).rejects.toThrow(/plan takes up to 1,000 papers in one screening/);
       await checkRequestPapers(ctx, onGo, 1_000_000, "extraction");
     });
+  });
+});
+
+describe("plan limits over time", () => {
+  it("keep the newest snapshot's plan when an older refresh lands after it", async () => {
+    const t = convexTest(schema);
+    const userId = await t.run((ctx) => ctx.db.insert("users", { clerkId: "late", email: "late@test.local", state: "active", createdAt: 1, updatedAt: 1 }));
+    const snapshot = (plan: string, collections: number) => ({ plan, pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, limits: { collections } });
+    await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot: snapshot("go", 200), withCard: false, fetchedAt: 2_000 });
+    await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot: snapshot("pro", 1_000), withCard: false, fetchedAt: 1_000 });
+    expect(await t.run((ctx) => planLimit(ctx, userId, "collections"))).toBe(200);
+  });
+
+  it("refuse a screening request past the plan before it reads a paper", async () => {
+    const t = convexTest(schema);
+    const userId = await t.run(async (ctx) => {
+      const id = await ctx.db.insert("users", { clerkId: "small", email: "small@test.local", state: "active", createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("libraryCounts", { userId: id, count: 5_000 });
+      await ctx.db.insert("billingAccounts", { userId: id, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { request_papers: 1_000 } });
+      return id;
+    });
+    const request = { userId, set: { kind: "saved" as const }, questions: [{ key: "q1", question: "Is it a trial?" }], scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [] } };
+    await t.query(internal.screening.start.check, { ...request, first: 1, last: 1_000 });
+    await expect(t.query(internal.screening.start.check, { ...request, first: 1, last: 1_001 })).rejects.toThrow(/plan takes up to 1,000 papers in one screening/);
   });
 });

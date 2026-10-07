@@ -73,12 +73,12 @@ const SWEEP_BATCH = 200;
 export async function admit(ctx: MutationCtx, userId: Id<"users">) {
   const plan = await planLimit(ctx, userId, "assistant_replies");
   const most = Math.min(ASSISTANT_REPLIES_AT_ONCE, plan ?? ASSISTANT_REPLIES_AT_ONCE);
-  // Twice the limit, so locks whose action died can't hide live ones behind them. The dead
-  // ones found are released here, which keeps the next count honest too.
+  // Twice the deployment's share, whatever the plan: locks whose action died can't hide live
+  // ones behind them. The dead ones found are released here, which keeps the next count honest too.
   const mine = await ctx.db
     .query("assistantThreads")
     .withIndex("by_replySender", (q) => q.eq("reply.senderId", userId))
-    .take(most * 2);
+    .take(ASSISTANT_REPLIES_AT_ONCE * 2);
   let stillWriting = 0;
   for (const other of mine) {
     if (await writing(ctx, other.reply)) stillWriting++;

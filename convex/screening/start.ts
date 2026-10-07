@@ -1,7 +1,7 @@
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { internalAction, internalMutation, type ActionCtx, type MutationCtx } from "../lib/functions";
+import { internalAction, internalMutation, internalQuery, type ActionCtx, type MutationCtx } from "../lib/functions";
 import type { ChangeCall } from "../lib/userActions";
 import { startHeld } from "../billing/charge";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
@@ -10,7 +10,7 @@ import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { heldPapers } from "../paperSets/held";
 import { countSearch, PAGE_SIZE, searchSnapshotValidator, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest } from "../paperSets/search";
-import { requireMinimum, screeningHold } from "./estimate";
+import { checkScreening, requireMinimum, screeningHold } from "./estimate";
 import { releaseDock, writeEnd } from "../assistant/jobEnds";
 import { HAND_OFF_MS } from "./bookkeeping";
 import { handsOn, holdOpen } from "../billing/spend";
@@ -79,6 +79,8 @@ async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assi
     throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   }
   requireMinimum(config.scoringConfig);
+  // Everything the estimate checks before the person is asked, checked again by the start itself, so no path skips it.
+  await ctx.runQuery(internal.screening.start.check, { userId, set, first, last: through, ...config });
   // What the person approved is the whole request's to spend, however many jobs it takes: the first job holds it, and each job after takes the hold on (`next`).
   // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
   type Made = { jobId: Id<"screeningJobs"> };
@@ -243,6 +245,16 @@ export const read = internalAction({
  * runs as several, one after another: each reads its own papers when the one before
  * completes (`next`).
  */
+/** What starting a screening refuses before it reads a paper (./estimate.ts `checkScreening`). */
+export const check = internalQuery({
+  args: { userId: v.id("users"), set: paperSetValidator, first: v.number(), last: v.number(), ...jobArgs, saveTo: v.optional(saveToValidator), prune: v.optional(v.boolean()) },
+  returns: v.null(),
+  handler: async (ctx, { userId, ...request }) => {
+    await checkScreening(ctx, userId, request);
+    return null;
+  },
+});
+
 export const screenAction = defineUserAction({
   path: "screening/start:screen",
   description:
