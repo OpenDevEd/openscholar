@@ -4,7 +4,7 @@
 // that page, and web pages a search found, as chips with the page's site whose card shows what
 // it is before the person leaves for it. Under a reply that searched, its web sources.
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type MouseEvent, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { InlineCitation, InlineCitationCard, InlineCitationSource } from "@/components/ai-elements/inline-citation";
@@ -38,7 +38,7 @@ export function useCited(href: string | undefined, children: ReactNode) {
   const { files, sources, papers } = useContext(Cited);
   // A page of a paper's open-access PDF, by its address (convex/research/papers.ts `readPdf`).
   const paperPage = href?.match(/^(https?:\/\/[^#]+)#page=(\d+)$/);
-  if (paperPage && papers.has(paperPage[1])) return <PageChip url={paperPage[1]} page={Number(paperPage[2])}>{children}</PageChip>;
+  if (paperPage && papers.has(paperPage[1])) return <PageChip url={paperPage[1]} page={Number(paperPage[2])} outside>{children}</PageChip>;
   const page = href?.match(/^\/files\/([^/#?]+)#page=(\d+)$/);
   if (page) {
     // By ID, or by the name a model wrote into the address in its place, escaped or not (convex/assistant/files.ts `cited`).
@@ -75,18 +75,39 @@ export const safeDecode = (text: string) => {
   }
 };
 
-/** A page of a PDF: opens it in a new tab at that page, while the PDF is still in the chat. */
-function PageChip({ url, page, children }: { url: string | null; page: number; children: ReactNode }) {
+/** A page of a PDF: opens it in a new tab at that page, while the PDF is still in the chat. A paper's PDF is on another site (`outside`): following it asks first. */
+function PageChip({ url, page, outside, children }: { url: string | null; page: number; outside?: boolean; children: ReactNode }) {
+  const [asking, setAsking] = useState(false);
   const inside = (
     <>
       <FileText className="mr-1 inline size-3 -translate-y-px" />
       {children}
     </>
   );
+  const href = `${url}#page=${page}`;
+  // A paper's PDF is on another site, so following it asks first, as any page outside the app does.
+  const ask = (event: MouseEvent) => {
+    if (!outside || (event.type === "auxclick" && event.button !== 1)) return;
+    event.preventDefault();
+    setAsking(true);
+  };
   return url ? (
-    <a href={`${url}#page=${page}`} target="_blank" rel="noreferrer" className={CHIP} style={recordChipStyle("var(--kind-file)")}>
-      {inside}
-    </a>
+    <>
+      <a href={href} target="_blank" rel="noreferrer" onClick={ask} onAuxClick={ask} className={CHIP} style={recordChipStyle("var(--kind-file)")}>
+        {inside}
+      </a>
+      {outside ? (
+        <LinkSafetyDialog
+          isOpen={asking}
+          url={href}
+          onClose={() => setAsking(false)}
+          onConfirm={() => {
+            window.open(href, "_blank", "noreferrer");
+            setAsking(false);
+          }}
+        />
+      ) : null}
+    </>
   ) : (
     <span className={`${RECORD_CHIP} whitespace-nowrap`} style={recordChipStyle("var(--kind-file)")}>
       {inside}

@@ -537,6 +537,12 @@ export const addPart = internalMutation({
   },
 });
 
+/** Refuses a read of a PDF, attached or a paper's, before the person is asked about it, when the chat's model can't read one. */
+export async function requirePdfModel(ctx: QueryCtx, modelId: Id<"models"> | null) {
+  const model = modelId ? await ctx.db.get("models", modelId) : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
+  if (!readsPdfs(model?.inputModalities)) throw createError("VALIDATION_ERROR", "The model this chat runs on can't read PDFs. Tell the person to pick one that can.");
+}
+
 /**
  * What a read of an attached file takes, and what it comes to on the chat's model, or why it
  * can't: the model is told before the person is asked. A PDF is read by pages, at most 20 at a
@@ -555,8 +561,7 @@ async function readable(ctx: QueryCtx, userId: Id<"users">, { file: fileId, rang
     const of = file.pages ?? 0;
     const pages = pagesIn(range, of);
     if (!pages) throw createError("VALIDATION_ERROR", `"${file.name}" has ${of} pages. Ask for a range within them, such as "1-${Math.min(of, PDF_PAGES_PER_READ)}", at most ${PDF_PAGES_PER_READ} pages at a time.`);
-    const model = modelId ? await ctx.db.get("models", modelId) : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
-    if (!readsPdfs(model?.inputModalities)) throw createError("VALIDATION_ERROR", "The model this chat runs on can't read PDFs. Tell the person to pick one that can.");
+    await requirePdfModel(ctx, modelId);
     return { file, of, ...pages, credits: convertUsdToCredits({ usd: ((pages.last - pages.first + 1) * PDF_PAGE_TOKENS * price) / 1_000_000 }) };
   }
   const of = file.lines ?? 0;

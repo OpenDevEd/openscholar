@@ -59,11 +59,11 @@ type Test = ReturnType<typeof convexTest>;
 const replied = (t: Test, threadId: Id<"assistantThreads">) => waitFor(async () => !(await t.run((ctx) => ctx.db.get("assistantThreads", threadId)))?.reply);
 
 /** A chat on a model that reads PDFs, with reading files allowed in it, so a read runs without asking. */
-async function chat(t: Test, free = 100_000) {
+async function chat(t: Test, free = 100_000, inputs = ["text", "image", "file"]) {
   const who = await people(t);
   await t.run((ctx) => seedCreditsForTest(ctx, { userId: who.ada, free }));
   const modelId = await t.run((ctx) =>
-    ctx.db.insert("models", { modelId: "mock/model", name: "Mock", provider: "openrouter", inputPricePerMillion: 1, outputPricePerMillion: 2, costMarkup: 1, contextLength: 200_000, supportedParameters: ["tools"], inputModalities: ["text", "image", "file"], isServed: true, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1 }),
+    ctx.db.insert("models", { modelId: "mock/model", name: "Mock", provider: "openrouter", inputPricePerMillion: 1, outputPricePerMillion: 2, costMarkup: 1, contextLength: 200_000, supportedParameters: ["tools"], inputModalities: inputs, isServed: true, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1 }),
   );
   const threadId = await who.asAda.mutation(api.assistant.threads.create, { title: "Methods", modelId });
   await who.asAda.mutation(api.assistant.spending.setTool, { threadId, tool: "files", allowed: true });
@@ -109,6 +109,30 @@ describe("reading a paper's PDF", () => {
     await expect(asAda.action(api.research.papers.readPdf, { id: "W5" })).rejects.toThrow(/couldn't be opened/);
     expect(fetched.some((url) => url.includes("127.0.0.1") || url.includes("169.254.169.254"))).toBe(false);
     expect(await asAda.action(api.research.papers.readPdf, { id: "W6" })).toMatchObject({ paperPdf: "https://example.org/chunked.pdf" });
+  });
+
+  it("reads nothing when the title it was asked about isn't the ID's paper", async () => {
+    const t = convexTest(schema);
+    const { asAda } = await people(t);
+    await expect(asAda.action(api.research.papers.readPdf, { id: "W1", title: "Video games and wellbeing" })).rejects.toThrow(/Loot boxes and problem gambling.{0,4} in OpenAlex/);
+    expect(pdfChecks).toEqual([]);
+    // A title without its subtitle is the same paper.
+    expect(await asAda.action(api.research.papers.readPdf, { id: "W1", title: "Loot boxes" })).toMatchObject({ paperPdf: PDF });
+  });
+
+  it("refuses before asking, and before OpenAlex, when the chat's model can't read PDFs", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await chat(t, 100_000, ["text"]);
+    await asAda.mutation(api.assistant.spending.setTool, { threadId, tool: "files", allowed: false });
+    mockDoStream
+      .mockImplementationOnce(callingDoStream({ id: "pdf-1", name: "research_papers_readPdf", input: { id: "W1", title: "Loot boxes and problem gambling" } }))
+      .mockImplementation(finishingDoStream(["It can't read PDFs."]));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "What are this paper's methods?" });
+    await replied(t, threadId);
+    const steps = await t.run((ctx) => ctx.db.query("assistantSteps").collect());
+    expect(steps.filter((step) => step.status === "asking")).toEqual([]);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("api.openalex.org"))).toBe(false);
+    expect(JSON.stringify(mockDoStream.mock.lastCall![0].prompt)).toContain("can't read PDFs");
   });
 
   it("asks first, and once allowed, the reply goes on with the PDF in view", async () => {

@@ -18,6 +18,7 @@ import { pricingOf, resolveTaskPick } from "../ai/serverModel";
 import { convertUsdToCredits } from "../../lib/pricing";
 import { PDF_PAGE_TOKENS } from "../../lib/assistant/files";
 import { safeFetchPdf } from "../../lib/pdf/url-allowlist";
+import { requirePdfModel } from "../assistant/files";
 
 export const searchAction = defineUserAction({
   path: "research/papers:search",
@@ -177,6 +178,13 @@ async function servesPdf(url: string) {
   }
 }
 
+/** Whether two titles name the same paper: the same words, or one the other's start, as a title with its subtitle is. */
+function sameTitle(a: string, b: string) {
+  const words = (title: string) => title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const [x, y] = [words(a), words(b)];
+  return x.length > 0 && y.length > 0 && (x.startsWith(y) || y.startsWith(x));
+}
+
 export const readPdfAction = defineUserAction({
   path: "research/papers:readPdf",
   description:
@@ -196,16 +204,19 @@ export const readPdfAction = defineUserAction({
   estimate: async (ctx, userId, _args, chat) => {
     const thread = chat ? await ctx.db.get("assistantThreads", chat.threadId) : null;
     const { modelId } = thread ? await chatModel(ctx, thread, userId) : { modelId: (await resolveTaskPick(ctx, userId, "chat"))?.modelId ?? null };
+    await requirePdfModel(ctx, modelId);
     const price = (await pricingOf(ctx, modelId)).input;
     return convertUsdToCredits({ usd: (PAPER_PAGES * PDF_PAGE_TOKENS * price) / 1_000_000 });
   },
-  run: async (ctx, userId, { id }): Promise<Infer<typeof paperPdfValidator>> => {
+  run: async (ctx, userId, { id, title: asked }): Promise<Infer<typeof paperPdfValidator>> => {
     const path = workPath(id);
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const work = await readWork<Work>(path, "id,display_name,title,best_oa_location,primary_location", spender(ctx, person.clerkId));
     if (!work) throw createError("NOT_FOUND", "OpenAlex has no paper by that ID.");
     const { openalexId, title, pdfUrl } = toPaper(work);
+    // The person was asked about the paper by the title the model gave: one that isn't this ID's reads nothing.
+    if (asked && !sameTitle(asked, title)) throw createError("VALIDATION_ERROR", `${id} is "${title}" in OpenAlex, not "${asked}". Check the paper's ID, and read it again.`);
     if (!pdfUrl) throw createError("VALIDATION_ERROR", "OpenAlex knows of no open-access PDF of this paper. Ask the person to attach its PDF to the chat.");
     if (!(await servesPdf(pdfUrl))) throw createError("VALIDATION_ERROR", `This paper's open-access PDF couldn't be opened from its address (${pdfUrl}). Ask the person to attach its PDF to the chat.`);
     return { id: openalexId, title, paperPdf: pdfUrl };
