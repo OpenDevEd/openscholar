@@ -324,7 +324,9 @@ export const listJobResultsAction = defineUserQuery({
     const sorted = cursor?.startsWith(SORTED) ?? false;
     const narrowest = cursor === null && !(job.status && isRunningJobStatus(job.status)) ? await narrowestOf(ctx, parts) : null;
     // Read whole only when that reads fewer papers than the index would to fill a page: about a page for each share of the job the filter keeps.
-    const toFillAPage = narrowest ? Math.ceil((numItems * (job.totalPapers ?? narrowest.count)) / Math.max(1, narrowest.count)) : 0;
+    // A confidence filter under a confidence order isn't spread along the index, so it's read whole: the order may reach its papers last.
+    const alongFilter = args.sortBy.startsWith("confidence") && parts.some((part) => part.ranges.some(({ namespace }) => namespace === confidenceOf(job._id)));
+    const toFillAPage = !narrowest ? 0 : alongFilter ? Infinity : Math.ceil((numItems * (job.totalPapers ?? narrowest.count)) / Math.max(1, narrowest.count));
     if (sorted || (narrowest && narrowest.count <= Math.min(IN_MEMORY_PAPERS, toFillAPage))) {
       const part = narrowest?.part ?? (await narrowestOf(ctx, parts))!.part;
       // Read whole: as few papers as chose this way, or, as later pages of a running job find more, no more than twice that.

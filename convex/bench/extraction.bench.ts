@@ -55,7 +55,7 @@ describe("extraction reads by job size", () => {
       // Nothing matches: the right answer is an empty last page.
       await measure(t, at("results page, filter matching none"), page({ ...all, confidenceRange: [0, 10] }), (r) => `${rows(r)}${r?.isDone ? "" : ", not done"}`, (r) => r.page.length === 0 && r.isDone);
       // About one paper in ten gives each answer.
-      await measure(t, at("results page, answer filter"), page({ ...all, questionFilters: [{ questionKey: "q0", value: text(120, 0).trim() }] }), rows, (r) => r.page.length > 0);
+      await measure(t, at("results page, answer filter"), page({ ...all, questionFilters: [{ questionKey: "q0", value: text(120, 0).trim() }] }), rows, (r) => r.page.length === PAGE);
       await measure(t, at("results page, sorted by title"), page(all, "title-asc"), rows);
       await measure(t, at("results page, text search"), page({ ...all, searchQuery: "tutoring" }), rows, (r) => r.page.length === PAGE);
       await measure(t, at("filtered count"), (ctx) => countJobResultsAction.run(ctx, userId, { jobId, filters: { ...all, confidenceRange: [0, 10] } }), (r) => `${r.matching} of ${r.all}`, (r) => r.all === size && r.matching === 0);
