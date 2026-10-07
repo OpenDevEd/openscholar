@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import schema from "../schema";
-import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { bookkeepLater, progressRow } from "./bookkeeping";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 
@@ -87,13 +86,14 @@ describe("Screen all bookkeeping", () => {
     expect(results.filter((result) => result.pendingAnswers)).toHaveLength(0);
   });
 
-  it(`bookkeeps a ${MAX_SCREENING_PAPERS_PER_JOB}-paper job within Convex's limits`, async () => {
+  const JOB_PAPERS = 1_000;
+  it(`bookkeeps a ${JOB_PAPERS}-paper job within Convex's limits`, async () => {
     const t = convexTest({ schema, transactionLimits: true });
     setupScreeningWorkpool(t);
-    const { jobId } = await seedJob(t, MAX_SCREENING_PAPERS_PER_JOB);
+    const { jobId } = await seedJob(t, JOB_PAPERS);
     const papers = (from: number, count: number) =>
       Array.from({ length: count }, (_, k) => ({ i: from + k, status: "completed" as const, qualified: (from + k) % 3 === 0, answered: true }));
-    for (let from = 0; from < MAX_SCREENING_PAPERS_PER_JOB; from += 250) {
+    for (let from = 0; from < JOB_PAPERS; from += 250) {
       await t.run(async (ctx) => {
         await finish(ctx, jobId, papers(from, 250));
         await bookkeepLater(ctx);
@@ -102,8 +102,8 @@ describe("Screen all bookkeeping", () => {
 
     await t.finishAllScheduledFunctions(vi.runAllTimers);
 
-    const qualified = Array.from({ length: MAX_SCREENING_PAPERS_PER_JOB }, (_, i) => i).filter((i) => i % 3 === 0).length;
-    expect(await counts(t, jobId)).toEqual({ completed: MAX_SCREENING_PAPERS_PER_JOB, skipped: 0, failed: 0, qualified });
+    const qualified = Array.from({ length: JOB_PAPERS }, (_, i) => i).filter((i) => i % 3 === 0).length;
+    expect(await counts(t, jobId)).toEqual({ completed: JOB_PAPERS, skipped: 0, failed: 0, qualified });
     expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("completed");
   }, 600_000);
 });

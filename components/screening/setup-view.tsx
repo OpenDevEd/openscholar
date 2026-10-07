@@ -4,10 +4,9 @@ import { useRef, useState, type ReactNode } from "react";
 import { useAction } from "convex/react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { AiIcon, Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X, Zap } from "@/components/icons";
+import { AiIcon, Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { MAX_SCREENING_PAPERS_PER_JOB as JOB_LIMIT } from "@/convex/lib/queryBounds";
 import { Button } from "@/components/ui/button";
 import { FilterChips } from "@/components/ui/filter-display";
 import { Input } from "@/components/ui/input";
@@ -132,13 +131,12 @@ export function SetupView({
   const [prune, setPrune] = useState(again?.prune ?? false);
   const [busy, setBusy] = useState(false);
 
-  // A range can reach the last paper: past a job's limit it runs as several jobs, as all of them does.
+  // A range can reach the last paper: one job takes however many.
   const top = source?.count ?? 0;
   const page = source?.kind === "search" ? (source.search.page ?? 1) : 1;
   const [first, last] =
     scope === "all" ? [1, top] : scope === "page" && source?.kind === "search" ? [(page - 1) * ITEMS_PER_PAGE + 1, Math.min(page * ITEMS_PER_PAGE, top)] : [Math.min(range[0], top), Math.min(range[1], top)];
   const papers = top ? last - first + 1 : 0;
-  const jobs = Math.ceil(papers / JOB_LIMIT);
   const max = maxScore(questions);
   // With no question there's nothing to score: Keep and Stars wait, at the size they'll have.
   const unscored = questions.length === 0;
@@ -331,21 +329,7 @@ export function SetupView({
                                       />
                                       {t("rangeOf", { total: top })}
                                     </span>
-                                    {jobs > 1 ? (
-                                      <span className="flex flex-wrap items-center gap-1.5">
-                                        <Chip icon={Zap} className="text-foreground"><span>{t.rich("jobsInTurn", { count: jobs, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span></Chip>
-                                        <Chip icon={Check}>{t("oneApproval")}</Chip>
-                                      </span>
-                                    ) : (
-                                      <Chip>{t("upToPerJob", { limit: JOB_LIMIT })}</Chip>
-                                    )}
                                   </div>
-                                </div>
-                              ) : scope === "all" && jobs > 1 ? (
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <Chip icon={Zap} className="text-foreground"><span>{t.rich("jobsInTurn", { count: jobs, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span></Chip>
-                                  <Chip>{t("upToEach", { limit: JOB_LIMIT })}</Chip>
-                                  <Chip icon={Check}>{t("oneApproval")}</Chip>
                                 </div>
                               ) : scope === "all" ? (
                                 <div className="flex flex-wrap items-center gap-1.5">

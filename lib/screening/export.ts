@@ -234,6 +234,8 @@ export function screeningExportFiles(job: ScreeningExportJob) {
 export async function generateScreeningXLSXWorkbook(
   job: ScreeningExportJob,
   pages: AsyncIterable<ScreeningExportResult[]>,
+  /** Which file this is of a job downloaded as several: its average score is then its own papers'. */
+  part?: { number: number; of: number },
 ): Promise<import('exceljs').Workbook> {
   // Dynamic import to keep ExcelJS out of the initial bundle
   const mod = await import('exceljs');
@@ -281,6 +283,7 @@ export async function generateScreeningXLSXWorkbook(
     job.completedAt ? new Date(job.completedAt).toISOString() : 'N/A',
   ]);
   summarySheet.addRow(['Total Papers', job.totalPapers]);
+  if (part) summarySheet.addRow(['File', `${part.number} of ${part.of}`]);
   summarySheet.addRow(['Qualified Papers', job.qualifiedPapers]);
   summarySheet.addRow([]); // spacer
 
@@ -327,43 +330,49 @@ export async function generateScreeningXLSXWorkbook(
 
   const avgScore = scored > 0 ? scoreSum / scored : 0;
   summarySheet.addRow([
-    'Average Score',
+    part ? 'Average Score (papers in this file)' : 'Average Score',
     Math.round(avgScore * 100) / 100,
   ]);
 
   return workbook;
 }
 
-/** Results one read takes while the workbook is built. */
+/** Results one read takes while a workbook is built. */
 const XLSX_PAGE_SIZE = 200;
+/** Papers one workbook holds: a larger job downloads as several, each built and saved before the next is read, so the browser holds one at a time. */
+const XLSX_PART_PAPERS = 2_000;
 
-/**
- * Downloads a job's results as an XLSX file, read a page at a time.
- * ponytail: the workbook is built whole in the browser, as XLSX needs. A job holds at most
- * MAX_SCREENING_PAPERS_PER_JOB papers; larger jobs would need a format that streams.
- */
+/** Downloads a job's results as XLSX files, a part at a time, each read a page at a time. */
 export async function exportScreeningToXLSX(convex: ConvexReactClient, jobId: Id<"screeningJobs">): Promise<void> {
   const job = await convex.query(api.screening.queries.getScreeningJob, { jobId });
   if (!job) return;
-  async function* pages() {
-    let cursor: string | null = null;
-    do {
-      const page: { page: ScreeningExportResult[]; isDone: boolean; continueCursor: string } =
-        await convex.query(api.screening.queries.listScreeningResults, { jobId, revision: job!.revision, paginationOpts: { cursor, numItems: XLSX_PAGE_SIZE } });
-      yield page.page;
-      cursor = page.isDone ? null : page.continueCursor;
-    } while (cursor !== null);
+  const several = job.totalPapers > XLSX_PART_PAPERS;
+  let cursor: string | null = null;
+  for (let part = 1; ; part++) {
+    let taken = 0;
+    let ended = false;
+    async function* pages() {
+      while (taken < XLSX_PART_PAPERS) {
+        const page: { page: ScreeningExportResult[]; isDone: boolean; continueCursor: string } =
+          await convex.query(api.screening.queries.listScreeningResults, { jobId, revision: job!.revision, paginationOpts: { cursor, numItems: Math.min(XLSX_PAGE_SIZE, XLSX_PART_PAPERS - taken) } });
+        taken += page.page.length;
+        yield page.page;
+        cursor = page.isDone ? null : page.continueCursor;
+        if (cursor === null) return void (ended = true);
+      }
+    }
+    const workbook = await generateScreeningXLSXWorkbook(job, pages(), several ? { number: part, of: Math.ceil(job.totalPapers / XLSX_PART_PAPERS) } : undefined);
+    const latest = await convex.query(api.screening.queries.getScreeningJob, { jobId });
+    if (!latest || latest.revision !== job.revision) throw new Error('Screening changed during export. Download it again.');
+    const buffer = await workbook.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${screeningExportName(job)}${several ? ` (part ${part})` : ''}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    if (ended) return;
   }
-  const workbook = await generateScreeningXLSXWorkbook(job, pages());
-  const latest = await convex.query(api.screening.queries.getScreeningJob, { jobId });
-  if (!latest || latest.revision !== job.revision) throw new Error('Screening changed during export. Download it again.');
-  const buffer = await workbook.xlsx.writeBuffer();
-  const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${screeningExportName(job)}.xlsx`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }

@@ -19,7 +19,6 @@ import { readScreeningProgressCounts } from "../screening/progress";
 import { requireThread } from "./access";
 import { extractionCardValidator, JOBS_DOCKED, JOBS_TOLD_AT_ONCE, runningJobsValidator, screeningCardValidator } from "./validators";
 import { hasEnded, JOB_ENDED, STARTS } from "./jobEnds";
-import { MAX_SCREENING_JOBS_PER_REQUEST } from "../lib/queryBounds";
 import { admit, startReply } from "./replies";
 import { healCalls, settleAsked } from "./steps";
 import { writing } from "./threads";
@@ -54,20 +53,12 @@ async function jobOf(ctx: QueryCtx, step: Doc<"assistantSteps">) {
   }
 }
 
-/**
- * What a screening has come to, as its card and its readout say it. A request bigger than one
- * job runs as several, one after another (../screening/start.ts `next`), under the one figure
- * the person approved: it is told as one, its papers, answers and credits added up over its
- * jobs, against what was approved, with the job running now (or the last) for its state.
- */
+/** What a screening has come to, as its card and its readout say it. */
 async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"screeningJobs">): Promise<Infer<typeof screeningCardValidator> | null> {
-  const asked = await ctx.db.get("screeningJobs", jobId);
-  const chatStep = asked?.chatStep;
-  const ran = chatStep ? await ctx.db.query("screeningJobs").withIndex("by_chatStep", (q) => q.eq("chatStep", chatStep)).take(MAX_SCREENING_JOBS_PER_REQUEST) : [];
-  const jobs = (await Promise.all((ran.length ? ran : [{ _id: jobId }]).map((one) => getScreeningJobAction.run(ctx, userId, { jobId: one._id })))).filter((one) => one !== null);
-  if (!jobs.length) return null;
-  const job = jobs.at(-1)!;
-  const sum = (of: (one: (typeof jobs)[number]) => number) => jobs.reduce((total, one) => total + of(one), 0);
+  const job = await getScreeningJobAction.run(ctx, userId, { jobId });
+  if (!job) return null;
+  const jobs = [job];
+  const sum = (of: (one: NonNullable<typeof job>) => number) => of(job);
   const done = job.outcomes.included + job.outcomes.unclear + job.outcomes.excluded + job.outcomes.failed;
   // Its papers wait in the person's queue (#335) while their others hold the slots: the queue says so, and the screening
   // ahead of it, when one is being read, names what it waits for. Nothing read and nothing queued is a job starting.
@@ -169,16 +160,8 @@ export async function progressOf(ctx: QueryCtx, row: Doc<"assistantJobs">): Prom
     const id = ctx.db.normalizeId("screeningJobs", row.jobId);
     const job = id ? await ctx.db.get("screeningJobs", id) : null;
     if (!job) return null;
-    // A request of several jobs, as its card counts it: every job it has run so far (`screeningFacts`).
-    const chatStep = job.chatStep;
-    const jobs = chatStep ? await ctx.db.query("screeningJobs").withIndex("by_chatStep", (q) => q.eq("chatStep", chatStep)).take(MAX_SCREENING_JOBS_PER_REQUEST) : [job];
-    let [done, total] = [0, 0];
-    for (const one of jobs) {
-      const counts = await readScreeningProgressCounts(ctx, one);
-      done += counts.completedCount + counts.failedCount;
-      total += one.totalPapers;
-    }
-    return { done, total };
+    const counts = await readScreeningProgressCounts(ctx, job);
+    return { done: counts.completedCount + counts.failedCount, total: job.totalPapers };
   }
   const id = ctx.db.normalizeId("extractionJobs", row.jobId);
   const job = id ? await ctx.db.get("extractionJobs", id) : null;

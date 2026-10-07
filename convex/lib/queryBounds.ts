@@ -33,15 +33,6 @@ export const MAX_REVIEWS_PER_JOB = 50_000;
  * Users accumulate transactions over time; 1,000 is generous. */
 export const MAX_CREDIT_TRANSACTIONS = 1_000;
 
-/** Maximum papers in a single screening job.
- * Balances throughput with credit/cost predictability. The Screen-All dialog
- * pages OpenAlex (200/page) to collect up to this many. Stays within
- * MAX_REVIEWS_PER_JOB (1000 × 50 questions = 50,000). */
-export const MAX_SCREENING_PAPERS_PER_JOB = 1000;
-
-/** Jobs one screening request the assistant starts may run, one after another: what its card and readout add up (convex/assistant/jobs.ts). */
-export const MAX_SCREENING_JOBS_PER_REQUEST = 100;
-
 /** Maximum screening jobs listed per user.
  * Matches extraction job limit for consistency. */
 export const MAX_SCREENING_JOBS_PER_USER = 500;

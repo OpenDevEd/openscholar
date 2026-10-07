@@ -9,14 +9,13 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
-import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { heldPapers } from "../paperSets/held";
 import { readSearchWorks } from "../paperSets/openalex";
-import { SCREENING_FIELDS, checkRange, keptByRating, searchPapers, spender, toPaper, type SavedSearchRequest, type SearchPaper, type Work } from "../paperSets/search";
+import { PAPERS_A_READ, SCREENING_FIELDS, checkRange, keptByRating, searchPapers, spender, toPaper, type SavedSearchRequest, type SearchPaper, type Work } from "../paperSets/search";
 import { workUrl } from "../../lib/openalex/work-id";
 
-/** Papers one bulk change takes: as many as one job reads. */
-export const PAPERS_MAX = MAX_SCREENING_PAPERS_PER_JOB;
+/** Papers one bulk change takes: as many as one read of a set. */
+export const PAPERS_MAX = PAPERS_A_READ;
 /** Papers OpenAlex is asked for by ID in one request: its filter takes this many values. */
 const IDS_A_REQUEST = 50;
 

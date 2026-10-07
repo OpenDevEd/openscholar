@@ -6,15 +6,10 @@ import type { ChangeCall } from "../lib/userActions";
 import { startHeld } from "../billing/charge";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { createError, readConvexErrorData } from "../lib/errors";
-import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { heldPapers } from "../paperSets/held";
-import { countSearch, PAGE_SIZE, searchSnapshotValidator, type SearchSnapshot } from "../paperSets/openalex";
+import { countSearch, numbered, PAGE_SIZE, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest } from "../paperSets/search";
-import { checkScreening, requireMinimum, screeningHold } from "./estimate";
-import { releaseDock, writeEnd } from "../assistant/jobEnds";
-import { HAND_OFF_MS } from "./bookkeeping";
-import { handsOn, holdOpen } from "../billing/spend";
-import type { Doc } from "../_generated/dataModel";
+import { checkScreening, papersIn, requireMinimum, screeningHold } from "./estimate";
 import { paperSetValidator, saveToValidator, screeningQuestionValidator, screeningScoringConfigValidator } from "./validators";
 
 type PaperSet = Infer<typeof paperSetValidator>;
@@ -25,53 +20,23 @@ const jobArgs = {
 };
 type Config = { questions: Infer<typeof jobArgs.questions>; scoringConfig: Infer<typeof jobArgs.scoringConfig>; saveTo?: Infer<typeof saveToValidator>; prune?: boolean };
 
-/** Papers one count of already-answered papers reads (`screening/queries:answeredCount`). */
-const ANSWERED_CHUNK = 250;
+/** Papers one step of a job's reading takes: up to the end of one of OpenAlex's pages, so no page is asked for twice. */
+const READ_STEP = PAGE_SIZE;
+/** How long one reading action reads before it hands on to the next: well inside an action's ten minutes. */
+const READ_ACTION_MS = 4 * 60_000;
+
+/** How many papers a held set has, as the account counts them: what a job on it can take at most. */
+export const heldCount = internalQuery({
+  args: { userId: v.id("users"), set: paperSetValidator },
+  returns: v.union(v.number(), v.null()),
+  handler: (ctx, { userId, set }) => papersIn(ctx, userId, set),
+});
 
 /**
- * The last paper of the job that starts at `first`, in a request that ends at `through`. A
- * search's job that another follows (`paged`) ends with one of the search's pages, so the next
- * starts on a new page: OpenAlex can return a page in another order when it's asked for again,
- * and taking up partway through one would then skip papers or repeat them.
- */
-const jobEnd = (first: number, through: number, paged = false) => {
-  const most = first + MAX_SCREENING_PAPERS_PER_JOB - 1;
-  return through <= most ? through : paged ? Math.floor(most / PAGE_SIZE) * PAGE_SIZE : most;
-};
-
-/**
- * What the job for a request's papers from `first` takes: its papers, in the set's fixed
- * order (#341), which of the request they are, where the request goes on after them, and
- * whether the set `ended` with them, which ends the request. A search's papers come by
- * position, from the search as it was when the request began (`snapshot`), so an edit made
- * while it runs doesn't mix two searches. A held set's first job starts at its position, and
- * each job after reads on from where the last stopped (`resume`). For a search, how many of
- * the papers its page already answers is counted too, for the credit check.
- */
-async function jobPapers(ctx: ActionCtx, userId: Id<"users">, { set, first, through, resume, snapshot }: { set: PaperSet; first: number; through: number; resume?: string; snapshot?: SearchSnapshot }, questions: Config["questions"]) {
-  const last = jobEnd(first, through, set.kind === "search");
-  if (set.kind !== "search") {
-    const read = await heldPapers(ctx, userId, set, { first, last }, resume);
-    return { papers: read.papers, ended: !read.resume, range: { set, first, last, ...(through > last && read.resume ? { through, resume: read.resume } : {}) } };
-  }
-  const searchId = set.searchId;
-  const { papers, ended, snapshot: taken, resume: after } = await searchPapers(ctx, userId, { searchId, first, last }, snapshot, { resume, goesOn: through > last });
-  let answered = 0;
-  const asked = questions.map((q) => q.question);
-  for (let from = 0; from < papers.length; from += ANSWERED_CHUNK) {
-    const paperIds = papers.slice(from, from + ANSWERED_CHUNK).map((paper) => paper.openalexId);
-    // Typed here: the generated API's types depend on this module, so inference would loop.
-    const count: number = await ctx.runQuery(internal.screening.queries.answeredCount, { userId, searchId, questions: asked, paperIds });
-    answered += count;
-  }
-  return { papers, ended, range: { set, first, last, answered, snapshot: taken, ...(through > last && !ended ? { through, resume: after } : {}) } };
-}
-
-/**
- * Starts a request's first job. A search's job is made before its papers are read, and they
- * follow it (`read`): OpenAlex can take seconds over them, and nobody waits on the form for
- * that. One request first counts the search, so a query OpenAlex won't take, or a range past
- * the search's last paper, is refused here. Papers the account holds are read at once.
+ * Starts a job on papers `first` to `last` of a set, however many: it's made at once, and its
+ * papers follow a step at a time (`read`), so nobody waits on the form for them. A search is
+ * counted first, so a query OpenAlex won't take, or a range past the search's last paper, is
+ * refused here; a held set's count is the account's.
  */
 async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assistant", { set, first, last: through, ...config }: Config & { set: PaperSet; first: number; last: number }, call?: ChangeCall): Promise<{ jobId: Id<"screeningJobs"> }> {
   const spendCap = call?.credits;
@@ -81,98 +46,27 @@ async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assi
   requireMinimum(config.scoringConfig);
   // Everything the estimate checks before the person is asked, checked again by the start itself, so no path skips it.
   await ctx.runQuery(internal.screening.start.check, { userId, set, first, last: through, ...config });
-  // What the person approved is the whole request's to spend, however many jobs it takes: the first job holds it, and each job after takes the hold on (`next`).
-  // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
-  type Made = { jobId: Id<"screeningJobs"> };
-  // A job the assistant started keeps the step it started from, so its chat hears when it ends.
-  const step = call?.from ? { chatStep: call.from } : {};
-  const approved = (make: (spend: { spendCap?: number; spendHold?: string; chatStep?: Id<"assistantSteps"> }) => Promise<Made>): Promise<Made> =>
-    spendCap === undefined ? make(step) : startHeld(ctx, { userId, credits: spendCap, kind: "screening" }, (spendHold) => make({ spendCap, spendHold, ...step }));
+  let total: number;
+  let snapshot: SearchSnapshot | undefined;
   if (set.kind === "search") {
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: set.searchId });
-    const snapshot = snapshotOf(found);
-    const total = await countSearch(snapshot.request, spender(ctx, found.clerkId));
-    if (first > total) throw createError("VALIDATION_ERROR", "There are no papers in that range");
-    // No further than the search goes: papers past its last are never asked for.
-    const end = Math.min(through, total);
-    const last = jobEnd(first, end, true);
-    return await approved((spend) =>
-      ctx.runMutation(internal.screening.mutations.openScreeningJob, {
-        userId, author, set, first, last, snapshot, ...config,
-        papers: last - first + 1,
-        ...(end > last ? { through: end } : {}),
-        ...spend,
-      }),
-    );
+    snapshot = snapshotOf(found);
+    total = await countSearch(snapshot.request, spender(ctx, found.clerkId));
+  } else {
+    // A set the account doesn't count is read to its end, or to `last`.
+    total = (await ctx.runQuery(internal.screening.start.heldCount, { userId, set })) ?? through;
   }
-  for (let from = first; from <= through; from = jobEnd(from, through) + 1) {
-    const { papers, ended, range } = await jobPapers(ctx, userId, { set, first: from, through }, config.questions);
-    if (papers.length) return await approved((spend) => ctx.runMutation(internal.screening.mutations.createScreeningJobForUser, { userId, author, papers, ...range, ...config, ...spend }));
-    if (ended) break;
-  }
-  throw createError("VALIDATION_ERROR", "There are no papers in that range");
+  if (first > total) throw createError("VALIDATION_ERROR", "There are no papers in that range");
+  // No further than the set goes: papers past its last are never asked for.
+  const last = Math.min(through, total);
+  // A job the assistant started keeps the step it started from, so its chat hears when it ends.
+  const step = call?.from ? { chatStep: call.from } : {};
+  const open = (spend: { spendCap?: number; spendHold?: string }) =>
+    ctx.runMutation(internal.screening.mutations.openScreeningJob, { userId, author, set, first, last, ...(snapshot ? { snapshot } : {}), ...config, papers: last - first + 1, ...step, ...spend });
+  // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
+  return spendCap === undefined ? await open({}) : await startHeld(ctx, { userId, credits: spendCap, kind: "screening" }, (spendHold) => open({ spendCap, spendHold }));
 }
-
-/** Whether a job that handed its request on has a job after it, under the same approval. */
-async function handedOn(ctx: MutationCtx, job: Doc<"screeningJobs">) {
-  const chatStep = job.chatStep;
-  const later = chatStep
-    ? await ctx.db.query("screeningJobs").withIndex("by_chatStep", (q) => q.eq("chatStep", chatStep)).order("desc").first()
-    : await ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", job.userId)).order("desc").first();
-  return later !== null && later._id !== job._id && later._creationTime > job._creationTime && later.spendHold === job.spendHold;
-}
-
-/**
- * Ends a request that a completed job handed on (../billing/spend.ts `handsOn`) when no job
- * took it: its hold is settled, the dock row it kept for the next job goes, and with `tell`,
- * the chat that started it hears that it ended with that job, once.
- */
-export async function endRequest(ctx: MutationCtx, job: Doc<"screeningJobs">, tell: boolean) {
-  if (job.spendHold) await ctx.scheduler.runAfter(0, internal.screening.start.settleHold, { jobId: job._id, hold: job.spendHold, waited: 0 });
-  await releaseDock(ctx, job.chatStep);
-  if (tell && !(await ctx.db.query("assistantJobEnds").withIndex("by_job", (q) => q.eq("jobId", job._id)).first())) await writeEnd(ctx, "screening", job);
-}
-
-/** Ends the request after `jobId`: the set ran out of papers, so no job takes it. */
-export const endedRequest = internalMutation({
-  args: { jobId: v.id("screeningJobs") },
-  returns: v.null(),
-  handler: async (ctx, { jobId }) => {
-    const job = await ctx.db.get("screeningJobs", jobId);
-    if (job) await endRequest(ctx, job, true);
-    return null;
-  },
-});
-
-/**
- * Looks, a while after a job handed its request on, for the job after it, and ends the request
- * without one if none came: the action starting it can stop part way, and Convex doesn't run
- * an action again. A request already ended is left alone.
- */
-export const watchHandOff = internalMutation({
-  args: { jobId: v.id("screeningJobs") },
-  returns: v.null(),
-  handler: async (ctx, { jobId }) => {
-    const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || !handsOn(job) || (await handedOn(ctx, job))) return null;
-    if (job.spendHold && !(await holdOpen(ctx, job.spendHold))) return null;
-    console.error(`[screening] No job took the request after ${jobId}; it ends there`);
-    await endRequest(ctx, job, true);
-    return null;
-  },
-});
-
-/** Passes over a stretch of the set with no papers: the next stretch is looked at, and the request's wait for its next job starts again. */
-export const passOver = internalMutation({
-  args: { jobId: v.id("screeningJobs"), first: v.number(), resume: v.optional(v.string()) },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.scheduler.runAfter(0, internal.screening.start.next, args);
-    await ctx.scheduler.runAfter(HAND_OFF_MS, internal.screening.start.watchHandOff, { jobId: args.jobId });
-    return null;
-  },
-});
 
 /** How often an ended job is looked at again while a paper of it is still being read, and for how long at most: longer than a paper's worker can run. */
 const RUNNING_CHECK_MS = 15_000;
@@ -198,39 +92,40 @@ export const settleHold = internalMutation({
 });
 
 /**
- * Reads the papers of a job made on a search and gives them to it. The search's rating filter
- * can leave a whole stretch with no papers: the job then takes the request's first stretch
- * that has some, and the reading stops where the search's results end. A job that gets no
- * papers, or whose papers OpenAlex won't return, ends as failed with why.
+ * Reads a job's papers a step at a time and gives each step to it (`fillScreeningJob`): a
+ * search's from where its cursor pages stopped, a held set's from where it goes on, so a set
+ * of any size is never held whole. Past a few minutes it hands on to another action. A
+ * search's rating filter can leave a step with no papers, which is passed over; a job whose
+ * papers OpenAlex won't return ends as failed with why.
  */
 export const read = internalAction({
-  args: {
-    jobId: v.id("screeningJobs"),
-    userId: v.id("users"),
-    searchId: v.string(),
-    first: v.number(),
-    through: v.number(),
-    questions: v.array(screeningQuestionValidator),
-    snapshot: searchSnapshotValidator,
-  },
+  args: { jobId: v.id("screeningJobs") },
   returns: v.null(),
-  handler: async (ctx, { jobId, userId, searchId, first, through, questions, snapshot }) => {
+  handler: async (ctx, { jobId }) => {
+    const started = Date.now();
     try {
-      // Where the stretch before stopped, once one has been read.
-      let resume: string | undefined;
-      for (let from = first; from <= through; from = jobEnd(from, through, true) + 1) {
-        const { papers, ended, range } = await jobPapers(ctx, userId, { set: { kind: "search", searchId }, first: from, through, snapshot, resume }, questions);
-        if (papers.length) {
-          await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, first: range.first, last: range.last, answered: "answered" in range ? range.answered : 0, ...("through" in range ? { through: range.through, resume: range.resume } : {}) });
-          return null;
+      for (;;) {
+        // Typed here: the generated API's types depend on this module, so inference would loop.
+        const job: { userId: Id<"users">; set: PaperSet; first: number; last: number; read: number; resume?: string; snapshot?: SearchSnapshot } | null = await ctx.runQuery(internal.screening.queries.readingJob, { jobId });
+        if (!job) return null;
+        if (Date.now() - started > READ_ACTION_MS) return void (await ctx.scheduler.runAfter(0, internal.screening.start.read, { jobId }));
+        const from = job.first + job.read;
+        const to = Math.min(job.last, Math.ceil(from / READ_STEP) * READ_STEP);
+        if (job.set.kind === "search") {
+          // Numbered pages when the search's order has them as far as the job goes, each step its own; otherwise one cursor page a step, carrying on from where the last stopped.
+          const paged = job.snapshot !== undefined && numbered(job.snapshot.request, job.last);
+          const { papers, ended, resume, taken } = await searchPapers(ctx, job.userId, { searchId: job.set.searchId, first: from, last: to }, job.snapshot, paged ? { goesOn: false } : { resume: job.resume, goesOn: true });
+          const read = paged ? to - from + 1 : taken;
+          const done = ended || from + read > job.last;
+          await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read, ...(resume ? { resume } : {}), ended: done });
+          if (done) return null;
+        } else {
+          const { papers, resume } = await heldPapers(ctx, job.userId, job.set, { first: from, last: to }, job.resume);
+          const done = !resume || to >= job.last;
+          await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: to - from + 1, ...(resume ? { resume } : {}), ended: done });
+          if (done) return null;
         }
-        if (ended) break;
-        // Cancelled meanwhile: the stretches after this one aren't read for nothing.
-        const waits: boolean = await ctx.runQuery(internal.screening.queries.awaitsPapers, { jobId });
-        if (!waits) return null;
-        resume = range.resume;
       }
-      throw createError("VALIDATION_ERROR", "None of these papers match the search's rating filter");
     } catch (error) {
       console.error(`[screening] Job ${jobId} couldn't get its papers`, error);
       await ctx.runMutation(internal.screening.mutations.failScreeningRead, { jobId, reason: readConvexErrorData(error)?.message ?? "Its papers couldn't be read. Run it again." });
@@ -239,12 +134,6 @@ export const read = internalAction({
   },
 });
 
-/**
- * Screen all on a set of papers: the server reads papers `first` to `last` of it (#341) and
- * starts the job, so the browser never fetches or sends them. A range bigger than one job
- * runs as several, one after another: each reads its own papers when the one before
- * completes (`next`).
- */
 /** What starting a screening refuses before it reads a paper (./estimate.ts `checkScreening`). */
 export const check = internalQuery({
   args: { userId: v.id("users"), set: paperSetValidator, first: v.number(), last: v.number(), ...jobArgs, saveTo: v.optional(saveToValidator), prune: v.optional(v.boolean()) },
@@ -260,8 +149,8 @@ export const screenAction = defineUserAction({
   description:
     "Screens papers `first` to `last` (from 1) of a paper set: one of the person's saved searches, in its results page's order and rating filter; one of their collections or all their saved papers, newest saved first; " +
     "or the included papers of an earlier screening. Answers the questions for each paper and scores them by the rules. A search's answers show on its page, and papers that page already answered every question for keep their answers and cost nothing. " +
-    "A search's job is made at once and its papers are read after: until then the job is `reading`, and one whose papers can't be read ends `failed`, with why in its `failure`. " +
-    `Included papers go to \`saveTo\`. With \`prune\`, papers of a collection that end excluded or failed leave it. More than ${MAX_SCREENING_PAPERS_PER_JOB} papers run as several jobs, one after another; returns the first. Spends credits.`,
+    "The job is made at once and its papers are read after, a step at a time, however many: until then the job is `reading`, and one whose papers can't be read ends `failed`, with why in its `failure`. " +
+    "Included papers go to `saveTo`. With `prune`, papers of a collection that end excluded or failed leave it. Spends credits.",
   args: { set: paperSetValidator, first: v.number(), last: v.number(), ...jobArgs, saveTo: saveToValidator, prune: v.optional(v.boolean()) },
   returns: v.object({ jobId: v.id("screeningJobs") }),
   spendsCredits: true,
@@ -282,35 +171,3 @@ export const screenAction = defineUserAction({
 });
 export const screen = userAction(screenAction);
 export const screenForAssistant = assistantAction(screenAction);
-
-/**
- * Starts the job for a request's next papers, from `first`, once the job before it
- * completed: the same questions, rules and destination. A stretch of a search with no papers
- * (its rating filter left none) is passed over; a set with no more papers ends the request.
- * If the job can't start, the request stops there, and the page shows a failed job in the
- * next one's place.
- */
-export const next = internalAction({
-  // `resume`: where a stretch with no papers stopped, when the job is looked for past one.
-  args: { jobId: v.id("screeningJobs"), first: v.number(), resume: v.optional(v.string()) },
-  returns: v.null(),
-  handler: async (ctx, { jobId, first, resume: past }) => {
-    const job = await ctx.runQuery(internal.screening.queries.requestJob, { jobId });
-    if (!job) return null;
-    const { userId, set, through, resume: left, snapshot, label, ...config } = job;
-    const resume = past ?? left;
-    const last = jobEnd(first, through, set.kind === "search");
-    try {
-      const { papers, ended, range } = await jobPapers(ctx, userId, { set, first, through, resume, snapshot }, config.questions);
-      if (papers.length) await ctx.runMutation(internal.screening.mutations.createScreeningJobForUser, { userId, author: "user", papers, chained: true, ...range, ...config });
-      else if (!ended && through > last) await ctx.runMutation(internal.screening.start.passOver, { jobId, first: last + 1, ...(range.resume ? { resume: range.resume } : {}) });
-      // The set has no more papers: the request ends with the job before.
-      else await ctx.runMutation(internal.screening.start.endedRequest, { jobId });
-    } catch (error) {
-      console.error(`[screening] The job after ${jobId} couldn't start`, error);
-      const { questions, scoringConfig } = config;
-      await ctx.runMutation(internal.screening.mutations.stopRequest, { userId, set, first, last, ...(through > last ? { through } : {}), questions, scoringConfig, ...(label ? { label } : {}), after: jobId });
-    }
-    return null;
-  },
-});

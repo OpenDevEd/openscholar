@@ -7,7 +7,6 @@ import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { exportLibrary, exportParts, exportedTitles } from "../exports.test-support";
 import { collectionSortName } from "../library/collections";
-import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 
 /** Collections a person keeps in the test below: past a page many times over. */
 const COLLECTIONS = 500;
@@ -18,7 +17,8 @@ import { assertApprovedQueriesUnchanged } from "../evidenceLibraries/approvedQue
 import { isAcceptableSavedConfigurationTarget } from "../evidenceLibraries/operations";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "../extraction/queue/workpool.test-support";
-import { insertJob } from "../screening/createJob.test-support";
+import { createJob, insertJob } from "../screening/createJob.test-support";
+import { searchTextOf } from "../screening/mutations";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { screeningInputs } from "../extraction/sources/screening.test-support";
 
@@ -378,21 +378,21 @@ describe("at the largest sizes the product allows", () => {
     const { userId, as } = await seedAccount(t);
     const questions = Array.from({ length: MAX_SIZE.questionsPerJob }, (_, i) => ({ key: `q${i}`, question: `${text(180, i)}?` }));
     const jobId = await t.run((ctx) => insertJob(ctx, {
-      userId, status: "completed", totalPapers: MAX_SCREENING_PAPERS_PER_JOB, questions,
+      userId, status: "completed", totalPapers: 1_000, questions,
       scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }] },
       createdAt: 1, updatedAt: 1,
     }));
-    await insertMany(t, "screeningResults", Array.from({ length: MAX_SCREENING_PAPERS_PER_JOB }, (_, i) => ({
+    await insertMany(t, "screeningResults", Array.from({ length: 1_000 }, (_, i) => ({
       jobId, openalexId: `https://openalex.org/W${i}`, title: text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)), publicationYear: 2020, doi: `10.1234/${i}`,
       status: "completed", answers: Object.fromEntries(questions.map(({ key }, q) => [key, (i + q) % 3 === 0 ? null : (i + q) % 2 === 0])), score: 25, stars: 5, qualified: true, createdAt: 1,
     })), 250);
 
     const csv = await exportParts(t, as, { kind: "screening", jobId }, "csv");
     expect(csv.parts).toHaveLength(1);
-    expect(csv.text.split("\n")).toHaveLength(MAX_SCREENING_PAPERS_PER_JOB + 1);
+    expect(csv.text.split("\n")).toHaveLength(1_000 + 1);
     const json = await exportParts(t, as, { kind: "screening", jobId });
     expect(json.parts).toHaveLength(1);
-    expect(JSON.parse(json.text).results).toHaveLength(MAX_SCREENING_PAPERS_PER_JOB);
+    expect(JSON.parse(json.text).results).toHaveLength(1_000);
     // The workbook reads the largest page a read allows.
     const page = await as.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor: null, numItems: 1_000 } });
     expect(page.page).toHaveLength(200);
@@ -455,7 +455,7 @@ describe("at the largest sizes the product allows", () => {
     });
     const answers = questions.map(({ question }) => ({ question, answer: true, setBy: "model" as const, updatedAt: 1, model: { answer: true, confidence: 0.9, at: 1 } }));
     const ids = Array.from({ length: 120 }, (_, i) => `https://openalex.org/W${i}`);
-    await insertMany(t, "screeningResults", ids.map((openalexId, i) => ({ jobId, openalexId, title: i === 119 ? `needle ${text(150, i)}` : text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)), status: "completed", score: 50, stars: 5, qualified: true, outcome: "included", counted: { qualified: true, outcome: "included", answers: Object.fromEntries(questions.map(({ key }) => [key, true])) }, answersVersion: 1, createdAt: 1 })), 60);
+    await insertMany(t, "screeningResults", ids.map((openalexId, i) => ({ jobId, openalexId, title: i === 119 ? `needle ${text(150, i)}` : text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)), status: "completed", score: 50, stars: 5, qualified: true, outcome: "included", counted: { qualified: true, outcome: "included", answers: Object.fromEntries(questions.map(({ key }) => [key, true])) }, answersVersion: 1, createdAt: 1 })).map((row) => ({ ...row, searchText: searchTextOf(row) })), 60);
     await insertMany(t, "screeningAnswers", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1 })), 60);
     await insertMany(t, "screeningAnswerHistory", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1, at: 1 })), 60);
 
@@ -478,15 +478,18 @@ describe("at the largest sizes the product allows", () => {
       const { collectionId } = await seedLibrary(t, userId, { abstractChars: 2_000 });
 
       const { jobId } = await as.action(api.screening.start.screen, {
-        set: { kind: "collection", collectionId }, first: MAX_SIZE.libraryItems - MAX_SCREENING_PAPERS_PER_JOB + 1, last: MAX_SIZE.libraryItems,
+        set: { kind: "collection", collectionId }, first: MAX_SIZE.libraryItems - 1_000 + 1, last: MAX_SIZE.libraryItems,
         questions: [{ key: "q0", question: "Randomized?" }],
         scoringConfig: { rules: [{ questionKey: "q0", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 },
         saveTo: { kind: "none" },
       });
+      // Its papers are read after it starts: the reading, not the watch on it 15 minutes on.
+      vi.advanceTimersByTime(1);
+      await t.finishInProgressScheduledFunctions();
 
       // Newest saved first, so the last 1,000 are the first 1,000 saved, from W999 down.
       const job = await t.run((ctx) => ctx.db.get("screeningJobs", jobId));
-      expect(job).toMatchObject({ totalPapers: MAX_SCREENING_PAPERS_PER_JOB, first: 9_001, last: 10_000 });
+      expect(job).toMatchObject({ totalPapers: 1_000, first: 9_001, last: 10_000 });
       const [first] = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1));
       expect(first.openalexId).toBe("https://openalex.org/W999");
     } finally {
@@ -503,7 +506,7 @@ describe("at the largest sizes the product allows", () => {
       const { userId, as } = await seedAccount(t, clerkId);
       await t.run((ctx) => seedCreditsForTest(ctx, { userId, paid: 10_000_000 }));
       const asked = Array.from({ length: MAX_SIZE.questionsPerJob }, (_, i) => `${text(180, i)}?`);
-      const ids = Array.from({ length: MAX_SCREENING_PAPERS_PER_JOB }, (_, i) => `https://openalex.org/W${i}`);
+      const ids = Array.from({ length: 1_000 }, (_, i) => `https://openalex.org/W${i}`);
       const at = new Date(Date.UTC(2026, 8, 1)).toISOString();
       const search = { id: "reused", query: "tutoring", field: "title" as const, count: ids.length, queryHistoryCount: 0, questionCount: 0, questionText: "", screeningQuestions: asked.map((question) => ({ question })), screeningResponses: [], createdAt: at, updatedAt: at };
       await as.mutation(api.research.records.change, { accountId: clerkId, requestId: "create", command: { kind: "createSearch", search } });
@@ -516,8 +519,8 @@ describe("at the largest sizes the product allows", () => {
       await insertMany(t, "screeningAnswerHistory", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1, at: 1 })), 100);
       const questions = asked.map((question, i) => ({ key: `q${i}`, question }));
 
-      const { jobId } = await t.mutation(internal.screening.mutations.createScreeningJobForUser, {
-        userId, author: "user", set: { kind: "search", searchId: "reused" }, first: 1, last: ids.length, saveTo: { kind: "none" },
+      const { jobId } = await createJob(as, {
+        set: { kind: "search", searchId: "reused" }, saveTo: { kind: "none" },
         papers: ids.map((openalexId, i) => ({ openalexId, title: text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)) })),
         questions,
         scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 },

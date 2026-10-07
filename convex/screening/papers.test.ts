@@ -159,7 +159,7 @@ describe("a screening job's papers", () => {
     });
   });
 
-  it("pages an outcome by cursor in the job's order, finds papers by title or author, and shows no one else's", async () => {
+  it("pages an outcome by cursor in the job's order, finds papers by words of their title or authors, and shows no one else's", async () => {
     const { t, as, jobId, list } = await screened();
     const first = await as.query(api.screening.papers.list, { jobId, outcome: "included", paginationOpts: { cursor: null, numItems: 1 } });
     expect(first.page.map((row) => row.openalexId)).toEqual(["https://openalex.org/W1"]);
@@ -168,7 +168,8 @@ describe("a screening job's papers", () => {
     expect(second.page.map((row) => row.openalexId)).toEqual(["https://openalex.org/W5"]);
 
     expect((await list("excluded", { text: "PIPER" })).map((row) => row.title)).toEqual(["Paper 3 on reading"]);
-    expect((await list("included", { text: "paper 5" })).map((row) => row.title)).toEqual(["Paper 5 on reading"]);
+    // Matched by words, best first: every paper with one of them.
+    expect((await list("included", { text: "paper 5" })).map((row) => row.title)).toContain("Paper 5 on reading");
     expect(await list("included", { text: "piper" })).toEqual([]);
     expect(await list("included", {}, t.withIdentity({ subject: "someone_else" }))).toEqual([]);
   });
