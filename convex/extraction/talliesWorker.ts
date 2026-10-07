@@ -42,8 +42,11 @@ export const fold = internalMutation({
       groups.set(id, group);
     }
     const questions = new Map<string, { change: Doc<"extractionTallyChanges">; answers: number; items: number }>();
+    // A job deleted since its changes were queued gets no tallies back.
+    const jobs = [...new Set(changes.map((change) => change.jobId))];
+    const live = new Set((await Promise.all(jobs.map((jobId) => ctx.db.get("extractionJobs", jobId)))).filter((job) => job !== null).map((job) => job._id));
     for (const { change, delta } of groups.values()) {
-      if (delta === 0) continue;
+      if (delta === 0 || !live.has(change.jobId)) continue;
       const { jobId, questionKey, kind, key, shown } = change;
       const row = await ctx.db.query("extractionAnswerTallies").withIndex("by_group", (q) => q.eq("jobId", jobId).eq("questionKey", questionKey).eq("kind", kind).eq("key", key)).unique();
       const papers = (row?.papers ?? 0) + delta;

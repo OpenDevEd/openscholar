@@ -24,6 +24,7 @@ import { createError } from "../../lib/errors";
 import { RESULTS_PAGE_SIZE_MAX } from "@/lib/extraction/limits";
 import { answerOf, confidenceOf, countIn, idsIn, tagOf, type PaperTag, type Range } from "../facets";
 import { largestGroups } from "../tallies";
+import { isRunningJobStatus } from "../stateMachine";
 import {
   paginatedPaperWithResultsValidator,
   resultsSummaryValidator,
@@ -316,9 +317,11 @@ export const listJobResultsAction = defineUserQuery({
     const parts = partsOf(job._id, filters);
     if (!parts.length) return await new JoinStream(along(), (paper) => loadPaperResults(ctx, paper), (item) => getDocumentSize({ results: item.results })).paginate({ ...args.paginationOpts, numItems, maximumBytesRead: RESULTS_PAGE_BYTES });
 
-    // A view whose narrowest filter keeps few papers reads them and sorts them here; it says so in its cursor.
+    // A finished job's view whose narrowest filter keeps few papers reads them and sorts them here; it says so in its cursor.
+    // A running job's views grow as it goes, so they read along the index.
+    // ponytail: a finished job's view can still grow by edits while it's paged; past twice the papers it began with, later pages miss some.
     const sorted = cursor?.startsWith(SORTED) ?? false;
-    const narrowest = cursor === null ? await narrowestOf(ctx, parts) : null;
+    const narrowest = cursor === null && !(job.status && isRunningJobStatus(job.status)) ? await narrowestOf(ctx, parts) : null;
     if (sorted || (narrowest && narrowest.count <= IN_MEMORY_PAPERS)) {
       const part = narrowest?.part ?? (await narrowestOf(ctx, parts))!.part;
       // Read whole: as few papers as chose this way, or, as later pages of a running job find more, no more than twice that.
@@ -340,8 +343,8 @@ export const listJobResultsForAssistant = assistantQuery(listJobResultsAction);
 /**
  * How many papers a view keeps: exact from the job's counts for one filter (status tags
  * together are one); several are counted by reading the papers the narrowest keeps, and
- * `atLeast` says when it stopped short of them all, as a search that reached the search
- * engine's limit does.
+ * `atLeast` says when it stopped short of them all, and `searchCapped` when that was a
+ * search reaching the search engine's limit, whose pages can't list them all either.
  */
 async function countView(ctx: QueryCtx, job: Doc<"extractionJobs">, filters: NormalizedResultsFilters, selectedPaperIds?: Id<"extractionPapers">[]) {
   const all = job.totalPapers ?? 0;
@@ -349,7 +352,7 @@ async function countView(ctx: QueryCtx, job: Doc<"extractionJobs">, filters: Nor
   if (filters.searchQuery) {
     const { papers, capped } = await searchMatches(ctx, job._id, filters.searchQuery);
     const picked = selectedPaperIds === undefined ? null : new Set<string>(selectedPaperIds);
-    return { all, matching: papers.filter((paper) => (!picked || picked.has(paper._id)) && matchesProjectionFilters(paper, filters)).length, atLeast: capped };
+    return { all, matching: papers.filter((paper) => (!picked || picked.has(paper._id)) && matchesProjectionFilters(paper, filters)).length, atLeast: capped, searchCapped: capped };
   }
   if (selectedPaperIds !== undefined) return { all, matching: (await pickedPapers(ctx, job._id, selectedPaperIds)).filter((paper) => matchesProjectionFilters(paper, filters)).length, atLeast: false };
   const parts = partsOf(job._id, filters);
@@ -364,15 +367,15 @@ async function countView(ctx: QueryCtx, job: Doc<"extractionJobs">, filters: Nor
 
 export const countJobResultsAction = defineUserQuery({
   path: "extraction/queries:countJobResults",
-  description: `Counts an extraction job's papers, and how many of them a set of filters keeps. A count that stopped short of them all comes with \`atLeast\`. ${FILTERS_HELP}`,
+  description: `Counts an extraction job's papers, and how many of them a set of filters keeps. A count that stopped short of them all comes with \`atLeast\`, and with \`searchCapped\` when the search matched more papers than it returns. ${FILTERS_HELP}`,
   args: { ...resultsViewArgs, includeRevision: v.optional(v.boolean()) },
-  returns: v.object({ all: v.number(), matching: v.number(), atLeast: v.optional(v.literal(true)), revision: v.union(v.number(), v.null()) }),
+  returns: v.object({ all: v.number(), matching: v.number(), atLeast: v.optional(v.literal(true)), searchCapped: v.optional(v.literal(true)), revision: v.union(v.number(), v.null()) }),
   run: async (ctx, userId, args) => {
     const job = await ownJob(ctx, userId, args.jobId);
     if (!job) return { all: 0, matching: 0, revision: -1 };
     await requireFeature(ctx, "extraction.enabled", userId);
-    const { all, matching, atLeast } = await countView(ctx, job, await normalizeResultsFilters(args.filters), args.selectedPaperIds);
-    return { all, matching, ...(atLeast ? { atLeast: true as const } : {}), revision: args.includeRevision ? await exportRevision(ctx, job._id) : null };
+    const { all, matching, atLeast, searchCapped } = await countView(ctx, job, await normalizeResultsFilters(args.filters), args.selectedPaperIds);
+    return { all, matching, ...(atLeast ? { atLeast: true as const } : {}), ...(searchCapped ? { searchCapped: true as const } : {}), revision: args.includeRevision ? await exportRevision(ctx, job._id) : null };
   },
 });
 export const countJobResults = userQuery(countJobResultsAction);

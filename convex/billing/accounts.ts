@@ -73,14 +73,15 @@ export async function availableCredits(ctx: QueryCtx | MutationCtx, userId: Id<"
 /**
  * What the person's plan allows of `limit` (#632), or undefined when it sets none. Their
  * cached snapshot says, unless their plan's version predates the limit or nothing is cached
- * yet: then their plan in the synced catalog does, or the plan every new customer gets.
+ * yet: then their plan in the synced catalog does, or, with no plan, the plan every new
+ * customer gets. A plan the catalog no longer lists sets none.
  */
 export async function planLimit(ctx: QueryCtx | MutationCtx, userId: Id<"users">, limit: PlanLimit): Promise<number | undefined> {
   const account = await readAccount(ctx, userId);
   const own = account?.limits?.[limit];
   if (own !== undefined) return own ?? undefined;
   const plans = (await readCatalog(ctx))?.plans ?? [];
-  const plan = plans.find((candidate) => candidate.id === account?.plan) ?? plans.find((candidate) => candidate.autoEnable && !candidate.addOn);
+  const plan = account?.plan ? plans.find((candidate) => candidate.id === account.plan) : plans.find((candidate) => candidate.autoEnable && !candidate.addOn);
   return plan?.limits?.[limit] ?? undefined;
 }
 
@@ -111,12 +112,15 @@ export const writeSnapshot = internalMutation({
   returns: v.null(),
   handler: async (ctx, { userId, snapshot, withCard, fetchedAt }) => {
     const existing = await readAccount(ctx, userId);
-    // A snapshot read before the one cached would bring back an older plan and its limits.
-    if (existing?.fetchedAt !== undefined && existing.fetchedAt > fetchedAt) return null;
+    // A snapshot read before the one cached would bring back an older plan and its limits. Its card can still be the newest read.
+    if (existing?.fetchedAt !== undefined && existing.fetchedAt > fetchedAt) {
+      if (withCard && (existing.cardFetchedAt ?? 0) < fetchedAt) await ctx.db.patch("billingAccounts", existing._id, { card: snapshot.card, cardFetchedAt: fetchedAt });
+      return null;
+    }
     const newer = existing !== null && existing.refreshedAt > fetchedAt;
     const row = {
       ...snapshot,
-      card: withCard ? snapshot.card : existing?.card,
+      ...(withCard ? { card: snapshot.card, cardFetchedAt: fetchedAt } : { card: existing?.card, cardFetchedAt: existing?.cardFetchedAt }),
       ...(newer && { balance: existing.balance, purchased: existing.purchased }),
       userId,
       refreshedAt: newer ? existing.refreshedAt : fetchedAt,

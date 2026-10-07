@@ -25,6 +25,8 @@ const sameGroup = (a: Group, b: Group) => a.kind === b.kind && a.key === b.key;
 /** Appends what an answer row's change moved between groups, and wakes the worker. */
 export async function tallyAnswerChange(ctx: MutationCtx, change: Change<DataModel, "extractionAnswerRows">) {
   const row = change.newDoc ?? change.oldDoc!;
+  // A deleted job's rows go with its tallies, which its deletion drains.
+  if (!change.newDoc && !(await ctx.db.get("extractionJobs", row.jobId))) return;
   const was = groupsOf(change.oldDoc);
   const now = groupsOf(change.newDoc);
   const moves = [
