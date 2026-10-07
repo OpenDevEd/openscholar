@@ -19,7 +19,7 @@ import { ConsentAwareGoogleAnalytics } from "@/components/google-analytics";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { preloadQuery } from "convex/nextjs";
-import { AssistantPanel } from "@/components/assistant/panel";
+import { AttachMock } from "@/components/assistant/attach-mock";
 import { api } from "@/convex/_generated/api";
 
 // The brand typeface. To change it, swap the family here; --font-app feeds
@@ -104,7 +104,7 @@ export default async function RootLayout({
                       </div>
                       <Toaster />
                       <ConfirmationHost />
-                      <AssistantPanel />
+                      <AttachMock />
                       <CookieConsentBanner />
                       <ConsentAwareGoogleAnalytics />
                     </TooltipProvider>

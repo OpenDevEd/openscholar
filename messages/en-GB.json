@@ -3785,6 +3785,18 @@
         "doing": "Finding it in your account",
         "did": "Found it in your account",
         "where": "Your account"
+      },
+      "webSearch": {
+        "doing": "Searching the web",
+        "did": "Searched the web",
+        "where": "The web",
+        "ask": "Search the web"
+      },
+      "readPdf": {
+        "doing": "Reading a PDF",
+        "did": "Read a PDF",
+        "where": "Attachments",
+        "ask": "Read a PDF"
       }
     },
     "asks": {
@@ -3821,7 +3833,10 @@
         "prune": "Excluded leave it",
         "rating": "Rating",
         "change": "Changes",
-        "usePdfs": "Full texts"
+        "usePdfs": "Full texts",
+        "query": "Query",
+        "file": "File",
+        "pages": "Pages"
       }
     },
     "topUp": {

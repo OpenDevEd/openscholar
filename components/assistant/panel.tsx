@@ -66,7 +66,7 @@ type Sending = { threadId: ThreadId | null };
 /** One reply as the thread draws it: the exchange of the message it answers, the first thing of it on the page, its steps, and how many messages of it are placed. */
 type Run = { order: number; head: Item; steps: StepItem[]; said: number };
 
-const PANEL_W = 440;
+export const PANEL_W = 440;
 /** The chips' row over the message box: a chip's height and the gap under it. */
 const CHIP_ROW = 40;
 const SHELL_SPRING = { type: "spring" as const, stiffness: 380, damping: 36, mass: 0.9 };
@@ -815,7 +815,7 @@ const readWorkOf = ([, paperId]: ReturnType<typeof workKey>) => unlessLimited(re
  * other page of the app opens the same way, as a plain chip; an address outside the app was
  * written by the model, so the person sees where it goes and says yes first.
  */
-function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) {
+export function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) {
   const [asking, setAsking] = useState(false);
   // The paper focus mode is on, and whether it's open: it stays mounted once read, so it slides out when closed.
   const [reading, setReading] = useState<{ paperId: string; open: boolean } | null>(null);
@@ -981,7 +981,7 @@ function FailedRow({ error }: { error: Message["error"] }) {
  * A message someone sent. In a shared chat, another person's carries their name. It rises
  * in as it's sent; the server's copy then takes its place without moving.
  */
-function UserBubble({ message }: { message: Message }) {
+export function UserBubble({ message, attachments }: { message: Message; /** MOCK: the files sent with it, over its text. */ attachments?: ReactNode }) {
   return (
     <motion.div
       initial={message.id.startsWith(SENDING) ? { opacity: 0, y: 8 } : false}
@@ -990,6 +990,7 @@ function UserBubble({ message }: { message: Message }) {
       className="ml-10 self-end"
     >
       {!message.mine && message.sender?.name ? <p className="mb-1 pr-1 text-right text-2xs text-muted-foreground">{message.sender.name}</p> : null}
+      {attachments}
       <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-primary/10 px-4 py-2.5 text-sm leading-6">
         <MessageText text={message.text} />
       </div>
@@ -1001,7 +1002,7 @@ function UserBubble({ message }: { message: Message }) {
  * The reply is at work, from the moment it's taken on until its text arrives. While one of its
  * actions runs, the action's card says what it's doing, so the row keeps its mark and drops its word.
  */
-function Thinking({ wordless }: { wordless: boolean }) {
+export function Thinking({ wordless }: { wordless: boolean }) {
   const t = useTranslations("assistant");
   return (
     <div className="flex h-9 items-center gap-2 pl-1 text-sm">
@@ -1023,7 +1024,7 @@ function Empty() {
   );
 }
 
-function Header({ title, onHistory, onShare, onSpending, onRestart, onFold }: { title: string; onHistory: () => void; onShare: () => void; onSpending: () => void; onRestart: () => void; onFold: () => void }) {
+export function Header({ title, onHistory, onShare, onSpending, onRestart, onFold }: { title: string; onHistory: () => void; onShare: () => void; onSpending: () => void; onRestart: () => void; onFold: () => void }) {
   const t = useTranslations("assistant");
   return (
     <div className="border-b border-border/50 px-4 pb-3 pt-3.5">
@@ -1149,7 +1150,7 @@ function useViewName() {
   return t("page");
 }
 
-function Footer({
+export function Footer({
   composer,
   draft,
   setDraft,
@@ -1170,6 +1171,9 @@ function Footer({
   onCarryOn,
   onSpending,
   dock,
+  attach,
+  attachments,
+  chips: more,
 }: {
   composer: RefObject<HTMLTextAreaElement | null>;
   draft: string;
@@ -1197,10 +1201,16 @@ function Footer({
   onSpending: () => void;
   /** The chat's running jobs, between the chips and the message box. */
   dock?: ReactNode;
+  /** MOCK: the attach button, before the page chip. */
+  attach?: ReactNode;
+  /** MOCK: the files waiting to be sent, over the text. */
+  attachments?: ReactNode;
+  /** MOCK: more chips beside the allowance one. */
+  chips?: ReactNode;
 }) {
   const t = useTranslations("assistant");
   const view = useViewName();
-  const chips = meter !== null || allowance !== null;
+  const chips = meter !== null || allowance !== null || Boolean(more);
   return (
     <div className="p-3 pt-0">
       {/* The chips' row takes room only while a chip shows, and opens and closes as one does. */}
@@ -1237,10 +1247,12 @@ function Footer({
               </motion.span>
             ) : null}
           </AnimatePresence>
+          {more}
         </div>
       </motion.div>
       {dock}
       <div className="rounded-2xl border border-border/60 bg-background shadow-xs focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
+        {attachments}
         <MentionComposer
           composer={composer}
           draft={draft}
@@ -1253,6 +1265,7 @@ function Footer({
           placeholder={!canWrite ? t("readOnly") : summarizing ? t("summarizing") : t("placeholder")}
         />
         <div className="flex items-center gap-2 px-2 pb-2">
+          {attach}
           <span className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground">
             <Eye className="size-3" /> {t("sees", { view })}
           </span>

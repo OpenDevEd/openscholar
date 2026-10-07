@@ -17,7 +17,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Check, ChevronDown, CircleAlert, Coins, Compass, Plus, Undo2, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, Check, ChevronDown, CircleAlert, Coins, Compass, FileSearch, Globe, Plus, Undo2, X, type AppIcon } from "@/components/icons";
 import { RECORD_KINDS } from "@/components/record-kinds";
 import { AnimatedNumber } from "@/components/screening/parts";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,8 @@ export type StepItem = Extract<Item, { role: "step" }>;
 
 /** Each kind's icon, the same as everywhere in the app, and its colour, which only the assistant uses (components/record-kinds.ts). `other` is an action on no one record. */
 export const KIND = {
+  web: { icon: Globe, tint: "var(--kind-web)" },
+  file: { icon: FileSearch, tint: "var(--kind-file)" },
   search: RECORD_KINDS.search,
   paper: RECORD_KINDS.paper,
   collection: RECORD_KINDS.collection,
@@ -181,7 +183,7 @@ export function Steps({
 }
 
 /** Names of a call's arguments the card says in the person's language; any other shows as the action names it. */
-const NAMED = ["thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune", "rating", "change", "usePdfs"] as const;
+const NAMED = ["query", "file", "pages", "thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune", "rating", "change", "usePdfs"] as const;
 
 /** Arguments that are a setting turned on or off. */
 const SWITCHES = new Set(["prune", "inCollection", "usePdfs", "openAccessOnly", "withAbstractOnly", "reviewsOnly", "includeRetracted", "ratedOnly"]);
@@ -214,7 +216,7 @@ function useStepTitle() {
  * the rest of the chat. A bulk change asks once for all of it, with the first of the records
  * it's made to and how many more there are. The mock's approval card.
  */
-function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; step: StepItem }) {
+export function ApprovalCard({ threadId, step, onAnswer, balance }: { threadId: Id<"assistantThreads">; step: StepItem; /** MOCK: answers here instead of on the server. */ onAnswer?: (allow: boolean, always?: boolean) => void; /** MOCK: the balance, instead of reading it. */ balance?: number }) {
   const t = useTranslations("assistant");
   const answer = useMutation(api.assistant.replies.answer);
   const toast = useAppToast();
@@ -231,6 +233,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
   const named = (name: string) => ((NAMED as readonly string[]).includes(name) ? t(`asks.names.${name as (typeof NAMED)[number]}`) : name);
   const say = (allow: boolean, always?: boolean) => {
     setSent(true);
+    if (onAnswer) return onAnswer(allow, always);
     answer({ threadId, stepId: step.id as Id<"assistantSteps">, allow, ...(always ? { always } : {}) }).catch((error) => {
       setSent(false);
       toast.error(t("asks.failed"), getErrorMessage(error, ""));
@@ -300,7 +303,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
           </div>
         </>
       ) : (
-        <Spending credits={step.credits} sent={sent} onAllow={() => say(true)} onAlways={() => say(true, true)} onDecline={() => say(false)} onAddCredits={() => addCredits({ kind, title: heading, credits: step.credits! })} />
+        <Spending credits={step.credits} balance={balance} sent={sent} onAllow={() => say(true)} onAlways={() => say(true, true)} onDecline={() => say(false)} onAddCredits={() => addCredits({ kind, title: heading, credits: step.credits! })} />
       )}
     </motion.div>
   );
@@ -311,12 +314,12 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
  * person's balance, then Allow once or Always allow in this chat. When the balance can't
  * cover it, the buttons turn into a top-up, and turn back once the credits land.
  */
-function Spending({ credits, sent, onAllow, onAlways, onDecline, onAddCredits }: { credits: number; sent: boolean; onAllow: () => void; onAlways: () => void; onDecline: () => void; onAddCredits: () => void }) {
+function Spending({ credits, balance: given, sent, onAllow, onAlways, onDecline, onAddCredits }: { credits: number; balance?: number; sent: boolean; onAllow: () => void; onAlways: () => void; onDecline: () => void; onAddCredits: () => void }) {
   const t = useTranslations("assistant.asks");
-  const account = useQuery(api.billing.accounts.mine, {});
+  const account = useQuery(api.billing.accounts.mine, given === undefined ? {} : "skip");
   // Until the balance is read, nothing is said about it, and the row keeps its room.
-  const known = account !== undefined;
-  const balance = Math.floor(account?.balance ?? 0);
+  const known = given !== undefined || account !== undefined;
+  const balance = Math.floor(given ?? account?.balance ?? 0);
   const short = known && credits > balance;
   // The bar is the balance; the filled part is what this takes from it.
   const share = known ? Math.min(1, credits / Math.max(balance, 1)) : 0;
@@ -375,7 +378,7 @@ function Spending({ credits, sent, onAllow, onAlways, onDecline, onAddCredits }:
   );
 }
 
-function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">; steps: StepItem[]; /** Loads the steps before these, when the reply ran more. */ earlier: (() => void) | "loading" | null }) {
+export function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">; steps: StepItem[]; /** Loads the steps before these, when the reply ran more. */ earlier: (() => void) | "loading" | null }) {
   const t = useTranslations("assistant");
   const format = useFormatter();
   // A count as the search history writes one: compact past a thousand, so a broad query's 329.5M fits its line.
