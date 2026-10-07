@@ -17,7 +17,8 @@ const after = new Map(rowsOf(afterFile).map((row) => [key(row), row]));
 const n = (value) => (value === undefined ? "" : value.toLocaleString("en"));
 const kb = (bytes) => (bytes === undefined ? "" : `${(bytes / 1024).toLocaleString("en", { maximumFractionDigits: 0 })} KB`);
 const read = (row) => [row.documentsRead !== undefined ? `${n(row.documentsRead)} docs, ${kb(row.bytesRead)}` : "", row.result ?? ""].filter(Boolean).join(" · ");
-const cell = (row) => (!row ? "not run" : row.ok ? read(row) : row.error === "wrong answer" ? `${read(row)} · **wrong**` : `**fails**: ${row.error ?? ""}`);
+const time = (row) => (row.ms === undefined ? "" : ` · ${n(row.ms)} ms`);
+const cell = (row) => (!row ? "not run" : row.ok ? read(row) + time(row) : row.error === "wrong answer" ? `${read(row)}${time(row)} · **wrong**` : `**fails**: ${row.error ?? ""}`);
 const change = (was, now) => {
   if (!was || !now) return "";
   if (!was.ok && now.ok) return "now fits";
