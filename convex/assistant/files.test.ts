@@ -326,6 +326,13 @@ describe("PDFs and text files (#648)", () => {
     // A reply that cites it finds it by the ID the citation names, without the message that carried it; anything else isn't found.
     const cited = await asAda.query(api.assistant.files.cited, { threadId, fileIds: [fileId, read.pdfPages!, "not-an-id"] });
     expect(cited).toEqual([{ id: fileId, name: "trial.pdf", url: expect.any(String) }]);
+    // Or by its name, which a model sometimes writes in place of the ID, while no other file of the chat has it.
+    expect(await asAda.query(api.assistant.files.cited, { threadId, fileIds: ["trial.pdf"] })).toEqual([{ id: "trial.pdf", name: "trial.pdf", url: expect.any(String) }]);
+    await t.run(async (ctx) => {
+      const pdf = await ctx.db.get("assistantFiles", fileId);
+      await ctx.db.insert("assistantFiles", { userId: pdf!.userId, threadId, name: "trial.pdf", bytes: 1, mediaType: "application/pdf", state: "sent", usedAt: Date.now() });
+    });
+    expect(await asAda.query(api.assistant.files.cited, { threadId, fileIds: ["trial.pdf"] })).toEqual([]);
     expect(read).toMatchObject({ file: fileId, pages: "2-4", of: 5 });
     // The same pages read again are the ones already cut, not another copy.
     expect((await asAda.action(api.assistant.files.read, { file: fileId, range: "2-4" })).pdfPages).toBe(read.pdfPages);

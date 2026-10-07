@@ -238,7 +238,8 @@ export default defineSchema({
     .index("by_user_and_state", ["userId", "state"])
     .index("by_uploadDigest", ["uploadDigest"])
     .index("by_state_and_usedAt", ["state", "usedAt"])
-    .index("by_parent_and_range", ["parentId", "range"]),
+    .index("by_parent_and_range", ["parentId", "range"])
+    .index("by_thread_and_name", ["threadId", "name"]),
   assistantThreadAccess: defineTable(assistantThreadAccessFields)
     // A person's chats, newest first, through each of their principals.
     .index("by_principal_and_lastMessageAt", ["principal", "lastMessageAt"])

@@ -384,7 +384,7 @@ export const assistantFileFields = {
 /** A file a person's message carried, as the chat shows it: no address once it expired (./files.ts). */
 export const attachedFileValidator = v.object({ id: v.string(), name: v.string(), bytes: v.number(), mediaType: v.string(), url: v.union(v.string(), v.null()), pages: v.optional(v.number()), lines: v.optional(v.number()) });
 export const attachedFilesValidator = capped(v.optional(v.array(attachedFileValidator)), MAX_FILES_PER_MESSAGE);
-/** The PDFs a reply cites that the panel hasn't loaded the messages of (./files.ts `cited`): asked for, and found, a message's worth at a time. */
+/** The PDFs a reply cites that the panel can't place (./files.ts `cited`), by ID or name: asked for, and found, a message's worth at a time. */
 export const citedFileIdsValidator = capped(v.array(v.string()), MAX_FILES_PER_MESSAGE);
 export const citedFilesValidator = capped(v.array(v.object({ id: v.string(), name: v.string(), url: v.union(v.string(), v.null()) })), MAX_FILES_PER_MESSAGE);
 /** The files a message is sent with. */

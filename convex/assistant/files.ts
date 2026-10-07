@@ -323,9 +323,10 @@ export async function filesOf(ctx: QueryCtx, messageId: string) {
 }
 
 /**
- * PDFs of this chat its replies cite, by the IDs their citations name, when the messages that
- * carried them aren't loaded in the panel: their names, and where they are unless they expired.
- * IDs that aren't one of the chat's PDFs are left out.
+ * PDFs of this chat its replies cite, by what their citations name, when the panel can't tell
+ * which file that is: an ID whose message isn't loaded, or a name a model wrote in place of
+ * the ID, which finds the chat's one file of that name. Each comes back under what was asked
+ * for (`id`), with its name and where it is unless it expired. Anything else is left out.
  */
 export const cited = query({
   args: { threadId: v.id("assistantThreads"), fileIds: citedFileIdsValidator },
@@ -333,14 +334,16 @@ export const cited = query({
   handler: async (ctx, { threadId, fileIds }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireThread(ctx, userId, threadId);
-    const files = await Promise.all(
-      fileIds.slice(0, MAX_FILES_PER_MESSAGE).map((id) => {
-        const fileId = ctx.db.normalizeId("assistantFiles", id);
-        return fileId ? ctx.db.get("assistantFiles", fileId) : null;
+    const found = await Promise.all(
+      fileIds.slice(0, MAX_FILES_PER_MESSAGE).map(async (asked) => {
+        const fileId = ctx.db.normalizeId("assistantFiles", asked);
+        // A name counts only when no other file of the chat has it.
+        const file = fileId ? await ctx.db.get("assistantFiles", fileId) : await ctx.db.query("assistantFiles").withIndex("by_thread_and_name", (q) => q.eq("threadId", threadId).eq("name", asked)).take(2).then((named) => (named.length === 1 ? named[0] : null));
+        return file?.threadId === threadId && !file.parentId && isPdf(file.mediaType) ? { asked, file } : null;
       }),
     );
-    const pdfs = files.filter((file): file is Doc<"assistantFiles"> => file?.threadId === threadId && !file.parentId && isPdf(file.mediaType));
-    return await Promise.all(pdfs.map(async (file) => ({ id: file._id, name: file.name, url: file.storageId ? await ctx.storage.getUrl(file.storageId) : null })));
+    const pdfs = found.filter((one) => one !== null);
+    return await Promise.all(pdfs.map(async ({ asked, file }) => ({ id: asked, name: file.name, url: file.storageId ? await ctx.storage.getUrl(file.storageId) : null })));
   },
 });
 
