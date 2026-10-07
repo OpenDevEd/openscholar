@@ -3795,6 +3795,12 @@
         "did": "Read a file",
         "where": "Attachments",
         "ask": "Read a file"
+      },
+      "readPaperPdf": {
+        "doing": "Reading a paper’s PDF",
+        "did": "Read a paper’s PDF",
+        "where": "OpenAlex",
+        "ask": "Read a paper’s PDF"
       }
     },
     "asks": {

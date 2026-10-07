@@ -16,13 +16,13 @@ import { HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { RECORD_CHIP, recordChipStyle } from "./mentions";
 
 export type WebSource = { title: string; url: string; excerpt: string };
-type Cites = { files: ReadonlyMap<string, { name: string; url: string | null }>; sources: ReadonlyMap<string, WebSource> };
+type Cites = { files: ReadonlyMap<string, { name: string; url: string | null }>; sources: ReadonlyMap<string, WebSource>; papers: ReadonlySet<string> };
 
 /** A reply's citation of a page of a PDF, as its text has it: `[p. 7](/files/FILE_ID#page=7)`. The match's first group is the file's ID. */
 export const CITED_PDF = /\]\(\/files\/([^/#?)\s]+)#page=\d+\)/g;
 
 /** The chat's attached files and what its searches found, which its replies cite. */
-export const Cited = createContext<Cites>({ files: new Map(), sources: new Map() });
+export const Cited = createContext<Cites>({ files: new Map(), sources: new Map(), papers: new Set() });
 
 const CHIP = `${RECORD_CHIP} whitespace-nowrap transition-colors hover:bg-[color-mix(in_oklab,var(--tint)_28%,transparent)]`;
 const hostOf = (url: string) => {
@@ -33,9 +33,12 @@ const hostOf = (url: string) => {
   }
 };
 
-/** A link in a reply that cites a page of an attached PDF, or a web page a search found; null for any other. */
+/** A link in a reply that cites a page of an attached PDF or of a paper's PDF it read, or a web page a search found; null for any other. */
 export function useCited(href: string | undefined, children: ReactNode) {
-  const { files, sources } = useContext(Cited);
+  const { files, sources, papers } = useContext(Cited);
+  // A page of a paper's open-access PDF, by its address (convex/research/papers.ts `readPdf`).
+  const paperPage = href?.match(/^(https?:\/\/[^#]+)#page=(\d+)$/);
+  if (paperPage && papers.has(paperPage[1])) return <PageChip url={paperPage[1]} page={Number(paperPage[2])}>{children}</PageChip>;
   const page = href?.match(/^\/files\/([^/#?]+)#page=(\d+)$/);
   if (page) {
     // By ID, or by the name a model wrote into the address in its place, escaped or not (convex/assistant/files.ts `cited`).

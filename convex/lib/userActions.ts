@@ -63,9 +63,9 @@ type AsksFirst<Args extends PropertyValidators> = { asksFirst?(ctx: QueryCtx, us
  * The most one call of an action that spends credits holds (#328): an upper estimate, read
  * before the call runs. The assistant asks the person with it, unless they allowed that much
  * in the chat. An action that spends credits and gives none can't be asked about, so the
- * assistant doesn't run it.
+ * assistant doesn't run it. Asked in a chat, it's told which, for an estimate that depends on the chat's model.
  */
-type Estimates<Args extends PropertyValidators> = { estimate?(ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>): Promise<number> };
+type Estimates<Args extends PropertyValidators> = { estimate?(ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>, chat?: { threadId: Id<"assistantThreads"> }): Promise<number> };
 
 /**
  * What an action that calls an outside service refuses that can be read before the person is

@@ -3795,6 +3795,12 @@
         "did": "ファイルを読みました",
         "where": "添付ファイル",
         "ask": "ファイルを読む"
+      },
+      "readPaperPdf": {
+        "doing": "論文の PDF を読んでいます",
+        "did": "論文の PDF を読みました",
+        "where": "OpenAlex",
+        "ask": "論文の PDF を読む"
       }
     },
     "asks": {

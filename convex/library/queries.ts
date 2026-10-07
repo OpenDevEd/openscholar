@@ -430,6 +430,7 @@ export const papersAction = defineUserQuery({
         ...(item.rating === undefined ? {} : { rating: item.rating }),
         inCollection: collected[at],
         savedOn: new Date(item.savedAt).toISOString().slice(0, 10),
+        ...(item.pdfUrl ? { pdf: true as const } : {}),
       })),
       ...(read.isDone || !read.continueCursor ? {} : { next: read.continueCursor }),
     };

@@ -146,7 +146,9 @@ export function contextSince(args: Compacted & { agentThreadId: string; promptMe
     // it. Bytes as Convex counts them: a character outside ASCII is two to four.
     args.onHistory({ messages: docs.length + existingResponses.length, bytes: new TextEncoder().encode(JSON.stringify([docs, existingResponses])).length });
     // Files the person attached go as they are, read from storage (./files.ts).
-    return await withFiles(ctx, [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), ...inputMessages, ...inputPrompt, ...existingResponses], args.modelId);
+    // What the reply has written so far is its own: a paper's PDF it read is sent by its address there, and only there.
+    const before = [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), ...inputMessages, ...inputPrompt];
+    return await withFiles(ctx, [...before, ...existingResponses], args.modelId, before.length);
   };
 }
 

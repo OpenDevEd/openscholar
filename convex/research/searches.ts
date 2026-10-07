@@ -495,6 +495,7 @@ function shownPaper(work: Work, paper: SearchPaper) {
     ...(work.type ? { type: work.type } : {}),
     ...(paper.doi ? { doi: paper.doi.replace(/^https?:\/\/doi\.org\//, "") } : {}),
     ...(typeof work.open_access?.is_oa === "boolean" ? { openAccess: work.open_access.is_oa } : {}),
+    ...(paper.pdfUrl ? { pdf: true as const } : {}),
     ...(paper.citedByCount === undefined ? {} : { citations: paper.citedByCount }),
     ...(paper.abstract ? { abstract: short(paper.abstract, SHOWN.abstract) } : {}),
   };

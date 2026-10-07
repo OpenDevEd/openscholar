@@ -74,6 +74,9 @@ const PANEL_W = 440;
 const CHIP_ROW = 40;
 const SHELL_SPRING = { type: "spring" as const, stiffness: 380, damping: 36, mass: 0.9 };
 const FIRST_MESSAGES = 30;
+/** Steps whose sources a reply cites: a web search's pages, listed under the reply, and a paper's PDF it read, cited by page. */
+const WEB_SEARCH = "research/web:search";
+const PAPER_PDF = "research/papers:readPdf";
 /** How near the thread's top the person scrolls before the messages before these load, so they're there by the time they get to them. */
 const LOAD_AHEAD = 1200;
 /** The ID of a message shown ahead of the server's copy of it. */
@@ -835,6 +838,7 @@ function Thread({
     () => ({
       files: new Map([...(looked ?? []).map((file) => [file.id, file] as const), ...carried]),
       sources: new Map(messages.flatMap((m) => (m.role === "step" ? (m.sources ?? []).map((source) => [source.url, source] as const) : []))),
+      papers: new Set(messages.flatMap((m) => (m.role === "step" && m.action === PAPER_PDF ? (m.sources ?? []).map((source) => source.url) : []))),
     }),
     [messages, carried, looked],
   );
@@ -896,7 +900,7 @@ function Thread({
             <div key={`reply:${reply.order}:${place}`} className="space-y-3">
               <Reply message={m} live={live?.order === m.order ? live.text : ""} acting={reply.steps.some((step) => step.status === "running")} />
               {/* Under the reply's last words, what its searches found. */}
-              {m.role === "assistant" && m.status === "done" && !m.acted ? <WebSources sources={[...new Map(reply.steps.flatMap((step) => step.sources ?? []).map((source) => [source.url, source])).values()]} /> : null}
+              {m.role === "assistant" && m.status === "done" && !m.acted ? <WebSources sources={[...new Map(reply.steps.flatMap((step) => (step.action === WEB_SEARCH ? (step.sources ?? []) : [])).map((source) => [source.url, source])).values()]} /> : null}
               {m.status === "stopped" ? <StoppedRow /> : null}
               {m.status === "failed" ? <FailedRow error={m.error} /> : null}
             </div>,

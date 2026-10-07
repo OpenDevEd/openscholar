@@ -47,6 +47,8 @@ export const libraryPapersValidator = v.object({
         rating: v.optional(v.number()),
         inCollection: v.boolean(),
         savedOn: v.string(),
+        /** OpenAlex knows of an open-access PDF of it, which research/papers:readPdf reads. */
+        pdf: v.optional(v.literal(true)),
       }),
     ),
     PAPERS_PAGE,

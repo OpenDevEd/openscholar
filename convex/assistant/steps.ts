@@ -155,6 +155,13 @@ async function answerCalls(ctx: MutationCtx, steps: Step[], output: (step: Step)
  */
 /** The action that searches the web (convex/research/web.ts). */
 export const WEB_SEARCH_PATH = "research/web:search";
+/** The action that reads a paper's open-access PDF (convex/research/papers.ts). */
+export const PAPER_PDF_PATH = "research/papers:readPdf";
+/** The PDF a read of a paper opened, as its step keeps it: the reply's page citations open it. */
+function paperSourceOf(result: unknown) {
+  const read = result && typeof result === "object" ? (result as { title?: unknown; paperPdf?: unknown }) : {};
+  return typeof read.paperPdf === "string" ? [{ title: cut(String(read.title ?? read.paperPdf), 200), url: cut(read.paperPdf, 2_000), excerpt: "" }] : undefined;
+}
 /** What a web search found, as its step keeps it: a short excerpt of each page, enough for a citation's card. */
 function sourcesOf(result: unknown) {
   const results = result && typeof result === "object" && "results" in result && Array.isArray(result.results) ? (result.results as Array<{ title?: unknown; url?: unknown; excerpt?: unknown }>) : [];
@@ -172,7 +179,7 @@ export async function endStep(ctx: MutationCtx, stepId: Id<"assistantSteps">, re
   // A call that names a paper by its ID alone is about the paper it returned.
   const subject = step.subject ? undefined : namedBy(result);
   // A web search keeps what it found, for the reply's citations and its list of sources (#648).
-  const sources = step.path === WEB_SEARCH_PATH ? sourcesOf(result) : undefined;
+  const sources = step.path === WEB_SEARCH_PATH ? sourcesOf(result) : step.path === PAPER_PDF_PATH ? paperSourceOf(result) : undefined;
   await ctx.db.patch("assistantSteps", stepId, { status: "done", ...(count === undefined ? {} : { count }), ...(undo ? { undo } : {}), ...(subject ? { subject } : {}), ...(sources ? { sources } : {}), endedAt: Date.now() });
   await ctx.db.insert("assistantStepResults", { threadId: step.threadId, stepId, result: cut(JSON.stringify(result ?? null), STEP_RESULT_MAX) });
   const read = forModel(result);

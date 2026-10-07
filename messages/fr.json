@@ -3795,6 +3795,12 @@
         "did": "Fichier lu",
         "where": "Pièces jointes",
         "ask": "Lire un fichier"
+      },
+      "readPaperPdf": {
+        "doing": "Lecture du PDF d’un article",
+        "did": "PDF d’un article lu",
+        "where": "OpenAlex",
+        "ask": "Lire le PDF d’un article"
       }
     },
     "asks": {

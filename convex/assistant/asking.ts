@@ -70,7 +70,7 @@ export const spend = internalQuery({
     if (STARTS[path] && (await ctx.db.query("assistantJobs").withIndex("by_thread", (q) => q.eq("threadId", threadId)).take(JOBS_DOCKED)).length >= JOBS_DOCKED) return { refused: DOCK_FULL };
     let credits: number;
     try {
-      credits = Math.ceil(await entry.estimate(ctx, userId, JSON.parse(input)));
+      credits = Math.ceil(await entry.estimate(ctx, userId, JSON.parse(input), { threadId }));
     } catch (error) {
       const refused = readConvexErrorData(error)?.message;
       if (refused) return { refused };

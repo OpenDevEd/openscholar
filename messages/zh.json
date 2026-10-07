@@ -3795,6 +3795,12 @@
         "did": "已阅读文件",
         "where": "附件",
         "ask": "阅读文件"
+      },
+      "readPaperPdf": {
+        "doing": "正在阅读论文 PDF",
+        "did": "已阅读论文 PDF",
+        "where": "OpenAlex",
+        "ask": "阅读论文 PDF"
       }
     },
     "asks": {
