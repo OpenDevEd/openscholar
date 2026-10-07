@@ -190,8 +190,11 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .index("by_state", ["state"]),
 
-  organizationMemberships: defineTable(organizationMembershipFields)
+  // `searchText`: the member's name and email, which a library's team picker searches (convex/lib/searchText.ts).
+  organizationMemberships: defineTable({ ...organizationMembershipFields, searchText: v.optional(v.string()) })
     .index("by_clerkMembershipId", ["clerkMembershipId"])
+    .index("by_organizationId_and_state_and_role", ["organizationId", "state", "role"])
+    .searchIndex("search_member_text", { searchField: "searchText", filterFields: ["organizationId", "state"] })
     .index("by_organizationId_and_clerkUserId_and_state", [
       "organizationId",
       "clerkUserId",
@@ -225,6 +228,8 @@ export default defineSchema({
   assistantJobEnds: defineTable(assistantJobEndFields).index("by_job", ["jobId"]).index("by_thread_and_pending", ["threadId", "pending"]).index("by_thread_and_order", ["threadId", "order"]),
   // What reverses each change of a bulk change (convex/assistant/bulk.ts).
   assistantStepUndos: defineTable(assistantStepUndoFields).index("by_step", ["stepId"]),
+  // A big bulk change's changes, waiting for the person's answer (convex/assistant/bulkPapers.ts).
+  assistantBulkPapers: defineTable({ userId: v.id("users"), key: v.string(), first: v.number(), items: v.string(), runningSince: v.optional(v.number()) }).index("by_key_and_first", ["key", "first"]),
   // What each person lets the assistant spend in a chat, and each person's own record (convex/assistant/spending.ts).
   assistantLimits: defineTable(assistantLimitFields).index("by_thread_and_user", ["threadId", "userId"]).index("by_user", ["userId"]),
   assistantSpenders: defineTable(assistantSpenderFields).index("by_user", ["userId"]),

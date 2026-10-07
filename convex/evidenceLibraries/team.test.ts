@@ -74,11 +74,20 @@ describe("listTeam", () => {
       owners: [{ clerkUserId: "user_team", name: "Ada Lovelace", email: "ada@example.org", imageUrl: "https://images.example.org/ada.png" }],
       editors: [],
       creators: [],
-      availablePeople: [
-        { clerkUserId: "user_new", name: "", email: "" },
-        { clerkUserId: "user_editor", name: "Grace", email: "grace@example.org", imageUrl: "https://images.example.org/grace.png" },
-      ],
     });
+    // The organization's other active members are offered by the picker, a page at a time; the owner and the revoked member aren't.
+    const candidates = await fixture.admin.query(api.evidenceLibraries.queries.listOrganizationPeople, { libraryId, paginationOpts: { cursor: null, numItems: 20 } });
+    expect(candidates.page).toEqual(expect.arrayContaining([
+      { clerkUserId: "user_new", name: "", email: "" },
+      { clerkUserId: "user_editor", name: "Grace", email: "grace@example.org", imageUrl: "https://images.example.org/grace.png" },
+    ]));
+    expect(candidates.page).toHaveLength(2);
+    // The invite form finds a member by an email Clerk keeps in capitals, whatever its case.
+    await fixture.t.run(async (ctx) => { const user = (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "user_editor")).unique())!; await ctx.db.patch("users", user._id, { email: "Grace@Example.org" }); });
+    expect(await fixture.admin.query(api.evidenceLibraries.queries.isOrganizationPerson, { libraryId, email: "grace@example.org" })).toBe(true);
+    expect(await fixture.admin.query(api.evidenceLibraries.queries.isOrganizationPerson, { libraryId, email: "nobody@example.org" })).toBe(false);
+    // Found by a word of their name.
+    expect((await fixture.admin.query(api.evidenceLibraries.queries.listOrganizationPeople, { libraryId, search: "grace", paginationOpts: { cursor: null, numItems: 20 } })).page.map((person) => person.clerkUserId)).toEqual(["user_editor"]);
 
     // The published home page names everyone with a role, and nobody else.
     // An email is private: a member with an email but no name is left off, never shown by their address.
@@ -134,7 +143,8 @@ describe("listTeam", () => {
       await applyUserDeleteProjection(ctx, {entityId: "deleted_user", entityType: "user", clerkId: "deleted_user", eventId: "delete-user", eventType: "user.deleted", instanceId: "instance", occurredAt: 2, processedAt: 2, payloadSha256: "a".repeat(64)});
     });
     const team = await fixture.admin.query(api.evidenceLibraries.queries.listTeam, {libraryId});
-    expect([...team.creators, ...team.availablePeople].map(person => person.clerkUserId)).not.toContain("deleted_user");
+    const candidates = await fixture.admin.query(api.evidenceLibraries.queries.listOrganizationPeople, {libraryId, paginationOpts: {cursor: null, numItems: 50}});
+    expect([...team.creators, ...candidates.page].map(person => person.clerkUserId)).not.toContain("deleted_user");
     expect(await fixture.t.run(ctx => ctx.db.query("evidenceLibraryMembers").withIndex("by_clerkUserId", q => q.eq("clerkUserId", "deleted_user")).collect())).toEqual([]);
   });
 

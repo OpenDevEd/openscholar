@@ -32,6 +32,7 @@ import type * as assistant_agent from "../assistant/agent.js";
 import type * as assistant_asking from "../assistant/asking.js";
 import type * as assistant_batches from "../assistant/batches.js";
 import type * as assistant_bulk from "../assistant/bulk.js";
+import type * as assistant_bulkPapers from "../assistant/bulkPapers.js";
 import type * as assistant_context from "../assistant/context.js";
 import type * as assistant_details from "../assistant/details.js";
 import type * as assistant_failures from "../assistant/failures.js";
@@ -257,6 +258,7 @@ import type * as lib_libraryServiceHttp from "../lib/libraryServiceHttp.js";
 import type * as lib_listCaps from "../lib/listCaps.js";
 import type * as lib_listCounts from "../lib/listCounts.js";
 import type * as lib_locks from "../lib/locks.js";
+import type * as lib_memberText from "../lib/memberText.js";
 import type * as lib_opaqueToken from "../lib/opaqueToken.js";
 import type * as lib_opaqueTokenDigest from "../lib/opaqueTokenDigest.js";
 import type * as lib_paperMetadata from "../lib/paperMetadata.js";
@@ -309,6 +311,7 @@ import type * as migrations_revokeDeletedOrganizationMemberships from "../migrat
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
 import type * as migrations_screeningSearch from "../migrations/screeningSearch.js";
 import type * as migrations_searchText from "../migrations/searchText.js";
+import type * as migrations_teamLists from "../migrations/teamLists.js";
 import type * as migrations_versionChangedSections from "../migrations/versionChangedSections.js";
 import type * as models_admin from "../models/admin.js";
 import type * as models_catalog from "../models/catalog.js";
@@ -417,6 +420,7 @@ declare const fullApi: ApiFromModules<{
   "assistant/asking": typeof assistant_asking;
   "assistant/batches": typeof assistant_batches;
   "assistant/bulk": typeof assistant_bulk;
+  "assistant/bulkPapers": typeof assistant_bulkPapers;
   "assistant/context": typeof assistant_context;
   "assistant/details": typeof assistant_details;
   "assistant/failures": typeof assistant_failures;
@@ -642,6 +646,7 @@ declare const fullApi: ApiFromModules<{
   "lib/listCaps": typeof lib_listCaps;
   "lib/listCounts": typeof lib_listCounts;
   "lib/locks": typeof lib_locks;
+  "lib/memberText": typeof lib_memberText;
   "lib/opaqueToken": typeof lib_opaqueToken;
   "lib/opaqueTokenDigest": typeof lib_opaqueTokenDigest;
   "lib/paperMetadata": typeof lib_paperMetadata;
@@ -694,6 +699,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
   "migrations/screeningSearch": typeof migrations_screeningSearch;
   "migrations/searchText": typeof migrations_searchText;
+  "migrations/teamLists": typeof migrations_teamLists;
   "migrations/versionChangedSections": typeof migrations_versionChangedSections;
   "models/admin": typeof models_admin;
   "models/catalog": typeof models_catalog;

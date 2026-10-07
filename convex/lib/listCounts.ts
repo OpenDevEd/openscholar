@@ -27,6 +27,9 @@ export const ADMIN_LIST = "admins";
 /** The libraries an organization has, for the total of the library list. */
 export const organizationLibrariesOf = (organizationId: Id<"organizations">) => `organizationLibraries:${organizationId}`;
 export const libraryVersionsOf = (libraryId: Id<"evidenceLibraries">) => `libraryVersions:${libraryId}`;
+/** The people a library grants a role to directly, and the libraries a person is granted one in. */
+export const libraryMembersOf = (libraryId: Id<"evidenceLibraries">) => `libraryMembers:${libraryId}`;
+export const personGrantsOf = (clerkUserId: string) => `personGrants:${clerkUserId}`;
 /** The versions list an operation shows in, if it is one of a library's versions. */
 export const libraryVersionList = (operation: Doc<"evidenceLibraryConfigOperations">) =>
   isVersionOperation(operation) ? libraryVersionsOf(operation.libraryId) : null;

@@ -5,14 +5,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
 import type { Id } from "@/convex/_generated/dataModel";
 const mocks = vi.hoisted(() => ({ mutate: vi.fn(), invite: vi.fn() }));
-vi.mock("convex/react", () => ({ useMutation: () => mocks.mutate, useAction: () => mocks.invite }));
+vi.mock("convex/react", () => ({ useMutation: () => mocks.mutate, useAction: () => mocks.invite, useConvex: () => ({ query: vi.fn() }) }));
+vi.mock("@/lib/hooks/use-cursor-page", () => ({ useCursorPage: () => ({ items: [], isLoading: false }) }));
 vi.mock("@/convex/_generated/api", () => ({ api: { evidenceLibraries: {
- queries: { listTeam: "team" }, team: { addOrganizationMember: "add", changeRole: "change", removeMember: "remove" }, invitations: { change: "invitation" }, invitationActions: { invite: "invite" },
+ queries: { listTeam: "team", listOrganizationPeople: "people", isOrganizationPerson: "isPerson" }, team: { addOrganizationMember: "add", changeRole: "change", removeMember: "remove" }, invitations: { change: "invitation" }, invitationActions: { invite: "invite" },
 } } }));
 vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: () => ({ data: {
  owners: [{ clerkUserId: "owner", name: "Ada", email: "ada@example.org" }],
  editors: [], creators: [{ clerkUserId: "creator", name: "Grace", email: "grace@example.org" }],
- invitations: [], availablePeople: [],
+ invitations: [],
 } }) }));
 import { TeamSection } from "@/components/evidence-libraries/configuration/sections/team-section";
 const libraryId = "library_1" as Id<"evidenceLibraries">;

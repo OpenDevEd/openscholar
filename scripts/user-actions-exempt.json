@@ -123,6 +123,8 @@
     "evidenceLibraries/queries:countLibraries": "#329",
     "evidenceLibraries/queries:listLibraries": "#329",
     "evidenceLibraries/queries:listLibraryOwners": "#329",
+    "evidenceLibraries/queries:isOrganizationPerson": "#329",
+    "evidenceLibraries/queries:listOrganizationPeople": "#329",
     "evidenceLibraries/queries:listTeam": "#329",
     "evidenceLibraries/sourceStatus:listForLibrary": "#329",
     "evidenceLibraries/team:addOrganizationMember": "#329",

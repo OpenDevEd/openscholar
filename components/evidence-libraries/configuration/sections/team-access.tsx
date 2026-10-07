@@ -15,6 +15,8 @@ import {
   PenLine,
   Clock3,
   ChevronsUpDown,
+  ChevronLeft,
+  ChevronRight,
   Check,
 } from "@/components/icons";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -34,6 +36,11 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useConvex } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import {
   Popover,
   PopoverContent,
@@ -79,17 +86,68 @@ const roleHint: Record<Role, string> = {
   Creator: "Create and edit items, upload files and submit for review.",
 };
 
+/** Organization members one page of the picker shows; typing narrows them. */
+const PEOPLE_PAGE_SIZE = 20;
+type Person = Pick<AccessMember, "id" | "name" | "email" | "imageUrl">;
+
+/**
+ * The picker's list: the library organization's members, searched on the server a page at a
+ * time, since an organization can have any number. Mounted only while the picker is open.
+ * Results kept from an earlier search stay dimmed and can't be picked until the new ones come.
+ */
+function OrganizationPeople({ libraryId, members, selected, onSelect }: { libraryId?: Id<"evidenceLibraries">; members: AccessMember[]; selected: Person | null; onSelect: (person: Person) => void }) {
+  const [query, setQuery] = useState("");
+  const search = useDebouncedValue(query.trim(), 300);
+  const people = useCursorPage(api.evidenceLibraries.queries.listOrganizationPeople, libraryId ? { libraryId, search: search || undefined } : "skip", PEOPLE_PAGE_SIZE);
+  const stale = people.isStale || search !== query.trim();
+  // Invited people aren't members yet, so the server doesn't know to leave them off.
+  const shown = people.items
+    .map((person) => ({ ...person, id: person.clerkUserId }))
+    .filter((person) => !members.some((member) => member.email.toLowerCase() === person.email.toLowerCase()));
+  return (
+    <Command shouldFilter={false}>
+      <CommandInput placeholder="Search name or email" value={query} onValueChange={setQuery} />
+      <CommandList>
+        {!people.isLoading && !stale && !people.canNext && <CommandEmpty>No people available.</CommandEmpty>}
+        <CommandGroup className={cn(stale && "opacity-60")}>
+          {shown.map((person) => (
+            <CommandItem key={person.id} value={person.id} disabled={stale} onSelect={() => onSelect(person)} className="gap-3 py-2.5">
+              <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-8" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">{person.name}</span>
+                <span className="block truncate text-xs text-muted-foreground">{person.email}</span>
+              </span>
+              {selected?.id === person.id && <Check className="size-4" />}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+      {people.hasPages && (
+        <div className="flex items-center justify-end gap-1 border-t p-1">
+          <Button type="button" variant="ghost" size="icon" className="size-7" aria-label="Previous people" disabled={!people.canPrevious} onClick={people.previous}>
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button type="button" variant="ghost" size="icon" className="size-7" aria-label="Next people" disabled={!people.canNext} onClick={people.next}>
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      )}
+    </Command>
+  );
+}
+
 export function TeamAccess({
   scope,
   members,
   onMembersChange,
-  organizationPeople,
+  libraryId,
   onResend,
 }: {
   scope: "library" | "profile";
   members: AccessMember[];
   onMembersChange: (members: AccessMember[]) => Promise<void>;
-  organizationPeople: Pick<AccessMember, "id" | "name" | "email" | "imageUrl">[];
+  /** The library whose organization's members can be added; a profile has none. */
+  libraryId?: Id<"evidenceLibraries">;
   onResend: (member: AccessMember) => Promise<void>;
 }) {
   const isProfile = scope === "profile";
@@ -113,16 +171,8 @@ export function TeamAccess({
   const [notice, setNotice] = useState("");
   const [addMode, setAddMode] = useState<"existing" | "new">(scope === "profile" ? "new" : "existing");
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState("");
-  const availablePeople = organizationPeople.filter(
-    (person) =>
-      !members.some(
-        (member) => member.email.toLowerCase() === person.email.toLowerCase(),
-      ),
-  );
-  const selected = availablePeople.find(
-    (person) => person.id === selectedPerson,
-  );
+  const [selected, setSelected] = useState<Pick<AccessMember, "id" | "name" | "email" | "imageUrl"> | null>(null);
+  const convex = useConvex();
   const [view, setView] = useState<"members" | "invitations">("members");
   const [rolesOpen, setRolesOpen] = useState(false);
   const filtered = members.filter((member) =>
@@ -281,7 +331,7 @@ export function TeamAccess({
               size="sm"
               onClick={() => {
                 setError("");
-                setSelectedPerson("");
+                setSelected(null);
                 setPickerOpen(false);
               }}
             >
@@ -307,9 +357,7 @@ export function TeamAccess({
               if (pendingRef.current) return;
               try {
               if (addMode === "existing") {
-                const person = availablePeople.find(
-                  (person) => person.id === selectedPerson,
-                );
+                const person = selected;
                 if (!person) {
                   setError(
                     isProfile
@@ -330,17 +378,12 @@ export function TeamAccess({
                   `${person.name} added to this ${scope}.`,
                 );
                 setInvite(false);
-                setSelectedPerson("");
+                setSelected(null);
                 setView("members");
                 setSearch("");
                 return;
               }
-              if (
-                organizationPeople.some(
-                  (person) =>
-                    person.email.toLowerCase() === email.trim().toLowerCase(),
-                )
-              ) {
+              if (libraryId && (await convex.query(api.evidenceLibraries.queries.isOrganizationPerson, { libraryId, email }))) {
                 setError(
                   isProfile
                     ? "This person is already listed. Choose them under Existing person."
@@ -449,39 +492,16 @@ export function TeamAccess({
                       align="start"
                       className="w-[var(--radix-popover-trigger-width)] p-0"
                     >
-                      <Command>
-                        <CommandInput placeholder="Search name or email" />
-                        <CommandList>
-                          <CommandEmpty>No people available.</CommandEmpty>
-                          <CommandGroup>
-                            {availablePeople.map((person) => (
-                              <CommandItem
-                                key={person.id}
-                                value={`${person.name} ${person.email}`}
-                                onSelect={() => {
-                                  setSelectedPerson(person.id);
-                                  setPickerOpen(false);
-                                  setError("");
-                                }}
-                                className="gap-3 py-2.5"
-                              >
-                                <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-8" />
-                                <span className="min-w-0 flex-1">
-                                  <span className="block truncate text-sm font-medium">
-                                    {person.name}
-                                  </span>
-                                  <span className="block truncate text-xs text-muted-foreground">
-                                    {person.email}
-                                  </span>
-                                </span>
-                                {selectedPerson === person.id && (
-                                  <Check className="size-4" />
-                                )}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
+                      <OrganizationPeople
+                        libraryId={libraryId}
+                        members={members}
+                        selected={selected}
+                        onSelect={(person) => {
+                          setSelected(person);
+                          setPickerOpen(false);
+                          setError("");
+                        }}
+                      />
                     </PopoverContent>
                   </Popover>
                 ) : (
@@ -524,7 +544,7 @@ export function TeamAccess({
               </DialogClose>
               <Button
                 type="submit"
-                disabled={pending || (addMode === "existing" && !selectedPerson)}
+                disabled={pending || (addMode === "existing" && !selected)}
                 aria-busy={pending}
               >
                 {addMode === "existing" ? <Plus /> : <Mail />}

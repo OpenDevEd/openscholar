@@ -21,5 +21,5 @@ export const TOPUP_PLAN = "top_up";
  * - assistant_replies: replies the assistant may be writing for a person at once.
  * - request_papers: papers one screening or extraction request may take.
  */
-export const PLAN_LIMITS = ["collections", "concurrency", "assistant_replies", "request_papers"] as const;
+export const PLAN_LIMITS = ["collections", "concurrency", "assistant_replies", "request_papers", "bulk_papers"] as const;
 export type PlanLimit = (typeof PLAN_LIMITS)[number];

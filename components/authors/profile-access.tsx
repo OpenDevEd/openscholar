@@ -14,7 +14,7 @@ export function ProfileAccess({profileId}: {profileId: Id<"authorProfiles">}) {
     ...data.members.map(person => ({...person, id: person.userId, role: person.role === "owner" ? "Owner" as const : "Editor" as const, invited: false})),
     ...data.invitations.map(invitation => ({id: invitation._id, name: invitation.email.split("@")[0], email: invitation.email, role: "Editor" as const, invited: true, delivery: invitation.delivery})),
   ];
-  return <TeamAccess scope="profile" members={members} organizationPeople={[]}
+  return <TeamAccess scope="profile" members={members}
     onResend={async member => { await invite({profileId, email: member.email}); }}
     onMembersChange={async next => {
       for (const member of next) if (!members.some(previous => previous.id === member.id)) await invite({profileId, email: member.email});

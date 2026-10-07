@@ -532,6 +532,57 @@ describe("the assistant's tools", () => {
     vi.unstubAllEnvs();
   });
 
+  it("change as many papers as the plan allows in one go: past it the set is refused unread, and a big change runs exactly the papers asked about (#637)", async () => {
+    const t = convexTest(schema);
+    const { asAda, say, sayUntilAsked, settled, steps } = await chatOf(t);
+    vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
+    const autumn = fakeAutumnFetch();
+    const total = 1_300;
+    let pages = 0;
+    // Real OpenAlex IDs: ten digits, so 1,300 of them don't fit on a step.
+    const id = (n: number) => `W${3_000_000_000 + n}`;
+    // OpenAlex answers a search of 1,300 papers by cursor; everything else is the billing service.
+    fetchMock.mockImplementation(async (input: string | URL, init?: RequestInit) => {
+      if (!String(input).includes("openalex.org")) return autumn(input as never, init as never);
+      const url = new URL(String(input));
+      const size = Number(url.searchParams.get("per-page"));
+      if (size > 1) pages++;
+      const cursor = url.searchParams.get("cursor");
+      const page = cursor === null ? Number(url.searchParams.get("page")) : cursor === "*" ? 1 : Number(cursor);
+      const from = (page - 1) * size;
+      const results = Array.from({ length: Math.max(0, Math.min(size, total - from)) }, (_, i) => ({ id: `https://openalex.org/${id(from + i + 1)}`, display_name: `Paper ${from + i + 1}`, publication_year: 2021 }));
+      return new Response(JSON.stringify({ meta: { count: total, next_cursor: from + size < total ? String(page + 1) : null }, results }), { status: 200 });
+    });
+    const limit = (bulk_papers: number) => t.run(async (ctx) => {
+      const account = await ctx.db.query("billingAccounts").first();
+      await ctx.db.patch("billingAccounts", account!._id, { limits: { bulk_papers } });
+    });
+
+    // A plan that changes 1,000 papers in one go: the whole set is refused, read no further than one page past it.
+    await limit(1_000);
+    mockDoStream
+      .mockImplementationOnce(calling({ id: "all", name: "change_papers", input: { papers: { kind: "query", query: "tutoring" }, do: "save" } }))
+      .mockImplementationOnce(finishingDoStream(["That's more than your plan changes at once."]));
+    await say("Save everything about tutoring");
+    expect(told(1, "all")).toEqual({ error: expect.stringMatching(/changes up to 1,000 papers in one go/) });
+    expect(pages).toBeLessThanOrEqual(6);
+    expect(await steps()).toEqual([]);
+
+    // With room for them all, the 1,300 are asked about once, kept off the step, and saved exactly.
+    await limit(2_000);
+    mockDoStream.mockImplementationOnce(calling({ id: "big", name: "change_papers", input: { papers: { kind: "query", query: "tutoring" }, do: "save" } }));
+    await sayUntilAsked("Save everything about tutoring");
+    const [asked] = await steps();
+    expect(asked).toMatchObject({ status: "asking", batch: total });
+    expect(JSON.parse(asked.input)).toMatchObject({ stored: expect.any(String), count: total });
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Saved them all."]));
+    await asAda.mutation(api.assistant.replies.answer, { threadId: asked.threadId, stepId: asked._id, allow: true });
+    await settled();
+    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").take(total + 1)).length)).toBe(total);
+    expect((await steps())[0]).toMatchObject({ status: "done", count: total });
+    vi.unstubAllEnvs();
+  }, 300_000);
+
   it("tell the model a change that returns nothing was made, make again a write that collided, and keep a reply going past arguments the asking check can't read", async () => {
     const t = convexTest(schema);
     const { ada, asAda, threadId, sayUntilAsked, settled, steps, shown } = await chatOf(t);
