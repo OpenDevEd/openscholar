@@ -857,10 +857,9 @@ async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries"
   const people = [...new Set([...ownerOf.keys(), ...assignments.map(a => a.clerkUserId)])];
   return await Promise.all(people.map(async clerkUserId => {
     const assignment = assignments.find(a => a.clerkUserId === clerkUserId) ?? null;
-    // A grant holder may be an owner too, or not in the organization at all.
-    const membership = ownerOf.get(clerkUserId) ?? (await activeMembership(ctx, library.organizationId, clerkUserId));
+    // Only an owner's membership changes their role; a grant holder's role is their grant's, in the organization or not.
     const user = await userOf(ctx, clerkUserId);
-    return { role: libraryRoleFrom(library, organization, { user, membership, assignment }), person: personOf(clerkUserId, user) };
+    return { role: libraryRoleFrom(library, organization, { user, membership: ownerOf.get(clerkUserId) ?? null, assignment }), person: personOf(clerkUserId, user) };
   }));
 }
 
@@ -902,7 +901,7 @@ export const isOrganizationPerson = query({
   handler: async (ctx, { libraryId, email }) => {
     const { library } = await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
     const users = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", email.trim().toLowerCase())).take(5);
-    for (const user of users) if (await activeMembership(ctx, library.organizationId, user.clerkId)) return true;
+    for (const user of users) if (user.state !== "deleted" && (await activeMembership(ctx, library.organizationId, user.clerkId))) return true;
     return false;
   },
 });

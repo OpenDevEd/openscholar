@@ -422,9 +422,7 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       await addHistory(ctx, { _id: id, userId }, "query", queries.map(queryEntry));
       await addHistory(ctx, { _id: id, userId }, "question", questions.map(questionEntry));
       // Answers carried in a new search come from an import or the assistant; neither says who gave them.
-      const setBy = author === "assistant" ? "assistant" : "unrecorded";
-      const rest = await seedAnswers(ctx, userId, id, command.search.screeningResponses, setBy, Date.now());
-      if (rest.length) await ctx.scheduler.runAfter(0, internal.research.records.seedAnswersBatch, { userId, searchId: id, answers: rest, setBy, at: Date.now() });
+      await seedAnswers(ctx, userId, id, command.search.screeningResponses, author === "assistant" ? "assistant" : "unrecorded", Date.now());
       const made = (await ctx.db.get("searches", id))!;
       await revision(ctx, made, author);
       return { kind: "deleteSearch", id: command.search.id, expect: await asMade(ctx, made) };
@@ -650,18 +648,6 @@ async function clearBatch(ctx: MutationCtx, userId: Id<"users">, author: Author,
 }
 
 /** Carries on a sweep of a screening's rows for the removals they owe, a page at a time (./answers.ts). */
-/** Seeds the next batch of the answers a new search came with, and schedules the rest, while the search is there. */
-export const seedAnswersBatch = internalMutation({
-  args: { userId: v.id("users"), searchId: v.id("searches"), answers: v.array(paperResponsesValidator), setBy: v.union(v.literal("assistant"), v.literal("unrecorded")), at: v.number() },
-  returns: v.null(),
-  handler: async (ctx, { userId, searchId, answers, setBy, at }) => {
-    if (!(await ctx.db.get("searches", searchId))) return null;
-    const rest = await seedAnswers(ctx, userId, searchId, answers, setBy, at, true);
-    if (rest.length) await ctx.scheduler.runAfter(0, internal.research.records.seedAnswersBatch, { userId, searchId, answers: rest, setBy, at });
-    return null;
-  },
-});
-
 export const sweepAnswersBatch = internalMutation({
   args: { screeningId: v.id("screenings"), through: v.number(), cursor: v.string() },
   returns: v.null(),

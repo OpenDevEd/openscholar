@@ -280,9 +280,9 @@ describe("at the largest sizes the product allows", () => {
       // With the fixture's Owner, 1,000 organization members: the most a team page lists.
       const people = Array.from({ length: 999 }, (_, i) => `user_max_${i}`);
       const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
-      await insertMany(fixture.t, "users", people.map((clerkId) => ({ clerkId, email: `${clerkId}@example.org`, state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 })));
-      await insertMany(fixture.t, "organizationMemberships", people.map((clerkUserId, i) => ({ organizationId, clerkMembershipId: `orgmem_max_${i}`, clerkUserId, role: "org:member", state: "active", ...stamp })));
-      await insertMany(fixture.t, "evidenceLibraryMembers", people.map((clerkUserId) => ({ libraryId, clerkUserId, role: "editor", grantedBy: "user_max_admin", grantedAt: 1 })));
+      await insertMany(fixture.t, "users", people.map((clerkId) => ({ clerkId, email: `${clerkId}@example.org`, state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 })), 100);
+      await insertMany(fixture.t, "organizationMemberships", people.map((clerkUserId, i) => ({ organizationId, clerkMembershipId: `orgmem_max_${i}`, clerkUserId, role: "org:member", state: "active", ...stamp })), 100);
+      await insertMany(fixture.t, "evidenceLibraryMembers", people.map((clerkUserId) => ({ libraryId, clerkUserId, role: "editor", grantedBy: "user_max_admin", grantedAt: 1 })), 100);
       // The library is recorded, as every library is once migrations/recordApprovedQueries has run.
       await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { approvedQueriesRecorded: true }));
 

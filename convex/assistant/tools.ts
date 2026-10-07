@@ -17,7 +17,7 @@ import { CHUNK, TRIED } from "./bulk";
 import { readConvexErrorData } from "../lib/errors";
 import { COLLIDED, messageOf } from "./failures";
 import { changeOf, changePapersSchema, papersOf, type ChangePapers } from "./paperChanges";
-import { PART_ITEMS } from "./bulkPapers";
+import { partsOf } from "./bulkPapers";
 import { BULK, DONE, MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, UNDO_BULK, forModel } from "./steps";
 import { ASKED_EACH_MAX } from "./validators";
 
@@ -480,10 +480,9 @@ export function toolsFor(
         // Too many to keep on the step: their changes wait in parts (./bulkPapers.ts), and the step keeps where.
         if (kept.length > STEP_TEXT_MAX) {
           const key = crypto.randomUUID();
-          for (let at = 0; at < change.items.length; at += PART_ITEMS) {
-            await ctx.runMutation(internal.assistant.bulkPapers.keep, { userId, key, part: at / PART_ITEMS, items: JSON.stringify(change.items.slice(at, at + PART_ITEMS)) });
-          }
-          kept = JSON.stringify({ given, stored: key, count: change.items.length });
+          for (const part of partsOf(change.items)) await ctx.runMutation(internal.assistant.bulkPapers.keep, { userId, key, ...part });
+          // Papers named by ID are in the parts already; the step keeps what to do with them.
+          kept = JSON.stringify({ given: given.papers.kind === "ids" ? { ...given, papers: { kind: "ids", ids: [] } } : given, stored: key, count: change.items.length });
         }
         found = { entry, items: change.items, kept, about: change.shared, shown: JSON.stringify({ shared: change.shared, each: papers.slice(0, ASKED_EACH_MAX).map((paper) => cut(paper.title, 200)) }) };
       }
@@ -531,16 +530,15 @@ export function toolsFor(
   const runPlan = async ({ entry, items, variant, subject, stored }: Plan, toolCallId: string, asked?: Id<"assistantSteps">) => {
     const total = stored?.count ?? items.length;
     // A kept change's parts are read as the chunks reach them, one part at a time.
-    let held = { part: 0, items };
+    let held = { first: 0, items };
     const chunkOf = async (from: number, size: number) => {
       if (!stored) return items.slice(from, from + size);
-      const part = Math.floor(from / PART_ITEMS);
-      if (held.part !== part) {
-        const text: string | null = await ctx.runQuery(internal.assistant.bulkPapers.part, { userId, key: stored.key, part });
-        held = { part, items: text === null ? [] : (JSON.parse(text) as Record<string, unknown>[]) };
+      if (from < held.first || from >= held.first + held.items.length) {
+        const part: { first: number; items: string } | null = await ctx.runQuery(internal.assistant.bulkPapers.part, { userId, key: stored.key, at: from });
+        held = part ? { first: part.first, items: JSON.parse(part.items) as Record<string, unknown>[] } : { first: from, items: [] };
       }
-      const at = from - part * PART_ITEMS;
-      return held.items.slice(at, Math.min(at + size, PART_ITEMS));
+      const at = from - held.first;
+      return held.items.slice(at, at + size);
     };
     const stepId =
       asked ??
@@ -663,10 +661,10 @@ export function toolsFor(
     if (stored) {
       // A big one runs the changes it kept, as the person was asked about them, a part at a time as it goes (`runPlan`).
       const { count } = JSON.parse(step.input) as { count: number };
-      const first: string | null = await ctx.runQuery(internal.assistant.bulkPapers.part, { userId, key: stored, part: 0 });
+      const first: { first: number; items: string } | null = await ctx.runQuery(internal.assistant.bulkPapers.part, { userId, key: stored, at: 0 });
       if (first === null) return { error: "The papers the person was asked about were forgotten: a day has passed. Ask again." };
       const change = changeOf(given, []);
-      return { tool: CHANGE_PAPERS, entry: entryAt(change.path)!, items: JSON.parse(first) as Record<string, unknown>[], kept: step.input, about: JSON.stringify(change.shared), stored: { key: stored, count } };
+      return { tool: CHANGE_PAPERS, entry: entryAt(change.path)!, items: JSON.parse(first.items) as Record<string, unknown>[], kept: step.input, about: JSON.stringify(change.shared), stored: { key: stored, count } };
     }
     const again = await plan(CHANGE_PAPERS, given);
     if ("error" in again) return again;

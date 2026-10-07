@@ -65,9 +65,10 @@ async function readPieces(first: number, last: number, enough: number, piece: (f
   const papers: SearchPaper[] = [];
   let resume: string | undefined;
   for (let from = first; from <= last; ) {
-    const read = await piece(from, Math.min(last, from + PAPERS_A_READ - 1), resume);
+    // No more than the papers still wanted: a page that skips to `first` takes none, and the read carries on from where it stopped.
+    const read = await piece(from, Math.min(last, from + Math.min(PAPERS_A_READ, enough - papers.length) - 1), resume);
     papers.push(...read.papers);
-    if (read.ended || !read.resume || read.taken === 0 || papers.length >= enough) break;
+    if (read.ended || !read.resume || papers.length >= enough) break;
     resume = read.resume;
     from += read.taken;
   }
