@@ -8,6 +8,7 @@ import { countJobResultsAction, listJobResultsAction, summarizeJobResultsAction 
 import { seedAccount, seedExtractionJob, text } from "../lib/maxSize.test-support";
 import { measure, now, record, save } from "./measure.test-support";
 import { writeAnswerRows, writePaperFacts } from "../extraction/listProjection";
+import { catchUp } from "../lib/catchUp.test-support";
 
 /** Writes each paper's answer rows and facts as the list projection does when its results land. */
 async function project(t: ReturnType<typeof convexTest>, paperIds: Array<Id<"extractionPapers">>) {
@@ -42,6 +43,8 @@ describe("extraction reads by job size", () => {
       const { userId } = await seedAccount(t);
       const { jobId, paperIds } = await seedExtractionJob(t, userId, { papers: size, questions: 2 });
       await project(t, paperIds);
+      // As the counts and tallies workers leave a job once its results are in.
+      await catchUp(t);
       const at = (scenario: string) => ({ area: "extraction", scenario, size });
       const page = (filters: typeof all, sortBy = "default", cursor: string | null = null, numItems = PAGE) =>
         (ctx: any) => listJobResultsAction.run(ctx, userId, { jobId, filters, sortBy: sortBy as never, paginationOpts: { cursor, numItems } });
@@ -52,7 +55,7 @@ describe("extraction reads by job size", () => {
       // Nothing matches: the right answer is an empty last page.
       await measure(t, at("results page, filter matching none"), page({ ...all, confidenceRange: [0, 10] }), (r) => `${rows(r)}${r?.isDone ? "" : ", not done"}`, (r) => r.page.length === 0 && r.isDone);
       // About one paper in ten gives each answer.
-      await measure(t, at("results page, answer filter"), page({ ...all, questionFilters: [{ questionKey: "q0", value: text(120, 0).trim() }] }), rows);
+      await measure(t, at("results page, answer filter"), page({ ...all, questionFilters: [{ questionKey: "q0", value: text(120, 0).trim() }] }), rows, (r) => r.page.length > 0);
       await measure(t, at("results page, sorted by title"), page(all, "title-asc"), rows);
       await measure(t, at("results page, text search"), page({ ...all, searchQuery: "tutoring" }), rows, (r) => r.page.length === PAGE);
       await measure(t, at("filtered count"), (ctx) => countJobResultsAction.run(ctx, userId, { jobId, filters: { ...all, confidenceRange: [0, 10] } }), (r) => `${r.matching} of ${r.all}`, (r) => r.all === size && r.matching === 0);
