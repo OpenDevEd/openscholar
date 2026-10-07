@@ -69,6 +69,9 @@ export const keepSearchText =
     if (was !== text) await ctx.db.patch(table, row._id, { searchText: text } as never);
   };
 
+/** Memberships a user's change brings up to date in its own transaction. */
+const MEMBERSHIPS_INLINE = 20;
+
 /** A user whose name or email changed, or who was deleted: their admin row's and organization memberships' text follows. */
 export async function keepTextOfUser(ctx: MutationCtx, change: Change<DataModel, "users">) {
   const [was, now] = [change.oldDoc, change.newDoc];
@@ -79,6 +82,12 @@ export async function keepTextOfUser(ctx: MutationCtx, change: Change<DataModel,
     const text = await adminText(ctx, admin);
     if (admin.searchText !== text) await ctx.db.patch("admins", admin._id, { searchText: text });
   }
-  // Every organization the person belongs to, a page at a time after this write (convex/lib/memberText.ts).
-  await ctx.scheduler.runAfter(0, makeFunctionReference<"mutation">("lib/memberText:refresh"), { clerkUserId: (now ?? was)!.clerkId, cursor: null });
+  // Every organization the person belongs to: a few here, and more than that a page at a time after this write (convex/lib/memberText.ts).
+  const clerkUserId = (now ?? was)!.clerkId;
+  const memberships = await ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", clerkUserId)).take(MEMBERSHIPS_INLINE + 1);
+  if (memberships.length > MEMBERSHIPS_INLINE) return void (await ctx.scheduler.runAfter(0, makeFunctionReference<"mutation">("lib/memberText:refresh"), { clerkUserId, cursor: null }));
+  for (const membership of memberships) {
+    const text = await memberText(ctx, membership);
+    if (membership.searchText !== text) await ctx.db.patch("organizationMemberships", membership._id, { searchText: text });
+  }
 }

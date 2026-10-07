@@ -194,7 +194,7 @@ export default defineSchema({
   organizationMemberships: defineTable({ ...organizationMembershipFields, searchText: v.optional(v.string()) })
     .index("by_clerkMembershipId", ["clerkMembershipId"])
     .index("by_organizationId_and_state_and_role", ["organizationId", "state", "role"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["organizationId", "state"] })
+    .searchIndex("search_member_text", { searchField: "searchText", filterFields: ["organizationId", "state"] })
     .index("by_organizationId_and_clerkUserId_and_state", [
       "organizationId",
       "clerkUserId",

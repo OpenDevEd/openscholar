@@ -880,7 +880,7 @@ export const listOrganizationPeople = query({
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PEOPLE_PAGE_MAX) };
     const terms = searchTerms(search);
     const read = await (terms
-      ? ctx.db.query("organizationMemberships").withSearchIndex("search_text", q => q.search("searchText", terms).eq("organizationId", library.organizationId).eq("state", "active"))
+      ? ctx.db.query("organizationMemberships").withSearchIndex("search_member_text", q => q.search("searchText", terms).eq("organizationId", library.organizationId).eq("state", "active"))
       : ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", q => q.eq("organizationId", library.organizationId).eq("state", "active"))
     ).paginate(opts);
     const page = await Promise.all(read.page.map(async membership => {
