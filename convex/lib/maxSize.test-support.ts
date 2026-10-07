@@ -96,8 +96,12 @@ export async function seedLibrary(t: Test, userId: Id<"users">, { items = MAX_SI
   // Each membership with its paper's fields, as convex/library/facets.ts gives it.
   await insertMany(t, "libraryItemCollections", itemIds.map((libraryItemId, i) => ({ userId, collectionId, libraryItemId, assignedAt: 1, ...facetsOf(docs[i] as never) })));
   await t.run((ctx) => ctx.db.insert("libraryCounts", { userId, count: items }));
-  // The library's filtered counts are a moment behind its writes: let their queue catch up.
-  await t.finishAllScheduledFunctions(vi.isFakeTimers() ? vi.runAllTimers : () => {});
+  // The library's filtered counts are a moment behind its writes: let their queue catch up,
+  // on fake timers, since its worker waits a moment between batches.
+  const faked = vi.isFakeTimers();
+  if (!faked) vi.useFakeTimers();
+  await t.finishAllScheduledFunctions(vi.runAllTimers, 10_000);
+  if (!faked) vi.useRealTimers();
   return { itemIds, collectionId };
 }
 

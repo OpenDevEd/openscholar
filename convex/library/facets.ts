@@ -24,25 +24,35 @@ export const facetsOf = (item: Doc<"libraryItems">) => ({
 });
 type Facets = ReturnType<typeof facetsOf>;
 const sameFacets = (a: Facets, b: Facets) => (Object.keys(a) as (keyof Facets)[]).every((field) => a[field] === b[field]);
+/** Whether a membership already carries its paper's fields. */
+export const facetsMatch = (membership: Doc<"libraryItemCollections">, item: Doc<"libraryItems">) => sameFacets(facetsOf(item), { savedAt: membership.savedAt as number, rating: membership.rating, publicationYear: membership.publicationYear, citedByCount: membership.citedByCount, title: membership.title as string });
 
-/** Memberships one transaction gives a paper's new fields; a paper in more collections gets the rest in the batches this schedules. */
+/** Memberships one scheduled mutation gives a paper's new fields; a paper in more collections gets the rest in the batches it schedules. */
 export const FACET_COPY_BATCH = 500;
+/**
+ * Memberships a change to a paper updates in its own mutation: a paper in a few collections
+ * shows its change there at once. One mutation may change many papers, so the rest go to a
+ * mutation of their own.
+ */
+const FACET_COPY_INLINE = 20;
 const copyFacets = makeFunctionReference<"mutation", { libraryItemId: Id<"libraryItems">; cursor: string | null }, null>("library/collections:copyFacets");
 
-/** Gives a batch of a paper's memberships its fields, from `cursor`; schedules the next batch. */
+/** Gives a batch of a paper's memberships its fields, from `cursor`, skipping those that have them; schedules the next batch. */
 export async function copyFacetBatch(ctx: MutationCtx, libraryItemId: Id<"libraryItems">, cursor: string | null) {
   const item = await ctx.db.get("libraryItems", libraryItemId);
   if (!item) return;
-  const facets = facetsOf(item);
   const page = await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", libraryItemId)).paginate({ cursor, numItems: FACET_COPY_BATCH });
-  for (const membership of page.page) await ctx.db.patch("libraryItemCollections", membership._id, facets);
+  for (const membership of page.page) if (!facetsMatch(membership, item)) await ctx.db.patch("libraryItemCollections", membership._id, facetsOf(item));
   if (!page.isDone) await ctx.scheduler.runAfter(0, copyFacets, { libraryItemId, cursor: page.continueCursor });
 }
 
 /** A paper whose fields changed passes them to the memberships that copy them. */
 export async function copyChangedFacets(ctx: MutationCtx, change: Change<DataModel, "libraryItems">) {
   if (change.operation !== "update" || sameFacets(facetsOf(change.oldDoc), facetsOf(change.newDoc))) return;
-  await copyFacetBatch(ctx, change.id, null);
+  // `take`, not `paginate`: a mutation may paginate once, and it may change many papers.
+  const memberships = await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", change.id)).take(FACET_COPY_INLINE + 1);
+  for (const membership of memberships.slice(0, FACET_COPY_INLINE)) await ctx.db.patch("libraryItemCollections", membership._id, facetsOf(change.newDoc));
+  if (memberships.length > FACET_COPY_INLINE) await ctx.scheduler.runAfter(0, copyFacets, { libraryItemId: change.id, cursor: null });
 }
 
 /** The filter fields counted, each under every library and collection. */
@@ -129,6 +139,3 @@ export async function uncountedFacets(ctx: QueryCtx, rows: { id: string; row: Co
   );
   return (await facetCounts.countBatch(ctx, queries, { stale: true })).filter((count) => count !== 1).length;
 }
-
-/** Whether a membership already carries its paper's fields. */
-export const facetsMatch = (membership: Doc<"libraryItemCollections">, item: Doc<"libraryItems">) => sameFacets(facetsOf(item), { savedAt: membership.savedAt as number, rating: membership.rating, publicationYear: membership.publicationYear, citedByCount: membership.citedByCount, title: membership.title as string });

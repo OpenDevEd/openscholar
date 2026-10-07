@@ -2,6 +2,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { stream } from "convex-helpers/server/stream";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import schema from "../schema";
+import { facetsOf } from "./facets";
 
 /**
  * Every change to a collection's items goes through here, so its item count
@@ -20,7 +21,7 @@ async function touchCollection(
 }
 
 /**
- * Adds an item to a collection once. Returns when it was put in, or null when it was already
+ * Adds a paper to a collection once, its membership with the paper's sort and filter fields. Returns when it was put in, or null when it was already
  * there. `assignedAt` puts back a place taken away, as the place it was: the date tells one
  * time a paper was put in a collection from another, which is how an undo knows its own.
  */
@@ -29,7 +30,7 @@ export async function addCollectionMembership(
   args: {
     userId: Id<"users">;
     collection: Doc<"collections">;
-    libraryItemId: Id<"libraryItems">;
+    item: Doc<"libraryItems">;
     assignedAt?: number;
   },
 ) {
@@ -38,7 +39,7 @@ export async function addCollectionMembership(
     .withIndex("by_collection_item", (q) =>
       q
         .eq("collectionId", args.collection._id)
-        .eq("libraryItemId", args.libraryItemId),
+        .eq("libraryItemId", args.item._id),
     )
     .unique();
   if (existing) return null;
@@ -46,8 +47,9 @@ export async function addCollectionMembership(
   await ctx.db.insert("libraryItemCollections", {
     userId: args.userId,
     collectionId: args.collection._id,
-    libraryItemId: args.libraryItemId,
+    libraryItemId: args.item._id,
     assignedAt,
+    ...facetsOf(args.item),
   });
   await touchCollection(ctx, args.collection, 1);
   return assignedAt;

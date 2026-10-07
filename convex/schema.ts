@@ -1127,10 +1127,16 @@ export default defineSchema({
   libraryRemovals: defineTable({
     userId: v.id("users"),
     item: removedItemValidator,
+    // The removed paper's ID, which its places not moved yet still name.
+    itemId: v.id("libraryItems"),
     expiresAt: v.number(),
     // The paper Undo put back; the removal is kept until it expires.
     restoredAs: v.optional(v.id("libraryItems")),
-  }),
+    // Set while batches of the paper's places are still being taken out of its collections,
+    // or put back in them after Undo: the restored paper can't be removed again meanwhile.
+    moving: v.optional(v.literal(true)),
+    placing: v.optional(v.literal(true)),
+  }).index("by_restoredAs", ["restoredAs"]),
 
   // A collection a removed paper was in, and when it was put there, so Undo puts it back as it was.
   removedPlaces: defineTable({
