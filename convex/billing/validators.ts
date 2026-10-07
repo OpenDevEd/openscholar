@@ -42,6 +42,8 @@ export const billingAccountFields = {
   refreshedAt: v.number(),
   /** When the snapshot was read from Autumn: a refresh read before it is older, and is dropped. Unlike `refreshedAt`, zeroing the balance leaves it. */
   fetchedAt: v.optional(v.number()),
+  /** When the cached `card` was read from Autumn: an older refresh that read the card still brings a newer one than this. */
+  cardFetchedAt: v.optional(v.number()),
   /** Set while a refresh from Autumn is scheduled, so charges don't schedule more. */
   refreshQueuedAt: v.optional(v.number()),
   /** The papers-at-once limit before `limits` held it; read by nothing, cleared by migrations/planLimits. */
