@@ -18,7 +18,7 @@ import { internalMutation } from "../lib/functions";
 import schema from "../schema";
 import { countRecordPage, countRow } from "./recordCounts";
 import { shortcutSortName } from "../../lib/query-shortcuts";
-import { searchText, shortcutText } from "../lib/searchText";
+import { searchTerms, searchText, shortcutText, withText } from "../lib/searchText";
 
 const accountArgs = { accountId: v.string() };
 const pageArgs = { paginationOpts: paginationOptsValidator };
@@ -49,7 +49,7 @@ export const listedSearchesAction = defineUserQuery({
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LISTED_PAGE_MAX) };
     const index = sort === "most" || sort === "least" ? "by_user_and_count" : "by_user_and_createdAt";
     const order = sort === "oldest" || sort === "least" ? "asc" : "desc";
-    const needle = text?.trim();
+    const needle = searchTerms(text);
     const read = await (needle
       ? ctx.db.query("searches").withSearchIndex("search_text", q => q.search("searchText", needle).eq("userId", userId)).paginate({ ...opts, maximumBytesRead: LISTED_BYTES })
       : exclude !== undefined
@@ -99,7 +99,7 @@ export const listedShortcutsAction = defineUserQuery({
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHORTCUT_PAGE_MAX), maximumBytesRead: LISTED_BYTES };
     const index = sort === "alpha" || sort === "alpha-desc" ? "by_user_and_sortName" : "by_user_and_createdAt";
     const order = sort === "oldest" || sort === "alpha" ? "asc" : "desc";
-    const needle = text?.trim();
+    const needle = searchTerms(text);
     const page = await (needle
       ? ctx.db.query("queryShortcuts").withSearchIndex("search_text", q => q.search("searchText", needle).eq("userId", userId)).paginate(opts)
       : ctx.db.query("queryShortcuts").withIndex(index, q => q.eq("userId", userId)).order(order).paginate(opts));
@@ -418,7 +418,7 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       const queries = command.history?.queryHistory.length ? command.history.queryHistory : [{ query: command.search.query, field: command.search.field, timestamp: command.search.createdAt }];
       const questions = command.history?.questionHistory ?? [];
       const stored = { ...command.search, ...historySummary(queries, questions), screeningResponses: [] };
-      const id = await ctx.db.insert("searches", { userId, localId: command.search.id, data: stored, revision: FIRST_REVISION, searchText: searchText(stored) });
+      const id = await ctx.db.insert("searches", withText({ userId, localId: command.search.id, data: stored, revision: FIRST_REVISION }, searchText(stored)));
       await addHistory(ctx, { _id: id, userId }, "query", queries.map(queryEntry));
       await addHistory(ctx, { _id: id, userId }, "question", questions.map(questionEntry));
       // Answers carried in a new search come from an import or the assistant; neither says who gave them.
@@ -472,7 +472,7 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       }
       // A copy may change only the history rows, so it always makes a revision.
       if (edit.kind !== "copySearch" && !answersChanged && JSON.stringify({ ...data, updatedAt: previous.updatedAt }) === JSON.stringify(previous)) return;
-      await ctx.db.patch("searches", search._id, { data: next.data, revision: next.revision, searchText: searchText(next.data) });
+      await ctx.db.patch("searches", search._id, { data: next.data, revision: next.revision, searchText: withText({ ...search, data: next.data }, searchText(next.data)).searchText });
       if (edit.kind === "query") await addHistory(ctx, search, "query", [{ text: edit.query, field: edit.field, timestamp: data.updatedAt }]);
       // Going back to an earlier query is one more query the search has had.
       if (edit.kind === "restore" && data.queryHistoryCount > previous.queryHistoryCount) await addHistory(ctx, search, "query", [{ text: data.query, field: data.field, timestamp: data.updatedAt }]);
@@ -525,8 +525,8 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
         : { kind: "shortcut", shorthand: command.shorthand, value: before, expect: command.value };
       if (command.value === null) { if (row) await ctx.db.delete("queryShortcuts", row._id); return undo; }
       const data = { shorthand: command.shorthand, ...command.value };
-      if (row) await ctx.db.patch("queryShortcuts", row._id, { data, searchText: shortcutText(data) });
-      else await ctx.db.insert("queryShortcuts", { userId, data, sortName: shortcutSortName(command.shorthand), searchText: shortcutText(data) });
+      if (row) await ctx.db.patch("queryShortcuts", row._id, { data, searchText: withText({ ...row, data }, shortcutText(data)).searchText });
+      else await ctx.db.insert("queryShortcuts", withText({ userId, data, sortName: shortcutSortName(command.shorthand) }, shortcutText(data)));
       return undo;
     }
     // A clear takes the rows up to the newest there is now. A clock can't draw that line:

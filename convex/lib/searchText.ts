@@ -7,6 +7,7 @@
 import type { Change } from "convex-helpers/server/triggers";
 import type { DataModel, Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { getDocumentSize } from "convex/values";
 import { currentSearch } from "../../lib/research/records";
 
 /**
@@ -15,6 +16,18 @@ import { currentSearch } from "../../lib/research/records";
  */
 const SEARCH_TEXT_MAX = 32_000;
 const bounded = (text: string) => text.slice(0, SEARCH_TEXT_MAX);
+/** What a row with its text may weigh: Convex's 1 MiB a document, less room for its system fields. */
+const ROW_BYTES_MAX = 1024 * 1024 - 16 * 1024;
+
+/** `row` with as much of `text` as keeps it within a document's size, however close to it the row already is. */
+export function withText<Row extends object>(row: Row, text: string): Row & { searchText: string } {
+  const room = ROW_BYTES_MAX - getDocumentSize({ ...row, searchText: "" } as never);
+  let kept = room > 0 ? text : "";
+  for (let bytes = new TextEncoder().encode(kept).length; bytes > room && kept; bytes = new TextEncoder().encode(kept).length) {
+    kept = kept.slice(0, Math.max(0, Math.floor((kept.length * room) / bytes) - 1));
+  }
+  return { ...row, searchText: kept };
+}
 
 /** A saved search's query and questions. */
 export const searchText = (data: Doc<"searches">["data"]) => {
@@ -31,6 +44,11 @@ export async function adminText(ctx: QueryCtx, row: { email: string; userId?: Do
   return [user?.firstName, user?.lastName, user?.email ?? row.email].filter(Boolean).join(" ");
 }
 
+/** Convex's full text search takes at most 16 terms. */
+export const SEARCH_TERMS_MAX = 16;
+/** Text a person typed, as a full text search takes it: its first 16 words, or undefined for none. */
+export const searchTerms = (text: string | undefined) => text?.trim().split(/\s+/).filter(Boolean).slice(0, SEARCH_TERMS_MAX).join(" ") || undefined;
+
 type Searched = "searches" | "queryShortcuts" | "extractionJobs" | "admins";
 
 /** Keeps a row's `searchText` equal to `textOf` it. */
@@ -39,15 +57,17 @@ export const keepSearchText =
   async (ctx: MutationCtx, change: Change<DataModel, T>) => {
     const row = change.newDoc;
     if (!row) return;
-    const text = await textOf(ctx, row);
-    if (row.searchText !== text) await ctx.db.patch(table, row._id, { searchText: text } as never);
+    const { _id, _creationTime, searchText: was, ...fields } = row as Doc<T> & { searchText?: string };
+    const { searchText: text } = withText(fields, await textOf(ctx, row));
+    if (was !== text) await ctx.db.patch(table, row._id, { searchText: text } as never);
   };
 
-/** A user whose name or email changed: their admin row's text follows. */
+/** A user whose name or email changed, or who was deleted: their admin row's text follows. */
 export async function keepAdminTextOfUser(ctx: MutationCtx, change: Change<DataModel, "users">) {
   const [was, now] = [change.oldDoc, change.newDoc];
-  if (!now || (was && was.firstName === now.firstName && was.lastName === now.lastName && was.email === now.email)) return;
-  const admin = await ctx.db.query("admins").withIndex("by_userId", (q) => q.eq("userId", now._id)).first();
+  if (now && was && was.firstName === now.firstName && was.lastName === now.lastName && was.email === now.email) return;
+  const userId = (now ?? was)!._id;
+  const admin = await ctx.db.query("admins").withIndex("by_userId", (q) => q.eq("userId", userId)).first();
   if (admin) {
     const text = await adminText(ctx, admin);
     if (admin.searchText !== text) await ctx.db.patch("admins", admin._id, { searchText: text });

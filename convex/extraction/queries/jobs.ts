@@ -13,6 +13,7 @@ import { getDocumentSize, v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import schema from "../../schema";
+import { searchTerms } from "../../lib/searchText";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { noAccess, ok, statusResultValidator, unauthenticated } from "../../lib/query_states";
 import { ownJob, resolveOwnedJob, type OwnedJobResolution } from "../access";
@@ -56,7 +57,7 @@ export const listJobsAction = defineUserQuery({
   run: async (ctx, userId, { paginationOpts, sort, text }) => {
     await requireFeature(ctx, "extraction.enabled", userId);
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, JOBS_PAGE_MAX), maximumBytesRead: JOBS_PAGE_BYTES };
-    const needle = text?.trim();
+    const needle = searchTerms(text);
     if (needle) return await ctx.db.query("extractionJobs").withSearchIndex("search_text", (q) => q.search("searchText", needle).eq("userId", userId)).paginate(opts);
     // What a page by status has read so far: the statuses of one page share one allowance.
     let rows = 0;

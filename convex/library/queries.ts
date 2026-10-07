@@ -1,5 +1,6 @@
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
+import { searchTerms } from "../lib/searchText";
 import { paginationOptsValidator, paginationResultValidator, type Cursor, type PaginationOptions } from "convex/server";
 import { v, type ObjectType } from "convex/values";
 import { stream, type QueryStream } from "convex-helpers/server/stream";
@@ -206,7 +207,7 @@ async function inThatCollection(ctx: QueryCtx, collectionId: Id<"collections">, 
 async function searchLibraryItems(ctx: QueryCtx, userId: Id<"users">, searchText: string): Promise<LibraryItem[]> {
   return await ctx.db
     .query("libraryItems")
-    .withSearchIndex("search_library", (q) => q.search("searchableText", searchText).eq("userId", userId))
+    .withSearchIndex("search_library", (q) => q.search("searchableText", searchTerms(searchText) ?? "").eq("userId", userId))
     .take(SEARCH_RESULTS_MAX);
 }
 

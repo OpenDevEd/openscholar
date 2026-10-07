@@ -15,6 +15,7 @@ import { paginationOptsValidator, paginationResultValidator } from "convex/serve
 import { stream } from "convex-helpers/server/stream";
 import { JoinStream } from "../../lib/joinStream";
 import schema from "../../schema";
+import { searchTerms } from "../../lib/searchText";
 import { assistantQuery, defineUserQuery, userQuery } from "../../lib/userActions";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { ownJob } from "../access";
@@ -211,7 +212,7 @@ async function narrowestOf(ctx: QueryCtx, parts: Part[]) {
 async function searchMatches(ctx: QueryCtx, jobId: Id<"extractionJobs">, searchQuery: string) {
   const found = await ctx.db
     .query("extractionPapers")
-    .withSearchIndex("search_by_job_text", (q) => q.search("searchText", searchQuery).eq("jobId", jobId).eq("processable", true))
+    .withSearchIndex("search_by_job_text", (q) => q.search("searchText", searchTerms(searchQuery) ?? "").eq("jobId", jobId).eq("processable", true))
     .take(SEARCH_RESULTS_MAX);
   return { papers: found, capped: found.length === SEARCH_RESULTS_MAX };
 }

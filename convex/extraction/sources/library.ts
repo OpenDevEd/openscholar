@@ -22,6 +22,7 @@ import { createError } from "../../lib/errors";
 import { MAX_SELECTED_PAPERS } from "../../lib/listCaps";
 import { paperSelectionValidator } from "../validators";
 import type { Doc, Id } from "../../_generated/dataModel";
+import { searchTerms } from "../../lib/searchText";
 
 const collectionIdValidator = v.optional(
   v.union(v.id("collections"), v.literal("unfiled")),
@@ -75,7 +76,7 @@ export const list = query({
     await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
 
-    const search = args.query?.trim();
+    const search = searchTerms(args.query);
     const needle = search?.toLowerCase();
     const paginationOpts = { ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, PAGE_MAX) };
 
@@ -148,7 +149,7 @@ export const listAllIds = query({
     const user = await requireAuth(ctx);
     const limit = MAX_SELECTED_PAPERS;
 
-    const search = args.query?.trim();
+    const search = searchTerms(args.query);
     const needle = search?.toLowerCase();
 
     if (args.collectionId && args.collectionId !== "unfiled") {

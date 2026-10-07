@@ -28,8 +28,10 @@ it("the backfill makes rows from before findable, and an admin is found by the n
       await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: 1 });
       await seedOrganizationFeatures(ctx, ["admin"], { extraction: true });
     });
+    expect(await t.action(internal.migrations.searchText.verify, {})).toBe(2);
     await t.mutation(internal.migrations.searchText.run, {});
     await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await t.action(internal.migrations.searchText.verify, {})).toBe(0);
     expect(await shortcuts()).toEqual(["rct"]);
     expect(await jobs()).toEqual(["Tutoring review"]);
 
@@ -37,6 +39,12 @@ it("the backfill makes rows from before findable, and an admin is found by the n
     const admins = async (search: string) => (await as.query(api.admins.queries.listAdmins, { search, paginationOpts: { cursor: null, numItems: 10 } })).page.map((row) => row.email);
     expect(await admins("grace")).toEqual(["admin@test.local"]);
     expect(await admins("ada")).toEqual([]);
+    // A search of more words than the engine takes is cut to its first 16.
+    expect(await admins(`grace ${"padding ".repeat(30)}`)).toEqual(["admin@test.local"]);
+
+    // Once their user is deleted, an admin is found by email alone.
+    await t.run((ctx) => ctx.db.delete("users", userId));
+    expect(await t.run(async (ctx) => (await ctx.db.query("admins").first())?.searchText)).toBe("admin@test.local");
   } finally {
     vi.useRealTimers();
   }

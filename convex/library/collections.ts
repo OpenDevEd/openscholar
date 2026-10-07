@@ -1,5 +1,6 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import type { Id } from "../_generated/dataModel";
+import { searchTerms } from "../lib/searchText";
 import type { QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { internalMutation, type MutationCtx } from "../lib/functions";
@@ -14,8 +15,6 @@ import { collectionSortName } from "./sortName";
 
 /** Most collections one page holds. */
 const COLLECTIONS_PAGE_MAX = 50;
-/** Convex's full text search takes at most 16 terms. */
-export const SEARCH_TERMS_MAX = 16;
 
 export function collectionCountRow(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) {
   return ctx.db.query("collectionCounts").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
@@ -278,7 +277,7 @@ export const listCollectionsAction = defineUserQuery({
   run: async (ctx, userId, args) => {
     const user = { _id: userId };
     const paginationOpts = { ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, COLLECTIONS_PAGE_MAX) };
-    const search = args.search?.trim().split(/\s+/).slice(0, SEARCH_TERMS_MAX).join(" ");
+    const search = searchTerms(args.search);
     const page = await (search
       ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", search).eq("userId", user._id))
       : ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", user._id))

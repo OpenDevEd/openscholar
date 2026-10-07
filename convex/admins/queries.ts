@@ -4,6 +4,7 @@ import { stream } from "convex-helpers/server/stream";
 import type { Doc } from "../_generated/dataModel";
 import { query } from "../_generated/server";
 import schema from "../schema";
+import { searchTerms } from "../lib/searchText";
 import { getCurrentUser } from "../lib/auth";
 import { ADMIN_LIST, countOf } from "../lib/listCounts";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
@@ -48,7 +49,7 @@ export const listAdminsAction = defineUserQuery({
   returns: paginationResultValidator(adminRowValidator),
   run: async (ctx, userId, { paginationOpts, search }) => {
     await requireAdminUser(ctx, userId);
-    const needle = search?.trim();
+    const needle = searchTerms(search);
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
     const read = await (needle
       ? ctx.db.query("admins").withSearchIndex("search_text", (q) => q.search("searchText", needle)).paginate(opts)
