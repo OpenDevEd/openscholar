@@ -48,7 +48,9 @@
       "MAX_QUESTIONS_PER_JOB": "convex/extraction/mutations/jobs.ts",
       "MAX_AUTHORS_PER_PUBLICATION": "convex/authors/publications.ts",
       "MAX_EVIDENCE_UNITS_PER_PAPER": "convex/extraction/mutations/evidence.ts:replacePaperEvidenceUnits",
-      "MAX_JOB_SOURCES": "convex/extraction/jobSources.ts:writeJobSources"
+      "MAX_JOB_SOURCES": "convex/extraction/jobSources.ts:writeJobSources",
+      "MAX_PENDING_FILES": "convex/assistant/files.ts:startUpload",
+      "MAX_FILES_PER_MESSAGE": "convex/assistant/files.ts:partsFor"
     },
     "refused": {
       "MAX_ACCOUNTS_PER_EMAIL": "reads one past it and refuses the invitation, naming why",
@@ -95,7 +97,8 @@
       "JOBS_WOKEN": "the jobs one dispatch wakes; the next dispatch wakes more",
       "SPENT_PAGE": "a hold cleanup's batch; it reschedules itself",
       "FACET_COPY_INLINE": "the memberships a paper's change copies inline; more are copied by a scheduled batch",
-      "MEMBERSHIPS_INLINE": "the memberships a user's change updates inline; more are updated by a scheduled page at a time"
+      "MEMBERSHIPS_INLINE": "the memberships a user's change updates inline; more are updated by a scheduled page at a time",
+      "FORGET_FILES": "a cleanup batch of attached files; it reschedules itself until nothing is left"
     }
   }
 }

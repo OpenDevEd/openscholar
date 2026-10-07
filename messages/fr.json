@@ -3270,7 +3270,10 @@
     "free": "Gratuit",
     "source": "Indice d'intelligence par Artificial Analysis",
     "back": "Retour aux modèles",
-    "default": "Par défaut"
+    "default": "Par défaut",
+    "reads": "Lit",
+    "readsImages": "Lit les images",
+    "readsPdfs": "Lit les PDF"
   },
   "assistant": {
     "activity": {
@@ -3890,6 +3893,22 @@
       "screening": "Tri",
       "extraction": "Extraction"
     },
-    "moreJobs": "{count, plural, one {# autre tâche} other {# autres tâches}}"
+    "moreJobs": "{count, plural, one {# autre tâche} other {# autres tâches}}",
+    "files": {
+      "attach": "Joindre des images",
+      "pasted": "Image collée",
+      "onlyImages": "Images seulement pour l’instant",
+      "tooLarge": "Plus de {mb} Mo",
+      "unreadable": "Cette image est illisible",
+      "failed": "Impossible d'envoyer ce fichier",
+      "remove": "Retirer",
+      "removeNamed": "Retirer {name}",
+      "expired": "Expiré, joignez-le à nouveau",
+      "drop": "Déposez des images pour les joindre",
+      "anImage": "une image",
+      "modelCant": "{model} ne lit pas les images. Choisissez un autre modèle pour les joindre.",
+      "notUploaded": "{count, plural, one {Un fichier n’a pas été envoyé} other {# fichiers n’ont pas été envoyés}}. Retirez-{count, plural, one {le} other {les}} ou joignez-{count, plural, one {le} other {les}} à nouveau.",
+      "tooMany": "{count} fichiers au plus par message"
+    }
   }
 }
