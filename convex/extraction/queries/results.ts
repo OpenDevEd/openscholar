@@ -323,7 +323,9 @@ export const listJobResultsAction = defineUserQuery({
     // ponytail: a finished job's view can still grow by edits while it's paged; past twice the papers it began with, later pages miss some.
     const sorted = cursor?.startsWith(SORTED) ?? false;
     const narrowest = cursor === null && !(job.status && isRunningJobStatus(job.status)) ? await narrowestOf(ctx, parts) : null;
-    if (sorted || (narrowest && narrowest.count <= IN_MEMORY_PAPERS)) {
+    // Read whole only when that reads fewer papers than the index would to fill a page: about a page for each share of the job the filter keeps.
+    const toFillAPage = narrowest ? Math.ceil((numItems * (job.totalPapers ?? narrowest.count)) / Math.max(1, narrowest.count)) : 0;
+    if (sorted || (narrowest && narrowest.count <= Math.min(IN_MEMORY_PAPERS, toFillAPage))) {
       const part = narrowest?.part ?? (await narrowestOf(ctx, parts))!.part;
       // Read whole: as few papers as chose this way, or, as later pages of a running job find more, no more than twice that.
       const { ids } = await idsOf(ctx, part, 2 * IN_MEMORY_PAPERS);
