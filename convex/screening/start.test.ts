@@ -202,12 +202,39 @@ describe("a job of any size", () => {
     expect((await results(jobId)).length).toBe(50);
   }, 120_000);
 
-  it("stops where the person's credits run out, and holds the papers it took", async () => {
+  it("stops reading where the person's credits run out, screens the papers it took, and ends out of credits", async () => {
     // Enough for one step of papers, not two.
-    const { read, screen } = await setup({ saved: 450, inCollection: 0, credits: 250 * PER_PAPER });
+    const { t, read, screen } = await setup({ saved: 450, inCollection: 0, credits: 250 * PER_PAPER });
     const { jobId } = await screen({ set: { kind: "saved" }, first: 1, last: 450, ...job, saveTo: { kind: "none" } });
-    expect(await read(jobId)).toMatchObject({ status: "creditsExhausted", totalPapers: 200 });
+    expect(await read(jobId)).toMatchObject({ status: "processing", totalPapers: 200 });
+
+    // The model answers each paper as it starts, until none is left.
+    for (let round = 0; round < 20; round++) {
+      const started = (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(300))).filter((result) => result.status === "processing" && result.workId);
+      if (!started.length) break;
+      for (const result of started) {
+        await t.mutation(internal.screening.mutations.handleScreeningComplete, {
+          workId: result.workId!, context: { jobId, resultId: result._id },
+          result: { kind: "success", returnValue: { responses: encodeQuestionResponseMap({ "Randomized?": false }), confidences: {}, confidence: 0.8, credits: 1 } },
+        });
+      }
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+    }
+    expect(await read(jobId)).toMatchObject({ status: "creditsExhausted", totalPapers: 200, processedPapers: 200 });
   }, 120_000);
+
+  it("a read that fails after earlier steps skips the papers they took that hadn't started", async () => {
+    const { t, userId } = await setup({ saved: 0, inCollection: 0 });
+    const papers = Array.from({ length: 200 }, (_, i) => ({ openalexId: W(i + 1), title: `Paper ${i + 1}` }));
+    const { jobId } = await t.mutation(internal.screening.mutations.openScreeningJob, { userId, author: "user", set: { kind: "saved" }, first: 1, last: 400, papers: 400, ...job, saveTo: { kind: "none" } });
+    await t.mutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: 200, ended: false });
+    await t.mutation(internal.screening.mutations.failScreeningRead, { jobId, reason: "OpenAlex couldn't return these papers (503)." });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(300));
+    expect(results.filter((result) => result.waitingSince !== undefined)).toEqual([]);
+    expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("failed");
+  });
 
   it("stops reading when it's cancelled", async () => {
     const { t, alice, read } = await setup({ saved: 450, inCollection: 0 });

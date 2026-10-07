@@ -200,13 +200,13 @@ export const fillScreeningJob = internalMutation({
       resume,
       updatedAt: now,
       ...made,
-      // Done reading: the job holds the papers it took.
+      // Done reading: the job holds the papers it took. Out of credits, it still screens those, which were paid for as they were taken.
       ...(over ? { reading: undefined, totalPapers: taken.papers } : {}),
-      ...(affordable ? {} : { status: "creditsExhausted" as const }),
+      ...(affordable ? {} : taken.papers === 0 ? { status: "creditsExhausted" as const } : { outOfCredits: true as const }),
       ...(over && affordable && taken.papers === 0 ? { status: "failed" as const, failure: "None of these papers match the search's rating filter" } : {}),
     });
     if (affordable && papers.length) await createResults(ctx, (await ctx.db.get("screeningJobs", jobId))!, papers, now, reused);
-    if (over && affordable) await finishIfDone(ctx, jobId);
+    if (over) await finishIfDone(ctx, jobId);
     return null;
   },
 });
@@ -228,6 +228,8 @@ export const failScreeningRead = internalMutation({
     const quiet = Date.now() - job.updatedAt;
     if (stalled && quiet < READ_LIMIT_MS) return void (await ctx.scheduler.runAfter(READ_LIMIT_MS - quiet, internal.screening.mutations.failScreeningRead, { jobId, reason, stalled }));
     await ctx.db.patch("screeningJobs", jobId, { status: "failed", reading: undefined, failure: reason.slice(0, FAILURE_SHOWN), updatedAt: Date.now() });
+    // The papers earlier steps took stop too, as a cancelled job's do.
+    if (job.readPlace?.papers) await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId, cursor: null });
     return null;
   },
 });
@@ -338,7 +340,7 @@ export const cancelScreeningJob = mutation({
 const END_BATCH = 100;
 
 /**
- * Ends a job's remaining papers once it was cancelled or ran out of credits, a batch at a
+ * Ends a job's remaining papers once it was cancelled, failed or ran out of credits, a batch at a
  * time: those still waiting for a slot are skipped, and those started have their queued
  * work cancelled. With `waitingOnly`, for a job that reached the most it may spend, the
  * started ones are left to finish.

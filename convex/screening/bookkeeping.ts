@@ -187,8 +187,8 @@ export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">)
   if (!job || job.status !== "processing" || job.reading || !progress) return;
   if (progress.completed + progress.skipped + progress.failed < job.totalPapers) return;
   const now = Date.now();
-  // One that stopped at the most it may spend has papers it never read: it ends as stopped, not as done.
-  await ctx.db.patch("screeningJobs", jobId, { status: job.capped ? "creditsExhausted" : "completed", completedAt: now, updatedAt: now });
+  // One that stopped at the most it may spend, or when the person's credits ran out, has papers it never read: it ends as stopped, not as done.
+  await ctx.db.patch("screeningJobs", jobId, { status: job.capped || job.outOfCredits ? "creditsExhausted" : "completed", completedAt: now, updatedAt: now });
   const user = await ctx.db.get("users", job.userId);
   if (user?.clerkId) {
     await captureLater(ctx, [{

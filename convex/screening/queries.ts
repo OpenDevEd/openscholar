@@ -55,6 +55,8 @@ const jobFacts = {
   label: v.optional(v.string()),
   first: v.optional(v.number()),
   last: v.optional(v.number()),
+  // The end of the range a chained request from before #635 asked for, past its job's `last`: what running it again takes.
+  through: v.optional(v.number()),
   // Papers that failed, papers skipped because the job ended first, and papers the model is reading now.
   failedPapers: v.number(),
   skippedPapers: v.number(),
@@ -83,6 +85,7 @@ async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
     label: job.label,
     first: job.first,
     last: job.last,
+    through: job.through,
     failedPapers: counts.failedCount,
     skippedPapers: counts.skippedCount,
     running: reading.length,
