@@ -23,6 +23,8 @@ export default defineConfig({
       { test: { name: "convex", environment: "edge-runtime", include: ["convex/**/*.test.ts"] } },
       { test: { name: "dom", environment: "jsdom", include: domTests } },
       { test: { name: "node", environment: "node", include: ["tests/**/*.test.{ts,tsx}", "lib/**/*.test.ts"], exclude: [...domTests, "tests/live-billing/**"] } },
+      // What functions read at full size (#631): `npm run bench` only, never in `npm test`, since it seeds jobs of 50,000 papers.
+      ...(process.env.BENCH ? [{ test: { name: "bench", environment: "edge-runtime", include: ["convex/bench/**/*.bench.ts"], testTimeout: 1_800_000, hookTimeout: 1_800_000 } }] : []),
     ],
     server: {
       deps: {
