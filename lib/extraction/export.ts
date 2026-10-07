@@ -9,7 +9,7 @@ type ResultsPage<Item> = { page: Item[]; isDone: boolean; continueCursor: string
 /** Metadata and all pages belong to one saved revision, including same-count edits. */
 export async function readExtractionExport<Item extends { _id: string }, Metadata extends object>(
   readPage: (cursor: string | null) => Promise<ResultsPage<Item>>,
-  readState: () => Promise<{ matching: number; atLeast?: true; revision: number | null }>,
+  readState: () => Promise<{ matching: number; atLeast?: true; searchCapped?: true; revision: number | null }>,
   readMetadata: () => Promise<Metadata>,
   options: { attempts?: number; signal?: AbortSignal } = {},
 ): Promise<Metadata & { papers: Item[] }> {
@@ -18,12 +18,13 @@ export async function readExtractionExport<Item extends { _id: string }, Metadat
     const before = await readState();
     if (before.revision === null) throw new ExtractionExportError("exportChanged");
     // A search matching more papers than the search engine returns can't be exported whole.
-    if (before.atLeast) throw new ExtractionExportError("searchTooBroad");
+    if (before.searchCapped) throw new ExtractionExportError("searchTooBroad");
     const metadata = await readMetadata();
     const items = await walkResultsPages(async cursor => { options.signal?.throwIfAborted(); return readPage(cursor); });
     const after = await readState();
     options.signal?.throwIfAborted();
-    if (items && items.length === after.matching && before.revision === after.revision) return { ...metadata, papers: items };
+    // A count that stopped short is only a floor: the revision alone says nothing changed meanwhile.
+    if (items && (after.atLeast ? items.length >= after.matching : items.length === after.matching) && before.revision === after.revision) return { ...metadata, papers: items };
   }
   throw new ExtractionExportError("exportChanged");
 }

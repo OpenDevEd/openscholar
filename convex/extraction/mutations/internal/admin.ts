@@ -20,6 +20,8 @@ export const deleteExtractionInternal = internalMutation({
     const BATCH_SIZE = 100;
     // Papers one pass deletes, each with up to BATCH_SIZE of each kind of child.
     const PAPERS_A_PASS = 20;
+    // Count entries one pass's answer rows take out (../../facets.ts): one for a row's answer and one for each item of a list answer, up to 101 a row.
+    let entriesLeft = 4_000;
     const { jobId } = args;
 
     const reschedule = async (): Promise<null> => {
@@ -31,6 +33,9 @@ export const deleteExtractionInternal = internalMutation({
       return null;
     };
 
+    // The job goes first, as deleteExtraction deletes it: its rows' changes then stop feeding its tallies (../../tallies.ts).
+    if (await ctx.db.get("extractionJobs", jobId)) await ctx.db.delete(jobId);
+
     // Steps 1-4: a pass of the job's papers, each with its evidence, results and facts, then
     // the paper and its PDF. A paper with more children than a batch takes another pass.
     const papers = await ctx.db
@@ -40,7 +45,6 @@ export const deleteExtractionInternal = internalMutation({
     const perPaperChildTables: Array<[string, string]> = [
       ["extractionEvidenceUnits", "by_paper"],
       ["extractionResults", "by_paper"],
-      ["extractionAnswerRows", "by_paper"],
       ["extractionPaperFacts", "by_paper"],
     ];
     for (const paper of papers) {
@@ -48,6 +52,13 @@ export const deleteExtractionInternal = internalMutation({
         const deleted = await batchDeleteByIndex(ctx, table, indexName, "paperId", paper._id, BATCH_SIZE);
         if (deleted === BATCH_SIZE) return reschedule();
       }
+      const rows = await ctx.db.query("extractionAnswerRows").withIndex("by_paper", (q) => q.eq("paperId", paper._id)).take(BATCH_SIZE);
+      for (const row of rows) {
+        if (entriesLeft <= 0) return reschedule();
+        entriesLeft -= 1 + row.items.length;
+        await ctx.db.delete(row._id);
+      }
+      if (rows.length === BATCH_SIZE) return reschedule();
       if (paper.storageId) {
         try {
           await ctx.storage.delete(paper.storageId);
@@ -80,6 +91,8 @@ export const deleteExtractionInternal = internalMutation({
       ["extractionResults", "by_job", "jobId"],
       ["extractionQuestions", "by_job", "jobId"],
       ["extractionJobSources", "by_job_and_position", "jobId"],
+      ["extractionAnswerTallies", "by_group", "jobId"],
+      ["extractionAnswerTotals", "by_job_question", "jobId"],
     ];
     for (const [table, indexName, field] of byJobDrains) {
       const deleted = await batchDeleteByIndex(
@@ -92,10 +105,6 @@ export const deleteExtractionInternal = internalMutation({
       );
       if (deleted > 0) return reschedule();
     }
-
-    // Step 9: delete the job itself.
-    const job = await ctx.db.get("extractionJobs", jobId);
-    if (job) await ctx.db.delete(jobId);
 
     return null;
   },

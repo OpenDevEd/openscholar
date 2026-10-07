@@ -1,7 +1,7 @@
 // An extraction job past the old 1,000-paper cap (#634): its filtered pages fill, its counts
 // are exact, and its summary counts every paper, read from the job's counts and tallies.
 import { convexTest } from "convex-test";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
@@ -84,4 +84,25 @@ it("the backfill counts and tallies a job from before, once however often it run
   expect(await t.action(internal.migrations.extractionFacets.verify, {})).toBe(0);
   const summary = await t.query(internal.extraction.queries.summarizeJobResultsForAssistant, { userId, jobId, questionKey: "country" } as never);
   expect([...summary.answers].sort((a, b) => a.answer.localeCompare(b.answer))).toEqual([...COUNTRIES].sort().map((answer) => ({ answer, papers: PAPERS / 3 })));
+}, 300_000);
+
+it("deleting a job takes its tallies with it, and its rows queue no tally changes", async () => {
+  const t = convexTest(schema);
+  const { userId, jobId } = await seedJob(t);
+  expect(await t.run((ctx) => ctx.db.query("extractionAnswerTallies").take(1))).toHaveLength(1);
+  vi.useFakeTimers();
+  try {
+    await t.mutation(internal.extraction.mutations.internal.admin.deleteExtractionInternal, { jobId });
+    await t.finishAllScheduledFunctions(vi.runAllTimers, 1_000);
+  } finally {
+    vi.useRealTimers();
+  }
+  const left = await t.run(async (ctx) => ({
+    papers: await ctx.db.query("extractionPapers").take(1),
+    tallies: await ctx.db.query("extractionAnswerTallies").take(1),
+    totals: await ctx.db.query("extractionAnswerTotals").take(1),
+    changes: await ctx.db.query("extractionTallyChanges").take(1),
+  }));
+  expect(left).toEqual({ papers: [], tallies: [], totals: [], changes: [] });
+  expect(userId).toBeDefined();
 }, 300_000);
