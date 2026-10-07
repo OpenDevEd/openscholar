@@ -302,18 +302,22 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
           </div>
         </>
       ) : (
-        <Spending credits={step.credits} sent={sent} onAllow={() => say(true)} onAlways={() => say(true, true)} onDecline={() => say(false)} onAddCredits={() => addCredits({ kind, title: heading, credits: step.credits! })} />
+        <Spending credits={step.credits} typical={TYPICAL_COST.has(step.action)} sent={sent} onAllow={() => say(true)} onAlways={() => say(true, true)} onDecline={() => say(false)} onAddCredits={() => addCredits({ kind, title: heading, credits: step.credits! })} />
       )}
     </motion.div>
   );
 }
 
+/** Actions whose cost is known only once they run, asked about with what one typically costs: a paper's PDF, read whole, is as long as it is. */
+const TYPICAL_COST = new Set(["research/papers:readPdf"]);
+
 /**
  * The part of an approval card for a call that spends credits: the most it holds against the
- * person's balance, then Allow once or Always allow in this chat. When the balance can't
- * cover it, the buttons turn into a top-up, and turn back once the credits land.
+ * person's balance, or for one whose cost can't be bounded, what it typically costs (`typical`),
+ * then Allow once or Always allow in this chat. When the balance can't cover it, the buttons
+ * turn into a top-up, and turn back once the credits land.
  */
-function Spending({ credits, sent, onAllow, onAlways, onDecline, onAddCredits }: { credits: number; sent: boolean; onAllow: () => void; onAlways: () => void; onDecline: () => void; onAddCredits: () => void }) {
+function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddCredits }: { credits: number; typical: boolean; sent: boolean; onAllow: () => void; onAlways: () => void; onDecline: () => void; onAddCredits: () => void }) {
   const t = useTranslations("assistant.asks");
   const account = useQuery(api.billing.accounts.mine, {});
   // Until the balance is read, nothing is said about it, and the row keeps its room.
@@ -327,7 +331,7 @@ function Spending({ credits, sent, onAllow, onAlways, onDecline, onAddCredits }:
       <div className="space-y-2 px-4 pb-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Coins className="size-3.5 text-primary" />
-          <span className="font-medium text-foreground">{t("upTo", { credits })}</span>
+          <span className="font-medium text-foreground">{t(typical ? "about" : "upTo", { credits })}</span>
           <span className={cn("ml-auto flex items-center gap-1.5 transition-opacity duration-200", !known && "opacity-0")} aria-hidden={!known}>
             <AnimatedNumber value={balance} />
             <ArrowRight className="size-3" />

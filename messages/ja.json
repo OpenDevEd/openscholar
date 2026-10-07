@@ -3795,6 +3795,12 @@
         "did": "ファイルを読みました",
         "where": "添付ファイル",
         "ask": "ファイルを読む"
+      },
+      "readPaperPdf": {
+        "doing": "論文の PDF を読んでいます",
+        "did": "論文の PDF を読みました",
+        "where": "OpenAlex",
+        "ask": "論文の PDF を読む"
       }
     },
     "asks": {
@@ -3808,6 +3814,7 @@
       "failed": "回答を送信できませんでした",
       "unnamed": "名前なし",
       "upTo": "最大 {credits, number} クレジット",
+      "about": "約 {credits, number} クレジット",
       "short": "{credits, number} 不足",
       "left": "残り <n></n>",
       "always": "このチャットでは常に許可",

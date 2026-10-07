@@ -92,6 +92,7 @@ const CORE_PATHS = [
   "extraction/queries:listJobs",
   "research/web:search",
   "assistant/files:read",
+  "research/papers:readPdf",
 ] as const;
 
 /**

@@ -3795,6 +3795,12 @@
         "did": "Read a file",
         "where": "Attachments",
         "ask": "Read a file"
+      },
+      "readPaperPdf": {
+        "doing": "Reading a paper’s PDF",
+        "did": "Read a paper’s PDF",
+        "where": "OpenAlex",
+        "ask": "Read a paper’s PDF"
       }
     },
     "asks": {
@@ -3808,6 +3814,7 @@
       "failed": "Couldn't send your answer",
       "unnamed": "No name",
       "upTo": "Up to {credits, plural, one {# credit} other {# credits}}",
+      "about": "About {credits, plural, one {# credit} other {# credits}}",
       "short": "{credits, number} short",
       "left": "<n></n> left",
       "always": "Always allow in this chat",

@@ -144,10 +144,15 @@ const paperValidator = v.object({
   doi: v.optional(v.string()),
   /** Whether anyone can read it for free. */
   openAccess: v.optional(v.boolean()),
+  /** OpenAlex knows of an open-access PDF of it, which research/papers:readPdf reads. */
+  pdf: v.optional(v.literal(true)),
   citations: v.optional(v.number()),
   /** The start of its abstract. research/papers:get reads all of it. */
   abstract: v.optional(v.string()),
 });
+
+/** A paper's PDF as a read gives it to the model: by its address, which the model's provider fetches (./papers.ts `readPdf`). */
+export const paperPdfValidator = v.object({ id: v.string(), title: v.string(), paperPdf: v.string() });
 
 /** Authors of one paper its record lists, institutions named for each, and its funders. */
 export const AUTHORS_LISTED = 20;
@@ -168,6 +173,8 @@ export const paperRecordValidator = v.object({
   openAccess: v.optional(v.boolean()),
   /** Where it can be read for free, when it can. */
   link: v.optional(v.string()),
+  /** OpenAlex knows of an open-access PDF of it, which research/papers:readPdf reads. */
+  pdf: v.optional(v.literal(true)),
   citations: v.optional(v.number()),
   /** Who funded it, as OpenAlex records it, each with the ID the `funders` filter takes. */
   funders: capped(v.optional(v.array(v.object({ name: v.string(), id: v.string() }))), FUNDERS_LISTED),

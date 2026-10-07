@@ -5,7 +5,7 @@
  */
 import { answersOfAction, changeAction, countSearchesAction, getSearchAction, listedSearchesAction, ratingsAction, ratingsOfAction, revisionsAction, searchHistoryAction, searchHistoryEntryAction, countShortcutsAction, listedShortcutsAction, shortcutsOfAction } from "../research/records";
 import { createAction as searchCreateAction, deleteAction as searchDeleteAction, removeAction as searchRemoveAction, restoreAction as searchRestoreAction, resultsAction as searchResultsAction, updateAction as searchUpdateAction } from "../research/searches";
-import { countAction as paperCountAction, getAction as paperGetAction, searchAction as paperSearchAction } from "../research/papers";
+import { countAction as paperCountAction, getAction as paperGetAction, readPdfAction as paperPdfAction, searchAction as paperSearchAction } from "../research/papers";
 import { findAction as lookupFindAction } from "../research/lookup";
 import { setLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAction, saveToLibraryAction, setPaperInCollectionAction } from "../library/mutations";
 import { collectAction as libraryCollectAction, saveAction as librarySaveAction } from "../library/papers";
@@ -47,6 +47,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   mentionFindAction,
   webSearchAction,
   fileReadAction,
+  paperPdfAction,
   bulkUndoAction,
   chatAccessAction,
   chatCandidatesAction,

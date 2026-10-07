@@ -33,6 +33,10 @@ export interface SafeFetchPdfOptions {
   headers?: Record<string, string>;
   /** Propagated to the initial request and each redirect hop. */
   referer?: string;
+  /** Takes http as well as https, for an address only checked, never read whole: some open-access PDFs are served over http. */
+  allowHttp?: boolean;
+  /** Reads only the first this many bytes, or fewer at the end of the body, and stops: enough to tell what a response is. */
+  firstBytes?: number;
 }
 
 export interface SafeFetchPdfResult {
@@ -87,7 +91,7 @@ function isPrivateIPv6(ip: string): boolean {
   return false;
 }
 
-export function validatePdfUrl(raw: string): URL {
+export function validatePdfUrl(raw: string, allowHttp = false): URL {
   if (typeof raw !== "string" || raw.length === 0) {
     throw new UnsafeUrlError("Empty URL");
   }
@@ -100,8 +104,8 @@ export function validatePdfUrl(raw: string): URL {
   } catch {
     throw new UnsafeUrlError("Invalid URL");
   }
-  if (parsed.protocol !== "https:") {
-    throw new UnsafeUrlError("Only https URLs are permitted");
+  if (parsed.protocol !== "https:" && !(allowHttp && parsed.protocol === "http:")) {
+    throw new UnsafeUrlError(allowHttp ? "Only http and https URLs are permitted" : "Only https URLs are permitted");
   }
   if (parsed.username !== "" || parsed.password !== "") {
     throw new UnsafeUrlError("URL credentials are not permitted");
@@ -168,6 +172,23 @@ async function readCappedBody(
   });
 }
 
+/** The first `count` bytes of a body, however its chunks split them, or all of a shorter one. */
+async function readFirstBytes(response: Response, count: number): Promise<Blob> {
+  const type = response.headers.get("content-type") ?? undefined;
+  if (!response.body) return new Blob([], { type });
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (total < count) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value.subarray(0, count - total));
+    total += Math.min(value.byteLength, count - total);
+  }
+  await reader.cancel().catch(() => {});
+  return new Blob(chunks as BlobPart[], { type });
+}
+
 /**
  * Fetch a PDF (or any document leading to one) from an untrusted URL with
  * SSRF protection, manual redirect validation, and a response-body size cap.
@@ -183,7 +204,7 @@ export async function safeFetchPdf(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  let currentUrl = validatePdfUrl(rawUrl).toString();
+  let currentUrl = validatePdfUrl(rawUrl, options.allowHttp).toString();
   const baseHeaders: Record<string, string> = { ...(options.headers ?? {}) };
   if (options.referer) baseHeaders["Referer"] = options.referer;
 
@@ -209,14 +230,14 @@ export async function safeFetchPdf(
         const location = response.headers.get("location");
         if (!location) throw new UnsafeUrlError("Redirect without Location");
         const resolved = new URL(location, currentUrl).toString();
-        currentUrl = validatePdfUrl(resolved).toString();
+        currentUrl = validatePdfUrl(resolved, options.allowHttp).toString();
         continue;
       }
 
       if (!response.ok) {
         return { response, body: new Blob(), finalUrl: currentUrl };
       }
-      const body = await readCappedBody(response, maxBytes);
+      const body = options.firstBytes === undefined ? await readCappedBody(response, maxBytes) : await readFirstBytes(response, options.firstBytes);
       return { response, body, finalUrl: currentUrl };
     }
     throw new UnsafeUrlError("Too many redirects");

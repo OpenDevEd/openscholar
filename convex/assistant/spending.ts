@@ -67,7 +67,7 @@ export async function allowanceOf(ctx: Reader, threadId: Id<"assistantThreads">,
  * The actions a person allows on their own in a chat (#648), each by its own switch, apart from
  * jobs: "Always allow" on a web search allows searches, not screenings of the same price.
  */
-export const TOOL_OF: Partial<Record<string, Tool>> = { "research/web:search": "web", "assistant/files:read": "files" };
+export const TOOL_OF: Partial<Record<string, Tool>> = { "research/web:search": "web", "assistant/files:read": "files", "research/papers:readPdf": "files" };
 type Tool = "web" | "files";
 
 /** Whether the person lets the assistant use `tool` in this chat without asking. */

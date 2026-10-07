@@ -355,14 +355,21 @@ const fileIdOf = (part: FilePart) => (part.providerOptions?.openscholar as { fil
  * so the provider never fetches our addresses. One that expired is replaced by a line
  * that says so. The files sent are noted as used, so they don't expire while a chat that
  * reads them is in use.
+ *
+ * A paper's PDF (research/papers:readPdf) goes by its own address, which the provider
+ * fetches, but only in the reply that read it: from `fresh` on, the reply's own messages.
+ * Before that it's a line saying it was read: an address that stops answering fails every
+ * request it's in, so it can fail one reply at most, and a long paper isn't sent again with
+ * every later message.
  */
-export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "runMutation">, messages: ModelMessage[], modelId: Id<"models"> | null): Promise<ModelMessage[]> {
+export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "runMutation">, messages: ModelMessage[], modelId: Id<"models"> | null, fresh?: number): Promise<ModelMessage[]> {
   const fileIds = messages.flatMap((message) => {
     if (message.role === "user" && typeof message.content !== "string") return message.content.flatMap((part) => (part.type === "file" && fileIdOf(part) ? [fileIdOf(part)!] : []));
     if (message.role === "tool") return message.content.flatMap((part) => (part.type === "tool-result" && pagesOf(part.output) ? [pagesOf(part.output)!] : []));
     return [];
   });
-  if (!fileIds.length) return messages;
+  const papers = messages.some((message) => message.role === "tool" && message.content.some((part) => part.type === "tool-result" && paperOf(part.output)));
+  if (!fileIds.length && !papers) return messages;
   const read = await ctx.runQuery(internal.assistant.files.stored, { fileIds, modelId });
   const stored = new Map(read.files.map((file) => [file.fileId, file.storageId]));
   const bytesOf = async (fileId: Id<"assistantFiles">) => {
@@ -373,10 +380,17 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
   };
   const used: Id<"assistantFiles">[] = [];
   const out = await Promise.all(
-    messages.map(async (message): Promise<ModelMessage> => {
+    messages.map(async (message, at): Promise<ModelMessage> => {
       if (message.role === "tool") {
         const content = await Promise.all(
           message.content.map(async (part): Promise<(typeof message.content)[number]> => {
+            const paper = part.type === "tool-result" ? paperOf(part.output) : null;
+            if (part.type === "tool-result" && paper) {
+              const said = JSON.stringify((part.output as { value: unknown }).value);
+              if (!read.pdfs) return { ...part, output: { type: "text", value: `${said}\n[This PDF can't be shown to the model this chat now runs on, which doesn't read PDFs.]` } };
+              if (fresh === undefined || at < fresh) return { ...part, output: { type: "text", value: `${said}\n[You read this paper's PDF in an earlier reply, and it isn't in view now. Read it again with research_papers_readPdf if you need it.]` } };
+              return { ...part, output: { type: "content", value: [{ type: "text", text: said }, { type: "file", mediaType: "application/pdf", data: { type: "url", url: new URL(paper) }, filename: "paper.pdf" }] } };
+            }
             const fileId = part.type === "tool-result" ? pagesOf(part.output) : null;
             if (part.type !== "tool-result" || !fileId) return part;
             const said = JSON.stringify((part.output as { value: unknown }).value);
@@ -405,6 +419,12 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
   );
   if (used.length) await ctx.runMutation(internal.assistant.files.touch, { fileIds: used });
   return out;
+}
+
+/** A paper's PDF address, from the result of a read of it (research/papers:readPdf). */
+function paperOf(output: unknown): string | null {
+  const value = output && typeof output === "object" && "type" in output && output.type === "json" && "value" in output ? (output.value as { paperPdf?: unknown } | null) : null;
+  return value && typeof value === "object" && typeof value.paperPdf === "string" && /^https?:\/\//.test(value.paperPdf) ? value.paperPdf : null;
 }
 
 /** The pages a read of a PDF cut (`readPdf`), by the file ID its result names. */
@@ -517,6 +537,12 @@ export const addPart = internalMutation({
   },
 });
 
+/** Refuses a read of a PDF, attached or a paper's, before the person is asked about it, when the chat's model can't read one. */
+export async function requirePdfModel(ctx: QueryCtx, modelId: Id<"models"> | null) {
+  const model = modelId ? await ctx.db.get("models", modelId) : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
+  if (!readsPdfs(model?.inputModalities)) throw createError("VALIDATION_ERROR", "The model this chat runs on can't read PDFs. Tell the person to pick one that can.");
+}
+
 /**
  * What a read of an attached file takes, and what it comes to on the chat's model, or why it
  * can't: the model is told before the person is asked. A PDF is read by pages, at most 20 at a
@@ -535,8 +561,7 @@ async function readable(ctx: QueryCtx, userId: Id<"users">, { file: fileId, rang
     const of = file.pages ?? 0;
     const pages = pagesIn(range, of);
     if (!pages) throw createError("VALIDATION_ERROR", `"${file.name}" has ${of} pages. Ask for a range within them, such as "1-${Math.min(of, PDF_PAGES_PER_READ)}", at most ${PDF_PAGES_PER_READ} pages at a time.`);
-    const model = modelId ? await ctx.db.get("models", modelId) : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
-    if (!readsPdfs(model?.inputModalities)) throw createError("VALIDATION_ERROR", "The model this chat runs on can't read PDFs. Tell the person to pick one that can.");
+    await requirePdfModel(ctx, modelId);
     return { file, of, ...pages, credits: convertUsdToCredits({ usd: ((pages.last - pages.first + 1) * PDF_PAGE_TOKENS * price) / 1_000_000 }) };
   }
   const of = file.lines ?? 0;
