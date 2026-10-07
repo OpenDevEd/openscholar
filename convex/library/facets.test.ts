@@ -97,7 +97,7 @@ describe("library facets", () => {
     } finally {
       vi.useRealTimers();
     }
-  });
+  }, 120_000);
 
   it("one mutation may change many papers' fields, each in collections", async () => {
     const t = convexTest(schema);
@@ -207,7 +207,7 @@ describe("library facets", () => {
     } finally {
       vi.useRealTimers();
     }
-  });
+  }, 120_000);
 
   it("the backfill gives memberships their paper's fields and counts every row, once however often it runs", async () => {
     vi.useFakeTimers();

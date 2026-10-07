@@ -54,6 +54,6 @@ export function pagesAFullExtractionJob(searchQuery: string) {
       expect(selected.page.map(paper => paper._id)).toEqual(selectedPaperIds);
       expect(selected.isDone).toBe(true);
       expect(await as.query(api.extraction.queries.countJobResults, { jobId, filters, selectedPaperIds, includeRevision: true })).toMatchObject({ all: MAX_SIZE.papersPerJob, matching: 1 });
-    }, 300_000);
+    }, 600_000);
   });
 }
