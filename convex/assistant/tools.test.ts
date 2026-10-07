@@ -537,9 +537,11 @@ describe("the assistant's tools", () => {
     const { asAda, say, sayUntilAsked, settled, steps } = await chatOf(t);
     vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
     const autumn = fakeAutumnFetch();
-    const total = 2_400;
+    const total = 1_300;
     let pages = 0;
-    // OpenAlex answers a search of 2,400 papers by cursor; everything else is the billing service.
+    // Real OpenAlex IDs: ten digits, so 1,300 of them don't fit on a step.
+    const id = (n: number) => `W${3_000_000_000 + n}`;
+    // OpenAlex answers a search of 1,300 papers by cursor; everything else is the billing service.
     fetchMock.mockImplementation(async (input: string | URL, init?: RequestInit) => {
       if (!String(input).includes("openalex.org")) return autumn(input as never, init as never);
       const url = new URL(String(input));
@@ -548,7 +550,7 @@ describe("the assistant's tools", () => {
       const cursor = url.searchParams.get("cursor");
       const page = cursor === null ? Number(url.searchParams.get("page")) : cursor === "*" ? 1 : Number(cursor);
       const from = (page - 1) * size;
-      const results = Array.from({ length: Math.max(0, Math.min(size, total - from)) }, (_, i) => ({ id: `https://openalex.org/W${from + i + 1}`, display_name: `Paper ${from + i + 1}`, publication_year: 2021 }));
+      const results = Array.from({ length: Math.max(0, Math.min(size, total - from)) }, (_, i) => ({ id: `https://openalex.org/${id(from + i + 1)}`, display_name: `Paper ${from + i + 1}`, publication_year: 2021 }));
       return new Response(JSON.stringify({ meta: { count: total, next_cursor: from + size < total ? String(page + 1) : null }, results }), { status: 200 });
     });
     const limit = (bulk_papers: number) => t.run(async (ctx) => {
@@ -566,8 +568,8 @@ describe("the assistant's tools", () => {
     expect(pages).toBeLessThanOrEqual(6);
     expect(await steps()).toEqual([]);
 
-    // With room for them all, the 2,400 are asked about once, kept off the step, and saved exactly.
-    await limit(3_000);
+    // With room for them all, the 1,300 are asked about once, kept off the step, and saved exactly.
+    await limit(2_000);
     mockDoStream.mockImplementationOnce(calling({ id: "big", name: "change_papers", input: { papers: { kind: "query", query: "tutoring" }, do: "save" } }));
     await sayUntilAsked("Save everything about tutoring");
     const [asked] = await steps();
