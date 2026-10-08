@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useAction } from "convex/react";
-import { CalendarDays, Check, ChevronDown, Clock3, Repeat2, Globe2, Mail, Send, TimerReset } from "@/components/icons";
+import { BookOpen, CalendarDays, Check, ChevronDown, Clock3, Repeat2, Globe2, Mail, Send, TimerReset } from "@/components/icons";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -25,7 +25,7 @@ export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps
     try {
       const result = await send({libraryId});
       if (result.status === "queued") toast.success(`Digest queued for ${result.publicationCount} ${result.publicationCount === 1 ? "publication" : "publications"}.`);
-      else if (result.status === "empty") toast.info("No new publications. Nothing was sent.");
+      else if (result.status === "empty") toast.info("No publications in the period. Nothing was sent.");
       else toast.error("Publish the library configuration with reader subscriptions enabled first.");
     } catch {
       toast.error("The digest request could not be confirmed. Try again; existing editions will not be sent twice.");
@@ -41,6 +41,12 @@ export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps
   return <FieldGroup title={<span className="inline-flex items-center gap-2"><Mail className="size-4 text-primary" />Email updates</span>}>
     <ToggleRow label="Reader subscriptions" hint="Readers can choose new publications, library digests, or both. Empty editions are skipped." checked={notifications.enabled} onChange={enabled => patch(draft => {draft.notifications.enabled = enabled;return draft;})} />
     {notifications.enabled && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <Field className="sm:col-span-2 xl:col-span-4" label={<span className="inline-flex items-center gap-2"><BookOpen className="size-4 text-muted-foreground" />Digest covers</span>} hint={notifications.digestCovers === "published" ? "A publication without a full date belongs to no period." : "An older publication counts when it is new to the library."}>
+        {id => <Select value={notifications.digestCovers} onValueChange={value => patch(draft => {draft.notifications.digestCovers = value === "added" ? "added" : "published";return draft;})}>
+          <SelectTrigger id={id} className="w-full bg-background"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="published">Publications published in the period</SelectItem><SelectItem value="added">Publications added to the library in the period</SelectItem></SelectContent>
+        </Select>}
+      </Field>
       <Field label={<span className="inline-flex items-center gap-2"><Repeat2 className="size-4 text-muted-foreground" />Frequency</span>}>
         {id => <Select value={schedule.frequency} onValueChange={frequency => setSchedule(frequency === "monthly"
           ? {frequency, dayOfMonth: 1, time: schedule.time, timezone: schedule.timezone}
@@ -64,7 +70,7 @@ export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps
     {canSend && notifications.enabled && <PanelRow
       className="flex-col items-stretch sm:flex-row sm:items-center"
       title={<span className="inline-flex items-center gap-2"><TimerReset className="size-4 text-muted-foreground" />Manual digest</span>}
-      hint="Includes new publications since the last digest. The next scheduled edition starts from this one."
+      hint="Covers the period since the last digest. The next scheduled edition starts from this one."
       action={<Button type="button" variant="outline" className="w-full sm:w-auto" onClick={sendNow} disabled={sending}>
         {sending ? <Spinner className="size-4" /> : <Send className="size-4" />}
         {sending ? "Queuing digest" : "Send digest now"}

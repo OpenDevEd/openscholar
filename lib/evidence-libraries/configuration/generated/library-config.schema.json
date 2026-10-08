@@ -2295,6 +2295,14 @@
 					"default": false,
 					"type": "boolean"
 				},
+				"digestCovers": {
+					"default": "published",
+					"type": "string",
+					"enum": [
+						"published",
+						"added"
+					]
+				},
 				"schedule": {
 					"default": {
 						"frequency": "weekly",

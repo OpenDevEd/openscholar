@@ -135,6 +135,14 @@
 			},
 			{
 				"allowCustom": false,
+				"path": "notifications.digestCovers",
+				"values": [
+					"published",
+					"added"
+				]
+			},
+			{
+				"allowCustom": false,
 				"path": "notifications.schedule.frequency",
 				"values": [
 					"weekly",

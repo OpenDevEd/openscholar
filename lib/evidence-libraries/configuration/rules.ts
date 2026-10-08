@@ -522,7 +522,12 @@ export type ConfigurationDraft = {
   footer: FooterDraft;
   contact: ContactDraft;
   email: EmailDraft;
-  notifications: { enabled: boolean; schedule: DigestScheduleDraft };
+  notifications: {
+    enabled: boolean;
+    /** What a digest covers: publications dated in its period, or added in it. */
+    digestCovers: "published" | "added";
+    schedule: DigestScheduleDraft;
+  };
   legal: LegalDraft;
   collections: CollectionDraft[];
   search: SearchDraft;
@@ -813,6 +818,7 @@ function readNotifications(
   };
   return {
     enabled: flag(value.enabled, false),
+    digestCovers: value.digestCovers === "added" ? "added" : "published",
     schedule:
       schedule.frequency === "monthly"
         ? {
