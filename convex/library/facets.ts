@@ -61,27 +61,31 @@ export async function copyChangedFacets(ctx: MutationCtx, change: Change<DataMod
 export const COUNTED_FIELDS = ["rating", "publicationYear", "savedAt"] as const;
 export type CountedField = (typeof COUNTED_FIELDS)[number];
 
-/** Counts each counted field of every paper under `${library or collection}:${field}`, keyed by its value; an unset one is null. */
+/**
+ * Counts each counted field of every paper under `${library or collection}:${field}`, keyed by its value; an unset one is null.
+ * A library is counted under its person and, once its papers have one, its workspace, until its reads go by workspace (#650).
+ */
 export const facetCounts = new DirectAggregate<{ Namespace: string; Key: number | null; Id: string }>(components.libraryFacetCounts);
-const namespaceOf = (scope: Id<"users"> | Id<"collections">, field: CountedField) => `${scope}:${field}`;
+type Scope = Id<"users"> | Id<"workspaces"> | Id<"collections">;
+const namespaceOf = (scope: Scope, field: CountedField) => `${scope}:${field}`;
 
-type Counted = { scope: Id<"users"> | Id<"collections">; savedAt?: number; rating?: number; publicationYear?: number };
-const entries = (row: Counted, id: string) => COUNTED_FIELDS.map((field) => ({ namespace: namespaceOf(row.scope, field), key: row[field] ?? null, id }));
+type Counted = { scopes: Scope[]; savedAt?: number; rating?: number; publicationYear?: number };
+const entries = (row: Counted, id: string) => row.scopes.flatMap((scope) => COUNTED_FIELDS.map((field) => ({ namespace: namespaceOf(scope, field), key: row[field] ?? null, id })));
 
 /** Keeps a row's counted fields counted. Inserting twice or deleting what isn't there does nothing, so a backfill just counts every row again. */
 async function recount(ctx: QueueingCtx, id: string, before: Counted | null, after: Counted | null) {
   const was = before ? entries(before, id) : [];
   const now = after ? entries(after, id) : [];
-  const same = (a: (typeof was)[number], b: (typeof was)[number] | undefined) => b?.namespace === a.namespace && b.key === a.key;
+  const among = (list: typeof was, entry: (typeof was)[number]) => list.some((other) => other.namespace === entry.namespace && other.key === entry.key);
   const operations = [
-    ...was.filter((entry, index) => !same(entry, now[index])).map((entry) => ({ type: "deleteIfExists" as const, ...entry })),
-    ...now.filter((entry, index) => !same(entry, was[index])).map((entry) => ({ type: "insertIfDoesNotExist" as const, ...entry })),
+    ...was.filter((entry) => !among(now, entry)).map((entry) => ({ type: "deleteIfExists" as const, ...entry })),
+    ...now.filter((entry) => !among(was, entry)).map((entry) => ({ type: "insertIfDoesNotExist" as const, ...entry })),
   ];
   await queueCounts(ctx, facetCounts, operations);
 }
 
-export const countedItem = (item: Doc<"libraryItems">): Counted => ({ scope: item.userId, ...item });
-export const countedMembership = (membership: Doc<"libraryItemCollections">): Counted => ({ scope: membership.collectionId, ...membership });
+export const countedItem = (item: Doc<"libraryItems">): Counted => ({ ...item, scopes: item.workspaceId ? [item.userId, item.workspaceId] : [item.userId] });
+export const countedMembership = (membership: Doc<"libraryItemCollections">): Counted => ({ ...membership, scopes: [membership.collectionId] });
 
 export const countItemChange = (ctx: MutationCtx, change: Change<DataModel, "libraryItems">) =>
   recount(ctx, change.id, change.oldDoc ? countedItem(change.oldDoc) : null, change.newDoc ? countedItem(change.newDoc) : null);
@@ -110,7 +114,7 @@ export type Range = { lower?: number; upper?: number };
  * How many papers of a library or collection have `field` in `range`, or unset when `range`
  * is null. A range never holds an unset value: null sorts before every number.
  */
-export function countInRange(ctx: QueryCtx, scope: Id<"users"> | Id<"collections">, field: CountedField, range: Range | null) {
+export function countInRange(ctx: QueryCtx, scope: Scope, field: CountedField, range: Range | null) {
   const namespace = namespaceOf(scope, field);
   if (range === null) return facetCounts.count(ctx, { namespace, bounds: { eq: null }, stale: true });
   const lower = range.lower === undefined ? { key: null, inclusive: false } : { key: range.lower, inclusive: true };

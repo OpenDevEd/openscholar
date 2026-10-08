@@ -40,7 +40,8 @@ import { personalWorkspaceOf } from "../workspaces/actor";
 async function destination(ctx: MutationCtx, userId: Id<"users">, saveTo: Infer<typeof saveToValidator> | undefined) {
   if (!saveTo) return {};
   if (saveTo.kind === "none") return { unsaved: true as const };
-  if (saveTo.kind === "new") return { targetCollectionId: await newCollection(ctx, userId, saveTo.name) };
+  // In the person's own workspace until screening jobs belong to one (#650).
+  if (saveTo.kind === "new") return { targetCollectionId: await newCollection(ctx, { userId, workspaceId: await personalWorkspaceOf(ctx, userId) }, saveTo.name) };
   if ((await ctx.db.get("collections", saveTo.collectionId))?.userId !== userId) throw createError("NOT_FOUND", "Collection not found");
   return { targetCollectionId: saveTo.collectionId };
 }
@@ -197,7 +198,7 @@ export const fillScreeningJob = internalMutation({
     const now = Date.now();
     const taken = { read: place.read + read, papers: place.papers + (affordable ? papers.length : 0) };
     const over = ended || !affordable;
-    const made = affordable && papers.length && reading.newCollection ? { targetCollectionId: await newCollection(ctx, reading.userId, reading.newCollection), newCollection: undefined } : {};
+    const made = affordable && papers.length && reading.newCollection ? { targetCollectionId: await newCollection(ctx, { userId: reading.userId, workspaceId: await personalWorkspaceOf(ctx, reading.userId) }, reading.newCollection), newCollection: undefined } : {};
     await ctx.db.patch("screeningJobs", jobId, {
       readPlace: taken,
       resume,

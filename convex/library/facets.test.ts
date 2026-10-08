@@ -9,6 +9,8 @@ import { runUntriggered } from "../../tests/convex-test-with-limits";
 import { restoreLibraryItemAction } from "./mutations";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { ownActor } from "../workspaces/actor.test-support";
+import { personalWorkspaceOf } from "../workspaces/actor";
+import { countInRange } from "./facets";
 
 type Test = ReturnType<typeof convexTest>;
 
@@ -237,6 +239,65 @@ describe("library facets", () => {
       expect(await as.query(api.library.queries.countPapers, { minRating: 5 })).toEqual({ count: 2 });
       expect(await as.query(api.library.queries.countPapers, { collectionId, minRating: 5 })).toEqual({ count: 2 });
       expect((await as.query(api.library.queries.papers, { collectionId, sort: "rating", ascending: true })).papers.map((row) => row.rating)).toEqual([2, 5, 5]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("the library in workspaces (#650)", () => {
+  /** How many of the workspace's papers have each rating from 0 to 5, from the kept counts. */
+  const ratingsIn = (t: Test, workspaceId: Id<"workspaces">) => t.run((ctx) => Promise.all([0, 1, 2, 3, 4, 5].map((rating) => countInRange(ctx, workspaceId, "rating", { lower: rating, upper: rating }))));
+
+  it("keeps each new paper, collection, removal and count in the workspace it was made in, as its maker's, and counts papers there", async () => {
+    const t = convexTest(schema);
+    const userId = await t.run((ctx) => ctx.db.insert("users", { clerkId: "reader", email: "reader@test.local", state: "active", createdAt: 1, updatedAt: 1 }));
+    const own = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
+    const as = t.withIdentity({ subject: "reader" });
+    const { id: kept } = await as.mutation(api.library.mutations.saveToLibrary, paper(1, { rating: 4 }));
+    await as.mutation(api.library.mutations.saveToLibrary, paper(2, { rating: 2 }));
+    const { id: collectionId } = await as.mutation(api.library.collections.createCollection, { name: "Trials" });
+    const removed = await as.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper(2).openalexId });
+    const { id: restored } = await as.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
+    await t.finishAllScheduledFunctions(() => {});
+
+    const mine = { workspaceId: own, createdBy: userId };
+    const rows = await t.run(async (ctx) => ({
+      papers: await Promise.all([kept, restored].map(async (id) => ctx.db.get("libraryItems", id))),
+      collection: await ctx.db.get("collections", collectionId),
+      removal: (await ctx.db.query("libraryRemovals").take(1))[0],
+      libraryCount: (await ctx.db.query("libraryCounts").take(1))[0],
+      collectionCount: (await ctx.db.query("collectionCounts").take(1))[0],
+    }));
+    expect(rows).toMatchObject({ papers: [mine, mine], collection: mine, removal: { workspaceId: own }, libraryCount: { workspaceId: own, count: 2 }, collectionCount: { workspaceId: own, count: 1 } });
+    expect(await ratingsIn(t, own)).toEqual([0, 0, 1, 0, 1, 0]);
+  });
+
+  it("puts library rows from before workspaces in their person's own, counted there, however often the backfill runs", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      const userId = await t.run((ctx) => ctx.db.insert("users", { clerkId: "reader", email: "reader@test.local", state: "active", createdAt: 1, updatedAt: 1 }));
+      const own = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
+      // As they were before workspaces: counted under the person, with no workspace or maker.
+      await t.run(async (ctx) => {
+        for (const [i, rating] of [5, 5, 1].entries()) await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, rating, searchableText: `Paper ${i}`, savedAt: i, updatedAt: i });
+        const item = await ctx.db.insert("libraryItems", { userId, openalexId: "https://openalex.org/W9", title: "Removed", searchableText: "Removed", savedAt: 9, updatedAt: 9 });
+        await ctx.db.insert("libraryRemovals", { userId, itemId: item, item: { openalexId: "https://openalex.org/W9", title: "Removed", searchableText: "Removed", savedAt: 9, updatedAt: 9 }, expiresAt: Date.now() + 60_000 });
+        await ctx.db.delete("libraryItems", item);
+        await ctx.db.insert("collections", { userId, name: "Old", sortName: "old", itemCount: 0, createdAt: 1, updatedAt: 1 });
+        await ctx.db.insert("libraryCounts", { userId, count: 3 });
+        await ctx.db.insert("collectionCounts", { userId, count: 1 });
+      });
+      // Their counts applied, three papers and four other rows have no workspace.
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await t.action(internal.migrations.libraryWorkspaces.verify, {})).toBe(7);
+      for (let runs = 0; runs < 2; runs++) {
+        await t.mutation(internal.migrations.libraryWorkspaces.run, {});
+        await t.finishAllScheduledFunctions(vi.runAllTimers);
+      }
+      expect(await t.action(internal.migrations.libraryWorkspaces.verify, {})).toBe(0);
+      expect(await ratingsIn(t, own)).toEqual([0, 1, 0, 0, 0, 2]);
     } finally {
       vi.useRealTimers();
     }

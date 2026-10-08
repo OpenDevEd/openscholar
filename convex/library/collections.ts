@@ -1,5 +1,6 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import type { Id } from "../_generated/dataModel";
+import type { InWorkspace } from "../workspaces/actor";
 import { searchTerms } from "../lib/searchText";
 import type { QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -41,13 +42,15 @@ export async function collectionAllowed(ctx: QueryCtx, userId: Id<"users">, name
   return { trimmed, counted };
 }
 
-/** Makes an empty collection of `userId`'s named `name`, and counts it. */
-export async function newCollection(ctx: MutationCtx, userId: Id<"users">, name: string) {
+/** Makes an empty collection named `name` in the writer's workspace, and counts it. */
+export async function newCollection(ctx: MutationCtx, { userId, workspaceId }: InWorkspace, name: string) {
   const { trimmed, counted } = await collectionAllowed(ctx, userId, name);
   if (counted) await ctx.db.patch("collectionCounts", counted._id, { count: counted.count + 1 });
-  else await ctx.db.insert("collectionCounts", { userId, count: 1 });
+  else await ctx.db.insert("collectionCounts", { userId, workspaceId, count: 1 });
   return await ctx.db.insert("collections", {
     userId,
+    workspaceId,
+    createdBy: userId,
     name: trimmed,
     sortName: collectionSortName(trimmed),
     itemCount: 0,
@@ -82,8 +85,8 @@ export const createCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  run: async (ctx, { userId }, args) => {
-    const id = await newCollection(ctx, userId, args.name);
+  run: async (ctx, { userId, workspaceId }, args) => {
+    const id = await newCollection(ctx, { userId, workspaceId }, args.name);
     return { id, undo: { path: DELETE, args: { collectionId: id, expect: { name: args.name.trim() } } } };
   },
 });

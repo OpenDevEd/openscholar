@@ -7,7 +7,7 @@ import schema from "../schema";
 import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
 import { ASKS_FIRST, actingAs, assistantMutation, defineUserMutation, reversal, reversedBy, userMutation, type Acting, type Author } from "../lib/userActions";
-import { personalWorkspaceOf } from "../workspaces/actor";
+import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { endStep } from "../assistant/steps";
 import { applyRating } from "../research/records";
 import { undoCommandValidator } from "../../lib/research/records";
@@ -85,12 +85,12 @@ export async function findItem(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, o
  * Runs a write that adds or removes one paper and keeps the person's library count, in its
  * own row so the user row stays unwritten (#383).
  */
-async function countedWrite<T>(ctx: MutationCtx, userId: Id<"users">, change: 1 | -1, write: () => Promise<T>) {
+async function countedWrite<T>(ctx: MutationCtx, { userId, workspaceId }: InWorkspace, change: 1 | -1, write: () => Promise<T>) {
   const row = await libraryCountRow(ctx, userId);
   const result = await write();
   const count = Math.max(0, (row?.count ?? 0) + change);
   if (row) await ctx.db.patch("libraryCounts", row._id, { count });
-  else await ctx.db.insert("libraryCounts", { userId, count });
+  else await ctx.db.insert("libraryCounts", { userId, workspaceId, count });
   return result;
 }
 
@@ -101,11 +101,12 @@ async function countedWrite<T>(ctx: MutationCtx, userId: Id<"users">, change: 1 
  */
 export async function upsertLibraryItem(
   ctx: MutationCtx,
-  userId: Id<"users">,
+  writer: InWorkspace,
   paper: Infer<typeof libraryPaper>,
   rating?: number,
   options: { preserveRating?: boolean } = {},
 ) {
+  const { userId, workspaceId } = writer;
   const existing = await findItem(ctx, userId, paper.openalexId);
   // Project only metadata: system fields, ownership, dates and ratings never enter this merge.
   const before = existing ? Object.fromEntries(Object.keys(libraryPaper.fields).map((key) => [key, existing[key as keyof typeof existing]])) as Infer<typeof libraryPaper> : { title: "" };
@@ -125,9 +126,11 @@ export async function upsertLibraryItem(
     return existing._id;
   }
   const now = Date.now();
-  return await countedWrite(ctx, userId, 1, () =>
+  return await countedWrite(ctx, writer, 1, () =>
     ctx.db.insert("libraryItems", {
       userId,
+      workspaceId,
+      createdBy: userId,
       ...paper,
       ...merged,
       metadataVersion: 2,
@@ -196,12 +199,13 @@ export async function checkSave(ctx: QueryCtx, userId: Id<"users">, { openalexId
   return before;
 }
 
-async function savePaper(ctx: MutationCtx, userId: Id<"users">, given: Infer<typeof libraryPaper>, rating: number | undefined, author: Author): Promise<{ id: Id<"libraryItems">; undo?: Infer<typeof saveUndo> }> {
+async function savePaper(ctx: MutationCtx, writer: InWorkspace, given: Infer<typeof libraryPaper>, rating: number | undefined, author: Author): Promise<{ id: Id<"libraryItems">; undo?: Infer<typeof saveUndo> }> {
+  const { userId } = writer;
   if (rating !== undefined) requireRating(rating);
   const paper = { ...given, openalexId: canonical(given.openalexId) };
   const before = await findItem(ctx, userId, paper.openalexId);
   const onCards = await researchRating(ctx, userId, paper.openalexId);
-  const id = await upsertLibraryItem(ctx, userId, paper, rating);
+  const id = await upsertLibraryItem(ctx, writer, paper, rating);
   if (rating !== undefined) await setResearchRating(ctx, userId, paper.openalexId, rating);
   // What reverses it: a paper it added is removed again, and a rating it changed goes back.
   // A save that changed neither has nothing to undo. Nor has one whose undo would lose the
@@ -231,7 +235,7 @@ async function saveInto(
 ) {
   const { userId, author } = actor;
   const before = await checkSave(ctx, userId, { openalexId: paper.openalexId, rating, collectionId });
-  const saved = await savePaper(ctx, userId, paper, rating, author);
+  const saved = await savePaper(ctx, actor, paper, rating, author);
   const placed = collectionId === undefined ? undefined : await setPaperInCollectionAction.run(ctx, actor, { paper: { openalexId: canonical(paper.openalexId) }, collectionId, inCollection: true });
   // What takes back all of it. A paper that was saved already leaves the collection again, or gets back the rating this changed.
   // A paper this added is removed again, with the place it was given, while that place is still the one it has. One added
@@ -389,7 +393,7 @@ export const removeFromLibraryAction = defineUserMutation({
     const item = await findItem(ctx, userId, args.openalexId);
     return item !== null && (await inFollowedCollection(ctx, item._id));
   },
-  run: async (ctx, { userId, author }, args) => {
+  run: async (ctx, { userId, workspaceId, author }, args) => {
     const item = await findItem(ctx, userId, args.openalexId);
     if (!item) return {};
     if (await stillPlacing(ctx, item._id)) throw createError("CONFLICT", "This paper is still going back into its collections. Try again in a moment.");
@@ -404,12 +408,12 @@ export const removeFromLibraryAction = defineUserMutation({
         throw createError("CONFLICT", "This paper has changed since then, so it was left in the library.");
       }
     }
-    const { _id, _creationTime, userId: _owner, ...kept } = item;
+    const { _id, _creationTime, userId: _owner, workspaceId: _workspace, ...kept } = item;
     const expiresAt = Date.now() + REMOVAL_KEPT_MS;
-    const removalId = await ctx.db.insert("libraryRemovals", { userId, item: kept, itemId: item._id, expiresAt });
+    const removalId = await ctx.db.insert("libraryRemovals", { userId, workspaceId, item: kept, itemId: item._id, expiresAt });
     // Its places in collections: this batch now, the rest in the batches it schedules.
     if (await movePlaces(ctx, removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.movePlacesLater, { removalId });
-    await countedWrite(ctx, userId, -1, () => ctx.db.delete("libraryItems", item._id));
+    await countedWrite(ctx, { userId, workspaceId }, -1, () => ctx.db.delete("libraryItems", item._id));
     await setResearchRating(ctx, userId, item.openalexId, null);
     await ctx.scheduler.runAt(expiresAt, internal.library.mutations.forgetRemoval, { removalId });
     return { undo: { path: RESTORE, args: { removalId } } };
@@ -497,7 +501,7 @@ export const restoreLibraryItemAction = defineUserMutation({
     const removal = await ctx.db.get("libraryRemovals", removalId);
     return removal?.moving === true && (await inFollowedCollection(ctx, removal.itemId));
   },
-  run: async (ctx, { userId, author }, { removalId }) => {
+  run: async (ctx, { userId, workspaceId, author }, { removalId }) => {
     const removal = await ctx.db.get("libraryRemovals", removalId);
     // Its day is over even if the cleanup hasn't reached it yet.
     if (!removal || removal.userId !== userId || removal.restoredAs !== undefined || removal.expiresAt <= Date.now()) throw createError("NOT_FOUND", "This removal can no longer be undone.");
@@ -512,8 +516,9 @@ export const restoreLibraryItemAction = defineUserMutation({
         await setResearchRating(ctx, userId, item.openalexId, item.rating);
       }
     } else {
-      libraryItemId = await countedWrite(ctx, userId, 1, () =>
-        ctx.db.insert("libraryItems", { ...item, userId, updatedAt: Date.now() }),
+      // Back in the workspace Undo runs in, made by whoever first saved it.
+      libraryItemId = await countedWrite(ctx, { userId, workspaceId }, 1, () =>
+        ctx.db.insert("libraryItems", { ...item, userId, workspaceId, createdBy: item.createdBy ?? userId, updatedAt: Date.now() }),
       );
       if (item.rating !== undefined) await setResearchRating(ctx, userId, item.openalexId, item.rating);
     }
@@ -541,10 +546,10 @@ export const setPaperInCollectionAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
-  run: async (ctx, { userId }, { paper, collectionId, inCollection, assignedAt }) => {
+  run: async (ctx, { userId, workspaceId }, { paper, collectionId, inCollection, assignedAt }) => {
     const collection = await ownedCollection(ctx, userId, collectionId);
     const whole = "title" in paper;
-    const item = whole && inCollection ? await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, userId, paper)) : await findItem(ctx, userId, paper.openalexId);
+    const item = whole && inCollection ? await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, { userId, workspaceId }, paper)) : await findItem(ctx, userId, paper.openalexId);
     if (!whole && paper.savedAt !== undefined && item && item.savedAt !== paper.savedAt) throw createError("CONFLICT", "This paper was removed and saved again since then, so the collection was left as it is.");
     // Only a change has an undo, so undoing never touches a paper that was already in, or already
     // out. It names the save and the place in the collection it's for.
