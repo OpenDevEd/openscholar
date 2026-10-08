@@ -1181,7 +1181,7 @@ export default defineSchema({
   // How many papers a person has saved. It has its own row, not a field on `users`, because
   // every mutation of the person's reads their user row: a bulk save rewriting it would make
   // their other edits conflict (#383).
-  libraryCounts: defineTable({ userId: v.id("users"), count: v.number() }).index("by_user", ["userId"]),
+  libraryCounts: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), count: v.number() }).index("by_user", ["userId"]).index("by_workspace", ["workspaceId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEMS - User's saved paper library
@@ -1194,9 +1194,16 @@ export default defineSchema({
     .index("by_user_year", ["userId", "publicationYear"])
     .index("by_user_citedByCount", ["userId", "citedByCount"])
     .index("by_user_title", ["userId", "title"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_workspace_openalexId", ["workspaceId", "openalexId"])
+    .index("by_workspace_rating", ["workspaceId", "rating"])
+    .index("by_workspace_savedAt", ["workspaceId", "savedAt"])
+    .index("by_workspace_year", ["workspaceId", "publicationYear"])
+    .index("by_workspace_citedByCount", ["workspaceId", "citedByCount"])
+    .index("by_workspace_title", ["workspaceId", "title"])
     .searchIndex("search_library", {
       searchField: "searchableText",
-      filterFields: ["userId", "rating"],
+      filterFields: ["userId", "rating", "workspaceId"],
     }),
 
   paperMetadataChanges: defineTable({
@@ -1212,6 +1219,7 @@ export default defineSchema({
   // put it back by this record's ID. The collections it was in are its removedPlaces.
   libraryRemovals: defineTable({
     userId: v.id("users"),
+    workspaceId: v.optional(v.id("workspaces")),
     item: removedItemValidator,
     // The removed paper's ID, which its places not moved yet still name.
     itemId: v.id("libraryItems"),
@@ -1236,6 +1244,8 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   collections: defineTable({
     userId: v.id("users"),
+    workspaceId: v.optional(v.id("workspaces")),
+    createdBy: v.optional(v.id("users")),
     name: v.string(),
     // `name` folded for ordering (collectionSortName).
     sortName: v.string(),
@@ -1246,7 +1256,8 @@ export default defineSchema({
     membershipRevision: v.optional(v.number()),
   })
     .index("by_user_sortName", ["userId", "sortName"])
-    .searchIndex("search_name", { searchField: "name", filterFields: ["userId"] }),
+    .index("by_workspace_sortName", ["workspaceId", "sortName"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["userId", "workspaceId"] }),
 
   // An export a browser is downloading in parts: its token's SHA-256 digest, what it writes,
   // the next part to serve and where it starts, whether a part failed, and when the link expires.
@@ -1265,7 +1276,7 @@ export default defineSchema({
   }).index("by_digest", ["digest"]),
 
   // How many collections a person has, kept as they make and delete them, for page totals.
-  collectionCounts: defineTable({ userId: v.id("users"), count: v.number() }).index("by_user", ["userId"]),
+  collectionCounts: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), count: v.number() }).index("by_user", ["userId"]).index("by_workspace", ["workspaceId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEM COLLECTIONS - Junction table for many-to-many

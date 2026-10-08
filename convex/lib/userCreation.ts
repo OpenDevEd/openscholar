@@ -23,9 +23,9 @@ export async function createUserWithDefaults(
     createdAt: now,
     updatedAt: now,
   });
+  const workspaceId = await ensureWorkspace(ctx, { kind: "personal", userId });
   // A new person starts with a count row, so the library never reads the count on their user row.
-  await ctx.db.insert("libraryCounts", { userId, count: 0 });
-  await ensureWorkspace(ctx, { kind: "personal", userId });
+  await ctx.db.insert("libraryCounts", { userId, workspaceId, count: 0 });
 
   await ctx.scheduler.runAfter(0, internal.billing.accounts.provision, { userId });
   return userId;
