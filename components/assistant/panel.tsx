@@ -440,6 +440,8 @@ function Chat({
   const t = useTranslations("assistant");
   const toast = useAppToast();
   const thread = useQuery(api.assistant.threads.get, threadId ? { threadId } : "skip");
+  // What a new chat starts on: the chat model of the person's AI settings.
+  const start = useQuery(api.assistant.threads.newChatModel, {});
   // What the person lets a reply spend here: the meter's "allow more" is by it, and the Spending sheet opens with it in hand.
   const spending = useQuery(api.assistant.spending.get, threadId ? { threadId } : "skip");
   const carryOn = useMutation(api.assistant.replies.carryOn);
@@ -526,7 +528,7 @@ function Chat({
     }),
   );
 
-  const model: PickedModel | null = threadId ? (thread?.model ? toMapModel(thread.model, thread.effort) : null) : (picked ?? presetModel?.("balanced", "chat") ?? null);
+  const model: PickedModel | null = threadId ? (thread?.model ? toMapModel(thread.model, thread.effort) : null) : (picked ?? (start?.model ? toMapModel(start.model, start.effort) : null));
   const pickModel = (next: PickedModel, effort: Effort | undefined) => {
     if (!threadId) return setPicked(effort ? { ...next, effort } : next);
     setModel({ threadId, modelId: next._id, effort }).catch((error) => toast.error(t("modelFailed"), getErrorMessage(error, "")));

@@ -283,7 +283,7 @@ async function goOnFrom(ctx: MutationCtx, thread: Doc<"assistantThreads">, waiti
     senderId: waiting.senderId,
     modelId: waiting.modelId,
     effort: waiting.effort,
-    used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made, ...(waiting.failed ? { failed: waiting.failed } : {}), ...(waiting.recent ? { recent: waiting.recent } : {}), ...(waiting.changes ? { changes: waiting.changes } : {}), ...limits },
+    used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made, ...(waiting.failed ? { failed: waiting.failed } : {}), ...(waiting.recent ? { recent: waiting.recent } : {}), ...(waiting.changes ? { changes: waiting.changes } : {}), ...(waiting.download ? { download: waiting.download } : {}), ...limits },
   });
   await ctx.db.patch("assistantThreads", thread._id, {
     asking: undefined,
@@ -322,7 +322,8 @@ export const turnArgs = { agentThreadId: v.string(), senderId: v.id("users"), mo
  * the actions they called, the input tokens the last of them read, how many of them in a
  * row had every action fail, the digests of what the last few did (./tools.ts), why its
  * actions were refused in the last one, when they were, and the credits and the requests
- * it pauses at (./spending.ts).
+ * it pauses at (./spending.ts), how many times its next request has been made again after
+ * failing, and whether its papers' PDFs are downloaded to be sent (./run.ts).
  */
 export const usedValidator = v.object({
   credits: v.number(),
@@ -336,6 +337,8 @@ export const usedValidator = v.object({
   told: v.optional(v.string()),
   cap: v.optional(v.number()),
   lap: v.optional(v.number()),
+  retries: v.optional(v.number()),
+  download: v.optional(v.literal(true)),
 });
 /** What a reply's next request starts from: whose it is, the message it answers, and what the reply has used. */
 const resumeValidator = v.object({ ...turnArgs, promptMessageId: v.string(), used: usedValidator });
@@ -382,7 +385,12 @@ export const stop = mutation({
     // The reply being written, or the same reply carrying on from an answer that was given as Stop
     // was pressed on it waiting. A reply that has ended, or a later exchange's, isn't this Stop's to stop.
     else if (thread.reply && (thread.reply.attemptId === attemptId || attemptId.startsWith(waitingPrefix(thread.reply.order)))) {
-      await ctx.db.patch("assistantThreads", threadId, { reply: { ...thread.reply, stop: true } });
+      // A request waiting to be made again hears the Stop now, not when its wait ends: it runs at once, and ends there stopped (./run.ts).
+      const waiting = await ctx.db.system.get("_scheduled_functions", thread.reply.scheduledId);
+      const now = waiting?.state.kind === "pending" && waiting.scheduledTime > Date.now() && waiting.name.endsWith("run:reply") ? waiting : null;
+      if (now) await ctx.scheduler.cancel(now._id);
+      const scheduledId = now ? await ctx.scheduler.runAfter(0, internal.assistant.run.reply, now.args[0]) : thread.reply.scheduledId;
+      await ctx.db.patch("assistantThreads", threadId, { reply: { ...thread.reply, stop: true, scheduledId } });
     } else return null;
     // Stop drops what the chat would have gone on to: every job that ended before it is told with no readout (./jobs.ts).
     // A job that ends after it is told as usual, and a job still running keeps going, with its own Cancel.
@@ -430,10 +438,11 @@ export const release = internalMutation({
         changes: v.optional(v.record(v.string(), v.number())),
         cap: v.optional(v.number()),
         lap: v.optional(v.number()),
+        download: v.optional(v.literal(true)),
       }),
     ),
     // The reply's request ended on actions that ran (./turn.ts): their results go back to the model in
-    // its next request, with what the reply has used so far.
+    // its next request, with what the reply has used so far. Or it failed, and is made again after `wait` ms.
     next: v.optional(
       v.object({
         promptMessageId: v.string(),
@@ -447,6 +456,9 @@ export const release = internalMutation({
         told: v.optional(v.string()),
         cap: v.optional(v.number()),
         lap: v.optional(v.number()),
+        retries: v.optional(v.number()),
+        download: v.optional(v.literal(true)),
+        wait: v.optional(v.number()),
       }),
     ),
   },
@@ -456,9 +468,9 @@ export const release = internalMutation({
     if (thread?.reply?.attemptId !== attemptId) return null;
     const current = thread.reply;
     /** Schedules the reply's next request, under the same lock. One stopped meanwhile finds that out there, and shows as stopped. */
-    const goOn = async ({ used, ...from }: Infer<typeof resumeValidator>) => {
+    const goOn = async ({ used, ...from }: Infer<typeof resumeValidator>, wait = 0) => {
       const { compacting: _compacting, ...lock } = current;
-      const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.reply, { threadId, attemptId, ...from, used });
+      const scheduledId = await ctx.scheduler.runAfter(wait, internal.assistant.run.reply, { threadId, attemptId, ...from, used });
       const { cap: _cap, ...held } = lock;
       return { ...held, scheduledId, spent: used.credits, ...(used.cap === undefined ? {} : { cap: used.cap }) };
     };
@@ -483,6 +495,7 @@ export const release = internalMutation({
       ...(used.changes ? { changes: used.changes } : {}),
       ...(used.cap === undefined ? {} : { cap: used.cap }),
       ...(used.lap === undefined ? {} : { lap: used.lap }),
+      ...(used.download ? { download: used.download } : {}),
       paused,
       askedAt: Date.now(),
     });
@@ -538,6 +551,7 @@ export const release = internalMutation({
         ...(asking.changes ? { changes: asking.changes } : {}),
         ...(asking.cap === undefined ? {} : { cap: asking.cap }),
         ...(asking.lap === undefined ? {} : { lap: asking.lap }),
+        ...(asking.download ? { download: asking.download } : {}),
         askedAt: now,
       };
       // A conversation as long as a request should read is owed its summary: nothing compacts it while it waits.
@@ -550,11 +564,12 @@ export const release = internalMutation({
       // The reply goes on, in an action of its own.
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
       const limits = { ...(next.cap === undefined ? {} : { cap: next.cap }), ...(next.lap === undefined ? {} : { lap: next.lap }) };
-      const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens, failed: next.failed, recent: next.recent, ...(next.changes ? { changes: next.changes } : {}), ...(next.told ? { told: next.told } : {}), ...limits } };
+      const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens, failed: next.failed, recent: next.recent, ...(next.changes ? { changes: next.changes } : {}), ...(next.told ? { told: next.told } : {}), ...(next.retries ? { retries: next.retries } : {}), ...(next.download ? { download: next.download } : {}), ...limits } };
       // A conversation as long as a request should read is summarized first, through what the reply
       // has written, and the reply goes on from the summary (./context.ts). A limit it has reached too
       // is asked about once the summary is written.
-      if (!current.stop && compactionDue({ ...ended, window })) {
+      // A request made again after failing added nothing to summarize, and keeps its wait: the next one that answers is summarized after.
+      if (!current.stop && !next.retries && compactionDue({ ...ended, window })) {
         const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, through: current.order, lastInputTokens, resume: from });
         // Owed from here until a summary is kept, so one that is stopped, or whose action dies, is written by the next reply.
         // The lock holds what the reply has cost so far, for its sender's record if the compaction's action dies.
@@ -567,7 +582,7 @@ export const release = internalMutation({
         await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: undefined, asking: pausedFrom(from, current.order, paused) });
         return null;
       }
-      await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: await goOn(from) });
+      await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: await goOn(from, next.wait) });
       return null;
     }
     // A reply that carried on from an answer and was stopped, or failed, on the way can leave calls it never ran.

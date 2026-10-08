@@ -136,8 +136,9 @@ const summaryMessage = (summary: string): ModelMessage => ({ role: "user", conte
 /**
  * The context of one reply: the summary, then the history since it, then the new message.
  * `onHistory` hears how much history that was, which decides whether a compaction follows.
+ * `papers` says how a paper's PDF the reply read is sent, and hears when one goes by its address (./files.ts `withFiles`).
  */
-export function contextSince(args: Compacted & { agentThreadId: string; promptMessageId: string; modelId: Id<"models"> | null; onHistory: (history: { messages: number; bytes: number }) => void }): ContextHandler {
+export function contextSince(args: Compacted & { agentThreadId: string; promptMessageId: string; modelId: Id<"models"> | null; onHistory: (history: { messages: number; bytes: number }) => void; papers: Parameters<typeof withFiles>[4] }): ContextHandler {
   return async (ctx, { inputMessages, inputPrompt, existingResponses }) => {
     const { docs, whole } = await historySince(ctx, { agentThreadId: args.agentThreadId, compactedThrough: args.compactedThrough, before: args.promptMessageId });
     // Answering from part of the conversation would lose the rest without a word.
@@ -148,7 +149,7 @@ export function contextSince(args: Compacted & { agentThreadId: string; promptMe
     // Files the person attached go as they are, read from storage (./files.ts).
     // What the reply has written so far is its own: a paper's PDF it read is sent by its address there, and only there.
     const before = [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), ...inputMessages, ...inputPrompt];
-    return await withFiles(ctx, [...before, ...existingResponses], args.modelId, before.length);
+    return await withFiles(ctx, [...before, ...existingResponses], args.modelId, before.length, args.papers);
   };
 }
 

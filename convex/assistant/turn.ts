@@ -21,7 +21,7 @@ import type { Usage } from "../../lib/ai/core/types";
 import { startAbortPoller } from "../../lib/ai/abort-poller";
 import { ABORT_ERROR_STRING, isAbortLike } from "../../lib/ai/abort-signal";
 import { pickProviderCostUsd } from "../../lib/ai/pick-provider-cost";
-import { classifyChatError, serializeChatError } from "../../lib/errors/taxonomy";
+import { classifyChatError, serializeChatError, type ChatErrorEnvelope } from "../../lib/errors/taxonomy";
 import { convertUsdToCredits } from "../../lib/pricing";
 import { extractErrorCode, extractHttpStatus, type AIGenerationParams } from "../../lib/posthog-ai-shared";
 import { captureUserGenerationLater } from "../lib/analyticsEvents";
@@ -77,7 +77,11 @@ export type Turn = {
     more: boolean;
     /** Every one of those calls failed: none did what it was called for. */
     failed: boolean;
+    /** The request failed before it wrote anything, and `retry` let it be made again: its failed message is gone. */
+    retry?: ChatErrorEnvelope;
   }) => Promise<unknown>;
+  /** Whether a request that failed before it wrote anything is made again, with what it failed with. */
+  retry?: (failure: ChatErrorEnvelope) => boolean;
   /** What the model is sent, in place of the agent's own choice of recent messages. */
   contextHandler?: ContextHandler;
   contextOptions?: ContextOptions;
@@ -540,6 +544,9 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
     // current per-thread lock, but defence in depth). See plan § 3
     // placement notes.
     await stopAbortPoller();
+    // A request that failed before a step of it ended may be made again. One that wrote anything isn't: its words or calls stand.
+    const failed = streamErrored && !streamAbortedByUser && stepUsages.length === 0 && failure !== undefined ? classifyChatError(failure) : undefined;
+    const retry = failed && turn.retry?.(failed) && (await dropEmptyFailure(ctx, threadId, promptMessageId).catch(() => false)) ? failed : undefined;
     // A reply that failed or was stopped keeps none of its last message, so nothing in it waits for an answer.
     await turn.release({
       lastInputTokens: stepUsages.at(-1)?.inputTokens ?? 0,
@@ -549,6 +556,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       requests: stepUsages.length,
       more: finished && !streamErrored && !streamAbortedByUser && ranTools && asked.length === 0,
       failed: allFailed,
+      ...(retry ? { retry } : {}),
     });
     // Every request on a resolved model sends its `$ai_generation`, a failed one and one refused for credits included.
     if (capturedModelSlug && !generationSentLater) await captureUserGenerationLater(ctx, userId, generation());
@@ -589,6 +597,15 @@ async function findPendingAssistantForPrompt(
         (promptOrder === undefined || message.order === promptOrder),
     ) ?? null
   );
+}
+
+/** Deletes the failed message of a request that wrote nothing, so the request made again leaves no error behind. */
+async function dropEmptyFailure(ctx: ActionCtx, threadId: string, promptMessageId: string) {
+  const failed = (await findPendingAssistantForPrompt(ctx, threadId, promptMessageId, ["failed"])) as { _id: string; message?: { content?: unknown } } | null;
+  const content = failed?.message?.content;
+  if (!failed || (Array.isArray(content) ? content.length > 0 : Boolean(content))) return false;
+  await ctx.runMutation(components.agent.messages.deleteByIds, { messageIds: [failed._id as never] });
+  return true;
 }
 
 /**
