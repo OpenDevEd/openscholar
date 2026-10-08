@@ -3,6 +3,7 @@
 import { CitationControl } from "@/components/citation-control";
 
 import React from "react";
+import { QueryMatchText } from "@/components/query-highlight";
 import { usePathname } from "next/navigation";
 import { useTranslations, useFormatter } from "next-intl";
 import { workToCoins } from "@/lib/utils";
@@ -97,7 +98,7 @@ export function PaperCardListSimple({
             {/* Title and year */}
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-sm leading-tight line-clamp-1 group-hover:text-primary transition-colors">
-                {displayTitle}
+                <QueryMatchText text={displayTitle} />
                 {result.publication_year != null && <span className="ml-1.5 text-muted-foreground font-normal">
                   ({result.publication_year})
                 </span>}

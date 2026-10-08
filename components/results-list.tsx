@@ -37,6 +37,7 @@ import { OQL_FIELD } from "@/lib/openalex/oql";
 import { motion, AnimatePresence } from "motion/react";
 import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-utils";
 import { ScreeningContext, TranslationContext } from "@/components/results-contexts";
+import { QueryMatchProvider } from "@/components/query-highlight";
 import { FocusMode } from "./ui/focus-mode";
 import { useIsTablet } from "@/lib/hooks";
 import { useBatchScreening } from "@/hooks/use-batch-screening";
@@ -489,6 +490,7 @@ export function ResultsList({
   };
 
   return (
+    <QueryMatchProvider query={search.params.q} field={search.params.field}>
     <TranslationContext.Provider
       value={{
         loadingPaperIds: translationLoadingPaperIds,
@@ -627,5 +629,6 @@ export function ResultsList({
       </div>
     </ScreeningContext.Provider>
     </TranslationContext.Provider>
+    </QueryMatchProvider>
   );
 }

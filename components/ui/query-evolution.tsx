@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import type { QueryHistoryEntry } from "@/lib/types/search.types";
 import { QueryText } from "@/components/ui/query-text";
+import { OQL_FIELD } from "@/lib/openalex/oql";
 
 // About four lines at this size; longer queries are cut off.
 const LONG_QUERY_CHARS = 240;
@@ -157,6 +158,7 @@ export function QueryEvolution({
                     <div className="flex-1 min-w-0">
                       <QueryText 
                         query={entry.query}
+                        oql={entry.field === OQL_FIELD}
                         className={cn(
                           "text-3xs break-words leading-relaxed [overflow-wrap:anywhere]",
                           isCurrent && "font-medium",

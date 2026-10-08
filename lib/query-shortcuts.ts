@@ -16,6 +16,11 @@ export function savedShortcutName(typed: string) {
   return typed.replace(/^-+|-+$/g, "");
 }
 
+/** The shortcut name a query word calls (`ml...` is `ml`), if it calls one. */
+export function shortcutNameOf(word: string): string | undefined {
+  return word.match(/^(\w[\w-]*)\.\.\.$/)?.[1];
+}
+
 /** Each shortcut name a query uses, once. */
 export function shortcutNames(query: string): string[] {
   return [...new Set(Array.from(query.matchAll(SHORTCUT), (match) => match[1]))];

@@ -156,6 +156,7 @@ Please enhance this academic search query according to the user's specific instr
           />
         }
         value={editableQuery}
+        highlightQuery={!isOql}
         onChange={setEditableQuery}
         onSubmit={submitQuery}
         placeholder={t("searchCommand.noQuerySet")}

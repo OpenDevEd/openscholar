@@ -2,14 +2,18 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
+import { experimental_RichInput as RichInput } from "rich-textarea";
+import { queryRenderer, useQueryFieldStyle } from "@/components/query-highlight";
 
-interface FloatingInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface FloatingInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "defaultValue"> {
   label: string;
   /** Extra content rendered inline after the label text (e.g. history nav) */
   labelAddon?: React.ReactNode;
   icon?: React.ReactNode;
   action?: React.ReactNode;
   wrapperClassName?: string;
+  /** Draws the value as a boolean search query, its logic highlighted. */
+  highlightQuery?: boolean;
 }
 
 export function FloatingInput({
@@ -19,8 +23,10 @@ export function FloatingInput({
   action,
   className,
   wrapperClassName,
+  highlightQuery = false,
   ...props
 }: FloatingInputProps) {
+  const fieldStyle = useQueryFieldStyle();
   return (
     <div className={cn("group relative", wrapperClassName)}>
       {/* Floating label */}
@@ -59,14 +65,19 @@ export function FloatingInput({
           </div>
         )}
 
-        <input
-          className={cn(
-            "flex-1 min-w-[200px] bg-transparent outline-none",
-            "text-sm placeholder:text-muted-foreground/60",
-            className
-          )}
-          {...props}
-        />
+        <div className="flex flex-1 min-w-[200px]">
+          <RichInput
+            className={cn(
+              "w-full bg-transparent outline-none",
+              "text-sm placeholder:text-muted-foreground/60",
+              className
+            )}
+            style={fieldStyle}
+            {...props}
+          >
+            {queryRenderer(highlightQuery)}
+          </RichInput>
+        </div>
 
         {action && (
           <div className="flex-shrink-0 flex items-center gap-2">

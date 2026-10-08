@@ -7,6 +7,7 @@
  */
 
 import React, { type ReactElement } from "react";
+import { OQL_FIELD } from "@/lib/openalex/oql";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { SearchResult } from "@/lib/types/search.types";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ export function SearchTooltipContent({
         <div className="flex items-start justify-between gap-3">
           <QueryText 
             query={query}
+            oql={filters.field === OQL_FIELD}
             className="text-sm font-medium break-words flex-1 leading-snug line-clamp-6 [overflow-wrap:anywhere]"
           />
           {count === undefined ? null : (

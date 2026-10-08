@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { OQL_FIELD } from "@/lib/openalex/oql";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { getIdColor } from "@/lib/format";
@@ -127,6 +128,7 @@ export function SearchHistoryTab({
           >
             <QueryText 
               query={query}
+              oql={filters.field === OQL_FIELD}
               className="truncate text-xs font-medium flex-1 w-0 min-w-0 text-left transition-colors duration-200"
             />
             <AnimatePresence>

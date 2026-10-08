@@ -300,6 +300,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
           }
           placeholder={isTranslating ? tc('translating') : t(isOql ? 'placeholder.oql' : 'placeholder.keywords')}
           value={localInputValue.replace(/[\r\n]+/g, " ")}
+          highlightQuery={!isOql}
           onChange={(e) => handleQueryChange(e.target.value)}
           disabled={isFormDisabled}
           icon={<Search className="h-4 w-4" />}

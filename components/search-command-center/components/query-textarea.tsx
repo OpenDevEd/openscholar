@@ -5,6 +5,8 @@ import { Loader2, Search } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { RichTextarea } from "rich-textarea";
+import { queryRenderer, useQueryFieldStyle } from "@/components/query-highlight";
 
 interface QueryTextareaProps {
   label: string;
@@ -19,6 +21,8 @@ interface QueryTextareaProps {
   busy?: boolean;
   /** Briefly tints the field green after the query was rewritten. */
   flash?: boolean;
+  /** Draws the value as a boolean search query, its logic highlighted. */
+  highlightQuery?: boolean;
 }
 
 /** The command center's query box: several lines, key hints and the Search button. */
@@ -32,7 +36,9 @@ export function QueryTextarea({
   disabled = false,
   busy = false,
   flash = false,
+  highlightQuery = false,
 }: QueryTextareaProps) {
+  const fieldStyle = useQueryFieldStyle();
   const t = useTranslations();
   const th = useTranslations("home");
   const canSubmit = !disabled && !busy;
@@ -70,9 +76,10 @@ export function QueryTextarea({
             flash && "bg-success/10 border-success"
           )}
         >
-          <textarea
+          <RichTextarea
             aria-label={label}
             className="w-full bg-transparent outline-none resize-none text-sm placeholder:text-muted-foreground/60 min-h-[60px]"
+            style={fieldStyle}
             placeholder={placeholder}
             value={value}
             onChange={(event) => onChange(event.target.value)}
@@ -83,7 +90,9 @@ export function QueryTextarea({
               }
             }}
             disabled={disabled || busy}
-          />
+          >
+            {queryRenderer(highlightQuery)}
+          </RichTextarea>
 
           {/* Bottom bar: hints + search button (same as home screen) */}
           <div className="flex flex-wrap items-center justify-end md:justify-between gap-2 pt-1.5 border-t border-border-subtle">

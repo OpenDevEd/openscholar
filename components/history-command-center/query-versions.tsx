@@ -9,6 +9,8 @@ import { useSearchHistoryStore } from "@/lib/store";
 import { useAppToast } from "@/lib/toast";
 import type { QueryHistoryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { QueryText } from "@/components/ui/query-text";
+import { OQL_FIELD } from "@/lib/openalex/oql";
 
 /**
  * The queries a search has had, newest first and numbered in the order they
@@ -79,7 +81,7 @@ export function QueryVersions({
               <BookmarkForm query={entry.query} onDone={() => setBookmarking(null)} className="flex-1" />
             ) : (
               <>
-                <p className="min-w-0 flex-1 py-0.5 text-sm [overflow-wrap:anywhere]">{entry.query}</p>
+                <QueryText query={entry.query} oql={entry.field === OQL_FIELD} className="block min-w-0 flex-1 py-0.5 text-sm [overflow-wrap:anywhere]" />
                 <EntryAside meta={<time dateTime={entry.timestamp}>{format.relativeTime(new Date(entry.timestamp), now)}</time>} className="h-6">
                   <EntryAction label={tc("copyQuery")} icon={Copy} onClick={() => void copy(entry.query)} {...noTooltipOnFocus} />
                   {!readOnly && <EntryAction label={tc("saveAsBookmark")} icon={BookmarkPlus} onClick={() => setBookmarking(key)} {...noTooltipOnFocus} />}

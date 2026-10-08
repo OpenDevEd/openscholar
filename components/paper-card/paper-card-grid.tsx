@@ -3,6 +3,7 @@
 import { CitationControl } from "@/components/citation-control";
 
 import React from "react";
+import { QueryMatchText } from "@/components/query-highlight";
 import { usePathname } from "next/navigation";
 import { useTranslations, useFormatter } from "next-intl";
 import { workToCoins } from "@/lib/utils";
@@ -133,7 +134,7 @@ export function PaperCardGrid({
             "font-semibold leading-snug text-wrap-anywhere group-hover:text-primary transition-colors mb-2",
             isCompact ? "text-sm line-clamp-2" : "text-base line-clamp-3"
           )}>
-            {displayTitle}
+            <QueryMatchText text={displayTitle} />
           </h3>
 
           {/* Author */}
