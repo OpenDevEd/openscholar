@@ -23,6 +23,7 @@ import { searchResultToParams } from "../../lib/search-params/converters";
 import { applyCommand, findSearch, revisionRow } from "./records";
 import { AUTHORS_SHOWN, changesValidator, COUNTRIES_SHOWN, LAST_PAGE, LAST_PAGE_FROM_START, pageValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 import type { Id } from "../_generated/dataModel";
+import { personalWorkspaceOf } from "../workspaces/actor";
 
 const CREATE = "research/searches:create" as const;
 const UPDATE = "research/searches:update" as const;
@@ -294,10 +295,10 @@ export const createAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  run: async (ctx, { userId, author }, { query, ...settings }) => {
+  run: async (ctx, { userId, workspaceId, author }, { query, ...settings }) => {
     const search = newSearch(crypto.randomUUID(), query, settings);
-    const undo = await applyCommand(ctx, userId, { kind: "createSearch", search }, author);
-    await ctx.scheduler.runAfter(0, internal.research.searches.recount, { userId, id: search.id, author });
+    const undo = await applyCommand(ctx, { userId, workspaceId }, { kind: "createSearch", search }, author);
+    await ctx.scheduler.runAfter(0, internal.research.searches.recount, { userId, workspaceId, id: search.id, author });
     return { id: search.id, ...(undo?.kind === "deleteSearch" ? { undo: { path: REMOVE, args: { id: undo.id, expect: { created: undo.expect.created, revision: undo.expect.revision } } } } : {}) };
   },
 });
@@ -384,7 +385,7 @@ export const updateAction = defineUserMutation({
     const found = await findSearch(ctx, userId, id);
     return found !== null && (await revisionRow(ctx, found._id, found.revision)) === null;
   },
-  run: async (ctx, { userId, author }, { id, changes }) => {
+  run: async (ctx, { userId, workspaceId, author }, { id, changes }) => {
     const { query, settings } = settingsOf(changes);
     const found = await findSearch(ctx, userId, id);
     if (!found) throw createError("NOT_FOUND", "Search not found.");
@@ -399,12 +400,12 @@ export const updateAction = defineUserMutation({
     const refiltered = Object.entries(filters).some(([key, value]) => kept(current[key as keyof SavedSearch]) !== kept(value)) || clear.some((key) => current[key as keyof SavedSearch] !== undefined);
     if (!requeried && !refiltered) return {};
     const edits: Array<UndoCommand | undefined> = [];
-    if (requeried) edits.push(await applyCommand(ctx, userId, { kind: "editSearch", id, edit: { kind: "query", query: asked, field } }, author));
+    if (requeried) edits.push(await applyCommand(ctx, { userId, workspaceId }, { kind: "editSearch", id, edit: { kind: "query", query: asked, field } }, author));
     // Its results start again from their first page, as they do when the person changes the search on its page.
     const patch = { ...filters, ...(current.page !== undefined && current.page !== 1 ? { page: 1 } : {}) };
-    if (Object.keys(patch).length || clear.length) edits.push(await applyCommand(ctx, userId, { kind: "editSearch", id, edit: { kind: "patch", fields: patch, clear } }, author));
+    if (Object.keys(patch).length || clear.length) edits.push(await applyCommand(ctx, { userId, workspaceId }, { kind: "editSearch", id, edit: { kind: "patch", fields: patch, clear } }, author));
     // The count it held was the old query's and filters'.
-    await ctx.scheduler.runAfter(0, internal.research.searches.recount, { userId, id, author });
+    await ctx.scheduler.runAfter(0, internal.research.searches.recount, { userId, workspaceId, id, author });
     const undone = edits.filter((undo): undo is Restore => undo?.kind === "editSearch");
     // A new query with no undo had no revision before it to go back to. Undoing the filters alone would leave that query, so the change has no undo at all.
     if (!undone.length || (requeried && edits[0]?.kind !== "editSearch")) return {};
@@ -425,8 +426,8 @@ export const restoreAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  run: async (ctx, { userId, author }, { id, revision, expect }) => {
-    const undo = await applyCommand(ctx, userId, { kind: "editSearch", id, edit: { kind: "restore", revision, ...(expect === undefined ? {} : { expect }) } }, author);
+  run: async (ctx, { userId, workspaceId, author }, { id, revision, expect }) => {
+    const undo = await applyCommand(ctx, { userId, workspaceId }, { kind: "editSearch", id, edit: { kind: "restore", revision, ...(expect === undefined ? {} : { expect }) } }, author);
     return undo?.kind === "editSearch" ? { undo: restoring(undo) } : {};
   },
 });
@@ -444,8 +445,8 @@ export const removeAction = defineUserMutation({
   // It only takes back a creation, and only while nothing would be lost with it: the search
   // still holds what its first revision does, and has no answers.
   undoable: true,
-  run: async (ctx, { userId, author }, { id, expect }) => {
-    await applyCommand(ctx, userId, { kind: "deleteSearch", id, expect }, author);
+  run: async (ctx, { userId, workspaceId, author }, { id, expect }) => {
+    await applyCommand(ctx, { userId, workspaceId }, { kind: "deleteSearch", id, expect }, author);
     return null;
   },
 });
@@ -461,9 +462,9 @@ export const deleteAction = defineUserMutation({
   outsideEffect: false,
   // The app has no way to bring a deleted search back, so the person is asked.
   undoable: false,
-  run: async (ctx, { userId, author }, { id }) => {
+  run: async (ctx, { userId, workspaceId, author }, { id }) => {
     if (!(await findSearch(ctx, userId, id))) throw createError("NOT_FOUND", "Search not found.");
-    await applyCommand(ctx, userId, { kind: "deleteSearch", id }, author);
+    await applyCommand(ctx, { userId, workspaceId }, { kind: "deleteSearch", id }, author);
     return null;
   },
 });
@@ -522,11 +523,13 @@ export async function readPage(ctx: ActionCtx, userId: Id<"users">, found: Saved
  * search history shows it. Left alone when the search changed while its results were read.
  */
 export const counted = internalMutation({
-  args: { userId: v.id("users"), id: v.string(), revision: v.number(), count: v.number(), author: authorValidator },
+  // Optional only for calls from a `recount` scheduled before the workspace was passed (#650); required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), id: v.string(), revision: v.number(), count: v.number(), author: authorValidator },
   returns: v.null(),
-  handler: async (ctx, { userId, id, revision, count, author }) => {
+  handler: async (ctx, { userId, workspaceId: given, id, revision, count, author }) => {
+    const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
     const found = await findSearch(ctx, userId, id);
-    if (found?.revision === revision && currentSearch(found.data).count !== count) await applyCommand(ctx, userId, { kind: "editSearch", id, edit: { kind: "patch", fields: { count }, clear: [] } }, author);
+    if (found?.revision === revision && currentSearch(found.data).count !== count) await applyCommand(ctx, { userId, workspaceId }, { kind: "editSearch", id, edit: { kind: "patch", fields: { count }, clear: [] } }, author);
     return null;
   },
 });
@@ -538,14 +541,16 @@ export const counted = internalMutation({
  * keeps the count it has until its results are next read.
  */
 export const recount = internalAction({
-  args: { userId: v.id("users"), id: v.string(), author: authorValidator },
+  // Optional only for calls scheduled before the workspace was passed (#650), which act in their maker's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), id: v.string(), author: authorValidator },
   returns: v.null(),
-  handler: async (ctx, { userId, id, author }) => {
+  handler: async (ctx, { userId, workspaceId: given, id, author }) => {
+    const workspaceId: Id<"workspaces"> = given ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId }));
     try {
       const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: id });
       if (!found.request) return null;
       const count = await countSearch(found.request, spender(ctx, found.clerkId));
-      await ctx.runMutation(internal.research.searches.counted, { userId, id, revision: found.revision, count, author });
+      await ctx.runMutation(internal.research.searches.counted, { userId, workspaceId, id, revision: found.revision, count, author });
     } catch (error) {
       console.error("[research] couldn't count a search after it changed", { id, error: error instanceof Error ? error.message : String(error) });
     }
@@ -565,10 +570,10 @@ export const resultsAction = defineUserAction({
   outsideEffect: false,
   // It only keeps the search's result count, as reading the results page does: nothing to undo.
   undoable: true,
-  run: async (ctx, { userId, author }, { id, page }): Promise<Infer<typeof resultsValidator>> => {
+  run: async (ctx, { userId, workspaceId, author }, { id, page }): Promise<Infer<typeof resultsValidator>> => {
     const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: id });
     const read = await readPage(ctx, userId, found, page ?? 1, "This search's query isn't valid. Fix it on the results page first.");
-    await ctx.runMutation(internal.research.searches.counted, { userId, id, revision: found.revision, count: read.total, author });
+    await ctx.runMutation(internal.research.searches.counted, { userId, workspaceId, id, revision: found.revision, count: read.total, author });
     return read;
   },
 });

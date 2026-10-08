@@ -34,6 +34,7 @@ import { applyCommand } from "../research/records";
 
 import { availableCredits } from "../billing/accounts";
 import { MAX_AUTHORS } from "../lib/listCaps";
+import { personalWorkspaceOf } from "../workspaces/actor";
 
 /** Where the job's included papers go, as its fields: a collection, or nowhere. */
 async function destination(ctx: MutationCtx, userId: Id<"users">, saveTo: Infer<typeof saveToValidator> | undefined) {
@@ -87,7 +88,8 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, sa
     const missing = [...new Set(args.questions.map((q) => q.question))].filter((question) => !asked.has(question));
     if (missing.length) {
       const screeningQuestions = [...search.data.screeningQuestions, ...missing.map((question) => ({ question }))];
-      await applyCommand(ctx, user._id, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, author);
+      // In the person's own workspace until screening jobs belong to one (#650).
+      await applyCommand(ctx, { userId: user._id, workspaceId: await personalWorkspaceOf(ctx, user._id) }, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, author);
     }
     screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
     label = search.data.query;

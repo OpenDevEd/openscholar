@@ -366,7 +366,7 @@ export class ResearchSession {
   private async import(epoch: number) {
     if (!this.accountId) return;
     try {
-      const failures = await migrateLocalResearch(this.client, this.accountId, () => this.epoch === epoch);
+      const failures = await migrateLocalResearch(this.client, this.accountId, (await this.scoped).workspaceId, () => this.epoch === epoch);
       if (this.epoch !== epoch) return;
       this.imported = true; this.notify(); void this.pump();
       if (failures.length) this.fail(new ResearchImportError(failures.length));

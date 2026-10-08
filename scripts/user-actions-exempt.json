@@ -213,5 +213,9 @@
     "zotero/runtimeReadActions:readPublication": "#329",
     "zotero/runtimeReadActions:requestSourceRun": "#329",
     "zotero/runtimeReadActions:resolveLibraryCollections": "#329"
-  }
+  },
+  "inWorkspace": [
+    "research/records",
+    "research/searches"
+  ]
 }
