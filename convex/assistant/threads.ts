@@ -9,7 +9,8 @@ import { v } from "convex/values";
 import { components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { modelSummary, resolveTaskPick } from "../ai/serverModel";
+import { modelSummary, presetPick, resolveTaskPick } from "../ai/serverModel";
+import { DEFAULT_PRESET } from "../../lib/ai/tasks";
 import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
@@ -107,8 +108,27 @@ const listedValidator = v.object({
  */
 export async function chatModel(ctx: QueryCtx | MutationCtx, thread: Doc<"assistantThreads">, userId: Id<"users">): Promise<{ modelId: Id<"models"> | null; effort?: Effort }> {
   if (thread.modelId) return { modelId: thread.modelId, effort: thread.effort };
-  const pick = await resolveTaskPick(ctx, userId, "chat");
+  const pick = await assistantPick(ctx, userId);
   return { modelId: pick?.modelId ?? null, effort: pick?.effort };
+}
+
+/**
+ * What the person's AI settings run chat on, for the assistant. Settings take any chat model, and one the assistant
+ * can't run on (`requireAssistantModel`) gives way to the default preset's.
+ */
+export async function assistantPick(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
+  const pick = await resolveTaskPick(ctx, userId, "chat");
+  const model = pick ? await ctx.db.get("models", pick.modelId) : null;
+  return model && runsAssistant(model) ? pick : presetPick(ctx, DEFAULT_PRESET, "chat");
+}
+
+function runsAssistant(model: Doc<"models">) {
+  try {
+    requireAssistantModel(model);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** The smallest window a model needs: the context budget and a reply fit in it (./context.ts). */
@@ -288,14 +308,14 @@ export const getAction = defineUserQuery({
 });
 export const get = userQuery(getAction);
 
-/** The model a new chat starts on, shown before it exists: the chat model of the person's AI settings, as a chat with none of its own runs on (`chatModel`). */
+/** The model a new chat starts on, shown before it exists: the chat model of the person's AI settings, as a chat with none of its own runs on (`assistantPick`). */
 export const newChatModel = query({
   args: {},
   returns: v.object({ model: v.union(modelSummaryValidator, v.null()), effort: v.optional(effortValidator) }),
   handler: async (ctx) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
-    const pick = await resolveTaskPick(ctx, userId, "chat");
+    const pick = await assistantPick(ctx, userId);
     return { model: await modelSummary(ctx, pick?.modelId ?? null), ...(pick?.effort ? { effort: pick.effort } : {}) };
   },
 });

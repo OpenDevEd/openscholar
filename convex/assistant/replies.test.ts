@@ -363,6 +363,13 @@ describe("assistant replies", () => {
     await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "Third" })).rejects.toThrow(/long enough/);
     await asAda.mutation(api.assistant.threads.setModel, { threadId, modelId: picked });
 
+    // AI settings take a chat model the assistant can't run on: a new chat starts on the default preset's instead.
+    await t.run(async (ctx) => {
+      const config = await ctx.db.query("userAiConfig").withIndex("by_user", (q) => q.eq("userId", ben)).unique();
+      await ctx.db.patch("userAiConfig", config!._id, { choice: "custom", custom: { chat: { modelId: toolless } } });
+    });
+    expect(await asBen.query(api.assistant.threads.newChatModel, {})).toMatchObject({ model: { _id: balanced } });
+
     // With nothing picking a model, the server's own default runs, and it's held to the rule where the catalog has it.
     const bare = await asAda.mutation(api.assistant.threads.create, {});
     await t.run(async (ctx) => {
