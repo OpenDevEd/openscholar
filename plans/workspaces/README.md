@@ -131,32 +131,27 @@ Replaced decisions:
   visible in a jobs dock. No app-wide dock exists, and the user decided no
   indicator is needed: the reply shows when you switch back.
 
-## Open decisions
+## Decisions on the open questions (2026-10-08, the user)
 
-Each has a recommendation. A phase that needs one doesn't start before the user
-answers.
+Asked with a recommendation each, all answered the same day:
 
-1. Papers at once and replies at once (#650, #652). Recommended: one pool per
-   workspace, as Firecrawl counts concurrency per team, so an organization's plan
-   sets what all its members run together. The alternative gives every member
-   the full amount.
-2. Clearing History in an organization (#651). Today "Clear all" deletes every
-   search the person has (`clearSearchesBatch` in `convex/research/records.ts`).
-   Recommended: organizations have no "Clear all", and a search is deleted by
-   whoever started it or by an admin.
-3. The Team plan (#652): price per seat, credits per seat, limits and features,
-   and what a free organization gets each month. The mock shows $24 a seat,
-   8,000 credits a seat each month, Pro's limits with 40 papers at once, and
-   1,000 shared credits a month for a free organization.
-4. Sorting a collection by rating (#655). Recommended: by the members' average,
-   kept as ratings change, since the collection shows the average.
-5. Organization addresses (#651). Recommended: turn on organization slugs in
-   Clerk, so an organization's pages sit under `/o/<slug>`. With slugs off the
-   address carries Clerk's organization ID.
-6. Bookmarks in an organization (#650). Recommended: a search expands the
-   shortcuts of the workspace it's in, and no others.
-7. Moving items (#654) has no mock. Recommended: mock "Move to" in the item
-   menu before building it.
+1. Papers at once and replies at once are one pool per workspace, as Firecrawl
+   counts concurrency per team. An organization's plan sets what all its members
+   run together (#650, #652).
+2. Organizations have no "Clear all" in History. A search is deleted by whoever
+   started it or by an admin (#651). In your own workspace "Clear all" stays.
+3. The Team plan is as the mock shows it: $24 a seat, 8,000 credits a seat each
+   month, Pro's limits with 40 papers at once, and 1,000 shared credits a month
+   for a free organization. Every one of these is set in Autumn's dashboard and
+   reaches OpenScholar through the synced catalog (`convex/billing/catalog.ts`),
+   as personal plans do, so changing one changes no code (#652).
+4. A collection sorts by rating on its members' average, kept as ratings change
+   (#655).
+5. Organization slugs are turned on in Clerk, and an organization's pages sit
+   under `/o/<slug>` (#651).
+6. A search expands the bookmarks of the workspace it's in, and no others
+   (#650).
+7. Moving items was mocked before it is built (`92e0fc54`, #654).
 
 ## What the mock leaves out
 
@@ -176,8 +171,7 @@ Building on real data closes these. None needs a decision.
 - The mock keeps which workspace your items are in in the browser
   (`lib/workspaces-mock/items.ts`), and doesn't record the collection a screening
   makes for its included papers. The server records both, on the record itself.
-- Screening's slots read "Your paper slots". After decision 1 they are the
-  workspace's.
+- Screening's slots read "Your paper slots". They are the workspace's pool.
 
 ## Owners
 
@@ -336,37 +330,38 @@ Each takes its code from the mock by hand; nothing is merged from the mock
 branch. They are filed under OS-20, since they come from its mock, except New
 extraction (OS-14).
 
-1. Cleanup: the dead code, packages and CSS the earlier designs left
+1. #685, cleanup: the dead code, packages and CSS the earlier designs left
    (`99784617`), older pages in the current design (`cae949af`), quieter dark
    outlines (`029e79b0`), quick date picks (`ed7a36cc`), long names in rows
    (`21ca7179`), and the chat list's pill filters (`7a0007f2`).
-2. One way to show people: `components/ui/identity.tsx` and
+2. #686, one way to show people: `components/ui/identity.tsx` and
    `components/ui/identity-avatar.tsx` everywhere a person, a role or an
    organization shows, building on #667.
-3. The search page on phones and a tighter search card: the header's actions in
-   one menu, the footer across the width, the view-mode rail's background
-   (`4edb80e1`, the `panel-header.tsx` well).
-4. New screening: the range fields take a whole number before moving the range,
-   sources with no papers can't be picked, and models show read-only through
-   `components/models/models-in-use.tsx` (`42a529f6`, `c5a3a4aa`). The range
-   fields are a real bug on `dev` today.
-5. New extraction from several sources (OS-14). Client: `setup-view.tsx`, the
-   tray, `components/screening/source-row.tsx` shared with screening, and
+3. #687, the search page on phones and a tighter search card: the header's
+   actions in one menu, the footer across the width, the view-mode rail's
+   background (`4edb80e1`, the `panel-header.tsx` well).
+4. #688, New screening's range fields take a whole number before moving the
+   range, and sources with no papers can't be picked (`42a529f6`). This is a
+   real bug on `dev` today. #689, New screening shows its model read-only
+   through `components/models/models-in-use.tsx` (`c5a3a4aa`).
+5. #690, New extraction from several sources (OS-14). Client: `setup-view.tsx`,
+   the tray, `components/screening/source-row.tsx` shared with screening, and
    `pdf-upload.tsx`. Server: an extraction source becomes a paper set and a
    range, the shape screening already reads, so a search range can start past
    its first result. The bucket store and its old wizard go. Zotero waits for
    phase Z.
-6. Library: a collection heads the library's command center, and one New
-   collection dialog and Manage serve every entry point, without sharing
-   (`c7698e5c`, `44aae24c`, `ee50cbf1`, `db1da149`).
+6. #691, a collection heads the library's command center, and one New collection
+   dialog and Manage serve every entry point, without sharing (`c7698e5c`,
+   `44aae24c`, `ee50cbf1`, `db1da149`).
 
 ### Phase 1 to 9: OS-20
 
 1. #649: upgrade to Clerk 7 (Core 3).
 2. #650: workspaces for every account and every existing organization, with
    billing keyed by workspace. No visible change: everyone works in their
-   personal workspace, and organizations keep their Evidence Libraries. Needs
-   decisions 1 and 6. In slices, each deployed on its own:
+   personal workspace, and organizations keep their Evidence Libraries. Slots
+   and replies at once become one pool per workspace, and bookmarks expand per
+   workspace. In slices, each deployed on its own:
    1. The `workspaces` table, made with accounts and organizations and
       backfilled. `actorFor`. Every wrapper takes `workspaceId` and passes
       `run` an actor (person, workspace, role, author) instead of a user ID. The
@@ -383,16 +378,16 @@ extraction (OS-14).
       `convex/billing/charge.ts`, `planLimit` and `hasPlanFeature` by workspace.
    8. Account deletion narrowed, then every table narrowed.
 3. #655: ratings in one table, personal per person, plus collection ratings.
-   It lands before organizations open, so members never share one rating. Needs
-   decision 4. UI: the collection raters and star picker from
-   `library-additions.tsx`.
+   It lands before organizations open, so members never share one rating. A
+   collection sorts on its members' average rating. UI: the collection raters
+   and star picker from `library-additions.tsx`.
 4. #651: organizations in OpenScholar, the switcher, the workspace in the URL,
    Account and Workspace settings, and the organization's AI preset. An
    organization works on the free organization plan and its own credits from
    the start. Deletion goes through OpenScholar, which refuses while the
    organization has an Evidence Library; deleting from Clerk's own components is
-   switched off in the instance's organization settings. Needs decisions 2 and
-   5. Specifically:
+   switched off in the instance's organization settings. Organization slugs go
+   on in Clerk, and organizations have no "Clear all" in History. Specifically:
    - Organization pages live under `app/o/[slug]/`, one-line route files that
      re-export the personal pages. `useWorkspace` reads the segment, and every
      link and URL helper (`buildResultsUrl` and the others in
@@ -406,7 +401,7 @@ extraction (OS-14).
    - Members, invitations, roles, leaving and deleting call Clerk's backend
      from Convex actions, behind the mock's own screens.
 5. #652: the Team plan, seats, credit caps per member, and features from plans
-   in place of the organization switches. Needs decision 3.
+   in place of the organization switches, with the values above set in Autumn.
 6. #653: guests. One access table and one invitation table replace the three,
    with the roles above; owner `convex/sharing/`. Includes "Shared with me", the
    `/shared/[id]` landing page, the share panel, search links and copies, and a
@@ -414,7 +409,15 @@ extraction (OS-14).
 7. #654: moving items between workspaces. An Evidence Library moves through the
    ownership transfer in #46. A collection an Evidence Library follows can't
    leave the library's workspace while the library follows it; the move names
-   the library to stop following it first. Needs decision 7.
+   the library to stop following it first. The mock (`92e0fc54`,
+   `components/workspaces-mock/move-dialog.tsx`) puts Move between Activity and
+   Share on every item's row and beside Share on your chats, lists your other
+   workspaces, and shows what goes with the item. You go with it: it stays open
+   in the workspace it moved to, and its activity records where it came from.
+   Only an organization's admins move its work out of it. The mock also
+   proposes three rules the user hasn't reviewed yet: a running job moves once
+   it has finished, guests keep their access, and the library a collection
+   leaves keeps the papers it saved.
 8. #656: who started what, and activity per item. The "Run by" filter reads
    `by_workspace_and_createdBy` and the per-member counts.
 9. #657: presence on every item.
@@ -423,7 +426,7 @@ extraction (OS-14).
 
 ### Phase Z: Zotero at scale
 
-#425 pages every read from Zotero. On top of it, a new OS-14 issue mirrors a
+#425 pages every read from Zotero. On top of it, #692 (OS-14) mirrors a
 person's Zotero libraries and collections in Convex: names searched and paged on
 the server, versions so only changes sync, item keys stored in chunks for a
 picked set and fetched 50 at a time, one fetch helper with Zotero's backoff and
@@ -441,6 +444,7 @@ and `unfollowedChat` in `lib/assistant/place.ts`. Retire the branch.
 
 | Mock part | Goes to | Issue |
 |---|---|---|
+| `move-dialog.tsx`, Move in `item-actions.tsx` and in the chat rows | moving items | #654 |
 | `sidebar-content.tsx` (the rail), `switcher.tsx` (switching, creating, invitations), `components/ui/progress-ring.tsx` | `components/workspaces/` and the app sidebar | #651 |
 | `settings-mock.tsx` General, Members and AI; `app/settings/layout.tsx` split; `app/settings/workspace/*` | Workspace settings | #651 |
 | `settings-mock.tsx` Plan and credits with member caps, `org-plans.tsx` Team card | Workspace billing, Pricing | #652 |
