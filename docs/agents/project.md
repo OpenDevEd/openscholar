@@ -142,7 +142,7 @@ settings, so every change to its shape ships a migration.
   confirm the matching remote logs are clean.
 - For `app/` or `components/` work, run `npm run dev:web`, open the
   changed page, and check the browser plus terminal.
-- GitHub CI runs the full pre-merge suite.
+- GitHub CI runs the pre-merge suite. The max-size tests run nightly.
 
 ## Convex limits
 
@@ -156,8 +156,10 @@ Every page, export and count works at the largest sizes the product allows
 - `convex/lib/maxSize.test-support.ts` generates the largest sizes the product
   allows, at the row sizes measured on shared dev. A flow that reads more than
   one page proves it with a case in `convex/limits/maxSize.test.ts`.
-  `convex/limits` is its own Vitest project, over half of the suite's time.
-  CI skips it on a pull request whose changed files can't reach Convex code.
+  `convex/limits` is its own Vitest project: `npm test` leaves it out, and
+  `npm run test:limits` runs it. CI runs it every night on `dev`
+  (`.github/workflows/nightly-limits.yml`), not on pull requests, and a failure
+  opens an OS-18 issue. Run the case a change touches before pushing.
 - `convex-test` runs one transaction at a time, so it never shows a write
   conflict. Counters and anything else written in parallel are proven on a real
   backend as well.

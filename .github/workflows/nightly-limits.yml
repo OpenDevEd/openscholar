@@ -1,0 +1,51 @@
+name: Nightly limits
+
+# The max-size tests (convex/limits) prove every page, export and count works at the largest
+# sizes the product allows (OS-18). They are over a third of the suite's CPU, so they run here
+# once a night on dev instead of on every pull request.
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  limits:
+    name: Max-size tests
+    runs-on: openscholar-light
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup-project
+
+      - name: Run the max-size tests
+        run: npm run test:limits -- --maxWorkers=8
+
+      # A failure opens one issue, and later failures comment on it while it stays open.
+      - name: Report the failure
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY"
+          auth="Authorization: Bearer $GITHUB_TOKEN"
+          title="[OS-18] Nightly max-size tests fail on dev"
+          body="The max-size tests failed on $GITHUB_SHA: $RUN_URL"
+          issue="$(curl -fsS -H "$auth" "$api/issues?state=open&creator=github-actions%5Bbot%5D&per_page=100" \
+            | jq -r --arg title "$title" 'map(select(.title == $title))[0].number // empty')"
+          if [ -n "$issue" ]; then
+            jq -n --arg body "$body" '{body: $body}' | curl -fsS -H "$auth" -d @- "$api/issues/$issue/comments" > /dev/null
+            echo "Commented on issue #$issue."
+          else
+            milestone="$(curl -fsS -H "$auth" "$api/milestones?state=open&per_page=100" \
+              | jq -r 'map(select(.title | startswith("OS-18 ")))[0].number // empty')"
+            jq -n --arg title "$title" --arg body "$body" --arg milestone "$milestone" \
+              '{title: $title, body: $body} + (if $milestone == "" then {} else {milestone: ($milestone | tonumber)} end)' \
+              | curl -fsS -H "$auth" -d @- "$api/issues" | jq -r '"Opened issue #\(.number)."'
+          fi

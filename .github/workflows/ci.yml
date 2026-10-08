@@ -25,7 +25,6 @@ jobs:
     outputs:
       tested: ${{ steps.tested.outputs.passed }}
       runtime_required: ${{ steps.detect.outputs.runtime_required }}
-      limits_required: ${{ steps.detect.outputs.limits_required }}
     steps:
       # A pull request run tests the merge result and, when every check ran and
       # passed, records the tree it tested. A push to dev with that tree has
@@ -74,35 +73,37 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Every lane runs unless a pull request's changed files show it can't be affected.
-          runtime_required=true
-          limits_required=true
-          if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            if [[ -z "$BASE_SHA" ]] || ! git cat-file -e "$BASE_SHA^{commit}"; then
-              echo "Could not resolve the pull request base. Running every lane."
-            elif ! changed_files="$(git diff --name-only --no-renames "$BASE_SHA" "$GITHUB_SHA")"; then
-              echo "Could not resolve changed files. Running every lane."
-            else
-              runtime_required=false
-              limits_required=false
-              while IFS= read -r changed_file; do
-                case "$changed_file" in
-                  ""|*.md|*.png|*.jpg|*.jpeg|*.webp|docs/*|plans/*|.agents/*|.claude/*|convex/_generated/*) ;;
-                  *) runtime_required=true ;;
-                esac
-                # The max-size tests (convex/limits) reach Convex code, the root lib/ it
-                # imports, the test helpers and setup, and the toolchain.
-                case "$changed_file" in
-                  *.md) ;;
-                  convex/*|lib/*|tests/helpers/*|tests/convex-test-with-limits.ts|tests/setup.ts|patches/*|package.json|package-lock.json|vitest.config.ts)
-                    limits_required=true ;;
-                esac
-              done <<< "$changed_files"
-            fi
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            echo "runtime_required=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
+          if [[ -z "$BASE_SHA" ]] || ! git cat-file -e "$BASE_SHA^{commit}"; then
+            echo "Could not resolve the pull request base. Running runtime tests."
+            echo "runtime_required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! changed_files="$(git diff --name-only --no-renames "$BASE_SHA" "$GITHUB_SHA")"; then
+            echo "Could not resolve changed files. Running runtime tests."
+            echo "runtime_required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          runtime_required=false
+          while IFS= read -r changed_file; do
+            [[ -z "$changed_file" ]] && continue
+            case "$changed_file" in
+              *.md|*.png|*.jpg|*.jpeg|*.webp|docs/*|plans/*|.agents/*|.claude/*|convex/_generated/*)
+                ;;
+              *)
+                runtime_required=true
+                break
+                ;;
+            esac
+          done <<< "$changed_files"
+
           echo "runtime_required=$runtime_required" >> "$GITHUB_OUTPUT"
-          echo "limits_required=$limits_required" >> "$GITHUB_OUTPUT"
 
   unit-tests:
     name: Unit tests
@@ -187,15 +188,7 @@ jobs:
       # The browser job builds Next.js on the same guest at the same time. Fifteen jsdom workers on a shared CPU share pushed single tests
       # past their timeouts; eight finish sooner.
       - name: Run unit and contract tests
-        env:
-          LIMITS_REQUIRED: ${{ needs.changes.outputs.limits_required }}
-        run: |
-          if [ "$LIMITS_REQUIRED" = true ]; then
-            npm run test -- --maxWorkers=8
-          else
-            echo "No change reaches Convex code, so the max-size tests (convex/limits) are skipped."
-            npm run test -- --maxWorkers=8 '--project=!limits'
-          fi
+        run: npm run test -- --maxWorkers=8
 
   e2e-auth:
     runs-on: openscholar-secret
@@ -292,9 +285,26 @@ jobs:
           # An import skips the triggers that count those rows, so the counts kept from them go too.
           npx convex run migrations/pagedLibraryList:reset
 
+      # The runner keeps the Next.js build cache between runs: a build a few merged pull
+      # requests later takes about half the CPU of a cold one.
+      - name: Restore the Next.js build cache
+        if: steps.auth-environment.outputs.available == 'true'
+        run: |
+          mkdir -p .next
+          if [ -d "$HOME/.cache/openscholar-next" ]; then mv "$HOME/.cache/openscholar-next" .next/cache; fi
+
       - name: Run auth and citation E2E
         if: steps.auth-environment.outputs.available == 'true'
         run: npx playwright test e2e/auth.spec.ts e2e/citations.spec.ts --config=playwright.config.ts
+
+      - name: Keep the Next.js build cache
+        if: always() && steps.auth-environment.outputs.available == 'true'
+        run: |
+          if [ -d .next/cache ]; then
+            mkdir -p "$HOME/.cache"
+            rm -rf "$HOME/.cache/openscholar-next"
+            mv .next/cache "$HOME/.cache/openscholar-next"
+          fi
 
       - name: Upload Playwright report
         if: failure() && steps.auth-environment.outputs.available == 'true'

@@ -8,8 +8,8 @@ const domTests = [
   "app/**/__tests__/**/*.test.tsx",
   "tests/*.test.tsx",
 ];
-// The largest sizes the product allows (#350): over half of the suite's time, so CI runs them
-// only when a change can reach Convex code.
+// The largest sizes the product allows (#350): over a third of the suite's CPU, so `npm test`
+// leaves them out and CI runs them nightly (`npm run test:limits`).
 const limitTests = ["convex/limits/**/*.test.ts"];
 
 export default defineConfig({
