@@ -8,6 +8,9 @@ const domTests = [
   "app/**/__tests__/**/*.test.tsx",
   "tests/*.test.tsx",
 ];
+// The largest sizes the product allows (#350): over half of the suite's time, so CI runs them
+// only when a change can reach Convex code.
+const limitTests = ["convex/limits/**/*.test.ts"];
 
 export default defineConfig({
   oxc: { jsx: { runtime: "automatic" } },
@@ -20,7 +23,8 @@ export default defineConfig({
   },
   test: {
     projects: [
-      { test: { name: "convex", environment: "edge-runtime", include: ["convex/**/*.test.ts"] } },
+      { test: { name: "convex", environment: "edge-runtime", include: ["convex/**/*.test.ts"], exclude: limitTests } },
+      { test: { name: "limits", environment: "edge-runtime", include: limitTests } },
       { test: { name: "dom", environment: "jsdom", include: domTests } },
       { test: { name: "node", environment: "node", include: ["tests/**/*.test.{ts,tsx}", "lib/**/*.test.ts"], exclude: [...domTests, "tests/live-billing/**"] } },
       // What functions read at full size (#631): `npm run bench` only, never in `npm test`, since it seeds jobs of 50,000 papers.

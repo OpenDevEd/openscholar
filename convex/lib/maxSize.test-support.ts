@@ -85,10 +85,7 @@ export async function seedExtractionJob(t: Test, userId: Id<"users">, { papers =
 
 /**
  * A library of `items` saved papers, about 2.1 KB each plus an `abstractChars` abstract,
- * with ratings 1 to 5 and every item in one collection.
- */
-/**
- * A library of `items` papers, all in one collection. `counted` keeps the library's filtered
+ * with ratings 1 to 5 and every item in one collection. `counted` keeps the library's filtered
  * counts too (convex/library/facets.ts), which the aggregate's worker takes minutes to apply at
  * full size: a test that reads no filtered count leaves them out.
  */
@@ -112,6 +109,12 @@ export async function seedLibrary(t: Test, userId: Id<"users">, { items = MAX_SI
   if (!faked) vi.useRealTimers();
   return { itemIds, collectionId };
 }
+
+/** seedLibrary's papers: rating (i % 5) + 1, published 1990 + (i % 35), saved at 1_700_000_000_000 + i, all in its collection. */
+export const seededLibrary = (items: number) => Array.from({ length: items }, (_, i) => ({ rating: (i % 5) + 1, year: 1990 + (i % 35), savedAt: 1_700_000_000_000 + i }));
+/** How many of them a view keeps. */
+export const matchingOf = (seeded: ReturnType<typeof seededLibrary>, view: { minRating?: number; maxRating?: number; yearFrom?: number; yearTo?: number; savedAfter?: number }) =>
+  seeded.filter((p) => p.rating >= (view.minRating ?? 0) && p.rating <= (view.maxRating ?? 5) && p.year >= (view.yearFrom ?? 0) && p.year <= (view.yearTo ?? 9999) && p.savedAt >= (view.savedAfter ?? 0)).length;
 
 /** An OQL query as long as the longest saved on shared dev. */
 export const longOqlQuery = (variant = 0) => `works where title has (${text(MAX_SIZE.oqlQueryChars - 40, variant)}) ${variant}`;

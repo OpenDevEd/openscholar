@@ -156,6 +156,8 @@ Every page, export and count works at the largest sizes the product allows
 - `convex/lib/maxSize.test-support.ts` generates the largest sizes the product
   allows, at the row sizes measured on shared dev. A flow that reads more than
   one page proves it with a case in `convex/limits/maxSize.test.ts`.
+  `convex/limits` is its own Vitest project, over half of the suite's time.
+  CI skips it on a pull request whose changed files can't reach Convex code.
 - `convex-test` runs one transaction at a time, so it never shows a write
   conflict. Counters and anything else written in parallel are proven on a real
   backend as well.

@@ -5,7 +5,7 @@ import { expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { recomputePaperListProjection } from "./listProjection";
+import { recomputePaperListProjection } from "../extraction/listProjection";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { catchUp } from "../lib/catchUp.test-support";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
