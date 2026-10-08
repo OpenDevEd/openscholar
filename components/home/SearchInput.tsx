@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ModeToggle, SearchMode } from "./ModeToggle";
 import { detectSearchMode } from "@/lib/search/detect-mode";
-import { QUERY_FIELD_STYLE, queryRenderer } from "@/components/query-highlight";
+import { queryRenderer, useQueryFieldStyle } from "@/components/query-highlight";
 import { useTranslations, useLocale } from "next-intl";
 import {
   hintVariants,
@@ -51,6 +51,7 @@ export function SearchInput({
     if (!query.trim()) setManualMode(undefined);
   }, [query]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fieldStyle = useQueryFieldStyle();
   // A question reads as prose, so only a keyword search shows its logic.
   const highlight = effectiveMode === "search";
 
@@ -136,7 +137,7 @@ export function SearchInput({
                     : t("searchPlaceholder")
                 }
                 className={cn(TEXTAREA_CLASS, "w-full border-none bg-transparent resize-none min-h-[80px] sm:min-h-[100px] max-h-40 text-base sm:text-lg md:text-xl placeholder:text-muted-foreground/50 p-3 focus-visible:ring-0")}
-                style={QUERY_FIELD_STYLE}
+                style={fieldStyle}
                 disabled={disabled}
                 onChange={(e) => onQueryChange(e.target.value)}
                 onKeyDown={handleKeyDown}

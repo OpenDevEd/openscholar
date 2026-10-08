@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { RichTextarea } from "rich-textarea";
-import { QUERY_FIELD_STYLE, queryRenderer } from "@/components/query-highlight";
+import { queryRenderer, useQueryFieldStyle } from "@/components/query-highlight";
 
 interface QueryTextareaProps {
   label: string;
@@ -38,6 +38,7 @@ export function QueryTextarea({
   flash = false,
   highlightQuery = false,
 }: QueryTextareaProps) {
+  const fieldStyle = useQueryFieldStyle();
   const t = useTranslations();
   const th = useTranslations("home");
   const canSubmit = !disabled && !busy;
@@ -78,7 +79,7 @@ export function QueryTextarea({
           <RichTextarea
             aria-label={label}
             className="w-full bg-transparent outline-none resize-none text-sm placeholder:text-muted-foreground/60 min-h-[60px]"
-            style={QUERY_FIELD_STYLE}
+            style={fieldStyle}
             placeholder={placeholder}
             value={value}
             onChange={(event) => onChange(event.target.value)}

@@ -77,7 +77,6 @@ export function SearchTooltipContent({
           total={history.total}
           onLoadOlder={history.hasOlder ? history.loadOlder : undefined}
           currentQuery={query}
-          oql={filters.field === OQL_FIELD}
         />
       )}
     </div>

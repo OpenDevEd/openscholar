@@ -143,7 +143,6 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
           total={history.total}
           onLoadOlder={history.hasOlder ? history.loadOlder : undefined}
           searchId={item.id}
-          oql={item.field === OQL_FIELD}
           readOnly={choosing}
         />
       </PopoverContent>

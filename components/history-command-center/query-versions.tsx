@@ -10,6 +10,7 @@ import { useAppToast } from "@/lib/toast";
 import type { QueryHistoryEntry } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { QueryText } from "@/components/ui/query-text";
+import { OQL_FIELD } from "@/lib/openalex/oql";
 
 /**
  * The queries a search has had, newest first and numbered in the order they
@@ -21,7 +22,6 @@ export function QueryVersions({
   onLoadOlder,
   searchId,
   readOnly = false,
-  oql = false,
 }: {
   /** The newest queries; older ones are read as the list is scrolled to its end. */
   queryHistory: QueryHistoryEntry[];
@@ -29,8 +29,6 @@ export function QueryVersions({
   onLoadOlder?: () => void;
   searchId: string;
   readOnly?: boolean;
-  /** The search is an OpenAlex Query Language query, whose versions show as written. */
-  oql?: boolean;
 }) {
   const toast = useAppToast();
   const tc = useTranslations("common");
@@ -83,7 +81,7 @@ export function QueryVersions({
               <BookmarkForm query={entry.query} onDone={() => setBookmarking(null)} className="flex-1" />
             ) : (
               <>
-                <QueryText query={entry.query} oql={oql} className="block min-w-0 flex-1 py-0.5 text-sm [overflow-wrap:anywhere]" />
+                <QueryText query={entry.query} oql={entry.field === OQL_FIELD} className="block min-w-0 flex-1 py-0.5 text-sm [overflow-wrap:anywhere]" />
                 <EntryAside meta={<time dateTime={entry.timestamp}>{format.relativeTime(new Date(entry.timestamp), now)}</time>} className="h-6">
                   <EntryAction label={tc("copyQuery")} icon={Copy} onClick={() => void copy(entry.query)} {...noTooltipOnFocus} />
                   {!readOnly && <EntryAction label={tc("saveAsBookmark")} icon={BookmarkPlus} onClick={() => setBookmarking(key)} {...noTooltipOnFocus} />}

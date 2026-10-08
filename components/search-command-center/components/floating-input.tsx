@@ -3,7 +3,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { experimental_RichInput as RichInput } from "rich-textarea";
-import { QUERY_FIELD_STYLE, queryRenderer } from "@/components/query-highlight";
+import { queryRenderer, useQueryFieldStyle } from "@/components/query-highlight";
 
 interface FloatingInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "defaultValue"> {
   label: string;
@@ -26,6 +26,7 @@ export function FloatingInput({
   highlightQuery = false,
   ...props
 }: FloatingInputProps) {
+  const fieldStyle = useQueryFieldStyle();
   return (
     <div className={cn("group relative", wrapperClassName)}>
       {/* Floating label */}
@@ -71,7 +72,7 @@ export function FloatingInput({
               "text-sm placeholder:text-muted-foreground/60",
               className
             )}
-            style={QUERY_FIELD_STYLE}
+            style={fieldStyle}
             {...props}
           >
             {queryRenderer(highlightQuery)}

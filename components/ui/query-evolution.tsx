@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import type { QueryHistoryEntry } from "@/lib/types/search.types";
 import { QueryText } from "@/components/ui/query-text";
+import { OQL_FIELD } from "@/lib/openalex/oql";
 
 // About four lines at this size; longer queries are cut off.
 const LONG_QUERY_CHARS = 240;
@@ -27,8 +28,6 @@ interface QueryEvolutionProps {
   /** Reads older queries; called when the end of the timeline scrolls into view. */
   onLoadOlder?: () => void;
   currentQuery: string;
-  /** The search is an OpenAlex Query Language query, whose versions show as written. */
-  oql?: boolean;
   className?: string;
 }
 
@@ -59,7 +58,6 @@ export function QueryEvolution({
   total,
   onLoadOlder,
   currentQuery,
-  oql = false,
   className,
 }: QueryEvolutionProps) {
   const t = useTranslations("historyPage");
@@ -160,7 +158,7 @@ export function QueryEvolution({
                     <div className="flex-1 min-w-0">
                       <QueryText 
                         query={entry.query}
-                        oql={oql}
+                        oql={entry.field === OQL_FIELD}
                         className={cn(
                           "text-3xs break-words leading-relaxed [overflow-wrap:anywhere]",
                           isCurrent && "font-medium",

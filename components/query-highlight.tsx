@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import {
   highlightSegments,
@@ -96,8 +96,27 @@ export function queryRenderer(highlight: boolean) {
   return highlight ? (value: string) => <HighlightedQuery query={value} /> : (value: string) => value;
 }
 
-/** rich-textarea keeps the first caret colour it sees; this one follows the theme. */
-export const QUERY_FIELD_STYLE = { width: "100%", caretColor: "var(--foreground)" } as const;
+// Tailwind's sm and md: the home box's text size changes at both.
+const BREAKPOINTS = ["(min-width: 40rem)", "(min-width: 48rem)"];
+
+/** Listens to the browser's media queries for the breakpoints. */
+function subscribeToBreakpoints(onChange: () => void) {
+  const queries = BREAKPOINTS.map((query) => window.matchMedia(query));
+  queries.forEach((query) => query.addEventListener("change", onChange));
+  return () => queries.forEach((query) => query.removeEventListener("change", onChange));
+}
+
+const breakpointsMet = () => BREAKPOINTS.filter((query) => window.matchMedia(query).matches).length;
+
+/**
+ * The style a rich-textarea query field takes. rich-textarea copies the field's font and padding
+ * only when this object changes, so a new one comes at each breakpoint; the caret colour is set
+ * because it otherwise keeps the first one it sees, whatever the theme.
+ */
+export function useQueryFieldStyle() {
+  const breakpoint = useSyncExternalStore(subscribeToBreakpoints, breakpointsMet, () => 0);
+  return useMemo(() => ({ width: "100%", caretColor: "var(--foreground)", "--breakpoint": breakpoint }), [breakpoint]);
+}
 
 // ---------- The results ----------
 
