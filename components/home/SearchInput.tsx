@@ -3,12 +3,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from "motion/react";
 import { Search, AiIcon } from "@/components/icons";
-import { Textarea } from "@/components/ui/textarea";
+import { TEXTAREA_CLASS } from "@/components/ui/textarea";
+import { RichTextarea } from "rich-textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ModeToggle, SearchMode } from "./ModeToggle";
 import { detectSearchMode } from "@/lib/search/detect-mode";
-import { MIRRORED_FIELD, QueryMirror, useMirrorScroll } from "@/components/query-highlight";
+import { QUERY_FIELD_STYLE, queryRenderer } from "@/components/query-highlight";
 import { useTranslations, useLocale } from "next-intl";
 import {
   hintVariants,
@@ -50,7 +51,6 @@ export function SearchInput({
     if (!query.trim()) setManualMode(undefined);
   }, [query]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const mirror = useMirrorScroll();
   // A question reads as prose, so only a keyword search shows its logic.
   const highlight = effectiveMode === "search";
 
@@ -124,11 +124,9 @@ export function SearchInput({
           )}
         >
           <div className="relative overflow-hidden rounded-xl bg-field transition-shadow group focus-within:ring-1 focus-within:ring-primary/30">
-            <div className="relative">
-              {highlight && (
-                <QueryMirror ref={mirror.ref} query={query} className="whitespace-pre-wrap break-words text-base sm:text-lg md:text-xl p-3" />
-              )}
-              <Textarea
+            {/* A flex box, so rich-textarea's inline wrapper adds no line gap below the field. */}
+            <div className="flex">
+              <RichTextarea
                 ref={textareaRef}
                 name="query"
                 value={query}
@@ -137,15 +135,14 @@ export function SearchInput({
                     ? t("researchPlaceholder")
                     : t("searchPlaceholder")
                 }
-                className={cn(
-                  "w-full border-none bg-transparent resize-none min-h-[80px] sm:min-h-[100px] max-h-40 text-base sm:text-lg md:text-xl placeholder:text-muted-foreground/50 p-3 focus-visible:ring-0",
-                  highlight && MIRRORED_FIELD,
-                )}
+                className={cn(TEXTAREA_CLASS, "w-full border-none bg-transparent resize-none min-h-[80px] sm:min-h-[100px] max-h-40 text-base sm:text-lg md:text-xl placeholder:text-muted-foreground/50 p-3 focus-visible:ring-0")}
+                style={QUERY_FIELD_STYLE}
                 disabled={disabled}
                 onChange={(e) => onQueryChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                onScroll={mirror.sync}
-              />
+              >
+                {queryRenderer(highlight)}
+              </RichTextarea>
             </div>
 
             {/* Bottom Action Bar */}

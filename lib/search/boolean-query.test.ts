@@ -59,6 +59,14 @@ describe("highlightSegments", () => {
     expect(marked("Case studies of a study", "study")).toEqual(["0:studies", "0:study"]);
   });
 
+  it("finds the singular from a plural query", () => {
+    expect(marked("A possum and possums", "possums")).toEqual(["0:possum", "0:possums"]);
+  });
+
+  it("takes a quoted phrase as written", () => {
+    expect(marked("mental healths, mental health", '"mental health"')).toEqual(["0:mental health"]);
+  });
+
   it("never marks excluded terms", () => {
     expect(marked("Online school", "school NOT online")).toEqual(["0:school"]);
   });

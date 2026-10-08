@@ -27,6 +27,8 @@ interface QueryEvolutionProps {
   /** Reads older queries; called when the end of the timeline scrolls into view. */
   onLoadOlder?: () => void;
   currentQuery: string;
+  /** The search is an OpenAlex Query Language query, whose versions show as written. */
+  oql?: boolean;
   className?: string;
 }
 
@@ -57,6 +59,7 @@ export function QueryEvolution({
   total,
   onLoadOlder,
   currentQuery,
+  oql = false,
   className,
 }: QueryEvolutionProps) {
   const t = useTranslations("historyPage");
@@ -157,6 +160,7 @@ export function QueryEvolution({
                     <div className="flex-1 min-w-0">
                       <QueryText 
                         query={entry.query}
+                        oql={oql}
                         className={cn(
                           "text-3xs break-words leading-relaxed [overflow-wrap:anywhere]",
                           isCurrent && "font-medium",

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useRef, type ReactNode, type Ref, type SyntheticEvent } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import {
   highlightSegments,
@@ -52,7 +52,7 @@ function tokenClass(token: QueryToken, coloured: boolean): string | undefined {
  * it excludes in red, and each parenthesised group as a tinted layer over the groups around it.
  * Only colours and backgrounds change, so the text keeps the exact width of the field it mirrors.
  */
-export function QueryText({ query }: { query: string }) {
+export function HighlightedQuery({ query }: { query: string }) {
   const { tokens, conceptCount } = useMemo(() => parseBooleanQuery(query), [query]);
   // A plain keyword query is one concept: it stays in the normal text colour.
   const coloured = conceptCount > 1;
@@ -91,34 +91,13 @@ export function QueryText({ query }: { query: string }) {
   return <>{root}</>;
 }
 
-/**
- * A copy of the query drawn behind a transparent input or textarea, so the field shows the
- * highlighting while the browser still owns typing, the caret and selection. Give it the same
- * font size, line height and padding as the field.
- */
-export function QueryMirror({ query, className, ref }: { query: string; className?: string; ref?: Ref<HTMLDivElement> }) {
-  return (
-    <div ref={ref} aria-hidden className={cn("pointer-events-none absolute inset-0 overflow-hidden text-foreground", className)}>
-      <QueryText query={query} />
-      {/* Keeps a trailing line break as tall as the textarea draws it. */}
-      {"​"}
-    </div>
-  );
+/** The render function rich-textarea fields take: the query with its logic drawn in, or as typed. */
+export function queryRenderer(highlight: boolean) {
+  return highlight ? (value: string) => <HighlightedQuery query={value} /> : (value: string) => value;
 }
 
-/** Keeps a {@link QueryMirror} scrolled with its field. */
-export function useMirrorScroll() {
-  const ref = useRef<HTMLDivElement>(null);
-  const sync = (event: SyntheticEvent<HTMLElement>) => {
-    if (!ref.current) return;
-    ref.current.scrollTop = event.currentTarget.scrollTop;
-    ref.current.scrollLeft = event.currentTarget.scrollLeft;
-  };
-  return { ref, sync };
-}
-
-/** What a field with a mirror behind it needs: hidden text, a visible caret and selection. */
-export const MIRRORED_FIELD = "relative text-transparent caret-foreground selection:bg-primary/25";
+/** rich-textarea keeps the first caret colour it sees; this one follows the theme. */
+export const QUERY_FIELD_STYLE = { width: "100%", caretColor: "var(--foreground)" } as const;
 
 // ---------- The results ----------
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { Search } from "@/components/icons";
+import { OQL_FIELD } from "@/lib/openalex/oql";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 import { FilterChips } from "@/components/ui/filter-display";
@@ -13,7 +14,7 @@ import { readOpenAlexSourceSearch } from "@/lib/evidence-libraries/openalex-sour
 import { DisclosureButton, useFullText } from "../disclosure-button";
 
 /** The query cut to three lines, with the full text on request. */
-function QueryLine({ query, scope }: { query: string; scope: string | null }) {
+function QueryLine({ query, scope, oql }: { query: string; scope: string | null; oql: boolean }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const queryId = useId();
   const { ref: queryRef, expanded, clipped, toggle } = useFullText<HTMLSpanElement>();
@@ -27,7 +28,7 @@ function QueryLine({ query, scope }: { query: string; scope: string | null }) {
           id={queryId}
           className={cn("min-w-0", expanded ? "max-h-72 overflow-y-auto pr-2" : "line-clamp-3")}
         >
-          <QueryText query={query} className="break-words font-medium [overflow-wrap:anywhere]" />
+          <QueryText query={query} oql={oql} className="break-words font-medium [overflow-wrap:anywhere]" />
         </span>
       </span>
       {scope ? <span>{scope}</span> : null}
@@ -53,7 +54,7 @@ export function OpenAlexQuerySummary({ source }: { source: OpenAlexSourceEntry }
   return (
     <div className="space-y-2.5">
       {/* Keyed by the query, so an edited query starts collapsed. */}
-      <QueryLine key={params.q} query={params.q} scope={params.q ? getFieldLabel(params.field, t) : null} />
+      <QueryLine key={params.q} query={params.q} oql={params.field === OQL_FIELD} scope={params.q ? getFieldLabel(params.field, t) : null} />
       {/* The scope sits beside the query; sort and ratings do not change what is imported. */}
       <FilterChips
         filters={{

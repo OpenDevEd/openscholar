@@ -5,7 +5,8 @@ import { Loader2, Search } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { MIRRORED_FIELD, QueryMirror, useMirrorScroll } from "@/components/query-highlight";
+import { RichTextarea } from "rich-textarea";
+import { QUERY_FIELD_STYLE, queryRenderer } from "@/components/query-highlight";
 
 interface QueryTextareaProps {
   label: string;
@@ -37,7 +38,6 @@ export function QueryTextarea({
   flash = false,
   highlightQuery = false,
 }: QueryTextareaProps) {
-  const mirror = useMirrorScroll();
   const t = useTranslations();
   const th = useTranslations("home");
   const canSubmit = !disabled && !busy;
@@ -75,29 +75,23 @@ export function QueryTextarea({
             flash && "bg-success/10 border-success"
           )}
         >
-          <div className="relative">
-            {highlightQuery && (
-              <QueryMirror ref={mirror.ref} query={value} className="whitespace-pre-wrap break-words text-sm" />
-            )}
-            <textarea
-              aria-label={label}
-              className={cn(
-                "w-full bg-transparent outline-none resize-none text-sm placeholder:text-muted-foreground/60 min-h-[60px]",
-                highlightQuery && MIRRORED_FIELD
-              )}
-              placeholder={placeholder}
-              value={value}
-              onChange={(event) => onChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  event.currentTarget.form?.requestSubmit();
-                }
-              }}
-              disabled={disabled || busy}
-              onScroll={mirror.sync}
-            />
-          </div>
+          <RichTextarea
+            aria-label={label}
+            className="w-full bg-transparent outline-none resize-none text-sm placeholder:text-muted-foreground/60 min-h-[60px]"
+            style={QUERY_FIELD_STYLE}
+            placeholder={placeholder}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                event.currentTarget.form?.requestSubmit();
+              }
+            }}
+            disabled={disabled || busy}
+          >
+            {queryRenderer(highlightQuery)}
+          </RichTextarea>
 
           {/* Bottom bar: hints + search button (same as home screen) */}
           <div className="flex flex-wrap items-center justify-end md:justify-between gap-2 pt-1.5 border-t border-border-subtle">

@@ -2,9 +2,10 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { MIRRORED_FIELD, QueryMirror, useMirrorScroll } from "@/components/query-highlight";
+import { experimental_RichInput as RichInput } from "rich-textarea";
+import { QUERY_FIELD_STYLE, queryRenderer } from "@/components/query-highlight";
 
-interface FloatingInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface FloatingInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "defaultValue"> {
   label: string;
   /** Extra content rendered inline after the label text (e.g. history nav) */
   labelAddon?: React.ReactNode;
@@ -25,7 +26,6 @@ export function FloatingInput({
   highlightQuery = false,
   ...props
 }: FloatingInputProps) {
-  const mirror = useMirrorScroll();
   return (
     <div className={cn("group relative", wrapperClassName)}>
       {/* Floating label */}
@@ -64,21 +64,18 @@ export function FloatingInput({
           </div>
         )}
 
-        <div className="relative flex flex-1 min-w-[200px]">
-          {highlightQuery && (
-            <QueryMirror ref={mirror.ref} query={String(props.value ?? "")} className="whitespace-pre text-sm" />
-          )}
-          <input
+        <div className="flex flex-1 min-w-[200px]">
+          <RichInput
             className={cn(
               "w-full bg-transparent outline-none",
               "text-sm placeholder:text-muted-foreground/60",
-              highlightQuery && MIRRORED_FIELD,
               className
             )}
-            onScroll={mirror.sync}
-            onSelect={mirror.sync}
+            style={QUERY_FIELD_STYLE}
             {...props}
-          />
+          >
+            {queryRenderer(highlightQuery)}
+          </RichInput>
         </div>
 
         {action && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { OQL_FIELD } from "@/lib/openalex/oql";
 import { useTranslations, useFormatter, useNow } from "next-intl";
 import { Copy, Trash2, BookmarkPlus, History, AiIcon } from "@/components/icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -89,7 +90,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
   // The query, cut to `clamp` until it is asked for in full.
   const open = (clamp: string, shape?: string) => (
     <button ref={queryText.ref} type="button" className={cn(ENTRY_OPEN, shape, !queryText.expanded && clamp)} onClick={openSearch}>
-      <QueryText query={item.query} />
+      <QueryText query={item.query} oql={item.field === OQL_FIELD} />
     </button>
   );
 
@@ -142,6 +143,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
           total={history.total}
           onLoadOlder={history.hasOlder ? history.loadOlder : undefined}
           searchId={item.id}
+          oql={item.field === OQL_FIELD}
           readOnly={choosing}
         />
       </PopoverContent>

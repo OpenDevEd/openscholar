@@ -1,3 +1,4 @@
+import { stemmer } from "stemmer";
 import { hasUnquotedWildcard } from "./wildcard";
 
 /**
@@ -200,45 +201,43 @@ export function parseBooleanQuery(query: string): ParsedQuery {
   return { tokens, conceptCount, concepts };
 }
 
+
 // ---------- Matching in result text ----------
 
-const WORD_EDGE_BEFORE = "(?<![\\p{L}\\p{N}])";
-const WORD_EDGE_AFTER = "(?![\\p{L}\\p{N}])";
-// ponytail: a few English endings stand in for OpenAlex's stemmer; swap for a real stemmer if misses show up.
-const ENDINGS = "(?:s|es|ed|d|ing|er|ers|ly|al|ion|ions|ation|ations|ment|ments|ity|ities|ness)?";
+const WORD = /[\p{L}\p{N}]+/gu;
 
-const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** Tests one word of the result text, given lower-cased, with its stem worked out on demand. */
+type WordTest = (word: string, stem: () => string) => boolean;
 
-function wordPattern(word: string, stemmed: boolean): string {
-  const bare = word.replace(/\.{3}$/, "").replace(/^[^\p{L}\p{N}*?]+|[^\p{L}\p{N}*?]+$/gu, "");
-  if (!bare) return "";
-  if (/[*?]/.test(bare)) {
-    return bare
-      .split(/([*?])/)
-      .map((part) => (part === "*" ? "[\\p{L}\\p{N}]*" : part === "?" ? "[\\p{L}\\p{N}]" : escapeRegex(part)))
-      .join("");
+type TermMatcher = {
+  concept: number;
+  words: WordTest[];
+  /** Words a proximity phrase ("a b"~N) may have between its own; null when they must be adjacent. */
+  slop: number | null;
+};
+
+/**
+ * OpenAlex stems bare words (Kstem) and takes quoted phrases and wildcard searches as written.
+ * ponytail: Porter stands in for Kstem and over-matches a little ("educator" finds "education").
+ */
+function wordTest(word: string, stemmed: boolean): WordTest {
+  const lower = word.toLowerCase();
+  if (/[*?]/.test(lower)) {
+    const pattern = new RegExp(`^${lower.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[\\p{L}\\p{N}]*").replace(/\?/g, "[\\p{L}\\p{N}]")}$`, "u");
+    return (text) => pattern.test(text);
   }
-  if (!stemmed) return escapeRegex(bare);
-  // "study" also finds "studies", "use" also finds "using".
-  const root = /[^aeiou]y$/i.test(bare) ? bare.slice(0, -1) : /e$/i.test(bare) ? bare.slice(0, -1) : bare;
-  const tail = root === bare ? "" : `(?:${escapeRegex(bare.slice(-1))}|ies|ied|ing|ed)?`;
-  return `${escapeRegex(root)}${tail}${ENDINGS}`;
+  if (!stemmed) return (text) => text === lower;
+  const target = stemmer(lower);
+  return (_, stem) => stem() === target;
 }
 
-type TermMatcher =
-  | { concept: number; pattern: RegExp }
-  /** A proximity phrase ("a b"~N): every word within N extra words of the others. */
-  | { concept: number; words: RegExp[]; slop: number };
-
-function termMatcher(text: string, concept: number, stemmed: boolean): TermMatcher | null {
+function termMatcher(text: string, concept: number, fieldStemmed: boolean): TermMatcher | null {
   const proximity = text.match(/~(\d+)$/);
-  const words = text.replace(/~\d+$/, "").replace(/"/g, "").split(/\s+/);
-  const parts = words.map((word) => wordPattern(word, stemmed)).filter(Boolean);
-  if (parts.length === 0) return null;
-  if (proximity && parts.length > 1) {
-    return { concept, words: parts.map((p) => new RegExp(`^(?:${p})$`, "iu")), slop: Number(proximity[1]) };
-  }
-  return { concept, pattern: new RegExp(`${WORD_EDGE_BEFORE}${parts.join("[^\\p{L}\\p{N}]+")}${WORD_EDGE_AFTER}`, "giu") };
+  const quoted = text.startsWith('"');
+  const body = text.replace(/~\d+$/, "").replace(/\.{3}$/, "");
+  const words = [...body.matchAll(/[\p{L}\p{N}*?]+/gu)].map((match) => wordTest(match[0], fieldStemmed && !quoted));
+  if (words.length === 0) return null;
+  return { concept, words, slop: proximity && words.length > 1 ? Number(proximity[1]) : null };
 }
 
 export interface QueryMatcher {
@@ -262,31 +261,45 @@ export interface TextSegment {
 
 type Hit = { start: number; end: number; concept: number };
 
-function proximityHits(text: string, term: Extract<TermMatcher, { words: RegExp[] }>): Hit[] {
-  const tokens = [...text.matchAll(/[\p{L}\p{N}]+/gu)];
-  const span = term.words.length + term.slop;
-  const marked = new Set<number>();
-  for (let start = 0; start < tokens.length; start++) {
-    const window = tokens.slice(start, start + span);
-    const found = term.words.map((word) => window.findIndex((token) => word.test(token[0])));
-    if (found.every((at) => at >= 0)) found.forEach((at) => marked.add(start + at));
-  }
-  return [...marked].map((at) => {
-    const token = tokens[at];
-    return { start: token.index, end: token.index + token[0].length, concept: term.concept };
-  });
-}
-
 /** Splits text into plain runs and matches; where matches overlap, the earlier then longer wins. */
 export function highlightSegments(text: string, matcher: QueryMatcher | null): TextSegment[] {
   if (!matcher || !text) return [{ text }];
-  const hits: Hit[] = matcher.terms.flatMap((term) =>
-    "pattern" in term
-      ? [...text.matchAll(term.pattern)].flatMap((match) =>
-          match[0] ? [{ start: match.index, end: match.index + match[0].length, concept: term.concept }] : [],
-        )
-      : proximityHits(text, term),
-  );
+  const words = [...text.matchAll(WORD)].map((match) => ({
+    start: match.index,
+    end: match.index + match[0].length,
+    lower: match[0].toLowerCase(),
+    stem: undefined as string | undefined,
+  }));
+  const test = (at: number, word: WordTest) => {
+    const entry = words[at];
+    return entry !== undefined && word(entry.lower, () => (entry.stem ??= stemmer(entry.lower)));
+  };
+
+  const hits: Hit[] = [];
+  for (const term of matcher.terms) {
+    const count = term.words.length;
+    if (term.slop === null) {
+      // A phrase: its words one after another, marked as one stretch.
+      for (let at = 0; at + count <= words.length; at++) {
+        if (term.words.every((word, offset) => test(at + offset, word))) {
+          hits.push({ start: words[at].start, end: words[at + count - 1].end, concept: term.concept });
+        }
+      }
+      continue;
+    }
+    // A proximity phrase: every word inside one window, each marked on its own.
+    const span = count + term.slop;
+    const marked = new Set<number>();
+    for (let start = 0; start < words.length; start++) {
+      const found = term.words.map((word) => {
+        for (let at = start; at < Math.min(start + span, words.length); at++) if (test(at, word)) return at;
+        return -1;
+      });
+      if (found.every((at) => at >= 0)) found.forEach((at) => marked.add(at));
+    }
+    marked.forEach((at) => hits.push({ start: words[at].start, end: words[at].end, concept: term.concept }));
+  }
+
   hits.sort((a, b) => a.start - b.start || b.end - a.end);
   const segments: TextSegment[] = [];
   let at = 0;

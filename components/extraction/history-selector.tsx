@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
+import { OQL_FIELD } from "@/lib/openalex/oql";
+import { QueryText } from "@/components/ui/query-text";
 import { motion } from "motion/react";
 import { useSearchList } from "@/lib/research/search-list";
 import { useResearchStatus } from "@/lib/research/provider";
@@ -189,7 +191,7 @@ export function HistorySelector({ paperLimit }: { paperLimit: number }) {
           <div className="flex items-center gap-2 mb-1">
             <Search className="w-4 h-4 text-muted-foreground shrink-0" />
             <span className="font-medium text-foreground truncate">
-              {entry.query}
+              <QueryText query={entry.query} oql={entry.field === OQL_FIELD} />
             </span>
           </div>
           <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
