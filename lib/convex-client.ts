@@ -1,5 +1,5 @@
 import { ConvexReactClient, type Watch, type WatchQueryOptions } from "convex/react";
-import { getFunctionName, type ArgsAndOptions, type FunctionReference, type FunctionReference_future, type FunctionReturnType } from "convex/server";
+import { getFunctionName, type ArgsAndOptions, type FunctionReference, type FunctionReference_future, type FunctionReturnType, type OptionalRestArgs } from "convex/server";
 import { ConvexError, convexToJson } from "convex/values";
 
 /** How long to wait before each new run of a query the backend timed out; past the last, the failure reaches the page. */
@@ -23,6 +23,7 @@ type Query = {
 };
 
 const timedOut = (error: unknown) => error instanceof Error && !(error instanceof ConvexError) && TIMED_OUT.test(error.message);
+const keyOf = (query: FunctionReference<"query"> | FunctionReference_future<"query">, args: unknown) => JSON.stringify([getFunctionName(query), convexToJson((args ?? {}) as never)]);
 
 /**
  * A Convex client that runs a query again when the backend timed out running it, as a busy
@@ -30,6 +31,10 @@ const timedOut = (error: unknown) => error instanceof Error && !(error instanceo
  * query reads as its last result, or as loading if it never had one, and its subscribers
  * hear nothing. The backend runs a query again only once every subscriber has dropped it and
  * one subscribes anew, so a retry drops and reopens all of them together.
+ *
+ * ponytail: every hook in convex 1.46 subscribes through `watchQuery`. `watchPaginatedQuery`
+ * (`usePaginatedQuery_experimental`) isn't covered; cover it when Convex moves
+ * `usePaginatedQuery` onto it or the app uses it.
  */
 export class RetryingConvexClient extends ConvexReactClient {
   private readonly queries = new Map<string, Query>();
@@ -39,7 +44,7 @@ export class RetryingConvexClient extends ConvexReactClient {
     ...argsAndOptions: ArgsAndOptions<Q, WatchQueryOptions>
   ): Watch<FunctionReturnType<Q>> {
     const watch = super.watchQuery(query, ...argsAndOptions);
-    const key = JSON.stringify([getFunctionName(query), convexToJson(argsAndOptions[0] ?? {})]);
+    const key = keyOf(query, argsAndOptions[0]);
     return {
       ...watch,
       onUpdate: (callback) => {
@@ -77,6 +82,44 @@ export class RetryingConvexClient extends ConvexReactClient {
         }
       },
     };
+  }
+
+  /** A one-shot read waits out a retry for the run that answers, never taking the result it replaces. */
+  override query<Q extends FunctionReference<"query"> | FunctionReference_future<"query">>(query: Q, ...args: OptionalRestArgs<Q>): Promise<FunctionReturnType<Q>> {
+    const entry = this.queries.get(keyOf(query, args[0]));
+    if (entry === undefined || entry.failures === 0 || entry.failures > RETRY_DELAYS_MS.length) return super.query(query, ...args);
+    const watch = this.watchQuery(query, ...(args as unknown as ArgsAndOptions<Q, WatchQueryOptions>));
+    return new Promise((resolve, reject) => {
+      const stop = watch.onUpdate(() => {
+        stop();
+        try {
+          resolve(watch.localQueryResult() as FunctionReturnType<Q>);
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+  }
+
+  override setAuth(...args: Parameters<ConvexReactClient["setAuth"]>) {
+    this.forgetResults();
+    super.setAuth(...args);
+  }
+
+  override clearAuth() {
+    this.forgetResults();
+    super.clearAuth();
+  }
+
+  override async close() {
+    for (const entry of this.queries.values()) clearTimeout(entry.timer);
+    this.queries.clear();
+    await super.close();
+  }
+
+  /** A result read as one identity never stands in for another's while a retry runs. */
+  private forgetResults() {
+    for (const entry of this.queries.values()) entry.last = undefined;
   }
 
   /** Follows the query's latest run; returns whether its subscribers should hear about it. */

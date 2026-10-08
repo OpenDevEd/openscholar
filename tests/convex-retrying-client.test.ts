@@ -160,4 +160,34 @@ describe("RetryingConvexClient", () => {
     await vi.advanceTimersByTimeAsync(10_000);
     expect(deployment.added()).toHaveLength(2);
   });
+
+  it("keeps a one-shot read of a query that is retrying waiting for the new run, not the result it replaces", async () => {
+    await subscribe();
+    deployment.succeed([6]);
+    deployment.fail(TIMED_OUT);
+    let settled: unknown;
+    const result = client.query(list, {}).then((value) => (settled = value));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(1_000);
+    deployment.succeed([7]);
+    await result;
+    expect(settled).toEqual([7]);
+  });
+
+  it("never shows a result read before signing out while the next run retries", async () => {
+    const { watch } = await subscribe();
+    deployment.succeed([8]);
+    client.clearAuth();
+    deployment.fail(TIMED_OUT);
+    expect(watch.localQueryResult()).toBeUndefined();
+  });
+
+  it("stops waiting retries when the client closes", async () => {
+    await subscribe();
+    deployment.fail(TIMED_OUT);
+    await client.close();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(deployment.added()).toHaveLength(1);
+  });
 });
