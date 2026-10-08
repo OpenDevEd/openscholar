@@ -21,10 +21,11 @@ const migrations = new Migrations<DataModel>(components.migrations, { internalMu
 
 const own = (ctx: MutationCtx, userId: Id<"users">) => ensureWorkspace(ctx, { kind: "personal", userId });
 
-// Each paper patched is counted again under its workspace, three counts each.
+// A paper, and the paper a removal keeps, can be near a document's 1 MiB, and patching one reads it
+// again and counts it under its workspace: five at a time, as migrations/researchWorkspaces.ts does.
 export const papers = migrations.define({
   table: "libraryItems",
-  batchSize: 50,
+  batchSize: 5,
   migrateOne: async (ctx, item) => (item.workspaceId ? undefined : { workspaceId: await own(ctx, item.userId), createdBy: item.userId }),
 });
 
@@ -35,7 +36,7 @@ export const collections = migrations.define({
 
 export const removals = migrations.define({
   table: "libraryRemovals",
-  batchSize: 50,
+  batchSize: 5,
   migrateOne: async (ctx, removal) => (removal.workspaceId ? undefined : { workspaceId: await own(ctx, removal.userId) }),
 });
 
