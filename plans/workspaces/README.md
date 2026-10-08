@@ -151,7 +151,10 @@ Asked with a recommendation each, all answered the same day:
    under `/o/<slug>` (#651).
 6. A search expands the bookmarks of the workspace it's in, and no others
    (#650).
-7. Moving items was mocked before it is built (`92e0fc54`, #654).
+7. Moving items was mocked before it is built (`92e0fc54`, #654). The user then
+   accepted the mock's three rules for a move: a running screening or extraction
+   moves once it has finished, guests keep their access, and the Evidence
+   Library a collection leaves keeps the papers it saved.
 
 ## What the mock leaves out
 
@@ -452,10 +455,9 @@ extraction (OS-14).
    Share on every item's row and beside Share on your chats, lists your other
    workspaces, and shows what goes with the item. You go with it: it stays open
    in the workspace it moved to, and its activity records where it came from.
-   Only an organization's admins move its work out of it. The mock also
-   proposes three rules the user hasn't reviewed yet: a running job moves once
-   it has finished, guests keep their access, and the library a collection
-   leaves keeps the papers it saved.
+   Only an organization's admins move its work out of it. A running job moves
+   once it has finished, guests keep their access, and the library a
+   collection leaves keeps the papers it saved.
 8. #656: who started what, and activity per item. The "Run by" filter reads
    `by_workspace_and_createdBy` and the per-member counts.
 9. #657: presence on every item.
