@@ -16,6 +16,7 @@ Sources
 Shape
 - Give the edition a specific short title, a summary of one or two sentences, and a Markdown body with a heading for each theme.
 - The title and the summary are plain text: no links, no citations, no Markdown.
+- Write each theme heading as a second-level heading (##). Use no other heading level.
 - Do not repeat the title as a heading in the body.
 - Group the publications into themes and say how the studies in a theme relate. Do not write a title, byline or summary block for each publication.
 - Cite with a normal Markdown link such as [Author, year](/lib/ABCDEFGH), using only supplied item keys. Use no other links and no images.
