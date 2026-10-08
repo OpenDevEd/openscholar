@@ -41,6 +41,7 @@ import { requireThread } from "./access";
 import { MODEL_READS } from "./steps";
 import { citedFileIdsValidator, citedFilesValidator } from "./validators";
 import { chatModel } from "./threads";
+import { downloadPdf } from "../../lib/pdf/download";
 
 const FLAG = "assistant.enabled";
 const HOUR = 60 * 60 * 1000;
@@ -358,11 +359,12 @@ const fileIdOf = (part: FilePart) => (part.providerOptions?.openscholar as { fil
  *
  * A paper's PDF (research/papers:readPdf) goes by its own address, which the provider
  * fetches, but only in the reply that read it: from `fresh` on, the reply's own messages.
- * Before that it's a line saying it was read: an address that stops answering fails every
- * request it's in, so it can fail one reply at most, and a long paper isn't sent again with
- * every later message.
+ * Before that it's a line saying it was read, so a long paper isn't sent again with every later message.
+ * `linked` hears that a request carries a paper's address. A provider that can't fetch it refuses the whole
+ * request, and the reply makes it again with `download` (./run.ts): each paper downloaded here and sent as it is,
+ * or a line saying it couldn't be.
  */
-export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "runMutation">, messages: ModelMessage[], modelId: Id<"models"> | null, fresh?: number): Promise<ModelMessage[]> {
+export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "runMutation">, messages: ModelMessage[], modelId: Id<"models"> | null, fresh?: number, paperPdfs: { download?: boolean; linked?: () => void } = {}): Promise<ModelMessage[]> {
   const fileIds = messages.flatMap((message) => {
     if (message.role === "user" && typeof message.content !== "string") return message.content.flatMap((part) => (part.type === "file" && fileIdOf(part) ? [fileIdOf(part)!] : []));
     if (message.role === "tool") return message.content.flatMap((part) => (part.type === "tool-result" && pagesOf(part.output) ? [pagesOf(part.output)!] : []));
@@ -379,6 +381,8 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
     return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
   };
   const used: Id<"assistantFiles">[] = [];
+  // What's left of PAPER_BYTES for papers downloaded to be sent.
+  let room = PAPER_BYTES;
   const out = await Promise.all(
     messages.map(async (message, at): Promise<ModelMessage> => {
       if (message.role === "tool") {
@@ -389,7 +393,15 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
               const said = JSON.stringify((part.output as { value: unknown }).value);
               if (!read.pdfs) return { ...part, output: { type: "text", value: `${said}\n[This PDF can't be shown to the model this chat now runs on, which doesn't read PDFs.]` } };
               if (fresh === undefined || at < fresh) return { ...part, output: { type: "text", value: `${said}\n[You read this paper's PDF in an earlier reply, and it isn't in view now. Read it again with research_papers_readPdf if you need it.]` } };
-              return { ...part, output: { type: "content", value: [{ type: "text", text: said }, { type: "file", mediaType: "application/pdf", data: { type: "url", url: new URL(paper) }, filename: "paper.pdf" }] } };
+              if (!paperPdfs.download) {
+                paperPdfs.linked?.();
+                return { ...part, output: { type: "content", value: [{ type: "text", text: said }, { type: "file", mediaType: "application/pdf", data: { type: "url", url: new URL(paper) }, filename: "paper.pdf" }] } };
+              }
+              const bytes = await paperBytes(paper, room);
+              // The downloads run together: one that finishes after the room has gone is left out too.
+              if (!bytes || bytes.length > room) return { ...part, output: { type: "text", value: `${said}\n[This paper's PDF couldn't be downloaded from its address, or is too large to send. Tell the person, and ask them to attach its PDF to the chat if they want it read.]` } };
+              room -= bytes.length;
+              return { ...part, output: { type: "content", value: [{ type: "text", text: said }, { type: "file", mediaType: "application/pdf", data: { type: "data", data: bytes }, filename: "paper.pdf" }] } };
             }
             const fileId = part.type === "tool-result" ? pagesOf(part.output) : null;
             if (part.type !== "tool-result" || !fileId) return part;
@@ -419,6 +431,26 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
   );
   if (used.length) await ctx.runMutation(internal.assistant.files.touch, { fileIds: used });
   return out;
+}
+
+/**
+ * The most of papers' PDFs one request sends as they are, all together. Model providers refuse a request past about
+ * 32 MB, and a file goes base64-encoded, a third larger, with the rest of the conversation beside it.
+ */
+const PAPER_BYTES = 20 * 1024 * 1024;
+
+/**
+ * A paper's PDF, downloaded as the extraction downloads one, from a plain-HTTP address too as the read's check allows,
+ * or null when it can't be or is larger than `room`: why is logged, with the address's host.
+ */
+async function paperBytes(url: string, room: number) {
+  const { pdfBlob, error } = await downloadPdf(url, { maxRetries: 1, allowHttp: true, maxBytes: room });
+  const bytes = pdfBlob ? new Uint8Array(await pdfBlob.arrayBuffer()) : null;
+  // A landing page's PDF link can lead to another page: bytes that aren't a PDF would be refused as one.
+  const why = !bytes ? (error ?? "no file") : bytes.length > room ? `${bytes.length} bytes, past the ${room} left` : !new TextDecoder().decode(bytes.subarray(0, 1024)).includes("%PDF") ? "not a PDF" : null;
+  if (!why) return bytes;
+  console.warn("[assistant] a paper's PDF couldn't be downloaded to send", { host: URL.canParse(url) ? new URL(url).host : "", why });
+  return null;
 }
 
 /** A paper's PDF address, from the result of a read of it (research/papers:readPdf). */

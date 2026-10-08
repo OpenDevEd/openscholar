@@ -29,7 +29,13 @@ export interface DownloadPdfOptions {
     userId: string;
   };
   doi?: string; // For fetching alternative OA URLs
+  /** Fetches plain-HTTP addresses too, still behind the private-address guard. */
+  allowHttp?: boolean;
+  /** Stops a response past this many bytes while it streams. The shared PDF cap otherwise. */
+  maxBytes?: number;
 }
+
+type Fetching = Pick<DownloadPdfOptions, "allowHttp" | "maxBytes">;
 
 export interface DownloadPdfResult {
   success: boolean;
@@ -58,7 +64,7 @@ export async function downloadPdf(
     const europePmcUrl = convertToEuropePmcUrl(url);
     if (europePmcUrl) {
       console.log(`[PDF Download] Trying EuropePMC: ${europePmcUrl.substring(0, 60)}...`);
-      const pmcResult = await tryDownload(europePmcUrl, maxRetries, timeout);
+      const pmcResult = await tryDownload(europePmcUrl, maxRetries, timeout, options);
       if (pmcResult.success) {
         return { ...pmcResult, source: 'pmc-conversion' };
       }
@@ -70,7 +76,7 @@ export async function downloadPdf(
       const alternativeUrls = await fetchAlternativeOaUrls(options.doi);
       for (const altUrl of alternativeUrls.slice(0, 3)) { // Try top 3
         console.log(`[PDF Download] Trying alternative OA: ${altUrl.substring(0, 60)}...`);
-        const altResult = await tryDownload(altUrl, maxRetries, timeout);
+        const altResult = await tryDownload(altUrl, maxRetries, timeout, options);
         if (altResult.success) {
           return { ...altResult, source: 'alternative-oa' };
         }
@@ -78,7 +84,7 @@ export async function downloadPdf(
     }
 
     // Standard download with retry
-    const result = await tryDownload(url, maxRetries, timeout);
+    const result = await tryDownload(url, maxRetries, timeout, options);
     if (result.success) {
       return { ...result, source: 'direct' };
     }
@@ -96,11 +102,12 @@ export async function downloadPdf(
 async function tryDownload(
   url: string,
   maxRetries: number,
-  timeout: number
+  timeout: number,
+  fetching: Fetching = {}
 ): Promise<DownloadPdfResult> {
   let fetched: SafeFetchPdfResult;
   try {
-    fetched = await fetchPdfWithRetry(url, maxRetries, timeout);
+    fetched = await fetchPdfWithRetry(url, maxRetries, timeout, undefined, fetching);
   } catch (e) {
     if (e instanceof UnsafeUrlError) {
       return { success: false, error: `Rejected URL: ${e.message}` };
@@ -151,7 +158,7 @@ async function tryDownload(
     // Download the extracted PDF URL (also untrusted — runs through safeFetchPdf)
     let inner: SafeFetchPdfResult;
     try {
-      inner = await fetchPdfWithRetry(pdfUrl, maxRetries, timeout, url);
+      inner = await fetchPdfWithRetry(pdfUrl, maxRetries, timeout, url, fetching);
     } catch (e) {
       if (e instanceof UnsafeUrlError) {
         return { success: false, error: `Rejected URL: ${e.message}` };
@@ -388,7 +395,8 @@ async function fetchPdfWithRetry(
   url: string,
   maxRetries: number,
   timeout: number,
-  referer?: string
+  referer?: string,
+  fetching: Fetching = {}
 ): Promise<SafeFetchPdfResult> {
   let lastError: Error | null = null;
 
@@ -396,7 +404,8 @@ async function fetchPdfWithRetry(
     try {
       const result = await safeFetchPdf(url, {
         timeoutMs: timeout,
-        maxBytes: MAX_PDF_BYTES,
+        maxBytes: fetching.maxBytes ?? MAX_PDF_BYTES,
+        allowHttp: fetching.allowHttp,
         referer,
         headers: {
           "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

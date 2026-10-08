@@ -243,34 +243,46 @@ describe("assistant replies", () => {
     await ended(t, threadId);
   });
 
-  it("fail when the model stops answering, with the model service's error, instead of thinking for good", async () => {
+  it("make a request the model stopped answering again, instead of thinking for good", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
       const t = convexTest(schema);
       const { asAda, threadId } = await sharedChat(t);
       // The stream opens and sends nothing more, as one request did for seven minutes.
-      mockDoStream.mockImplementationOnce(hangingDoStream());
+      mockDoStream.mockImplementationOnce(hangingDoStream()).mockImplementation(finishingDoStream(["You have saved 3."]));
       await asAda.mutation(api.assistant.replies.send, { threadId, text: "How many searches have I saved?" });
       await waitFor(() => mockDoStream.mock.calls.length === 1);
       await vi.advanceTimersByTimeAsync(121_000);
+      await vi.advanceTimersByTimeAsync(2_000);
       await ended(t, threadId);
-      const reply = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "assistant");
-      expect(reply).toMatchObject({ status: "failed", error: { code: "provider_5xx" } });
+      const replies = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "assistant");
+      expect(replies).toMatchObject([{ status: "done", text: "You have saved 3." }]);
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it("say why when they fail, and charge nothing", async () => {
+  it("try a request again while the provider is busy, then say why when it stays busy, and charge nothing", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const t = convexTest(schema);
     const { asAda, asBen, asCy, threadId } = await sharedChat(t);
     mockDoStream.mockImplementation(async () => {
       throw new APICallError({ message: "Too many requests", url: "https://openrouter.ai", requestBodyValues: {}, statusCode: 429, isRetryable: true });
     });
-    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Hi" });
-    await ended(t, threadId);
-    const failed = (await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[0];
-    expect(failed).toMatchObject({ role: "assistant", status: "failed", error: { code: "rate_limit" } });
+    try {
+      await asAda.mutation(api.assistant.replies.send, { threadId, text: "Hi" });
+      for (const tries of [1, 2]) {
+        await waitFor(() => mockDoStream.mock.calls.length === tries);
+        await vi.advanceTimersByTimeAsync(10_000);
+      }
+      await ended(t, threadId);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(mockDoStream).toHaveBeenCalledTimes(3);
+    // The tries before the last leave nothing behind.
+    const failed = (await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "assistant");
+    expect(failed).toMatchObject([{ status: "failed", error: { code: "rate_limit" } }]);
     expect(await charges(t)).toEqual([]);
 
     // Cy has no credits: the reply fails before it reaches the model.
@@ -283,6 +295,22 @@ describe("assistant replies", () => {
       error: { code: "insufficient_credits" },
     });
     expect(mockDoStream).not.toHaveBeenCalled();
+  });
+
+  it("end at once on Stop while a request waits to be made again, so the chat isn't held for the wait", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await sharedChat(t);
+    mockDoStream.mockImplementation(async () => {
+      throw new APICallError({ message: "Too many requests", url: "https://openrouter.ai", requestBodyValues: {}, statusCode: 429, responseHeaders: { "retry-after": "60" }, isRetryable: true });
+    });
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Hi" });
+    await waitFor(() => mockDoStream.mock.calls.length === 1);
+    await waitFor(async () => (await t.run(async (ctx) => { const reply = (await ctx.db.get("assistantThreads", threadId))?.reply; const next = reply && (await ctx.db.system.get("_scheduled_functions", reply.scheduledId)); return next?.state.kind === "pending" && next.scheduledTime > Date.now() + 30_000; })) === true);
+    await asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: (await chat(t, threadId))!.reply!.attemptId });
+    await ended(t, threadId);
+    expect(mockDoStream).toHaveBeenCalledTimes(1);
+    const replies = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "assistant");
+    expect(replies).toMatchObject([{ status: "stopped" }]);
   });
 
   it("run on what the sender's own AI settings run chat on, until someone who writes in the chat picks a model for it", async () => {
