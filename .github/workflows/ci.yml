@@ -274,8 +274,18 @@ jobs:
           echo "available=false" >> "$GITHUB_OUTPUT"
           printf '::notice::Skipping auth E2E because this pull request has no auth test environment: %s\n' "${missing_vars[*]}"
 
-      - if: steps.auth-environment.outputs.available == 'true'
-        uses: ./.github/actions/setup-project
+      - uses: ./.github/actions/setup-project
+
+      # Without the auth environment, as on a fork's pull request, the browser tests can't
+      # run, but CI's one production build still must.
+      - name: Build without the auth environment
+        if: steps.auth-environment.outputs.available != 'true'
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+          CLERK_SECRET_KEY: sk_test_placeholder
+          NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+          NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+        run: npm run build
 
       - name: Install Playwright browser
         if: steps.auth-environment.outputs.available == 'true'

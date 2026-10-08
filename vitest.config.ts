@@ -33,7 +33,7 @@ type Project = { name: string; environment: string; include: string[]; exclude?:
 function sharingModules(project: Project) {
   const mocking = globSync(project.include, { exclude: project.exclude ?? [] }).filter((file) => mocksModules(file));
   return [
-    { test: { ...project, isolate: false, exclude: [...(project.exclude ?? []), ...mocking] } },
+    { test: { ...project, isolate: false, exclude: [...(project.exclude ?? []), ...mocking], setupFiles: [...(project.setupFiles ?? []), "./tests/shared-worker.ts"] } },
     { test: { ...project, name: `${project.name}-mocks`, include: mocking } },
   ];
 }
