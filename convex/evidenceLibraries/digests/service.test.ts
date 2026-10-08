@@ -95,12 +95,13 @@ it("has a second model check the digest, the writer correct what it flags once, 
   const sent = stubModels(
     [
       {title: "Attention in learning", summary: "A new framework for classroom attention.", markdown: "## Attention\n\nThe study surveyed 400 teachers. [Mills, 2026](/lib/ABCD2345) It also tested 12 schools."},
-      {markdown: "## Attention\n\nThe report sets out a framework. [Mills, 2026](/lib/ABCD2345) It also tested 12 schools."},
+      {markdown: "## Attention\n\nThe report sets out a framework. [Mills, 2026](/lib/ABCD2345) It also tested 12 schools.\n\n## Schools\n\nIt also tested 12 schools."},
     ],
     [{issues: [flag("The study surveyed 400 teachers."), flag("It also tested 12 schools.")]}, {issues: [flag("It also tested 12 schools.")]}],
   );
   expect((await request()).status).toBe(202);
   await finishGeneration();
+  // The sentence flagged twice is gone from both places it stood, and so is the section it left empty.
   expect(await (await request()).json()).toMatchObject({digest: {markdown: "## Attention\n\nThe report sets out a framework. [Mills, 2026](/lib/ABCD2345)"}});
   // The writer is asked once to write and once to correct; the correction carries the flagged sentences.
   expect(sent.writer).toHaveLength(2);
@@ -110,6 +111,7 @@ it("has a second model check the digest, the writer correct what it flags once, 
 
 it.each([
   {failing: "the review", writer: [] as unknown[], reviewer: [{nonsense: true}], markdown: "## Attention\n\nThe study surveyed 400 teachers. [Mills, 2026](/lib/ABCD2345) It sets out a framework."},
+  {failing: "the correction, by citing nothing,", writer: [{markdown: "## Attention\n\nNothing is known."}], reviewer: [{issues: [{quote: "The study surveyed 400 teachers.", key: "ABCD2345", problem: "not_in_record", record_says: "The record gives no sample."}]}], markdown: "## Attention\n\n[Mills, 2026](/lib/ABCD2345) It sets out a framework."},
   {failing: "the correction", writer: [{nonsense: true}], reviewer: [{issues: [{quote: "The study surveyed 400 teachers.", key: "ABCD2345", problem: "not_in_record", record_says: "The record gives no sample."}]}], markdown: "## Attention\n\n[Mills, 2026](/lib/ABCD2345) It sets out a framework."},
 ])("keeps the digest when $failing fails, without a sentence already flagged", async ({writer, reviewer, markdown}) => {
   vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");

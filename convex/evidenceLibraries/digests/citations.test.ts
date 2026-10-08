@@ -33,10 +33,10 @@ it("moves a link that names another author to that author's record, and unlinks 
     publication("ANON1234", [], "2026", "A report with no named author"),
   ];
   const {markdown, repairs} = await repairCitations(
-    "Meals help [Okafor, 2025](/lib/ABCD2345). Scoring [Phillips et al., 2026](/lib/QWER7890). Floods [Mik-Meyer et al., 2026](/lib/HYPH1234). Work [Kotiano et al., 2026](/lib/NOTE1234). Unsigned [Ministry of Education, 2026](/lib/ANON1234).",
+    "Meals help [Okafor, 2025](/lib/ABCD2345). Scoring [Phillips et al., 2026](/lib/QWER7890). Floods [Mik-Meyer et al., 2026](/lib/HYPH1234). Work [Kotiano et al., 2026](/lib/NOTE1234). Unsigned [Ministry of Education, 2026](/lib/ANON1234). Bracketed [Mills [2026]](/lib/ABCD2345). Unnamed [the framework](/lib/ABCD2345).",
     stored,
   );
-  expect(markdown).toBe("Meals help [Okafor, 2025](/lib/QWER7890). Scoring Phillips et al., 2026. Floods [Mik-Meyer et al., 2026](/lib/HYPH1234). Work [Kotiano et al., 2026](/lib/NOTE1234). Unsigned [Ministry of Education, 2026](/lib/ANON1234).");
+  expect(markdown).toBe("Meals help [Okafor, 2025](/lib/QWER7890). Scoring Phillips et al., 2026. Floods [Mik-Meyer et al., 2026](/lib/HYPH1234). Work [Kotiano et al., 2026](/lib/NOTE1234). Unsigned [Ministry of Education, 2026](/lib/ANON1234). Bracketed [Mills [2026]](/lib/ABCD2345). Unnamed [the framework](/lib/ABCD2345).");
   expect(repairs.map(repair => repair.method).sort()).toEqual(["author", "unlinked"]);
   expect(provider).not.toHaveBeenCalled();
 });

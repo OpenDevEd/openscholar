@@ -29,6 +29,7 @@ Shape
 Writing rules
 ${UNSLOP_RULES}`;
 
+const CITES = /\]\(\/lib\/[A-Z0-9]{8}\)/;
 // The review runs after the writer, inside the nine minutes a job may take, and for three minutes at most.
 const REVIEW_BUDGET_MS = 180_000;
 const REVIEW_DEADLINE_MS = 540_000;
@@ -52,9 +53,11 @@ async function reviewed(markdown: string, request: DigestRequest, started: numbe
     checked = withoutSentences(markdown, issues);
     const revision = levelled(await reviseDigest(markdown, issues, request.publications, signal));
     const revised = (await repairCitations(revision, request.publications, signal)).markdown;
+    if (!CITES.test(revised)) throw new Error("The corrected digest cites no supplied publication");
     const remaining = await reviewDigest(revised, request.publications, signal);
     console.info("Library digest reviewed", {...job, flagged: issues.map(({key, problem}) => ({key, problem})), removed: remaining.map(({key, problem}) => ({key, problem}))});
-    return withoutSentences(revised, remaining);
+    const kept = withoutSentences(revised, remaining);
+    return CITES.test(kept) ? kept : checked;
   } catch (error) {
     console.error("Library digest review did not finish; keeping the digest without the sentences it flagged", {...job, error});
     return checked;
@@ -85,6 +88,6 @@ export async function generateLibraryDigest(request: DigestRequest, signal?: Abo
   const {markdown: cited, repairs} = await repairCitations(levelled(written.markdown), request.publications, signal);
   if (repairs.length) console.info("Library digest citations repaired", {libraryId: request.libraryId, editionId: request.editionId, repairs});
   const markdown = await reviewed(cited, request, started);
-  if (!/\]\(\/lib\/[A-Z0-9]{8}\)/.test(markdown)) throw new Error("Digest output cites no supplied publication");
+  if (!CITES.test(markdown)) throw new Error("Digest output cites no supplied publication");
   return {...output, markdown, model: DIGEST_MODEL, reasoning: DIGEST_REASONING};
 }

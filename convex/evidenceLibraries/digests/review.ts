@@ -89,9 +89,11 @@ export async function reviseDigest(markdown: string, issues: DigestIssue[], publ
   return result.output.markdown;
 }
 
-/** The digest without the sentences still flagged after a revision, and without the gaps they leave. */
+/** The digest without the flagged sentences, wherever they stand, and without the gaps or empty sections they leave. */
 export function withoutSentences(markdown: string, issues: DigestIssue[]) {
   let text = markdown;
-  for (const {quote} of issues) text = text.replace(quote, "");
-  return text.replace(/[ \t]{2,}/g, " ").replace(/ +\n/g, "\n").replace(/\n +/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  for (const {quote} of issues) text = text.replaceAll(quote, "");
+  text = text.replace(/[ \t]{2,}/g, " ").replace(/ +\n/g, "\n").replace(/\n +/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  // A heading whose section lost every sentence goes too.
+  return text.replace(/^#{1,6} .*\n*(?=#{1,6} |$(?![\s\S]))/gm, "").trim();
 }

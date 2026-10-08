@@ -24,7 +24,8 @@ const words = (value: string) => new Set(fold(value).match(/[a-z]{4,}/g) ?? []);
 /** The first author's surname and the year from link text such as "Mills et al., 2026". */
 function citedAuthor(text: string) {
   const year = text.match(/\d{4}/)?.[0];
-  const surname = fold(text.split(/,|\(| et al| and | & |\d/)[0]!.trim()).split(" ").at(-1) ?? "";
+  // Only letters make a name: in "Mills [2026]" the bracket is not one.
+  const surname = nameParts(text.split(/,|\(|\[| et al| and | & |\d/)[0]!).at(-1) ?? "";
   return {surname, year};
 }
 
@@ -38,11 +39,11 @@ function matchesCitation(publication: Publication, text: string) {
 
 /**
  * Whether a link to a real record names someone who is not among its creators. A record without creators, or
- * link text without a name, cannot be checked and passes.
+ * link text that is not a name and a year, cannot be checked and passes.
  */
 function namesAnotherAuthor(publication: Publication, text: string) {
-  const {surname} = citedAuthor(text);
-  return Boolean(surname) && publication.creators.length > 0 && !hasAuthor(publication, surname);
+  const {surname, year} = citedAuthor(text);
+  return Boolean(surname && year) && publication.creators.length > 0 && !hasAuthor(publication, surname);
 }
 
 /** Edit distance where swapping two neighbouring characters counts as one edit. */
