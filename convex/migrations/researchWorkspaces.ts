@@ -19,13 +19,16 @@ const migrations = new Migrations<DataModel>(components.migrations, { internalMu
 /** What a row from before takes on: its maker's own workspace, and its maker. */
 const owned = async (ctx: MutationCtx, userId: Id<"users">) => ({ workspaceId: await ensureWorkspace(ctx, { kind: "personal", userId }), createdBy: userId });
 
+// A search or bookmark can be large, and the triggers read each patched row again: five at a time, as migrations/searchText.ts does.
 export const searches = migrations.define({
   table: "searches",
+  batchSize: 5,
   migrateOne: async (ctx, search) => (search.workspaceId ? undefined : await owned(ctx, search.userId)),
 });
 
 export const bookmarks = migrations.define({
   table: "queryShortcuts",
+  batchSize: 5,
   migrateOne: async (ctx, bookmark) => (bookmark.workspaceId ? undefined : await owned(ctx, bookmark.userId)),
 });
 
@@ -38,7 +41,7 @@ export const verifyPage = internalQuery({
   args: { table: tableValidator, cursor: v.union(v.string(), v.null()) },
   returns: v.object({ missing: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
   handler: async (ctx, { table, cursor }) => {
-    const page = await ctx.db.query(table).paginate({ cursor, numItems: 200 });
+    const page = await ctx.db.query(table).paginate({ cursor, numItems: 200, maximumBytesRead: 4 * 1024 * 1024 });
     return { missing: page.page.filter((row) => !row.workspaceId || !row.createdBy).length, isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });

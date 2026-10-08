@@ -6,7 +6,7 @@ import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { STEP_TEXT_MAX } from "../assistant/steps";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
-import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, type Author } from "../lib/userActions";
+import { type Author, accountMutation, accountQuery, accountWorkspaceMutation, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy } from "../lib/userActions";
 import { answersAmong, clearPaperAnswers, removeAnswers, screeningFor, seedAnswers, setPaperAnswers, sweepAnswers, type AnswerSource } from "./answers";
 import {
   ANSWERED_PAPERS_MAX, applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, paperResponsesValidator, RATED_PAPERS_MAX, ratingValidator, restoredSearch, restoresNothing, restoreReverses, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator, UNDO_SHORTCUT_MAX, undoCommandValidator,
@@ -19,15 +19,10 @@ import schema from "../schema";
 import { countRecordPage, countRow } from "./recordCounts";
 import { shortcutSortName } from "../../lib/query-shortcuts";
 import { searchTerms, searchText, shortcutText, withText } from "../lib/searchText";
-import { actorFor } from "../workspaces/actor";
+import { personalWorkspaceOf } from "../workspaces/actor";
 
 const accountArgs = { accountId: v.string() };
 const pageArgs = { paginationOpts: paginationOptsValidator };
-async function accountUser(ctx: Parameters<typeof requireAuth>[0], expected: string) {
-  const user = await requireAuth(ctx);
-  if (user.clerkId !== expected) throw new Error("Account changed. Retry after signing in.");
-  return user;
-}
 
 // Each action is defined once; the page's function and the assistant's are made from it.
 
@@ -690,20 +685,20 @@ export const clearShortcutsBatch = internalMutation({
 });
 
 export const clearSearchesBatch = internalMutation({
-  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), author: v.union(v.literal("user"), v.literal("assistant")), before: v.number() },
+  // Optional only for batches scheduled before the workspace was passed (#650), which clear their maker's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), author: v.union(v.literal("user"), v.literal("assistant")), before: v.number() },
   returns: v.null(),
   handler: async (ctx, { userId, workspaceId, author, before }) => {
-    await clearBatch(ctx, { userId, workspaceId }, author, before);
+    await clearBatch(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, author, before);
     return null;
   },
 });
 
-export const importBatch = mutation({
-  // Each search comes with the history this browser kept of it, into the workspace the page is in, which is checked (#650).
-  args: { ...accountArgs, workspaceId: v.id("workspaces"), searches: v.array(v.object({ search: searchValidator, history: v.optional(v.object(historyArrays)) })), shortcuts: v.array(shortcutValidator), ratings: v.array(ratingValidator) },
+export const importBatch = accountWorkspaceMutation({
+  // Each search comes with the history this browser kept of it, into the workspace the page is in (#650).
+  args: { searches: v.array(v.object({ search: searchValidator, history: v.optional(v.object(historyArrays)) })), shortcuts: v.array(shortcutValidator), ratings: v.array(ratingValidator) },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const { userId, workspaceId } = await actorFor(ctx, await accountUser(ctx, args.accountId), args.workspaceId);
+  handler: async (ctx, { userId, workspaceId }, args) => {
     if (args.searches.length + args.shortcuts.length + args.ratings.length > 25) throw new Error("Import at most 25 records per batch.");
     const items: Array<{ key: string; command: ResearchCommand }> = [
       ...args.searches.map(({ search, history }) => ({ key: `search:${search.id}`, command: { kind: "createSearch" as const, search, ...(history ? { history } : {}) } })),

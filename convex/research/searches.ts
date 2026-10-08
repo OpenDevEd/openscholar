@@ -23,6 +23,7 @@ import { searchResultToParams } from "../../lib/search-params/converters";
 import { applyCommand, findSearch, revisionRow } from "./records";
 import { AUTHORS_SHOWN, changesValidator, COUNTRIES_SHOWN, LAST_PAGE, LAST_PAGE_FROM_START, pageValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 import type { Id } from "../_generated/dataModel";
+import { personalWorkspaceOf } from "../workspaces/actor";
 
 const CREATE = "research/searches:create" as const;
 const UPDATE = "research/searches:update" as const;
@@ -522,9 +523,11 @@ export async function readPage(ctx: ActionCtx, userId: Id<"users">, found: Saved
  * search history shows it. Left alone when the search changed while its results were read.
  */
 export const counted = internalMutation({
-  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), id: v.string(), revision: v.number(), count: v.number(), author: authorValidator },
+  // Optional only for calls from a `recount` scheduled before the workspace was passed (#650); required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), id: v.string(), revision: v.number(), count: v.number(), author: authorValidator },
   returns: v.null(),
-  handler: async (ctx, { userId, workspaceId, id, revision, count, author }) => {
+  handler: async (ctx, { userId, workspaceId: given, id, revision, count, author }) => {
+    const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
     const found = await findSearch(ctx, userId, id);
     if (found?.revision === revision && currentSearch(found.data).count !== count) await applyCommand(ctx, { userId, workspaceId }, { kind: "editSearch", id, edit: { kind: "patch", fields: { count }, clear: [] } }, author);
     return null;
@@ -538,9 +541,11 @@ export const counted = internalMutation({
  * keeps the count it has until its results are next read.
  */
 export const recount = internalAction({
-  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), id: v.string(), author: authorValidator },
+  // Optional only for calls scheduled before the workspace was passed (#650), which act in their maker's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), id: v.string(), author: authorValidator },
   returns: v.null(),
-  handler: async (ctx, { userId, workspaceId, id, author }) => {
+  handler: async (ctx, { userId, workspaceId: given, id, author }) => {
+    const workspaceId: Id<"workspaces"> = given ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId }));
     try {
       const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: id });
       if (!found.request) return null;

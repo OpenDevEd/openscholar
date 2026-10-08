@@ -182,6 +182,25 @@ async function accountUser(ctx: QueryCtx | MutationCtx, accountId: string) {
   return user;
 }
 
+/**
+ * A public mutation that changes a workspace's records but isn't a user action, so the assistant
+ * has no tool for it, such as importing this browser's records at sign-in. It takes the page's
+ * account and workspace and checks both, as `accountMutation` does, before `handler` runs.
+ * `check:user-actions` reads its mark: a module whose records are in workspaces may have no other
+ * kind of public function.
+ */
+export function accountWorkspaceMutation<Args extends PropertyValidators, Returns extends GenericValidator>(fn: { args: Args; returns: Returns; handler: (ctx: MutationCtx, actor: Actor, args: ObjectType<Args>) => Promise<Infer<Returns>> }) {
+  const built = mutation<Args & typeof accountArg & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
+    args: { ...fn.args, ...accountArg, ...workspaceArg },
+    returns: fn.returns,
+    handler: async (ctx, args) => {
+      const { accountId, workspaceId, ...rest } = args as unknown as ObjectType<typeof accountArg & typeof workspaceArg> & Record<string, unknown>;
+      return fn.handler(ctx, await actorFor(ctx, await accountUser(ctx, accountId), workspaceId), rest as ObjectType<Args>);
+    },
+  });
+  return Object.assign(built, { checksWorkspace: true }) as typeof built;
+}
+
 /** The public query the UI calls, for the signed-in user. */
 export function userQuery<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserQuery<Args, Returns>, options?: { signedOut: Infer<Returns> }) {
   return tagged(

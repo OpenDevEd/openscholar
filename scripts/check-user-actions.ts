@@ -16,7 +16,18 @@ import ts from "typescript6";
 import { USER_ACTIONS } from "../convex/lib/userActionRegistry";
 import { assistantPath } from "../convex/lib/userActions";
 
-type ConvexFunction = { isPublic?: boolean; isInternal?: boolean; isQuery?: boolean; isMutation?: boolean; isAction?: boolean; userActionPath?: string; exportArgs?: () => string };
+type ConvexFunction = { isPublic?: boolean; isInternal?: boolean; isQuery?: boolean; isMutation?: boolean; isAction?: boolean; userActionPath?: string; checksWorkspace?: boolean; exportArgs?: () => string };
+
+/**
+ * Whether a public function acts in a workspace it checks: it takes a required `workspaceId` that's
+ * an ID of a workspace, and is built by a wrapper that checks it with `actorFor` before it runs (a
+ * user action's wrappers, or `accountWorkspaceMutation`). A function can't merely declare it.
+ */
+function checksWorkspace(fn: ConvexFunction) {
+  const field = JSON.parse(fn.exportArgs?.() ?? "{}").value?.workspaceId;
+  const required = field && !field.optional && field.fieldType?.type === "id" && field.fieldType?.tableName === "workspaces";
+  return Boolean(required && (fn.userActionPath || fn.checksWorkspace));
+}
 
 function files(dir: string, keep: (file: string) => boolean): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -40,7 +51,7 @@ for (const file of convexModules) {
   for (const [name, fn] of Object.entries(exports)) {
     if (!fn || !(fn.isQuery || fn.isMutation || fn.isAction)) continue;
     const id = `${module}:${name}`;
-    if (fn.isPublic && !("workspaceId" in (JSON.parse(fn.exportArgs?.() ?? "{}").value ?? {}))) withoutWorkspace.add(id);
+    if (fn.isPublic && !checksWorkspace(fn)) withoutWorkspace.add(id);
     if (fn.isPublic) {
       if (fn.userActionPath) registered.set(id, fn.userActionPath);
       else raw.add(id);
@@ -123,7 +134,7 @@ for (const [id, issue] of pending) {
 // workspace and checks it, a registered action through its wrapper and any other itself, so nothing reaches
 // their records outside the check.
 for (const id of withoutWorkspace) {
-  if (exempt.inWorkspace.includes(id.split(":")[0])) problems.push(`${id}: its module's records are in workspaces; take \`workspaceId\` and check it with actorFor (convex/workspaces/actor.ts).`);
+  if (exempt.inWorkspace.includes(id.split(":")[0])) problems.push(`${id}: its module's records are in workspaces; build it as a user action, or with accountWorkspaceMutation (convex/lib/userActions.ts), so it takes a required workspace and checks it.`);
 }
 for (const module of exempt.inWorkspace) {
   if (!convexModules.some((file) => file === `convex/${module}.ts`)) problems.push(`${module}: listed under inWorkspace but no such module; remove it.`);
