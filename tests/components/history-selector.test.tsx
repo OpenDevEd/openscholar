@@ -69,11 +69,18 @@ vi.mock("@/lib/research/provider", () => ({
   useResearchStatus: () => ({ ready: true }),
 }));
 
-vi.mock("@/lib/store", () => ({
-  useKeywordExpansionStore: {
-    getState: () => ({ ensureShortcuts: async () => {}, expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }),
-  },
-}));
+vi.mock("@/lib/store", () => {
+  const state = {
+    keywords: {},
+    ensureShortcuts: async () => {},
+    expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }),
+  };
+  // A hook too: each row's query reads the shortcuts to colour them.
+  const useKeywordExpansionStore = Object.assign((select: (s: typeof state) => unknown) => select(state), {
+    getState: () => state,
+  });
+  return { useKeywordExpansionStore, shortcutExpansions: () => ({}) };
+});
 
 vi.mock("@/lib/toast/bucket", () => ({
   bucketAdded: bucketAddedMock,
