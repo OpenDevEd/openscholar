@@ -1,7 +1,7 @@
 "use client";
 "use no memo";
 
-import { ConvexReactClient, useConvexAuth, useMutation, type Preloaded } from "convex/react";
+import { useConvexAuth, useMutation, type Preloaded } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { useLocale } from "next-intl";
@@ -24,8 +24,9 @@ import { FeatureFlagProvider } from "@/lib/feature-flags/provider";
 import { BillingCatalogProvider } from "@/lib/billing/catalog-provider";
 import { ResearchStateProvider } from "@/lib/research/provider";
 import { UserSync } from "@/lib/auth/user-sync";
+import { RetryingConvexClient } from "@/lib/convex-client";
 
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+const convex = new RetryingConvexClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const noSubscription = () => () => {};
 
 export type AuthReadinessPhase =
