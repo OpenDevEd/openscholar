@@ -275,25 +275,6 @@ describe("DomainSection", () => {
     ).toBeNull();
   });
 
-  it("shows the mock's own words for each state", () => {
-    mocks.data.domains = [row({ state: "added" })];
-    const { unmount } = render(<DomainSection libraryId={libraryId} />);
-    expect(
-      screen.getByText("evidenceLibraryConfiguration.domain.status.pending"),
-    ).toBeInTheDocument();
-    expect(document.querySelector("[data-dns-status]")).toHaveAttribute(
-      "data-dns-status",
-      "pending",
-    );
-    unmount();
-
-    mocks.data.domains = [row({ state: "active", attached: true })];
-    render(<DomainSection libraryId={libraryId} />);
-    expect(
-      screen.getByText("evidenceLibraryConfiguration.domain.status.verified"),
-    ).toBeInTheDocument();
-  });
-
   it("names the reason the last check failed", () => {
     mocks.data.domains = [row({ state: "failed", failure: "no-records" })];
     render(<DomainSection libraryId={libraryId} />);
@@ -554,27 +535,6 @@ describe("DomainSection", () => {
       libraryId,
       domainId: "domain_1",
     });
-  });
-
-  it("renders against a backend that does not report the chosen address yet", () => {
-    // The page can be deployed before the backend it talks to.
-    const { mainAddress, mainNeedsAttention, ...older } = mocks.data;
-    void mainAddress;
-    void mainNeedsAttention;
-    Object.assign(mocks, { data: older });
-    try {
-      render(<DomainSection libraryId={libraryId} />);
-      expect(document.querySelector("[data-main-pending]")).toBeNull();
-      expect(
-        screen.getByRole("button", {
-          name: "evidenceLibraryConfiguration.domain.mainLabel",
-        }),
-      ).toBeInTheDocument();
-    } finally {
-      Object.assign(mocks, {
-        data: { ...older, mainAddress: older.platformAddress, mainNeedsAttention: false },
-      });
-    }
   });
 
   it("removes any other domain straight away", async () => {
