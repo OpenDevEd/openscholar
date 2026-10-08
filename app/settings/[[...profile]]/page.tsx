@@ -63,14 +63,15 @@ function ProfilePage({ security }: { security: boolean }) {
             path="/settings"
             appearance={{
               // The settings template owns the page entrance; Clerk's own would run on top of it.
-              layout: { animations: false },
+              options: { animations: false },
               elements: {
                 rootBox: { width: "100%" },
                 cardBox: { height: "auto", overflow: "visible", width: "100%", maxWidth: "100%", boxShadow: "none", border: "none", borderRadius: 0, background: "transparent" },
                 navbar: { display: "none" },
                 navbarMobileMenuRow: { display: "none" },
                 scrollBox: { height: "auto", overflow: "visible", background: "transparent", borderRadius: 0, boxShadow: "none", border: "none" },
-                pageScrollBox: { padding: 0, overflow: "visible" },
+                pageScrollBox: { overflow: "visible" },
+                profilePageContent: { padding: 0 },
                 // The rail already names the page.
                 header: { display: "none" },
                 page: { gap: "2rem" },
