@@ -155,6 +155,11 @@ Asked with a recommendation each, all answered the same day:
    accepted the mock's three rules for a move: a running screening or extraction
    moves once it has finished, guests keep their access, and the Evidence
    Library a collection leaves keeps the papers it saved.
+8. An Evidence Library's Viewers, the organization's members without a role in
+   it, see it in OpenScholar only: in the libraries list, and its settings
+   read-only. new-el's `/admin` keeps owner, editor and creator (#653).
+9. A library in your own workspace isn't mocked. New library offers your own
+   workspace once #650 and #651 let a library belong to one.
 
 ## What the mock leaves out
 
@@ -490,10 +495,12 @@ and `unfollowedChat` in `lib/assistant/place.ts`. Retire the branch.
 | `settings-mock.tsx` Plan and credits with member caps, `org-plans.tsx` Team card | Workspace billing, Pricing | #652 |
 | `workspace-plan.ts` (`useWorkspacePlan`), `org-job-credits.tsx` (`CreditCheck`), `org-credits.tsx` (assistant approvals from the pool) | the same hooks on real data | #651, #652 |
 | `workspace-items.ts` (`useSwitching`) | `lib/workspaces/` with navigation | #651 |
+| `library-list.tsx` (the workspace is the list's filter), `new-library-form.tsx` (a library is made in the workspace you're in, and `organization-picker.tsx`'s picker goes) | the Evidence Libraries list and New library | #651 |
 | `assistant-mock.tsx` (members' chats, the preset pill, spending) | the assistant panel | #651 |
 | `connect-mock.tsx` | `/connect` and Connections settings | #651 |
 | `landing.tsx` (`/join/[id]`, `/shared/[id]`) | those pages | #651, #653 |
 | `components/shared/share-panel.tsx`, `share-dialog.tsx`, `chat-invites.ts`, `shared-mock.tsx`, guests in `collection-dialogs.tsx` | sharing | #653 |
+| `team-access.tsx` (owners are the workspace's admins, "Everyone in <organization>" are Viewers, Editor and Creator by invitation) | a library's Team settings | #653 |
 | `history-additions.tsx` (search origin chips, links, copies, Save a copy) | the search page | #653 |
 | `item-actions.tsx` (`ItemBar`, `HereActions`, `ItemActions`) | one item row on every item page | #653, #656, #657 |
 | `team-list.tsx`, `parts.tsx` (`RunByFilter`, faces with rings), `activity.tsx`, `bookmarks-additions.tsx`, `extraction-additions.tsx`, `screening-additions.tsx` | lists filtered on the server, activity sheet | #656 |
