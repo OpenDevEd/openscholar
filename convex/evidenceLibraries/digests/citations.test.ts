@@ -8,17 +8,18 @@ const publications = [
   publication("ABCD2345", ["Caitlin Mills"], "2026", "Attention in classrooms"),
   publication("ZXCV1234", ["Caitlin Mills"], "2026", "Mind wandering while reading"),
   publication("QWER7890", ["Joy Okafor"], "2025", "School meals and attendance"),
+  publication("ASDF5678", ["Fiona O\u2019Neil"], "2026", "Homework clubs"),
 ];
 
 it("fixes a key typo by the cited author without a model and unlinks what it cannot place or does not own", async () => {
   vi.stubEnv("OPENROUTER_API_KEY", "");
   const provider = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("No model call expected"));
   const {markdown, repairs} = await repairCitations(
-    "Attention drops [Mills, 2026](/lib/ABCD2354). Meals help [Okafor, 2025](/lib/NOPE0000). Read [Okafor, 2025](https://example.org/lib/QWER7890). Odd [Mills [2026]](/lib/NOPE0000). Not her [Li, 2026](/lib/ABCD2354). Kept [Mills, 2026](/lib/ZXCV1234). Closed wrongly [Okafor, 2025](/lib/QWER7890].",
+    "Attention drops [Mills, 2026](/lib/ABCD2354). Meals help [Okafor, 2025](/lib/NOPE0000). Read [Okafor, 2025](https://example.org/lib/QWER7890). Odd [Mills [2026]](/lib/NOPE0000). Not her [Li, 2026](/lib/ABCD2354). Kept [Mills, 2026](/lib/ZXCV1234). Closed wrongly [Okafor, 2025](/lib/QWER7890]. Clubs [O'Neil, 2026](/lib/ASDF5687).",
     publications,
   );
-  expect(markdown).toBe("Attention drops [Mills, 2026](/lib/ABCD2345). Meals help Okafor, 2025. Read Okafor, 2025. Odd Mills [2026]. Not her Li, 2026. Kept [Mills, 2026](/lib/ZXCV1234). Closed wrongly [Okafor, 2025](/lib/QWER7890).");
-  expect(repairs.map(repair => repair.method).sort()).toEqual(["typo", "unlinked", "unlinked", "unlinked", "unlinked"]);
+  expect(markdown).toBe("Attention drops [Mills, 2026](/lib/ABCD2345). Meals help Okafor, 2025. Read Okafor, 2025. Odd Mills [2026]. Not her Li, 2026. Kept [Mills, 2026](/lib/ZXCV1234). Closed wrongly [Okafor, 2025](/lib/QWER7890). Clubs [O'Neil, 2026](/lib/ASDF5678).");
+  expect(repairs.map(repair => repair.method).sort()).toEqual(["typo", "typo", "unlinked", "unlinked", "unlinked", "unlinked"]);
   expect(provider).not.toHaveBeenCalled();
 });
 
