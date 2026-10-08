@@ -14,10 +14,10 @@ it("fixes a key typo by the cited author without a model and unlinks what it can
   vi.stubEnv("OPENROUTER_API_KEY", "");
   const provider = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("No model call expected"));
   const {markdown, repairs} = await repairCitations(
-    "Attention drops [Mills, 2026](/lib/ABCD2354). Meals help [Okafor, 2025](/lib/NOPE0000). Read [Okafor, 2025](https://example.org/lib/QWER7890). Odd [Mills [2026]](/lib/NOPE0000). Not her [Li, 2026](/lib/ABCD2354). Kept [Mills, 2026](/lib/ZXCV1234).",
+    "Attention drops [Mills, 2026](/lib/ABCD2354). Meals help [Okafor, 2025](/lib/NOPE0000). Read [Okafor, 2025](https://example.org/lib/QWER7890). Odd [Mills [2026]](/lib/NOPE0000). Not her [Li, 2026](/lib/ABCD2354). Kept [Mills, 2026](/lib/ZXCV1234). Closed wrongly [Okafor, 2025](/lib/QWER7890].",
     publications,
   );
-  expect(markdown).toBe("Attention drops [Mills, 2026](/lib/ABCD2345). Meals help Okafor, 2025. Read Okafor, 2025. Odd Mills [2026]. Not her Li, 2026. Kept [Mills, 2026](/lib/ZXCV1234).");
+  expect(markdown).toBe("Attention drops [Mills, 2026](/lib/ABCD2345). Meals help Okafor, 2025. Read Okafor, 2025. Odd Mills [2026]. Not her Li, 2026. Kept [Mills, 2026](/lib/ZXCV1234). Closed wrongly [Okafor, 2025](/lib/QWER7890).");
   expect(repairs.map(repair => repair.method).sort()).toEqual(["typo", "unlinked", "unlinked", "unlinked", "unlinked"]);
   expect(provider).not.toHaveBeenCalled();
 });
