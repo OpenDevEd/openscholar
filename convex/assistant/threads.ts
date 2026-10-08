@@ -229,7 +229,7 @@ export const listAction = defineUserQuery({
         const members = await Promise.all(
           people.map(async (memberId) => {
             const person = await ctx.db.get("users", memberId);
-            return person ? [{ userId: memberId, name: personName(person), here: here.includes(memberId) }] : [];
+            return person ? [{ userId: memberId, name: personName(person), here: here.includes(memberId), ...(person.avatarUrl ? { imageUrl: person.avatarUrl } : {}) }] : [];
           }),
         );
         const sharedWith = others.flatMap(({ principal }) => (principal.kind === "organization" ? [principal.organizationId] : []))[0];
