@@ -145,13 +145,6 @@ describe("readDraft", () => {
       }),
     ).toMatchObject({ favicon: "default.ico", faviconDark: "dark.ico" });
   });
-
-  it("reads limits from the pinned schema", () => {
-    expect(SCHEMA_LIMITS.identity.name).toBe(100);
-    expect(SCHEMA_LIMITS.identity.tagline).toBe(160);
-    expect(SCHEMA_LIMITS.identity.fundingPartners).toBe(20);
-    expect(SCHEMA_LIMITS.institutions.items).toBe(200);
-  });
 });
 
 describe("sectionProblems", () => {

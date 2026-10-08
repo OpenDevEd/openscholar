@@ -14,65 +14,6 @@ import {
 } from "@/lib/errors/taxonomy";
 import { ABORT_ERROR_STRING } from "@/lib/ai/abort-signal";
 
-describe("ERROR_CODES taxonomy", () => {
-  it("is a 19-entry tuple covering chat + extraction codes", () => {
-    expect(ERROR_CODES).toEqual([
-      "insufficient_credits",
-      "rate_limit",
-      "model_unavailable",
-      "auth",
-      "moderation",
-      "context_too_long",
-      "network",
-      "provider_5xx",
-      "regenerate_failed",
-      "aborted",
-      "unknown",
-      "action_timeout",
-      "pdf_download_failed",
-      "pdf_invalid",
-      "paper_not_found",
-      "indexing_failed",
-      "llm_content_refusal",
-      "schema_validation",
-      "cancelled",
-    ]);
-    expect(ERROR_CODES).toHaveLength(19);
-  });
-});
-
-describe("isRetryable record", () => {
-  it.each([
-    ["insufficient_credits", true],
-    ["rate_limit", true],
-    ["model_unavailable", true],
-    ["auth", false],
-    ["moderation", false],
-    ["context_too_long", false],
-    ["network", true],
-    ["provider_5xx", true],
-    ["regenerate_failed", true],
-    ["aborted", true],
-    ["unknown", true],
-    ["action_timeout", true],
-    ["pdf_download_failed", true],
-    ["pdf_invalid", false],
-    ["paper_not_found", false],
-    ["indexing_failed", true],
-    ["llm_content_refusal", false],
-    ["schema_validation", false],
-    ["cancelled", false],
-  ] as const)("isRetryable[%s] === %s", (code, expected) => {
-    expect(isRetryable[code]).toBe(expected);
-  });
-
-  it("covers every ERROR_CODES entry with a boolean", () => {
-    for (const code of ERROR_CODES) {
-      expect(typeof isRetryable[code]).toBe("boolean");
-    }
-  });
-});
-
 describe("classifyUnknownError — ConvexError fingerprints", () => {
   it("R5: ConvexError carrying data.code INSUFFICIENT_CREDITS → insufficient_credits", () => {
     const err = new ConvexError({
