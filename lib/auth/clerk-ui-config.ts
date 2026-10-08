@@ -1,21 +1,22 @@
 import { enGB, enUS, frFR, hiIN, jaJP, zhCN } from "@clerk/localizations";
-import { dark } from "@clerk/themes";
-import type { Appearance, LocalizationResource } from "@clerk/types";
+import { dark } from "@clerk/ui/themes";
+import type { LocalizationResource } from "@clerk/nextjs/types";
+import type { Appearance } from "@clerk/ui";
 
 // Clerk's own screens take their colours and typeface from the app's tokens,
 // so they follow the active theme.
 const variables = {
   colorPrimary: "var(--primary)",
-  colorTextOnPrimaryBackground: "var(--primary-foreground)",
+  colorPrimaryForeground: "var(--primary-foreground)",
   colorBackground: "var(--card)",
-  colorText: "var(--foreground)",
-  colorTextSecondary: "var(--muted-foreground)",
-  colorInputBackground: "var(--background)",
-  colorInputText: "var(--foreground)",
+  colorForeground: "var(--foreground)",
+  colorMutedForeground: "var(--muted-foreground)",
+  colorInput: "var(--background)",
+  colorInputForeground: "var(--foreground)",
   colorNeutral: "var(--foreground)",
   colorDanger: "var(--destructive)",
   fontFamily: "var(--font-sans)",
-};
+} satisfies NonNullable<Appearance["variables"]>;
 
 const CLERK_LOCALIZATION_BY_LOCALE: Record<string, LocalizationResource> = {
   "en-us": enUS,
@@ -50,8 +51,9 @@ export function resolveClerkLocalization(
 export function resolveClerkAppearance(
   resolvedTheme: string | null | undefined,
 ): Appearance {
-  // The mark as the brand guidelines draw it on white and on black.
+  // The mark as the brand guidelines draw it on white and on black. Sign-up keeps
+  // offering the optional first and last name, which other members see.
   return resolvedTheme === "dark"
-    ? { theme: dark, variables, layout: { logoImageUrl: "/icon-black.svg" } }
-    : { variables, layout: { logoImageUrl: "/icon.svg" } };
+    ? { theme: dark, variables, options: { logoImageUrl: "/icon-black.svg", showOptionalFields: true } }
+    : { variables, options: { logoImageUrl: "/icon.svg", showOptionalFields: true } };
 }
