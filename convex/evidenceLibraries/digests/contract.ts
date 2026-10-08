@@ -8,6 +8,8 @@ export const digestRequestSchema = z.object({
   locale: z.string().min(2).max(35),
   periodStart: z.string().datetime(),
   periodEnd: z.string().datetime(),
+  // Every publication the period had; the list below can be a selection of them.
+  publicationCount: z.number().int().positive().optional(),
   publications: z.array(z.object({
     key: z.string().regex(/^[A-Z0-9]{8}$/),
     title: z.string().min(1).max(2000),
