@@ -3947,6 +3947,16 @@
       "files": "阅读文件",
       "stopFiles": "阅读文件前先询问"
     },
-    "webSources": "{count, plural, other {# 个网页来源}}"
+    "webSources": "{count, plural, other {# 个网页来源}}",
+    "records": {
+      "search": "已保存的检索",
+      "collection": "收藏夹",
+      "paper": "论文",
+      "extraction": "提取",
+      "screening": "筛选",
+      "library": "证据库",
+      "topic": "主题",
+      "chat": "对话"
+    }
   }
 }

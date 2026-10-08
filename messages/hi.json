@@ -3947,6 +3947,16 @@
       "files": "फ़ाइलें पढ़ना",
       "stopFiles": "फ़ाइल पढ़ने से पहले पूछें"
     },
-    "webSources": "{count, plural, one {# वेब स्रोत} other {# वेब स्रोत}}"
+    "webSources": "{count, plural, one {# वेब स्रोत} other {# वेब स्रोत}}",
+    "records": {
+      "search": "सहेजी गई खोज",
+      "collection": "संग्रह",
+      "paper": "शोध-पत्र",
+      "extraction": "एक्सट्रैक्शन",
+      "screening": "स्क्रीनिंग",
+      "library": "साक्ष्य लाइब्रेरी",
+      "topic": "विषय",
+      "chat": "चैट"
+    }
   }
 }

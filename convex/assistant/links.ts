@@ -1,0 +1,88 @@
+/**
+ * The link to each record a read returns, written the way a reply writes it: `[name](address)`.
+ * The model copies `link` instead of putting the link together from an ID and a page, which a
+ * weaker model leaves out, so the person sees an address where a chip should be.
+ */
+type Row = Record<string, unknown>;
+
+const text = (value: unknown) => (typeof value === "string" && value.trim() ? value : undefined);
+/** A paper's page on OpenAlex, from its ID in either form. */
+const paperUrl = (id: unknown) => {
+  const value = text(id);
+  if (!value) return undefined;
+  if (/^https:\/\/openalex\.org\/W\d+$/i.test(value)) return value;
+  return /^W\d+$/i.test(value) ? `https://openalex.org/${value.toUpperCase()}` : undefined;
+};
+
+/** Each kind of record: its address, and what names it. */
+const KINDS = {
+  search: { href: (row: Row) => text(row.id) && `/results/${row.id}`, name: (row: Row) => row.query },
+  collection: { href: (row: Row) => text(row._id) && `/library?col=${row._id}`, name: (row: Row) => row.name },
+  extraction: { href: (row: Row) => text(row._id) && `/extraction/${row._id}`, name: (row: Row) => row.name },
+  screening: { href: (row: Row) => text(row._id) && `/screening?job=${row._id}`, name: (row: Row) => row.label ?? "Screening" },
+  chat: { href: (row: Row) => text(row._id) && `/?chat=${row._id}`, name: (row: Row) => row.title },
+  paper: { href: (row: Row) => paperUrl(row.openalexId), name: (row: Row) => row.title },
+} satisfies Record<string, { href: (row: Row) => string | undefined; name: (row: Row) => unknown }>;
+type Kind = keyof typeof KINDS;
+
+/** The reads whose records come with a link, and what kind they are. */
+const READS: Record<string, Kind> = {
+  "research/records:listedSearches": "search",
+  "research/records:getSearch": "search",
+  "library/collections:listCollections": "collection",
+  "library/collections:getCollection": "collection",
+  "library/queries:papers": "paper",
+  "library/queries:savedPaper": "paper",
+  "extraction/queries:listJobs": "extraction",
+  "extraction/queries:getJobDetails": "extraction",
+  "screening/queries:listJobs": "screening",
+  "screening/queries:getScreeningJob": "screening",
+  "assistant/threads:list": "chat",
+  "assistant/threads:get": "chat",
+};
+
+/** What a link says: the record's name on one line, short, with markdown's own characters escaped so it reads as text. */
+export function linkLabel(name: string) {
+  const line = name.replace(/\s+/g, " ").trim();
+  const short = line.length > 80 ? `${line.slice(0, 79).trimEnd()}…` : line;
+  return short.replace(/[\\[\]*_`]/g, (character) => `\\${character}`);
+}
+
+function withLink(row: unknown, kind: Kind): unknown {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return row;
+  const { href, name } = KINDS[kind];
+  const address = href(row as Row);
+  const label = text(name(row as Row));
+  return address && label ? { ...row, link: `[${linkLabel(label)}](${address})` } : row;
+}
+
+/** A mention the @ picker found: each kind of its own. */
+const MENTIONS: Record<string, (id: string) => string> = {
+  search: (id) => `/results/${id}`,
+  collection: (id) => `/library?col=${id}`,
+  paper: (id) => paperUrl(id) ?? "",
+};
+
+/**
+ * `result` with a link on each record it holds: the record itself, each row of its page, each
+ * of its papers, or its job. A read of anything else comes back as it was.
+ */
+export function linked(path: string, result: unknown): unknown {
+  if (path === "assistant/mentions:find" && Array.isArray(result)) {
+    return result.map((row) => {
+      const { kind, id, label } = row as { kind?: string; id?: string; label?: string };
+      const address = kind && id ? MENTIONS[kind]?.(id) : undefined;
+      return address && text(label) ? { ...row, link: `[${linkLabel(label!)}](${address})` } : row;
+    });
+  }
+  const kind = READS[path];
+  if (!kind || !result || typeof result !== "object") return result;
+  if (Array.isArray(result)) return result.map((row) => withLink(row, kind));
+  const holder = result as Row;
+  return {
+    ...(withLink(holder, kind) as Row),
+    ...(Array.isArray(holder.page) ? { page: holder.page.map((row) => withLink(row, kind)) } : {}),
+    ...(Array.isArray(holder.papers) ? { papers: holder.papers.map((row) => withLink(row, kind)) } : {}),
+    ...(holder.job && typeof holder.job === "object" ? { job: withLink(holder.job, kind) } : {}),
+  };
+}

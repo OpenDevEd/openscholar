@@ -3947,6 +3947,16 @@
       "files": "Lecture de fichiers",
       "stopFiles": "Demander avant de lire un fichier"
     },
-    "webSources": "{count, plural, one {# source web} other {# sources web}}"
+    "webSources": "{count, plural, one {# source web} other {# sources web}}",
+    "records": {
+      "search": "Recherche enregistrée",
+      "collection": "Collection",
+      "paper": "Article",
+      "extraction": "Extraction",
+      "screening": "Sélection",
+      "library": "Bibliothèque de preuves",
+      "topic": "Sujet",
+      "chat": "Discussion"
+    }
   }
 }
