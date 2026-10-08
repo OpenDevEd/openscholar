@@ -50,7 +50,7 @@ export async function generateLibraryDigest(request: DigestRequest, signal?: Abo
   // The writing rules ask for straight quotes; the model still sends some curly ones.
   const straight = (text: string) => text.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
   // Every heading is a theme heading, and the page styles those as second-level.
-  const output = {title: straight(written.title), summary: straight(written.summary), markdown: straight(written.markdown).replace(/^#{1,6}(?= )/gm, "##")};
+  const output = {title: straight(written.title), summary: straight(written.summary), markdown: straight(written.markdown).replace(/^ {0,3}#{1,6}(?=[ \t])/gm, "##")};
   const {markdown, repairs} = await repairCitations(output.markdown, request.publications, signal);
   if (repairs.length) console.info("Library digest citations repaired", {libraryId: request.libraryId, editionId: request.editionId, repairs});
   if (!/\]\(\/lib\/[A-Z0-9]{8}\)/.test(markdown)) throw new Error("Digest output cites no supplied publication");
