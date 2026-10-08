@@ -72,6 +72,7 @@ test("an imported search keeps its identity, filters and questions after reopen,
   });
   const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   client.setAuth(token);
+  const workspaceId = (await client.query(api.workspaces.queries.personal, {}))!;
   const exportId = `e2e-${crypto.randomUUID()}`;
   const id = `import:${exportId}`;
   const query = `"${exportId}, reading" AND\nتعليم`;
@@ -83,7 +84,7 @@ test("an imported search keeps its identity, filters and questions after reopen,
     await page.getByRole("menuitem", { name: "Upload JSON", exact: true }).click();
     await (await chooser).setFiles({ name: "search.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify({ format: "openscholar.searches", version: 1, searches: [row] })) });
   };
-  const count = () => client.query(api.research.records.countSearches, { accountId });
+  const count = () => client.query(api.research.records.countSearches, { accountId, workspaceId });
   const before = await count();
   try {
     await upload();
@@ -95,7 +96,7 @@ test("an imported search keeps its identity, filters and questions after reopen,
     await page.reload();
     await expect(page.getByPlaceholder("mindfulness AND (anxiety OR stress)", { exact: true })).toHaveValue(query.replace(/\n/g, " "));
     expect(await count()).toBe(before + 1);
-    expect(await client.query(api.research.records.getSearch, { accountId, id })).toMatchObject({ id, ...spec });
+    expect(await client.query(api.research.records.getSearch, { accountId, workspaceId, id })).toMatchObject({ id, ...spec });
     await page.goto("/history");
     await upload();
     await expect(page.getByRole("button", { name: query.replace(/\n/g, " "), exact: true })).toHaveCount(1);
@@ -106,12 +107,12 @@ test("an imported search keeps its identity, filters and questions after reopen,
     expect(exported.searches.filter((item: { export_id: string }) => item.export_id === id)).toEqual([expect.objectContaining({ search_query: query, spec: expect.objectContaining(spec) })]);
     expect(await count()).toBe(before + 1);
   } catch (error) {
-    await test.info().attach("import state before cleanup", { body: JSON.stringify({ rows: await client.query(api.research.records.listedSearches, { accountId, text: exportId, sort: "recent", paginationOpts: { numItems: 20, cursor: null } }), browser: await page.evaluate(() => ({ local: localStorage.getItem("search-history-store"), text: document.body.innerText })) }), contentType: "application/json" });
+    await test.info().attach("import state before cleanup", { body: JSON.stringify({ rows: await client.query(api.research.records.listedSearches, { accountId, workspaceId, text: exportId, sort: "recent", paginationOpts: { numItems: 20, cursor: null } }), browser: await page.evaluate(() => ({ local: localStorage.getItem("search-history-store"), text: document.body.innerText })) }), contentType: "application/json" });
     throw error;
   } finally {
     // Clean up only this test's search, including duplicates if reopening regresses.
-    const rows = await client.query(api.research.records.listedSearches, { accountId, text: exportId, sort: "recent", paginationOpts: { numItems: 20, cursor: null } });
-    for (const row of rows.page) await client.mutation(api.research.records.change, { accountId, requestId: crypto.randomUUID(), command: { kind: "deleteSearch", id: row.id } });
+    const rows = await client.query(api.research.records.listedSearches, { accountId, workspaceId, text: exportId, sort: "recent", paginationOpts: { numItems: 20, cursor: null } });
+    for (const row of rows.page) await client.mutation(api.research.records.change, { accountId, workspaceId, requestId: crypto.randomUUID(), command: { kind: "deleteSearch", id: row.id } });
   }
 });
 
@@ -129,12 +130,13 @@ test("a search delete confirmation refuses an account change without losing the 
   }));
   const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   client.setAuth(token);
+  const workspaceId = (await client.query(api.workspaces.queries.personal, {}))!;
   try {
     await page.getByRole("button", { name: "Download as JSON", exact: true }).click();
     const chooser = page.waitForEvent("filechooser");
     await page.getByRole("menuitem", { name: "Upload JSON", exact: true }).click();
     await (await chooser).setFiles({ name: "search.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify([{ format_version: 1, export_id: marker, search_query: marker, spec: { query: marker } }])) });
-    await expect.poll(() => client.query(api.research.records.getSearch, { accountId, id })).toMatchObject({ id });
+    await expect.poll(() => client.query(api.research.records.getSearch, { accountId, workspaceId, id })).toMatchObject({ id });
     await expect(page.getByRole("button", { name: marker, exact: true })).toBeVisible();
     await page.getByRole("textbox", { name: "Search your history...", exact: true }).fill(marker);
     await page.getByRole("button", { name: "Delete", exact: true }).click();
@@ -147,9 +149,9 @@ test("a search delete confirmation refuses an account change without losing the 
     await expect(page.getByText("Your account changed. Try again.", { exact: true })).toBeVisible();
     await page.evaluate(session => window.Clerk.setActive({ session }), sessionId);
     client.setAuth((await page.evaluate(() => window.Clerk.session!.getToken({ template: "convex" })))!);
-    expect(await client.query(api.research.records.getSearch, { accountId, id })).toMatchObject({ id, query: marker });
+    expect(await client.query(api.research.records.getSearch, { accountId, workspaceId, id })).toMatchObject({ id, query: marker });
   } finally {
-    await client.mutation(api.research.records.change, { accountId, requestId: crypto.randomUUID(), command: { kind: "deleteSearch", id } });
+    await client.mutation(api.research.records.change, { accountId, workspaceId, requestId: crypto.randomUUID(), command: { kind: "deleteSearch", id } });
   }
 });
 
@@ -174,24 +176,25 @@ for (const kind of ["history", "bookmarks"] as const) {
     }));
     const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
     client.setAuth(token);
+    const workspaceId = (await client.query(api.workspaces.queries.personal, {}))!;
     try {
       await filePicker.setFiles({ name: "research.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(data)) });
       await expect(page.getByText("Upload failed", { exact: true })).toBeVisible();
       expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain(marker);
-      expect(await client.query(api.research.records.getSearch, { accountId, id })).toBeNull();
-      expect((await client.query(api.research.records.shortcutsOf, { accountId, names: [marker] })).page).toEqual([]);
+      expect(await client.query(api.research.records.getSearch, { accountId, workspaceId, id })).toBeNull();
+      expect((await client.query(api.research.records.shortcutsOf, { accountId, workspaceId, names: [marker] })).page).toEqual([]);
       await page.getByRole("button", { name: "Download as JSON", exact: true }).click();
       const retryPicker = page.waitForEvent("filechooser");
       await page.getByRole("menuitem", { name: "Upload JSON", exact: true }).click();
       await (await retryPicker).setFiles({ name: "research.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(data)) });
       if (kind === "history") {
-        await expect.poll(() => client.query(api.research.records.getSearch, { accountId, id })).toMatchObject({ id, query: marker });
+        await expect.poll(() => client.query(api.research.records.getSearch, { accountId, workspaceId, id })).toMatchObject({ id, query: marker });
       } else {
-        await expect.poll(async () => (await client.query(api.research.records.shortcutsOf, { accountId, names: [marker] })).page).toEqual([expect.objectContaining({ shorthand: marker, expansion: "education" })]);
+        await expect.poll(async () => (await client.query(api.research.records.shortcutsOf, { accountId, workspaceId, names: [marker] })).page).toEqual([expect.objectContaining({ shorthand: marker, expansion: "education" })]);
       }
     } finally {
-      await client.mutation(api.research.records.change, { accountId, requestId: crypto.randomUUID(), command: { kind: "deleteSearch", id } });
-      await client.mutation(api.research.records.change, { accountId, requestId: crypto.randomUUID(), command: { kind: "shortcut", shorthand: marker, value: null } });
+      await client.mutation(api.research.records.change, { accountId, workspaceId, requestId: crypto.randomUUID(), command: { kind: "deleteSearch", id } });
+      await client.mutation(api.research.records.change, { accountId, workspaceId, requestId: crypto.randomUUID(), command: { kind: "shortcut", shorthand: marker, value: null } });
     }
   });
 }

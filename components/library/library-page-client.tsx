@@ -50,6 +50,7 @@ import { LibraryCommandCenter } from "./library-command-center";
 import { LibraryEmptyState } from "./library-empty-state";
 import { LibraryFilterSidebar } from "./library-filter-sidebar";
 import { LibraryItemSkeleton } from "./library-item-skeleton";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 const PAGE_SIZE = 20;
 
@@ -61,6 +62,7 @@ const GRID_CLASSES: Record<ViewMode, string> = {
 };
 
 export function LibraryPageClient() {
+  const workspaceId = useWorkspace();
   const t = useTranslations("libraryPage");
   const tf = useTranslations("searchFilters");
   const format = useFormatter();
@@ -278,7 +280,7 @@ export function LibraryPageClient() {
 
   const { data: selectedCollection } = useProtectedQuery(
     api.library.collections.getCollection,
-    params.col ? { collectionId: params.col as Id<"collections"> } : "skip",
+    inWorkspace(workspaceId, params.col ? { collectionId: params.col as Id<"collections"> } : "skip"),
   );
 
   const sortLabelMap = useMemo<Record<LibrarySortCombined, string>>(

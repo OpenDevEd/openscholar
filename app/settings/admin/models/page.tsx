@@ -18,6 +18,7 @@ import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { Enter, LIST, Paged, Segmented, Tile } from "@/components/settings/parts";
 import { IntelligenceMeter, priceLabel } from "@/components/models/meters";
 import { tintOf } from "@/components/settings/model-map";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 type Show = "all" | "on" | "off";
 const PER_PAGE = 12;
@@ -30,6 +31,7 @@ const providerName = (p: string) => PROVIDER_NAMES[p] ?? p.charAt(0).toUpperCase
 const context = (n?: number) => (n ? (n >= 1_000_000 ? `${Math.round(n / 100_000) / 10}M` : `${Math.round(n / 1000)}k`) : "");
 
 export default function ModelListPage() {
+  const workspaceId = useWorkspace();
   const t = useTranslations("settingsAdmin.models");
   const tc = useTranslations("common");
   const toast = useAppToast();
@@ -38,8 +40,8 @@ export default function ModelListPage() {
   const [show, setShow] = useState<Show>("all");
   // The list is filtered and read a page at a time on the server; the summary totals the view and names the chips.
   const view = { ...(provider ? { provider } : {}), search: useDebouncedValue(search.trim(), 300), show };
-  const models = useCursorPage(api.models.admin.listModels, view, PER_PAGE);
-  const { data: counted } = useProtectedQuery(api.models.admin.summary, view);
+  const models = useCursorPage(api.models.admin.listModels, inWorkspace(workspaceId, view), PER_PAGE);
+  const { data: counted } = useProtectedQuery(api.models.admin.summary, inWorkspace(workspaceId, view));
   // The last summary stays up while another view is counted.
   const [summary, setSummary] = useState(counted);
   if (counted !== undefined && counted !== summary) setSummary(counted);

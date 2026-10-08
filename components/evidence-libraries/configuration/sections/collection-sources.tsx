@@ -20,6 +20,7 @@ import {
 } from "./remote-picker-dialog";
 import { SourceRow, SourceSwitch } from "./source-row";
 import type { SourceLive } from "./source-activity";
+import { useWorkspace } from "@/lib/workspaces/url";
 
 /** Collections the picker reads at a time. */
 const COLLECTION_PICKER_PAGE_SIZE = 50;
@@ -47,6 +48,7 @@ export function useCollectionSources({
   commit: (next: EvidenceSourceEntry[]) => void;
   apiKeyMode: "platform" | "custom";
 }) {
+  const workspaceId = useWorkspace();
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const convex = useConvex();
   const connect = useMutation(api.evidenceLibraries.collectionSources.connectCollectionSource);
@@ -62,7 +64,9 @@ export function useCollectionSources({
   const byId = new Map((connected.data?.page ?? []).map((row) => [row.collectionId as string, row]));
 
   const readMine: PickerSource = async ({ query, cursor }) => {
+    if (!workspaceId) throw new Error("The workspace hasn't loaded yet. Try again in a moment.");
     const page = await convex.query(api.library.collections.listCollections, {
+      workspaceId,
       search: query || undefined,
       paginationOpts: { cursor, numItems: COLLECTION_PICKER_PAGE_SIZE },
     });

@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { useConvex, usePaginatedQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { useResearchScope } from "./reads";
 import type { QueryHistoryEntry, QuestionHistoryEntry, SearchResult } from "../types";
 
 /** History entries read at once; a longer history reads more as it's scrolled or stepped through. */
@@ -26,13 +26,14 @@ function toEntry<K extends Kind>(kind: K, row: Row) {
  * page holds at least `minimum` entries, as many as when the hook mounted, up to 100.
  */
 export function useSearchHistoryEntries<K extends Kind>(search: SearchResult | null | undefined, kind: K, enabled = true, minimum = 0) {
-  const { userId } = useAuth();
+  // The account and workspace the account's records are read in; none signed out.
+  const scope = useResearchScope();
   const convex = useConvex();
   const [firstPage] = useState(() => Math.min(HISTORY_PAGE_MAX, Math.max(HISTORY_PAGE, minimum)));
   const local = (kind === "query" ? search?.queryHistory : search?.questionHistory) as Entry<K>[] | undefined;
   const remote = usePaginatedQuery(
     api.research.records.searchHistory,
-    search && userId && !local && enabled ? { accountId: userId, id: search.id, kind } : "skip",
+    search && scope && !local && enabled ? { ...scope, id: search.id, kind } : "skip",
     { initialNumItems: firstPage },
   );
   const entries = useMemo(() => local ?? [...remote.results].reverse().map((row) => toEntry(kind, row)), [local, remote.results, kind]);
@@ -50,11 +51,11 @@ export function useSearchHistoryEntries<K extends Kind>(search: SearchResult | n
      */
     readAt: async (stepsBack: number): Promise<Entry<K> | undefined> => {
       if (local) return local[local.length - 1 - stepsBack];
-      if (!search || !userId) return undefined;
+      if (!search || !scope) return undefined;
       if (remote.status === "CanLoadMore") remote.loadMore(HISTORY_PAGE_MAX);
       // Each read skips as many entries as it can; one far back may take a few.
       for (let cursor: string | undefined, left = stepsBack; ;) {
-        const result = await convex.query(api.research.records.searchHistoryEntry, { accountId: userId, id: search.id, kind, stepsBack: left, ...(cursor ? { cursor } : {}) });
+        const result = await convex.query(api.research.records.searchHistoryEntry, { ...scope, id: search.id, kind, stepsBack: left, ...(cursor ? { cursor } : {}) });
         if ("entry" in result) return result.entry ? toEntry(kind, result.entry) : undefined;
         left -= result.skipped;
         cursor = result.cursor;

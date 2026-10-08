@@ -13,6 +13,7 @@ import { activateResearch, ResearchContext, SessionContext } from "./binding";
 import { ResearchSession } from "./session";
 import { ResearchImportError, localResearchBackup } from "./migrate";
 import { downloadAsFile } from "../utils";
+import { useWorkspace } from "../workspaces/url";
 
 const localSnapshot = { ready: true, error: null, pending: 0 };
 const localSubscribe = () => activateResearch(null);
@@ -38,9 +39,13 @@ export function ResearchStateProvider({ children }: { children: ReactNode }) {
     showStyledToast("error", error.message, { duration: Infinity, action: { label: retryLabel, onClick: retry, ...(error instanceof ResearchImportError ? { secondaryAction: { label: "Download backup", onClick: () => downloadAsFile(localResearchBackup(), "local-research-backup.json", "json") } } : {}) } });
   }, [retryLabel]);
   const session = userId ? accountSession(client, userId) : null;
-  const subscribe = useCallback((listener: () => void) => session ? session.subscribe(listener, phase === "authenticated", report) : localSubscribe(), [session, phase, report]);
+  // The session reads the account's records in the page's workspace, from when it has loaded.
+  const workspaceId = useWorkspace();
+  const subscribe = useCallback((listener: () => void) => session ? session.subscribe(listener, phase === "authenticated", report, workspaceId) : localSubscribe(), [session, phase, report, workspaceId]);
   const status = useSyncExternalStore(subscribe, session?.getSnapshot ?? getLocalSnapshot, session?.getServerSnapshot ?? getLocalSnapshot);
-  const reading = useMemo(() => ({ session, phase }), [session, phase]);
+  // The same account and workspace the session reads under, for hooks reading beside it.
+  const scope = useMemo(() => (userId && workspaceId ? { accountId: userId, workspaceId } : undefined), [userId, workspaceId]);
+  const reading = useMemo(() => ({ session, phase, scope }), [session, phase, scope]);
   const value = useMemo(() => ({ ...status, ready: status.ready && (phase === "anonymous" || phase === "authenticated"), error: phase === "sync_error" ? new Error("Your account could not finish loading.") : status.error, retry: phase === "sync_error" ? retryUserSync : session?.retry ?? (() => {}) }), [status, session, phase, retryUserSync]);
   return <ResearchContext.Provider value={session?.stores ?? null}><SessionContext.Provider value={reading}><StatusContext.Provider value={value}>{children}</StatusContext.Provider></SessionContext.Provider></ResearchContext.Provider>;
 }

@@ -9,6 +9,7 @@
  */
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import { effortValidator } from "../aiModelConfig/validators";
 import { refreshAccount } from "../billing/accounts";
 import { CALL_TOKENS, estimateCredits, type Pricing } from "../../lib/pricing";
@@ -110,8 +111,10 @@ export const reply = internalAction({
     const why = used.told ?? ((used.failed ?? 0) >= MAX_FAILED_ROUNDS ? TOO_MANY_FAILED : circling(used.recent ?? []) ? CIRCLING : null);
     const answer = used.told !== undefined;
     const stopped = () => why;
+    // Its actions run in the sender's own workspace until chats belong to one (#650).
+    const workspaceId: Id<"workspaces"> = await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: senderId });
     // Each action it runs is kept as a step of the exchange it's answering.
-    const { tools, approval, resume, planned, made, changes, digest, held } = toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped, halted: shouldStop, made: used.calls, changed: used.changes });
+    const { tools, approval, resume, planned, made, changes, digest, held } = toolsFor(ctx, { userId: senderId, workspaceId, threadId, order: read.answering ?? 0, attemptId, stopped, halted: shouldStop, made: used.calls, changed: used.changes });
     // A reply that waited for an answer carries on here: what the person allowed runs first,
     // and each result is written where the model's call left off. A Stop ends it between two.
     const allowed = await ctx.runQuery(internal.assistant.steps.allowed, { threadId });

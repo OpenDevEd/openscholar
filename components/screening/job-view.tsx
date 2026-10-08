@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { ListFocus, openListFocus } from "@/components/focus-mode/list-focus";
 import { PaperTitle } from "@/components/focus-mode/paper-title";
 import { ANSWER, AnimatedNumber, AnswerMark, Chip, ClippedChip, Meter, OUTCOME, OutcomeBar, ProgressRing, SOURCE_ICON, Stars } from "./parts";
+import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 /** The chip on a paper about to move to another outcome, in that outcome's colour. */
 const MOVING: Record<Outcome, string> = {
@@ -69,13 +70,14 @@ export function JobView({
   blocker?: { name: string; done: number; total: number };
   onRunAgain: () => void;
 }) {
+  const workspaceId = useWorkspace();
   const t = useTranslations("screeningPage");
   const format = useFormatter();
   const toast = useAppToast();
   const convex = useConvex();
   const cancel = useMutation(api.screening.mutations.cancelScreeningJob);
   const [exporting, setExporting] = useState(false);
-  const { data: slots } = useProtectedQuery(api.screening.queries.slots, phase === "running" ? {} : "skip");
+  const { data: slots } = useProtectedQuery(api.screening.queries.slots, inWorkspace(workspaceId, phase === "running" ? {} : "skip"));
 
   // A search's filters come from the search itself, read while its job shows.
   const searchId = job.set?.kind === "search" ? job.set.searchId : undefined;
@@ -101,7 +103,7 @@ export function JobView({
     setExporting(true);
     try {
       // The server writes CSV and JSON a page of results at a time; a workbook is built here.
-      if (kind === "xlsx") await exportScreeningToXLSX(convex, job._id);
+      if (kind === "xlsx") await exportScreeningToXLSX(convex, job._id, workspaceId);
       else await downloadExport(convex, { kind: "screening", jobId: job._id }, kind);
     } catch (error) {
       console.error("[screening] export failed", error);
@@ -283,6 +285,7 @@ export function JobView({
 type Held = { paper: Paper; index: number };
 
 function Results({ job, questions, max, minimum, done }: { job: Job; questions: Question[]; max: number; minimum: number; done: number }) {
+  const workspaceId = useWorkspace();
   const t = useTranslations("screeningPage");
   const toast = useAppToast();
   const [tab, setTab] = useState<Outcome>("included");
@@ -292,10 +295,10 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
   // The paper whose answers were just changed stays in the list, even once its outcome is
   // another's, until something else is touched: another paper, an outcome, a page, the search.
   const [held, setHeld] = useState<Held | null>(null);
-  const list = useCursorPage(api.screening.papers.list, { jobId: job._id, outcome: tab, ...(text ? { text } : {}) }, PAGE_SIZE);
+  const list = useCursorPage(api.screening.papers.list, inWorkspace(workspaceId, { jobId: job._id, outcome: tab, ...(text ? { text } : {}) }), PAGE_SIZE);
   // The held paper as it stands now, read on its own: its outcome's list no longer holds it.
-  const { data: current } = useProtectedQuery(api.screening.papers.get, held ? { jobId: job._id, paperId: held.paper.openalexId } : "skip");
-  const answer = useMutation(api.screening.papers.answer);
+  const { data: current } = useProtectedQuery(api.screening.papers.get, inWorkspace(workspaceId, held ? { jobId: job._id, paperId: held.paper.openalexId } : "skip"));
+  const answer = useWorkspaceMutation(api.screening.papers.answer);
 
   const heldPaper = held ? (current ?? held.paper) : undefined;
   const rows =

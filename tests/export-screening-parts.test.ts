@@ -31,7 +31,7 @@ it('downloads a 4,500-paper job as three workbooks holding every result once', a
   URL.revokeObjectURL = vi.fn();
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) { files.push({ name: this.download, blob: blob! }); });
 
-  await exportScreeningToXLSX(convex, 'j1' as Id<'screeningJobs'>);
+  await exportScreeningToXLSX(convex, 'j1' as Id<'screeningJobs'>, 'w1' as Id<'workspaces'>);
 
   expect(files.map((file) => file.name)).toEqual([1, 2, 3].map((part) => expect.stringContaining(`(part ${part}).xlsx`)));
   const ids: string[] = [];

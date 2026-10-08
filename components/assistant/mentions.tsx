@@ -13,6 +13,7 @@ import { api } from "@/convex/_generated/api";
 import { draftSegments, mentionSegments, openMention, uniqueLabel, type Mention } from "@/lib/assistant/mentions";
 import { cn } from "@/lib/utils";
 import { KIND, KindTile } from "./steps";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 type Found = FunctionReturnType<typeof api.assistant.mentions.find>[number];
 /** The picker shows this many, as the mock does. */
@@ -78,6 +79,7 @@ export function MentionComposer({
   disabled: boolean;
   placeholder: string;
 }) {
+  const workspaceId = useWorkspace();
   const t = useTranslations("assistant");
   const [menu, setMenu] = useState<{ start: number; query: string } | null>(null);
   const [active, setActive] = useState(0);
@@ -88,7 +90,7 @@ export function MentionComposer({
   const listId = useId();
   // Read while the box has focus, so the list is there the moment @ is typed.
   const asked = menu?.query.trim() ?? "";
-  const found = useQuery(api.assistant.mentions.find, focused && !disabled ? { text: asked } : "skip");
+  const found = useQuery(api.assistant.mentions.find, inWorkspace(workspaceId, focused && !disabled ? { text: asked } : "skip"));
   // What the last answer found stays up, dimmed and inert, while the next one loads, so the list doesn't empty between keys.
   const [kept, setKept] = useState<{ text: string; found: Found[] } | null>(null);
   if (found !== undefined && (found !== kept?.found || asked !== kept.text)) setKept({ text: asked, found });

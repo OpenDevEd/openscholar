@@ -25,6 +25,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 /**
  * Combined sort options for the library sort dropdown.
@@ -289,11 +290,12 @@ function CollectionFilterSection({
   onManageCollections: () => void;
   isCollectionActive: boolean;
 }) {
+  const workspaceId = useWorkspace();
   const t = useTranslations("libraryPage");
   const [searchQuery, setSearchQuery] = useState("");
   const search = useDebouncedValue(searchQuery.trim(), 300);
-  const { data: totalCollections } = useProtectedQuery(api.library.collections.countCollections, {});
-  const collections = useCursorPage(api.library.collections.listCollections, { search: search || undefined }, PAGE_SIZE);
+  const { data: totalCollections } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
+  const collections = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, { search: search || undefined }), PAGE_SIZE);
 
   const showSearch = (totalCollections ?? 0) >= SEARCH_THRESHOLD;
   const hasSearch = search.length > 0;

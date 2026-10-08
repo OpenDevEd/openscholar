@@ -24,6 +24,7 @@ import { doneOf, phaseOf, type Job, type JobRow, type Phase } from "@/lib/screen
 import { cn } from "@/lib/utils";
 import { JobView, jobName } from "./job-view";
 import { SetupView } from "./setup-view";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 /** Screenings one page of the rail lists. */
 const RAIL_PAGE = 12;
@@ -38,6 +39,7 @@ const ICON: Record<Exclude<Phase, "processing">, AppIcon> = {
 };
 
 export function ScreeningPage() {
+  const workspaceId = useWorkspace();
   const t = useTranslations("screeningPage");
   const format = useFormatter();
   const date = (at: number) => format.dateTime(new Date(at), { dateStyle: "medium" });
@@ -51,7 +53,7 @@ export function ScreeningPage() {
   // Until the person's screenings arrive, nothing says whether the form or the newest of them shows.
   const waiting = picked === null && !searchId && jobs.isLoading;
   const jobId = picked === "new" || waiting ? null : (picked ?? (searchId ? null : (jobs.items[0]?._id ?? null)));
-  const { data: read } = useProtectedQuery(api.screening.queries.getScreeningJob, jobId ? { jobId: jobId as Id<"screeningJobs"> } : "skip");
+  const { data: read } = useProtectedQuery(api.screening.queries.getScreeningJob, inWorkspace(workspaceId, jobId ? { jobId: jobId as Id<"screeningJobs"> } : "skip"));
   // The screening last shown stays up while the next one is read.
   const [shown, setShown] = useState<Job | null>(null);
   if (read && read !== shown) setShown(read);

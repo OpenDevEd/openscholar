@@ -339,6 +339,7 @@ export function toolsFor(
   ctx: ActionCtx,
   {
     userId,
+    workspaceId,
     threadId,
     order,
     attemptId,
@@ -348,6 +349,8 @@ export function toolsFor(
     changed = {},
   }: {
     userId: Id<"users">;
+    /** The workspace its actions run in: the sender's own until chats belong to one (#650). */
+    workspaceId: Id<"workspaces">;
     threadId: Id<"assistantThreads">;
     order: number;
     attemptId: string;
@@ -418,7 +421,7 @@ export function toolsFor(
       // A change ends its step in its own transaction, so the two are saved together. A read's step is ended here.
       const change = changesSomething(entry);
       // What the person let it hold goes with a call that spends credits: the figure they said yes to, or the one their allowance covered.
-      const result = await written(() => runAction(ctx, userId, entry, input, key, stepId, approved, allowed ? approvedFor : within?.credits));
+      const result = await written(() => runAction(ctx, { userId, workspaceId }, entry, input, key, stepId, approved, allowed ? approvedFor : within?.credits));
       if (!change) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
       note(entry.path, input, change ? "made" : result);
       // A change that returns nothing says it was made. A read that returns nothing found nothing.
@@ -696,7 +699,7 @@ export function toolsFor(
     return true;
   };
   const tools: ToolSet = {
-    ...assistantTools(ctx, userId, core(), ({ entry, input, toolCallId }) => call(entry, input, toolCallId)),
+    ...assistantTools(ctx, { userId, workspaceId }, core(), ({ entry, input, toolCallId }) => call(entry, input, toolCallId)),
     find_action: tool({
       description:
         "Finds what else you can do in the person's account: every action that has no tool of its own, by keywords from what you want to do, such as \"rename collection\" or \"extraction results\". " +

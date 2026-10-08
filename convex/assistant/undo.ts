@@ -12,6 +12,7 @@ import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { assistantPath } from "../lib/userActions";
 import { requireThread } from "./access";
 import { UNDONE_TOLD } from "./validators";
+import { personalWorkspaceOf } from "../workspaces/actor";
 
 export const run = mutation({
   args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps") },
@@ -28,7 +29,7 @@ export const run = mutation({
     const entry = USER_ACTIONS.find((candidate) => candidate.path === step.undo!.path);
     if (!entry || entry.kind !== "mutation") throw createError("NOT_FOUND", "This can no longer be undone.");
     // The reversing action refuses on its own when the record has changed since (its `expect`).
-    await ctx.runMutation(makeFunctionReference<"mutation">(assistantPath(entry.path)), { ...JSON.parse(step.undo.args), ...(entry.retryKey ? { [entry.retryKey]: `undo:${stepId}` } : {}), userId, approved: true });
+    await ctx.runMutation(makeFunctionReference<"mutation">(assistantPath(entry.path)), { ...JSON.parse(step.undo.args), ...(entry.retryKey ? { [entry.retryKey]: `undo:${stepId}` } : {}), userId, workspaceId: await personalWorkspaceOf(ctx, userId), approved: true });
     await ctx.db.patch("assistantSteps", stepId, { undone: true });
     // The assistant is told with this person's next message (./replies.ts). Past what the chat keeps, the earliest goes, counted for whoever's it was and not forgotten.
     const undone = [...(thread.undone ?? []), { userId, stepId }];

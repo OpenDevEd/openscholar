@@ -343,8 +343,10 @@ const XLSX_PAGE_SIZE = 200;
 const XLSX_PART_PAPERS = 2_000;
 
 /** Downloads a job's results as XLSX files, a part at a time, each read a page at a time. */
-export async function exportScreeningToXLSX(convex: ConvexReactClient, jobId: Id<"screeningJobs">): Promise<void> {
-  const job = await convex.query(api.screening.queries.getScreeningJob, { jobId });
+export async function exportScreeningToXLSX(convex: ConvexReactClient, jobId: Id<"screeningJobs">, workspaceId: Id<"workspaces"> | undefined): Promise<void> {
+  if (!workspaceId) throw new Error("The workspace hasn't loaded yet. Try again in a moment.");
+  const read = { jobId, workspaceId };
+  const job = await convex.query(api.screening.queries.getScreeningJob, read);
   if (!job) return;
   const several = job.totalPapers > XLSX_PART_PAPERS;
   let cursor: string | null = null;
@@ -354,7 +356,7 @@ export async function exportScreeningToXLSX(convex: ConvexReactClient, jobId: Id
     async function* pages() {
       while (taken < XLSX_PART_PAPERS) {
         const page: { page: ScreeningExportResult[]; isDone: boolean; continueCursor: string } =
-          await convex.query(api.screening.queries.listScreeningResults, { jobId, revision: job!.revision, paginationOpts: { cursor, numItems: Math.min(XLSX_PAGE_SIZE, XLSX_PART_PAPERS - taken) } });
+          await convex.query(api.screening.queries.listScreeningResults, { ...read, revision: job!.revision, paginationOpts: { cursor, numItems: Math.min(XLSX_PAGE_SIZE, XLSX_PART_PAPERS - taken) } });
         taken += page.page.length;
         yield page.page;
         cursor = page.isDone ? null : page.continueCursor;
@@ -362,7 +364,7 @@ export async function exportScreeningToXLSX(convex: ConvexReactClient, jobId: Id
       }
     }
     const workbook = await generateScreeningXLSXWorkbook(job, pages(), several ? { number: part, of: Math.ceil(job.totalPapers / XLSX_PART_PAPERS) } : undefined);
-    const latest = await convex.query(api.screening.queries.getScreeningJob, { jobId });
+    const latest = await convex.query(api.screening.queries.getScreeningJob, read);
     if (!latest || latest.revision !== job.revision) throw new Error('Screening changed during export. Download it again.');
     const buffer = await workbook.xlsx.writeBuffer();
     const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));

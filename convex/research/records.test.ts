@@ -8,8 +8,10 @@ import { ANSWERED_PAPERS_MAX, UNDO_SHORTCUT_MAX, restoreResponses, restoreSearch
 import { convexToJson } from "convex/values";
 import { asSchema } from "ai";
 import type { ActionCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { assistantTools } from "../lib/assistantTools";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
+import { ensureWorkspace } from "../workspaces/create";
 
 const record: SavedSearch = {
   id: "local-original", query: "tutoring AND randomized", field: "title_and_abstract", count: 42,
@@ -618,13 +620,15 @@ describe("undoing a change to research records (#342)", () => {
 
 describe("research actions as assistant tools", () => {
   // The tools run inside an agent's action; this context passes their calls to the test backend.
+  /** The assistant acting for `userId` in their own workspace. */
+  const actingAs = async (t: ReturnType<typeof convexTest>, userId: Id<"users">) => ({ userId, workspaceId: await t.run((ctx) => ensureWorkspace(ctx, { kind: "personal", userId })) });
   const actionCtx = (t: ReturnType<typeof convexTest>) =>
     ({ runQuery: t.query, runMutation: t.mutation }) as unknown as ActionCtx;
   const call = { messages: [], context: undefined };
 
   it("act as the sender, record the assistant as author, and apply a retried call once", async () => {
     const { t, ids, alice } = await setup();
-    const tools = assistantTools(actionCtx(t), ids.alice, USER_ACTIONS);
+    const tools = assistantTools(actionCtx(t), await actingAs(t, ids.alice), USER_ACTIONS);
     const create = { command: { kind: "createSearch" as const, search: record } };
     await tools.research_records_change.execute!(create, { ...call, toolCallId: "call-1" });
     await tools.research_records_change.execute!(create, { ...call, toolCallId: "call-1" });
@@ -639,7 +643,7 @@ describe("research actions as assistant tools", () => {
   it("never reach another account's records", async () => {
     const { t, ids, alice } = await setup();
     await alice.mutation(api.research.records.importBatch, batch);
-    const bobTools = assistantTools(actionCtx(t), ids.bob, USER_ACTIONS);
+    const bobTools = assistantTools(actionCtx(t), await actingAs(t, ids.bob), USER_ACTIONS);
     expect(await bobTools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: "call-3" })).toBeNull();
     // Deleting a search outright asks the person first. Allowed by Bob, it still deletes nothing of Alice's.
     await expect(bobTools.research_records_change.execute!({ command: { kind: "deleteSearch", id: record.id } }, { ...call, toolCallId: "call-4" })).rejects.toThrow(/person's say first/);
@@ -684,7 +688,7 @@ describe("research actions as assistant tools", () => {
 
   it("refuse a sender whose account was suspended or deleted during the turn", async () => {
     const { t, ids } = await setup();
-    const tools = assistantTools(actionCtx(t), ids.alice, USER_ACTIONS);
+    const tools = assistantTools(actionCtx(t), await actingAs(t, ids.alice), USER_ACTIONS);
     for (const state of ["suspended", "deleted"] as const) {
       await t.run(ctx => ctx.db.patch("users", ids.alice, { state }));
       await expect(tools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: `read-${state}` })).rejects.toThrow();
@@ -695,7 +699,7 @@ describe("research actions as assistant tools", () => {
 
   it("offer every registered action to the model, with the retry key left to the tool", async () => {
     const { t, ids } = await setup();
-    const tools = assistantTools(actionCtx(t), ids.alice, USER_ACTIONS);
+    const tools = assistantTools(actionCtx(t), await actingAs(t, ids.alice), USER_ACTIONS);
     expect(Object.keys(tools)).toHaveLength(USER_ACTIONS.length);
     for (const entry of USER_ACTIONS) {
       const schema = await asSchema(tools[entry.path.replace(/[/:]/g, "_")]!.inputSchema).jsonSchema;

@@ -11,6 +11,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { summarizeRetryable } from "@/lib/extraction/retry-summary";
 import { RetryConfirmDialog } from "@/components/extraction/retry-confirm-dialog";
 import { PermanentFailuresCallout } from "@/components/extraction/permanent-failures-callout";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 export interface RetrySummaryProps {
   jobId: Id<"extractionJobs">;
@@ -32,8 +33,9 @@ export interface RetrySummaryProps {
  * the retryable CTA.
  */
 export function RetrySummary({ jobId }: RetrySummaryProps) {
+  const workspaceId = useWorkspace();
   const t = useTranslations("extraction.retry");
-  const { data: failures } = useProtectedQuery(api.extraction.queries.countJobFailures, { jobId });
+  const { data: failures } = useProtectedQuery(api.extraction.queries.countJobFailures, inWorkspace(workspaceId, { jobId }));
   const summary = failures && summarizeRetryable(failures);
   const retryFailed = useMutation(
     api.extraction.mutations.retryFailedQuestions,

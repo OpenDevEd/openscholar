@@ -39,6 +39,7 @@ import { buildDedupeKey } from "@/lib/bucket/dedupe";
 import { BUCKET_SOURCE_LABELS } from "@/lib/bucket/source-labels";
 import { bucketAdded } from "@/lib/toast/bucket";
 import { hoverSpring, sidebarSpring } from "@/lib/ui/sidebar-motion";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import {
   getExtractionSourceSidebarDimensions,
   useExtractionSourceSidebarStore,
@@ -248,8 +249,9 @@ type SourceSidebarProps = {
 };
 
 function SourceSidebar({ view, onChange }: SourceSidebarProps) {
-  const collections = useCursorPage(api.library.collections.listCollections, {}, SIDEBAR_PAGE_SIZE);
-  const { data: totalCollections } = useProtectedQuery(api.library.collections.countCollections, {});
+  const workspaceId = useWorkspace();
+  const collections = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), SIDEBAR_PAGE_SIZE);
+  const { data: totalCollections } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
   const isCollapsed = useExtractionSourceSidebarStore((s) => s.isCollapsed);
   const hasHydrated = useExtractionSourceSidebarStore((s) => s._hasHydrated);
   const toggle = useExtractionSourceSidebarStore((s) => s.toggle);

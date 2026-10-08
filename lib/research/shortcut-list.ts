@@ -9,7 +9,7 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { shortcutSortName } from "@/lib/query-shortcuts";
 import { localKeywordExpansionStore } from "@/lib/store";
 import type { BookmarkSortBy } from "@/lib/types";
-import { useResearchSession } from "./reads";
+import { useResearchScope, useResearchSession } from "./reads";
 import { usePagedRecords } from "./paged-records";
 
 /** A shortcut as the Bookmarks page lists it. */
@@ -26,10 +26,11 @@ const LOCAL_ORDER: Record<BookmarkSortBy, (a: ListedShortcut, b: ListedShortcut)
 
 /** How many shortcuts the person has; undefined while the account's count loads. */
 export function useShortcutCount() {
-  const accountId = useResearchSession()?.accountId;
-  const { data: count } = useProtectedQuery(api.research.records.countShortcuts, accountId ? { accountId } : "skip");
+  const signedIn = Boolean(useResearchSession());
+  const scope = useResearchScope();
+  const { data: count } = useProtectedQuery(api.research.records.countShortcuts, scope ?? "skip");
   const local = useStore(localKeywordExpansionStore, (state) => Object.keys(state.keywords).length);
-  return accountId ? count : local;
+  return signedIn ? count : local;
 }
 
 /**
@@ -38,11 +39,11 @@ export function useShortcutCount() {
  * only shortcuts whose name or expansion contain it.
  */
 export function useShortcutList({ sort, text = "", pageSize }: { sort: BookmarkSortBy; text?: string; pageSize: number }) {
-  const session = useResearchSession();
-  const accountId = session?.accountId;
+  const accountId = useResearchSession()?.accountId;
+  const scope = useResearchScope();
   const match = useDebouncedValue(text.trim(), 300);
-  const remote = useCursorPage(api.research.records.listedShortcuts, accountId ? { accountId, sort, text: match || undefined } : "skip", pageSize);
-  const { data: count } = useProtectedQuery(api.research.records.countShortcuts, accountId ? { accountId } : "skip");
+  const remote = useCursorPage(api.research.records.listedShortcuts, scope ? { ...scope, sort, text: match || undefined } : "skip", pageSize);
+  const { data: count } = useProtectedQuery(api.research.records.countShortcuts, scope ?? "skip");
   const remoteItems = useMemo(() => remote.items.map(({ shorthand, ...shortcut }): ListedShortcut => ({ name: shorthand, ...shortcut })), [remote.items]);
 
   const keywords = useStore(localKeywordExpansionStore, (state) => state.keywords);
