@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["citeproc-ts"],
   devIndicators: false,
   poweredByHeader: false,
+  typescript: {
+    // CI type-checks once in its unit job, so its e2e build skips the check.
+    ignoreBuildErrors: process.env.NEXT_BUILD_SKIP_VERIFIED_TYPES === "1",
+  },
   experimental: {
     testProxy: process.env.PLAYWRIGHT_TEST_PROXY === "1",
     optimizePackageImports: ["lucide-react"],
