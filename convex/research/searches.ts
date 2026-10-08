@@ -20,7 +20,7 @@ import { INSTITUTION_TYPES, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "..
 import { currentSearch, restoreSearch, type SavedSearch, type UndoCommand } from "../../lib/research/records";
 import { buildShareableUrl } from "../../lib/search-params";
 import { searchResultToParams } from "../../lib/search-params/converters";
-import { applyCommand, findSearch, revisionRow } from "./records";
+import { applyCommand, checkRemoval, findSearch, revisionRow } from "./records";
 import { AUTHORS_SHOWN, changesValidator, COUNTRIES_SHOWN, LAST_PAGE, LAST_PAGE_FROM_START, pageValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 import type { Id } from "../_generated/dataModel";
 import { personalWorkspaceOf } from "../workspaces/actor";
@@ -462,8 +462,10 @@ export const deleteAction = defineUserMutation({
   outsideEffect: false,
   // The app has no way to bring a deleted search back, so the person is asked.
   undoable: false,
-  run: async (ctx, { userId, workspaceId, author }, { id }) => {
+  run: async (ctx, actor, { id }) => {
+    const { userId, workspaceId, author } = actor;
     if (!(await findSearch(ctx, workspaceId, id))) throw createError("NOT_FOUND", "Search not found.");
+    await checkRemoval(ctx, actor, { kind: "deleteSearch", id });
     await applyCommand(ctx, { userId, workspaceId }, { kind: "deleteSearch", id }, author);
     return null;
   },

@@ -19,7 +19,7 @@ import schema from "../schema";
 import { countRecordPage, countRow } from "./recordCounts";
 import { shortcutSortName } from "../../lib/query-shortcuts";
 import { searchTerms, searchText, shortcutText, withText } from "../lib/searchText";
-import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
+import { personalWorkspaceOf, type Actor, type InWorkspace } from "../workspaces/actor";
 
 const accountArgs = { accountId: v.string() };
 const pageArgs = { paginationOpts: paginationOptsValidator };
@@ -562,6 +562,23 @@ export async function applyRating(ctx: MutationCtx, userId: Id<"users">, command
   return undo;
 }
 
+/**
+ * Refuses taking away a search or bookmark someone else made, unless the person is an admin of
+ * the workspace, and Clear all in an organization, which has none (#650). In their own
+ * workspace a person is its admin, so nothing is refused there.
+ */
+export async function checkRemoval(ctx: QueryCtx, actor: Actor, command: ResearchCommand) {
+  if (command.kind === "clearSearches" || command.kind === "clearShortcuts") {
+    if ((await ctx.db.get("workspaces", actor.workspaceId))?.kind !== "personal") throw createError("FORBIDDEN", "An organization's history and bookmarks have no Clear all.");
+    return;
+  }
+  if (actor.role === "admin") return;
+  const row = command.kind === "deleteSearch" ? await findSearch(ctx, actor.workspaceId, command.id)
+    : command.kind === "shortcut" && command.value === null ? await shortcut(ctx, actor.workspaceId, command.shorthand)
+      : null;
+  if (row && row.createdBy !== actor.userId) throw createError("FORBIDDEN", "Only an admin of this workspace takes away what someone else made.");
+}
+
 async function received(ctx: MutationCtx, userId: Id<"users">, key: string) {
   return await ctx.db.query("researchReceipts").withIndex("by_user_and_key", q => q.eq("userId", userId).eq("key", key)).unique();
 }
@@ -619,9 +636,11 @@ export const changeAction = defineUserMutation({
   },
   // The receipt makes a retried request apply once, from the page or from the assistant. It
   // keeps the undo, so a caller that lost the first answer gets the same one from a retry.
-  run: async (ctx, { userId, workspaceId, author }, args) => {
+  run: async (ctx, actor, args) => {
+    const { userId, workspaceId, author } = actor;
     const key = `change:${args.requestId}`;
     const receipt = await received(ctx, userId, key);
+    if (!receipt) await checkRemoval(ctx, actor, args.command);
     const undo = receipt ? receipt.undo : await applyCommand(ctx, { userId, workspaceId }, args.command, author);
     if (!receipt) await ctx.db.insert("researchReceipts", { userId, key, ...(undo ? { undo } : {}) });
     return undo ? { undo: { path: "research/records:change" as const, args: { command: undo } } } : {};
