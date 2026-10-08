@@ -297,6 +297,22 @@ describe("assistant replies", () => {
     expect(mockDoStream).not.toHaveBeenCalled();
   });
 
+  it("end at once on Stop while a request waits to be made again, so the chat isn't held for the wait", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await sharedChat(t);
+    mockDoStream.mockImplementation(async () => {
+      throw new APICallError({ message: "Too many requests", url: "https://openrouter.ai", requestBodyValues: {}, statusCode: 429, responseHeaders: { "retry-after": "60" }, isRetryable: true });
+    });
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Hi" });
+    await waitFor(() => mockDoStream.mock.calls.length === 1);
+    await waitFor(async () => (await t.run(async (ctx) => { const reply = (await ctx.db.get("assistantThreads", threadId))?.reply; const next = reply && (await ctx.db.system.get("_scheduled_functions", reply.scheduledId)); return next?.state.kind === "pending" && next.scheduledTime > Date.now() + 30_000; })) === true);
+    await asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: (await chat(t, threadId))!.reply!.attemptId });
+    await ended(t, threadId);
+    expect(mockDoStream).toHaveBeenCalledTimes(1);
+    const replies = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "assistant");
+    expect(replies).toMatchObject([{ status: "stopped" }]);
+  });
+
   it("run on what the sender's own AI settings run chat on, until someone who writes in the chat picks a model for it", async () => {
     const t = convexTest(schema);
     const { asAda, asBen, ben, threadId } = await sharedChat(t);

@@ -381,6 +381,8 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
     return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
   };
   const used: Id<"assistantFiles">[] = [];
+  // What's left of PAPER_BYTES for papers downloaded to be sent.
+  let room = PAPER_BYTES;
   const out = await Promise.all(
     messages.map(async (message, at): Promise<ModelMessage> => {
       if (message.role === "tool") {
@@ -395,8 +397,10 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
                 paperPdfs.linked?.();
                 return { ...part, output: { type: "content", value: [{ type: "text", text: said }, { type: "file", mediaType: "application/pdf", data: { type: "url", url: new URL(paper) }, filename: "paper.pdf" }] } };
               }
-              const bytes = await paperBytes(paper);
-              if (!bytes) return { ...part, output: { type: "text", value: `${said}\n[This paper's PDF couldn't be downloaded from its address, or is too large to send. Tell the person, and ask them to attach its PDF to the chat if they want it read.]` } };
+              const bytes = await paperBytes(paper, room);
+              // The downloads run together: one that finishes after the room has gone is left out too.
+              if (!bytes || bytes.length > room) return { ...part, output: { type: "text", value: `${said}\n[This paper's PDF couldn't be downloaded from its address, or is too large to send. Tell the person, and ask them to attach its PDF to the chat if they want it read.]` } };
+              room -= bytes.length;
               return { ...part, output: { type: "content", value: [{ type: "text", text: said }, { type: "file", mediaType: "application/pdf", data: { type: "data", data: bytes }, filename: "paper.pdf" }] } };
             }
             const fileId = part.type === "tool-result" ? pagesOf(part.output) : null;
@@ -429,13 +433,16 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
   return out;
 }
 
-/** The most of a paper's PDF sent as it is: model providers refuse a request past about 32 MB. */
-const PAPER_BYTES = 30 * 1024 * 1024;
+/**
+ * The most of papers' PDFs one request sends as they are, all together. Model providers refuse a request past about
+ * 32 MB, and a file goes base64-encoded, a third larger, with the rest of the conversation beside it.
+ */
+const PAPER_BYTES = 20 * 1024 * 1024;
 
-/** A paper's PDF, downloaded as the extraction downloads one, or null when it can't be, or is too large to send. */
-async function paperBytes(url: string) {
+/** A paper's PDF, downloaded as the extraction downloads one, or null when it can't be, or is larger than `room`. */
+async function paperBytes(url: string, room: number) {
   const { pdfBlob } = await downloadPdf(url, { maxRetries: 1 });
-  if (!pdfBlob || pdfBlob.size > PAPER_BYTES) return null;
+  if (!pdfBlob || pdfBlob.size > room) return null;
   const bytes = new Uint8Array(await pdfBlob.arrayBuffer());
   // A landing page's PDF link can lead to another page: bytes that aren't a PDF would be refused as one.
   return new TextDecoder().decode(bytes.subarray(0, 1024)).includes("%PDF") ? bytes : null;

@@ -385,7 +385,12 @@ export const stop = mutation({
     // The reply being written, or the same reply carrying on from an answer that was given as Stop
     // was pressed on it waiting. A reply that has ended, or a later exchange's, isn't this Stop's to stop.
     else if (thread.reply && (thread.reply.attemptId === attemptId || attemptId.startsWith(waitingPrefix(thread.reply.order)))) {
-      await ctx.db.patch("assistantThreads", threadId, { reply: { ...thread.reply, stop: true } });
+      // A request waiting to be made again hears the Stop now, not when its wait ends: it runs at once, and ends there stopped (./run.ts).
+      const waiting = await ctx.db.system.get("_scheduled_functions", thread.reply.scheduledId);
+      const now = waiting?.state.kind === "pending" && waiting.scheduledTime > Date.now() && waiting.name.endsWith("run:reply") ? waiting : null;
+      if (now) await ctx.scheduler.cancel(now._id);
+      const scheduledId = now ? await ctx.scheduler.runAfter(0, internal.assistant.run.reply, now.args[0]) : thread.reply.scheduledId;
+      await ctx.db.patch("assistantThreads", threadId, { reply: { ...thread.reply, stop: true, scheduledId } });
     } else return null;
     // Stop drops what the chat would have gone on to: every job that ended before it is told with no readout (./jobs.ts).
     // A job that ends after it is told as usual, and a job still running keeps going, with its own Cancel.

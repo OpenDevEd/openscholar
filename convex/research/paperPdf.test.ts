@@ -203,7 +203,8 @@ describe("reading a paper's PDF", () => {
     expect(replies).toMatchObject([{ status: "done", text: "It reports a link (p. 5)." }]);
   });
 
-  it("tells the model when the PDF can't be downloaded here either, and the reply goes on", async () => {
+  it("tells the model when the PDF can't be downloaded here either, and the reply goes on, whatever error the provider gave", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const t = convexTest(schema);
     const { asAda, threadId } = await chat(t);
     const answer = fetchMock.getMockImplementation()!;
@@ -212,11 +213,18 @@ describe("reading a paper's PDF", () => {
     mockDoStream
       .mockImplementationOnce(callingDoStream({ id: "pdf-1", name: "research_papers_readPdf", input: { id: "W1" } }))
       .mockImplementationOnce(async () => {
-        throw new APICallError({ message: "Error while downloading file", url: "https://openrouter.ai", requestBodyValues: {}, statusCode: 400 });
+        // A provider can report an address it couldn't fetch as a passing error.
+        throw new APICallError({ message: "Provider returned error", url: "https://openrouter.ai", requestBodyValues: {}, statusCode: 503 });
       })
       .mockImplementation(finishingDoStream(["I couldn't open it. Could you attach the PDF?"]));
-    await asAda.mutation(api.assistant.replies.send, { threadId, text: "What are this paper's methods?" });
-    await replied(t, threadId);
+    try {
+      await asAda.mutation(api.assistant.replies.send, { threadId, text: "What are this paper's methods?" });
+      await waitFor(() => mockDoStream.mock.calls.length === 2);
+      await vi.advanceTimersByTimeAsync(2_000);
+      await replied(t, threadId);
+    } finally {
+      vi.useRealTimers();
+    }
 
     const read = resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt);
     expect(read?.type).toBe("text");

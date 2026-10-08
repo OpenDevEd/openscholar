@@ -26,8 +26,8 @@ import type { ChatErrorEnvelope } from "../../lib/errors/taxonomy";
 /**
  * A request that fails before it writes anything is made again rather than ending the reply, up to twice in a row.
  * A failure that passes waits first: what the provider asked for, or a few seconds. A request that sent a paper's
- * PDF by its address and was refused, whatever the provider said, is made again at once with the PDFs downloaded
- * here (./files.ts `withFiles`): some publishers turn away a model provider's fetcher and serve us.
+ * PDF by its address and failed, whatever the provider said, is made again with the PDFs downloaded here
+ * (./files.ts `withFiles`): some publishers turn away a model provider's fetcher and serve us.
  */
 const MAX_RETRIES = 2;
 const RETRY_WAIT_MS = [2_000, 10_000];
@@ -134,8 +134,8 @@ export const reply = internalAction({
       userId: senderId,
       modelId,
       effort,
-      // Each request holds and settles its own credits.
-      attemptId: `${attemptId}:${used.rounds}`,
+      // Each request holds and settles its own credits, and so does each try of one made again.
+      attemptId: `${attemptId}:${used.rounds}${used.retries ? `:${used.retries}` : ""}`,
       replyId: attemptId,
       credits: cap,
       lesser: async () => (await refreshAccount(ctx, senderId).catch(() => null))?.balance,
@@ -193,7 +193,8 @@ export const reply = internalAction({
                   recent: used.recent ?? [],
                   ...(used.told ? { told: used.told } : {}),
                   retries: (used.retries ?? 0) + 1,
-                  ...(used.download || !PASSING.has(retry.class) ? { download: true as const } : {}),
+                  // A provider can report an address it couldn't fetch as any error: the papers are downloaded here from the next try on.
+                  ...(used.download || linked ? { download: true as const } : {}),
                   wait: PASSING.has(retry.class) ? Math.min(retry.retryAfterMs ?? RETRY_WAIT_MS[used.retries ?? 0], MAX_RETRY_WAIT_MS) : 0,
                 },
               }
