@@ -1264,7 +1264,8 @@ describe("the assistant's tools", () => {
     expect(circling(["a", "a", "b"])).toBe(false);
     expect(circling(["a", "b", "c", "a", "b", "c"])).toBe(false);
     expect(circling(["a", "b", "a", "b"])).toBe(false);
-  });
+    // Its four replies run over twenty model requests between them: about 13 seconds alone, more on a busy runner.
+  }, 60_000);
 
   it("stop asking the person for the same thing once they have declined it three times", async () => {
     const t = convexTest(schema);
