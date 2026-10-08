@@ -1,5 +1,6 @@
 import type { ConvexReactClient } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { localKeywordExpansionStore, localRatingsStore, localSearchHistoryStore } from "../store";
 import { importSearchRecord, serializeSearch } from "./records";
 import type { QueryHistoryEntry, QuestionHistoryEntry, SearchResult } from "../types";
@@ -105,6 +106,7 @@ export async function importLocalResearch(
   return failures;
 }
 
-export function migrateLocalResearch(client: ConvexReactClient, accountId: string, active: () => boolean) {
-  return importLocalResearch(accountId, batch => client.mutation(api.research.records.importBatch, batch), active);
+/** Imports this browser's records into the account, in the workspace the page is in. */
+export function migrateLocalResearch(client: ConvexReactClient, accountId: string, workspaceId: Id<"workspaces">, active: () => boolean) {
+  return importLocalResearch(accountId, batch => client.mutation(api.research.records.importBatch, { ...batch, workspaceId }), active);
 }

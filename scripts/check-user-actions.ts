@@ -16,7 +16,7 @@ import ts from "typescript6";
 import { USER_ACTIONS } from "../convex/lib/userActionRegistry";
 import { assistantPath } from "../convex/lib/userActions";
 
-type ConvexFunction = { isPublic?: boolean; isInternal?: boolean; isQuery?: boolean; isMutation?: boolean; isAction?: boolean; userActionPath?: string };
+type ConvexFunction = { isPublic?: boolean; isInternal?: boolean; isQuery?: boolean; isMutation?: boolean; isAction?: boolean; userActionPath?: string; exportArgs?: () => string };
 
 function files(dir: string, keep: (file: string) => boolean): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -30,6 +30,7 @@ const problems: string[] = [];
 const raw = new Set<string>();
 const registered = new Map<string, string>(); // public function ID → the entry path it was built from
 const twins = new Map<string, string>(); // entry path → its internal twin's ID
+const withoutWorkspace = new Set<string>(); // public function IDs that don't take the workspace they act in
 
 // Convex: import every module and read what it exports.
 const convexModules = files("convex", (f) => /\.(ts|js)$/.test(f) && !/\.test\.|\.test-support\.|\.bench\./.test(f) && f !== "convex/convex.config.ts");
@@ -39,6 +40,7 @@ for (const file of convexModules) {
   for (const [name, fn] of Object.entries(exports)) {
     if (!fn || !(fn.isQuery || fn.isMutation || fn.isAction)) continue;
     const id = `${module}:${name}`;
+    if (fn.isPublic && !("workspaceId" in (JSON.parse(fn.exportArgs?.() ?? "{}").value ?? {}))) withoutWorkspace.add(id);
     if (fn.isPublic) {
       if (fn.userActionPath) registered.set(id, fn.userActionPath);
       else raw.add(id);
@@ -98,7 +100,7 @@ for (const file of sources) {
   }
 }
 
-const exempt = JSON.parse(readFileSync("scripts/user-actions-exempt.json", "utf8")) as { plumbing: Record<string, string>; pending: Record<string, string> };
+const exempt = JSON.parse(readFileSync("scripts/user-actions-exempt.json", "utf8")) as { plumbing: Record<string, string>; pending: Record<string, string>; inWorkspace: string[] };
 const plumbing = new Map(Object.entries(exempt.plumbing));
 const pending = new Map(Object.entries(exempt.pending));
 
@@ -115,6 +117,16 @@ for (const [id, reason] of plumbing) {
 for (const [id, issue] of pending) {
   if (!raw.has(id)) problems.push(`${id}: listed as pending but no longer exists or is registered now; remove it.`);
   if (!/^#\d+$/.test(issue)) problems.push(`${id}: pending needs the issue that will register it, such as "#327".`);
+}
+
+// The modules whose records have moved into workspaces (#650): every public function in one acts in a
+// workspace and checks it, a registered action through its wrapper and any other itself, so nothing reaches
+// their records outside the check.
+for (const id of withoutWorkspace) {
+  if (exempt.inWorkspace.includes(id.split(":")[0])) problems.push(`${id}: its module's records are in workspaces; take \`workspaceId\` and check it with actorFor (convex/workspaces/actor.ts).`);
+}
+for (const module of exempt.inWorkspace) {
+  if (!convexModules.some((file) => file === `convex/${module}.ts`)) problems.push(`${module}: listed under inWorkspace but no such module; remove it.`);
 }
 
 if (problems.length) {
