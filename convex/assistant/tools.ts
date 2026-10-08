@@ -481,7 +481,7 @@ export function toolsFor(
         found = { entry: batch.entry, items: batch.each, kept: JSON.stringify(batch.each), about: shared(batch.each) };
       } else {
         const given = input as ChangePapers;
-        const papers = await papersOf(ctx, userId, given);
+        const papers = await papersOf(ctx, { userId, workspaceId }, given);
         if (!papers.length) return { error: "There are no papers there: the set holds none in that range." };
         const change = changeOf(given, papers);
         const entry = entryAt(change.path)!;

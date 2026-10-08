@@ -11,6 +11,8 @@ export const actorValidator = v.object({
 });
 /** Who is acting, in which workspace, with which role there (#650). */
 export type Actor = Infer<typeof actorValidator>;
+/** A person and the workspace they read or write in, whatever their role there. */
+export type InWorkspace = Pick<Actor, "userId" | "workspaceId">;
 
 /**
  * `user` acting in `workspaceId`: their own workspace, which they're the admin of, or an

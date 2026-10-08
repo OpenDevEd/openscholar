@@ -456,7 +456,8 @@ describe("account research records", () => {
   it("takes a first count a page at a time, right through searches saved and deleted meanwhile", async () => {
     const { alice, ids, t } = await setup();
     // 1,200 searches from before counts were kept, so none is counted yet.
-    const stored = (i: number) => ({ userId: ids.alice, localId: `old-${i}`, revision: 1, data: { ...record, id: `old-${i}`, screeningResponses: [] } });
+    const workspaceId = await t.run(ctx => personalWorkspaceOf(ctx, ids.alice));
+    const stored = (i: number) => ({ userId: ids.alice, workspaceId, createdBy: ids.alice, localId: `old-${i}`, revision: 1, data: { ...record, id: `old-${i}`, screeningResponses: [] } });
     for (let start = 0; start < 1_200; start += 300) await t.run(async ctx => { for (let i = start; i < start + 300; i++) await ctx.db.insert("searches", stored(i)); });
     const change = (requestId: string, command: ResearchCommand) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command });
     const row = () => t.run(ctx => ctx.db.query("recordCounts").withIndex("by_user_and_table", q => q.eq("userId", ids.alice).eq("table", "searches")).unique());

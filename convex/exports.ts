@@ -12,6 +12,7 @@ import { expandShortcuts, shortcutNames } from "../lib/query-shortcuts";
 import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
 import { readLibraryPage } from "./library/queries";
 import { shortcutExpansions } from "./research/records";
+import { personalWorkspaceOf } from "./workspaces/actor";
 import { screeningExportFiles, screeningItems } from "../lib/screening/export";
 import { readScreeningProgressCounts } from "./screening/progress";
 import { readScreeningResultsPage } from "./screening/queries";
@@ -150,15 +151,17 @@ export const page = internalQuery({
       await screeningRevision(ctx, job, sourceRevision);
       return write(await readScreeningResultsPage(ctx, job, { cursor, numItems: EXPORT_PAGE_SIZE }), screeningItems(job.questions, { ...job, revision: sourceRevision })[format]);
     }
+    // The person's own history and bookmarks, until an export names its workspace (#650).
+    const workspaceId = await personalWorkspaceOf(ctx, userId);
     if (source.kind === "shortcuts") {
-      const read = await ctx.db.query("queryShortcuts").withIndex("by_user", (q) => q.eq("userId", userId)).paginate({ cursor, numItems: EXPORT_PAGE_SIZE, maximumBytesRead: HISTORY_PAGE_BYTES });
+      const read = await ctx.db.query("queryShortcuts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate({ cursor, numItems: EXPORT_PAGE_SIZE, maximumBytesRead: HISTORY_PAGE_BYTES });
       return write({ ...read, page: read.page.map((row) => row.data) }, exportFiles.shortcuts[format].item);
     }
-    const read = await ctx.db.query("searches").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)).order("desc").paginate({ cursor, numItems: EXPORT_PAGE_SIZE, maximumBytesRead: HISTORY_PAGE_BYTES });
+    const read = await ctx.db.query("searches").withIndex("by_workspace_and_createdAt", (q) => q.eq("workspaceId", workspaceId)).order("desc").paginate({ cursor, numItems: EXPORT_PAGE_SIZE, maximumBytesRead: HISTORY_PAGE_BYTES });
     // Each query with the person's shortcuts expanded, as the history page shows it.
     // ponytail: one lookup per shortcut name the page uses; a page naming more than a
     // function's 4,096 lookups fails the export by name, and would need the names read in chunks.
-    const expansions = await shortcutExpansions(ctx, userId, shortcutNames(read.page.map((row) => row.data.query).join("\n")));
+    const expansions = await shortcutExpansions(ctx, workspaceId, shortcutNames(read.page.map((row) => row.data.query).join("\n")));
     const searches = read.page.map(({ data }) => ({
       ...currentSearch(data),
       resolvedQuery: validateAndExpandKeywordsSilently(data.query, (text) => expandShortcuts(text, expansions)).expandedQuery,

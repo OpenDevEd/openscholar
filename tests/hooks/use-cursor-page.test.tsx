@@ -7,7 +7,7 @@ type Page = { page: string[]; isDone: boolean; continueCursor: string };
 type Args = { search?: string; paginationOpts: { cursor: string | null; numItems: number; id?: number } };
 
 // What the server holds, by search then start cursor; a page missing from it is still loading.
-const server = vi.hoisted(() => ({ pages: new Map<string, Page>(), reads: [] as Args[], requests: [] as unknown[] }));
+const server = vi.hoisted(() => ({ pages: new Map<string, Page | Error>(), reads: [] as Args[], requests: [] as unknown[] }));
 const read = (args: Args) => {
   server.reads.push(args);
   const { search = "", paginationOpts: { cursor, id = 0 } } = args;
@@ -172,5 +172,14 @@ describe("useCursorPage", () => {
     expect(result.current).toMatchObject({ items: ["a"], offset: 0, canNext: true });
     act(() => result.current.next());
     expect(result.current).toMatchObject({ items: ["b", "c"], page: 2, offset: 1 });
+  });
+
+  it("starts over from the first page when the server refuses a page's cursor, as it does once a deploy reads the list through another index", () => {
+    const { result, rerender } = renderHook(() => useCursorPage(query, {}, 2));
+    act(() => result.current.next());
+    expect(result.current.page).toBe(2);
+    server.pages.set("|c1", new Error("[CONVEX Q(collections:list)] InvalidCursor: Tried to run a query starting from a cursor, but it looks like this cursor is from a different query."));
+    rerender();
+    expect(result.current).toMatchObject({ items: ["a", "b"], page: 1, canPrevious: false });
   });
 });

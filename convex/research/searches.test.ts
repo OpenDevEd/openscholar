@@ -261,8 +261,7 @@ describe("the assistant's search tools", () => {
     const changed = await edit({ id, about: null, sdgs: null, minRating: 4 });
     expect(await search(id)).toMatchObject({ selectedCountryFocus: [], sdgs: [], ratingRange: [4, 5], onlyRatedPapers: true });
     // An extraction reads a search from OpenAlex, which doesn't know the person's ratings: a search kept by them isn't a source it takes.
-    const aliceId = await t.run(async (ctx) => (await ctx.db.query("users").collect()).find((user) => user.clerkId === "alice")!._id);
-    await expect(t.query(internal.extraction.start.searchSource, { userId: aliceId, searchId: id })).rejects.toThrow(/ratings/);
+    await expect(alice.query(internal.extraction.start.searchSource, { searchId: id })).rejects.toThrow(/ratings/);
     await alice.mutation(restore, changed.undo!.args);
     expect(await search(id)).toMatchObject({ selectedCountryFocus: ["africa"], sdgs: ["4"] });
     expect((await search(id))!.onlyRatedPapers).toBeUndefined();

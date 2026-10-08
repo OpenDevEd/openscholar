@@ -381,13 +381,13 @@ export const updateAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   // A change is undone by restoring the revision before it. A search from before revisions were kept has none to go back to.
-  asksFirst: async (ctx, { userId }, { id }) => {
-    const found = await findSearch(ctx, userId, id);
+  asksFirst: async (ctx, { workspaceId }, { id }) => {
+    const found = await findSearch(ctx, workspaceId, id);
     return found !== null && (await revisionRow(ctx, found._id, found.revision)) === null;
   },
   run: async (ctx, { userId, workspaceId, author }, { id, changes }) => {
     const { query, settings } = settingsOf(changes);
-    const found = await findSearch(ctx, userId, id);
+    const found = await findSearch(ctx, workspaceId, id);
     if (!found) throw createError("NOT_FOUND", "Search not found.");
     const current = currentSearch(found.data);
     const { fields: { field = current.field, ...filters }, clear } = savedFields(settings, current);
@@ -463,7 +463,7 @@ export const deleteAction = defineUserMutation({
   // The app has no way to bring a deleted search back, so the person is asked.
   undoable: false,
   run: async (ctx, { userId, workspaceId, author }, { id }) => {
-    if (!(await findSearch(ctx, userId, id))) throw createError("NOT_FOUND", "Search not found.");
+    if (!(await findSearch(ctx, workspaceId, id))) throw createError("NOT_FOUND", "Search not found.");
     await applyCommand(ctx, { userId, workspaceId }, { kind: "deleteSearch", id }, author);
     return null;
   },
@@ -473,10 +473,10 @@ export const deleteSearchForAssistant = assistantMutation(deleteAction);
 
 /** The request a search with this query and these settings would make, saved nowhere: for trying one (./papers.ts). */
 export const requestFor = internalQuery({
-  args: { userId: v.id("users"), query: v.optional(v.string()), settings: v.object(searchSettings) },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), query: v.optional(v.string()), settings: v.object(searchSettings) },
   returns: savedSearchValidator,
   // A title looked up in quotes often ends in a question mark, which OpenAlex refuses there: it's read without.
-  handler: async (ctx, { userId, query, settings }) => requestOf(ctx, userId, newSearch("unsaved", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings), 0),
+  handler: async (ctx, { query, settings, ...reader }) => requestOf(ctx, reader, newSearch("unsaved", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings), 0),
 });
 
 /** A paper as a page of results gives it. */
@@ -528,7 +528,7 @@ export const counted = internalMutation({
   returns: v.null(),
   handler: async (ctx, { userId, workspaceId: given, id, revision, count, author }) => {
     const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
-    const found = await findSearch(ctx, userId, id);
+    const found = await findSearch(ctx, workspaceId, id);
     if (found?.revision === revision && currentSearch(found.data).count !== count) await applyCommand(ctx, { userId, workspaceId }, { kind: "editSearch", id, edit: { kind: "patch", fields: { count }, clear: [] } }, author);
     return null;
   },
@@ -547,7 +547,7 @@ export const recount = internalAction({
   handler: async (ctx, { userId, workspaceId: given, id, author }) => {
     const workspaceId: Id<"workspaces"> = given ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId }));
     try {
-      const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: id });
+      const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, workspaceId, searchId: id });
       if (!found.request) return null;
       const count = await countSearch(found.request, spender(ctx, found.clerkId));
       await ctx.runMutation(internal.research.searches.counted, { userId, workspaceId, id, revision: found.revision, count, author });
@@ -571,7 +571,7 @@ export const resultsAction = defineUserAction({
   // It only keeps the search's result count, as reading the results page does: nothing to undo.
   undoable: true,
   run: async (ctx, { userId, workspaceId, author }, { id, page }): Promise<Infer<typeof resultsValidator>> => {
-    const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: id });
+    const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, workspaceId, searchId: id });
     const read = await readPage(ctx, userId, found, page ?? 1, "This search's query isn't valid. Fix it on the results page first.");
     await ctx.runMutation(internal.research.searches.counted, { userId, workspaceId, id, revision: found.revision, count: read.total, author });
     return read;

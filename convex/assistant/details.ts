@@ -6,10 +6,11 @@
  * extraction of theirs, an organization they're in, someone in one of their organizations.
  * Any other ID stays an ID, so asking never reveals a name.
  */
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { readMemberOrganizations } from "../organizationFeatures";
 import { findSearch } from "../research/records";
+import { personalWorkspaceOf } from "../workspaces/actor";
 import { currentSearch } from "../../lib/research/records";
 import { personName, principalsOf, roleAmong } from "./access";
 import { workUrl } from "../../lib/openalex/work-id";
@@ -47,11 +48,13 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
     return [];
   }
   const mine = await readMemberOrganizations(ctx, reader);
+  // The reader's own workspace, read once when a search is named, until chats belong to one (#650).
+  let workspace: Promise<Id<"workspaces">> | undefined;
   /** The name of the record an ID names, when the reader can already see it. */
   const named = async (id: string, key: string): Promise<string | null> => {
     // A saved search has the ID its page gave it, not a document's. It is the reader's own or it isn't found.
     if (SEARCH_ID.test(id)) {
-      const search = await findSearch(ctx, reader._id, id);
+      const search = await findSearch(ctx, await (workspace ??= personalWorkspaceOf(ctx, reader._id)), id);
       // One saved with filters alone has no query to show: it is named as such, never by its ID.
       return search ? currentSearch(search.data).query : null;
     }
