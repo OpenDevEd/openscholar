@@ -5,6 +5,8 @@ import { Building2, KeyRound } from "@/components/icons";
 import { useAction, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { SourceScreening, type ScreeningVerdict } from "./source-screening";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -212,6 +214,16 @@ export function OpenAlexSourceRow({
   live: SourceLive | null;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
+  // MOCK: screening has no saved setting or counts yet; ?mock=screening | screening-new | screening-off | screening-noai.
+  const mock = useSearchParams().get("mock");
+  const [screening, setScreening] = useState(mock === "screening" || mock === "screening-new");
+  const [subject, setSubject] = useState("");
+  const [keptOut, setKeptOut] = useState<string[]>(["not-about"]);
+  const counts: Record<string, number> = { about: 240_820, touches: 31_687, passing: 15_843, "not-about": 22_181, "not-research": 3_169, unclear: 3_169 };
+  const verdicts: ScreeningVerdict[] = [
+    ["about", "About it"], ["touches", "Touches on it"], ["passing", "Mentions it in passing"],
+    ["not-about", "Not about it"], ["not-research", "Not a research publication"], ["unclear", "Can't tell, no abstract"],
+  ].map(([key, label]) => ({ key: key!, label: label!, count: mock === "screening-new" ? null : counts[key!]!, kept: !keptOut.includes(key!) }));
   return (
     <SourceRow
       name={source.settings.name}
@@ -236,13 +248,34 @@ export function OpenAlexSourceRow({
         },
       ]}
       controls={
-        <SourceSwitch
-          label={t("pdfs")}
-          checked={source.settings.downloadPdfs}
-          onCheckedChange={(downloadPdfs) =>
-            controller.patch(source.key, { settings: { ...source.settings, downloadPdfs } })
-          }
-        />
+        <>
+          {mock?.startsWith("screening") ? (
+            <SourceSwitch
+              label="Screening"
+              checked={screening}
+              onCheckedChange={setScreening}
+              disabledReason={mock === "screening-noai" ? "Turn on AI answers and save an OpenRouter key first" : undefined}
+            />
+          ) : null}
+          <SourceSwitch
+            label={t("pdfs")}
+            checked={source.settings.downloadPdfs}
+            onCheckedChange={(downloadPdfs) =>
+              controller.patch(source.key, { settings: { ...source.settings, downloadPdfs } })
+            }
+          />
+        </>
+      }
+      details={
+        mock?.startsWith("screening") && screening && mock !== "screening-noai" ? (
+          <SourceScreening
+            subject={subject}
+            subjectPlaceholder="Research on artificial intelligence in education: intelligent tutoring, learning analytics, automated feedback and assessment"
+            onSubjectChange={setSubject}
+            verdicts={verdicts}
+            onKeptChange={(key, kept) => setKeptOut((out) => (kept ? out.filter((entry) => entry !== key) : [...out, key]))}
+          />
+        ) : null
       }
       onEdit={() => controller.setEditing(source)}
       onToggle={() =>
