@@ -8,7 +8,8 @@ import { useDeferredValue, useRef, useState, type ReactNode } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Link2, Loader2, Lock, Radio, Search, Share2, ShieldCheck, SquarePen, UserPlus, X } from "@/components/icons";
+import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Link2, Loader2, Lock, MessageSquare, Radio, Search, Share2, ShieldCheck, SquarePen, UserPlus, UserRound, X } from "@/components/icons";
+import { Pills } from "@/components/ui/pills";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -293,15 +294,14 @@ export function HistorySheet({
           </TooltipHint>
         </div>
         {runBy.filter ?? (
-          <Segmented
+          <Pills
             label={t("whichChats")}
             value={scope}
             onChange={setScope}
-            fill
             options={[
-              { id: "all", label: t("scopeAll") },
-              { id: "mine", label: t("scopeMine") },
-              { id: "shared", label: t("scopeShared") },
+              { id: "all", label: t("scopeAll"), icon: MessageSquare },
+              { id: "mine", label: t("scopeMine"), icon: UserRound },
+              { id: "shared", label: t("scopeShared"), icon: Share2 },
             ]}
           />
         )}
