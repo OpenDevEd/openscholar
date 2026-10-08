@@ -108,6 +108,7 @@ import type * as evidenceLibraries_digests_contract from "../evidenceLibraries/d
 import type * as evidenceLibraries_digests_generate from "../evidenceLibraries/digests/generate.js";
 import type * as evidenceLibraries_digests_manual from "../evidenceLibraries/digests/manual.js";
 import type * as evidenceLibraries_digests_manualActions from "../evidenceLibraries/digests/manualActions.js";
+import type * as evidenceLibraries_digests_review from "../evidenceLibraries/digests/review.js";
 import type * as evidenceLibraries_digests_service from "../evidenceLibraries/digests/service.js";
 import type * as evidenceLibraries_digests_unslop from "../evidenceLibraries/digests/unslop.js";
 import type * as evidenceLibraries_dnsClient from "../evidenceLibraries/dnsClient.js";
@@ -499,6 +500,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/digests/generate": typeof evidenceLibraries_digests_generate;
   "evidenceLibraries/digests/manual": typeof evidenceLibraries_digests_manual;
   "evidenceLibraries/digests/manualActions": typeof evidenceLibraries_digests_manualActions;
+  "evidenceLibraries/digests/review": typeof evidenceLibraries_digests_review;
   "evidenceLibraries/digests/service": typeof evidenceLibraries_digests_service;
   "evidenceLibraries/digests/unslop": typeof evidenceLibraries_digests_unslop;
   "evidenceLibraries/dnsClient": typeof evidenceLibraries_dnsClient;
