@@ -389,10 +389,6 @@ vi.mock("@/components/extraction/cost-badge", () => ({
   CostBadge: () => <div>cost badge</div>,
 }));
 
-vi.mock("@/components/extraction/credits-exhausted-banner", () => ({
-  CreditsExhaustedBanner: () => null,
-}));
-
 vi.mock("@/components/extraction/job-status-banner", () => ({
   JobStatusBanner: () => null,
 }));
