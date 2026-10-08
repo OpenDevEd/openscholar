@@ -731,6 +731,40 @@ describe("research records in workspaces (#650)", () => {
     expect(await placed(t, ids.alice)).toEqual({ searches: [mine, mine], bookmarks: [mine, mine] });
   });
 
+  it("in an organization, leaves what a member made to them and its admins to take away, and has no Clear all", async () => {
+    const { t, alice, bob } = await setup();
+    const lab = await t.run(async ctx => {
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Learning Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      for (const [clerkUserId, role] of [["alice", "org:member"], ["bob", "org:admin"]] as const) {
+        await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role, state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+      }
+      return ensureWorkspace(ctx, { kind: "organization", organizationId });
+    });
+    let request = 0;
+    const change = (as: Signed, accountId: string, command: ResearchCommand) => as.mutation(api.research.records.change, { accountId, workspaceId: lab, requestId: `r${request++}`, command });
+    const made = (id: string): ResearchCommand => ({ kind: "createSearch", search: { ...record, id, screeningResponses: [] } });
+    const bookmark = (shorthand: string): ResearchCommand => ({ kind: "shortcut", shorthand, value: { expansion: shorthand, createdAt: 1700000000000 } });
+    for (const [as, accountId] of [[alice, "alice"], [bob, "bob"]] as const) {
+      await change(as, accountId, made(`${accountId}-search`));
+      await change(as, accountId, bookmark(`${accountId}-bookmark`));
+    }
+    // A member can't take away what an admin made, by either way of deleting a search.
+    await expect(change(alice, "alice", { kind: "deleteSearch", id: "bob-search" })).rejects.toThrow(/admin/);
+    await expect(alice.mutation(api.research.searches.deleteSearch, { workspaceId: lab, id: "bob-search" })).rejects.toThrow(/admin/);
+    await expect(change(alice, "alice", { kind: "shortcut", shorthand: "bob-bookmark", value: null })).rejects.toThrow(/admin/);
+    // Their own, yes; and an admin anyone's.
+    await change(alice, "alice", { kind: "deleteSearch", id: "alice-search" });
+    await change(bob, "bob", { kind: "shortcut", shorthand: "alice-bookmark", value: null });
+    // An organization has no Clear all, for its admins either.
+    await expect(change(bob, "bob", { kind: "clearSearches" })).rejects.toThrow(/Clear all/);
+    await expect(change(bob, "bob", { kind: "clearShortcuts" })).rejects.toThrow(/Clear all/);
+    const left = {
+      searches: (await bob.query(api.research.records.listedSearches, { accountId: "bob", workspaceId: lab, sort: "recent", paginationOpts })).page.map(row => row.id),
+      bookmarks: (await bob.query(api.research.records.listedShortcuts, { accountId: "bob", workspaceId: lab, sort: "recent", paginationOpts })).page.map(row => row.shorthand),
+    };
+    expect(left).toEqual({ searches: ["bob-search"], bookmarks: ["bob-bookmark"] });
+  });
+
   it("puts searches and bookmarks from before workspaces in their maker's own, however often the backfill runs", async () => {
     vi.useFakeTimers();
     try {
