@@ -111,27 +111,3 @@ export function recordOf(address: string): LinkedRecord | null {
   if (/^\/topics\/[^/]+$/.test(path)) return { kind: "topic" };
   return null;
 }
-
-/** An address of the app's records written bare in a reply, not in a link or after a word, a slash or a quote. */
-const BARE_RECORD = /(?<![\w/\]\[(<"'=])\/(?:results\/[\w-]+|library\?col=[\w-]+|extraction\/(?!new\b)[\w-]+|screening\?job=[\w-]+|evidence-libraries\/[\w-]+|topics\/[\w-]+|\?chat=[\w-]+)/g;
-/** Code in a reply: a fenced block or an inline span, where an address is shown as it is. */
-const CODE = /(```[\s\S]*?(?:```|$)|`[^`\n]*`)/g;
-
-/**
- * `text` with each record address a reply wrote bare made a link, named by the kind of record
- * it is, so it shows as that record's chip: a model sometimes leaves out the link its
- * instructions ask for and writes the address alone.
- */
-export function linkBarePaths(text: string, nameOf: (kind: LinkedRecord["kind"]) => string) {
-  return text
-    .split(CODE)
-    .map((part, i) =>
-      i % 2 === 1
-        ? part
-        : part.replace(BARE_RECORD, (address) => {
-            const record = recordOf(address);
-            return record ? `[${nameOf(record.kind)}](${address})` : address;
-          }),
-    )
-    .join("");
-}

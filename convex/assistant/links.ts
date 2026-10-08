@@ -16,12 +16,14 @@ const paperUrl = (id: unknown) => {
 
 /** Each kind of record: its address, and what names it. */
 const KINDS = {
-  search: { href: (row: Row) => text(row.id) && `/results/${row.id}`, name: (row: Row) => row.query },
+  // A search with no query yet is named by its questions, as the @ picker names it.
+  search: { href: (row: Row) => text(row.id) && `/results/${row.id}`, name: (row: Row) => text(row.query) ?? row.questionText },
   collection: { href: (row: Row) => text(row._id) && `/library?col=${row._id}`, name: (row: Row) => row.name },
   extraction: { href: (row: Row) => text(row._id) && `/extraction/${row._id}`, name: (row: Row) => row.name },
   screening: { href: (row: Row) => text(row._id) && `/screening?job=${row._id}`, name: (row: Row) => row.label ?? "Screening" },
   chat: { href: (row: Row) => text(row._id) && `/?chat=${row._id}`, name: (row: Row) => row.title },
-  paper: { href: (row: Row) => paperUrl(row.openalexId), name: (row: Row) => row.title },
+  // A library paper's row has its paper ID in `id`; other reads call it `openalexId`.
+  paper: { href: (row: Row) => paperUrl(row.openalexId ?? row.id), name: (row: Row) => row.title },
 } satisfies Record<string, { href: (row: Row) => string | undefined; name: (row: Row) => unknown }>;
 type Kind = keyof typeof KINDS;
 
@@ -41,11 +43,11 @@ const READS: Record<string, Kind> = {
   "assistant/threads:get": "chat",
 };
 
-/** What a link says: the record's name on one line, short, with markdown's own characters escaped so it reads as text. */
+/** What a link says: the record's name on one line, short, with markdown's own characters escaped so it reads as text, in a table cell too. */
 export function linkLabel(name: string) {
   const line = name.replace(/\s+/g, " ").trim();
   const short = line.length > 80 ? `${line.slice(0, 79).trimEnd()}…` : line;
-  return short.replace(/[\\[\]*_`]/g, (character) => `\\${character}`);
+  return short.replace(/[\\[\]*_`|]/g, (character) => `\\${character}`);
 }
 
 function withLink(row: unknown, kind: Kind): unknown {

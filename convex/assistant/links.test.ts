@@ -12,7 +12,9 @@ describe("linked", () => {
   it("links collections, jobs, papers, chats and mentions, and leaves other reads alone", () => {
     expect(linked("library/collections:getCollection", { _id: "c1", name: "Trials" })).toMatchObject({ link: "[Trials](/library?col=c1)" });
     expect(linked("extraction/queries:getJobDetails", { status: "ok", job: { _id: "j1", name: "Sizes" } })).toMatchObject({ job: { link: "[Sizes](/extraction/j1)" } });
-    expect(linked("library/queries:papers", { papers: [{ openalexId: "https://openalex.org/W12", title: "Paper" }] })).toMatchObject({ papers: [{ link: "[Paper](https://openalex.org/W12)" }] });
+    expect(linked("library/queries:papers", { papers: [{ libraryItemId: "i1", id: "W12", title: "Paper" }] })).toMatchObject({ papers: [{ link: "[Paper](https://openalex.org/W12)" }] });
+    // A search with no query yet is named by its questions, and a pipe stays inside a table cell.
+    expect(linked("research/records:getSearch", { id: "s2", query: "", questionText: "Trial | design?" })).toMatchObject({ link: "[Trial \\| design?](/results/s2)" });
     expect(linked("assistant/threads:list", { page: [{ _id: "t1", title: "Notes" }] })).toMatchObject({ page: [{ link: "[Notes](/?chat=t1)" }] });
     expect(linked("assistant/mentions:find", [{ kind: "search", id: "s1", label: "Tutoring" }])).toEqual([{ kind: "search", id: "s1", label: "Tutoring", link: "[Tutoring](/results/s1)" }]);
     const other = { page: [{ id: "x", query: "y" }] };
