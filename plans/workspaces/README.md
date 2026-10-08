@@ -372,6 +372,10 @@ extraction (OS-14).
 6. #691, a collection heads the library's command center, and one New collection
    dialog and Manage serve every entry point, without sharing (`c7698e5c`,
    `44aae24c`, `ee50cbf1`, `db1da149`).
+7. #696, a screening takes a name of its own as it starts, from New screening's
+   name field or the assistant (`53db9c56`). The job keeps it as `name`, and
+   `jobName` shows it before the name its papers give it. The mock keeps it in
+   the browser and puts it on the job at its read seam.
 
 ### Phase 1 to 9: OS-20
 
