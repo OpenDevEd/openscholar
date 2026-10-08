@@ -397,8 +397,11 @@ extraction (OS-14).
       backfilled. `actorFor`. Every wrapper takes `workspaceId` and passes
       `run` an actor (person, workspace, role, author) instead of a user ID. The
       client passes the personal workspace from one query until #651 puts the
-      workspace in the address. Pending functions that touch workspace data move
-      behind the wrappers here, so the check has no gaps.
+      workspace in the address. Done in #701, #703 and #704. Changed 2026-10-08:
+      each pending function that touches workspace data gets the check in the
+      slice that moves its data, not here, since until then it reads and writes
+      only its caller's own rows; `check:user-actions` fails on a function of a
+      moved area without it. `research/records:importBatch` goes with slice 2.
    2. Research records: searches, revisions, history, screenings, bookmarks,
       record counts.
    3. Library: papers, collections, memberships, removals, counts.
