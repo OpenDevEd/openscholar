@@ -176,6 +176,9 @@ jobs:
       - name: Check every OpenAlex request carries the key
         run: npm run check:openalex-key
 
+      - name: Check only extraction imports its mutations and queries
+        run: npm run check:extraction-imports
+
       - name: Check every user action is registered for the assistant
         run: npm run check:user-actions
 
