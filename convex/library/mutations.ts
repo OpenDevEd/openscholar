@@ -9,7 +9,7 @@ import { createError } from "../lib/errors";
 import { ASKS_FIRST, actingAs, assistantMutation, defineUserMutation, reversal, reversedBy, userMutation, type Acting, type Author } from "../lib/userActions";
 import { personalWorkspaceOf } from "../workspaces/actor";
 import { endStep } from "../assistant/steps";
-import { applyCommand } from "../research/records";
+import { applyRating } from "../research/records";
 import { undoCommandValidator } from "../../lib/research/records";
 import { workUrl } from "../../lib/openalex/work-id";
 import { libraryCountRow } from "./counter";
@@ -147,8 +147,8 @@ export async function upsertLibraryItem(
  * puts the research rating back, when it changed. `expect` refuses the change when the
  * research rating isn't that now.
  */
-function setResearchRating(ctx: MutationCtx, userId: Id<"users">, paperId: string, rating: number | null, author: Author, expect?: number | null) {
-  return applyCommand(ctx, userId, { kind: "rating", paperId: canonical(paperId), rating, ...(expect === undefined ? {} : { expect }) }, author);
+function setResearchRating(ctx: MutationCtx, userId: Id<"users">, paperId: string, rating: number | null, expect?: number | null) {
+  return applyRating(ctx, userId, { kind: "rating", paperId: canonical(paperId), rating, ...(expect === undefined ? {} : { expect }) });
 }
 
 /** The paper's rating on search cards, or null. */
@@ -202,7 +202,7 @@ async function savePaper(ctx: MutationCtx, userId: Id<"users">, given: Infer<typ
   const before = await findItem(ctx, userId, paper.openalexId);
   const onCards = await researchRating(ctx, userId, paper.openalexId);
   const id = await upsertLibraryItem(ctx, userId, paper, rating);
-  if (rating !== undefined) await setResearchRating(ctx, userId, paper.openalexId, rating, author);
+  if (rating !== undefined) await setResearchRating(ctx, userId, paper.openalexId, rating);
   // What reverses it: a paper it added is removed again, and a rating it changed goes back.
   // A save that changed neither has nothing to undo. Nor has one whose undo would lose the
   // rating the paper had on search cards: removing a paper clears that rating, and a rating
@@ -323,7 +323,7 @@ export const setLibraryRatingAction = defineUserMutation({
     const changed = item !== null && was !== rating;
     if (changed) await ctx.db.patch("libraryItems", item._id, { rating: rating ?? undefined, updatedAt: Date.now() });
     // An undo expects the rating on search cards to be the one it replaces, too.
-    const cards = await setResearchRating(ctx, userId, openalexId, rating, author, expect?.rating);
+    const cards = await setResearchRating(ctx, userId, openalexId, rating, expect?.rating);
     // A rating goes back in both places at once, so only when both held the same one.
     if (changed) return onCards === was ? { undo: { path: RATE, args: { openalexId, rating: was, expect: { savedAt: item.savedAt, rating } } } } : {};
     // Only the rating on search cards changed, as for a paper that isn't in the library: it goes back there.
@@ -410,7 +410,7 @@ export const removeFromLibraryAction = defineUserMutation({
     // Its places in collections: this batch now, the rest in the batches it schedules.
     if (await movePlaces(ctx, removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.movePlacesLater, { removalId });
     await countedWrite(ctx, userId, -1, () => ctx.db.delete("libraryItems", item._id));
-    await setResearchRating(ctx, userId, item.openalexId, null, author);
+    await setResearchRating(ctx, userId, item.openalexId, null);
     await ctx.scheduler.runAt(expiresAt, internal.library.mutations.forgetRemoval, { removalId });
     return { undo: { path: RESTORE, args: { removalId } } };
   },
@@ -509,13 +509,13 @@ export const restoreLibraryItemAction = defineUserMutation({
       libraryItemId = existing._id;
       if (existing.rating === undefined && item.rating !== undefined) {
         await ctx.db.patch("libraryItems", existing._id, { rating: item.rating, updatedAt: Date.now() });
-        await setResearchRating(ctx, userId, item.openalexId, item.rating, author);
+        await setResearchRating(ctx, userId, item.openalexId, item.rating);
       }
     } else {
       libraryItemId = await countedWrite(ctx, userId, 1, () =>
         ctx.db.insert("libraryItems", { ...item, userId, updatedAt: Date.now() }),
       );
-      if (item.rating !== undefined) await setResearchRating(ctx, userId, item.openalexId, item.rating, author);
+      if (item.rating !== undefined) await setResearchRating(ctx, userId, item.openalexId, item.rating);
     }
     // Kept until its day is over, so places still being moved off the removed paper come back too.
     await ctx.db.patch("libraryRemovals", removalId, { restoredAs: libraryItemId });

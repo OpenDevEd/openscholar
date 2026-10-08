@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 /**
  * `convex-test` as the app runs: with Convex's transaction limits on (16 MiB read and
  * written, 32,000 documents scanned, 4,096 index ranges, 16,000 documents written), so a
@@ -9,7 +10,7 @@
  * tests import `convex-test` as usual. A test that needs other limits passes
  * `transactionLimits` itself.
  *
- * A user action acts in a workspace (#650). A call that names none acts in the caller's own,
+ * A function that takes a workspace acts in it (#650). A call that names none acts in the caller's own,
  * as a page does: an identity's, or an assistant twin's `userId`'s. Signed out, it names one
  * that doesn't exist, so the action refuses as it would anyone signed out. A test about
  * another workspace names it. An account a test seeds through `t.run` gets its own workspace
@@ -26,8 +27,6 @@ import { capWrites } from "../convex/lib/capWrites";
 import { triggers } from "../convex/lib/triggers";
 import { flushCountQueue, type CountQueue } from "../convex/lib/countQueue";
 import type { Id } from "../convex/_generated/dataModel";
-import { USER_ACTIONS } from "../convex/lib/userActionRegistry";
-import { assistantPath } from "../convex/lib/userActions";
 import { ensureWorkspace } from "../convex/workspaces/create";
 
 export * from "convex-test/dist/index.js";
@@ -89,8 +88,25 @@ function withOwnWorkspaces<Db extends { insert: (table: any, value: any) => Prom
   }) as Db;
 }
 
-/** Every user action, public and the assistant's twin, which names the workspace it acts in. */
-const IN_WORKSPACE = new Set(USER_ACTIONS.flatMap((action) => [action.path, assistantPath(action.path)]));
+/** The app's Convex modules, loaded when a call first needs one. */
+const convexModules = import.meta.glob<Record<string, { exportArgs?: () => string }>>(["../convex/**/*.ts", "!../convex/**/*.test.ts", "!../convex/_generated/**"]);
+/** Whether function `path` takes the workspace it acts in, by its own argument validator; read once per function. */
+const takesWorkspace = new Map<string, Promise<boolean>>();
+function inWorkspace(path: string) {
+  let found = takesWorkspace.get(path);
+  if (!found) {
+    const [file, name = "default"] = path.split(":");
+    const load = convexModules[`../convex/${file}.ts`];
+    found = load
+      ? load().then((module) => {
+          const args = module[name]?.exportArgs?.();
+          return args ? "workspaceId" in (JSON.parse(args).value ?? {}) : false;
+        })
+      : Promise.resolve(false);
+    takesWorkspace.set(path, found);
+  }
+  return found;
+}
 
 type Caller = Runner & Record<Kind, (fn: any, args?: Record<string, unknown>) => Promise<any>>;
 
@@ -116,7 +132,7 @@ function inOwnWorkspaces<T extends Runner>(target: T, identity?: Partial<UserIde
   for (const kind of ["query", "mutation", "action"] as const) {
     const call = caller[kind].bind(target);
     caller[kind] = async (fn: any, args: Record<string, unknown> = {}) =>
-      typeof fn !== "function" && IN_WORKSPACE.has(getFunctionName(fn)) && args.workspaceId === undefined ? call(fn, { ...args, workspaceId: await workspaceFor(args) }) : call(fn, args);
+      typeof fn !== "function" && args.workspaceId === undefined && (await inWorkspace(getFunctionName(fn))) ? call(fn, { ...args, workspaceId: await workspaceFor(args) }) : call(fn, args);
   }
   const withIdentity = target.withIdentity.bind(target);
   target.withIdentity = (next) => inOwnWorkspaces(withIdentity(next), next, root);

@@ -398,7 +398,20 @@ extraction (OS-14).
       `run` an actor (person, workspace, role, author) instead of a user ID. The
       client passes the personal workspace from one query until #651 puts the
       workspace in the address. Pending functions that touch workspace data move
-      behind the wrappers here, so the check has no gaps.
+      behind the wrappers here, so the check has no gaps. Done in #701, #703 and
+      #704, except the pending functions.
+      Changed 2026-10-08 (agreed with the user in the implementation thread,
+      after #704): each pending function that touches workspace data takes the
+      workspace check in the slice that moves its data, instead of all of them
+      here. Reason: 136 of the 168 pending functions wait on OS-17's
+      registration issues (#323, #327, #328, #329), and until a slice moves its
+      data a function reads and writes the rows it did before. Evidence Library
+      functions keep their own library access check (`readLibraryRole`) until
+      slice 6. The gate that keeps this from leaving gaps: `check:user-actions`
+      fails on any public function, plumbing included, of a module listed under
+      `inWorkspace` in `scripts/user-actions-exempt.json` that doesn't take the
+      workspace; each slice adds its modules (#706 adds `research/records` and
+      `research/searches`, and `research/records:importBatch` with them).
    2. Research records: searches, revisions, history, screenings, bookmarks,
       record counts.
    3. Library: papers, collections, memberships, removals, counts.

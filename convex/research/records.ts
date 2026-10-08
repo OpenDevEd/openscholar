@@ -6,7 +6,7 @@ import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { STEP_TEXT_MAX } from "../assistant/steps";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
-import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, type Author } from "../lib/userActions";
+import { type Author, accountMutation, accountQuery, accountWorkspaceMutation, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy } from "../lib/userActions";
 import { answersAmong, clearPaperAnswers, removeAnswers, screeningFor, seedAnswers, setPaperAnswers, sweepAnswers, type AnswerSource } from "./answers";
 import {
   ANSWERED_PAPERS_MAX, applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, paperResponsesValidator, RATED_PAPERS_MAX, ratingValidator, restoredSearch, restoresNothing, restoreReverses, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator, UNDO_SHORTCUT_MAX, undoCommandValidator,
@@ -19,14 +19,10 @@ import schema from "../schema";
 import { countRecordPage, countRow } from "./recordCounts";
 import { shortcutSortName } from "../../lib/query-shortcuts";
 import { searchTerms, searchText, shortcutText, withText } from "../lib/searchText";
+import { personalWorkspaceOf } from "../workspaces/actor";
 
 const accountArgs = { accountId: v.string() };
 const pageArgs = { paginationOpts: paginationOptsValidator };
-async function account(ctx: Parameters<typeof requireAuth>[0], expected: string) {
-  const user = await requireAuth(ctx);
-  if (user.clerkId !== expected) throw new Error("Account changed. Retry after signing in.");
-  return user._id;
-}
 
 // Each action is defined once; the page's function and the assistant's are made from it.
 
@@ -406,7 +402,10 @@ const contents = ({ updatedAt: _at, queryHistoryCount: _tried, count: _count, pa
  * search, changing its query or filters, a shortcut, a rating. Deleting, clearing, and
  * changes to questions and answers return none.
  */
-export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, command: ResearchCommand, author: Author): Promise<UndoCommand | undefined> {
+/** Who changes an account's research records, and the workspace a record they make is in (#650). */
+export type Writer = { userId: Id<"users">; workspaceId: Id<"workspaces"> };
+
+export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: Writer, command: ResearchCommand, author: Author): Promise<UndoCommand | undefined> {
   switch (command.kind) {
     case "createSearch": {
       validateSearch(command.search);
@@ -418,7 +417,7 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       const queries = command.history?.queryHistory.length ? command.history.queryHistory : [{ query: command.search.query, field: command.search.field, timestamp: command.search.createdAt }];
       const questions = command.history?.questionHistory ?? [];
       const stored = { ...command.search, ...historySummary(queries, questions), screeningResponses: [] };
-      const id = await ctx.db.insert("searches", withText({ userId, localId: command.search.id, data: stored, revision: FIRST_REVISION }, searchText(stored)));
+      const id = await ctx.db.insert("searches", withText({ userId, workspaceId, createdBy: userId, localId: command.search.id, data: stored, revision: FIRST_REVISION }, searchText(stored)));
       await addHistory(ctx, { _id: id, userId }, "query", queries.map(queryEntry));
       await addHistory(ctx, { _id: id, userId }, "question", questions.map(questionEntry));
       // Answers carried in a new search come from an import or the assistant; neither says who gave them.
@@ -526,14 +525,14 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       if (command.value === null) { if (row) await ctx.db.delete("queryShortcuts", row._id); return undo; }
       const data = { shorthand: command.shorthand, ...command.value };
       if (row) await ctx.db.patch("queryShortcuts", row._id, { data, searchText: withText({ ...row, data }, shortcutText(data)).searchText });
-      else await ctx.db.insert("queryShortcuts", withText({ userId, data, sortName: shortcutSortName(command.shorthand) }, shortcutText(data)));
+      else await ctx.db.insert("queryShortcuts", withText({ userId, workspaceId, createdBy: userId, data, sortName: shortcutSortName(command.shorthand) }, shortcutText(data)));
       return undo;
     }
     // A clear takes the rows up to the newest there is now. A clock can't draw that line:
     // a row made a moment earlier or later can carry the same millisecond.
     case "clearSearches": {
       const newest = await ctx.db.query("searches").withIndex("by_user", q => q.eq("userId", userId)).order("desc").first();
-      if (newest) await clearBatch(ctx, userId, author, newest._creationTime);
+      if (newest) await clearBatch(ctx, { userId, workspaceId }, author, newest._creationTime);
       return;
     }
     case "clearShortcuts": {
@@ -541,20 +540,24 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       if (newest) await clearShortcutBatch(ctx, userId, newest._creationTime);
       return;
     }
-    case "rating": {
-      if (!command.paperId || (command.rating !== null && (!Number.isInteger(command.rating) || command.rating < 0 || command.rating > 5))) throw new Error("Rating must be an integer from 0 to 5.");
-      const row = await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique();
-      if (command.expect !== undefined && (row?.data.rating ?? null) !== command.expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
-      const before = row?.data.rating ?? null;
-      // A rating set to what it already was has nothing to undo.
-      const undo: UndoCommand | undefined = before === command.rating ? undefined : { kind: "rating", paperId: command.paperId, rating: before, expect: command.rating };
-      if (command.rating === null) { if (row) await ctx.db.delete("paperRatings", row._id); return undo; }
-      const data = { paperId: command.paperId, rating: command.rating };
-      if (row) await ctx.db.patch("paperRatings", row._id, { data });
-      else await ctx.db.insert("paperRatings", { userId, data });
-      return undo;
-    }
+    case "rating":
+      return applyRating(ctx, userId, command);
   }
+}
+
+/** Sets or clears a person's rating of a paper, which is theirs whatever workspace they're in (#650). Returns what puts it back. */
+export async function applyRating(ctx: MutationCtx, userId: Id<"users">, command: Extract<ResearchCommand, { kind: "rating" }>): Promise<UndoCommand | undefined> {
+  if (!command.paperId || (command.rating !== null && (!Number.isInteger(command.rating) || command.rating < 0 || command.rating > 5))) throw new Error("Rating must be an integer from 0 to 5.");
+  const row = await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique();
+  if (command.expect !== undefined && (row?.data.rating ?? null) !== command.expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
+  const before = row?.data.rating ?? null;
+  // A rating set to what it already was has nothing to undo.
+  const undo: UndoCommand | undefined = before === command.rating ? undefined : { kind: "rating", paperId: command.paperId, rating: before, expect: command.rating };
+  if (command.rating === null) { if (row) await ctx.db.delete("paperRatings", row._id); return undo; }
+  const data = { paperId: command.paperId, rating: command.rating };
+  if (row) await ctx.db.patch("paperRatings", row._id, { data });
+  else await ctx.db.insert("paperRatings", { userId, data });
+  return undo;
 }
 
 async function received(ctx: MutationCtx, userId: Id<"users">, key: string) {
@@ -614,10 +617,10 @@ export const changeAction = defineUserMutation({
   },
   // The receipt makes a retried request apply once, from the page or from the assistant. It
   // keeps the undo, so a caller that lost the first answer gets the same one from a retry.
-  run: async (ctx, { userId, author }, args) => {
+  run: async (ctx, { userId, workspaceId, author }, args) => {
     const key = `change:${args.requestId}`;
     const receipt = await received(ctx, userId, key);
-    const undo = receipt ? receipt.undo : await applyCommand(ctx, userId, args.command, author);
+    const undo = receipt ? receipt.undo : await applyCommand(ctx, { userId, workspaceId }, args.command, author);
     if (!receipt) await ctx.db.insert("researchReceipts", { userId, key, ...(undo ? { undo } : {}) });
     return undo ? { undo: { path: "research/records:change" as const, args: { command: undo } } } : {};
   },
@@ -638,13 +641,14 @@ const CLEAR_BYTES = 2 * 1024 * 1024;
  * had its own rows moves it as it goes, which can take a transaction by itself, so it's
  * deleted alone.
  */
-async function clearBatch(ctx: MutationCtx, userId: Id<"users">, author: Author, before: number) {
+async function clearBatch(ctx: MutationCtx, writer: Writer, author: Author, before: number) {
+  const { userId } = writer;
   const batch = await ctx.db.query("searches").withIndex("by_user", q => q.eq("userId", userId).lte("_creationTime", before))
     .paginate({ cursor: null, numItems: CLEAR_BATCH, maximumBytesRead: CLEAR_BYTES });
   const old = batch.page.findIndex(search => search.data.queryHistory || search.data.questionHistory);
   const deleted = old === -1 ? batch.page : batch.page.slice(0, Math.max(1, old));
-  for (const search of deleted) await applyCommand(ctx, userId, { kind: "deleteSearch", id: search.localId }, author);
-  if (!batch.isDone || deleted.length < batch.page.length) await ctx.scheduler.runAfter(0, internal.research.records.clearSearchesBatch, { userId, author, before });
+  for (const search of deleted) await applyCommand(ctx, writer, { kind: "deleteSearch", id: search.localId }, author);
+  if (!batch.isDone || deleted.length < batch.page.length) await ctx.scheduler.runAfter(0, internal.research.records.clearSearchesBatch, { ...writer, author, before });
 }
 
 /** Carries on a sweep of a screening's rows for the removals they owe, a page at a time (./answers.ts). */
@@ -681,20 +685,20 @@ export const clearShortcutsBatch = internalMutation({
 });
 
 export const clearSearchesBatch = internalMutation({
-  args: { userId: v.id("users"), author: v.union(v.literal("user"), v.literal("assistant")), before: v.number() },
+  // Optional only for batches scheduled before the workspace was passed (#650), which clear their maker's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), author: v.union(v.literal("user"), v.literal("assistant")), before: v.number() },
   returns: v.null(),
-  handler: async (ctx, { userId, author, before }) => {
-    await clearBatch(ctx, userId, author, before);
+  handler: async (ctx, { userId, workspaceId, author, before }) => {
+    await clearBatch(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, author, before);
     return null;
   },
 });
 
-export const importBatch = mutation({
-  // Each search comes with the history this browser kept of it.
-  args: { ...accountArgs, searches: v.array(v.object({ search: searchValidator, history: v.optional(v.object(historyArrays)) })), shortcuts: v.array(shortcutValidator), ratings: v.array(ratingValidator) },
+export const importBatch = accountWorkspaceMutation({
+  // Each search comes with the history this browser kept of it, into the workspace the page is in (#650).
+  args: { searches: v.array(v.object({ search: searchValidator, history: v.optional(v.object(historyArrays)) })), shortcuts: v.array(shortcutValidator), ratings: v.array(ratingValidator) },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const userId = await account(ctx, args.accountId);
+  handler: async (ctx, { userId, workspaceId }, args) => {
     if (args.searches.length + args.shortcuts.length + args.ratings.length > 25) throw new Error("Import at most 25 records per batch.");
     const items: Array<{ key: string; command: ResearchCommand }> = [
       ...args.searches.map(({ search, history }) => ({ key: `search:${search.id}`, command: { kind: "createSearch" as const, search, ...(history ? { history } : {}) } })),
@@ -709,7 +713,7 @@ export const importBatch = mutation({
         // Preserve a local edit made after an interrupted import as a separate copy.
         const copyKey = `import:${key}:${fingerprint}`;
         if (!await received(ctx, userId, copyKey)) {
-          await applyCommand(ctx, userId, { ...command, search: { ...command.search, id: `${command.search.id}-${fingerprint}` } }, "user");
+          await applyCommand(ctx, { userId, workspaceId }, { ...command, search: { ...command.search, id: `${command.search.id}-${fingerprint}` } }, "user");
           await ctx.db.insert("researchReceipts", { userId, key: copyKey, fingerprint });
         }
         continue;
@@ -724,7 +728,7 @@ export const importBatch = mutation({
         const same = command.kind === "shortcut" ? existing.data && "expansion" in existing.data && existing.data.expansion === command.value?.expansion
           : command.kind === "rating" && "rating" in existing.data && existing.data.rating === command.rating;
         if (!same) throw new Error("This local bookmark or rating differs from your saved account record. Your local copy has been kept.");
-      } else await applyCommand(ctx, userId, command, "user");
+      } else await applyCommand(ctx, { userId, workspaceId }, command, "user");
       await ctx.db.insert("researchReceipts", { userId, key: `import:${key}`, fingerprint });
     }
     return null;

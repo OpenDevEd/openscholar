@@ -311,6 +311,7 @@ import type * as migrations_pagedRecords from "../migrations/pagedRecords.js";
 import type * as migrations_paperMetadata from "../migrations/paperMetadata.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_removeOrphanLibraryAccess from "../migrations/removeOrphanLibraryAccess.js";
+import type * as migrations_researchWorkspaces from "../migrations/researchWorkspaces.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
 import type * as migrations_screeningSearch from "../migrations/screeningSearch.js";
@@ -708,6 +709,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/paperMetadata": typeof migrations_paperMetadata;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/removeOrphanLibraryAccess": typeof migrations_removeOrphanLibraryAccess;
+  "migrations/researchWorkspaces": typeof migrations_researchWorkspaces;
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
   "migrations/screeningSearch": typeof migrations_screeningSearch;

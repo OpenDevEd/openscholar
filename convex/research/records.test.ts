@@ -13,6 +13,8 @@ import { assistantTools } from "../lib/assistantTools";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { ensureWorkspace } from "../workspaces/create";
 import { personalWorkspaceOf } from "../workspaces/actor";
+import { ownActor } from "../workspaces/actor.test-support";
+import { runUntriggered } from "../../tests/convex-test-with-limits";
 
 const record: SavedSearch = {
   id: "local-original", query: "tutoring AND randomized", field: "title_and_abstract", count: 42,
@@ -220,8 +222,8 @@ describe("account research records", () => {
     const args = { accountId: "alice", requestId: "screening-edit", command: { kind: "editSearch" as const, id: record.id, edit: { kind: "responses" as const, paperId: "W2", responses: [{ question: "Randomized?", response: false }], by: "person" as const } } };
     await alice.mutation(api.research.records.change, args);
     await alice.mutation(api.research.records.change, args);
-    await t.run(ctx => applyCommand(ctx, ids.alice, { kind: "editSearch", id: record.id, edit: { kind: "responses", paperId: "W1", responses: [{ question: "Randomized?", response: false }] } }, "assistant"));
-    await t.run(ctx => applyCommand(ctx, ids.alice, { kind: "editSearch", id: record.id, edit: { kind: "query", query: "assistant query", field: "fulltext" } }, "assistant"));
+    await t.run(async ctx => applyCommand(ctx, await ownActor(ctx, ids.alice), { kind: "editSearch", id: record.id, edit: { kind: "responses", paperId: "W1", responses: [{ question: "Randomized?", response: false }] } }, "assistant"));
+    await t.run(async ctx => applyCommand(ctx, await ownActor(ctx, ids.alice), { kind: "editSearch", id: record.id, edit: { kind: "query", query: "assistant query", field: "fulltext" } }, "assistant"));
     const revisions = await alice.query(api.research.records.revisions, { accountId: "alice", id: record.id, paginationOpts });
     expect(revisions.page.map(row => [row.revision, row.author])).toEqual([[2, "assistant"], [1, "user"]]);
     expect(revisions.page[1].data).toEqual(listedRecord);
@@ -706,6 +708,48 @@ describe("research actions as assistant tools", () => {
     for (const entry of USER_ACTIONS) {
       const schema = await asSchema(tools[entry.path.replace(/[/:]/g, "_")]!.inputSchema).jsonSchema;
       expect(Object.keys((schema as { properties?: object }).properties ?? {})).toEqual(Object.keys(entry.args).filter(name => name !== (entry.kind === "mutation" ? entry.retryKey : undefined)));
+    }
+  });
+});
+
+describe("research records in workspaces (#650)", () => {
+  /** The workspace and maker of each of a person's searches and bookmarks. */
+  const placed = (t: Awaited<ReturnType<typeof setup>>["t"], userId: Id<"users">) => t.run(async ctx => ({
+    searches: (await ctx.db.query("searches").withIndex("by_user", q => q.eq("userId", userId)).take(10)).map(({ workspaceId, createdBy }) => ({ workspaceId, createdBy })),
+    bookmarks: (await ctx.db.query("queryShortcuts").withIndex("by_user", q => q.eq("userId", userId)).take(10)).map(({ workspaceId, createdBy }) => ({ workspaceId, createdBy })),
+  }));
+
+  it("keeps each new search and bookmark in the workspace it was made in, as its maker's, and imports only into the person's own", async () => {
+    const { t, ids, alice } = await setup();
+    const [own, bobs] = await t.run(async ctx => [await personalWorkspaceOf(ctx, ids.alice), await personalWorkspaceOf(ctx, ids.bob)]);
+    await expect(alice.mutation(api.research.records.importBatch, { ...batch, workspaceId: bobs })).rejects.toThrow(/Workspace not found/);
+    await alice.mutation(api.research.records.importBatch, batch);
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "made", command: { kind: "createSearch", search: { ...record, id: "made-here", screeningResponses: [] } } });
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "bookmark", command: { kind: "shortcut", shorthand: "ed", value: { expansion: "education", createdAt: 1700000000001 } } });
+    const mine = { workspaceId: own, createdBy: ids.alice };
+    expect(await placed(t, ids.alice)).toEqual({ searches: [mine, mine], bookmarks: [mine, mine] });
+  });
+
+  it("puts searches and bookmarks from before workspaces in their maker's own, however often the backfill runs", async () => {
+    vi.useFakeTimers();
+    try {
+      const { t, ids } = await setup();
+      // As they were before workspaces: no workspace, no maker.
+      await runUntriggered(t, async ctx => {
+        await ctx.db.insert("searches", { userId: ids.alice, localId: "old", revision: 1, data: { ...record, id: "old", screeningResponses: [] } as never });
+        await ctx.db.insert("queryShortcuts", { userId: ids.bob, data: { shorthand: "old", expansion: "older", createdAt: 1 } });
+      });
+      expect(await t.action(internal.migrations.researchWorkspaces.verify, {})).toBe(2);
+      for (let runs = 0; runs < 2; runs++) {
+        await t.mutation(internal.migrations.researchWorkspaces.run, {});
+        await t.finishAllScheduledFunctions(vi.runAllTimers);
+      }
+      expect(await t.action(internal.migrations.researchWorkspaces.verify, {})).toBe(0);
+      const [aliceOwn, bobOwn] = await t.run(async ctx => [await personalWorkspaceOf(ctx, ids.alice), await personalWorkspaceOf(ctx, ids.bob)]);
+      expect((await placed(t, ids.alice)).searches).toEqual([{ workspaceId: aliceOwn, createdBy: ids.alice }]);
+      expect((await placed(t, ids.bob)).bookmarks).toEqual([{ workspaceId: bobOwn, createdBy: ids.bob }]);
+    } finally {
+      vi.useRealTimers();
     }
   });
 });
