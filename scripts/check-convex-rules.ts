@@ -51,7 +51,8 @@
 import { execSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import ts from "typescript";
+// TypeScript 7 ships no JavaScript API until 7.1, so this script parses with TypeScript 6.
+import ts from "typescript6";
 
 function files(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
