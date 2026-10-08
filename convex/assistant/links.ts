@@ -14,10 +14,13 @@ const paperUrl = (id: unknown) => {
   return /^W\d+$/i.test(value) ? `https://openalex.org/${value.toUpperCase()}` : undefined;
 };
 
+/** A saved search's page. An imported search keeps its outside ID, which may hold a `/`, a space or a bracket. */
+const searchUrl = (id: string) => `/results/${encodeURIComponent(id).replace(/[()]/g, (bracket) => `%${bracket.charCodeAt(0).toString(16).toUpperCase()}`)}`;
+
 /** Each kind of record: its address, and what names it. */
 const KINDS = {
   // A search with no query yet is named by its questions, as the @ picker names it.
-  search: { href: (row: Row) => text(row.id) && `/results/${row.id}`, name: (row: Row) => text(row.query) ?? row.questionText },
+  search: { href: (row: Row) => text(row.id) && searchUrl(row.id as string), name: (row: Row) => text(row.query) ?? row.questionText },
   collection: { href: (row: Row) => text(row._id) && `/library?col=${row._id}`, name: (row: Row) => row.name },
   extraction: { href: (row: Row) => text(row._id) && `/extraction/${row._id}`, name: (row: Row) => row.name },
   screening: { href: (row: Row) => text(row._id) && `/screening?job=${row._id}`, name: (row: Row) => row.label ?? "Screening" },
@@ -60,7 +63,7 @@ function withLink(row: unknown, kind: Kind): unknown {
 
 /** A mention the @ picker found: each kind of its own. */
 const MENTIONS: Record<string, (id: string) => string> = {
-  search: (id) => `/results/${id}`,
+  search: searchUrl,
   collection: (id) => `/library?col=${id}`,
   paper: (id) => paperUrl(id) ?? "",
 };

@@ -15,6 +15,7 @@ describe("linked", () => {
     expect(linked("library/queries:papers", { papers: [{ libraryItemId: "i1", id: "W12", title: "Paper" }] })).toMatchObject({ papers: [{ link: "[Paper](https://openalex.org/W12)" }] });
     // A search with no query yet is named by its questions, and a pipe stays inside a table cell.
     expect(linked("research/records:getSearch", { id: "s2", query: "", questionText: "Trial | design?" })).toMatchObject({ link: "[Trial \\| design?](/results/s2)" });
+    expect(linked("research/records:getSearch", { id: "pubmed/1 (a)", query: "Tutoring" })).toMatchObject({ link: "[Tutoring](/results/pubmed%2F1%20%28a%29)" });
     expect(linked("assistant/threads:list", { page: [{ _id: "t1", title: "Notes" }] })).toMatchObject({ page: [{ link: "[Notes](/?chat=t1)" }] });
     expect(linked("assistant/mentions:find", [{ kind: "search", id: "s1", label: "Tutoring" }])).toEqual([{ kind: "search", id: "s1", label: "Tutoring", link: "[Tutoring](/results/s1)" }]);
     const other = { page: [{ id: "x", query: "y" }] };
