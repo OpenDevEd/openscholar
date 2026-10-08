@@ -532,6 +532,8 @@ export const evidenceLibraryDigestResultValidator = v.object({
 export const evidenceLibraryDigestJobFields = {
   libraryId: v.id("evidenceLibraries"),
   editionId: v.string(),
+  // SHA-256 of the request body; jobs started before it was recorded have none.
+  requestDigest: v.optional(v.string()),
   requestId: v.optional(v.id("_storage")),
   status: v.union(v.literal("pending"), v.literal("succeeded"), v.literal("failed")),
   startedAt: v.number(),
