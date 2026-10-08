@@ -8,7 +8,8 @@ import { beforeAll, vi } from "vitest";
 // Shared by the configuration workspace tests. Every test renders all fifteen
 // configuration sections, so a single case can pass five seconds on a busy
 // machine. The tests are spread over several files so Vitest runs them at once.
-vi.setConfig({ testTimeout: 20_000 });
+// On the 8-vCPU CI guest, two unit jobs at once took one case past 20 seconds.
+vi.setConfig({ testTimeout: 40_000 });
 
 /** What the mocked Convex hooks answer; each test sets what it needs. */
 export const harness = {
