@@ -4,7 +4,6 @@ import { ConvexError } from "convex/values";
 import { cloneElement, useState, type UIEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth, useClerk } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { create } from "zustand";
 import { BookCheck, BookPlus, Folder, FolderCheck, Plus, Search } from "@/components/icons";
@@ -27,6 +26,7 @@ import {
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useCollectionPicker } from "./use-collection-picker";
+import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 /** A removal's ID: the server keeps what was removed for a day, for Undo. */
 type Removal = Id<"libraryRemovals">;
@@ -101,6 +101,7 @@ export function paperArgs(paper: WorkInput) {
  * and focus mode's B key share it.
  */
 export function useSavePaper(paper: WorkInput | undefined) {
+  const workspaceId = useWorkspace();
   const t = useTranslations("saveToLibrary");
   const { phase } = useAuthReadiness();
   const { isSignedIn, userId } = useAuth();
@@ -108,12 +109,12 @@ export function useSavePaper(paper: WorkInput | undefined) {
   const ready = phase === "authenticated";
   const { data: saved } = useProtectedQuery(
     api.library.queries.savedPaper,
-    ready && paper ? { openalexId: paper.id } : "skip",
+    inWorkspace(workspaceId, ready && paper ? { openalexId: paper.id } : "skip"),
   );
   const pendingSaved = usePending((state) => (paper ? state.saved[paper.id]?.value : undefined));
-  const save = useMutation(api.library.mutations.saveToLibrary);
-  const remove = useMutation(api.library.mutations.removeFromLibrary);
-  const restore = useMutation(api.library.mutations.restoreLibraryItem);
+  const save = useWorkspaceMutation(api.library.mutations.saveToLibrary);
+  const remove = useWorkspaceMutation(api.library.mutations.removeFromLibrary);
+  const restore = useWorkspaceMutation(api.library.mutations.restoreLibraryItem);
 
   const isSaved = pendingSaved ?? Boolean(saved);
 
@@ -290,8 +291,8 @@ function CollectionsPanel({
   const { userId } = useAuth();
   const [newName, setNewName] = useState("");
   const picker = useCollectionPicker({ openalexId: paper.id });
-  const setInCollection = useMutation(api.library.mutations.setPaperInCollection);
-  const createCollection = useMutation(api.library.collections.createCollection);
+  const setInCollection = useWorkspaceMutation(api.library.mutations.setPaperInCollection);
+  const createCollection = useWorkspaceMutation(api.library.collections.createCollection);
 
   const loadingMembers = picker.isLoading;
   const checkedIds = new Set<string>(picker.collections.filter((collection) => collection.containsItem).map((collection) => collection._id));

@@ -60,6 +60,7 @@ import { AddCredits, KIND, KindTile, Steps, type StepItem } from "./steps";
 import { DockedJobs, JobDock, JobFlight, type Flight } from "./job-cards";
 import { IconButton, WorkingText } from "./parts";
 import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
+import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 type ThreadId = Id<"assistantThreads">;
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -437,9 +438,10 @@ function Chat({
   onShare: (id: ThreadId, title: string, role: "owner" | "write" | "read") => void;
   onSpending: (id: ThreadId, title: string) => void;
 }) {
+  const workspaceId = useWorkspace();
   const t = useTranslations("assistant");
   const toast = useAppToast();
-  const thread = useQuery(api.assistant.threads.get, threadId ? { threadId } : "skip");
+  const thread = useQuery(api.assistant.threads.get, inWorkspace(workspaceId, threadId ? { threadId } : "skip"));
   // What a new chat starts on: the chat model of the person's AI settings.
   const start = useQuery(api.assistant.threads.newChatModel, {});
   // What the person lets a reply spend here: the meter's "allow more" is by it, and the Spending sheet opens with it in hand.
@@ -456,7 +458,7 @@ function Chat({
     const now = store.getQuery(api.assistant.spending.get, { threadId: args.threadId });
     if (now) store.setQuery(api.assistant.spending.get, { threadId: args.threadId }, { ...now, [args.tool]: args.allowed });
   });
-  const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.messages, threadId ? { threadId, stepsAhead: true } : "skip", { initialNumItems: FIRST_MESSAGES });
+  const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.messages, inWorkspace(workspaceId, threadId ? { threadId, stepsAhead: true as const } : "skip"), { initialNumItems: FIRST_MESSAGES });
   const presetModel = usePresetModels();
   // The model picked before the chat exists; once it does, the chat keeps its own.
   const [picked, setPicked] = useState<PickedModel | null>(null);
@@ -512,8 +514,8 @@ function Chat({
   const scroller = useRef<StickToBottomContext>(null);
   const convex = useConvex();
 
-  const create = useMutation(api.assistant.threads.create);
-  const setModel = useMutation(api.assistant.threads.setModel);
+  const create = useWorkspaceMutation(api.assistant.threads.create);
+  const setModel = useWorkspaceMutation(api.assistant.threads.setModel);
   const stopReply = useMutation(api.assistant.replies.stop);
   // The files of the message on its way, which its bubble shows with their pictures in this browser.
   const going = useRef<Message["files"]>(undefined);

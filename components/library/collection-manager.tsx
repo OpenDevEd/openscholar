@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import {
   Folder,
@@ -34,6 +33,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
+import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 interface CollectionManagerProps {
   open: boolean;
@@ -50,17 +50,12 @@ export function CollectionManager({
   open,
   onOpenChange,
 }: CollectionManagerProps) {
+  const workspaceId = useWorkspace();
   const t = useTranslations("libraryPage");
 
-  const createCollection = useMutation(
-    api.library.collections.createCollection,
-  );
-  const renameCollection = useMutation(
-    api.library.collections.renameCollection,
-  );
-  const deleteCollection = useMutation(
-    api.library.collections.deleteCollection,
-  );
+  const createCollection = useWorkspaceMutation(api.library.collections.createCollection);
+  const renameCollection = useWorkspaceMutation(api.library.collections.renameCollection);
+  const deleteCollection = useWorkspaceMutation(api.library.collections.deleteCollection);
 
   // Inline create
   const [newName, setNewName] = useState("");
@@ -115,8 +110,8 @@ export function CollectionManager({
   }, []);
 
   const search = useDebouncedValue(searchQuery.trim(), 300);
-  const { data: totalCollections } = useProtectedQuery(api.library.collections.countCollections, open ? {} : "skip");
-  const collections = useCursorPage(api.library.collections.listCollections, open ? { search: search || undefined } : "skip", DIALOG_PAGE_SIZE);
+  const { data: totalCollections } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, open ? {} : "skip"));
+  const collections = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, open ? { search: search || undefined } : "skip"), DIALOG_PAGE_SIZE);
   const showSearch = (totalCollections ?? 0) >= SEARCH_THRESHOLD;
   const hasSearch = search.length > 0;
 

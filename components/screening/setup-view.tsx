@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { useAction } from "convex/react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import { AiIcon, Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
@@ -33,6 +32,7 @@ import type { SearchResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { jobName } from "./job-view";
 import { ANSWER, AnimatedNumber, Chip, ClippedChip, Meter, SOURCE_ICON } from "./parts";
+import { inWorkspace, useWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
 const TINT = {
@@ -79,6 +79,7 @@ export function SetupView({
   waitingFor?: string;
   onStarted: (jobId: Id<"screeningJobs">) => void;
 }) {
+  const workspaceId = useWorkspace();
   const t = useTranslations("screeningPage");
   const format = useFormatter();
   const locale = useLocale();
@@ -88,8 +89,8 @@ export function SetupView({
   const watched = useWatchedSearch(fromSearchId);
   const from = useSearchHistoryStore((state) => (fromSearchId ? state.searchHistory.find((item) => item.id === fromSearchId) : undefined));
   const searches = useSearchList({ sort: "recent", pageSize: from ? SOURCE_PAGE - 1 : SOURCE_PAGE, excludeId: fromSearchId });
-  const collections = useCursorPage(api.library.collections.listCollections, {}, SOURCE_PAGE);
-  const { data: collectionCount } = useProtectedQuery(api.library.collections.countCollections, {});
+  const collections = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), SOURCE_PAGE);
+  const { data: collectionCount } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
   const { data: savedCount } = useProtectedQuery(api.library.queries.getLibraryCount, {});
   const screenings = useCursorPage(api.screening.queries.listUserScreeningJobs, { status: "completed" as const }, SOURCE_PAGE);
   const date = (at: number) => format.dateTime(new Date(at), { dateStyle: "medium" });
@@ -151,27 +152,27 @@ export function SetupView({
   };
 
   // An earlier screening's questions to reuse, with their points. A search needs none: its questions load with it.
-  const { data: earlier } = useProtectedQuery(api.screening.queries.getScreeningJob, source?.kind === "screening" ? { jobId: source.id } : "skip");
+  const { data: earlier } = useProtectedQuery(api.screening.queries.getScreeningJob, inWorkspace(workspaceId, source?.kind === "screening" ? { jobId: source.id } : "skip"));
   const fresh = earlier ? questionsOf(earlier).filter((q) => !questions.some((x) => x.text.toLowerCase() === q.text.toLowerCase())) : [];
   const defaultName = !source ? "" : source.kind === "screening" ? source.label : t("includedIn", { name: source.label });
 
-  const destinations = useCursorPage(api.library.collections.listCollections, {}, DESTINATION_PAGE);
+  const destinations = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
   // A collection can't be its own destination; picking it as the source moves the pick to a new one.
   const target = source?.kind === "collection" && dest === source.id ? "new" : dest;
 
   const models = useModelPicks();
   const model = models.modelOf("screenAll");
   const { data: account } = useProtectedQuery(api.billing.accounts.mine, {});
-  const { data: slots } = useProtectedQuery(api.screening.queries.slots, {});
+  const { data: slots } = useProtectedQuery(api.screening.queries.slots, inWorkspace(workspaceId, {}));
   const balance = account?.balance ?? 0;
   // The most these papers cost on the model Screen all runs on: what the job holds when it starts.
-  const { data: estimate } = useProtectedQuery(api.screening.queries.estimate, { papers });
+  const { data: estimate } = useProtectedQuery(api.screening.queries.estimate, inWorkspace(workspaceId, { papers }));
   // Until the figure for these papers arrives, nothing can start.
   const credits = estimate?.credits ?? 0;
   const enough = estimate !== undefined && credits <= balance;
   // The server reads the saved search, so edits still being saved would be screened without.
   const { pending: savingEdits } = useResearchStatus();
-  const screen = useAction(api.screening.start.screen);
+  const screen = useWorkspaceAction(api.screening.start.screen);
   const { execute: generateQuestions, isConfigured: canGenerate } = useGenerateScreeningQuestions();
 
   /** Picks a set; a search brings its own screening questions, and each set starts on its own first papers. */

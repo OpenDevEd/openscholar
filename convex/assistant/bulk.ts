@@ -18,6 +18,7 @@ import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { assistantPath } from "../lib/userActions";
 import { messageOf } from "./failures";
 import { UNDO_BULK, undoOf } from "./steps";
+import { personalWorkspaceOf } from "../workspaces/actor";
 
 /**
  * Changes one transaction makes at most. Most read and write a handful of rows. One that
@@ -53,6 +54,7 @@ export const apply = internalMutation({
   args: { userId: v.id("users"), stepId: v.id("assistantSteps"), path: v.string(), items: v.string(), approved: v.boolean(), key: v.string() },
   returns: v.object({ took: v.number(), made: v.number(), reversible: v.number(), failed: v.number(), why: v.optional(v.string()) }),
   handler: async (ctx, { userId, stepId, path, items, approved, key }) => {
+    const workspaceId = await personalWorkspaceOf(ctx, userId);
     const step = await ctx.db.get("assistantSteps", stepId);
     const action = mutationAt(path);
     const each = (JSON.parse(items) as Record<string, unknown>[]).slice(0, CHUNK);
@@ -62,7 +64,7 @@ export const apply = internalMutation({
     let why: string | undefined;
     for (const [at, item] of each.entries()) {
       try {
-        const result: unknown = await ctx.runMutation(action.ref, { ...item, ...(action.entry.retryKey ? { [action.entry.retryKey]: `${key}:${at}` } : {}), userId, ...(approved ? { approved } : {}) });
+        const result: unknown = await ctx.runMutation(action.ref, { ...item, ...(action.entry.retryKey ? { [action.entry.retryKey]: `${key}:${at}` } : {}), userId, workspaceId, ...(approved ? { approved } : {}) });
         made += 1;
         const undo = undoOf(result);
         if (undo) reversible += 1;
@@ -98,13 +100,14 @@ export const tryChanges = internalMutation({
   args: { userId: v.id("users"), path: v.string(), items: v.string() },
   returns: v.null(),
   handler: async (ctx, { userId, path, items }) => {
+    const workspaceId = await personalWorkspaceOf(ctx, userId);
     const action = mutationAt(path);
     const each = (JSON.parse(items) as Record<string, unknown>[]).slice(0, CHUNK);
     let failed = 0;
     let why: string | undefined;
     for (const [at, item] of each.entries()) {
       try {
-        await ctx.runMutation(action!.ref, { ...item, ...(action!.entry.retryKey ? { [action!.entry.retryKey]: `tried:${at}` } : {}), userId, approved: true });
+        await ctx.runMutation(action!.ref, { ...item, ...(action!.entry.retryKey ? { [action!.entry.retryKey]: `tried:${at}` } : {}), userId, workspaceId, approved: true });
       } catch (error) {
         if (at > 0 && outOfRoom(error)) break;
         failed += 1;
@@ -127,6 +130,7 @@ export const revert = internalMutation({
   args: { userId: v.id("users"), stepId: v.id("assistantSteps"), reversed: v.number(), refused: v.number(), why: v.optional(v.string()) },
   returns: v.null(),
   handler: async (ctx, { userId, stepId, ...before }) => {
+    const workspaceId = await personalWorkspaceOf(ctx, userId);
     let { reversed, refused, why } = before;
     // The newest, and whether another follows it: read before the reversal, which may leave no room to read after.
     const [row, next] = await ctx.db.query("assistantStepUndos").withIndex("by_step", (q) => q.eq("stepId", stepId)).order("desc").take(2);
@@ -135,7 +139,7 @@ export const revert = internalMutation({
       const action = mutationAt(row.path);
       try {
         if (!action) throw createError("CONFLICT", "This change has no undo.");
-        await ctx.runMutation(action.ref, { ...JSON.parse(row.args), ...(action.entry.retryKey ? { [action.entry.retryKey]: `undo:${row._id}` } : {}), userId, approved: true });
+        await ctx.runMutation(action.ref, { ...JSON.parse(row.args), ...(action.entry.retryKey ? { [action.entry.retryKey]: `undo:${row._id}` } : {}), userId, workspaceId, approved: true });
         reversed += 1;
       } catch (error) {
         refused += 1;

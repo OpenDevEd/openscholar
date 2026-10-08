@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useMemo, useTransition } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { useTranslations } from "next-intl";
@@ -39,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { useIsMobile } from "@/lib/hooks";
 import { readyBucketPaperCount } from "@/lib/bucket/paper-count";
+import { useWorkspaceMutation } from "@/lib/workspaces/url";
 
 const stepVariants = {
   enter: (direction: number) => ({
@@ -89,7 +89,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
   const bucketOrder = useBucketStore((s) => s.order);
   const bucketItemsMap = useBucketStore((s) => s.items);
   const clearBucket = useBucketStore((s) => s.clear);
-  const startJob = useMutation(api.extraction.mutations.startJob);
+  const startJob = useWorkspaceMutation(api.extraction.mutations.startJob);
   const pdfCapabilityEnabled = useFeatureFlag("extraction.pdf");
 
   useEffect(() => () => {

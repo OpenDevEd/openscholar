@@ -26,10 +26,10 @@ const LOCAL_ORDER: Record<BookmarkSortBy, (a: ListedShortcut, b: ListedShortcut)
 
 /** How many shortcuts the person has; undefined while the account's count loads. */
 export function useShortcutCount() {
-  const accountId = useResearchSession()?.accountId;
-  const { data: count } = useProtectedQuery(api.research.records.countShortcuts, accountId ? { accountId } : "skip");
+  const scope = useResearchSession()?.scope;
+  const { data: count } = useProtectedQuery(api.research.records.countShortcuts, scope ?? "skip");
   const local = useStore(localKeywordExpansionStore, (state) => Object.keys(state.keywords).length);
-  return accountId ? count : local;
+  return scope ? count : local;
 }
 
 /**
@@ -39,10 +39,11 @@ export function useShortcutCount() {
  */
 export function useShortcutList({ sort, text = "", pageSize }: { sort: BookmarkSortBy; text?: string; pageSize: number }) {
   const session = useResearchSession();
-  const accountId = session?.accountId;
+  const scope = session?.scope;
+  const accountId = scope?.accountId;
   const match = useDebouncedValue(text.trim(), 300);
-  const remote = useCursorPage(api.research.records.listedShortcuts, accountId ? { accountId, sort, text: match || undefined } : "skip", pageSize);
-  const { data: count } = useProtectedQuery(api.research.records.countShortcuts, accountId ? { accountId } : "skip");
+  const remote = useCursorPage(api.research.records.listedShortcuts, scope ? { ...scope, sort, text: match || undefined } : "skip", pageSize);
+  const { data: count } = useProtectedQuery(api.research.records.countShortcuts, scope ?? "skip");
   const remoteItems = useMemo(() => remote.items.map(({ shorthand, ...shortcut }): ListedShortcut => ({ name: shorthand, ...shortcut })), [remote.items]);
 
   const keywords = useStore(localKeywordExpansionStore, (state) => state.keywords);

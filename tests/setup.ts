@@ -10,7 +10,28 @@ import "@testing-library/jest-dom/vitest";
 // path before the provider is touched.
 process.env.OPENROUTER_API_KEY ??= "sk-or-test-key-for-vitest";
 
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
+
+// The page's workspace (#650): components act in one, which the app reads from the server.
+// Component tests stand in for that read with one workspace; a test about another mocks this module itself.
+vi.mock("@/lib/workspaces/url", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/workspaces/url")>();
+  // Read when called: a test's own mock of convex/react may define only the hooks its component uses.
+  const react = await import("convex/react");
+  const workspaceId = "workspace_test";
+  return {
+    ...real,
+    useWorkspace: () => workspaceId,
+    useWorkspaceMutation: (mutation: Parameters<typeof react.useMutation>[0]) => {
+      const run = react.useMutation(mutation);
+      return (args: Record<string, unknown>) => run({ ...args, workspaceId });
+    },
+    useWorkspaceAction: (action: Parameters<typeof react.useAction>[0]) => {
+      const run = react.useAction(action);
+      return (args: Record<string, unknown>) => run({ ...args, workspaceId });
+    },
+  };
+});
 
 // JSDOM lacks Element#scrollIntoView; the keyboard navigation hook
 // (use-transactions-keyboard) calls it after every arrow keypress.

@@ -33,6 +33,7 @@ import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { ERROR_CODES, type ErrorCode } from "@/lib/errors/taxonomy";
 import { summarizeFailures } from "@/lib/extraction/failures-summary";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 const KNOWN_CODES: ReadonlySet<string> = new Set(ERROR_CODES);
 
@@ -45,6 +46,7 @@ export interface MixedSuccessSummaryProps {
 }
 
 export function MixedSuccessSummary({ jobId, onShowFailures, papersRead }: MixedSuccessSummaryProps) {
+  const workspaceId = useWorkspace();
   const t = useTranslations("extraction.mixedSuccess");
   const tTitle = useTranslations("errors.title");
   const headingId = useId();
@@ -56,7 +58,7 @@ export function MixedSuccessSummary({ jobId, onShowFailures, papersRead }: Mixed
   const titleForCode = (code: string): string =>
     KNOWN_CODES.has(code) ? tTitle(code as ErrorCode) : code.replace(/_/g, " ");
 
-  const { data: failures, settlement } = useProtectedQuery(api.extraction.queries.countJobFailures, { jobId });
+  const { data: failures, settlement } = useProtectedQuery(api.extraction.queries.countJobFailures, inWorkspace(workspaceId, { jobId }));
   const summary = failures && { ...summarizeFailures(failures.paperErrors), answeredTotal: failures.answered, totalQuestions: failures.asked };
 
   // Only render on the happy-path: query ready and there's at least

@@ -13,17 +13,21 @@ import { activateResearch, ResearchContext, SessionContext } from "./binding";
 import { ResearchSession } from "./session";
 import { ResearchImportError, localResearchBackup } from "./migrate";
 import { downloadAsFile } from "../utils";
+import { useWorkspace } from "../workspaces/url";
+import type { Id } from "../../convex/_generated/dataModel";
 
 const localSnapshot = { ready: true, error: null, pending: 0 };
 const localSubscribe = () => activateResearch(null);
 const getLocalSnapshot = () => localSnapshot;
 const StatusContext = createContext({ ...localSnapshot, error: null as Error | null, retry: () => {} });
 const sessions = new WeakMap<ConvexReactClient, Map<string, ResearchSession>>();
-function accountSession(client: ConvexReactClient, accountId: string) {
+/** One session per account and workspace: a workspace's records are its own. */
+function accountSession(client: ConvexReactClient, accountId: string, workspaceId: Id<"workspaces">) {
   let accounts = sessions.get(client);
   if (!accounts) { accounts = new Map(); sessions.set(client, accounts); }
-  let session = accounts.get(accountId);
-  if (!session) { session = new ResearchSession(client, accountId); accounts.set(accountId, session); }
+  const key = `${accountId}:${workspaceId}`;
+  let session = accounts.get(key);
+  if (!session) { session = new ResearchSession(client, accountId, workspaceId); accounts.set(key, session); }
   return session;
 }
 
@@ -37,11 +41,14 @@ export function ResearchStateProvider({ children }: { children: ReactNode }) {
   const report = useCallback((error: Error, retry: () => void) => {
     showStyledToast("error", error.message, { duration: Infinity, action: { label: retryLabel, onClick: retry, ...(error instanceof ResearchImportError ? { secondaryAction: { label: "Download backup", onClick: () => downloadAsFile(localResearchBackup(), "local-research-backup.json", "json") } } : {}) } });
   }, [retryLabel]);
-  const session = userId ? accountSession(client, userId) : null;
+  const workspaceId = useWorkspace();
+  const session = userId && workspaceId ? accountSession(client, userId, workspaceId) : null;
+  // Signed in, with the workspace still loading: nothing is ready, so the browser's own records don't show meanwhile.
+  const waiting = Boolean(userId) && !workspaceId;
   const subscribe = useCallback((listener: () => void) => session ? session.subscribe(listener, phase === "authenticated", report) : localSubscribe(), [session, phase, report]);
   const status = useSyncExternalStore(subscribe, session?.getSnapshot ?? getLocalSnapshot, session?.getServerSnapshot ?? getLocalSnapshot);
   const reading = useMemo(() => ({ session, phase }), [session, phase]);
-  const value = useMemo(() => ({ ...status, ready: status.ready && (phase === "anonymous" || phase === "authenticated"), error: phase === "sync_error" ? new Error("Your account could not finish loading.") : status.error, retry: phase === "sync_error" ? retryUserSync : session?.retry ?? (() => {}) }), [status, session, phase, retryUserSync]);
+  const value = useMemo(() => ({ ...status, ready: status.ready && !waiting && (phase === "anonymous" || phase === "authenticated"), error: phase === "sync_error" ? new Error("Your account could not finish loading.") : status.error, retry: phase === "sync_error" ? retryUserSync : session?.retry ?? (() => {}) }), [status, session, waiting, phase, retryUserSync]);
   return <ResearchContext.Provider value={session?.stores ?? null}><SessionContext.Provider value={reading}><StatusContext.Provider value={value}>{children}</StatusContext.Provider></SessionContext.Provider></ResearchContext.Provider>;
 }
 

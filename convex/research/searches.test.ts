@@ -98,7 +98,7 @@ async function setup() {
     await new Promise((resolve) => setTimeout(resolve, 5));
     await t.finishInProgressScheduledFunctions();
   };
-  const make = async (args: FunctionArgs<typeof create>) => {
+  const make = async (args: Omit<FunctionArgs<typeof create>, "workspaceId">) => {
     const made = await alice.mutation(create, args);
     await counted();
     return made;

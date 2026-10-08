@@ -40,10 +40,11 @@ const LOCAL_ORDER: Record<ListedSort, (a: SearchResult, b: SearchResult) => numb
  */
 export function useSearchList({ sort, text = "", pageSize, excludeId }: { sort: ListedSort; text?: string; pageSize: number; excludeId?: string }) {
   const session = useResearchSession();
-  const accountId = session?.accountId;
+  const scope = session?.scope;
+  const accountId = scope?.accountId;
   const match = useDebouncedValue(text.trim(), 300);
-  const remote = useCursorPage(api.research.records.listedSearches, accountId ? { accountId, sort, text: match || undefined, exclude: excludeId } : "skip", pageSize);
-  const { data: count } = useProtectedQuery(api.research.records.countSearches, accountId ? { accountId } : "skip");
+  const remote = useCursorPage(api.research.records.listedSearches, scope ? { ...scope, sort, text: match || undefined, exclude: excludeId } : "skip", pageSize);
+  const { data: count } = useProtectedQuery(api.research.records.countSearches, scope ?? "skip");
 
   const localHistory = useStore(localSearchHistoryStore, (state) => state.searchHistory);
   const local = useMemo(() => {

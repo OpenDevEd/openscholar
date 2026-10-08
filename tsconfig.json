@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "convex-test": [
+        "./tests/convex-test-with-limits.ts"
       ]
     }
   },

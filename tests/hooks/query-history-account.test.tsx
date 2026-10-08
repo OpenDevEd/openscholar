@@ -13,6 +13,11 @@ let status = "CanLoadMore";
 // When set, the server answers only when the test says so.
 let held: Array<() => void> | null = null;
 vi.mock("@clerk/nextjs", () => ({ useAuth: () => ({ userId: "alice" }) }));
+// Signed in: the account's records are read in its research session's account and workspace.
+vi.mock("@/lib/research/reads", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/research/reads")>()),
+  useResearchSession: () => ({ scope: { accountId: "alice", workspaceId: "workspace_test" } }),
+}));
 vi.mock("convex/react", async (importOriginal) => ({
   ...(await importOriginal<typeof import("convex/react")>()),
   usePaginatedQuery: () => ({ results: rows.slice(0, 25), status, loadMore: () => { status = "LoadingMore"; } }),

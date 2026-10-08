@@ -1,6 +1,7 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
 import type { ConvexReactClient } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { shortcutExpansions, type SearchHistoryState, type KeywordExpansionState, type RatingsState } from "../store";
 import type { SearchResult } from "../types";
 import { expandShortcuts } from "../query-shortcuts";
@@ -54,7 +55,11 @@ export class ResearchSession {
   private settledListeners = new Set<() => void>();
   private snapshot = { ready: false, error: null as Error | null, pending: 0 };
 
-  constructor(private client: ConvexReactClient, readonly accountId: string, private onError: (error: Error, retry: () => void) => void = () => {}) {
+  /** What every read and change of the account's records names: the account the page loaded for, and the workspace it's in. */
+  readonly scope: { accountId: string; workspaceId: Id<"workspaces"> };
+
+  constructor(private client: ConvexReactClient, readonly accountId: string, workspaceId: Id<"workspaces">, private onError: (error: Error, retry: () => void) => void = () => {}) {
+    this.scope = { accountId, workspaceId };
     const edit = (id: string, value: SearchEdit) => this.dispatch({ kind: "editSearch", id, edit: value });
     const current = (id: string) => this.stores.history.getState().searchHistory.find(row => row.id === id);
     const replaceQuestion = (id: string, index: number, replacement: string | null) => {
@@ -84,7 +89,7 @@ export class ResearchSession {
       readScreeningResponses: async (id, paperIds) => {
         const ids = [...new Set(paperIds)];
         const reads = Array.from({ length: Math.ceil(ids.length / ANSWERED_PAPERS_MAX) }, (_, i) => ids.slice(i * ANSWERED_PAPERS_MAX, (i + 1) * ANSWERED_PAPERS_MAX));
-        const pages = await Promise.all(reads.map(chunk => this.client.query(api.research.records.answersOf, { accountId: this.accountId, id, paperIds: chunk })));
+        const pages = await Promise.all(reads.map(chunk => this.client.query(api.research.records.answersOf, { ...this.scope, id, paperIds: chunk })));
         let responses = pages.flatMap(page => page.page);
         // Answers still being saved count as the person left them: those a search still being
         // created came with, then each edit since.
@@ -151,7 +156,7 @@ export class ResearchSession {
       readRatings: async paperIds => {
         const ids = [...new Set(paperIds)];
         const reads = Array.from({ length: Math.ceil(ids.length / RATED_PAPERS_MAX) }, (_, i) => ids.slice(i * RATED_PAPERS_MAX, (i + 1) * RATED_PAPERS_MAX));
-        const pages = await Promise.all(reads.map(chunk => this.client.query(api.research.records.ratingsOf, { accountId: this.accountId, paperIds: chunk })));
+        const pages = await Promise.all(reads.map(chunk => this.client.query(api.research.records.ratingsOf, { ...this.scope, paperIds: chunk })));
         const read = Object.fromEntries(pages.flatMap(page => page.page).map(row => [row.paperId, row.rating]));
         // A rating still being saved counts as the person left it.
         for (const { command } of this.pending) {
@@ -222,7 +227,7 @@ export class ResearchSession {
    * apart, for the papers a page shows (`watchAnswers`).
    */
   watchSearch = (id: string, reader: () => void, known?: ListedSearch) => {
-    const open = () => this.client.watchQuery(api.research.records.getSearch, { accountId: this.accountId, id });
+    const open = () => this.client.watchQuery(api.research.records.getSearch, { ...this.scope, id });
     return this.hold(this.watched, id, open, reader, known);
   };
   private answersOf(searchId: string) {
@@ -235,7 +240,7 @@ export class ResearchSession {
    * the search in the store has them; returns the unsubscribe.
    */
   watchAnswers = (searchId: string, paperIds: string[], reader: () => void) =>
-    this.holdIds(this.answersOf(searchId), paperIds, ANSWERED_PAPERS_MAX, chunk => this.client.watchQuery(api.research.records.answersOf, { accountId: this.accountId, id: searchId, paperIds: chunk }), reader);
+    this.holdIds(this.answersOf(searchId), paperIds, ANSWERED_PAPERS_MAX, chunk => this.client.watchQuery(api.research.records.answersOf, { ...this.scope, id: searchId, paperIds: chunk }), reader);
   /** How many of these papers, from the first, have their answers read, or a read that failed. */
   answersRead = (searchId: string, paperIds: string[]) => this.idsRead(this.answersOf(searchId), paperIds);
   /** Whether a read of any of these papers' answers failed: what they hold isn't known. */
@@ -248,7 +253,7 @@ export class ResearchSession {
    * store has them; returns the unsubscribe.
    */
   watchRatings = (paperIds: string[], reader: () => void) =>
-    this.holdIds(this.rated, paperIds, RATED_PAPERS_MAX, chunk => this.client.watchQuery(api.research.records.ratingsOf, { accountId: this.accountId, paperIds: chunk }), reader);
+    this.holdIds(this.rated, paperIds, RATED_PAPERS_MAX, chunk => this.client.watchQuery(api.research.records.ratingsOf, { ...this.scope, paperIds: chunk }), reader);
   /** How many of these papers, from the first, have their ratings read, or a read that failed. */
   ratingsRead = (paperIds: string[]) => this.idsRead(this.rated, paperIds);
   /**
@@ -256,7 +261,7 @@ export class ResearchSession {
    * store expands them; returns the unsubscribe.
    */
   watchShortcuts = (names: string[], reader: () => void) =>
-    this.holdIds(this.named, names, SHORTCUT_NAMES_MAX, chunk => this.client.watchQuery(api.research.records.shortcutsOf, { accountId: this.accountId, names: chunk }), reader);
+    this.holdIds(this.named, names, SHORTCUT_NAMES_MAX, chunk => this.client.watchQuery(api.research.records.shortcutsOf, { ...this.scope, names: chunk }), reader);
   /** Whether every one of these names has been looked up. */
   shortcutsRead = (names: string[]) => this.idsRead(this.named, names) === names.length;
   /**
@@ -334,7 +339,7 @@ export class ResearchSession {
   }
   /** Whether the account has search `id`, reading it once when no page is. */
   hasSearch = async (id: string) =>
-    this.watchedStatus(id) === "found" || (await this.client.query(api.research.records.getSearch, { accountId: this.accountId, id })) !== null;
+    this.watchedStatus(id) === "found" || (await this.client.query(api.research.records.getSearch, { ...this.scope, id })) !== null;
   watchedStatus = (id: string): WatchedStatus => {
     if (this.pending.some(({ command }) => command.kind === "createSearch" && command.search.id === id)) return "found";
     const watched = this.watched.get(id);
@@ -363,7 +368,7 @@ export class ResearchSession {
       while (this.pending.length && this.epoch === epoch) {
         const next = this.pending[0];
         try {
-          await this.client.mutation(api.research.records.change, { accountId: this.accountId, ...next });
+          await this.client.mutation(api.research.records.change, { ...this.scope, ...next });
           // Mutation completion includes live-query updates, but a page that just opened a
           // search, ratings or shortcuts may still be reading them. Keep optimism until
           // they arrive.
