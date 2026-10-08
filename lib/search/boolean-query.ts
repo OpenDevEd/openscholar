@@ -30,7 +30,11 @@ export interface ParsedQuery {
 }
 
 const TOKEN = /(\s+)|(\()|(\))|("[^"]*"?(?:~\d+)?)|([^\s()"]+)/g;
-const OPERATORS = { AND: "and", OR: "or", NOT: "not" } as const;
+const OPERATORS = new Map<string, QueryTokenKind>([
+  ["AND", "and"],
+  ["OR", "or"],
+  ["NOT", "not"],
+]);
 
 function tokenize(query: string): QueryToken[] {
   const tokens: QueryToken[] = [];
@@ -41,7 +45,7 @@ function tokenize(query: string): QueryToken[] {
     else if (open) kind = "open";
     else if (close) kind = "close";
     else if (phrase) kind = "phrase";
-    else kind = OPERATORS[text as keyof typeof OPERATORS] ?? "term";
+    else kind = OPERATORS.get(text) ?? "term";
     if (kind === "open") depth++;
     tokens.push({ kind, text, depth: Math.max(depth, 0) });
     if (kind === "close") depth--;
@@ -75,22 +79,25 @@ function parse(tokens: QueryToken[]): Node | null {
     return children.length === 1 ? children[0] : { kind: "or", children };
   }
 
+  /** Words side by side stay together as one run; an explicit AND starts the next run. */
   function and(): Node | null {
-    const children: Node[] = [];
-    let explicit = false;
+    const runs: Node[][] = [[]];
     for (;;) {
       const kind = peek();
       if (kind === "and") {
-        explicit = true;
         i++;
+        runs.push([]);
         continue;
       }
       if (kind === null || kind === "or" || kind === "close") break;
       const next = unary();
-      if (next) children.push(next);
+      if (next) runs.at(-1)!.push(next);
     }
+    const children = runs
+      .filter((run) => run.length > 0)
+      .map((run): Node => (run.length === 1 ? run[0] : { kind: "and", explicit: false, children: run }));
     if (children.length === 0) return null;
-    return children.length === 1 ? children[0] : { kind: "and", explicit, children };
+    return children.length === 1 ? children[0] : { kind: "and", explicit: true, children };
   }
 
   function unary(): Node | null {
@@ -218,29 +225,34 @@ function wordPattern(word: string, stemmed: boolean): string {
   return `${escapeRegex(root)}${tail}${ENDINGS}`;
 }
 
-function termPattern(text: string, stemmed: boolean): string {
+type TermMatcher =
+  | { concept: number; pattern: RegExp }
+  /** A proximity phrase ("a b"~N): every word within N extra words of the others. */
+  | { concept: number; words: RegExp[]; slop: number };
+
+function termMatcher(text: string, concept: number, stemmed: boolean): TermMatcher | null {
+  const proximity = text.match(/~(\d+)$/);
   const words = text.replace(/~\d+$/, "").replace(/"/g, "").split(/\s+/);
   const parts = words.map((word) => wordPattern(word, stemmed)).filter(Boolean);
-  if (parts.length === 0) return "";
-  // A proximity phrase ("a b"~5) lets the words sit apart, so each word matches alone.
-  if (/~\d+$/.test(text)) return parts.map((p) => `${WORD_EDGE_BEFORE}${p}${WORD_EDGE_AFTER}`).join("|");
-  return `${WORD_EDGE_BEFORE}${parts.join("[^\\p{L}\\p{N}]+")}${WORD_EDGE_AFTER}`;
+  if (parts.length === 0) return null;
+  if (proximity && parts.length > 1) {
+    return { concept, words: parts.map((p) => new RegExp(`^(?:${p})$`, "iu")), slop: Number(proximity[1]) };
+  }
+  return { concept, pattern: new RegExp(`${WORD_EDGE_BEFORE}${parts.join("[^\\p{L}\\p{N}]+")}${WORD_EDGE_AFTER}`, "giu") };
 }
 
 export interface QueryMatcher {
-  conceptCount: number;
-  patterns: (RegExp | null)[];
+  terms: TermMatcher[];
 }
 
-/** One regex per concept, built from the query that was actually searched. */
+/** One matcher per searched term, each tagged with its concept, built from the query that was actually searched. */
 export function queryMatcher(query: string): QueryMatcher | null {
-  const { concepts, conceptCount } = parseBooleanQuery(query);
+  const { concepts } = parseBooleanQuery(query);
   const stemmed = !hasUnquotedWildcard(query);
-  const patterns = concepts.map((terms) => {
-    const source = terms.map((term) => termPattern(term, stemmed)).filter(Boolean).join("|");
-    return source ? new RegExp(source, "giu") : null;
-  });
-  return patterns.some(Boolean) ? { conceptCount, patterns } : null;
+  const terms = concepts.flatMap((texts, concept) =>
+    texts.flatMap((text) => termMatcher(text, concept, stemmed) ?? []),
+  );
+  return terms.length > 0 ? { terms } : null;
 }
 
 export interface TextSegment {
@@ -248,16 +260,33 @@ export interface TextSegment {
   concept?: number;
 }
 
+type Hit = { start: number; end: number; concept: number };
+
+function proximityHits(text: string, term: Extract<TermMatcher, { words: RegExp[] }>): Hit[] {
+  const tokens = [...text.matchAll(/[\p{L}\p{N}]+/gu)];
+  const span = term.words.length + term.slop;
+  const marked = new Set<number>();
+  for (let start = 0; start < tokens.length; start++) {
+    const window = tokens.slice(start, start + span);
+    const found = term.words.map((word) => window.findIndex((token) => word.test(token[0])));
+    if (found.every((at) => at >= 0)) found.forEach((at) => marked.add(start + at));
+  }
+  return [...marked].map((at) => {
+    const token = tokens[at];
+    return { start: token.index, end: token.index + token[0].length, concept: term.concept };
+  });
+}
+
 /** Splits text into plain runs and matches; where matches overlap, the earlier then longer wins. */
 export function highlightSegments(text: string, matcher: QueryMatcher | null): TextSegment[] {
   if (!matcher || !text) return [{ text }];
-  const hits: { start: number; end: number; concept: number }[] = [];
-  matcher.patterns.forEach((pattern, concept) => {
-    if (!pattern) return;
-    for (const match of text.matchAll(pattern)) {
-      if (match[0]) hits.push({ start: match.index, end: match.index + match[0].length, concept });
-    }
-  });
+  const hits: Hit[] = matcher.terms.flatMap((term) =>
+    "pattern" in term
+      ? [...text.matchAll(term.pattern)].flatMap((match) =>
+          match[0] ? [{ start: match.index, end: match.index + match[0].length, concept: term.concept }] : [],
+        )
+      : proximityHits(text, term),
+  );
   hits.sort((a, b) => a.start - b.start || b.end - a.end);
   const segments: TextSegment[] = [];
   let at = 0;

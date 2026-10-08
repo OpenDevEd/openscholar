@@ -127,9 +127,11 @@ const QueryMatchContext = createContext<QueryMatcher | null>(null);
 /** Gives the result cards inside it the searched query to highlight. OQL queries highlight nothing. */
 export function QueryMatchProvider({ query, field, children }: { query: string; field: string; children: ReactNode }) {
   const expandQuery = useKeywordExpansionStore((state) => state.expandQuery);
+  // Shortcuts load after the page; subscribing to them rebuilds the matcher once they arrive.
+  const keywords = useKeywordExpansionStore((state) => state.keywords);
   const matcher = useMemo(
     () => (field === OQL_FIELD || !query.trim() ? null : queryMatcher(expandQuery(query).expandedQuery)),
-    [query, field, expandQuery],
+    [query, field, expandQuery, keywords],
   );
   return <QueryMatchContext.Provider value={matcher}>{children}</QueryMatchContext.Provider>;
 }

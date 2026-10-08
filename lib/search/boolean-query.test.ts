@@ -63,3 +63,25 @@ describe("highlightSegments", () => {
     expect(marked("Online school", "school NOT online")).toEqual(["0:school"]);
   });
 });
+
+describe("review fixes", () => {
+  it("keeps words side by side together around an explicit AND", () => {
+    expect(parseBooleanQuery("climate change AND health effects").concepts).toEqual([
+      ["climate", "change"],
+      ["health", "effects"],
+    ]);
+  });
+
+  it("reads JavaScript property names as plain words", () => {
+    expect(parseBooleanQuery("constructor school").concepts).toEqual([["constructor", "school"]]);
+  });
+
+  it("marks the longer phrase whatever order the OR lists it in", () => {
+    expect(marked("school teacher", 'school OR "school teacher"')).toEqual(["0:school teacher"]);
+  });
+
+  it("marks a proximity phrase only where its words sit close together", () => {
+    expect(marked("Health care alone", '"mental health"~2')).toEqual([]);
+    expect(marked("mental and physical health", '"mental health"~2')).toEqual(["0:mental", "0:health"]);
+  });
+});
