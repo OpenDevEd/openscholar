@@ -28,6 +28,7 @@ import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { EASE, effortOf, toMapModel, usePresetModels, type PickedModel, type PresetPick } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
 import { EDGE_FADE } from "@/components/ui/scroll-area";
+import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { PRESET_KEYS } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";
@@ -1121,7 +1122,12 @@ function UserBubble({ message }: { message: Message }) {
       transition={{ duration: 0.3, ease: EASE }}
       className="ml-10 self-end"
     >
-      {!message.mine && message.sender?.name ? <p className="mb-1 pr-1 text-right text-2xs text-muted-foreground">{message.sender.name}</p> : null}
+      {!message.mine && message.sender?.name ? (
+        <p className="mb-1 flex items-center justify-end gap-1.5 pr-1 text-2xs text-muted-foreground">
+          <IdentityAvatar name={message.sender.name} imageUrl={message.sender.imageUrl} className="size-4" />
+          {message.sender.name}
+        </p>
+      ) : null}
       {message.files?.length ? <SentFiles files={message.files} onReattach={reattach ?? undefined} /> : null}
       <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-primary/10 px-4 py-2.5 text-sm leading-6">
         <MessageText text={message.text} />

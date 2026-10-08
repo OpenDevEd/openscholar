@@ -680,8 +680,8 @@ const messageValidator = v.object({
       retryAfterMs: v.optional(v.number()),
     }),
   ),
-  /** Who sent it, on a person's message. Their name is empty when they gave none. */
-  sender: v.optional(v.object({ userId: v.id("users"), name: v.string() })),
+  /** Who sent it, on a person's message. Their name is empty when they gave none; their photo, when they have one. */
+  sender: v.optional(v.object({ userId: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) })),
   /** Whether the person reading sent it. */
   mine: v.boolean(),
   /** The model that wrote it, on a reply. */
@@ -718,7 +718,7 @@ async function senders(ctx: QueryCtx, rows: MessageDoc[]) {
     ids.map(async (id) => {
       const userId = ctx.db.normalizeId("users", id);
       const person = userId && (await ctx.db.get("users", userId));
-      return person ? [[id, { userId: person._id, name: personName(person) }] as const] : [];
+      return person ? [[id, { userId: person._id, name: personName(person), ...(person.avatarUrl ? { imageUrl: person.avatarUrl } : {}) }] as const] : [];
     }),
   );
   return new Map(people.flat());
