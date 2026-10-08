@@ -10,7 +10,7 @@ import { setupExtractionPaperWorkpool } from "./queue/workpool.test-support";
 
 const abstract = "A long enough abstract for the paper to be read from it, about tutoring in primary schools.";
 
-it("reads a collection's range as one source, a page at a time, and runs every paper", async () => {
+it("reads a collection's range as one source, a page at a time, and runs every paper", { tags: ["size"] }, async () => {
   const t = convexTest(schema);
   setupExtractionPaperWorkpool(t);
   const papers = 250;

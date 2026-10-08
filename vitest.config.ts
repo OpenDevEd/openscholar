@@ -8,9 +8,6 @@ const domTests = [
   "app/**/__tests__/**/*.test.tsx",
   "tests/*.test.tsx",
 ];
-// The largest sizes the product allows (#350): over a third of the suite's CPU, so `npm test`
-// leaves them out and CI runs them nightly (`npm run test:limits`).
-const limitTests = ["convex/limits/**/*.test.ts"];
 
 export default defineConfig({
   oxc: { jsx: { runtime: "automatic" } },
@@ -23,8 +20,7 @@ export default defineConfig({
   },
   test: {
     projects: [
-      { test: { name: "convex", environment: "edge-runtime", include: ["convex/**/*.test.ts"], exclude: limitTests } },
-      { test: { name: "limits", environment: "edge-runtime", include: limitTests } },
+      { test: { name: "convex", environment: "edge-runtime", include: ["convex/**/*.test.ts"] } },
       { test: { name: "dom", environment: "jsdom", include: domTests } },
       { test: { name: "node", environment: "node", include: ["tests/**/*.test.{ts,tsx}", "lib/**/*.test.ts"], exclude: [...domTests, "tests/live-billing/**"] } },
       // What functions read at full size (#631): `npm run bench` only, never in `npm test`, since it seeds jobs of 50,000 papers.
@@ -37,6 +33,13 @@ export default defineConfig({
       },
     },
     setupFiles: ["./tests/setup.ts"],
+    tags: [
+      {
+        name: "size",
+        description: "Seeds the largest sizes the product allows (#350), or enough rows to cross a page or batch. Over half of the suite's CPU, so `npm test` leaves these out and CI runs them nightly (`npm run test:size`).",
+        timeout: 600_000,
+      },
+    ],
     // CI runs these beside three Next.js builds on the same machine. A jsdom
     // test that takes a second or two alone, such as rendering 950 bucket
     // rows, then ran past Vitest's default of five seconds.

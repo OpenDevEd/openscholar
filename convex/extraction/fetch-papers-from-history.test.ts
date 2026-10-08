@@ -57,7 +57,7 @@ it("refuses a search saved before its exact request was kept, without asking Ope
   expect(requests).toHaveLength(0);
 });
 
-it("reads the chosen number of papers a page at a time with OpenScholar's key, spending one request a page", async () => {
+it("reads the chosen number of papers a page at a time with OpenScholar's key, spending one request a page", { tags: ["size"] }, async () => {
   vi.stubGlobal("fetch", openAlexOf(900));
   const { setup, job, papers, spent } = await jobOf({ query: "tutor", openAlexQuery: { filter: "title_and_abstract.search:tutor", sort: "cited_by_count:desc" }, limit: 450 });
   await setup();

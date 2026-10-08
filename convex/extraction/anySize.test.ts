@@ -5,7 +5,7 @@ import { expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { recomputePaperListProjection } from "../extraction/listProjection";
+import { recomputePaperListProjection } from "./listProjection";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { catchUp } from "../lib/catchUp.test-support";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
@@ -42,7 +42,7 @@ async function seedJob(t: ReturnType<typeof convexTest>, { triggered = true } = 
 const filters = (more: object) => ({ searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [], ...more });
 const expected = (keep: (i: number) => boolean) => Array.from({ length: PAPERS }, (_, i) => i).filter(keep).length;
 
-it("counts, pages and summarizes a job past the old cap exactly", async () => {
+it("counts, pages and summarizes a job past the old cap exactly", { tags: ["size"] }, async () => {
   const t = convexTest(schema);
   const { userId, jobId } = await seedJob(t);
   const count = (more: object) => t.query(internal.extraction.queries.countJobResultsForAssistant, { userId, jobId, filters: filters(more) } as never);
@@ -67,9 +67,9 @@ it("counts, pages and summarizes a job past the old cap exactly", async () => {
   expect([...summary.answers].sort((a, b) => a.answer.localeCompare(b.answer))).toEqual([...COUNTRIES].sort().map((answer) => ({ answer, papers: PAPERS / 3 })));
   // Narrowed, it reads the papers the filter keeps.
   expect(await t.query(internal.extraction.queries.summarizeJobResultsForAssistant, { userId, jobId, questionKey: "country", filters: filters({ statusFilters: ["high-confidence"] }) } as never)).toMatchObject({ papers: expected((i) => confidenceOf(i) === 0.9) });
-}, 300_000);
+});
 
-it("the backfill counts and tallies a job from before, once however often it runs", async () => {
+it("the backfill counts and tallies a job from before, once however often it runs", { tags: ["size"] }, async () => {
   const t = convexTest(schema);
   const { userId, jobId } = await seedJob(t, { triggered: false });
   // As rows from before: the answer rows not tallied.
@@ -84,9 +84,9 @@ it("the backfill counts and tallies a job from before, once however often it run
   expect(await t.action(internal.migrations.extractionFacets.verify, {})).toBe(0);
   const summary = await t.query(internal.extraction.queries.summarizeJobResultsForAssistant, { userId, jobId, questionKey: "country" } as never);
   expect([...summary.answers].sort((a, b) => a.answer.localeCompare(b.answer))).toEqual([...COUNTRIES].sort().map((answer) => ({ answer, papers: PAPERS / 3 })));
-}, 300_000);
+});
 
-it("deleting a job takes its tallies with it, and its rows queue no tally changes", async () => {
+it("deleting a job takes its tallies with it, and its rows queue no tally changes", { tags: ["size"] }, async () => {
   const t = convexTest(schema);
   const { userId, jobId } = await seedJob(t);
   expect(await t.run((ctx) => ctx.db.query("extractionAnswerTallies").take(1))).toHaveLength(1);
@@ -105,4 +105,4 @@ it("deleting a job takes its tallies with it, and its rows queue no tally change
   }));
   expect(left).toEqual({ papers: [], tallies: [], totals: [], changes: [] });
   expect(userId).toBeDefined();
-}, 300_000);
+});

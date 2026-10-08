@@ -264,7 +264,7 @@ describe("Screen all on a saved search, read on the server", () => {
     await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1_001, last: 90_000, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/no papers in that range/);
   });
 
-  it("reads a long range into one job, each of its pages once, from the search as it was when the job began", async () => {
+  it("reads a long range into one job, each of its pages once, from the search as it was when the job began", { tags: ["size"] }, async () => {
     total = 2_500;
     const { t, screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
     const firstOf = async (jobId: Id<"screeningJobs">) => (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1)))[0]?.openalexId;
@@ -279,7 +279,7 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(ids.size).toBe(2_251);
   });
 
-  it("carries on partway through a cursor page when OpenAlex returns a short one", async () => {
+  it("carries on partway through a cursor page when OpenAlex returns a short one", { tags: ["size"] }, async () => {
     total = 2_500;
     const { t, screen } = await setup();
     const work = (i: number) => ({ id: `https://openalex.org/W${i}`, display_name: `Paper ${i}` });
@@ -309,7 +309,7 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(ids).toEqual(Array.from({ length: 200 }, (_, i) => `https://openalex.org/W${9_901 + i}`));
   });
 
-  it("carries on past a short numbered page, to the search's last paper", async () => {
+  it("carries on past a short numbered page, to the search's last paper", { tags: ["size"] }, async () => {
     total = 2_500;
     const { t, screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
     const work = (i: number) => ({ id: `https://openalex.org/W${i}`, display_name: `Paper ${i}` });

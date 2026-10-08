@@ -532,7 +532,7 @@ describe("the assistant's tools", () => {
     vi.unstubAllEnvs();
   });
 
-  it("change as many papers as the plan allows in one go: past it the set is refused unread, and a big change runs exactly the papers asked about (#637)", async () => {
+  it("change as many papers as the plan allows in one go: past it the set is refused unread, and a big change runs exactly the papers asked about (#637)", { tags: ["size"] }, async () => {
     const t = convexTest(schema);
     const { asAda, say, sayUntilAsked, settled, steps } = await chatOf(t);
     vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
@@ -581,7 +581,7 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").take(total + 1)).length)).toBe(total);
     expect((await steps())[0]).toMatchObject({ status: "done", count: total });
     vi.unstubAllEnvs();
-  }, 300_000);
+  });
 
   it("tell the model a change that returns nothing was made, make again a write that collided, and keep a reply going past arguments the asking check can't read", async () => {
     const t = convexTest(schema);

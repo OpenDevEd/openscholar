@@ -1,8 +1,8 @@
-name: Nightly limits
+name: Nightly size tests
 
-# The max-size tests (convex/limits) prove every page, export and count works at the largest
-# sizes the product allows (OS-18). They are over a third of the suite's CPU, so they run here
-# once a night on dev instead of on every pull request.
+# Tests tagged `size` seed the largest sizes the product allows, or enough rows to cross a page
+# or batch (OS-18). They are over half of the suite's CPU, so they run here once a night on dev
+# instead of on every pull request.
 on:
   schedule:
     - cron: "17 2 * * *"
@@ -13,8 +13,8 @@ permissions:
   issues: write
 
 jobs:
-  limits:
-    name: Max-size tests
+  size:
+    name: Size tests
     runs-on: openscholar-light
     timeout-minutes: 30
     steps:
@@ -22,8 +22,8 @@ jobs:
 
       - uses: ./.github/actions/setup-project
 
-      - name: Run the max-size tests
-        run: npm run test:limits -- --maxWorkers=8
+      - name: Run the size tests
+        run: npm run test:size -- --maxWorkers=8
 
       # A failure opens one issue, and later failures comment on it while it stays open.
       - name: Report the failure
@@ -35,8 +35,8 @@ jobs:
           set -euo pipefail
           api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY"
           auth="Authorization: Bearer $GITHUB_TOKEN"
-          title="[OS-18] Nightly max-size tests fail on dev"
-          body="The max-size tests failed on $GITHUB_SHA: $RUN_URL"
+          title="[OS-18] Nightly size tests fail on dev"
+          body="The size tests failed on $GITHUB_SHA: $RUN_URL"
           issue="$(curl -fsS -H "$auth" "$api/issues?state=open&creator=github-actions%5Bbot%5D&per_page=100" \
             | jq -r --arg title "$title" 'map(select(.title == $title))[0].number // empty')"
           if [ -n "$issue" ]; then

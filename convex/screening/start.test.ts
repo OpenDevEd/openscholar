@@ -192,7 +192,7 @@ describe("where a job's papers go", () => {
 });
 
 describe("a job of any size", () => {
-  it("reads all its papers a step at a time into one job, past the old 1,000 a job held", async () => {
+  it("reads all its papers a step at a time into one job, past the old 1,000 a job held", { tags: ["size"] }, async () => {
     const { t, results, read, screen } = await setup({ saved: 1_250, inCollection: 0 });
     const { jobId } = await screen({ set: { kind: "saved" }, first: 1, last: 1_250, ...job, saveTo: { kind: "none" } });
     expect(await read(jobId)).toMatchObject({ totalPapers: 1_250 });
@@ -200,9 +200,9 @@ describe("a job of any size", () => {
     const ids = new Set((await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1_300))).map((paper) => paper.openalexId));
     expect(ids.size).toBe(1_250);
     expect((await results(jobId)).length).toBe(50);
-  }, 120_000);
+  });
 
-  it("stops reading where the person's credits run out, screens the papers it took, and ends out of credits", async () => {
+  it("stops reading where the person's credits run out, screens the papers it took, and ends out of credits", { tags: ["size"] }, async () => {
     // Enough for one step of papers, not two.
     const { t, read, screen } = await setup({ saved: 450, inCollection: 0, credits: 250 * PER_PAPER });
     const { jobId } = await screen({ set: { kind: "saved" }, first: 1, last: 450, ...job, saveTo: { kind: "none" } });
@@ -221,7 +221,7 @@ describe("a job of any size", () => {
       await t.finishAllScheduledFunctions(vi.runAllTimers);
     }
     expect(await read(jobId)).toMatchObject({ status: "creditsExhausted", totalPapers: 200, processedPapers: 200 });
-  }, 120_000);
+  });
 
   it("a read that fails after earlier steps skips the papers they took that hadn't started", async () => {
     const { t, userId } = await setup({ saved: 0, inCollection: 0 });

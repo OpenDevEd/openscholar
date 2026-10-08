@@ -28,7 +28,7 @@ const seededLibrary = (items: number) => Array.from({ length: items }, (_, i) =>
 const matchingOf = (seeded: ReturnType<typeof seededLibrary>, view: { minRating?: number; maxRating?: number; yearFrom?: number; yearTo?: number; savedAfter?: number }) =>
   seeded.filter((p) => p.rating >= (view.minRating ?? 0) && p.rating <= (view.maxRating ?? 5) && p.year >= (view.yearFrom ?? 0) && p.year <= (view.yearTo ?? 9999) && p.savedAt >= (view.savedAfter ?? 0)).length;
 
-describe("at the largest sizes the product allows", () => {
+describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
   it("captures all 1,000 Included screening papers for extraction through bounded pages", async () => {
     vi.useFakeTimers();
     try {

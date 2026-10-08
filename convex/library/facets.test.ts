@@ -62,7 +62,7 @@ describe("library facets", () => {
     expect(await as.query(api.library.queries.countPapers, { yearFrom: 2018, yearTo: 2021 })).toEqual({ count: 4 });
   });
 
-  it("puts a paper back in every collection it was in, past one batch of places", async () => {
+  it("puts a paper back in every collection it was in, past one batch of places", { tags: ["size"] }, async () => {
     vi.useFakeTimers();
     try {
       const t = convexTest(schema);
@@ -99,7 +99,7 @@ describe("library facets", () => {
     } finally {
       vi.useRealTimers();
     }
-  }, 120_000);
+  });
 
   it("one mutation may change many papers' fields, each in collections", async () => {
     const t = convexTest(schema);
@@ -118,7 +118,7 @@ describe("library facets", () => {
     expect(years).toEqual([2001, 2001, 2001]);
   });
 
-  it("counts several filters past papers without the filtered value, and one match exactly", async () => {
+  it("counts several filters past papers without the filtered value, and one match exactly", { tags: ["size"] }, async () => {
     const t = convexTest(schema);
     const { userId, as } = await setup(t);
     // Many rated papers with no year, which sort before every year; one rated and dated.
@@ -160,7 +160,7 @@ describe("library facets", () => {
     expect(pages).toBeGreaterThan(1);
   });
 
-  it("a paper being put back in its collections can't be removed again until it's done, and asks first for a followed one still moving", async () => {
+  it("a paper being put back in its collections can't be removed again until it's done, and asks first for a followed one still moving", { tags: ["size"] }, async () => {
     vi.useFakeTimers();
     try {
       const t = convexTest(schema);
@@ -209,7 +209,7 @@ describe("library facets", () => {
     } finally {
       vi.useRealTimers();
     }
-  }, 120_000);
+  });
 
   it("the backfill gives memberships their paper's fields and counts every row, once however often it runs", async () => {
     vi.useFakeTimers();
