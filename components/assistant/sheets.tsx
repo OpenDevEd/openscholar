@@ -106,7 +106,7 @@ const CHATS_PER_PAGE = 20;
 const TINTS = ["#2dd4bf", "#a78bfa", "#fb923c", "#60a5fa", "#f472b6", "#34d399", "#facc15", "#818cf8"];
 const tintOf = (id: string) => TINTS[[...id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % TINTS.length]!;
 
-/** A member's initial; someone in the chat right now gets a ring that ripples outward. */
+/** A member's photo, or their initial when they have none; someone in the chat right now gets a ring that ripples outward. */
 function Avatar({ member }: { member: Member }) {
   const reduceMotion = useReducedMotion();
   const tint = tintOf(member.userId);
@@ -121,16 +121,25 @@ function Avatar({ member }: { member: Member }) {
           transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
         />
       ) : null}
-      <span
-        className="relative flex size-6 items-center justify-center rounded-full text-2xs font-semibold ring-2 ring-card"
-        style={{
-          backgroundColor: `color-mix(in oklab, ${tint} 24%, var(--card))`,
-          color: tint,
-          boxShadow: member.here ? `0 0 0 2px var(--card), 0 0 0 3.5px ${tint}` : undefined,
-        }}
-      >
-        {member.name ? member.name.slice(0, 1).toUpperCase() : <UserRound className="size-3" />}
-      </span>
+      {member.imageUrl ? (
+        <img
+          src={member.imageUrl}
+          alt=""
+          className="relative size-6 rounded-full bg-muted object-cover ring-2 ring-card"
+          style={{ boxShadow: member.here ? `0 0 0 2px var(--card), 0 0 0 3.5px ${tint}` : undefined }}
+        />
+      ) : (
+        <span
+          className="relative flex size-6 items-center justify-center rounded-full text-2xs font-semibold ring-2 ring-card"
+          style={{
+            backgroundColor: `color-mix(in oklab, ${tint} 24%, var(--card))`,
+            color: tint,
+            boxShadow: member.here ? `0 0 0 2px var(--card), 0 0 0 3.5px ${tint}` : undefined,
+          }}
+        >
+          {member.name ? member.name.slice(0, 1).toUpperCase() : <UserRound className="size-3" />}
+        </span>
+      )}
     </span>
   );
 }
@@ -366,8 +375,10 @@ const MEMBERS_COUNTED = 100;
 const keyOf = (principal: Principal) => (principal.kind === "user" ? principal.userId : principal.organizationId);
 
 /** The round tile beside a person or an organization. */
-function Tile({ principal, name }: { principal: Principal; name: string }) {
+/** A person's photo or an organization's logo; an initial or an icon only when there's none. */
+function Tile({ principal, name, imageUrl }: { principal: Principal; name: string; imageUrl?: string }) {
   const tint = principal.kind === "organization" ? "var(--info)" : tintOf(principal.userId);
+  if (imageUrl) return <img src={imageUrl} alt="" className={cn("size-9 shrink-0 bg-muted", principal.kind === "organization" ? "rounded-lg object-contain" : "rounded-full object-cover")} />;
   return (
     <span className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold" style={{ backgroundColor: `color-mix(in oklab, ${tint} 20%, transparent)`, color: tint }}>
       {principal.kind === "organization" ? <Building2 className="size-4" /> : name ? name.slice(0, 1).toUpperCase() : <UserRound className="size-4" />}
@@ -469,7 +480,7 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
                         onClick={() => add(candidate.principal)}
                         className={cn("flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left", i === active && "bg-muted")}
                       >
-                        <Tile principal={candidate.principal} name={candidate.name} />
+                        <Tile principal={candidate.principal} name={candidate.name} imageUrl={candidate.imageUrl} />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-medium">{shownName(candidate)}</span>
                           <span className="block truncate text-xs text-muted-foreground">{candidate.principal.kind === "organization" ? t("organization") : candidate.name ? candidate.email : ""}</span>
@@ -517,7 +528,7 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
                   transition={{ duration: 0.35, ease: EASE, delay: 0.12 + Math.min(i, 8) * 0.05 }}
                   className="flex items-center gap-3 rounded-xl px-2 py-2"
                 >
-                  <Tile principal={person.principal} name={person.name} />
+                  <Tile principal={person.principal} name={person.name} imageUrl={person.imageUrl} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{name}</p>
                     <p className="truncate text-xs text-muted-foreground">{detail}</p>

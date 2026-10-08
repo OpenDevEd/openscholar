@@ -119,6 +119,8 @@ export const listAccessAction = defineUserQuery({
       email: v.optional(v.string()),
       /** An organization's active members, counted up to one past MEMBERS_COUNTED. */
       members: v.optional(v.number()),
+      /** A person's photo or an organization's logo, when there is one. */
+      imageUrl: v.optional(v.string()),
     }),
   ),
   run: async (ctx, userId, { threadId, paginationOpts }) => {
@@ -139,11 +141,11 @@ export const listAccessAction = defineUserQuery({
             .query("organizationMemberships")
             .withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active"))
             .take(MEMBERS_COUNTED + 1);
-          return [{ principal, role: row.role, name: organization.name, members: members.length }];
+          return [{ principal, role: row.role, name: organization.name, members: members.length, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}) }];
         }
         const person = await ctx.db.get("users", principal.userId);
         if (!person) return [];
-        return [{ principal, role: row.role, name: personName(person), ...(role === "owner" ? { email: person.email } : {}) }];
+        return [{ principal, role: row.role, name: personName(person), ...(role === "owner" ? { email: person.email } : {}), ...(person.avatarUrl ? { imageUrl: person.avatarUrl } : {}) }];
       }),
     );
     return { ...read, page: page.flat() };
@@ -193,12 +195,12 @@ export const candidatesAction = defineUserQuery({
       .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, CANDIDATES_PAGE_MAX), maximumRowsRead: CANDIDATE_ROWS });
     const people = read.page.flatMap((membership) => {
       const person = found.get(membership.clerkUserId);
-      return person ? [{ principal: { kind: "user" as const, userId: person._id }, name: personName(person), email: person.email }] : [];
+      return person ? [{ principal: { kind: "user" as const, userId: person._id }, name: personName(person), email: person.email, ...(person.avatarUrl ? { imageUrl: person.avatarUrl } : {}) }] : [];
     });
     // The organizations lead the first page.
     const organizations =
       paginationOpts.cursor === null
-        ? mine.filter((organization) => matches(organization.name)).map((organization) => ({ principal: { kind: "organization" as const, organizationId: organization._id }, name: organization.name }))
+        ? mine.filter((organization) => matches(organization.name)).map((organization) => ({ principal: { kind: "organization" as const, organizationId: organization._id }, name: organization.name, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}) }))
         : [];
     return { ...read, page: [...organizations, ...people] };
   },
