@@ -16,7 +16,7 @@ import { checkRateLimit } from "../lib/rateLimit";
 import { startHeld } from "../billing/charge";
 import { filtersOf } from "../paperSets/search";
 import { findSearch } from "../research/records";
-import type { InWorkspace } from "../workspaces/actor";
+import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { screeningRevision } from "../screening/accounting";
 import { papersIn } from "../screening/estimate";
 import { paperSetValidator } from "../screening/validators";
@@ -106,16 +106,18 @@ async function extractionHold(ctx: QueryCtx, { userId, workspaceId }: InWorkspac
 
 /** The same figure, for the start to check what was approved against (see `start`). */
 export const figure = internalQuery({
-  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), ...extractArgs },
+  // Optional only for a call from an action already running when this deployed (#650), which reads in its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), ...extractArgs },
   returns: v.number(),
-  handler: (ctx, { userId, workspaceId, ...args }) => extractionHold(ctx, { userId, workspaceId }, args),
+  handler: async (ctx, { userId, workspaceId, ...args }) => extractionHold(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, args),
 });
 
 /** A saved search as an extraction's source: its query, for the source's name, and the request its results page makes. */
 export const searchSource = internalQuery({
-  args: { workspaceId: v.id("workspaces"), searchId: v.string() },
+  // Optional only for a call from an action already running when this deployed (#650), which reads in its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), searchId: v.string() },
   returns: searchFiltersValidator,
-  handler: (ctx, { workspaceId, searchId }) => searchFilters(ctx, workspaceId, searchId),
+  handler: async (ctx, { userId, workspaceId, searchId }) => searchFilters(ctx, workspaceId ?? (await personalWorkspaceOf(ctx, userId)), searchId),
 });
 
 async function searchFilters(ctx: QueryCtx, workspaceId: Id<"workspaces">, searchId: string) {
@@ -156,7 +158,7 @@ async function sourcesOf(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, {
   }
   checkRange(set, first, last);
   if (set.kind === "search") {
-    const filters: Infer<typeof searchFiltersValidator> = await ctx.runQuery(internal.extraction.start.searchSource, { workspaceId, searchId: set.searchId });
+    const filters: Infer<typeof searchFiltersValidator> = await ctx.runQuery(internal.extraction.start.searchSource, { userId, workspaceId, searchId: set.searchId });
     return [{ bucketKey: `history:${set.searchId}`, source: "history", sourceRefId: set.searchId, title: filters.query, authors: [], searchFilters: { ...filters, limit: last } }];
   }
   // One source for the whole range: the job reads its papers a page at a time when it's set up.

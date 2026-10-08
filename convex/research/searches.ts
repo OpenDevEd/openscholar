@@ -473,10 +473,11 @@ export const deleteSearchForAssistant = assistantMutation(deleteAction);
 
 /** The request a search with this query and these settings would make, saved nowhere: for trying one (./papers.ts). */
 export const requestFor = internalQuery({
-  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), query: v.optional(v.string()), settings: v.object(searchSettings) },
+  // Optional only for a call from an action already running when this deployed (#650), which reads in its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), query: v.optional(v.string()), settings: v.object(searchSettings) },
   returns: savedSearchValidator,
   // A title looked up in quotes often ends in a question mark, which OpenAlex refuses there: it's read without.
-  handler: async (ctx, { query, settings, ...reader }) => requestOf(ctx, reader, newSearch("unsaved", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings), 0),
+  handler: async (ctx, { query, settings, userId, workspaceId }) => requestOf(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, newSearch("unsaved", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings), 0),
 });
 
 /** A paper as a page of results gives it. */

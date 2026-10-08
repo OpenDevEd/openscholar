@@ -18,7 +18,7 @@ import { paramsToBucketSearchFilters } from "../../lib/bucket/search-filters";
 import { isRatingFilterActive } from "../../lib/utils";
 import { expandShortcuts, shortcutNames } from "../../lib/query-shortcuts";
 import { findSearch, ratingsAmong, shortcutExpansions } from "../research/records";
-import type { InWorkspace } from "../workspaces/actor";
+import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { readSearchRun, searchRequestValidator, type SearchSnapshot } from "./openalex";
 
 /** The fields a screening paper keeps. */
@@ -57,9 +57,11 @@ export async function requestOf(ctx: QueryCtx, { userId, workspaceId }: InWorksp
 
 /** The request a saved search's results page makes, and its rating filter. */
 export const readSearch = internalQuery({
-  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), searchId: v.string() },
+  // Optional only for a call from an action already running when this deployed (#650), which reads in its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), searchId: v.string() },
   returns: savedSearchValidator,
-  handler: async (ctx, { searchId, ...reader }) => {
+  handler: async (ctx, { userId, workspaceId, searchId }) => {
+    const reader = { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) };
     const row = await findSearch(ctx, reader.workspaceId, searchId);
     if (!row) throw createError("NOT_FOUND", "Search not found");
     return await requestOf(ctx, reader, currentSearch(row.data), row.revision);

@@ -182,4 +182,22 @@ describe("useCursorPage", () => {
     rerender();
     expect(result.current).toMatchObject({ items: ["a", "b"], page: 1, canPrevious: false });
   });
+
+  it("starts over under a new query id when the server refuses the first page, whose subscription keeps where it ended", () => {
+    server.pages.set("|null|0", new Error("[CONVEX Q(collections:list)] InvalidCursor: Tried to run a query starting from a cursor, but it looks like this cursor is from a different query."));
+    const { result } = renderHook(() => useCursorPage(query, {}, 2));
+    expect(result.current).toMatchObject({ items: ["a", "b"], page: 1, canNext: true });
+  });
+
+  it("starts over when the server refuses the read past the page the list ended on", () => {
+    server.pages.set("|c1", page(["c", "d"], "c2"));
+    server.pages.set("|c2", page([], "", true));
+    const { result, rerender } = renderHook(() => useCursorPage(query, {}, 2));
+    act(() => result.current.next());
+    act(() => result.current.next());
+    expect(result.current).toMatchObject({ page: 2, canNext: false });
+    server.pages.set("|c2", new Error("[CONVEX Q(collections:list)] InvalidCursor: Tried to run a query starting from a cursor, but it looks like this cursor is from a different query."));
+    rerender();
+    expect(result.current).toMatchObject({ items: ["a", "b"], page: 1, canNext: true });
+  });
 });

@@ -71,10 +71,11 @@ export function useCursorPage<Query extends PageQuery>(query: Query, args: PageA
   const results = useQueries(requests) as Record<string, Result<Query> | Error | undefined>;
   const read = reads.map((_, i) => results[String(i)]);
   const error = read.find((result) => result instanceof Error);
-  // A deploy that reads the list through another index refuses the cursors read before it, so
-  // the list starts over from its first page, as Convex's usePaginatedQuery does.
-  if (error && !(invalidCursor(error) && (starts.length > 0 || reads.length > 1))) throw error;
-  if (error) setState({ ...fresh, id: id + 1 });
+  // A deploy that reads the list through another index refuses every cursor from before it,
+  // the end a first page's subscription keeps included, so the list starts over from its first
+  // page under a new query id, as Convex's usePaginatedQuery does. Any other error is thrown.
+  if ([...read, results.after].some((result) => result instanceof Error && invalidCursor(result))) setState({ ...fresh, id: id + 1 });
+  else if (error) throw error;
 
   const [shown, setShown] = useState<Shown<Query> | undefined>(undefined);
   let data: Shown<Query> | undefined;

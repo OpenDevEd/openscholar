@@ -10,7 +10,7 @@ import { heldPapers } from "../paperSets/held";
 import { countSearch, numbered, PAGE_SIZE, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest } from "../paperSets/search";
 import { checkScreening, papersIn, requireMinimum, screeningHold } from "./estimate";
-import type { InWorkspace } from "../workspaces/actor";
+import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { paperSetValidator, saveToValidator, screeningQuestionValidator, screeningScoringConfigValidator } from "./validators";
 
 type PaperSet = Infer<typeof paperSetValidator>;
@@ -140,10 +140,11 @@ export const read = internalAction({
 
 /** What starting a screening refuses before it reads a paper (./estimate.ts `checkScreening`). */
 export const check = internalQuery({
-  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), set: paperSetValidator, first: v.number(), last: v.number(), ...jobArgs, saveTo: v.optional(saveToValidator), prune: v.optional(v.boolean()) },
+  // Optional only for a call from an action already running when this deployed (#650), which reads in its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), set: paperSetValidator, first: v.number(), last: v.number(), ...jobArgs, saveTo: v.optional(saveToValidator), prune: v.optional(v.boolean()) },
   returns: v.null(),
   handler: async (ctx, { userId, workspaceId, ...request }) => {
-    await checkScreening(ctx, { userId, workspaceId }, request);
+    await checkScreening(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, request);
     return null;
   },
 });
