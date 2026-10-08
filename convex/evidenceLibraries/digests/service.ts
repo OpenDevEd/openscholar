@@ -19,7 +19,7 @@ const STALE_AFTER_MS = 900_000;
 // Every job, collected or not, is removed after a day.
 const EXPIRE_AFTER_MS = 86_400_000;
 
-const jobArgs = {libraryId: v.string(), editionId: v.string(), credentialDigest: v.string()};
+const jobArgs = {libraryId: v.string(), editionId: v.string(), credentialDigest: v.string(), requestDigest: v.string()};
 
 async function authorizeLibrary(ctx: MutationCtx, args: {libraryId: string; credentialDigest: string}) {
   const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
@@ -36,7 +36,10 @@ function findJob(ctx: MutationCtx, libraryId: Id<"evidenceLibraries">, editionId
     .unique();
 }
 
-/** Returns a finished digest until it expires, reports a failure once, or asks the caller to start one. */
+/**
+ * Returns a finished digest until it expires, reports a failure once, or asks the caller to start one.
+ * A job belongs to one request: when the library rewrites an edition, its new request starts again.
+ */
 export const poll = internalMutation({
   args: jobArgs,
   returns: v.union(
@@ -47,6 +50,11 @@ export const poll = internalMutation({
     const libraryId = await authorizeLibrary(ctx, args);
     const job = await findJob(ctx, libraryId, args.editionId);
     if (!job) return {status: "start" as const};
+    if (job.requestDigest !== args.requestDigest) {
+      if (job.requestId) await ctx.storage.delete(job.requestId);
+      await ctx.db.delete("evidenceLibraryDigestJobs", job._id);
+      return {status: "start" as const};
+    }
     // Kept after a hand-over, so a retry after a lost response gets the same digest.
     if (job.status === "succeeded" && job.result) return {status: "succeeded" as const, digest: job.result};
     if (job.status === "pending" && job.startedAt > Date.now() - STALE_AFTER_MS) return {status: "pending" as const};
@@ -66,7 +74,7 @@ export const start = internalMutation({
       return null;
     }
     await rateLimit(ctx, {name: "library-digest", key: libraryId, throws: true});
-    const jobId = await ctx.db.insert("evidenceLibraryDigestJobs", {libraryId, editionId: args.editionId, requestId: args.requestId, status: "pending", startedAt: Date.now()});
+    const jobId = await ctx.db.insert("evidenceLibraryDigestJobs", {libraryId, editionId: args.editionId, requestDigest: args.requestDigest, requestId: args.requestId, status: "pending", startedAt: Date.now()});
     await ctx.scheduler.runAfter(0, internal.evidenceLibraries.digests.service.run, {jobId});
     await ctx.scheduler.runAfter(EXPIRE_AFTER_MS, internal.evidenceLibraries.digests.service.expire, {jobId});
     return null;
@@ -135,7 +143,7 @@ export const generate = httpAction(async (ctx, request) => {
   try { parsed = JSON.parse(text); } catch { return jsonResponse(400, {error: "invalid_request"}); }
   const body = digestRequestSchema.safeParse(parsed);
   if (!body.success) return jsonResponse(400, {error: "invalid_request"});
-  const job = {libraryId: body.data.libraryId, editionId: body.data.editionId, credentialDigest: await digestOpaqueToken(credential)};
+  const job = {libraryId: body.data.libraryId, editionId: body.data.editionId, credentialDigest: await digestOpaqueToken(credential), requestDigest: await digestOpaqueToken(text)};
   try {
     const state = await ctx.runMutation(internal.evidenceLibraries.digests.service.poll, job);
     if (state.status === "succeeded") return jsonResponse(200, {digest: state.digest});

@@ -51,6 +51,12 @@ it("writes the digest in the background and returns it on every request until it
   expect(await retry.json()).toEqual({digest});
   expect(provider).toHaveBeenCalledTimes(1);
   expect(await saved()).toMatchObject({jobs: [{status: "succeeded"}], files: []});
+  // The library rewrote the edition: its changed request is written again, not answered with the old digest.
+  expect((await request({publicationCount: 41})).status).toBe(202);
+  await finishGeneration();
+  expect(provider).toHaveBeenCalledTimes(2);
+  expect((await request({publicationCount: 41})).status).toBe(200);
+  expect((await saved()).jobs).toHaveLength(1);
   vi.advanceTimersByTime(86_400_000);
   await t.finishInProgressScheduledFunctions();
   expect(await saved()).toEqual({jobs: [], files: []});
