@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Eye, Link2, Loader2, Lock, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, UserRound, X } from "@/components/icons";
+import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Eye, Link2, Loader2, Lock, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, X } from "@/components/icons";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -18,6 +18,7 @@ import { AnimatedNumber } from "@/components/screening/parts";
 import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
+import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ASSISTANT_JOB_CAPS } from "@/convex/lib/constants";
 import { viewOf } from "@/lib/assistant/actions";
@@ -106,7 +107,7 @@ const CHATS_PER_PAGE = 20;
 const TINTS = ["#2dd4bf", "#a78bfa", "#fb923c", "#60a5fa", "#f472b6", "#34d399", "#facc15", "#818cf8"];
 const tintOf = (id: string) => TINTS[[...id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % TINTS.length]!;
 
-/** A member's photo, or their initial when they have none; someone in the chat right now gets a ring that ripples outward. */
+/** A member's photo; someone in the chat right now gets a ring that ripples outward. */
 function Avatar({ member }: { member: Member }) {
   const reduceMotion = useReducedMotion();
   const tint = tintOf(member.userId);
@@ -121,25 +122,9 @@ function Avatar({ member }: { member: Member }) {
           transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
         />
       ) : null}
-      {member.imageUrl ? (
-        <img
-          src={member.imageUrl}
-          alt=""
-          className="relative size-6 rounded-full bg-muted object-cover ring-2 ring-card"
-          style={{ boxShadow: member.here ? `0 0 0 2px var(--card), 0 0 0 3.5px ${tint}` : undefined }}
-        />
-      ) : (
-        <span
-          className="relative flex size-6 items-center justify-center rounded-full text-2xs font-semibold ring-2 ring-card"
-          style={{
-            backgroundColor: `color-mix(in oklab, ${tint} 24%, var(--card))`,
-            color: tint,
-            boxShadow: member.here ? `0 0 0 2px var(--card), 0 0 0 3.5px ${tint}` : undefined,
-          }}
-        >
-          {member.name ? member.name.slice(0, 1).toUpperCase() : <UserRound className="size-3" />}
-        </span>
-      )}
+      <span className="relative flex rounded-full ring-2 ring-card" style={{ boxShadow: member.here ? `0 0 0 2px var(--card), 0 0 0 3.5px ${tint}` : undefined }}>
+        <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-6" />
+      </span>
     </span>
   );
 }
@@ -374,16 +359,10 @@ const CANDIDATES_PER_PAGE = 8;
 const MEMBERS_COUNTED = 100;
 const keyOf = (principal: Principal) => (principal.kind === "user" ? principal.userId : principal.organizationId);
 
-/** The round tile beside a person or an organization. */
-/** A person's photo or an organization's logo; an initial or an icon only when there's none. */
+/** A person's photo or an organization's logo, with an icon while it loads or when there's none. */
 function Tile({ principal, name, imageUrl }: { principal: Principal; name: string; imageUrl?: string }) {
-  const tint = principal.kind === "organization" ? "var(--info)" : tintOf(principal.userId);
-  if (imageUrl) return <img src={imageUrl} alt="" className={cn("size-9 shrink-0 bg-muted", principal.kind === "organization" ? "rounded-lg object-contain" : "rounded-full object-cover")} />;
-  return (
-    <span className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold" style={{ backgroundColor: `color-mix(in oklab, ${tint} 20%, transparent)`, color: tint }}>
-      {principal.kind === "organization" ? <Building2 className="size-4" /> : name ? name.slice(0, 1).toUpperCase() : <UserRound className="size-4" />}
-    </span>
-  );
+  const organization = principal.kind === "organization";
+  return <IdentityAvatar name={name} imageUrl={imageUrl} kind={organization ? "organization" : "person"} className={cn("size-9", organization && "rounded-lg")} />;
 }
 
 export function ShareSheet({ threadId, title, role, onBack }: { threadId: ThreadId; title: string; role: Role; onBack: () => void }) {
