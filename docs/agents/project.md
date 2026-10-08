@@ -143,6 +143,9 @@ settings, so every change to its shape ships a migration.
 - For `app/` or `components/` work, run `npm run dev:web`, open the
   changed page, and check the browser plus terminal.
 - GitHub CI runs the pre-merge suite. Tests tagged `size` run nightly.
+- Convex and plain test files share modules within a Vitest worker, so a test
+  can't count on a fresh module. A file that calls `vi.mock`, itself or through
+  a local helper, runs isolated on its own; `vitest.config.ts` sorts them.
 
 ## Convex limits
 

@@ -11,7 +11,6 @@
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { afterEach } from "vitest";
 import type { SchemaDefinition } from "convex/server";
 import { register as registerAggregate } from "@convex-dev/aggregate/test";
 import { register as registerBatchWorker } from "@convex-dev/batch-worker/test";
@@ -22,30 +21,6 @@ import { triggers } from "../convex/lib/triggers";
 import { flushCountQueue, type CountQueue } from "../convex/lib/countQueue";
 
 export * from "convex-test/dist/index.js";
-
-// A function scheduled for later on real timers, such as a batch worker's next run, is left
-// for later by `finishAllScheduledFunctions`. Its timer then fires during the tests after it,
-// running against a finished test's database and slowing them by seconds. Each test's
-// leftover timers are cleared when it ends.
-const armed = new Set<ReturnType<typeof setTimeout>>();
-const realSetTimeout = globalThis.setTimeout;
-const realClearTimeout = globalThis.clearTimeout;
-globalThis.setTimeout = Object.assign((callback: (...args: unknown[]) => void, ms?: number, ...args: unknown[]) => {
-  const timer = realSetTimeout(() => {
-    armed.delete(timer);
-    callback(...args);
-  }, ms);
-  armed.add(timer);
-  return timer;
-}, realSetTimeout) as typeof setTimeout;
-globalThis.clearTimeout = ((timer?: ReturnType<typeof setTimeout>) => {
-  if (timer) armed.delete(timer);
-  realClearTimeout(timer);
-}) as typeof clearTimeout;
-afterEach(() => {
-  for (const timer of armed) realClearTimeout(timer);
-  armed.clear();
-});
 
 type Schema = SchemaDefinition<any, boolean>;
 type Modules = Record<string, () => Promise<any>>;
