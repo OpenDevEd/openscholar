@@ -23,6 +23,7 @@ Shape
 - Cite a publication where a paragraph first draws on it. Do not repeat the same citation after each sentence about that publication.
 - The body ends with its last theme. Do not add a closing section or paragraph of any kind: no limits of the records, no note on missing abstracts or thin metadata, no gaps in the evidence, no suggestions for future research, no conclusion.
 - Never comment on the supplied data itself. Leave out a publication whose record says too little to write about.
+- Do not close a paragraph or a section with advice of your own. No sentence saying what planners, teachers, policymakers or researchers need to do or should do. Report a recommendation only when a record makes it, and say whose it is.
 
 Writing rules
 ${UNSLOP_RULES}`;
@@ -45,7 +46,10 @@ export async function generateLibraryDigest(request: DigestRequest, signal?: Abo
     prompt: JSON.stringify(request),
   });
   if (result.finishReason !== "stop") throw new Error(`Digest generation did not finish: ${result.finishReason} after ${result.usage.outputTokens} output tokens`);
-  const output = digestResultSchema.parse(result.output);
+  const written = digestResultSchema.parse(result.output);
+  // The writing rules ask for straight quotes; the model still sends some curly ones.
+  const straight = (text: string) => text.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
+  const output = {title: straight(written.title), summary: straight(written.summary), markdown: straight(written.markdown)};
   const {markdown, repairs} = await repairCitations(output.markdown, request.publications, signal);
   if (repairs.length) console.info("Library digest citations repaired", {libraryId: request.libraryId, editionId: request.editionId, repairs});
   if (!/\]\(\/lib\/[A-Z0-9]{8}\)/.test(markdown)) throw new Error("Digest output cites no supplied publication");
