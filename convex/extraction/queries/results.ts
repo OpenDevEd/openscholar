@@ -293,7 +293,7 @@ export const listJobResultsAction = defineUserQuery({
     FILTERS_HELP,
   args: { ...resultsViewArgs, sortBy: resultsSortByValidator, paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(paginatedPaperWithResultsValidator),
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const job = await ownJob(ctx, userId, args.jobId);
     if (!job) return { page: [], isDone: true, continueCursor: "" };
     await requireFeature(ctx, "extraction.enabled", userId);
@@ -375,7 +375,7 @@ export const countJobResultsAction = defineUserQuery({
   description: `Counts an extraction job's papers, and how many of them a set of filters keeps. A count that stopped short of them all comes with \`atLeast\`, and with \`searchCapped\` when the search matched more papers than it returns. ${FILTERS_HELP}`,
   args: { ...resultsViewArgs, includeRevision: v.optional(v.boolean()) },
   returns: v.object({ all: v.number(), matching: v.number(), atLeast: v.optional(v.literal(true)), searchCapped: v.optional(v.literal(true)), revision: v.union(v.number(), v.null()) }),
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const job = await ownJob(ctx, userId, args.jobId);
     if (!job) return { all: 0, matching: 0, revision: -1 };
     await requireFeature(ctx, "extraction.enabled", userId);
@@ -406,7 +406,7 @@ export const summarizeJobResultsAction = defineUserQuery({
     "The filters listJobResults takes narrow it, by status, confidence and other questions' answers (a paper's answer to that question, as listJobResults shows it); its text search isn't one. Use it to compare, tally or describe a job's answers, never pages of its results. `questionKey` is the question's `key` in the job.",
   args: { jobId: v.id("extractionJobs"), questionKey: v.string(), filters: v.optional(resultsPageFiltersValidator) },
   returns: resultsSummaryValidator,
-  run: async (ctx, userId, { jobId, questionKey, filters }) => {
+  run: async (ctx, { userId }, { jobId, questionKey, filters }) => {
     const job = await ownJob(ctx, userId, jobId);
     if (!job) throw createError("NOT_FOUND", "There's no extraction job of yours with that ID.");
     await requireFeature(ctx, "extraction.enabled", userId);

@@ -780,7 +780,7 @@ export const messagesAction = defineUserQuery({
     "Reads an assistant chat's messages, newest first, a page at a time: what each person wrote, what the assistant replied, and each action it ran on the way. An exchange's actions come with the message they answer. With `stepsAhead`, the newest page also brings the actions of a reply whose message is on an earlier page, and they come again with that message.",
   args: { threadId: v.id("assistantThreads"), stepsAhead: v.optional(v.boolean()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(v.union(messageValidator, stepValidator, eventValidator)),
-  run: async (ctx, userId, { threadId, stepsAhead, paginationOpts }) => {
+  run: async (ctx, { userId }, { threadId, stepsAhead, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
     // The caps bound a page whatever the caller asks for: with an `endCursor`, `numItems` alone doesn't.
@@ -953,7 +953,7 @@ export const stepsAction = defineUserQuery({
     "Reads the actions the assistant ran in answer to one message of a chat, newest first, a page at a time. A chat's messages come with the newest of each exchange's steps; this reads the ones before them, when a reply ran more. A reply that was summarized partway carries on in the exchanges after its own: `through` names the last of them to read.",
   args: { threadId: v.id("assistantThreads"), order: v.number(), through: v.optional(v.number()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(stepValidator),
-  run: async (ctx, userId, { threadId, order, through, paginationOpts }) => {
+  run: async (ctx, { userId }, { threadId, order, through, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
     const read = await ctx.db

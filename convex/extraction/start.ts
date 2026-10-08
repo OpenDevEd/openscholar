@@ -218,7 +218,7 @@ export const extractAction = defineUserAction({
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
-  estimate: extractionHold,
+  estimate: (ctx, { userId }, args) => extractionHold(ctx, userId, args),
   // The papers and the questions put to them.
   shown: ({ name, set, first, last, questions, usePdfs }) => ({
     name,
@@ -227,7 +227,7 @@ export const extractAction = defineUserAction({
     ...(usePdfs ? { usePdfs } : {}),
   }),
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  run: (ctx, userId, args, _author, call): Promise<{ jobId: Id<"extractionJobs"> }> => start(ctx, userId, args, call),
+  run: (ctx, { userId }, args, call): Promise<{ jobId: Id<"extractionJobs"> }> => start(ctx, userId, args, call),
 });
 export const extract = userAction(extractAction);
 export const extractForAssistant = assistantAction(extractAction);

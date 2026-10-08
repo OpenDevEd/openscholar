@@ -181,7 +181,7 @@ export const startJobAction = defineUserMutation({
   undoable: false,
   args: startArgs,
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  run: (ctx, userId, args) => startJobFor(ctx, userId, args),
+  run: (ctx, { userId }, args) => startJobFor(ctx, userId, args),
 });
 
 export const startJob = userMutation(startJobAction);
@@ -195,7 +195,7 @@ export const duplicateJobAction = defineUserMutation({
   undoable: false,
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  run: async (ctx, userId, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
+  run: async (ctx, { userId }, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
     await requireFeature(ctx, "extraction.enabled", userId);
 
     const oldJob = await ctx.db.get("extractionJobs", args.jobId);

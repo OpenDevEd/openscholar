@@ -164,7 +164,7 @@ export const createAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: false,
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     await requireFeature(ctx, FLAG, userId);
     const title = titled(args.title) || NEW_CHAT_TITLE;
     if (args.modelId) await pickable(ctx, args.modelId, args.effort);
@@ -196,7 +196,7 @@ export const listAction = defineUserQuery({
     "the first few people in it and who of them has it open now.",
   args: { scope: v.union(v.literal("all"), v.literal("mine"), v.literal("shared")), text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(listedValidator),
-  run: async (ctx, userId, { scope, text, paginationOpts }) => {
+  run: async (ctx, { userId }, { scope, text, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const user = await ctx.db.get("users", userId);
     if (!user) return { page: [], isDone: true, continueCursor: "" };
@@ -299,7 +299,7 @@ export const getAction = defineUserQuery({
   description: "Reads one assistant chat the person can open: its title, when it was last written in, the model and reasoning effort its replies run on, and what they may do in it.",
   args: { threadId: v.id("assistantThreads") },
   returns: v.object({ ...threadValidator.fields, model: v.union(modelSummaryValidator, v.null()), effort: v.optional(effortValidator) }),
-  run: async (ctx, userId, { threadId }) => {
+  run: async (ctx, { userId }, { threadId }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread, role } = await requireThread(ctx, userId, threadId);
     const { modelId, effort } = await chatModel(ctx, thread, userId);
@@ -329,7 +329,7 @@ export const renameAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: false,
-  run: async (ctx, userId, { threadId, title }) => {
+  run: async (ctx, { userId }, { threadId, title }) => {
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId, "owner");
     const clean = titled(title);
@@ -351,7 +351,7 @@ export const setModelAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: false,
-  run: async (ctx, userId, { threadId, modelId, effort }) => {
+  run: async (ctx, { userId }, { threadId, modelId, effort }) => {
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId, "write");
     await pickable(ctx, modelId, effort);
@@ -371,7 +371,7 @@ export const removeAction = defineUserMutation({
   // Everyone the chat was shared with loses it.
   outsideEffect: true,
   undoable: false,
-  run: async (ctx, userId, { threadId }) => {
+  run: async (ctx, { userId }, { threadId }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId, "owner");
     await deleteThread(ctx, thread);

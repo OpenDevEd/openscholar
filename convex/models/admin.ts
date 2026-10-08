@@ -64,7 +64,7 @@ export const listModelsAction = defineUserQuery({
     "Given `provider`, only that provider's models, or with \"other\" those of the providers without a filter of their own; given `search`, only models whose name or ID contains it; `show` keeps all, the offered ones, or the hidden ones.",
   args: { paginationOpts: paginationOptsValidator, ...viewArgs },
   returns: paginationResultValidator(adminModelValidator),
-  run: async (ctx, userId, { paginationOpts, ...view }) => {
+  run: async (ctx, { userId }, { paginationOpts, ...view }) => {
     await requireAdminUser(ctx, userId);
     // "Other" is every provider but the largest, which only the whole catalog names.
     const top = view.provider === "other" ? names(topProviders(await activeModels(ctx).take(MAX_CATALOG_MODELS))) : new Set<string>();
@@ -97,7 +97,7 @@ export const summaryAction = defineUserQuery({
   description: "Says how many models a view of the admin model list holds (see listModels for the view), and names the providers with the most models, each with one of its model IDs.",
   args: viewArgs,
   returns: v.object({ total: v.number(), providers: topProvidersValidator }),
-  run: summaryOf,
+  run: (ctx, { userId }, view) => summaryOf(ctx, userId, view),
 });
 export const summary = userQuery(summaryAction);
 export const summaryForAssistant = assistantQuery(summaryAction);

@@ -11,6 +11,7 @@ import { insertMany, seedAccount, text } from "../lib/maxSize.test-support";
 import { insertJob } from "../screening/createJob.test-support";
 import { measure, now, record, save, transactionMetrics } from "./measure.test-support";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
+import { ownActor } from "../workspaces/actor.test-support";
 
 const SIZES = (process.env.BENCH_SIZES ?? "1000,5000,10000").split(",").map(Number);
 const OUTCOMES = ["included", "excluded", "excluded", "unclear"] as const;
@@ -30,6 +31,8 @@ describe("screening reads by job size", () => {
       const t = convexTest(schema);
       setupScreeningWorkpool(t);
       const { userId } = await seedAccount(t);
+      // Resolved before any measured transaction, so its reads aren't counted as the core's.
+      const actor = await t.run((ctx) => ownActor(ctx, userId));
       // Credits enough for any size, so only the job's own limits can refuse it.
       await t.run((ctx) => ctx.db.insert("billingAccounts", { userId, plan: "pro", pastDue: false, balance: 1e9, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: 1 }));
       const at = (scenario: string) => ({ area: "screening", scenario, size });
@@ -63,11 +66,11 @@ describe("screening reads by job size", () => {
         status: "completed", answers: { "Is this a randomized trial?": i % 4 === 0 }, outcome: OUTCOMES[i % 4], qualified: i % 4 === 0, score: i % 4 === 0 ? 1 : 0, stars: 1, createdAt: 1,
       })).map((row) => ({ ...row, searchText: searchTextOf(row) })));
       const rows = (read: { page: unknown[] } | undefined) => `${read?.page.length ?? 0} rows`;
-      await measure(t, at("page of included papers"), (ctx) => listAction.run(ctx, userId, { jobId, outcome: "included", paginationOpts: { cursor: null, numItems: 50 } }), rows);
+      await measure(t, at("page of included papers"), (ctx) => listAction.run(ctx, actor, { jobId, outcome: "included", paginationOpts: { cursor: null, numItems: 50 } }), rows);
       // A word in one paper title in ten.
       // A word no paper has: the right answer is an empty last page.
-      await measure(t, at("search of its papers, no match"), (ctx) => listAction.run(ctx, userId, { jobId, outcome: "excluded", text: "zzz-not-there", paginationOpts: { cursor: null, numItems: 50 } }), (r) => `${rows(r)}${r?.isDone ? "" : ", not done"}`, (r) => r.page.length === 0 && r.isDone);
-      await measure(t, at("job card"), (ctx) => getScreeningJobAction.run(ctx, userId, { jobId }), (r: any) => (r ? `${r.totalPapers} papers` : "none"), (r: any) => r?.totalPapers === size);
+      await measure(t, at("search of its papers, no match"), (ctx) => listAction.run(ctx, actor, { jobId, outcome: "excluded", text: "zzz-not-there", paginationOpts: { cursor: null, numItems: 50 } }), (r) => `${rows(r)}${r?.isDone ? "" : ", not done"}`, (r) => r.page.length === 0 && r.isDone);
+      await measure(t, at("job card"), (ctx) => getScreeningJobAction.run(ctx, actor, { jobId }), (r: any) => (r ? `${r.totalPapers} papers` : "none"), (r: any) => r?.totalPapers === size);
 
       // An export reads every page of results in turn.
       let cursor: string | null = null;
@@ -80,7 +83,7 @@ describe("screening reads by job size", () => {
       do {
         try {
           const { read, m } = await t.run(async (ctx) => {
-            const read = await listScreeningResultsAction.run(ctx, userId, { jobId, paginationOpts: { cursor, numItems: 200 } });
+            const read = await listScreeningResultsAction.run(ctx, actor, { jobId, paginationOpts: { cursor, numItems: 200 } });
             return { read, m: JSON.parse(await (globalThis as any).Convex.asyncSyscall("1.0/getTransactionMetrics", "{}")) };
           });
           calls += 1;

@@ -62,7 +62,7 @@ export const grantAction = defineUserMutation({
   // Someone else gains access to the conversation.
   outsideEffect: true,
   undoable: false,
-  run: async (ctx, userId, { threadId, principal, role }) => {
+  run: async (ctx, { userId }, { threadId, principal, role }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId, "owner");
     const owner = await ctx.db.get("users", userId);
@@ -94,7 +94,7 @@ export const revokeAction = defineUserMutation({
   // Someone else loses access to the conversation.
   outsideEffect: true,
   undoable: false,
-  run: async (ctx, userId, { threadId, principal }) => {
+  run: async (ctx, { userId }, { threadId, principal }) => {
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId, "owner");
     const row = await accessRow(ctx, threadId, principalKey(principal));
@@ -123,7 +123,7 @@ export const listAccessAction = defineUserQuery({
       imageUrl: v.optional(v.string()),
     }),
   ),
-  run: async (ctx, userId, { threadId, paginationOpts }) => {
+  run: async (ctx, { userId }, { threadId, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const { role } = await requireThread(ctx, userId, threadId);
     const read = await ctx.db
@@ -162,7 +162,7 @@ export const candidatesAction = defineUserQuery({
     "A chat can only be shared inside the person's organizations: with no `text`, an empty first page means they belong to none, so there is nobody to share with until they join or create one.",
   args: { text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(assistantCandidateValidator),
-  run: async (ctx, userId, { text, paginationOpts }) => {
+  run: async (ctx, { userId }, { text, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const me = await ctx.db.get("users", userId);
     if (!me) return { page: [], isDone: true, continueCursor: "" };

@@ -45,7 +45,7 @@ export const listedSearchesAction = defineUserQuery({
     "Lists the person's saved searches without their screening answers, a page at a time: newest, oldest, most or fewest results first. Given `text`, those whose query or questions best match its words, best first; given `exclude`, all but the search with that ID. A page can come back short without being the last.",
   args: { ...pageArgs, sort: listedSortValidator, text: v.optional(v.string()), exclude: v.optional(v.string()) },
   returns: paginationResultValidator(listedSearchValidator),
-  run: async (ctx, userId, { paginationOpts, sort, text, exclude }) => {
+  run: async (ctx, { userId }, { paginationOpts, sort, text, exclude }) => {
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LISTED_PAGE_MAX) };
     const index = sort === "most" || sort === "least" ? "by_user_and_count" : "by_user_and_createdAt";
     const order = sort === "oldest" || sort === "least" ? "asc" : "desc";
@@ -71,7 +71,7 @@ export const countSearchesAction = defineUserQuery({
   args: {},
   returns: v.number(),
   // Someone who has saved nothing has no count; one from before counts were kept gets theirs from migrations/pagedRecords.
-  run: async (ctx, userId) => (await countRow(ctx, "searches", userId))?.count ?? 0,
+  run: async (ctx, { userId }) => (await countRow(ctx, "searches", userId))?.count ?? 0,
 });
 export const countSearches = accountQuery(countSearchesAction);
 export const countSearchesForAssistant = assistantQuery(countSearchesAction);
@@ -95,7 +95,7 @@ export const listedShortcutsAction = defineUserQuery({
     "Lists the person's query shortcuts (the Bookmarks page), each a short name that expands to a longer query, a page at a time: newest or oldest first, or by name. Given `text`, those whose name or expansion best match its words, best first.",
   args: { ...pageArgs, sort: shortcutSortValidator, text: v.optional(v.string()) },
   returns: paginationResultValidator(shortcutValidator),
-  run: async (ctx, userId, { paginationOpts, sort, text }) => {
+  run: async (ctx, { userId }, { paginationOpts, sort, text }) => {
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHORTCUT_PAGE_MAX), maximumBytesRead: LISTED_BYTES };
     const index = sort === "alpha" || sort === "alpha-desc" ? "by_user_and_sortName" : "by_user_and_createdAt";
     const order = sort === "oldest" || sort === "alpha" ? "asc" : "desc";
@@ -114,7 +114,7 @@ export const countShortcutsAction = defineUserQuery({
   description: "Says how many query shortcuts the person has.",
   args: {},
   returns: v.number(),
-  run: async (ctx, userId) => (await countRow(ctx, "queryShortcuts", userId))?.count ?? 0,
+  run: async (ctx, { userId }) => (await countRow(ctx, "queryShortcuts", userId))?.count ?? 0,
 });
 export const countShortcuts = accountQuery(countShortcutsAction);
 export const countShortcutsForAssistant = assistantQuery(countShortcutsAction);
@@ -137,7 +137,7 @@ export const shortcutsOfAction = defineUserQuery({
   description: `Reads the person's shortcuts with these names, at most ${SHORTCUT_NAMES_MAX} of them, as one page; a name they haven't saved is left out.`,
   args: { names: v.array(v.string()) },
   returns: paginationResultValidator(shortcutValidator),
-  run: async (ctx, userId, { names }) => {
+  run: async (ctx, { userId }, { names }) => {
     if (names.length > SHORTCUT_NAMES_MAX) throw new Error(`Shortcuts are read ${SHORTCUT_NAMES_MAX} names at a time.`);
     return { page: await shortcutsAmong(ctx, userId, names), isDone: true, continueCursor: "" };
   },
@@ -150,7 +150,7 @@ export const ratingsAction = defineUserQuery({
   description: "Lists the papers the person has rated, each with its rating from 0 to 5.",
   args: pageArgs,
   returns: paginationResultValidator(ratingValidator),
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const page = await ctx.db.query("paperRatings").withIndex("by_user", q => q.eq("userId", userId)).paginate(args.paginationOpts);
     return { ...page, page: page.page.map(row => row.data) };
   },
@@ -171,7 +171,7 @@ export const ratingsOfAction = defineUserQuery({
   description: `Reads the person's ratings of the papers with these IDs, at most ${RATED_PAPERS_MAX} of them, as one page; a paper they haven't rated is left out.`,
   args: { paperIds: v.array(v.string()) },
   returns: paginationResultValidator(ratingValidator),
-  run: async (ctx, userId, { paperIds }) => {
+  run: async (ctx, { userId }, { paperIds }) => {
     if (paperIds.length > RATED_PAPERS_MAX) throw new Error(`Ratings are read ${RATED_PAPERS_MAX} papers at a time.`);
     return { page: await ratingsAmong(ctx, userId, paperIds), isDone: true, continueCursor: "" };
   },
@@ -187,7 +187,7 @@ export const getSearchAction = defineUserQuery({
   description: "Reads one saved search by ID: its query, filters, sort, page and screening questions. Its screening answers are read by paper with answersOf.",
   args: { id: v.string() },
   returns: v.union(listedSearchValidator, v.null()),
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const search = await findSearch(ctx, userId, args.id);
     return search ? listed(currentSearch(search.data)) : null;
   },
@@ -200,7 +200,7 @@ export const answersOfAction = defineUserQuery({
   description: `Reads a saved search's screening answers for the papers with these IDs, at most ${ANSWERED_PAPERS_MAX} of them, as one page; a paper with no answers is left out. Given \`version\`, the answers as they were at that screening version, which a revision of the search names.`,
   args: { id: v.string(), paperIds: v.array(v.string()), version: v.optional(v.number()) },
   returns: paginationResultValidator(paperResponsesValidator),
-  run: async (ctx, userId, { id, paperIds, version }) => {
+  run: async (ctx, { userId }, { id, paperIds, version }) => {
     if (paperIds.length > ANSWERED_PAPERS_MAX) throw new Error(`Answers are read ${ANSWERED_PAPERS_MAX} papers at a time.`);
     const search = await findSearch(ctx, userId, id);
     const screening = search && (await screeningFor(ctx, search._id));
@@ -215,7 +215,7 @@ export const revisionsAction = defineUserQuery({
   description: "Lists a saved search's earlier versions, newest first, each marked as made by the person or by the assistant. Each names the screening version its answers stood at, which answersOf reads by paper.",
   args: { ...pageArgs, id: v.string() },
   returns: paginationResultValidator(v.object({ revision: v.number(), author: v.union(v.literal("user"), v.literal("assistant")), data: listedSearchValidator, answersVersion: v.optional(v.number()), deleted: v.boolean(), createdAt: v.number() })),
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const search = await findSearch(ctx, userId, args.id);
     if (!search) return { page: [], isDone: true, continueCursor: "" };
     const page = await ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", search._id)).order("desc")
@@ -238,7 +238,7 @@ export const searchHistoryAction = defineUserQuery({
   description: "Lists a saved search's earlier queries, or its research questions, newest first, a page at a time.",
   args: { ...pageArgs, id: v.string(), kind: historyKind },
   returns: paginationResultValidator(historyEntryValidator),
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const search = await findSearch(ctx, userId, args.id);
     if (!search) return { page: [], isDone: true, continueCursor: "" };
     // A search not moved yet still holds its history: all of it, as one page.
@@ -262,7 +262,7 @@ export const searchHistoryEntryAction = defineUserQuery({
   // Either the entry (null when there's none that far back), or where to go on from after
   // skipping as many entries as one read allows.
   returns: v.union(v.object({ entry: v.union(historyEntryValidator, v.null()) }), v.object({ skipped: v.number(), cursor: v.string() })),
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const search = await findSearch(ctx, userId, args.id);
     if (!search || !Number.isInteger(args.stepsBack) || args.stepsBack < 0) return { entry: null };
     const legacy = args.kind === "query" ? search.data.queryHistory : search.data.questionHistory;
@@ -573,7 +573,7 @@ export const changeAction = defineUserMutation({
   undoable: true,
   retryKey: "requestId",
   // The assistant asks the person before a change nothing puts back, by the rules that decide whether a change returns an undo (applyCommand).
-  asksFirst: async (ctx, userId, { command }) => {
+  asksFirst: async (ctx, { userId }, { command }) => {
     switch (command.kind) {
       case "createSearch":
       case "rating":
@@ -614,7 +614,7 @@ export const changeAction = defineUserMutation({
   },
   // The receipt makes a retried request apply once, from the page or from the assistant. It
   // keeps the undo, so a caller that lost the first answer gets the same one from a retry.
-  run: async (ctx, userId, args, author: Author) => {
+  run: async (ctx, { userId, author }, args) => {
     const key = `change:${args.requestId}`;
     const receipt = await received(ctx, userId, key);
     const undo = receipt ? receipt.undo : await applyCommand(ctx, userId, args.command, author);

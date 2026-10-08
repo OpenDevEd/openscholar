@@ -294,7 +294,7 @@ export const createAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  run: async (ctx, userId, { query, ...settings }, author) => {
+  run: async (ctx, { userId, author }, { query, ...settings }) => {
     const search = newSearch(crypto.randomUUID(), query, settings);
     const undo = await applyCommand(ctx, userId, { kind: "createSearch", search }, author);
     await ctx.scheduler.runAfter(0, internal.research.searches.recount, { userId, id: search.id, author });
@@ -380,11 +380,11 @@ export const updateAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   // A change is undone by restoring the revision before it. A search from before revisions were kept has none to go back to.
-  asksFirst: async (ctx, userId, { id }) => {
+  asksFirst: async (ctx, { userId }, { id }) => {
     const found = await findSearch(ctx, userId, id);
     return found !== null && (await revisionRow(ctx, found._id, found.revision)) === null;
   },
-  run: async (ctx, userId, { id, changes }, author) => {
+  run: async (ctx, { userId, author }, { id, changes }) => {
     const { query, settings } = settingsOf(changes);
     const found = await findSearch(ctx, userId, id);
     if (!found) throw createError("NOT_FOUND", "Search not found.");
@@ -425,7 +425,7 @@ export const restoreAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  run: async (ctx, userId, { id, revision, expect }, author) => {
+  run: async (ctx, { userId, author }, { id, revision, expect }) => {
     const undo = await applyCommand(ctx, userId, { kind: "editSearch", id, edit: { kind: "restore", revision, ...(expect === undefined ? {} : { expect }) } }, author);
     return undo?.kind === "editSearch" ? { undo: restoring(undo) } : {};
   },
@@ -444,7 +444,7 @@ export const removeAction = defineUserMutation({
   // It only takes back a creation, and only while nothing would be lost with it: the search
   // still holds what its first revision does, and has no answers.
   undoable: true,
-  run: async (ctx, userId, { id, expect }, author) => {
+  run: async (ctx, { userId, author }, { id, expect }) => {
     await applyCommand(ctx, userId, { kind: "deleteSearch", id, expect }, author);
     return null;
   },
@@ -461,7 +461,7 @@ export const deleteAction = defineUserMutation({
   outsideEffect: false,
   // The app has no way to bring a deleted search back, so the person is asked.
   undoable: false,
-  run: async (ctx, userId, { id }, author) => {
+  run: async (ctx, { userId, author }, { id }) => {
     if (!(await findSearch(ctx, userId, id))) throw createError("NOT_FOUND", "Search not found.");
     await applyCommand(ctx, userId, { kind: "deleteSearch", id }, author);
     return null;
@@ -565,7 +565,7 @@ export const resultsAction = defineUserAction({
   outsideEffect: false,
   // It only keeps the search's result count, as reading the results page does: nothing to undo.
   undoable: true,
-  run: async (ctx, userId, { id, page }, author): Promise<Infer<typeof resultsValidator>> => {
+  run: async (ctx, { userId, author }, { id, page }): Promise<Infer<typeof resultsValidator>> => {
     const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: id });
     const read = await readPage(ctx, userId, found, page ?? 1, "This search's query isn't valid. Fix it on the results page first.");
     await ctx.runMutation(internal.research.searches.counted, { userId, id, revision: found.revision, count: read.total, author });

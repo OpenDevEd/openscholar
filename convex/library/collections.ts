@@ -82,7 +82,7 @@ export const createCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const id = await newCollection(ctx, userId, args.name);
     return { id, undo: { path: DELETE, args: { collectionId: id, expect: { name: args.name.trim() } } } };
   },
@@ -100,8 +100,8 @@ export const renameCollectionAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   // A library that follows the collection shows its name.
-  asksFirst: (ctx, _userId, { collectionId }) => followed(ctx, collectionId),
-  run: async (ctx, userId, args) => {
+  asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
+  run: async (ctx, { userId }, args) => {
     const collection = await ownCollection(ctx, userId, args.collectionId);
     if (args.expect !== undefined && collection.name !== args.expect) throw createError("CONFLICT", "This collection has been renamed since then, so it was left as it is.");
     const trimmed = args.name.trim();
@@ -166,7 +166,7 @@ export const deleteCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: false,
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const collection = await ownCollection(ctx, userId, args.collectionId);
     if (args.expect && (collection.name !== args.expect.name || collection.itemCount !== 0)) {
       throw createError("CONFLICT", "This collection has been renamed or holds papers now, so it was left as it is.");
@@ -201,8 +201,8 @@ export const addToCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  asksFirst: (ctx, _userId, { collectionId }) => followed(ctx, collectionId),
-  run: async (ctx, userId, args) => {
+  asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
+  run: async (ctx, { userId }, args) => {
     const collection = await ownCollection(ctx, userId, args.collectionId);
     const item = await ctx.db.get("libraryItems", args.libraryItemId);
     if (!item || item.userId !== userId) {
@@ -223,8 +223,8 @@ export const removeFromCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  asksFirst: (ctx, _userId, { collectionId }) => followed(ctx, collectionId),
-  run: async (ctx, userId, args) => {
+  asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
+  run: async (ctx, { userId }, args) => {
     await ownCollection(ctx, userId, args.collectionId);
     const existing = await ctx.db
       .query("libraryItemCollections")
@@ -274,7 +274,7 @@ export const listCollectionsAction = defineUserQuery({
     openalexId: v.optional(v.string()),
   },
   returns: paginationResultValidator(collectionRow),
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const user = { _id: userId };
     const paginationOpts = { ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, COLLECTIONS_PAGE_MAX) };
     const search = searchTerms(args.search);
@@ -314,7 +314,7 @@ export const countCollectionsAction = defineUserQuery({
   args: {},
   returns: v.number(),
   // Someone with no count row has never made a collection.
-  run: async (ctx, userId) => (await collectionCountRow(ctx, userId))?.count ?? 0,
+  run: async (ctx, { userId }) => (await collectionCountRow(ctx, userId))?.count ?? 0,
 });
 export const countCollections = userQuery(countCollectionsAction);
 export const countCollectionsForAssistant = assistantQuery(countCollectionsAction);
@@ -324,7 +324,7 @@ export const getCollectionAction = defineUserQuery({
   description: "One of the person's collections by its ID: its name and how many papers it holds. Null when it's gone or someone else's.",
   args: { collectionId: v.id("collections") },
   returns: v.union(v.object({ _id: v.id("collections"), name: v.string(), itemCount: v.number() }), v.null()),
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const collection = await ctx.db.get("collections", args.collectionId);
     if (!collection || collection.userId !== userId) return null;
     return { _id: collection._id, name: collection.name, itemCount: collection.itemCount };

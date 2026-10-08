@@ -6,7 +6,8 @@ import { stream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
-import { ASKS_FIRST, assistantMutation, defineUserMutation, reversal, reversedBy, userMutation, type Author } from "../lib/userActions";
+import { ASKS_FIRST, actingAs, assistantMutation, defineUserMutation, reversal, reversedBy, userMutation, type Acting, type Author } from "../lib/userActions";
+import { personalWorkspaceOf } from "../workspaces/actor";
 import { endStep } from "../assistant/steps";
 import { applyCommand } from "../research/records";
 import { undoCommandValidator } from "../../lib/research/records";
@@ -225,13 +226,13 @@ export const savedByIdValidator = v.object({ libraryItemId: v.id("libraryItems")
  */
 async function saveInto(
   ctx: MutationCtx,
-  userId: Id<"users">,
+  actor: Acting,
   { paper, rating, collectionId }: { paper: Infer<typeof libraryPaper>; rating?: number; collectionId?: Id<"collections"> },
-  author: "user" | "assistant",
 ) {
+  const { userId, author } = actor;
   const before = await checkSave(ctx, userId, { openalexId: paper.openalexId, rating, collectionId });
   const saved = await savePaper(ctx, userId, paper, rating, author);
-  const placed = collectionId === undefined ? undefined : await setPaperInCollectionAction.run(ctx, userId, { paper: { openalexId: canonical(paper.openalexId) }, collectionId, inCollection: true }, author);
+  const placed = collectionId === undefined ? undefined : await setPaperInCollectionAction.run(ctx, actor, { paper: { openalexId: canonical(paper.openalexId) }, collectionId, inCollection: true });
   // What takes back all of it. A paper that was saved already leaves the collection again, or gets back the rating this changed.
   // A paper this added is removed again, with the place it was given, while that place is still the one it has. One added
   // with no undo of its own (see `savePaper`) has none for its place either: half an undo would be marked as the whole.
@@ -259,7 +260,9 @@ export const saveRead = internalMutation({
   handler: async (ctx, { userId, paper, rating, collectionId, author, stepId, approved }) => {
     // Only the assistant asks: a person saving a paper themselves has decided. A collection a library follows shows the paper outside the account.
     if (author === "assistant" && !approved && ((await saveAsksFirst(ctx, userId, paper.openalexId, rating)) || (collectionId !== undefined && (await followed(ctx, collectionId))))) throw createError("FORBIDDEN", ASKS_FIRST);
-    const { id, undo } = await saveInto(ctx, userId, { paper, rating, collectionId }, author);
+    // In the person's own workspace until the library belongs to one (#650).
+    const actor = await actingAs(ctx, userId, await personalWorkspaceOf(ctx, userId), author);
+    const { id, undo } = await saveInto(ctx, actor, { paper, rating, collectionId });
     const result = { libraryItemId: id, title: paper.title, ...(undo ? { undo } : {}) };
     if (stepId) await endStep(ctx, stepId, result);
     return result;
@@ -279,12 +282,12 @@ export const saveToLibraryAction = defineUserMutation({
   undoable: true,
   // The saves that return no undo (see `run`): one whose undo would lose the rating the paper has on search cards.
   // And one into a collection a library follows, which shows the paper outside the account.
-  asksFirst: async (ctx, userId, { rating, openalexId, collectionId }) => (await saveAsksFirst(ctx, userId, openalexId, rating)) || (collectionId !== undefined && (await followed(ctx, collectionId))),
-  run: async (ctx, userId, { rating, collectionId, ...given }, author) => {
+  asksFirst: async (ctx, { userId }, { rating, openalexId, collectionId }) => (await saveAsksFirst(ctx, userId, openalexId, rating)) || (collectionId !== undefined && (await followed(ctx, collectionId))),
+  run: async (ctx, actor, { rating, collectionId, ...given }) => {
     // `paperData` is the record a results card holds, which the library page shows the paper from. The
     // assistant has no such record and made one up, which that page couldn't read: its saves keep none.
-    const paper = author === "assistant" ? { ...given, paperData: undefined } : given;
-    const { id, undo } = await saveInto(ctx, userId, { paper, rating, collectionId }, author);
+    const paper = actor.author === "assistant" ? { ...given, paperData: undefined } : given;
+    const { id, undo } = await saveInto(ctx, actor, { paper, rating, collectionId });
     return { id, ...(undo ? { undo } : {}) };
   },
 });
@@ -305,12 +308,12 @@ export const setLibraryRatingAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   // The change that returns no undo (see `run`): the library and search cards hold different ratings, and putting one back would lose the other.
-  asksFirst: async (ctx, userId, { openalexId, rating }) => {
+  asksFirst: async (ctx, { userId }, { openalexId, rating }) => {
     const item = await findItem(ctx, userId, openalexId);
     const was = item?.rating ?? null;
     return item !== null && was !== rating && (await researchRating(ctx, userId, openalexId)) !== was;
   },
-  run: async (ctx, userId, { openalexId, rating, expect }, author) => {
+  run: async (ctx, { userId, author }, { openalexId, rating, expect }) => {
     if (rating !== null) requireRating(rating);
     const item = await findItem(ctx, userId, openalexId);
     const was = item?.rating ?? null;
@@ -382,11 +385,11 @@ export const removeFromLibraryAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   // The paper leaves its collections too, and a library may follow one of them.
-  asksFirst: async (ctx, userId, args) => {
+  asksFirst: async (ctx, { userId }, args) => {
     const item = await findItem(ctx, userId, args.openalexId);
     return item !== null && (await inFollowedCollection(ctx, item._id));
   },
-  run: async (ctx, userId, args, author) => {
+  run: async (ctx, { userId, author }, args) => {
     const item = await findItem(ctx, userId, args.openalexId);
     if (!item) return {};
     if (await stillPlacing(ctx, item._id)) throw createError("CONFLICT", "This paper is still going back into its collections. Try again in a moment.");
@@ -483,7 +486,7 @@ export const restoreLibraryItemAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   // The paper goes back into its collections, and a library may follow one of them.
-  asksFirst: async (ctx, _userId, { removalId }) => {
+  asksFirst: async (ctx, _actor, { removalId }) => {
     const place = await stream(ctx.db, schema)
       .query("removedPlaces")
       .withIndex("by_removal", (q) => q.eq("removalId", removalId))
@@ -494,7 +497,7 @@ export const restoreLibraryItemAction = defineUserMutation({
     const removal = await ctx.db.get("libraryRemovals", removalId);
     return removal?.moving === true && (await inFollowedCollection(ctx, removal.itemId));
   },
-  run: async (ctx, userId, { removalId }, author) => {
+  run: async (ctx, { userId, author }, { removalId }) => {
     const removal = await ctx.db.get("libraryRemovals", removalId);
     // Its day is over even if the cleanup hasn't reached it yet.
     if (!removal || removal.userId !== userId || removal.restoredAs !== undefined || removal.expiresAt <= Date.now()) throw createError("NOT_FOUND", "This removal can no longer be undone.");
@@ -537,8 +540,8 @@ export const setPaperInCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  asksFirst: (ctx, _userId, { collectionId }) => followed(ctx, collectionId),
-  run: async (ctx, userId, { paper, collectionId, inCollection, assignedAt }) => {
+  asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
+  run: async (ctx, { userId }, { paper, collectionId, inCollection, assignedAt }) => {
     const collection = await ownedCollection(ctx, userId, collectionId);
     const whole = "title" in paper;
     const item = whole && inCollection ? await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, userId, paper)) : await findItem(ctx, userId, paper.openalexId);

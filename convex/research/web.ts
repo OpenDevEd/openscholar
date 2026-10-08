@@ -71,11 +71,11 @@ export const searchAction = defineUserAction({
   outsideEffect: false,
   undoable: false,
   estimate: async () => convertUsdToCredits({ usd: WEB_SEARCH_HOLD_USD }),
-  check: async (_ctx, _userId, { query }) => {
+  check: async (_ctx, _actor, { query }) => {
     if (!query.trim()) throw createError("VALIDATION_ERROR", "A web search needs a query.");
     if (query.length > QUERY_MAX) throw createError("VALIDATION_ERROR", `A web search query can be up to ${QUERY_MAX} characters.`);
   },
-  run: async (ctx, userId, { query }, _author, call): Promise<{ query: string; results: Result[] }> => {
+  run: async (ctx, { userId }, { query }, call): Promise<{ query: string; results: Result[] }> => {
     const chargeId = `web:${call?.stepId ?? call?.from ?? crypto.randomUUID()}`;
     const held = convertUsdToCredits({ usd: WEB_SEARCH_HOLD_USD });
     if (!(await reserveCredits(ctx, { userId, chargeId, credits: held }))) throw createError("INSUFFICIENT_CREDITS", "There aren't enough credits for a web search.");

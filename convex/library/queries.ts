@@ -409,7 +409,7 @@ export const papersAction = defineUserQuery({
     cursor: optional(v.string()),
   },
   returns: libraryPapersValidator,
-  run: async (ctx, userId, given) => {
+  run: async (ctx, { userId }, given) => {
     const user = await ctx.db.get("users", userId);
     if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
     const view = viewOf(given);
@@ -446,7 +446,7 @@ export const countPapersAction = defineUserQuery({
     "A count that stopped short of them all comes with `atLeast`.",
   args: narrowing,
   returns: v.object({ count: v.number(), atLeast: v.optional(v.literal(true)) }),
-  run: async (ctx, userId, given) => {
+  run: async (ctx, { userId }, given) => {
     const user = await ctx.db.get("users", userId);
     if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
     const counted = await countLibraryView(ctx, userId, viewOf(given));
@@ -470,7 +470,7 @@ export const savedPaperAction = defineUserQuery({
   description: "Whether a paper is in the person's library, and whether it's in any of their collections.",
   args: { openalexId: v.string() },
   returns: v.union(v.object({ libraryItemId: v.id("libraryItems"), inCollection: v.boolean() }), v.null()),
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const item = await findItem(ctx, userId, args.openalexId);
     if (!item) return null;
     return { libraryItemId: item._id, inCollection: (await inCollection(ctx, [item._id]))[0] };

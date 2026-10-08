@@ -22,7 +22,8 @@ export const findAction = defineUserQuery({
     "With no `text`, the newest searches, collections by name and the latest saved papers. Each comes with the ID its own tools take.",
   args: { text: v.optional(v.string()) },
   returns: mentionablesValidator,
-  run: async (ctx, userId, { text }) => {
+  run: async (ctx, actor, { text }) => {
+    const { userId } = actor;
     await requireFeature(ctx, FLAG, userId);
     const needle = text?.trim() || undefined;
     // A function gets one paginated read, which the library's takes: searches by text read
@@ -30,7 +31,7 @@ export const findAction = defineUserQuery({
     const [searches, collections, papers] = await Promise.all([
       needle
         ? // ponytail: matches among the newest searches the list's one read reaches (1,000 rows), so a match older than that isn't offered. Carry on from its cursor if people with that many searches miss one.
-          listedSearchesAction.run(ctx, userId, { paginationOpts: first, sort: "recent", text: needle }).then(({ page }) => page)
+          listedSearchesAction.run(ctx, actor, { paginationOpts: first, sort: "recent", text: needle }).then(({ page }) => page)
         : ctx.db.query("searches").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)).order("desc").take(EACH).then((rows) => rows.map(({ data }) => data)),
       (needle
         ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", searchTerms(needle)!).eq("userId", userId))

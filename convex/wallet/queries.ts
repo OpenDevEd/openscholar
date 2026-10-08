@@ -43,7 +43,7 @@ export const listKeysAction = defineUserQuery({
     "A key shows its first characters only.",
   args: { paginationOpts: paginationOptsValidator, active: v.boolean() },
   returns: paginationResultValidator(walletKeyValidator),
-  run: async (ctx, userId, { paginationOpts, active }) =>
+  run: async (ctx, { userId }, { paginationOpts, active }) =>
     await stream(ctx.db, schema)
       .query("walletKeys")
       .withIndex("by_user_active", (q) => q.eq("userId", userId).eq("isActive", active))
@@ -60,7 +60,7 @@ export const countKeysAction = defineUserQuery({
   description: "Says how many wallet keys the person has: the active ones and the revoked ones.",
   args: {},
   returns: v.object({ active: v.number(), revoked: v.number() }),
-  run: async (ctx, userId) => {
+  run: async (ctx, { userId }) => {
     const [active, revoked] = await Promise.all([countOf(ctx, walletKeysOf(userId, true)), countOf(ctx, walletKeysOf(userId, false))]);
     return { active, revoked };
   },
