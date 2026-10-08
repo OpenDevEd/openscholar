@@ -104,7 +104,9 @@ async function pickWithJev(text: string, sentence: string, publications: Publica
  * the rest into plain text. A typo of a real key by the cited author is fixed
  * directly; otherwise Jev picks from a shortlist and must pass its own check.
  */
-export async function repairCitations(markdown: string, publications: Publication[], signal?: AbortSignal) {
+export async function repairCitations(written: string, publications: Publication[], signal?: AbortSignal) {
+  // The model sometimes closes a citation with the wrong bracket: [Mills, 2026](/lib/ABCD2345].
+  const markdown = written.replace(/\]\((\/lib\/[A-Za-z0-9]{6,10})\]/g, "]($1)");
   const byKey = new Map(publications.map(publication => [publication.key, publication]));
   // Each occurrence is resolved on its own: one reused bad key may stand for different papers.
   const repairs = new Map<number, CitationRepair>();
