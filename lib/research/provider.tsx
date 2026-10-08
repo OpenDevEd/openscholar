@@ -14,20 +14,17 @@ import { ResearchSession } from "./session";
 import { ResearchImportError, localResearchBackup } from "./migrate";
 import { downloadAsFile } from "../utils";
 import { useWorkspace } from "../workspaces/url";
-import type { Id } from "../../convex/_generated/dataModel";
 
 const localSnapshot = { ready: true, error: null, pending: 0 };
 const localSubscribe = () => activateResearch(null);
 const getLocalSnapshot = () => localSnapshot;
 const StatusContext = createContext({ ...localSnapshot, error: null as Error | null, retry: () => {} });
 const sessions = new WeakMap<ConvexReactClient, Map<string, ResearchSession>>();
-/** One session per account and workspace: a workspace's records are its own. */
-function accountSession(client: ConvexReactClient, accountId: string, workspaceId: Id<"workspaces">) {
+function accountSession(client: ConvexReactClient, accountId: string) {
   let accounts = sessions.get(client);
   if (!accounts) { accounts = new Map(); sessions.set(client, accounts); }
-  const key = `${accountId}:${workspaceId}`;
-  let session = accounts.get(key);
-  if (!session) { session = new ResearchSession(client, accountId, workspaceId); accounts.set(key, session); }
+  let session = accounts.get(accountId);
+  if (!session) { session = new ResearchSession(client, accountId); accounts.set(accountId, session); }
   return session;
 }
 
@@ -41,14 +38,15 @@ export function ResearchStateProvider({ children }: { children: ReactNode }) {
   const report = useCallback((error: Error, retry: () => void) => {
     showStyledToast("error", error.message, { duration: Infinity, action: { label: retryLabel, onClick: retry, ...(error instanceof ResearchImportError ? { secondaryAction: { label: "Download backup", onClick: () => downloadAsFile(localResearchBackup(), "local-research-backup.json", "json") } } : {}) } });
   }, [retryLabel]);
+  const session = userId ? accountSession(client, userId) : null;
+  // The session reads the account's records in the page's workspace, from when it has loaded.
   const workspaceId = useWorkspace();
-  const session = userId && workspaceId ? accountSession(client, userId, workspaceId) : null;
-  // Signed in, with the workspace still loading: nothing is ready, so the browser's own records don't show meanwhile.
-  const waiting = Boolean(userId) && !workspaceId;
-  const subscribe = useCallback((listener: () => void) => session ? session.subscribe(listener, phase === "authenticated", report) : localSubscribe(), [session, phase, report]);
+  const subscribe = useCallback((listener: () => void) => session ? session.subscribe(listener, phase === "authenticated", report, workspaceId) : localSubscribe(), [session, phase, report, workspaceId]);
   const status = useSyncExternalStore(subscribe, session?.getSnapshot ?? getLocalSnapshot, session?.getServerSnapshot ?? getLocalSnapshot);
-  const reading = useMemo(() => ({ session, phase }), [session, phase]);
-  const value = useMemo(() => ({ ...status, ready: status.ready && !waiting && (phase === "anonymous" || phase === "authenticated"), error: phase === "sync_error" ? new Error("Your account could not finish loading.") : status.error, retry: phase === "sync_error" ? retryUserSync : session?.retry ?? (() => {}) }), [status, session, waiting, phase, retryUserSync]);
+  // The same account and workspace the session reads under, for hooks reading beside it.
+  const scope = useMemo(() => (userId && workspaceId ? { accountId: userId, workspaceId } : undefined), [userId, workspaceId]);
+  const reading = useMemo(() => ({ session, phase, scope }), [session, phase, scope]);
+  const value = useMemo(() => ({ ...status, ready: status.ready && (phase === "anonymous" || phase === "authenticated"), error: phase === "sync_error" ? new Error("Your account could not finish loading.") : status.error, retry: phase === "sync_error" ? retryUserSync : session?.retry ?? (() => {}) }), [status, session, phase, retryUserSync]);
   return <ResearchContext.Provider value={session?.stores ?? null}><SessionContext.Provider value={reading}><StatusContext.Provider value={value}>{children}</StatusContext.Provider></SessionContext.Provider></ResearchContext.Provider>;
 }
 

@@ -19,6 +19,11 @@ export function useResearchSession() {
   return useContext(SessionContext).session;
 }
 
+/** What the account's records are read and changed under: the account and the page's workspace; undefined signed out, or while the workspace loads. */
+export function useResearchScope() {
+  return useContext(SessionContext).scope;
+}
+
 const found = (): WatchedStatus => "found";
 const noReaders = () => () => {};
 

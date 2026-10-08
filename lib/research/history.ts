@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useConvex, usePaginatedQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useResearchSession } from "./reads";
+import { useResearchScope } from "./reads";
 import type { QueryHistoryEntry, QuestionHistoryEntry, SearchResult } from "../types";
 
 /** History entries read at once; a longer history reads more as it's scrolled or stepped through. */
@@ -27,7 +27,7 @@ function toEntry<K extends Kind>(kind: K, row: Row) {
  */
 export function useSearchHistoryEntries<K extends Kind>(search: SearchResult | null | undefined, kind: K, enabled = true, minimum = 0) {
   // The account and workspace the account's records are read in; none signed out.
-  const scope = useResearchSession()?.scope;
+  const scope = useResearchScope();
   const convex = useConvex();
   const [firstPage] = useState(() => Math.min(HISTORY_PAGE_MAX, Math.max(HISTORY_PAGE, minimum)));
   const local = (kind === "query" ? search?.queryHistory : search?.questionHistory) as Entry<K>[] | undefined;

@@ -16,7 +16,7 @@ vi.mock("@clerk/nextjs", () => ({ useAuth: () => ({ userId: "alice" }) }));
 // Signed in: the account's records are read in its research session's account and workspace.
 vi.mock("@/lib/research/reads", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/research/reads")>()),
-  useResearchSession: () => ({ scope: { accountId: "alice", workspaceId: "workspace_test" } }),
+  useResearchScope: () => ({ accountId: "alice", workspaceId: "workspace_test" }),
 }));
 vi.mock("convex/react", async (importOriginal) => ({
   ...(await importOriginal<typeof import("convex/react")>()),

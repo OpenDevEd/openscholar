@@ -55,7 +55,8 @@ describe("workspaces", () => {
 
   it("gives a new account its personal workspace and a new organization its own, once", async () => {
     const { t, workspacesOf } = setup();
-    const userId = await t.run((ctx) => createUserWithDefaults(ctx, { clerkId: "user_new", email: "new@example.org" }));
+    // Untriggered: the harness gives an account seeded through `t.run` a workspace itself, which would hide one this didn't make.
+    const userId = await runUntriggered(t, (ctx) => createUserWithDefaults(ctx, { clerkId: "user_new", email: "new@example.org" }));
     // The organization's creation, then a later change to it.
     for (const [id, at] of [["msg_created", 100], ["msg_renamed", 200]] as const) {
       await t.run((ctx) => applyOrganizationProjection(ctx, { ...event(id, at), action: "upsert", entityId: "org_new", organization: organization("org_new", at) }));
@@ -78,7 +79,7 @@ describe("workspaces", () => {
 
   it("gives every account and organization from before one workspace, deleted ones too, however often it runs", async () => {
     const { t, workspacesOf } = setup();
-    const already = await t.run((ctx) => createUserWithDefaults(ctx, { clerkId: "user_new", email: "new@example.org" }));
+    const already = await runUntriggered(t, (ctx) => createUserWithDefaults(ctx, { clerkId: "user_new", email: "new@example.org" }));
     // As they were before workspaces: the harness gives an account seeded through `t.run` its workspace.
     const before = await runUntriggered(t, async (ctx) => ({
       users: await Promise.all(

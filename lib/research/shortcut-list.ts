@@ -9,7 +9,7 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { shortcutSortName } from "@/lib/query-shortcuts";
 import { localKeywordExpansionStore } from "@/lib/store";
 import type { BookmarkSortBy } from "@/lib/types";
-import { useResearchSession } from "./reads";
+import { useResearchScope, useResearchSession } from "./reads";
 import { usePagedRecords } from "./paged-records";
 
 /** A shortcut as the Bookmarks page lists it. */
@@ -26,10 +26,11 @@ const LOCAL_ORDER: Record<BookmarkSortBy, (a: ListedShortcut, b: ListedShortcut)
 
 /** How many shortcuts the person has; undefined while the account's count loads. */
 export function useShortcutCount() {
-  const scope = useResearchSession()?.scope;
+  const signedIn = Boolean(useResearchSession());
+  const scope = useResearchScope();
   const { data: count } = useProtectedQuery(api.research.records.countShortcuts, scope ?? "skip");
   const local = useStore(localKeywordExpansionStore, (state) => Object.keys(state.keywords).length);
-  return scope ? count : local;
+  return signedIn ? count : local;
 }
 
 /**
@@ -38,9 +39,8 @@ export function useShortcutCount() {
  * only shortcuts whose name or expansion contain it.
  */
 export function useShortcutList({ sort, text = "", pageSize }: { sort: BookmarkSortBy; text?: string; pageSize: number }) {
-  const session = useResearchSession();
-  const scope = session?.scope;
-  const accountId = scope?.accountId;
+  const accountId = useResearchSession()?.accountId;
+  const scope = useResearchScope();
   const match = useDebouncedValue(text.trim(), 300);
   const remote = useCursorPage(api.research.records.listedShortcuts, scope ? { ...scope, sort, text: match || undefined } : "skip", pageSize);
   const { data: count } = useProtectedQuery(api.research.records.countShortcuts, scope ?? "skip");

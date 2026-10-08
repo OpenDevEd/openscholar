@@ -15,7 +15,7 @@ export const ResearchContext = createContext<ResearchStores | null>(null);
  * The signed-in account's session, which reads searches, ratings and shortcuts by ID, and
  * where its sign-in stands; no session signed out. The hooks in ./reads.ts read from it.
  */
-export const SessionContext = createContext<{ session: ResearchSession | null; phase: "initializing" | "authenticated" | "anonymous" | "sync_error" }>({ session: null, phase: "anonymous" });
+export const SessionContext = createContext<{ session: ResearchSession | null; phase: "initializing" | "authenticated" | "anonymous" | "sync_error"; scope?: ResearchSession["scope"] }>({ session: null, phase: "anonymous" });
 let active: ResearchStores | null = null;
 
 export class ResearchAccountChangedError extends Error {
