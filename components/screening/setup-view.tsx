@@ -270,7 +270,7 @@ export function SetupView({
         </div>
 
         <Zone label={t("papers")}>
-          <Segmented label={t("sourceKind")} value={kind} onChange={pick} fill options={KINDS.map((id) => ({ id, label: t(`kind.${id}`), icon: SOURCE_ICON[id] }))} />
+          <Segmented label={t("sourceKind")} value={kind} onChange={pick} fill="labels" options={KINDS.map((id) => ({ id, label: t(`kind.${id}`), icon: SOURCE_ICON[id] }))} />
           {/* While a kind has pages its list keeps a full page's height, so the pager stays put on a short last page. */}
           <div className="mt-3" style={list.pager?.hasPages ? { minHeight: SOURCE_PAGE * SOURCE_ROW + 1 } : undefined}>
             {list.rows.length === 0 ? (
@@ -330,13 +330,18 @@ export function SetupView({
             // What the papers come from decides the shortcuts: a search's questions are its own (one
             // screening per search) and it can write more from its research question; an earlier
             // screening has questions to reuse.
-            <span className="flex items-center gap-1">
+            <span className="flex min-w-0 items-center gap-1">
               {source?.kind === "search" ? <Chip icon={ListChecks}>{t("sharedWithResults")}</Chip> : null}
               {source?.kind === "screening" ? (
-                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => adopt(fresh)} disabled={!fresh.length}>
-                  <ListChecks className="text-primary" />
-                  {fresh.length || !earlier ? t("importQuestions", { count: fresh.length, name: source.label }) : t("importedFrom", { name: source.label })}
-                </Button>
+                // The screening's name can be a whole query: it's cut to the room there is, and shown in full on hover.
+                <TooltipHint label={fresh.length || !earlier ? t("importQuestions", { count: fresh.length, name: source.label }) : t("importedFrom", { name: source.label })} onlyWhenClipped>
+                  <span className="flex min-w-0">
+                    <Button variant="ghost" size="sm" className="h-7 min-w-0 shrink text-xs" onClick={() => adopt(fresh)} disabled={!fresh.length}>
+                      <ListChecks className="text-primary" />
+                      <span className="truncate">{fresh.length || !earlier ? t("importQuestions", { count: fresh.length, name: source.label }) : t("importedFrom", { name: source.label })}</span>
+                    </Button>
+                  </span>
+                </TooltipHint>
               ) : null}
               {kind === "search" ? (
                 <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={generate} disabled={generating || !canGenerate || !source}>
