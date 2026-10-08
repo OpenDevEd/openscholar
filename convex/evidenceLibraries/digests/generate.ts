@@ -3,7 +3,7 @@ import { getProviderModel } from "../../../lib/ai/server/providers";
 import { callOptions } from "../../../lib/ai/core/call-options";
 import { DIGEST_MODEL, DIGEST_REASONING, digestResultSchema, type DigestRequest } from "./contract";
 import { repairCitations } from "./citations";
-import { reviewDigest, reviseDigest, withoutSentences } from "./review";
+import { citedKeys, reviewDigest, reviseDigest, withoutSentences } from "./review";
 import { UNSLOP_RULES } from "./unslop";
 
 const INSTRUCTIONS = `Write a digest of the supplied period for the readers of an Evidence Library, in the requested locale.
@@ -39,28 +39,30 @@ const tidy = (text: string) => text.replace(/[\u2018\u2019]/g, "'").replace(/[\u
 const levelled = (markdown: string) => tidy(markdown).replace(/^ {0,3}#{1,6}(?=[ \t])/gm, "##");
 
 /**
- * The digest after a second model has checked each cited paper against what the digest says about it. The writer
- * corrects what was flagged once, and a sentence flagged again is taken out. A review that fails never costs the
- * digest: the text that passed the citation check is kept, without the sentences already known to be wrong.
+ * The summary and body after a second model has checked each cited paper against what the digest says about it.
+ * The writer corrects what was flagged once, and a sentence flagged again is taken out. A review that fails never
+ * costs the digest: the text that passed the citation check is kept, without the sentences already known to be
+ * wrong. So is a correction that dropped a flagged sentence's citation, since its claim could no longer be checked.
  */
-async function reviewed(markdown: string, request: DigestRequest, started: number) {
+async function reviewed(digest: {summary: string; markdown: string}, request: DigestRequest, started: number) {
   const signal = AbortSignal.timeout(Math.max(1_000, Math.min(REVIEW_BUDGET_MS, REVIEW_DEADLINE_MS - (Date.now() - started))));
   const job = {libraryId: request.libraryId, editionId: request.editionId};
-  let checked = markdown;
+  let checked = digest;
   try {
-    const issues = await reviewDigest(markdown, request.publications, signal);
-    if (!issues.length) return markdown;
-    checked = withoutSentences(markdown, issues);
-    const revision = levelled(await reviseDigest(markdown, issues, request.publications, signal));
-    const revised = (await repairCitations(revision, request.publications, signal)).markdown;
-    if (!CITES.test(revised)) throw new Error("The corrected digest cites no supplied publication");
+    const issues = await reviewDigest(digest.markdown, request.publications, signal);
+    if (!issues.length) return digest;
+    checked = {summary: digest.summary, markdown: withoutSentences(digest.markdown, issues)};
+    const correction = await reviseDigest({...digest, locale: request.locale}, issues, request.publications, signal);
+    const revised = (await repairCitations(levelled(correction.markdown), request.publications, signal)).markdown;
+    const cited = citedKeys(revised);
+    if (issues.some(issue => !cited.has(issue.key))) throw new Error("The correction dropped a flagged sentence's citation");
     const remaining = await reviewDigest(revised, request.publications, signal);
     console.info("Library digest reviewed", {...job, flagged: issues.map(({key, problem}) => ({key, problem})), removed: remaining.map(({key, problem}) => ({key, problem}))});
     const kept = withoutSentences(revised, remaining);
-    return CITES.test(kept) ? kept : checked;
+    return CITES.test(kept) ? {summary: tidy(correction.summary), markdown: kept} : checked;
   } catch (error) {
     console.error("Library digest review did not finish; keeping the digest without the sentences it flagged", {...job, error});
-    return checked;
+    return CITES.test(checked.markdown) ? checked : digest;
   }
 }
 
@@ -84,10 +86,9 @@ export async function generateLibraryDigest(request: DigestRequest, signal?: Abo
   });
   if (result.finishReason !== "stop") throw new Error(`Digest generation did not finish: ${result.finishReason} after ${result.usage.outputTokens} output tokens`);
   const written = digestResultSchema.parse(result.output);
-  const output = {title: tidy(written.title), summary: tidy(written.summary)};
   const {markdown: cited, repairs} = await repairCitations(levelled(written.markdown), request.publications, signal);
   if (repairs.length) console.info("Library digest citations repaired", {libraryId: request.libraryId, editionId: request.editionId, repairs});
-  const markdown = await reviewed(cited, request, started);
-  if (!CITES.test(markdown)) throw new Error("Digest output cites no supplied publication");
-  return {...output, markdown, model: DIGEST_MODEL, reasoning: DIGEST_REASONING};
+  if (!CITES.test(cited)) throw new Error("Digest output cites no supplied publication");
+  const {summary, markdown} = await reviewed({summary: tidy(written.summary), markdown: cited}, request, started);
+  return {title: tidy(written.title), summary, markdown, model: DIGEST_MODEL, reasoning: DIGEST_REASONING};
 }

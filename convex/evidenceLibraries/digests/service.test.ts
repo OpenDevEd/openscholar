@@ -95,15 +95,16 @@ it("has a second model check the digest, the writer correct what it flags once, 
   const sent = stubModels(
     [
       {title: "Attention in learning", summary: "A new framework for classroom attention.", markdown: "## Attention\n\nThe study surveyed 400 teachers. [Mills, 2026](/lib/ABCD2345) It also tested 12 schools."},
-      {markdown: "## Attention\n\nThe report sets out a framework. [Mills, 2026](/lib/ABCD2345) It also tested 12 schools.\n\n## Schools\n\nIt also tested 12 schools."},
+      {summary: "A framework for classroom attention.", markdown: "## Attention\n\nThe report sets out a framework. [Mills, 2026](/lib/ABCD2345) It also tested 12 schools.\n\n## Schools\n\nIt also tested 12 schools."},
     ],
     [{issues: [flag("The study surveyed 400 teachers."), flag("It also tested 12 schools.")]}, {issues: [flag("It also tested 12 schools.")]}],
   );
   expect((await request()).status).toBe(202);
   await finishGeneration();
   // The sentence flagged twice is gone from both places it stood, and so is the section it left empty.
-  expect(await (await request()).json()).toMatchObject({digest: {markdown: "## Attention\n\nThe report sets out a framework. [Mills, 2026](/lib/ABCD2345)"}});
-  // The writer is asked once to write and once to correct; the correction carries the flagged sentences.
+  expect(await (await request()).json()).toMatchObject({digest: {summary: "A framework for classroom attention.", markdown: "## Attention\n\nThe report sets out a framework. [Mills, 2026](/lib/ABCD2345)"}});
+  // The writer is asked once to write and once to correct; the correction carries the flagged sentences and the locale.
+  expect(String((sent.writer[1]!.messages as {content: unknown}[]).at(-1)!.content)).toContain("en-GB");
   expect(sent.writer).toHaveLength(2);
   expect(String((sent.writer[1]!.messages as {content: unknown}[]).at(-1)!.content)).toContain("The study surveyed 400 teachers.");
   expect(sent.reviewer).toHaveLength(2);
@@ -111,7 +112,6 @@ it("has a second model check the digest, the writer correct what it flags once, 
 
 it.each([
   {failing: "the review", writer: [] as unknown[], reviewer: [{nonsense: true}], markdown: "## Attention\n\nThe study surveyed 400 teachers. [Mills, 2026](/lib/ABCD2345) It sets out a framework."},
-  {failing: "the correction, by citing nothing,", writer: [{markdown: "## Attention\n\nNothing is known."}], reviewer: [{issues: [{quote: "The study surveyed 400 teachers.", key: "ABCD2345", problem: "not_in_record", record_says: "The record gives no sample."}]}], markdown: "## Attention\n\n[Mills, 2026](/lib/ABCD2345) It sets out a framework."},
   {failing: "the correction", writer: [{nonsense: true}], reviewer: [{issues: [{quote: "The study surveyed 400 teachers.", key: "ABCD2345", problem: "not_in_record", record_says: "The record gives no sample."}]}], markdown: "## Attention\n\n[Mills, 2026](/lib/ABCD2345) It sets out a framework."},
 ])("keeps the digest when $failing fails, without a sentence already flagged", async ({writer, reviewer, markdown}) => {
   vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
@@ -120,6 +120,26 @@ it.each([
   expect((await request()).status).toBe(202);
   await finishGeneration();
   expect(await (await request()).json()).toMatchObject({digest: {markdown}});
+});
+
+it("removes a flagged sentence when the correction keeps its claim and drops its citation", async () => {
+  vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
+  const {request, finishGeneration} = await setup();
+  const publications = [
+    {key: "ABCD2345", title: "Attention in classrooms", creators: ["Caitlin Mills"], date: "2026", abstract: "A framework for examining attention in learning.", publicationType: "Report", doi: null},
+    {key: "QWER7890", title: "School meals and attendance", creators: ["Joy Okafor"], date: "2025", abstract: "Meals raised attendance.", publicationType: "Report", doi: null},
+  ];
+  stubModels(
+    [
+      {title: "Attention and meals", summary: "Two reports.", markdown: "## Schools\n\nThe study surveyed 400 teachers. [Mills, 2026](/lib/ABCD2345) Meals raised attendance. [Okafor, 2025](/lib/QWER7890)"},
+      // The claim is still there, with nothing left to check it against.
+      {summary: "Two reports.", markdown: "## Schools\n\nThe study surveyed 400 teachers. Meals raised attendance. [Okafor, 2025](/lib/QWER7890)"},
+    ],
+    [{issues: [{quote: "The study surveyed 400 teachers.", key: "ABCD2345", problem: "not_in_record", record_says: "The record gives no sample."}]}],
+  );
+  expect((await request({publications})).status).toBe(202);
+  await finishGeneration();
+  expect(await (await request({publications})).json()).toMatchObject({digest: {markdown: "## Schools\n\n[Mills, 2026](/lib/ABCD2345) Meals raised attendance. [Okafor, 2025](/lib/QWER7890)"}});
 });
 
 it("rejects foreign credentials, disabled libraries and arbitrary prompt or PDF input before generation", async () => {
