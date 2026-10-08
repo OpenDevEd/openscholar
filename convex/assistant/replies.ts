@@ -283,7 +283,7 @@ async function goOnFrom(ctx: MutationCtx, thread: Doc<"assistantThreads">, waiti
     senderId: waiting.senderId,
     modelId: waiting.modelId,
     effort: waiting.effort,
-    used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made, ...(waiting.failed ? { failed: waiting.failed } : {}), ...(waiting.recent ? { recent: waiting.recent } : {}), ...(waiting.changes ? { changes: waiting.changes } : {}), ...limits },
+    used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made, ...(waiting.failed ? { failed: waiting.failed } : {}), ...(waiting.recent ? { recent: waiting.recent } : {}), ...(waiting.changes ? { changes: waiting.changes } : {}), ...(waiting.download ? { download: waiting.download } : {}), ...limits },
   });
   await ctx.db.patch("assistantThreads", thread._id, {
     asking: undefined,
@@ -438,6 +438,7 @@ export const release = internalMutation({
         changes: v.optional(v.record(v.string(), v.number())),
         cap: v.optional(v.number()),
         lap: v.optional(v.number()),
+        download: v.optional(v.literal(true)),
       }),
     ),
     // The reply's request ended on actions that ran (./turn.ts): their results go back to the model in
@@ -494,6 +495,7 @@ export const release = internalMutation({
       ...(used.changes ? { changes: used.changes } : {}),
       ...(used.cap === undefined ? {} : { cap: used.cap }),
       ...(used.lap === undefined ? {} : { lap: used.lap }),
+      ...(used.download ? { download: used.download } : {}),
       paused,
       askedAt: Date.now(),
     });
@@ -549,6 +551,7 @@ export const release = internalMutation({
         ...(asking.changes ? { changes: asking.changes } : {}),
         ...(asking.cap === undefined ? {} : { cap: asking.cap }),
         ...(asking.lap === undefined ? {} : { lap: asking.lap }),
+        ...(asking.download ? { download: asking.download } : {}),
         askedAt: now,
       };
       // A conversation as long as a request should read is owed its summary: nothing compacts it while it waits.
@@ -565,7 +568,8 @@ export const release = internalMutation({
       // A conversation as long as a request should read is summarized first, through what the reply
       // has written, and the reply goes on from the summary (./context.ts). A limit it has reached too
       // is asked about once the summary is written.
-      if (!current.stop && compactionDue({ ...ended, window })) {
+      // A request made again after failing added nothing to summarize, and keeps its wait: the next one that answers is summarized after.
+      if (!current.stop && !next.retries && compactionDue({ ...ended, window })) {
         const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, through: current.order, lastInputTokens, resume: from });
         // Owed from here until a summary is kept, so one that is stopped, or whose action dies, is written by the next reply.
         // The lock holds what the reply has cost so far, for its sender's record if the compaction's action dies.

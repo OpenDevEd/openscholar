@@ -69,6 +69,8 @@ export const assistantAskingValidator = v.object({
   lap: v.optional(v.number()),
   /** Set on a reply that paused at one of them. It asked about no action: carrying it on is the answer. */
   paused: v.optional(assistantPausedValidator),
+  /** Its papers' PDFs are downloaded to be sent, since a request sending one by its address failed (./run.ts). */
+  download: v.optional(v.literal(true)),
   askedAt: v.number(),
 });
 

@@ -200,7 +200,7 @@ export const reply = internalAction({
               }
             : calls.length
             ? // A request that asks ran nothing, so the streak of failed ones stands as it was.
-              { asking: { promptMessageId, calls, ...now, failed: used.failed ?? 0, recent } }
+              { asking: { promptMessageId, calls, ...now, failed: used.failed ?? 0, recent, ...(used.download ? { download: true as const } : {}) } }
             : more && !answer
               ?               { next: { promptMessageId, ...now, tokens: lastInputTokens, failed: failed ? (used.failed ?? 0) + 1 : 0, recent, ...(why ? { told: why } : {}), ...(used.download ? { download: true as const } : {}) } }
               : {}),

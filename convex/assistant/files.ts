@@ -439,13 +439,18 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
  */
 const PAPER_BYTES = 20 * 1024 * 1024;
 
-/** A paper's PDF, downloaded as the extraction downloads one, or null when it can't be, or is larger than `room`. */
+/**
+ * A paper's PDF, downloaded as the extraction downloads one, from a plain-HTTP address too as the read's check allows,
+ * or null when it can't be or is larger than `room`: why is logged, with the address's host.
+ */
 async function paperBytes(url: string, room: number) {
-  const { pdfBlob } = await downloadPdf(url, { maxRetries: 1 });
-  if (!pdfBlob || pdfBlob.size > room) return null;
-  const bytes = new Uint8Array(await pdfBlob.arrayBuffer());
+  const { pdfBlob, error } = await downloadPdf(url, { maxRetries: 1, allowHttp: true, maxBytes: room });
+  const bytes = pdfBlob ? new Uint8Array(await pdfBlob.arrayBuffer()) : null;
   // A landing page's PDF link can lead to another page: bytes that aren't a PDF would be refused as one.
-  return new TextDecoder().decode(bytes.subarray(0, 1024)).includes("%PDF") ? bytes : null;
+  const why = !bytes ? (error ?? "no file") : bytes.length > room ? `${bytes.length} bytes, past the ${room} left` : !new TextDecoder().decode(bytes.subarray(0, 1024)).includes("%PDF") ? "not a PDF" : null;
+  if (!why) return bytes;
+  console.warn("[assistant] a paper's PDF couldn't be downloaded to send", { host: URL.canParse(url) ? new URL(url).host : "", why });
+  return null;
 }
 
 /** A paper's PDF address, from the result of a read of it (research/papers:readPdf). */
