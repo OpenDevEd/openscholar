@@ -183,6 +183,7 @@ One place owns each rule, and nothing else implements it again.
 | Every public function names its workspace and is checked | the wrappers, enforced by `npm run check:user-actions` |
 | Who may open an item, and with which role | `convex/sharing/access.ts` (`requireItem`), replacing the role reads in `convex/assistant/access.ts`, `convex/authors/access.ts` and `convex/evidenceLibraries/access.ts` |
 | Who pays | `convex/billing/charge.ts`. Reserve, settle and release take a payer: the workspace's Autumn customer and, in an organization, the member's entity |
+| Which members are billed as seats | `convex/billing/seats.ts`, from the Clerk webhook's memberships, with a daily reconcile |
 | What a plan allows | `planLimit` and `hasPlanFeature` in `convex/billing/accounts.ts`, keyed by workspace. `convex/organizationFeatures.ts` goes |
 | What changed on an item | the wrappers, which write activity from each entry's `activity` declaration (`convex/activity/`) |
 | Who has an item open | `convex/presence.ts`, rooms keyed by item, moved from `convex/assistant/presence.ts` |
@@ -273,13 +274,25 @@ subscriptions, holds, usage, credits and transactions).
   workspace keeps the existing Autumn customer, the user's ID, so no Autumn
   customer moves; an organization gets its own Autumn customer on the free
   organization plan.
-- Each moved record gets `workspaceId` and `createdBy`. `createdBy` takes the
-  old `userId`, which is what makes "who started it" possible. `by_user` indexes
+- Each root record gets `workspaceId` and `createdBy`: library papers,
+  collections, searches, bookmarks, screening and extraction jobs, chats, author
+  profiles, Evidence Libraries and billing accounts. `createdBy` takes the old
+  `userId`, which is what makes "who started it" possible. `by_user` indexes
   become `by_workspace` ones, plus `by_workspace_and_createdBy` where a list
   filters by person. The search index on `searches` filters by `workspaceId` and
   `createdBy` instead of `userId`.
-- `searches` gets a `by_localId` index, so a search link resolves for any member
-  or guest, not only its maker.
+- Rows under a parent (a search's revisions and history, a job's papers, a
+  library's drafts, revisions, sections and credentials, a chat's steps and
+  files) keep only their parent's ID and are reached through it. A `userId`
+  copied onto one is dropped, or becomes `createdBy` where the row records who
+  made it (a search revision, a chat step). The extraction queue and screening
+  slots are the exception: they count a workspace's pool, so they carry
+  `workspaceId` for their index.
+- `by_user_and_localId` becomes `by_workspace_and_localId`. A local ID is unique
+  only within one owner: importing the same file makes the same `import:` ID for
+  two people. So a search's link carries the search's document ID, which is
+  unique everywhere, and the page resolves it to the workspace and local ID it
+  opens, for any member or guest.
 - An organization's AI preset and colour are its own record, keyed by
   workspace, set by admins. The preset defaults to the default preset and holds a
   preset only: no custom picks and no keys.
@@ -296,12 +309,18 @@ subscriptions, holds, usage, credits and transactions).
   organization stay the organization's, and their `createdBy` and activity show
   a kept name for a deleted member instead of pointing at a missing user. The
   30-day cleanup of deleted accounts (`convex/maintenance/mutations.ts`, which
-  deletes their extraction jobs, chats and billing) is narrowed to the personal
-  workspace.
+  deletes their extraction jobs, chats and billing, and then the `users` row) is
+  narrowed to the personal workspace. The tombstone it already writes
+  (`clerkDeletedUsers`, today the Clerk ID and when) gains the old user ID and
+  the display name, in the same transaction that deletes the `users` row, and
+  `createdBy` resolves through it. Nothing else about the person is kept.
 - Every change widens, migrates with `@convex-dev/migrations` (audit and dry run
   first, then verified on shared dev and e2e), then narrows. Nothing is wiped,
-  and no field stays as a fallback. One helper backfills `workspaceId` and
-  `createdBy` from a table's `userId` for every table.
+  and no field stays as a fallback. One helper backfills every root table, told
+  how to read that table's owner: its `userId` for a person's records, and for
+  an Evidence Library its `organizationId`, mapped to that organization's
+  workspace, with `createdBy` read from `createdByClerkUserId` through
+  `users.by_clerk_id`.
 
 ## Roles
 
@@ -398,10 +417,25 @@ extraction (OS-14).
      `components/workspaces-mock/workspace-items.ts`), with navigation in place
      of the browser store. A link to an item outside the workspace in the
      address goes to the same item in its own workspace, when you belong to it.
+   - The tab's panel state (`lib/assistant/place.ts`, kept in session storage)
+     holds the chat last open in each workspace, keyed by workspace, in place
+     of its one `threadId`. That is where the panel is, not which workspace
+     you're in, which only the address holds.
    - Members, invitations, roles, leaving and deleting call Clerk's backend
      from Convex actions, behind the mock's own screens.
 5. #652: the Team plan, seats, credit caps per member, and features from plans
    in place of the organization switches, with the values above set in Autumn.
+   - Seats follow memberships. `convex/billing/seats.ts` creates a member's
+     Autumn entity when the Clerk webhook projects an active membership and
+     deletes it when the membership ends, keyed by the membership's ID so a
+     retried webhook changes nothing twice. A daily reconcile compares each
+     paid organization's active memberships with its Autumn entities and fixes
+     any difference, and #652's migration makes entities for the memberships
+     that came before it.
+   - Deleting a paid organization cancels its Team plan in Autumn first, as a
+     step of the deletion that is safe to repeat. The organization is deleted
+     in Clerk only once Autumn shows no active plan, and the daily reconcile
+     cancels any plan whose organization is gone.
 6. #653: guests. One access table and one invitation table replace the three,
    with the roles above; owner `convex/sharing/`. Includes "Shared with me", the
    `/shared/[id]` landing page, the share panel, search links and copies, and a
@@ -469,14 +503,18 @@ and `unfollowedChat` in `lib/assistant/place.ts`. Retire the branch.
   and the migration's dry run before it touches shared dev.
 - #650 proves nothing changed: the same people see the same records before and
   after, on shared dev and e2e.
-- #651 and every later issue: a browser pass on dev.openscholar.ai with two
-  accounts. One creates an organization and invites the other. They switch
-  workspaces, work in the organization, and see each other's work, attribution
-  and presence. A third account, invited to one item only, sees it under
-  "Shared with me" in its personal workspace and not in its organizations.
-- #651: switching while a search, a screening, an extraction, a collection and
-  a chat are open, and opening each one's link from the other workspace, behave
-  as the mock does.
+- Browser passes on dev.openscholar.ai, each from the issue that builds what it
+  checks, then kept by every later issue:
+  - #651: two accounts. One creates an organization and invites the other.
+    They switch workspaces, work in the organization and see each other's work.
+    Switching while a search, a screening, an extraction, a collection and a
+    chat are open, and opening each one's link from the other workspace, behave
+    as the mock does.
+  - #653: a third account, invited to one item only, sees it under "Shared with
+    me" in its personal workspace and not in its organizations.
+  - #654: each kind of item moves, and the refused moves say why.
+  - #656: lists show who started each item, and its activity what changed.
+  - #657: each item shows who else has it open.
 - #652: a real charge on the e2e Autumn setup, taken from an organization's pool
   and refused past a member's cap.
 - Phase 0: each part's focused tests and a browser pass of the changed page in
