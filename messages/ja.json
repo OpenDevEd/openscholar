@@ -3947,6 +3947,16 @@
       "files": "ファイルの読み取り",
       "stopFiles": "ファイルを読む前に確認する"
     },
-    "webSources": "{count, plural, other {ウェブの出典 # 件}}"
+    "webSources": "{count, plural, other {ウェブの出典 # 件}}",
+    "records": {
+      "search": "保存した検索",
+      "collection": "コレクション",
+      "paper": "論文",
+      "extraction": "抽出",
+      "screening": "スクリーニング",
+      "library": "エビデンスライブラリ",
+      "topic": "トピック",
+      "chat": "チャット"
+    }
   }
 }

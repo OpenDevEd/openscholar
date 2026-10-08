@@ -3947,6 +3947,16 @@
       "files": "Reading files",
       "stopFiles": "Ask before reading a file"
     },
-    "webSources": "{count, plural, one {# web source} other {# web sources}}"
+    "webSources": "{count, plural, one {# web source} other {# web sources}}",
+    "records": {
+      "search": "Saved search",
+      "collection": "Collection",
+      "paper": "Paper",
+      "extraction": "Extraction",
+      "screening": "Screening",
+      "library": "Evidence Library",
+      "topic": "Topic",
+      "chat": "Chat"
+    }
   }
 }

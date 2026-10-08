@@ -21,6 +21,7 @@ import { workUrl } from "../../lib/openalex/work-id";
 import { ABORT_ERROR_STRING } from "../../lib/ai/abort-signal";
 import { assistant } from "./agent";
 import { forgetLimits, noteReply } from "./spending";
+import { linked } from "./links";
 import { WEB_SOURCES_KEPT } from "./validators";
 
 /** Characters of an action's arguments, of what reverses it, and of why it failed, that a step keeps. */
@@ -182,7 +183,7 @@ export async function endStep(ctx: MutationCtx, stepId: Id<"assistantSteps">, re
   const sources = step.path === WEB_SEARCH_PATH ? sourcesOf(result) : step.path === PAPER_PDF_PATH ? paperSourceOf(result) : undefined;
   await ctx.db.patch("assistantSteps", stepId, { status: "done", ...(count === undefined ? {} : { count }), ...(undo ? { undo } : {}), ...(subject ? { subject } : {}), ...(sources ? { sources } : {}), endedAt: Date.now() });
   await ctx.db.insert("assistantStepResults", { threadId: step.threadId, stepId, result: cut(JSON.stringify(result ?? null), STEP_RESULT_MAX) });
-  const read = forModel(result);
+  const read = forModel(linked(step.path, result));
   await answerCalls(ctx, [step], () => (typeof read === "string" ? { type: "text", value: read } : { type: "json", value: read }));
 }
 

@@ -41,6 +41,8 @@ import { CITED_PDF, Cited, WebSources, safeDecode, useCited } from "./citations"
 import { AttachButton, DropZone, Reattach, SentFiles, Tray, freePreviews, release, sendingOf, startShrinker, uploaded, useAttach, useRemove, type Attachment } from "./attachments";
 import { MAX_FILES_PER_MESSAGE, readsImages, readsPdfs } from "@/lib/assistant/files";
 import { inApp, recordOf } from "@/lib/assistant/view";
+import { recordLinks } from "./record-links";
+import { defaultRemarkPlugins } from "streamdown";
 import useSWR, { preload } from "swr";
 import { readWork } from "@/app/actions/topics";
 import { unlessLimited } from "@/lib/openalex/limited";
@@ -915,13 +917,16 @@ function Thread({
 
 /** A reply: its text as it arrives, or "Thinking" until the first of it does. `acting`: one of its actions is running. */
 function Reply({ message, live, acting }: { message: Message; live: string; acting: boolean }) {
+  const t = useTranslations("assistant");
+  // Streamdown's own plugins, then one that makes a record's address left bare a link (./record-links.ts). The same list until the language changes, so its blocks stay cached.
+  const remarkPlugins = useMemo(() => [...Object.values(defaultRemarkPlugins), recordLinks((kind) => t(`records.${kind}`))], [t]);
   const pending = message.status === "pending";
   // One hook for the reply's whole life, so text still being revealed carries on when the reply is done.
   const [text, { isStreaming }] = useSmoothText(pending ? live : message.text, { startStreaming: pending });
   if (!text) return pending ? <Thinking wordless={acting} /> : null;
   return (
     <div className="text-sm leading-relaxed text-foreground">
-      <MessageResponse isAnimating={pending || isStreaming} parseIncompleteMarkdown={pending || isStreaming || message.status === "stopped"} components={REPLY_PARTS}>
+      <MessageResponse isAnimating={pending || isStreaming} parseIncompleteMarkdown={pending || isStreaming || message.status === "stopped"} components={REPLY_PARTS} remarkPlugins={remarkPlugins}>
         {text}
       </MessageResponse>
     </div>
