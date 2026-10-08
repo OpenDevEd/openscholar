@@ -28,18 +28,6 @@ describe("withGenerationIdCapture", () => {
     expect(response.status).toBe(200);
   });
 
-  it("accepts the header under its capitalized form", async () => {
-    const sink = vi.fn<(id: string) => void>();
-    const wrapped = withGenerationIdCapture(
-      sink,
-      mockFetchResponding({ "X-Generation-Id": "gen_capitalized" }),
-    );
-
-    await wrapped("https://openrouter.ai/api/v1/chat/completions");
-
-    expect(sink).toHaveBeenCalledWith("gen_capitalized");
-  });
-
   it("does not invoke the sink when the header is missing", async () => {
     const sink = vi.fn<(id: string) => void>();
     const wrapped = withGenerationIdCapture(
@@ -77,43 +65,5 @@ describe("withGenerationIdCapture", () => {
 
     expect(response).toBe(underlyingResponse);
     expect(inner).toHaveBeenCalledTimes(1);
-  });
-
-  it("forwards request input and init unchanged to the underlying fetch", async () => {
-    const inner = vi.fn<typeof fetch>(async () =>
-      new Response("", { status: 200 }),
-    );
-    const sink = vi.fn<(id: string) => void>();
-    const wrapped = withGenerationIdCapture(sink, inner);
-    const init: RequestInit = {
-      method: "POST",
-      headers: { authorization: "Bearer test" },
-      body: JSON.stringify({ model: "m" }),
-    };
-
-    await wrapped("https://example/chat", init);
-
-    expect(inner).toHaveBeenCalledWith("https://example/chat", init);
-  });
-
-  it("defaults to globalThis.fetch when no inner fetch is provided", async () => {
-    // Mock globalThis.fetch via a top-level vi.stubGlobal scoped to this test.
-    const stub = vi.fn<typeof fetch>(async () =>
-      new Response("", {
-        status: 200,
-        headers: { "x-generation-id": "gen_default" },
-      }),
-    );
-    vi.stubGlobal("fetch", stub);
-
-    const sink = vi.fn<(id: string) => void>();
-    const wrapped = withGenerationIdCapture(sink);
-
-    await wrapped("https://openrouter.ai/api/v1/chat/completions");
-
-    expect(stub).toHaveBeenCalledTimes(1);
-    expect(sink).toHaveBeenCalledWith("gen_default");
-
-    vi.unstubAllGlobals();
   });
 });

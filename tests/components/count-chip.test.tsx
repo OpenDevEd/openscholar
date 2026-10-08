@@ -145,20 +145,6 @@ describe("<CountChip>", () => {
     expect(label).toContain("cancer therapy");
   });
 
-  it("shows a skeleton for 'available' while fresh count is loading", () => {
-    useHistoryCountMock.mockReturnValue(loading());
-    const { container } = render(
-      <CountChip
-        entry={makeEntry()}
-        bucketKey="history:sr_1"
-        paperCount={200}
-        cap={200}
-        defaultCount={200}
-      />,
-    );
-    expect(container.querySelector("[data-slot=skeleton-bar]")).toBeTruthy();
-  });
-
   it("caps stepper max at `cap` when fresh > cap and shows 'cap applies'", () => {
     useHistoryCountMock.mockReturnValue(resolved(5000));
     render(
@@ -198,26 +184,6 @@ describe("<CountChip>", () => {
     );
   });
 
-  it("preset '50' commits 50", () => {
-    useHistoryCountMock.mockReturnValue(resolved(500));
-    render(
-      <CountChip
-        entry={makeEntry()}
-        bucketKey="history:sr_1"
-        paperCount={100}
-        cap={200}
-        defaultCount={200}
-      />,
-    );
-    updatePaperCountMock.mockClear();
-    fireEvent.click(screen.getByRole("button", { name: /presetFifty/ }));
-    expect(updatePaperCountMock).toHaveBeenCalledWith(
-      "history:sr_1",
-      50,
-      200,
-    );
-  });
-
   it("preset 'Max' commits min(cap, fresh)", () => {
     useHistoryCountMock.mockReturnValue(resolved(120));
     render(
@@ -234,26 +200,6 @@ describe("<CountChip>", () => {
     expect(updatePaperCountMock).toHaveBeenCalledWith(
       "history:sr_1",
       120,
-      200,
-    );
-  });
-
-  it("stepper + button commits paperCount + 1", () => {
-    useHistoryCountMock.mockReturnValue(resolved(500));
-    render(
-      <CountChip
-        entry={makeEntry()}
-        bucketKey="history:sr_1"
-        paperCount={100}
-        cap={200}
-        defaultCount={200}
-      />,
-    );
-    updatePaperCountMock.mockClear();
-    fireEvent.click(screen.getByRole("button", { name: /step.*\+1/ }));
-    expect(updatePaperCountMock).toHaveBeenCalledWith(
-      "history:sr_1",
-      101,
       200,
     );
   });

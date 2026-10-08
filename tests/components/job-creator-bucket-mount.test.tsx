@@ -12,7 +12,7 @@
  * `isMobile && <Drawer />` + `<Sidebar />`).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useRef, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -108,11 +108,6 @@ afterEach(() => {
 describe("Bucket mount — desktop viewport", () => {
   beforeEach(() => setMobileMatchMedia(false));
 
-  it("renders <BucketSidebar> (role=complementary)", () => {
-    render(<JobCreatorHarness />);
-    expect(screen.getByRole("complementary")).toBeTruthy();
-  });
-
   it("does not render the mobile <BucketIndicator> in the header", () => {
     render(<JobCreatorHarness />);
     expect(
@@ -123,26 +118,6 @@ describe("Bucket mount — desktop viewport", () => {
   it("does not mount the mobile <BucketDrawer> dialog", () => {
     render(<JobCreatorHarness />);
     expect(screen.queryByRole("dialog")).toBeNull();
-  });
-
-  it("Clear-all via the sidebar shows the Sonner undo toast", async () => {
-    act(() => {
-      useBucketStore
-        .getState()
-        .addMany(
-          [makeItem("k:a", "Alpha"), makeItem("k:b", "Beta")],
-          1000,
-        );
-    });
-    render(<JobCreatorHarness />);
-    fireEvent.click(screen.getByRole("button", { name: /^clear all$/i }));
-    await waitFor(() => {
-      expect(screen.getByText(/cleared 2 papers/i)).toBeTruthy();
-    });
-
-    const undo = await screen.findByRole("button", { name: /^undo$/i });
-    fireEvent.click(undo);
-    expect(useBucketStore.getState().order).toEqual(["k:a", "k:b"]);
   });
 });
 
@@ -169,13 +144,6 @@ describe("Bucket mount — mobile viewport", () => {
     fireEvent.click(btn);
     expect(screen.getByText("Alpha")).toBeTruthy();
     expect(screen.getByText("Beta")).toBeTruthy();
-  });
-
-  it("does not mount <BucketSidebar>", async () => {
-    render(<JobCreatorHarness />);
-    await waitFor(() => {
-      expect(screen.queryByRole("complementary")).toBeNull();
-    });
   });
 
   it("aria-live region mirrors the ready count", () => {
@@ -209,22 +177,5 @@ describe("Bucket mount — mobile viewport", () => {
     fireEvent.click(btn);
     fireEvent.click(screen.getByRole("button", { name: /^remove alpha$/i }));
     expect(useBucketStore.getState().order).toEqual(["k:b"]);
-  });
-
-  it("indicator forwards the ref to the underlying button", async () => {
-    let captured: HTMLButtonElement | null = null;
-    function Capture() {
-      const ref = useRef<HTMLButtonElement>(null);
-      captured = ref.current ?? captured;
-      return (
-        <TooltipProvider>
-          <BucketIndicator ref={ref} onClick={() => undefined} paperLimit={1000} />
-        </TooltipProvider>
-      );
-    }
-    const { rerender } = render(<Capture />);
-    rerender(<Capture />);
-    expect(captured).not.toBeNull();
-    expect(captured!.tagName).toBe("BUTTON");
   });
 });

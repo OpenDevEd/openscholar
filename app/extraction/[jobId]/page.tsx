@@ -63,7 +63,6 @@ import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
 import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
 import { CostBadge } from "@/components/extraction/cost-badge";
-import { CreditsExhaustedBanner } from "@/components/extraction/credits-exhausted-banner";
 import { JobStatusBanner } from "@/components/extraction/job-status-banner";
 import { JobProgressBar } from "@/components/extraction/job-progress-bar";
 import { NowProcessing } from "@/components/extraction/now-processing";
@@ -683,7 +682,8 @@ export default function JobDetailPage() {
               padding remains on clean completed / idle jobs. */}
           <div className="space-y-3 border-b border-border-subtle px-4 py-4 empty:hidden md:px-6">
             {job.status === "creditsExhausted" && (
-              <CreditsExhaustedBanner
+              <JobStatusBanner
+                variant="creditsExhausted"
                 allowed={job.spendCap}
                 onResume={handleResume}
                 onCancelRemaining={handleCancel}

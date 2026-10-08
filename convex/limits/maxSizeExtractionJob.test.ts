@@ -7,7 +7,7 @@ import { MAX_SIZE, seedAccount, seedExtractionJob } from "../lib/maxSize.test-su
 
 const filters = { searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [] };
 
-describe("at the largest sizes the product allows", () => {
+describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
   let fixture: Awaited<ReturnType<typeof seed>>;
 
   async function seed() {

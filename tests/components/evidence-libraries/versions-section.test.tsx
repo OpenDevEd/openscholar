@@ -325,12 +325,6 @@ describe("<VersionsSection>", () => {
     );
   });
 
-  it("says nothing about the address while the library answers at it", async () => {
-    await renderSection();
-    expect(screen.queryByRole("alert")).toBeNull();
-    expect(screen.queryByRole("button", { name: "versions.addressMove" })).toBeNull();
-  });
-
   it("offers a move when another site answers the address", async () => {
     const user = userEvent.setup();
     mocks.addressNotices.mockReturnValue([

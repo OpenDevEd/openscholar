@@ -176,6 +176,9 @@ jobs:
       - name: Check every OpenAlex request carries the key
         run: npm run check:openalex-key
 
+      - name: Check only extraction imports its mutations and queries
+        run: npm run check:extraction-imports
+
       - name: Check every user action is registered for the assistant
         run: npm run check:user-actions
 
@@ -187,42 +190,28 @@ jobs:
 
       # The browser job builds Next.js on the same guest at the same time. Fifteen jsdom workers on a shared CPU share pushed single tests
       # past their timeouts; eight finish sooner.
-      - name: Run unit and contract tests
-        run: npm run test -- --maxWorkers=8
-
-  build:
-    name: Build
-    runs-on: openscholar-light
-    timeout-minutes: 20
-    needs: changes
-    if: needs.changes.outputs.tested != 'true'
-    env:
-      NODE_OPTIONS: --max-old-space-size=4096
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
-      CLERK_SECRET_KEY: sk_test_placeholder
-      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
-      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
-      NEXT_PUBLIC_CONVEX_URL: https://example.convex.cloud
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: ./.github/actions/setup-project
-
-      - name: Restore the Next.js build cache
-        uses: actions/cache@v5
-        with:
-          path: .next/cache
-          key: ${{ runner.name }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('app/**/*', 'components/**/*', 'convex/**/*', 'i18n/**/*', 'lib/**/*', 'next.config.ts', 'package.json') }}
-          restore-keys: |
-            ${{ runner.name }}-nextjs-${{ hashFiles('package-lock.json') }}-
-
-      - name: Build
-        run: npm run build
+      # CI's one type check (the e2e build skips its own) runs beside the tests.
+      - name: Type check, and run unit and contract tests
+        run: |
+          (npx next typegen && npx tsc --noEmit) > "$RUNNER_TEMP/types.log" 2>&1 &
+          types=$!
+          tests_status=0
+          npm run test -- --maxWorkers=8 || tests_status=$?
+          types_status=0
+          wait "$types" || types_status=$?
+          echo "::group::Type check"
+          cat "$RUNNER_TEMP/types.log"
+          echo "::endgroup::"
+          if (( tests_status != 0 || types_status != 0 )); then
+            printf '::error::Failed: tests=%s types=%s\n' "$tests_status" "$types_status"
+            exit 1
+          fi
 
   e2e-auth:
     runs-on: openscholar-secret
     timeout-minutes: 30
-    # Starts with the unit tests and the build instead of after them.
+    # Starts with the unit tests instead of after them. Its production build is CI's only
+    # Next.js build; the unit job type-checks, so this one doesn't.
     needs: changes
     if: needs.changes.outputs.runtime_required == 'true'
     outputs:
@@ -285,8 +274,18 @@ jobs:
           echo "available=false" >> "$GITHUB_OUTPUT"
           printf '::notice::Skipping auth E2E because this pull request has no auth test environment: %s\n' "${missing_vars[*]}"
 
-      - if: steps.auth-environment.outputs.available == 'true'
-        uses: ./.github/actions/setup-project
+      - uses: ./.github/actions/setup-project
+
+      # Without the auth environment, as on a fork's pull request, the browser tests can't
+      # run, but CI's one production build still must.
+      - name: Build without the auth environment
+        if: steps.auth-environment.outputs.available != 'true'
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+          CLERK_SECRET_KEY: sk_test_placeholder
+          NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+          NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+        run: npm run build
 
       - name: Install Playwright browser
         if: steps.auth-environment.outputs.available == 'true'
@@ -304,7 +303,7 @@ jobs:
             echo "::error::E2E_CONVEX_SELF_HOSTED_ADMIN_KEY is not set"
             exit 1
           fi
-          npx convex deploy --yes
+          npx convex deploy --yes --typecheck=disable
           # Each run reserves a library, and an organization holds 200 at most: the test
           # backend starts every run with none. Its only libraries are the ones runs made.
           : > "$RUNNER_TEMP/no-rows.jsonl"
@@ -314,9 +313,26 @@ jobs:
           # An import skips the triggers that count those rows, so the counts kept from them go too.
           npx convex run migrations/pagedLibraryList:reset
 
+      # The runner keeps the Next.js build cache between runs: without its type check, a build
+      # a few merged pull requests later takes a quarter of the CPU of a cold one.
+      - name: Restore the Next.js build cache
+        if: steps.auth-environment.outputs.available == 'true'
+        run: |
+          mkdir -p .next
+          if [ -d "$HOME/.cache/openscholar-next" ]; then mv "$HOME/.cache/openscholar-next" .next/cache; fi
+
       - name: Run auth and citation E2E
         if: steps.auth-environment.outputs.available == 'true'
         run: npx playwright test e2e/auth.spec.ts e2e/citations.spec.ts --config=playwright.config.ts
+
+      - name: Keep the Next.js build cache
+        if: always() && steps.auth-environment.outputs.available == 'true'
+        run: |
+          if [ -d .next/cache ]; then
+            mkdir -p "$HOME/.cache"
+            rm -rf "$HOME/.cache/openscholar-next"
+            mv .next/cache "$HOME/.cache/openscholar-next"
+          fi
 
       - name: Upload Playwright report
         if: failure() && steps.auth-environment.outputs.available == 'true'
@@ -344,7 +360,6 @@ jobs:
     needs:
       - changes
       - unit-tests
-      - build
       - e2e-auth
     steps:
       - name: Require every selected CI lane to pass
@@ -352,7 +367,6 @@ jobs:
           TESTED: ${{ needs.changes.outputs.tested }}
           CHANGES: ${{ needs.changes.result }}
           UNIT_TESTS: ${{ needs.unit-tests.result }}
-          BUILD: ${{ needs.build.result }}
           RUNTIME_REQUIRED: ${{ needs.changes.outputs.runtime_required }}
           AUTH: ${{ needs.e2e-auth.result }}
         run: |
@@ -362,7 +376,6 @@ jobs:
           fi
           test "$CHANGES" = success
           test "$UNIT_TESTS" = success
-          test "$BUILD" = success
           if test "$RUNTIME_REQUIRED" = true; then
             test "$AUTH" = success
           else

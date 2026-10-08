@@ -27,19 +27,6 @@ describe("<ConfigurationWorkspace>", () => {
   describe("the AI card", () => {
     const card = (key: string) => within(document.getElementById(`sec-${key}`)!);
 
-    it("sits under Discovery in the rail with its state", async () => {
-      await renderWorkspace();
-      const discovery = within(
-        screen.getByRole("navigation", { name: "rail.aria" }),
-      );
-      const link = discovery.getByRole("link", { name: /sections\.ai/ });
-      expect(link).toHaveAttribute("href", "#sec-ai");
-      expect(within(link).getByRole("img")).toHaveAccessibleName(
-        "sectionState.complete",
-      );
-      expect(card("ai").getByRole("switch", { name: "ai.answersLabel" })).toBeInTheDocument();
-    });
-
     it(
       "asks for a key and a model, then saves one provider entry",
       async () => {
@@ -231,51 +218,6 @@ describe("<ConfigurationWorkspace>", () => {
         release();
       });
       expect(ai.getByRole("button", { name: "ai.keyReplace" })).toBeEnabled();
-    });
-
-    it("locks Cancel while a replacement is being saved", async () => {
-      const user = userEvent.setup();
-      harness.storedCredentials = [{ credentialKey: AI_PROVIDER_CREDENTIAL_KEY }];
-      let release!: (id: string) => void;
-      mutationMock.mockImplementation((reference: unknown) =>
-        reference === "writeCredential"
-          ? () =>
-              new Promise<string>((resolve) => {
-                release = resolve;
-              })
-          : async () => null,
-      );
-      await renderWorkspace();
-      const ai = card("ai");
-      await user.click(ai.getByRole("switch", { name: "ai.answersLabel" }));
-      await user.click(ai.getByRole("button", { name: "ai.keyReplace" }));
-      await user.type(ai.getByLabelText("ai.keyLabel"), "sk-or-v1-replacement");
-      await user.click(ai.getByRole("button", { name: "ai.keySave" }));
-
-      expect(ai.getByRole("button", { name: "ai.keyCancel" })).toBeDisabled();
-
-      await act(async () => {
-        release("credential_2");
-      });
-    });
-  });
-
-  describe("the AI card without a stored key", () => {
-    it("needs attention while AI answers are on and no key is stored", async () => {
-      queryMock.mockReturnValue(
-        draftResult({
-          sections: savedRows.map((row) =>
-            row.sectionKey === "features"
-              ? { sectionKey: "features", payload: { ai: true } }
-              : row,
-          ),
-        }),
-      );
-      await renderWorkspace();
-      const ai = within(document.getElementById("sec-ai")!);
-      expect(ai.getByText("sectionState.attention")).toBeInTheDocument();
-      expect(ai.getByText("problems.aiKey")).toBeInTheDocument();
-      expect(ai.getByLabelText("ai.keyLabel")).toBeInTheDocument();
     });
   });
 

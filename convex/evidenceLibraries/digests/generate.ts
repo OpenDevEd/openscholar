@@ -3,6 +3,7 @@ import { getProviderModel } from "../../../lib/ai/server/providers";
 import { callOptions } from "../../../lib/ai/core/call-options";
 import { DIGEST_MODEL, DIGEST_REASONING, digestResultSchema, type DigestRequest } from "./contract";
 import { repairCitations } from "./citations";
+import { citedKeys, reviewDigest, reviseDigest, withoutSentences } from "./review";
 import { UNSLOP_RULES } from "./unslop";
 
 const INSTRUCTIONS = `Write a digest of the supplied period for the readers of an Evidence Library, in the requested locale.
@@ -28,7 +29,45 @@ Shape
 Writing rules
 ${UNSLOP_RULES}`;
 
+const CITES = /\]\(\/lib\/[A-Z0-9]{8}\)/;
+// The review runs after the writer, inside the nine minutes a job may take, and for three minutes at most.
+const REVIEW_BUDGET_MS = 180_000;
+const REVIEW_DEADLINE_MS = 540_000;
+
+// The writing rules ask for straight quotes and second-level headings; the model still sends some of the others.
+const tidy = (text: string) => text.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
+const levelled = (markdown: string) => tidy(markdown).replace(/^ {0,3}#{1,6}(?=[ \t])/gm, "##");
+
+/**
+ * The summary and body after a second model has checked each cited paper against what the digest says about it.
+ * The writer corrects what was flagged once, and a sentence flagged again is taken out. A review that fails never
+ * costs the digest: the text that passed the citation check is kept, without the sentences already known to be
+ * wrong. So is a correction that dropped a flagged sentence's citation, since its claim could no longer be checked.
+ */
+async function reviewed(digest: {summary: string; markdown: string}, request: DigestRequest, started: number) {
+  const signal = AbortSignal.timeout(Math.max(1_000, Math.min(REVIEW_BUDGET_MS, REVIEW_DEADLINE_MS - (Date.now() - started))));
+  const job = {libraryId: request.libraryId, editionId: request.editionId};
+  let checked = digest;
+  try {
+    const issues = await reviewDigest(digest.markdown, request.publications, signal);
+    if (!issues.length) return digest;
+    checked = {summary: digest.summary, markdown: withoutSentences(digest.markdown, issues)};
+    const correction = await reviseDigest({...digest, locale: request.locale}, issues, request.publications, signal);
+    const revised = (await repairCitations(levelled(correction.markdown), request.publications, signal)).markdown;
+    const cited = citedKeys(revised);
+    if (issues.some(issue => !cited.has(issue.key))) throw new Error("The correction dropped a flagged sentence's citation");
+    const remaining = await reviewDigest(revised, request.publications, signal);
+    console.info("Library digest reviewed", {...job, flagged: issues.map(({key, problem}) => ({key, problem})), removed: remaining.map(({key, problem}) => ({key, problem}))});
+    const kept = withoutSentences(revised, remaining);
+    return CITES.test(kept) ? {summary: tidy(correction.summary), markdown: kept} : checked;
+  } catch (error) {
+    console.error("Library digest review did not finish; keeping the digest without the sentences it flagged", {...job, error});
+    return CITES.test(checked.markdown) ? checked : digest;
+  }
+}
+
 export async function generateLibraryDigest(request: DigestRequest, signal?: AbortSignal) {
+  const started = Date.now();
   const model = await getProviderModel("openrouter", undefined, DIGEST_MODEL);
   const result = await generateText({
     model,
@@ -47,12 +86,9 @@ export async function generateLibraryDigest(request: DigestRequest, signal?: Abo
   });
   if (result.finishReason !== "stop") throw new Error(`Digest generation did not finish: ${result.finishReason} after ${result.usage.outputTokens} output tokens`);
   const written = digestResultSchema.parse(result.output);
-  // The writing rules ask for straight quotes; the model still sends some curly ones.
-  const straight = (text: string) => text.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
-  // Every heading is a theme heading, and the page styles those as second-level.
-  const output = {title: straight(written.title), summary: straight(written.summary), markdown: straight(written.markdown).replace(/^ {0,3}#{1,6}(?=[ \t])/gm, "##")};
-  const {markdown, repairs} = await repairCitations(output.markdown, request.publications, signal);
+  const {markdown: cited, repairs} = await repairCitations(levelled(written.markdown), request.publications, signal);
   if (repairs.length) console.info("Library digest citations repaired", {libraryId: request.libraryId, editionId: request.editionId, repairs});
-  if (!/\]\(\/lib\/[A-Z0-9]{8}\)/.test(markdown)) throw new Error("Digest output cites no supplied publication");
-  return {...output, markdown, model: DIGEST_MODEL, reasoning: DIGEST_REASONING};
+  if (!CITES.test(cited)) throw new Error("Digest output cites no supplied publication");
+  const {summary, markdown} = await reviewed({summary: tidy(written.summary), markdown: cited}, request, started);
+  return {title: tidy(written.title), summary, markdown, model: DIGEST_MODEL, reasoning: DIGEST_REASONING};
 }

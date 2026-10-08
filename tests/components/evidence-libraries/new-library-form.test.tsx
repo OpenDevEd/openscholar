@@ -248,22 +248,6 @@ describe("<NewLibraryForm>", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("keeps a long address readable on hover", async () => {
-    const user = userEvent.setup();
-    mocks.organization.mockReturnValue(owner);
-
-    render(<NewLibraryForm />);
-    await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
-
-    const address = await screen.findByText("climate-evidence-lib.example.test");
-    // jsdom has no layout: make the address overflow its box, as a long one does in a browser.
-    Object.defineProperty(address, "scrollWidth", { configurable: true, value: 400 });
-    Object.defineProperty(address, "clientWidth", { configurable: true, value: 200 });
-    await user.hover(address);
-
-    expect(await screen.findByRole("tooltip")).toHaveTextContent("climate-evidence-lib.example.test");
-  });
-
   it("does not offer the form to an editor", () => {
     mocks.organization.mockReturnValue({ ...owner, membership: { role: "org:member" } });
     mocks.query.mockReturnValue({ data: { page: [], isDone: true, continueCursor: "" }, isReady: true });

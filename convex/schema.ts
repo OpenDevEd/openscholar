@@ -551,6 +551,19 @@ export default defineSchema({
     .index("by_state", ["state"]),
 
   // ═══════════════════════════════════════════════════════════════
+  // WORKSPACES (#650) - where work lives: one per account, its own,
+  // and one per organization (convex/workspaces/create.ts)
+  // ═══════════════════════════════════════════════════════════════
+  workspaces: defineTable(
+    v.union(
+      v.object({ kind: v.literal("personal"), userId: v.id("users") }),
+      v.object({ kind: v.literal("organization"), organizationId: v.id("organizations") }),
+    ),
+  )
+    .index("by_userId", ["userId"])
+    .index("by_organizationId", ["organizationId"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // BILLING - balances and plans live in Autumn (convex/billing).
   // billingAccounts caches each user's plan, features and balance;
   // billingCatalog caches Autumn's plans and features;

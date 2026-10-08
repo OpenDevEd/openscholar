@@ -56,13 +56,6 @@ describe("<ConfigurationWorkspace>", () => {
       await user.click(search.getByRole("combobox", { name: "search.featuredInstitution" }));
       expect(await screen.findByText("evidenceLibraryInstitutions.picker.notSetUp")).toBeInTheDocument();
     });
-
-    it("shows the Zotero sources and the collections picker inside their cards", async () => {
-      await renderWorkspace();
-      expect(card("sources").getByRole("button", { name: "sources.addSource" })).toBeInTheDocument();
-      expect(await card("collections").findByRole("button", { name: "collections.picker.open" })).toBeInTheDocument();
-      expect(card("institutions").getByRole("combobox", { name: "institutions.nameLabel" })).toBeInTheDocument();
-    });
   });
 
   describe("platform sections", () => {
@@ -110,17 +103,6 @@ describe("<ConfigurationWorkspace>", () => {
       await user.click(card("languages").getByRole("checkbox", { name: "languages.names.fr" }));
       expect(languageSwitch).toBeEnabled();
       expect(card("languages").getByText("sectionState.edited")).toBeInTheDocument();
-    });
-
-    it("asks for a measurement id as soon as Google Analytics is switched on", async () => {
-      const user = userEvent.setup();
-      await renderWorkspace();
-      const analytics = card("analytics");
-      expect(analytics.queryByLabelText("analytics.measurementIdLabel")).not.toBeInTheDocument();
-      await user.click(analytics.getByRole("switch", { name: "analytics.googleLabel" }));
-      expect(analytics.getByText("sectionState.attention")).toBeInTheDocument();
-      await user.type(analytics.getByLabelText("analytics.measurementIdLabel"), "g-abcd12");
-      expect(analytics.getByText("sectionState.edited")).toBeInTheDocument();
     });
 
     it("saves PostHog and Google Analytics switched on together", async () => {

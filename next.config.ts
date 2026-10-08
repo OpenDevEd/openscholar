@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   poweredByHeader: false,
   typescript: {
-    // CI already ran the exact commit through the required build before E2E.
+    // CI type-checks once in its unit job, so its e2e build skips the check.
     ignoreBuildErrors: process.env.NEXT_BUILD_SKIP_VERIFIED_TYPES === "1",
   },
   experimental: {

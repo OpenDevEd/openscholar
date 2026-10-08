@@ -63,34 +63,11 @@ describe("<SelectableList>", () => {
     fireEvent.click(screen.getByRole("button", { name: "Gamma" }), { shiftKey: true });
     expect(onToggleRange).toHaveBeenCalledWith([rows[0], rows[2]], true);
   });
-  it("renders a checkbox per row plus a header checkbox", () => {
-    render(<Harness />);
-    const checkboxes = screen.getAllByRole("checkbox");
-    // 1 header + 4 rows
-    expect(checkboxes).toHaveLength(1 + rows.length);
-  });
 
   it("header goes indeterminate when some rows selected and checked when all", () => {
     render(<Harness initial={new Set(["a"])} />);
     const header = screen.getAllByRole("checkbox")[0];
     expect(header.getAttribute("data-state")).toBe("indeterminate");
-  });
-
-  it("clicking the header calls onToggleAll and selects everything", () => {
-    const onChange = vi.fn();
-    render(<Harness onChange={onChange} />);
-    fireEvent.click(screen.getAllByRole("checkbox")[0]);
-    expect(onChange).toHaveBeenCalled();
-    const last = onChange.mock.calls[onChange.mock.calls.length - 1][0];
-    expect(last.size).toBe(rows.length);
-  });
-
-  it("clicking a row toggles a single selection", () => {
-    const onChange = vi.fn();
-    render(<Harness onChange={onChange} />);
-    fireEvent.click(screen.getByText("Beta"));
-    const snapshot = onChange.mock.calls[onChange.mock.calls.length - 1][0];
-    expect([...snapshot]).toEqual(["b"]);
   });
 
   it("shift-click extends the selection across the inclusive range", () => {

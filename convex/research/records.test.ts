@@ -63,7 +63,7 @@ describe("account research records", () => {
     await expect(create(bob, "alice", "foreign")).rejects.toThrow();
     expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts })).page).toHaveLength(1);
   });
-  it("stores one row per paper, so changing one answer writes one row, and old revisions keep their answers", async () => {
+  it("stores one row per paper, so changing one answer writes one row, and old revisions keep their answers", { tags: ["size"] }, async () => {
     const { alice, t } = await setup();
     const question = "هل هذه تجربة؟ ".repeat(60);
     const large = { ...record, screeningResponses: Array.from({ length: 1500 }, (_, i) => ({ paperId: `W${i}`, responses: [{ question, response: true }, { question: "Adults?", response: i % 2 === 0 }, { question: "In Africa?", response: null }] })) };

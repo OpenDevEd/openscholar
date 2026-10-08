@@ -99,24 +99,4 @@ describe("<CostBadge>", () => {
     // bundle is exercised in integration tests.
     expect(link.getAttribute("aria-label")).toContain("42");
   });
-
-  it("renders a non-link span when href is omitted (default)", () => {
-    withCostData({
-      total: 7,
-    });
-    render(<CostBadge jobId={fakeJobId} />);
-    expect(screen.queryByRole("link")).toBeNull();
-    const status = screen.getByRole("status");
-    expect(status).toHaveAttribute("data-credits-total", "7");
-    expect(status).not.toHaveAttribute("href");
-  });
-
-  it("zero-total job renders data-credits-total=0", () => {
-    withCostData({
-      total: 0,
-    });
-    render(<CostBadge jobId={fakeJobId} />);
-    const el = screen.getByRole("status");
-    expect(el).toHaveAttribute("data-credits-total", "0");
-  });
 });

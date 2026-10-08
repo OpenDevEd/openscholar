@@ -528,7 +528,7 @@ describe("an approved job's hold", () => {
 });
 
 describe("the usage ledger", () => {
-  it("counts hundreds of charges for one extraction job within Convex's limits", async () => {
+  it("counts hundreds of charges for one extraction job within Convex's limits", { tags: ["size"] }, async () => {
     vi.useFakeTimers();
     try {
       const t = convexTest({ schema, transactionLimits: true });
@@ -548,5 +548,5 @@ describe("the usage ledger", () => {
     } finally {
       vi.useRealTimers();
     }
-  }, 300_000);
+  });
 });

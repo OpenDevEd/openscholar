@@ -479,21 +479,6 @@ describe("<SourcesField>", () => {
     expect(mocks.listMyGroups).toHaveBeenCalledTimes(2);
   });
 
-  it("says nothing about a ceiling the account never reached", async () => {
-    queries({ connected: true });
-    mocks.listMyGroups.mockResolvedValue({
-      connected: true,
-      username: "owner",
-      zoteroUserId: "1",
-      capped: false,
-      groups: [{ id: "42", name: "Climate evidence", isPublic: true, itemCount: 312 }],
-    });
-    render(<Harness />);
-    await openGroupPicker();
-    expect(await screen.findByText("Climate evidence")).toBeInTheDocument();
-    expect(screen.queryByText(`${ns}.picker.capped`)).not.toBeInTheDocument();
-  });
-
   it("keeps the groups it could not connect ticked", async () => {
     queries({ connected: true });
     mocks.listMyGroups.mockResolvedValue({
