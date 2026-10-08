@@ -84,7 +84,7 @@ export const listChargesAction = defineUserQuery({
   description: "Lists the person's credit charges, newest first, a page at a time. Given `jobId`, only that extraction job's charges.",
   args: { paginationOpts: paginationOptsValidator, jobId: v.optional(v.id("extractionJobs")) },
   returns: paginationResultValidator(usageRowValidator),
-  run: async (ctx, userId, { paginationOpts, jobId }) => {
+  run: async (ctx, { userId }, { paginationOpts, jobId }) => {
     const charges = await chargesOf(ctx, userId, jobId);
     if (!charges) return { page: [], isDone: true, continueCursor: "" };
     const read = await charges.rows.order("desc").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, MAX_PAGE_SIZE) });
@@ -99,7 +99,7 @@ export const countChargesAction = defineUserQuery({
   description: "Says how many credit charges the person has. Given `jobId`, how many that extraction job has.",
   args: { jobId: v.optional(v.id("extractionJobs")) },
   returns: v.number(),
-  run: async (ctx, userId, { jobId }) => {
+  run: async (ctx, { userId }, { jobId }) => {
     const charges = await chargesOf(ctx, userId, jobId);
     // The ledger worker counts a charge a moment after it's recorded (./usageLog.ts).
     return charges ? await usageAgg.count(ctx, { namespace: charges.namespace, stale: true }) : 0;
@@ -140,7 +140,7 @@ export const balanceAction = defineUserQuery({
     "Says how many credits the person has, as last read from the billing service. It can be a little behind: a reply being written holds credits until it ends, and a charge shows once it's settled.",
   args: {},
   returns: v.object({ credits: v.number() }),
-  run: async (ctx, userId) => ({ credits: await availableCredits(ctx, userId) }),
+  run: async (ctx, { userId }) => ({ credits: await availableCredits(ctx, userId) }),
 });
 export const balance = userQuery(balanceAction);
 export const balanceForAssistant = assistantQuery(balanceAction);
@@ -163,7 +163,7 @@ export const planAction = defineUserQuery({
       nextPlan: v.optional(v.string()),
     }),
   ),
-  run: async (ctx, userId) => {
+  run: async (ctx, { userId }) => {
     const account = await readAccount(ctx, userId);
     if (!account?.plan) return null;
     const catalog = await readCatalog(ctx);
@@ -192,7 +192,7 @@ export const spendingAction = defineUserQuery({
     "`day` counts days from `since`; a day and kind with nothing spent is left out, and refunds aren't counted.",
   args: { since: v.number(), days: v.number() },
   returns: paginationResultValidator(spendingCellValidator),
-  run: async (ctx, userId, { since, days }) => ({ page: await spendingOf(ctx, userId, since, days), isDone: true, continueCursor: "" }),
+  run: async (ctx, { userId }, { since, days }) => ({ page: await spendingOf(ctx, userId, since, days), isDone: true, continueCursor: "" }),
 });
 export const spending = userQuery(spendingAction);
 export const spendingForAssistant = assistantQuery(spendingAction);

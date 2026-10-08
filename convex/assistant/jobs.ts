@@ -14,6 +14,8 @@ import { requireAuth } from "../lib/auth";
 import { internalMutation, query } from "../lib/functions";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { getScreeningJobAction } from "../screening/queries";
+import { actingAs } from "../lib/userActions";
+import { personalWorkspaceOf } from "../workspaces/actor";
 import { readJobCounters } from "../extraction/jobCounters";
 import { readScreeningProgressCounts } from "../screening/progress";
 import { requireThread } from "./access";
@@ -55,7 +57,8 @@ async function jobOf(ctx: QueryCtx, step: Doc<"assistantSteps">) {
 
 /** What a screening has come to, as its card and its readout say it. */
 async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"screeningJobs">): Promise<Infer<typeof screeningCardValidator> | null> {
-  const job = await getScreeningJobAction.run(ctx, userId, { jobId });
+  // As its person, in their own workspace until jobs belong to one (#650).
+  const job = await getScreeningJobAction.run(ctx, await actingAs(ctx, userId, await personalWorkspaceOf(ctx, userId), "user"), { jobId });
   if (!job) return null;
   const jobs = [job];
   const sum = (of: (one: NonNullable<typeof job>) => number) => of(job);
@@ -91,7 +94,7 @@ async function screeningAhead(ctx: QueryCtx, userId: Id<"users">, waiting: Id<"s
   const running = await ctx.db.query("screeningJobs").withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", "processing")).take(5);
   for (const other of running) {
     if (other._id === waiting) continue;
-    const job = await getScreeningJobAction.run(ctx, userId, { jobId: other._id });
+    const job = await getScreeningJobAction.run(ctx, await actingAs(ctx, userId, await personalWorkspaceOf(ctx, userId), "user"), { jobId: other._id });
     if (!job?.running) continue;
     return { ...(job.label ? { label: job.label } : {}), done: job.outcomes.included + job.outcomes.unclear + job.outcomes.excluded + job.outcomes.failed, total: job.totalPapers };
   }

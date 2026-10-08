@@ -32,16 +32,16 @@ export const saveAction = defineUserAction({
   undoable: true,
   changes: true,
   // As the page's save asks (./mutations.ts): one that would have no undo. What isn't a paper's ID asks nothing here, and is refused when it runs.
-  asksFirst: async (ctx, userId, { id, rating, collectionId }) => {
+  asksFirst: async (ctx, { userId }, { id, rating, collectionId }) => {
     const openalexId = workUrl(id);
     // A library may follow the collection, which shows the paper outside the account.
     return openalexId !== null && ((await saveAsksFirst(ctx, userId, openalexId, rating ?? undefined)) || (collectionId != null && (await followed(ctx, collectionId))));
   },
-  check: async (ctx, userId, { id, rating, collectionId }) => {
+  check: async (ctx, { userId }, { id, rating, collectionId }) => {
     const openalexId = workUrl(id);
     if (openalexId) await checkSave(ctx, userId, { openalexId, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }) });
   },
-  run: async (ctx, userId, { id, rating, collectionId }, author, call) => {
+  run: async (ctx, { userId, author }, { id, rating, collectionId }, call) => {
     const openalexId = workUrl(id);
     if (!openalexId) throw createError("VALIDATION_ERROR", "A paper is saved by its ID, such as W2741809807, as results give it.");
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
@@ -77,12 +77,12 @@ export const collectAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   // A library may follow the collection, which shows the change outside the account.
-  asksFirst: (ctx, _userId, { collectionId }) => followed(ctx, collectionId),
-  run: async (ctx, userId, { id, collectionId, inCollection }, author) => {
-    const item = await findItem(ctx, userId, id);
+  asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
+  run: async (ctx, actor, { id, collectionId, inCollection }) => {
+    const item = await findItem(ctx, actor.userId, id);
     if (inCollection && !item) throw createError("NOT_FOUND", "This paper isn't in the library yet. Call library/papers:save with this collectionId: it saves the paper and puts it in the collection.");
     // By the ID the paper is saved under: one saved before the library kept one form is under the ID it was given.
-    return await setPaperInCollectionAction.run(ctx, userId, { paper: { openalexId: item?.openalexId ?? canonical(id) }, collectionId, inCollection }, author);
+    return await setPaperInCollectionAction.run(ctx, actor, { paper: { openalexId: item?.openalexId ?? canonical(id) }, collectionId, inCollection });
   },
 });
 export const collect = userMutation(collectAction);

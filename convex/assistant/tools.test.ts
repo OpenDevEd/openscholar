@@ -26,6 +26,7 @@ import { notePart } from "../../lib/assistant/view";
 import { misfit } from "./failures";
 import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, NO_ESTIMATE, batched, circling, core, definition, found, kindOf, written } from "./tools";
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
+import { personalWorkspaceOf } from "../workspaces/actor";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
 type Sent = Array<{ role: string; content: string | Part[] }>;
@@ -598,7 +599,8 @@ describe("the assistant's tools", () => {
     expect(await shown()).toEqual(["user: Delete it", "step: library/collections:deleteCollection done", "assistant: Deleted."]);
 
     // Whether a call asks first is read before it runs. Arguments that check can't read aren't a reason to ask: the call goes on to run, and fails there with a message the model reads.
-    expect(await t.query(internal.assistant.asking.first, { userId: ada, path: "library/mutations:removeFromLibrary", input: "{}" })).toBe(false);
+    const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, ada));
+    expect(await t.query(internal.assistant.asking.first, { userId: ada, workspaceId, path: "library/mutations:removeFromLibrary", input: "{}" })).toBe(false);
 
     // Calls made in one step run together. A write that lost a race for a row changed nothing, and is made again.
     const collision = new Error('Documents read from or written to the "libraryCounts" table changed while this mutation was being run and on every subsequent retry.');

@@ -54,7 +54,7 @@ export const listJobsAction = defineUserQuery({
     "Given `text`, those whose name or description best match its words, best first.",
   args: { paginationOpts: paginationOptsValidator, sort: jobSortValidator, text: v.optional(v.string()) },
   returns: paginationResultValidator(extractionJobValidator),
-  run: async (ctx, userId, { paginationOpts, sort, text }) => {
+  run: async (ctx, { userId }, { paginationOpts, sort, text }) => {
     await requireFeature(ctx, "extraction.enabled", userId);
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, JOBS_PAGE_MAX), maximumBytesRead: JOBS_PAGE_BYTES };
     const needle = searchTerms(text);
@@ -101,7 +101,7 @@ export const countJobsAction = defineUserQuery({
   args: {},
   returns: v.number(),
   // Someone with no job has no count; one from before counts were kept gets theirs from migrations/pagedExtractionJobs.
-  run: async (ctx, userId) => (await countRow(ctx, "extractionJobs", userId))?.count ?? 0,
+  run: async (ctx, { userId }) => (await countRow(ctx, "extractionJobs", userId))?.count ?? 0,
 });
 export const countJobs = userQuery(countJobsAction);
 export const countJobsForAssistant = assistantQuery(countJobsAction);
@@ -116,7 +116,7 @@ export const getJobDetailsAction = defineUserQuery({
     job: extractionJobValidator,
     questions: jobQuestionsValidator,
   }),
-  run: async (ctx, userId, { jobId }) => {
+  run: async (ctx, { userId }, { jobId }) => {
     const job = await ownJob(ctx, userId, jobId);
     if (!job) return noAccess();
     await requireFeature(ctx, "extraction.enabled", userId);

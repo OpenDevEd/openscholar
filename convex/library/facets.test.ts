@@ -8,6 +8,7 @@ import schema from "../schema";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
 import { restoreLibraryItemAction } from "./mutations";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { ownActor } from "../workspaces/actor.test-support";
 
 type Test = ReturnType<typeof convexTest>;
 
@@ -193,7 +194,7 @@ describe("library facets", () => {
 
       const removed = await as.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper(1).openalexId });
       // The followed place hasn't moved yet: putting the paper back would change the library, so the assistant asks.
-      expect(await t.run((ctx) => restoreLibraryItemAction.asksFirst!(ctx, userId, removed.undo!.args))).toBe(true);
+      expect(await t.run(async (ctx) => restoreLibraryItemAction.asksFirst!(ctx, await ownActor(ctx, userId), removed.undo!.args))).toBe(true);
       const { id: restored } = await as.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
       await expect(as.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper(1).openalexId })).rejects.toThrow(/still going back/);
       await nextBatches();

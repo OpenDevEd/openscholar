@@ -105,7 +105,7 @@ export const slotsAction = defineUserQuery({
   description: "The person's paper slots for screening: how many papers they may have running at once across their screening jobs, and how many are running now.",
   args: {},
   returns: v.object({ limit: v.number(), running: v.number() }),
-  run: async (ctx, userId) => {
+  run: async (ctx, { userId }) => {
     const row = await ctx.db.query("screeningSlots").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
     return { limit: await paperLimit(ctx, userId), running: row?.running ?? 0 };
   },
@@ -216,7 +216,7 @@ export const getScreeningJobAction = defineUserQuery({
       credits: v.object({ spent: v.optional(v.number()), estimate: v.number() }),
     })
   ),
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job || job.userId !== userId) return null;
     const progress = await readJobProgressSnapshot(ctx, job);
@@ -381,7 +381,7 @@ export const listJobsAction = defineUserQuery({
     "With `status`, only the jobs in it. A job's papers are read with screening/papers:list.",
   args: jobListArgs,
   returns: jobListValidator,
-  run: async (ctx, userId, args) => jobsOf(ctx, userId, args),
+  run: async (ctx, { userId }, args) => jobsOf(ctx, userId, args),
 });
 export const listJobs = userQuery(listJobsAction);
 export const listJobsForAssistant = assistantQuery(listJobsAction);
@@ -468,7 +468,7 @@ export const listScreeningResultsAction = defineUserQuery({
   description: "Read a page of a screening job's scored decisions with original model answers and decision provenance. Pass the job revision to reject changes between pages.",
   args: { jobId: v.id("screeningJobs"), paginationOpts: paginationOptsValidator, revision: v.optional(v.string()) },
   returns: paginationResultValidator(screeningResultRowValidator),
-  run: async (ctx, userId, args) => {
+  run: async (ctx, { userId }, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job || job.userId !== userId) return { page: [], isDone: true, continueCursor: "" };
     await screeningRevision(ctx, job, args.revision);
@@ -553,7 +553,7 @@ export const estimateAction = defineUserQuery({
   description: "Estimates the credits screening a number of papers holds, against the person's balance, and how many papers that balance covers.",
   args: { papers: v.number() },
   returns: v.object({ credits: v.number(), available: v.number(), affordablePapers: v.number() }),
-  run: async (ctx, userId, args) => estimateScreening(args.papers, await availableCredits(ctx, userId), await screeningPaperCreditsFor(ctx, userId)),
+  run: async (ctx, { userId }, args) => estimateScreening(args.papers, await availableCredits(ctx, userId), await screeningPaperCreditsFor(ctx, userId)),
 });
 export const estimate = userQuery(estimateAction);
 export const estimateForAssistant = assistantQuery(estimateAction);

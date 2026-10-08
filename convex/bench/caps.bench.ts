@@ -7,6 +7,7 @@ import { createCollectionAction } from "../library/collections";
 import { seedAnswers } from "../research/answers";
 import { insertMany, seedAccount } from "../lib/maxSize.test-support";
 import { measure, save } from "./measure.test-support";
+import { ownActor } from "../workspaces/actor.test-support";
 
 describe("fixed caps", () => {
   beforeEach(() => vi.useFakeTimers());
@@ -26,7 +27,7 @@ describe("fixed caps", () => {
         if (row) await ctx.db.patch("collectionCounts", row._id, { count: size });
         else await ctx.db.insert("collectionCounts", { userId, count: size });
       });
-      await measure(t, { area: "caps", scenario: "make a collection", size }, (ctx) => createCollectionAction.run(ctx, userId, { name: "One more" }, "user"), () => "made");
+      await measure(t, { area: "caps", scenario: "make a collection", size }, async (ctx) => createCollectionAction.run(ctx, await ownActor(ctx, userId), { name: "One more" }), () => "made");
     });
   }
 

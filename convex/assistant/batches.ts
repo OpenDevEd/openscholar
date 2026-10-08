@@ -20,7 +20,7 @@ export const undoAction = defineUserMutation({
   outsideEffect: false,
   // Undoing has no undo of its own.
   undoable: false,
-  run: async (ctx, userId, { change }) => {
+  run: async (ctx, { userId }, { change }) => {
     let step = await ctx.db.get("assistantSteps", change);
     // It changed that person's records, and the undo would act on whoever runs it.
     if (!step || step.userId !== userId || step.batch === undefined) throw createError("NOT_FOUND", "That bulk change isn't one of yours.");

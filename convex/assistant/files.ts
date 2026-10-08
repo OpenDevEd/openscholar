@@ -659,11 +659,11 @@ export const readAction = defineUserAction({
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
-  estimate: async (ctx, userId, args) => (await readable(ctx, userId, args)).credits,
-  check: async (ctx, userId, args) => {
+  estimate: async (ctx, { userId }, args) => (await readable(ctx, userId, args)).credits,
+  check: async (ctx, { userId }, args) => {
     await readable(ctx, userId, args);
   },
-  run: async (ctx, userId, { file, range }): Promise<Infer<typeof readResult>> => {
+  run: async (ctx, { userId }, { file, range }): Promise<Infer<typeof readResult>> => {
     const read = await ctx.runQuery(internal.assistant.files.readRange, { userId, file, range });
     const span = (first: number, last: number) => (first === last ? `${first}` : `${first}-${last}`);
     // A file read is one in use: it doesn't expire while a chat reads it.

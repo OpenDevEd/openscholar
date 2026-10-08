@@ -47,7 +47,7 @@ export const listAdminsAction = defineUserQuery({
     "Lists the admins and the people invited to be one, by email, a page at a time. Admins only. Given `search`, those whose name or email best match its words, best first.",
   args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()) },
   returns: paginationResultValidator(adminRowValidator),
-  run: async (ctx, userId, { paginationOpts, search }) => {
+  run: async (ctx, { userId }, { paginationOpts, search }) => {
     await requireAdminUser(ctx, userId);
     const needle = searchTerms(search);
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
@@ -69,7 +69,7 @@ export const countAdminsAction = defineUserQuery({
   description: "Says how many admins there are, invited people included. Admins only.",
   args: {},
   returns: v.number(),
-  run: async (ctx, userId) => {
+  run: async (ctx, { userId }) => {
     await requireAdminUser(ctx, userId);
     return await countOf(ctx, ADMIN_LIST);
   },
@@ -83,7 +83,7 @@ export const listCandidatesAction = defineUserQuery({
     "Lists the active users who aren't admins, by email, a page at a time, for adding one as an admin. Admins only. Given `search`, only those whose email starts with it.",
   args: { paginationOpts: paginationOptsValidator, search: v.string() },
   returns: paginationResultValidator(v.object({ _id: v.id("users"), email: v.string(), name: v.optional(v.string()), imageUrl: v.optional(v.string()) })),
-  run: async (ctx, userId, { paginationOpts, search }) => {
+  run: async (ctx, { userId }, { paginationOpts, search }) => {
     await requireAdminUser(ctx, userId);
     const prefix = normalizeEmail(search);
     // Through the index of active users by email, so a page fills however many accounts were deleted.

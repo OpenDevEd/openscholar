@@ -12,6 +12,7 @@ import type { Id } from "../_generated/dataModel";
 import { assistantTools } from "../lib/assistantTools";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { ensureWorkspace } from "../workspaces/create";
+import { personalWorkspaceOf } from "../workspaces/actor";
 
 const record: SavedSearch = {
   id: "local-original", query: "tutoring AND randomized", field: "title_and_abstract", count: 42,
@@ -657,7 +658,8 @@ describe("research actions as assistant tools", () => {
     const long = "a".repeat(UNDO_SHORTCUT_MAX + 1);
     await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "long", command: { kind: "shortcut", shorthand: "long", value: { expansion: long, createdAt: 1 } } });
     await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "short", command: { kind: "shortcut", shorthand: "short", value: { expansion: "tutoring", createdAt: 1 } } });
-    const asks = (command: ResearchCommand) => t.query(internal.assistant.asking.first, { userId: ids.alice, path: "research/records:change", input: JSON.stringify({ requestId: "r", command }) });
+    const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, ids.alice));
+    const asks = (command: ResearchCommand) => t.query(internal.assistant.asking.first, { userId: ids.alice, workspaceId, path: "research/records:change", input: JSON.stringify({ requestId: "r", command }) });
     const edit = (change: Extract<ResearchCommand, { kind: "editSearch" }>["edit"]) => asks({ kind: "editSearch", id: record.id, edit: change });
 
     // Nothing puts these back.

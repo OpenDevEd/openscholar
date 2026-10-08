@@ -378,7 +378,7 @@ export function toolsFor(
   const hold = async (entry: UserAction, input: Record<string, unknown>) => {
     const key = sameCall(entry.path, input);
     if (!holds.has(key)) {
-      const read = await ctx.runQuery(internal.assistant.asking.spend, { threadId, userId, path: entry.path, input: JSON.stringify(input) });
+      const read = await ctx.runQuery(internal.assistant.asking.spend, { threadId, userId, workspaceId, path: entry.path, input: JSON.stringify(input) });
       if (!read) return null;
       holds.set(key, read);
     }
@@ -444,9 +444,9 @@ export function toolsFor(
       const held = await hold(entry, input);
       return held !== null && "credits" in held && !held.covered;
     }
-    if (runsWithoutAsking(entry) && !(await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) }))) return false;
+    if (runsWithoutAsking(entry) && !(await ctx.runQuery(internal.assistant.asking.first, { userId, workspaceId, path: entry.path, input: JSON.stringify(input) }))) return false;
     // A change the person would be asked about is tried first, and undone: what would refuse it is told to the model instead of asked about.
-    const refused = entry.kind === "mutation" ? await tried(entry.path, [input]) : await ctx.runQuery(internal.assistant.asking.check, { userId, path: entry.path, input: JSON.stringify(input) });
+    const refused = entry.kind === "mutation" ? await tried(entry.path, [input]) : await ctx.runQuery(internal.assistant.asking.check, { userId, workspaceId, path: entry.path, input: JSON.stringify(input) });
     if (refused) {
       holds.set(sameCall(entry.path, input), { refused });
       return false;
@@ -528,7 +528,7 @@ export function toolsFor(
     if (!runsWithoutAsking(entry)) return true;
     if ((changes.get(kindOf(entry, items[0])) ?? 0) + items.length > BULK) return true;
     if (entry.kind === "query" || !entry.asksFirst) return false;
-    for (const input of items) if (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) })) return true;
+    for (const input of items) if (await ctx.runQuery(internal.assistant.asking.first, { userId, workspaceId, path: entry.path, input: JSON.stringify(input) })) return true;
     return false;
   };
   /**

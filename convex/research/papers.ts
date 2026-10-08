@@ -34,7 +34,7 @@ export const searchAction = defineUserAction({
   outsideEffect: false,
   // It changes nothing, so there's nothing to undo.
   undoable: true,
-  run: async (ctx, userId, { query, page, ...settings }): Promise<Infer<typeof resultsValidator>> => {
+  run: async (ctx, { userId }, { query, page, ...settings }): Promise<Infer<typeof resultsValidator>> => {
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, query, settings });
     return await readPage(ctx, userId, found, page ?? 1, "This query isn't one OpenAlex can read. Check its brackets and quotes.");
@@ -74,7 +74,7 @@ export const countAction = defineUserAction({
   outsideEffect: false,
   // It changes nothing, so there's nothing to undo.
   undoable: true,
-  run: async (ctx, userId, { query, by, ...settings }): Promise<Infer<typeof countValidator>> => {
+  run: async (ctx, { userId }, { query, by, ...settings }): Promise<Infer<typeof countValidator>> => {
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, query, settings });
     if (!found.request) throw createError("VALIDATION_ERROR", "This query isn't one OpenAlex can read. Check its brackets and quotes.");
@@ -121,7 +121,7 @@ export const getAction = defineUserAction({
   outsideEffect: false,
   // It changes nothing, so there's nothing to undo.
   undoable: true,
-  run: async (ctx, userId, { id }): Promise<Infer<typeof paperRecordValidator>> => {
+  run: async (ctx, { userId }, { id }): Promise<Infer<typeof paperRecordValidator>> => {
     const path = workPath(id);
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
@@ -201,14 +201,14 @@ export const readPdfAction = defineUserAction({
   // The paper by its title where the model gave one: the person can't tell a paper by its ID.
   shown: ({ id, title }) => (title ? { title } : { id }),
   // What a paper of typical length costs to read on the chat's model, which is all of what the read spends: its tokens in the reply.
-  estimate: async (ctx, userId, _args, chat) => {
+  estimate: async (ctx, { userId }, _args, chat) => {
     const thread = chat ? await ctx.db.get("assistantThreads", chat.threadId) : null;
     const { modelId } = thread ? await chatModel(ctx, thread, userId) : { modelId: (await assistantPick(ctx, userId))?.modelId ?? null };
     await requirePdfModel(ctx, modelId);
     const price = (await pricingOf(ctx, modelId)).input;
     return convertUsdToCredits({ usd: (PAPER_PAGES * PDF_PAGE_TOKENS * price) / 1_000_000 });
   },
-  run: async (ctx, userId, { id, title: asked }): Promise<Infer<typeof paperPdfValidator>> => {
+  run: async (ctx, { userId }, { id, title: asked }): Promise<Infer<typeof paperPdfValidator>> => {
     const path = workPath(id);
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");

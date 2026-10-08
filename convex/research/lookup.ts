@@ -25,7 +25,7 @@ export const findAction = defineUserAction({
   outsideEffect: false,
   // It changes nothing, so there's nothing to undo.
   undoable: true,
-  run: async (ctx, userId, { kind, text }): Promise<Infer<typeof lookupValidator>> => {
+  run: async (ctx, { userId }, { kind, text }): Promise<Infer<typeof lookupValidator>> => {
     if (!text.trim()) throw createError("VALIDATION_ERROR", "Give a name to look for.");
     if (kind === "researchArea") return await ctx.runQuery(internal.research.topicCatalog.search, { text });
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
