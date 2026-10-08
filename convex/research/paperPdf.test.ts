@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 // Reading a paper's open-access PDF: by the address OpenAlex gives, checked to serve a PDF,
 // and sent to the model by that address in the reply that read it, never in a later one.
+import { APICallError } from "@ai-sdk/provider";
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
@@ -44,7 +45,8 @@ beforeEach(() => {
     }
     if (url.hostname === "example.org") {
       pdfChecks.push(new Headers(init?.headers).get("range"));
-      return new Response(url.href === PDF ? "%PDF-1.7\n%âãÏÓ\n1 0 obj" : "<!doctype html><title>Article</title>", { status: url.href === PDF ? 206 : 200 });
+      if (url.href !== PDF) return new Response("<!doctype html><title>Article</title>", { status: 200, headers: { "content-type": "text/html" } });
+      return new Response("%PDF-1.7\n%âãÏÓ\n1 0 obj", { status: new Headers(init?.headers).has("range") ? 206 : 200, headers: { "content-type": "application/pdf" } });
     }
     return autumn(input, init);
   });
@@ -178,6 +180,49 @@ describe("reading a paper's PDF", () => {
     expect(later?.type).toBe("text");
     expect(String(later?.value)).toMatch(/earlier reply/);
     expect(JSON.stringify(mockDoStream.mock.lastCall![0].prompt)).not.toContain('"type":"file"');
+  });
+
+  it("makes a request a provider refused for a PDF's address again, with the PDF downloaded here, and the reply goes on", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await chat(t);
+    // Some publishers turn the provider's fetcher away and serve us: the provider refuses the request it can't fetch for.
+    mockDoStream
+      .mockImplementationOnce(callingDoStream({ id: "pdf-1", name: "research_papers_readPdf", input: { id: "W1" } }))
+      .mockImplementationOnce(async () => {
+        throw new APICallError({ message: "Unable to download the file. Please verify the URL and try again.", url: "https://openrouter.ai", requestBodyValues: {}, statusCode: 400 });
+      })
+      .mockImplementation(finishingDoStream(["It reports a link (p. 5)."]));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "What are this paper's methods?" });
+    await replied(t, threadId);
+
+    expect(mockDoStream).toHaveBeenCalledTimes(3);
+    const read = JSON.stringify(resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt));
+    expect(read).toContain("JVBERi0");
+    expect(read).not.toContain(`"url":"${PDF}"`);
+    const replies = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: { numItems: 20, cursor: null } })).page.filter((item) => item.role === "assistant");
+    expect(replies).toMatchObject([{ status: "done", text: "It reports a link (p. 5)." }]);
+  });
+
+  it("tells the model when the PDF can't be downloaded here either, and the reply goes on", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await chat(t);
+    const answer = fetchMock.getMockImplementation()!;
+    // The address answers the check for its first bytes, and then stops serving the file.
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => (String(input) === PDF && !new Headers(init?.headers).has("range") ? new Response("Forbidden", { status: 403 }) : answer(input, init)));
+    mockDoStream
+      .mockImplementationOnce(callingDoStream({ id: "pdf-1", name: "research_papers_readPdf", input: { id: "W1" } }))
+      .mockImplementationOnce(async () => {
+        throw new APICallError({ message: "Error while downloading file", url: "https://openrouter.ai", requestBodyValues: {}, statusCode: 400 });
+      })
+      .mockImplementation(finishingDoStream(["I couldn't open it. Could you attach the PDF?"]));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "What are this paper's methods?" });
+    await replied(t, threadId);
+
+    const read = resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt);
+    expect(read?.type).toBe("text");
+    expect(String(read?.value)).toMatch(/couldn't be downloaded/);
+    const replies = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: { numItems: 20, cursor: null } })).page.filter((item) => item.role === "assistant");
+    expect(replies).toMatchObject([{ status: "done" }]);
   });
 
   it("lets a summary written partway read the PDF the reply read, so what it says isn't lost", async () => {

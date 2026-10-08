@@ -21,6 +21,18 @@ import { lockArgs, turnArgs, usedValidator } from "./replies";
 import { CIRCLING, MAX_FAILED_ROUNDS, TOO_MANY_FAILED, askedSteps, circling, toolsFor } from "./tools";
 import { RECENT_REQUESTS } from "./validators";
 import { runTurn } from "./turn";
+import type { ChatErrorEnvelope } from "../../lib/errors/taxonomy";
+
+/**
+ * A request that fails before it writes anything is made again rather than ending the reply, up to twice in a row.
+ * A failure that passes waits first: what the provider asked for, or a few seconds. A request that sent a paper's
+ * PDF by its address and was refused, whatever the provider said, is made again at once with the PDFs downloaded
+ * here (./files.ts `withFiles`): some publishers turn away a model provider's fetcher and serve us.
+ */
+const MAX_RETRIES = 2;
+const RETRY_WAIT_MS = [2_000, 10_000];
+const MAX_RETRY_WAIT_MS = 60_000;
+const PASSING = new Set<ChatErrorEnvelope["class"]>(["rate_limit", "model_unavailable", "network", "provider_5xx"]);
 
 export const reply = internalAction({
   args: {
@@ -55,6 +67,8 @@ export const reply = internalAction({
     if (atStart === "stop") return stopHere();
     // How much history the reply's request read, which decides whether a compaction follows it.
     let history = { messages: 0, bytes: 0 };
+    // Whether the request sends a paper's PDF by its address.
+    let linked = false;
     const turn = { agentThreadId, senderId, modelId, effort };
     const shouldStop = async () => (await state()) !== "writing";
     let read = await compactedOf(ctx, threadId);
@@ -139,8 +153,15 @@ export const reply = internalAction({
         onHistory: (read) => {
           history = read;
         },
+        papers: {
+          ...(used.download ? { download: true } : {}),
+          linked: () => {
+            linked = true;
+          },
+        },
       }),
-      release: ({ lastInputTokens, asked, credits, requests, more, failed }) => {
+      retry: (failure) => (used.retries ?? 0) < MAX_RETRIES && (PASSING.has(failure.class) || (linked && !used.download && failure.class !== "insufficient_credits")),
+      release: ({ lastInputTokens, asked, credits, requests, more, failed, retry }) => {
         const calls = askedSteps(asked, held, planned);
         const changed = changes();
         const now = {
@@ -158,13 +179,27 @@ export const reply = internalAction({
           // A request that failed before the model answered read nothing: what the one before it read still says how long the conversation is.
           ended: { ...turn, ...history, lastInputTokens: lastInputTokens || (used.tokens ?? 0) },
           spent: now.spent,
-          // It waits for the person's answer, or goes on to its next request, or has ended.
+          // It makes the request that failed again, or waits for the person's answer, or goes on to its next request, or has ended.
           // A request that was the reply's answer ends it, whatever the model called in it.
-          ...(calls.length
+          ...(retry
+            ? {
+                next: {
+                  promptMessageId,
+                  ...now,
+                  tokens: used.tokens ?? 0,
+                  failed: used.failed ?? 0,
+                  recent: used.recent ?? [],
+                  ...(used.told ? { told: used.told } : {}),
+                  retries: (used.retries ?? 0) + 1,
+                  ...(used.download || !PASSING.has(retry.class) ? { download: true as const } : {}),
+                  wait: PASSING.has(retry.class) ? Math.min(retry.retryAfterMs ?? RETRY_WAIT_MS[used.retries ?? 0], MAX_RETRY_WAIT_MS) : 0,
+                },
+              }
+            : calls.length
             ? // A request that asks ran nothing, so the streak of failed ones stands as it was.
               { asking: { promptMessageId, calls, ...now, failed: used.failed ?? 0, recent } }
             : more && !answer
-              ? { next: { promptMessageId, ...now, tokens: lastInputTokens, failed: failed ? (used.failed ?? 0) + 1 : 0, recent, ...(why ? { told: why } : {}) } }
+              ?               { next: { promptMessageId, ...now, tokens: lastInputTokens, failed: failed ? (used.failed ?? 0) + 1 : 0, recent, ...(why ? { told: why } : {}), ...(used.download ? { download: true as const } : {}) } }
               : {}),
         });
       },
