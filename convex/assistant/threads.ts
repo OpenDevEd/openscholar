@@ -12,7 +12,9 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { modelSummary, resolveTaskPick } from "../ai/serverModel";
 import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
 import { requireFeature } from "../featureFlags/guard";
+import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
+import { query } from "../lib/functions";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import schema from "../schema";
@@ -285,6 +287,18 @@ export const getAction = defineUserQuery({
   },
 });
 export const get = userQuery(getAction);
+
+/** The model a new chat starts on, shown before it exists: the chat model of the person's AI settings, as a chat with none of its own runs on (`chatModel`). */
+export const newChatModel = query({
+  args: {},
+  returns: v.object({ model: v.union(modelSummaryValidator, v.null()), effort: v.optional(effortValidator) }),
+  handler: async (ctx) => {
+    const userId = (await requireAuth(ctx))._id;
+    await requireFeature(ctx, FLAG, userId);
+    const pick = await resolveTaskPick(ctx, userId, "chat");
+    return { model: await modelSummary(ctx, pick?.modelId ?? null), ...(pick?.effort ? { effort: pick.effort } : {}) };
+  },
+});
 export const getForAssistant = assistantQuery(getAction);
 
 export const renameAction = defineUserMutation({

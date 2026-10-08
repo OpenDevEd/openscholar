@@ -325,6 +325,9 @@ describe("assistant replies", () => {
     });
     mockDoStream.mockImplementation(finishingDoStream(["Ok"]));
 
+    // A new chat starts on each one's own: the panel shows it before the chat exists.
+    expect(await asAda.query(api.assistant.threads.newChatModel, {})).toMatchObject({ model: { _id: balanced } });
+    expect(await asBen.query(api.assistant.threads.newChatModel, {})).toMatchObject({ model: { _id: cheap } });
     // Each reads the chat's model as their own message would run on it.
     expect(await asAda.query(api.assistant.threads.get, { threadId })).toMatchObject({ model: { _id: balanced } });
     expect(await asBen.query(api.assistant.threads.get, { threadId })).toMatchObject({ model: { _id: cheap } });
