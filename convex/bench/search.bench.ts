@@ -27,6 +27,8 @@ describe("text search of a person's lists by size", () => {
     it(`${size} rows each`, async () => {
       const t = convexTest(schema);
       const { userId } = await seedAccount(t);
+      // Resolved before any measured transaction, so its reads aren't counted as the core's.
+      const actor = await t.run((ctx) => ownActor(ctx, userId));
       const at = (scenario: string) => ({ area: "text search", scenario, size });
       const day = "2026-10-01T00:00:00Z";
       // Each row with its search text, as the app writes it (../lib/searchText.ts).
@@ -44,9 +46,9 @@ describe("text search of a person's lists by size", () => {
       const want = (label: string) => (read: { page: unknown[]; isDone: boolean }) => (label === "none" ? read.page.length === 0 && read.isDone : read.page.length === Math.min(page.numItems, Math.ceil(size / 100)));
       for (const [label, needle] of [["1 row in 100", "malaria"], ["none", "zzzz"]] as const) {
         const shown = (read: { page: unknown[]; isDone: boolean } | undefined) => `${rows(read)}${read?.isDone ? "" : ", not done"}`;
-        await measure(t, at(`saved searches, word in ${label === "none" ? "no row" : label}`), async (ctx) => listedSearchesAction.run(ctx, await ownActor(ctx, userId), { paginationOpts: page, sort: "recent", text: needle }), shown, want(label));
-        await measure(t, at(`bookmarks, word in ${label === "none" ? "no row" : label}`), async (ctx) => listedShortcutsAction.run(ctx, await ownActor(ctx, userId), { paginationOpts: page, sort: "recent", text: needle }), shown, want(label));
-        await measure(t, at(`extraction jobs, word in ${label === "none" ? "no row" : label}`), async (ctx) => listJobsAction.run(ctx, await ownActor(ctx, userId), { paginationOpts: page, sort: "recent", text: needle }), shown, want(label));
+        await measure(t, at(`saved searches, word in ${label === "none" ? "no row" : label}`), (ctx) => listedSearchesAction.run(ctx, actor, { paginationOpts: page, sort: "recent", text: needle }), shown, want(label));
+        await measure(t, at(`bookmarks, word in ${label === "none" ? "no row" : label}`), (ctx) => listedShortcutsAction.run(ctx, actor, { paginationOpts: page, sort: "recent", text: needle }), shown, want(label));
+        await measure(t, at(`extraction jobs, word in ${label === "none" ? "no row" : label}`), (ctx) => listJobsAction.run(ctx, actor, { paginationOpts: page, sort: "recent", text: needle }), shown, want(label));
       }
     });
   }

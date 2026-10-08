@@ -23,13 +23,15 @@ describe("library reads by size", () => {
     it(`${size} saved papers`, async () => {
       const t = convexTest(schema);
       const { userId } = await seedAccount(t);
+      // Resolved before any measured transaction, so its reads aren't counted as the core's.
+      const actor = await t.run((ctx) => ownActor(ctx, userId));
       // Every paper in one collection, and a second, small collection of 50, as a person filing a few papers keeps.
       const { itemIds, collectionId } = await seedLibrary(t, userId, { items: size, counted: true });
       const [small] = await insertMany(t, "collections", [{ userId, name: "Shortlist", sortName: "shortlist", itemCount: 50, createdAt: 1, updatedAt: 1 }]);
       await insertMany(t, "libraryItemCollections", itemIds.filter((_, i) => i % Math.floor(size / 50) === 0).slice(0, 50).map((libraryItemId) => ({ userId, collectionId: small, libraryItemId, assignedAt: 1 })));
       await t.finishAllScheduledFunctions(vi.runAllTimers);
       const at = (scenario: string) => ({ area: "library", scenario, size });
-      const papers = (given: Record<string, unknown>) => async (ctx: any) => papersAction.run(ctx, await ownActor(ctx, userId), given as never);
+      const papers = (given: Record<string, unknown>) => (ctx: any) => papersAction.run(ctx, actor, given as never);
       const shown = (read: { papers: unknown[] } | undefined) => `${read?.papers.length ?? 0} rows`;
       // Each view holds more than a page, so the right first page is a full one.
       const full = (read: { papers: unknown[] }) => read.papers.length === PAPERS_PAGE;
@@ -38,9 +40,9 @@ describe("library reads by size", () => {
       await measure(t, at("page of the collection holding every paper"), papers({ collectionId }), shown, full);
       await measure(t, at("page of a 50-paper collection"), papers({ collectionId: small }), shown, full);
       await measure(t, at("page rated 5"), papers({ minRating: 5 }), shown, full);
-      await measure(t, at("count rated 4 or more"), async (ctx) => countPapersAction.run(ctx, await ownActor(ctx, userId), { minRating: 4 }), (r) => `${r.count}${r.atLeast ? "+" : ""}`, (r) => !r.atLeast && r.count === itemIds.filter((_, i) => (i % 5) + 1 >= 4).length);
+      await measure(t, at("count rated 4 or more"), (ctx) => countPapersAction.run(ctx, actor, { minRating: 4 }), (r) => `${r.count}${r.atLeast ? "+" : ""}`, (r) => !r.atLeast && r.count === itemIds.filter((_, i) => (i % 5) + 1 >= 4).length);
       // Every paper in the small collection is rated 1, the first of every five.
-      await measure(t, at("count of the 50-paper collection, rated 1"), async (ctx) => countPapersAction.run(ctx, await ownActor(ctx, userId), { collectionId: small, maxRating: 1 }), (r) => `${r.count}${r.atLeast ? "+" : ""}`, (r) => !r.atLeast && r.count === 50);
+      await measure(t, at("count of the 50-paper collection, rated 1"), (ctx) => countPapersAction.run(ctx, actor, { collectionId: small, maxRating: 1 }), (r) => `${r.count}${r.atLeast ? "+" : ""}`, (r) => !r.atLeast && r.count === 50);
 
       // A view of the collection holding every paper, read to its end: does it reach them all?
       let cursor: string | undefined;
@@ -50,7 +52,7 @@ describe("library reads by size", () => {
       const started = now();
       do {
         try {
-          const read: { papers: unknown[]; next?: string } = await t.run(async (ctx) => papersAction.run(ctx, await ownActor(ctx, userId), { collectionId, ...(cursor ? { cursor } : {}) } as never));
+          const read: { papers: unknown[]; next?: string } = await t.run((ctx) => papersAction.run(ctx, actor, { collectionId, ...(cursor ? { cursor } : {}) } as never));
           reached += read.papers.length;
           cursor = read.next;
           calls += 1;

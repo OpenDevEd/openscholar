@@ -21,13 +21,15 @@ describe("fixed caps", () => {
     it(`a new collection beside ${size}`, async () => {
       const t = convexTest(schema);
       const { userId } = await seedAccount(t);
+      // Resolved before any measured transaction, so its reads aren't counted as the core's.
+      const actor = await t.run((ctx) => ownActor(ctx, userId));
       await insertMany(t, "collections", Array.from({ length: size }, (_, i) => ({ userId, name: `C${i}`, sortName: `c${i}`, itemCount: 0, createdAt: i, updatedAt: i })));
       await t.run(async (ctx) => {
         const row = await ctx.db.query("collectionCounts").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
         if (row) await ctx.db.patch("collectionCounts", row._id, { count: size });
         else await ctx.db.insert("collectionCounts", { userId, count: size });
       });
-      await measure(t, { area: "caps", scenario: "make a collection", size }, async (ctx) => createCollectionAction.run(ctx, await ownActor(ctx, userId), { name: "One more" }), () => "made");
+      await measure(t, { area: "caps", scenario: "make a collection", size }, (ctx) => createCollectionAction.run(ctx, actor, { name: "One more" }), () => "made");
     });
   }
 
