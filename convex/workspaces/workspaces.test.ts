@@ -64,6 +64,16 @@ describe("workspaces", () => {
     expect(await workspacesOf({ organizationId })).toMatchObject([{ kind: "organization", organizationId }]);
   });
 
+  it("removes an account's workspace with it when the cleanup removes the account", async () => {
+    const { t, workspacesOf } = setup();
+    const userId = await t.run((ctx) => createUserWithDefaults(ctx, { clerkId: "user_leaving", email: "leaving@example.org" }));
+    // Past the retention period, cleanup removes a deleted account and what it held.
+    await t.run((ctx) => ctx.db.patch("users", userId, { state: "deleted", updatedAt: 1 }));
+    await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
+    expect(await t.run((ctx) => ctx.db.get("users", userId))).toBeNull();
+    expect(await workspacesOf({ userId })).toEqual([]);
+  });
+
   it("gives every account and organization from before one workspace, deleted ones too, however often it runs", async () => {
     const { t, workspacesOf } = setup();
     const already = await t.run((ctx) => createUserWithDefaults(ctx, { clerkId: "user_new", email: "new@example.org" }));

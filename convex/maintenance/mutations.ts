@@ -109,6 +109,10 @@ export const cleanupDeletedUsers = internalMutation({
           if (counted) await ctx.db.delete("recordCounts", counted._id);
         }
 
+        // Their own workspace goes with them (#650); an organization's stays the organization's.
+        const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", user._id)).unique();
+        if (workspace) await ctx.db.delete("workspaces", workspace._id);
+
         // Hard delete the user to prevent re-processing
         await ctx.db.delete("users", user._id);
 
