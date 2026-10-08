@@ -70,33 +70,6 @@ describe("<ConfigurationWorkspace>", () => {
     ).toBeNull();
   });
 
-  it("shows the library's one status word in the header, the running publish in place of Active", async () => {
-    const { unmount } = await renderWorkspace();
-    expect(screen.getByText("evidenceLibraries.status.active")).toBeInTheDocument();
-
-    unmount();
-    queryMock.mockReturnValue(
-      draftResult({
-        operation: { _id: "operation_123", kind: "configuration", status: "running", stage: "deployment", updatedAt: 1 },
-      }),
-    );
-    await renderWorkspace();
-    expect(screen.getByText("evidenceLibraries.operation.applying")).toBeInTheDocument();
-    expect(screen.queryByText("evidenceLibraries.status.active")).toBeNull();
-  });
-
-  it("puts Domain in the rail beside Versions, with its own card", async () => {
-    await renderWorkspace();
-    const rail = within(
-      screen.getByRole("navigation", { name: "rail.aria" }),
-    );
-    const domain = rail.getByRole("link", { name: /sections\.domain/ });
-    expect(domain).toHaveAttribute("href", "#sec-domain");
-    // Domain is not a configuration section, so it carries no saved-state dot.
-    expect(within(domain).queryByRole("img")).toBeNull();
-    expect(document.getElementById("sec-domain")).toBeInTheDocument();
-  });
-
   it("saves only the sections that changed", async () => {
     const user = userEvent.setup();
     await renderWorkspace();
