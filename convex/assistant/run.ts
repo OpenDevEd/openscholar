@@ -124,6 +124,8 @@ export const reply = internalAction({
       // What didn't run is declined as the chat is released (./steps.ts).
       if (now === "stop") return stopHere();
     }
+    // The calls made before this request, which ran what the person allowed: one that runs a call of its own and fails isn't made again, or the call would run twice.
+    const callsBefore = made();
     await runTurn(ctx, {
       agent: assistant,
       feature: "assistant",
@@ -160,7 +162,7 @@ export const reply = internalAction({
           },
         },
       }),
-      retry: (failure) => (used.retries ?? 0) < MAX_RETRIES && (PASSING.has(failure.class) || (linked && !used.download && failure.class !== "insufficient_credits")),
+      retry: (failure) => made() === callsBefore && (used.retries ?? 0) < MAX_RETRIES && (PASSING.has(failure.class) || (linked && !used.download && failure.class !== "insufficient_credits")),
       release: ({ lastInputTokens, asked, credits, requests, more, failed, retry }) => {
         const calls = askedSteps(asked, held, planned);
         const changed = changes();
