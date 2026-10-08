@@ -2,6 +2,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_INVITATIONS_PER_EMAIL, SINGLE_ROW_CLEANUP } from "../lib/queryBounds";
 import { internalMutation, type MutationCtx } from "../lib/functions";
+import { ensureWorkspace } from "../workspaces/create";
 import { v } from "convex/values";
 import {
   clerkEventOutcomeValidator,
@@ -46,12 +47,14 @@ async function upsertOrganizationSnapshot(
     )
     .unique();
   if (!existing) {
-    return await ctx.db.insert("organizations", {
+    const organizationId = await ctx.db.insert("organizations", {
       ...snapshot,
       state: "active",
       createdAt: processedAt,
       updatedAt: processedAt,
     });
+    await ensureWorkspace(ctx, { kind: "organization", organizationId });
+    return organizationId;
   }
   if (
     snapshot.clerkUpdatedAt < existing.clerkUpdatedAt ||

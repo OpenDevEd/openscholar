@@ -316,6 +316,7 @@ import type * as migrations_screeningSearch from "../migrations/screeningSearch.
 import type * as migrations_searchText from "../migrations/searchText.js";
 import type * as migrations_teamLists from "../migrations/teamLists.js";
 import type * as migrations_versionChangedSections from "../migrations/versionChangedSections.js";
+import type * as migrations_workspaces from "../migrations/workspaces.js";
 import type * as models_admin from "../models/admin.js";
 import type * as models_catalog from "../models/catalog.js";
 import type * as models_mutations from "../models/mutations.js";
@@ -379,6 +380,7 @@ import type * as webhooks_clerk_mappers from "../webhooks/clerk_mappers.js";
 import type * as webhooks_eventOrdering from "../webhooks/eventOrdering.js";
 import type * as webhooks_projections from "../webhooks/projections.js";
 import type * as workpool from "../workpool.js";
+import type * as workspaces_create from "../workspaces/create.js";
 import type * as zotero_actions from "../zotero/actions.js";
 import type * as zotero_groupAccess from "../zotero/groupAccess.js";
 import type * as zotero_internal from "../zotero/internal.js";
@@ -708,6 +710,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/searchText": typeof migrations_searchText;
   "migrations/teamLists": typeof migrations_teamLists;
   "migrations/versionChangedSections": typeof migrations_versionChangedSections;
+  "migrations/workspaces": typeof migrations_workspaces;
   "models/admin": typeof models_admin;
   "models/catalog": typeof models_catalog;
   "models/mutations": typeof models_mutations;
@@ -771,6 +774,7 @@ declare const fullApi: ApiFromModules<{
   "webhooks/eventOrdering": typeof webhooks_eventOrdering;
   "webhooks/projections": typeof webhooks_projections;
   workpool: typeof workpool;
+  "workspaces/create": typeof workspaces_create;
   "zotero/actions": typeof zotero_actions;
   "zotero/groupAccess": typeof zotero_groupAccess;
   "zotero/internal": typeof zotero_internal;
