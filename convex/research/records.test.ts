@@ -456,7 +456,8 @@ describe("account research records", () => {
   it("takes a first count a page at a time, right through searches saved and deleted meanwhile", async () => {
     const { alice, ids, t } = await setup();
     // 1,200 searches from before counts were kept, so none is counted yet.
-    const stored = (i: number) => ({ userId: ids.alice, localId: `old-${i}`, revision: 1, data: { ...record, id: `old-${i}`, screeningResponses: [] } });
+    const workspaceId = await t.run(ctx => personalWorkspaceOf(ctx, ids.alice));
+    const stored = (i: number) => ({ userId: ids.alice, workspaceId, createdBy: ids.alice, localId: `old-${i}`, revision: 1, data: { ...record, id: `old-${i}`, screeningResponses: [] } });
     for (let start = 0; start < 1_200; start += 300) await t.run(async ctx => { for (let i = start; i < start + 300; i++) await ctx.db.insert("searches", stored(i)); });
     const change = (requestId: string, command: ResearchCommand) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command });
     const row = () => t.run(ctx => ctx.db.query("recordCounts").withIndex("by_user_and_table", q => q.eq("userId", ids.alice).eq("table", "searches")).unique());
@@ -728,6 +729,40 @@ describe("research records in workspaces (#650)", () => {
     await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "bookmark", command: { kind: "shortcut", shorthand: "ed", value: { expansion: "education", createdAt: 1700000000001 } } });
     const mine = { workspaceId: own, createdBy: ids.alice };
     expect(await placed(t, ids.alice)).toEqual({ searches: [mine, mine], bookmarks: [mine, mine] });
+  });
+
+  it("in an organization, leaves what a member made to them and its admins to take away, and has no Clear all", async () => {
+    const { t, alice, bob } = await setup();
+    const lab = await t.run(async ctx => {
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Learning Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      for (const [clerkUserId, role] of [["alice", "org:member"], ["bob", "org:admin"]] as const) {
+        await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role, state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+      }
+      return ensureWorkspace(ctx, { kind: "organization", organizationId });
+    });
+    let request = 0;
+    const change = (as: Signed, accountId: string, command: ResearchCommand) => as.mutation(api.research.records.change, { accountId, workspaceId: lab, requestId: `r${request++}`, command });
+    const made = (id: string): ResearchCommand => ({ kind: "createSearch", search: { ...record, id, screeningResponses: [] } });
+    const bookmark = (shorthand: string): ResearchCommand => ({ kind: "shortcut", shorthand, value: { expansion: shorthand, createdAt: 1700000000000 } });
+    for (const [as, accountId] of [[alice, "alice"], [bob, "bob"]] as const) {
+      await change(as, accountId, made(`${accountId}-search`));
+      await change(as, accountId, bookmark(`${accountId}-bookmark`));
+    }
+    // A member can't take away what an admin made, by either way of deleting a search.
+    await expect(change(alice, "alice", { kind: "deleteSearch", id: "bob-search" })).rejects.toThrow(/admin/);
+    await expect(alice.mutation(api.research.searches.deleteSearch, { workspaceId: lab, id: "bob-search" })).rejects.toThrow(/admin/);
+    await expect(change(alice, "alice", { kind: "shortcut", shorthand: "bob-bookmark", value: null })).rejects.toThrow(/admin/);
+    // Their own, yes; and an admin anyone's.
+    await change(alice, "alice", { kind: "deleteSearch", id: "alice-search" });
+    await change(bob, "bob", { kind: "shortcut", shorthand: "alice-bookmark", value: null });
+    // An organization has no Clear all, for its admins either.
+    await expect(change(bob, "bob", { kind: "clearSearches" })).rejects.toThrow(/Clear all/);
+    await expect(change(bob, "bob", { kind: "clearShortcuts" })).rejects.toThrow(/Clear all/);
+    const left = {
+      searches: (await bob.query(api.research.records.listedSearches, { accountId: "bob", workspaceId: lab, sort: "recent", paginationOpts })).page.map(row => row.id),
+      bookmarks: (await bob.query(api.research.records.listedShortcuts, { accountId: "bob", workspaceId: lab, sort: "recent", paginationOpts })).page.map(row => row.shorthand),
+    };
+    expect(left).toEqual({ searches: ["bob-search"], bookmarks: ["bob-bookmark"] });
   });
 
   it("puts searches and bookmarks from before workspaces in their maker's own, however often the backfill runs", async () => {

@@ -8,6 +8,7 @@ import { EXPORT_LINK_MS } from "../lib/export";
 import { exportLibrary, exportParts } from "./exports.test-support";
 import { parseImportFile } from "../lib/import";
 import { importSearchRecord, serializeSearch } from "../lib/research/records";
+import { personalWorkspaceOf } from "./workspaces/actor";
 
 const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const };
 
@@ -75,11 +76,12 @@ describe("search history export", () => {
   async function seedSearches(t: ReturnType<typeof convexTest>, clerkId: string, queries: string[]) {
     await t.run(async (ctx) => {
       const userId = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 });
-      await ctx.db.insert("queryShortcuts", { userId, data: { shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1 } });
+      const owner = { userId, workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId };
+      await ctx.db.insert("queryShortcuts", { ...owner, data: { shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1 } });
       for (const [i, query] of queries.entries()) {
         const at = `2026-09-0${i + 1}T00:00:00.000Z`;
         const data = { id: `${clerkId}-${i}`, query, field: "title" as const, count: 10 + i, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: at, updatedAt: at, dateRange: { from: "2020-01-01", to: "2025-12-31" }, yearRange: [2020, 2025], workTypes: ["article", "preprint"], openAccessOnly: true, sortBy: "cited_by_count:desc" };
-        await ctx.db.insert("searches", { userId, localId: data.id, revision: 1, data });
+        await ctx.db.insert("searches", { ...owner, localId: data.id, revision: 1, data });
       }
     });
   }
@@ -113,7 +115,7 @@ describe("shortcut export", () => {
     await t.run(async (ctx) => {
       for (const clerkId of ["owner", "someone_else"]) {
         const userId = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 });
-        await ctx.db.insert("queryShortcuts", { userId, data: { shorthand: "rct", expansion: `randomized, "controlled" trial by ${clerkId}`, createdAt: 1_700_000_000_000 }, sortName: "rct" });
+        await ctx.db.insert("queryShortcuts", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, data: { shorthand: "rct", expansion: `randomized, "controlled" trial by ${clerkId}`, createdAt: 1_700_000_000_000 }, sortName: "rct" });
       }
     });
     const as = t.withIdentity({ subject: "owner" });

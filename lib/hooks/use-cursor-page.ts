@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQueries } from "convex/react";
 import { getFunctionName, type FunctionReference, type PaginationResult, type paginationOptsValidator } from "convex/server";
-import type { Infer } from "convex/values";
+import { ConvexError, type Infer } from "convex/values";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 
 /** The page arguments a query declares with `paginationOptsValidator`, which carry an `id`. */
@@ -24,6 +24,10 @@ type Start = { cursor: string; offset: number };
  * carries on from there; a server index per filter would fill a page in one read.
  */
 const MAX_READS_PER_PAGE = 5;
+
+/** Whether the server refused a read's cursor, the way Convex's own usePaginatedQuery recognizes it. */
+const invalidCursor = (error: Error) =>
+  error.message.includes("InvalidCursor") || (error instanceof ConvexError && (error.data as { paginationError?: unknown } | null)?.paginationError === "InvalidCursor");
 
 /**
  * One page of a cursor-paged query, stepped with previous and next. It keeps the start
@@ -67,11 +71,15 @@ export function useCursorPage<Query extends PageQuery>(query: Query, args: PageA
   const results = useQueries(requests) as Record<string, Result<Query> | Error | undefined>;
   const read = reads.map((_, i) => results[String(i)]);
   const error = read.find((result) => result instanceof Error);
-  if (error) throw error;
+  // A deploy that reads the list through another index refuses every cursor from before it,
+  // the end a first page's subscription keeps included, so the list starts over from its first
+  // page under a new query id, as Convex's usePaginatedQuery does. Any other error is thrown.
+  if ([...read, results.after].some((result) => result instanceof Error && invalidCursor(result))) setState({ ...fresh, id: id + 1 });
+  else if (error) throw error;
 
   const [shown, setShown] = useState<Shown<Query> | undefined>(undefined);
   let data: Shown<Query> | undefined;
-  if (args !== "skip" && read.every((result) => result !== undefined)) {
+  if (args !== "skip" && !error && read.every((result) => result !== undefined)) {
     const from = read as Result<Query>[];
     const last = from[from.length - 1];
     const count = from.reduce((sum, result) => sum + result.page.length, 0);

@@ -32,7 +32,7 @@ export const findAction = defineUserQuery({
       needle
         ? // ponytail: matches among the newest searches the list's one read reaches (1,000 rows), so a match older than that isn't offered. Carry on from its cursor if people with that many searches miss one.
           listedSearchesAction.run(ctx, actor, { paginationOpts: first, sort: "recent", text: needle }).then(({ page }) => page)
-        : ctx.db.query("searches").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)).order("desc").take(EACH).then((rows) => rows.map(({ data }) => data)),
+        : ctx.db.query("searches").withIndex("by_workspace_and_createdAt", (q) => q.eq("workspaceId", actor.workspaceId)).order("desc").take(EACH).then((rows) => rows.map(({ data }) => data)),
       (needle
         ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", searchTerms(needle)!).eq("userId", userId))
         : ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", userId))

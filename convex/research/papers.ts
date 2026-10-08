@@ -34,9 +34,9 @@ export const searchAction = defineUserAction({
   outsideEffect: false,
   // It changes nothing, so there's nothing to undo.
   undoable: true,
-  run: async (ctx, { userId }, { query, page, ...settings }): Promise<Infer<typeof resultsValidator>> => {
+  run: async (ctx, { userId, workspaceId }, { query, page, ...settings }): Promise<Infer<typeof resultsValidator>> => {
     // Typed here: the generated API's types depend on this module, so inference would loop.
-    const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, query, settings });
+    const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, workspaceId, query, settings });
     return await readPage(ctx, userId, found, page ?? 1, "This query isn't one OpenAlex can read. Check its brackets and quotes.");
   },
 });
@@ -74,9 +74,9 @@ export const countAction = defineUserAction({
   outsideEffect: false,
   // It changes nothing, so there's nothing to undo.
   undoable: true,
-  run: async (ctx, { userId }, { query, by, ...settings }): Promise<Infer<typeof countValidator>> => {
+  run: async (ctx, { userId, workspaceId }, { query, by, ...settings }): Promise<Infer<typeof countValidator>> => {
     // Typed here: the generated API's types depend on this module, so inference would loop.
-    const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, query, settings });
+    const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, workspaceId, query, settings });
     if (!found.request) throw createError("VALIDATION_ERROR", "This query isn't one OpenAlex can read. Check its brackets and quotes.");
     // Which papers a person rated is theirs, not OpenAlex's, so it can't count them.
     if (found.ratingRange) throw createError("VALIDATION_ERROR", "Papers kept by the person's ratings can't be counted this way. Leave `ratedOnly`, `minRating` and `maxRating` out.");

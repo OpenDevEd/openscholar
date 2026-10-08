@@ -34,11 +34,11 @@ describe("text search of a person's lists by size", () => {
       // Each row with its search text, as the app writes it (../lib/searchText.ts).
       await insertMany(t, "searches", Array.from({ length: size }, (_, i) => {
         const data = { id: `s${i}`, query: words(i, 60), field: "title_and_abstract" as const, count: i, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: day, updatedAt: day };
-        return { userId, localId: `s${i}`, revision: 1, data, searchText: searchText(data) };
+        return { userId, workspaceId: actor.workspaceId, createdBy: userId, localId: `s${i}`, revision: 1, data, searchText: searchText(data) };
       }));
       await insertMany(t, "queryShortcuts", Array.from({ length: size }, (_, i) => {
         const data = { shorthand: `b${i}`, expansion: words(i, 80), createdAt: i };
-        return { userId, sortName: `b${i}`, data, searchText: shortcutText(data) };
+        return { userId, workspaceId: actor.workspaceId, createdBy: userId, sortName: `b${i}`, data, searchText: shortcutText(data) };
       }));
       await insertMany(t, "extractionJobs", Array.from({ length: size }, (_, i) => ({ userId, name: words(i, 50), searchText: jobText({ name: words(i, 50) }), sourceType: "history", status: "completed", totalPapers: 10, createdAt: i, updatedAt: i })));
       const rows = (read: { page: unknown[] } | undefined) => `${read?.page.length ?? 0} rows`;

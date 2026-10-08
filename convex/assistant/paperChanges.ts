@@ -8,6 +8,7 @@ import { z } from "zod";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
+import type { InWorkspace } from "../workspaces/actor";
 import { createError } from "../lib/errors";
 import { heldPapers } from "../paperSets/held";
 import { readSearchRun, readSearchWorks, type SearchSnapshot } from "../paperSets/openalex";
@@ -90,7 +91,7 @@ async function readPieces(first: number, last: number, enough: number, piece: (f
  * past it is refused, read no further than one paper past it. Papers named by ID come as
  * OpenAlex has them. Each page read from OpenAlex counts against the person's allowance.
  */
-export async function papersOf(ctx: ActionCtx, userId: Id<"users">, { papers: set, first: start, last: end }: Pick<ChangePapers, "papers" | "first" | "last">): Promise<SearchPaper[]> {
+export async function papersOf(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, { papers: set, first: start, last: end }: Pick<ChangePapers, "papers" | "first" | "last">): Promise<SearchPaper[]> {
   // Typed here: the generated API's types depend on this module, so inference would loop.
   const allowed: number | null = await ctx.runQuery(internal.billing.accounts.planLimitOf, { userId, limit: "bulk_papers" });
   const most = Math.min(allowed ?? BULK_CEILING, BULK_CEILING);
@@ -119,7 +120,7 @@ export async function papersOf(ctx: ActionCtx, userId: Id<"users">, { papers: se
   let papers: SearchPaper[];
   if (set.kind === "query") {
     // Typed here: the generated API's types depend on this module, so inference would loop.
-    const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, query: set.query ?? undefined, settings: (set.filters ?? {}) as never });
+    const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, workspaceId, query: set.query ?? undefined, settings: (set.filters ?? {}) as never });
     if (!found.request) throw invalid("This query isn't one OpenAlex can read. Check its brackets and quotes.");
     const request = found.request;
     const rating = found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined;
@@ -131,7 +132,7 @@ export async function papersOf(ctx: ActionCtx, userId: Id<"users">, { papers: se
     // Every piece reads the search as the first found it.
     let snapshot: SearchSnapshot | undefined;
     papers = await readPieces(first, last, enough, async (from, to, resume) => {
-      const read = await searchPapers(ctx, userId, { searchId: set.searchId, first: from, last: to }, snapshot, { resume, goesOn: true });
+      const read = await searchPapers(ctx, { userId, workspaceId }, { searchId: set.searchId, first: from, last: to }, snapshot, { resume, goesOn: true });
       snapshot = read.snapshot;
       return read;
     });

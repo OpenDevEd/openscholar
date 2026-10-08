@@ -30,7 +30,7 @@ import { searchSnapshotValidator } from "../paperSets/openalex";
 import { bookkeepLater, finishIfDone } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
-import { applyCommand } from "../research/records";
+import { applyCommand, findSearch } from "../research/records";
 
 import { availableCredits } from "../billing/accounts";
 import { MAX_AUTHORS } from "../lib/listCaps";
@@ -80,7 +80,9 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, sa
   let label: string | undefined;
   if (set?.kind === "search") {
     const localId = set.searchId;
-    const search = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", user._id).eq("localId", localId)).unique();
+    // In the person's own workspace until screening jobs belong to one (#650).
+    const writer = { userId: user._id, workspaceId: await personalWorkspaceOf(ctx, user._id) };
+    const search = await findSearch(ctx, writer.workspaceId, localId);
     if (!search) throw createError("NOT_FOUND", "Search not found");
     // The search's page shows answers to its own questions, so it takes on the job's it
     // lacks, all in one edit with one revision.
@@ -88,8 +90,7 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, sa
     const missing = [...new Set(args.questions.map((q) => q.question))].filter((question) => !asked.has(question));
     if (missing.length) {
       const screeningQuestions = [...search.data.screeningQuestions, ...missing.map((question) => ({ question }))];
-      // In the person's own workspace until screening jobs belong to one (#650).
-      await applyCommand(ctx, { userId: user._id, workspaceId: await personalWorkspaceOf(ctx, user._id) }, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, author);
+      await applyCommand(ctx, writer, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, author);
     }
     screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
     label = search.data.query;
