@@ -9,7 +9,7 @@ import {
   type QueryMatcher,
   type QueryToken,
 } from "@/lib/search/boolean-query";
-import { useKeywordExpansionStore } from "@/lib/store";
+import { shortcutExpansions, useKeywordExpansionStore } from "@/lib/store";
 import { OQL_FIELD } from "@/lib/openalex/oql";
 
 /** One colour per concept, the same in the query box and in the results. */
@@ -23,6 +23,12 @@ const CONCEPT_STYLES = [
 ] as const;
 
 const conceptStyle = (concept: number) => CONCEPT_STYLES[concept % CONCEPT_STYLES.length];
+
+/** The person's saved shortcuts by name. They load after the page, so colours follow once they arrive. */
+function useShortcutExpansions() {
+  const keywords = useKeywordExpansionStore((state) => state.keywords);
+  return useMemo(() => shortcutExpansions(keywords), [keywords]);
+}
 
 // ---------- The query ----------
 
@@ -53,7 +59,8 @@ function tokenClass(token: QueryToken, coloured: boolean): string | undefined {
  * Only colours and backgrounds change, so the text keeps the exact width of the field it mirrors.
  */
 export function HighlightedQuery({ query }: { query: string }) {
-  const { tokens, conceptCount } = useMemo(() => parseBooleanQuery(query), [query]);
+  const expansions = useShortcutExpansions();
+  const { tokens, conceptCount } = useMemo(() => parseBooleanQuery(query, expansions), [query, expansions]);
   // A plain keyword query is one concept: it stays in the normal text colour.
   const coloured = conceptCount > 1;
 
@@ -124,12 +131,10 @@ const QueryMatchContext = createContext<QueryMatcher | null>(null);
 
 /** Gives the result cards inside it the searched query to highlight. OQL queries highlight nothing. */
 export function QueryMatchProvider({ query, field, children }: { query: string; field: string; children: ReactNode }) {
-  const expandQuery = useKeywordExpansionStore((state) => state.expandQuery);
-  // Shortcuts load after the page; subscribing to them rebuilds the matcher once they arrive.
-  const keywords = useKeywordExpansionStore((state) => state.keywords);
+  const expansions = useShortcutExpansions();
   const matcher = useMemo(
-    () => (field === OQL_FIELD || !query.trim() ? null : queryMatcher(expandQuery(query).expandedQuery)),
-    [query, field, expandQuery, keywords],
+    () => (field === OQL_FIELD || !query.trim() ? null : queryMatcher(query, expansions)),
+    [query, field, expansions],
   );
   return <QueryMatchContext.Provider value={matcher}>{children}</QueryMatchContext.Provider>;
 }

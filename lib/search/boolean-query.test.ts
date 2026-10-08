@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { highlightSegments, parseBooleanQuery, queryMatcher } from "./boolean-query";
 
-const marked = (text: string, query: string) =>
-  highlightSegments(text, queryMatcher(query))
+const marked = (text: string, query: string, expansions = {}) =>
+  highlightSegments(text, queryMatcher(query, expansions))
     .filter((s) => s.concept !== undefined)
     .map((s) => `${s.concept}:${s.text}`);
 
@@ -63,8 +63,9 @@ describe("highlightSegments", () => {
     expect(marked("A possum and possums", "possums")).toEqual(["0:possum", "0:possums"]);
   });
 
-  it("takes a quoted phrase as written", () => {
-    expect(marked("mental healths, mental health", '"mental health"')).toEqual(["0:mental health"]);
+  it("stems phrase words, and takes them as written on the exact search", () => {
+    expect(marked("Case studies", '"case study"')).toEqual(["0:Case studies"]);
+    expect(marked("Case studies", '"case study" OR x*')).toEqual([]);
   });
 
   it("never marks excluded terms", () => {
@@ -91,5 +92,37 @@ describe("review fixes", () => {
   it("marks a proximity phrase only where its words sit close together", () => {
     expect(marked("Health care alone", '"mental health"~2')).toEqual([]);
     expect(marked("mental and physical health", '"mental health"~2')).toEqual(["0:mental", "0:health"]);
+  });
+});
+
+describe("OpenAlex search rules", () => {
+  it("counts a swapped proximity phrase as two moves and gives each word its own place", () => {
+    expect(marked("health mental", '"mental health"~1 OR care')).toEqual([]);
+    expect(marked("health mental", '"mental health"~2')).toEqual(["0:health", "0:mental"]);
+    expect(marked("one very word", '"very very"~1')).toEqual([]);
+  });
+
+  it("gives a shortcut one concept on both sides", () => {
+    const expansions = { methods: "randomized AND blinded NOT open" };
+    const { tokens, concepts } = parseBooleanQuery("methods... OR tutoring", expansions);
+    expect(tokens[0]).toMatchObject({ text: "methods...", concept: 0 });
+    expect(concepts).toEqual([["randomized", "blinded", "tutoring"]]);
+    expect(marked("A blinded, open trial", "methods... OR tutoring", expansions)).toEqual(["0:blinded"]);
+  });
+
+  it("drops stop words on the stemmed search", () => {
+    expect(marked("the education of the young", "education AND the")).toEqual(["0:education"]);
+    expect(marked("state of the art", '"state of the art"')).toEqual(["0:state of the art"]);
+  });
+
+  it("allows a fuzzy term its edits", () => {
+    expect(marked("colour and color", "color~1")).toEqual(["0:colour", "0:color"]);
+    expect(marked("collar", "color~1")).toEqual([]);
+  });
+
+  it("keeps two phrases intact and within their distance", () => {
+    const query = '"machine learning"~3~"neural network"';
+    expect(marked("neural network models use machine learning", query)).toEqual(["0:neural network", "0:machine learning"]);
+    expect(marked("machine learning in one two three four five neural network", query)).toEqual([]);
   });
 });

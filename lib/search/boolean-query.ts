@@ -1,11 +1,13 @@
 import { stemmer } from "stemmer";
 import { hasUnquotedWildcard } from "./wildcard";
+import { expandShortcuts, shortcutNameOf, type ShortcutExpansions } from "@/lib/query-shortcuts";
 
 /**
  * Reads an OpenAlex boolean search (AND, OR, NOT, parentheses, quoted phrases, `"a b"~N`,
  * `*` and `?` wildcards) into concepts, so the query box and the results colour each one the
  * same way. Terms joined by OR are one concept. Each side of an explicit AND is its own concept.
- * Words side by side with no operator stay one concept. Terms under NOT are excluded.
+ * Words side by side with no operator stay one concept. Terms under NOT are excluded. A saved
+ * shortcut (`name...`) is one concept, whatever its expansion holds.
  */
 
 export type QueryTokenKind = "space" | "open" | "close" | "and" | "or" | "not" | "term" | "phrase";
@@ -30,7 +32,8 @@ export interface ParsedQuery {
   concepts: string[][];
 }
 
-const TOKEN = /(\s+)|(\()|(\))|("[^"]*"?(?:~\d+)?)|([^\s()"]+)/g;
+// A phrase is `"a b"`, `"a b"~N` (proximity) or `"a b"~N~"c d"` (two phrases near each other).
+const TOKEN = /(\s+)|(\()|(\))|("[^"]*"~\d+~"[^"]*"?|"[^"]*"?(?:~\d+)?)|([^\s()"]+)/g;
 const OPERATORS = new Map<string, QueryTokenKind>([
   ["AND", "and"],
   ["OR", "or"],
@@ -145,7 +148,8 @@ function hasExplicitAnd(node: Node | null): boolean {
   }
 }
 
-export function parseBooleanQuery(query: string): ParsedQuery {
+/** `expansions` are the person's saved shortcuts; a known one stands for its expansion's terms. */
+export function parseBooleanQuery(query: string, expansions: ShortcutExpansions = {}): ParsedQuery {
   const tokens = tokenize(query);
   let conceptCount = 0;
 
@@ -196,7 +200,13 @@ export function parseBooleanQuery(query: string): ParsedQuery {
   const concepts: string[][] = Array.from({ length: conceptCount }, () => []);
   for (const token of tokens) {
     if (token.concept === undefined || (token.kind !== "term" && token.kind !== "phrase")) continue;
-    concepts[token.concept].push(token.text);
+    const name = token.kind === "term" ? shortcutNameOf(token.text) : undefined;
+    const expansion = name !== undefined && Object.hasOwn(expansions, name) ? expansions[name] : undefined;
+    if (!expansion) concepts[token.concept].push(token.text);
+    else {
+      const terms = parseBooleanQuery(expansion).tokens.filter((t) => t.concept !== undefined && (t.kind === "term" || t.kind === "phrase"));
+      concepts[token.concept].push(...terms.map((t) => t.text));
+    }
   }
   return { tokens, conceptCount, concepts };
 }
@@ -206,48 +216,93 @@ export function parseBooleanQuery(query: string): ParsedQuery {
 
 const WORD = /[\p{L}\p{N}]+/gu;
 
+/** Elasticsearch's English stop words, which OpenAlex drops from stemmed searches. */
+const STOP_WORDS = new Set(
+  "a an and are as at be but by for if in into is it no not of on or such that the their then there these they this to was will with".split(" "),
+);
+
 /** Tests one word of the result text, given lower-cased, with its stem worked out on demand. */
 type WordTest = (word: string, stem: () => string) => boolean;
 
-type TermMatcher = {
-  concept: number;
-  words: WordTest[];
-  /** Words a proximity phrase ("a b"~N) may have between its own; null when they must be adjacent. */
-  slop: number | null;
-};
+/** A phrase's words, each at its place in the phrase; a dropped stop word leaves its place empty. */
+type Phrase = { test: WordTest; offset: number }[];
+
+type TermMatcher = { concept: number } & (
+  /** Words one after another, or within `slop` position moves of that ("a b"~N). */
+  | { phrase: Phrase; slop: number | null }
+  /** Two phrases, each intact, within `distance` words of each other in either order ("a b"~N~"c d"). */
+  | { near: [Phrase, Phrase]; distance: number }
+);
+
+/** Edit distance (insertions, deletions, substitutions), stopping early once it passes `limit`. */
+function withinEdits(a: string, b: string, limit: number): boolean {
+  if (Math.abs(a.length - b.length) > limit) return false;
+  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = Math.min(previous[j] + 1, row[j - 1] + 1, previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    if (Math.min(...row) > limit) return false;
+    previous = row;
+  }
+  return previous[b.length] <= limit;
+}
 
 /**
- * OpenAlex stems bare words (Kstem) and takes quoted phrases and wildcard searches as written.
+ * How one query word matches, as OpenAlex runs it: stemmed (Kstem) on the default search, as
+ * written on the exact search a wildcard calls for. `edits` is a fuzzy term's allowance (`word~1`),
+ * which OpenAlex checks against the indexed form.
  * ponytail: Porter stands in for Kstem and over-matches a little ("educator" finds "education").
  */
-function wordTest(word: string, stemmed: boolean): WordTest {
+function wordTest(word: string, stemmed: boolean, edits?: number): WordTest | null {
   const lower = word.toLowerCase();
   if (/[*?]/.test(lower)) {
-    const pattern = new RegExp(`^${lower.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[\\p{L}\\p{N}]*").replace(/\?/g, "[\\p{L}\\p{N}]")}$`, "u");
+    const source = lower.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[\\p{L}\\p{N}]*").replace(/\?/g, "[\\p{L}\\p{N}]");
+    const pattern = new RegExp(`^${source}$`, "u");
     return (text) => pattern.test(text);
+  }
+  if (stemmed && STOP_WORDS.has(lower)) return null;
+  if (edits !== undefined) {
+    return stemmed ? (_, stem) => withinEdits(stem(), lower, edits) : (text) => withinEdits(text, lower, edits);
   }
   if (!stemmed) return (text) => text === lower;
   const target = stemmer(lower);
   return (_, stem) => stem() === target;
 }
 
-function termMatcher(text: string, concept: number, fieldStemmed: boolean): TermMatcher | null {
-  const proximity = text.match(/~(\d+)$/);
-  const quoted = text.startsWith('"');
-  const body = text.replace(/~\d+$/, "").replace(/\.{3}$/, "");
-  const words = [...body.matchAll(/[\p{L}\p{N}*?]+/gu)].map((match) => wordTest(match[0], fieldStemmed && !quoted));
-  if (words.length === 0) return null;
-  return { concept, words, slop: proximity && words.length > 1 ? Number(proximity[1]) : null };
+function phraseOf(text: string, stemmed: boolean, edits?: number): Phrase {
+  const words = [...text.replace(/\.{3}$/, "").matchAll(/[\p{L}\p{N}*?]+/gu)].map((match) => match[0]);
+  return words.flatMap((word, offset) => {
+    const test = wordTest(word, stemmed, edits);
+    return test ? [{ test, offset }] : [];
+  });
+}
+
+function termMatcher(text: string, concept: number, stemmed: boolean): TermMatcher | null {
+  const near = text.match(/^"([^"]*)"~(\d+)~"([^"]*)"?$/);
+  if (near) {
+    const pair: [Phrase, Phrase] = [phraseOf(near[1], stemmed), phraseOf(near[3], stemmed)];
+    return pair.every((phrase) => phrase.length > 0) ? { concept, near: pair, distance: Number(near[2]) } : null;
+  }
+  const tilde = text.match(/~(\d+)$/);
+  const body = text.replace(/~\d+$/, "");
+  // `"a b"~N` loosens a phrase; `word~N` allows N edits to a single word.
+  const fuzzy = tilde && !body.startsWith('"') ? Math.min(Number(tilde[1]), 2) : undefined;
+  const phrase = phraseOf(body, stemmed, fuzzy);
+  if (phrase.length === 0) return null;
+  return { concept, phrase, slop: tilde && fuzzy === undefined && phrase.length > 1 ? Number(tilde[1]) : null };
 }
 
 export interface QueryMatcher {
   terms: TermMatcher[];
 }
 
-/** One matcher per searched term, each tagged with its concept, built from the query that was actually searched. */
-export function queryMatcher(query: string): QueryMatcher | null {
-  const { concepts } = parseBooleanQuery(query);
-  const stemmed = !hasUnquotedWildcard(query);
+/** One matcher per searched term, each tagged with its concept, built from the query as typed and the person's shortcuts. */
+export function queryMatcher(query: string, expansions: ShortcutExpansions = {}): QueryMatcher | null {
+  const { concepts } = parseBooleanQuery(query, expansions);
+  // An unquoted wildcard anywhere sends the whole search, shortcuts expanded, to the exact field.
+  const stemmed = !hasUnquotedWildcard(expandShortcuts(query, expansions).expandedQuery);
   const terms = concepts.flatMap((texts, concept) =>
     texts.flatMap((text) => termMatcher(text, concept, stemmed) ?? []),
   );
@@ -259,45 +314,79 @@ export interface TextSegment {
   concept?: number;
 }
 
+type Word = { start: number; end: number; lower: string; stem?: string };
 type Hit = { start: number; end: number; concept: number };
+
+/**
+ * Places for a sloppy phrase's words, one word each, whose cost is within `slop`. The cost is
+ * Lucene's: how far apart the words' shifts from their places in the phrase are, so "b a" for
+ * "a b" costs 2. Tries each place for the first word and keeps the first fit found.
+ */
+function sloppyFits(phrase: Phrase, slop: number, count: number, test: (at: number, word: WordTest) => boolean): number[][] {
+  const fits: number[][] = [];
+  const place = (index: number, taken: number[], low: number, high: number): number[] | null => {
+    if (index === phrase.length) return taken;
+    const { test: word, offset } = phrase[index];
+    for (let shift = high - slop; shift <= low + slop; shift++) {
+      const at = offset + shift;
+      if (at < 0 || at >= count || taken.includes(at) || !test(at, word)) continue;
+      const found = place(index + 1, [...taken, at], Math.min(low, shift), Math.max(high, shift));
+      if (found) return found;
+    }
+    return null;
+  };
+  for (let first = 0; first < count; first++) {
+    if (!test(first, phrase[0].test)) continue;
+    const shift = first - phrase[0].offset;
+    const found = place(1, [first], shift, shift);
+    if (found) fits.push(found);
+  }
+  return fits;
+}
+
+/** Where a phrase's words sit one after another: the first and last word index of each run. */
+function phraseRuns(phrase: Phrase, count: number, test: (at: number, word: WordTest) => boolean): [number, number][] {
+  const first = phrase[0].offset;
+  const last = phrase.at(-1)!.offset;
+  const runs: [number, number][] = [];
+  for (let at = 0; at + last - first < count; at++) {
+    if (phrase.every(({ test: word, offset }) => test(at + offset - first, word))) runs.push([at, at + last - first]);
+  }
+  return runs;
+}
 
 /** Splits text into plain runs and matches; where matches overlap, the earlier then longer wins. */
 export function highlightSegments(text: string, matcher: QueryMatcher | null): TextSegment[] {
   if (!matcher || !text) return [{ text }];
-  const words = [...text.matchAll(WORD)].map((match) => ({
+  const words: Word[] = [...text.matchAll(WORD)].map((match) => ({
     start: match.index,
     end: match.index + match[0].length,
     lower: match[0].toLowerCase(),
-    stem: undefined as string | undefined,
   }));
   const test = (at: number, word: WordTest) => {
     const entry = words[at];
     return entry !== undefined && word(entry.lower, () => (entry.stem ??= stemmer(entry.lower)));
   };
+  const span = (from: number, to: number, concept: number): Hit => ({ start: words[from].start, end: words[to].end, concept });
 
   const hits: Hit[] = [];
   for (const term of matcher.terms) {
-    const count = term.words.length;
-    if (term.slop === null) {
-      // A phrase: its words one after another, marked as one stretch.
-      for (let at = 0; at + count <= words.length; at++) {
-        if (term.words.every((word, offset) => test(at + offset, word))) {
-          hits.push({ start: words[at].start, end: words[at + count - 1].end, concept: term.concept });
+    if ("near" in term) {
+      const [a, b] = term.near.map((phrase) => phraseRuns(phrase, words.length, test));
+      for (const [aStart, aEnd] of a) {
+        for (const [bStart, bEnd] of b) {
+          const gap = aEnd < bStart ? bStart - aEnd - 1 : bEnd < aStart ? aStart - bEnd - 1 : -1;
+          if (gap < 0 || gap > term.distance) continue;
+          hits.push(span(aStart, aEnd, term.concept), span(bStart, bEnd, term.concept));
         }
       }
-      continue;
+    } else if (term.slop === null) {
+      for (const [from, to] of phraseRuns(term.phrase, words.length, test)) hits.push(span(from, to, term.concept));
+    } else {
+      for (const fit of sloppyFits(term.phrase, term.slop, words.length, test)) {
+        for (const at of fit) hits.push(span(at, at, term.concept));
+      }
     }
-    // A proximity phrase: every word inside one window, each marked on its own.
-    const span = count + term.slop;
-    const marked = new Set<number>();
-    for (let start = 0; start < words.length; start++) {
-      const found = term.words.map((word) => {
-        for (let at = start; at < Math.min(start + span, words.length); at++) if (test(at, word)) return at;
-        return -1;
-      });
-      if (found.every((at) => at >= 0)) found.forEach((at) => marked.add(at));
-    }
-    marked.forEach((at) => hits.push({ start: words[at].start, end: words[at].end, concept: term.concept }));
   }
 
   hits.sort((a, b) => a.start - b.start || b.end - a.end);
