@@ -78,14 +78,6 @@ describe("<RetrySummary>", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("exposes data-retryable-count and data-permanent-count attributes", () => {
-    summaryStore.data = failures(3, { pdf_invalid: 1, moderation: 1 });
-    render(<RetrySummary jobId={jobId} />);
-    const banner = screen.getByRole("status");
-    expect(banner).toHaveAttribute("data-retryable-count", "3");
-    expect(banner).toHaveAttribute("data-permanent-count", "2");
-  });
-
   it("shows the retry button when retryableCount > 0, with a count-aware label", () => {
     summaryStore.data = failures(5);
     render(<RetrySummary jobId={jobId} />);

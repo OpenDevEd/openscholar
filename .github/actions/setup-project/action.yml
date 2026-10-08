@@ -11,6 +11,13 @@ runs:
       with:
         node-version: 22
 
+    # @swc/core, through next-intl, unpacks its native binary into a cache on first use. A
+    # hard-linked install can't take it in place, and the default cache under the runner's
+    # home fails its check that no other user can write to a parent. /tmp is sticky.
+    - name: Give SWC a private native cache
+      shell: bash
+      run: echo "SWC_NATIVE_BINDING_CACHE=/tmp/swc-native-$(id -u)" >> "$GITHUB_ENV"
+
     # Each runner user keeps one finished install per dependency state. A
     # hard-linked copy takes a few seconds; npm ci takes about 25.
     - name: Install dependencies

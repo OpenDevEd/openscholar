@@ -1,35 +1,33 @@
 /**
  * @vitest-environment jsdom
- *
- * Plan-06 behavior tests for <JobStatusBanner variant="paused">.
- *
- * creditsExhausted variant is covered by the existing
- * credits-exhausted-banner.test.tsx — that test exercises the same
- * component surface through the thin CreditsExhaustedBanner alias, so
- * we don't duplicate that coverage here.
- *
- * Per project CLAUDE.md testing doctrine: assert on role + data-* +
- * ARIA, never on Tailwind utility strings.
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { JobStatusBanner } from "@/components/extraction/job-status-banner";
 
+const pushMock = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: pushMock }),
 }));
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
+// The person's balance, set per test.
+const balanceStore = { data: undefined as unknown };
 vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: () => ({ data: undefined }),
+  useProtectedQuery: () => balanceStore,
 }));
+
+function setBalance(total: number, hasEnough: boolean, required: number) {
+  balanceStore.data = { hasEnough, free: 0, paid: total, total, required, deficit: hasEnough ? 0 : required - total };
+}
 
 describe("<JobStatusBanner variant='paused'>", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    balanceStore.data = undefined;
   });
 
   it("exposes role='status' and data-job-status='paused' (screen-reader-stable contract)", () => {
@@ -81,19 +79,48 @@ describe("<JobStatusBanner variant='paused'>", () => {
     fireEvent.click(cancelBtn);
     expect(onCancelRemaining).toHaveBeenCalledTimes(1);
   });
+});
 
-  it("does NOT surface a credits-related badge (paused is not a credit state)", () => {
-    render(
-      <JobStatusBanner
-        variant="paused"
-        onResume={() => {}}
-        processedPapers={10}
-        totalPapers={20}
-      />,
-    );
-    // No "Buy Credits" CTA.
-    expect(
-      screen.queryByRole("button", { name: /buyCredits/i }),
-    ).toBeNull();
+describe("<JobStatusBanner variant='creditsExhausted'>", () => {
+  beforeEach(() => {
+    pushMock.mockClear();
+    balanceStore.data = undefined;
+  });
+
+  it("Buy Credits button navigates to /settings/billing#topup-section", () => {
+    setBalance(0, false, 1);
+    render(<JobStatusBanner variant="creditsExhausted" />);
+    fireEvent.click(screen.getByRole("button", { name: /buyCredits/i }));
+    expect(pushMock).toHaveBeenCalledWith("/settings/billing#topup-section");
+  });
+
+  it("Resume button is disabled when the balance is below minCreditsToResume even with handler wired", () => {
+    setBalance(0, false, 1);
+    render(<JobStatusBanner variant="creditsExhausted" onResume={vi.fn()} />);
+    expect(screen.getByRole("button", { name: /creditsExhausted.resume/i })).toBeDisabled();
+  });
+
+  it("Resume button is enabled when balance is sufficient AND handler is wired", () => {
+    setBalance(100, true, 1);
+    const onResume = vi.fn();
+    render(<JobStatusBanner variant="creditsExhausted" onResume={onResume} />);
+    const resume = screen.getByRole("button", { name: /creditsExhausted.resume/i });
+    expect(resume).not.toBeDisabled();
+    fireEvent.click(resume);
+    expect(onResume).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers both ways on for a job that stopped at the credits it was allowed: carrying on, and a top-up if its figure was the whole balance", () => {
+    setBalance(100, true, 1);
+    const onResume = vi.fn();
+    const { rerender } = render(<JobStatusBanner variant="creditsExhausted" allowed={40} onResume={onResume} />);
+    fireEvent.click(screen.getByRole("button", { name: /creditsExhausted.resume/i }));
+    expect(onResume).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: /buyCredits/i })).toBeInTheDocument();
+
+    setBalance(0, false, 1);
+    rerender(<JobStatusBanner variant="creditsExhausted" allowed={40} onResume={onResume} />);
+    expect(screen.getByRole("button", { name: /creditsExhausted.resume/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /buyCredits/i })).toBeInTheDocument();
   });
 });

@@ -11,7 +11,7 @@ import { MAX_SIZE, seedAccount, seedExtractionJob, text } from "../lib/maxSize.t
 const filters = { searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [] };
 
 export function pagesAFullExtractionJob(searchQuery: string) {
-  describe("at the largest sizes the product allows", () => {
+  describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     // seedExtractionJob folds the count changes explicitly. No scheduled work is needed for reads.
     beforeEach(() => vi.useFakeTimers());
     afterEach(() => {

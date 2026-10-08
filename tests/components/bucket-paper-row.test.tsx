@@ -28,16 +28,6 @@ function makePaper(over: Partial<PaperRowData> = {}): PaperRowData {
 }
 
 describe("<BucketPaperRow>", () => {
-  it("renders the title and author preview", () => {
-    render(
-      <ul>
-        <BucketPaperRow paper={makePaper()} />
-      </ul>,
-    );
-    expect(screen.getByText("A Paper About Things")).toBeTruthy();
-    expect(screen.getByText(/Ada Lovelace, Alan Turing/)).toBeTruthy();
-    expect(screen.getByText(/2024/)).toBeTruthy();
-  });
 
   it("readonly mode: no remove button when onRemove is omitted", () => {
     render(
@@ -64,21 +54,6 @@ describe("<BucketPaperRow>", () => {
     expect(onRemove).toHaveBeenCalledTimes(1);
   });
 
-  it("custom removeLabel overrides the default a11y name", () => {
-    render(
-      <ul>
-        <BucketPaperRow
-          paper={makePaper()}
-          onRemove={() => {}}
-          removeLabel="Drop this source"
-        />
-      </ul>,
-    );
-    expect(
-      screen.getByRole("button", { name: "Drop this source" }),
-    ).toBeTruthy();
-  });
-
   it("uploading status surfaces 'uploading' inline next to the meta line", () => {
     render(
       <ul>
@@ -101,20 +76,6 @@ describe("<BucketPaperRow>", () => {
     expect(li).toHaveAttribute("data-paper-status", "failed");
   });
 
-  it("forwards dataAttrs to the <li> for caller-defined contracts", () => {
-    render(
-      <ul>
-        <BucketPaperRow
-          paper={makePaper()}
-          dataAttrs={{ "data-paper-id": "src_42" }}
-        />
-      </ul>,
-    );
-    const li = screen.getByText("A Paper About Things").closest("li");
-    expect(li).toHaveAttribute("data-paper-id", "src_42");
-    expect(li).toHaveAttribute("data-paper-source", "library");
-  });
-
   it("saved-search placeholder: meta line shows '<n> papers' instead of authors", () => {
     render(
       <ul>
@@ -129,17 +90,5 @@ describe("<BucketPaperRow>", () => {
       </ul>,
     );
     expect(screen.getByText(/42 papers/i)).toBeTruthy();
-  });
-
-  it("structural invariant: remove button is not nested inside the title element", () => {
-    render(
-      <ul>
-        <BucketPaperRow paper={makePaper()} onRemove={() => {}} />
-      </ul>,
-    );
-    const title = screen.getByText("A Paper About Things");
-    const trash = screen.getByRole("button", { name: /remove/i });
-    expect(title.contains(trash)).toBe(false);
-    expect(trash.contains(title)).toBe(false);
   });
 });

@@ -1,0 +1,55 @@
+name: Nightly size tests
+
+# Tests tagged `size` seed the largest sizes the product allows, or enough rows to cross a page
+# or batch (OS-18). They are over half of the suite's CPU, so they run here once a night on dev
+# instead of on every pull request.
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  size:
+    name: Size tests
+    runs-on: openscholar-light
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup-project
+
+      - name: Run the size tests
+        run: npm run test:size -- --maxWorkers=8
+
+      # A failure reopens the newest issue with this title, open or closed and whoever opened
+      # it, or opens one in OS-18. The job's token can't add issues to the organization's board.
+      - name: Report the failure
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY"
+          auth="Authorization: Bearer $GITHUB_TOKEN"
+          title="[OS-18] Nightly size tests fail on dev"
+          body="The size tests failed on $GITHUB_SHA: $RUN_URL"
+          issue="$(curl -fsS -G -H "$auth" "$GITHUB_API_URL/search/issues" \
+            --data-urlencode "q=repo:$GITHUB_REPOSITORY is:issue in:title \"$title\"" \
+            | jq -r --arg title "$title" '[.items[] | select(.title == $title)] | max_by(.number) | .number // empty')"
+          if [ -n "$issue" ]; then
+            curl -fsS -X PATCH -H "$auth" -d '{"state": "open"}' "$api/issues/$issue" > /dev/null
+            jq -n --arg body "$body" '{body: $body}' | curl -fsS -H "$auth" -d @- "$api/issues/$issue/comments" > /dev/null
+            echo "Reopened and commented on issue #$issue."
+          else
+            milestone="$(curl -fsS -H "$auth" "$api/milestones?state=open&per_page=100" \
+              | jq -r 'map(select(.title | startswith("OS-18 ")))[0].number // empty')"
+            [ -n "$milestone" ] || echo "::warning::No open OS-18 milestone, so the issue has none."
+            jq -n --arg title "$title" --arg body "$body" --arg milestone "$milestone" \
+              '{title: $title, body: $body} + (if $milestone == "" then {} else {milestone: ($milestone | tonumber)} end)' \
+              | curl -fsS -H "$auth" -d @- "$api/issues" | jq -r '"Opened issue #\(.number)."'
+          fi

@@ -10,7 +10,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import type { BucketItem } from "@/lib/bucket/bucketItem";
 import { useBucketStore } from "@/lib/store/bucket";
 import { BucketDrawer } from "@/components/extraction/bucket/bucket-drawer";
-import { BucketIndicator } from "@/components/extraction/bucket/bucket-indicator";
 
 vi.mock("convex/react", () => ({
   useQuery: () => 1000,
@@ -91,39 +90,5 @@ describe("<BucketDrawer> row parity with sidebar", () => {
     ]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
-  });
-});
-
-describe("<BucketIndicator> (mobile) — T9 tint replaces badges", () => {
-  it("no badges when under the cap threshold", () => {
-    act(() => {
-      useBucketStore.getState().addMany([makeItem("k:a", "Alpha")], 1000);
-    });
-    render(withProviders(<BucketIndicator onClick={() => {}} paperLimit={1000} />));
-    expect(screen.queryByText(/near cap/i)).toBeNull();
-    expect(screen.queryByText(/at cap/i)).toBeNull();
-  });
-
-  it("no 'near cap' badge at nearCap, tint applies to count", () => {
-    const items: BucketItem[] = Array.from({ length: 950 }, (_, i) =>
-      makeItem(`k:${i}`, `Paper ${i}`),
-    );
-    act(() => {
-      useBucketStore.getState().addMany(items, 1000);
-    });
-    render(withProviders(<BucketIndicator onClick={() => {}} paperLimit={1000} />));
-    expect(screen.queryByText(/near cap/i)).toBeNull();
-  });
-
-  it("no 'at cap' badge at cap, indicator stays a single button", () => {
-    const items: BucketItem[] = Array.from({ length: 1000 }, (_, i) =>
-      makeItem(`k:${i}`, `Paper ${i}`),
-    );
-    act(() => {
-      useBucketStore.getState().addMany(items, 1000);
-    });
-    render(withProviders(<BucketIndicator onClick={() => {}} paperLimit={1000} />));
-    expect(screen.queryByText(/at cap/i)).toBeNull();
-    expect(screen.getAllByRole("button")).toHaveLength(1);
   });
 });

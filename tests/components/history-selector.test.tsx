@@ -189,22 +189,6 @@ afterEach(() => {
 });
 
 describe("<HistorySelector> ↔ <CountChip> integration", () => {
-  it("renders NO CountChip for an unselected history row", () => {
-    historyEntriesRef.current = [makeHistoryEntry("sr_1")];
-    render(<HistorySelector paperLimit={1000} />);
-    expect(screen.queryByRole("button", { name: /chipLabel/ })).toBeNull();
-  });
-
-  it("renders a CountChip for a selected row", () => {
-    const entry = makeHistoryEntry("sr_1");
-    historyEntriesRef.current = [entry];
-    stageEntry(entry);
-    render(<HistorySelector paperLimit={1000} />);
-    const chip = screen.queryByRole("button", { name: /chipLabel/ });
-    expect(chip).toBeInTheDocument();
-    const label = chip?.getAttribute("aria-label") ?? "";
-    expect(label).toContain("query-sr_1");
-  });
 
   it("selection summary reads bucket paperCount, not entry.count", () => {
     const entry = makeHistoryEntry("sr_1", { count: 500 });

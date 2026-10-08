@@ -87,7 +87,7 @@ describe("Screen all bookkeeping", () => {
   });
 
   const JOB_PAPERS = 1_000;
-  it(`bookkeeps a ${JOB_PAPERS}-paper job within Convex's limits`, async () => {
+  it(`bookkeeps a ${JOB_PAPERS}-paper job within Convex's limits`, { tags: ["size"] }, async () => {
     const t = convexTest({ schema, transactionLimits: true });
     setupScreeningWorkpool(t);
     const { jobId } = await seedJob(t, JOB_PAPERS);
@@ -105,5 +105,5 @@ describe("Screen all bookkeeping", () => {
     const qualified = Array.from({ length: JOB_PAPERS }, (_, i) => i).filter((i) => i % 3 === 0).length;
     expect(await counts(t, jobId)).toEqual({ completed: JOB_PAPERS, skipped: 0, failed: 0, qualified });
     expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("completed");
-  }, 600_000);
+  });
 });

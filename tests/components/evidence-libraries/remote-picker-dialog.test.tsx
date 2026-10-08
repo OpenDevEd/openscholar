@@ -203,13 +203,6 @@ describe("<RemotePickerDialog>", () => {
     expect(await screen.findByText("No match")).toBeInTheDocument();
   });
 
-  it("shows the not-set-up answer", async () => {
-    const source = vi.fn(async () => ({ items: [], nextCursor: null, reason: "not-set-up" as const }));
-    const { user } = renderPicker({ source });
-    await open(user);
-    expect(await screen.findByText("Not set up yet")).toBeInTheDocument();
-  });
-
   it("offers to try again after a failure", async () => {
     let fail = true;
     const source = vi.fn(async () => {

@@ -101,7 +101,7 @@ describe("the extraction job list", () => {
     expect(await names("nothing like this")).toEqual([]);
   });
 
-  it("finds the one match among thousands of jobs in one read", async () => {
+  it("finds the one match among thousands of jobs in one read", { tags: ["size"] }, async () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
     // The match is the oldest completed job: last in the status order, behind 2,299 others.

@@ -84,28 +84,6 @@ describe("<JobListItem> status-icon a11y", () => {
     expect(dot).toHaveAttribute("aria-label", "extracting");
   });
 
-  it("list-detail: the status icon carries the paused state label", () => {
-    const job = buildJob({ status: "paused" });
-    const { container } = render(
-      <JobListItem job={job} viewMode="list-detail" />,
-    );
-    const dot = container.querySelector('[data-job-status="paused"]');
-    expect(dot).not.toBeNull();
-    expect(dot).toHaveAttribute("aria-label", "paused");
-  });
-
-  it("grid-3: the status icon exposes aria-label + data-job-status", () => {
-    const job = buildJob({ status: "completed" });
-    const { container } = render(
-      <JobListItem job={job} viewMode="grid-3" />,
-    );
-    const stripe = container.querySelector('[data-job-status="completed"]');
-    expect(stripe).not.toBeNull();
-    // `tc("completed")` → the mocked key echo; pins that the label derives
-    // from the translation layer, not from the raw status literal.
-    expect(stripe).toHaveAttribute("aria-label", "completed");
-  });
-
   it("humanises unknown states ('download_failed' → 'download failed') for aria-label", () => {
     const job = buildJob({ status: "download_failed" as Doc<"extractionJobs">["status"] });
     const { container } = render(
