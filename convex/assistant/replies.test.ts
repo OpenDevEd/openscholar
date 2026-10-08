@@ -759,6 +759,10 @@ describe("a job a reply started", () => {
     const row = async () => (await asBen.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage })).page.find((listed) => listed._id === threadId);
     expect(await running()).toEqual([{ stepId, kind: "screening" }]);
     expect(await asBen.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ card: { kind: "screening", jobId, total: 2 }, mine: false });
+    // Its starter suspended, the others in the chat still see its card.
+    await t.run((ctx) => ctx.db.patch("users", ada, { state: "suspended" }));
+    expect(await asBen.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ card: { kind: "screening", jobId, total: 2 }, mine: false });
+    await t.run((ctx) => ctx.db.patch("users", ada, { state: "active" }));
     expect(await row()).toMatchObject({ jobs: [{ id: jobId, kind: "screening", done: 0, total: 2 }], moreJobs: 0 });
 
     // It ends: the chat's dock and row let it go.
