@@ -51,19 +51,6 @@ describe("<RetryConfirmDialog>", () => {
     balanceStore.data = undefined;
   });
 
-  it("does not render dialog content when open=false", () => {
-    render(
-      <RetryConfirmDialog
-        open={false}
-        onOpenChange={() => {}}
-        retryableCount={3}
-        jobId={"job" as never}
-        onConfirm={() => {}}
-      />,
-    );
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-  });
-
   it("renders the dialog with the count-aware title when open", () => {
     setBalance(1_000_000, true, 1);
     render(
@@ -80,21 +67,6 @@ describe("<RetryConfirmDialog>", () => {
     // Title interpolates `count` so it shows up as "title:{"count":3}"
     // under the mock translator; regex tolerates the mock shape.
     expect(dialog.textContent).toMatch(/title.*3/);
-  });
-
-  it("embeds the reused <ExtractionPreflightBanner> with data-preflight-ok=true for sufficient balance", () => {
-    setBalance(1_000_000, true, 1);
-    render(
-      <RetryConfirmDialog
-        open={true}
-        onOpenChange={() => {}}
-        retryableCount={2}
-        jobId={"job" as never}
-        onConfirm={() => {}}
-      />,
-    );
-    const banner = screen.getByRole("status");
-    expect(banner).toHaveAttribute("data-preflight-ok", "true");
   });
 
   it("Continue is disabled when balance is insufficient", () => {

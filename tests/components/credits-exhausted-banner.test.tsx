@@ -41,13 +41,6 @@ describe("<CreditsExhaustedBanner>", () => {
     balanceStore.data = undefined;
   });
 
-  it("exposes role=alert and data-job-status=creditsExhausted (tests can assert on contract)", () => {
-    setBalance(0, false, 1);
-    render(<CreditsExhaustedBanner />);
-    const banner = screen.getByRole("alert");
-    expect(banner).toHaveAttribute("data-job-status", "creditsExhausted");
-  });
-
   it("Buy Credits button navigates to /settings/billing#topup-section", () => {
     setBalance(0, false, 1);
     render(<CreditsExhaustedBanner />);

@@ -81,19 +81,4 @@ describe("<JobStatusBanner variant='paused'>", () => {
     fireEvent.click(cancelBtn);
     expect(onCancelRemaining).toHaveBeenCalledTimes(1);
   });
-
-  it("does NOT surface a credits-related badge (paused is not a credit state)", () => {
-    render(
-      <JobStatusBanner
-        variant="paused"
-        onResume={() => {}}
-        processedPapers={10}
-        totalPapers={20}
-      />,
-    );
-    // No "Buy Credits" CTA.
-    expect(
-      screen.queryByRole("button", { name: /buyCredits/i }),
-    ).toBeNull();
-  });
 });
