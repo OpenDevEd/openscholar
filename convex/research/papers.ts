@@ -13,8 +13,8 @@ import { ASSISTANT_FIELDS, spender, toPaper, type SavedSearchRequest, type Work 
 import { readPage, short } from "./searches";
 import { workUrl } from "../../lib/openalex/work-id";
 import { AUTHORS_LISTED, countValidator, FUNDERS_LISTED, GROUPINGS, GROUPS_MAX, INSTITUTIONS_LISTED, pageValidator, paperPdfValidator, paperRecordValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS, type Grouping } from "./searchValidators";
-import { chatModel } from "../assistant/threads";
-import { pricingOf, resolveTaskPick } from "../ai/serverModel";
+import { assistantPick, chatModel } from "../assistant/threads";
+import { pricingOf } from "../ai/serverModel";
 import { convertUsdToCredits } from "../../lib/pricing";
 import { PDF_PAGE_TOKENS } from "../../lib/assistant/files";
 import { safeFetchPdf } from "../../lib/pdf/url-allowlist";
@@ -203,7 +203,7 @@ export const readPdfAction = defineUserAction({
   // What a paper of typical length costs to read on the chat's model, which is all of what the read spends: its tokens in the reply.
   estimate: async (ctx, userId, _args, chat) => {
     const thread = chat ? await ctx.db.get("assistantThreads", chat.threadId) : null;
-    const { modelId } = thread ? await chatModel(ctx, thread, userId) : { modelId: (await resolveTaskPick(ctx, userId, "chat"))?.modelId ?? null };
+    const { modelId } = thread ? await chatModel(ctx, thread, userId) : { modelId: (await assistantPick(ctx, userId))?.modelId ?? null };
     await requirePdfModel(ctx, modelId);
     const price = (await pricingOf(ctx, modelId)).input;
     return convertUsdToCredits({ usd: (PAPER_PAGES * PDF_PAGE_TOKENS * price) / 1_000_000 });

@@ -325,6 +325,9 @@ describe("assistant replies", () => {
     });
     mockDoStream.mockImplementation(finishingDoStream(["Ok"]));
 
+    // A new chat starts on each one's own: the panel shows it before the chat exists.
+    expect(await asAda.query(api.assistant.threads.newChatModel, {})).toMatchObject({ model: { _id: balanced } });
+    expect(await asBen.query(api.assistant.threads.newChatModel, {})).toMatchObject({ model: { _id: cheap } });
     // Each reads the chat's model as their own message would run on it.
     expect(await asAda.query(api.assistant.threads.get, { threadId })).toMatchObject({ model: { _id: balanced } });
     expect(await asBen.query(api.assistant.threads.get, { threadId })).toMatchObject({ model: { _id: cheap } });
@@ -359,6 +362,13 @@ describe("assistant replies", () => {
     await t.run(async (ctx) => ctx.db.patch("assistantThreads", threadId, { modelId: small }));
     await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "Third" })).rejects.toThrow(/long enough/);
     await asAda.mutation(api.assistant.threads.setModel, { threadId, modelId: picked });
+
+    // AI settings take a chat model the assistant can't run on: a new chat starts on the default preset's instead.
+    await t.run(async (ctx) => {
+      const config = await ctx.db.query("userAiConfig").withIndex("by_user", (q) => q.eq("userId", ben)).unique();
+      await ctx.db.patch("userAiConfig", config!._id, { choice: "custom", custom: { chat: { modelId: toolless } } });
+    });
+    expect(await asBen.query(api.assistant.threads.newChatModel, {})).toMatchObject({ model: { _id: balanced } });
 
     // With nothing picking a model, the server's own default runs, and it's held to the rule where the catalog has it.
     const bare = await asAda.mutation(api.assistant.threads.create, {});
