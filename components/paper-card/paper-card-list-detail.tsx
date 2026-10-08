@@ -4,6 +4,7 @@ import { TopicLink } from "@/components/topics/topic-link";
 import { CitationControl } from "@/components/citation-control";
 
 import React, { useCallback } from "react";
+import { QueryMatchText } from "@/components/query-highlight";
 import { useRouter, usePathname } from "next/navigation";
 import { workToCoins } from "@/lib/utils";
 import { useResultsStore, useUIStore } from "@/lib/store";
@@ -156,9 +157,9 @@ export function PaperCardListDetail({
             className={cn("text-left w-full", !hide?.focusMode && "group/title")}
           >
             <h3 className="font-semibold text-lg leading-snug text-wrap-anywhere group-hover/title:text-primary transition-colors">
-              {showTranslated && translatedContent
-                ? translatedContent.translatedTitle
-                : result.title}
+              <QueryMatchText
+                text={showTranslated && translatedContent ? translatedContent.translatedTitle : result.title}
+              />
               {result.publication_year != null && <span className="ml-2 text-muted-foreground font-normal">
                 ({result.publication_year})
               </span>}
@@ -188,7 +189,7 @@ export function PaperCardListDetail({
         {result.abstract && (
           <div className="mb-4">
             <p className="text-sm text-foreground leading-relaxed text-wrap-anywhere">
-              {isExpanded
+              <QueryMatchText text={isExpanded
                 ? showTranslated && translatedContent
                   ? translatedContent.translatedAbstract
                   : result.abstract
@@ -198,7 +199,7 @@ export function PaperCardListDetail({
                     : translatedContent.translatedAbstract
                   : result.abstract.length > 500
                     ? `${result.abstract.slice(0, 500)}...`
-                    : result.abstract}
+                    : result.abstract} />
             </p>
 
             {/* Expanded Metadata */}

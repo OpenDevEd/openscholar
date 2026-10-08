@@ -1,5 +1,6 @@
 import { TopicLink } from "@/components/topics/topic-link";
 import React from "react";
+import { QueryMatchText } from "@/components/query-highlight";
 import { BookOpen, Award, ExternalLink, FileText } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { workToCoins } from "@/lib/utils";
@@ -81,9 +82,10 @@ export function PaperContent({
         >
           {isPreview
             ? `${tFocus("machineLearningPreview")} (2024)`
-            : showTranslated && translatedContent
-            ? `${translatedContent.translatedTitle}${paper.publication_year == null ? "" : ` (${paper.publication_year})`}`
-            : `${paper.title}${paper.publication_year == null ? "" : ` (${paper.publication_year})`}`}
+            : <>
+                <QueryMatchText text={showTranslated && translatedContent ? translatedContent.translatedTitle : paper.title} />
+                {paper.publication_year == null ? "" : ` (${paper.publication_year})`}
+              </>}
         </h1>
         <div className="text-sm text-muted-foreground">
           {isPreview ? (
@@ -323,9 +325,7 @@ export function PaperContent({
           <div className={cn("pr-2", fontSizeClass, lineHeightClass)}>
             {isPreview
               ? tFocus("abstractPreview")
-              : showTranslated && translatedContent
-              ? translatedContent.translatedAbstract
-              : paper.abstract}
+              : <QueryMatchText text={showTranslated && translatedContent ? translatedContent.translatedAbstract : paper.abstract} />}
           </div>
         </div>
       )}
