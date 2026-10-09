@@ -36,6 +36,7 @@ vi.mock("@/lib/search/search-results", () => ({
 }));
 
 import { SearchProvider, useSearch } from "@/lib/search";
+import { useUpdateSearchFilter } from "@/lib/hooks";
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <NuqsTestingAdapter searchParams="?like=OS64233829,OS14687712">
@@ -56,5 +57,19 @@ describe("the results page's search for the works nearest given papers", () => {
     const { result } = renderHook(() => useSearch(), { wrapper });
     act(() => result.current.resetFilters());
     await waitFor(() => expect(result.current.params.like).toEqual([]));
+  });
+
+  it("drops the papers when the search turns to a question by meaning, which ranks the works by itself", async () => {
+    const { result } = renderHook(() => ({ search: useSearch(), updateFilter: useUpdateSearchFilter() }), { wrapper });
+    act(() => result.current.updateFilter({ currentSearchField: "semantic" }));
+    await waitFor(() => expect(result.current.search.params.field).toBe("semantic"));
+    expect(result.current.search.params.like).toEqual([]);
+  });
+
+  it("keeps the papers when the search's words turn to another field, which only filter what they find", async () => {
+    const { result } = renderHook(() => ({ search: useSearch(), updateFilter: useUpdateSearchFilter() }), { wrapper });
+    act(() => result.current.updateFilter({ currentSearchField: "title" }));
+    await waitFor(() => expect(result.current.search.params.field).toBe("title"));
+    expect(result.current.search.params.like).toEqual(["OS64233829", "OS14687712"]);
   });
 });
