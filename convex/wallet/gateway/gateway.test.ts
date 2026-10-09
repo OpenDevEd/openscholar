@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, it, expect, vi } from "vitest";
 import { internal } from "../../_generated/api";
 import schema from "../../schema";
+import { ensureWorkspace } from "../../workspaces/create";
 import type { Id } from "../../_generated/dataModel";
 
 import { parseAndValidateRequest, convertToAISdkParams, normalizeSchemaForStrictMode } from "./parseRequest";
@@ -82,6 +83,7 @@ async function seedWalletKey(
   return await t.run(async (ctx) => {
     return await ctx.db.insert("walletKeys", {
       userId,
+      workspaceId: await ensureWorkspace(ctx, { kind: "personal", userId }),
       hashedKey: overrides?.hashedKey ?? "gw_testhash",
       keyPrefix: "wk_gwt...",
       appName: overrides?.appName ?? "GatewayTestApp",

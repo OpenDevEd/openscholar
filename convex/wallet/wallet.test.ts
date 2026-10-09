@@ -7,7 +7,6 @@ import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
 import { ensureWorkspace } from "../workspaces/create";
-import { personalWorkspaceOf } from "../workspaces/personal";
 
 // ─── Seed helpers ────────────────────────────────────────────
 
@@ -70,6 +69,7 @@ async function seedWalletKey(
   return await t.run(async (ctx) => {
     const walletKeyId = await ctx.db.insert("walletKeys", {
       userId,
+      workspaceId: await ensureWorkspace(ctx, { kind: "personal", userId }),
       hashedKey: overrides?.hashedKey ?? "testhash_abc123",
       keyPrefix: "wk_test...",
       appName: overrides?.appName ?? "TestApp",
@@ -510,7 +510,7 @@ describe("models (unified table)", () => {
 });
 
 describe("a connected app's workspace (#651)", () => {
-  it("draws on the workspace it was connected to, one of the person's, or their own for a key from before", async () => {
+  it("draws on the workspace it was connected to, which must be one of the person's", async () => {
     const t = convexTest(schema);
     const userId = await seedUser(t, { clerkId: "ada" });
     const { lab, elsewhere } = await t.run(async (ctx) => {
@@ -529,9 +529,5 @@ describe("a connected app's workspace (#651)", () => {
     expect(made.map((key) => key.workspaceId)).toEqual([lab]);
     // Not one the person isn't in.
     await expect(ada.mutation(api.wallet.mutations.approveConnection, { appName: "Zotero", redirectOrigin: "manual", workspaceId: elsewhere })).rejects.toThrow();
-    // A key from before keys named a workspace draws on its person's own.
-    await seedWalletKey(t, userId, { hashedKey: "old" });
-    const own = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
-    expect((await t.query(internal.wallet.internal.lookupKey, { hashedKey: "old" }))?.workspaceId).toBe(own);
   });
 });
