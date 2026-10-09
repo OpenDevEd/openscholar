@@ -106,9 +106,9 @@ export const slotsAction = defineUserQuery({
   description: "The workspace's paper slots for screening: how many papers it may have running at once across its screening jobs, and how many are running now.",
   args: {},
   returns: v.object({ limit: v.number(), running: v.number() }),
-  run: async (ctx, { userId, workspaceId }) => {
+  run: async (ctx, { workspaceId }) => {
     const row = await ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
-    return { limit: await paperLimit(ctx, userId), running: row?.running ?? 0 };
+    return { limit: await paperLimit(ctx, workspaceId), running: row?.running ?? 0 };
   },
 });
 export const slots = userQuery(slotsAction);

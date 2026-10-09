@@ -768,7 +768,7 @@ describe("research records in workspaces (#650)", () => {
   it("counts an organization's searches together, whoever made them, and each person's own apart", async () => {
     vi.useFakeTimers();
     try {
-      const { t, alice, bob } = await setup();
+      const { t, ids, alice, bob } = await setup();
       const lab = await t.run(async ctx => {
         const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Learning Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
         for (const clerkUserId of ["alice", "bob"]) {
@@ -782,6 +782,23 @@ describe("research records in workspaces (#650)", () => {
       await make(bob, "bob", "b-lab", lab);
       await make(alice, "alice", "a-own");
       await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await alice.query(api.research.records.countSearches, { accountId: "alice", workspaceId: lab })).toBe(2);
+      expect(await alice.query(api.research.records.countSearches, { accountId: "alice" })).toBe(1);
+      expect(await bob.query(api.research.records.countSearches, { accountId: "bob" })).toBe(0);
+
+      // As counts were kept before, by person: the lab's searches in their maker's own count, and none for the lab.
+      await runUntriggered(t, async ctx => {
+        for (const row of await ctx.db.query("recordCounts").collect()) {
+          if (row.workspaceId === lab) await ctx.db.delete("recordCounts", row._id);
+          else await ctx.db.patch("recordCounts", row._id, { count: row.userId === ids.alice ? 2 : 1 });
+        }
+      });
+      expect(await t.action(internal.migrations.workspaceCounts.verify, {})).toBe(1);
+      for (let runs = 0; runs < 2; runs++) {
+        await t.mutation(internal.migrations.workspaceCounts.run, {});
+        await t.finishAllScheduledFunctions(vi.runAllTimers);
+      }
+      expect(await t.action(internal.migrations.workspaceCounts.verify, {})).toBe(0);
       expect(await alice.query(api.research.records.countSearches, { accountId: "alice", workspaceId: lab })).toBe(2);
       expect(await alice.query(api.research.records.countSearches, { accountId: "alice" })).toBe(1);
       expect(await bob.query(api.research.records.countSearches, { accountId: "bob" })).toBe(0);
