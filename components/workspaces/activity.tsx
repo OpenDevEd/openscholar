@@ -49,19 +49,29 @@ const DAY = 86_400_000;
 export function ItemBar({ kind, id, name, started, className }: { kind: ItemKind; id: string; name: string; started: "runBy" | "madeBy"; className?: string }) {
   const t = useTranslations("workspaces.activity");
   const workspaceId = useWorkspace();
-  const [open, setOpen] = useState(false);
   // Null in your own workspace, where everything is yours.
   const { data: by } = useProtectedQuery(api.activity.queries.startedBy, inWorkspace(workspaceId, { kind, id }));
   return (
     <div className={cn("flex min-h-13 min-w-0 items-center gap-2 border-b border-border-subtle px-4 py-2.5", className)}>
       {by ? <PersonTag name={by.name} imageUrl={by.imageUrl} you={by.you} before={t(started)} /> : null}
       <span className="flex-1" />
+      <ActivityButton kind={kind} id={id} name={name} />
+    </div>
+  );
+}
+
+/** An item's Activity button, and the sheet it opens. An open collection has it at the end of the library's heading. */
+export function ActivityButton({ kind, id, name }: { kind: ItemKind; id: string; name: string }) {
+  const t = useTranslations("workspaces.activity");
+  const [open, setOpen] = useState(false);
+  return (
+    <>
       <Button variant="ghost" size="sm" className="h-8 shrink-0" onClick={() => setOpen(true)}>
         <History />
         {t("title")}
       </Button>
       <ActivitySheet open={open} onOpenChange={setOpen} kind={kind} id={id} name={name} />
-    </div>
+    </>
   );
 }
 
