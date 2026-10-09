@@ -24,7 +24,6 @@ import { MemberFaces, useCurrentWorkspace, usePlanOf, WorkspaceTag } from "@/com
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
@@ -45,11 +44,19 @@ function FolderTile() {
 
 /** A paper a new collection can start with, opened from its Save control. */
 type StartingPaper = { title: string; add: (collectionId: Id<"collections">) => void };
+/** Where focus goes as a dialog closes: these open from controls that aren't their trigger, or are gone by then. */
+type ReturnFocus = () => HTMLElement | null | undefined;
+const restoreFocus = (returnFocus: ReturnFocus | undefined) => (event: Event) => {
+  const to = returnFocus?.();
+  if (!to?.isConnected) return;
+  event.preventDefault();
+  to.focus();
+};
 
-export function NewCollectionDialog({ open, onOpenChange, paper, onCreated }: { open: boolean; onOpenChange: (open: boolean) => void; paper?: StartingPaper; onCreated?: (collectionId: Id<"collections">) => void }) {
+export function NewCollectionDialog({ open, onOpenChange, paper, onCreated, returnFocus }: { open: boolean; onOpenChange: (open: boolean) => void; paper?: StartingPaper; onCreated?: (collectionId: Id<"collections">) => void; returnFocus?: ReturnFocus }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} className={DIALOG}>
+      <DialogContent showCloseButton={false} className={DIALOG} onCloseAutoFocus={restoreFocus(returnFocus)}>
         {/* Inside the content, so it starts blank each time the dialog opens and reads nothing while it's shut. */}
         <NewCollection paper={paper} close={() => onOpenChange(false)} onCreated={onCreated} />
       </DialogContent>
@@ -64,11 +71,11 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
   const workspaceId = useWorkspace();
   const workspace = useCurrentWorkspace();
   const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
-  const { account } = useSubscriptionState();
   const createCollection = useWorkspaceMutation(api.library.collections.createCollection);
   const { data: count } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
-  // The workspace's plan's most collections, once its account is read; none means no limit.
-  const limit = account ? (account.limits?.collections ?? null) : undefined;
+  // The workspace's plan's most collections, as the server holds it to them; null for no limit.
+  const { data: limits } = useProtectedQuery(api.billing.accounts.myLimits, inWorkspace(workspaceId, {}));
+  const limit = limits === undefined ? undefined : (limits?.collections ?? null);
   const [name, setName] = useState("");
   const [withPaper, setWithPaper] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -241,10 +248,10 @@ const MANAGE_PAGE = 8;
 const MANAGE_ROW_PX = 57;
 
 /** Your collections a page at a time: rename, delete with Undo, and a new one through the dialog. */
-export function ManageCollectionsDialog({ open, onOpenChange, onNew }: { open: boolean; onOpenChange: (open: boolean) => void; onNew: () => void }) {
+export function ManageCollectionsDialog({ open, onOpenChange, onNew, returnFocus }: { open: boolean; onOpenChange: (open: boolean) => void; onNew: () => void; returnFocus?: ReturnFocus }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} className={DIALOG}>
+      <DialogContent showCloseButton={false} className={DIALOG} onCloseAutoFocus={restoreFocus(returnFocus)}>
         <ManageCollections close={() => onOpenChange(false)} onNew={onNew} />
       </DialogContent>
     </Dialog>

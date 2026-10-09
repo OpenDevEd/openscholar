@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
@@ -98,6 +98,12 @@ export function LibraryPageClient() {
   }, [setParams]);
 
   const [collectionDialog, setCollectionDialog] = useState<"new" | "manage" | null>(null);
+  // The sidebar control that opened a collection dialog, which focus goes back to.
+  const dialogOpener = useRef<HTMLElement | null>(null);
+  const openCollectionDialog = (which: "new" | "manage") => {
+    dialogOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setCollectionDialog(which);
+  };
 
   const { data: totalCount } = useProtectedQuery(
     api.library.queries.getLibraryCount,
@@ -461,8 +467,8 @@ export function LibraryPageClient() {
               isPublicationDateActive={publicationDateRange !== undefined && (publicationDateRange.from !== undefined || publicationDateRange.to !== undefined)}
               collectionId={params.col}
               onCollectionChange={(id) => setParams({ col: id })}
-              onManageCollections={() => setCollectionDialog("manage")}
-              onNewCollection={() => setCollectionDialog("new")}
+              onManageCollections={() => openCollectionDialog("manage")}
+              onNewCollection={() => openCollectionDialog("new")}
               sort={params.sort}
               onSortChange={(value) => setParams({ sort: value })}
               activeFilterCount={activeFilterCount}
@@ -601,8 +607,8 @@ export function LibraryPageClient() {
               </div>
 
               {/* A collection made here opens, as a new folder does. */}
-              <NewCollectionDialog open={collectionDialog === "new"} onOpenChange={(open) => setCollectionDialog(open ? "new" : null)} onCreated={(id) => setParams({ col: id })} />
-              <ManageCollectionsDialog open={collectionDialog === "manage"} onOpenChange={(open) => setCollectionDialog(open ? "manage" : null)} onNew={() => setCollectionDialog("new")} />
+              <NewCollectionDialog open={collectionDialog === "new"} onOpenChange={(open) => setCollectionDialog(open ? "new" : null)} onCreated={(id) => setParams({ col: id })} returnFocus={() => dialogOpener.current} />
+              <ManageCollectionsDialog open={collectionDialog === "manage"} onOpenChange={(open) => setCollectionDialog(open ? "manage" : null)} onNew={() => setCollectionDialog("new")} returnFocus={() => dialogOpener.current} />
 
             </div>
           </PageWrapper>

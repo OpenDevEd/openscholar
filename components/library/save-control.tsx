@@ -1,7 +1,7 @@
 "use client";
 
 import { ConvexError } from "convex/values";
-import { cloneElement, useState, type UIEvent } from "react";
+import { cloneElement, useRef, useState, type UIEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { toast } from "sonner";
@@ -206,6 +206,8 @@ export function SaveControl({
   const setIn = useSetInCollection(paper);
   const [picking, setPicking] = useState(false);
   const [making, setMaking] = useState(false);
+  // Focus goes back to the folder once the new collection's dialog closes: the menu item that opened it is gone.
+  const folderRef = useRef<HTMLButtonElement>(null);
   const pendingCollections =
     usePending((state) => state.collections[paper.id]) ?? NO_PENDING_COLLECTIONS;
   const inCollection =
@@ -213,6 +215,7 @@ export function SaveControl({
   const label = isSaved ? t("removeFromLibrary") : t("saveToLibrary");
   const folderButton = (
     <Button
+      ref={folderRef}
       variant="outline"
       size="sm"
       aria-label={t("addToCollection")}
@@ -286,7 +289,7 @@ export function SaveControl({
         </TooltipHint>
       )}
       {/* In the group, whose handlers keep the dialog's clicks and keys from reaching the card. */}
-      <NewCollectionDialog open={making} onOpenChange={setMaking} paper={{ title: paper.title || paper.display_name || "", add: (id) => setIn(id, true) }} />
+      <NewCollectionDialog open={making} onOpenChange={setMaking} paper={{ title: paper.title || paper.display_name || "", add: (id) => setIn(id, true) }} returnFocus={() => folderRef.current} />
     </ButtonGroup>
   );
 }
