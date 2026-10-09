@@ -101,6 +101,9 @@ const IN_WORKSPACE: Record<string, { createdBy: boolean; by?: string; organizati
   authorProfiles: { createdBy: true, by: "ownerId" },
   // An organization's: in its workspace.
   evidenceLibraries: { createdBy: false, organization: true },
+  billingAccounts: { createdBy: false },
+  billingUsage: { createdBy: false },
+  billingHolds: { createdBy: false },
 };
 
 /**

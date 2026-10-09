@@ -293,6 +293,7 @@ import type * as library_validators from "../library/validators.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_assistantJobs from "../migrations/assistantJobs.js";
 import type * as migrations_assistantWorkspaces from "../migrations/assistantWorkspaces.js";
+import type * as migrations_billingWorkspaces from "../migrations/billingWorkspaces.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
 import type * as migrations_countBillingUsage from "../migrations/countBillingUsage.js";
@@ -697,6 +698,7 @@ declare const fullApi: ApiFromModules<{
   "maintenance/mutations": typeof maintenance_mutations;
   "migrations/assistantJobs": typeof migrations_assistantJobs;
   "migrations/assistantWorkspaces": typeof migrations_assistantWorkspaces;
+  "migrations/billingWorkspaces": typeof migrations_billingWorkspaces;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
   "migrations/countBillingUsage": typeof migrations_countBillingUsage;

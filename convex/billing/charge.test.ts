@@ -308,7 +308,7 @@ describe("holding and charging", () => {
     await t.mutation(internal.billing.accounts.zeroBalance, { userId });
     expect(await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())?.purchased)).toBe(0);
     const snapshot = await t.run(async (ctx) => {
-      const { _id, _creationTime, userId: _user, refreshedAt, refreshQueuedAt, ...rest } = (await ctx.db.query("billingAccounts").first())!;
+      const { _id, _creationTime, userId: _user, workspaceId: _workspace, refreshedAt, refreshQueuedAt, ...rest } = (await ctx.db.query("billingAccounts").first())!;
       return { ...rest, balance: 10 };
     });
 
