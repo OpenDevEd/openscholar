@@ -177,7 +177,8 @@ export const retryFailedQuestions = mutation({
     }
 
     const credits = await retryCredits(ctx, job, retryableCount);
-    const totalAvailable = await readAvailableCredits(ctx, user._id);
+    // Its starter pays for it, as the worker charges them, until billing is by workspace (#650).
+    const totalAvailable = await readAvailableCredits(ctx, job.userId);
     if (totalAvailable < credits) {
       throw createError(
         "INSUFFICIENT_CREDITS",

@@ -140,7 +140,8 @@ export const resumeExtraction = mutation({
     let remainingEstimateHigh = 0;
 
     if (job.status === "creditsExhausted") {
-      availableCredits = await readAvailableCredits(ctx, user._id);
+      // Its starter pays for it, as the worker charges them, until billing is by workspace (#650).
+      availableCredits = await readAvailableCredits(ctx, job.userId);
       const questions = await ctx.db
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", jobId))

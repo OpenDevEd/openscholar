@@ -85,8 +85,8 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
     if (asked.size > MAX_QUESTIONS) throw createError("VALIDATION_ERROR", `This search's page already asks ${row.data.screeningQuestions.length} screening questions, and holds up to ${MAX_QUESTIONS}: ask fewer new ones, or ask the ones it has.`);
     await checkRequestPapers(ctx, userId, last - first + 1, "screening");
   } else {
-    // A collection is the workspace's; a screening is still its person's until jobs belong to a workspace (#650).
-    const mine = set.kind === "collection" ? (await ctx.db.get("collections", set.collectionId))?.workspaceId === workspaceId : set.kind === "screening" ? (await ctx.db.get("screeningJobs", set.jobId))?.userId === userId : true;
+    const source = set.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : set.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
+    const mine = set.kind !== "collection" && set.kind !== "screening" ? true : source !== null && (await isInWorkspace(ctx, source, workspaceId));
     if (!mine) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");
     const held = await papersIn(ctx, { userId, workspaceId }, set);
     if (held !== null && first > held) throw createError("VALIDATION_ERROR", "There are no papers in that range");
