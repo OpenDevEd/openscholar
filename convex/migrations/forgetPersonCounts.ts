@@ -3,6 +3,7 @@ import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { usageAgg } from "../billing/usageLog";
+import { readConvexErrorData } from "../lib/errors";
 
 /**
  * Forgets the charge counts kept per person before workspaces paid (#650): `user:<id>` and
@@ -29,13 +30,25 @@ export const page = internalMutation({
   },
 });
 
+/** The aggregate refuses these reads while charges wait in its queue: a page waits for it, a minute at most. */
+const QUEUE_WAIT_MS = 2_000;
+const QUEUE_WAITS = 30;
+
 export const run = internalAction({
   args: {},
   returns: v.number(),
   handler: async (ctx): Promise<number> => {
     let forgot = 0;
     for (let cursor: string | undefined; ;) {
-      const read: { forgot: number; isDone: boolean; cursor: string } = await ctx.runMutation(internal.migrations.forgetPersonCounts.page, { cursor });
+      let read: { forgot: number; isDone: boolean; cursor: string } | undefined;
+      for (let waits = 0; !read; waits++) {
+        try {
+          read = await ctx.runMutation(internal.migrations.forgetPersonCounts.page, { cursor });
+        } catch (error) {
+          if (waits >= QUEUE_WAITS || readConvexErrorData(error)?.code !== "PENDING_OPERATIONS") throw error;
+          await new Promise((resolve) => setTimeout(resolve, QUEUE_WAIT_MS));
+        }
+      }
       forgot += read.forgot;
       if (read.isDone) return forgot;
       cursor = read.cursor;
