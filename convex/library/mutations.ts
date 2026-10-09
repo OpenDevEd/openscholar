@@ -17,6 +17,7 @@ import { addCollectionMembership, livePlaces, removeCollectionMembership } from 
 import { followed, inFollowedCollection } from "./followed";
 import { authorDisplay, mergePaperMetadata } from "../../lib/library/paper-metadata";
 import { MAX_AUTHORS } from "../lib/listCaps";
+import { personalRatingRow } from "../ratings";
 
 /** What the library keeps about a paper, apart from its rating. */
 export const libraryPaper = v.object({
@@ -155,7 +156,7 @@ function setResearchRating(ctx: MutationCtx, userId: Id<"users">, paperId: strin
 
 /** The paper's rating on search cards, or null. */
 async function researchRating(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperId: string) {
-  return (await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", (q) => q.eq("userId", userId).eq("data.paperId", canonical(paperId))).unique())?.data.rating ?? null;
+  return (await personalRatingRow(ctx, userId, canonical(paperId)))?.rating ?? null;
 }
 
 async function ownedCollection(ctx: MutationCtx, workspaceId: Id<"workspaces">, collectionId: Id<"collections">) {

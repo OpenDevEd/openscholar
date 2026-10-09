@@ -13,3 +13,13 @@ export async function setPersonalRating(ctx: MutationCtx, userId: Id<"users">, p
   } else if (!row) await ctx.db.insert("ratings", { userId, paperId, rating });
   else if (row.rating !== rating) await ctx.db.patch("ratings", row._id, { rating });
 }
+
+/** How many of a purged person's ratings go per cleanup run. */
+const PURGE_RATINGS = 200;
+
+/** Deletes a step of a purged person's ratings, their own and in collections. Returns whether all are gone. */
+export async function purgeRatings(ctx: MutationCtx, userId: Id<"users">) {
+  const rows = await ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", userId)).take(PURGE_RATINGS);
+  for (const row of rows) await ctx.db.delete("ratings", row._id);
+  return rows.length < PURGE_RATINGS;
+}

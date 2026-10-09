@@ -300,7 +300,6 @@ import type * as migrations_extractionEvidence from "../migrations/extractionEvi
 import type * as migrations_extractionFacets from "../migrations/extractionFacets.js";
 import type * as migrations_extractionSearch from "../migrations/extractionSearch.js";
 import type * as migrations_libraryFacets from "../migrations/libraryFacets.js";
-import type * as migrations_copyRatings from "../migrations/copyRatings.js";
 import type * as migrations_forgetPersonCounts from "../migrations/forgetPersonCounts.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
 import type * as migrations_organizationCustomers from "../migrations/organizationCustomers.js";
@@ -699,7 +698,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/extractionFacets": typeof migrations_extractionFacets;
   "migrations/extractionSearch": typeof migrations_extractionSearch;
   "migrations/libraryFacets": typeof migrations_libraryFacets;
-  "migrations/copyRatings": typeof migrations_copyRatings;
   "migrations/forgetPersonCounts": typeof migrations_forgetPersonCounts;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
   "migrations/organizationCustomers": typeof migrations_organizationCustomers;

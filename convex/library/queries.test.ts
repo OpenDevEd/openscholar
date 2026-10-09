@@ -7,6 +7,7 @@ import schema from "../schema";
 import { exportedTitles } from "../exports.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
 import { madeBy } from "../workspaces/actor.test-support";
+import { personalRatingRow } from "../ratings";
 
 // Helper: create a user directly in the mock DB, return user doc
 async function seedUser(
@@ -1015,10 +1016,7 @@ describe("saving without a rating", () => {
     const asUser = t.withIdentity({ subject: "clerk_user1" });
     const researchRating = async () =>
       await t.run(async (ctx) =>
-        (await ctx.db
-          .query("paperRatings")
-          .withIndex("by_user_and_paperId", (q) => q.eq("userId", user!._id).eq("data.paperId", paper.openalexId))
-          .unique())?.data.rating ?? null,
+        (await personalRatingRow(ctx, user!._id, paper.openalexId))?.rating ?? null,
       );
 
     await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 3 });
@@ -1095,7 +1093,7 @@ describe("undoing a library change (#342)", () => {
       return (signedIn.mutation as (...args: unknown[]) => unknown)(...args);
     }) as unknown as typeof signedIn.mutation;
     const onCards = () =>
-      t.run(async (ctx) => (await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", (q) => q.eq("userId", user!._id).eq("data.paperId", paper.openalexId)).unique())?.data.rating ?? null);
+      t.run(async (ctx) => (await personalRatingRow(ctx, user!._id, paper.openalexId))?.rating ?? null);
     return {
       t, mutation, onCards,
       count: () => signedIn.query(api.library.queries.getLibraryCount, {}),

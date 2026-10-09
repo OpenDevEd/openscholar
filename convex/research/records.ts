@@ -20,7 +20,7 @@ import { countRecordPage, countRow } from "./recordCounts";
 import { shortcutSortName } from "../../lib/query-shortcuts";
 import { searchTerms, searchText, shortcutText, withText } from "../lib/searchText";
 import { personalWorkspaceOf, requireMakerOrAdmin, type Actor, type InWorkspace } from "../workspaces/actor";
-import { setPersonalRating } from "../ratings";
+import { personalRatingRow, setPersonalRating } from "../ratings";
 
 const accountArgs = { accountId: v.string() };
 const pageArgs = { paginationOpts: paginationOptsValidator };
@@ -153,8 +153,8 @@ export const ratingsAction = defineUserQuery({
   args: pageArgs,
   returns: paginationResultValidator(ratingValidator),
   run: async (ctx, { userId }, args) => {
-    const page = await ctx.db.query("paperRatings").withIndex("by_user", q => q.eq("userId", userId)).paginate(args.paginationOpts);
-    return { ...page, page: page.page.map(row => row.data) };
+    const page = await ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", q => q.eq("userId", userId).eq("collectionId", undefined)).paginate(args.paginationOpts);
+    return { ...page, page: page.page.map(({ paperId, rating }) => ({ paperId, rating })) };
   },
 });
 export const ratings = accountQuery(ratingsAction);
@@ -162,10 +162,8 @@ export const ratingsForAssistant = assistantQuery(ratingsAction);
 
 /** The person's ratings among `paperIds`. */
 export async function ratingsAmong(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperIds: string[]) {
-  const rows = await Promise.all(
-    paperIds.map(paperId => ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", paperId)).first()),
-  );
-  return rows.flatMap(row => (row ? [row.data] : []));
+  const rows = await Promise.all(paperIds.map(paperId => personalRatingRow(ctx, userId, paperId)));
+  return rows.flatMap(row => (row ? [{ paperId: row.paperId, rating: row.rating }] : []));
 }
 
 export const ratingsOfAction = defineUserQuery({
@@ -551,18 +549,11 @@ export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: In
 /** Sets or clears a person's rating of a paper, which is theirs whatever workspace they're in (#650). Returns what puts it back. */
 export async function applyRating(ctx: MutationCtx, userId: Id<"users">, command: Extract<ResearchCommand, { kind: "rating" }>): Promise<UndoCommand | undefined> {
   if (!command.paperId || (command.rating !== null && (!Number.isInteger(command.rating) || command.rating < 0 || command.rating > 5))) throw new Error("Rating must be an integer from 0 to 5.");
-  const row = await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique();
-  if (command.expect !== undefined && (row?.data.rating ?? null) !== command.expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
-  const before = row?.data.rating ?? null;
-  // A rating set to what it already was has nothing to undo.
-  const undo: UndoCommand | undefined = before === command.rating ? undefined : { kind: "rating", paperId: command.paperId, rating: before, expect: command.rating };
-  // Kept in the ratings table too, which reads move to (#655).
+  const before = (await personalRatingRow(ctx, userId, command.paperId))?.rating ?? null;
+  if (command.expect !== undefined && before !== command.expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
   await setPersonalRating(ctx, userId, command.paperId, command.rating);
-  if (command.rating === null) { if (row) await ctx.db.delete("paperRatings", row._id); return undo; }
-  const data = { paperId: command.paperId, rating: command.rating };
-  if (row) await ctx.db.patch("paperRatings", row._id, { data });
-  else await ctx.db.insert("paperRatings", { userId, data });
-  return undo;
+  // A rating set to what it already was has nothing to undo.
+  return before === command.rating ? undefined : { kind: "rating", paperId: command.paperId, rating: before, expect: command.rating };
 }
 
 /**
@@ -741,14 +732,14 @@ export const importBatch = accountWorkspaceMutation({
         continue;
       }
       if (receipt) throw new Error("This local bookmark or rating changed after import. Your local copy has been kept.");
+      // What the account holds already: the same bookmark or rating is fine, a different one keeps the local copy.
       const existing = command.kind === "shortcut"
-        ? await shortcut(ctx, workspaceId, command.shorthand)
+        ? (await shortcut(ctx, workspaceId, command.shorthand))?.data.expansion
         : command.kind === "rating"
-          ? await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique()
-          : null;
-      if (existing) {
-        const same = command.kind === "shortcut" ? existing.data && "expansion" in existing.data && existing.data.expansion === command.value?.expansion
-          : command.kind === "rating" && "rating" in existing.data && existing.data.rating === command.rating;
+          ? (await personalRatingRow(ctx, userId, command.paperId))?.rating
+          : undefined;
+      if (existing !== undefined) {
+        const same = command.kind === "shortcut" ? existing === command.value?.expansion : command.kind === "rating" && existing === command.rating;
         if (!same) throw new Error("This local bookmark or rating differs from your saved account record. Your local copy has been kept.");
       } else await applyCommand(ctx, { userId, workspaceId }, command, "user");
       await ctx.db.insert("researchReceipts", { userId, key: `import:${key}`, fingerprint });
