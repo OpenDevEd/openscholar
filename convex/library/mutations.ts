@@ -16,7 +16,7 @@ import { addCollectionMembership, livePlaces, removeCollectionMembership } from 
 import { followed, inFollowedCollection } from "./followed";
 import { authorDisplay, mergePaperMetadata } from "../../lib/library/paper-metadata";
 import { MAX_AUTHORS } from "../lib/listCaps";
-import { personalRatingRow, rateItem, setPersonalRating } from "../ratings";
+import { personalRatingRow, rateItem, requireRating, rerateMemberStep, setPersonalRating } from "../ratings";
 
 /** What the library keeps about a paper, apart from its rating. */
 export const libraryPaper = v.object({
@@ -58,12 +58,6 @@ const RESTORE = "library/mutations:restoreLibraryItem" as const;
 const RATE = "library/mutations:setLibraryRating" as const;
 const IN_COLLECTION = "library/mutations:setPaperInCollection" as const;
 const CHANGE = "research/records:change" as const;
-
-function requireRating(rating: number) {
-  if (!Number.isInteger(rating) || rating < 0 || rating > 5) {
-    throw createError("VALIDATION_ERROR", "Rating must be an integer from 0 to 5.");
-  }
-}
 
 /**
  * Runs a write that adds or removes one paper and keeps the person's library count, in its
@@ -350,6 +344,7 @@ export const removeFromLibraryAction = defineUserMutation({
   },
   run: async (ctx, actor, args) => {
     const { userId, workspaceId, author } = actor;
+    if (args.rating != null) requireRating(args.rating);
     const item = await findItem(ctx, workspaceId, args.openalexId);
     if (!item) return {};
     requireMakerOrAdmin(actor, item.createdBy);
@@ -380,6 +375,16 @@ export const removeFromLibrary = userMutation(removeFromLibraryAction);
 export const removeFromLibraryForAssistant = assistantMutation(removeFromLibraryAction);
 
 /** Moves the next batch of a removed paper's places into its removal, until none are left. */
+/** Re-rates the papers a person rated in an organization they joined or left, a step at a time (../ratings.ts). */
+export const rerateMember = internalMutation({
+  args: { workspaceId: v.id("workspaces"), userId: v.id("users"), cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, userId, cursor }) => {
+    await rerateMemberStep(ctx, workspaceId, userId, cursor);
+    return null;
+  },
+});
+
 export const movePlacesLater = internalMutation({
   args: { removalId: v.id("libraryRemovals") },
   returns: v.null(),

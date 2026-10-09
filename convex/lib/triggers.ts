@@ -14,6 +14,7 @@ import { nameJob } from "../extraction/jobList";
 import { recordRevisionApprovedQueries } from "../evidenceLibraries/approvedQueries";
 import { countChange } from "../research/recordCounts";
 import { copyChangedFacets, countItemChange, fillAndCountMembership } from "../library/facets";
+import { rerateOnMembership } from "../ratings";
 import { countAnswerChange, countPaperChange as countPaperFacets } from "../extraction/facets";
 import { tallyAnswerChange } from "../extraction/tallies";
 import { adminText, jobText, keepSearchText, keepTextOfUser, memberText, searchText, shortcutText } from "./searchText";
@@ -60,6 +61,8 @@ triggers.register("queryShortcuts", keepSearchText("queryShortcuts", (_ctx, row)
 triggers.register("extractionJobs", keepSearchText("extractionJobs", (_ctx, row) => jobText(row)));
 triggers.register("admins", keepSearchText("admins", adminText));
 triggers.register("organizationMemberships", keepSearchText("organizationMemberships", memberText));
+// Someone joining or leaving an organization moves its papers' averages (convex/ratings.ts).
+triggers.register("organizationMemberships", rerateOnMembership);
 triggers.register("users", keepTextOfUser);
 // A library's people and a person's libraries, which granting another checks against its cap (convex/evidenceLibraries/members.ts).
 triggers.register("evidenceLibraryMembers", countList((grant) => libraryMembersOf(grant.libraryId)));

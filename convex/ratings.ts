@@ -1,11 +1,21 @@
-import type { Doc, Id } from "./_generated/dataModel";
+import type { DataModel, Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { workUrl } from "../lib/openalex/work-id";
 import { findItem } from "./library/find";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
+import { createError } from "./lib/errors";
+import type { Change } from "convex-helpers/server/triggers";
+import { makeFunctionReference } from "convex/server";
 
 /** The ID a rating is kept under: a paper's whole OpenAlex address, however it was given, so every rating of it meets. */
 export const ratedPaper = (paperId: string) => workUrl(paperId) ?? paperId;
+
+/** Refuses a rating that isn't a whole number from 0 to 5. */
+export function requireRating(rating: number) {
+  if (!Number.isInteger(rating) || rating < 0 || rating > 5) {
+    throw createError("VALIDATION_ERROR", "Rating must be an integer from 0 to 5.");
+  }
+}
 
 /** A person's own rating of a paper, the same everywhere (#655). */
 export const personalRatingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperId: string) =>
@@ -27,7 +37,7 @@ export async function setPersonalRating(ctx: MutationCtx, userId: Id<"users">, p
   }
 }
 
-/** The most raters of one paper an organization's average reads. */
+/** The most members of an organization its averages read; Clerk lets a free organization have 5. */
 const MAX_RATERS = 1_000;
 
 /** The workspaces whose saved papers a person's ratings count in: their own, and their organizations'. */
@@ -40,30 +50,23 @@ async function ratingWorkspaces(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) 
   return [own, ...organizations].flatMap((workspace) => (workspace ? [workspace._id] : []));
 }
 
-/** Whether a person's rating counts in a workspace: theirs, or an organization they're an active member of. */
-async function ratesIn(ctx: Pick<QueryCtx, "db">, workspace: Doc<"workspaces">, userId: Id<"users">) {
-  if (workspace.kind === "personal") return workspace.userId === userId;
-  const user = await ctx.db.get("users", userId);
-  if (!user || user.state !== "active") return false;
-  const membership = await ctx.db
-    .query("organizationMemberships")
-    .withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("clerkUserId", user.clerkId).eq("state", "active"))
-    .first();
-  return membership !== null;
+/** The people whose ratings count in an organization's averages: its active members. */
+async function raters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">) {
+  const memberships = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organizationId).eq("state", "active")).take(MAX_RATERS);
+  const users = await Promise.all(memberships.map((membership) => ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique()));
+  return users.flatMap((user) => (user?.state === "active" ? [user._id] : []));
 }
 
 /**
  * A saved paper's rating in a workspace: the average of its people's own ratings of it, or none
  * when none of them rated it. In a person's own workspace that's their rating.
- * ponytail: an organization's average reads every rating of the paper and keeps its members'; keep a running sum on the paper if papers get thousands of raters.
  */
 export async function workspaceRating(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, paperId: string): Promise<number | undefined> {
   const workspace = await ctx.db.get("workspaces", workspaceId);
   if (!workspace) return undefined;
   if (workspace.kind === "personal") return (await personalRatingRow(ctx, workspace.userId, paperId))?.rating;
-  const rows = await ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", undefined).eq("paperId", ratedPaper(paperId))).take(MAX_RATERS);
-  const counted: number[] = [];
-  for (const row of rows) if (await ratesIn(ctx, workspace, row.userId)) counted.push(row.rating);
+  const rows = await Promise.all((await raters(ctx, workspace.organizationId)).map((userId) => personalRatingRow(ctx, userId, paperId)));
+  const counted = rows.flatMap((row) => (row ? [row.rating] : []));
   return counted.length ? counted.reduce((total, rating) => total + rating, 0) / counted.length : undefined;
 }
 
@@ -71,6 +74,29 @@ export async function workspaceRating(ctx: Pick<QueryCtx, "db">, workspaceId: Id
 export async function rateItem(ctx: MutationCtx, item: Doc<"libraryItems">) {
   const rating = await workspaceRating(ctx, item.workspaceId, item.openalexId);
   if (rating !== item.rating) await ctx.db.patch("libraryItems", item._id, { rating });
+}
+
+/** How many of a person's ratings one step re-rates in an organization they joined or left. */
+const RERATE_STEP = 100;
+const rerateMember = makeFunctionReference<"mutation", { workspaceId: Id<"workspaces">; userId: Id<"users">; cursor: string | null }, null>("library/mutations:rerateMember");
+
+/** Someone who joins or leaves an organization brings their ratings into its averages, or takes them out. */
+export async function rerateOnMembership(ctx: MutationCtx, change: Change<DataModel, "organizationMemberships">) {
+  if ((change.oldDoc?.state === "active") === (change.newDoc?.state === "active")) return;
+  const { organizationId, clerkUserId } = (change.newDoc ?? change.oldDoc)!;
+  const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
+  const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique();
+  if (workspace && user) await ctx.scheduler.runAfter(0, rerateMember, { workspaceId: workspace._id, userId: user._id, cursor: null });
+}
+
+/** Re-rates a step of a workspace's papers this person rated; schedules the next. */
+export async function rerateMemberStep(ctx: MutationCtx, workspaceId: Id<"workspaces">, userId: Id<"users">, cursor: string | null) {
+  const page = await ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", userId).eq("collectionId", undefined)).paginate({ cursor, numItems: RERATE_STEP });
+  for (const row of page.page) {
+    const item = await findItem(ctx, workspaceId, row.paperId);
+    if (item) await rateItem(ctx, item);
+  }
+  if (!page.isDone) await ctx.scheduler.runAfter(0, rerateMember, { workspaceId, userId, cursor: page.continueCursor });
 }
 
 /** How many of a purged person's ratings go per cleanup run. */

@@ -1,6 +1,6 @@
 // A saved paper's rating as its people's average of their own (#655).
 import { convexTest } from "convex-test";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
 import { ensureWorkspace } from "./workspaces/create";
@@ -28,8 +28,17 @@ it("rates an organization's paper with its members' average, and shows each memb
   expect(await shown(alice)).toEqual([["https://openalex.org/W2", 3, 3], ["https://openalex.org/W1", 2.5, 4]]);
   expect(await shown(bob)).toEqual([["https://openalex.org/W2", 3, undefined], ["https://openalex.org/W1", 2.5, 1]]);
 
-  // Someone who left counts no more, from the next change on.
-  await t.run((ctx) => ctx.db.patch("organizationMemberships", bobMembership, { state: "revoked" }));
-  await alice.mutation(api.library.mutations.setLibraryRating, { workspaceId: lab, openalexId: "https://openalex.org/W1", rating: 5 });
-  expect(await shown(alice)).toEqual([["https://openalex.org/W1", 5, 5], ["https://openalex.org/W2", 3, 3]]);
+  // Someone who leaves takes their ratings out of the lab's averages, and brings them back on rejoining.
+  vi.useFakeTimers();
+  try {
+    const membership = (state: "active" | "revoked") => t.run((ctx) => ctx.db.patch("organizationMemberships", bobMembership, { state }));
+    await membership("revoked");
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await shown(alice)).toEqual([["https://openalex.org/W1", 4, 4], ["https://openalex.org/W2", 3, 3]]);
+    await membership("active");
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await shown(alice)).toEqual([["https://openalex.org/W2", 3, 3], ["https://openalex.org/W1", 2.5, 4]]);
+  } finally {
+    vi.useRealTimers();
+  }
 });
