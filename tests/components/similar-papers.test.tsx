@@ -52,7 +52,7 @@ describe("a paper's similar papers", () => {
     expect(new URL(String(push.mock.calls[0]?.[0]), "https://openscholar.test").searchParams.get("like")).toBe("OS64233829");
   });
 
-  it("says when there are none, or when they couldn't be read", async () => {
+  it("says when there are none", async () => {
     similar.mockResolvedValue({ ok: true, data: { meta: { count: 0 }, results: [] } });
     show("https://openscholar.ai/OS9");
     expect(await screen.findByText("similarNone")).toBeInTheDocument();
@@ -63,5 +63,12 @@ describe("a paper's similar papers", () => {
     similar.mockResolvedValue({ ok: false, status: 503, message: "down" });
     show("https://openscholar.ai/OS10");
     await waitFor(() => expect(screen.getByText("similarFailed")).toBeInTheDocument());
+  });
+
+  it("says they couldn't be read when the request itself fails, rather than that there are none", async () => {
+    similar.mockRejectedValue(new TypeError("Failed to fetch"));
+    show("https://openscholar.ai/OS11");
+    await waitFor(() => expect(screen.getByText("similarFailed")).toBeInTheDocument());
+    expect(screen.queryByText("similarNone")).not.toBeInTheDocument();
   });
 });

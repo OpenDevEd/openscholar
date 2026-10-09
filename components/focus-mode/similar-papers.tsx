@@ -22,8 +22,10 @@ export function SimilarPapers({ paperId }: { paperId: string }) {
   const t = useTranslations("focusMode");
   const format = useFormatter();
   const router = useRouter();
-  const { data, isLoading } = useSWR(["similar-works", paperId], () => getSimilarWorks(paperId, SIMILAR_SHOWN));
+  const { data, error, isLoading } = useSWR(["similar-works", paperId], () => getSimilarWorks(paperId, SIMILAR_SHOWN));
   const papers = (data?.ok ? data.data.results : []) as Shown[];
+  // The API refused, or the request itself failed and left nothing to show.
+  const failed = data?.ok === false || (data === undefined && error !== undefined);
   const seeAll = () => router.push(createCitationSearch(paperId, "similar").url);
 
   return (
@@ -41,7 +43,7 @@ export function SimilarPapers({ paperId }: { paperId: string }) {
       </div>
       {isLoading ? (
         <p className="text-xs text-muted-foreground">{t("similarLoading")}</p>
-      ) : data && !data.ok ? (
+      ) : failed ? (
         <p className="text-xs text-muted-foreground">{t("similarFailed")}</p>
       ) : papers.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("similarNone")}</p>
