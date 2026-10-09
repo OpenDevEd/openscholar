@@ -4,6 +4,7 @@ import { useId } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import type { AppIcon } from "@/components/icons";
 import { SHEET_SPRING } from "@/lib/motion";
+import { radioKeys, radioTabIndex } from "@/lib/radio-keys";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,8 +15,8 @@ export function Pills<T extends string>({ value, onChange, options, label }: { v
   const reduce = useReducedMotion();
   const id = useId();
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex h-9 max-w-full shrink-0 items-center gap-0.5 rounded-full bg-segment p-0.5">
-      {options.map((option) => {
+    <div role="radiogroup" aria-label={label} onKeyDown={radioKeys} className="inline-flex h-9 max-w-full shrink-0 items-center gap-0.5 rounded-full bg-segment p-0.5">
+      {options.map((option, index) => {
         const on = option.id === value;
         return (
           <button
@@ -23,6 +24,7 @@ export function Pills<T extends string>({ value, onChange, options, label }: { v
             type="button"
             role="radio"
             aria-checked={on}
+            tabIndex={radioTabIndex(on, index, options.some((o) => o.id === value))}
             onClick={() => onChange(option.id)}
             className={cn("relative flex h-8 min-w-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors", on ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
           >

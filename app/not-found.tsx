@@ -13,7 +13,7 @@ export default async function NotFound() {
         <p className="mb-2 text-4xl font-semibold tabular-nums text-muted-foreground">{t("notFoundCode")}</p>
         <h1 className="mb-2 text-2xl font-semibold">{t("pageNotFound")}</h1>
         <p className="mb-6 text-sm text-muted-foreground">{t("pageNotFoundDescription")}</p>
-        <div className="flex justify-center gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
           <Button asChild>
             <Link href="/">
               <Home />

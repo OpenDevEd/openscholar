@@ -282,6 +282,7 @@ export function YearRangePicker({
               </div>
             )}
             <PresetStrip
+              label={tf("quickPresets")}
               columns={2}
               options={getYearRangePresets().map((preset) => ({ key: preset.key, label: tf(preset.key) }))}
               active={isEnabled ? (getYearRangePresets().find((preset) => preset.range[0] === yearRange[0] && preset.range[1] === yearRange[1])?.key ?? null) : null}

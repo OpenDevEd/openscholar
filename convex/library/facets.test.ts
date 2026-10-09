@@ -67,6 +67,31 @@ describe("library facets", () => {
     expect(await as.query(api.library.queries.countPapers, { yearFrom: 2018, yearTo: 2021 })).toEqual({ count: 4 });
   });
 
+  it("counts what each of Date saved's picks keeps, of the library and of a collection", async () => {
+    const day = 24 * 60 * 60_000;
+    const now = 1_800_000_000_000;
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const t = convexTest(schema);
+      const { as } = await setup(t);
+      const collectionId = (await as.mutation(api.library.collections.createCollection, { name: "Trials" })).id;
+      // Saved 2, 20, 200 and 730 days ago; the first and third also go in the collection.
+      for (const [i, ago] of [2, 20, 200, 730].entries()) {
+        vi.setSystemTime(now - ago * day);
+        const { id } = await as.mutation(api.library.mutations.saveToLibrary, paper(i));
+        if (i % 2 === 0) await as.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: id });
+      }
+      vi.setSystemTime(now);
+      await t.finishAllScheduledFunctions(() => {});
+
+      const since = { week: now - 7 * day, month: now - 30 * day, year: now - 365 * day };
+      expect(await as.query(api.library.queries.getSavedSinceCounts, { since })).toEqual({ total: 4, kept: { week: 1, month: 2, year: 3 } });
+      expect(await as.query(api.library.queries.getSavedSinceCounts, { collectionId, since })).toEqual({ total: 2, kept: { week: 1, month: 1, year: 2 } });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("puts a paper back in every collection it was in, past one batch of places", { tags: ["size"] }, async () => {
     vi.useFakeTimers();
     try {

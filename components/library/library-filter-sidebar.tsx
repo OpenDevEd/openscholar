@@ -18,7 +18,6 @@ interface LibraryFilterSidebarProps {
   savedDateRange: DateRange | undefined;
   onSavedDateRangeChange: (range: DateRange | undefined) => void;
   isSavedDateActive: boolean;
-  savedDates?: number[];
   yearRange: [number, number];
   onYearRangeChange: (range: [number, number]) => void;
   onYearToggleEnabled: (enabled: boolean) => void;
@@ -47,7 +46,6 @@ export function LibraryFilterSidebar(props: LibraryFilterSidebarProps) {
       savedDateRange={props.savedDateRange}
       onSavedDateRangeChange={props.onSavedDateRangeChange}
       isSavedDateActive={props.isSavedDateActive}
-      savedDates={props.savedDates}
       yearRange={props.yearRange}
       onYearRangeChange={props.onYearRangeChange}
       onYearToggleEnabled={props.onYearToggleEnabled}

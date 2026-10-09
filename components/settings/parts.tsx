@@ -6,6 +6,7 @@
 import { useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { radioKeys, radioTabIndex } from "@/lib/radio-keys";
 import { cardEntrance, subtleSpring } from "@/lib/animation-config";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 
@@ -98,6 +99,7 @@ export function Segmented<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
+      onKeyDown={radioKeys}
       className={cn(
         "relative bg-inset p-1",
         // A row that takes a second line where its labels don't fit on one keeps the same corners on both.
@@ -121,7 +123,7 @@ export function Segmented<T extends string>({
           style={{ width: box.width, height: box.height, transform: `translate(${box.left}px, ${box.top}px)` }}
         />
       ) : null}
-      {options.map((o) => {
+      {options.map((o, index) => {
         const on = o.id === value;
         return (
           <button
@@ -132,6 +134,7 @@ export function Segmented<T extends string>({
             type="button"
             role="radio"
             aria-checked={on}
+            tabIndex={radioTabIndex(on, index, options.some((option) => option.id === value))}
             onClick={() => onChange(o.id)}
             className={cn(
               "relative flex items-center gap-2 whitespace-nowrap font-medium transition-colors",
