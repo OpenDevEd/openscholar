@@ -18,14 +18,14 @@ const migrations = new Migrations<DataModel>(components.migrations, { internalMu
 
 export const libraries = migrations.define({
   table: "evidenceLibraries",
-  batchSize: 25,
+  batchSize: 5,
   migrateOne: (_ctx, library) => (library.organizationId === undefined ? undefined : { organizationId: undefined }),
 });
 
-// A profile keeps its bio: 25 at a time.
+// A library and a profile have fields with no byte cap of their own: five at a time.
 export const profiles = migrations.define({
   table: "authorProfiles",
-  batchSize: 25,
+  batchSize: 5,
   migrateOne: (_ctx, profile) => (profile.ownerId === undefined ? undefined : { ownerId: undefined }),
 });
 
