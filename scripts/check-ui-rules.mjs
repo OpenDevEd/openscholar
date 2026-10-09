@@ -141,7 +141,17 @@ function ruleDeclarations(body) {
   );
 }
 // Variants that never hold at once; a breakpoint never holds with its `max-` form either.
-const EXCLUSIVE = [["motion-safe", "motion-reduce"], ["portrait", "landscape"], ["ltr", "rtl"], ["dark", "light"]];
+const EXCLUSIVE = [
+  ["motion-safe", "motion-reduce"],
+  ["portrait", "landscape"],
+  ["ltr", "rtl"],
+  ["dark", "light"],
+  ["enabled", "disabled"],
+  ["required", "optional"],
+  ["valid", "invalid"],
+  ["user-valid", "user-invalid"],
+  ["in-range", "out-of-range"],
+];
 /** Whether variants can all hold at once, as `dark:` and `hover:` do when the page is dark and hovered. */
 const compatible = (variants) =>
   !EXCLUSIVE.some(([a, b]) => variants.includes(a) && variants.includes(b)) && !variants.some((variant) => variants.includes(`max-${variant}`));
@@ -224,8 +234,11 @@ function translationFactory(node) {
   const call = value && (ts.isAwaitExpression(value) ? unwrap(value.expression) : value);
   return !!call && ts.isCallExpression(call) && ts.isIdentifier(call.expression) && TRANSLATION_APIS.has(call.expression.text);
 }
-/** Whether a called expression translates: named like `t`, `tc` or `tUI`, bound to a translation factory, or one called directly. */
+// next-intl's ways to read a message besides calling the translator: `t.rich("key")`, `t.markup("key")`, `t.raw("key")`.
+const TRANSLATION_METHODS = new Set(["rich", "markup", "raw"]);
+/** Whether a called expression translates: named like `t`, `tc` or `tUI`, bound to a translation factory, one called directly, or one of its message methods. */
 function translates(callee) {
+  if (ts.isPropertyAccessExpression(callee)) return TRANSLATION_METHODS.has(callee.name.text) && translates(callee.expression);
   if (!ts.isIdentifier(callee)) return translationFactory(callee);
   return TRANSLATE.test(callee.text) || translationFactory(declaredValue(callee));
 }
@@ -353,6 +366,19 @@ function check(file) {
     while (current.parent && !ts.isSourceFile(current.parent)) current = current.parent;
     return current;
   };
+  // The key a rendered property is matched by: its object's variable when the object is written into one
+  // (`const config = { label }`), otherwise its name within the top-level declaration, for an object a function returns.
+  const propertyKey = (holder, name) => (ts.isVariableDeclaration(holder) ? `variable ${holder.pos}:${name}` : `top ${topLevel(holder).pos}:${name}`);
+  const objectHolder = (object) => {
+    const target = destination(object);
+    return target && ts.isVariableDeclaration(target) ? target : object;
+  };
+  const readObjectHolder = (access) => {
+    const base = unwrap(access.expression);
+    const declaration = ts.isIdentifier(base) ? declarationOf(base) : undefined;
+    const value = declaration?.initializer && unwrap(declaration.initializer);
+    return declaration && value && ts.isObjectLiteralExpression(value) ? declaration : access;
+  };
   // What the file renders as text: `{status}` marks the variable `status` (and any it was copied from),
   // `{config.label}` the property `label` in that top-level declaration. Screen-reader-only text marks nothing.
   let rendered;
@@ -369,11 +395,21 @@ function check(file) {
     const collect = (node) => {
       const visible = (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node)) && renderedInJsx(node) && !screenReaderOnly(node);
       if (visible && ts.isIdentifier(node) && !ts.isPropertyAccessExpression(node.parent)) markVariable(node);
-      if (visible && ts.isPropertyAccessExpression(node)) rendered.properties.add(`${topLevel(node).pos}:${node.name.text}`);
+      if (visible && ts.isPropertyAccessExpression(node)) rendered.properties.add(propertyKey(readObjectHolder(node), node.name.text));
       ts.forEachChild(node, collect);
     };
     collect(source);
     return rendered;
+  };
+  // The variable or property a value is assigned to after its declaration: `status = value`, `config.label = value`.
+  const assignedTo = (target, node) => {
+    if (!ts.isBinaryExpression(target) || target.operatorToken.kind !== ts.SyntaxKind.EqualsToken) return undefined;
+    let child = node;
+    while (child.parent && child.parent !== target) child = child.parent;
+    if (target.right !== child) return undefined;
+    const left = unwrap(target.left);
+    if (ts.isIdentifier(left)) return declarationOf(left);
+    return ts.isPropertyAccessExpression(left) ? propertyKey(readObjectHolder(left), left.name.text) : undefined;
   };
   // Whether a value is shown as text: rendered as a JSX child, or held in a variable or property the file renders.
   const shown = (node) => {
@@ -381,7 +417,9 @@ function check(file) {
     if (!target) return false;
     if (ts.isJsxExpression(target)) return !ts.isJsxAttribute(target.parent);
     if (ts.isVariableDeclaration(target)) return renderedValues().variables.has(target);
-    return ts.isPropertyAssignment(target) && renderedValues().properties.has(`${topLevel(target).pos}:${target.name.getText(source)}`);
+    if (ts.isPropertyAssignment(target)) return renderedValues().properties.has(propertyKey(objectHolder(target.parent), target.name.getText(source)));
+    const assigned = assignedTo(target, node);
+    return typeof assigned === "string" ? renderedValues().properties.has(assigned) : !!assigned && renderedValues().variables.has(assigned);
   };
   // Whether a string is the key of a translation call, `t("loading")`, whose message is a Loading label.
   const translatedLoading = (node) => {
@@ -394,7 +432,8 @@ function check(file) {
     for (let parent = node.parent; parent && !ts.isSourceFile(parent); parent = parent.parent) {
       if (!ts.isJsxElement(parent)) continue;
       const className = parent.openingElement.attributes.properties.find((attribute) => ts.isJsxAttribute(attribute) && attribute.name.getText(source) === "className");
-      return classLists(className?.initializer).every((list) => SR_ONLY.test(list));
+      // `not-sr-only` under any variant shows the text again, as `sr-only md:not-sr-only` does on wide screens.
+      return classLists(className?.initializer).every((list) => SR_ONLY.test(list) && !/not-sr-only/.test(list));
     }
     return false;
   };
