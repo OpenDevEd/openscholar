@@ -586,6 +586,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   billingAccounts: defineTable(billingAccountFields)
     .index("by_user", ["userId"])
+    .index("by_workspace", ["workspaceId"])
     .index("by_stripe_customer", ["stripeCustomerId"]),
   billingCatalog: defineTable({ ...billingCatalogValidator.fields, syncedAt: v.number() }),
   billingUsage: defineTable({
@@ -597,10 +598,13 @@ export default defineSchema({
     .index("by_charge", ["chargeId"])
     .index("by_queuedAt", ["queuedAt"])
     .index("by_user_and_createdAt", ["userId", "createdAt"])
+    .index("by_workspace_and_createdAt", ["workspaceId", "createdAt"])
     .index("by_job_and_createdAt", ["jobId", "createdAt"])
     .index("by_stripe_charge", ["stripeChargeId"]),
   billingHolds: defineTable({
     userId: v.id("users"),
+    // The workspace whose customer the hold is on (#650); slice 8 makes it required.
+    workspaceId: v.optional(v.id("workspaces")),
     chargeId: v.string(),
     credits: v.number(),
     release: v.id("_scheduled_functions"),

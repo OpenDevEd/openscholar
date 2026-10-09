@@ -24,7 +24,7 @@ import { internalAction, internalMutation, internalQuery, type ActionCtx, type M
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { autumn, AutumnError } from "./autumn";
-import { requestRefresh, zeroCachedBalance } from "./accounts";
+import { ownWorkspaceOf, requestRefresh, zeroCachedBalance } from "./accounts";
 import { billingUsageFields, usageKindValidator } from "./validators";
 import { insertUsage } from "./ledger";
 import { createError } from "../lib/errors";
@@ -97,7 +97,8 @@ export const hold = internalMutation({
     const release = spend
       ? await ctx.scheduler.runAt(expiresAt, internal.billing.charge.settleSpent, { chargeId, attempt: 0 })
       : await ctx.scheduler.runAt(expiresAt, internal.billing.charge.releaseLock, { userId, chargeId, attempt: 0 });
-    await ctx.db.insert("billingHolds", { userId, chargeId, credits, release, ...(spend ? { spend } : {}) });
+    const workspaceId = await ownWorkspaceOf(ctx, userId);
+    await ctx.db.insert("billingHolds", { userId, ...(workspaceId ? { workspaceId } : {}), chargeId, credits, release, ...(spend ? { spend } : {}) });
     return null;
   },
 });

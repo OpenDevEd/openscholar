@@ -23,6 +23,10 @@ import {
 import { PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
 import { readCatalog } from "./catalog";
 
+/** A person's own workspace, if they still have one: what their billing rows were paid by before workspaces paid (#650). */
+export const ownWorkspaceOf = async (ctx: QueryCtx | MutationCtx, userId: Id<"users">) =>
+  (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())?._id;
+
 /** Reads what OpenScholar needs from an Autumn customer. */
 export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSnapshot {
   const main = customer.subscriptions.filter((s) => !s.add_on);
@@ -133,6 +137,8 @@ export const writeSnapshot = internalMutation({
       ...(withCard ? { card: snapshot.card, cardFetchedAt: fetchedAt } : { card: existing?.card, cardFetchedAt: existing?.cardFetchedAt }),
       ...(newer && { balance: existing.balance, purchased: existing.purchased }),
       userId,
+      // A person's account is their own workspace's until accounts are read by workspace (#650).
+      workspaceId: existing?.workspaceId ?? (await ownWorkspaceOf(ctx, userId)),
       refreshedAt: newer ? existing.refreshedAt : fetchedAt,
       fetchedAt,
     };
