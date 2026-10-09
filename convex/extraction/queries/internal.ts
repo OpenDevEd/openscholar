@@ -264,14 +264,15 @@ const libraryPaperValidator = v.object({
  * or someone else's are left out.
  */
 export const ownedLibraryItems = internalQuery({
-  args: { userId: v.id("users"), ids: v.array(v.string()) },
+  // `workspaceId` is optional only for a call from an action already running when this deployed (#650), which reads its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), ids: v.array(v.string()) },
   returns: v.array(libraryPaperValidator),
-  handler: async (ctx, { userId, ids }) => {
+  handler: async (ctx, { userId, workspaceId: given, ids }) => {
     // A library row holds its paper's full JSON, so a read is bounded by count, well under
     // Convex's 16 MiB a transaction: callers read a job's papers in batches of this size.
     if (ids.length > LIBRARY_READ_BATCH) throw new Error(`Read at most ${LIBRARY_READ_BATCH} library papers at a time`);
-    // Papers in the person's own workspace until extraction jobs belong to one (#650).
-    const workspaceId = await personalWorkspaceOf(ctx, userId);
+    // Papers in the job's workspace, which the caller names.
+    const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
     const rows = await Promise.all(
       ids.map((id) => {
         const itemId = ctx.db.normalizeId("libraryItems", id);

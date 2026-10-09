@@ -28,18 +28,29 @@ export function requireMakerOrAdmin(actor: Actor, createdBy: Id<"users"> | undef
  * nobody outside a workspace learns that it exists. Convex never takes the token's active
  * organization for this; it reads the memberships the Clerk webhook keeps.
  */
-export async function actorFor(ctx: QueryCtx, user: Doc<"users">, workspaceId: Id<"workspaces">): Promise<Actor> {
+export async function actorFor(ctx: Pick<QueryCtx, "db">, user: Doc<"users">, workspaceId: Id<"workspaces">): Promise<Actor> {
+  const actor = await actorIn(ctx, user, workspaceId);
+  if (!actor) throw createError("NOT_FOUND", "Workspace not found");
+  return actor;
+}
+
+/** `user` acting on a record opened by its ID, in the record's workspace; null when they can't act there. */
+export async function actorOnRecord(ctx: Pick<QueryCtx, "db">, user: Doc<"users">, row: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }): Promise<Actor | null> {
+  return await actorIn(ctx, user, await workspaceOf(ctx, row));
+}
+
+/** `actorFor`, or null where it would refuse: for a record opened by its ID, which anyone who can act in its workspace may open. */
+export async function actorIn(ctx: Pick<QueryCtx, "db">, user: Doc<"users">, workspaceId: Id<"workspaces">): Promise<Actor | null> {
   const workspace = await ctx.db.get("workspaces", workspaceId);
   const role = !workspace
     ? null
     : workspace.kind === "personal"
       ? workspace.userId === user._id ? "admin" : null
       : await organizationRole(ctx, workspace.organizationId, user.clerkId);
-  if (!role) throw createError("NOT_FOUND", "Workspace not found");
-  return { userId: user._id, workspaceId, role };
+  return role ? { userId: user._id, workspaceId, role } : null;
 }
 
-async function organizationRole(ctx: QueryCtx, organizationId: Id<"organizations">, clerkUserId: string) {
+async function organizationRole(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, clerkUserId: string) {
   if ((await ctx.db.get("organizations", organizationId))?.state !== "active") return null;
   const membership = await ctx.db
     .query("organizationMemberships")
@@ -48,8 +59,8 @@ async function organizationRole(ctx: QueryCtx, organizationId: Id<"organizations
   return !membership ? null : membership.role === "org:admin" ? "admin" : "member";
 }
 
-export { personalWorkspaceOf, workspaceOf } from "./personal";
-import { personalWorkspaceOf } from "./personal";
+export { isInWorkspace, personalWorkspaceOf, workspaceOf } from "./personal";
+import { personalWorkspaceOf, workspaceOf } from "./personal";
 
 /** `personalWorkspaceOf`, for an action. */
 export const personalOf = internalQuery({

@@ -22,3 +22,8 @@ export async function personalWorkspaceOf(ctx: Pick<QueryCtx, "db">, userId: Id<
 export async function workspaceOf(ctx: Pick<QueryCtx, "db">, row: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }) {
   return row.workspaceId ?? (await personalWorkspaceOf(ctx, row.userId));
 }
+
+/** Whether a record is in `workspaceId`: for a function given the page's workspace, which takes only that workspace's records. */
+export async function isInWorkspace(ctx: Pick<QueryCtx, "db">, row: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }, workspaceId: Id<"workspaces">) {
+  return (await workspaceOf(ctx, row)) === workspaceId;
+}

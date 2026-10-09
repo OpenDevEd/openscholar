@@ -689,6 +689,38 @@ describe("jobs in workspaces (#650)", () => {
     expect(screening).toMatchObject({ workspaceId: lab });
   });
 
+  it("lists an organization's screenings for each member apart from their own, opens one by its ID to anyone in it, and leaves cancelling to its starter or an admin", async () => {
+    const t = convexTest(schema);
+    setupScreeningWorkpool(t);
+    const [alice, bob] = [await seedUser(t, "alice", "alice@example.com"), await seedUser(t, "bob", "bob@example.com")];
+    await seedUser(t, "carol", "carol@example.com");
+    for (const user of [alice, bob]) await seedCredits(t, user._id, 100, 0);
+    const lab = await t.run(async (ctx) => {
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      for (const [clerkUserId, role] of [["alice", "org:member"], ["bob", "org:admin"]] as const) {
+        await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role, state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+      }
+      return ctx.db.insert("workspaces", { kind: "organization", organizationId });
+    });
+    const [asAlice, asBob, asCarol] = ["alice", "bob", "carol"].map((subject) => t.withIdentity({ subject }));
+    const job = (as: typeof asAlice, workspaceId?: Id<"workspaces">) => createJob(as, { ...(workspaceId ? { workspaceId } : {}), papers: makePapers(2), questions: [{ key: "q1", question: "Relevant?" }], scoringConfig: rules });
+    const { jobId: bobs } = await job(asBob, lab);
+    const { jobId: alicesInLab } = await job(asAlice, lab);
+    const { jobId: alicesOwn } = await job(asAlice);
+
+    const listed = async (as: typeof asAlice, workspaceId?: Id<"workspaces">) => (await as.query(api.screening.queries.listUserScreeningJobs, { ...(workspaceId ? { workspaceId } : {}), paginationOpts: { cursor: null, numItems: 10 } })).page.map((row) => row._id).sort();
+    expect(await listed(asAlice, lab)).toEqual([bobs, alicesInLab].sort());
+    expect(await listed(asAlice)).toEqual([alicesOwn]);
+    // A job opened by its ID is open to anyone in its workspace, and to no one else.
+    expect(await asAlice.query(api.screening.queries.getScreeningProgress, { jobId: bobs })).not.toBeNull();
+    expect(await asCarol.query(api.screening.queries.getScreeningProgress, { jobId: bobs })).toBeNull();
+    // Cancelling is its starter's or an admin's.
+    await expect(asAlice.mutation(api.screening.mutations.cancelScreeningJob, { jobId: bobs })).rejects.toThrow(/admin/);
+    await asBob.mutation(api.screening.mutations.cancelScreeningJob, { jobId: alicesInLab });
+    await expect(asCarol.mutation(api.screening.mutations.cancelScreeningJob, { jobId: alicesOwn })).rejects.toThrow(/not found/i);
+    expect(await t.run(async (ctx) => (await ctx.db.get("screeningJobs", alicesInLab))!.status)).toBe("cancelled");
+  });
+
   it("puts jobs from before workspaces, and what goes with them, in their person's own, however often the backfill runs", async () => {
     vi.useFakeTimers();
     try {

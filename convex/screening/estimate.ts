@@ -5,7 +5,7 @@ import { libraryCountRow } from "../library/counter";
 import { collectionAllowed } from "../library/collections";
 import { requestOf, snapshotOf } from "../paperSets/search";
 import { findSearch } from "../research/records";
-import type { InWorkspace } from "../workspaces/actor";
+import { isInWorkspace, type InWorkspace } from "../workspaces/actor";
 import { currentSearch } from "../../lib/research/records";
 import { MAX_QUESTIONS } from "../lib/listCaps";
 import { taskPricing } from "../ai/serverModel";
@@ -58,7 +58,7 @@ export async function papersIn(ctx: QueryCtx, { userId, workspaceId }: InWorkspa
   if (set.kind === "saved") return (await libraryCountRow(ctx, workspaceId))?.count ?? null;
   if (set.kind === "screening") {
     const job = await ctx.db.get("screeningJobs", set.jobId);
-    if (job?.userId !== userId) return null;
+    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return null;
     return (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", set.jobId)).unique())?.qualified ?? null;
   }
   return null;
