@@ -299,7 +299,7 @@ describe("extraction full flow with mocked provider I/O", () => {
       const id = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: now, updatedAt: now });
       for (const n of [1, 2]) {
         const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: ["Fixture Author"], abstract, searchableText: `Trial ${n}`, savedAt: now + n, updatedAt: now });
-        await ctx.db.insert("libraryItemCollections", { userId, collectionId: id, libraryItemId, assignedAt: now + n });
+        await ctx.db.insert("libraryItemCollections", { collectionId: id, libraryItemId, assignedAt: now + n });
       }
       return id;
     });

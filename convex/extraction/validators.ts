@@ -304,8 +304,6 @@ export const setupPlaceValidator = v.object({
 });
 
 export const extractionJobFields = {
-  // The person it belonged to before workspaces, which migrations/narrowJobs.ts clears before it goes (#650).
-  userId: v.optional(v.id("users")),
   workspaceId: v.id("workspaces"),
   createdBy: v.id("users"),
   sourceType: v.optional(sourceTypeValidator),
@@ -541,8 +539,6 @@ export const extractionQueueStatusValidator = v.union(
 
 export const extractionPaperQueueFields = {
   jobId: v.id("extractionJobs"),
-  // Cleared by migrations/narrowJobs.ts before it goes (#650).
-  userId: v.optional(v.id("users")),
   workspaceId: v.id("workspaces"),
   paperId: v.id("extractionPapers"),
   runEpoch: v.number(),

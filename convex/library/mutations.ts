@@ -410,7 +410,7 @@ export const removeFromLibraryAction = defineUserMutation({
         throw createError("CONFLICT", "This paper has changed since then, so it was left in the library.");
       }
     }
-    const { _id, _creationTime, userId: _owner, workspaceId: _workspace, ...kept } = item;
+    const { _id, _creationTime, workspaceId: _workspace, ...kept } = item;
     const expiresAt = Date.now() + REMOVAL_KEPT_MS;
     const removalId = await ctx.db.insert("libraryRemovals", { workspaceId, item: kept, itemId: item._id, expiresAt });
     // Its places in collections: this batch now, the rest in the batches it schedules.

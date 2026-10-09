@@ -48,7 +48,7 @@ import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { retryCredits } from "../queries/costs";
 import { approvalLeft } from "../../billing/spend";
 import { availableCredits as readAvailableCredits } from "../../billing/accounts";
-import { workspaceOf } from "../../workspaces/actor";
+
 import { isResultRetryableFailure } from "../../../lib/extraction/retry-summary";
 import { readResultCounts } from "../resultCounts";
 import { recomputePaperListProjection } from "../listProjection";

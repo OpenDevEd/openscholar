@@ -128,7 +128,7 @@ describe("charging a Screen all paper", () => {
       const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
       for (const n of [1, 2]) {
         const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
-        await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: n });
+        await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: n });
       }
       return { userId, collectionId };
     });

@@ -80,7 +80,7 @@ describe("library facets", () => {
         await t.run(async (ctx) => {
           for (let i = start; i < Math.min(places, start + 350); i++) {
             const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: `c${i}`, sortName: `c${i}`, itemCount: 1, createdAt: 1, updatedAt: 1 });
-            await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId: id, assignedAt: i });
+            await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId: id, assignedAt: i });
           }
         });
       }
@@ -147,7 +147,7 @@ describe("library facets", () => {
         const collection = (await ctx.db.get("collections", collectionId))!;
         for (let i = start; i < start + 10; i++) {
           const id = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paper(i), abstract: "x".repeat(400_000), searchableText: "x", savedAt: i, updatedAt: 1 });
-          await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId: id, assignedAt: i });
+          await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId: id, assignedAt: i });
           await ctx.db.patch("collections", collectionId, { itemCount: collection.itemCount + i - start + 1 });
         }
       });
@@ -178,7 +178,7 @@ describe("library facets", () => {
         await t.run(async (ctx) => {
           for (let i = start; i < start + 150; i++) {
             const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: `c${i}`, sortName: `c${i}`, itemCount: 1, createdAt: 1, updatedAt: 1 });
-            await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId: id, assignedAt: i });
+            await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId: id, assignedAt: i });
             collections.push(collectionId);
           }
         });
@@ -228,7 +228,7 @@ describe("library facets", () => {
         const id = await ctx.db.insert("collections", { ...owner, name: "Old", sortName: "old", itemCount: 3, createdAt: 1, updatedAt: 1 });
         for (const [i, rating] of [5, 5, 2].entries()) {
           const libraryItemId = await ctx.db.insert("libraryItems", { ...owner, ...paper(i), rating, searchableText: `Paper ${i}`, savedAt: i, updatedAt: 1 });
-          await ctx.db.insert("libraryItemCollections", { userId, collectionId: id, libraryItemId, assignedAt: 1 });
+          await ctx.db.insert("libraryItemCollections", { collectionId: id, libraryItemId, assignedAt: 1 });
         }
         return id;
       });

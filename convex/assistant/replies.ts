@@ -96,12 +96,6 @@ export async function admit(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
   }
 }
 
-/**
- * The workspace a reply that waits, or a step, acts in. One from before replies named theirs ran in its
- * sender's own (#650), until migrations/narrowAssistant.ts gives it that; then this goes.
- */
-export const actingIn = async (ctx: Pick<QueryCtx, "db">, reply: { senderId: Id<"users">; workspaceId?: Id<"workspaces"> }) => reply.workspaceId ?? (await personalWorkspaceOf(ctx, reply.senderId));
-
 /** Clears the lock of a reply whose action died. What it had cost by then is still one of its sender's last replies. */
 async function endDead(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
   if (thread.reply) await noteReply(ctx, thread.reply.senderId, thread.reply.workspaceId, thread.reply.attemptId, thread.reply.spent ?? 0);
@@ -245,7 +239,7 @@ export const answer = mutation({
     let left = (await stepsAt(ctx, threadId, "asking")).filter((other) => other._id !== stepId);
     // A yes to a call that holds more than the person has starts nothing: it waits while they add credits, as its card says.
     // The workspace the reply acts in pays for it.
-    const balance = allow && step.credits !== undefined ? await availableCredits(ctx, await actingIn(ctx, waiting)) : 0;
+    const balance = allow && step.credits !== undefined ? await availableCredits(ctx, waiting.workspaceId) : 0;
     if (allow && step.credits !== undefined && step.credits > balance) throw createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
     const tool = TOOL_OF[step.path];
     // What else waits is allowed with it only while the balance covers this call and each one allowed before it.
@@ -268,7 +262,7 @@ export const answer = mutation({
     const paused = left.length ? null : pausedAt(waiting);
     // The answer that lets the reply carry on starts a reply, so it's held to how many a workspace has at once, before anything changes.
     // It carries on in the workspace it asked from; its actions are refused there if the sender has left it since.
-    const workspaceId = await actingIn(ctx, waiting);
+    const workspaceId = waiting.workspaceId;
     if (!left.length && !paused) await admit(ctx, workspaceId);
     if (allow) await ctx.db.patch("assistantSteps", stepId, { status: "allowed" });
     else await declineSteps(ctx, [step]);
@@ -321,7 +315,7 @@ export const carryOn = mutation({
     // It spends their credits, so carrying it on is theirs alone.
     if (waiting.senderId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can carry this on.");
     // Carrying it on starts a reply, so it's held to how many a workspace has at once.
-    const workspaceId = await actingIn(ctx, waiting);
+    const workspaceId = waiting.workspaceId;
     await admit(ctx, workspaceId);
     await goOnFrom(ctx, thread, waiting, workspaceId, carriedOn(waiting, await replyLimitOf(ctx, threadId, userId)));
     return null;
@@ -500,7 +494,7 @@ export const release = internalMutation({
     /** The paused reply, as the chat keeps it until it's carried on: where it stands in `order`, and what it runs to. */
     const pausedFrom = ({ used, ...from }: Infer<typeof resumeValidator>, order: number, paused: NonNullable<ReturnType<typeof pauseBefore>>) => ({
       senderId: current.senderId,
-      ...(current.workspaceId ? { workspaceId: current.workspaceId } : {}),
+      workspaceId: current.workspaceId,
       order,
       promptMessageId: from.promptMessageId,
       modelId: from.modelId,
@@ -553,11 +547,11 @@ export const release = internalMutation({
       // The chat takes no message until every call is answered, or the reply is stopped. Its summary, if one is due, waits for the reply to end.
       const now = Date.now();
       for (const call of asking.calls) {
-        await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, ...(current.workspaceId ? { workspaceId: current.workspaceId } : {}), ...call, prompt: asking.promptMessageId, status: "asking", startedAt: now });
+        await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, workspaceId: current.workspaceId, ...call, prompt: asking.promptMessageId, status: "asking", startedAt: now });
       }
       const waiting = {
         senderId: current.senderId,
-        ...(current.workspaceId ? { workspaceId: current.workspaceId } : {}),
+        workspaceId: current.workspaceId,
         order: current.order,
         promptMessageId: asking.promptMessageId,
         modelId: ended.modelId,
@@ -824,7 +818,7 @@ export const messagesAction = defineUserQuery({
     const reader = thread.asking?.senderId === userId ? await ctx.db.get("users", userId) : null;
     const mine = reader ? await stepsAt(ctx, threadId, "asking") : [];
     // They're named as the workspace the reply acts in calls them, while the reader can still act there.
-    const acting = thread.asking && reader ? await actingIn(ctx, thread.asking) : null;
+    const acting = thread.asking && reader ? thread.asking.workspaceId : null;
     const workspaceId = acting && reader && (await actorIn(ctx, reader, acting)) ? acting : null;
     const details = new Map(
       await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: withoutVariant(await detailsOf(ctx, reader!, workspaceId, step.shown ?? step.input), step) } : bulkWithoutVariant(await bulkOf(ctx, reader!, workspaceId, step), step)] as const)),

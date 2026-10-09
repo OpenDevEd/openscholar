@@ -38,8 +38,6 @@ export type BillingAccountSnapshot = Infer<typeof billingAccountSnapshotValidato
 
 export const billingAccountFields = {
   ...billingAccountSnapshotValidator.fields,
-  /** Who it belonged to before workspaces; migrations/narrowBilling.ts clears it before it goes (#650). */
-  userId: v.optional(v.id("users")),
   /** The workspace whose Autumn customer it caches (#650). */
   workspaceId: v.id("workspaces"),
   refreshedAt: v.number(),

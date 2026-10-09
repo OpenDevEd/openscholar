@@ -10,7 +10,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { readMemberOrganizations } from "../organizationFeatures";
 import { findSearch } from "../research/records";
-import { isInWorkspace } from "../workspaces/actor";
+
 import { currentSearch } from "../../lib/research/records";
 import { personName, roleIn } from "./access";
 import { workUrl } from "../../lib/openalex/work-id";
@@ -107,12 +107,12 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
     const screeningId = ctx.db.normalizeId("screeningJobs", id);
     if (screeningId) {
       const job = await ctx.db.get("screeningJobs", screeningId);
-      return job && workspaceId && (await isInWorkspace(ctx, job, workspaceId)) ? job.label || null : null;
+      return job && workspaceId && (job.workspaceId === workspaceId) ? job.label || null : null;
     }
     const extractionId = ctx.db.normalizeId("extractionJobs", id);
     if (extractionId) {
       const job = await ctx.db.get("extractionJobs", extractionId);
-      return job && workspaceId && (await isInWorkspace(ctx, job, workspaceId)) ? job.name || null : null;
+      return job && workspaceId && (job.workspaceId === workspaceId) ? job.name || null : null;
     }
     const organizationId = ctx.db.normalizeId("organizations", id);
     if (organizationId) return mine.find(({ organization }) => organization._id === organizationId)?.organization.name ?? null;

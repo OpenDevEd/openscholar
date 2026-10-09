@@ -10,7 +10,6 @@ import { getCurrentUser } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { noAccess, ok, unauthenticated } from "../lib/query_states";
 import { actorIn, type Actor } from "../workspaces/actor";
-import { isInWorkspace } from "../workspaces/personal";
 
 export type OwnedJobResolution =
   | { status: "ok"; user: Doc<"users">; job: Doc<"extractionJobs"> }
@@ -33,7 +32,7 @@ export async function resolveOwnedJob(
 /** The job when it's in `workspaceId`, the workspace a user action runs in; else null. */
 export async function ownJob(ctx: QueryCtx, workspaceId: Id<"workspaces">, jobId: Id<"extractionJobs">) {
   const job = await ctx.db.get("extractionJobs", jobId);
-  return job && (await isInWorkspace(ctx, job, workspaceId)) ? job : null;
+  return job && (job.workspaceId === workspaceId) ? job : null;
 }
 
 export type OwnedPaperResolution =

@@ -54,8 +54,8 @@ async function organizationRole(ctx: Pick<QueryCtx, "db">, organizationId: Id<"o
   return !membership ? null : membership.role === "org:admin" ? "admin" : "member";
 }
 
-export { isInWorkspace, personalWorkspaceOf, workspaceOf } from "./personal";
-import { personalWorkspaceOf, workspaceOf } from "./personal";
+export { personalWorkspaceOf } from "./personal";
+import { personalWorkspaceOf } from "./personal";
 
 /** `personalWorkspaceOf`, for an action. */
 export const personalOf = internalQuery({

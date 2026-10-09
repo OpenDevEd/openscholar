@@ -417,13 +417,13 @@ describe("assistant replies", () => {
     // Only a running search in this exchange changes the gesture. A stale tool from an older exchange does not.
     const order = (await chat(t, threadId))!.reply!.order;
     const step = await t.run(async (ctx) => {
-      const fields = { threadId, userId: ada, toolCallId: "search", path: "research/papers:search", input: "{}", status: "running" as const, startedAt: 1 };
+      const fields = { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, userId: ada, toolCallId: "search", path: "research/papers:search", input: "{}", status: "running" as const, startedAt: 1 };
       await ctx.db.insert("assistantSteps", { ...fields, order: order - 1 });
       return ctx.db.insert("assistantSteps", { ...fields, order });
     });
     expect((await asAda.query(api.assistant.replies.live, { threadId }))!.activity).toEqual({ phase: "searching", order });
     // A later non-search tool can run alongside the search without hiding it.
-    await t.run(async (ctx) => ctx.db.insert("assistantSteps", { threadId, order, userId: ada, toolCallId: "collection", path: "library/collections:create", input: "{}", status: "running", startedAt: 2 }));
+    await t.run(async (ctx) => ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order, userId: ada, toolCallId: "collection", path: "library/collections:create", input: "{}", status: "running", startedAt: 2 }));
     expect((await asAda.query(api.assistant.replies.live, { threadId }))!.activity).toEqual({ phase: "searching", order });
     await t.run(async (ctx) => ctx.db.patch("assistantSteps", step, { status: "done" }));
     expect((await asAda.query(api.assistant.replies.live, { threadId }))!.activity).toEqual({ phase: "thinking", order });
@@ -659,7 +659,7 @@ describe("assistant replies", () => {
     await ended(t, threadId);
     const order = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.at(-1)!.order;
     await t.run(async (ctx) => {
-      const step = { threadId, order, userId: ada, status: "running" as const, startedAt: 1 };
+      const step = { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order, userId: ada, status: "running" as const, startedAt: 1 };
       // A page of a search, and a count by year: each matched more papers than it returned.
       const search = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "search", path: "research/papers:search", input: JSON.stringify({ query: '"machine learning"', minCitations: 11, fromYear: 2020, toYear: 2024, page: 2 }), subject: '"machine learning"' });
       await endStep(ctx, search, { total: 260, page: 2, pages: 13, papers: [] });
@@ -707,7 +707,7 @@ describe("a job a reply started", () => {
     const t = convexTest(schema);
     const { asAda, ada, threadId } = await sharedChat(t);
     const jobId = await t.run(async (ctx) => {
-      const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
       return insertJob(ctx, {
         userId: ada, status: "processing", totalPapers: 2, chatStep: stepId,
         questions: [{ key: "q1", question: "Is this a trial?" }],
@@ -733,7 +733,7 @@ describe("a job a reply started", () => {
 
     // A job that ends after the Stop is told as usual, with its readout.
     const later = await t.run(async (ctx) => {
-      const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "screen-2", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "screen-2", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
       return insertJob(ctx, {
         userId: ada, status: "processing", totalPapers: 2, chatStep: stepId,
         questions: [{ key: "q1", question: "Is this a trial?" }],
@@ -753,7 +753,7 @@ describe("a job a reply started", () => {
     const { asAda, asBen, ada, threadId } = await sharedChat(t);
     // The job is written while the step that starts it is still running: its card is read from the job's row until the step ends.
     const { jobId, stepId } = await t.run(async (ctx) => {
-      const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "running", startedAt: 1 });
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "running", startedAt: 1 });
       const jobId = await insertJob(ctx, {
         userId: ada, status: "processing", totalPapers: 2, chatStep: stepId,
         questions: [{ key: "q1", question: "Is this a trial?" }],
@@ -783,7 +783,7 @@ describe("a job a reply started", () => {
 
     // An extraction paused from its page waits for the person: it leaves the dock until it carries on.
     const { extraction, extractStep } = await t.run(async (ctx) => {
-      const extractStep = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "extract", path: "extraction/start:extract", input: "{}", status: "done", startedAt: 2, endedAt: 2 });
+      const extractStep = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "extract", path: "extraction/start:extract", input: "{}", status: "done", startedAt: 2, endedAt: 2 });
       const extraction = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, ada)), name: "Sample sizes", status: "extracting", totalPapers: 4, chatStep: extractStep, createdAt: 2, updatedAt: 2 });
       return { extraction, extractStep };
     });
@@ -799,7 +799,7 @@ describe("a job a reply started", () => {
     });
     await expect(
       t.run(async (ctx) => {
-        const more = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "one-more", path: "extraction/start:extract", input: "{}", status: "done", startedAt: 3, endedAt: 3 });
+        const more = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "one-more", path: "extraction/start:extract", input: "{}", status: "done", startedAt: 3, endedAt: 3 });
         await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, ada)), name: "One more", status: "pending", totalPapers: 1, chatStep: more, createdAt: 3, updatedAt: 3 });
       }),
     ).rejects.toThrow(`already has ${JOBS_DOCKED} jobs running`);
@@ -814,7 +814,7 @@ describe("a job a reply started", () => {
     const t = convexTest(schema);
     const { ada, threadId } = await sharedChat(t);
     const { jobId, stepId } = await t.run(async (ctx) => {
-      const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
       const jobId = await insertJob(ctx, {
         userId: ada, status: "processing", totalPapers: 2, chatStep: stepId,
         questions: [{ key: "q1", question: "Is this a trial?" }],
@@ -851,7 +851,7 @@ describe("a job a reply started", () => {
     // The step that started it, and the job, which keeps that step.
     const order = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.at(-1)!.order;
     const { stepId, jobId } = await t.run(async (ctx) => {
-      const stepId = await ctx.db.insert("assistantSteps", { threadId, order, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", credits: 23, status: "done", startedAt: 1, endedAt: 1 });
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", credits: 23, status: "done", startedAt: 1, endedAt: 1 });
       const jobId = await insertJob(ctx, {
         userId: ada, status: "processing", totalPapers: 2, chatStep: stepId, spendCap: 23,
         questions: [{ key: "q1", question: "Is this a trial?" }],

@@ -66,7 +66,7 @@ export type CountedField = (typeof COUNTED_FIELDS)[number];
  * A library is counted under its person and, once its papers have one, its workspace, until its reads go by workspace (#650).
  */
 export const facetCounts = new DirectAggregate<{ Namespace: string; Key: number | null; Id: string }>(components.libraryFacetCounts);
-type Scope = Id<"users"> | Id<"workspaces"> | Id<"collections">;
+type Scope = Id<"workspaces"> | Id<"collections">;
 const namespaceOf = (scope: Scope, field: CountedField) => `${scope}:${field}`;
 
 type Counted = { scopes: Scope[]; savedAt?: number; rating?: number; publicationYear?: number };
@@ -84,8 +84,7 @@ async function recount(ctx: QueueingCtx, id: string, before: Counted | null, aft
   await queueCounts(ctx, facetCounts, operations);
 }
 
-// A paper from before workspaces was also counted under its person: kept until migrations/narrowLibrary.ts clears `userId`, which takes those entries away.
-export const countedItem = (item: Doc<"libraryItems">): Counted => ({ ...item, scopes: item.userId ? [item.userId, item.workspaceId] : [item.workspaceId] });
+export const countedItem = (item: Doc<"libraryItems">): Counted => ({ ...item, scopes: [item.workspaceId] });
 export const countedMembership = (membership: Doc<"libraryItemCollections">): Counted => ({ ...membership, scopes: [membership.collectionId] });
 
 export const countItemChange = (ctx: MutationCtx, change: Change<DataModel, "libraryItems">) =>

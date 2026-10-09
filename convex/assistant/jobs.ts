@@ -15,7 +15,7 @@ import { internalMutation, query } from "../lib/functions";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { getScreeningJobAction } from "../screening/queries";
 import type { Acting } from "../lib/userActions";
-import { workspaceOf } from "../workspaces/actor";
+
 import { readJobCounters } from "../extraction/jobCounters";
 import { readScreeningProgressCounts } from "../screening/progress";
 import { replyWorkspace, requireThread } from "./access";

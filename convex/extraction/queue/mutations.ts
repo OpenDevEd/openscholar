@@ -12,7 +12,6 @@ import {
   type ExtractionQueueStatus,
 } from "./status";
 import { planLimit } from "../../billing/accounts";
-import { workspaceOf } from "../../workspaces/personal";
 
 type QueueKind = Doc<"extractionPaperQueue">["kind"];
 
@@ -534,7 +533,7 @@ export async function cancelPaperQueueRowsForJobTx(
   if (batches.some((batch) => batch.length === CANCEL_BATCH)) {
     await ctx.scheduler.runAfter(0, internal.extraction.queue.mutations.cancelPaperQueueRowsForJob, { jobId: args.jobId });
   }
-  return { cancelled: rows.length, cancelRequested, workspaceId: rows[0] ? await workspaceOf(ctx, rows[0]) : undefined };
+  return { cancelled: rows.length, cancelRequested, workspaceId: rows[0] ? rows[0].workspaceId : undefined };
 }
 
 export const cancelPaperQueueRowsForJob = internalMutation({
@@ -568,7 +567,7 @@ export const updatePaperQueueStatus = internalMutation({
     // A row that held its person's capacity and stops without a release (a stale run parking)
     // frees it; their held-back jobs have no other event to start them.
     if ((row.status === "leased" || row.status === "running") && args.status !== "leased" && args.status !== "running") {
-      await ctx.scheduler.runAfter(0, internal.extraction.queue.dispatcher.wakePerson, { workspaceId: await workspaceOf(ctx, row) });
+      await ctx.scheduler.runAfter(0, internal.extraction.queue.dispatcher.wakePerson, { workspaceId: row.workspaceId });
     }
     await ctx.db.patch(args.queueId, {
       status: args.status,

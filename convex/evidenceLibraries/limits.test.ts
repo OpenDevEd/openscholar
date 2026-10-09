@@ -9,6 +9,7 @@ import { RUNTIME_ARRIVALS_READ } from "./versions";
 import { insertMany } from "../lib/maxSize.test-support";
 import { createDraftSetupFixture, createReadySetupFixture, reserveLibraryAddressByName } from "../../tests/helpers/evidence-library-setup-fixture";
 import { organizationOfLibrary } from "../../tests/helpers/evidence-library-setup-fixture";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 describe("Evidence Library limits", () => {
   beforeEach(() => {
@@ -50,7 +51,7 @@ describe("Evidence Library limits", () => {
       const organization = (await ctx.db.get("organizations", await organizationOfLibrary(ctx, libraryId)))!;
       const { _id: _organizationId, _creationTime: _made, ...other } = organization;
       const otherOrganization = await ctx.db.insert("organizations", { ...other, clerkOrganizationId: "org_elsewhere", slug: "elsewhere" });
-      return { organization, elsewhere: await ctx.db.insert("evidenceLibraries", { ...library, organizationId: otherOrganization, name: "Elsewhere", slug: "revoke-all-elsewhere" }) };
+      return { organization, elsewhere: await ctx.db.insert("evidenceLibraries", { ...library, workspaceId: await organizationWorkspaceOf(ctx, otherOrganization), name: "Elsewhere", slug: "revoke-all-elsewhere" }) };
     });
     // From before grants were capped: more than one read holds, with this organization's grant last.
     await insertMany(fixture.t, "evidenceLibraryMembers", [
@@ -164,6 +165,6 @@ describe("Evidence Library limits", () => {
     const template = await fixture.t.run(async (ctx) => (await ctx.db.get("evidenceLibraries", fixture.created.libraryId))!);
     const { _id, _creationTime, ...library } = template;
     await insertMany(fixture.t, "evidenceLibraries", Array.from({ length: MAX_LIBRARIES_PER_WORKSPACE - 1 }, (_, i) => ({ ...library, name: `Library ${i}`, slug: `library-limit-${i}` })), 100);
-    await expect(reserveLibraryAddressByName(fixture.admin, "One More", template.organizationId)).rejects.toThrow(/up to 200 libraries/);
+    await expect(reserveLibraryAddressByName(fixture.admin, "One More", await fixture.t.run((ctx) => organizationOfLibrary(ctx, fixture.created.libraryId)))).rejects.toThrow(/up to 200 libraries/);
   });
 });

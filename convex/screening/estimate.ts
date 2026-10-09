@@ -5,7 +5,7 @@ import { libraryCountRow } from "../library/counter";
 import { collectionAllowed } from "../library/collections";
 import { requestOf, snapshotOf } from "../paperSets/search";
 import { findSearch } from "../research/records";
-import { isInWorkspace, type InWorkspace } from "../workspaces/actor";
+import { type InWorkspace } from "../workspaces/actor";
 import { currentSearch } from "../../lib/research/records";
 import { MAX_QUESTIONS } from "../lib/listCaps";
 import { taskPricing } from "../ai/serverModel";
@@ -58,7 +58,7 @@ export async function papersIn(ctx: QueryCtx, { userId, workspaceId }: InWorkspa
   if (set.kind === "saved") return (await libraryCountRow(ctx, workspaceId))?.count ?? null;
   if (set.kind === "screening") {
     const job = await ctx.db.get("screeningJobs", set.jobId);
-    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return null;
+    if (!job || !(job.workspaceId === workspaceId)) return null;
     return (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", set.jobId)).unique())?.qualified ?? null;
   }
   return null;
@@ -86,7 +86,7 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
     await checkRequestPapers(ctx, workspaceId, last - first + 1, "screening");
   } else {
     const source = set.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : set.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
-    const mine = set.kind !== "collection" && set.kind !== "screening" ? true : source !== null && (await isInWorkspace(ctx, source, workspaceId));
+    const mine = set.kind !== "collection" && set.kind !== "screening" ? true : source !== null && (source.workspaceId === workspaceId);
     if (!mine) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");
     const held = await papersIn(ctx, { userId, workspaceId }, set);
     if (held !== null && first > held) throw createError("VALIDATION_ERROR", "There are no papers in that range");

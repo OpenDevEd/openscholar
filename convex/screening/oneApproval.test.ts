@@ -34,13 +34,13 @@ it("runs a request as one job under the one figure the person approved: one hold
     const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
     for (const n of [1, 2]) {
       const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
-      await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: n });
+      await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: n });
     }
     // The chat and the step of its reply that started the screening.
     const threadId = await ctx.db.insert("assistantThreads", { ...(await madeBy(ctx, userId)), title: "Screening", agentThreadId: "agent", lastMessageAt: 1, createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("assistantThreadAccess", { threadId, principal: `user:${userId}`, role: "owner", lastMessageAt: 1, createdAt: 1 });
     await ctx.db.insert("featureFlags", { key: "assistant.enabled", enabled: true, updatedAt: 1 });
-    const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "running", startedAt: 1 });
+    const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "running", startedAt: 1 });
     return { userId, collectionId, threadId, stepId };
   });
   const calls = (path: string) => fakeAutumn.calls.filter((call) => call.path === path);

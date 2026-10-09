@@ -972,7 +972,7 @@ describe("saving without a rating", () => {
     // 600 rows a deleted collection left behind, older than the live ones.
     const gone = (await asUser.mutation(api.library.collections.createCollection, { name: "Gone" })).id;
     await t.run(async (ctx) => {
-      for (let i = 0; i < 600; i++) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: gone, libraryItemId: itemId, assignedAt: i });
+      for (let i = 0; i < 600; i++) await ctx.db.insert("libraryItemCollections", { collectionId: gone, libraryItemId: itemId, assignedAt: i });
       await ctx.db.delete("collections", gone);
     });
     const live = [];
@@ -1001,7 +1001,7 @@ describe("saving without a rating", () => {
     // More than one transaction deletes.
     for (let start = 0; start < 2_500; start += 500) {
       await t.run(async (ctx) => {
-        for (let i = start; i < start + 500; i++) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId, libraryItemId: itemId, assignedAt: i });
+        for (let i = start; i < start + 500; i++) await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId: itemId, assignedAt: i });
       });
     }
     await asUser.mutation(api.library.collections.deleteCollection, { collectionId });
@@ -1246,12 +1246,12 @@ describe("the library as the assistant reads it", () => {
       // The second paper was saved without a rating.
       await ctx.db.patch("libraryItems", phones!._id, { rating: undefined });
       const id = await ctx.db.insert("collections", { ...(await madeBy(ctx, user!._id)), name: "Chapter 2", sortName: ("Chapter 2").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
-      for (const item of [tutoring!, phones!]) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: id, libraryItemId: item._id, assignedAt: 1 });
+      for (const item of [tutoring!, phones!]) await ctx.db.insert("libraryItemCollections", { collectionId: id, libraryItemId: item._id, assignedAt: 1 });
       // A place in a collection deleted since, not yet cleared away, isn't one.
       const gone = await ctx.db.insert("collections", { ...(await madeBy(ctx, user!._id)), name: "Deleted", sortName: ("Deleted").toLowerCase(), itemCount: 1, createdAt: 1, updatedAt: 1 });
       const workspaceId = await personalWorkspaceOf(ctx, user!._id);
       const feeding = await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W3")).unique();
-      await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: gone, libraryItemId: feeding!._id, assignedAt: 1 });
+      await ctx.db.insert("libraryItemCollections", { collectionId: gone, libraryItemId: feeding!._id, assignedAt: 1 });
       await ctx.db.delete("collections", gone);
       return id;
     });

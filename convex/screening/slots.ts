@@ -34,7 +34,7 @@ async function startPaper(ctx: MutationCtx, result: Doc<"screeningResults">) {
     { resultId: result._id, jobId: result.jobId },
     { onComplete: internal.screening.mutations.handleScreeningComplete, context: { resultId: result._id, jobId: result.jobId } },
   );
-  await ctx.db.patch("screeningResults", result._id, { workId, waitingUser: undefined, waitingWorkspace: undefined, waitingSince: undefined });
+  await ctx.db.patch("screeningResults", result._id, { workId, waitingWorkspace: undefined, waitingSince: undefined });
 }
 
 /**

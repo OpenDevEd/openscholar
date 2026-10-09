@@ -6,7 +6,6 @@ import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { collectionSortName } from "../library/sortName";
 import { countRow, startCount } from "../research/recordCounts";
-import { workspaceOf } from "../workspaces/personal";
 
 /**
  * Gets extraction jobs from before their list paged ready for it (#422): each job gets the
@@ -43,7 +42,7 @@ export const verifyPage = internalQuery({
   handler: async (ctx, { cursor }) => {
     const page = await ctx.db.query("extractionJobs").paginate({ cursor, numItems: 50, maximumBytesRead: 4 * 1024 * 1024 });
     let wrong = page.page.filter((job) => job.sortName !== collectionSortName(job.name)).length;
-    for (const workspaceId of new Set(await Promise.all(page.page.map((job) => workspaceOf(ctx, job))))) {
+    for (const workspaceId of new Set(await Promise.all(page.page.map((job) => job.workspaceId)))) {
       const row = await countRow(ctx, "extractionJobs", workspaceId);
       if (!row || row.countedTo !== undefined) wrong++;
     }

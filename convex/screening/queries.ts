@@ -26,7 +26,7 @@ import { SCREENING_POOL_SIZE } from "../workpool";
 import { jobModel, screeningRevision } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
-import { actorIn, isInWorkspace, workspaceOf } from "../workspaces/actor";
+import { actorIn } from "../workspaces/actor";
 import { availableCredits } from "../billing/accounts";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { pricingOf } from "../ai/serverModel";
@@ -220,7 +220,7 @@ export const getScreeningJobAction = defineUserQuery({
   ),
   run: async (ctx, { workspaceId }, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
-    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return null;
+    if (!job || !(job.workspaceId === workspaceId)) return null;
     const progress = await readJobProgressSnapshot(ctx, job);
     const kept = await progressRow(ctx, job._id);
     const counts = await readScreeningProgressCounts(ctx, job);
@@ -465,7 +465,7 @@ export const listScreeningResultsAction = defineUserQuery({
   returns: paginationResultValidator(screeningResultRowValidator),
   run: async (ctx, { workspaceId }, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
-    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return { page: [], isDone: true, continueCursor: "" };
+    if (!job || !(job.workspaceId === workspaceId)) return { page: [], isDone: true, continueCursor: "" };
     await screeningRevision(ctx, job, args.revision);
     return await readScreeningResultsPage(ctx, job, args.paginationOpts);
   },

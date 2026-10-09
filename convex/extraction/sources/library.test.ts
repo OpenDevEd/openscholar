@@ -121,7 +121,7 @@ describe("extraction.sources.library.list", () => {
       paginationOpts: { numItems: 10, cursor: null },
     });
     expect(res.page).toHaveLength(3);
-    expect(res.page.every((p) => p.userId !== undefined)).toBe(true);
+    expect(res.page.every((p) => p.createdBy !== undefined)).toBe(true);
   });
 
   it("filters by the search_library index when a query is supplied", async () => {
@@ -187,7 +187,7 @@ describe("extraction.sources.library.listAllIds", () => {
     );
     expect(res.items).toHaveLength(3);
     expect(res.truncated).toBe(false);
-    expect(res.items.every((r) => r.userId !== undefined)).toBe(true);
+    expect(res.items.every((r) => r.createdBy !== undefined)).toBe(true);
   });
 
   it("filters via search_library when a query is supplied", async () => {
@@ -317,7 +317,7 @@ describe("extraction.sources.library.listAllIds with collectionId", () => {
     await t.run(async (ctx) => {
       for (let i = 0; i < MAX_SELECTED_PAPERS + 5; i++) {
         const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/Wmany${i}`, rating: 3, title: `Many ${i}`, searchableText: "many papers", savedAt: i, updatedAt: i });
-        if (i % 2 === 0) await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: i });
+        if (i % 2 === 0) await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: i });
       }
     });
     const res = await t.withIdentity(identity).query(api.extraction.sources.library.listAllIds, { collectionId: "unfiled", query: "many" });

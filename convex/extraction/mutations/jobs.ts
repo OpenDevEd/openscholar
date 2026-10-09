@@ -34,7 +34,7 @@ import { refillWorkspace } from "../queue/dispatcher";
 import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
 import { checkScreeningSelection } from "../sources/screening";
 import { bucketItemFromRow } from "../jobSources";
-import { actorIn, isInWorkspace, requireMakerOrAdmin, workspaceOf, type InWorkspace } from "../../workspaces/actor";
+import { actorIn, requireMakerOrAdmin, type InWorkspace } from "../../workspaces/actor";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -203,7 +203,7 @@ export const duplicateJobAction = defineUserMutation({
 
     const oldJob = await ctx.db.get("extractionJobs", args.jobId);
     // The copy is made in the workspace the call acts in, which the original must be in.
-    if (!oldJob || !(await isInWorkspace(ctx, oldJob, workspaceId))) {
+    if (!oldJob || !(oldJob.workspaceId === workspaceId)) {
       throw createError("NOT_FOUND", "Job not found");
     }
 
