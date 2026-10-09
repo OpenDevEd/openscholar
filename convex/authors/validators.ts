@@ -27,7 +27,8 @@ export const profileRoleValidator = v.union(v.literal("owner"), v.literal("edito
 /** A profile's owner and the people it gives editing to: accepting an invitation past the cap is refused (./invitations.ts). */
 /** Its editors, and its owners through its workspace: its maker, the person whose own workspace it is, and an organization's admins (./access.ts `profileOwners`). */
 export const profileMembersValidator = capped(
-  v.array(v.object({userId: v.id("users"), name: v.string(), email: v.string(), imageUrl: v.optional(v.string()), role: profileRoleValidator})),
+  // `you`: the person reading the list.
+  v.array(v.object({userId: v.id("users"), name: v.string(), email: v.string(), imageUrl: v.optional(v.string()), role: profileRoleValidator, you: v.boolean()})),
   2 * MAX_PROFILE_MEMBERS + 2,
 );
 

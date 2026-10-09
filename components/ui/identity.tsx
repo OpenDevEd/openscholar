@@ -3,7 +3,7 @@
 // A person or an organization looks the same wherever one is listed: their photo or logo,
 // their name with You beside yours, and a role as its icon and its name.
 
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentProps, ComponentType, ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Crown, Eye, Mail, MessageSquare, PenLine, ShieldCheck } from "@/components/icons";
 import { cn } from "@/lib/utils";
@@ -18,11 +18,11 @@ export const ROLE_ICONS = {
 } satisfies Record<string, ComponentType<{ className?: string }>>;
 export type RoleKind = keyof typeof ROLE_ICONS;
 
-/** A role that can't be changed here: its icon, then its name. */
-export function RoleLabel({ role, className, children }: { role: RoleKind; className?: string; children: ReactNode }) {
+/** A role that can't be changed here: its icon, then its name. A tooltip's trigger gives it its handlers and ref. */
+export function RoleLabel({ role, className, children, ...props }: ComponentProps<"span"> & { role: RoleKind }) {
   const Icon = ROLE_ICONS[role];
   return (
-    <span className={cn("inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground", className)}>
+    <span {...props} className={cn("inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground", className)}>
       <Icon className="size-3.5 shrink-0" />
       {children}
     </span>

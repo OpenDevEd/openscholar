@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useUser } from "@clerk/nextjs";
 import {
   Users,
   Plus,
@@ -77,6 +76,8 @@ export type AccessMember = {
   invited: boolean;
   delivery?: "queued" | "sent" | "failed";
   protected?: boolean;
+  /** The person looking at the list, who gets a You chip. */
+  you?: boolean;
 };
 const roleHint: Record<Role, string> = {
   Owner:
@@ -150,7 +151,6 @@ export function TeamAccess({
   onResend: (member: AccessMember) => Promise<void>;
 }) {
   const isProfile = scope === "profile";
-  const { user } = useUser();
   const [pending, setPending] = useState(false);
   const pendingRef = useRef(false);
   async function runChange(action: () => Promise<void>) {
@@ -201,7 +201,7 @@ export function TeamAccess({
             <div className="flex flex-wrap items-center gap-3">
               {member.invited ? <EmailAvatar /> : <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-9" />}
               <div className="min-w-0 flex-1">
-                <PersonName name={member.name} you={!member.invited && member.id === user?.id} className="text-sm font-medium" />
+                <PersonName name={member.name} you={member.you === true} className="text-sm font-medium" />
                 <p className="truncate text-xs text-muted-foreground">
                   {member.email}
                 </p>
