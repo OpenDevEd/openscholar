@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { subMonths, subWeeks, subYears } from "date-fns";
-import { Check, Clock, Folder, LibraryBig, Search, Settings, SlidersHorizontal, Star } from "@/components/icons";
+import { Check, Clock, Folder, FolderPlus, LibraryBig, Plus, Search, Settings, SlidersHorizontal, Star } from "@/components/icons";
+import { TooltipHint } from "@/components/ui/tooltip";
 import type { DateRange } from "react-day-picker";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ interface LibraryFilterContentProps {
   collectionId: string | null;
   onCollectionChange: (id: string | null) => void;
   onManageCollections: () => void;
+  onNewCollection: () => void;
   sort: LibrarySortCombined;
   onSortChange: (value: LibrarySortCombined) => void;
   isMobile: boolean;
@@ -86,6 +88,7 @@ export function LibraryFilterContent({
   collectionId,
   onCollectionChange,
   onManageCollections,
+  onNewCollection,
   sort,
   onSortChange,
   isMobile,
@@ -172,6 +175,7 @@ export function LibraryFilterContent({
         collectionId={collectionId}
         onCollectionChange={onCollectionChange}
         onManageCollections={onManageCollections}
+        onNewCollection={onNewCollection}
         isCollectionActive={isCollectionActive}
       />
 
@@ -280,6 +284,7 @@ const ROW_PX = 38;
 const FULL_PAGE_PX = (PAGE_SIZE + 1) * ROW_PX - 2;
 
 function CollectionFilterSection({
+  onNewCollection,
   collectionId,
   onCollectionChange,
   onManageCollections,
@@ -288,10 +293,12 @@ function CollectionFilterSection({
   collectionId: string | null;
   onCollectionChange: (id: string | null) => void;
   onManageCollections: () => void;
+  onNewCollection: () => void;
   isCollectionActive: boolean;
 }) {
   const workspaceId = useWorkspace();
   const t = useTranslations("libraryPage");
+  const ts = useTranslations("saveToLibrary");
   const [searchQuery, setSearchQuery] = useState("");
   const search = useDebouncedValue(searchQuery.trim(), 300);
   const { data: totalCollections } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
@@ -310,15 +317,32 @@ function CollectionFilterSection({
         isCollectionActive ? () => onCollectionChange(null) : undefined
       }
       headerAction={
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={onManageCollections}
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-        >
-          <Settings className="h-3.5 w-3.5" />
-        </Button>
+        <>
+          <TooltipHint label={ts("newCollection")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={ts("newCollection")}
+              onClick={onNewCollection}
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            >
+              <FolderPlus className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipHint>
+          <TooltipHint label={t("manageCollections")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t("manageCollections")}
+              onClick={onManageCollections}
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipHint>
+        </>
       }
     >
       <div className="space-y-2">
@@ -338,7 +362,8 @@ function CollectionFilterSection({
         {/* Vertical list */}
         <div
           className={cn("space-y-0.5", collections.isStale && "pointer-events-none opacity-60")}
-          style={showPagination ? { minHeight: FULL_PAGE_PX } : undefined}
+          // A full page's height while there are pages; while the first loads, the rows the count says it will have.
+          style={showPagination ? { minHeight: FULL_PAGE_PX } : collections.isLoading && totalCollections ? { minHeight: (Math.min(totalCollections, PAGE_SIZE) + 1) * ROW_PX - 2 } : undefined}
         >
           {/* "All" row — first on page 1, hidden when searching */}
           {!hasSearch && collections.page === 1 && (
@@ -386,6 +411,9 @@ function CollectionFilterSection({
             <p className="text-xs text-muted-foreground">
               {t("noCollections")}
             </p>
+            <Button type="button" variant="outline" size="sm" className="mt-2.5 h-8 rounded-lg" onClick={onNewCollection}>
+              <Plus /> {ts("newCollection")}
+            </Button>
           </div>
         )}
       </div>
