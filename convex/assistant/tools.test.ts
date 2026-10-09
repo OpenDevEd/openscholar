@@ -30,6 +30,7 @@ import { personalWorkspaceOf } from "../workspaces/actor";
 import { ensureWorkspace } from "../workspaces/create";
 import { ownActor } from "../workspaces/actor.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
 type Sent = Array<{ role: string; content: string | Part[] }>;
@@ -270,7 +271,7 @@ describe("the assistant's tools", () => {
     // A library that follows the first collection.
     await t.run(async (ctx) => {
       const organizationId = (await ctx.db.query("organizations").first())!._id;
-      const libraryId = await ctx.db.insert("evidenceLibraries", { organizationId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+      const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Library", slug: "library", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("evidenceLibraryCollectionSources", { libraryId, collectionId: followed, connectedByClerkUserId: "ada", connectedAt: 1 });
     });
     const collected = () => t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").collect()).map((row) => row.collectionId));
@@ -623,7 +624,7 @@ describe("the assistant's tools", () => {
     const { id: followed } = await asAda.mutation(api.library.collections.createCollection, { name: "Published" });
     await t.run(async (ctx) => {
       const organizationId = (await ctx.db.query("organizations").first())!._id;
-      const libraryId = await ctx.db.insert("evidenceLibraries", { organizationId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 });
+      const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Library", slug: "library", state: "active", createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("evidenceLibraryCollectionSources", { libraryId, collectionId: followed, connectedByClerkUserId: "ada", connectedAt: 1 });
     });
     mockDoStream.mockImplementationOnce(

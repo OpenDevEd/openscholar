@@ -5,6 +5,7 @@ import { convexTest } from "convex-test";
 import { expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 const modules = import.meta.glob("/convex/**/*.ts");
 
 async function setupCatalog() {
@@ -16,7 +17,7 @@ async function setupCatalog() {
     }
     const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: "org_catalog", evidenceLibrariesEnabled: true, name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
     await ctx.db.insert("organizationMemberships", {organizationId, clerkMembershipId: "membership", clerkUserId: "library-owner", role: "org:admin", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
-    const libraryId = await ctx.db.insert("evidenceLibraries", {organizationId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "library-owner", updatedByClerkUserId: "library-owner", createdAt: 1, updatedAt: 1});
+    const libraryId = await ctx.db.insert("evidenceLibraries", {workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Library", slug: "library", state: "active", createdByClerkUserId: "library-owner", updatedByClerkUserId: "library-owner", createdAt: 1, updatedAt: 1});
     await ctx.db.insert("evidenceLibraryCredentials", {libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: createHash("sha256").update("els_" + "a".repeat(43)).digest("hex"), validationState: "valid", createdByClerkUserId: "library-owner", updatedByClerkUserId: "library-owner", createdAt: 1, updatedAt: 1});
     return libraryId;
   });

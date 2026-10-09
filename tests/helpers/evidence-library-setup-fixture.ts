@@ -1,6 +1,7 @@
 import { seedFeatureUser } from "../../convex/organizationFeatures.test-support";
 import { convexTest } from "convex-test";
 import type { Id } from "../../convex/_generated/dataModel";
+import type { QueryCtx } from "../../convex/_generated/server";
 import { api, internal } from "../../convex/_generated/api";
 
 export const TEST_RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"e".repeat(64)}`;
@@ -283,4 +284,12 @@ export async function createReadySetupFixture(suffix: string) {
     },
   );
   return fixture;
+}
+
+/** The organization whose workspace a library is in. */
+export async function organizationOfLibrary(ctx: Pick<QueryCtx, "db">, libraryId: Id<"evidenceLibraries">) {
+  const library = (await ctx.db.get("evidenceLibraries", libraryId))!;
+  const workspace = (await ctx.db.get("workspaces", library.workspaceId))!;
+  if (workspace.kind !== "organization") throw new Error("Not an organization's library");
+  return workspace.organizationId;
 }

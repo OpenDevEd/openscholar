@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import { expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 const modules = import.meta.glob("/convex/**/*.ts");
 
 it("keeps associations tenant scoped and does not let old retries restore removed works", async () => {
@@ -12,7 +13,7 @@ it("keeps associations tenant scoped and does not let old retries restore remove
     await seedOrganizationFeatures(ctx, ["profile-owner"], { authors: true });
     await ctx.db.insert("users", {clerkId: "profile-owner", email: "owner@example.org", state: "active", createdAt: 1, updatedAt: 1});
     const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: "org_library", evidenceLibrariesEnabled: true, name: "Library team", slug: "library-team", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
-    const libraryId = await ctx.db.insert("evidenceLibraries", {organizationId, name: "Learning", slug: "learning", state: "active", createdByClerkUserId: "library-owner", updatedByClerkUserId: "library-owner", createdAt: 1, updatedAt: 1});
+    const libraryId = await ctx.db.insert("evidenceLibraries", {workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Learning", slug: "learning", state: "active", createdByClerkUserId: "library-owner", updatedByClerkUserId: "library-owner", createdAt: 1, updatedAt: 1});
     await ctx.db.insert("evidenceLibraryCredentials", {libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: "correct-digest", validationState: "valid", createdByClerkUserId: "library-owner", updatedByClerkUserId: "library-owner", createdAt: 1, updatedAt: 1});
     return libraryId;
   });

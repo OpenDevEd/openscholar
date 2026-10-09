@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { convexTest } from "convex-test";
 import { afterEach, expect, it, vi } from "vitest";
 import schema from "../../schema";
+import { organizationWorkspaceOf } from "../../workspaces/personal";
 const modules = import.meta.glob("/convex/**/*.ts");
 const token = "els_" + "a".repeat(43);
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
@@ -12,7 +13,7 @@ async function setup() {
   const t = convexTest(schema, modules);
   const libraryId = await t.run(async ctx => {
     const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: "digest-org", evidenceLibrariesEnabled: true, name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
-    const libraryId = await ctx.db.insert("evidenceLibraries", {organizationId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1});
+    const libraryId = await ctx.db.insert("evidenceLibraries", {workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Library", slug: "library", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1});
     await ctx.db.insert("evidenceLibraryCredentials", {libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: createHash("sha256").update(token).digest("hex"), validationState: "valid", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1});
     return libraryId;
   });

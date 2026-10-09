@@ -6,6 +6,7 @@ import schema from "../schema";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
 import { readLibraryRole } from "./access";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -18,10 +19,10 @@ it("makes the person whose own workspace a library is in its owner, and an organ
     const team = await seedOrganizationFeatures(ctx, ["ada", "ben"], { evidenceLibraries: true });
     const admin = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", team).eq("clerkUserId", "ada").eq("state", "active")).unique();
     await ctx.db.patch("organizationMemberships", admin!._id, { role: "org:admin" });
-    const base = { organizationId: team, state: "active" as const, createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 };
+    const base = { state: "active" as const, createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 };
     const mine = (await ctx.db.get("evidenceLibraries", await ctx.db.insert("evidenceLibraries", { ...base, name: "Mine", slug: "mine", workspaceId: await personalWorkspaceOf(ctx, ada) })))!;
     await ctx.db.insert("evidenceLibraryMembers", { libraryId: mine._id, clerkUserId: "ben", role: "editor", grantedBy: "ada", grantedAt: 1 });
-    const theirs = (await ctx.db.get("evidenceLibraries", await ctx.db.insert("evidenceLibraries", { ...base, name: "Team", slug: "team" })))!;
+    const theirs = (await ctx.db.get("evidenceLibraries", await ctx.db.insert("evidenceLibraries", { ...base, name: "Team", slug: "team", workspaceId: await organizationWorkspaceOf(ctx, team) })))!;
     const roles = {
       mine: [await readLibraryRole(ctx, mine, "ada"), await readLibraryRole(ctx, mine, "ben")],
       team: [await readLibraryRole(ctx, theirs, "ada"), await readLibraryRole(ctx, theirs, "ben")],

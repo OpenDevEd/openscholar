@@ -296,7 +296,6 @@ import type * as migrations_billingWorkspaces from "../migrations/billingWorkspa
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
 import type * as migrations_countBillingUsage from "../migrations/countBillingUsage.js";
-import type * as migrations_evidenceLibraryWorkspaces from "../migrations/evidenceLibraryWorkspaces.js";
 import type * as migrations_expireInvitations from "../migrations/expireInvitations.js";
 import type * as migrations_extractionAnswers from "../migrations/extractionAnswers.js";
 import type * as migrations_extractionEvidence from "../migrations/extractionEvidence.js";
@@ -312,6 +311,7 @@ import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibrar
 import type * as migrations_narrowAssistant from "../migrations/narrowAssistant.js";
 import type * as migrations_narrowJobs from "../migrations/narrowJobs.js";
 import type * as migrations_narrowLibrary from "../migrations/narrowLibrary.js";
+import type * as migrations_narrowLibraries from "../migrations/narrowLibraries.js";
 import type * as migrations_narrowResearch from "../migrations/narrowResearch.js";
 import type * as migrations_paperMetadata from "../migrations/paperMetadata.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
@@ -699,7 +699,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
   "migrations/countBillingUsage": typeof migrations_countBillingUsage;
-  "migrations/evidenceLibraryWorkspaces": typeof migrations_evidenceLibraryWorkspaces;
   "migrations/expireInvitations": typeof migrations_expireInvitations;
   "migrations/extractionAnswers": typeof migrations_extractionAnswers;
   "migrations/extractionEvidence": typeof migrations_extractionEvidence;
@@ -715,6 +714,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/narrowAssistant": typeof migrations_narrowAssistant;
   "migrations/narrowJobs": typeof migrations_narrowJobs;
   "migrations/narrowLibrary": typeof migrations_narrowLibrary;
+  "migrations/narrowLibraries": typeof migrations_narrowLibraries;
   "migrations/narrowResearch": typeof migrations_narrowResearch;
   "migrations/paperMetadata": typeof migrations_paperMetadata;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;

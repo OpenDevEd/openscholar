@@ -8,6 +8,7 @@ import { generateOpaqueToken } from "../lib/opaqueToken";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { seedTopicLibrary } from "../../tests/helpers/topic-library-fixture";
 import { READER_DELETION_MAX_ATTEMPTS } from "./readerDeletions";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const encryptionKey = "ab".repeat(32);
@@ -97,7 +98,7 @@ describe("deleting an OpenScholar account", () => {
         state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1,
       });
       await ctx.db.insert("evidenceLibraries", {
-        organizationId, name: "Draft", slug: "draft", state: "active",
+        workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Draft", slug: "draft", state: "active",
         createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1,
       });
     });

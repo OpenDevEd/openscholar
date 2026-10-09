@@ -23,6 +23,7 @@ import { searchTextOf } from "../screening/mutations";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { screeningInputs } from "../extraction/sources/screening.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
+import { organizationOfLibrary } from "../../tests/helpers/evidence-library-setup-fixture";
 
 /** seedLibrary's papers: rating (i % 5) + 1, published 1990 + (i % 35), saved at 1_700_000_000_000 + i, all in its collection. */
 const seededLibrary = (items: number) => Array.from({ length: items }, (_, i) => ({ rating: (i % 5) + 1, year: 1990 + (i % 35), savedAt: 1_700_000_000_000 + i }));
@@ -268,7 +269,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
       const { section, operation, organizationId } = await fixture.t.run(async (ctx) => ({
         section: (await ctx.db.query("evidenceLibraryConfigSections").withIndex("by_libraryId_and_kind_and_sectionKey", (q) => q.eq("libraryId", libraryId).eq("kind", "revision").eq("sectionKey", "identity")).first())!,
         operation: (await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_createdAt", (q) => q.eq("libraryId", libraryId)).first())!,
-        organizationId: (await ctx.db.get("evidenceLibraries", libraryId))!.organizationId,
+        organizationId: await organizationOfLibrary(ctx, libraryId),
       }));
       const strip = <T extends { _id: unknown; _creationTime: unknown }>({ _id, _creationTime, ...doc }: T) => doc;
       // Sources revisions about 20 KB each, as a long-lived library's grow: 20 MB together.

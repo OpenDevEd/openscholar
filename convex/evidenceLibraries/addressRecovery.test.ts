@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import { createDeployedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 describe("Evidence Library move candidates", () => {
   beforeEach(() => {
@@ -34,7 +35,7 @@ describe("Evidence Library move candidates", () => {
     const fixture = await createDeployedSetupFixture("move-candidates-taken");
     await fixture.t.run(async (ctx) => {
       const other = await ctx.db.insert("evidenceLibraries", {
-        organizationId: fixture.organizationId,
+        workspaceId: await organizationWorkspaceOf(ctx, fixture.organizationId),
         name: "Other library",
         slug: "other-library",
         state: "active",

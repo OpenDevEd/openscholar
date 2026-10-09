@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 import schema from "../schema";
 
 import { requireEvidenceLibraryAccess } from "./access";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 describe("library access", () => {
   async function seedMembership(
@@ -54,7 +55,7 @@ describe("library access", () => {
         evidenceLibrariesEnabled: true,
       });
       const crossTenantLibraryId = await ctx.db.insert("evidenceLibraries", {
-        organizationId: otherOrganizationId,
+        workspaceId: await organizationWorkspaceOf(ctx, otherOrganizationId),
         name: "Other Library",
         slug: "other-library",
         state: "active",
@@ -64,7 +65,7 @@ describe("library access", () => {
         updatedAt: 1,
       });
       const missingLibraryId = await ctx.db.insert("evidenceLibraries", {
-        organizationId: otherOrganizationId,
+        workspaceId: await organizationWorkspaceOf(ctx, otherOrganizationId),
         name: "Deleted Library",
         slug: "deleted-library",
         state: "active",
