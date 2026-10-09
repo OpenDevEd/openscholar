@@ -1402,6 +1402,7 @@
     "byMeaningNoAI": "Une question par le sens est cherchée telle que vous l'écrivez : l'IA qui réécrit et traduit les mots-clés est désactivée.",
     "closestOf": "les plus proches sur {total, number}",
     "moreLikeRated": "D'autres comme {count, plural, one {l'article noté} other {les # articles notés}}",
+    "moreLikeRatedFirst": "D'autres comme les {count} premiers articles notés",
     "askAI": "Demander à l'IA",
     "translate": "Traduire",
     "clearLanguage": "Effacer la langue",

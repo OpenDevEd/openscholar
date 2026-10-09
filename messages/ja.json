@@ -1402,6 +1402,7 @@
     "byMeaningNoAI": "意味による質問は書いたとおりに検索されるため、キーワードを書き換え・翻訳する AI はオフです。",
     "closestOf": "件が最も近い（全 {total, number} 件中）",
     "moreLikeRated": "評価した {count} 件の論文に似たものをさらに",
+    "moreLikeRatedFirst": "評価した論文のうち最初の {count} 件に似たものをさらに",
     "askAI": "AIに聞く",
     "translate": "翻訳",
     "clearLanguage": "言語をクリア",

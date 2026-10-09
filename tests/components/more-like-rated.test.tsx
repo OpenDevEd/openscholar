@@ -51,6 +51,15 @@ describe("more like the papers rated", () => {
     expect(new URL(String(push.mock.calls[0]?.[0]), "https://openscholar.test").searchParams.get("like")).toBe("OS1");
   });
 
+  it("says when it finds more like only the first hundred of them, as a search takes no more", () => {
+    results.current = Array.from({ length: 105 }, (_, at) => ({ id: `https://openscholar.ai/OS${at + 1}` }));
+    ratings.current = Object.fromEntries(results.current.map((paper) => [paper.id, 5]));
+    render(<MoreLikeRated />);
+    screen.getByRole("button", { name: 'moreLikeRatedFirst:{"count":100}' }).click();
+    const like = new URL(String(push.mock.calls[0]?.[0]), "https://openscholar.test").searchParams.get("like")?.split(",");
+    expect([like?.length, like?.[0], like?.at(-1)]).toEqual([100, "OS1", "OS100"]);
+  });
+
   it("offers nothing when no result shown is rated 4 or 5", () => {
     results.current = [{ id: "https://openscholar.ai/OS1" }];
     ratings.current = { "https://openscholar.ai/OS1": 3 };

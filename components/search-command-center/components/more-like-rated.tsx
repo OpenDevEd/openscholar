@@ -10,7 +10,7 @@ import { useTranslations } from "next-intl";
 import { Sparkles } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useSearchOptional } from "@/lib/search";
-import { createSimilarSearch } from "@/lib/search/actions";
+import { createSimilarSearch, MAX_SIMILAR_PAPERS } from "@/lib/search/actions";
 import { useRatingsStore } from "@/lib/store";
 import { ratingFilterKeeps } from "@/lib/utils";
 
@@ -29,16 +29,18 @@ export function MoreLikeRated() {
     .filter((paper) => (ratings[paper.id] ?? 0) >= LIKED_RATING && ratingFilterKeeps(ratings[paper.id], [rmin, rmax], rated))
     .map((paper) => paper.id);
   if (liked.length === 0) return null;
+  // A search is like at most a hundred papers: the first in the list's order, as the label then says.
+  const seeds = liked.slice(0, MAX_SIMILAR_PAPERS);
   return (
     <Button
       type="button"
       variant="ghost"
       size="sm"
       className="h-8 gap-1.5 px-2 text-muted-foreground hover:text-foreground"
-      onClick={() => router.push(createSimilarSearch(liked).url)}
+      onClick={() => router.push(createSimilarSearch(seeds).url)}
     >
       <Sparkles className="h-3.5 w-3.5" />
-      {t("moreLikeRated", { count: liked.length })}
+      {t(liked.length > seeds.length ? "moreLikeRatedFirst" : "moreLikeRated", { count: seeds.length })}
     </Button>
   );
 }
