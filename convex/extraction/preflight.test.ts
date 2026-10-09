@@ -148,6 +148,7 @@ describe("startJob — pre-flight credit check", () => {
     expect(job?.status).toBe("pending");
     // In the workspace it was started in, as its starter's (#650).
     expect(job).toMatchObject({ workspaceId: await t.run((ctx) => personalWorkspaceOf(ctx, userId)), createdBy: userId });
+    expect(job).not.toHaveProperty("userId");
     await expectQueueSetupScheduled(t);
   });
 

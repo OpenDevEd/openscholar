@@ -135,7 +135,6 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
 
   const now = Date.now();
   const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
-    userId,
     workspaceId,
     createdBy: userId,
     name: args.name,
