@@ -302,7 +302,6 @@ import type * as migrations_extractionEvidence from "../migrations/extractionEvi
 import type * as migrations_extractionFacets from "../migrations/extractionFacets.js";
 import type * as migrations_extractionSearch from "../migrations/extractionSearch.js";
 import type * as migrations_forgetPersonCounts from "../migrations/forgetPersonCounts.js";
-import type * as migrations_libraryFacets from "../migrations/libraryFacets.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
 import type * as migrations_organizationCustomers from "../migrations/organizationCustomers.js";
 import type * as migrations_pagedAccountLists from "../migrations/pagedAccountLists.js";
@@ -310,6 +309,7 @@ import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtract
 import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryList.js";
 import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
 import type * as migrations_paperMetadata from "../migrations/paperMetadata.js";
+import type * as migrations_placeRatings from "../migrations/placeRatings.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_removeOrphanLibraryAccess from "../migrations/removeOrphanLibraryAccess.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
@@ -703,7 +703,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/extractionFacets": typeof migrations_extractionFacets;
   "migrations/extractionSearch": typeof migrations_extractionSearch;
   "migrations/forgetPersonCounts": typeof migrations_forgetPersonCounts;
-  "migrations/libraryFacets": typeof migrations_libraryFacets;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
   "migrations/organizationCustomers": typeof migrations_organizationCustomers;
   "migrations/pagedAccountLists": typeof migrations_pagedAccountLists;
@@ -711,6 +710,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedLibraryList": typeof migrations_pagedLibraryList;
   "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
   "migrations/paperMetadata": typeof migrations_paperMetadata;
+  "migrations/placeRatings": typeof migrations_placeRatings;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/removeOrphanLibraryAccess": typeof migrations_removeOrphanLibraryAccess;
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;

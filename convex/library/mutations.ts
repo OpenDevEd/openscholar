@@ -16,7 +16,7 @@ import { addCollectionMembership, livePlaces, removeCollectionMembership } from 
 import { followed, inFollowedCollection } from "./followed";
 import { authorDisplay, mergePaperMetadata } from "../../lib/library/paper-metadata";
 import { MAX_AUTHORS } from "../lib/listCaps";
-import { personalRatingRow, rateItem, requireRating, rerate as rerateCopy, rerateMemberStep, setPersonalRating } from "../ratings";
+import { personalRatingRow, rateItem, ratingOrNone, requireRating, rerate as rerateCopy, rerateMemberStep, setPersonalRating } from "../ratings";
 
 /** What the library keeps about a paper, apart from its rating. */
 export const libraryPaper = v.object({
@@ -38,7 +38,6 @@ export const libraryPaper = v.object({
 });
 
 const ratingArg = v.number();
-const ratingOrNone = v.union(ratingArg, v.null());
 /** A paper already in the library, named by its ID alone. `savedAt` says which save it should be: a paper removed and saved afresh has a later one. */
 const savedPaper = v.object({ openalexId: v.string(), savedAt: v.optional(v.number()) });
 /**
@@ -375,12 +374,12 @@ export const removeFromLibrary = userMutation(removeFromLibraryAction);
 export const removeFromLibraryForAssistant = assistantMutation(removeFromLibraryAction);
 
 /** Moves the next batch of a removed paper's places into its removal, until none are left. */
-/** Brings an organization's copy of a paper in step with its members' ratings (../ratings.ts). */
+/** Brings an organization's copy of a paper, or its place in a collection, in step with its members' ratings (../ratings.ts). */
 export const rerate = internalMutation({
-  args: { workspaceId: v.id("workspaces"), paperId: v.string() },
+  args: { workspaceId: v.id("workspaces"), paperId: v.string(), collectionId: v.optional(v.id("collections")) },
   returns: v.null(),
-  handler: async (ctx, { workspaceId, paperId }) => {
-    await rerateCopy(ctx, workspaceId, paperId);
+  handler: async (ctx, { workspaceId, paperId, collectionId }) => {
+    await rerateCopy(ctx, workspaceId, paperId, collectionId);
     return null;
   },
 });

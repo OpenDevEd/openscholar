@@ -10,6 +10,7 @@ import { createError } from "../lib/errors";
 import { planLimit } from "../billing/accounts";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
+import { collectionRatingRow, placeOf, purgeCollectionRatings, ratingOrNone, requireRating, setCollectionRating as setRating } from "../ratings";
 import { followed } from "./followed";
 import { copyFacetBatch } from "./facets";
 import { collectionSortName } from "./sortName";
@@ -63,6 +64,7 @@ const RENAME = "library/collections:renameCollection" as const;
 const DELETE = "library/collections:deleteCollection" as const;
 const ADD = "library/collections:addToCollection" as const;
 const REMOVE = "library/collections:removeFromCollection" as const;
+const RATE = "library/collections:setCollectionRating" as const;
 const RETURNS_UNDO = "A change returns `undo`: the action to run and the arguments to run it with to put things back. It is refused if the collection changed again in between.";
 
 /** The workspace's collection, or the reason it can't be used. */
@@ -125,14 +127,15 @@ export const renameCollectionForAssistant = assistantMutation(renameCollectionAc
 /** Memberships one transaction deletes of a collection being deleted. */
 const MEMBERSHIP_DELETE_BATCH = 2_000;
 
-/** Deletes a batch of a deleted collection's memberships; says whether more are left. */
+/** Deletes a batch of a deleted collection's memberships, then of its ratings; says whether more are left. */
 async function deleteMembershipBatch(ctx: MutationCtx, collectionId: Id<"collections">) {
   const memberships = await ctx.db
     .query("libraryItemCollections")
     .withIndex("by_collection", (q) => q.eq("collectionId", collectionId))
     .take(MEMBERSHIP_DELETE_BATCH);
   for (const membership of memberships) await ctx.db.delete("libraryItemCollections", membership._id);
-  return memberships.length === MEMBERSHIP_DELETE_BATCH;
+  if (memberships.length === MEMBERSHIP_DELETE_BATCH) return true;
+  return !(await purgeCollectionRatings(ctx, collectionId, MEMBERSHIP_DELETE_BATCH));
 }
 
 /** Gives the next batch of a paper's memberships its changed fields (convex/library/facets.ts). */
@@ -156,6 +159,38 @@ export const deleteMemberships = internalMutation({
     return null;
   },
 });
+
+export const setCollectionRatingAction = defineUserMutation({
+  path: RATE,
+  description:
+    "Sets the person's rating, from 0 to 5, of a paper within one of the organization's collections, by its library item ID, or removes it (null). " +
+    "The organization's members see each other's ratings there, and the collection sorts and filters by their average. The person's own rating of the paper, the same everywhere, stays as it is. " +
+    "A collection in the person's own workspace has no ratings of its own: library/mutations:setLibraryRating rates the paper there. " +
+    "A change returns `undo`, which puts the rating back. It is refused if the rating changed again in between.",
+  // `expect` is the person's rating there as it should be now: a change since then refuses this one.
+  args: { collectionId: v.id("collections"), libraryItemId: v.id("libraryItems"), rating: ratingOrNone, expect: v.optional(ratingOrNone) },
+  returns: v.object({ undo: reversedBy(RATE, { collectionId: v.id("collections"), libraryItemId: v.id("libraryItems"), rating: ratingOrNone, expect: ratingOrNone }) }),
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: true,
+  run: async (ctx, { userId, workspaceId }, { collectionId, libraryItemId, rating, expect }) => {
+    if (rating !== null) requireRating(rating);
+    await ownCollection(ctx, workspaceId, collectionId);
+    if ((await ctx.db.get("workspaces", workspaceId))?.kind !== "organization") {
+      throw createError("VALIDATION_ERROR", "A collection in the person's own workspace has no ratings of its own: rate the paper with library/mutations:setLibraryRating.");
+    }
+    const item = await ctx.db.get("libraryItems", libraryItemId);
+    const place = item && (await placeOf(ctx, collectionId, libraryItemId));
+    if (!item || !place) throw createError("NOT_FOUND", "This paper isn't in the collection.");
+    const was = (await collectionRatingRow(ctx, userId, collectionId, item.openalexId))?.rating ?? null;
+    if (expect !== undefined && was !== expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
+    if (was === rating) return {};
+    await setRating(ctx, userId, place, item, rating);
+    return { undo: { path: RATE, args: { collectionId, libraryItemId, rating: was, expect: rating } } };
+  },
+});
+export const setCollectionRating = userMutation(setCollectionRatingAction);
+export const setCollectionRatingForAssistant = assistantMutation(setCollectionRatingAction);
 
 export const deleteCollectionAction = defineUserMutation({
   path: DELETE,

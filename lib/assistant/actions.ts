@@ -42,6 +42,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "library/mutations:setPaperInCollection#out": { kind: "collection", words: "collectOut" },
   "library/collections:addToCollection": { kind: "collection", words: "collectIn" },
   "library/collections:removeFromCollection": { kind: "collection", words: "collectOut" },
+  "library/collections:setCollectionRating": { kind: "paper", words: "rate" },
   "library/collections:listCollections": { kind: "collection", words: "collections" },
   "library/collections:getCollection": { kind: "collection", words: "collection" },
   "library/collections:createCollection": { kind: "collection", words: "newCollection" },

@@ -1273,7 +1273,7 @@ export default defineSchema({
   // LIBRARY ITEM COLLECTIONS - Junction table for many-to-many
   // ═══════════════════════════════════════════════════════════════
   // Each carries its paper's sort and filter fields (convex/library/facets.ts), so a collection's
-  // view reads its own index; optional until migrations/libraryFacets has run.
+  // view reads its own index. One inserted without them gets them from its trigger.
   libraryItemCollections: defineTable({
     collectionId: v.id("collections"),
     libraryItemId: v.id("libraryItems"),

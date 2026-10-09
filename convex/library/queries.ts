@@ -202,8 +202,11 @@ async function ownCollection(ctx: QueryCtx, workspaceId: Id<"workspaces">, colle
 /** Which of these papers are in the collection: one point read each. */
 async function inThatCollection(ctx: QueryCtx, collectionId: Id<"collections">, items: LibraryItem[]) {
   const kept = await Promise.all(items.map((item) => ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", collectionId).eq("libraryItemId", item._id)).unique()));
-  return items.filter((_, at) => kept[at] !== null);
+  return items.flatMap((item, at) => (kept[at] ? [inPlace(item, kept[at])] : []));
 }
+
+/** A paper as a collection lists it: with the rating it has there, which in an organization is the collection's own (../ratings.ts). */
+const inPlace = (item: LibraryItem, place: Doc<"libraryItemCollections">): LibraryItem => ({ ...item, rating: place.rating });
 
 /** The workspace's papers matching a text search, most relevant first. */
 async function searchLibraryItems(ctx: QueryCtx, workspaceId: Id<"workspaces">, searchText: string): Promise<LibraryItem[]> {
@@ -249,8 +252,8 @@ export async function readLibraryPage(ctx: QueryCtx, workspaceId: Id<"workspaces
   if (view.searchText !== undefined) {
     const searchText = view.searchText.trim();
     if (!searchText) return emptyPage;
-    const found = (await searchLibraryItems(ctx, workspaceId, searchText)).filter((item) => matchesLibraryFilters(item, view));
-    const items = collection ? await inThatCollection(ctx, collection._id, found) : found;
+    const found = await searchLibraryItems(ctx, workspaceId, searchText);
+    const items = (collection ? await inThatCollection(ctx, collection._id, found) : found).filter((item) => matchesLibraryFilters(item, view));
     return paginateLibraryItems(
       sortLibraryItems(items, view.sortBy, view.sortOrder),
       // Every match is read anyway, so a caller may take them all in one page.
@@ -262,7 +265,10 @@ export async function readLibraryPage(ctx: QueryCtx, workspaceId: Id<"workspaces
   if (collection) {
     // Each membership joined to its paper, whose bytes count toward the page's.
     const memberships = along(ctx, { collectionId: collection._id }, view.sortBy, view.sortOrder, view) as unknown as QueryStream<Doc<"libraryItemCollections">>;
-    return (await new JoinStream(memberships, (membership) => ctx.db.get("libraryItems", membership.libraryItemId))
+    return (await new JoinStream(memberships, async (membership) => {
+      const item = await ctx.db.get("libraryItems", membership.libraryItemId);
+      return item && inPlace(item, membership);
+    })
       .paginate({ ...page, maximumRowsRead: FILTERED_PAGE_ROWS, maximumBytesRead: FILTERED_BYTES })) as LibraryPage;
   }
   if (!hasNonCollectionLibraryFilters(view)) {
@@ -341,8 +347,7 @@ async function countLibraryView(ctx: QueryCtx, workspaceId: Id<"workspaces">, ar
   const searchText = args.searchText?.trim();
   if (searchText) {
     const found = await searchLibraryItems(ctx, workspaceId, searchText);
-    const matching = found.filter((item) => matchesLibraryFilters(item, args));
-    const count = (collection ? await inThatCollection(ctx, collection._id, matching) : matching).length;
+    const count = (collection ? await inThatCollection(ctx, collection._id, found) : found).filter((item) => matchesLibraryFilters(item, args)).length;
     return { count, capped: found.length === SEARCH_RESULTS_MAX };
   }
 
