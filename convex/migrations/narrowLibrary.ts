@@ -26,7 +26,7 @@ export const removals = migrations.define({
   batchSize: 5,
   migrateOne: (_ctx, row) => (row.userId === undefined ? undefined : { userId: undefined, ...(row.item.createdBy ? {} : { item: { ...row.item, createdBy: row.userId } }) }),
 });
-export const collections = migrations.define({ table: "collections", migrateOne: (_ctx, row) => cleared(row) });
+export const collections = migrations.define({ table: "collections", batchSize: 25, migrateOne: (_ctx, row) => cleared(row) });
 export const places = migrations.define({ table: "libraryItemCollections", batchSize: 200, migrateOne: (_ctx, row) => cleared(row) });
 export const libraryCounts = migrations.define({ table: "libraryCounts", migrateOne: (_ctx, row) => cleared(row) });
 export const collectionCounts = migrations.define({ table: "collectionCounts", migrateOne: (_ctx, row) => cleared(row) });
