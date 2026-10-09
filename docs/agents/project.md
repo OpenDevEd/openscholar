@@ -144,7 +144,8 @@ settings, so every change to its shape ships a migration.
 - For `app/` or `components/` work, prove the change with `npm run verify`
   (the `verify` skill): `up --prod`, `shift <route>` with a `--do` step for
   each changed interaction, look at the screenshots, then `down`. A stop hook
-  sends an agent back while a changed page has no passing `shift`.
+  on the user's machine sends an agent back while a changed page has no
+  passing `shift`.
 - GitHub CI runs the pre-merge suite. Tests tagged `size` run nightly.
 - Convex and plain test files share modules within a Vitest worker, so a test
   can't count on a fresh module. A file that calls `vi.mock`, itself or through

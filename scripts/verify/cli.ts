@@ -21,7 +21,21 @@ const VERIFY_USER = "verify-agent+clerk_test@example.com";
 // anything a page marks with data-verify-ignore.
 const ALWAYS_ALLOWED = ["[role=progressbar]", "[data-verify-ignore]", "nextjs-portal"];
 
-type Server = { pid: number; port: number; url: string; mode: "dev" | "prod"; log: string; opened?: boolean };
+type Server = { pid: number; port: number; url: string; mode: "dev" | "prod"; log: string; opened?: boolean; fingerprint?: string };
+
+// Files that never reach the built app; `next dev` itself rewrites AGENTS.md.
+const NOT_BUILT = [":!*.md", ":!docs", ":!plans", ":!tests", ":!e2e", ":!scripts", ":!.agents", ":!.claude"];
+
+/** What the working tree holds that a production build bakes in: the commit, uncommitted changes and untracked files. */
+function fingerprint(): string {
+  const hash = createHash("sha1").update(git(["rev-parse", "HEAD"]));
+  hash.update(execFileSync("git", ["diff", "HEAD", "--", ".", ...NOT_BUILT], { cwd: ROOT }));
+  for (const name of git(["ls-files", "--others", "--exclude-standard", "--", ".", ...NOT_BUILT]).split("\n").filter(Boolean).sort()) {
+    hash.update(name);
+    if (existsSync(path.join(ROOT, name))) hash.update(readFileSync(path.join(ROOT, name)));
+  }
+  return hash.digest("hex");
+}
 
 function git(args: string[], cwd = ROOT): string {
   return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
@@ -107,6 +121,12 @@ async function running(): Promise<Server | null> {
 async function up(values: { prod?: boolean; open?: boolean }) {
   ensureEnv();
   let server = await running();
+  // A server in the other mode, or a production build older than the code, is replaced.
+  if (server && (server.mode !== (values.prod ? "prod" : "dev") || (server.mode === "prod" && server.fingerprint !== fingerprint()))) {
+    console.log(server.mode === "prod" && values.prod ? "The code changed since the last build; building again." : `Replacing the ${server.mode} server.`);
+    await down();
+    server = null;
+  }
   if (!server) {
     const mode = values.prod ? "prod" : "dev";
     const port = await pickPort();
@@ -123,7 +143,7 @@ async function up(values: { prod?: boolean; open?: boolean }) {
       stdio: ["ignore", out, out],
     });
     child.unref();
-    server = { pid: child.pid!, port, url: `http://localhost:${port}`, mode, log };
+    server = { pid: child.pid!, port, url: `http://localhost:${port}`, mode, log, ...(mode === "prod" ? { fingerprint: fingerprint() } : {}) };
     writeJson(SERVER, server);
     const deadline = Date.now() + 240_000;
     while (true) {
@@ -493,26 +513,29 @@ async function verifyUser(env: Record<string, string>, as?: string): Promise<str
     if (existing.data.length === 0) throw new Error(`No Clerk user ${as} in the development instance.`);
     return as;
   }
-  const user =
-    (await clerk.users.getUserList({ emailAddress: [VERIFY_USER], limit: 1 })).data[0] ??
-    (await clerk.users.createUser({ emailAddress: [VERIFY_USER], firstName: "Verify", lastName: "Agent", skipPasswordRequirement: true }));
+  const existing = (await clerk.users.getUserList({ emailAddress: [VERIFY_USER], limit: 1 })).data[0];
+  const user = existing ?? (await clerk.users.createUser({ emailAddress: [VERIFY_USER], firstName: "Verify", lastName: "Agent", skipPasswordRequirement: true }));
   const memberships = await clerk.users.getOrganizationMembershipList({ userId: user.id, limit: 20 });
   const membership = memberships.data.find((entry) => entry.organization.name === VERIFY_ORGANIZATION.name);
+  const wanted = (metadata: Record<string, unknown> | null | undefined) =>
+    Object.entries(VERIFY_ORGANIZATION.publicMetadata).every(([key, value]) => metadata?.[key] === value);
+  if (existing && membership && wanted(membership.organization.publicMetadata)) return VERIFY_USER;
   if (membership) {
     await clerk.organizations.updateOrganizationMetadata(membership.organization.id, { publicMetadata: VERIFY_ORGANIZATION.publicMetadata });
-    return VERIFY_USER;
-  }
-  const found = (await clerk.organizations.getOrganizationList({ query: VERIFY_ORGANIZATION.name, limit: 10 })).data.find(
-    (organization) => organization.name === VERIFY_ORGANIZATION.name,
-  );
-  if (found) {
-    await clerk.organizations.createOrganizationMembership({ organizationId: found.id, userId: user.id, role: "org:admin" });
-    await clerk.organizations.updateOrganizationMetadata(found.id, { publicMetadata: VERIFY_ORGANIZATION.publicMetadata });
   } else {
-    await clerk.organizations.createOrganization({ ...VERIFY_ORGANIZATION, createdBy: user.id });
+    const found = (await clerk.organizations.getOrganizationList({ query: VERIFY_ORGANIZATION.name, limit: 10 })).data.find(
+      (organization) => organization.name === VERIFY_ORGANIZATION.name,
+    );
+    if (found) {
+      await clerk.organizations.createOrganizationMembership({ organizationId: found.id, userId: user.id, role: "org:admin" });
+      await clerk.organizations.updateOrganizationMetadata(found.id, { publicMetadata: VERIFY_ORGANIZATION.publicMetadata });
+    } else {
+      await clerk.organizations.createOrganization({ ...VERIFY_ORGANIZATION, createdBy: user.id });
+    }
   }
-  console.log(`Set up ${VERIFY_USER} in the "${VERIFY_ORGANIZATION.name}" organization. Give Clerk's webhook a few seconds to reach Convex.`);
-  return VERIFY_USER;
+  // Clerk sends this to Convex by webhook; checking before it lands would test
+  // the "not allowed" page instead of the feature.
+  throw new Error(`Set up ${VERIFY_USER} in the "${VERIFY_ORGANIZATION.name}" organization. Clerk sends it to Convex within a few seconds: run the same command again.`);
 }
 
 type RunOptions = {
@@ -601,6 +624,13 @@ async function runSite(
     page.on("websocket", (socket) => {
       if (!IGNORED_TRAFFIC.test(socket.url())) socket.on("framereceived", () => (activity.last = Date.now()));
     });
+    // An action whose request fails can still leave a page that looks fine.
+    page.on("response", (response) => {
+      const request = response.request();
+      if (response.status() < 500 || !["fetch", "xhr"].includes(request.resourceType()) || new URL(request.url()).origin !== new URL(origin).origin) return;
+      const where = new URL(request.url()).pathname;
+      errors.push({ kind: "http", keys: [`http ${response.status()} ${where}`], line: `a request to ${where} answered HTTP ${response.status()}` });
+    });
     page.on("pageerror", (error) => {
       const message = error.message.split("\n")[0];
       errors.push({ kind: "error", keys: [message], line: `uncaught error: ${message}` });
@@ -677,7 +707,11 @@ async function runSite(
 
 async function drive(target: string, values: Record<string, string | boolean | string[] | undefined>, mode: "shift" | "shot") {
   const server = await running();
-  if (!server) throw new Error("Nothing is running from this worktree. Start it with `npm run verify -- up`.");
+  if (!server) throw new Error("Nothing is running from this worktree. Start it with `npm run verify -- up --prod`.");
+  if (server.mode === "prod" && server.fingerprint !== fingerprint()) {
+    throw new Error("The production build is older than your changes. Run `npm run verify -- up --prod` again, then check.");
+  }
+  if (server.mode === "dev") console.error("This server runs next dev. The final check belongs on `npm run verify -- up --prod`.");
   if (!target.startsWith("/")) throw new Error("Give a path that starts with /, such as /results.");
   const env = ensureEnv();
   Object.assign(process.env, env, { CLERK_PUBLISHABLE_KEY: env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY });
@@ -815,6 +849,8 @@ Options for shift and shot:
   --do "<step>"            Repeat for each action: click <selector>, hover <selector>,
                            fill <selector> <text>, press <key>, wait <ms>, goto <path>.
                            Selectors are Playwright selectors: css, text=..., role=button[name="Save"].
+                           Steps run in each browser and again on the comparison site: keep them
+                           to interactions that save nothing.
   --browser <list>         chromium,firefox (shift default) or one of them.
   --slow <ms>              Delay for every server message (shift default 600, 0 to turn off).
   --allow <selector>       An element whose movement is intended, such as an expanding panel.

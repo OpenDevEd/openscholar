@@ -180,6 +180,14 @@ describe("matchKnown", () => {
     expect(matchKnown([item("shift", ["banner", "card", "footer"])], [item("shift", ["footer", "nav"])])).toEqual([false]);
   });
 
+  it("counts repeated elements, so two identical cards moving here are new when dev moves one", () => {
+    expect(matchKnown([item("shift", ["card", "card"])], [item("shift", ["card"])])).toEqual([false]);
+  });
+
+  it("matches repeated elements that dev moves as many times", () => {
+    expect(matchKnown([item("shift", ["card", "card"])], [item("shift", ["card", "card", "footer"])])).toEqual([true]);
+  });
+
   it("matches flashes and errors only by the same kind and text", () => {
     const local = [item("text-flash", ["12 papers"]), item("error", ["boom"]), item("brief-text", ["12 papers"])];
     const base = [item("text-flash", ["12 papers"]), item("error", ["other"])];

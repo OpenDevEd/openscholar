@@ -153,16 +153,27 @@ export type Item = { kind: string; keys: string[]; line: string };
  * this branch stays new even if it moves elements that already jump there.
  */
 export function matchKnown(local: Item[], base: Item[]): boolean[] {
+  // Keys are counted, not just collected: repeated cards share a key, and two
+  // of them moving here is not one of them moving there.
+  const tally = (keys: string[]) => keys.reduce((counts, key) => counts.set(key, (counts.get(key) ?? 0) + 1), new Map<string, number>());
+  const seen = new Map<string, number>();
+  for (const item of base) for (const [key, count] of tally(item.keys)) seen.set(`${item.kind}|${key}`, (seen.get(`${item.kind}|${key}`) ?? 0) + count);
   const used = new Set<number>();
-  const seen = new Set(base.flatMap((item) => item.keys.map((key) => `${item.kind}|${key}`)));
   return local.map((item) => {
-    if (!item.keys.every((key) => seen.has(`${item.kind}|${key}`))) return false;
+    const counts = tally(item.keys);
+    if ([...counts].some(([key, count]) => (seen.get(`${item.kind}|${key}`) ?? 0) < count)) return false;
     let best = -1;
     let bestScore = 0.5;
     base.forEach((candidate, index) => {
       if (used.has(index) || candidate.kind !== item.kind) return;
-      const shared = item.keys.filter((key) => candidate.keys.includes(key)).length;
-      const score = shared / new Set([...item.keys, ...candidate.keys]).size;
+      const other = tally(candidate.keys);
+      let shared = 0;
+      let union = 0;
+      for (const key of new Set([...counts.keys(), ...other.keys()])) {
+        shared += Math.min(counts.get(key) ?? 0, other.get(key) ?? 0);
+        union += Math.max(counts.get(key) ?? 0, other.get(key) ?? 0);
+      }
+      const score = shared / union;
       if (score >= bestScore) {
         best = index;
         bestScore = score;

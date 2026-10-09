@@ -23,9 +23,9 @@ npm run verify -- skip "<reason>"    # record why a change needs no browser chec
 
 ## How to prove a change
 
-1. `up --prod`. Use plain `up` (next dev) only while iterating; `shift` compares with the production build on dev.openscholar.ai, and dev mode's slower hydration shows problems production doesn't have.
-2. Run `shift` on every route your change affects. Add a `--do` step for each interaction you changed: the dialog you made, the tab you restyled, the filter you added. Steps are `click`, `hover`, `fill <selector> <text>`, `press <key>`, `wait <ms>`, `goto <path>`, with Playwright selectors (`text=Save`, `role=button[name="Save"]`, CSS).
-3. Fix every problem listed under `Fail`, then run `shift` again. After a code change on a `--prod` server, run `down` and `up --prod` again so the build includes it.
+1. `up --prod`. Use plain `up` (next dev) only while iterating; `shift` compares with the production build on dev.openscholar.ai, and dev mode's slower hydration shows problems production doesn't have. After you change code, `up --prod` again rebuilds; `shift` refuses a production build older than the code.
+2. Run `shift` on every route your change affects. Add a `--do` step for each interaction you changed: the dialog you made, the tab you restyled, the filter you added. Steps are `click`, `hover`, `fill <selector> <text>`, `press <key>`, `wait <ms>`, `goto <path>`, with Playwright selectors (`text=Save`, `role=button[name="Save"]`, CSS). Steps run in each browser and again on dev.openscholar.ai, so give `shift` interactions that save nothing (open, type, switch, navigate). Check a flow that creates or deletes once, with `--browser chromium --base none`.
+3. Fix every problem listed under `Fail`, then `up --prod` and `shift` again.
 4. Look at the screenshots it lists. `shift` proves the page holds still, not that it looks right.
 5. `down` when you are done, unless the user wants to look at it. Then give them the link from `status`; `up --open` opens it in their browser once.
 
@@ -44,11 +44,11 @@ If a step can't run on dev (it clicks something your branch adds), everything af
 
 ## Signing in
 
-`shift` and `shot` sign in as `verify-agent+clerk_test@example.com`, a member of the "Verify Agent" organization, which has Evidence Libraries, authors and extraction turned on. `verify` creates both on first use. To check a page with another account's data, pass `--as <email>` with an existing development user. `--anon` skips sign-in.
+`shift` and `shot` sign in as `verify-agent+clerk_test@example.com`, a member of the "Verify Agent" organization, which has Evidence Libraries, authors and extraction turned on. Its data is its own, so a check never touches a real person's records. `verify` creates both on first use, then stops and asks you to run the command again: Clerk takes a few seconds to send them to Convex. To check a page with another account's data, pass `--as <email>` with an existing development user. `--anon` skips sign-in.
 
 ## The stop hook
 
-A global stop hook runs `npm run verify -- hook stop` when an agent tries to finish. If files under `app/` or `components/` (`.tsx`, `.css`) changed in this session and no `shift` has passed since, it sends the agent back with the files to check. If nothing a person sees changed, or the user said not to test, run `skip "<reason>"` and give the same reason in your reply.
+A stop hook runs `npm run verify -- hook stop` when an agent tries to finish. It lives on the user's machine, not in this repository: `~/.agents/hooks/verify-stop.sh`, registered for Stop in `~/.claude/settings.json`, `~/.claudeekitabu/settings.json` and `~/.codex/hooks.json` (trusted through Codex's `/hooks`). If files under `app/` or `components/` (`.tsx`, `.css`) changed in this session and no `shift` has passed since, it sends the agent back with the files to check. If nothing a person sees changed, or the user said not to test, run `skip "<reason>"` and give the same reason in your reply.
 
 ## Files
 
