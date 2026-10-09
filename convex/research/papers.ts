@@ -205,8 +205,8 @@ export const readPdfAction = defineUserAction({
     const step = call?.stepId ?? call?.from;
     const threadId = step ? await ctx.runQuery(internal.assistant.steps.chatOf, { stepId: step }) : null;
     const scope = threadId ? `chat:${threadId}` : `read:${crypto.randomUUID()}`;
-    // The link is OpenAlex's own for the paper. The model is sent the stored copy, never the file through here.
-    const got = await paperPdf(ctx, { userId, workspaceId, scope, kind: "chat" }, { openalexId, doi: work.doi ?? undefined, url: pdfUrl ?? undefined, hasCopy: work.has_content?.pdf === true, trusted: true }, { maxBytes: PROVIDER_PDF_BYTES, bytes: false, charge: "self", allowHttp: true });
+    // The model is sent the stored copy, never the file through here.
+    const got = await paperPdf(ctx, { userId, workspaceId, scope, kind: "chat" }, { openalexId, doi: work.doi ?? undefined, url: pdfUrl ?? undefined, hasCopy: work.has_content?.pdf === true }, { maxBytes: PROVIDER_PDF_BYTES, bytes: false, charge: "self", allowHttp: true });
     if ("error" in got) throw createError(got.credits ? "INSUFFICIENT_CREDITS" : "VALIDATION_ERROR", `${got.error} Ask the person to attach its PDF to the chat.`);
     // A paper read from OpenAlex's copy alone is cited by its record, the only address of it a person can open.
     if (!got.key) throw createError("VALIDATION_ERROR", "This paper's PDF can't be kept to send. Ask the person to attach its PDF to the chat.");

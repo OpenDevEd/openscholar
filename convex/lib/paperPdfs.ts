@@ -6,8 +6,9 @@
  *   2. the paper's own link, and the free copies its DOI leads to (lib/pdf/download.ts): free, and kept in R2
  *   3. OpenAlex's cached copy (content.openalex.org): what OpenAlex charged, and kept in R2
  *
- * A copy is kept under the paper's OpenAlex ID only when it came from OpenAlex itself or from a link OpenAlex lists
- * for the paper, so nobody can put their own file in place of a paper's. Anything else is kept under its link alone.
+ * A copy bought from OpenAlex is kept under the paper's OpenAlex ID. One fetched by a link is kept under that link,
+ * so it stands for what the link served and nothing more: nobody's file, and no wrong file a link led to, stands in
+ * for a paper.
  * A file from a person's own Zotero library is theirs: it never goes into the store, and the store is never read for it.
  *
  * The assistant pays for a copy here (`charge: "self"`). Extraction adds what a copy costs to the paper's own charge
@@ -20,9 +21,9 @@ import type { Id } from "../_generated/dataModel";
 import type { ActionCtx, MutationCtx } from "../_generated/server";
 import { releaseCredits, reserveCredits, settleCredits } from "../billing/charge";
 import type { UsageKind } from "../billing/validators";
-import { readWork } from "../paperSets/openalex";
 import { internalMutation } from "./functions";
 import { downloadPdf, type DownloadPdfOptions } from "../../lib/pdf/download";
+import { safeFetchPdf } from "../../lib/pdf/url-allowlist";
 import { convertUsdToCredits, PAPER_PDF_CREDITS, PAPER_PDF_USD } from "../../lib/pricing";
 
 /** What one OpenAlex credit costs, as its responses report a request's cost in credits. */
@@ -35,11 +36,8 @@ const PAYING_FOR_MS = 120_000;
 
 /** Who pays for a paper's PDF, and what it's read for: one charge for a paper in each `scope`, a chat's or an extraction's. */
 export type PdfPayer = { userId: Id<"users">; workspaceId: Id<"workspaces">; scope: string; kind: UsageKind; jobId?: Id<"extractionJobs"> };
-/**
- * A paper by what names it. `hasCopy` is OpenAlex's `has_content.pdf`, where the caller read it: false skips buying a
- * copy OpenAlex doesn't have. `trusted` says `url` is OpenAlex's own link for the paper; otherwise OpenAlex is asked.
- */
-export type PaperRef = { openalexId?: string; doi?: string; url?: string; hasCopy?: boolean; trusted?: boolean; zotero?: DownloadPdfOptions["zoteroConnection"] };
+/** A paper by what names it. `hasCopy` is OpenAlex's `has_content.pdf`, where the caller read it: false skips buying a copy OpenAlex doesn't have. */
+export type PaperRef = { openalexId?: string; doi?: string; url?: string; hasCopy?: boolean; zotero?: DownloadPdfOptions["zoteroConnection"] };
 /** How the caller gets a PDF: the most it takes, whether it needs the file or only the copy's key, who charges, and whether plain-HTTP links are fetched. */
 export type PdfOptions = { maxBytes: number; bytes: boolean; charge: "self" | "report"; allowHttp: boolean };
 /**
@@ -56,7 +54,6 @@ function store() {
 
 /** The OpenAlex work ID in an ID or address, such as W2741809807; extraction gives papers from elsewhere IDs of their own. */
 const workOf = (id: string | undefined) => id?.match(/(?:^|\/)(W\d+)$/i)?.[1]?.toUpperCase();
-const doiOf = (doi: string | null | undefined) => doi?.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "").trim().toLowerCase() || undefined;
 const isPdf = (bytes: Uint8Array) => new TextDecoder().decode(bytes.subarray(0, 1024)).includes("%PDF");
 const isZotero = (paper: PaperRef) => paper.url?.startsWith("zotero://") === true;
 
@@ -119,26 +116,15 @@ export async function storedLink(key: string) {
   return (await client.sign(`${url(key)}?X-Amz-Expires=${LINK_SECONDS}`, { method: "GET", aws: { signQuery: true } })).url;
 }
 
-/** Whether a copy fetched by link may be kept under the paper's OpenAlex ID: its link, or its DOI, is the one OpenAlex lists for the paper. */
-async function isPapers(paper: PaperRef, work: string) {
-  if (paper.trusted) return true;
-  type Location = { pdf_url?: string | null; landing_page_url?: string | null } | null;
-  const record = await readWork<{ doi?: string | null; locations?: Location[] | null }>(work, "doi,locations", async () => true).catch(() => null);
-  if (!record) return false;
-  const links = (record.locations ?? []).flatMap((location) => [location?.pdf_url, location?.landing_page_url]);
-  return paper.url ? links.includes(paper.url) : doiOf(paper.doi) !== undefined && doiOf(paper.doi) === doiOf(record.doi);
-}
-
 /** OpenAlex's cached copy of a work, with what it cost in dollars as OpenAlex reports it, or null when it has none or it's larger than `maxBytes`. */
 async function fromOpenAlex(work: string, maxBytes: number): Promise<{ bytes: Uint8Array; usd: number } | null> {
   const apiKey = process.env.OPENALEX_API_KEY;
   if (!apiKey) throw new Error("OPENALEX_API_KEY must be set to buy OpenAlex's copy of a paper.");
-  const response = await fetch(`https://content.openalex.org/works/${work}.pdf?api_key=${encodeURIComponent(apiKey)}`, { headers: { "User-Agent": "OpenScholar (https://openscholar.ai)" } });
-  const declared = Number(response.headers.get("content-length") ?? 0);
-  const bytes = response.ok && declared <= maxBytes ? new Uint8Array(await response.arrayBuffer()) : null;
-  if (!bytes || bytes.length > maxBytes || !isPdf(bytes)) {
-    await response.body?.cancel().catch(() => {});
-    console.warn("[paper pdfs] OpenAlex has no copy to download", { work, status: response.status, bytes: declared });
+  // Through the guarded fetch: the file is read only up to `maxBytes`, and a redirect is checked like any address.
+  const { response, body } = await safeFetchPdf(`https://content.openalex.org/works/${work}.pdf?api_key=${encodeURIComponent(apiKey)}`, { maxBytes, timeoutMs: 120_000, headers: { "User-Agent": "OpenScholar (https://openscholar.ai)" } });
+  const bytes = response.ok ? new Uint8Array(await body.arrayBuffer()) : null;
+  if (!bytes || !isPdf(bytes)) {
+    console.warn("[paper pdfs] OpenAlex has no copy to download", { work, status: response.status });
     return null;
   }
   const credits = Number(response.headers.get("x-ratelimit-credits-used"));
@@ -232,7 +218,7 @@ export async function paperPdf(ctx: ActionCtx, payer: PdfPayer, paper: PaperRef,
     const { pdfBlob, error } = await downloadPdf(paper.url ?? "", { doi: paper.doi, zoteroConnection: paper.zotero, allowHttp: options.allowHttp, maxBytes: options.maxBytes, maxRetries: 1 });
     const bytes = pdfBlob ? new Uint8Array(await pdfBlob.arrayBuffer()) : null;
     if (bytes && isPdf(bytes)) {
-      const key = isZotero(paper) ? null : work && workKey && (await isPapers(paper, work)) ? workKey : await linkKey(paper.url);
+      const key = isZotero(paper) ? null : await linkKey(paper.url);
       const kept = key !== null && (await keep(key, bytes));
       // A caller that sends the stored copy can't go on without one.
       if (!options.bytes && !kept) return { error: NOT_KEPT };

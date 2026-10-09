@@ -86,6 +86,8 @@ const replied = (t: Test, threadId: Id<"assistantThreads">) => waitFor(async () 
 /** What each paper PDF charge came to, in the order they landed. */
 const pdfCharges = (t: Test) => t.run(async (ctx) => (await ctx.db.query("billingUsage").collect()).filter((row) => row.description === "Paper PDF").map((row) => row.credits));
 const keep = (key: string) => fakeStore.objects.set(key, new TextEncoder().encode(PDF_BYTES));
+/** The key a copy fetched by a link is kept under. */
+const byLink = async (url: string) => (await paperKeys({ url }))[0];
 
 /** A chat on a model that reads PDFs, with reading files allowed in it, so a read runs without asking. */
 async function chat(t: Test, free = 100_000, inputs = ["text", "image", "file"]) {
@@ -120,10 +122,10 @@ describe("the paper PDF store", () => {
 describe("extraction's PDFs from the store", () => {
   const payer = (jobId: string) => ({ userId: "u" as Id<"users">, workspaceId: "w" as Id<"workspaces">, scope: `extraction:${jobId}`, kind: "extraction" as const });
 
-  it("keeps a copy from a link OpenAlex doesn't list for the paper under its link alone, so nobody's file stands in for a paper", async () => {
+  it("keeps a copy fetched by a link under that link, so no file a link led to stands in for the paper", async () => {
     const t = convexTest(schema);
     const listed = await paperPdf(actionsOf(t), payer("j1"), { openalexId: "W7", url: PDF }, EXTRACTION);
-    expect(listed).toMatchObject({ key: "openalex/W7.pdf", from: "link", credits: 0 });
+    expect(listed).toMatchObject({ key: await byLink(PDF), from: "link", credits: 0 });
 
     const other = "https://example.org/someone-elses.pdf";
     WORKS.W8 = { id: "https://openalex.org/W8", display_name: "Unlisted", locations: [{ pdf_url: PDF }] };
@@ -132,7 +134,7 @@ describe("extraction's PDFs from the store", () => {
     const unlisted = await paperPdf(actionsOf(t), payer("j1"), { openalexId: "W8", url: other }, EXTRACTION);
     expect(unlisted).toMatchObject({ from: "link" });
     expect("key" in unlisted && unlisted.key).toMatch(/^url\//);
-    expect(fakeStore.kept).not.toContain("openalex/W8.pdf");
+    expect(fakeStore.kept.some((key) => key.startsWith("openalex/"))).toBe(false);
   });
 
   it("charges an extraction once for a stored copy, with the paper's own charge", async () => {
@@ -172,8 +174,8 @@ describe("reading a paper's PDF", () => {
     const t = convexTest(schema);
     const { asAda } = await chat(t);
 
-    expect(await asAda.action(api.research.papers.readPdf, { id: "W1" })).toMatchObject({ title: "Loot boxes and problem gambling", paperPdf: PDF, stored: "openalex/W1.pdf" });
-    expect(fakeStore.kept).toEqual(["openalex/W1.pdf"]);
+    expect(await asAda.action(api.research.papers.readPdf, { id: "W1" })).toMatchObject({ title: "Loot boxes and problem gambling", paperPdf: PDF, stored: await byLink(PDF) });
+    expect(fakeStore.kept).toEqual([await byLink(PDF)]);
     expect(await pdfCharges(t)).toEqual([]);
     await expect(asAda.action(api.research.papers.readPdf, { id: "W2" })).rejects.toThrow(/attach its PDF/);
     // OpenAlex said it has no copy, so none was bought.
@@ -251,7 +253,7 @@ describe("reading a paper's PDF", () => {
     await expect(asAda.action(api.research.papers.readPdf, { id: "W4" })).rejects.toThrow(/attach its PDF/);
     await expect(asAda.action(api.research.papers.readPdf, { id: "W5" })).rejects.toThrow(/attach its PDF/);
     expect(fetched.some((url) => url.includes("127.0.0.1") || url.includes("169.254.169.254"))).toBe(false);
-    expect(await asAda.action(api.research.papers.readPdf, { id: "W6" })).toMatchObject({ paperPdf: "https://example.org/chunked.pdf", stored: "openalex/W6.pdf" });
+    expect(await asAda.action(api.research.papers.readPdf, { id: "W6" })).toMatchObject({ paperPdf: "https://example.org/chunked.pdf", stored: await byLink("https://example.org/chunked.pdf") });
   });
 
   it("reads nothing when the title it was asked about isn't the ID's paper", async () => {
@@ -293,7 +295,7 @@ describe("reading a paper's PDF", () => {
 
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking[0]._id, allow: true });
     await replied(t, threadId);
-    expect(JSON.stringify(resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt))).toContain(`"url":"${storedAddress("openalex/W1.pdf")}?`);
+    expect(JSON.stringify(resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt))).toContain(`"url":"${storedAddress(await byLink(PDF))}?`);
   });
 
   it("sends the model a link to the stored copy in the reply that read it, and only a note in later replies", async () => {
@@ -307,7 +309,7 @@ describe("reading a paper's PDF", () => {
 
     const read = JSON.stringify(resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt));
     // A signed link to the copy, and none of its bytes: "JVBERi0" is how "%PDF-" starts in base64.
-    expect(read).toContain(`"url":"${storedAddress("openalex/W1.pdf")}?`);
+    expect(read).toContain(`"url":"${storedAddress(await byLink(PDF))}?`);
     expect(read).toContain("X-Amz-Signature");
     expect(read).not.toContain("JVBERi0");
     // The model reads the address it cites, not where the copy is kept.
@@ -340,7 +342,7 @@ describe("reading a paper's PDF", () => {
     expect(mockDoStream).toHaveBeenCalledTimes(3);
     const read = JSON.stringify(resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt));
     expect(read).toContain("JVBERi0");
-    expect(read).not.toContain(storedAddress("openalex/W1.pdf"));
+    expect(read).not.toContain(storedAddress(await byLink(PDF)));
     const replies = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: { numItems: 20, cursor: null } })).page.filter((item) => item.role === "assistant");
     expect(replies).toMatchObject([{ status: "done", text: "It reports a link (p. 5)." }]);
   });
@@ -358,6 +360,6 @@ describe("reading a paper's PDF", () => {
     await replied(t, threadId);
 
     expect(mockDoGenerate).toHaveBeenCalled();
-    expect(JSON.stringify(mockDoGenerate.mock.lastCall![0].prompt)).toContain(`"url":"${storedAddress("openalex/W1.pdf")}?`);
+    expect(JSON.stringify(mockDoGenerate.mock.lastCall![0].prompt)).toContain(`"url":"${storedAddress(await byLink(PDF))}?`);
   });
 });
