@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { AiIcon, Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
+import { AiIcon, Ban, Check, CircleCheck, CircleHelp, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,8 @@ import { getErrorMessage, useAppToast } from "@/lib/toast";
 import type { SearchResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { jobName } from "./job-view";
-import { ANSWER, AnimatedNumber, Chip, ClippedChip, Meter, SOURCE_ICON } from "./parts";
+import { ANSWER, Chip, ClippedChip, SOURCE_ICON } from "./parts";
+import { CreditCheck } from "@/components/workspaces/credit-check";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceScope } from "@/lib/workspaces/url";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
@@ -575,15 +576,7 @@ export function SetupView({
         </Zone>
 
         <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg">
-          <div className="min-w-48 flex-1 space-y-1.5">
-            <p className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 font-medium"><Coins className="size-3.5 text-primary" /><span>{t.rich("upToCredits", { n: () => <AnimatedNumber value={credits} /> })}</span></span>
-              <span className={cn("tabular-nums transition-colors", enough ? "text-muted-foreground" : "text-destructive")}>
-                {t.rich("balanceLeft", { balance: Math.floor(balance), n: () => <AnimatedNumber value={Math.max(0, Math.floor(balance) - credits)} /> })}
-              </span>
-            </p>
-            <Meter value={Math.min(credits, balance)} max={balance} fill={enough ? "bg-primary" : "bg-destructive"} />
-          </div>
+          <CreditCheck credits={credits} balance={balance} enough={enough} />
           <div className="flex flex-wrap items-center gap-1.5">
             {slots ? <Chip icon={Gauge}>{t("atATime", { limit: slots.limit })}</Chip> : null}
             {waitingFor ? (

@@ -4153,6 +4153,7 @@
       "upToMembers": "最大 {count, number} 人",
       "included": "含まれるもの"
     },
-    "couldntInvite": "組織は作成されましたが、招待を送れませんでした。メンバー設定から送ってください。"
+    "couldntInvite": "組織は作成されましたが、招待を送れませんでした。メンバー設定から送ってください。",
+    "fromCredits": "{name} のクレジットから"
   }
 }

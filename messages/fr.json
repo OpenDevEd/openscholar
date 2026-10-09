@@ -4153,6 +4153,7 @@
       "upToMembers": "Jusqu'à {count, number} membres",
       "included": "Inclus"
     },
-    "couldntInvite": "L'organisation a été créée, mais les invitations ne sont pas parties. Envoyez-les depuis ses paramètres Membres."
+    "couldntInvite": "L'organisation a été créée, mais les invitations ne sont pas parties. Envoyez-les depuis ses paramètres Membres.",
+    "fromCredits": "Sur les crédits de {name}"
   }
 }

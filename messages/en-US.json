@@ -4153,6 +4153,7 @@
       "upToMembers": "Up to {count, number} members",
       "included": "Included"
     },
-    "couldntInvite": "The organization was made, but the invitations didn't go out. Send them from its Members settings."
+    "couldntInvite": "The organization was made, but the invitations didn't go out. Send them from its Members settings.",
+    "fromCredits": "From {name}'s credits"
   }
 }
