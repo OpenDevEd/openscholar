@@ -15,7 +15,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { SavedSearch } from "../../lib/research/records";
 import { MAX_PENDING_REMOVALS } from "../lib/listCaps";
-import { workspaceOf } from "../workspaces/personal";
+import { createError } from "../lib/errors";
 
 /** Who set an answer. `unrecorded` is for answers saved before this was recorded. */
 export type AnswerSource = Doc<"screeningAnswers">["answers"][number]["setBy"];
@@ -30,12 +30,12 @@ export function screeningFor(ctx: Read, searchId: Id<"searches">) {
 }
 
 /** The screening a search's page and its Screen all jobs answer into, in the search's workspace. */
-export async function ensureScreening(ctx: Write, userId: Id<"users">, searchId: Id<"searches">) {
+export async function ensureScreening(ctx: Write, searchId: Id<"searches">) {
   const existing = await screeningFor(ctx, searchId);
   if (existing) return existing;
   const search = await ctx.db.get("searches", searchId);
-  const workspaceId = search ? await workspaceOf(ctx, search) : undefined;
-  return (await ctx.db.get("screenings", await ctx.db.insert("screenings", { userId, ...(workspaceId ? { workspaceId } : {}), searchId, version: 0, createdAt: Date.now() })))!;
+  if (!search) throw createError("NOT_FOUND", "Search not found");
+  return (await ctx.db.get("screenings", await ctx.db.insert("screenings", { workspaceId: search.workspaceId, searchId, version: 0, createdAt: Date.now() })))!;
 }
 
 /** Papers and their answers in the shape a saved search carries. */
@@ -154,7 +154,7 @@ type NewAnswers = Array<Responses[number]["responses"][number] & { confidence?: 
  * The model's own answer stays with each answer whoever changes it later.
  */
 export async function setPaperAnswers(ctx: Write, userId: Id<"users">, searchId: Id<"searches">, paperId: string, responses: NewAnswers, setBy: AnswerSource, at: number) {
-  await answerPaper(ctx, (await ensureScreening(ctx, userId, searchId))._id, paperId, responses, setBy, at);
+  await answerPaper(ctx, (await ensureScreening(ctx, searchId))._id, paperId, responses, setBy, at);
 }
 
 /**
@@ -255,7 +255,7 @@ export async function seedAnswers(ctx: Write, userId: Id<"users">, searchId: Id<
   const papers = new Map(answers.map(({ paperId, responses }) => [paperId, responses] as const));
   if (papers.size === 0) return;
   if (papers.size > SEEDED_PAPERS_MAX) throw new Error(`A search can be saved with answers for up to ${SEEDED_PAPERS_MAX.toLocaleString("en")} papers.`);
-  const screening = await ensureScreening(ctx, userId, searchId);
+  const screening = await ensureScreening(ctx, searchId);
   const updates = Array.from(papers, ([paperId, responses]) => ({ paperId, answers: responses.map(({ question, response }) => ({ question, answer: response, setBy, updatedAt: at })) }));
   await apply(ctx, screening, updates, new Map(), at);
 }

@@ -91,10 +91,10 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
       const screeningQuestions = [...search.data.screeningQuestions, ...missing.map((question) => ({ question }))];
       await applyCommand(ctx, writer, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, author);
     }
-    screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
+    screeningId = (await ensureScreening(ctx, search._id))._id;
     label = search.data.query;
   } else {
-    screeningId = await ctx.db.insert("screenings", { userId: user._id, workspaceId, version: 0, createdAt: now });
+    screeningId = await ctx.db.insert("screenings", { workspaceId, version: 0, createdAt: now });
     const collection = set?.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : null;
     const job = set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
     if (set?.kind === "collection" && collection?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");

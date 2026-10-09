@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 it("migrates retained authors without crossing owners or guessing, and guards rollback", async () => {
   const t = convexTest(schema);
@@ -9,7 +10,7 @@ it("migrates retained authors without crossing owners or guessing, and guards ro
     const person = (clerkId: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@test`, state: "active", createdAt: 1, updatedAt: 1 });
     const owner = await person("owner"), foreign = await person("foreign");
     const job = async (userId: typeof owner) => {
-      const screeningId = await ctx.db.insert("screenings", { userId, version: 0, createdAt: 1 });
+      const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), version: 0, createdAt: 1 });
       return ctx.db.insert("screeningJobs", { userId, screeningId, status: "completed", totalPapers: 4, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
     };
     const ownedJob = await job(owner), foreignJob = await job(foreign);

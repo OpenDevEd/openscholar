@@ -475,11 +475,10 @@ export const deleteSearchForAssistant = assistantMutation(deleteAction);
 
 /** The request a search with this query and these settings would make, saved nowhere: for trying one (./papers.ts). */
 export const requestFor = internalQuery({
-  // Optional only for a call from an action already running when this deployed (#650), which reads in its person's own; required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), query: v.optional(v.string()), settings: v.object(searchSettings) },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), query: v.optional(v.string()), settings: v.object(searchSettings) },
   returns: savedSearchValidator,
   // A title looked up in quotes often ends in a question mark, which OpenAlex refuses there: it's read without.
-  handler: async (ctx, { query, settings, userId, workspaceId }) => requestOf(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, newSearch("unsaved", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings), 0),
+  handler: async (ctx, { query, settings, userId, workspaceId }) => requestOf(ctx, { userId, workspaceId }, newSearch("unsaved", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings), 0),
 });
 
 /** A paper as a page of results gives it. */
@@ -526,11 +525,9 @@ export async function readPage(ctx: ActionCtx, userId: Id<"users">, found: Saved
  * search history shows it. Left alone when the search changed while its results were read.
  */
 export const counted = internalMutation({
-  // Optional only for calls from a `recount` scheduled before the workspace was passed (#650); required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), id: v.string(), revision: v.number(), count: v.number(), author: authorValidator },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), id: v.string(), revision: v.number(), count: v.number(), author: authorValidator },
   returns: v.null(),
-  handler: async (ctx, { userId, workspaceId: given, id, revision, count, author }) => {
-    const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
+  handler: async (ctx, { userId, workspaceId, id, revision, count, author }) => {
     const found = await findSearch(ctx, workspaceId, id);
     if (found?.revision === revision && currentSearch(found.data).count !== count) await applyCommand(ctx, { userId, workspaceId }, { kind: "editSearch", id, edit: { kind: "patch", fields: { count }, clear: [] } }, author);
     return null;
@@ -544,11 +541,9 @@ export const counted = internalMutation({
  * keeps the count it has until its results are next read.
  */
 export const recount = internalAction({
-  // Optional only for calls scheduled before the workspace was passed (#650), which act in their maker's own; required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), id: v.string(), author: authorValidator },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), id: v.string(), author: authorValidator },
   returns: v.null(),
-  handler: async (ctx, { userId, workspaceId: given, id, author }) => {
-    const workspaceId: Id<"workspaces"> = given ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId }));
+  handler: async (ctx, { userId, workspaceId, id, author }) => {
     try {
       const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, workspaceId, searchId: id });
       if (!found.request) return null;

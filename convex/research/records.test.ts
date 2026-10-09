@@ -457,16 +457,16 @@ describe("account research records", () => {
     const { alice, ids, t } = await setup();
     // 1,200 searches from before counts were kept, so none is counted yet.
     const workspaceId = await t.run(ctx => personalWorkspaceOf(ctx, ids.alice));
-    const stored = (i: number) => ({ userId: ids.alice, workspaceId, createdBy: ids.alice, localId: `old-${i}`, revision: 1, data: { ...record, id: `old-${i}`, screeningResponses: [] } });
+    const stored = (i: number) => ({ workspaceId, createdBy: ids.alice, localId: `old-${i}`, revision: 1, data: { ...record, id: `old-${i}`, screeningResponses: [] } });
     for (let start = 0; start < 1_200; start += 300) await t.run(async ctx => { for (let i = start; i < start + 300; i++) await ctx.db.insert("searches", stored(i)); });
     const change = (requestId: string, command: ResearchCommand) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command });
-    const row = () => t.run(ctx => ctx.db.query("recordCounts").withIndex("by_user_and_table", q => q.eq("userId", ids.alice).eq("table", "searches")).unique());
+    const row = () => t.run(ctx => ctx.db.query("recordCounts").withIndex("by_workspace_and_table", q => q.eq("workspaceId", workspaceId).eq("table", "searches")).unique());
 
     vi.useFakeTimers();
     try {
       // The first save starts the count; one step reaches the first 500.
       await change("first", { kind: "createSearch", search: { ...record, id: "first" } });
-      await t.mutation(internal.research.records.countRecordsPage, { table: "searches", userId: ids.alice });
+      await t.mutation(internal.research.records.countRecordsPage, { table: "searches", workspaceId });
       expect(await row()).toMatchObject({ count: 500 });
       await change("counted", { kind: "deleteSearch", id: "old-0" });
       await change("not-reached", { kind: "deleteSearch", id: "old-1100" });
@@ -581,7 +581,7 @@ describe("undoing a change to research records (#342)", () => {
     const screened = await change({ kind: "createSearch", search: { ...record, id: "screened", screeningResponses: [] } });
     await t.run(async ctx => {
       const search = (await ctx.db.query("searches").collect()).find(row => row.localId === "screened")!;
-      await answerPaper(ctx, (await ensureScreening(ctx, search.userId, search._id))._id, "W5", [{ question: "Randomized?", response: true }], "model", 1);
+      await answerPaper(ctx, (await ensureScreening(ctx, search._id))._id, "W5", [{ question: "Randomized?", response: true }], "model", 1);
     });
     await expect(change(screened.undo!.args.command)).rejects.toThrow(/changed since/);
     // Nor a search made again under the same ID after the first was deleted.
@@ -716,8 +716,8 @@ describe("research actions as assistant tools", () => {
 describe("research records in workspaces (#650)", () => {
   /** The workspace and maker of each of a person's searches and bookmarks. */
   const placed = (t: Awaited<ReturnType<typeof setup>>["t"], userId: Id<"users">) => t.run(async ctx => ({
-    searches: (await ctx.db.query("searches").withIndex("by_user", q => q.eq("userId", userId)).take(10)).map(({ workspaceId, createdBy }) => ({ workspaceId, createdBy })),
-    bookmarks: (await ctx.db.query("queryShortcuts").withIndex("by_user", q => q.eq("userId", userId)).take(10)).map(({ workspaceId, createdBy }) => ({ workspaceId, createdBy })),
+    searches: (await ctx.db.query("searches").take(50)).filter(row => row.createdBy === userId).map(({ workspaceId, createdBy }) => ({ workspaceId, createdBy })),
+    bookmarks: (await ctx.db.query("queryShortcuts").take(50)).filter(row => row.createdBy === userId).map(({ workspaceId, createdBy }) => ({ workspaceId, createdBy })),
   }));
 
   it("keeps each new search and bookmark in the workspace it was made in, as its maker's, and imports only into the person's own", async () => {
@@ -785,48 +785,9 @@ describe("research records in workspaces (#650)", () => {
       expect(await alice.query(api.research.records.countSearches, { accountId: "alice", workspaceId: lab })).toBe(2);
       expect(await alice.query(api.research.records.countSearches, { accountId: "alice" })).toBe(1);
       expect(await bob.query(api.research.records.countSearches, { accountId: "bob" })).toBe(0);
-
-      // As counts were kept before, by person: the lab's searches in their maker's own count, and none for the lab.
-      await runUntriggered(t, async ctx => {
-        for (const row of await ctx.db.query("recordCounts").collect()) {
-          if (row.workspaceId === lab) await ctx.db.delete("recordCounts", row._id);
-          else await ctx.db.patch("recordCounts", row._id, { count: row.userId === ids.alice ? 2 : 1 });
-        }
-      });
-      expect(await t.action(internal.migrations.workspaceCounts.verify, {})).toBe(1);
-      for (let runs = 0; runs < 2; runs++) {
-        await t.mutation(internal.migrations.workspaceCounts.run, {});
-        await t.finishAllScheduledFunctions(vi.runAllTimers);
-      }
-      expect(await t.action(internal.migrations.workspaceCounts.verify, {})).toBe(0);
-      expect(await alice.query(api.research.records.countSearches, { accountId: "alice", workspaceId: lab })).toBe(2);
-      expect(await alice.query(api.research.records.countSearches, { accountId: "alice" })).toBe(1);
-      expect(await bob.query(api.research.records.countSearches, { accountId: "bob" })).toBe(0);
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it("puts searches and bookmarks from before workspaces in their maker's own, however often the backfill runs", async () => {
-    vi.useFakeTimers();
-    try {
-      const { t, ids } = await setup();
-      // As they were before workspaces: no workspace, no maker.
-      await runUntriggered(t, async ctx => {
-        await ctx.db.insert("searches", { userId: ids.alice, localId: "old", revision: 1, data: { ...record, id: "old", screeningResponses: [] } as never });
-        await ctx.db.insert("queryShortcuts", { userId: ids.bob, data: { shorthand: "old", expansion: "older", createdAt: 1 } });
-      });
-      expect(await t.action(internal.migrations.researchWorkspaces.verify, {})).toBe(2);
-      for (let runs = 0; runs < 2; runs++) {
-        await t.mutation(internal.migrations.researchWorkspaces.run, {});
-        await t.finishAllScheduledFunctions(vi.runAllTimers);
-      }
-      expect(await t.action(internal.migrations.researchWorkspaces.verify, {})).toBe(0);
-      const [aliceOwn, bobOwn] = await t.run(async ctx => [await personalWorkspaceOf(ctx, ids.alice), await personalWorkspaceOf(ctx, ids.bob)]);
-      expect((await placed(t, ids.alice)).searches).toEqual([{ workspaceId: aliceOwn, createdBy: ids.alice }]);
-      expect((await placed(t, ids.bob)).bookmarks).toEqual([{ workspaceId: bobOwn, createdBy: ids.bob }]);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 });

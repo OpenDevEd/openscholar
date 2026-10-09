@@ -20,8 +20,10 @@ export async function personalWorkspaceOf(ctx: Pick<QueryCtx, "db">, userId: Id<
  * The workspace a record is in: its own, or for one from before workspaces that its table's
  * backfill hasn't reached yet, its person's (#650). Slice 8 makes `workspaceId` required.
  */
-export async function workspaceOf(ctx: Pick<QueryCtx, "db">, row: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }) {
-  return row.workspaceId ?? (await personalWorkspaceOf(ctx, row.userId));
+export async function workspaceOf(ctx: Pick<QueryCtx, "db">, row: { workspaceId: Id<"workspaces"> } | { userId: Id<"users">; workspaceId?: Id<"workspaces"> }) {
+  if (row.workspaceId) return row.workspaceId;
+  if ("userId" in row) return await personalWorkspaceOf(ctx, row.userId);
+  throw createError("NOT_FOUND", "Workspace not found");
 }
 
 /** An organization's workspace, made with it (#650). */
@@ -32,6 +34,6 @@ export async function organizationWorkspaceOf(ctx: Pick<QueryCtx, "db">, organiz
 }
 
 /** Whether a record is in `workspaceId`: for a function given the page's workspace, which takes only that workspace's records. */
-export async function isInWorkspace(ctx: Pick<QueryCtx, "db">, row: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }, workspaceId: Id<"workspaces">) {
+export async function isInWorkspace(ctx: Pick<QueryCtx, "db">, row: Parameters<typeof workspaceOf>[1], workspaceId: Id<"workspaces">) {
   return (await workspaceOf(ctx, row)) === workspaceId;
 }
