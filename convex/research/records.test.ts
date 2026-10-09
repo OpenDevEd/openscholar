@@ -139,6 +139,22 @@ describe("account research records", () => {
     expect(queries[0]).toMatchObject({ text: "malaria vaccine", field: "default" });
   });
 
+  it("saves a question asked by meaning with its field: imported, picked and asked", async () => {
+    const { alice } = await setup();
+    // A search by meaning made before signing in comes in with the others.
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported({ ...record, field: "semantic" })] });
+    const search = () => alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id });
+    expect((await search())?.field).toBe("semantic");
+    const change = (requestId: string, edit: SearchEdit) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command: { kind: "editSearch", id: record.id, edit } });
+    await change("pick-title", { kind: "patch", fields: { field: "title" }, clear: [] });
+    await change("pick-semantic", { kind: "patch", fields: { field: "semantic" }, clear: [] });
+    expect((await search())?.field).toBe("semantic");
+    const question = "What helps teachers stay in rural schools?";
+    await change("ask", { kind: "query", query: question, field: "semantic" });
+    const queries = (await alice.query(api.research.records.searchHistory, { accountId: "alice", id: record.id, kind: "query", paginationOpts })).page;
+    expect(queries[0]).toMatchObject({ text: question, field: "semantic" });
+  });
+
   it("keeps each search's history in rows that its counts match, newest first a page at a time", async () => {
     const { alice } = await setup();
     await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported(record), imported({ ...record, id: "other" })] });
