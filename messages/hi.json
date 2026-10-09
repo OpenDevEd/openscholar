@@ -1867,7 +1867,8 @@
     "screenPapers": "{count, plural, one {# लेख} other {# लेख}} स्क्रीन करें",
     "startFailed": "स्क्रीनिंग शुरू नहीं हो सकी",
     "showAnswers": "{title} के उत्तर दिखाएँ",
-    "hideAnswers": "{title} के उत्तर छिपाएँ"
+    "hideAnswers": "{title} के उत्तर छिपाएँ",
+    "yesOrNo": "हाँ या नहीं"
   },
   "connectionsPage": {
     "connectedApps": "कनेक्टेड ऐप्स",
@@ -3250,7 +3251,9 @@
       "high": "ऊँचा",
       "xhigh": "बहुत ऊँचा",
       "max": "अधिकतम"
-    }
+    },
+    "organizationPresetAdmin": "इसमें सभी लोग यहाँ चुने गए प्रीसेट पर चलते हैं।",
+    "organizationPresetMember": "इसके एडमिन वह प्रीसेट चुनते हैं जिस पर सभी चलते हैं।"
   },
   "modelPicker": {
     "vendors": "प्रदाता",
@@ -3879,6 +3882,12 @@
         "did": "आमंत्रण फिर से भेजा",
         "where": "सदस्य",
         "ask": "आमंत्रण फिर से भेजें"
+      },
+      "workspacePreset": {
+        "doing": "संगठन का AI प्रीसेट बदल रहा है",
+        "did": "संगठन का AI प्रीसेट बदला",
+        "where": "AI सेटिंग्स",
+        "ask": "संगठन का AI प्रीसेट बदलें"
       }
     },
     "asks": {
@@ -4157,5 +4166,8 @@
     "fromCredits": "{name} के क्रेडिट से",
     "workspace": "वर्कस्पेस",
     "creditsLeft": "{credits} क्रेडिट बचे"
+  },
+  "models": {
+    "changeInSettings": "AI सेटिंग्स में बदलें"
   }
 }

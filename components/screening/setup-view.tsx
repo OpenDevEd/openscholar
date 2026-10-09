@@ -12,8 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { ModelPicker } from "@/components/models/model-picker";
-import { EASE, NodeCard } from "@/components/settings/model-map";
+import { EASE } from "@/components/settings/model-map";
 import { Enter, LIST, Segmented, Zone } from "@/components/settings/parts";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { useGenerateScreeningQuestions } from "@/lib/ai/client/router";
@@ -33,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { jobName } from "./job-view";
 import { ANSWER, Chip, ClippedChip, SOURCE_ICON } from "./parts";
 import { CreditCheck } from "@/components/workspaces/credit-check";
+import { ModelsInUse } from "@/components/models/models-in-use";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceScope } from "@/lib/workspaces/url";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
@@ -519,11 +519,8 @@ export function SetupView({
           </div>
         </Zone>
 
-        {model ? (
-          <Zone label={t("model")}>
-            <ModelPicker align="start" tasks={["screenAll"]} current={model} onChange={(m, effort) => models.pickAll(["screenAll"], m, effort)} trigger={<NodeCard interactive paidBy="credits" model={model} />} />
-          </Zone>
-        ) : null}
+        {/* What it screens with, as AI settings set it: changed there, not here (#689). */}
+        {model ? <ModelsInUse label={t("model")} uses={[{ label: t("yesOrNo"), model }]} /> : null}
 
         <Zone label={t("collections")}>
           {source?.kind === "collection" ? (

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { usableFor, type AiTask } from "../../lib/ai/tasks";
+import type { Id } from "../_generated/dataModel";
+import { ensureWorkspace } from "../workspaces/create";
 
 async function setup() {
   const t = convexTest(schema);
@@ -19,16 +21,17 @@ async function setup() {
   const mine = await model("acme/mine");
   // JSON mode without schemas isn't enough for the tasks that parse an answer.
   const chatOnly = await model("acme/chat-only", undefined, ["response_format", "tools"]);
-  const userId = await t.run((ctx) =>
-    ctx.db.insert("users", {clerkId: "clerk_user", email: "user@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }),
-  );
+  const { userId, own } = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", {clerkId: "clerk_user", email: "user@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 });
+    return { userId, own: await ensureWorkspace(ctx, { kind: "personal", userId }) };
+  });
   await t.run((ctx) =>
     ctx.db.insert("users", {clerkId: "clerk_admin", email: "admin@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }),
   );
   await t.mutation(internal.admins.mutations.grant, { email: "admin@test.local" });
   const user = t.withIdentity({ subject: "clerk_user" });
   const admin = t.withIdentity({ subject: "clerk_admin" });
-  const runsOn = (task: AiTask) => t.query(internal.ai.serverModel.resolveForUser, { userId, task });
+  const runsOn = (task: AiTask, workspaceId: Id<"workspaces"> = own) => t.query(internal.ai.serverModel.resolveForUser, { userId, workspaceId, task });
   return { t, sonnet, flash, mine, chatOnly, userId, user, admin, runsOn };
 }
 
@@ -50,6 +53,26 @@ describe("presets", () => {
     expect(await runsOn("chat")).toEqual({ modelId: flash });
     // Fast has no screening pick, so screening falls back to Balanced's (none either).
     expect(await runsOn("screening")).toBeNull();
+  });
+
+  it("runs an organization's work on the preset its admins pick, not on a member's own settings (#651)", async () => {
+    const { t, admin, user, sonnet, flash, runsOn } = await setup();
+    await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "chat", modelId: sonnet });
+    await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "fast", task: "chat", modelId: flash });
+    const lab = await t.run(async (ctx) => {
+      const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, state: "active", ...stamp });
+      for (const [clerkUserId, role] of [["clerk_user", "org:member"], ["clerk_admin", "org:admin"]] as const) await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role, state: "active", ...stamp });
+      return await ensureWorkspace(ctx, { kind: "organization", organizationId });
+    });
+    // The member runs on Fast in their own workspace, and on the organization's Balanced in it.
+    await user.mutation(api.userAiConfig.mutations.choose, { choice: "fast" });
+    expect(await runsOn("chat")).toEqual({ modelId: flash });
+    expect(await runsOn("chat", lab)).toEqual({ modelId: sonnet });
+    // Only its admins change it.
+    await expect(user.mutation(api.organizations.manage.setAiPreset, { workspaceId: lab, preset: "cheap" })).rejects.toThrow(/Only an admin/);
+    expect((await admin.mutation(api.organizations.manage.setAiPreset, { workspaceId: lab, preset: "fast" })).undo).toEqual({ path: "organizations/manage:setAiPreset", args: { preset: "balanced" } });
+    expect(await runsOn("chat", lab)).toEqual({ modelId: flash });
   });
 
   it("puts Jev only on screening tasks, since it can't write text", async () => {

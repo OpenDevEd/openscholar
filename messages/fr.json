@@ -1867,7 +1867,8 @@
     "screenPapers": "Cribler {count, plural, one {# article} other {# articles}}",
     "startFailed": "Impossible de démarrer le criblage",
     "showAnswers": "Afficher les réponses pour {title}",
-    "hideAnswers": "Masquer les réponses pour {title}"
+    "hideAnswers": "Masquer les réponses pour {title}",
+    "yesOrNo": "Oui ou non"
   },
   "connectionsPage": {
     "connectedApps": "Applications connectées",
@@ -3250,7 +3251,9 @@
       "high": "Élevé",
       "xhigh": "Très élevé",
       "max": "Max"
-    }
+    },
+    "organizationPresetAdmin": "Tout le monde y travaille avec le préréglage choisi ici.",
+    "organizationPresetMember": "Ses administrateurs choisissent le préréglage de tous ses membres."
   },
   "modelPicker": {
     "vendors": "Fournisseurs",
@@ -3879,6 +3882,12 @@
         "did": "Invitation renvoyée",
         "where": "Membres",
         "ask": "Renvoyer l'invitation"
+      },
+      "workspacePreset": {
+        "doing": "Changement du préréglage IA de l'organisation",
+        "did": "Préréglage IA de l'organisation changé",
+        "where": "Paramètres IA",
+        "ask": "Changer le préréglage IA de l'organisation"
       }
     },
     "asks": {
@@ -4157,5 +4166,8 @@
     "fromCredits": "Sur les crédits de {name}",
     "workspace": "Espace de travail",
     "creditsLeft": "{credits} crédits restants"
+  },
+  "models": {
+    "changeInSettings": "Modifier dans les paramètres IA"
   }
 }

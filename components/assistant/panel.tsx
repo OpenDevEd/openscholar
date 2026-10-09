@@ -6,6 +6,7 @@
 // arrive with the issues that build what they show; the @ picker is ./mentions.tsx.
 
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { Component, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
 import { insertAtTop, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
@@ -445,8 +446,10 @@ function Chat({
   const t = useTranslations("assistant");
   const toast = useAppToast();
   const thread = useQuery(api.assistant.threads.get, inWorkspace(workspaceId, threadId ? { threadId } : "skip"));
-  // What a new chat starts on: the chat model of the person's AI settings.
-  const start = useQuery(api.assistant.threads.newChatModel, {});
+  // What a new chat starts on: the chat model of the workspace's AI settings, an organization's preset in one.
+  const start = useQuery(api.assistant.threads.newChatModel, inWorkspace(workspaceId, {}));
+  // An organization's chats run on its preset, which its admins change in AI settings (#651).
+  const inOrganization = useCurrentWorkspace()?.kind === "organization";
   // What the person lets a reply spend here: the meter's "allow more" is by it, and the Spending sheet opens with it in hand.
   const spending = useQuery(api.assistant.spending.get, threadId ? { threadId } : "skip");
   const carryOn = useMutation(api.assistant.replies.carryOn);
@@ -750,7 +753,7 @@ function Chat({
       </div>
       <Footer
         dock={threadId && running ? <JobDock key={threadId} threadId={threadId} jobs={running} open={stackOpen} onOpen={openStack} /> : null}
-        composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} picked={drafts.picks(threadId)} onPick={(mention) => drafts.pick(threadId, mention)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel}
+        composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} picked={drafts.picks(threadId)} onPick={(mention) => drafts.pick(threadId, mention)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel} modelFixed={inOrganization}
         meter={meter}
         allowance={spending?.allowance ?? null}
         allowed={{ web: spending?.web ?? false, files: spending?.files ?? false }}
@@ -1315,6 +1318,7 @@ function Footer({
   model,
   onModel,
   presetModel,
+  modelFixed = false,
   meter,
   allowance,
   onStopAllowance,
@@ -1343,6 +1347,8 @@ function Footer({
   model: PickedModel | null;
   onModel: (model: PickedModel, effort: Effort | undefined) => void;
   presetModel: ReturnType<typeof usePresetModels>;
+  /** The chat runs on its organization's preset, which only its admins change, in AI settings (#651). */
+  modelFixed?: boolean;
   /** What the reply being written has cost the person reading, when it's theirs. */
   meter: Meter | null;
   /** What jobs that spend credits may hold in this chat without asking, when the person allowed them. The chip opens Spending, and its X turns the allowance off. */
@@ -1445,7 +1451,7 @@ function Footer({
           <span className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground">
             <Eye className="size-3" /> {t("sees", { view })}
           </span>
-          <ModelPill model={model} onChange={onModel} presetModel={presetModel} readOnly={!canWrite} />
+          <ModelPill model={model} onChange={onModel} presetModel={presetModel} readOnly={!canWrite || modelFixed} />
           {/* The span keeps the hint reachable while the button is disabled. */}
           <TooltipHint label={!canWrite ? t("readOnly") : busy ? t("stop") : t("send")}>
             <span className="flex shrink-0" tabIndex={canWrite ? undefined : 0}>

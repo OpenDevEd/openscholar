@@ -1867,7 +1867,8 @@
     "screenPapers": "筛选 {count, plural, other {# 篇}}",
     "startFailed": "无法开始筛选",
     "showAnswers": "显示 {title} 的回答",
-    "hideAnswers": "隐藏 {title} 的回答"
+    "hideAnswers": "隐藏 {title} 的回答",
+    "yesOrNo": "是或否"
   },
   "connectionsPage": {
     "connectedApps": "已连接的应用",
@@ -3250,7 +3251,9 @@
       "high": "高",
       "xhigh": "很高",
       "max": "最高"
-    }
+    },
+    "organizationPresetAdmin": "其中所有人都使用你在这里选择的预设。",
+    "organizationPresetMember": "由管理员选择所有人使用的预设。"
   },
   "modelPicker": {
     "vendors": "提供商",
@@ -3879,6 +3882,12 @@
         "did": "已重新发送邀请",
         "where": "成员",
         "ask": "重新发送邀请"
+      },
+      "workspacePreset": {
+        "doing": "正在更改组织的 AI 预设",
+        "did": "已更改组织的 AI 预设",
+        "where": "AI 设置",
+        "ask": "更改组织的 AI 预设"
       }
     },
     "asks": {
@@ -4157,5 +4166,8 @@
     "fromCredits": "使用 {name} 的积分",
     "workspace": "工作区",
     "creditsLeft": "剩余 {credits} 积分"
+  },
+  "models": {
+    "changeInSettings": "在 AI 设置中更改"
   }
 }

@@ -45,6 +45,16 @@ export async function actorIn(ctx: Pick<QueryCtx, "db">, user: Doc<"users">, wor
   return role ? { userId: user._id, workspaceId, role } : null;
 }
 
+/**
+ * Who reads a page and where (#651): the workspace it names, while they're in it, or their own
+ * when it names none. Null when signed out or not in it.
+ */
+export async function workingIn(ctx: Pick<QueryCtx, "db">, user: Doc<"users"> | null, workspaceId: Id<"workspaces"> | undefined): Promise<InWorkspace | null> {
+  if (!user) return null;
+  if (!workspaceId) return { userId: user._id, workspaceId: await personalWorkspaceOf(ctx, user._id) };
+  return (await actorIn(ctx, user, workspaceId)) ? { userId: user._id, workspaceId } : null;
+}
+
 async function organizationRole(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, clerkUserId: string) {
   const organization = await ctx.db.get("organizations", organizationId);
   // One being deleted takes no more work: nothing new can stop its deletion.

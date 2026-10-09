@@ -101,7 +101,7 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
   const sourceType = deriveSourceType(deduped);
 
   // Stamp what extraction runs on (credits path), read back at run by paperWorker.
-  const stamp = await extractionStamp(ctx, userId);
+  const stamp = await extractionStamp(ctx, { userId, workspaceId });
 
   // Question validation happens after bucket validation so an empty bucket throws first.
   const qs = args.questions ?? [];
@@ -233,7 +233,7 @@ export const duplicateJobAction = defineUserMutation({
       .order("asc")
       .take(MAX_QUESTIONS_PER_JOB);
 
-    const dupStamp = await extractionStamp(ctx, userId);
+    const dupStamp = await extractionStamp(ctx, { userId, workspaceId });
     const newJobId = await ctx.db.insert("extractionJobs", {
       workspaceId,
       createdBy: userId,

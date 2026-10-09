@@ -148,10 +148,10 @@ export async function getModel() {
 export type ServerModel = Awaited<ReturnType<typeof resolveOpenRouterModel>> & { effort?: Effort };
 export async function resolveUserServerModel(
   ctx: ActionCtx,
-  userId: Id<"users">,
+  { userId, workspaceId }: { userId: Id<"users">; workspaceId: Id<"workspaces"> },
   task: AiTask,
 ): Promise<ServerModel> {
-  const pick = await ctx.runQuery(internal.ai.serverModel.resolveForUser, { userId, task });
+  const pick = await ctx.runQuery(internal.ai.serverModel.resolveForUser, { userId, workspaceId, task });
   return { ...(await resolveOpenRouterModel(ctx, pick?.modelId ?? null)), effort: pick?.effort };
 }
 
@@ -266,7 +266,7 @@ export async function withAuthAndCreditsBatch<T>(
     const user = await requireAIUser(ctx);
     // The page's workspace pays, which the person must be able to act in.
     await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId: operation.workspaceId });
-    const { model, pricing, modelSlug, effort } = await resolveUserServerModel(ctx, user._id, operation.task);
+    const { model, pricing, modelSlug, effort } = await resolveUserServerModel(ctx, { userId: user._id, workspaceId: operation.workspaceId }, operation.task);
     const start = Date.now();
     let trackingEntries: AITrackingEntry[] | undefined;
     const { result, credits, usage } = await withCredits(
@@ -373,7 +373,7 @@ export function createAIAction<
         const user = await requireAIUser(ctx);
         await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId });
         const task = typeof options.task === "function" ? options.task(args) : options.task;
-        const { model, pricing, modelSlug, effort } = await resolveUserServerModel(ctx, user._id, task);
+        const { model, pricing, modelSlug, effort } = await resolveUserServerModel(ctx, { userId: user._id, workspaceId }, task);
         const config = configFactory(args);
         const start = Date.now();
         try {

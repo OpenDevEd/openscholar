@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { useIsMobile } from "@/lib/hooks";
 import { readyBucketPaperCount } from "@/lib/bucket/paper-count";
-import { useWorkspaceMutation } from "@/lib/workspaces/url";
+import { useWorkspaceMutation, useWorkspaceScope } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 
 const stepVariants = {
@@ -130,12 +130,13 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
     [bucketOrder, bucketItemsMap],
   );
 
-  // The most the job costs, on the models the person's extractions run on, against their balance: the figure its start checks.
+  // The most the job costs, on the models the workspace's extractions run on, against its balance: the figure its start checks.
   const paperCount = readyBucketPaperCount(readyBucketItems);
+  const scope = useWorkspaceScope();
   const { data: preflightCredits } = useProtectedQuery(
     api.extraction.queries.costs.estimateJob,
-    paperCount > 0 && draftJob.questions.length > 0
-      ? { papers: paperCount, questions: draftJob.questions.map((question) => question.type), usePdfs: draftJob.usePdfs }
+    paperCount > 0 && draftJob.questions.length > 0 && scope !== "skip"
+      ? { ...scope, papers: paperCount, questions: draftJob.questions.map((question) => question.type), usePdfs: draftJob.usePdfs }
       : "skip",
   );
   const { data: preflightBalance } = useProtectedQuery(

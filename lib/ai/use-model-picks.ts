@@ -12,7 +12,9 @@ import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { useAppToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import type { Effort } from "@/lib/ai/core/call-options";
-import { PRESET_KEYS, effectiveChoice, fallbackPreset, type AiTask, type ModelChoice } from "./tasks";
+import { DEFAULT_PRESET, PRESET_KEYS, effectiveChoice, fallbackPreset, type AiTask, type ModelChoice } from "./tasks";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
+import { useWorkspaceMutation } from "@/lib/workspaces/url";
 
 type Pick = { task: AiTask; modelId: Id<"models">; effort?: Effort };
 
@@ -20,6 +22,8 @@ type Pick = { task: AiTask; modelId: Id<"models">; effort?: Effort };
  * What each task runs on for the person, and how they change it: the AI settings page's
  * picks, read and written the same way wherever a model is picked. Picking a model for a
  * task saves it as a Custom pick, which keeps what every other task was running.
+ * In an organization everything runs on its preset, which only its admins change (#651):
+ * `organization` says so, and there's no Custom there.
  */
 export function useModelPicks() {
   const t = useTranslations("settingsAi");
@@ -38,8 +42,16 @@ export function useModelPicks() {
     if (current) store.setQuery(api.userAiConfig.queries.get, {}, { ...current, choice });
   });
   const saveCustom = useMutation(api.userAiConfig.mutations.setCustom);
+  const workspace = useCurrentWorkspace();
+  const organization = workspace?.kind === "organization" ? { name: workspace.name, admin: workspace.role === "admin" } : null;
+  const setAiPreset = useWorkspaceMutation(api.organizations.manage.setAiPreset);
   // Presets need credits; without them the user's own keys are all there is.
-  const choice = effectiveChoice(creditsEnabled, settings?.choice);
+  const choice: ModelChoice = organization ? (workspace?.aiPreset ?? DEFAULT_PRESET) : effectiveChoice(creditsEnabled, settings?.choice);
+  // An organization's admins pick its preset; nobody picks their own models there.
+  const chooseHere = async ({ choice: next }: { choice: ModelChoice }) => {
+    if (!organization) return await choose({ choice: next });
+    if (organization.admin && next !== "custom") await setAiPreset({ preset: next });
+  };
 
   // A task with no live Custom pick runs on the preset it falls back to, as on the server.
   const customModel = (task: AiTask) => {
@@ -58,7 +70,7 @@ export function useModelPicks() {
     return false;
   };
   const setCustom = (picks: Pick[]) => {
-    if (requireSignIn()) saveCustom({ picks }).catch(fail("model change"));
+    if (!organization && requireSignIn()) saveCustom({ picks }).catch(fail("model change"));
   };
   const pickAll = (tasks: AiTask[], model: MapModel, effort?: Effort) =>
     setCustom(tasks.map((task) => ({ task, modelId: model._id!, ...(effort && { effort }) })));
@@ -72,5 +84,5 @@ export function useModelPicks() {
       return { id, models: picked.map((p) => p.model), onSelect: () => setCustom(picked.map(({ model: _, ...pick }) => pick)) };
     });
 
-  return { signedIn, goToSignIn, creditsEnabled, presetModel, settings, choose, choice, modelsOf, modelOf: modelsOf(choice), fail, requireSignIn, pickAll, presetPicks };
+  return { signedIn, goToSignIn, creditsEnabled, presetModel, settings, choose: chooseHere, choice, modelsOf, modelOf: modelsOf(choice), fail, requireSignIn, pickAll, presetPicks, organization };
 }

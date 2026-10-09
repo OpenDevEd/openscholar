@@ -39,9 +39,9 @@ export function estimateScreening(papers: number, available: number, perPaper: n
   };
 }
 
-/** What screening one paper costs a person at most, on the model their Screen all runs on. */
-export async function screeningPaperCreditsFor(ctx: QueryCtx, userId: Id<"users">) {
-  return screeningPaperCredits(await taskPricing(ctx, userId, "screenAll"));
+/** What screening one paper costs at most for someone working in a workspace, on the model Screen all runs on there. */
+export async function screeningPaperCreditsFor(ctx: QueryCtx, working: InWorkspace) {
+  return screeningPaperCredits(await taskPricing(ctx, working, "screenAll"));
 }
 
 /**
@@ -102,9 +102,8 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
  * asked for. Papers a search's page already answered cost nothing, so it is an upper figure.
  */
 export async function screeningHold(ctx: QueryCtx, reader: InWorkspace, request: Parameters<typeof checkScreening>[2]) {
-  const { userId } = reader;
   await checkScreening(ctx, reader, request);
   const { set, first, last } = request;
   const held = await papersIn(ctx, reader, set);
-  return estimateScreening(Math.max(0, Math.min(last, held ?? last) - first + 1), 0, await screeningPaperCreditsFor(ctx, userId)).credits;
+  return estimateScreening(Math.max(0, Math.min(last, held ?? last) - first + 1), 0, await screeningPaperCreditsFor(ctx, reader)).credits;
 }

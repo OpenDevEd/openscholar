@@ -100,7 +100,7 @@ async function papersOf(ctx: QueryCtx, reader: InWorkspace, { set, first, last }
 /** The most an extraction of these papers holds: every paper at its most, on the models the job sends its questions to (../ai/serverModel.ts `extractionStamp`). */
 async function extractionHold(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, { questions, usePdfs, ...range }: { set: PaperSet; first: number; last: number; questions: Array<{ type: string; question: string }>; usePdfs?: boolean }) {
   await checkExtraction(ctx, { userId, workspaceId }, { ...range, questions, usePdfs });
-  const pricing = await extractionPricing(ctx, await extractionStamp(ctx, userId));
+  const pricing = await extractionPricing(ctx, await extractionStamp(ctx, { userId, workspaceId }));
   return (await papersOf(ctx, { userId, workspaceId }, range)) * extractionPaperCredits(pricing, questions, usePdfs === true);
 }
 

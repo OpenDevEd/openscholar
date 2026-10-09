@@ -1867,7 +1867,8 @@
     "screenPapers": "Screen {count, plural, one {# paper} other {# papers}}",
     "startFailed": "Couldn't start the screening",
     "showAnswers": "Show the answers for {title}",
-    "hideAnswers": "Hide the answers for {title}"
+    "hideAnswers": "Hide the answers for {title}",
+    "yesOrNo": "Yes or no"
   },
   "connectionsPage": {
     "connectedApps": "Connected Apps",
@@ -3250,7 +3251,9 @@
       "high": "High",
       "xhigh": "Extra high",
       "max": "Max"
-    }
+    },
+    "organizationPresetAdmin": "Everyone in it runs on the preset you pick here.",
+    "organizationPresetMember": "Its admins pick the preset everyone in it runs on."
   },
   "modelPicker": {
     "vendors": "Vendors",
@@ -3879,6 +3882,12 @@
         "did": "Sent the invitation again",
         "where": "Members",
         "ask": "Send the invitation again"
+      },
+      "workspacePreset": {
+        "doing": "Changing the organization's AI preset",
+        "did": "Changed the organization's AI preset",
+        "where": "AI settings",
+        "ask": "Change the organization's AI preset"
       }
     },
     "asks": {
@@ -4157,5 +4166,8 @@
     "fromCredits": "From {name}'s credits",
     "workspace": "Workspace",
     "creditsLeft": "{credits} credits left"
+  },
+  "models": {
+    "changeInSettings": "Change in AI settings"
   }
 }

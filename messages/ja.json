@@ -1867,7 +1867,8 @@
     "screenPapers": "{count, plural, other {# 件}}をスクリーニング",
     "startFailed": "スクリーニングを開始できませんでした",
     "showAnswers": "{title} の回答を表示",
-    "hideAnswers": "{title} の回答を隠す"
+    "hideAnswers": "{title} の回答を隠す",
+    "yesOrNo": "はい／いいえ"
   },
   "connectionsPage": {
     "connectedApps": "接続済みアプリ",
@@ -3250,7 +3251,9 @@
       "high": "高",
       "xhigh": "最高",
       "max": "最大"
-    }
+    },
+    "organizationPresetAdmin": "ここで選んだプリセットがメンバー全員に使われます。",
+    "organizationPresetMember": "メンバー全員が使うプリセットは管理者が選びます。"
   },
   "modelPicker": {
     "vendors": "提供元",
@@ -3879,6 +3882,12 @@
         "did": "招待を再送しました",
         "where": "メンバー",
         "ask": "招待を再送"
+      },
+      "workspacePreset": {
+        "doing": "組織の AI プリセットを変更しています",
+        "did": "組織の AI プリセットを変更しました",
+        "where": "AI 設定",
+        "ask": "組織の AI プリセットを変更"
       }
     },
     "asks": {
@@ -4157,5 +4166,8 @@
     "fromCredits": "{name} のクレジットから",
     "workspace": "ワークスペース",
     "creditsLeft": "残り {credits} クレジット"
+  },
+  "models": {
+    "changeInSettings": "AI 設定で変更"
   }
 }
