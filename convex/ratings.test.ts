@@ -71,6 +71,11 @@ it("rates a paper within an organization's collection apart from each member's o
   await rate(bob, one, 2);
   await rate(bob, two, 5);
   expect(await sorted()).toEqual([["Two", 5], ["One", 3]]);
+  // A search in the collection, its count, and what the assistant reads of it go by the collection's ratings too.
+  const searched = await alice.query(api.library.queries.searchLibrary, { workspaceId, collectionId, searchText: "One Two", minRating: 4, paginationOpts: { cursor: null, numItems: 10 } });
+  expect(searched.page.map((item) => [item.title, item.rating])).toEqual([["Two", 5]]);
+  expect(await alice.query(api.library.queries.getLibraryFilteredCount, { workspaceId, collectionId, searchText: "One Two", minRating: 4, sortBy: "savedAt", sortOrder: "desc" })).toEqual({ count: 1, capped: false });
+  expect((await alice.query(api.library.queries.papers, { workspaceId, collectionId, sort: "rating" })).papers.map((paper) => [paper.title, paper.rating])).toEqual([["Two", 5], ["One", 3]]);
   // Her own rating stays as it was.
   expect((await alice.query(api.library.queries.browseLibrary, { workspaceId, sortBy: "rating", sortOrder: "desc", paginationOpts: { cursor: null, numItems: 10 } })).page.find((item) => item._id === one)?.myRating).toBe(5);
 

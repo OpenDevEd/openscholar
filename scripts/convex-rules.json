@@ -78,7 +78,7 @@
       "MEMBERS_MATCHED": "the best search matches of an email the invite check compares; an exact email is among the first",
       "SINGLE_ROW_CLEANUP": "rows meant to be one per key: a duplicate or two a race left are cleared, and more wait for the next write",
       "MAX_API_KEYS_PER_USER": "a person has one key per provider, since saving one replaces the provider's, so this many is all of them",
-      "MAX_RATERS": "the members of an organization its averages read; Clerk lets a free organization have 5"
+      "MAX_RATERS": "the members of an organization its averages read, and the ratings of a paper in one collection; Clerk lets a free organization have 5 members"
     },
     "batches": {
       "BATCH": "a worker's batch; it pings itself for the next",

@@ -55,7 +55,7 @@ export async function rerate(ctx: MutationCtx, workspaceId: Id<"workspaces">, pa
   if (place) await ratePlace(ctx, place, item);
 }
 
-/** The most members of an organization its averages read; Clerk lets a free organization have 5. */
+/** The most members of an organization its averages read, and ratings of a paper in one collection; Clerk lets a free organization have 5 members. */
 const MAX_RATERS = 1_000;
 
 /** The workspaces whose saved papers a person's ratings count in: their own, and their organizations'. */
@@ -75,6 +75,8 @@ async function raters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizatio
   return users.flatMap((user) => (user?.state === "active" ? [user._id] : []));
 }
 
+const average = (ratings: number[]) => (ratings.length ? ratings.reduce((total, rating) => total + rating, 0) / ratings.length : undefined);
+
 /**
  * A saved paper's rating in a workspace: the average of its people's own ratings of it, or none
  * when none of them rated it. In a person's own workspace that's their rating.
@@ -83,24 +85,33 @@ export async function workspaceRating(ctx: Pick<QueryCtx, "db">, workspaceId: Id
   const workspace = await ctx.db.get("workspaces", workspaceId);
   if (!workspace) return undefined;
   if (workspace.kind === "personal") return (await personalRatingRow(ctx, workspace.userId, paperId))?.rating;
-  return await membersAverage(ctx, workspace.organizationId, undefined, paperId);
+  const rows = await Promise.all((await raters(ctx, workspace.organizationId)).map((userId) => personalRatingRow(ctx, userId, paperId)));
+  return average(rows.flatMap((row) => (row ? [row.rating] : [])));
 }
 
-/** An organization's members' average of their ratings of a paper, their own or within a collection, or none when none of them rated it. */
-async function membersAverage(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, collectionId: Id<"collections"> | undefined, paperId: string) {
-  const rows = await Promise.all((await raters(ctx, organizationId)).map((userId) => ratingRow(ctx, userId, collectionId, paperId)));
-  const counted = rows.flatMap((row) => (row ? [row.rating] : []));
-  return counted.length ? counted.reduce((total, rating) => total + rating, 0) / counted.length : undefined;
+/** Whether someone is an active member of an organization now. */
+async function isMember(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, userId: Id<"users">) {
+  const user = await ctx.db.get("users", userId);
+  if (user?.state !== "active") return false;
+  const membership = await ctx.db
+    .query("organizationMemberships")
+    .withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organizationId).eq("clerkUserId", user.clerkId).eq("state", "active"))
+    .first();
+  return membership !== null;
 }
 
 /**
  * What a paper sorts and filters by in a collection. In an organization, the collection rates
- * its papers itself: its members' average of their ratings there. In a person's own workspace,
- * the paper's rating, which is theirs.
+ * its papers itself: its members' average of their ratings there. Only people who could open
+ * the collection rated in it, so its own ratings of the paper are read, not every member's: a
+ * place nobody rated costs one read. In a person's own workspace, the paper's rating, which is theirs.
  */
 export async function placeRating(ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, item: Doc<"libraryItems">) {
   const workspace = await ctx.db.get("workspaces", item.workspaceId);
-  return workspace?.kind === "organization" ? await membersAverage(ctx, workspace.organizationId, collectionId, item.openalexId) : item.rating;
+  if (workspace?.kind !== "organization") return item.rating;
+  const rows = await ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId).eq("paperId", ratedPaper(item.openalexId))).take(MAX_RATERS);
+  const counted = await Promise.all(rows.map((row) => isMember(ctx, workspace.organizationId, row.userId)));
+  return average(rows.flatMap((row, at) => (counted[at] ? [row.rating] : [])));
 }
 
 /** Brings a paper's place in a collection in step with the rating it has there. */
