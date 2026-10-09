@@ -4235,6 +4235,9 @@
       "collections": "{count} 个收藏集",
       "chats": "{count} 个对话",
       "showMore": "显示更多成员"
+    },
+    "presence": {
+      "hasOpen": "{names} 正在查看"
     }
   },
   "models": {

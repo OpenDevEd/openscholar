@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ItemPresence } from "@/components/workspaces/presence";
 import { useTranslations } from "next-intl";
 import { Database, Plus, ExtractionIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,8 @@ function createExtractionJobListItem(viewMode: ViewMode) {
   return function ExtractionJobListItem({ item }: { item: ExtractionJob }) {
     // In an organization, a member's job shows who ran it in its ring (#656).
     const face = item.by && !item.by.you ? <IdentityAvatar name={item.by.name} imageUrl={item.by.imageUrl} className={viewMode === "list-detail" ? "size-9" : "size-6"} /> : undefined;
-    return <JobListItem job={item} viewMode={viewMode} face={face} done={item.done} />;
+    // Who has it open there, read for the row; only its own page joins its room.
+    return <JobListItem job={item} viewMode={viewMode} face={face} done={item.done} presence={<ItemPresence kind="extraction" id={item._id} join={false} />} />;
   };
 }
 

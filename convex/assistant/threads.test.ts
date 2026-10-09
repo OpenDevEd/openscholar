@@ -55,13 +55,13 @@ describe("assistant chats", () => {
     expect(await row(asBen)).toMatchObject({ members: [{ userId: ada, here: false }], organization });
 
     // Ben opens it through the organization. The row names him while he's there, and the reader never sees themselves.
-    const session = await asBen.mutation(api.assistant.presence.heartbeat, { threadId, sessionId: "tab-1" });
+    const session = await asBen.mutation(api.presence.chatHeartbeat, { threadId, sessionId: "tab-1" });
     expect((await row(asAda)).members).toEqual([{ userId: ben, name: "", here: true }]);
     expect((await row(asBen)).members).toEqual([{ userId: ada, name: "", here: false }]);
-    await expect(asCy.mutation(api.assistant.presence.heartbeat, { threadId, sessionId: "tab-2" })).rejects.toThrow(/Chat not found/);
+    await expect(asCy.mutation(api.presence.chatHeartbeat, { threadId, sessionId: "tab-2" })).rejects.toThrow(/Chat not found/);
 
     // His panel closes the chat.
-    await asBen.mutation(api.assistant.presence.leave, { sessionToken: session });
+    await asBen.mutation(api.presence.leave, { sessionToken: session });
     expect((await row(asAda)).members).toEqual([]);
 
     // Shared with him by name, he is on the row whether he's there or not.
@@ -69,7 +69,7 @@ describe("assistant chats", () => {
     expect((await row(asAda)).members).toEqual([{ userId: ben, name: "", here: false }]);
 
     // Deleting the chat empties its room afterwards, on its own.
-    await asBen.mutation(api.assistant.presence.heartbeat, { threadId, sessionId: "tab-3" });
+    await asBen.mutation(api.presence.chatHeartbeat, { threadId, sessionId: "tab-3" });
     await asAda.mutation(api.assistant.threads.remove, { threadId });
     await waitFor(async () => (await t.run(async (ctx) => ctx.runQuery(components.presence.public.listRoom, { roomId: threadId }))).length === 0);
   });

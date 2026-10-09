@@ -1,6 +1,7 @@
 "use client";
 
 import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
+import { ItemPresence } from "@/components/workspaces/presence";
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Share2, Check, Download, History, MoreHorizontal } from "@/components/icons";
@@ -102,6 +103,8 @@ export function SearchCommandHeader({
 
       {/* Global actions */}
       <div className="flex items-center gap-2">
+        {/* Who else has the search open (#657): first in this right-aligned group, so arriving faces move none of its controls. */}
+        {hasActivity && searchId ? <ItemPresence kind="search" id={searchId} /> : null}
         {/* View mode toggle - desktop only */}
         {!isMobile && <ViewModeSwitch value={viewMode} onChange={setViewMode} />}
 

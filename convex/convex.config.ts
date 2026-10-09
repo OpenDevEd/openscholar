@@ -31,6 +31,6 @@ app.use(aggregate, { name: "extractionFacetCounts" });
 // writes its own rows: Screen all's results (convex/screening/bookkeeping.ts) and the
 // usage ledger (convex/billing/ledger.ts).
 app.use(batchWorker);
-// Who has an assistant chat open (convex/assistant/presence.ts).
+// Who has a chat or any other item open (convex/presence.ts).
 app.use(presence);
 export default app;

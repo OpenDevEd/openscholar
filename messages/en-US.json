@@ -4235,6 +4235,9 @@
       "collections": "{count, plural, one {# collection} other {# collections}}",
       "chats": "{count, plural, one {# chat} other {# chats}}",
       "showMore": "Show more people"
+    },
+    "presence": {
+      "hasOpen": "{count, plural, one {{names} has it open} other {{names} have it open}}"
     }
   },
   "models": {

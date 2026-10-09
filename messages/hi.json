@@ -4235,6 +4235,9 @@
       "collections": "{count, plural, one {# संग्रह} other {# संग्रह}}",
       "chats": "{count, plural, one {# चैट} other {# चैट}}",
       "showMore": "और लोग दिखाएँ"
+    },
+    "presence": {
+      "hasOpen": "{names} ने इसे खोला है"
     }
   },
   "models": {
