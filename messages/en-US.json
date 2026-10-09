@@ -197,7 +197,8 @@
       "fr": "French",
       "hi": "Hindi",
       "ja": "Japanese"
-    }
+    },
+    "you": "You"
   },
   "home": {
     "tagline": "Search millions of academic papers and research articles",
@@ -3165,7 +3166,6 @@
       "title": "Admins",
       "admins": "admins",
       "search": "Search by name or email",
-      "you": "You",
       "invited": "Invited",
       "notDelivered": "Invite not delivered",
       "remove": "Remove",
@@ -3375,7 +3375,6 @@
       "failed": "Couldn't carry the reply on"
     },
     "addPeople": "Add people or an organization",
-    "you": "You",
     "owner": "Owner",
     "canChat": "Can chat",
     "canView": "Can view",

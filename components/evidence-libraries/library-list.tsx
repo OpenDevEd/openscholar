@@ -16,20 +16,18 @@ import Link from "next/link";
 import {
   Building2,
   Check,
-  Crown,
   ExternalLink,
   Layers,
   Mail,
-  PenLine,
   Plus,
   Settings2,
   MoreHorizontal,
-  ShieldCheck,
   RotateCcw,
   SearchX,
   EvidenceLibrariesIcon,
 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { RoleLabel } from "@/components/ui/identity";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -84,7 +82,7 @@ type Library = {
   /** The update or publish a live library is running. */
   operation?: LibraryOperation | null;
 };
-const roleIcons = { Owner: Crown, Editor: ShieldCheck, Creator: PenLine };
+const roleKinds = { Owner: "owner", Editor: "editor", Creator: "creator" } as const;
 function LibraryTile() {
   return (
     <div className={LIST_TILE}>
@@ -222,7 +220,6 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
             data-library-list
           >
             {visible.map((library) => {
-              const RoleIcon = roleIcons[library.role];
               return (
                 <li
                   key={library.id}
@@ -283,10 +280,9 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                       )}
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="ml-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <RoleIcon className="size-3.5" />
+                          <RoleLabel role={roleKinds[library.role]} className="ml-1">
                             {library.role}
-                          </span>
+                          </RoleLabel>
                         </TooltipTrigger>
                         <TooltipContent>
                           {library.role === "Owner"
