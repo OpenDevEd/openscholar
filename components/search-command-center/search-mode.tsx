@@ -11,6 +11,7 @@ import { QueryHistoryNav } from "./components/query-history-nav";
 import { LanguageTranslateControl } from "./components/language-translate-control";
 import { OqlQueryStatus } from "./components/oql-query-status";
 import { OQL_FIELD } from "@/lib/openalex/oql";
+import { SEMANTIC_FIELD } from "@/lib/openalex/semantic";
 import { useSearchOptional } from "@/lib/search";
 import {
   useSearchHistoryStore,
@@ -71,6 +72,9 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
 
   const isFormDisabled = isLoading || isValidating || isTranslating || isEnhancing;
   const isOql = search?.params?.field === OQL_FIELD;
+  // A question asked by meaning is searched as it is written: the AI that writes and
+  // translates keyword queries stays out of it.
+  const byMeaning = search?.params?.field === SEMANTIC_FIELD;
   // AI writes and translates in the search's own query language.
   const syntax = isOql ? ('oql' as const) : undefined;
   const isLanguageSelectorDisabled = isTranslating || isEnhancing;
@@ -112,6 +116,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   // Handle research question submit
   const handleQuestionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (byMeaning) return;
 
     if (!effectiveSearchId) {
       toast.validation.failed(tValidation('searchRequired'));
@@ -167,7 +172,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   // Shared translation logic
   const performTranslation = useCallback(
     async (targetLanguage: string) => {
-      if (!search || !targetLanguage || !localInputValue.trim()) return;
+      if (byMeaning || !search || !targetLanguage || !localInputValue.trim()) return;
       if (!isTranslateConfigured) {
         toast.ai.configRequired(tValidation("aiConfigRequired"));
         return;
@@ -202,6 +207,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       }
     },
     [
+      byMeaning,
       search,
       localInputValue,
       isTranslateConfigured,
@@ -261,7 +267,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
               type="submit"
               size="sm"
               variant="ai"
-              disabled={isFormDisabled || !currentQuestion.trim()}
+              disabled={isFormDisabled || byMeaning || !currentQuestion.trim()}
               className="h-7 px-2.5 text-xs gap-1.5"
             >
               {isEnhancing ? (
@@ -304,7 +310,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
                 value={selectedLanguage}
                 onValueChange={handleLanguageChange}
                 onTranslate={() => handleTranslate({ preventDefault: () => {} } as React.FormEvent)}
-                disabled={isLanguageSelectorDisabled}
+                disabled={isLanguageSelectorDisabled || byMeaning}
                 translateDisabled={!localInputValue.trim()}
                 isTranslating={isTranslating}
               />
@@ -323,6 +329,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
           }
         />
         {isOql && <OqlQueryStatus error={search?.error ?? null} />}
+        {byMeaning && <p className="mt-2 text-xs text-muted-foreground">{t('byMeaningNoAI')}</p>}
       </form>
     </div>
   );

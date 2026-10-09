@@ -1394,6 +1394,7 @@
     "keywords": "关键词",
     "oqlQuery": "OQL 查询",
     "oqlReference": "OQL 参考",
+    "byMeaningNoAI": "按语义的问题会按您写的原样搜索，因此改写和翻译关键词的 AI 已关闭。",
     "askAI": "询问 AI",
     "translate": "翻译",
     "clearLanguage": "清除语言",

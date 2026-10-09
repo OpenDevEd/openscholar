@@ -11,6 +11,7 @@ const {
   currentUserIdRef,
   goToSignInMock,
   pushMock,
+  searchFieldRef,
   searchHistoryRef,
   startJobMock,
   updateSearchResultMock,
@@ -29,6 +30,7 @@ const {
     currentUserIdRef: { current: null as string | null },
     goToSignInMock: vi.fn(),
     pushMock: vi.fn(),
+    searchFieldRef: { current: "title_and_abstract" },
     searchHistoryRef: { current: [] as unknown[] },
     startJobMock: vi.fn(async () => ({ jobId: "job_for_current_account" })),
     updateSearchResultMock: vi.fn(),
@@ -146,7 +148,7 @@ vi.mock("@/lib/search", () => ({
   useSearchOptional: () => ({
     params: {
       q: "graph neural networks",
-      field: "title_and_abstract",
+      field: searchFieldRef.current,
       sort: "relevance_score:desc",
       page: 1,
       yf: null,
@@ -257,6 +259,7 @@ describe("<SearchCommandFooter> auth-gated limits", () => {
       retryUserSync: vi.fn(),
     };
     currentUserIdRef.current = null;
+    searchFieldRef.current = "title_and_abstract";
     searchHistoryRef.current = [];
     goToSignInMock.mockReset();
     pushMock.mockReset();
@@ -393,5 +396,33 @@ describe("<SearchCommandFooter> auth-gated limits", () => {
         },
       });
     });
+  });
+});
+
+// A question asked by meaning is searched as it is written: AI doesn't rewrite it broader or narrower.
+describe("<SearchCommandFooter> with a question asked by meaning", () => {
+  function showFooter(field: string, totalCount: number) {
+    searchFieldRef.current = field;
+    render(
+      <SearchCommandFooter
+        totalCount={totalCount}
+        currentQuery="What helps teachers stay in rural schools?"
+        isScreeningOpen={false}
+        onScreeningToggle={vi.fn()}
+        screeningPanelId="screening-panel"
+        screeningQuestionCount={0}
+        searchId="search_1"
+      />,
+    );
+  }
+
+  it("offers no broader query for a question asked by meaning", () => {
+    showFooter("semantic", 3);
+    expect(screen.queryByRole("button", { name: "makeBroader" })).not.toBeInTheDocument();
+  });
+
+  it("offers a broader query for keywords that find few works", () => {
+    showFooter("title_and_abstract", 3);
+    expect(screen.getByRole("button", { name: "makeBroader" })).toBeInTheDocument();
   });
 });

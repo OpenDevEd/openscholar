@@ -34,6 +34,7 @@ import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { browserExpand, ensureQueryShortcuts, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { cn } from "@/lib/utils";
 import { OQL_FIELD } from "@/lib/openalex/oql";
+import { SEMANTIC_FIELD } from "@/lib/openalex/semantic";
 import { subtleSpring } from "@/lib/animation-config";
 import { ResultsTranslationControl } from "./components/results-translation-control";
 import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
@@ -122,9 +123,11 @@ export function SearchCommandFooter({
   const effectiveQuery = currentQuery || search?.params?.q || "";
   const currentLanguage = search?.params?.lang ?? "";
 
-  // Show buttons conditionally
-  const showBroadenButton = totalCount < 10 && totalCount >= 0 && effectiveQuery.trim();
-  const showNarrowButton = totalCount > 1000 && effectiveQuery.trim();
+  // Show buttons conditionally. A question asked by meaning is searched as it is written, so AI
+  // doesn't rewrite it broader or narrower.
+  const byMeaning = search?.params?.field === SEMANTIC_FIELD;
+  const showBroadenButton = !byMeaning && totalCount < 10 && totalCount >= 0 && effectiveQuery.trim();
+  const showNarrowButton = !byMeaning && totalCount > 1000 && effectiveQuery.trim();
   const contextualAction = showBroadenButton
     ? "broaden"
     : showNarrowButton

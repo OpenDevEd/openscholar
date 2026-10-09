@@ -1384,6 +1384,7 @@
     "keywords": "Keywords",
     "oqlQuery": "OQL query",
     "oqlReference": "OQL reference",
+    "byMeaningNoAI": "A question by meaning is searched as you write it, so the AI that rewrites and translates keywords is off.",
     "askAI": "Ask AI",
     "translate": "Translate",
     "clearLanguage": "Clear language",

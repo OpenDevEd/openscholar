@@ -11,6 +11,7 @@ import { QueryHistoryNav } from "./components/query-history-nav";
 import { QueryTextarea } from "./components/query-textarea";
 import { OqlQueryStatus } from "./components/oql-query-status";
 import { OQL_FIELD } from "@/lib/openalex/oql";
+import { SEMANTIC_FIELD } from "@/lib/openalex/semantic";
 import { useSearch } from "@/lib/search";
 import { useQueryHistory } from "@/lib/hooks";
 import { useAppToast } from "@/lib/toast";
@@ -57,6 +58,8 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
 
   const isFormDisabled = isLoading || isValidating || isEnhancing;
   const isOql = search.params.field === OQL_FIELD;
+  // A question asked by meaning is searched as it is written: the AI that rewrites keyword queries stays out of it.
+  const byMeaning = search.params.field === SEMANTIC_FIELD;
 
   // Handle manual query submission
   const submitQuery = useCallback(() => {
@@ -67,7 +70,7 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
   const handleAiEnhancement = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!aiInstructions.trim() || !urlQuery.trim()) return;
+    if (byMeaning || !aiInstructions.trim() || !urlQuery.trim()) return;
 
     if (!isConfigured) {
       toast.ai.configRequired(tv("aiConfigRequired"));
@@ -124,14 +127,14 @@ Please enhance this academic search query according to the user's specific instr
           placeholder={t("searchCommand.placeholder.enhance")}
           value={aiInstructions}
           onChange={(e) => setAiInstructions(e.target.value)}
-          disabled={isFormDisabled}
+          disabled={isFormDisabled || byMeaning}
           icon={<Wand2 className="h-4 w-4" />}
           action={
             <Button
               type="submit"
               size="sm"
               variant="ai"
-              disabled={isFormDisabled || !aiInstructions.trim()}
+              disabled={isFormDisabled || byMeaning || !aiInstructions.trim()}
               className="h-7 px-2.5 text-xs gap-1.5"
             >
               {isEnhancing ? (
@@ -146,6 +149,7 @@ Please enhance this academic search query according to the user's specific instr
           }
         />
       </form>
+      {byMeaning && <p className="text-xs text-muted-foreground">{t("searchCommand.byMeaningNoAI")}</p>}
 
       {/* Editable query, with the same box the import search dialog uses */}
       <QueryTextarea

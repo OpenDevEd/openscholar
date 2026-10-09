@@ -1394,6 +1394,7 @@
     "keywords": "Mots-clés",
     "oqlQuery": "Requête OQL",
     "oqlReference": "Référence OQL",
+    "byMeaningNoAI": "Une question par le sens est cherchée telle que vous l'écrivez : l'IA qui réécrit et traduit les mots-clés est désactivée.",
     "askAI": "Demander à l'IA",
     "translate": "Traduire",
     "clearLanguage": "Effacer la langue",
