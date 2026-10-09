@@ -11,7 +11,7 @@ import { format, parseISO } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import type { SearchResult, SearchFilters, SearchField } from '../types';
 import { OQL_FIELD } from '../openalex/oql';
-import { SEMANTIC_SORT, asksByMeaning } from '../openalex/semantic';
+import { SEMANTIC_SORT, asksByMeaning, takesLike } from '../openalex/semantic';
 import type { ParsedSearchParams } from './parsers';
 import { DEFAULT_SEARCH_PARAMS } from './parsers';
 import { sanitizeSelection } from './sanitize';
@@ -213,11 +213,20 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
  * An OQL query searches text only through a `has` or `is similar to` clause;
  * country focus and the review filter add one.
  */
+/**
+ * A search as it runs: a question by meaning or an OQL query is like no papers, whatever an address
+ * or a saved search names beside it, so the page shows what its request asks. The same object when
+ * nothing is left out.
+ */
+export function runnableParams<Params extends Pick<ParsedSearchParams, 'field' | 'like'>>(params: Params): Params {
+  return params.like.length > 0 && !takesLike(params.field) ? { ...params, like: [] } : params;
+}
+
 export function effectiveSort(
   params: Pick<ParsedSearchParams, 'q' | 'sort' | 'field' | 'review' | 'focus' | 'like'>,
 ): string {
   // A question asked by meaning, or the works nearest given papers, are listed by relevance alone.
-  if (asksByMeaning(params.field, params.q) || params.like.length > 0) return SEMANTIC_SORT;
+  if (asksByMeaning(params.field, params.q) || (params.like.length > 0 && takesLike(params.field))) return SEMANTIC_SORT;
   const searchesText = params.field === OQL_FIELD
     ? /\b(has|is similar to)\b/i.test(params.q) || params.review || params.focus.length > 0
     : Boolean(params.q.trim());

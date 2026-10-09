@@ -44,6 +44,11 @@ describe("effectiveSort", () => {
     expect(searchResultToParams({ similarTo: [] }).like).toBeUndefined();
   });
 
+  it("sorts a question by meaning or an OQL query as it would without papers named beside it", () => {
+    expect(effectiveSort(params({ field: "oql", q: "year is (2020)", like: ["OS1"] }))).toBe("publication_date:desc");
+    expect(effectiveSort(params({ field: "semantic", q: "", like: ["OS1"], sort: "cited_by_count:desc" }))).toBe("cited_by_count:desc");
+  });
+
   // OpenAlex rejects relevance order without a text search (relevance_sort_requires_search).
   it("sorts an OQL query without a text clause newest first", () => {
     expect(effectiveSort(params({ field: "oql", q: "year is (2020) and type is (article)" }))).toBe("publication_date:desc");

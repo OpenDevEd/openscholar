@@ -80,6 +80,23 @@ describe("the results page's search for the works nearest given papers", () => {
     expect(result.current.params.like).toEqual([]);
   });
 
+  it("reads an address that names papers beside a question by meaning as like none, and keeps them gone", async () => {
+    const conflicting = ({ children }: { children: React.ReactNode }) => (
+      <NuqsTestingAdapter searchParams="?field=semantic&q=seagrass+meadows&like=OS64233829">
+        <SearchProvider>{children}</SearchProvider>
+      </NuqsTestingAdapter>
+    );
+    searched.mockClear();
+    const { result } = renderHook(() => ({ search: useSearch(), updateFilter: useUpdateSearchFilter() }), { wrapper: conflicting });
+    expect(result.current.search.params.like).toEqual([]);
+    await waitFor(() => expect(searched).toHaveBeenCalled(), { timeout: 5000 });
+    const [asked] = searched.mock.calls.at(-1) as [{ filters: { similarTo?: string[] } }];
+    expect(asked.filters.similarTo).toEqual([]);
+    act(() => result.current.updateFilter({ currentSearchField: "title" }));
+    await waitFor(() => expect(result.current.search.params.field).toBe("title"));
+    expect(result.current.search.params.like).toEqual([]);
+  });
+
   it("keeps the papers when the search's words turn to another field, which only filter what they find", async () => {
     const { result } = renderHook(() => ({ search: useSearch(), updateFilter: useUpdateSearchFilter() }), { wrapper });
     act(() => result.current.updateFilter({ currentSearchField: "title" }));

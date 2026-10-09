@@ -33,7 +33,7 @@ import { searchedCountOf } from '../openalex/work-schema';
 import { buildOpenAlexWorksQuery } from '../openalex/works-query';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
 import { ResearchContext } from '../research/binding';
-import { paramsToSearchResult, searchResultToParams } from '../search-params/converters';
+import { paramsToSearchResult, runnableParams, searchResultToParams } from '../search-params/converters';
 import { browserExpand, validateAndExpandKeywordsSilently } from '../keyword-validation-browser';
 import { useQueryShortcuts } from '../research/reads';
 import type { SearchFilters, SearchField, PaperResult } from '../types';
@@ -151,7 +151,9 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     () => savedParams ?? (routeIsOql ? { ...routeUrlParams, q: storedQuery } : routeUrlParams),
     [savedParams, routeIsOql, routeUrlParams, storedQuery],
   );
-  const urlParams = local ? local.params : routeSearchParams;
+  const shownParams = local ? local.params : routeSearchParams;
+  // As the search runs: an address or a saved search can name papers beside a question by meaning or OQL.
+  const urlParams = useMemo(() => runnableParams(shownParams), [shownParams]);
   const onLocalParamsChange = local?.onParamsChange;
 
   // Back and Forward. The address cannot say what a history entry showed: an OQL query is not in
@@ -208,7 +210,10 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       const switching = toOql !== fromOql;
       // A search turning to a question by meaning or to OQL is like no papers: either says by itself
       // what the works are searched by, through the scope picker or a step through the query history.
-      const unliked = !takesLike(toField) && (updates.like ?? shown.like).length > 0;
+      // Papers an address or a saved search named beside either go with the next change, so they don't
+      // come back with a later change of scope.
+      const named = updates.like ?? shown.like;
+      const unliked = named.length > 0 && (!takesLike(toField) || (updates.like === undefined && !takesLike(shown.field)));
       const changes = unliked ? { ...updates, like: [] } : updates;
       if (onLocalParamsChange) {
         return onLocalParamsChange(switching && changes.q === undefined ? { ...changes, q: '' } : changes);

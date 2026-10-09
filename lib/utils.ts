@@ -12,7 +12,7 @@ import { researchAreaFilter, sdgFilterValue } from './openalex/vocabulary'
 import { authorFilterValue, isAuthorId } from './openalex/author-filter'
 import { parseImportFile } from './import'
 import { shortWorkId } from './openalex/work-id'
-import { SEMANTIC_FIELD, SEMANTIC_SORT } from './openalex/semantic'
+import { SEMANTIC_FIELD, SEMANTIC_SORT, takesLike } from './openalex/semantic'
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {
@@ -379,7 +379,8 @@ export function createSearchParameters(
   }
 
   // The works nearest these papers by meaning, ranked by closeness (the OpenScholar API's similar_to).
-  if (filters.similarTo?.length) searchParams.similar = filters.similarTo.join('|');
+  // A question by meaning goes without papers a saved search names beside it, as its page shows it.
+  if (filters.similarTo?.length && takesLike(filters.searchField)) searchParams.similar = filters.similarTo.join('|');
 
   // Add cites, cited_by and related_to filtering
   if (filters.citesItemId) apiFilters.cites = relationFilterId(filters.citesItemId);

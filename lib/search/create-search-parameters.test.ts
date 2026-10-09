@@ -161,6 +161,11 @@ describe("createSearchParameters — search by meaning", () => {
     expect(createSearchParameters("", { ...baseFilters, similarTo: [] }).similar).toBeUndefined();
   });
 
+  it("asks a question by meaning without the papers an address or a saved search names beside it", () => {
+    const params = createSearchParameters("kelp forests", { ...baseFilters, searchField: "semantic", similarTo: ["OS64233829"] });
+    expect([params.semantic, params.similar]).toEqual(["kelp forests", undefined]);
+  });
+
   it("asks nothing by meaning without a question, and keeps the sort chosen", () => {
     const params = createSearchParameters("", { ...baseFilters, searchField: "semantic", sortBy: "publication_date:desc" });
     expect(params.semantic).toBeUndefined();
