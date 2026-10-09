@@ -10,6 +10,7 @@ import { PanelLeft } from "@/components/icons";
 import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { SidebarContent } from "@/components/workspaces/rail";
+import type { FirstWorkspace } from "@/lib/workspaces/look-cache";
 
 const hoverSpring = { type: "spring" as const, stiffness: 400, damping: 25, mass: 0.6 };
 
@@ -31,7 +32,8 @@ function useIsChromeless() {
   return false;
 }
 
-export function AppSidebar() {
+/** `firstWorkspace`: the workspace the page was asked for, and how it looked last time, so the rail is drawn as it from the first frame. */
+export function AppSidebar({ firstWorkspace }: { firstWorkspace: FirstWorkspace }) {
   const isMobile = useIsMobile();
   const { isOpen, setOpen } = useSidebarStore();
   const isChromeless = useIsChromeless();
@@ -48,7 +50,7 @@ export function AppSidebar() {
         <SheetContent side="left" showCloseButton={false} className="w-20 gap-0 bg-sidebar p-0">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <Suspense fallback={null}>
-            <SidebarContent onClose={() => setOpen(false)} />
+            <SidebarContent firstWorkspace={firstWorkspace} onClose={() => setOpen(false)} />
           </Suspense>
         </SheetContent>
       </Sheet>
@@ -58,7 +60,7 @@ export function AppSidebar() {
   return (
     <aside className="sticky left-0 top-0 z-40 hidden h-screen w-20 shrink-0 border-r border-sidebar-border bg-sidebar md:block">
       <Suspense fallback={null}>
-        <SidebarContent />
+        <SidebarContent firstWorkspace={firstWorkspace} />
       </Suspense>
     </aside>
   );

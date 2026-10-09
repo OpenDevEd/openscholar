@@ -126,12 +126,15 @@ export function useAnswerInvitation() {
   };
 }
 
-/** The workspace card: the one you're in, the others, invitations, and making one. */
-export function WorkspaceMenu({ onDone, onCreate }: { onDone: () => void; onCreate: () => void }) {
+/**
+ * The workspace card: the one you're in, the others, invitations, and making one. `all` is read by
+ * the rail, which is always there, so the list is in the card as it opens. `onPick` hears the
+ * workspace picked as the card closes, so the rail shows it while its pages load.
+ */
+export function WorkspaceMenu({ all, onDone, onPick, onCreate }: { all: ReturnType<typeof useWorkspaces>; onDone: () => void; onPick: (workspace: WorkspaceRow) => void; onCreate: () => void }) {
   const t = useTranslations("workspaces");
   const tc = useTranslations("common");
   const router = useRouter();
-  const all = useWorkspaces();
   const current = useCurrentWorkspace();
   const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(current?.workspaceId, { paginationOpts: { cursor: null, numItems: 10 } }));
   const { answering, join, decline } = useAnswerInvitation();
@@ -160,7 +163,14 @@ export function WorkspaceMenu({ onDone, onCreate }: { onDone: () => void; onCrea
           <ul role="listbox" aria-label={t("otherWorkspaces")} className="space-y-px pt-1">
             {others.map((workspace) => (
               <li key={workspace.workspaceId} role="option" aria-selected={false}>
-                <button type="button" onClick={() => go(workspace.slug)} className={cn(ROW, "h-11")}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onPick(workspace);
+                    go(workspace.slug);
+                  }}
+                  className={cn(ROW, "h-11")}
+                >
                   <Framed>
                     <WorkspaceTile workspace={workspace} size="md" home />
                   </Framed>
