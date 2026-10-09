@@ -72,6 +72,8 @@ export async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspac
   if (!(await drain(ctx, step, (n) => ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(n), "screeningSlots"))) return false;
   if (!(await drain(ctx, step, (n) => ctx.db.query("assistantSpenders").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId)).take(n), "assistantSpenders"))) return false;
   if (!(await drain(ctx, step, (n) => ctx.db.query("activity").withIndex("by_workspace_and_item", (q) => q.eq("workspaceId", workspaceId)).take(n), "activity"))) return false;
+  // Its counts, each member's of each kind of record included (../research/recordCounts.ts).
+  if (!(await drain(ctx, step, (n) => ctx.db.query("recordCounts").withIndex("by_workspace_and_table_and_createdBy", (q) => q.eq("workspaceId", workspaceId)).take(n), "recordCounts"))) return false;
 
   return await each(step, (n) => ctx.db.query("authorProfiles").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(n), async (profile) => {
     if (step.left === 0) return false;

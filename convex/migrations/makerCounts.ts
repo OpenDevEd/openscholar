@@ -4,7 +4,7 @@ import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
-import { makerCountRow, startMakerCount, type ByMaker } from "../research/recordCounts";
+import { startMakerCount, type ByMaker } from "../research/recordCounts";
 
 /**
  * Starts each member's counts of what they made in an organization (#656), for the records made
@@ -38,38 +38,32 @@ export const run = migrations.runner([
   internal.migrations.makerCounts.assistantThreads,
 ]);
 
-const TABLES = ["searches", "screeningJobs", "extractionJobs", "collections", "assistantThreads"] as const;
-
-/** Records on one page of a table, in an organization, whose maker has no finished count. */
-export const verifyPage = internalQuery({
-  args: { table: v.union(...TABLES.map((table) => v.literal(table))), cursor: v.union(v.string(), v.null()) },
-  returns: v.object({ wrong: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
-  handler: async (ctx, { table, cursor }) => {
-    const page = await ctx.db.query(table).paginate({ cursor, numItems: 50, maximumBytesRead: 8 * 1024 * 1024 });
-    let wrong = 0;
-    for (const record of page.page) {
-      if ((await ctx.db.get("workspaces", record.workspaceId))?.kind !== "organization") continue;
-      const row = await makerCountRow(ctx, table, record.workspaceId, record.createdBy);
-      if (!row || row.countedTo !== undefined) wrong++;
-    }
-    return { wrong, isDone: page.isDone, continueCursor: page.continueCursor };
+/** Members' counts still being taken, a page of count rows at a time: they're small, so a page reads many. */
+export const countingPage = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()) },
+  returns: v.object({ counting: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
+  handler: async (ctx, { cursor }) => {
+    const page = await ctx.db.query("recordCounts").paginate({ cursor, numItems: 1000, maximumBytesRead: 4 * 1024 * 1024 });
+    return { counting: page.page.filter((row) => row.createdBy && row.countedTo !== undefined).length, isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });
 
-/** How many organization records have a maker whose count isn't kept yet; 0 when done. */
+/**
+ * How much is left: the migrations not yet done, and the members' counts they started still being
+ * taken; 0 when done. It reads the migrations' own record and the count rows, not the records.
+ */
 export const verify = internalAction({
   args: {},
   returns: v.number(),
   handler: async (ctx): Promise<number> => {
-    let wrong = 0;
-    for (const table of TABLES) {
-      for (let cursor: string | null = null; ;) {
-        const page: { wrong: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.makerCounts.verifyPage, { table, cursor });
-        wrong += page.wrong;
-        if (page.isDone) break;
-        cursor = page.continueCursor;
-      }
+    const statuses = await migrations.getStatus(ctx, { migrations: [internal.migrations.makerCounts.searches, internal.migrations.makerCounts.screeningJobs, internal.migrations.makerCounts.extractionJobs, internal.migrations.makerCounts.collections, internal.migrations.makerCounts.assistantThreads] });
+    let left = statuses.filter((status) => !status.isDone).length;
+    for (let cursor: string | null = null; ;) {
+      const page: { counting: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.makerCounts.countingPage, { cursor });
+      left += page.counting;
+      if (page.isDone) break;
+      cursor = page.continueCursor;
     }
-    return wrong;
+    return left;
   },
 });

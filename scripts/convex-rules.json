@@ -81,7 +81,8 @@
       "SINGLE_ROW_CLEANUP": "rows meant to be one per key: a duplicate or two a race left are cleared, and more wait for the next write",
       "MAX_API_KEYS_PER_USER": "a person has one key per provider, since saving one replaces the provider's, so this many is all of them",
       "MAX_RATERS": "the members of an organization its averages read, and the ratings of a paper in one collection; Clerk lets a free organization have 5 members",
-      "PLACES_NOTED": "the collections a removed or restored paper notes in their Activity; a paper in more is noted in the first of them"
+      "PLACES_NOTED": "the collections a removed or restored paper notes in their Activity; a paper in more is noted in the first of them",
+      "MAKER_ROWS_READ": "the makers of one kind of record the Run by filter reads for members who left; one row per person who ever made one, so an organization past it lists the first of them"
     },
     "batches": {
       "BATCH": "a worker's batch; it pings itself for the next",

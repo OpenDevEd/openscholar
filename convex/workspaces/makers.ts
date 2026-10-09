@@ -33,11 +33,27 @@ export async function makersIn(ctx: QueryCtx, workspaceId: Id<"workspaces">, vie
  * An organization's members, a page at a time, each with how many of one kind of record they made
  * there (#656): what a list's Run by filter shows. A person's own workspace is all theirs, so it lists no one.
  */
+/** Makers of a table read for those who left: one count row each, for every person who ever made one there. */
+const MAKER_ROWS_READ = 1000;
+
+/** People who made some of a table in an organization and aren't its active members any more. */
+async function departed(ctx: QueryCtx, table: ByMaker, workspaceId: Id<"workspaces">, organizationId: Id<"organizations">) {
+  const makers = await ctx.db.query("recordCounts").withIndex("by_workspace_and_table_and_createdBy", (q) => q.eq("workspaceId", workspaceId).eq("table", table)).take(MAKER_ROWS_READ);
+  const people = await Promise.all(makers.map(async ({ createdBy, count }) => {
+    if (!createdBy || count === 0) return null;
+    const user = await ctx.db.get("users", createdBy);
+    if (!user) return null;
+    const member = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organizationId).eq("clerkUserId", user.clerkId).eq("state", "active")).first();
+    return member ? null : user;
+  }));
+  return people.filter((user): user is Doc<"users"> => user !== null);
+}
+
 export const countsAction = defineUserQuery({
   path: "workspaces/makers:counts",
   description:
     "Lists the members of the organization the person is in, a page at a time, each with how many of one kind of record they made there: searches, screenings, extractions, collections or chats. " +
-    "Their `userId` is what lists take as `by` to show only that member's. The person themselves comes first, on the first page. In the person's own workspace everything is theirs, so it lists no one.",
+    "Their `userId` is what lists take as `by` to show only that member's. The person themselves comes first, on the first page; members who have left, with what they made, come last. In the person's own workspace everything is theirs, so it lists no one.",
   args: { table: byMakerValidator, paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(v.object({ userId: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()), you: v.boolean(), count: v.number() })),
   run: async (ctx, { userId, workspaceId }, { table, paginationOpts }) => {
@@ -54,7 +70,9 @@ export const countsAction = defineUserQuery({
       return user && user.state === "active" && user._id !== userId ? [await row(user)] : [];
     }));
     const you = paginationOpts.cursor === null ? await ctx.db.get("users", userId) : null;
-    return { ...page, page: [...(you ? [await row(you)] : []), ...rows.flat()] };
+    // Members who left keep what they made there, so the last page lists those of them who made any.
+    const left = page.isDone ? await departed(ctx, table, workspaceId, workspace.organizationId) : [];
+    return { ...page, page: [...(you ? [await row(you)] : []), ...rows.flat(), ...(await Promise.all(left.map(row)))] };
   },
 });
 export const counts = userQuery(countsAction);

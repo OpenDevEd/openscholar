@@ -94,8 +94,9 @@ export const countMakerChange = (table: ByMaker) => async (ctx: MutationCtx, cha
   if (change.operation === "update") return;
   const record = (change.newDoc ?? change.oldDoc) as Made & { _creationTime: number };
   const row = await makerCountRow(ctx, table, record.workspaceId, record.createdBy);
-  // The first count reads the records as this change leaves them.
-  if (!row) return await startMakerCount(ctx, table, record);
+  // The first count reads the records as this change leaves them. A delete with none starts none: a
+  // workspace being emptied would only count again what it's deleting.
+  if (!row) return change.operation === "insert" ? await startMakerCount(ctx, table, record) : undefined;
   if (change.operation === "insert") {
     if (row.countedTo === undefined) await ctx.db.patch("recordCounts", row._id, { count: row.count + 1 });
   } else if (row.countedTo === undefined || record._creationTime <= row.countedTo) {

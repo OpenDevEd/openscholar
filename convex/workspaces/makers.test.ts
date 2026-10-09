@@ -52,7 +52,7 @@ it("counts no one in a person's own workspace, where everything is theirs", asyn
   expect((await alice.query(api.library.collections.listCollections, { workspaceId: aliceOwn, ...page })).page[0]).not.toHaveProperty("by");
 });
 
-it("lists you first, and keeps a member who left in the organization's total", async () => {
+it("lists you first, and keeps a member who left, last, and in the organization's total", async () => {
   const { t, alice, bob, settled, workspaceId } = await lab();
   await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Trials" });
   await bob.mutation(api.library.collections.createCollection, { workspaceId, name: "Coaching" });
@@ -61,11 +61,11 @@ it("lists you first, and keeps a member who left in the organization's total", a
   expect(await names(bob)).toEqual(["Bob", "Alice"]);
   expect(await names(alice)).toEqual(["Alice", "Bob"]);
 
-  // Bob leaves; his collection stays the organization's.
+  // Bob leaves; his collection stays the organization's, and so does he in its filter, last.
   await t.run(async (ctx) => {
     const membership = await ctx.db.query("organizationMemberships").filter((q) => q.eq(q.field("clerkUserId"), "bob")).first();
     await ctx.db.patch("organizationMemberships", membership!._id, { state: "revoked" });
   });
-  expect(await names(alice)).toEqual(["Alice"]);
+  expect(await names(alice)).toEqual(["Alice", "Bob"]);
   expect(await alice.query(api.workspaces.makers.total, { workspaceId, table: "collections" })).toBe(2);
 });
