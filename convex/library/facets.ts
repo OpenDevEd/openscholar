@@ -66,7 +66,7 @@ export type CountedField = (typeof COUNTED_FIELDS)[number];
  * A library is counted under its person and, once its papers have one, its workspace, until its reads go by workspace (#650).
  */
 export const facetCounts = new DirectAggregate<{ Namespace: string; Key: number | null; Id: string }>(components.libraryFacetCounts);
-type Scope = Id<"users"> | Id<"workspaces"> | Id<"collections">;
+type Scope = Id<"workspaces"> | Id<"collections">;
 const namespaceOf = (scope: Scope, field: CountedField) => `${scope}:${field}`;
 
 type Counted = { scopes: Scope[]; savedAt?: number; rating?: number; publicationYear?: number };
