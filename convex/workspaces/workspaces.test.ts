@@ -67,14 +67,27 @@ describe("workspaces", () => {
     expect(await workspacesOf({ organizationId })).toMatchObject([{ kind: "organization", organizationId }]);
   });
 
-  it("removes an account's workspace with it when the cleanup removes the account", async () => {
+  it("removes an account's workspace with it when the cleanup removes the account, keeps what it made in an organization, and keeps who it was", async () => {
     const { t, workspacesOf } = setup();
-    const userId = await t.run((ctx) => createUserWithDefaults(ctx, { clerkId: "user_leaving", email: "leaving@example.org" }));
-    // Past the retention period, cleanup removes a deleted account and what it held.
+    const userId = await t.run((ctx) => createUserWithDefaults(ctx, { clerkId: "user_leaving", email: "leaving@example.org", firstName: "Lea", lastName: "Ving" }));
+    const { own, theirs } = await t.run(async (ctx) => {
+      const organizationId = await ctx.db.insert("organizations", { ...organization("org_stays", 1), state: "active", createdAt: 1, updatedAt: 1 });
+      const lab = await ensureWorkspace(ctx, { kind: "organization", organizationId });
+      const job = { userId, createdBy: userId, sourceType: "history" as const, createdAt: 1, updatedAt: 1 };
+      return {
+        own: await ctx.db.insert("extractionJobs", { ...job, workspaceId: (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())!._id, name: "Mine" }),
+        theirs: await ctx.db.insert("extractionJobs", { ...job, workspaceId: lab, name: "The lab's" }),
+      };
+    });
+    // Past the retention period, cleanup removes a deleted account and what it held in its own workspace.
     await t.run((ctx) => ctx.db.patch("users", userId, { state: "deleted", updatedAt: 1 }));
     await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await t.run((ctx) => ctx.db.get("users", userId))).toBeNull();
     expect(await workspacesOf({ userId })).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.get("extractionJobs", own))).toBeNull();
+    expect(await t.run((ctx) => ctx.db.get("extractionJobs", theirs))).toMatchObject({ name: "The lab's", createdBy: userId });
+    expect(await t.run((ctx) => ctx.db.query("clerkDeletedUsers").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())).toMatchObject({ clerkId: "user_leaving", name: "Lea Ving" });
   });
 
   it("gives every account and organization from before one workspace, deleted ones too, however often it runs", async () => {

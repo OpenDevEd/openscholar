@@ -337,7 +337,7 @@ export default defineSchema({
     // The sweep walks working domains oldest check first, so none starves.
     .index("by_state_and_checkedAt", ["state", "checkedAt"]),
 
-  clerkDeletedUsers: defineTable(clerkDeletedUserFields).index("by_clerkId", ["clerkId"]),
+  clerkDeletedUsers: defineTable(clerkDeletedUserFields).index("by_clerkId", ["clerkId"]).index("by_userId", ["userId"]),
 
   // One row per library: its Clerk OAuth application.
   evidenceLibraryOAuthClients: defineTable(evidenceLibraryOAuthClientFields)
