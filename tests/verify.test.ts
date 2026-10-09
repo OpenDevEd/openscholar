@@ -117,40 +117,41 @@ describe("analyzePhase after an action", () => {
 
 describe("stopDecision", () => {
   const sessionStartMs = 1_000;
+  const userFacing = /^(app|components)\/.+\.(tsx|css)$/;
 
   it("lets the agent stop when no user-facing file changed", () => {
     expect(
-      stopDecision({ stopHookActive: false, sessionStartMs, lastPassMs: null, changed: [{ path: "convex/papers.ts", mtimeMs: 5_000 }, { path: "app/api/health/route.ts", mtimeMs: 5_000 }] }),
+      stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: null, changed: [{ path: "convex/papers.ts", mtimeMs: 5_000 }, { path: "app/api/health/route.ts", mtimeMs: 5_000 }] }),
     ).toEqual({ block: false });
   });
 
   it("blocks when a page or style changed in this session and nothing verified it", () => {
     expect(
-      stopDecision({ stopHookActive: false, sessionStartMs, lastPassMs: null, changed: [{ path: "components/search/bar.tsx", mtimeMs: 5_000 }, { path: "app/globals.css", mtimeMs: 6_000 }] }),
+      stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: null, changed: [{ path: "components/search/bar.tsx", mtimeMs: 5_000 }, { path: "app/globals.css", mtimeMs: 6_000 }] }),
     ).toEqual({ block: true, files: ["components/search/bar.tsx", "app/globals.css"] });
   });
 
   it("ignores user-facing files changed before this session started", () => {
     expect(
-      stopDecision({ stopHookActive: false, sessionStartMs, lastPassMs: null, changed: [{ path: "components/search/bar.tsx", mtimeMs: 500 }] }),
+      stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: null, changed: [{ path: "components/search/bar.tsx", mtimeMs: 500 }] }),
     ).toEqual({ block: false });
   });
 
   it("lets the agent stop once a verify pass is newer than every change", () => {
     expect(
-      stopDecision({ stopHookActive: false, sessionStartMs, lastPassMs: 7_000, changed: [{ path: "components/search/bar.tsx", mtimeMs: 5_000 }] }),
+      stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 7_000, changed: [{ path: "components/search/bar.tsx", mtimeMs: 5_000 }] }),
     ).toEqual({ block: false });
   });
 
   it("blocks again when a file changed after the last verify pass", () => {
     expect(
-      stopDecision({ stopHookActive: false, sessionStartMs, lastPassMs: 7_000, changed: [{ path: "components/search/bar.tsx", mtimeMs: 5_000 }, { path: "components/search/chip.tsx", mtimeMs: 8_000 }] }),
+      stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 7_000, changed: [{ path: "components/search/bar.tsx", mtimeMs: 5_000 }, { path: "components/search/chip.tsx", mtimeMs: 8_000 }] }),
     ).toEqual({ block: true, files: ["components/search/chip.tsx"] });
   });
 
   it("never blocks twice in a row, so a broken environment cannot trap the agent", () => {
     expect(
-      stopDecision({ stopHookActive: true, sessionStartMs, lastPassMs: null, changed: [{ path: "components/search/bar.tsx", mtimeMs: 5_000 }] }),
+      stopDecision({ userFacing, stopHookActive: true, sessionStartMs, lastPassMs: null, changed: [{ path: "components/search/bar.tsx", mtimeMs: 5_000 }] }),
     ).toEqual({ block: false });
   });
 });
@@ -186,6 +187,43 @@ describe("matchKnown", () => {
 
   it("matches repeated elements that dev moves as many times", () => {
     expect(matchKnown([item("shift", ["card", "card"])], [item("shift", ["card", "card", "footer"])])).toEqual([true]);
+  });
+
+  it("matches an element's move that dev makes inside a bigger jump, when it moves the same way by about as much", () => {
+    const move = (dh: number, dy = 0) => ({ dx: 0, dy, dw: 0, dh });
+    const base = [{ ...item("shift", ["results", "thumb", "footer"]), deltas: [move(0, 856), move(-5), move(0, 856)] }];
+    expect(matchKnown([{ ...item("shift", ["thumb"]), deltas: [move(-5)] }], base)).toEqual([true]);
+    expect(matchKnown([{ ...item("shift", ["thumb"]), deltas: [move(5)] }], base)).toEqual([false]);
+    expect(matchKnown([{ ...item("shift", ["footer"]), deltas: [move(0, 120)] }], base)).toEqual([false]);
+    expect(matchKnown([{ ...item("shift", ["footer"]), deltas: [move(0, 850)] }], base)).toEqual([true]);
+  });
+
+  it("matches an element's sides one by one, so one move there can account for two that landed in different frames here", () => {
+    const base = [{ ...item("shift", ["row"]), deltas: [{ dx: 0, dy: 72, dw: 0, dh: -16 }] }];
+    const local = [
+      { ...item("shift", ["row"]), deltas: [{ dx: 0, dy: 72, dw: 0, dh: 0 }] },
+      { ...item("shift", ["row"]), deltas: [{ dx: 0, dy: 0, dw: 0, dh: -16 }] },
+      { ...item("shift", ["row"]), deltas: [{ dx: 0, dy: 72, dw: 0, dh: 0 }] },
+    ];
+    expect(matchKnown(local, base)).toEqual([true, true, false]);
+  });
+
+  it("matches a piece of 4px or less of a move dev makes in one go, and still leaves the rest of the move to match", () => {
+    const move = (dh: number) => ({ dx: 0, dy: 0, dw: 0, dh });
+    const base = [{ ...item("shift", ["page"]), deltas: [move(-304)] }];
+    const pieces = [{ ...item("shift", ["page"]), deltas: [move(-4)] }, { ...item("shift", ["page"]), deltas: [move(-300)] }];
+    expect(matchKnown(pieces, base)).toEqual([true, true]);
+    expect(matchKnown([{ ...item("shift", ["page"]), deltas: [move(4)] }], base)).toEqual([false]);
+    expect(matchKnown([{ ...item("shift", ["page"]), deltas: [move(-12)] }], base)).toEqual([false]);
+    expect(matchKnown([{ ...item("shift", ["thumb"]), deltas: [move(-3)] }], [{ ...item("shift", ["thumb"]), deltas: [move(-2)] }])).toEqual([false]);
+  });
+
+  it("lets each small piece use up the move it matches, so repeated 4px jumps here need as many there", () => {
+    const move = (dh: number) => ({ dx: 0, dy: 0, dw: 0, dh });
+    const base = [{ ...item("shift", ["card"]), deltas: [move(4)] }];
+    const jump = { ...item("shift", ["card"]), deltas: [move(4)] };
+    expect(matchKnown([jump, jump, jump], base)).toEqual([true, false, false]);
+    expect(matchKnown([{ ...item("shift", ["card", "card"]), deltas: [move(4), move(4)] }], base)).toEqual([false]);
   });
 
   it("matches flashes and errors only by the same kind and text", () => {

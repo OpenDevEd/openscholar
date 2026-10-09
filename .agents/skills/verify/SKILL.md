@@ -33,12 +33,12 @@ npm run verify -- skip "<reason>"    # record why a change needs no browser chec
 
 `shift` loads the page with every server message delayed by 600 ms, records each animation frame, and reports:
 
-- **layout shift**: an element moved or resized after the page settled. Transforms and opacity never count, so fades and slides are fine. A wrapper growing around new content only counts when it draws a background, border or shadow.
+- **layout shift**: an element moved or resized after the page settled, measured within its container: content carried along by a moving container is reported once, as the container. Transforms and opacity never count, so fades and slides are fine, and neither does an element moving through its own CSS transition (a switch's thumb). A wrapper growing around new content only counts when it draws a background, border or shadow.
 - **text disappeared and came back** or **showed for only N ms**: a flash.
 - **element showed for only N ms**: a blink. A placeholder replaced in the same place and size is fine.
 - **uncaught error** and **never settled**.
 
-Then it runs the same steps on dev.openscholar.ai, with the same Convex data and Clerk instance. Only problems dev doesn't have fail the run. The ones dev also has are listed as not from this branch: leave them unless the user asked for them, and mention them in your report.
+Then it runs the same steps on dev.openscholar.ai, with the same Convex data and Clerk instance. A problem fails the run only when dev doesn't have it and it shows again on a second run of this branch: a race during loading comes and goes, and is printed as a note instead. The ones dev also has are listed as not from this branch: leave them unless the user asked for them, and mention them in your report.
 
 If a step can't run on dev (it clicks something your branch adds), everything after it counts as new. If you're sure an element's movement is intended (a panel that expands when clicked), pass `--allow <selector>` and say so in your report.
 
@@ -52,6 +52,6 @@ A stop hook runs `npm run verify -- hook stop` when an agent tries to finish. It
 
 ## Files
 
-- `scripts/verify/cli.ts`: the commands and the in-page recorder.
-- `scripts/verify/analysis.ts`: what counts as a problem (tested in `tests/verify.test.ts`).
+- `scripts/verify/cli.ts`: the commands. This one is OpenScholar's own.
+- `scripts/verify/analysis.ts`, `recorder.ts`, `browser.ts`, `compare.ts`, `hook.ts` and `util.ts`: the same files as the Evidence Library's `tools/verify` (OpenDevEd/new-el); keep the two in step. `analysis.ts` decides what counts as a problem (tested in `tests/verify.test.ts`); `recorder.ts` runs in the page.
 - `.verify/` (ignored): the server's pid and log, run reports and screenshots, and the last pass.
