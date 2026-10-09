@@ -283,11 +283,19 @@ export function LibraryPageClient() {
   const suggestPapers = async () => {
     // As many as a search for the works nearest them takes, the newest first.
     const first = { numItems: MAX_SIMILAR_PAPERS, cursor: null };
-    const { page } = await convex.query(api.library.queries.suggestionSeeds, {
-      ...(params.col ? { collectionId: params.col as Id<"collections"> } : {}),
-      paginationOpts: first,
-    });
-    if (page.length > 0) router.push(createSimilarSearch(page).url);
+    let seeds: string[];
+    try {
+      ({ page: seeds } = await convex.query(api.library.queries.suggestionSeeds, {
+        ...(params.col ? { collectionId: params.col as Id<"collections"> } : {}),
+        paginationOpts: first,
+      }));
+    } catch (error) {
+      // Said, so the person can ask again: a session that ended, or the query failing.
+      console.error("[Library] Failed to read the papers to suggest from:", error);
+      toast.error(t("suggestError"));
+      return;
+    }
+    if (seeds.length > 0) router.push(createSimilarSearch(seeds).url);
   };
 
   const { data: selectedCollection } = useProtectedQuery(

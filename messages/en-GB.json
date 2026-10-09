@@ -1766,6 +1766,7 @@
   "libraryPage": {
     "suggestLikeCollection": "Papers like this collection",
     "suggestLikeLibrary": "Papers like your library",
+    "suggestError": "Failed to find papers to suggest",
     "title": "Your Library",
     "paperCount": "{count, plural, =0 {No papers} one {1 paper} other {# papers}} in your library",
     "searchPlaceholder": "Search by title, author, or abstract...",

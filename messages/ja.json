@@ -1774,6 +1774,7 @@
   "libraryPage": {
     "suggestLikeCollection": "このコレクションに似た論文",
     "suggestLikeLibrary": "ライブラリに似た論文",
+    "suggestError": "おすすめの論文の検索に失敗しました",
     "title": "マイライブラリ",
     "paperCount": "{count, plural, =0 {論文なし} other {# 件の論文}}がライブラリにあります",
     "searchPlaceholder": "タイトル、著者、要旨で検索...",

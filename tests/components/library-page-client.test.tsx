@@ -44,6 +44,7 @@ const {
   startExportMock,
   seedsQueryMock,
   pushMock,
+  toastErrorMock,
   queryStateStore,
   queryFixtureStore,
   setQueryStateSpy,
@@ -53,6 +54,7 @@ const {
   startExportMock: vi.fn(),
   seedsQueryMock: vi.fn(),
   pushMock: vi.fn(),
+  toastErrorMock: vi.fn(),
   queryStateStore: {
     value: {
       q: "",
@@ -79,6 +81,7 @@ const {
 
 // The page opens a search for papers like its own.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock, replace: vi.fn() }) }));
+vi.mock("sonner", () => ({ toast: { error: toastErrorMock } }));
 vi.mock("nuqs", async (importOriginal) => {
   const React = await import("react");
   const parser = {
@@ -482,6 +485,17 @@ describe("LibraryPageClient", () => {
     await waitFor(() => expect(pushMock).toHaveBeenCalled());
     expect(seedsQueryMock).toHaveBeenCalledWith("library:suggestionSeeds", { paginationOpts: { numItems: 100, cursor: null } });
     expect(new URL(String(pushMock.mock.calls[0]?.[0]), "https://openscholar.test").searchParams.get("like")).toBe("OS1,OS2");
+  });
+
+  it("says when the papers to start from couldn't be read, and can be asked again", async () => {
+    seedsQueryMock.mockRejectedValueOnce(new Error("Authentication required"));
+    seedsQueryMock.mockResolvedValueOnce({ page: ["https://openscholar.ai/OS1"], isDone: true, continueCursor: "" });
+    render(<LibraryPageClient />);
+    screen.getByRole("button", { name: "suggestLikeLibrary" }).click();
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith("suggestError"));
+    expect(pushMock).not.toHaveBeenCalled();
+    screen.getByRole("button", { name: "suggestLikeLibrary" }).click();
+    await waitFor(() => expect(pushMock).toHaveBeenCalled());
   });
 
   it("finds papers like the collection shown, from its own newest papers", async () => {

@@ -1774,6 +1774,7 @@
   "libraryPage": {
     "suggestLikeCollection": "Articles comme cette collection",
     "suggestLikeLibrary": "Articles comme votre bibliothèque",
+    "suggestError": "Échec de la recherche d'articles à suggérer",
     "title": "Votre bibliothèque",
     "paperCount": "{count, plural, =0 {Aucun article} one {1 article} other {# articles}} dans votre bibliothèque",
     "searchPlaceholder": "Rechercher par titre, auteur ou résumé...",
