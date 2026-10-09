@@ -42,7 +42,7 @@ describe("paramsToBucketSearchFilters", () => {
 });
 
 describe("paramsToBucketSearchFilters, a search by meaning", () => {
-  it("keeps the question as typed, by relevance, without expanded keywords or added terms", () => {
+  it("keeps the question as typed, by relevance, with country focus and reviews as a filter beside it", () => {
     const params = {
       ...DEFAULT_SEARCH_PARAMS,
       q: "  What helps teachers stay in rural schools?  ",
@@ -57,9 +57,8 @@ describe("paramsToBucketSearchFilters, a search by meaning", () => {
     expect(stored?.openAlexQuery.semantic).toBe("What helps teachers stay in rural schools?");
     expect(stored?.openAlexQuery.search).toBeUndefined();
     expect(stored?.openAlexQuery.sort).toBe("relevance_score:desc");
-    // Country focus and reviews add words to a keyword search; a question by meaning is asked as it is.
-    expect(stored?.openAlexQuery.filter ?? "").not.toContain("Kenya");
-    expect(stored?.openAlexQuery.filter ?? "").not.toContain("synthesis");
+    // Country focus and reviews add words to a keyword search; beside a question by meaning they filter the title and abstract.
+    expect(stored?.openAlexQuery.filter).toContain('title_and_abstract.search:("Kenya") AND (review OR synthesis OR "meta-analysis")');
     expect(stored?.openAlexQuery.filter).toContain("open_access.is_oa:true");
   });
 });

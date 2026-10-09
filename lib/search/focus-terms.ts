@@ -32,3 +32,16 @@ export function countryFocusNames(focus: readonly string[] | undefined): string[
   });
   return countryNames;
 }
+
+/**
+ * What country focus and the review filter ask of a paper's title and abstract beside a question asked
+ * by meaning, which goes as typed: a classic search string, or null when neither is on.
+ */
+export function semanticTextFilter(filters: { readonly selectedCountryFocus?: readonly string[]; readonly reviewFilter?: boolean }): string | null {
+  const names = countryFocusNames(filters.selectedCountryFocus);
+  const terms = [
+    ...(names.length > 0 ? [`(${names.map((name) => `"${name}"`).join(" OR ")})`] : []),
+    ...(filters.reviewFilter ? [REVIEW_TERMS] : []),
+  ];
+  return terms.length > 0 ? terms.join(" AND ") : null;
+}

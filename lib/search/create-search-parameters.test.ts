@@ -128,6 +128,18 @@ describe("createSearchParameters — search by meaning", () => {
     expect(params.sortBy).toEqual({ field: "relevance_score", order: "desc" });
   });
 
+  it("looks for country focus and reviews in the title and abstract, beside the question as typed", () => {
+    const question = "What helps teachers stay in rural schools?";
+    const focused = { ...baseFilters, searchField: "semantic" as const, selectedCountryFocus: ["KE"], reviewFilter: true };
+    const params = createSearchParameters(question, focused);
+    expect(params.semantic).toBe(question);
+    expect(params.filter?.title_and_abstract).toEqual({ search: '("Kenya") AND (review OR synthesis OR "meta-analysis")' });
+    expect(createSearchParameters(question, { ...focused, selectedCountryFocus: [] }).filter?.title_and_abstract).toEqual({ search: '(review OR synthesis OR "meta-analysis")' });
+    // Without a question they still narrow the list, as they do a keyword search's.
+    const listed = createSearchParameters("", { ...focused, reviewFilter: false });
+    expect([listed.semantic, listed.filter?.title_and_abstract]).toEqual([undefined, { search: '("Kenya")' }]);
+  });
+
   it("asks nothing by meaning without a question, and keeps the sort chosen", () => {
     const params = createSearchParameters("", { ...baseFilters, searchField: "semantic", sortBy: "publication_date:desc" });
     expect(params.semantic).toBeUndefined();

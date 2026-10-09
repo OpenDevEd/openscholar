@@ -63,12 +63,13 @@ export function prepareOpenAlexSearch(
   // Get effective related_to item ID
   const effectiveRelatedToItemId = isRelatedToFilterActive(filters.relatedToItemId) ? filters.relatedToItemId : undefined;
 
-  // A question by meaning goes as typed: keyword expansion, country focus and review terms are a keyword search's.
+  // A question by meaning goes as typed, without keyword expansion: country focus and the review
+  // filter go beside it, as a filter of the title and abstract (createSearchParameters).
   if (filters.searchField === SEMANTIC_FIELD) {
     const question = query.trim();
     return {
       validation: { isValid: true, expandedQuery: question, warnings: [] },
-      countryNames: [],
+      countryNames: countryFocusNames(filters.selectedCountryFocus),
       finalApiQuery: question,
       effectiveFilters,
       effectiveCitesItemId,

@@ -7,6 +7,7 @@ import { DateRange } from "react-day-picker";
 import type { SearchResult, SearchField, SearchFilters } from './types'
 import { getCountryCodesForRegions, MIN_YEAR } from './constants'
 import { buildSearchSubfilter } from './search/search-field'
+import { semanticTextFilter } from './search/focus-terms'
 import { researchAreaFilter, sdgFilterValue } from './openalex/vocabulary'
 import { authorFilterValue, isAuthorId } from './openalex/author-filter'
 import { parseImportFile } from './import'
@@ -337,8 +338,11 @@ export function createSearchParameters(
   const apiFilters: Record<string, unknown> = {};
 
   // Handle search based on field type
-  if (query && filters.searchField === SEMANTIC_FIELD) {
-    searchParams.semantic = query;
+  if (filters.searchField === SEMANTIC_FIELD) {
+    if (query) searchParams.semantic = query;
+    // Country focus and the review filter look in the title and abstract, beside the question as typed.
+    const terms = semanticTextFilter(filters);
+    if (terms) apiFilters.title_and_abstract = buildSearchSubfilter(terms);
   } else if (query) {
     // Map search fields to SDK filter format
     const searchFilterMap = {
