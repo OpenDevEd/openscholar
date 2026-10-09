@@ -81,7 +81,7 @@ export const spend = internalQuery({
     if (!Number.isFinite(credits) || credits < 0) return null;
     // A web search or a PDF read is covered by its own switch in the chat; anything else by what jobs may hold.
     const tool = TOOL_OF[path];
-    const balance = await availableCredits(ctx, userId);
+    const balance = await availableCredits(ctx, workspaceId);
     return { credits, covered: tool ? (await toolAllowed(ctx, threadId, userId, tool)) && credits <= balance : covers(await allowanceOf(ctx, threadId, userId), credits, balance) };
   },
 });

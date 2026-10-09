@@ -244,7 +244,7 @@ async function importAccount(
     );
     return false;
   }
-  if (!dryRun) await refreshAccount(ctx, account.userId, { card: true });
+  if (!dryRun) await refreshAccount(ctx, await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: account.userId as Id<"users"> }), { card: true });
   console.log(
     `[migrate] ${dryRun ? "checked" : "imported"} ${account.userId}: ${account.subscription?.plan ?? "free"}, free ${account.free}, paid ${account.paid}`,
   );
@@ -296,7 +296,7 @@ export const verify = internalAction({
         plan: account.subscription?.plan ?? "free",
         balance: Math.max(0, account.free) + Math.max(0, account.paid),
       };
-      const actual = await refreshAccount(ctx, account.userId as Id<"users">);
+      const actual = await refreshAccount(ctx, await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: account.userId as Id<"users"> }));
       if (actual.plan !== expected.plan || actual.balance !== expected.balance) {
         mismatches += 1;
         console.error(

@@ -321,6 +321,10 @@ async function runQuestionBatches(
 
 type PaperReservation = { chargeId: string; reserved: number; description: string; under?: string };
 
+/** The workspace a job is in, which pays for its papers (#650); one its backfill hasn't reached is its starter's own, until slice 8. */
+const payingWorkspace = async (ctx: ActionCtx, job: Doc<"extractionJobs">): Promise<Id<"workspaces">> =>
+  job.workspaceId ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: job.userId }));
+
 /**
  * Holds the paper's worst-case cost before any work starts. When the balance
  * can't cover it, the job pauses as credits exhausted and this row parks
@@ -366,6 +370,7 @@ async function reservePaperCredits(
   } else if (
     await reserveCredits(ctx, {
       userId: job.userId,
+      workspaceId: await payingWorkspace(ctx, job),
       chargeId: reservation.chargeId,
       credits: reserved,
     })
@@ -395,6 +400,7 @@ async function settlePaperCredits(
 ): Promise<void> {
   await settleUnder(ctx, {
     userId: job.userId,
+    workspaceId: await payingWorkspace(ctx, job),
     chargeId: reservation.chargeId,
     credits,
     usage: { kind: "extraction", description: reservation.description, jobId: job._id, ...tokenDetails(usage) },

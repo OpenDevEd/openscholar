@@ -21,7 +21,7 @@ import { getProviderModel } from "../../lib/ai/server/providers";
 import { resolveOpenRouterModel } from "./provider";
 import type { AIProvider } from "../../lib/types/ai.types";
 import type { OperationConfig } from "../../lib/ai/core/configs";
-import { type PropertyValidators, type ObjectType, type GenericValidator } from "convex/values";
+import { v, type PropertyValidators, type ObjectType, type GenericValidator } from "convex/values";
 import { type AITrackingEntry, extractHttpStatus, extractErrorCode } from "../../lib/posthog-ai-shared";
 import { captureGenerationLater, captureGenerationsLater } from "../lib/analyticsEvents";
 import { createError } from "../lib/errors";
@@ -156,7 +156,9 @@ export async function resolveUserServerModel(
 }
 
 export type CreditTarget = {
+  /** Who spends, and the workspace that pays (#650). */
   userId: Id<"users">;
+  workspaceId: Id<"workspaces">;
   /** Unique per attempt. */
   chargeId: string;
   /** Credits reserved before the work starts. */
@@ -196,8 +198,8 @@ export async function withCredits<T>(
   const allowed =
     target.under !== undefined ||
     (target.hold === false
-      ? (target.balance ?? (await ctx.runQuery(internal.billing.accounts.forUser, { userId: target.userId }))?.balance ?? 0) > 0
-      : await reserveCredits(ctx, { userId: target.userId, chargeId: target.chargeId, credits: target.estimate }));
+      ? (target.balance ?? (await ctx.runQuery(internal.billing.accounts.forWorkspace, { workspaceId: target.workspaceId }))?.balance ?? 0) > 0
+      : await reserveCredits(ctx, { userId: target.userId, workspaceId: target.workspaceId, chargeId: target.chargeId, credits: target.estimate }));
   if (!allowed) {
     throw createError(
       "AI_INSUFFICIENT_CREDITS",
@@ -214,6 +216,7 @@ export async function withCredits<T>(
   const credits = creditsForUsage(outcome.usage, pricing);
   const settled = await settleUnder(ctx, {
     userId: target.userId,
+    workspaceId: target.workspaceId,
     chargeId: target.chargeId,
     credits,
     usage: {
@@ -226,7 +229,7 @@ export async function withCredits<T>(
     ...(target.under === undefined ? {} : { under: target.under }),
   });
   // Unheld work runs on the cached balance; while its charges can't reach Autumn, it stops.
-  if (!settled && target.hold === false && target.under === undefined) await ctx.runMutation(internal.billing.accounts.zeroBalance, { userId: target.userId });
+  if (!settled && target.hold === false && target.under === undefined) await ctx.runMutation(internal.billing.accounts.zeroBalance, { workspaceId: target.workspaceId });
   return { result: outcome.result, credits, usage: outcome.usage };
 }
 
@@ -251,8 +254,8 @@ async function requireAIUser(ctx: ActionCtx): Promise<Doc<"users">> {
  */
 export async function withAuthAndCreditsBatch<T>(
   ctx: ActionCtx,
-  /** `calls` calls of `tokens` each: what the work holds, on the model the task runs on. */
-  operation: { description: string; kind: UsageKind; task: AiTask; calls: number; tokens: CallTokens },
+  /** `calls` calls of `tokens` each: what the work holds, on the model the task runs on, paid by `workspaceId`. */
+  operation: { description: string; kind: UsageKind; task: AiTask; calls: number; tokens: CallTokens; workspaceId: Id<"workspaces"> },
   handler: (user: Doc<"users">, model: ServerModel["model"], effort: Effort | undefined) => Promise<{
     result: T;
     totalUsage: Usage;
@@ -261,6 +264,8 @@ export async function withAuthAndCreditsBatch<T>(
 ): Promise<T> {
   try {
     const user = await requireAIUser(ctx);
+    // The page's workspace pays, which the person must be able to act in.
+    await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId: operation.workspaceId });
     const { model, pricing, modelSlug, effort } = await resolveUserServerModel(ctx, user._id, operation.task);
     const start = Date.now();
     let trackingEntries: AITrackingEntry[] | undefined;
@@ -268,6 +273,7 @@ export async function withAuthAndCreditsBatch<T>(
       ctx,
       {
         userId: user._id,
+        workspaceId: operation.workspaceId,
         chargeId: `${operation.kind}:${crypto.randomUUID()}`,
         estimate: estimateCredits(pricing, operation.tokens, operation.calls),
         kind: operation.kind,
@@ -358,11 +364,14 @@ export function createAIAction<
   options: { kind: UsageKind; task: AiTask | ((args: ObjectType<Args>) => AiTask) },
 ) {
   return action({
-    args: argsValidator,
+    // The page's workspace pays (#650).
+    args: { ...argsValidator, workspaceId: v.id("workspaces") },
     returns: returnsValidator,
-    handler: async (ctx, args: ObjectType<Args>): Promise<Output> => {
+    handler: async (ctx, { workspaceId, ...rest }): Promise<Output> => {
+      const args = rest as unknown as ObjectType<Args>;
       try {
         const user = await requireAIUser(ctx);
+        await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId });
         const task = typeof options.task === "function" ? options.task(args) : options.task;
         const { model, pricing, modelSlug, effort } = await resolveUserServerModel(ctx, user._id, task);
         const config = configFactory(args);
@@ -372,6 +381,7 @@ export function createAIAction<
             ctx,
             {
               userId: user._id,
+              workspaceId,
               chargeId: `${options.kind}:${crypto.randomUUID()}`,
               estimate: estimateCredits(pricing, CALL_TOKENS.helper),
               kind: options.kind,

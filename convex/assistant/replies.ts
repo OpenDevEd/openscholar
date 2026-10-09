@@ -31,7 +31,7 @@ import { notePart, viewOf } from "../../lib/assistant/view";
 import { hasVariants, variantIn, viewOf as actionView } from "../../lib/assistant/actions";
 import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
-import { workspacePlanLimit } from "../billing/accounts";
+import { planLimit } from "../billing/accounts";
 import { personName, replyWorkspace, requireThread, touchThread } from "./access";
 import { actorIn, personalWorkspaceOf } from "../workspaces/actor";
 import { assistant } from "./agent";
@@ -76,7 +76,7 @@ const SWEEP_BATCH = 200;
  * answer runs nothing and isn't one of them; carrying it on is.
  */
 export async function admit(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
-  const plan = await workspacePlanLimit(ctx, workspaceId, "assistant_replies");
+  const plan = await planLimit(ctx, workspaceId, "assistant_replies");
   const most = Math.min(ASSISTANT_REPLIES_AT_ONCE, plan ?? ASSISTANT_REPLIES_AT_ONCE);
   // Twice the deployment's share, whatever the plan: locks whose action died can't hide live
   // ones behind them. The dead ones found are released here, which keeps the next count honest too.
@@ -241,7 +241,8 @@ export const answer = mutation({
     if (step.userId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can allow this.");
     let left = (await stepsAt(ctx, threadId, "asking")).filter((other) => other._id !== stepId);
     // A yes to a call that holds more than the person has starts nothing: it waits while they add credits, as its card says.
-    const balance = allow && step.credits !== undefined ? await availableCredits(ctx, userId) : 0;
+    // The workspace the reply acts in pays for it.
+    const balance = allow && step.credits !== undefined ? await availableCredits(ctx, await actingIn(ctx, waiting)) : 0;
     if (allow && step.credits !== undefined && step.credits > balance) throw createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
     const tool = TOOL_OF[step.path];
     // What else waits is allowed with it only while the balance covers this call and each one allowed before it.
@@ -326,7 +327,8 @@ export const carryOn = mutation({
 
 export const lockArgs = { threadId: v.id("assistantThreads"), attemptId: v.string() };
 
-export const turnArgs = { agentThreadId: v.string(), senderId: v.id("users"), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator) };
+// `workspaceId`: the one the reply acts in and pays from; absent on one scheduled before replies named theirs (#650), until slice 8.
+export const turnArgs = { agentThreadId: v.string(), senderId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator) };
 
 /**
  * Where a reply stands after its requests so far: the credits they cost, how many they were,
@@ -584,7 +586,7 @@ export const release = internalMutation({
       // is asked about once the summary is written.
       // A request made again after failing added nothing to summarize, and keeps its wait: the next one that answers is summarized after.
       if (!current.stop && !next.retries && compactionDue({ ...ended, window })) {
-        const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, through: current.order, lastInputTokens, resume: from });
+        const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: await actingIn(ctx, current), through: current.order, lastInputTokens, resume: from });
         // Owed from here until a summary is kept, so one that is stopped, or whose action dies, is written by the next reply.
         // The lock holds what the reply has cost so far, for its sender's record if the compaction's action dies.
         await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true, spent: next.spent } });
@@ -607,7 +609,7 @@ export const release = internalMutation({
     // A stopped reply is left alone: whoever stopped it is waiting to write.
     if (ended && !current.stop && compactionDue({ ...ended, window })) {
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
-      const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, through: current.order, lastInputTokens });
+      const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: await actingIn(ctx, current), through: current.order, lastInputTokens });
       // Owed from here until a summary is kept, so one whose action dies is written by the next reply.
       // The reply's cost is recorded above: the lock holds none of it, so it isn't recorded again if this action dies.
       await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true, spent: 0 } });

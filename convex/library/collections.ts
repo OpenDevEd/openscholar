@@ -35,7 +35,7 @@ export async function collectionAllowed(ctx: QueryCtx, { userId, workspaceId }: 
   }
   // A workspace with no count row has never had a collection.
   const counted = await collectionCountRow(ctx, workspaceId);
-  const most = await planLimit(ctx, userId, "collections");
+  const most = await planLimit(ctx, workspaceId, "collections");
   if (most !== undefined && (counted?.count ?? 0) >= most) {
     throw createError("VALIDATION_ERROR", `Your plan allows ${most.toLocaleString("en")} collections. Delete one to make another, or change plan for more.`);
   }

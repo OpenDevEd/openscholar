@@ -142,10 +142,12 @@ export const generateBatchTranslations = action({
       })
     ),
     targetLanguage: v.optional(v.string()),
+    // The page's workspace, which pays (#650).
+    workspaceId: v.id("workspaces"),
   },
   returns: batchTranslationsValidator,
   handler: async (ctx, args) => {
-    const { papers, targetLanguage } = args;
+    const { papers, targetLanguage, workspaceId } = args;
 
     if (papers.length === 0) {
       return { results: {}, errors: [] };
@@ -178,6 +180,7 @@ export const generateBatchTranslations = action({
           task: "translate",
           calls: papers.length,
           tokens: CALL_TOKENS.helper,
+          workspaceId,
         },
         async (_user, model, effort) => {
           const { results, errors, usages, usageByItemId, trackingByItemId } = await processTranslationBatch({
@@ -229,10 +232,12 @@ export const generateBatchScreeningResponses = action({
       })
     ),
     questions: v.array(v.string()),
+    // The page's workspace, which pays (#650).
+    workspaceId: v.id("workspaces"),
   },
   returns: batchScreeningValidator,
   handler: async (ctx, args) => {
-    const { papers, questions } = args;
+    const { papers, questions, workspaceId } = args;
 
     // Skip if no papers or no questions
     if (papers.length === 0 || questions.length === 0) {
@@ -268,6 +273,7 @@ export const generateBatchScreeningResponses = action({
           task: "screening",
           calls: papers.length,
           tokens: CALL_TOKENS.paper,
+          workspaceId,
         },
         async (_user, model, effort) => {
           const { results, errors, usages, usageByItemId, trackingByItemId } = await processScreeningBatch({

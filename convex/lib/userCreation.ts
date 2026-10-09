@@ -36,6 +36,7 @@ export async function ensureBillingAccount(
   ctx: MutationCtx,
   userId: Id<"users">,
 ): Promise<void> {
-  if ((await readAccount(ctx, userId))?.signupGranted) return;
+  const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
+  if (own && (await readAccount(ctx, own._id))?.signupGranted) return;
   await ctx.scheduler.runAfter(0, internal.billing.accounts.provision, { userId });
 }

@@ -16,7 +16,8 @@ const AUTUMN_URL = "https://autumn.test";
 /** Credits the fake's signup add-on grants. */
 export const FAKE_SIGNUP_CREDITS = 500;
 
-type Customer = { plan: number; topUp: number; signup: boolean };
+/** `planId`: the main plan, Free until another is attached, as Autumn auto-enables it on every new customer. */
+type Customer = { plan: number; topUp: number; signup: boolean; planId: string };
 
 export const fakeAutumn = {
   customers: new Map<string, Customer>(),
@@ -37,7 +38,7 @@ export const fakeAutumn = {
   customer(id: string): Customer {
     let customer = this.customers.get(id);
     if (!customer) {
-      customer = { plan: 0, topUp: 0, signup: false };
+      customer = { plan: 0, topUp: 0, signup: false, planId: "free" };
       this.customers.set(id, customer);
     }
     return customer;
@@ -70,7 +71,7 @@ function customerBody(id: string) {
     id,
     stripe_id: null,
     subscriptions: [
-      { plan_id: "free", status: "active", past_due: false, canceled_at: null, current_period_end: null, add_on: false, auto_enable: true },
+      { plan_id: customer.planId, status: "active", past_due: false, canceled_at: null, current_period_end: null, add_on: false, auto_enable: customer.planId === "free" },
       ...(customer.signup
         ? [{ plan_id: "signup_credits", status: "active", past_due: false, canceled_at: null, current_period_end: null, add_on: true, auto_enable: false }]
         : []),
@@ -115,6 +116,9 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
       if (body.plan_id === "signup_credits") {
         customer.signup = true;
         customer.plan += FAKE_SIGNUP_CREDITS;
+      } else if (body.plan_id !== "top_up") {
+        // A main plan takes the place of the one before, as plans of one group do in Autumn.
+        customer.planId = body.plan_id as string;
       }
       return respond(200, { customer_id: customerId, payment_url: null });
     }
@@ -187,16 +191,20 @@ export function installFakeAutumn() {
   vi.stubGlobal("fetch", fakeAutumnFetch(globalThis.fetch));
 }
 
-/** Gives a user credits in the fake and in the cached snapshot. */
+/** Gives a person's own workspace, or another workspace (#650), credits in the fake and in the cached snapshot. */
 export async function seedCreditsForTest(
   ctx: MutationCtx,
-  args: { userId: Id<"users">; free?: number; paid?: number; now?: number },
+  args: ({ userId: Id<"users">; workspaceId?: undefined } | { workspaceId: Id<"workspaces">; userId?: undefined }) & { free?: number; paid?: number; now?: number },
 ): Promise<void> {
   const free = args.free ?? 0;
   const paid = args.paid ?? 0;
-  fakeAutumn.setBalance(args.userId, { free, paid });
+  const workspace = args.workspaceId ? await ctx.db.get("workspaces", args.workspaceId) : null;
+  // A workspace's Autumn customer: its person for their own, else the workspace itself.
+  const customerId = workspace ? (workspace.kind === "personal" ? workspace.userId : workspace._id) : args.userId!;
+  fakeAutumn.setBalance(customerId, { free, paid });
   await ctx.db.insert("billingAccounts", {
-    userId: args.userId,
+    ...(args.userId ? { userId: args.userId } : workspace?.kind === "personal" ? { userId: workspace.userId } : {}),
+    ...(args.workspaceId ? { workspaceId: args.workspaceId } : {}),
     plan: "free",
     pastDue: false,
     balance: free + paid,

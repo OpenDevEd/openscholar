@@ -1,14 +1,14 @@
 import { v } from "convex/values";
 import { action, type ActionCtx } from "../_generated/server";
 import { api, internal } from "../_generated/api";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { requireAppUrl } from "../lib/env";
 import { autumn } from "./autumn";
 import { refreshAccount } from "./accounts";
 import { previewLineItemsValidator, type BillingCatalog } from "./validators";
 import { MAX_PLAN_DETAILS } from "../lib/listCaps";
-import { TOPUP_PLAN } from "../../lib/billing/plans";
+import { ORGANIZATION_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
 import { findPlan, topUpBundles } from "../../lib/billing/catalog";
 
 async function requireUser(ctx: ActionCtx): Promise<Doc<"users">> {
@@ -16,6 +16,9 @@ async function requireUser(ctx: ActionCtx): Promise<Doc<"users">> {
   if (!user) throw createError("UNAUTHENTICATED", "Sign in to manage billing");
   return user;
 }
+
+/** The workspace the billing page manages: the person's own, whose customer is them, until organizations have billing pages (#651, #652). */
+const ownWorkspace = (ctx: ActionCtx, user: Doc<"users">): Promise<Id<"workspaces">> => ctx.runQuery(internal.workspaces.actor.personalOf, { userId: user._id });
 
 async function requireCatalog(ctx: ActionCtx): Promise<BillingCatalog> {
   const catalog = await ctx.runQuery(api.billing.catalog.get, {});
@@ -29,7 +32,7 @@ async function requireCatalog(ctx: ActionCtx): Promise<BillingCatalog> {
  */
 async function requireChoosablePlan(ctx: ActionCtx, planId: string): Promise<void> {
   const plan = findPlan(await requireCatalog(ctx), planId);
-  if (!plan || plan.addOn || plan.autoEnable) {
+  if (!plan || plan.addOn || plan.autoEnable || plan.id === ORGANIZATION_PLAN) {
     throw createError("BILLING_PLAN_INVALID", `No plan "${planId}" to choose`);
   }
 }
@@ -64,7 +67,7 @@ export const choosePlan = action({
       planId: plan,
       successUrl: returnUrl("checkout"),
     });
-    await refreshAccount(ctx, user._id, { card: true });
+    await refreshAccount(ctx, await ownWorkspace(ctx, user), { card: true });
     return { url: result.payment_url };
   },
 });
@@ -75,10 +78,10 @@ export const keepPlan = action({
   returns: v.null(),
   handler: async (ctx): Promise<null> => {
     const user = await requireUser(ctx);
-    const account = await refreshAccount(ctx, user._id, { card: true });
+    const account = await refreshAccount(ctx, await ownWorkspace(ctx, user), { card: true });
     if (account.plan && account.changesAt) {
       await autumn.update({ customerId: user._id, planId: account.plan, cancelAction: "uncancel" });
-      await refreshAccount(ctx, user._id, { card: true });
+      await refreshAccount(ctx, await ownWorkspace(ctx, user), { card: true });
     }
     return null;
   },
@@ -138,7 +141,7 @@ export const buyCredits = action({
       credits,
       successUrl: returnUrl("topup"),
     });
-    await refreshAccount(ctx, user._id, { card: true });
+    await refreshAccount(ctx, await ownWorkspace(ctx, user), { card: true });
     return { url: result.payment_url };
   },
 });

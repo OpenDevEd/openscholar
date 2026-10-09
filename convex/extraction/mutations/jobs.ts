@@ -97,7 +97,7 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
     if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
     item.librarySet = { ...item.librarySet, count: Math.max(0, Math.min(last, held) - first + 1) };
   }
-  const bucketLimits = assertBucketWithinLimits(deduped, await planLimit(ctx, userId, "request_papers"));
+  const bucketLimits = assertBucketWithinLimits(deduped, await planLimit(ctx, workspaceId, "request_papers"));
   const sourceType = deriveSourceType(deduped);
 
   // Stamp what extraction runs on (credits path), read back at run by paperWorker.
@@ -124,7 +124,7 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
   // it now than stop it part way. A job with a hold has its credits already.
   if (!spend) {
     const credits = bucketLimits.effectiveCount * extractionPaperCredits(await extractionPricing(ctx, stamp), qs, args.usePdfs ?? false);
-    const totalAvailable = await readAvailableCredits(ctx, userId);
+    const totalAvailable = await readAvailableCredits(ctx, workspaceId);
     if (totalAvailable < credits) {
       throw createError(
         "INSUFFICIENT_CREDITS",
@@ -224,7 +224,7 @@ export const duplicateJobAction = defineUserMutation({
     for (const item of bucketItems) {
       if (item.source === "screening" && item.screeningSelection) await checkScreeningSelection(ctx, workspaceId, item.screeningSelection.jobId, item.screeningSelection.revision);
     }
-    assertBucketWithinLimits(bucketItems, await planLimit(ctx, userId, "request_papers"));
+    assertBucketWithinLimits(bucketItems, await planLimit(ctx, workspaceId, "request_papers"));
 
     const now = Date.now();
 

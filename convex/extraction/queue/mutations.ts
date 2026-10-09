@@ -11,7 +11,7 @@ import {
   shouldClearQueueLease,
   type ExtractionQueueStatus,
 } from "./status";
-import { workspacePlanLimit } from "../../billing/accounts";
+import { planLimit } from "../../billing/accounts";
 import { workspaceOf } from "../../workspaces/personal";
 
 type QueueKind = Doc<"extractionPaperQueue">["kind"];
@@ -348,7 +348,7 @@ export const leaseNextPaperQueueRows = internalMutation({
  * (`apps/api/src/lib/concurrency-limit.ts`).
  */
 async function poolCapacity(ctx: MutationCtx, workspaceId: Id<"workspaces">, window: number) {
-  const limit = Math.max(1, Math.min(window, (await workspacePlanLimit(ctx, workspaceId, "concurrency")) ?? window));
+  const limit = Math.max(1, Math.min(window, (await planLimit(ctx, workspaceId, "concurrency")) ?? window));
   let held = 0;
   for (const status of ["leased", "running"] as const) {
     if (held >= limit) break;

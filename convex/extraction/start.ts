@@ -77,17 +77,17 @@ async function checkExtraction(ctx: QueryCtx, { userId, workspaceId }: InWorkspa
   checkQuestions(questions);
   if (set.kind === "screening") {
     await screeningPicked(ctx, workspaceId, set.jobId);
-    return void (await checkRequestPapers(ctx, userId, (await papersIn(ctx, { userId, workspaceId }, set)) ?? 0, "extraction"));
+    return void (await checkRequestPapers(ctx, workspaceId, (await papersIn(ctx, { userId, workspaceId }, set)) ?? 0, "extraction"));
   }
   checkRange(set, first, last);
   if (set.kind === "search") {
     await searchFilters(ctx, workspaceId, set.searchId);
-    return void (await checkRequestPapers(ctx, userId, last - first + 1, "extraction"));
+    return void (await checkRequestPapers(ctx, workspaceId, last - first + 1, "extraction"));
   }
   if (set.kind === "collection" && (await ctx.db.get("collections", set.collectionId))?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
   const held = await papersIn(ctx, { userId, workspaceId }, set);
   if (held !== null && first > held) throw invalid("There are no papers in that range");
-  await checkRequestPapers(ctx, userId, Math.min(last, held ?? last) - first + 1, "extraction");
+  await checkRequestPapers(ctx, workspaceId, Math.min(last, held ?? last) - first + 1, "extraction");
 }
 
 /** How many papers a request is for. A screening is all its included papers; a search is read from its first paper. */
@@ -209,7 +209,7 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, { nam
   // What was approved is what the job holds now, or more: the papers or the model may have changed since the person was asked, and a job that holds more than they said yes to is asked about again.
   const now: number = await ctx.runQuery(internal.extraction.start.figure, { userId, workspaceId, name, questions, ...(usePdfs === undefined ? {} : { usePdfs }), ...range });
   if (now > cap) throw invalid(`This extraction now holds up to ${Math.ceil(now).toLocaleString("en")} credits, more than the ${cap.toLocaleString("en")} approved: its papers or the model it runs on changed since. Call it again, and the person is asked with the new figure.`);
-  return await startHeld(ctx, { userId, credits: cap, kind: "extraction" }, (hold) => ctx.runMutation(internal.extraction.start.begin, { ...job, spend: { hold, cap } }));
+  return await startHeld(ctx, { userId, workspaceId, credits: cap, kind: "extraction" }, (hold) => ctx.runMutation(internal.extraction.start.begin, { ...job, spend: { hold, cap } }));
 }
 
 export const extractAction = defineUserAction({

@@ -47,9 +47,10 @@ export type Turn = {
   effort?: Effort;
   /** Names this run of the reply. Its credits are held under it. */
   attemptId?: string;
-  /** The reply this request is part of, and the workspace it acts in, for its sender's record there of what replies cost, when a charge is settled after it ended. */
+  /** The workspace that pays for the request (#650): the one the reply acts in. */
+  workspaceId: Id<"workspaces">;
+  /** The reply this request is part of, for its sender's record in that workspace of what replies cost, when a charge is settled after it ended. */
   replyId?: string;
-  replyWorkspace?: Id<"workspaces">;
   /** Credits held before the reply starts, worked out at the price of the model it runs on (lib/pricing/estimate.ts). */
   credits: (pricing: Pricing) => number | Promise<number>;
   /** Asked when that hold is refused: what to hold in its place, when the person turns out to have less. */
@@ -94,7 +95,7 @@ export type Turn = {
 };
 
 export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
-  const { agent, threadId, promptMessageId, userId, log } = turn;
+  const { agent, threadId, promptMessageId, userId, workspaceId, log } = turn;
   const startedAt = Date.now();
   // What the request failed with, for its analytics event. A stop isn't a failure.
   let failure: unknown;
@@ -218,10 +219,10 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
     // The account's copy of the balance can be behind a charge just made. A hold it led to that is refused is tried again at what the person really has.
     const lesser = async () => {
       const credits = await turn.lesser?.();
-      return credits !== undefined && credits > 0 && credits < held && (await reserveCredits(ctx, { userId, chargeId, credits }));
+      return credits !== undefined && credits > 0 && credits < held && (await reserveCredits(ctx, { userId, workspaceId, chargeId, credits }));
     };
-    if (!(await reserveCredits(ctx, { userId, chargeId, credits: held })) && !(await lesser())) {
-      const account = await ctx.runQuery(internal.billing.accounts.forUser, { userId });
+    if (!(await reserveCredits(ctx, { userId, workspaceId, chargeId, credits: held })) && !(await lesser())) {
+      const account = await ctx.runQuery(internal.billing.accounts.forWorkspace, { workspaceId });
       const availableCredits = account?.balance ?? 0;
       throw createError(
         "AI_INSUFFICIENT_CREDITS",
@@ -475,9 +476,10 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       // after the stop.
       await ctx.scheduler.runAfter(0, internal.billing.openRouter.settleFromOpenRouter, {
         userId,
+        workspaceId,
         chargeId,
         generationId: unfinishedGeneration,
-        ...(turn.replyId ? { reply: turn.replyId, ...(turn.replyWorkspace ? { replyWorkspace: turn.replyWorkspace } : {}) } : {}),
+        ...(turn.replyId ? { reply: turn.replyId } : {}),
         extraUsd: completedUsd,
         earlierTokens: tokenCounts(aggregateUsage(stepUsages)),
         attempt: 0,
@@ -490,6 +492,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       charged = convertUsdToCredits({ usd }) || 1;
       await settleCredits(ctx, {
         userId,
+        workspaceId,
         chargeId,
         credits: charged,
         usage: {
@@ -532,7 +535,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
     throw err;
   } finally {
     if (reserved && !settledOrScheduled) {
-      await releaseCredits(ctx, { userId, chargeId }).catch((err) => {
+      await releaseCredits(ctx, { chargeId }).catch((err) => {
         console.error("[chat] failed to release reserved credits", {
           chargeId,
           err: errorToLogString(err),

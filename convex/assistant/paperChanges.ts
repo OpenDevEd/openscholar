@@ -93,7 +93,7 @@ async function readPieces(first: number, last: number, enough: number, piece: (f
  */
 export async function papersOf(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, { papers: set, first: start, last: end }: Pick<ChangePapers, "papers" | "first" | "last">): Promise<SearchPaper[]> {
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  const allowed: number | null = await ctx.runQuery(internal.billing.accounts.planLimitOf, { userId, limit: "bulk_papers" });
+  const allowed: number | null = await ctx.runQuery(internal.billing.accounts.planLimitOf, { workspaceId, limit: "bulk_papers" });
   const most = Math.min(allowed ?? BULK_CEILING, BULK_CEILING);
   const tooMany = () => invalid(`The person's plan changes up to ${most.toLocaleString("en")} papers in one go. Name a range of the set with first and last, or a smaller set.`);
   if (set.kind === "ids") {

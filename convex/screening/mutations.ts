@@ -124,11 +124,11 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
 }
 
 /**
- * Whether the person can pay for screening `papers` papers, with the figures a refusal names: on the
- * model the job was stamped with when it has one, else what their Screen all runs on now.
+ * Whether the workspace can pay for screening `papers` papers, with the figures a refusal names: on the
+ * model the job was stamped with when it has one, else what the person's Screen all runs on now.
  */
-async function affords(ctx: MutationCtx, userId: Id<"users">, papers: number, job?: Doc<"screeningJobs">) {
-  const available = await availableCredits(ctx, userId);
+async function affords(ctx: MutationCtx, userId: Id<"users">, workspaceId: Id<"workspaces">, papers: number, job?: Doc<"screeningJobs">) {
+  const available = await availableCredits(ctx, workspaceId);
   const perPaper = job ? screeningPaperCredits(await pricingOf(ctx, job.serverModelId)) : await screeningPaperCreditsFor(ctx, userId);
   const estimate = estimateScreening(papers, available, perPaper).credits;
   return { affordable: available >= estimate, estimate, available };
@@ -197,7 +197,7 @@ export const fillScreeningJob = internalMutation({
     const free = reading.reused ?? 0;
     const done = progress ? progress.completed + progress.skipped + progress.failed : 0;
     const unpaid = Math.max(0, place.papers - free - Math.max(0, done - free));
-    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.userId, unpaid + papers.length - reused.size, reading)).affordable;
+    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.userId, await workspaceOf(ctx, reading), unpaid + papers.length - reused.size, reading)).affordable;
     const now = Date.now();
     const taken = { read: place.read + read, papers: place.papers + (affordable ? papers.length : 0) };
     const over = ended || !affordable;

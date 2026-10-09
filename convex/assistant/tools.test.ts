@@ -1414,6 +1414,8 @@ describe("the assistant's tools", () => {
       // The lab is Ada's alone; Ben shares the team with her, not the lab.
       const labOrganization = await seedOrganizationFeatures(ctx, ["ada"], {});
       const lab = await ensureWorkspace(ctx, { kind: "organization", organizationId: labOrganization });
+      // The lab pays for replies in its chats (#650); Ben, a guest, pays for his own.
+      await seedCreditsForTest(ctx, { workspaceId: lab, free: 100_000 });
       return { labOrganization, lab, mine: await personalWorkspaceOf(ctx, ada), theirs: await personalWorkspaceOf(ctx, ben) };
     });
     const threadId = await asAda.mutation(api.assistant.threads.create, { workspaceId: lab, title: "Lab" });
@@ -1433,9 +1435,13 @@ describe("the assistant's tools", () => {
 
     // What her reply saves is the lab's.
     mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Lab paper" } } })).mockImplementationOnce(finishingDoStream(["Saved."]));
+    const adaBefore = fakeAutumn.balance(ada);
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Save W1" });
     await finishReply(t, threadId);
     expect(await saved()).toEqual([["https://openalex.org/W1", lab]]);
+    // The lab paid for her reply, not her own workspace.
+    expect(fakeAutumn.balance(lab)).toBeLessThan(100_000);
+    expect(fakeAutumn.balance(ada)).toBe(adaBefore);
 
     // Shared with Ben, who isn't in the lab, what his reply saves is his own.
     await asAda.mutation(api.assistant.sharing.grant, { workspaceId: lab, threadId, principal: { kind: "user", userId: ben }, role: "write" });
