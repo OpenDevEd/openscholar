@@ -1,9 +1,13 @@
-// A saved paper's rating as its people's average of their own (#655).
+// A saved paper's rating as its people's average of their own, and a collection's as its people's there (#655).
 import { convexTest } from "convex-test";
-import { expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
 import { ensureWorkspace } from "./workspaces/create";
+
+// An organization's averages move in transactions of their own, which these tests let finish.
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 
 /** Alice and Bob, members of a lab. */
 async function lab() {
@@ -13,24 +17,20 @@ async function lab() {
     const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Learning Lab", slug: "org_lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
     const member = (clerkUserId: string) => ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
     await member("alice");
-    return { bobMembership: await member("bob"), lab: await ensureWorkspace(ctx, { kind: "organization", organizationId }) };
+    return { bobMembership: await member("bob"), workspaceId: await ensureWorkspace(ctx, { kind: "organization", organizationId }) };
   });
   const [alice, bob] = ["alice", "bob"].map((subject) => t.withIdentity({ subject }));
-  /** Lets a membership change re-rate what it moves. */
-  const membership = async (id: typeof seeded.bobMembership, state: "active" | "revoked") => {
-    vi.useFakeTimers();
-    try {
-      await t.run((ctx) => ctx.db.patch("organizationMemberships", id, { state }));
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-    } finally {
-      vi.useRealTimers();
-    }
+  const settled = () => t.finishAllScheduledFunctions(vi.runAllTimers);
+  /** Bob leaves or comes back, and what it moves is re-rated. */
+  const bobIs = async (state: "active" | "revoked") => {
+    await t.run((ctx) => ctx.db.patch("organizationMemberships", seeded.bobMembership, { state }));
+    await settled();
   };
-  return { t, alice, bob, membership, ...seeded };
+  return { t, alice, bob, settled, bobIs, workspaceId: seeded.workspaceId };
 }
 
 it("rates an organization's paper with its members' average, and shows each member their own", async () => {
-  const { alice, bob, membership, lab: workspaceId, bobMembership } = await lab();
+  const { alice, bob, settled, bobIs, workspaceId } = await lab();
   const shown = async (as: typeof alice) => {
     const { page } = await as.query(api.library.queries.browseLibrary, { workspaceId, sortBy: "rating", sortOrder: "desc", paginationOpts: { cursor: null, numItems: 10 } });
     return page.map(({ openalexId, rating, myRating }) => [openalexId, rating, myRating]);
@@ -40,19 +40,20 @@ it("rates an organization's paper with its members' average, and shows each memb
   await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "One", rating: 4 });
   await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W2", title: "Two", rating: 3 });
   await bob.mutation(api.research.records.change, { accountId: "bob", requestId: "rated", command: { kind: "rating", paperId: "https://openalex.org/W1", rating: 1 } });
+  await settled();
   // The lab sorts by the average; each sees their own stars.
   expect(await shown(alice)).toEqual([["https://openalex.org/W2", 3, 3], ["https://openalex.org/W1", 2.5, 4]]);
   expect(await shown(bob)).toEqual([["https://openalex.org/W2", 3, undefined], ["https://openalex.org/W1", 2.5, 1]]);
 
   // Someone who leaves takes their ratings out of the lab's averages, and brings them back on rejoining.
-  await membership(bobMembership, "revoked");
+  await bobIs("revoked");
   expect(await shown(alice)).toEqual([["https://openalex.org/W1", 4, 4], ["https://openalex.org/W2", 3, 3]]);
-  await membership(bobMembership, "active");
+  await bobIs("active");
   expect(await shown(alice)).toEqual([["https://openalex.org/W2", 3, 3], ["https://openalex.org/W1", 2.5, 4]]);
 });
 
 it("rates a paper within an organization's collection apart from each member's own rating, and sorts the collection by their average there", async () => {
-  const { t, alice, bob, membership, lab: workspaceId, bobMembership } = await lab();
+  const { t, alice, bob, bobIs, workspaceId } = await lab();
   const { id: one } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "One", rating: 5 });
   const { id: two } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W2", title: "Two" });
   const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Reading" });
@@ -80,7 +81,7 @@ it("rates a paper within an organization's collection apart from each member's o
   await expect(alice.mutation(api.library.collections.setCollectionRating, { workspaceId, ...undo!.args })).rejects.toThrow(/changed since/);
 
   // Bob leaving takes his out of the collection's averages.
-  await membership(bobMembership, "revoked");
+  await bobIs("revoked");
   expect(await sorted()).toEqual([["One", 1], ["Two", null]]);
 
   // A collection in someone's own workspace has no ratings of its own.

@@ -16,7 +16,7 @@ import { addCollectionMembership, livePlaces, removeCollectionMembership } from 
 import { followed, inFollowedCollection } from "./followed";
 import { authorDisplay, mergePaperMetadata } from "../../lib/library/paper-metadata";
 import { MAX_AUTHORS } from "../lib/listCaps";
-import { personalRatingRow, rateItem, ratingOrNone, requireRating, rerateMemberStep, setPersonalRating } from "../ratings";
+import { personalRatingRow, rateItem, ratingOrNone, requireRating, rerate as rerateCopy, rerateMemberStep, setPersonalRating } from "../ratings";
 
 /** What the library keeps about a paper, apart from its rating. */
 export const libraryPaper = v.object({
@@ -374,6 +374,16 @@ export const removeFromLibrary = userMutation(removeFromLibraryAction);
 export const removeFromLibraryForAssistant = assistantMutation(removeFromLibraryAction);
 
 /** Moves the next batch of a removed paper's places into its removal, until none are left. */
+/** Brings an organization's copy of a paper, or its place in a collection, in step with its members' ratings (../ratings.ts). */
+export const rerate = internalMutation({
+  args: { workspaceId: v.id("workspaces"), paperId: v.string(), collectionId: v.optional(v.id("collections")) },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, paperId, collectionId }) => {
+    await rerateCopy(ctx, workspaceId, paperId, collectionId);
+    return null;
+  },
+});
+
 /** Re-rates the papers a person rated in an organization they joined or left, a step at a time (../ratings.ts). */
 export const rerateMember = internalMutation({
   args: { workspaceId: v.id("workspaces"), userId: v.id("users"), cursor: v.union(v.string(), v.null()) },
