@@ -5,7 +5,7 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { SearchCommandFooter } from "@/components/search-command-center/search-command-footer";
-import { panelPlace, panelSeed } from "@/lib/assistant/place";
+import { panelPlace, panelSeed, threadIn } from "@/lib/assistant/place";
 
 const {
   authReadinessRef,
@@ -316,6 +316,8 @@ describe("<SearchCommandFooter> auth-gated limits", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "startChat" }));
     expect(panelSeed.get()?.mention).toEqual({ kind: "search", id: "search_1", label: "graph neural networks" });
-    expect(panelPlace.get()).toMatchObject({ open: true, threadId: null });
+    // Opened on a new chat in the workspace the page is in.
+    expect(panelPlace.get().open).toBe(true);
+    expect(threadIn(panelPlace.get(), "")).toBeNull();
   });
 });

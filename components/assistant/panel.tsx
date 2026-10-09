@@ -6,6 +6,7 @@
 // arrive with the issues that build what they show; the @ picker is ./mentions.tsx.
 
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
+import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { Component, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
@@ -57,7 +58,7 @@ import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { OrbitMark, type OrbitClock } from "./orbit-mark";
 import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
-import { panelPlace, panelSeed } from "@/lib/assistant/place";
+import { panelPlace, panelSeed, threadIn, withThread } from "@/lib/assistant/place";
 import { AddCredits, KIND, KindTile, Steps, type StepItem } from "./steps";
 import { DockedJobs, JobDock, JobFlight, type Flight } from "./job-cards";
 import { IconButton, WorkingText } from "./parts";
@@ -114,7 +115,6 @@ type Drafts = {
 };
 
 const setOpen = (update: (open: boolean) => boolean) => panelPlace.set((now) => ({ ...now, open: update(now.open) }));
-const setThreadId = (threadId: ThreadId | null) => panelPlace.set((now) => ({ ...now, threadId }));
 
 export function AssistantPanel() {
   const enabled = useFeatureFlag("assistant.enabled");
@@ -122,6 +122,9 @@ export function AssistantPanel() {
   const { canRunProtectedQueries } = useAuthReadiness();
   // Open or folded, and on which chat: kept by the tab, so a reload comes back to the conversation, and a link to a chat (`?chat=`) opens the panel on it.
   const place = useSyncExternalStore(panelPlace.subscribe, panelPlace.get, panelPlace.onServer);
+  // Each workspace keeps the chat last open in it (#651); one in another workspace never shows here.
+  const key = useWorkspaceSlug() ?? "";
+  const setThreadId = (threadId: ThreadId | null) => panelPlace.set((now) => withThread(now, key, threadId));
   // Kept here, above the panel, so folding it away keeps what was typed.
   const [typed, setTyped] = useState<Record<string, string>>({});
   const [picked, setPicked] = useState<Record<string, Mention[]>>({});
@@ -159,7 +162,7 @@ export function AssistantPanel() {
     // Session replays show none of the conversation (instrumentation-client.ts).
     <div data-ph-mask className="contents">
       <Lost onLost={() => setThreadId(null)}>
-        <Overlay open={place.open} setOpen={setOpen} threadId={place.threadId as ThreadId | null} setThreadId={setThreadId} drafts={drafts} />
+        <Overlay open={place.open} setOpen={setOpen} threadId={threadIn(place, key) as ThreadId | null} setThreadId={setThreadId} drafts={drafts} />
       </Lost>
     </div>
   );

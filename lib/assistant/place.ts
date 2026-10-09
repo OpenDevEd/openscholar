@@ -1,11 +1,13 @@
 import type { Mention } from "./mentions";
 
 /**
- * Where a tab's assistant panel is: open or folded, and on which chat. It lives in the
- * tab's session storage, so a reload, or a page opened by its address, comes back to the
- * conversation instead of an empty new chat. Another tab starts on its own.
+ * Where a tab's assistant panel is: open or folded, and on which chat in each workspace
+ * (#651), by its address's organization, "" for the person's own: switching back to one
+ * reopens its chat. It lives in the tab's session storage, so a reload, or a page opened by
+ * its address, comes back to the conversation instead of an empty new chat. Another tab
+ * starts on its own.
  */
-export type Place = { open: boolean; threadId: string | null };
+export type Place = { open: boolean; threads: Record<string, string> };
 /**
  * What the tab keeps: its place, and the chat link it has followed. A link stays in the
  * address after the person has gone on to another chat, so it opens its chat once in a tab,
@@ -14,26 +16,37 @@ export type Place = { open: boolean; threadId: string | null };
 type Kept = Place & { link?: string };
 
 const KEY = "openscholar.assistant.panel";
-const FOLDED: Kept = { open: false, threadId: null };
+const FOLDED: Kept = { open: false, threads: {} };
+
+/** The workspace a page's address is in, as the panel keeps its chats: an organization's slug, or "" for the person's own. */
+export const workspaceKey = (pathname: string) => /^\/o\/([^/]+)/.exec(pathname)?.[1] ?? "";
+/** The chat open in a workspace, or none: a new chat. */
+export const threadIn = (place: Place, key: string): string | null => place.threads[key] ?? null;
+/** The place with a workspace's chat changed; none is a new chat. */
+export function withThread<P extends Place>(place: P, key: string, threadId: string | null): P {
+  const { [key]: _was, ...others } = place.threads;
+  return { ...place, threads: threadId === null ? others : { ...others, [key]: threadId } };
+}
 
 /**
- * The place a page starts at: the chat its address links to (`?chat=`), opened, the first
- * time this tab sees that link; else what the tab kept. Anything else in storage, written
- * by an older version or by hand, is no place.
+ * The place a page starts at: the chat its address links to (`?chat=`), opened in the
+ * workspace the page is in (`key`), the first time this tab sees that link; else what the tab
+ * kept. Anything else in storage, written by an older version or by hand, is no place.
  */
-export function placeFrom(search: string, stored: string | null): Kept {
+export function placeFrom(search: string, stored: string | null, key: string): Kept {
   const linked = new URLSearchParams(search).get("chat");
   let kept: Kept | null = null;
   try {
     const read: unknown = JSON.parse(stored ?? "null");
-    if (read && typeof read === "object") {
-      const { open, threadId, link } = read as Record<string, unknown>;
-      if (typeof open === "boolean" && (threadId === null || typeof threadId === "string")) kept = { open, threadId, ...(typeof link === "string" ? { link } : {}) };
+    if (read && typeof read === "object" && !Array.isArray(read)) {
+      const { open, threads, link } = read as Record<string, unknown>;
+      const chats = threads && typeof threads === "object" && !Array.isArray(threads) && Object.values(threads).every((id) => typeof id === "string") ? (threads as Record<string, string>) : null;
+      if (typeof open === "boolean" && chats) kept = { open, threads: chats, ...(typeof link === "string" ? { link } : {}) };
     }
   } catch {
     // Not JSON: no place.
   }
-  if (linked && kept?.link !== linked) return { open: true, threadId: linked, link: linked };
+  if (linked && kept?.link !== linked) return { ...withThread(kept ?? FOLDED, key, linked), open: true, link: linked };
   return kept ?? FOLDED;
 }
 
@@ -66,11 +79,11 @@ export const panelPlace = {
     listeners.add(listener);
     return () => void listeners.delete(listener);
   },
-  get: (): Place => (place ??= placeFrom(window.location.search, storage()?.getItem(KEY) ?? null)),
+  get: (): Place => (place ??= placeFrom(window.location.search, storage()?.getItem(KEY) ?? null, workspaceKey(window.location.pathname))),
   /** The server renders no panel. */
   onServer: (): Place => FOLDED,
   set(update: (now: Place) => Place) {
-    const { link } = (place ??= placeFrom(window.location.search, storage()?.getItem(KEY) ?? null));
+    const { link } = (place ??= placeFrom(window.location.search, storage()?.getItem(KEY) ?? null, workspaceKey(window.location.pathname)));
     place = { ...update(place), ...(link === undefined ? {} : { link }) };
     keep(place);
     for (const listener of listeners) listener();
@@ -99,5 +112,6 @@ export const panelSeed = {
 export function chatAbout(mention: Mention) {
   seed = { id: (seed?.id ?? 0) + 1, mention };
   for (const listener of seedListeners) listener();
-  panelPlace.set(() => ({ open: true, threadId: null }));
+  // A new chat in the workspace the page is in.
+  panelPlace.set((now) => ({ ...withThread(now, workspaceKey(window.location.pathname), null), open: true }));
 }
