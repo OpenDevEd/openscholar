@@ -392,7 +392,7 @@ describe("account research records", () => {
   });
 
   it("reads the person's ratings of the papers asked for, and no one else's", async () => {
-    const { alice, bob } = await setup();
+    const { alice, bob, t } = await setup();
     const rate = (as: typeof alice, accountId: string, paperId: string, rating: number) => as.mutation(api.research.records.change, { accountId, requestId: `${accountId}-${paperId}`, command: { kind: "rating", paperId, rating } });
     await rate(alice, "alice", "W1", 4);
     await rate(alice, "alice", "W2", 0);
@@ -402,6 +402,9 @@ describe("account research records", () => {
     expect((await alice.query(api.research.records.ratingsOf, { accountId: "alice", paperIds: ["W2", "W9", "W1"] })).page).toEqual([{ paperId: "W2", rating: 0 }, { paperId: "W1", rating: 4 }]);
     expect((await bob.query(api.research.records.ratingsOf, { accountId: "bob", paperIds: ["W1", "W3"] })).page).toEqual([{ paperId: "W1", rating: 1 }]);
     await expect(alice.query(api.research.records.ratingsOf, { accountId: "alice", paperIds: Array.from({ length: 201 }, (_, i) => `W${i}`) })).rejects.toThrow("200 papers at a time");
+    // Each is kept in the ratings table too, as its person's own (#655).
+    const kept = await t.run(async (ctx) => (await ctx.db.query("ratings").collect()).map(({ paperId, rating, collectionId }) => `${paperId}:${rating}:${collectionId ?? "own"}`));
+    expect(kept.sort()).toEqual(["W1:1:own", "W1:4:own", "W2:0:own", "W3:5:own"]);
   });
 
   it("lists, finds, counts, reads by name and clears the person's shortcuts, and no one else's", async () => {

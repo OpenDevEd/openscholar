@@ -20,6 +20,7 @@ import { countRecordPage, countRow } from "./recordCounts";
 import { shortcutSortName } from "../../lib/query-shortcuts";
 import { searchTerms, searchText, shortcutText, withText } from "../lib/searchText";
 import { personalWorkspaceOf, requireMakerOrAdmin, type Actor, type InWorkspace } from "../workspaces/actor";
+import { setPersonalRating } from "../ratings";
 
 const accountArgs = { accountId: v.string() };
 const pageArgs = { paginationOpts: paginationOptsValidator };
@@ -555,6 +556,8 @@ export async function applyRating(ctx: MutationCtx, userId: Id<"users">, command
   const before = row?.data.rating ?? null;
   // A rating set to what it already was has nothing to undo.
   const undo: UndoCommand | undefined = before === command.rating ? undefined : { kind: "rating", paperId: command.paperId, rating: before, expect: command.rating };
+  // Kept in the ratings table too, which reads move to (#655).
+  await setPersonalRating(ctx, userId, command.paperId, command.rating);
   if (command.rating === null) { if (row) await ctx.db.delete("paperRatings", row._id); return undo; }
   const data = { paperId: command.paperId, rating: command.rating };
   if (row) await ctx.db.patch("paperRatings", row._id, { data });

@@ -116,6 +116,11 @@ export default defineSchema({
   paperRatings: defineTable({ userId: v.id("users"), data: ratingValidator })
     .index("by_user", ["userId"])
     .index("by_user_and_paperId", ["userId", "data.paperId"]),
+  // A person's rating of a paper, from 0 to 5 (#655): their own, the same everywhere, or theirs within a
+  // collection, which its people see. Personal ones are written beside `paperRatings` until reads move here.
+  ratings: defineTable({ userId: v.id("users"), paperId: v.string(), collectionId: v.optional(v.id("collections")), rating: v.number() })
+    .index("by_user_and_collection_and_paper", ["userId", "collectionId", "paperId"])
+    .index("by_collection_and_paper", ["collectionId", "paperId"]),
   // `undo` is what reverses the change a request made, kept so a retry of it answers the same (#342).
   researchReceipts: defineTable({ userId: v.id("users"), key: v.string(), fingerprint: v.optional(v.string()), undo: v.optional(undoCommandValidator) })
     .index("by_user_and_key", ["userId", "key"]),
