@@ -108,7 +108,8 @@ const listedValidator = v.object({
  * under Custom (convex/ai/serverModel.ts). The model is null when nothing is set at all.
  */
 export async function chatModel(ctx: QueryCtx | MutationCtx, thread: Doc<"assistantThreads">, userId: Id<"users">): Promise<{ modelId: Id<"models"> | null; effort?: Effort }> {
-  if (thread.modelId) return { modelId: thread.modelId, effort: thread.effort };
+  // An organization's chats run on its current preset, whatever was picked for them (#651).
+  if (thread.modelId && (await organizationPreset(ctx, thread.workspaceId)) === null) return { modelId: thread.modelId, effort: thread.effort };
   const pick = await assistantPick(ctx, { userId, workspaceId: thread.workspaceId });
   return { modelId: pick?.modelId ?? null, effort: pick?.effort };
 }
@@ -159,7 +160,7 @@ function titled(title: string | undefined) {
 
 export const createAction = defineUserMutation({
   path: "assistant/threads:create",
-  description: "Starts a new assistant chat in the workspace, made by the person, on a model and reasoning effort if given. Returns its ID.",
+  description: "Starts a new assistant chat in the workspace, made by the person, on a model and reasoning effort if given; an organization's chats run on its AI preset, so it takes none there. Returns its ID.",
   args: { title: v.optional(v.string()), modelId: v.optional(v.id("models")), effort: v.optional(effortValidator) },
   returns: v.id("assistantThreads"),
   spendsCredits: false,
@@ -168,8 +169,10 @@ export const createAction = defineUserMutation({
   run: async (ctx, { userId, workspaceId }, args) => {
     await requireFeature(ctx, FLAG, userId);
     const title = titled(args.title) || NEW_CHAT_TITLE;
-    if (args.modelId) await pickable(ctx, args.modelId, args.effort);
-    else if (args.effort) throw createError("VALIDATION_ERROR", "Pick a model to set its reasoning effort.");
+    // An organization's chats run on its preset (#651): a model picked for one isn't kept.
+    const own = (await organizationPreset(ctx, workspaceId)) === null;
+    if (own && args.modelId) await pickable(ctx, args.modelId, args.effort);
+    else if (own && args.effort) throw createError("VALIDATION_ERROR", "Pick a model to set its reasoning effort.");
     const now = Date.now();
     const agentThreadId = await createThread(ctx, components.agent, { userId, title });
     const threadId = await ctx.db.insert("assistantThreads", {
@@ -178,7 +181,7 @@ export const createAction = defineUserMutation({
       title,
       agentThreadId,
       lastMessageAt: now,
-      ...(args.modelId ? { modelId: args.modelId, effort: args.effort } : {}),
+      ...(own && args.modelId ? { modelId: args.modelId, effort: args.effort } : {}),
       createdAt: now,
       updatedAt: now,
     });

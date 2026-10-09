@@ -5,6 +5,7 @@ import schema from "../schema";
 import { usableFor, type AiTask } from "../../lib/ai/tasks";
 import type { Id } from "../_generated/dataModel";
 import { ensureWorkspace } from "../workspaces/create";
+import { assistantPick, chatModel } from "../assistant/threads";
 
 async function setup() {
   const t = convexTest(schema);
@@ -56,7 +57,7 @@ describe("presets", () => {
   });
 
   it("runs an organization's work on the preset its admins pick, not on a member's own settings (#651)", async () => {
-    const { t, admin, user, sonnet, flash, runsOn } = await setup();
+    const { t, admin, user, sonnet, flash, mine, runsOn, userId } = await setup();
     await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "chat", modelId: sonnet });
     await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "fast", task: "chat", modelId: flash });
     const lab = await t.run(async (ctx) => {
@@ -73,6 +74,13 @@ describe("presets", () => {
     await expect(user.mutation(api.organizations.manage.setAiPreset, { workspaceId: lab, preset: "cheap" })).rejects.toThrow(/Only an admin/);
     expect((await admin.mutation(api.organizations.manage.setAiPreset, { workspaceId: lab, preset: "fast" })).undo).toEqual({ path: "organizations/manage:setAiPreset", args: { preset: "balanced" } });
     expect(await runsOn("chat", lab)).toEqual({ modelId: flash });
+    // A chat there that kept a model of its own runs on what the organization's preset gives chats all the same.
+    const { kept, preset } = await t.run(async (ctx) => {
+      const threadId = await ctx.db.insert("assistantThreads", { workspaceId: lab, createdBy: userId, title: "Chat", agentThreadId: "agent_1", lastMessageAt: 1, modelId: mine, createdAt: 1, updatedAt: 1 });
+      return { kept: (await chatModel(ctx, (await ctx.db.get("assistantThreads", threadId))!, userId)).modelId, preset: (await assistantPick(ctx, { userId, workspaceId: lab }))?.modelId ?? null };
+    });
+    expect(kept).not.toBe(mine);
+    expect(kept).toBe(preset);
   });
 
   it("puts Jev only on screening tasks, since it can't write text", async () => {

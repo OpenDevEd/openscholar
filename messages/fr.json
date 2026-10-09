@@ -4165,7 +4165,8 @@
     "couldntInvite": "L'organisation a été créée, mais les invitations ne sont pas parties. Envoyez-les depuis ses paramètres Membres.",
     "fromCredits": "Sur les crédits de {name}",
     "workspace": "Espace de travail",
-    "creditsLeft": "{credits} crédits restants"
+    "creditsLeft": "{credits} crédits restants",
+    "drawsOn": "Utilise"
   },
   "models": {
     "changeInSettings": "Modifier dans les paramètres IA"

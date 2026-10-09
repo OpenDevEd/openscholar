@@ -4167,7 +4167,8 @@
     "couldntInvite": "The organisation was made, but the invitations didn't go out. Send them from its Members settings.",
     "fromCredits": "From {name}'s credits",
     "workspace": "Workspace",
-    "creditsLeft": "{credits} credits left"
+    "creditsLeft": "{credits} credits left",
+    "drawsOn": "Draws on"
   },
   "models": {
     "changeInSettings": "Change in AI settings"

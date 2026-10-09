@@ -15,6 +15,7 @@ import type { Effort } from "@/lib/ai/core/call-options";
 import { DEFAULT_PRESET, PRESET_KEYS, effectiveChoice, fallbackPreset, type AiTask, type ModelChoice } from "./tasks";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { useWorkspaceMutation } from "@/lib/workspaces/url";
+import { useWorkspaceSlug } from "@/lib/workspaces/href";
 
 type Pick = { task: AiTask; modelId: Id<"models">; effort?: Effort };
 
@@ -42,8 +43,9 @@ export function useModelPicks() {
     if (current) store.setQuery(api.userAiConfig.queries.get, {}, { ...current, choice });
   });
   const saveCustom = useMutation(api.userAiConfig.mutations.setCustom);
+  // An organization is known from the address, before its row loads: its preset applies from the start.
   const workspace = useCurrentWorkspace();
-  const organization = workspace?.kind === "organization" ? { name: workspace.name, admin: workspace.role === "admin" } : null;
+  const organization = useWorkspaceSlug() !== undefined ? { name: workspace?.name ?? "", admin: workspace?.role === "admin", loading: workspace === undefined } : null;
   const setAiPreset = useWorkspaceMutation(api.organizations.manage.setAiPreset);
   // Presets need credits; without them the user's own keys are all there is.
   const choice: ModelChoice = organization ? (workspace?.aiPreset ?? DEFAULT_PRESET) : effectiveChoice(creditsEnabled, settings?.choice);

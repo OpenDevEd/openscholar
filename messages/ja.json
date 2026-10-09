@@ -4165,7 +4165,8 @@
     "couldntInvite": "組織は作成されましたが、招待を送れませんでした。メンバー設定から送ってください。",
     "fromCredits": "{name} のクレジットから",
     "workspace": "ワークスペース",
-    "creditsLeft": "残り {credits} クレジット"
+    "creditsLeft": "残り {credits} クレジット",
+    "drawsOn": "使用するワークスペース"
   },
   "models": {
     "changeInSettings": "AI 設定で変更"

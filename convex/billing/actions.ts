@@ -54,13 +54,12 @@ const returnUrl = (result: "checkout" | "topup", page = "/settings/billing") =>
  * organization, which only its admins buy for (#651). With none, the person's own workspace.
  */
 async function payerIn(ctx: ActionCtx, user: Doc<"users">, workspaceId: Id<"workspaces"> | undefined) {
-  const own = { customerId: user._id as string, page: "/settings/billing" };
-  if (!workspaceId) return { ...own, workspaceId: await ownWorkspace(ctx, user) };
-  const actor: Actor = await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId });
-  const organization: { name: string; slug: string } | null = await ctx.runQuery(internal.billing.accounts.organizationOf, { workspaceId });
-  if (!organization) return { ...own, workspaceId };
-  if (actor.role !== "admin") throw createError("FORBIDDEN", `Only an admin of ${organization.name} adds credits to it.`);
-  return { customerId: workspaceId as string, page: `/o/${organization.slug}/settings/billing`, workspaceId };
+  const paying = workspaceId ?? (await ownWorkspace(ctx, user));
+  const actor: Actor = await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId: paying });
+  const organization: { name: string; slug: string } | null = await ctx.runQuery(internal.billing.accounts.organizationOf, { workspaceId: paying });
+  if (organization && actor.role !== "admin") throw createError("FORBIDDEN", `Only an admin of ${organization.name} adds credits to it.`);
+  const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId: paying });
+  return { customerId, page: organization ? `/o/${organization.slug}/settings/billing` : "/settings/billing", workspaceId: paying };
 }
 
 const checkoutResult = v.object({ url: v.union(v.string(), v.null()) });

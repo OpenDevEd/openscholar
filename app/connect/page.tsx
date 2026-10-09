@@ -7,6 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { SignIn } from "@clerk/nextjs";
+import { useTranslations } from "next-intl";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useWorkspaces } from "@/components/workspaces/parts";
 import { WorkspacePicker } from "@/components/workspaces/workspace-picker";
@@ -29,6 +30,7 @@ export default function ConnectPage() {
   const [copied, setCopied] = useState(false);
   // The app draws on one workspace's credits (#651): your own unless you pick another.
   const workspaces = useWorkspaces();
+  const tw = useTranslations("workspaces");
   const [workspace, setWorkspace] = useState<Id<"workspaces"> | null>(null);
   const picked = workspace ?? workspaces?.[0]?.workspaceId;
 
@@ -105,10 +107,12 @@ export default function ConnectPage() {
   }, [generatedKey]);
 
   // ── Not authenticated ──────────────────────────────────────
-  if (phase === "anonymous" || phase === "initializing") {
+  // The consent form shows once the workspaces to pick from have loaded, so it never grows under the pointer.
+  const waiting = phase === "initializing" || (phase === "authenticated" && workspaces === undefined);
+  if (phase === "anonymous" || waiting) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
-        {phase === "initializing" ? (
+        {waiting ? (
           <AuthStatePanel variant="loading" />
         ) : (
           <div className="flex flex-col items-center gap-6">
@@ -239,7 +243,7 @@ export default function ConnectPage() {
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Draws on</p>
+          <p className="text-xs font-medium text-muted-foreground">{tw("drawsOn")}</p>
           <WorkspacePicker value={picked} onChange={setWorkspace} disabled={state === "creating" || state === "done"} />
         </div>
 

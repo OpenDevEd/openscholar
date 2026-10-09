@@ -9,7 +9,7 @@ import { useAuthReadiness } from '@/components/providers/convex-provider'
 import { useOptionalAuthQuery } from '@/lib/auth/use-auth-query'
 import { useAIConfigStore } from '@/lib/store'
 import { inWorkspace, useWorkspace, useWorkspaceScope } from '@/lib/workspaces/url'
-import { useCurrentWorkspace } from '@/components/workspaces/parts'
+import { useWorkspaceSlug } from '@/lib/workspaces/href'
 import { useFeatureFlag } from '@/lib/feature-flags/hook'
 import {
   AIApiKeyRequiredError,
@@ -62,8 +62,9 @@ function mapExecutionError(reason: AIExecutionErrorReason): Error {
  */
 function useKeyConfigs(isAuthenticated: boolean, creditsEnabled: boolean) {
   const { provider, apiKey, providerApiKeys } = useAIConfigStore()
-  // An organization's work runs on its preset, on its credits: no one's own keys (#651).
-  const inOrganization = useCurrentWorkspace()?.kind === 'organization'
+  // An organization's work runs on its preset, on its credits: no one's own keys (#651). Known from
+  // the address, so nothing runs on someone's own key while the organization loads.
+  const inOrganization = useWorkspaceSlug() !== undefined
   const settings = useOptionalAuthQuery(api.userAiConfig.queries.get, {})
   const presets = useQuery(api.aiModelConfig.queries.presetPicks, {})
   return useMemo(() => {
@@ -83,7 +84,7 @@ function useKeyConfigs(isAuthenticated: boolean, creditsEnabled: boolean) {
     const loading = isAuthenticated && settings.settlement !== 'ready'
     return {
       configFor,
-      onCredits: isAuthenticated && creditsEnabled && (inOrganization || loading || choice !== 'custom'),
+      onCredits: isAuthenticated && (inOrganization || (creditsEnabled && (loading || choice !== 'custom'))),
     }
   }, [provider, apiKey, providerApiKeys, settings.data, settings.settlement, presets, isAuthenticated, creditsEnabled, inOrganization])
 }

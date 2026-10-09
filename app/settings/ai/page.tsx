@@ -110,7 +110,7 @@ export default function AISettingsPage() {
   };
 
   const ready =
-    presetModel !== undefined && (!signedIn || settings !== undefined) && (!signedIn || !creditsEnabled || account.settlement === "ready");
+    presetModel !== undefined && (!signedIn || settings !== undefined) && (!signedIn || !creditsEnabled || account.settlement === "ready") && !organization?.loading;
 
   return (
     <Enter ready={ready}>
