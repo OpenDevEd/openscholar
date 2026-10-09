@@ -620,8 +620,6 @@ describe("the assistant's tools", () => {
   it("ask about each change that would have no undo, tell the model which the person didn't allow, and carry on once all are answered", async () => {
     const t = convexTest(schema);
     const { ada, asAda, threadId, sayUntilAsked, settled, thread, steps, shown } = await chatOf(t);
-    // The paper already has a rating on search cards, which removing it from the library would clear: saving it has no undo.
-    await asAda.mutation(api.research.records.change, { accountId: "ada", requestId: "rated", command: { kind: "rating", paperId: "https://openalex.org/W1", rating: 4 } });
     const { id: followed } = await asAda.mutation(api.library.collections.createCollection, { name: "Published" });
     await t.run(async (ctx) => {
       const organizationId = (await ctx.db.query("organizations").first())!._id;
@@ -630,8 +628,8 @@ describe("the assistant's tools", () => {
     });
     mockDoStream.mockImplementationOnce(
       calling(
-        { id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } },
-        // A library that follows the collection shows its name.
+        // A library that follows the collection shows what's in it, and its name.
+        { id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale", collectionId: followed } } },
         { id: "rename", name: "run_action", input: { name: "library/collections:renameCollection", arguments: { collectionId: followed, name: "Public reading" } } },
       ),
     );
@@ -655,7 +653,7 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => (await ctx.db.get("collections", followed))?.name)).toBe("Published");
     expect(await shown()).toEqual([
       "user: Save it and rename the collection",
-      "step: library/mutations:saveToLibrary done",
+      "step: library/mutations:saveToLibrary done, can be undone",
       "step: library/collections:renameCollection declined",
       "assistant: Saved. The collection keeps its name.",
     ]);
@@ -665,7 +663,7 @@ describe("the assistant's tools", () => {
     await expect(t.mutation(internal.library.mutations.setPaperInCollectionForAssistant, add)).rejects.toThrow(/needs the person's say first/);
     // The person's own click is their approval.
     await t.mutation(internal.library.mutations.setPaperInCollectionForAssistant, { ...add, approved: true });
-    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").collect()).length)).toBe(1);
+    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").collect()).length)).toBe(2);
   });
 
   it("decline what a reply still asks when it's stopped, and take the next message as usual", async () => {

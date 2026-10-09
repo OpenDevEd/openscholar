@@ -6,7 +6,7 @@ import { v, type ObjectType } from "convex/values";
 import { stream, type QueryStream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { createError } from "../lib/errors";
-import { findItem } from "./mutations";
+import { findItem } from "./find";
 import { authorDisplay } from "../../lib/library/paper-metadata";
 import { libraryCount } from "./counter";
 import { livePlaces } from "./collectionMembership";
