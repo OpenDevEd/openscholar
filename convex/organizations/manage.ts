@@ -16,6 +16,8 @@ import { assistantAction, assistantMutation, defineUserAction, defineUserMutatio
 import { processClerkWebhookEvent } from "../webhooks/clerk";
 import { ORGANIZATION_COLOURS, type OrganizationColour } from "../../lib/workspaces/colours";
 import { deletable, organizationOf } from "./read";
+import { presetKeyValidator } from "../aiModelConfig/validators";
+import { DEFAULT_PRESET, PRESET_KEYS } from "../../lib/ai/tasks";
 import type { Actor } from "../workspaces/actor";
 
 /** What a change to an organization's people starts from (./read.ts `context`). */
@@ -428,6 +430,28 @@ export const setColourAction = defineUserMutation({
 });
 export const setColour = userMutation(setColourAction);
 export const setColourForAssistant = assistantMutation(setColourAction);
+
+const SET_AI_PRESET = "organizations/manage:setAiPreset" as const;
+
+export const setAiPresetAction = defineUserMutation({
+  path: SET_AI_PRESET,
+  description: `Sets the AI preset the work of the organization the person is in runs on: its screenings, extractions, helpers and chats, for every member; an admin of it does this. One of ${PRESET_KEYS.join(", ")}. Returns \`undo\`, which puts the preset back.`,
+  args: { preset: presetKeyValidator },
+  returns: v.object({ undo: v.optional(reversedBy(SET_AI_PRESET, { preset: presetKeyValidator })) }),
+  spendsCredits: false,
+  outsideEffect: true,
+  undoable: true,
+  run: async (ctx, { workspaceId, role }, { preset }) => {
+    if (role !== "admin") throw createError("FORBIDDEN", "Only an admin of the organization changes its AI preset.");
+    const organization = await organizationOf(ctx, workspaceId);
+    const was = organization.aiPreset ?? DEFAULT_PRESET;
+    if (was === preset) return {};
+    await ctx.db.patch("organizations", organization._id, { aiPreset: preset });
+    return { undo: { path: SET_AI_PRESET, args: { preset: was } } };
+  },
+});
+export const setAiPreset = userMutation(setAiPresetAction);
+export const setAiPresetForAssistant = assistantMutation(setAiPresetAction);
 
 const RESEND = "organizations/manage:resendInvitation" as const;
 

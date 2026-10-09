@@ -15,7 +15,8 @@ import { MAX_ASSISTANT_THREAD_GRANTS } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { readMemberOrganizations } from "../organizationFeatures";
 import schema from "../schema";
-import { accessRow, accessRows, personName, principalKey, principalOf, requireThreadIn, type AssistantPrincipal } from "./access";
+import { accessRow, accessRows, principalKey, principalOf, requireThreadIn, type AssistantPrincipal } from "./access";
+import { personName } from "../lib/people";
 import { assistantCandidateValidator, assistantGrantRoleValidator, assistantPrincipalValidator, assistantRoleValidator } from "./validators";
 
 const FLAG = "assistant.enabled";

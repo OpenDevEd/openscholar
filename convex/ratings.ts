@@ -7,6 +7,7 @@ import { createError } from "./lib/errors";
 import type { Change } from "convex-helpers/server/triggers";
 import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
+import { personName } from "./lib/people";
 
 /** The ID a rating is kept under: a paper's whole OpenAlex address, however it was given, so every rating of it meets. */
 export const ratedPaper = (paperId: string) => workUrl(paperId) ?? paperId;
@@ -100,24 +101,73 @@ async function isMember(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizat
   return membership !== null;
 }
 
+/** Someone's rating of a paper in an organization's collection, with who they are; `id` is the rating's. */
+export type Rater = { id: Id<"ratings">; userId: Id<"users">; name: string; imageUrl?: string; you: boolean; rating: number };
+/** A rater as the people reading see them. */
+export const raterValidator = v.object({ id: v.id("ratings"), name: v.string(), imageUrl: v.optional(v.string()), you: v.boolean(), rating: v.number() });
+export const shownRater = ({ userId: _userId, ...rater }: Rater) => rater;
+
 /**
- * What a paper sorts and filters by in a collection. In an organization, the collection rates
- * its papers itself: its members' average of their ratings there. Only people who could open
- * the collection rated in it, so its own ratings of the paper are read, not every member's: a
- * place nobody rated costs one read. In a person's own workspace, the paper's rating, which is theirs.
+ * Up to `max` of the ratings a paper has in an organization's collection from its members now,
+ * each with who gave it, the person reading first (#655). Former members' ratings are passed
+ * over, so the ratings are read until `max` members' are found. None in a person's own
+ * workspace, whose collections have no ratings of their own.
  */
-export async function placeRating(ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, item: Doc<"libraryItems">) {
-  const workspace = await ctx.db.get("workspaces", item.workspaceId);
-  if (workspace?.kind !== "organization") return item.rating;
-  const rows = await ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId).eq("paperId", ratedPaper(item.openalexId))).take(MAX_RATERS);
-  const counted = await Promise.all(rows.map((row) => isMember(ctx, workspace.organizationId, row.userId)));
-  return average(rows.flatMap((row, at) => (counted[at] ? [row.rating] : [])));
+export async function collectionRaters(ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, paperId: string, viewer: Id<"users">, max: number): Promise<Rater[]> {
+  const organizationId = await organizationOfCollection(ctx, collectionId);
+  if (!organizationId) return [];
+  const mine = await collectionRatingRow(ctx, viewer, collectionId, paperId);
+  const raters = mine ? await asRaters(ctx, organizationId, [mine], viewer) : [];
+  for (const row of await collectionRatingsOf(ctx, collectionId, paperId).take(PREVIEW_READ)) {
+    if (raters.length >= max) break;
+    if (row.userId !== viewer) raters.push(...(await asRaters(ctx, organizationId, [row], viewer)));
+  }
+  return raters;
 }
 
-/** Brings a paper's place in a collection in step with the rating it has there. */
+/** Ratings of a paper a preview of its raters reads at most, past former members' to the members' it names. */
+const PREVIEW_READ = 50;
+
+/** A paper's ratings in a collection, a query to read them from. */
+export const collectionRatingsOf = (ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, paperId: string) =>
+  ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId).eq("paperId", ratedPaper(paperId)));
+
+/** The organization a collection is in, or null for one in a person's own workspace. */
+export async function organizationOfCollection(ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">) {
+  const collection = await ctx.db.get("collections", collectionId);
+  const workspace = collection ? await ctx.db.get("workspaces", collection.workspaceId) : null;
+  return workspace?.kind === "organization" ? workspace.organizationId : null;
+}
+
+/** Ratings with who gave them, those of the organization's members now. */
+export async function asRaters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, rows: Doc<"ratings">[], viewer: Id<"users">): Promise<Rater[]> {
+  const people = await Promise.all(rows.map(async (row) => ((await isMember(ctx, organizationId, row.userId)) ? { row, user: (await ctx.db.get("users", row.userId))! } : null)));
+  return people.flatMap((person) => (person ? [{ id: person.row._id, userId: person.user._id, name: personName(person.user) || person.user.email, ...(person.user.avatarUrl ? { imageUrl: person.user.avatarUrl } : {}), you: person.user._id === viewer, rating: person.row.rating }] : []));
+}
+
+/**
+ * What a paper sorts and filters by in a collection, and how many rated it there. In an
+ * organization, the collection rates its papers itself: its members' average of their ratings
+ * there. Only people who could open the collection rated in it, so its own ratings of the paper
+ * are read, not every member's: a place nobody rated costs one read. In a person's own
+ * workspace, the paper's rating, which is theirs, and no count.
+ */
+export async function placeRated(ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, item: Doc<"libraryItems">): Promise<{ rating?: number; count?: number }> {
+  const workspace = await ctx.db.get("workspaces", item.workspaceId);
+  if (workspace?.kind !== "organization") return item.rating === undefined ? {} : { rating: item.rating };
+  const rows = await ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId).eq("paperId", ratedPaper(item.openalexId))).take(MAX_RATERS);
+  const counted = await Promise.all(rows.map((row) => isMember(ctx, workspace.organizationId, row.userId)));
+  const given = rows.flatMap((row, at) => (counted[at] ? [row.rating] : []));
+  return given.length ? { rating: average(given), count: given.length } : {};
+}
+
+/** What a paper sorts and filters by in a collection (`placeRated`). */
+export const placeRating = async (ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, item: Doc<"libraryItems">) => (await placeRated(ctx, collectionId, item)).rating;
+
+/** Brings a paper's place in a collection in step with the rating it has there and how many gave it. */
 async function ratePlace(ctx: MutationCtx, place: Doc<"libraryItemCollections">, item: Doc<"libraryItems">) {
-  const rating = await placeRating(ctx, place.collectionId, item);
-  if (rating !== place.rating) await ctx.db.patch("libraryItemCollections", place._id, { rating });
+  const { rating, count } = await placeRated(ctx, place.collectionId, item);
+  if (rating !== place.rating || count !== place.ratingCount) await ctx.db.patch("libraryItemCollections", place._id, { rating, ratingCount: count });
 }
 
 /** A paper's place in a collection. */

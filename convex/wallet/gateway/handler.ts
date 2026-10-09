@@ -83,6 +83,7 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
 
   const keyResult: {
     userId: Id<"users">;
+    workspaceId: Id<"workspaces">;
     walletKeyId: Id<"walletKeys">;
     appName: string;
     redirectOrigin: string;
@@ -197,8 +198,9 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     ) +
     (searches ? convertUsdToCredits({ usd: WEB_SEARCH_USD, markup: walletModel.costMarkup }) : 0);
   const chargeId = `wallet:${crypto.randomUUID()}`;
-  // A connected app spends its owner's own workspace's credits, until each key names the workspace it draws on (#651).
-  const workspaceId: Id<"workspaces"> = await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: keyResult.userId });
+  // A connected app spends the credits of the workspace it was connected to (#651), while its person is still in it.
+  const workspaceId = await keyWorkspace(ctx, keyResult);
+  if (!workspaceId) return openAIError(LEFT_WORKSPACE, "invalid_request_error", 403, allowedOrigin);
   if (
     !(await reserveCredits(ctx, {
       userId: keyResult.userId,
@@ -294,6 +296,18 @@ export function withWebPlugin(callerPlugins: unknown): unknown[] {
 /** Whether the caller's OpenRouter plugins include the web plugin, which runs a paid search. */
 function hasWebPlugin(callerPlugins: unknown): boolean {
   return Array.isArray(callerPlugins) && callerPlugins.some((plugin) => (plugin as { id?: unknown } | null)?.id === "web");
+}
+
+const LEFT_WORKSPACE = "This key's workspace is no longer one you're in. Connect the app again.";
+
+/** The workspace a key draws on, while its person is still in it; null once they've left it. */
+async function keyWorkspace(ctx: Parameters<Parameters<typeof httpAction>[0]>[0], key: { userId: Id<"users">; workspaceId: Id<"workspaces"> }): Promise<Id<"workspaces"> | null> {
+  try {
+    await ctx.runQuery(internal.workspaces.actor.activeActor, { userId: key.userId, workspaceId: key.workspaceId });
+    return key.workspaceId;
+  } catch {
+    return null;
+  }
 }
 
 // ─── Credit charge helper ───────────────────────────────────
@@ -537,6 +551,7 @@ export const handleBalance = httpAction(async (ctx, request) => {
 
   const keyResult: {
     userId: Id<"users">;
+    workspaceId: Id<"workspaces">;
     walletKeyId: Id<"walletKeys">;
     appName: string;
     redirectOrigin: string;
@@ -570,8 +585,12 @@ export const handleBalance = httpAction(async (ctx, request) => {
     allowedOrigin = requestOrigin;
   }
 
+  // The balance of the workspace the key draws on, while its person is still in it (#651).
+  const drawsOn = await keyWorkspace(ctx, keyResult);
+  if (!drawsOn) return openAIError(LEFT_WORKSPACE, "invalid_request_error", 403, allowedOrigin);
+  const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId: drawsOn });
   // Top-up credits are "paid"; plan and signup credits are "free".
-  const balances = (await autumn.customer(keyResult.userId)).balances.credits?.breakdown ?? [];
+  const balances = (await autumn.customer(customerId)).balances.credits?.breakdown ?? [];
   const paid = balances
     .filter((balance) => balance.plan_id === "top_up")
     .reduce((sum, balance) => sum + balance.remaining, 0);

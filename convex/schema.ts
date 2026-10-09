@@ -728,6 +728,9 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   walletKeys: defineTable({
     userId: v.id("users"),
+    // The workspace the app draws on, picked when it connects (#651). Optional until
+    // migrations/walletKeyWorkspaces gives the keys made before it their person's own.
+    workspaceId: v.optional(v.id("workspaces")),
     hashedKey: v.string(),
     keyPrefix: v.string(),
     appName: v.string(),
@@ -1290,6 +1293,8 @@ export default defineSchema({
     assignedAt: v.number(),
     savedAt: v.optional(v.number()),
     rating: v.optional(v.number()),
+    // In an organization's collection, how many of its members gave `rating`, their average (#655); none in a person's own.
+    ratingCount: v.optional(v.number()),
     publicationYear: v.optional(v.number()),
     citedByCount: v.optional(v.number()),
     title: v.optional(v.string()),

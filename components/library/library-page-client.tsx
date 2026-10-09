@@ -38,6 +38,7 @@ import {
   ScreeningContext,
   ServerRatingsContext,
 } from "@/components/results-contexts";
+import { CollectionRatings } from "@/components/workspaces/collection-ratings";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
 import { SidebarLayout } from "@/components/shared/sidebar-layout";
@@ -199,6 +200,12 @@ export function LibraryPageClient() {
   // Convert library items to PaperResult[] for PaperCard/FocusMode
   const paperResults = useMemo(
     () => pageItems.map(libraryItemToPaperResult),
+    [pageItems],
+  );
+
+  // In an organization's collection, how its members rated each paper there (#655), by the paper.
+  const collectionRatings = useMemo(
+    () => new Map(pageItems.flatMap((item) => (item.collection ? [[item.openalexId, { libraryItemId: item._id, average: item.rating, ratings: item.collection }] as const] : []))),
     [pageItems],
   );
 
@@ -530,6 +537,10 @@ export function LibraryPageClient() {
                               handleDownloadEssentialItem
                             }
                             viewMode={effectiveViewMode}
+                            extra={(() => {
+                              const rated = params.col ? collectionRatings.get(paper.id) : undefined;
+                              return rated ? <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} compact={effectiveViewMode === "list-simple"} /> : undefined;
+                            })()}
                           />
                         );
                       })}

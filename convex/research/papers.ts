@@ -185,9 +185,9 @@ export const readPdfAction = defineUserAction({
   // The paper by its title where the model gave one: the person can't tell a paper by its ID.
   shown: ({ id, title }) => (title ? { title } : { id }),
   // What a paper of typical length costs to read on the chat's model, its tokens in the reply, with the most its PDF may cost: a copy from the store or from OpenAlex.
-  estimate: async (ctx, { userId }, _args, chat) => {
+  estimate: async (ctx, { userId, workspaceId }, _args, chat) => {
     const thread = chat ? await ctx.db.get("assistantThreads", chat.threadId) : null;
-    const { modelId } = thread ? await chatModel(ctx, thread, userId) : { modelId: (await assistantPick(ctx, userId))?.modelId ?? null };
+    const { modelId } = thread ? await chatModel(ctx, thread, userId) : { modelId: (await assistantPick(ctx, { userId, workspaceId }))?.modelId ?? null };
     await requirePdfModel(ctx, modelId);
     const price = (await pricingOf(ctx, modelId)).input;
     return convertUsdToCredits({ usd: (PAPER_PAGES * PDF_PAGE_TOKENS * price) / 1_000_000 }) + PAPER_PDF_CREDITS;

@@ -269,6 +269,7 @@ import type * as lib_opaqueToken from "../lib/opaqueToken.js";
 import type * as lib_opaqueTokenDigest from "../lib/opaqueTokenDigest.js";
 import type * as lib_paperMetadata from "../lib/paperMetadata.js";
 import type * as lib_paperPdfs from "../lib/paperPdfs.js";
+import type * as lib_people from "../lib/people.js";
 import type * as lib_queryBounds from "../lib/queryBounds.js";
 import type * as lib_query_states from "../lib/query_states.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
@@ -306,6 +307,7 @@ import type * as migrations_extractionSearch from "../migrations/extractionSearc
 import type * as migrations_forgetPersonCounts from "../migrations/forgetPersonCounts.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
 import type * as migrations_organizationCustomers from "../migrations/organizationCustomers.js";
+import type * as migrations_organizationLogos from "../migrations/organizationLogos.js";
 import type * as migrations_pagedAccountLists from "../migrations/pagedAccountLists.js";
 import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
 import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryList.js";
@@ -320,6 +322,7 @@ import type * as migrations_screeningSearch from "../migrations/screeningSearch.
 import type * as migrations_searchText from "../migrations/searchText.js";
 import type * as migrations_teamLists from "../migrations/teamLists.js";
 import type * as migrations_versionChangedSections from "../migrations/versionChangedSections.js";
+import type * as migrations_walletKeyWorkspaces from "../migrations/walletKeyWorkspaces.js";
 import type * as migrations_workspaces from "../migrations/workspaces.js";
 import type * as models_admin from "../models/admin.js";
 import type * as models_catalog from "../models/catalog.js";
@@ -390,6 +393,7 @@ import type * as webhooks_projections from "../webhooks/projections.js";
 import type * as workpool from "../workpool.js";
 import type * as workspaces_actor from "../workspaces/actor.js";
 import type * as workspaces_create from "../workspaces/create.js";
+import type * as workspaces_makers from "../workspaces/makers.js";
 import type * as workspaces_personal from "../workspaces/personal.js";
 import type * as workspaces_purge from "../workspaces/purge.js";
 import type * as workspaces_queries from "../workspaces/queries.js";
@@ -675,6 +679,7 @@ declare const fullApi: ApiFromModules<{
   "lib/opaqueTokenDigest": typeof lib_opaqueTokenDigest;
   "lib/paperMetadata": typeof lib_paperMetadata;
   "lib/paperPdfs": typeof lib_paperPdfs;
+  "lib/people": typeof lib_people;
   "lib/queryBounds": typeof lib_queryBounds;
   "lib/query_states": typeof lib_query_states;
   "lib/rateLimit": typeof lib_rateLimit;
@@ -712,6 +717,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/forgetPersonCounts": typeof migrations_forgetPersonCounts;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
   "migrations/organizationCustomers": typeof migrations_organizationCustomers;
+  "migrations/organizationLogos": typeof migrations_organizationLogos;
   "migrations/pagedAccountLists": typeof migrations_pagedAccountLists;
   "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
   "migrations/pagedLibraryList": typeof migrations_pagedLibraryList;
@@ -726,6 +732,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/searchText": typeof migrations_searchText;
   "migrations/teamLists": typeof migrations_teamLists;
   "migrations/versionChangedSections": typeof migrations_versionChangedSections;
+  "migrations/walletKeyWorkspaces": typeof migrations_walletKeyWorkspaces;
   "migrations/workspaces": typeof migrations_workspaces;
   "models/admin": typeof models_admin;
   "models/catalog": typeof models_catalog;
@@ -796,6 +803,7 @@ declare const fullApi: ApiFromModules<{
   workpool: typeof workpool;
   "workspaces/actor": typeof workspaces_actor;
   "workspaces/create": typeof workspaces_create;
+  "workspaces/makers": typeof workspaces_makers;
   "workspaces/personal": typeof workspaces_personal;
   "workspaces/purge": typeof workspaces_purge;
   "workspaces/queries": typeof workspaces_queries;

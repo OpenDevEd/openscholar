@@ -37,6 +37,8 @@ export interface PaperCardProps {
   viewMode?: "list-simple" | "list-detail" | "grid-2" | "grid-3";
   /** Controls to leave out where they cannot be used, such as an import preview. */
   hide?: PaperCardHide;
+  /** Shown after the rating and save controls, such as who added the paper to a workspace and its collection ratings. */
+  extra?: React.ReactNode;
 }
 
 export interface PaperCardHide {
@@ -469,7 +471,9 @@ export function CitationBadge({
       className={cn("flex items-center gap-2 flex-shrink-0", colorClasses[color])}
     >
       <Icon className="h-4 w-4" />
-      <span className="text-sm">{label}: {format.number(count)}</span>
+      <span className="text-sm">
+        {label} <span className="font-semibold tabular-nums">{format.number(count)}</span>
+      </span>
     </Button>
   );
 }

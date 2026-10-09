@@ -130,14 +130,13 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
     [bucketOrder, bucketItemsMap],
   );
 
-  // The most the job costs, on the models the person's extractions run on, against their balance: the figure its start checks.
+  // The most the job costs, on the models the workspace's extractions run on, against its balance: the figure its start checks.
   const paperCount = readyBucketPaperCount(readyBucketItems);
-  // The page's workspace pays (#651).
   const scope = useWorkspaceScope();
   const { data: preflightCredits } = useProtectedQuery(
     api.extraction.queries.costs.estimateJob,
-    paperCount > 0 && draftJob.questions.length > 0
-      ? { papers: paperCount, questions: draftJob.questions.map((question) => question.type), usePdfs: draftJob.usePdfs }
+    paperCount > 0 && draftJob.questions.length > 0 && scope !== "skip"
+      ? { ...scope, papers: paperCount, questions: draftJob.questions.map((question) => question.type), usePdfs: draftJob.usePdfs }
       : "skip",
   );
   const { data: preflightBalance } = useProtectedQuery(

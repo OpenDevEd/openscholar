@@ -1,7 +1,7 @@
 "use client";
 
 import { useLibraryOrganizationChoice } from "./organization-picker";
-import { useCurrentWorkspace, WorkspaceTile } from "@/components/workspaces/parts";
+import { useCurrentWorkspace, WorkspaceTag } from "@/components/workspaces/parts";
 import { useAction } from "convex/react";
 import { Building2, Check, Lock, RotateCw } from "@/components/icons";
 import Link from "@/components/workspace-link";
@@ -57,12 +57,7 @@ export function NewLibraryForm() {
   if (!owner.isReady || !workspace) return <AuthStatePanel variant="loading" layout="fullscreen" />;
   if (!selected) return <AuthStatePanel variant="no_access" layout="fullscreen" title={t("ownerOnlyTitle")} description={t("ownerOnlyDescription")} />;
   return <OwnerForm key={selected.id} organizationId={selected.id}
-    organization={
-      <span className="inline-flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-muted pl-1 pr-2.5 text-xs">
-        <WorkspaceTile workspace={workspace} size="xs" />
-        <span className="min-w-0 truncate">{workspace.name}</span>
-      </span>
-    } />;
+    organization={<WorkspaceTag workspace={workspace} />} />;
 }
 
 function OwnerForm({ organizationId, organization }: {

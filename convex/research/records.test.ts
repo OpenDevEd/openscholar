@@ -451,6 +451,8 @@ describe("account research records", () => {
       await t.finishAllScheduledFunctions(vi.runAllTimers);
       expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts })).page.map(row => row.id)).toEqual(["new"]);
       expect(await alice.query(api.research.records.countSearches, { accountId: "alice" })).toBe(1);
+      // Your own workspace's searches are all yours, so they name no one.
+      expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts })).page.map(row => row.by)).toEqual([undefined]);
     } finally {
       vi.useRealTimers();
     }
@@ -751,6 +753,10 @@ describe("research records in workspaces (#650)", () => {
       await change(as, accountId, made(`${accountId}-search`));
       await change(as, accountId, bookmark(`${accountId}-bookmark`));
     }
+    // Each names who ran it, and which is the person reading.
+    const listed = await alice.query(api.research.records.listedSearches, { accountId: "alice", workspaceId: lab, sort: "oldest", paginationOpts });
+    expect(listed.page.map(row => [row.id, row.by?.you])).toEqual([["alice-search", true], ["bob-search", false]]);
+    expect(listed.page[1].by?.name).toBeTruthy();
     // A member can't take away what an admin made, by either way of deleting a search.
     await expect(change(alice, "alice", { kind: "deleteSearch", id: "bob-search" })).rejects.toThrow(/admin/);
     await expect(alice.mutation(api.research.searches.deleteSearch, { workspaceId: lab, id: "bob-search" })).rejects.toThrow(/admin/);
