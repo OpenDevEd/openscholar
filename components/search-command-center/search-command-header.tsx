@@ -25,7 +25,7 @@ import { useSearchOptional } from "@/lib/search";
 import { ModeTabs } from "./components/mode-tabs";
 import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import { useUIStore } from "@/lib/store";
-import { useIsMobile, useIsTablet } from "@/lib/hooks";
+import { useIsTablet } from "@/lib/hooks";
 import type { CommandCenterMode } from "./types";
 import { cn } from "@/lib/utils";
 
@@ -59,8 +59,7 @@ export function SearchCommandHeader({
   const getShareableUrl = search?.getShareableUrl ?? (() => "");
   const isMobile = useIsTablet();
   const { viewMode, setViewMode } = useUIStore();
-  // A phone has no room for the bar's icons: downloading and sharing share one menu.
-  const isPhone = useIsMobile();
+  // A phone has no room for the bar's icons: downloading and sharing share one menu, shown below md as useIsMobile counts a phone.
   const downloads = [
     { run: onDownloadAllJSON, label: tc("downloadAsJson") },
     { run: onDownloadAllCSV, label: tc("downloadAsCsv") },
@@ -68,7 +67,7 @@ export function SearchCommandHeader({
     { run: onDownloadAllEssentialCSV, label: td("downloadEssentialCSV") },
   ].filter((item): item is { run: () => void; label: string } => item.run !== undefined);
 
-  const handleCopyShareLink = async () => {
+  const handleCopyShareLink = async ({ fromMenu = false } = {}) => {
     try {
       // The link carries the query with its shortcuts expanded, so they're read first.
       await ensureQueryShortcuts(search?.params.q);
@@ -76,8 +75,8 @@ export function SearchCommandHeader({
       await navigator.clipboard.writeText(shareableUrl);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
-      // On a phone it's picked from a menu that closes, so the copy is confirmed apart.
-      if (isPhone) sonnerToast.success(tsc("copied"));
+      // Picked from the phone's menu, which closes, the copy is confirmed apart.
+      if (fromMenu) sonnerToast.success(tsc("copied"));
     } catch {
       toast.clipboard.copyFailed(tsc("link"));
     }
@@ -99,11 +98,11 @@ export function SearchCommandHeader({
         {!isMobile && <ViewModeSwitch value={viewMode} onChange={setViewMode} />}
 
         {/* On a phone: one menu with the downloads and the share link */}
-        {isPhone && !queryOnly ? (
+        {!queryOnly ? (
           <DropdownMenu>
             <TooltipHint label={tc("more")}>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label={tc("more")} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="icon" aria-label={tc("more")} className="h-8 w-8 text-muted-foreground hover:text-foreground md:hidden">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -121,7 +120,7 @@ export function SearchCommandHeader({
                   <DropdownMenuSeparator />
                 </>
               ) : null}
-              <DropdownMenuItem onSelect={handleCopyShareLink}>
+              <DropdownMenuItem onSelect={() => handleCopyShareLink({ fromMenu: true })}>
                 <Share2 className="size-4" />
                 {tsc("copyShareLink")}
               </DropdownMenuItem>
@@ -130,13 +129,13 @@ export function SearchCommandHeader({
         ) : null}
 
         {/* Download dropdown */}
-        {downloads.length > 0 && !queryOnly && !isPhone && (
+        {downloads.length > 0 && !queryOnly && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                className="hidden h-8 w-8 text-muted-foreground hover:text-foreground md:inline-flex"
               >
                 <Download className="h-4 w-4" />
               </Button>
@@ -167,14 +166,14 @@ export function SearchCommandHeader({
         )}
 
         {/* Share button */}
-        {!queryOnly && !isPhone && (
+        {!queryOnly && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={handleCopyShareLink}
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={() => handleCopyShareLink()}
+                className="hidden h-8 w-8 text-muted-foreground hover:text-foreground md:inline-flex"
               >
                 {isCopied ? (
                   <Check className="h-4 w-4 text-success" />
