@@ -36,6 +36,8 @@ export async function storeAnswer(input: RequestInfo | URL, init?: RequestInit):
   if (url.host !== HOST) return null;
   const key = decodeURIComponent(url.pathname.slice(`/${BUCKET}/`.length));
   if (request.method === "PUT") {
+    // R2 refuses a write without its length (411), which a streamed body leaves out.
+    if (!request.headers.get("content-length")) return new Response("<Error><Code>MissingContentLength</Code></Error>", { status: 411 });
     fakeStore.objects.set(key, new Uint8Array(await request.arrayBuffer()));
     fakeStore.kept.push(key);
     return new Response(null, { status: 200 });
