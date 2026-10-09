@@ -10,6 +10,7 @@ import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { authorContentFields } from "./validators";
 import { profileRole, requireProfileAccess } from "./access";
+import { ensureWorkspace } from "../workspaces/create";
 
 export function cleanContent(content: { [K in keyof typeof authorContentFields]: string }) {
   const next = {...content};
@@ -35,7 +36,9 @@ export function cleanContent(content: { [K in keyof typeof authorContentFields]:
 
 export async function createProfile(ctx: MutationCtx, ownerId: Id<"users">, name: string) {
   const content = cleanContent({name, headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: ""});
-  return await ctx.db.insert("authorProfiles", {...content, ownerId, revision: 1, updatedAt: Date.now()});
+  // Its maker's own workspace owns it until profiles are made in the page's (#650, slice 6).
+  const workspaceId = await ensureWorkspace(ctx, {kind: "personal", userId: ownerId});
+  return await ctx.db.insert("authorProfiles", {...content, ownerId, workspaceId, createdBy: ownerId, revision: 1, updatedAt: Date.now()});
 }
 
 /** A profile as pages show it, with its photo's URL. */
