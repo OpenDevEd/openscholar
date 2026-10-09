@@ -37,8 +37,8 @@ export function useWorkspaceRouter() {
   return useMemo(
     () => ({
       ...router,
-      push: (path: string, options?: Parameters<typeof router.push>[1]) => router.push(workspaceHref(slug, path), options),
-      replace: (path: string, options?: Parameters<typeof router.replace>[1]) => router.replace(workspaceHref(slug, path), options),
+      push: (path: string, ...options: [Parameters<typeof router.push>[1]?]) => router.push(workspaceHref(slug, path), ...options),
+      replace: (path: string, ...options: [Parameters<typeof router.replace>[1]?]) => router.replace(workspaceHref(slug, path), ...options),
       prefetch: (path: string) => router.prefetch(workspaceHref(slug, path)),
     }),
     [router, slug],

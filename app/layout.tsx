@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Ubuntu } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -20,6 +21,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { preloadQuery } from "convex/nextjs";
 import { AssistantPanel } from "@/components/assistant/panel";
+import { ItemHome } from "@/components/workspaces/item-home";
 import { api } from "@/convex/_generated/api";
 
 // The brand typeface. To change it, swap the family here; --font-app feeds
@@ -104,6 +106,10 @@ export default async function RootLayout({
                       </div>
                       <Toaster />
                       <ConfirmationHost />
+                      {/* A link to an item in another of the person's workspaces opens there (#651). */}
+                      <Suspense fallback={null}>
+                        <ItemHome />
+                      </Suspense>
                       <AssistantPanel />
                       <CookieConsentBanner />
                       <ConsentAwareGoogleAnalytics />

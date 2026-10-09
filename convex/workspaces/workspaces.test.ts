@@ -174,6 +174,26 @@ describe("acting in a workspace", () => {
     await expect(count(lab)).rejects.toThrow(/Workspace not found/);
   });
 
+  it("finds an organization's pages by its slug, and an item's workspace by its address, for its members only", async () => {
+    const { t, asAlice, aliceOwn, bobOwn, lab } = await setup();
+    const asBob = t.withIdentity({ subject: "bob" });
+    // /o/org_lab is the lab's workspace for Alice, and no page at all for Bob.
+    expect(await asAlice.query(api.workspaces.queries.bySlug, { slug: "org_lab" })).toBe(lab);
+    expect(await asBob.query(api.workspaces.queries.bySlug, { slug: "org_lab" })).toBeNull();
+    // A collection of the lab's, opened from her own workspace, is the lab's: its pages are under /o/org_lab.
+    const collectionId = await t.run(async (ctx) => ctx.db.insert("collections", { workspaceId: lab, createdBy: (await ctx.db.query("users").first())!._id, name: "Shared", sortName: "shared", itemCount: 0, createdAt: 1, updatedAt: 1 }));
+    expect(await asAlice.query(api.workspaces.queries.homeOf, { kind: "collection", id: collectionId, here: aliceOwn })).toEqual({ slug: "org_lab" });
+    expect(await asBob.query(api.workspaces.queries.homeOf, { kind: "collection", id: collectionId, here: bobOwn })).toBeNull();
+    // A search's address carries its ID in its workspace; one both her workspaces have opens where the page is.
+    await t.run(async (ctx) => {
+      const at = "2026-10-01T00:00:00.000Z";
+      const data = { id: "s_same", query: "tutoring", field: "title" as const, count: 1, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: at, updatedAt: at };
+      for (const workspaceId of [aliceOwn, lab]) await ctx.db.insert("searches", { workspaceId, createdBy: (await ctx.db.query("users").first())!._id, localId: "s_same", revision: 1, data });
+    });
+    expect(await asAlice.query(api.workspaces.queries.homeOf, { kind: "search", id: "s_same", here: aliceOwn })).toEqual({});
+    expect(await asAlice.query(api.workspaces.queries.homeOf, { kind: "search", id: "s_same", here: lab })).toEqual({ slug: "org_lab" });
+  });
+
   it("lets the assistant act only in a workspace of the person it acts for", async () => {
     const { t, alice, aliceOwn, bobOwn } = await setup();
     expect(await t.query(internal.library.collections.countCollectionsForAssistant, { userId: alice, workspaceId: aliceOwn })).toBe(0);

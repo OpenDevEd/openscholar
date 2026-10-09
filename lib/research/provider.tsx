@@ -14,17 +14,21 @@ import { ResearchSession } from "./session";
 import { ResearchImportError, localResearchBackup } from "./migrate";
 import { downloadAsFile } from "../utils";
 import { useWorkspace } from "../workspaces/url";
+import { useWorkspaceSlug } from "../workspaces/href";
+import type { Id } from "@/convex/_generated/dataModel";
 
 const localSnapshot = { ready: true, error: null, pending: 0 };
 const localSubscribe = () => activateResearch(null);
 const getLocalSnapshot = () => localSnapshot;
 const StatusContext = createContext({ ...localSnapshot, error: null as Error | null, retry: () => {} });
 const sessions = new WeakMap<ConvexReactClient, Map<string, ResearchSession>>();
-function accountSession(client: ConvexReactClient, accountId: string) {
+/** The account's records in one workspace (#651): switching workspace reads another's. */
+function workspaceSession(client: ConvexReactClient, accountId: string, workspaceId: Id<"workspaces"> | undefined, own: boolean) {
   let accounts = sessions.get(client);
   if (!accounts) { accounts = new Map(); sessions.set(client, accounts); }
-  let session = accounts.get(accountId);
-  if (!session) { session = new ResearchSession(client, accountId); accounts.set(accountId, session); }
+  const key = `${accountId}:${workspaceId ?? ""}`;
+  let session = accounts.get(key);
+  if (!session) { session = new ResearchSession(client, accountId, workspaceId && { workspaceId, own }); accounts.set(key, session); }
   return session;
 }
 
@@ -38,10 +42,11 @@ export function ResearchStateProvider({ children }: { children: ReactNode }) {
   const report = useCallback((error: Error, retry: () => void) => {
     showStyledToast("error", error.message, { duration: Infinity, action: { label: retryLabel, onClick: retry, ...(error instanceof ResearchImportError ? { secondaryAction: { label: "Download backup", onClick: () => downloadAsFile(localResearchBackup(), "local-research-backup.json", "json") } } : {}) } });
   }, [retryLabel]);
-  const session = userId ? accountSession(client, userId) : null;
   // The session reads the account's records in the page's workspace, from when it has loaded.
   const workspaceId = useWorkspace();
-  const subscribe = useCallback((listener: () => void) => session ? session.subscribe(listener, phase === "authenticated", report, workspaceId) : localSubscribe(), [session, phase, report, workspaceId]);
+  const own = useWorkspaceSlug() === undefined;
+  const session = userId ? workspaceSession(client, userId, workspaceId, own) : null;
+  const subscribe = useCallback((listener: () => void) => session ? session.subscribe(listener, phase === "authenticated", report) : localSubscribe(), [session, phase, report]);
   const status = useSyncExternalStore(subscribe, session?.getSnapshot ?? getLocalSnapshot, session?.getServerSnapshot ?? getLocalSnapshot);
   // The same account and workspace the session reads under, for hooks reading beside it.
   const scope = useMemo(() => (userId && workspaceId ? { accountId: userId, workspaceId } : undefined), [userId, workspaceId]);

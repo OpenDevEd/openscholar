@@ -5,11 +5,12 @@ import { getFunctionName } from "convex/server";
 import { ResearchSession } from "./session";
 import type { Id } from "../../convex/_generated/dataModel";
 
-/** The page's workspace, which the session is given as it subscribes; the fake client takes any. */
+/** The page's workspace, which the session is made for; the fake client takes any. */
 const WORKSPACE = "workspace_alice" as Id<"workspaces">;
 import type { ResearchCommand } from "./records";
 
-vi.mock("./migrate", () => ({ migrateLocalResearch: async () => [], ResearchImportError: class extends Error {} }));
+const migrate = vi.hoisted(() => ({ calls: 0 }));
+vi.mock("./migrate", () => ({ migrateLocalResearch: async () => { migrate.calls++; return []; }, ResearchImportError: class extends Error {} }));
 
 function connection() {
   const ratings: Array<{ paperId: string; rating: number }> = [];
@@ -35,24 +36,41 @@ function connection() {
   return { client: client as unknown as ConvexReactClient, commands };
 }
 
+describe("a workspace's records", () => {
+  it("take in this browser's records in the person's own workspace only", async () => {
+    const { client } = connection();
+    const calls = migrate.calls;
+    const organization = new ResearchSession(client, "alice", { workspaceId: "workspace_lab" as Id<"workspaces">, own: false });
+    const stop = organization.subscribe(() => {}, true);
+    await vi.waitFor(() => expect(organization.getSnapshot().ready).toBe(true));
+    expect(migrate.calls).toBe(calls);
+    stop();
+    const own = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true });
+    const stopOwn = own.subscribe(() => {}, true);
+    await vi.waitFor(() => expect(own.getSnapshot().ready).toBe(true));
+    expect(migrate.calls).toBe(calls + 1);
+    stopOwn();
+  });
+});
+
 describe("research save recovery", () => {
   it("refuses actions captured from an inactive account and never queues them for its return", async () => {
     const { client, commands } = connection();
-    const session = new ResearchSession(client, "alice");
-    const stop = session.subscribe(() => {}, true, undefined, WORKSPACE);
+    const session = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true });
+    const stop = session.subscribe(() => {}, true, undefined);
     await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
     const clear = session.stores.history.getState().clearSearchHistory;
     stop();
     expect(() => clear()).toThrow(/account changed/i);
     expect(session.getSnapshot().pending).toBe(0);
-    const resume = session.subscribe(() => {}, true, undefined, WORKSPACE);
+    const resume = session.subscribe(() => {}, true, undefined);
     await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
     expect(commands).toEqual([]);
     resume();
   });
   it("validates the whole upload before queuing any search writes", () => {
     const { client, commands } = connection();
-    const session = new ResearchSession(client, "alice");
+    const session = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true });
     expect(() => session.stores.history.getState().importSearchHistory([
       { search_query: "reading", count: "0", field: "title" },
       { search_query: "writing", count: "invalid", field: "title" },
@@ -63,8 +81,8 @@ describe("research save recovery", () => {
   it("rolls back a rejected save and still persists the next change", async () => {
     const { client, commands } = connection();
     const errors: Error[] = [];
-    const session = new ResearchSession(client, "alice", error => errors.push(error));
-    const stop = session.subscribe(() => {}, true, undefined, WORKSPACE);
+    const session = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true }, error => errors.push(error));
+    const stop = session.subscribe(() => {}, true, undefined);
     await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
     const unwatch = session.watchRatings(["bad", "good"], () => {});
     session.stores.ratings.getState().setRating("bad", 6);
@@ -82,13 +100,13 @@ describe("research save recovery", () => {
 
   it("queues edits while account authentication loads and retains them across subscriptions", async () => {
     const { client, commands } = connection();
-    const session = new ResearchSession(client, "alice");
-    const stop = session.subscribe(() => {}, false, undefined, WORKSPACE);
+    const session = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true });
+    const stop = session.subscribe(() => {}, false, undefined);
     session.stores.ratings.getState().setRating("W1", 5);
     expect(commands).toEqual([]);
     expect(session.getSnapshot().pending).toBe(1);
     stop();
-    const resume = session.subscribe(() => {}, true, undefined, WORKSPACE);
+    const resume = session.subscribe(() => {}, true, undefined);
     const unwatch = session.watchRatings(["W1"], () => {});
     await vi.waitFor(() => expect(session.getSnapshot().pending).toBe(0));
     expect(commands).toEqual([{ kind: "rating", paperId: "W1", rating: 5 }]);
@@ -111,8 +129,8 @@ describe("research save recovery", () => {
       },
       mutation: vi.fn(() => new Promise<null>(resolve => { save = () => resolve(null); })),
     } as unknown as ConvexReactClient;
-    const session = new ResearchSession(client, "alice");
-    const stop = session.subscribe(() => {}, true, undefined, WORKSPACE);
+    const session = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true });
+    const stop = session.subscribe(() => {}, true, undefined);
     await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
 
     const history = session.stores.history.getState();
@@ -150,8 +168,8 @@ describe("research save recovery", () => {
       mutation: vi.fn(async () => null),
     } as unknown as ConvexReactClient;
     let answers: unknown;
-    const session = new ResearchSession(client, "alice");
-    const stop = session.subscribe(() => {}, true, undefined, WORKSPACE);
+    const session = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true });
+    const stop = session.subscribe(() => {}, true, undefined);
     const listed = { id: "listed", query: "tutoring", field: "title" as const, count: 3, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [{ question: "Randomized?" }], screeningResponses: [], createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" };
 
     const unwatch = session.watchSearch("listed", () => {}, listed);
@@ -187,8 +205,8 @@ describe("research save recovery", () => {
       },
       mutation: vi.fn(async () => null),
     } as unknown as ConvexReactClient;
-    const session = new ResearchSession(client, "alice");
-    const stop = session.subscribe(() => {}, true, undefined, WORKSPACE);
+    const session = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true });
+    const stop = session.subscribe(() => {}, true, undefined);
     await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
 
     const told = vi.fn();
@@ -220,8 +238,8 @@ describe("research save recovery", () => {
       },
       mutation: vi.fn(async () => null),
     } as unknown as ConvexReactClient;
-    const session = new ResearchSession(client, "alice");
-    const stop = session.subscribe(() => {}, true, undefined, WORKSPACE);
+    const session = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true });
+    const stop = session.subscribe(() => {}, true, undefined);
     const unwatch = session.watchAnswers("search", ["W1", "W2"], () => {});
     // The papers can show, but what they're answered isn't known, so nothing should screen them.
     expect(session.answersRead("search", ["W1", "W2"])).toBe(2);
@@ -241,8 +259,8 @@ describe("research save recovery", () => {
       query: vi.fn(async () => ({ page: [], isDone: true, continueCursor: "" })),
       mutation: vi.fn(() => new Promise(() => {})),
     } as unknown as ConvexReactClient;
-    const session = new ResearchSession(client, "alice");
-    const stop = session.subscribe(() => {}, true, undefined, WORKSPACE);
+    const session = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true });
+    const stop = session.subscribe(() => {}, true, undefined);
     await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
     const history = session.stores.history.getState();
     history.importSearchHistory([{ id: "imported", query: "tutoring", field: "title", count: 1, screeningQuestions: [{ question: "Randomized?" }], screeningResponses: { W1: { "Randomized?": true }, W2: { "Randomized?": false } }, createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" }]);
@@ -267,8 +285,8 @@ describe("research save recovery", () => {
       mutation: vi.fn(() => new Promise<null>(() => {})),
       query: vi.fn(async (_query: unknown, args: { paperIds: string[] }) => ({ page: args.paperIds.filter(id => id === "W2").map(paperId => ({ paperId, rating: 3 })), isDone: true, continueCursor: "" })),
     } as unknown as ConvexReactClient;
-    const session = new ResearchSession(client, "alice");
-    const stop = session.subscribe(() => {}, true, undefined, WORKSPACE);
+    const session = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true });
+    const stop = session.subscribe(() => {}, true, undefined);
     await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
 
     // A list that names a paper twice still holds one read of it.
@@ -305,8 +323,8 @@ describe("research save recovery", () => {
       },
       mutation: vi.fn(async (_query: unknown, args: { command: ResearchCommand }) => { commands.push(args.command); return null; }),
     } as unknown as ConvexReactClient;
-    const session = new ResearchSession(client, "alice");
-    const stop = session.subscribe(() => {}, true, undefined, WORKSPACE);
+    const session = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true });
+    const stop = session.subscribe(() => {}, true, undefined);
     await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
     const shortcuts = session.stores.shortcuts.getState();
 
@@ -344,8 +362,8 @@ describe("research save recovery", () => {
         },
         mutation: vi.fn(async (_query: unknown, args: { command: ResearchCommand }) => { commands.push(args.command); return null; }),
       } as unknown as ConvexReactClient;
-      const session = new ResearchSession(client, "alice");
-      const stop = session.subscribe(() => {}, true, undefined, WORKSPACE);
+      const session = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true });
+      const stop = session.subscribe(() => {}, true, undefined);
       await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
       const shortcuts = session.stores.shortcuts.getState();
 
