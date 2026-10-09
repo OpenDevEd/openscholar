@@ -26,7 +26,7 @@ import {
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useCollectionPicker } from "./use-collection-picker";
-import { NewCollectionDialog } from "./collection-dialogs";
+import { NewCollectionDialog, useCollectionDialogsReady } from "./collection-dialogs";
 import { useCurrentWorkspace, WorkspaceTag } from "@/components/workspaces/parts";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 
@@ -334,6 +334,8 @@ function CollectionsPanel({
   const tl = useTranslations("libraryPage");
   const workspace = useCurrentWorkspace();
   const picker = useCollectionPicker({ openalexId: paperId });
+  // New collection opens from here: what it shows is read while this is open.
+  useCollectionDialogsReady();
 
   const loadingMembers = picker.isLoading;
   const checkedIds = new Set<string>(picker.collections.filter((collection) => collection.containsItem).map((collection) => collection._id));

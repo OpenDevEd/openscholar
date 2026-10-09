@@ -11,3 +11,8 @@ export function libraryCountRow(ctx: LibraryCountCtx, workspaceId: Id<"workspace
 export async function libraryCount(ctx: LibraryCountCtx, workspaceId: Id<"workspaces">) {
   return (await libraryCountRow(ctx, workspaceId))?.count ?? 0;
 }
+
+/** A workspace's count of its collections; none until it has had one. */
+export function collectionCountRow(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) {
+  return ctx.db.query("collectionCounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
+}

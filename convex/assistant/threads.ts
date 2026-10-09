@@ -202,10 +202,10 @@ export const listAction = defineUserQuery({
   description:
     "Lists the assistant chats in the workspace the person can open, newest first, a page at a time: all of them, only the ones they made, or only the ones shared with them. " +
     "Given `text`, only chats whose title, or the start of whose newest message, contains it. Each comes with the start of its newest message, whether a reply is being written in it, " +
-    "the first few people in it and who of them has it open now.",
-  args: { scope: v.union(v.literal("all"), v.literal("mine"), v.literal("shared")), text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
+    "the first few people in it and who of them has it open now. In an organization, `by` keeps only the chats that member started (their `userId` from workspaces/makers:counts).",
+  args: { scope: v.union(v.literal("all"), v.literal("mine"), v.literal("shared")), text: v.optional(v.string()), by: v.optional(v.id("users")), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(listedValidator),
-  run: async (ctx, { userId, workspaceId, role }, { scope, text, paginationOpts }) => {
+  run: async (ctx, { userId, workspaceId, role }, { scope, text, by, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const user = await ctx.db.get("users", userId);
     if (!user) return { page: [], isDone: true, continueCursor: "" };
@@ -218,12 +218,14 @@ export const listAction = defineUserQuery({
     if ((await ctx.db.get("workspaces", workspaceId))?.kind === "organization") {
       // An organization's chats are all its members' (#650): none of them are shared with them, and each is its maker's and its admins' to manage.
       if (scope === "shared") return { page: [], isDone: true, continueCursor: "" };
-      const chats = await stream(ctx.db, schema)
-        .query("assistantThreads")
-        .withIndex("by_workspace_and_lastMessageAt", (q) => q.eq("workspaceId", workspaceId))
+      // One member's, given `by` or "mine", read along their own index range (#656).
+      const maker = by ?? (scope === "mine" ? userId : undefined);
+      const chats = await (maker
+        ? stream(ctx.db, schema).query("assistantThreads").withIndex("by_workspace_and_createdBy_and_lastMessageAt", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", maker))
+        : stream(ctx.db, schema).query("assistantThreads").withIndex("by_workspace_and_lastMessageAt", (q) => q.eq("workspaceId", workspaceId)))
         .order("desc")
         .filterWith(async (thread) => {
-          if ((scope === "mine" && thread.createdBy !== userId) || !matches(thread)) return false;
+          if (!matches(thread)) return false;
           kept.set(thread._id, { role: role === "admin" || thread.createdBy === userId ? "owner" : "write", access: await accessRows(ctx, thread._id) });
           return true;
         })

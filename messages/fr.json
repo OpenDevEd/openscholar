@@ -4221,6 +4221,21 @@
       "showEarlier": "Afficher l'activité plus ancienne",
       "none": "Les modifications s'afficheront ici désormais."
     },
+    "runBy": {
+      "runBy": "Lancé par",
+      "startedBy": "Commencé par",
+      "everyone": "Tout le monde",
+      "more": "{count, plural, one {# autre personne} other {# autres personnes}}",
+      "find": "Trouver quelqu'un",
+      "noOne": "Personne de ce nom",
+      "busiest": "Les {listed} plus actifs sur {count}. Tapez un nom pour trouver quelqu'un d'autre.",
+      "searches": "{count, plural, one {# recherche} other {# recherches}}",
+      "screenings": "{count, plural, one {# tri} other {# tris}}",
+      "extractions": "{count, plural, one {# extraction} other {# extractions}}",
+      "collections": "{count, plural, one {# collection} other {# collections}}",
+      "chats": "{count, plural, one {# conversation} other {# conversations}}",
+      "showMore": "Afficher plus de personnes"
+    },
     "presence": {
       "hasOpen": "{count, plural, one {{names} l'a ouvert} other {{names} l'ont ouvert}}"
     }

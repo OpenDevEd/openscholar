@@ -465,7 +465,7 @@ describe("account research records", () => {
     const stored = (i: number) => ({ workspaceId, createdBy: ids.alice, localId: `old-${i}`, revision: 1, data: { ...record, id: `old-${i}`, screeningResponses: [] } });
     for (let start = 0; start < 1_200; start += 300) await t.run(async ctx => { for (let i = start; i < start + 300; i++) await ctx.db.insert("searches", stored(i)); });
     const change = (requestId: string, command: ResearchCommand) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command });
-    const row = () => t.run(ctx => ctx.db.query("recordCounts").withIndex("by_workspace_and_table", q => q.eq("workspaceId", workspaceId).eq("table", "searches")).unique());
+    const row = () => t.run(ctx => ctx.db.query("recordCounts").withIndex("by_workspace_and_table_and_createdBy", q => q.eq("workspaceId", workspaceId).eq("table", "searches").eq("createdBy", undefined)).unique());
 
     vi.useFakeTimers();
     try {

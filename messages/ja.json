@@ -4221,6 +4221,21 @@
       "showEarlier": "以前のアクティビティを表示",
       "none": "今後の変更はここに表示されます。"
     },
+    "runBy": {
+      "runBy": "実行者",
+      "startedBy": "開始者",
+      "everyone": "全員",
+      "more": "ほか {count} 人",
+      "find": "人を探す",
+      "noOne": "その名前の人はいません",
+      "busiest": "{count} 人中、最も活発な {listed} 人。ほかの人は名前を入力して探せます。",
+      "searches": "{count} 件の検索",
+      "screenings": "{count} 件のスクリーニング",
+      "extractions": "{count} 件の抽出",
+      "collections": "{count} 件のコレクション",
+      "chats": "{count} 件のチャット",
+      "showMore": "さらに表示"
+    },
     "presence": {
       "hasOpen": "{names} が開いています"
     }

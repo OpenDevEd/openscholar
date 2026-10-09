@@ -10,24 +10,27 @@ export function ConfigurationLayout({
   navigation,
   children,
   footer,
+  intro,
 }: {
   header: ReactNode;
   navigation: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
+  /** The card's first row, across the rail and the content, such as an organization's filter by person (#656). */
+  intro?: ReactNode;
 }) {
   return (
     <div className="@container w-full pb-16 [--configuration-offset:calc(var(--app-navbar-height)+var(--page-header-height,6rem)+1rem)] [&_section[id^=sec-]]:scroll-mt-[var(--configuration-offset)]">
       <StickyPageHeader>{header}</StickyPageHeader>
       <div className="@container/configuration container mx-auto max-w-6xl p-4 sm:p-6">
-        <CommandCenterContainer
-          allowOverflow
-          className="flex flex-col @min-[42rem]/configuration:flex-row"
-        >
-          <aside className="w-full border-b border-border-subtle bg-inset @min-[42rem]/configuration:w-60 @min-[42rem]/configuration:shrink-0 @min-[42rem]/configuration:border-b-0 @min-[42rem]/configuration:border-r @min-[42rem]/configuration:bg-transparent">
-            {navigation}
-          </aside>
-          <div className="min-w-0 flex-1 space-y-4 p-4 @min-[42rem]/configuration:p-6">{children}</div>
+        <CommandCenterContainer allowOverflow className="flex flex-col">
+          {intro ? <div className="border-b border-border-subtle">{intro}</div> : null}
+          <div className="flex flex-col @min-[42rem]/configuration:flex-row">
+            <aside className="w-full border-b border-border-subtle bg-inset @min-[42rem]/configuration:w-60 @min-[42rem]/configuration:shrink-0 @min-[42rem]/configuration:border-b-0 @min-[42rem]/configuration:border-r @min-[42rem]/configuration:bg-transparent">
+              {navigation}
+            </aside>
+            <div className="min-w-0 flex-1 space-y-4 p-4 @min-[42rem]/configuration:p-6">{children}</div>
+          </div>
         </CommandCenterContainer>
       </div>
       {footer}

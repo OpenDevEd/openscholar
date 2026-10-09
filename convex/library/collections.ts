@@ -1,6 +1,8 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import type { Id } from "../_generated/dataModel";
+import { collectionCountRow } from "./counter";
 import { requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
+import { makersIn, makerValidator } from "../workspaces/makers";
 import { searchTerms } from "../lib/searchText";
 import type { QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -17,10 +19,6 @@ import { collectionSortName } from "./sortName";
 
 /** Most collections one page holds. */
 const COLLECTIONS_PAGE_MAX = 50;
-
-export function collectionCountRow(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) {
-  return ctx.db.query("collectionCounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
-}
 
 export { collectionSortName };
 
@@ -322,6 +320,8 @@ const collectionRow = v.object({
   itemCount: v.number(),
   /** Whether the paper asked about is in it; false when none was asked about. */
   containsItem: v.boolean(),
+  /** Who made it, in an organization (#656). */
+  by: v.optional(makerValidator),
 });
 
 /**
@@ -332,20 +332,25 @@ const collectionRow = v.object({
 export const listCollectionsAction = defineUserQuery({
   path: "library/collections:listCollections",
   description:
-    `A page of the person's collections by name, each with how many papers it holds, at most ${COLLECTIONS_PAGE_MAX} a page. With \`search\`, those whose name matches, best match first. With a paper's OpenAlex ID, each also says whether that paper is in it.`,
+    `A page of the person's collections by name, each with how many papers it holds, at most ${COLLECTIONS_PAGE_MAX} a page. With \`search\`, those whose name matches, best match first. With a paper's OpenAlex ID, each also says whether that paper is in it. In an organization each names who made it, and \`by\` keeps only that member's (their \`userId\` from workspaces/makers:counts).`,
   args: {
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
     openalexId: v.optional(v.string()),
+    by: v.optional(v.id("users")),
   },
   returns: paginationResultValidator(collectionRow),
-  run: async (ctx, { workspaceId }, args) => {
+  run: async (ctx, { userId, workspaceId }, args) => {
     const paginationOpts = { ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, COLLECTIONS_PAGE_MAX) };
     const search = searchTerms(args.search);
+    const { by } = args;
     const page = await (search
-      ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", search).eq("workspaceId", workspaceId))
-      : ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId))
+      ? ctx.db.query("collections").withSearchIndex("search_name", (q) => (by ? q.search("name", search).eq("workspaceId", workspaceId).eq("createdBy", by) : q.search("name", search).eq("workspaceId", workspaceId)))
+      : by
+        ? ctx.db.query("collections").withIndex("by_workspace_and_createdBy_and_sortName", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", by))
+        : ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId))
     ).paginate(paginationOpts);
+    const makerOf = await makersIn(ctx, workspaceId, userId);
     const { openalexId } = args;
     const item = openalexId
       ? await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", openalexId)).unique()
@@ -358,6 +363,7 @@ export const listCollectionsAction = defineUserQuery({
           _id: collection._id,
           name: collection.name,
           itemCount: collection.itemCount,
+          ...(await makerOf(collection.createdBy).then((maker) => (maker ? { by: maker } : {}))),
           containsItem:
             libraryItemId !== undefined &&
             (await ctx.db

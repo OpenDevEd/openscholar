@@ -6,7 +6,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { personName } from "../lib/people";
 import { readAccount } from "../billing/accounts";
-import { collectionCountRow } from "../library/collections";
+import { collectionCountRow } from "../library/counter";
 import { countRow } from "../research/recordCounts";
 import { query } from "../lib/functions";
 import { createError } from "../lib/errors";

@@ -4,7 +4,7 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { purgeWorkspaceChats } from "../assistant/access";
 import { readAccount } from "../billing/accounts";
-import { collectionCountRow } from "../library/collections";
+import { collectionCountRow } from "../library/counter";
 import { libraryCountRow } from "../library/counter";
 import { internalMutation } from "../lib/functions";
 import { countRow } from "../research/recordCounts";
@@ -72,6 +72,8 @@ export async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspac
   if (!(await drain(ctx, step, (n) => ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(n), "screeningSlots"))) return false;
   if (!(await drain(ctx, step, (n) => ctx.db.query("assistantSpenders").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId)).take(n), "assistantSpenders"))) return false;
   if (!(await drain(ctx, step, (n) => ctx.db.query("activity").withIndex("by_workspace_and_item", (q) => q.eq("workspaceId", workspaceId)).take(n), "activity"))) return false;
+  // Its counts, each member's of each kind of record included (../research/recordCounts.ts).
+  if (!(await drain(ctx, step, (n) => ctx.db.query("recordCounts").withIndex("by_workspace_and_table_and_createdBy", (q) => q.eq("workspaceId", workspaceId)).take(n), "recordCounts"))) return false;
 
   return await each(step, (n) => ctx.db.query("authorProfiles").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(n), async (profile) => {
     if (step.left === 0) return false;

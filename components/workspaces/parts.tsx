@@ -4,6 +4,7 @@
 // the switcher and the join page.
 
 import type { FunctionReturnType } from "convex/server";
+import { AnimatePresence, motion } from "motion/react";
 import { Home } from "@/components/icons";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { api } from "@/convex/_generated/api";
@@ -112,17 +113,23 @@ export function WorkspaceTag({ workspace, size = "md", strong = false }: { works
 
 /** An organization's first members' faces; `ring` is the colour behind them, which each face is cut from. */
 export function MemberFaces({ workspaceId, label, ring = "ring-card" }: { workspaceId: Id<"workspaces"> | undefined; label: string; ring?: string }) {
-  const { data } = useProtectedQuery(api.organizations.queries.members, inWorkspace(workspaceId, { paginationOpts: { cursor: null, numItems: 4 } }));
+  const { data } = useMemberFaces(workspaceId);
   return (
     <span className="flex -space-x-1.5" aria-label={label}>
-      {(data?.page ?? []).map((member) => (
-        <span key={member.userId} className={cn("flex rounded-full ring-2", ring)}>
-          <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-5" />
-        </span>
-      ))}
+      {/* Faces read after the first frame fade in. */}
+      <AnimatePresence initial={false}>
+        {(data?.page ?? []).map((member) => (
+          <motion.span key={member.userId} className={cn("flex rounded-full ring-2", ring)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
+            <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-5" />
+          </motion.span>
+        ))}
+      </AnimatePresence>
     </span>
   );
 }
+
+/** The members MemberFaces shows: a page can read them before it shows them, to have them in place. */
+export const useMemberFaces = (workspaceId: Id<"workspaces"> | undefined) => useProtectedQuery(api.organizations.queries.members, inWorkspace(workspaceId, { paginationOpts: { cursor: null, numItems: 4 } }));
 
 /** A workspace's tile with the hairline the switcher gives it. */
 export function Framed({ children }: { children: React.ReactNode }) {

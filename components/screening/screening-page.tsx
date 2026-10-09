@@ -26,6 +26,7 @@ import { JobView, jobName } from "./job-view";
 import { SetupView } from "./setup-view";
 import { ItemBar } from "@/components/workspaces/activity";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { faceOf, useRunBy } from "@/components/workspaces/run-by";
 
 /** Who ran a screening and its Activity head the pane, edge to edge, as its first row (#656). */
 const PANE_HEADER = "-mx-4 -mt-4 mb-4 @min-[42rem]/configuration:-mx-6 @min-[42rem]/configuration:-mt-6 @min-[42rem]/configuration:mb-6 @min-[42rem]/configuration:px-6";
@@ -52,8 +53,12 @@ export function ScreeningPage() {
   const [searchId] = useQueryState("search");
   const [picked, setPicked] = useQueryState("job");
 
-  const jobs = useCursorPage(api.screening.queries.listUserScreeningJobs, inWorkspace(workspaceId, {}), RAIL_PAGE);
-  const { data: total } = useProtectedQuery(api.screening.queries.countUserScreeningJobs, inWorkspace(workspaceId, {}));
+  // In an organization, everyone's screenings or one member's (#656).
+  const runBy = useRunBy("screeningJobs");
+  const jobs = useCursorPage(api.screening.queries.listUserScreeningJobs, inWorkspace(workspaceId, runBy.by ? { by: runBy.by } : {}), RAIL_PAGE);
+  // Everyone's count, or the one member's the filter knows; the pager goes without one until then.
+  const { data: everyone } = useProtectedQuery(api.screening.queries.countUserScreeningJobs, inWorkspace(workspaceId, {}));
+  const total = runBy.by ? runBy.countOf(runBy.by) : everyone;
   // Until the person's screenings arrive, nothing says whether the form or the newest of them shows.
   const waiting = picked === null && !searchId && jobs.isLoading;
   const jobId = picked === "new" || waiting ? null : (picked ?? (searchId ? null : (jobs.items[0]?._id ?? null)));
@@ -93,6 +98,7 @@ export function ScreeningPage() {
     <MotionConfig reducedMotion="user">
       <PageWrapper>
         <ConfigurationLayout
+          intro={runBy.filter}
           header={
             <PanelHeader icon={ListChecks} title={t("title")}>
               <Button size="sm" className={BAR_ACTION} onClick={() => openForm(null)}>
@@ -194,7 +200,7 @@ function JobLink({ row, phase, name, active, onClick }: { row: JobRow; phase: Ex
   const done = doneOf(row);
   const filled = phase === "completed" ? row.qualifiedPapers : done;
   return (
-    <RailLink href={`/screening?job=${row._id}`} icon={ICON[phase]} active={active} onClick={onClick} className="h-auto items-start py-2 [&>svg]:mt-0.5">
+    <RailLink href={`/screening?job=${row._id}`} icon={row.by && !row.by.you ? faceOf(row.by) : ICON[phase]} active={active} onClick={onClick} className="h-auto items-start py-2 [&>svg]:mt-0.5">
       <span className="flex min-w-0 flex-1 flex-col gap-1.5">
         <TooltipHint label={name} onlyWhenClipped>
           <span className="truncate">{name}</span>

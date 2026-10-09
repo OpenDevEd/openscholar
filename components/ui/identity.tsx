@@ -9,6 +9,10 @@ import { Crown, Eye, Mail, MessageSquare, PenLine, ShieldCheck, UserRound } from
 import { cn } from "@/lib/utils";
 import { IdentityAvatar } from "./identity-avatar";
 
+/** One tint per person, picked from their ID, so someone keeps their colour in every chat and list. */
+const TINTS = ["#2dd4bf", "#a78bfa", "#fb923c", "#60a5fa", "#f472b6", "#34d399", "#facc15", "#818cf8"];
+export const tintOf = (id: string) => TINTS[[...id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % TINTS.length]!;
+
 /** Each role's icon, the same in every list and every picker. */
 export const ROLE_ICONS = {
   owner: Crown,
