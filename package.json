@@ -12,6 +12,7 @@
     "icons:generate": "node scripts/generate-brand-icons.mjs",
     "start": "next start",
     "test": "vitest run --tags-filter=!size",
+    "verify": "node scripts/verify/cli.ts",
     "test:size": "vitest run --tags-filter=size",
     "bench": "BENCH=1 vitest run --project bench",
     "schema:sync:evidence-library-config": "node scripts/sync-evidence-library-config-contract.mjs",

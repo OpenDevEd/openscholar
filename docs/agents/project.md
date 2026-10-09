@@ -81,7 +81,8 @@ checkout. It is the only checkout allowed to upload to the shared self-hosted
 development Convex service.
 
 - `npm run dev:web` runs the Next.js app only. Use it for `app/` and
-  `components/` work.
+  `components/` work, or `npm run verify -- up`, which also gives the
+  worktree its environment and its own port.
 - `npm run dev` also watches `convex/` and keeps pushing functions to the
   shared development backend. Run it only from `dev-self` when that upload is
   intended.
@@ -140,8 +141,11 @@ settings, so every change to its shape ships a migration.
 - For Convex work, upload from the correct checkout, require
   `Convex functions ready!`, run the changed function or browser flow, and
   confirm the matching remote logs are clean.
-- For `app/` or `components/` work, run `npm run dev:web`, open the
-  changed page, and check the browser plus terminal.
+- For `app/` or `components/` work, prove the change with `npm run verify`
+  (the `verify` skill): `up --prod`, `shift <route>` with a `--do` step for
+  each changed interaction, look at the screenshots, then `down`. A stop hook
+  on the user's machine sends an agent back while a changed page has no
+  passing `shift`.
 - GitHub CI runs the pre-merge suite. Tests tagged `size` run nightly.
 - Convex and plain test files share modules within a Vitest worker, so a test
   can't count on a fresh module. A file that calls `vi.mock`, itself or through
