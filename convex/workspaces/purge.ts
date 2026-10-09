@@ -28,8 +28,8 @@ const sizeOf = (row: object) => 2 * JSON.stringify(row).length;
 /**
  * Deletes a step's worth of what's in a purged workspace (#650, #651): its screening jobs,
  * searches with their revisions, history and answers, bookmarks, collections with their
- * ratings, saved papers with their places, its screening slots and its people's assistant
- * spending there. An author profile stays in the directory, owned by nobody, as one whose owner
+ * ratings, saved papers with their places, its screening slots, its people's assistant
+ * spending there and its items' activity. An author profile stays in the directory, owned by nobody, as one whose owner
  * was purged before workspaces is. Chats, extraction jobs and counts have their own purges.
  * A step reads a few rows at a time and stops at `STEP` rows or `READ_BYTES` read, whichever
  * comes first. Returns whether the workspace is empty of them.
@@ -71,6 +71,7 @@ export async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspac
 
   if (!(await drain(ctx, step, (n) => ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(n), "screeningSlots"))) return false;
   if (!(await drain(ctx, step, (n) => ctx.db.query("assistantSpenders").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId)).take(n), "assistantSpenders"))) return false;
+  if (!(await drain(ctx, step, (n) => ctx.db.query("activity").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(n), "activity"))) return false;
 
   return await each(step, (n) => ctx.db.query("authorProfiles").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(n), async (profile) => {
     if (step.left === 0) return false;

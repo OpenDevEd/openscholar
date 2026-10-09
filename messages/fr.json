@@ -3888,6 +3888,11 @@
         "did": "Préréglage IA de l'organisation changé",
         "where": "Paramètres IA",
         "ask": "Changer le préréglage IA de l'organisation"
+      },
+      "activity": {
+        "doing": "Lecture des modifications",
+        "did": "Modifications lues",
+        "where": "Activité"
       }
     },
     "asks": {
@@ -4174,6 +4179,27 @@
       "heading": "Notes dans cette collection",
       "none": "Aucune note",
       "stars": "{value} sur 5"
+    },
+    "activity": {
+      "title": "Activité",
+      "runBy": "Lancé par",
+      "madeBy": "Créé par",
+      "created": "l'a créé",
+      "renamed": "l'a renommé depuis",
+      "edited": "l'a modifié",
+      "added": "a ajouté {count, plural, one {# article} other {# articles}}",
+      "removed": "a retiré {count, plural, one {# article} other {# articles}}",
+      "rated": "a noté {count, plural, one {# article} other {# articles}}",
+      "answered": "a modifié {count, plural, one {# réponse} other {# réponses}}",
+      "screened": "a trié {count, plural, one {# article} other {# articles}}",
+      "extracted": "a extrait de {count, plural, one {# article} other {# articles}}",
+      "viaAssistant": "Par l'assistant",
+      "today": "Aujourd'hui",
+      "yesterday": "Hier",
+      "thisWeek": "Cette semaine",
+      "earlier": "Plus tôt",
+      "showEarlier": "Afficher l'activité plus ancienne",
+      "none": "Les modifications s'afficheront ici désormais."
     }
   },
   "models": {

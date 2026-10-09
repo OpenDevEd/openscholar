@@ -213,6 +213,7 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, { nam
 
 export const extractAction = defineUserAction({
   path: "extraction/start:extract",
+  activity: (args, { jobId }) => ({ kind: "extraction", id: jobId, happened: "created", ...("name" in args && typeof args.name === "string" ? { detail: args.name } : {}) }),
   description:
     "Starts an extraction: answers each question for each paper of a paper set, with the passage each answer rests on. The set is one of the person's collections or all their saved papers, newest saved first, papers `first` to `last` (from 1); " +
     "one of their saved searches, its first `last` papers in its results page's order (`first` is 1); or a finished screening, all its included papers, whatever `first` and `last` say. " +

@@ -231,6 +231,7 @@ export const saveRead = internalMutation({
 
 export const saveToLibraryAction = defineUserMutation({
   path: "library/mutations:saveToLibrary",
+  activity: ({ collectionId, title }, { undo }) => (collectionId && undo ? { kind: "collection", id: collectionId, happened: "added", count: 1, detail: title } : null),
   description:
     "Saves a paper to the library from its whole record, as a results card has it, with or without the person's own rating of it from 0 to 5, and with `collectionId` into that collection in the same write. To save a paper by its ID alone, use library/papers:save. " +
     "A person's rating of a paper is the same everywhere; a saved paper's rating is its people's average. " +
@@ -499,6 +500,7 @@ export const restoreLibraryItemForAssistant = assistantMutation(restoreLibraryIt
 
 export const setPaperInCollectionAction = defineUserMutation({
   path: "library/mutations:setPaperInCollection",
+  activity: ({ paper, collectionId, inCollection }, { undo }) => (undo ? { kind: "collection", id: collectionId, happened: inCollection ? "added" : "removed", count: 1, ...("title" in paper ? { detail: paper.title } : {}) } : null),
   description:
     "Adds a paper to one of the person's collections, saving it to their library first if needed, or takes it out of the collection. Taking it out keeps it in the library. " +
     "The paper is given whole, or by its ID alone when it's already in the library. " +

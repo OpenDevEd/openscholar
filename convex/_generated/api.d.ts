@@ -8,6 +8,9 @@
  * @module
  */
 
+import type * as activity_notes from "../activity/notes.js";
+import type * as activity_queries from "../activity/queries.js";
+import type * as activity_validators from "../activity/validators.js";
 import type * as admins_access from "../admins/access.js";
 import type * as admins_invitations from "../admins/invitations.js";
 import type * as admins_mutations from "../admins/mutations.js";
@@ -418,6 +421,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "activity/notes": typeof activity_notes;
+  "activity/queries": typeof activity_queries;
+  "activity/validators": typeof activity_validators;
   "admins/access": typeof admins_access;
   "admins/invitations": typeof admins_invitations;
   "admins/mutations": typeof admins_mutations;

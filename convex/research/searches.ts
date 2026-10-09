@@ -286,6 +286,7 @@ const madeHere = v.object({ created: v.number(), revision: v.number() });
 
 export const createAction = defineUserMutation({
   path: CREATE,
+  activity: (args, { id }) => ({ kind: "search", id, happened: "created", ...(args.query ? { detail: args.query } : {}) }),
   description:
     "Makes a saved search in the person's account from a query, filters, or both, which shows in their search history at once. For when they ask for a search to keep: to look papers up, use research/papers:search, which saves nothing. " +
     "It doesn't run the search: read its results with research/searches:results. The query is keywords, with AND, OR, NOT and quoted phrases. " +
@@ -370,6 +371,7 @@ function settingsOf(changes: Infer<typeof changesValidator>) {
 
 export const updateAction = defineUserMutation({
   path: UPDATE,
+  activity: ({ id }) => ({ kind: "search", id, happened: "edited" }),
   description:
     "Changes a saved search: its query, its filters, or both. Give only what changes, as a list: each change names one setting and its new value, and a value of null takes a filter off. Every setting left out of the list stays as it is. " +
     "The person's open page follows, from its first page of results. `query` is the search's words, which a search with a filter can do without. " +
@@ -419,6 +421,7 @@ export const updateForAssistant = assistantMutation(updateAction);
 
 export const restoreAction = defineUserMutation({
   path: RESTORE,
+  activity: ({ id }) => ({ kind: "search", id, happened: "edited" }),
   description:
     "Puts a saved search's query and filters back as they were at one of its revisions, as a new revision. With `expect`, the revision whose query and filters the search should hold now, it is refused if the search changed since. " +
     "Returns `undo`, which puts back what this replaced.",

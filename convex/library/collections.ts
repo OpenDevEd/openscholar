@@ -80,6 +80,7 @@ const asCreated = v.object({ name: v.string() });
 
 export const createCollectionAction = defineUserMutation({
   path: CREATE,
+  activity: (args, { id }) => ({ kind: "collection", id, happened: "created", detail: args.name.trim() }),
   description: `Makes a new, empty collection in the person's library, named as given, as many as their plan allows. Returns \`undo\`, which deletes it while it's empty and still has that name.`,
   args: { name: v.string() },
   returns: v.object({ id: v.id("collections"), undo: reversedBy(DELETE, { collectionId: v.id("collections"), expect: asCreated }) }),
@@ -96,6 +97,8 @@ export const createCollectionForAssistant = assistantMutation(createCollectionAc
 
 export const renameCollectionAction = defineUserMutation({
   path: RENAME,
+  // Renamed from the name its undo puts back; a rename to the same name changed nothing.
+  activity: (args, { undo }) => (undo ? { kind: "collection", id: args.collectionId, happened: "renamed", detail: undo.args.name } : null),
   description: `Renames one of the person's collections. ${RETURNS_UNDO}`,
   // `expect` is the name the collection should have now: a rename since then refuses this one.
   args: { collectionId: v.id("collections"), name: v.string(), expect: v.optional(v.string()) },
@@ -162,6 +165,7 @@ export const deleteMemberships = internalMutation({
 
 export const setCollectionRatingAction = defineUserMutation({
   path: RATE,
+  activity: (args, { undo }) => (undo ? { kind: "collection", id: args.collectionId, happened: "rated", count: 1 } : null),
   description:
     "Sets the person's rating, from 0 to 5, of a paper within one of the organization's collections, by its library item ID, or removes it (null). " +
     "The organization's members see each other's ratings there, and the collection sorts and filters by their average. The person's own rating of the paper, the same everywhere, stays as it is. " +
@@ -253,6 +257,7 @@ const undone = { collectionId: v.id("collections"), libraryItemId: v.id("library
 
 export const addToCollectionAction = defineUserMutation({
   path: ADD,
+  activity: (args, { undo }) => (undo ? { kind: "collection", id: args.collectionId, happened: "added", count: 1 } : null),
   description: "Puts a paper that's in the person's library, by its library item ID, into one of their collections. Returns `undo`, which takes it out again, unless it was already there.",
   args: membership,
   returns: v.object({ undo: reversedBy(REMOVE, undone) }),
@@ -275,6 +280,7 @@ export const addToCollectionForAssistant = assistantMutation(addToCollectionActi
 
 export const removeFromCollectionAction = defineUserMutation({
   path: REMOVE,
+  activity: (args) => ({ kind: "collection", id: args.collectionId, happened: "removed", count: 1 }),
   description: "Takes a paper, by its library item ID, out of one of the person's collections. It stays in the library. Returns `undo`, which puts it back, unless it wasn't there.",
   args: membership,
   returns: v.object({ undo: reversedBy(ADD, undone) }),

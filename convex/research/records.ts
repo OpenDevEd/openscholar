@@ -1,5 +1,6 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
-import { v } from "convex/values";
+import type { Note } from "../activity/validators";
+import { v, type Infer } from "convex/values";
 import { mutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
@@ -359,6 +360,16 @@ async function copyHistory(ctx: MutationCtx, { userId, workspaceId }: InWorkspac
   return { queryHistoryCount, questionCount, latestQuestion, questionText };
 }
 
+/** What a change from a search's page did to it, for its Activity (#656); a change to no one search, such as a shortcut, notes nothing. */
+function searchNote(command: Infer<typeof commandValidator>): Note | null {
+  if (command.kind === "createSearch") return { kind: "search", id: command.search.id, happened: "created", ...(command.search.query ? { detail: command.search.query } : {}) };
+  if (command.kind !== "editSearch") return null;
+  const { id, edit } = command;
+  if (edit.kind === "responses") return { kind: "search", id, happened: "answered", count: 1 };
+  if (edit.kind === "removeQueryHistoryEntry") return null;
+  return { kind: "search", id, happened: "edited", ...(edit.kind === "query" && edit.query ? { detail: edit.query } : {}) };
+}
+
 export function findSearch(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, localId: string) {
   return ctx.db.query("searches").withIndex("by_workspace_and_localId", q => q.eq("workspaceId", workspaceId).eq("localId", localId)).unique();
 }
@@ -586,6 +597,7 @@ async function received(ctx: MutationCtx, userId: Id<"users">, key: string) {
 
 export const changeAction = defineUserMutation({
   path: "research/records:change",
+  activity: ({ command }) => searchNote(command),
   description:
     "Changes the person's research records: create, edit or delete a saved search, set or remove a query shortcut, rate a paper, or clear every saved search or every shortcut they have (a batch at a time; searches keep their revisions). Edits to a search show live on the person's open page and are kept as revisions. " +
     "A change that can be reversed returns `undo`: the action to run and the arguments to run it with to put things back. It is refused if the record changed again in between. Making a search, changing its query or filters, a shortcut and a rating can be reversed; deleting, clearing, and changes to questions and answers can't.",

@@ -49,10 +49,11 @@ export function PersonName({ name, you = false, className }: { name: string; you
 }
 
 /** A chip led by someone's photo and named for them, with You after yours: who made an item in an organization's list. */
-export function PersonTag({ name, imageUrl, you = false }: { name: string; imageUrl?: string; you?: boolean }) {
+export function PersonTag({ name, imageUrl, you = false, before }: { name: string; imageUrl?: string; you?: boolean; before?: string }) {
   return (
     <span className="inline-flex h-6 min-w-0 max-w-full shrink items-center gap-1.5 whitespace-nowrap rounded-full bg-muted pl-0.5 pr-2.5 text-xs text-muted-foreground">
       <IdentityAvatar name={name} imageUrl={imageUrl} className="size-5" />
+      {before ? <span className="shrink-0">{before}</span> : null}
       <PersonName name={name} you={you} />
     </span>
   );

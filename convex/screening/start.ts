@@ -149,6 +149,12 @@ export const check = internalQuery({
 
 export const screenAction = defineUserAction({
   path: "screening/start:screen",
+  activity: ({ set, first, last, name }, { jobId }) => {
+    const screened = { happened: "screened" as const, count: last - first + 1, ...(name?.trim() ? { detail: name.trim() } : {}) };
+    // The search or collection it read keeps it too.
+    const from = set.kind === "search" ? { kind: "search" as const, id: set.searchId } : set.kind === "collection" ? { kind: "collection" as const, id: set.collectionId } : null;
+    return [{ kind: "screening", id: jobId, ...screened }, ...(from ? [{ ...from, ...screened }] : [])];
+  },
   description:
     "Screens papers `first` to `last` (from 1) of a paper set: one of the person's saved searches, in its results page's order and rating filter; one of their collections or all their saved papers, newest saved first; " +
     "or the included papers of an earlier screening. Answers the questions for each paper and scores them by the rules. A search's answers show on its page, and papers that page already answered every question for keep their answers and cost nothing. " +

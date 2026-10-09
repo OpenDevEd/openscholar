@@ -20,6 +20,7 @@ import { canonical, findItem } from "./find";
 
 export const saveAction = defineUserAction({
   path: "library/papers:save",
+  activity: ({ collectionId }, { title, undo }) => (collectionId && undo ? { kind: "collection", id: collectionId, happened: "added", count: 1, detail: title } : null),
   description:
     "Saves a paper to the person's library by its ID alone, as results give it (such as W2741809807): its record is read from OpenAlex here, so nothing else about the paper is needed. " +
     "`rating`, 0 to 5, rates it as well; left out or null, a new paper has no rating and one already saved keeps its own. " +
@@ -64,6 +65,7 @@ export const saveForAssistant = assistantAction(saveAction);
  */
 export const collectAction = defineUserMutation({
   path: "library/papers:collect",
+  activity: ({ collectionId, inCollection }, { undo }) => (undo ? { kind: "collection", id: collectionId, happened: inCollection ? "added" : "removed", count: 1 } : null),
   description:
     "Puts a paper that's in the person's library into one of their collections, or takes it out, by the paper's ID alone, as results give it. `inCollection` is true to put it in and false to take it out. " +
     "It takes a paper already in the library: to save one and put it in a collection, call library/papers:save with `collectionId` instead. Taking it out keeps it in the library. " +

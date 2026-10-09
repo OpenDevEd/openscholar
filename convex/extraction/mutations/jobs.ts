@@ -178,6 +178,7 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
 
 export const startJobAction = defineUserMutation({
   path: "extraction/mutations:startJob",
+  activity: ({ name }, { jobId }) => ({ kind: "extraction", id: jobId, happened: "created", detail: name }),
   description: "Start an extraction from the sources picked on the extraction page. From a chat, an extraction over a collection, saved papers, a search or a screening is extraction/start:extract. Screening sources use the owned job's current Included papers and require its decision revision. Extraction saves those papers unchanged by later screening edits. The person's plan sets how many papers one job takes.",
   spendsCredits: true,
   outsideEffect: false,
@@ -192,6 +193,7 @@ export const startJobForAssistant = assistantMutation(startJobAction);
 
 export const duplicateJobAction = defineUserMutation({
   path: "extraction/mutations:duplicateJob",
+  activity: (_args, { jobId }) => ({ kind: "extraction", id: jobId, happened: "created" }),
   description: "Duplicate a job's questions and sources. Screening sources must still have the saved decision revision; if decisions changed, select the screening again in a new extraction.",
   spendsCredits: true,
   outsideEffect: false,

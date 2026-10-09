@@ -4,6 +4,7 @@ import { useConvex, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useParams } from "next/navigation";
+import { ItemBar } from "@/components/workspaces/activity";
 import { useTranslations, useFormatter, useNow } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -638,6 +639,8 @@ export default function JobDetailPage() {
                 </AlertDialog>
               </>}
               intro={<>
+          {/* The card's first row: who ran it, in an organization, and its Activity (#656). */}
+          <ItemBar kind="extraction" id={job._id} name={job.name} started="runBy" className="md:px-6" />
           {/* What the job covers and how far it has got. Its name and state sit in the bar. */}
           <div className="space-y-3 border-b border-border-subtle px-4 py-4 md:px-6">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
