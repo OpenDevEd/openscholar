@@ -351,7 +351,7 @@ async function ownedOrganizations(ctx: QueryCtx) {
 async function ownWorkspace(ctx: QueryCtx) {
   const user = await getCurrentUser(ctx);
   const workspace = user ? await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", user._id)).unique() : null;
-  return workspace ? { workspaceId: workspace._id, shown: await ownerName(ctx, { workspace, organization: null }) } : null;
+  return workspace ? { workspaceId: workspace._id, shown: await ownerName(ctx, { workspace, organization: null, person: user }) } : null;
 }
 
 /** A library a person was granted, with their role and who it belongs to, unless it's in a workspace they own, where it is listed already. */

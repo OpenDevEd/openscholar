@@ -8,8 +8,8 @@ import { ensureWorkspace } from "../workspaces/create";
 
 /**
  * Puts every Evidence Library from before workspaces (#650, slice 6) in its organization's
- * workspace, made by the account that created it, and every author profile in its owner's
- * own workspace, as theirs. Saved library data: dry-run each first, then run, then verify.
+ * workspace, made by the account that created it while that account exists, and every author
+ * profile whose owner still has an account in that owner's own workspace, as theirs. Saved library data: dry-run each first, then run, then verify.
  * Nothing else on a library changes, and running this again changes nothing.
  *
  *   npx convex run migrations/evidenceLibraryWorkspaces:libraries '{"dryRun":true}'
@@ -35,14 +35,16 @@ export const libraries = migrations.define({
   },
 });
 
+// A profile whose owner's account was purged before workspaces has no workspace to go to: it stays in the directory, owned by nobody.
 export const profiles = migrations.define({
   table: "authorProfiles",
-  migrateOne: async (ctx, profile) => (profile.workspaceId ? undefined : { workspaceId: await ensureWorkspace(ctx, { kind: "personal", userId: profile.ownerId }), createdBy: profile.ownerId }),
+  migrateOne: async (ctx, profile) =>
+    profile.workspaceId || !(await ctx.db.get("users", profile.ownerId)) ? undefined : { workspaceId: await ensureWorkspace(ctx, { kind: "personal", userId: profile.ownerId }), createdBy: profile.ownerId },
 });
 
 export const run = migrations.runner([internal.migrations.evidenceLibraryWorkspaces.libraries, internal.migrations.evidenceLibraryWorkspaces.profiles]);
 
-/** Rows on one page of `table` with no workspace yet, or no maker while the account that made it exists. */
+/** Rows on one page of `table` still to place: with no workspace, or no maker, while the account that made it exists. */
 export const verifyPage = internalQuery({
   args: { table: v.union(v.literal("evidenceLibraries"), v.literal("authorProfiles")), cursor: v.union(v.string(), v.null()) },
   returns: v.object({ missing: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
@@ -55,7 +57,9 @@ export const verifyPage = internalQuery({
       return { missing, isDone: page.isDone, continueCursor: page.continueCursor };
     }
     const page = await ctx.db.query(table).paginate(opts);
-    return { missing: page.page.filter((profile) => !profile.workspaceId || !profile.createdBy).length, isDone: page.isDone, continueCursor: page.continueCursor };
+    let missing = 0;
+    for (const profile of page.page) if ((!profile.workspaceId || !profile.createdBy) && (await ctx.db.get("users", profile.ownerId))) missing++;
+    return { missing, isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });
 
