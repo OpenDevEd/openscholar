@@ -56,7 +56,7 @@ vi.mock("date-fns", () => ({
   format: vi.fn((date: Date) => date.toISOString().split("T")[0]),
 }));
 
-import { downloadAll, downloadItem } from "../lib/search-actions";
+import { downloadAll, downloadEssentialItem, downloadItem } from "../lib/search-actions";
 import type { DownloadSearchState, ToastApi } from "../lib/search-actions";
 import type { SearchField, PaperResult } from "../lib/types/search.types";
 
@@ -149,6 +149,21 @@ describe("downloadAll", () => {
     expect(metadata.search.query).toBe("test query");
     expect(metadata.search.field).toBe("title_and_abstract");
     expect(metadata.search.timestamp).toBeDefined();
+  });
+});
+
+// A question asked by meaning is searched as it is written, never with its shortcuts expanded.
+describe("exporting a search by meaning", () => {
+  const byMeaning: DownloadSearchState = { query: "Does tutoring help pupils who fall behind in maths...?", field: "semantic", searchId: "search_2" };
+
+  it("records the question as it was asked, in every kind of download", async () => {
+    await downloadAll("json", mockToast, false, byMeaning, mockResults);
+    await downloadItem(mockItem, "json", mockToast, byMeaning);
+    await downloadEssentialItem(mockItem, "csv", mockToast, byMeaning);
+    expect(mockDownloadWithMetadata).toHaveBeenCalledTimes(3);
+    for (const [, , , metadata] of mockDownloadWithMetadata.mock.calls) {
+      expect(metadata.search).toMatchObject({ query: byMeaning.query, field: "semantic" });
+    }
   });
 });
 

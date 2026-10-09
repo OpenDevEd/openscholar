@@ -803,15 +803,13 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   const getShareableUrl = useCallback(() => {
     if (typeof window === 'undefined') return '';
 
-    // Expand keywords in the query (e.g., ml... → "machine learning" OR AI)
-    const { expandedQuery } = expandQuery(urlParams.q || '');
+    // Expand keywords in the query (e.g., ml... → "machine learning" OR AI). A question asked
+    // by meaning is searched as it is written, so it is shared as it is written.
+    const q = queryScope(urlParams.field) === 'semantic' ? urlParams.q : expandQuery(urlParams.q || '').expandedQuery;
 
     // Strip the local history id from shared links — the recipient's
     // SearchInitializer mints a fresh id for them. See buildShareableUrl.
-    return buildShareableUrl(window.location.origin, {
-      ...urlParams,
-      q: expandedQuery,
-    });
+    return buildShareableUrl(window.location.origin, { ...urlParams, q });
   }, [urlParams, expandQuery]);
   
   // Convert URL params to SearchFilters for external use

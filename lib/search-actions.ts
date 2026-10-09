@@ -4,6 +4,7 @@ import posthog from 'posthog-js';
 import { useUIStore, useRatingsStore, useSearchHistoryStore } from './store';
 import { createSearchParameters, generateFilename, downloadWithMetadata, getRatingOrNull } from './utils';
 import { ensureQueryShortcuts, validateAndExpandKeywordsSilently } from './keyword-validation-browser';
+import { SEMANTIC_FIELD } from './openalex/semantic';
 import type { SearchField, SearchFilters, ScreeningResponses, PaperResult } from './types';
 
 export type DownloadSearchState = {
@@ -149,6 +150,16 @@ export type ToastApi = {
   io: { downloadFailed: (formatLabel: string) => void };
 };
 
+/**
+ * The query an export records, as it was searched: a question asked by meaning as it is
+ * written, any other query with its shortcuts expanded.
+ */
+const exportedQuery = async (searchState: DownloadSearchState): Promise<string> => {
+  if (searchState.field === SEMANTIC_FIELD) return searchState.query;
+  await ensureQueryShortcuts(searchState.query);
+  return validateAndExpandKeywordsSilently(searchState.query).expandedQuery;
+};
+
 export const downloadItem = async (
   item: PaperResult,
   format: 'json' | 'csv',
@@ -166,9 +177,7 @@ export const downloadItem = async (
       return;
     }
     
-    // Expand keywords for export
-    await ensureQueryShortcuts(searchState.query);
-    const { expandedQuery } = validateAndExpandKeywordsSilently(searchState.query);
+    const query = await exportedQuery(searchState);
     
     const filename = generateFilename(item.title || '', '', format);
     const itemWithRating = withScreeningResults(
@@ -180,7 +189,7 @@ export const downloadItem = async (
       screeningResponses,
       format
     );
-    const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql);
+    const metadata = createSearchMetadata(query, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql);
     await downloadWithMetadata(itemWithRating, filename, format, metadata as unknown as Parameters<typeof downloadWithMetadata>[3]);
   } catch (error) {
     console.error('Error downloading item:', error);
@@ -205,13 +214,11 @@ export const downloadEssentialItem = async (
       return;
     }
     
-    // Expand keywords for export
-    await ensureQueryShortcuts(searchState.query);
-    const { expandedQuery } = validateAndExpandKeywordsSilently(searchState.query);
+    const query = await exportedQuery(searchState);
     
     const essentialInfo = getEssentialInfo(item, ratings, screeningResponses, format);
     const filename = generateFilename(item.title || '', 'essential', format);
-    const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql);
+    const metadata = createSearchMetadata(query, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql);
     await downloadWithMetadata(essentialInfo, filename, format, metadata as unknown as Parameters<typeof downloadWithMetadata>[3]);
   } catch (error) {
     console.error('Error downloading essential item:', error);
@@ -237,9 +244,7 @@ export const downloadAll = async (
       return;
     }
 
-    // Expand keywords for export
-    await ensureQueryShortcuts(searchState.query);
-    const { expandedQuery } = validateAndExpandKeywordsSilently(searchState.query);
+    const query = await exportedQuery(searchState);
     
     const filename = generateFilename('search_results', onlyEssential ? 'essential' : '', format);
     const dataToDownload = onlyEssential 
@@ -256,7 +261,7 @@ export const downloadAll = async (
           )
         );
     
-    const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql);
+    const metadata = createSearchMetadata(query, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql);
     await downloadWithMetadata(dataToDownload, filename, format, metadata as unknown as Parameters<typeof downloadWithMetadata>[3]);
   } catch (error) {
     console.error('Error downloading all results:', error);

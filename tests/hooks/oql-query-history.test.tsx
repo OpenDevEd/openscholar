@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, onTestFinished } from "vitest";
 import React from "react";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { NuqsTestingAdapter, type UrlUpdateEvent } from "nuqs/adapters/testing";
@@ -130,6 +130,23 @@ describe("query history arrows across keyword and OQL scopes", () => {
 
     await waitFor(() => expect(result.current.search.params.field).toBe("title_and_abstract"), SETTLE);
     expect(onUrlUpdate.mock.calls.at(-1)![0].searchParams.get("q")).toBe("tutor");
+  });
+});
+
+// A question asked by meaning is searched as it is written, so a link shares it so.
+describe("sharing a question asked by meaning", () => {
+  it("shares the question as it was asked, without expanding a shortcut in it", () => {
+    seed([{ query: QUESTION, field: "semantic" }]);
+    localKeywordExpansionStore.setState({ keywords: { maths: { expansion: '"mathematics" OR numeracy', createdAt: 1 } } });
+    onTestFinished(() => {
+      localKeywordExpansionStore.setState({ keywords: {} });
+    });
+    const { result } = renderSearch(`?field=semantic&q=${encodeURIComponent(QUESTION)}`, vi.fn());
+
+    const shared = new URL(result.current.search.getShareableUrl());
+
+    expect(shared.searchParams.get("field")).toBe("semantic");
+    expect(shared.searchParams.get("q")).toBe(QUESTION);
   });
 });
 
