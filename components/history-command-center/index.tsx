@@ -38,6 +38,7 @@ import { useResearchStatus } from "@/lib/research/provider";
 import { ResearchAccountChangedError } from "@/lib/research/binding";
 import { usePreloadSearch, useResearchSession } from "@/lib/research/reads";
 import { useSearchList } from "@/lib/research/search-list";
+import { useWorkspace } from "@/lib/workspaces/url";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
 import posthog from "posthog-js";
@@ -53,6 +54,7 @@ interface HistoryCommandCenterProps {
 }
 
 export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
+  const workspaceId = useWorkspace();
   const toast = useAppToast();
   const th = useTranslations("historyPage");
   const tc = useTranslations("common");
@@ -114,7 +116,10 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   // An account's history is written by the server, a page at a time; this browser's is all here.
   const download = async (format: "json" | "csv") => {
     try {
-      if (account) return await downloadExport(convex, { kind: "history" }, format);
+      if (account) {
+        if (!workspaceId) throw new Error("The workspace hasn't loaded yet. Try again in a moment.");
+        return await downloadExport(convex, workspaceId, { kind: "history" }, format);
+      }
       const data = localSearchHistoryStore.getState().searchHistory.map((item) => {
         const { expandedQuery } = validateAndExpandKeywordsSilently(item.query);
         return { ...serializeSearch(item), resolvedQuery: expandedQuery };

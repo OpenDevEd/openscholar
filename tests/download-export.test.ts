@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConvexReactClient } from "convex/react";
 import { downloadExport } from "@/lib/export";
+import type { Id } from "@/convex/_generated/dataModel";
 
 type Progress = { part: number; serving: boolean; failed: boolean } | null;
 
@@ -30,7 +31,7 @@ afterEach(() => {
 describe("downloadExport", () => {
   it("opens each part as the one before it finishes, and settles when the last is done", async () => {
     const { convex, watched, set } = client();
-    const done = downloadExport(convex, source, "csv");
+    const done = downloadExport(convex, "workspace" as Id<"workspaces">, source, "csv");
     await watched;
     set({ part: 1, serving: false, failed: false });
     set({ part: 1, serving: true, failed: false });
@@ -42,7 +43,7 @@ describe("downloadExport", () => {
 
   it("fails when a part fails on the server", async () => {
     const { convex, watched, set } = client();
-    const done = downloadExport(convex, source, "json");
+    const done = downloadExport(convex, "workspace" as Id<"workspaces">, source, "json");
     await watched;
     set({ part: 1, serving: false, failed: false });
     set({ part: 1, serving: false, failed: true });
@@ -51,7 +52,7 @@ describe("downloadExport", () => {
 
   it("fails when a part it opened never starts", async () => {
     const { convex, watched, set } = client();
-    const done = downloadExport(convex, source, "csv");
+    const done = downloadExport(convex, "workspace" as Id<"workspaces">, source, "csv");
     const failed = expect(done).rejects.toThrow(/didn't start/);
     await watched;
     set({ part: 1, serving: false, failed: false });
