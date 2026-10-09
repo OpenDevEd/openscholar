@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 // Keeps the OpenScholar project board (OpenDevEd project 4) in step with the
 // work in openalex-count and new-el, as the shared AGENTS.md asks: closed
 // issues are Done, an issue an open pull request closes is In review, an issue
@@ -8,7 +6,7 @@
 // progress with no activity for a week, and running out of sprints, are
 // reported.
 //
-//   GH_TOKEN=<token with project and issue access> node scripts/board-upkeep.mjs [--dry-run]
+//   GH_TOKEN=<token with project and issue access> node scripts/board-upkeep.mts [--dry-run]
 //
 // CI runs it as the "OpenDevEd board upkeep" GitHub App (.github/workflows/board-upkeep.yml).
 
@@ -23,17 +21,32 @@ const STALE_DAYS = 7;
 const BEFORE_REVIEW = new Set(["Backlog", "Ready", "In progress", null]);
 
 const DAY = 86_400_000;
-const key = (repo, number) => `${repo}#${number}`;
+const key = (repo: string, number: number) => `${repo}#${number}`;
+
+type Status = string | null;
+type Item = { itemId: string; repo: string; number: number; state: "OPEN" | "CLOSED"; status: Status; sprintId: string | null; lastActivity: string };
+type Milestone = { repo: string; number: number; title: string; open: number; closed: number };
+type Sprint = { id: string; startDate: string; duration: number };
+type Repositories = { openIssues: { repo: string; number: number; contentId: string }[]; inReview: string[]; milestones: Milestone[] };
+// GitHub's answers are read as untyped JSON.
+type Json = any;
 
 /** What to change on the board, from what the board and the repositories hold now. */
-export function planChanges({ items, openIssues, inReview, milestones, iterations, today }) {
+export function planChanges({ items, openIssues, inReview, milestones, iterations, today }: Repositories & { items: Item[]; iterations: Sprint[]; today: string }) {
   const review = new Set(inReview);
   const now = Date.parse(`${today}T00:00:00Z`);
   const current = iterations.find((sprint) => {
     const start = Date.parse(`${sprint.startDate}T00:00:00Z`);
     return start <= now && now < start + sprint.duration * DAY;
   });
-  const plan = { status: [], sprint: [], add: [], closeMilestones: [], stale: [], needsSprints: false };
+  const plan = {
+    status: [] as { itemId: string; issue: string; to: string }[],
+    sprint: [] as { itemId: string; issue: string; iterationId: string }[],
+    add: [] as { contentId: string; issue: string }[],
+    closeMilestones: [] as Omit<Milestone, "open" | "closed">[],
+    stale: [] as string[],
+    needsSprints: false,
+  };
 
   for (const item of items) {
     const issue = key(item.repo, item.number);
@@ -61,7 +74,7 @@ export function planChanges({ items, openIssues, inReview, milestones, iteration
   return plan;
 }
 
-async function github(path, { method = "GET", body } = {}) {
+async function github(path: string, { method = "GET", body }: { method?: string; body?: unknown } = {}): Promise<Json> {
   const response = await fetch(`https://api.github.com${path}`, {
     method,
     headers: {
@@ -79,13 +92,14 @@ async function github(path, { method = "GET", body } = {}) {
   return json;
 }
 
-const graphql = (query, variables = {}) => github("/graphql", { method: "POST", body: { query, variables } }).then((json) => json.data);
+const graphql = (query: string, variables: Record<string, unknown> = {}): Promise<Json> =>
+  github("/graphql", { method: "POST", body: { query, variables } }).then((json) => json.data);
 
 /** Every node of a GraphQL connection; `query` takes `$after` and `connection` finds the connection in its data. */
-async function allNodes(query, variables, connection) {
-  const nodes = [];
-  for (let after = null; ; ) {
-    const page = connection(await graphql(query, { ...variables, after }));
+async function allNodes(query: string, variables: Record<string, unknown>, connection: (data: Json) => Json): Promise<Json[]> {
+  const nodes: Json[] = [];
+  for (let after: string | null = null; ; ) {
+    const page: Json = connection(await graphql(query, { ...variables, after }));
     nodes.push(...page.nodes);
     if (!page.pageInfo.hasNextPage) return nodes;
     after = page.pageInfo.endCursor;
@@ -100,8 +114,8 @@ async function readBoard() {
     { owner: OWNER, number: PROJECT },
   );
   const project = head.organization.projectV2;
-  const status = project.fields.nodes.find((field) => field.name === "Status");
-  const sprint = project.fields.nodes.find((field) => field.name === "Sprint");
+  const status = project.fields.nodes.find((field: Json) => field.name === "Status");
+  const sprint = project.fields.nodes.find((field: Json) => field.name === "Sprint");
   const nodes = await allNodes(
     `query($id: ID!, $after: String) { node(id: $id) { ... on ProjectV2 { items(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes {
       id
@@ -112,11 +126,11 @@ async function readBoard() {
     { id: project.id },
     (data) => data.node.items,
   );
-  const items = [];
+  const items: Item[] = [];
   for (const node of nodes) {
     const issue = node.content;
     if (!issue?.repository || !REPOS.includes(issue.repository.name)) continue;
-    const times = [issue.updatedAt, ...issue.closedByPullRequestsReferences.nodes.map((pr) => pr.updatedAt)];
+    const times: string[] = [issue.updatedAt, ...issue.closedByPullRequestsReferences.nodes.map((pr: Json) => pr.updatedAt)];
     items.push({
       itemId: node.id,
       repo: issue.repository.name,
@@ -124,16 +138,15 @@ async function readBoard() {
       state: issue.state,
       status: node.status?.name ?? null,
       sprintId: node.sprint?.iterationId ?? null,
-      lastActivity: times.sort().at(-1),
+      lastActivity: times.sort().at(-1)!,
     });
   }
   return { project, status, sprint, items };
 }
 
-async function readRepositories() {
-  const openIssues = [];
-  const inReview = [];
-  const milestones = [];
+async function readRepositories(): Promise<Repositories> {
+  const repositories: Repositories = { openIssues: [], inReview: [], milestones: [] };
+  const { openIssues, inReview, milestones } = repositories;
   for (const repo of REPOS) {
     const issues = await allNodes(
       `query($owner: String!, $repo: String!, $after: String) { repository(owner: $owner, name: $repo) {
@@ -162,7 +175,7 @@ async function readRepositories() {
       if (batch.length < 100) break;
     }
   }
-  return { openIssues, inReview, milestones };
+  return repositories;
 }
 
 async function main() {
@@ -171,15 +184,15 @@ async function main() {
   const { project, status, sprint, items } = await readBoard();
   const repositories = await readRepositories();
   const plan = planChanges({ items, ...repositories, iterations: sprint.configuration.iterations, today: new Date().toISOString().slice(0, 10) });
-  const option = (name) => status.options.find((entry) => entry.name === name).id;
-  const setField = (itemId, fieldId, value) =>
+  const option = (name: string) => status.options.find((entry: Json) => entry.name === name).id;
+  const setField = (itemId: string, fieldId: string, value: Record<string, string>) =>
     graphql(
       `mutation($project: ID!, $item: ID!, $field: ID!, $value: ProjectV2FieldValue!) {
         updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: $value }) { projectV2Item { id } } }`,
       { project: project.id, item: itemId, field: fieldId, value },
     );
 
-  const lines = [];
+  const lines: string[] = [];
   for (const change of plan.status) {
     lines.push(`${change.issue}: Status -> ${change.to}`);
     if (!dryRun) await setField(change.itemId, status.id, { singleSelectOptionId: option(change.to) });
@@ -188,7 +201,7 @@ async function main() {
     lines.push(`${change.issue}: Sprint -> current`);
     if (!dryRun) await setField(change.itemId, sprint.id, { iterationId: change.iterationId });
   }
-  const notes = [];
+  const notes: string[] = [];
   for (const change of plan.add) {
     if (dryRun) {
       lines.push(`${change.issue}: added to the board as Backlog`);

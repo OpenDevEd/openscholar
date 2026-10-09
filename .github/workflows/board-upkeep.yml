@@ -1,7 +1,7 @@
 name: Board upkeep
 
 # Keeps the OpenScholar project board in step with the issues of openalex-count
-# and new-el (scripts/board-upkeep.mjs). It runs as the "OpenDevEd board
+# and new-el (scripts/board-upkeep.mts). It runs as the "OpenDevEd board
 # upkeep" GitHub App, installed on both repositories, because the job's own
 # token can't edit the organization's board. new-el's own events are caught by
 # the schedule.
@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          sparse-checkout: scripts/board-upkeep.mjs
+          sparse-checkout: scripts/board-upkeep.mts
           sparse-checkout-cone-mode: false
 
       - uses: actions/setup-node@v7
@@ -48,4 +48,4 @@ jobs:
       - name: Bring the board in step
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
-        run: node scripts/board-upkeep.mjs
+        run: node scripts/board-upkeep.mts
