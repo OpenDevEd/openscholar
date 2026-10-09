@@ -9,6 +9,8 @@ import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { ResearchContext } from "@/lib/research/binding";
 import { useSearchHistoryStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
+import { useItemHome } from "@/components/workspaces/item-home";
+import { useWorkspaceSlug } from "@/lib/workspaces/href";
 
 function InitializeResults({ children }: { children: React.ReactNode }) {
   const account = useContext(ResearchContext);
@@ -16,10 +18,17 @@ function InitializeResults({ children }: { children: React.ReactNode }) {
   const watched = useWatchedSearch(account ? searchId : undefined);
   const { retry } = useResearchStatus();
   const saved = useSearchHistoryStore(state => searchId !== undefined && state.getSearchResult(searchId) !== undefined);
+  // A search this workspace doesn't have may be in another of the person's, where ItemHome opens it:
+  // nothing is made here until that's known (#651).
+  const unknown = account !== null && searchId !== undefined && !saved && watched === "missing";
+  const home = useItemHome(unknown ? { kind: "search", id: searchId } : null);
+  const slug = useWorkspaceSlug();
+  const elsewhere = unknown && (home === undefined || (home !== null && home.slug !== slug));
   // An existing account record owns its state. A stale URL must not overwrite it, so the
   // page waits to learn whether the account has this search.
   if (account && watched === "failed") return <AuthStatePanel variant="sync_error_retry" onRetry={retry} />;
   if (account && watched === "loading") return <ResultsLoading />;
+  if (elsewhere) return <ResultsLoading />;
   return account && saved ? children : <SearchInitializer>{children}</SearchInitializer>;
 }
 

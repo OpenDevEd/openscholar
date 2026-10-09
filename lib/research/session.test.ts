@@ -16,6 +16,7 @@ function connection() {
   const ratings: Array<{ paperId: string; rating: number }> = [];
   const updates = new Set<() => void>();
   const commands: ResearchCommand[] = [];
+  const written: unknown[] = [];
   const client = {
     watchQuery(query: Parameters<typeof getFunctionName>[0]) {
       return {
@@ -23,8 +24,9 @@ function connection() {
         onUpdate: (update: () => void) => { updates.add(update); return () => { updates.delete(update); }; },
       };
     },
-    mutation: vi.fn(async (_query: unknown, args: { command: ResearchCommand }) => {
+    mutation: vi.fn(async (_query: unknown, args: { command: ResearchCommand; workspaceId?: Id<"workspaces"> }) => {
       commands.push(args.command);
+      written.push(args.workspaceId);
       if (args.command.kind === "rating") {
         if (args.command.rating === 6) throw new Error("Invalid rating");
         ratings.push({ paperId: args.command.paperId, rating: args.command.rating! });
@@ -33,7 +35,7 @@ function connection() {
       return null;
     }),
   };
-  return { client: client as unknown as ConvexReactClient, commands };
+  return { client: client as unknown as ConvexReactClient, commands, written };
 }
 
 describe("a workspace's records", () => {
@@ -50,6 +52,19 @@ describe("a workspace's records", () => {
     await vi.waitFor(() => expect(own.getSnapshot().ready).toBe(true));
     expect(migrate.calls).toBe(calls + 1);
     stopOwn();
+  });
+
+  it("hold what's done while the page's workspace loads, and write it there once it's known", async () => {
+    const { client, commands, written } = connection();
+    const session = new ResearchSession(client, "alice");
+    const stop = session.subscribe(() => {}, true);
+    session.stores.ratings.getState().setRating("W1", 4);
+    expect(commands).toEqual([]);
+    session.bind({ workspaceId: "workspace_lab" as Id<"workspaces">, own: false });
+    await vi.waitFor(() => expect(session.getSnapshot().pending).toBe(0));
+    expect(commands).toEqual([{ kind: "rating", paperId: "W1", rating: 4 }]);
+    expect(written).toEqual(["workspace_lab"]);
+    stop();
   });
 });
 

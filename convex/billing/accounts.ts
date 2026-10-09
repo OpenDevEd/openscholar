@@ -375,7 +375,8 @@ export const myLimits = query({
 
 /** Preflight for dialogs that start paid work. Locks enforce the real limit. */
 export const checkBalance = query({
-  args: { requiredAmount: v.number() },
+  // The page's workspace, whose credits pay (#651); none, the person's own.
+  args: { requiredAmount: v.number(), workspaceId: v.optional(v.id("workspaces")) },
   returns: v.union(
     v.object({
       hasEnough: v.boolean(),
@@ -387,9 +388,8 @@ export const checkBalance = query({
     }),
     v.null(),
   ),
-  handler: async (ctx, { requiredAmount }) => {
-    const user = await getCurrentUser(ctx);
-    const workspaceId = user ? await ownWorkspaceOf(ctx, user._id) : undefined;
+  handler: async (ctx, { requiredAmount, workspaceId: named }) => {
+    const workspaceId = await pageWorkspace(ctx, named);
     if (!workspaceId) return null;
     const account = await readAccount(ctx, workspaceId);
     const total = account?.balance ?? 0;
