@@ -11,6 +11,7 @@ import { ExtractionPreflightBanner } from "@/components/extraction/preflight-ban
 
 const pushMock = vi.fn();
 vi.mock("next/navigation", () => ({
+  useParams: () => ({}),
   useRouter: () => ({ push: pushMock }),
 }));
 

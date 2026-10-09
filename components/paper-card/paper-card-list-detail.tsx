@@ -5,7 +5,8 @@ import { CitationControl } from "@/components/citation-control";
 
 import React, { useCallback } from "react";
 import { QueryMatchText } from "@/components/query-highlight";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { workToCoins } from "@/lib/utils";
 import { useResultsStore, useUIStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
@@ -58,7 +59,7 @@ export function PaperCardListDetail({
   const tp = useTranslations("paperCard");
   const tc = useTranslations("common");
   const format = useFormatter();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const pathname = usePathname();
   const { expandedAbstracts, toggleAbstract } = useResultsStore();
   const { isFocusModeOpen } = useUIStore();

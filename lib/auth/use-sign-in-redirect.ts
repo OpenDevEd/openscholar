@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { usePathname } from "next/navigation";
 
 /**
@@ -9,7 +9,7 @@ import { usePathname } from "next/navigation";
  * so the user returns to their current page after authentication.
  */
 export function useSignInRedirect() {
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const pathname = usePathname();
 
   return useCallback(() => {

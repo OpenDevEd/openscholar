@@ -2,11 +2,12 @@
 
 "use no memo"; // try/finally in handlers
 
+import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
 
 import React, { useEffect, Suspense } from "react";
-import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "@/components/workspace-link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useSidebarStore, getSidebarDimensions } from "@/lib/store";
 import { useIsMobile } from "@/lib/hooks";
 import { Logo } from "./logo";
@@ -60,6 +61,7 @@ import { api } from "@/convex/_generated/api";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 
 const sidebarSpring = {
   type: "spring" as const,
@@ -346,7 +348,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { phase } = useAuthReadiness();
   const hasEvidenceLibrariesAccess = organizationFeatures?.evidenceLibraries;
   const goToSignIn = useSignInRedirect();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
   const isCollapsed = useSidebarStore((s) => s.isCollapsed);
@@ -390,16 +392,17 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
   const getCurrentPage = () => {
     if (!pathname) return null;
-    if (pathname.startsWith("/topics")) return "topics";
-    if (pathname.startsWith("/authors")) return "authors";
-    if (pathname.startsWith("/evidence-libraries")) return "evidence-libraries";
-    if (pathname === "/") return "home";
-    if (pathname.includes("/bookmarks")) return "bookmarks";
-    if (pathname.includes("/library")) return "library";
-    if (pathname.includes("/history")) return "history";
-    if (hasExtractionAccess && pathname.includes("/extraction"))
+    const path = bareWorkspacePath(pathname);
+    if (path.startsWith("/topics")) return "topics";
+    if (path.startsWith("/authors")) return "authors";
+    if (path.startsWith("/evidence-libraries")) return "evidence-libraries";
+    if (path === "/") return "home";
+    if (path.includes("/bookmarks")) return "bookmarks";
+    if (path.includes("/library")) return "library";
+    if (path.includes("/history")) return "history";
+    if (hasExtractionAccess && path.includes("/extraction"))
       return "extraction";
-    if (pathname.includes("/ai-enhancement")) return "ai-enhancement";
+    if (path.includes("/ai-enhancement")) return "ai-enhancement";
     return null;
   };
 

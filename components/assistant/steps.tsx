@@ -5,7 +5,7 @@
 // asks the person about first shows under the map as the mock's approval card.
 
 import { createContext, useContext, useState, type ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { SearchHoverCard } from "@/components/search-tooltip-content";
 import { FilterChips } from "@/components/ui/filter-display";
 import type { FilterParams } from "@/lib/filters";

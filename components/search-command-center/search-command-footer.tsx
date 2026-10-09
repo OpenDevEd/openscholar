@@ -2,7 +2,7 @@
 "use no memo"; // try/finally in handlers
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useTranslations, useLocale, useFormatter } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import posthog from "posthog-js";
@@ -77,7 +77,7 @@ export function SearchCommandFooter({
 
   const { phase } = useAuthReadiness();
   const goToSignIn = useSignInRedirect();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
 
   const [isBroadening, setIsBroadening] = useState(false);
   const [isNarrowing, setIsNarrowing] = useState(false);

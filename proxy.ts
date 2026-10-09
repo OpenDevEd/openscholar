@@ -7,11 +7,18 @@ import { shouldProtectPath } from "@/lib/auth/proxy-policy";
 const COOKIE_NAME = "NEXT_LOCALE";
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
-const authMiddleware = clerkMiddleware(async (auth, request) => {
-  if (shouldProtectPath(request.nextUrl.pathname)) {
-    await auth.protect();
-  }
-});
+const authMiddleware = clerkMiddleware(
+  async (auth, request) => {
+    if (shouldProtectPath(request.nextUrl.pathname)) {
+      await auth.protect();
+    }
+  },
+  {
+    // The session's active organization follows the address (#651): an organization's pages sit
+    // under /o/<slug>, every other page is the person's own. Convex reads its own memberships.
+    organizationSyncOptions: { organizationPatterns: ["/o/:slug", "/o/:slug/(.*)"], personalAccountPatterns: ["/(.*)"] },
+  },
+);
 
 function hasValidLocaleCookie(request: NextRequest): boolean {
   const raw = request.cookies.get(COOKIE_NAME)?.value;

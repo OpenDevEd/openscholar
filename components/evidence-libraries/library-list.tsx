@@ -12,7 +12,7 @@ import { CommandCenterPagination } from "@/components/command-center/command-cen
 import { AdminAreaLink } from "./admin-area-link";
 import { useState } from "react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import {
   Building2,
   Check,

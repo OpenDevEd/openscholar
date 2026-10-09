@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useUser } from "@clerk/nextjs";
 import { useAction, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
@@ -65,7 +66,7 @@ function Shell({ children }: { children: ReactNode }) {
   const t = useTranslations("settingsShell");
   const tc = useTranslations("common");
   const pathname = usePathname();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const { user } = useUser();
   const { phase, canRunProtectedQueries } = useAuthReadiness();
   const signedIn = phase === "authenticated";
@@ -203,7 +204,7 @@ function Shell({ children }: { children: ReactNode }) {
 /** Billing's main action sits in the command bar. */
 function BillingAction({ showUpgrade, subscriptionsEnabled }: { showUpgrade: boolean; subscriptionsEnabled: boolean }) {
   const t = useTranslations("billingPage");
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const toast = useAppToast();
   const openPortal = useAction(api.billing.actions.openPortal);
   const [loading, setLoading] = useState(false);

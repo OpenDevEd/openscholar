@@ -14,7 +14,7 @@ import {
   SettingsIcon,
   AiIcon,
 } from "@/components/icons";
-import { useRouter } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { cn } from "@/lib/utils";
 import {
@@ -51,7 +51,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
   const { user } = useUser();
   const { signOut } = useClerk();
   const { phase } = useAuthReadiness();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const goToSignIn = useSignInRedirect();
   const [open, setOpen] = useState(false);
 

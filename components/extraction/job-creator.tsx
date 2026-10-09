@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useMemo, useTransition } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { useRouter } from "next/navigation";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
@@ -39,6 +38,7 @@ import { LibraryPageShell } from "@/components/evidence-libraries/library-page-s
 import { useIsMobile } from "@/lib/hooks";
 import { readyBucketPaperCount } from "@/lib/bucket/paper-count";
 import { useWorkspaceMutation } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 
 const stepVariants = {
   enter: (direction: number) => ({
@@ -59,7 +59,7 @@ const stepVariants = {
 };
 
 export function JobCreator({ paperLimit }: { paperLimit: number }) {
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const toast = useAppToast();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");

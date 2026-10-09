@@ -24,6 +24,7 @@ vi.mock("@clerk/nextjs", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
+  useParams: () => ({}),
   usePathname: () => mocks.pathname,
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => mocks.searchParams,

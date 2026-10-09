@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useTranslations } from "next-intl";
 
 const linkClassName = "text-primary underline-offset-4 hover:underline font-medium";

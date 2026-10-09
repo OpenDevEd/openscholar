@@ -5,7 +5,6 @@
 // edge peeks out, and dims. Each layer is its own card; nothing sits behind them.
 
 import { useDeferredValue, useRef, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -31,6 +30,7 @@ import { OrbitMark } from "./orbit-mark";
 import { IconButton, WorkingText } from "./parts";
 import { KIND, KindTile, type Waiting } from "./steps";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 
 /** A sheet open over the panel. */
 export type OpenSheet =
@@ -880,7 +880,7 @@ export type Purchase = { buying: number | null; bought: number | null; buy: (cre
 export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /** The purchase under way and the last one made, which the panel keeps: a sheet closed and opened again finds a purchase still on its way, and can't start a second. */ purchase: Purchase; onBack: () => void }) {
   const t = useTranslations("assistant.topUp");
   const format = useFormatter();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const account = useQuery(api.billing.accounts.mine, {});
   const topUps = useFeatureFlag("credits.topups");
   const catalog = useBillingCatalog();

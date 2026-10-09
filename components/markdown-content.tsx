@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";

@@ -19,7 +19,8 @@ vi.mock("convex/react", () => ({
   useAction: (name: string) =>
     name === "checkAddress" ? mocks.checkAddress : mocks.reserveAddress,
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
+vi.mock("next/navigation", () => ({
+  useParams: () => ({}), useRouter: () => ({ push: mocks.push }) }));
 vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string) =>
     namespace === "evidenceLibraries.gate" ? `gate.${key}` : key,

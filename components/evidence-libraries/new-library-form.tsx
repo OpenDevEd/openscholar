@@ -3,8 +3,8 @@
 import { LibraryOrganizationPicker, useLibraryOrganizationChoice } from "./organization-picker";
 import { useAction } from "convex/react";
 import { Building2, Check, Lock, RotateCw } from "@/components/icons";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/components/workspace-link";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -62,7 +62,7 @@ function OwnerForm({ organizationId, organizationPicker }: {
 }) {
   const t = useTranslations("evidenceLibraries.new");
   const tc = useTranslations("common");
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const checkAddress = useAction(
     api.evidenceLibraries.addressActions.checkAddress,
   );

@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
 import { usePaginatedQuery } from "convex/react";
-import { useWorkspaceMutation } from "@/lib/workspaces/url";
 import { SignInButton, useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useWorkspaceMutation } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import Link from "@/components/workspace-link";
 import { Users, Plus, ArrowUpRight, SearchX, AuthorsIcon } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -24,7 +24,7 @@ import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from "
  */
 export function AuthorList({pending = false}: {pending?: boolean}) {
   const {isSignedIn} = useUser();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");

@@ -2,7 +2,7 @@
 
 import type { Doc } from "@/convex/_generated/dataModel";
 import { useTranslations, useFormatter, useNow } from "next-intl";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { cn } from "@/lib/utils";
 import { JobStatusIcon } from "./job-status-icon";
 import { Database } from "@/components/icons";
