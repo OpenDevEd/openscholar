@@ -1081,6 +1081,7 @@
     "sortTitleDesc": "शीर्षक (Z-A)",
     "sortTitleAsc": "शीर्षक (A-Z)",
     "sortRelevanceDefault": "प्रासंगिकता",
+    "sortByMeaning": "अर्थ से खोज प्रासंगिकता के अनुसार क्रमबद्ध होती है।",
     "filterSectionSearch": "खोज",
     "filterSectionTime": "समय",
     "filterSectionGeographic": "भौगोलिक",

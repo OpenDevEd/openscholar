@@ -1081,6 +1081,7 @@
     "sortTitleDesc": "タイトル（Z-A）",
     "sortTitleAsc": "タイトル（A-Z）",
     "sortRelevanceDefault": "関連性",
+    "sortByMeaning": "意味による検索は関連度順に並びます。",
     "filterSectionSearch": "検索",
     "filterSectionTime": "時間",
     "filterSectionGeographic": "地理",

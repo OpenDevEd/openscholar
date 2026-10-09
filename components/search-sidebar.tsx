@@ -35,6 +35,7 @@ import type { SearchField } from "@/lib/types";
 import { SEARCH_FIELDS } from "@/lib/types";
 import { getFieldLabel, type FilterT } from "@/lib/filters";
 import { sortOptions } from "@/lib/constants";
+import { SEMANTIC_SORT, asksByMeaning } from "@/lib/openalex/semantic";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { RatingRangePicker } from "./rating-range-picker";
 import { PublicationTimeframeFilter } from "./shared/publication-timeframe-filter";
@@ -251,8 +252,11 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
 const SortOptionsPanel = React.memo(function SortOptionsPanel() {
   const tf = useTranslations("searchFilters");
   const ta = useTranslations("accessibility");
-  const { sortBy } = useCurrentSearchFormState();
+  const { sortBy: chosenSort, currentSearchField, currentQuery } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
+  // A question asked by meaning is listed by relevance alone, whatever sort was chosen.
+  const byMeaning = asksByMeaning(currentSearchField, currentQuery);
+  const sortBy = byMeaning ? SEMANTIC_SORT : chosenSort;
 
   const handleSortChange = React.useCallback(
     (sort: string) => {
@@ -279,7 +283,7 @@ const SortOptionsPanel = React.memo(function SortOptionsPanel() {
       ? tf(SORT_KEY_MAP[sortBy] as never)
       : null) || tf("sortRelevanceDefault");
 
-  const isSortActive = sortBy !== DEFAULT_FILTERS.sortBy;
+  const isSortActive = !byMeaning && sortBy !== DEFAULT_FILTERS.sortBy;
 
   return (
     <FilterSection
@@ -288,7 +292,7 @@ const SortOptionsPanel = React.memo(function SortOptionsPanel() {
       isActive={isSortActive}
       onClear={isSortActive ? handleClearFilter : undefined}
     >
-      <Select value={sortBy} onValueChange={handleSortChange}>
+      <Select value={sortBy} onValueChange={handleSortChange} disabled={byMeaning}>
         <SelectTrigger className="w-full">
           <SelectValue placeholder={ta("selectSortOrder")}>
             {currentSortLabel}
@@ -304,6 +308,7 @@ const SortOptionsPanel = React.memo(function SortOptionsPanel() {
           ))}
         </SelectContent>
       </Select>
+      {byMeaning && <p className="mt-2 text-xs text-muted-foreground">{tf("sortByMeaning")}</p>}
     </FilterSection>
   );
 });

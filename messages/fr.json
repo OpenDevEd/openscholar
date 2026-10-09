@@ -1081,6 +1081,7 @@
     "sortTitleDesc": "Titre (Z-A)",
     "sortTitleAsc": "Titre (A-Z)",
     "sortRelevanceDefault": "Pertinence",
+    "sortByMeaning": "Une recherche par le sens est triée par pertinence.",
     "filterSectionSearch": "Recherche",
     "filterSectionTime": "Temps",
     "filterSectionGeographic": "Géographique",

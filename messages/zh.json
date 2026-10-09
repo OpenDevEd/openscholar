@@ -1081,6 +1081,7 @@
     "sortTitleDesc": "标题（Z-A）",
     "sortTitleAsc": "标题（A-Z）",
     "sortRelevanceDefault": "相关性",
+    "sortByMeaning": "按语义的搜索按相关性排序。",
     "filterSectionSearch": "搜索",
     "filterSectionTime": "时间",
     "filterSectionGeographic": "地理",

@@ -1071,6 +1071,7 @@
     "sortTitleDesc": "Title (Z-A)",
     "sortTitleAsc": "Title (A-Z)",
     "sortRelevanceDefault": "Relevance",
+    "sortByMeaning": "A search by meaning is sorted by relevance.",
     "filterSectionSearch": "Search",
     "filterSectionTime": "Time",
     "filterSectionGeographic": "Geographic",

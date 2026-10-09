@@ -13,3 +13,8 @@ export const SEMANTIC_PARAMETER = "search.semantic";
 
 /** The one order a search by meaning lists its works in. */
 export const SEMANTIC_SORT = "relevance_score:desc";
+
+/** Whether a search asks a question by meaning: the field is set and a question is typed. Its works then come by relevance alone. */
+export function asksByMeaning(field: string | undefined, query: string | undefined): boolean {
+  return field === SEMANTIC_FIELD && Boolean(query?.trim());
+}
