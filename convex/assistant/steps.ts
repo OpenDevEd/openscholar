@@ -24,7 +24,6 @@ import { forgetLimits, noteReply } from "./spending";
 import { linked } from "./links";
 import { WEB_SOURCES_KEPT } from "./validators";
 import { personalWorkspaceOf } from "../workspaces/actor";
-import { replyWorkspace } from "./access";
 
 /** Characters of an action's arguments, of what reverses it, and of why it failed, that a step keeps. */
 export const STEP_TEXT_MAX = 16_000;
@@ -213,8 +212,8 @@ export const begin = internalMutation({
     workspaceId: v.optional(v.id("workspaces")),
   },
   returns: v.id("assistantSteps"),
-  handler: async (ctx, { workspaceId, ...args }) => {
-    const subject = args.subject ?? (await aboutOf(ctx, workspaceId ?? (await personalWorkspaceOf(ctx, args.userId)), args.input));
+  handler: async (ctx, args) => {
+    const subject = args.subject ?? (await aboutOf(ctx, args.workspaceId ?? (await personalWorkspaceOf(ctx, args.userId)), args.input));
     return ctx.db.insert("assistantSteps", { ...args, ...(subject ? { subject } : {}), status: "running", startedAt: Date.now() });
   },
 });
@@ -381,7 +380,7 @@ export async function stopAsking(ctx: MutationCtx, thread: Doc<"assistantThreads
   });
   await ctx.db.patch("assistantThreads", thread._id, { asking: undefined });
   // It has no request running, so no charge of its own is still to settle: any name of its own will do.
-  await noteReply(ctx, waiting.senderId, await replyWorkspace(ctx, waiting.senderId, thread), `waiting:${thread._id}:${waiting.askedAt}`, waiting.spent);
+  await noteReply(ctx, waiting.senderId, waiting.workspaceId, `waiting:${thread._id}:${waiting.askedAt}`, waiting.spent);
 }
 
 /** Deletes a deleted chat's steps and their results, a batch at a time, until none are left. */

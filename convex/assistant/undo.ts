@@ -10,7 +10,8 @@ import { createError } from "../lib/errors";
 import { mutation } from "../lib/functions";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { assistantPath } from "../lib/userActions";
-import { replyWorkspace, requireThread } from "./access";
+import { requireThread } from "./access";
+import { actingIn } from "./replies";
 import { UNDONE_TOLD } from "./validators";
 
 export const run = mutation({
@@ -28,7 +29,7 @@ export const run = mutation({
     const entry = USER_ACTIONS.find((candidate) => candidate.path === step.undo!.path);
     if (!entry || entry.kind !== "mutation") throw createError("NOT_FOUND", "This can no longer be undone.");
     // The reversing action refuses on its own when the record has changed since (its `expect`).
-    await ctx.runMutation(makeFunctionReference<"mutation">(assistantPath(entry.path)), { ...JSON.parse(step.undo.args), ...(entry.retryKey ? { [entry.retryKey]: `undo:${stepId}` } : {}), userId, workspaceId: await replyWorkspace(ctx, userId, thread), approved: true });
+    await ctx.runMutation(makeFunctionReference<"mutation">(assistantPath(entry.path)), { ...JSON.parse(step.undo.args), ...(entry.retryKey ? { [entry.retryKey]: `undo:${stepId}` } : {}), userId, workspaceId: await actingIn(ctx, { senderId: step.userId, workspaceId: step.workspaceId }), approved: true });
     await ctx.db.patch("assistantSteps", stepId, { undone: true });
     // The assistant is told with this person's next message (./replies.ts). Past what the chat keeps, the earliest goes, counted for whoever's it was and not forgotten.
     const undone = [...(thread.undone ?? []), { userId, stepId }];

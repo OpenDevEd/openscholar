@@ -137,10 +137,12 @@ describe("assistant chats", () => {
     try {
       const t = convexTest(schema);
       const { ada } = await people(t);
-      // As they were before workspaces: no workspace, no maker.
+      // As they were before workspaces: no workspace, no maker. Her record was also written in her own workspace after the deploy, before the backfill.
+      const own = await t.run(async (ctx) => personalWorkspaceOf(ctx, ada));
       await runUntriggered(t, async (ctx) => {
         await ctx.db.insert("assistantThreads", { ownerId: ada, title: "Old", agentThreadId: "old", lastMessageAt: 1, createdAt: 1, updatedAt: 1 });
-        await ctx.db.insert("assistantSpenders", { userId: ada, recent: [{ reply: "old", credits: 3 }] });
+        await ctx.db.insert("assistantSpenders", { userId: ada, newChats: { replyLimit: 50 }, recent: [{ reply: "old", credits: 3 }, { reply: "settled late", credits: 2 }] });
+        await ctx.db.insert("assistantSpenders", { userId: ada, workspaceId: own, recent: [{ reply: "settled late", credits: 4 }, { reply: "new", credits: 5 }] });
       });
       expect(await t.action(internal.migrations.assistantWorkspaces.verify, {})).toBe(2);
       for (let runs = 0; runs < 2; runs++) {
@@ -148,9 +150,11 @@ describe("assistant chats", () => {
         await t.finishAllScheduledFunctions(vi.runAllTimers);
       }
       expect(await t.action(internal.migrations.assistantWorkspaces.verify, {})).toBe(0);
-      const own = await t.run(async (ctx) => personalWorkspaceOf(ctx, ada));
       expect(await t.run(async (ctx) => ctx.db.query("assistantThreads").collect())).toMatchObject([{ workspaceId: own, createdBy: ada }]);
-      expect(await t.run(async (ctx) => ctx.db.query("assistantSpenders").collect())).toMatchObject([{ workspaceId: own }]);
+      // One record of hers there, with the settings she chose and every reply's cost, one settled in both added up.
+      expect(await t.run(async (ctx) => ctx.db.query("assistantSpenders").collect())).toMatchObject([
+        { workspaceId: own, newChats: { replyLimit: 50 }, recent: [{ reply: "old", credits: 3 }, { reply: "settled late", credits: 6 }, { reply: "new", credits: 5 }] },
+      ]);
     } finally {
       vi.useRealTimers();
     }

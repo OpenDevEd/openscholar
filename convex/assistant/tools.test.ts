@@ -1408,12 +1408,13 @@ describe("the assistant's tools", () => {
     const t = convexTest(schema);
     instances.add(t);
     const { ada, ben, asAda, asBen } = await people(t);
-    const { lab, mine, theirs } = await t.run(async (ctx) => {
+    const { labOrganization, lab, mine, theirs } = await t.run(async (ctx) => {
       await seedCreditsForTest(ctx, { userId: ada, free: 100_000 });
       await seedCreditsForTest(ctx, { userId: ben, free: 100_000 });
       // The lab is Ada's alone; Ben shares the team with her, not the lab.
-      const lab = await ensureWorkspace(ctx, { kind: "organization", organizationId: await seedOrganizationFeatures(ctx, ["ada"], {}) });
-      return { lab, mine: await personalWorkspaceOf(ctx, ada), theirs: await personalWorkspaceOf(ctx, ben) };
+      const labOrganization = await seedOrganizationFeatures(ctx, ["ada"], {});
+      const lab = await ensureWorkspace(ctx, { kind: "organization", organizationId: labOrganization });
+      return { labOrganization, lab, mine: await personalWorkspaceOf(ctx, ada), theirs: await personalWorkspaceOf(ctx, ben) };
     });
     const threadId = await asAda.mutation(api.assistant.threads.create, { workspaceId: lab, title: "Lab" });
     const saved = () => t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map((item) => [item.openalexId, item.workspaceId]));
@@ -1443,6 +1444,23 @@ describe("the assistant's tools", () => {
     await finishReply(t, threadId);
     expect(await saved()).toEqual([["https://openalex.org/W1", lab], ["https://openalex.org/W2", theirs]]);
     expect(await saved()).not.toContainEqual(["https://openalex.org/W1", mine]);
+
+    // A reply of his that asks first carries on in his own workspace, where it asked from, even once he has joined the lab.
+    const his = await asBen.mutation(api.assistant.threads.create, { title: "His old chat" });
+    mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: his } } })).mockImplementationOnce(finishingDoStream(["Done."]));
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "Delete my old chat" });
+    await finishReply(t, threadId);
+    const chat = () => t.run(async (ctx) => ctx.db.get("assistantThreads", threadId));
+    expect((await chat())?.asking).toMatchObject({ senderId: ben, workspaceId: theirs });
+    const asked = (await t.run(async (ctx) => ctx.db.query("assistantSteps").collect())).find((step) => step.status === "asking")!;
+    expect(asked.workspaceId).toBe(theirs);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("organizationMemberships", { organizationId: labOrganization, clerkUserId: "ben", clerkMembershipId: "lab-ben", role: "org:member", state: "active", createdAt: 1, updatedAt: 1, clerkCreatedAt: 1, clerkUpdatedAt: 1 });
+    });
+    await asBen.mutation(api.assistant.replies.answer, { threadId, stepId: asked._id, allow: true });
+    expect((await chat())?.reply?.workspaceId).toBe(theirs);
+    await finishReply(t, threadId);
+    expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", his))).toBeNull();
   });
 
   it.each([true, false])("hold a reply that asked with its limit already reached until it's carried on, when the answer is %s", async (allow) => {

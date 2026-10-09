@@ -54,6 +54,8 @@ export const RECENT_REQUESTS = 6;
  */
 export const assistantAskingValidator = v.object({
   senderId: v.id("users"),
+  /** The workspace the reply acts in, which it carries on in. Absent on one that waited from before replies named theirs, which acts in its sender's own (#650). */
+  workspaceId: v.optional(v.id("workspaces")),
   order: v.number(),
   promptMessageId: v.string(),
   modelId: v.union(v.id("models"), v.null()),
@@ -170,6 +172,8 @@ export const assistantStepFields = {
   order: v.number(),
   /** Who it ran as: the person whose message was being answered. Only they can undo it. */
   userId: v.id("users"),
+  /** The workspace it ran in, which its undo acts in. Absent on one from before replies named theirs, which ran in its person's own (#650). */
+  workspaceId: v.optional(v.id("workspaces")),
   /** On a web search (#648): what it found, for the reply's citations and its list of sources. */
   sources: webSourcesValidator,
   /** The model's ID for the call. Models reuse these, so nothing is looked up by it. */

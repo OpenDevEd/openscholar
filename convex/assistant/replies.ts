@@ -33,6 +33,7 @@ import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { workspacePlanLimit } from "../billing/accounts";
 import { personName, replyWorkspace, requireThread, touchThread } from "./access";
+import { personalWorkspaceOf } from "../workspaces/actor";
 import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
 import { JOB_ENDED } from "./jobEnds";
@@ -95,13 +96,12 @@ export async function admit(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
   }
 }
 
-type Reply = NonNullable<Doc<"assistantThreads">["reply"]>;
-/** The workspace a reply acts in. One started before replies named theirs (#650) works it out; slice 8 drops that. */
-const replyIn = async (ctx: MutationCtx, thread: Doc<"assistantThreads">, reply: Reply) => reply.workspaceId ?? (await replyWorkspace(ctx, reply.senderId, thread));
+/** The workspace a reply, or one that waits, acts in. One from before replies named theirs ran in its sender's own (#650); slice 8 makes it required. */
+export const actingIn = async (ctx: Pick<QueryCtx, "db">, reply: { senderId: Id<"users">; workspaceId?: Id<"workspaces"> }) => reply.workspaceId ?? (await personalWorkspaceOf(ctx, reply.senderId));
 
 /** Clears the lock of a reply whose action died. What it had cost by then is still one of its sender's last replies. */
 async function endDead(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
-  if (thread.reply) await noteReply(ctx, thread.reply.senderId, await replyIn(ctx, thread, thread.reply), thread.reply.attemptId, thread.reply.spent ?? 0);
+  if (thread.reply) await noteReply(ctx, thread.reply.senderId, thread.reply.workspaceId, thread.reply.attemptId, thread.reply.spent ?? 0);
   await ctx.db.patch("assistantThreads", thread._id, { reply: undefined });
 }
 
@@ -263,7 +263,8 @@ export const answer = mutation({
     // It asked with its limit already reached: the last answer starts nothing, and the reply waits to be carried on.
     const paused = left.length ? null : pausedAt(waiting);
     // The answer that lets the reply carry on starts a reply, so it's held to how many a workspace has at once, before anything changes.
-    const workspaceId = await replyWorkspace(ctx, waiting.senderId, thread);
+    // It carries on in the workspace it asked from; its actions are refused there if the sender has left it since.
+    const workspaceId = await actingIn(ctx, waiting);
     if (!left.length && !paused) await admit(ctx, workspaceId);
     if (allow) await ctx.db.patch("assistantSteps", stepId, { status: "allowed" });
     else await declineSteps(ctx, [step]);
@@ -316,7 +317,7 @@ export const carryOn = mutation({
     // It spends their credits, so carrying it on is theirs alone.
     if (waiting.senderId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can carry this on.");
     // Carrying it on starts a reply, so it's held to how many a workspace has at once.
-    const workspaceId = await replyWorkspace(ctx, userId, thread);
+    const workspaceId = await actingIn(ctx, waiting);
     await admit(ctx, workspaceId);
     await goOnFrom(ctx, thread, waiting, workspaceId, carriedOn(waiting, await replyLimitOf(ctx, threadId, userId)));
     return null;
@@ -480,7 +481,7 @@ export const release = internalMutation({
     /** Schedules the reply's next request, under the same lock. One stopped meanwhile finds that out there, and shows as stopped. */
     const goOn = async ({ used, ...from }: Infer<typeof resumeValidator>, wait = 0) => {
       const { compacting: _compacting, ...lock } = current;
-      const workspaceId = await replyIn(ctx, thread, current);
+      const workspaceId = await actingIn(ctx, current);
       const scheduledId = await ctx.scheduler.runAfter(wait, internal.assistant.run.reply, { threadId, attemptId, ...from, workspaceId, used });
       const { cap: _cap, ...held } = lock;
       return { ...held, workspaceId, scheduledId, spent: used.credits, ...(used.cap === undefined ? {} : { cap: used.cap }) };
@@ -494,6 +495,7 @@ export const release = internalMutation({
     /** The paused reply, as the chat keeps it until it's carried on: where it stands in `order`, and what it runs to. */
     const pausedFrom = ({ used, ...from }: Infer<typeof resumeValidator>, order: number, paused: NonNullable<ReturnType<typeof pauseBefore>>) => ({
       senderId: current.senderId,
+      ...(current.workspaceId ? { workspaceId: current.workspaceId } : {}),
       order,
       promptMessageId: from.promptMessageId,
       modelId: from.modelId,
@@ -546,10 +548,11 @@ export const release = internalMutation({
       // The chat takes no message until every call is answered, or the reply is stopped. Its summary, if one is due, waits for the reply to end.
       const now = Date.now();
       for (const call of asking.calls) {
-        await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, ...call, prompt: asking.promptMessageId, status: "asking", startedAt: now });
+        await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, ...(current.workspaceId ? { workspaceId: current.workspaceId } : {}), ...call, prompt: asking.promptMessageId, status: "asking", startedAt: now });
       }
       const waiting = {
         senderId: current.senderId,
+        ...(current.workspaceId ? { workspaceId: current.workspaceId } : {}),
         order: current.order,
         promptMessageId: asking.promptMessageId,
         modelId: ended.modelId,
@@ -600,7 +603,7 @@ export const release = internalMutation({
     await settleAsked(ctx, threadId);
     // What it cost is kept among its sender's last replies. One that ended before a request of its own
     // reported in, stopped as it went on, say, has what its lock last held.
-    await noteReply(ctx, current.senderId, await replyIn(ctx, thread, current), attemptId, spent ?? current.spent ?? 0);
+    await noteReply(ctx, current.senderId, current.workspaceId, attemptId, spent ?? current.spent ?? 0);
     // A stopped reply is left alone: whoever stopped it is waiting to write.
     if (ended && !current.stop && compactionDue({ ...ended, window })) {
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
@@ -814,7 +817,7 @@ export const messagesAction = defineUserQuery({
     const reader = thread.asking?.senderId === userId ? await ctx.db.get("users", userId) : null;
     const mine = reader ? await stepsAt(ctx, threadId, "asking") : [];
     // They're named as the workspace the reply acts in calls them.
-    const workspaceId = mine.length ? await replyWorkspace(ctx, userId, thread) : null;
+    const workspaceId = thread.asking ? await actingIn(ctx, thread.asking) : null;
     const details = new Map(
       await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: withoutVariant(await detailsOf(ctx, reader!, workspaceId!, step.shown ?? step.input), step) } : bulkWithoutVariant(await bulkOf(ctx, reader!, workspaceId!, step), step)] as const)),
     );

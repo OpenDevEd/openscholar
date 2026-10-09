@@ -153,9 +153,11 @@ export async function startWith(ctx: MutationCtx, threadId: Id<"assistantThreads
  * added to it: a request stopped or failed partway is settled after the reply has ended.
  * Nothing is kept for no credits.
  */
-export async function noteReply(ctx: MutationCtx, userId: Id<"users">, workspaceId: Id<"workspaces">, reply: string, credits: number) {
+export async function noteReply(ctx: MutationCtx, userId: Id<"users">, given: Id<"workspaces"> | undefined, reply: string, credits: number) {
   // A reply can outlast its sender's account, paused in someone else's chat: nothing is kept for an account that is gone.
   if (credits <= 0 || !(await ctx.db.get("users", userId))) return;
+  // One from before replies named their workspace ran in its sender's own (#650); slice 8 makes it required.
+  const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
   const spender = await spenderOf(ctx, workspaceId, userId);
   const kept = spender?.recent ?? [];
   const recent = kept.some((entry) => entry.reply === reply)
@@ -171,7 +173,7 @@ export const settledLate = internalMutation({
   args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), reply: v.string(), credits: v.number() },
   returns: v.null(),
   handler: async (ctx, { userId, workspaceId, reply, credits }) => {
-    await noteReply(ctx, userId, workspaceId ?? (await personalWorkspaceOf(ctx, userId)), reply, credits);
+    await noteReply(ctx, userId, workspaceId, reply, credits);
     return null;
   },
 });
