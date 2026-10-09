@@ -4220,6 +4220,21 @@
       "earlier": "पहले",
       "showEarlier": "पुरानी गतिविधि दिखाएँ",
       "none": "अब से बदलाव यहाँ दिखेंगे।"
+    },
+    "runBy": {
+      "runBy": "चलाया",
+      "startedBy": "शुरू किया",
+      "everyone": "सभी",
+      "more": "{count, plural, one {# और व्यक्ति} other {# और लोग}}",
+      "find": "किसी को खोजें",
+      "noOne": "इस नाम का कोई नहीं",
+      "busiest": "{count} में से सबसे सक्रिय {listed}। किसी और को खोजने के लिए नाम लिखें।",
+      "searches": "{count, plural, one {# खोज} other {# खोजें}}",
+      "screenings": "{count, plural, one {# स्क्रीनिंग} other {# स्क्रीनिंग}}",
+      "extractions": "{count, plural, one {# निष्कर्षण} other {# निष्कर्षण}}",
+      "collections": "{count, plural, one {# संग्रह} other {# संग्रह}}",
+      "chats": "{count, plural, one {# चैट} other {# चैट}}",
+      "showMore": "और लोग दिखाएँ"
     }
   },
   "models": {

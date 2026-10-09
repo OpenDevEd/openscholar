@@ -26,7 +26,8 @@ import { SCREENING_POOL_SIZE } from "../workpool";
 import { jobModel, screeningRevision } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
-import { actorIn } from "../workspaces/actor";
+import { actorIn, type InWorkspace } from "../workspaces/actor";
+import { makersIn, makerValidator } from "../workspaces/makers";
 import { availableCredits } from "../billing/accounts";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { pricingOf } from "../ai/serverModel";
@@ -307,7 +308,8 @@ export const getActiveScreeningJobProgress = workspaceQuery({
   },
 });
 
-const jobListArgs = { paginationOpts: paginationOptsValidator, status: v.optional(screeningJobStatusValidator) };
+// `by`: only the jobs that member ran (#656).
+const jobListArgs = { paginationOpts: paginationOptsValidator, status: v.optional(screeningJobStatusValidator), by: v.optional(v.id("users")) };
 const jobListValidator = paginationResultValidator(
     v.object({
       revision: v.string(),
@@ -323,31 +325,40 @@ const jobListValidator = paginationResultValidator(
       targetCollectionId: v.optional(v.id("collections")),
       targetCollectionName: v.optional(v.string()),
       ...jobFacts,
+      // Who ran it, in an organization.
+      by: v.optional(makerValidator),
     }),
   );
 
-/** A page of a workspace's screening jobs, newest first, each with what it has done so far; with `status`, only the jobs in it. */
-async function jobsOf(ctx: QueryCtx, workspaceId: Id<"workspaces">, args: { paginationOpts: PaginationOptions; status?: Doc<"screeningJobs">["status"] }) {
-    const { status } = args;
-    const jobs = await (status
-      ? ctx.db.query("screeningJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status))
-      : ctx.db.query("screeningJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+/** A page of a workspace's screening jobs, newest first, each with what it has done so far; with `status`, only the jobs in it; with `by`, only that member's. */
+async function jobsOf(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, args: { paginationOpts: PaginationOptions; status?: Doc<"screeningJobs">["status"]; by?: Id<"users"> }) {
+    const { status, by } = args;
+    const jobs = await (by
+      ? status
+        ? ctx.db.query("screeningJobs").withIndex("by_workspace_and_createdBy_and_status", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", by).eq("status", status))
+        : ctx.db.query("screeningJobs").withIndex("by_workspace_and_createdBy", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", by))
+      : status
+        ? ctx.db.query("screeningJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status))
+        : ctx.db.query("screeningJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
     )
       .order("desc")
       .paginate({ ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, MAX_LISTED_SCREENING_JOBS) });
 
+    const makerOf = await makersIn(ctx, workspaceId, userId);
     const page = await Promise.all(
       jobs.page.map(async (job) => {
-        const [progress, targetCollection, facts] = await Promise.all([
+        const [progress, targetCollection, facts, maker] = await Promise.all([
           readJobProgressSnapshot(ctx, job),
           job.targetCollectionId
             ? ctx.db.get("collections", job.targetCollectionId)
             : Promise.resolve(null),
           factsOf(ctx, job),
+          makerOf(job.createdBy),
         ]);
 
         return {
           ...facts,
+          ...(maker ? { by: maker } : {}),
           revision: await screeningRevision(ctx, job),
           _id: job._id,
           _creationTime: job._creationTime,
@@ -371,7 +382,7 @@ export const listUserScreeningJobs = workspaceQuery({
   args: jobListArgs,
   returns: jobListValidator,
   signedOut: { page: [], isDone: true, continueCursor: "" },
-  handler: (ctx, { workspaceId }, args) => jobsOf(ctx, workspaceId, args),
+  handler: (ctx, actor, args) => jobsOf(ctx, actor, args),
 });
 
 export const listJobsAction = defineUserQuery({
@@ -381,7 +392,7 @@ export const listJobsAction = defineUserQuery({
     "With `status`, only the jobs in it. A job's papers are read with screening/papers:list.",
   args: jobListArgs,
   returns: jobListValidator,
-  run: async (ctx, { workspaceId }, args) => jobsOf(ctx, workspaceId, args),
+  run: async (ctx, actor, args) => jobsOf(ctx, actor, args),
 });
 export const listJobs = userQuery(listJobsAction);
 export const listJobsForAssistant = assistantQuery(listJobsAction);

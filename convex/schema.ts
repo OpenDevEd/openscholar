@@ -72,12 +72,16 @@ export default defineSchema({
     .index("by_workspace_and_createdAt", ["workspaceId", "data.createdAt"])
     .index("by_workspace_and_count", ["workspaceId", "data.count"])
     .index("by_workspace_and_localId", ["workspaceId", "localId"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["workspaceId"] }),
-  // How many saved searches, shortcuts and screening jobs a person has, kept by the triggers on those tables
-  // (research/recordCounts.ts), for page totals. While a first count is being taken,
-  // `countedTo` is the creation time it has reached.
-  recordCounts: defineTable({ workspaceId: v.id("workspaces"), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), count: v.number(), countedTo: v.optional(v.number()) })
-    .index("by_workspace_and_table", ["workspaceId", "table"]),
+    // One person's searches (#656): counted, and listed newest or most results first.
+    .index("by_workspace_and_createdBy", ["workspaceId", "createdBy"])
+    .index("by_workspace_and_createdBy_and_createdAt", ["workspaceId", "createdBy", "data.createdAt"])
+    .index("by_workspace_and_createdBy_and_count", ["workspaceId", "createdBy", "data.count"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["workspaceId", "createdBy"] }),
+  // How many saved searches, shortcuts and screening jobs a workspace has, kept by the triggers on those tables
+  // (research/recordCounts.ts), for page totals; with `createdBy`, how many of a table one person made there,
+  // for a list's Run by (#656). While a first count is being taken, `countedTo` is the creation time it has reached.
+  recordCounts: defineTable({ workspaceId: v.id("workspaces"), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs"), v.literal("collections"), v.literal("assistantThreads")), createdBy: v.optional(v.id("users")), count: v.number(), countedTo: v.optional(v.number()) })
+    .index("by_workspace_and_table_and_createdBy", ["workspaceId", "table", "createdBy"]),
   // `createdBy`: who made the revision; `userId`, from before, goes once migrations/narrowResearch.ts has copied it.
   searchRevisions: defineTable({
     createdBy: v.id("users"), searchId: v.id("searches"), revision: v.number(),
@@ -226,6 +230,9 @@ export default defineSchema({
     .index("by_agentThreadId", ["agentThreadId"])
     // A workspace's chats, newest first.
     .index("by_workspace_and_lastMessageAt", ["workspaceId", "lastMessageAt"])
+    // One person's chats there (#656): counted, and listed newest first.
+    .index("by_workspace_and_createdBy", ["workspaceId", "createdBy"])
+    .index("by_workspace_and_createdBy_and_lastMessageAt", ["workspaceId", "createdBy", "lastMessageAt"])
     // The replies being written in a workspace, which are limited.
     .index("by_replyWorkspace", ["reply.workspaceId"])
     // Every chat writing a reply, oldest first, for releasing the ones whose action died.
@@ -805,7 +812,11 @@ export default defineSchema({
     .index("by_workspace_status", ["workspaceId", "status"])
     // The job list ordered by name.
     .index("by_workspace_and_sortName", ["workspaceId", "sortName"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["workspaceId"] }),
+    // One person's jobs (#656): counted, and listed newest first, by name or by status.
+    .index("by_workspace_and_createdBy", ["workspaceId", "createdBy"])
+    .index("by_workspace_and_createdBy_and_sortName", ["workspaceId", "createdBy", "sortName"])
+    .index("by_workspace_and_createdBy_and_status", ["workspaceId", "createdBy", "status"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["workspaceId", "createdBy"] }),
 
   // ═══════════════════════════════════════════════════════════════
   // CHAT GENERATION USAGE - Provider-authoritative chat billing ledger
@@ -1076,7 +1087,10 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
   })
     .index("by_workspace", ["workspaceId"])
-    .index("by_workspace_status", ["workspaceId", "status"]),
+    .index("by_workspace_status", ["workspaceId", "status"])
+    // One person's screenings (#656): counted, and listed newest first, in a state or all.
+    .index("by_workspace_and_createdBy", ["workspaceId", "createdBy"])
+    .index("by_workspace_and_createdBy_and_status", ["workspaceId", "createdBy", "status"]),
 
   // ═══════════════════════════════════════════════════════════════
   // SCREENING RESULTS - individual paper screening outcomes
@@ -1263,7 +1277,10 @@ export default defineSchema({
     membershipRevision: v.optional(v.number()),
   })
     .index("by_workspace_sortName", ["workspaceId", "sortName"])
-    .searchIndex("search_name", { searchField: "name", filterFields: ["workspaceId"] }),
+    // One person's collections (#656): counted, and listed by name.
+    .index("by_workspace_and_createdBy", ["workspaceId", "createdBy"])
+    .index("by_workspace_and_createdBy_and_sortName", ["workspaceId", "createdBy", "sortName"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["workspaceId", "createdBy"] }),
 
   // An export a browser is downloading in parts: its token's SHA-256 digest, what it writes,
   // the next part to serve and where it starts, whether a part failed, and when the link expires.

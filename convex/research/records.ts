@@ -19,7 +19,7 @@ import { makerValidator, makersIn } from "../workspaces/makers";
 import { internal } from "../_generated/api";
 import { internalMutation } from "../lib/functions";
 import schema from "../schema";
-import { countRecordPage, countRow } from "./recordCounts";
+import { byMakerValidator, countMakerPage, countRecordPage, countRow } from "./recordCounts";
 import { shortcutSortName } from "../../lib/query-shortcuts";
 import { searchTerms, searchText, shortcutText, withText } from "../lib/searchText";
 import { personalWorkspaceOf, requireMakerOrAdmin, type Actor, type InWorkspace } from "../workspaces/actor";
@@ -42,21 +42,28 @@ const LISTED_BYTES = 8 * 1024 * 1024;
 export const listedSearchesAction = defineUserQuery({
   path: "research/records:listedSearches",
   description:
-    "Lists the saved searches in the workspace without their screening answers, a page at a time: newest, oldest, most or fewest results first. In an organization, each names who ran it (`by`). Given `text`, those whose query or questions best match its words, best first; given `exclude`, all but the search with that ID. A page can come back short without being the last.",
-  args: { ...pageArgs, sort: listedSortValidator, text: v.optional(v.string()), exclude: v.optional(v.string()) },
+    "Lists the saved searches in the workspace without their screening answers, a page at a time: newest, oldest, most or fewest results first. In an organization, each names who ran it (`by`). Given `text`, those whose query or questions best match its words, best first; given `exclude`, all but the search with that ID; given `by`, only the searches that member ran (their `userId` from workspaces/makers:counts). A page can come back short without being the last.",
+  args: { ...pageArgs, sort: listedSortValidator, text: v.optional(v.string()), exclude: v.optional(v.string()), by: v.optional(v.id("users")) },
   returns: paginationResultValidator(v.object({ ...listedSearchValidator.fields, by: v.optional(makerValidator) })),
-  run: async (ctx, { userId, workspaceId }, { paginationOpts, sort, text, exclude }) => {
+  run: async (ctx, { userId, workspaceId }, { paginationOpts, sort, text, exclude, by }) => {
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LISTED_PAGE_MAX) };
-    const index = sort === "most" || sort === "least" ? "by_workspace_and_count" : "by_workspace_and_createdAt";
+    const byCount = sort === "most" || sort === "least";
     const order = sort === "oldest" || sort === "least" ? "asc" : "desc";
     const needle = searchTerms(text);
+    const index = byCount ? "by_workspace_and_count" : "by_workspace_and_createdAt";
+    // One member's, given `by`, read along their own index range.
+    const mine = byCount ? "by_workspace_and_createdBy_and_count" : "by_workspace_and_createdBy_and_createdAt";
     const read = await (needle
-      ? ctx.db.query("searches").withSearchIndex("search_text", q => q.search("searchText", needle).eq("workspaceId", workspaceId)).paginate({ ...opts, maximumBytesRead: LISTED_BYTES })
+      ? ctx.db.query("searches").withSearchIndex("search_text", q => (by === undefined ? q.search("searchText", needle).eq("workspaceId", workspaceId) : q.search("searchText", needle).eq("workspaceId", workspaceId).eq("createdBy", by))).paginate({ ...opts, maximumBytesRead: LISTED_BYTES })
       : exclude !== undefined
-        ? stream(ctx.db, schema).query("searches").withIndex(index, q => q.eq("workspaceId", workspaceId)).order(order)
-            .filterWith(async row => row.localId !== exclude)
-            .paginate({ ...opts, maximumRowsRead: FILTER_ROWS, maximumBytesRead: LISTED_BYTES })
-        : ctx.db.query("searches").withIndex(index, q => q.eq("workspaceId", workspaceId)).order(order).paginate({ ...opts, maximumBytesRead: LISTED_BYTES }));
+        ? (by === undefined
+            ? stream(ctx.db, schema).query("searches").withIndex(index, q => q.eq("workspaceId", workspaceId))
+            : stream(ctx.db, schema).query("searches").withIndex(mine, q => q.eq("workspaceId", workspaceId).eq("createdBy", by))
+          ).order(order).filterWith(async row => row.localId !== exclude).paginate({ ...opts, maximumRowsRead: FILTER_ROWS, maximumBytesRead: LISTED_BYTES })
+        : (by === undefined
+            ? ctx.db.query("searches").withIndex(index, q => q.eq("workspaceId", workspaceId))
+            : ctx.db.query("searches").withIndex(mine, q => q.eq("workspaceId", workspaceId).eq("createdBy", by))
+          ).order(order).paginate({ ...opts, maximumBytesRead: LISTED_BYTES }));
     // A search's matches leave the excluded one out of their page.
     const rows = needle && exclude !== undefined ? read.page.filter(row => row.localId !== exclude) : read.page;
     const makerOf = await makersIn(ctx, workspaceId, userId);
@@ -87,6 +94,16 @@ export const countRecordsPage = internalMutation({
   returns: v.null(),
   handler: async (ctx, { table, workspaceId }) => {
     await countRecordPage(ctx, table, workspaceId);
+    return null;
+  },
+});
+
+/** One step of the first count of what one person made of a table in an organization (./recordCounts.ts, #656). */
+export const countMakerRecordsPage = internalMutation({
+  args: { table: byMakerValidator, workspaceId: v.id("workspaces"), createdBy: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { table, workspaceId, createdBy }) => {
+    await countMakerPage(ctx, table, workspaceId, createdBy);
     return null;
   },
 });

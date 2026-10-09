@@ -4220,6 +4220,21 @@
       "earlier": "Earlier",
       "showEarlier": "Show earlier activity",
       "none": "Changes show here from now on."
+    },
+    "runBy": {
+      "runBy": "Run by",
+      "startedBy": "Started by",
+      "everyone": "Everyone",
+      "more": "{count, plural, one {# more person} other {# more people}}",
+      "find": "Find someone",
+      "noOne": "No one by that name",
+      "busiest": "The busiest {listed} of {count}. Type a name to find anyone else.",
+      "searches": "{count, plural, one {# search} other {# searches}}",
+      "screenings": "{count, plural, one {# screening} other {# screenings}}",
+      "extractions": "{count, plural, one {# extraction} other {# extractions}}",
+      "collections": "{count, plural, one {# collection} other {# collections}}",
+      "chats": "{count, plural, one {# chat} other {# chats}}",
+      "showMore": "Show more people"
     }
   },
   "models": {

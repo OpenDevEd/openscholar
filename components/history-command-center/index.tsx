@@ -40,6 +40,7 @@ import { useSearchList } from "@/lib/research/search-list";
 import { useWorkspace } from "@/lib/workspaces/url";
 import { useWorkspaceRouter, useWorkspaceSlug } from "@/lib/workspaces/href";
 import { PersonTag } from "@/components/ui/identity";
+import { useRunBy } from "@/components/workspaces/run-by";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
@@ -88,7 +89,9 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     setHistorySortBy,
   } = useUIStore();
   // Read a page at a time: the page number can't be jumped to, so it stays out of the URL.
-  const history = useSearchList({ sort: historySortBy, text: searchFilter, pageSize: COMMAND_CENTER_ITEMS_PER_PAGE, excludeId: pick?.excludeId });
+  // In an organization, everyone's searches or one member's (#656); a chooser lists them all.
+  const runBy = useRunBy("searches");
+  const history = useSearchList({ sort: historySortBy, text: searchFilter, pageSize: COMMAND_CENTER_ITEMS_PER_PAGE, excludeId: pick?.excludeId, by: pick ? undefined : runBy.by });
   const ready = listReady && settingsReady && !history.isLoading;
   // The page's own steps go back to its top; a chooser stays where its host put it.
   const step = (to: () => void) => () => {
@@ -234,6 +237,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   // A chooser sits in its host's frame with its own toolbar; the page puts its controls in the page bar.
   if (pick) return <CommandCenterContainer><CommandCenterToolbar viewMode={historyViewMode} onViewModeChange={setHistoryViewMode} {...filters} />{list}</CommandCenterContainer>;
   return <HistoryPageFrame
+    intro={runBy.filter}
     tabs={<ViewModeSwitch value={historyViewMode} onChange={setHistoryViewMode} />}
     filters={<CommandCenterFilters {...filters} />}
     actions={<CommandCenterFileActions
@@ -251,12 +255,14 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
 }
 
 /** The history page's frame, shared with its loading state so nothing moves when it loads. */
-export function HistoryPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
+export function HistoryPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode; intro?: React.ReactNode }) {
   const tc = useTranslations("common");
   return <LibraryPageShell icon={HistoryIcon} title={tc("searchHistory")} {...controls}>{children}</LibraryPageShell>;
 }
 
 export function HistoryLoading() {
   const tc = useTranslations("common");
-  return <HistoryPageFrame><ListLoading label={tc("loading")} /></HistoryPageFrame>;
+  // The Run by row is there while it loads too, so the list below it doesn't move when it comes.
+  const runBy = useRunBy("searches");
+  return <HistoryPageFrame intro={runBy.filter}><ListLoading label={tc("loading")} /></HistoryPageFrame>;
 }
