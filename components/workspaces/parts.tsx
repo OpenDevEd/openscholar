@@ -7,6 +7,7 @@ import type { FunctionReturnType } from "convex/server";
 import { Home } from "@/components/icons";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedPaginatedQuery, useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { defaultPlanId, findPlan } from "@/lib/billing/catalog";
 import { useBillingCatalog } from "@/lib/billing/catalog-provider";
@@ -105,6 +106,20 @@ export function WorkspaceTag({ workspace, size = "md", strong = false }: { works
     <span className={cn("inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-muted pr-2.5 text-xs", size === "sm" ? "h-6 pl-0.5" : "h-7 pl-1", strong && "font-medium text-foreground")}>
       <WorkspaceTile workspace={workspace} size="xs" />
       <span className="min-w-0 truncate">{workspace.name}</span>
+    </span>
+  );
+}
+
+/** An organization's first members' faces; `ring` is the colour behind them, which each face is cut from. */
+export function MemberFaces({ workspaceId, label, ring = "ring-card" }: { workspaceId: Id<"workspaces"> | undefined; label: string; ring?: string }) {
+  const { data } = useProtectedQuery(api.organizations.queries.members, inWorkspace(workspaceId, { paginationOpts: { cursor: null, numItems: 4 } }));
+  return (
+    <span className="flex -space-x-1.5" aria-label={label}>
+      {(data?.page ?? []).map((member) => (
+        <span key={member.userId} className={cn("flex rounded-full ring-2", ring)}>
+          <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-5" />
+        </span>
+      ))}
     </span>
   );
 }
