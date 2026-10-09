@@ -651,7 +651,7 @@ describe("assistant replies", () => {
     await expect(asAda.query(api.assistant.replies.live, { threadId })).rejects.toThrow(/disabled/);
   });
 
-  it("link a query the reply looked up to its results, with its filters, as a new search, and say how many papers it matched", async () => {
+  it("link what the reply looked up to its results, by a query or by filters alone, as a new search, and say how many papers it matched", async () => {
     const t = convexTest(schema);
     const { asAda, ada, threadId } = await sharedChat(t);
     mockDoStream.mockImplementation(finishingDoStream(["Found some"]));
@@ -669,9 +669,14 @@ describe("assistant replies", () => {
       const rated = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "rated", path: "research/papers:search", input: JSON.stringify({ query: "phonics", ratedOnly: true }), subject: "phonics" });
       await endStep(ctx, rated, { total: 3, totalIgnoresRatings: true, page: 1, pages: 1, papers: [] });
       await ctx.db.insert("assistantSteps", { ...step, status: "done", endedAt: 1, toolCallId: "collection", path: "library/collections:create", input: JSON.stringify({ name: "Trials" }), subject: "Trials" });
+      // On a filter alone, with no query: nothing names it, and it still leads to its results.
+      const related = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "related", path: "research/papers:search", input: JSON.stringify({ relatedTo: "W3120515101" }) });
+      await endStep(ctx, related, { total: 9, page: 1, pages: 1, papers: [] });
     });
 
-    const steps = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
+    const all = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
+    expect(all.find((step) => step.subject === undefined)).toMatchObject({ href: "/results?rel=W3120515101", count: 9 });
+    const steps = all.filter((step) => step.subject !== undefined);
     expect(Object.fromEntries(steps.map((step) => [step.subject, "href" in step ? step.href : null]))).toEqual({
       '"machine learning"': "/results?q=%22machine+learning%22&yf=2020&yt=2024&mincite=11",
       tutoring: "/results?q=tutoring",

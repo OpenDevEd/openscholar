@@ -100,6 +100,15 @@ function Subject({ text, step, chips, className = "truncate" }: { text: string; 
   );
 }
 
+/** A search that ran on filters alone, with no query: it says so, and shows those filters. */
+function Unqueried({ step, chips, className }: { step: StepItem & { href: string }; /** Its filters the others on its card don't share; all of its own when it's alone. */ chips?: FilterParams; className?: string }) {
+  const tc = useTranslations("common");
+  return <Subject text={tc("noQuery")} chips={chips ?? searchOf(step.href)} step={step} className={className} />;
+}
+
+/** Whether a step is a search that ran with no query. */
+const unqueried = (step: StepItem): step is StepItem & { href: string } => !step.subject && step.href !== undefined;
+
 /** A tinted icon square; the tile of the model cards, one size down. */
 export function KindTile({ kind, size = "md", working }: { kind: Kind; size?: "sm" | "md"; working?: boolean }) {
   const { icon: Icon, tint } = KIND[kind];
@@ -385,6 +394,7 @@ function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddC
 
 function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">; steps: StepItem[]; /** Loads the steps before these, when the reply ran more. */ earlier: (() => void) | "loading" | null }) {
   const t = useTranslations("assistant");
+  const tc = useTranslations("common");
   const format = useFormatter();
   // A count as the search history writes one: compact past a thousand, so a broad query's 329.5M fits its line.
   const counted = (count: number) => format.number(count, count >= 1000 ? { notation: "compact", maximumFractionDigits: 1 } : undefined);
@@ -395,7 +405,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   // The folded runs the person opened, each by a step of it: by its first when it was opened, which stays in the run when earlier steps load in front of it.
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
   /** Each step of a folded run as its line: what it was about, or where its card's action looks. */
-  const linesOf = (run: StepItem[]) => run.map((one) => one.subject ?? t(`steps.${viewOf(one.action, one.variant).words}.where`));
+  const linesOf = (run: StepItem[]) => run.map((one) => one.subject ?? (unqueried(one) ? tc("noQuery") : t(`steps.${viewOf(one.action, one.variant).words}.where`)));
   /** What tells a folded run of searches apart: each one's settings the others don't share. */
   const toldOf = (run: StepItem[]) => {
     const searches = run.length > 1 ? run.map((one) => (one.href ? searchOf(one.href) : null)) : [];
@@ -490,14 +500,14 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                         ) : folded ? (
                           <>
                             <Fact value={run.length}>{t("steps.times", { count: run.length })}</Fact>
-                            {step.subject ? <Subject text={step.subject} step={step} /> : <span className="truncate">{t(`steps.${words}.where`)}</span>}
+                            {step.subject ? <Subject text={step.subject} step={step} /> : unqueried(step) ? <Unqueried step={step} /> : <span className="truncate">{t(`steps.${words}.where`)}</span>}
                           </>
                         ) : (
                           <>
                             {/* A bulk change's title says how many it made. */}
                             {step.batch === undefined && step.count !== undefined ? <Fact value={counted(step.count)}>{t("steps.found")}</Fact> : null}
-                            {step.subject ? <Subject text={step.subject} step={step} /> : null}
-                            {(step.batch !== undefined || step.count === undefined) && !step.subject ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
+                            {step.subject ? <Subject text={step.subject} step={step} /> : unqueried(step) ? <Unqueried step={step} /> : null}
+                            {(step.batch !== undefined || step.count === undefined) && !step.subject && !unqueried(step) ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
                           </>
                         )}
                       </div>
@@ -534,7 +544,11 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                     <ol inert={!open} className="pl-[60px] pr-3 text-xs text-muted-foreground">
                       {run.map((one, at) => (
                         <li key={one.id} className="flex items-center gap-2" style={{ height: LINE }}>
-                          <Subject text={told?.sameQuery && told.filters[at] ? "" : lines[at]} chips={told?.filters[at]} step={one} className="mr-auto min-w-0 truncate" />
+                          {unqueried(one) ? (
+                            <Unqueried step={one} chips={told ? (told.filters[at] ?? {}) : undefined} className="mr-auto min-w-0 truncate" />
+                          ) : (
+                            <Subject text={told?.sameQuery && told.filters[at] ? "" : lines[at]} chips={told?.filters[at]} step={one} className="mr-auto min-w-0 truncate" />
+                          )}
                           {one.count !== undefined ? (
                             <span className="shrink-0 tabular-nums">
                               <span className="font-semibold text-foreground/90">{counted(one.count)}</span> {t("steps.found")}
