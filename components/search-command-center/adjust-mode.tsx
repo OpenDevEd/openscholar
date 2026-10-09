@@ -12,6 +12,7 @@ import { QueryTextarea } from "./components/query-textarea";
 import { OqlQueryStatus } from "./components/oql-query-status";
 import { OQL_FIELD } from "@/lib/openalex/oql";
 import { SEMANTIC_FIELD } from "@/lib/openalex/semantic";
+import { scopeNow } from "@/lib/search/scope-now";
 import { useSearch } from "@/lib/search";
 import { useQueryHistory } from "@/lib/hooks";
 import { useAppToast } from "@/lib/toast";
@@ -94,12 +95,15 @@ Please enhance this academic search query according to the user's specific instr
           : ""
       }`;
 
+      const scope = scopeNow(searchId);
       const response = await enhanceQuery({
         query: enhancedPrompt,
         language: urlLanguage || localeToLanguageCode(locale) || undefined,
         syntax: isOql ? "oql" : undefined,
         task: "refine",
       });
+      // Not used once the search has been switched to another kind of query meanwhile.
+      if (scopeNow(searchId) !== scope) return;
 
       search.setQuery(response.enhancedQuery);
 

@@ -12,6 +12,7 @@ import { LanguageTranslateControl } from "./components/language-translate-contro
 import { OqlQueryStatus } from "./components/oql-query-status";
 import { OQL_FIELD } from "@/lib/openalex/oql";
 import { SEMANTIC_FIELD } from "@/lib/openalex/semantic";
+import { scopeNow } from "@/lib/search/scope-now";
 import { useSearchOptional } from "@/lib/search";
 import {
   useSearchHistoryStore,
@@ -138,12 +139,15 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     try {
       setIsEnhancing(true);
       const currentSearchResult = getSearchResult(effectiveSearchId);
+      const scope = scopeNow(effectiveSearchId);
       const result = await enhanceQuery({
         query: questionToProcess,
         language: currentSearchResult?.language ?? localeToLanguageCode(locale),
         syntax,
         task: "questionToQuery",
       });
+      // Not used once the search has been switched to another kind of query meanwhile.
+      if (scopeNow(effectiveSearchId) !== scope) return;
 
       if (search) {
         search.setQuery(result.enhancedQuery);
@@ -181,11 +185,14 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       try {
         await ensureQueryShortcuts(localInputValue);
         const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
+        const scope = scopeNow(search.searchId);
         const result = await translateQueryFn({
           query: expandedQuery,
           targetLanguage,
           syntax,
         });
+        // Not used once the search has been switched to another kind of query meanwhile.
+        if (scopeNow(search.searchId) !== scope) return;
         search.setQuery(result.translatedQuery);
         posthog.capture("query_translated", {
           original_query: expandedQuery,

@@ -35,6 +35,7 @@ import { browserExpand, ensureQueryShortcuts, validateAndExpandKeywordsSilently 
 import { cn } from "@/lib/utils";
 import { OQL_FIELD } from "@/lib/openalex/oql";
 import { SEMANTIC_FIELD } from "@/lib/openalex/semantic";
+import { scopeNow } from "@/lib/search/scope-now";
 import { subtleSpring } from "@/lib/animation-config";
 import { ResultsTranslationControl } from "./components/results-translation-control";
 import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
@@ -174,12 +175,15 @@ This query is returning fewer than 10 results. Please broaden the search by:
 Return a more inclusive version of this query.`;
 
     try {
+      const scope = scopeNow(searchId);
       const result = await enhanceQuery({
         query: broadenPrompt,
         language: currentLanguage || localeToLanguageCode(locale) || undefined,
         syntax,
         task: "broadenNarrow",
       });
+      // Not used once the search has been switched to another kind of query meanwhile.
+      if (scopeNow(searchId) !== scope) return;
 
       if (search) {
         search.setQuery(result.enhancedQuery);
@@ -230,12 +234,15 @@ This query is returning too many results. Please make it more specific by:
 Return a more targeted version of this query.`;
 
     try {
+      const scope = scopeNow(searchId);
       const result = await enhanceQuery({
         query: narrowPrompt,
         language: currentLanguage || localeToLanguageCode(locale) || undefined,
         syntax,
         task: "broadenNarrow",
       });
+      // Not used once the search has been switched to another kind of query meanwhile.
+      if (scopeNow(searchId) !== scope) return;
 
       if (search) {
         search.setQuery(result.enhancedQuery);

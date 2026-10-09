@@ -3,7 +3,7 @@
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { SearchCommandFooter } from "@/components/search-command-center/search-command-footer";
 
 const {
@@ -11,8 +11,11 @@ const {
   currentUserIdRef,
   goToSignInMock,
   pushMock,
+  enhanceMock,
+  savedFieldRef,
   searchFieldRef,
   searchHistoryRef,
+  setQueryMock,
   startJobMock,
   updateSearchResultMock,
   useQueryMock,
@@ -30,7 +33,11 @@ const {
     currentUserIdRef: { current: null as string | null },
     goToSignInMock: vi.fn(),
     pushMock: vi.fn(),
+    enhanceMock: vi.fn(),
+    // The search's field as its saved state has it, which a switch in the sidebar changes at once.
+    savedFieldRef: { current: "title_and_abstract" },
     searchFieldRef: { current: "title_and_abstract" },
+    setQueryMock: vi.fn(),
     searchHistoryRef: { current: [] as unknown[] },
     startJobMock: vi.fn(async () => ({ jobId: "job_for_current_account" })),
     updateSearchResultMock: vi.fn(),
@@ -178,18 +185,21 @@ vi.mock("@/lib/search", () => ({
       retracted: false,
       lang: "en",
     },
-    setQuery: vi.fn(),
+    setQuery: setQueryMock,
   }),
 }));
 
 vi.mock("@/lib/store", () => ({
   useKeywordExpansionStore: { getState: () => ({ ensureShortcuts: async () => {}, expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }) },
   useCurrentQuestionStore: () => ({ currentQuestion: "" }),
-  useSearchHistoryStore: <T,>(selector: (state: unknown) => T) =>
-    selector({
-      searchHistory: searchHistoryRef.current,
-      updateSearchResult: updateSearchResultMock,
-    }),
+  useSearchHistoryStore: Object.assign(
+    <T,>(selector: (state: unknown) => T) =>
+      selector({
+        searchHistory: searchHistoryRef.current,
+        updateSearchResult: updateSearchResultMock,
+      }),
+    { getState: () => ({ getSearchResult: () => ({ field: savedFieldRef.current }) }) },
+  ),
   useResultsTranslationSettingsStore: <T,>(selector: (state: unknown) => T) =>
     selector({
       autoTranslateResults: false,
@@ -212,7 +222,7 @@ vi.mock("@/lib/toast", () => ({
 
 vi.mock("@/lib/ai/client/router", () => ({
   useEnhanceSearchQuery: () => ({
-    execute: vi.fn(),
+    execute: enhanceMock,
     isConfigured: true,
   }),
 }));
@@ -425,4 +435,23 @@ describe("<SearchCommandFooter> with a question asked by meaning", () => {
     showFooter("title_and_abstract", 3);
     expect(screen.getByRole("button", { name: "makeBroader" })).toBeInTheDocument();
   });
+
+  // Broadening takes seconds: keywords written for a keyword search aren't used once the
+  // person has switched the search to a question by meaning meanwhile.
+  for (const switched of [true, false]) {
+    it(switched ? "drops a broader query once the search asks by meaning" : "uses a broader query while the search stays a keyword search", async () => {
+      savedFieldRef.current = "title_and_abstract";
+      setQueryMock.mockClear();
+      let finish = () => {};
+      enhanceMock.mockReset();
+      enhanceMock.mockImplementation(() => new Promise((resolve) => { finish = () => resolve({ enhancedQuery: "rural OR remote", explanation: "" }); }));
+      showFooter("title_and_abstract", 3);
+      fireEvent.click(screen.getByRole("button", { name: "makeBroader" }));
+      await waitFor(() => expect(enhanceMock).toHaveBeenCalled());
+      if (switched) savedFieldRef.current = "semantic";
+      await act(async () => finish());
+      if (switched) expect(setQueryMock).not.toHaveBeenCalled();
+      else expect(setQueryMock).toHaveBeenCalledWith("rural OR remote");
+    });
+  }
 });
