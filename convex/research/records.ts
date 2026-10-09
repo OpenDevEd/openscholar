@@ -360,13 +360,19 @@ async function copyHistory(ctx: MutationCtx, { userId, workspaceId }: InWorkspac
   return { queryHistoryCount, questionCount, latestQuestion, questionText };
 }
 
+/** Fields the page writes itself as it shows a search. */
+const KEPT_BY_THE_PAGE = new Set(["count", "page", "updatedAt"]);
+
 /** What a change from a search's page did to it, for its Activity (#656); a change to no one search, such as a shortcut, notes nothing. */
-function searchNote(command: Infer<typeof commandValidator>): Note | null {
+export function searchNote(command: Infer<typeof commandValidator>): Note | null {
   if (command.kind === "createSearch") return { kind: "search", id: command.search.id, happened: "created", ...(command.search.query ? { detail: command.search.query } : {}) };
   if (command.kind !== "editSearch") return null;
   const { id, edit } = command;
-  if (edit.kind === "responses") return { kind: "search", id, happened: "answered", count: 1 };
+  // The model's answers, which the page saves as they come, aren't a change anyone made.
+  if (edit.kind === "responses") return edit.by === "model" ? null : { kind: "search", id, happened: "answered", count: 1 };
   if (edit.kind === "removeQueryHistoryEntry") return null;
+  // The page keeps a search's result count and page current as it shows it; that's not a change anyone made.
+  if (edit.kind === "patch" && [...Object.keys(edit.fields), ...edit.clear].every((field) => KEPT_BY_THE_PAGE.has(field))) return null;
   return { kind: "search", id, happened: "edited", ...(edit.kind === "query" && edit.query ? { detail: edit.query } : {}) };
 }
 
