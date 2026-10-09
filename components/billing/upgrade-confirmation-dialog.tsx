@@ -97,6 +97,7 @@ export function UpgradeConfirmationDialog({
                 {cardBrand}
               </span>
               <span className="font-medium">
+                {/* ui-rules-allow: dot-separator -- the masked digits of a card number */}
                 &bull;&bull;&bull;&bull; {cardLast4}
               </span>
             </div>

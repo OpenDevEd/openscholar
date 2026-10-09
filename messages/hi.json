@@ -579,12 +579,6 @@
       "failedCount": "{count, plural, one {# विफल} other {# विफल}}",
       "retryingCount": "{count, plural, one {# पुनः प्रयास हो रहा है} other {# पुनः प्रयास हो रहे हैं}}"
     },
-    "errorHistory": {
-      "trigger": "त्रुटि इतिहास · {count, plural, one {# प्रयास} other {# प्रयास}}",
-      "triggerLabel": "त्रुटि इतिहास दिखाएँ ({count, plural, one {# प्रयास} other {# प्रयास}})",
-      "attempt": "प्रयास {n}",
-      "loadMore": "पुराने प्रयास दिखाएँ"
-    },
     "mixedSuccess": {
       "title": "आंशिक सफलता के साथ पूर्ण",
       "answeredOverTotal": "{papers} पेपर पढ़े गए, {total} में से {answered} प्रश्न जाँचे गए",

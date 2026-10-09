@@ -134,7 +134,7 @@ export default function ConnectPage() {
           </div>
 
           <div className="rounded-lg border p-4 space-y-3 bg-inset">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <label className="text-xs font-medium text-muted-foreground">
               API Key
             </label>
             <div className="flex gap-2">
