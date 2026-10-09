@@ -73,6 +73,13 @@ describe("the results page's search for the works nearest given papers", () => {
     expect(result.current.search.params.like).toEqual([]);
   });
 
+  it("drops the papers when a step through the query history turns the search to a question by meaning", async () => {
+    const { result } = renderHook(() => useSearch(), { wrapper });
+    act(() => result.current.setQuery("kelp forests", { field: "semantic", skipHistory: true }));
+    await waitFor(() => expect(result.current.params.field).toBe("semantic"));
+    expect(result.current.params.like).toEqual([]);
+  });
+
   it("keeps the papers when the search's words turn to another field, which only filter what they find", async () => {
     const { result } = renderHook(() => ({ search: useSearch(), updateFilter: useUpdateSearchFilter() }), { wrapper });
     act(() => result.current.updateFilter({ currentSearchField: "title" }));

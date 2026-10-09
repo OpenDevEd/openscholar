@@ -12,8 +12,6 @@ import type { QueryHistoryEntry, SearchField, SearchFilters } from '@/lib/types'
 // Import the new search context
 import { useSearchOptional, type SearchParams, type SetQueryOptions } from './search';
 import { useSearchHistoryEntries } from "./research/history";
-import { SEMANTIC_FIELD } from "./openalex/semantic";
-import { OQL_FIELD } from "./openalex/oql";
 
 // Shared store for query history navigation index, keyed by searchId.
 // Lives here (not in lib/store) because it's an implementation detail of useQueryHistory.
@@ -311,9 +309,6 @@ function useUpdateSearchFilterFromUrl() {
 
     if ('currentSearchField' in updates || 'field' in updates) {
       batchUpdates.field = (updates.currentSearchField || updates.field) as SearchParams['field'];
-      // A question asked by meaning ranks the works by itself, and OQL is run without the papers a
-      // search is like, so those papers go.
-      if (batchUpdates.field === SEMANTIC_FIELD || batchUpdates.field === OQL_FIELD) batchUpdates.like = [];
     }
     if ('sortBy' in updates) {
       batchUpdates.sort = updates.sortBy as string;

@@ -27,6 +27,7 @@ import type { SearchWithFiltersParams } from '../search-utils';
 import { getSearchResultsWithFilters } from './search-results';
 import { SearchError, rejectedQuery } from './search-error';
 import { OQL_FIELD } from '../openalex/oql';
+import { takesLike } from '../openalex/semantic';
 import { queryScope } from './query-scope';
 import { searchedCountOf } from '../openalex/work-schema';
 import { buildOpenAlexWorksQuery } from '../openalex/works-query';
@@ -198,22 +199,29 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   }, [local, searchId, shownNow, newestKey]);
   const setUrlParams = useCallback(
     (updates: Partial<SearchParams>, options?: { scroll?: boolean }) => {
-      const fromOql = (local ? local.params.field : routeSearchParams.field) === OQL_FIELD;
-      const toOql = (updates.field ?? (local ? local.params.field : routeSearchParams.field)) === OQL_FIELD;
+      const shown = local ? local.params : routeSearchParams;
+      const fromOql = shown.field === OQL_FIELD;
+      const toField = updates.field ?? shown.field;
+      const toOql = toField === OQL_FIELD;
       // Switching between keywords and OQL without a query starts an empty one,
       // since neither reads the other. The old query stays in the query history.
       const switching = toOql !== fromOql;
+      // A search turning to a question by meaning or to OQL is like no papers: either says by itself
+      // what the works are searched by, through the scope picker or a step through the query history.
+      const unliked = !takesLike(toField) && (updates.like ?? shown.like).length > 0;
+      const changes = unliked ? { ...updates, like: [] } : updates;
       if (onLocalParamsChange) {
-        return onLocalParamsChange(switching && updates.q === undefined ? { ...updates, q: '' } : updates);
+        return onLocalParamsChange(switching && changes.q === undefined ? { ...changes, q: '' } : changes);
       }
       // The entry this change leaves keeps the search as it was.
       keepInEntry();
       if (switching && updates.q === undefined && searchId) {
         useSearchHistoryStore.getState().updateSearchResult(searchId, { query: '' });
       }
+      if (unliked && searchId) useSearchHistoryStore.getState().updateSearchResult(searchId, { similarTo: [] });
       const q = toOql ? '' : updates.q ?? (switching ? '' : undefined);
       void setRouteUrlParams(
-        { ...updates, ...(q === undefined ? {} : { q }) } as Parameters<typeof setRouteUrlParams>[0],
+        { ...changes, ...(q === undefined ? {} : { q }) } as Parameters<typeof setRouteUrlParams>[0],
         options,
       );
     },
