@@ -4220,6 +4220,20 @@
       "earlier": "更早",
       "showEarlier": "显示更早的动态",
       "none": "此后的变更会显示在这里。"
+    },
+    "runBy": {
+      "runBy": "运行者",
+      "startedBy": "发起者",
+      "everyone": "所有人",
+      "more": "另外 {count} 人",
+      "find": "查找成员",
+      "noOne": "没有这个名字的人",
+      "busiest": "{count} 人中最活跃的 {listed} 人。输入名字查找其他人。",
+      "searches": "{count} 次搜索",
+      "screenings": "{count} 次筛选",
+      "extractions": "{count} 次提取",
+      "collections": "{count} 个收藏集",
+      "chats": "{count} 个对话"
     }
   },
   "models": {

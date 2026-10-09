@@ -34,6 +34,8 @@ import { KIND, KindTile, type Waiting } from "./steps";
 import { inWorkspace, useWorkspace, useWorkspaceMutation, useWorkspaceScope } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
+import { useRunBy } from "@/components/workspaces/run-by";
+import { tintOf } from "@/components/ui/identity";
 
 /** A sheet open over the panel. */
 export type OpenSheet =
@@ -106,9 +108,6 @@ type Member = Chat["members"][number];
 type Scope = "all" | "mine" | "shared";
 
 const CHATS_PER_PAGE = 20;
-/** One tint per person, picked from their ID, so someone keeps their colour in every chat. */
-const TINTS = ["#2dd4bf", "#a78bfa", "#fb923c", "#60a5fa", "#f472b6", "#34d399", "#facc15", "#818cf8"];
-const tintOf = (id: string) => TINTS[[...id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % TINTS.length]!;
 
 /** A member's photo; someone in the chat right now gets a ring that ripples outward. */
 function Avatar({ member }: { member: Member }) {
@@ -255,7 +254,10 @@ export function HistorySheet({
   const [scope, setScope] = useState<Scope>("all");
   // The list follows the typing a beat behind, so every keystroke doesn't ask for a new one.
   const text = useDeferredValue(query.trim());
-  const { results, status, loadMore } = usePaginatedQuery(api.assistant.threads.list, inWorkspace(workspaceId, { scope, ...(text ? { text } : {}) }), { initialNumItems: CHATS_PER_PAGE });
+  // In an organization the chats are picked by who started them (#656), in place of All, Mine and Shared.
+  const runBy = useRunBy("assistantThreads", { label: "startedBy", compact: true });
+  const listed = runBy.filter ? "all" : scope;
+  const { results, status, loadMore } = usePaginatedQuery(api.assistant.threads.list, inWorkspace(workspaceId, { scope: listed, ...(text ? { text } : {}), ...(runBy.by ? { by: runBy.by } : {}) }), { initialNumItems: CHATS_PER_PAGE });
 
   const today = new Date(now).setHours(0, 0, 0, 0);
   const live = (chat: Chat) => chat.writing || chat.jobs.length > 0 || chat.members.some((member) => member.here);
@@ -290,22 +292,24 @@ export function HistorySheet({
             </button>
           </TooltipHint>
         </div>
-        <Segmented
-          label={t("whichChats")}
-          value={scope}
-          onChange={setScope}
-          fill
-          options={[
-            { id: "all", label: t("scopeAll") },
-            { id: "mine", label: t("scopeMine") },
-            { id: "shared", label: t("scopeShared") },
-          ]}
-        />
+        {runBy.filter ?? (
+          <Segmented
+            label={t("whichChats")}
+            value={scope}
+            onChange={setScope}
+            fill
+            options={[
+              { id: "all", label: t("scopeAll") },
+              { id: "mine", label: t("scopeMine") },
+              { id: "shared", label: t("scopeShared") },
+            ]}
+          />
+        )}
       </div>
       {/* A filter change mounts a fresh list that fades and staggers in, with no wait for the old one to leave. */}
       <ScrollArea shades className="min-h-0 flex-1">
         <div className="px-2 pb-3 pt-3">
-          <motion.div key={`${scope}|${text}`} className="space-y-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
+          <motion.div key={`${listed}|${runBy.by ?? ""}|${text}`} className="space-y-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
             {groups.map((group) => (
               <section key={group.id} className="space-y-1">
                 <h3 className="flex items-center gap-1.5 px-3 pb-0.5 text-xs font-medium text-muted-foreground">
@@ -326,7 +330,7 @@ export function HistorySheet({
               </section>
             ))}
             {/* Nothing is said about an empty list until the list has loaded. */}
-            {status !== "LoadingFirstPage" && results.length === 0 ? <p className="px-3 py-6 text-sm text-muted-foreground">{text || scope !== "all" ? t("noChatsMatch") : t("noChats")}</p> : null}
+            {status !== "LoadingFirstPage" && results.length === 0 ? <p className="px-3 py-6 text-sm text-muted-foreground">{text || listed !== "all" || runBy.by ? t("noChatsMatch") : t("noChats")}</p> : null}
             {status === "CanLoadMore" || status === "LoadingMore" ? (
               <button
                 type="button"

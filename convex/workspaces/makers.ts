@@ -5,6 +5,9 @@ import { v, type Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { personName } from "../lib/people";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
+import { byMakerValidator, makerCountRow } from "../research/recordCounts";
 
 export const makerValidator = v.object({ name: v.string(), imageUrl: v.optional(v.string()), you: v.boolean() });
 export type Maker = Infer<typeof makerValidator>;
@@ -24,3 +27,33 @@ export async function makersIn(ctx: QueryCtx, workspaceId: Id<"workspaces">, vie
     return read.get(createdBy)!;
   };
 }
+
+/**
+ * An organization's members, a page at a time, each with how many of one kind of record they made
+ * there (#656): what a list's Run by filter shows. A person's own workspace is all theirs, so it lists no one.
+ */
+export const countsAction = defineUserQuery({
+  path: "workspaces/makers:counts",
+  description:
+    "Lists the members of the organization the person is in, a page at a time, each with how many of one kind of record they made there: searches, screenings, extractions, collections or chats. " +
+    "Their `userId` is what lists take as `by` to show only that member's. In the person's own workspace everything is theirs, so it lists no one.",
+  args: { table: byMakerValidator, paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(v.object({ userId: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()), you: v.boolean(), count: v.number() })),
+  run: async (ctx, { userId, workspaceId }, { table, paginationOpts }) => {
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    if (workspace?.kind !== "organization") return { page: [], isDone: true, continueCursor: "" };
+    const page = await ctx.db
+      .query("organizationMemberships")
+      .withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("state", "active"))
+      .paginate(paginationOpts);
+    const rows = await Promise.all(page.page.map(async (membership) => {
+      const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
+      if (!user || user.state !== "active") return [];
+      const counted = await makerCountRow(ctx, table, workspaceId, user._id);
+      return [{ userId: user._id, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), you: user._id === userId, count: counted?.count ?? 0 }];
+    }));
+    return { ...page, page: rows.flat() };
+  },
+});
+export const counts = userQuery(countsAction);
+export const countsForAssistant = assistantQuery(countsAction);

@@ -10,8 +10,8 @@
 
 import { query, type QueryCtx } from "../../_generated/server";
 import { countsRow } from "../counts";
-import { getDocumentSize, v } from "convex/values";
-import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import { getDocumentSize, v, type Infer } from "convex/values";
+import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import schema from "../../schema";
 import { searchTerms } from "../../lib/searchText";
@@ -23,6 +23,10 @@ import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../.
 import { countRow } from "../../research/recordCounts";
 import { readJobCounters } from "../jobCounters";
 import { extractionJobValidator, jobQuestionsValidator } from "../validators";
+import { makersIn, makerValidator } from "../../workspaces/makers";
+
+/** A job as its list shows it: in an organization, with who ran it (#656). */
+const listedJobValidator = v.object({ ...extractionJobValidator.fields, by: v.optional(makerValidator) });
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 async function resolveReadableJob(
@@ -52,14 +56,23 @@ export const listJobsAction = defineUserQuery({
   path: "extraction/queries:listJobs",
   description:
     "Lists the person's extraction jobs and chats, a page at a time: newest or oldest first, by name, or by status (waiting and running, then completed, failed and cancelled). " +
-    "Given `text`, those whose name or description best match its words, best first.",
-  args: { paginationOpts: paginationOptsValidator, sort: jobSortValidator, text: v.optional(v.string()) },
-  returns: paginationResultValidator(extractionJobValidator),
-  run: async (ctx, { userId, workspaceId }, { paginationOpts, sort, text }) => {
+    "Given `text`, those whose name or description best match its words, best first. Given `by`, only the jobs that member ran (their `userId` from workspaces/makers:counts); in an organization each job names who ran it.",
+  args: { paginationOpts: paginationOptsValidator, sort: jobSortValidator, text: v.optional(v.string()), by: v.optional(v.id("users")) },
+  returns: paginationResultValidator(listedJobValidator),
+  run: async (ctx, { userId, workspaceId }, { paginationOpts, sort, text, by }) => {
     await requireFeature(ctx, "extraction.enabled", userId);
+    const read = await jobsPage(ctx, workspaceId, { paginationOpts, sort, text, by });
+    const makerOf = await makersIn(ctx, workspaceId, userId);
+    return { ...read, page: await Promise.all(read.page.map(async (job) => { const maker = await makerOf(job.createdBy); return maker ? { ...job, by: maker } : job; })) };
+  },
+});
+export const listJobs = userQuery(listJobsAction);
+
+/** A page of a workspace's jobs, as listJobs sorts and filters them. */
+async function jobsPage(ctx: QueryCtx, workspaceId: Id<"workspaces">, { paginationOpts, sort, text, by }: { paginationOpts: PaginationOptions; sort: Infer<typeof jobSortValidator>; text?: string; by?: Id<"users"> }) {
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, JOBS_PAGE_MAX), maximumBytesRead: JOBS_PAGE_BYTES };
     const needle = searchTerms(text);
-    if (needle) return await ctx.db.query("extractionJobs").withSearchIndex("search_text", (q) => q.search("searchText", needle).eq("workspaceId", workspaceId)).paginate(opts);
+    if (needle) return await ctx.db.query("extractionJobs").withSearchIndex("search_text", (q) => (by ? q.search("searchText", needle).eq("workspaceId", workspaceId).eq("createdBy", by) : q.search("searchText", needle).eq("workspaceId", workspaceId))).paginate(opts);
     // What a page by status has read so far: the statuses of one page share one allowance.
     let rows = 0;
     let bytes = 0;
@@ -74,7 +87,9 @@ export const listJobsAction = defineUserQuery({
       // however many groups it takes them from.
       const from: { rank: number; after: string | null } = opts.cursor ? JSON.parse(opts.cursor) : { rank: 0, after: null };
       const readGroup = async (rank: number, cursor: string | null, room: number) => {
-        const statuses = STATUS_GROUPS[rank].map((status) => stream(ctx.db, schema).query("extractionJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status)).order("desc"));
+        const statuses = STATUS_GROUPS[rank].map((status) => (by
+          ? stream(ctx.db, schema).query("extractionJobs").withIndex("by_workspace_and_createdBy_and_status", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", by).eq("status", status))
+          : stream(ctx.db, schema).query("extractionJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status))).order("desc"));
         const read = await mergedStream(statuses, ["_creationTime"])
           .filterWith(matches)
           .paginate({ cursor, numItems: room, maximumBytesRead: JOBS_PAGE_BYTES - bytes, maximumRowsRead: JOBS_FILTER_ROWS - rows });
@@ -88,12 +103,10 @@ export const listJobsAction = defineUserQuery({
       }
       return { page, isDone: true, continueCursor: "" };
     }
-    const index = sort === "name" ? "by_workspace_and_sortName" : "by_workspace";
     const order = sort === "recent" ? "desc" : "asc";
-    return await ctx.db.query("extractionJobs").withIndex(index, (q) => q.eq("workspaceId", workspaceId)).order(order).paginate(opts);
-  },
-});
-export const listJobs = userQuery(listJobsAction);
+    if (by) return await ctx.db.query("extractionJobs").withIndex(sort === "name" ? "by_workspace_and_createdBy_and_sortName" : "by_workspace_and_createdBy", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", by)).order(order).paginate(opts);
+    return await ctx.db.query("extractionJobs").withIndex(sort === "name" ? "by_workspace_and_sortName" : "by_workspace", (q) => q.eq("workspaceId", workspaceId)).order(order).paginate(opts);
+}
 export const listJobsForAssistant = assistantQuery(listJobsAction);
 
 export const countJobsAction = defineUserQuery({
