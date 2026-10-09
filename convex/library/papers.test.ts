@@ -77,23 +77,17 @@ describe("saving a paper by its ID", () => {
     // A saved paper given a new rating and a collection in one call would be two changes with one undo: nothing is written.
     await expect(ada.action(save, { id: "W7", rating: 5, collectionId: other })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
     expect(await held()).toEqual({ papers: 1, places: [collectionId] });
-    // A paper whose save has no undo, since it would lose the rating it has on search cards, has none for its place either.
+    // A paper the person rated on a search card is saved with that rating, and its save still has an undo: removing the paper leaves the rating.
     const userId = (await t.run(async (ctx) => ctx.db.query("users").first()))!._id;
     await t.run(async (ctx) => ctx.db.insert("ratings", { userId, paperId: "https://openalex.org/W8", rating: 3 }));
-    expect(await ada.action(save, { id: "W8", collectionId })).not.toHaveProperty("undo");
+    expect(await ada.action(save, { id: "W8", collectionId })).toHaveProperty("undo");
+    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").take(10)).find((row) => row.openalexId === "https://openalex.org/W8")?.rating)).toBe(3);
 
     // Taken out of the collection since and left out, the paper is no longer as the save left it either.
     await ada.mutation(api.library.mutations.removeFromLibrary, { openalexId: "W7" });
     const taken = await ada.action(save, { id: "W7", collectionId });
     await ada.mutation(api.library.mutations.setPaperInCollection, { paper: { openalexId: "https://openalex.org/W7" }, collectionId, inCollection: false });
     await expect(ada.mutation(api.library.mutations.removeFromLibrary, taken.undo!.args as never)).rejects.toThrow(/changed since/);
-    // A rating that would change only what the paper has on search cards is a second change too.
-    await t.run(async (ctx) => ctx.db.insert("ratings", { userId, paperId: "https://openalex.org/W7", rating: 3 }));
-    const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
-    await t.run(async (ctx) => ctx.db.patch("libraryItems", (await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W7")).unique())!._id, { rating: 5 }));
-    await expect(ada.action(save, { id: "W7", rating: 5, collectionId: other })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
-    await t.run(async (ctx) => { for (const row of await ctx.db.query("ratings").take(10)) if (row.paperId === "https://openalex.org/W7") await ctx.db.delete("ratings", row._id); });
-    await t.run(async (ctx) => ctx.db.patch("libraryItems", (await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W7")).unique())!._id, { rating: undefined }));
 
     // Put somewhere else since it was saved, the paper has changed: the save's undo leaves it.
     await ada.mutation(api.library.mutations.removeFromLibrary, { openalexId: "W7" });
@@ -155,15 +149,18 @@ describe("saving a paper by its ID", () => {
     await ada.mutation(removeFromLibrary, { openalexId: "W5" });
     expect((await items()).some((row) => row.title === "Saved bare")).toBe(false);
 
-    // A save with no undo asks the person first. The record's read takes a moment, so the write checks again: a paper
-    // that came to need asking meanwhile is refused for the assistant unless the person said yes, and saved for the person themselves.
-    await t.run(async (ctx) => ctx.db.insert("ratings", { userId, paperId: "https://openalex.org/W6", rating: 3 }));
-    const onCard = { userId, paper: { openalexId: "https://openalex.org/W6", title: "Rated on a card" } };
-    await expect(t.mutation(internal.library.mutations.saveRead, { ...onCard, author: "assistant" })).rejects.toThrow(/person's say first/);
-    expect(await t.mutation(internal.library.mutations.saveRead, { ...onCard, author: "assistant", approved: true })).toMatchObject({ title: "Rated on a card" });
+    // A save into a collection a library follows asks the person first. The record's read takes a moment, so the write checks again: a collection
+    // that came to be followed meanwhile is refused for the assistant unless the person said yes, and saved into for the person themselves.
+    const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
+    await t.run(async (ctx) => {
+      const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("evidenceLibraryCollectionSources", { libraryId, collectionId, connectedByClerkUserId: "ada", connectedAt: 1 });
+    });
+    const intoFollowed = { userId, workspaceId, paper: { openalexId: "https://openalex.org/W6", title: "Into a followed collection" }, collectionId };
+    await expect(t.mutation(internal.library.mutations.saveRead, { ...intoFollowed, author: "assistant" })).rejects.toThrow(/person's say first/);
+    expect(await t.mutation(internal.library.mutations.saveRead, { ...intoFollowed, author: "assistant", approved: true })).toMatchObject({ title: "Into a followed collection" });
     await ada.mutation(removeFromLibrary, { openalexId: "W6" });
-    await t.run(async (ctx) => ctx.db.insert("ratings", { userId, paperId: "https://openalex.org/W6", rating: 3 }));
-    expect(await t.mutation(internal.library.mutations.saveRead, { ...onCard, author: "user" })).toMatchObject({ title: "Rated on a card" });
+    expect(await t.mutation(internal.library.mutations.saveRead, { ...intoFollowed, author: "user" })).toMatchObject({ title: "Into a followed collection" });
     await ada.mutation(removeFromLibrary, { openalexId: "W6" });
 
     // The save the page uses takes a paper's whole record. From the assistant, the card's own record isn't kept: it made one up, and the library page couldn't read it.

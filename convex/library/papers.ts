@@ -15,7 +15,8 @@ import { trimPaperData, type WorkInput } from "../../lib/library/trim-paper-data
 import { OPENALEX_WORK_SELECT_FIELDS } from "../../lib/openalex/search-params";
 import { workUrl } from "../../lib/openalex/work-id";
 import { followed } from "./followed";
-import { canonical, checkSave, findItem, saveAsksFirst, savedByIdValidator, setPaperInCollectionAction } from "./mutations";
+import { checkSave, savedByIdValidator, setPaperInCollectionAction } from "./mutations";
+import { canonical, findItem } from "./find";
 
 export const saveAction = defineUserAction({
   path: "library/papers:save",
@@ -31,12 +32,8 @@ export const saveAction = defineUserAction({
   outsideEffect: false,
   undoable: true,
   changes: true,
-  // As the page's save asks (./mutations.ts): one that would have no undo. What isn't a paper's ID asks nothing here, and is refused when it runs.
-  asksFirst: async (ctx, actor, { id, rating, collectionId }) => {
-    const openalexId = workUrl(id);
-    // A library may follow the collection, which shows the paper outside the account.
-    return openalexId !== null && ((await saveAsksFirst(ctx, actor, openalexId, rating ?? undefined)) || (collectionId != null && (await followed(ctx, collectionId))));
-  },
+  // A library may follow the collection, which shows the paper outside the account. What isn't a paper's ID asks nothing here, and is refused when it runs.
+  asksFirst: async (ctx, _actor, { id, collectionId }) => workUrl(id) !== null && collectionId != null && (await followed(ctx, collectionId)),
   check: async (ctx, actor, { id, rating, collectionId }) => {
     const openalexId = workUrl(id);
     if (openalexId) await checkSave(ctx, actor, { openalexId, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }) });

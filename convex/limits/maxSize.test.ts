@@ -23,6 +23,7 @@ import { searchTextOf } from "../screening/mutations";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { screeningInputs } from "../extraction/sources/screening.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
+import { ensureWorkspace } from "../workspaces/create";
 import { organizationOfLibrary } from "../../tests/helpers/evidence-library-setup-fixture";
 
 /** seedLibrary's papers: rating (i % 5) + 1, published 1990 + (i % 35), saved at 1_700_000_000_000 + i, all in its collection. */
@@ -581,5 +582,32 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     // "Other" names the largest providers from the whole catalog, then reads past their models.
     expect((await read({ provider: "other", search: "" })).page.every((m) => /^(acme|zeta)\//.test(m.modelId))).toBe(true);
     expect(await as.query(api.models.admin.summary, { provider: "other", search: "", show: "all" })).toMatchObject({ total: Math.floor(MAX_CATALOG_MODELS / 6) * 2 + (MAX_CATALOG_MODELS % 6 > 4 ? MAX_CATALOG_MODELS % 6 - 4 : 0) });
+  }, 300_000);
+
+  it("an organization of 1,000 members re-averages a paper one of them rates, in a transaction of its own (#655)", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      const members = Array.from({ length: 1_000 }, (_, i) => `member_${i}`);
+      const userIds = await insertMany(t, "users", members.map((clerkId) => ({ clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 })), 250);
+      const lab = await t.run(async (ctx) => {
+        const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_large", name: "Large", slug: "org_large", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+        const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId });
+        await ctx.db.insert("libraryItems", { workspaceId, createdBy: userIds[0], openalexId: "https://openalex.org/W1", title: "Rated by everyone", searchableText: "Rated by everyone", savedAt: 1, updatedAt: 1 });
+        return { organizationId, workspaceId };
+      });
+      await insertMany(t, "organizationMemberships", members.map((clerkUserId) => ({ organizationId: lab.organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 })), 250, { triggered: false });
+      // Every member has rated it 1 to 5.
+      const ratings = userIds.map((userId, i) => ({ userId, paperId: "https://openalex.org/W1", rating: (i % 5) + 1 }));
+      await insertMany(t, "ratings", ratings, 250);
+
+      // The first member changes theirs to 5: the lab's copy takes the new average.
+      await t.withIdentity({ subject: members[0] }).mutation(api.research.records.change, { accountId: members[0], requestId: "rerated", command: { kind: "rating", paperId: "https://openalex.org/W1", rating: 5 } });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      const average = (ratings.reduce((sum, row) => sum + row.rating, 0) - ratings[0].rating + 5) / ratings.length;
+      expect((await t.run(async (ctx) => ctx.db.query("libraryItems").withIndex("by_workspace", (q) => q.eq("workspaceId", lab.workspaceId)).first()))?.rating).toBe(average);
+    } finally {
+      vi.useRealTimers();
+    }
   }, 300_000);
 });
