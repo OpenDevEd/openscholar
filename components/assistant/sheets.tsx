@@ -110,8 +110,8 @@ const CHATS_PER_PAGE = 20;
 const TINTS = ["#2dd4bf", "#a78bfa", "#fb923c", "#60a5fa", "#f472b6", "#34d399", "#facc15", "#818cf8"];
 const tintOf = (id: string) => TINTS[[...id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % TINTS.length]!;
 
-/** A member's photo; someone in the chat right now gets a ring that ripples outward. */
-function Avatar({ member }: { member: Member }) {
+/** A member's photo; someone in the chat right now gets a ring that ripples outward. Items' presence uses it too. */
+export function Avatar({ member }: { member: Member }) {
   const reduceMotion = useReducedMotion();
   const tint = tintOf(member.userId);
   return (

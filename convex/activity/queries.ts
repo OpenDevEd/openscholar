@@ -21,7 +21,7 @@ const rowValidator = v.object({
 });
 
 /** The item, when the workspace has it; a search goes by the ID its page shows. */
-async function itemIn(ctx: QueryCtx, workspaceId: Id<"workspaces">, kind: ItemKind, id: string): Promise<{ createdBy: Id<"users"> } | null> {
+export async function itemIn(ctx: QueryCtx, workspaceId: Id<"workspaces">, kind: ItemKind, id: string): Promise<{ createdBy: Id<"users"> } | null> {
   if (kind === "search") return await findSearch(ctx, workspaceId, id);
   const table = ({ collection: "collections", screening: "screeningJobs", extraction: "extractionJobs" } as const)[kind];
   const rowId = ctx.db.normalizeId(table, id);

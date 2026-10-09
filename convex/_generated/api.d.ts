@@ -340,6 +340,7 @@ import type * as organizations_read from "../organizations/read.js";
 import type * as paperSets_held from "../paperSets/held.js";
 import type * as paperSets_openalex from "../paperSets/openalex.js";
 import type * as paperSets_search from "../paperSets/search.js";
+import type * as presence_items from "../presence/items.js";
 import type * as ratings from "../ratings.js";
 import type * as research_answers from "../research/answers.js";
 import type * as research_lookup from "../research/lookup.js";
@@ -753,6 +754,7 @@ declare const fullApi: ApiFromModules<{
   "paperSets/held": typeof paperSets_held;
   "paperSets/openalex": typeof paperSets_openalex;
   "paperSets/search": typeof paperSets_search;
+  "presence/items": typeof presence_items;
   ratings: typeof ratings;
   "research/answers": typeof research_answers;
   "research/lookup": typeof research_lookup;

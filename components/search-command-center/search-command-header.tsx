@@ -1,6 +1,7 @@
 "use client";
 
 import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
+import { ItemPresence } from "@/components/workspaces/presence";
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Share2, Check, Download, History, MoreHorizontal } from "@/components/icons";
@@ -179,6 +180,8 @@ export function SearchCommandHeader({
           </DropdownMenu>
         )}
 
+        {/* Who else has the search open (#657), beside its Activity. */}
+        {hasActivity && searchId ? <ItemPresence kind="search" id={searchId} /> : null}
         {hasActivity ? (
           <TooltipHint label={ta("title")}>
             <Button variant="ghost" size="icon" aria-label={ta("title")} onClick={() => setActivityOpen(true)} className="hidden h-8 w-8 text-muted-foreground hover:text-foreground md:inline-flex">

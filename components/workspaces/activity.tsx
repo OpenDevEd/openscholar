@@ -4,6 +4,7 @@
 // the row that opens it at the top of an item's card, with who started the item in an organization.
 
 import { useState } from "react";
+import { ItemPresence } from "./presence";
 import { usePaginatedQuery } from "convex/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { AiIcon, FileSearch, FolderPlus, History, ListChecks, Pause, PenLine, Play, Plus, RotateCcw, Square, Star, Trash2, type AppIcon } from "@/components/icons";
@@ -55,6 +56,7 @@ export function ItemBar({ kind, id, name, started, className }: { kind: ItemKind
     <div className={cn("flex min-h-13 min-w-0 items-center gap-2 border-b border-border-subtle px-4 py-2.5", className)}>
       {by ? <PersonTag name={by.name} imageUrl={by.imageUrl} you={by.you} before={t(started)} /> : null}
       <span className="flex-1" />
+      <ItemPresence kind={kind} id={id} />
       <ActivityButton kind={kind} id={id} name={name} />
     </div>
   );

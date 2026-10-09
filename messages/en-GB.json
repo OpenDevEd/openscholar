@@ -4222,6 +4222,9 @@
       "earlier": "Earlier",
       "showEarlier": "Show earlier activity",
       "none": "Changes show here from now on."
+    },
+    "presence": {
+      "hasOpen": "{count, plural, one {{names} has it open} other {{names} have it open}}"
     }
   },
   "models": {

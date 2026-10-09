@@ -4220,6 +4220,9 @@
       "earlier": "Plus tôt",
       "showEarlier": "Afficher l'activité plus ancienne",
       "none": "Les modifications s'afficheront ici désormais."
+    },
+    "presence": {
+      "hasOpen": "{count, plural, one {{names} l'a ouvert} other {{names} l'ont ouvert}}"
     }
   },
   "models": {

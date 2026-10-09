@@ -4220,6 +4220,9 @@
       "earlier": "それ以前",
       "showEarlier": "以前のアクティビティを表示",
       "none": "今後の変更はここに表示されます。"
+    },
+    "presence": {
+      "hasOpen": "{names} が開いています"
     }
   },
   "models": {

@@ -4220,6 +4220,9 @@
       "earlier": "更早",
       "showEarlier": "显示更早的动态",
       "none": "此后的变更会显示在这里。"
+    },
+    "presence": {
+      "hasOpen": "{names} 正在查看"
     }
   },
   "models": {
