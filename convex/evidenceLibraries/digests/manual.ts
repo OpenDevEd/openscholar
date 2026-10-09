@@ -11,7 +11,7 @@ export const available = query({
   returns: v.boolean(),
   handler: async (ctx, { libraryId }) => {
     const access = await readEvidenceLibraryAccess(ctx, libraryId, "manage");
-    return access?.organization.devEnabled === true && access.library.state === "active";
+    return access?.organization?.devEnabled === true && access.library.state === "active";
   },
 });
 
@@ -20,7 +20,7 @@ export const target = internalQuery({
   returns: v.object({ targetBaseUrl: v.string(), encryptedMachineCredential: v.string() }),
   handler: async (ctx, { libraryId }) => {
     const access = await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
-    if (access.organization.devEnabled !== true)
+    if (access.organization?.devEnabled !== true)
       throw createError("FORBIDDEN", "Manual digests are not enabled for this organization.");
     const target = await readLibraryRuntimeTarget(ctx, access.library);
     if (!target) throw createError("CONFLICT", "The library is not running yet.");

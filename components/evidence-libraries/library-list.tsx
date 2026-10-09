@@ -120,7 +120,8 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   const [retrying, setRetrying] = useState<string | null>(null);
   const roles = { owner: "Owner", editor: "Editor", creator: "Creator" } as const;
   // The filter offers the organizations of the libraries and of the invitations, each once.
-  const organizations = [...new Map([...(owners.data?.page ?? []), ...(invitations.data?.page ?? []).map((invitation) => invitation.organization)].map((entry) => [entry.id, entry])).values()].sort((a, b) => a.name.localeCompare(b.name));
+  // The filter names organizations: an invitation to a library in someone's own workspace has none.
+  const organizations = [...new Map([...(owners.data?.page ?? []), ...(invitations.data?.page ?? []).flatMap(({ organization: owner }) => (owner.id ? [{ ...owner, id: owner.id }] : []))].map((entry) => [entry.id, entry])).values()].sort((a, b) => a.name.localeCompare(b.name));
   // An address has at most a page of invitations waiting, so they are filtered here.
   const invited = (invitations.data?.page ?? []).filter(
     (invitation) =>

@@ -267,17 +267,11 @@ export default defineSchema({
   evidenceLibraryApprovedQueries: defineTable({ libraryId: v.id("evidenceLibraries"), version: v.string(), fingerprint: v.string() })
     .index("by_libraryId_and_version", ["libraryId", "version"]),
   evidenceLibraries: defineTable(evidenceLibraryFields)
+    // A workspace's libraries, in the order they were made.
+    .index("by_workspace", ["workspaceId"])
     .index("by_workspace_and_state", ["workspaceId", "state"])
     .index("by_workspace_and_name_and_state", ["workspaceId", "name", "state"])
-    .index("by_workspace_and_slug", ["workspaceId", "slug"])
-    .index("by_organizationId", ["organizationId"])
-    .index("by_organizationId_and_name_and_state", [
-      "organizationId",
-      "name",
-      "state",
-    ])
-    .index("by_organizationId_and_slug", ["organizationId", "slug"])
-    .index("by_organizationId_and_state", ["organizationId", "state"]),
+    .index("by_workspace_and_slug", ["workspaceId", "slug"]),
 
   evidenceLibraryInvitations: defineTable({
     libraryId: v.id("evidenceLibraries"),

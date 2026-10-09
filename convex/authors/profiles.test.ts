@@ -26,6 +26,43 @@ async function setup() {
 }
 
 describe("author profiles", () => {
+  it("are owned by the workspace they were made in: by their maker and its admins, and edited by others only when invited", async () => {
+    const t = convexTest(schema, modules);
+    const lab = await t.run(async ctx => {
+      const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
+      for (const clerkId of ["admin", "maker", "member", "outsider"]) await ctx.db.insert("users", {...fields, clerkId, email: `${clerkId}@example.org`});
+      const organizationId = await seedOrganizationFeatures(ctx, ["admin", "maker", "member"], {authors: true});
+      const admin = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", q => q.eq("organizationId", organizationId).eq("clerkUserId", "admin").eq("state", "active")).unique();
+      await ctx.db.patch("organizationMemberships", admin!._id, {role: "org:admin"});
+      return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
+    });
+    const as = (subject: string) => t.withIdentity({subject});
+    const profileId = await as("maker").mutation(api.authors.profiles.create, {workspaceId: lab, name: "Lab author"});
+    expect(await t.run(ctx => ctx.db.get("authorProfiles", profileId))).toMatchObject({workspaceId: lab});
+    const role = async (subject: string) => (await as(subject).query(api.authors.profiles.get, {profileId}))?.role;
+    expect(await role("maker")).toBe("owner");
+    expect(await role("admin")).toBe("owner");
+    expect(await role("member")).toBeNull();
+    // Its people list the maker and the lab's admin as owners; an owner isn't removed as an editor would be.
+    const members = await as("maker").query(api.authors.members.list, {profileId});
+    expect(members.members.map(member => [member.email, member.role])).toEqual([["maker@example.org", "owner"], ["admin@example.org", "owner"]]);
+    const adminId = members.members.find(member => member.email === "admin@example.org")!.userId;
+    await expect(as("maker").mutation(api.authors.members.remove, {profileId, userId: adminId})).rejects.toThrow(/owns the profile/);
+    // Someone outside the lab can't make one there.
+    await expect(as("outsider").mutation(api.authors.profiles.create, {workspaceId: lab, name: "Not mine"})).rejects.toThrow(/Workspace not found/);
+    // An organization without author profiles takes none, whatever another of its members' organizations has.
+    const plain = await t.run(async ctx => {
+      const organizationId = await seedOrganizationFeatures(ctx, ["maker"], {});
+      return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
+    });
+    await expect(as("maker").mutation(api.authors.profiles.create, {workspaceId: plain, name: "Elsewhere"})).rejects.toThrow(/doesn't have author profiles/);
+    // Its maker who leaves the lab no longer owns it.
+    await t.run(async ctx => {
+      for (const row of await ctx.db.query("organizationMemberships").collect()) if (row.clerkUserId === "maker") await ctx.db.patch("organizationMemberships", row._id, {state: "revoked"});
+    });
+    expect(await role("maker")).toBeNull();
+  });
+
   it("sends profile invitations with the profile identity and a direct invitation link", async () => {
     vi.stubEnv("EL_SMTP_HOST", "smtp.example.org");
     vi.stubEnv("EL_SMTP_FROM", "contact@platform.example");

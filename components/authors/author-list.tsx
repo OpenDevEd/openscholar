@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { usePaginatedQuery } from "convex/react";
+import { useWorkspaceMutation } from "@/lib/workspaces/url";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -29,7 +30,7 @@ export function AuthorList({pending = false}: {pending?: boolean}) {
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
-  const create = useMutation(api.authors.profiles.create);
+  const create = useWorkspaceMutation(api.authors.profiles.create);
   const {results, status, loadMore} = usePaginatedQuery(api.authors.profiles.list, pending ? "skip" : {search}, {initialNumItems: 20});
   // The page renders before sign-in finishes, so only a confirmed sign-out asks to sign in.
   const createLabel = <><Plus /><span className={BAR_LABEL}>Create author</span></>;

@@ -24,6 +24,13 @@ export async function workspaceOf(ctx: Pick<QueryCtx, "db">, row: { userId: Id<"
   return row.workspaceId ?? (await personalWorkspaceOf(ctx, row.userId));
 }
 
+/** An organization's workspace, made with it (#650). */
+export async function organizationWorkspaceOf(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">): Promise<Id<"workspaces">> {
+  const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
+  if (!workspace) throw createError("NOT_FOUND", "Workspace not found");
+  return workspace._id;
+}
+
 /** Whether a record is in `workspaceId`: for a function given the page's workspace, which takes only that workspace's records. */
 export async function isInWorkspace(ctx: Pick<QueryCtx, "db">, row: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }, workspaceId: Id<"workspaces">) {
   return (await workspaceOf(ctx, row)) === workspaceId;

@@ -82,7 +82,7 @@ export function convexTest(schemaOrOptions?: Schema | Options, modules?: Modules
  * Records in a workspace (#650), each with whether it also names who made it: the tables whose
  * reads have moved to the workspace. A later slice adds its own.
  */
-const IN_WORKSPACE: Record<string, { createdBy: boolean; by?: string }> = {
+const IN_WORKSPACE: Record<string, { createdBy: boolean; by?: string; organization?: true }> = {
   searches: { createdBy: true },
   queryShortcuts: { createdBy: true },
   libraryItems: { createdBy: true },
@@ -99,11 +99,14 @@ const IN_WORKSPACE: Record<string, { createdBy: boolean; by?: string }> = {
   assistantThreads: { createdBy: true, by: "ownerId" },
   assistantSpenders: { createdBy: false },
   authorProfiles: { createdBy: true, by: "ownerId" },
+  // An organization's: in its workspace.
+  evidenceLibraries: { createdBy: false, organization: true },
 };
 
 /**
- * `db`, inserting each account with its own workspace, as `createUserWithDefaults` does, and,
- * with `owned`, a record for an account that names no workspace in the account's own, made by it.
+ * `db`, inserting each account and organization with its own workspace, as
+ * `createUserWithDefaults` and the Clerk webhook do, and, with `owned`, a record that names no
+ * workspace in its account's or organization's, made by that account.
  */
 function withOwnWorkspaces<Db extends { insert: (table: any, value: any) => Promise<any> }>(db: Db, owned = true): Db {
   const insert = db.insert.bind(db);
@@ -112,11 +115,16 @@ function withOwnWorkspaces<Db extends { insert: (table: any, value: any) => Prom
     insert: async (table: string, value: Record<string, unknown>) => {
       const kind = owned ? IN_WORKSPACE[table] : undefined;
       const userId = value[kind?.by ?? "userId"] as Id<"users"> | undefined;
-      const filled = kind && userId && value.workspaceId === undefined
-        ? { ...value, workspaceId: await own(userId), ...(kind.createdBy && value.createdBy === undefined ? { createdBy: userId } : {}) }
-        : value;
+      const organizationId = kind?.organization ? (value.organizationId as Id<"organizations"> | undefined) : undefined;
+      const filled = kind && organizationId && value.workspaceId === undefined
+        ? { ...value, workspaceId: await ensureWorkspace({ db } as never, { kind: "organization", organizationId }) }
+        : kind && userId && value.workspaceId === undefined
+          ? { ...value, workspaceId: await own(userId), ...(kind.createdBy && value.createdBy === undefined ? { createdBy: userId } : {}) }
+          : value;
       const id = await insert(table, filled);
       if (table === "users") await own(id);
+      // The Clerk webhook makes an organization's workspace with it (convex/webhooks/projections.ts).
+      if (table === "organizations") await ensureWorkspace({ db } as never, { kind: "organization", organizationId: id });
       return id;
     },
   }) as Db;

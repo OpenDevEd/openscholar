@@ -2,7 +2,7 @@
 // libraries are added (#357).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { MAX_ACCOUNTS_PER_EMAIL, MAX_ACTIVE_OPERATIONS_READ, MAX_CREDENTIALS_PER_LIBRARY, MAX_FEATURE_FLAGS, MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_LIBRARY, SETUP_CREDENTIALS_RESERVED } from "../lib/queryBounds";
+import { MAX_ACCOUNTS_PER_EMAIL, MAX_ACTIVE_OPERATIONS_READ, MAX_CREDENTIALS_PER_LIBRARY, MAX_FEATURE_FLAGS, MAX_LIBRARIES_PER_WORKSPACE, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_LIBRARY, SETUP_CREDENTIALS_RESERVED } from "../lib/queryBounds";
 import { assertCredentialRoom, writeEvidenceLibraryCredentialRecord } from "./credentials";
 import { requireNoActiveConfigurationDeployment } from "./configurationDeployment";
 import { RUNTIME_ARRIVALS_READ } from "./versions";
@@ -162,7 +162,7 @@ describe("Evidence Library limits", () => {
     const fixture = await createDraftSetupFixture("library_limit");
     const template = await fixture.t.run(async (ctx) => (await ctx.db.get("evidenceLibraries", fixture.created.libraryId))!);
     const { _id, _creationTime, ...library } = template;
-    await insertMany(fixture.t, "evidenceLibraries", Array.from({ length: MAX_LIBRARIES_PER_ORGANIZATION - 1 }, (_, i) => ({ ...library, name: `Library ${i}`, slug: `library-limit-${i}` })), 100);
+    await insertMany(fixture.t, "evidenceLibraries", Array.from({ length: MAX_LIBRARIES_PER_WORKSPACE - 1 }, (_, i) => ({ ...library, name: `Library ${i}`, slug: `library-limit-${i}` })), 100);
     await expect(reserveLibraryAddressByName(fixture.admin, "One More", template.organizationId)).rejects.toThrow(/up to 200 libraries/);
   });
 });

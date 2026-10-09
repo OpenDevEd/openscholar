@@ -6,7 +6,7 @@ import {
 } from "../_generated/server";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
-import { requireEvidenceLibraryAccess } from "./access";
+import { requireEvidenceLibraryAccess, requireLibraryWorkspace } from "./access";
 import {
   isEvidenceLibraryAddressFree,
   readEvidenceLibraryAddressCandidates,
@@ -50,7 +50,7 @@ async function readMoveCandidates(
     throw createError("CONFLICT", "This library has no address yet");
   }
   const { candidates } = await readEvidenceLibraryAddressCandidates(ctx, {
-    organizationId: library.organizationId,
+    workspaceId: requireLibraryWorkspace(library),
     name: library.name,
   });
   return {
@@ -95,7 +95,7 @@ export async function requireFreeEvidenceLibraryAddress(
   },
 ): Promise<string> {
   const free = await isEvidenceLibraryAddressFree(ctx, {
-    organizationId: args.library.organizationId,
+    workspaceId: requireLibraryWorkspace(args.library),
     publicAddress: args.candidate.publicAddress,
     slug: args.candidate.slug,
   });

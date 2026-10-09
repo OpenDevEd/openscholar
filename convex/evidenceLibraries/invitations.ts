@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { paginationResultValidator } from "convex/server";
 import { internal } from "../_generated/api";
 import { internalMutation, internalQuery, mutation, query, type QueryCtx } from "../lib/functions";
-import { requireEvidenceLibraryAccess, readLibraryRole, readPendingLibraryInvitations } from "./access";
+import { libraryOwner, ownerActive, requireEvidenceLibraryAccess, readLibraryRole, readPendingLibraryInvitations } from "./access";
 import { getCurrentUser } from "../lib/auth";
 import { rateLimit } from "../lib/rateLimit";
 import { createError } from "../lib/errors";
@@ -112,7 +112,8 @@ export const change = mutation({
 const pendingInvitationValidator = v.object({
   invitationId: v.id("evidenceLibraryInvitations"), libraryId: v.id("evidenceLibraries"), name: v.string(),
   role: v.union(v.literal("editor"), v.literal("creator")),
-  organization: v.object({ id: v.id("organizations"), name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
+  // Who the library belongs to: its organization, or with no ID the person whose own workspace it's in.
+  organization: v.object({ id: v.union(v.id("organizations"), v.null()), name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
 });
 const pendingInvitations = async (ctx: QueryCtx) => {
   const user = await getCurrentUser(ctx);
@@ -137,8 +138,7 @@ export const respondVerified = internalMutation({
     if (!invitation || !args.emails.includes(invitation.email)) throw createError("FORBIDDEN", "Sign in with the invited email address");
     if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
     const library = await ctx.db.get("evidenceLibraries", invitation.libraryId);
-    const org = library && await ctx.db.get("organizations", library.organizationId);
-    if (!library || library.state === "disabled" || org?.state !== "active") throw createError("FORBIDDEN", "Library unavailable");
+    if (!library || library.state === "disabled" || !ownerActive(await libraryOwner(ctx, library))) throw createError("FORBIDDEN", "Library unavailable");
     if (args.accept) {
       const member = await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", invitation.libraryId).eq("clerkUserId", identity.subject)).unique();
       // An outstanding invitation cannot overwrite a role granted since it was sent.

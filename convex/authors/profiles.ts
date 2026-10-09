@@ -3,14 +3,13 @@ import { searchTerms } from "../lib/searchText";
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import schema from "../schema";
 import { v, type Infer } from "convex/values";
-import { mutation, query, internalQuery, internalMutation } from "../lib/functions";
+import { query, internalQuery, internalMutation } from "../lib/functions";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
-import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { authorContentFields } from "./validators";
 import { profileRole, requireProfileAccess } from "./access";
-import { ensureWorkspace } from "../workspaces/create";
+import { workspaceMutation } from "../lib/userActions";
 
 export function cleanContent(content: { [K in keyof typeof authorContentFields]: string }) {
   const next = {...content};
@@ -34,23 +33,26 @@ export function cleanContent(content: { [K in keyof typeof authorContentFields]:
   return next;
 }
 
-export async function createProfile(ctx: MutationCtx, ownerId: Id<"users">, name: string) {
+/** A profile owned by `workspaceId`, made by `ownerId` (#650). */
+export async function createProfile(ctx: MutationCtx, ownerId: Id<"users">, workspaceId: Id<"workspaces">, name: string) {
   const content = cleanContent({name, headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: ""});
-  // Its maker's own workspace owns it until profiles are made in the page's (#650, slice 6).
-  const workspaceId = await ensureWorkspace(ctx, {kind: "personal", userId: ownerId});
   return await ctx.db.insert("authorProfiles", {...content, ownerId, workspaceId, createdBy: ownerId, revision: 1, updatedAt: Date.now()});
 }
 
 /** A profile as pages show it, with its photo's URL. */
 const profileWithPhoto = {...schema.doc("authorProfiles").fields, photo: v.union(v.string(), v.null())};
 
-export const create = mutation({
+/** Makes a profile owned by the page's workspace. */
+export const create = workspaceMutation({
   args: {name: v.string()},
   returns: v.id("authorProfiles"),
-  handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
-    await requireOrganizationFeature(ctx, "authors");
-    return await createProfile(ctx, user._id, args.name);
+  handler: async (ctx, {userId, workspaceId}, args) => {
+    // In an organization, its own switch; in a person's own workspace, any of their organizations', until plans give features (#652).
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
+    if (workspace?.kind === "organization" ? organization?.authorsEnabled !== true : false) throw createError("FORBIDDEN", "This organization doesn't have author profiles enabled.");
+    if (workspace?.kind !== "organization") await requireOrganizationFeature(ctx, "authors");
+    return await createProfile(ctx, userId, workspaceId, args.name);
   },
 });
 

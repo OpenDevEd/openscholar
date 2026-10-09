@@ -12,8 +12,9 @@ export const addOrganizationMember = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-    const membership = await ctx.db.query("organizationMemberships")
-      .withIndex("by_organizationId_and_clerkUserId_and_state", q => q.eq("organizationId", access.organization._id).eq("clerkUserId", args.clerkUserId).eq("state", "active"))
+    const organization = access.organization;
+    const membership = organization && await ctx.db.query("organizationMemberships")
+      .withIndex("by_organizationId_and_clerkUserId_and_state", q => q.eq("organizationId", organization._id).eq("clerkUserId", args.clerkUserId).eq("state", "active"))
       .unique();
     if (!membership) throw createError("FORBIDDEN", "Choose an organization member");
     if (await readLibraryRole(ctx, access.library, args.clerkUserId)) {
