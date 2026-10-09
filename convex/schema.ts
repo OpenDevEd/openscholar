@@ -729,9 +729,8 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   walletKeys: defineTable({
     userId: v.id("users"),
-    // The workspace the app draws on, picked when it connects (#651). Optional until
-    // migrations/walletKeyWorkspaces gives the keys made before it their person's own.
-    workspaceId: v.optional(v.id("workspaces")),
+    // The workspace the app draws on, picked when it connects (#651).
+    workspaceId: v.id("workspaces"),
     hashedKey: v.string(),
     keyPrefix: v.string(),
     appName: v.string(),
