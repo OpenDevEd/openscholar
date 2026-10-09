@@ -9,6 +9,7 @@ import { findPlan } from "../../lib/billing/catalog";
 import { jobSpace, spendSpace, usageAgg, userSpace } from "./usageLog";
 import { insertUsage } from "./ledger";
 import { availableCredits, readAccount } from "./accounts";
+import { isInWorkspace, type InWorkspace } from "../workspaces/actor";
 
 /**
  * Claims a Stripe charge's refunded total for reversal, one caller at a time.
@@ -72,10 +73,11 @@ const usageRowValidator = v.object({
 /** How many charges a page shows at most. */
 const MAX_PAGE_SIZE = 50;
 
-/** The charges a count or a page is of: a job's, when it's the person's, or all of theirs. */
-async function chargesOf(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"extractionJobs"> | undefined) {
+/** The charges a count or a page is of: a job's, when it's in the workspace the call runs in, or all of the person's. */
+async function chargesOf(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, jobId: Id<"extractionJobs"> | undefined) {
   if (!jobId) return { namespace: userSpace(userId), rows: ctx.db.query("billingUsage").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)) };
-  if ((await ctx.db.get("extractionJobs", jobId))?.userId !== userId) return null;
+  const job = await ctx.db.get("extractionJobs", jobId);
+  if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return null;
   return { namespace: jobSpace(jobId), rows: ctx.db.query("billingUsage").withIndex("by_job_and_createdAt", (q) => q.eq("jobId", jobId)) };
 }
 
@@ -84,8 +86,8 @@ export const listChargesAction = defineUserQuery({
   description: "Lists the person's credit charges, newest first, a page at a time. Given `jobId`, only that extraction job's charges.",
   args: { paginationOpts: paginationOptsValidator, jobId: v.optional(v.id("extractionJobs")) },
   returns: paginationResultValidator(usageRowValidator),
-  run: async (ctx, { userId }, { paginationOpts, jobId }) => {
-    const charges = await chargesOf(ctx, userId, jobId);
+  run: async (ctx, actor, { paginationOpts, jobId }) => {
+    const charges = await chargesOf(ctx, actor, jobId);
     if (!charges) return { page: [], isDone: true, continueCursor: "" };
     const read = await charges.rows.order("desc").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, MAX_PAGE_SIZE) });
     return { ...read, page: read.page.map(({ _id, credits, kind, description, jobId, model, createdAt }) => ({ _id, credits, kind, description, jobId, model, createdAt })) };
@@ -99,8 +101,8 @@ export const countChargesAction = defineUserQuery({
   description: "Says how many credit charges the person has. Given `jobId`, how many that extraction job has.",
   args: { jobId: v.optional(v.id("extractionJobs")) },
   returns: v.number(),
-  run: async (ctx, { userId }, { jobId }) => {
-    const charges = await chargesOf(ctx, userId, jobId);
+  run: async (ctx, actor, { jobId }) => {
+    const charges = await chargesOf(ctx, actor, jobId);
     // The ledger worker counts a charge a moment after it's recorded (./usageLog.ts).
     return charges ? await usageAgg.count(ctx, { namespace: charges.namespace, stale: true }) : 0;
   },
