@@ -145,10 +145,14 @@ describe("assistant chats", () => {
         await ctx.db.insert("assistantSpenders", { userId: ada, workspaceId: own, recent: [{ reply: "settled late", credits: 4 }, { reply: "new", credits: 5 }] });
       });
       expect(await t.action(internal.migrations.assistantWorkspaces.verify, {})).toBe(2);
-      for (let runs = 0; runs < 2; runs++) {
-        await t.mutation(internal.migrations.assistantWorkspaces.run, {});
-        await t.finishAllScheduledFunctions(vi.runAllTimers);
-      }
+      const rows = () => t.run(async (ctx) => ({ threads: await ctx.db.query("assistantThreads").collect(), spenders: await ctx.db.query("assistantSpenders").collect() }));
+      await t.mutation(internal.migrations.assistantWorkspaces.run, {});
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      const once = await rows();
+      // Run again from the start, it changes nothing.
+      await t.mutation(internal.migrations.assistantWorkspaces.run, { reset: true });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await rows()).toEqual(once);
       expect(await t.action(internal.migrations.assistantWorkspaces.verify, {})).toBe(0);
       expect(await t.run(async (ctx) => ctx.db.query("assistantThreads").collect())).toMatchObject([{ workspaceId: own, createdBy: ada }]);
       // One record of hers there, with the settings she chose and every reply's cost, one settled in both added up.
