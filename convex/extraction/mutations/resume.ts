@@ -36,7 +36,7 @@ import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import { requireAuth } from "../../lib/auth";
 import { createError } from "../../lib/errors";
-import { assertJobOwnership } from "../access";
+import { assertJobAccess } from "../access";
 import {
   assertValidJobTransition,
   type JobStatus,
@@ -126,7 +126,7 @@ export const resumeExtraction = mutation({
     reason?: string;
   }> => {
     const user = await requireAuth(ctx);
-    const job = await assertJobOwnership(ctx, user._id, jobId);
+    const { job } = await assertJobAccess(ctx, user, jobId);
     await requireOrganizationFeature(ctx, "extraction");
 
     if (!job.status) {
@@ -140,7 +140,8 @@ export const resumeExtraction = mutation({
     let remainingEstimateHigh = 0;
 
     if (job.status === "creditsExhausted") {
-      availableCredits = await readAvailableCredits(ctx, user._id);
+      // Its starter pays for it, as the worker charges them, until billing is by workspace (#650).
+      availableCredits = await readAvailableCredits(ctx, job.userId);
       const questions = await ctx.db
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", jobId))

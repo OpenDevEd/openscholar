@@ -92,7 +92,7 @@ export function SetupView({
   const collections = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), SOURCE_PAGE);
   const { data: collectionCount } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
   const { data: savedCount } = useProtectedQuery(api.library.queries.getLibraryCount, inWorkspace(workspaceId, {}));
-  const screenings = useCursorPage(api.screening.queries.listUserScreeningJobs, { status: "completed" as const }, SOURCE_PAGE);
+  const screenings = useCursorPage(api.screening.queries.listUserScreeningJobs, inWorkspace(workspaceId, { status: "completed" as const }), SOURCE_PAGE);
   const date = (at: number) => format.dateTime(new Date(at), { dateStyle: "medium" });
   const lists: Record<Kind, { rows: Source[]; pager?: Pick<typeof collections, "page" | "canPrevious" | "canNext" | "previous" | "next" | "hasPages" | "isStale"> & { pageCount?: number } }> = {
     // Opened from a results page, its search leads every page of the list.

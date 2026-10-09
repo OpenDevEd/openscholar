@@ -48,8 +48,8 @@ export function ScreeningPage() {
   const [searchId] = useQueryState("search");
   const [picked, setPicked] = useQueryState("job");
 
-  const jobs = useCursorPage(api.screening.queries.listUserScreeningJobs, {}, RAIL_PAGE);
-  const { data: total } = useProtectedQuery(api.screening.queries.countUserScreeningJobs, {});
+  const jobs = useCursorPage(api.screening.queries.listUserScreeningJobs, inWorkspace(workspaceId, {}), RAIL_PAGE);
+  const { data: total } = useProtectedQuery(api.screening.queries.countUserScreeningJobs, inWorkspace(workspaceId, {}));
   // Until the person's screenings arrive, nothing says whether the form or the newest of them shows.
   const waiting = picked === null && !searchId && jobs.isLoading;
   const jobId = picked === "new" || waiting ? null : (picked ?? (searchId ? null : (jobs.items[0]?._id ?? null)));
@@ -71,7 +71,7 @@ export function ScreeningPage() {
   };
 
   // Every screening in progress, whatever page of the rail shows: which of them is being read decides who waits for whom.
-  const { data: processing } = useProtectedQuery(api.screening.queries.listUserScreeningJobs, { status: "processing", paginationOpts: { cursor: null, numItems: ACTIVE_MAX } });
+  const { data: processing } = useProtectedQuery(api.screening.queries.listUserScreeningJobs, inWorkspace(workspaceId, { status: "processing" as const, paginationOpts: { cursor: null, numItems: ACTIVE_MAX } }));
   const active = processing?.page ?? [];
   const running = jobs.items.filter((row) => row.status === "processing");
   const past = jobs.items.filter((row) => row.status !== "processing");

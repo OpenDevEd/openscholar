@@ -20,8 +20,8 @@ export const countJobFailuresAction = defineUserQuery({
     "with how many answers the job asked for and how many it has.",
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ asked: v.number(), answered: v.number(), retryable: v.number(), permanent: perCode, paperErrors: perCode }),
-  run: async (ctx, { userId }, { jobId }) => {
-    if (!(await ownJob(ctx, userId, jobId))) return { asked: 0, answered: 0, retryable: 0, permanent: {}, paperErrors: {} };
+  run: async (ctx, { workspaceId }, { jobId }) => {
+    if (!(await ownJob(ctx, workspaceId, jobId))) return { asked: 0, answered: 0, retryable: 0, permanent: {}, paperErrors: {} };
     const [counts, paperErrors] = await Promise.all([readResultCounts(ctx, jobId), readPaperErrorCounts(ctx, jobId)]);
     return { asked: counts.total, answered: counts.completed, retryable: counts.retryable, permanent: counts.permanent as PerCode, paperErrors: paperErrors as PerCode };
   },

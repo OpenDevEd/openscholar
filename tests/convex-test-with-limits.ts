@@ -90,6 +90,12 @@ const IN_WORKSPACE: Record<string, { createdBy: boolean }> = {
   libraryRemovals: { createdBy: false },
   libraryCounts: { createdBy: false },
   collectionCounts: { createdBy: false },
+  screeningJobs: { createdBy: true },
+  extractionJobs: { createdBy: true },
+  screenings: { createdBy: false },
+  screeningSlots: { createdBy: false },
+  extractionPaperQueue: { createdBy: false },
+  recordCounts: { createdBy: false },
 };
 
 /**

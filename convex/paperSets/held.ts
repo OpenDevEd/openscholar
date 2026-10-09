@@ -15,7 +15,7 @@ import { paperSetValidator, screeningPaperInputValidator } from "../screening/va
 import { checkRange, type SearchPaper } from "./search";
 import { authorMetadata, sourceMetadata } from "../../lib/library/paper-metadata";
 import { screeningRevision } from "../screening/accounting";
-import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
+import { isInWorkspace, personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 
 type PaperSet = Infer<typeof paperSetValidator>;
 export type HeldSet = Exclude<PaperSet, { kind: "search" }>;
@@ -50,9 +50,10 @@ export const page = internalQuery({
   handler: async (ctx, { userId, workspaceId: given, set, cursor, numItems, revision }) => {
     if (set.kind === "search") throw new Error("A search's papers are read from OpenAlex (./search.ts)");
     const opts = { cursor, numItems: Math.min(numItems, PAGE), maximumBytesRead: PAGE_BYTES };
+    const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
     if (set.kind === "screening") {
       const job = await ctx.db.get("screeningJobs", set.jobId);
-      if (!job || job.userId !== userId) throw createError("NOT_FOUND", "Screening not found");
+      if (!job || !(await isInWorkspace(ctx, job, workspaceId))) throw createError("NOT_FOUND", "Screening not found");
       if (revision !== undefined && revision !== await screeningRevision(ctx, job)) {
         throw createError("CONFLICT", "Screening decisions changed. Remove this source and select it again to review the current Included papers.");
       }
@@ -62,7 +63,6 @@ export const page = internalQuery({
         .paginate(opts);
       return { page: read.page.map(fromResult), isDone: read.isDone, continueCursor: read.continueCursor };
     }
-    const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
     const collectionId = set.kind === "collection" ? set.collectionId : undefined;
     if (collectionId && (await ctx.db.get("collections", collectionId))?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
     const read = await readLibraryPage(ctx, workspaceId, { sortBy: "savedAt", sortOrder: "desc", collectionId }, opts);

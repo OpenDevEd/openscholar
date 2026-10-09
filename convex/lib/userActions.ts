@@ -206,8 +206,24 @@ export function accountWorkspaceMutation<Args extends PropertyValidators, Return
  * has no tool for it, such as the library page's own reads. It takes the workspace and checks it
  * for the signed-in person before `handler` runs, and carries the mark `check:user-actions` reads.
  */
-export function workspaceQuery<Args extends PropertyValidators, Returns extends GenericValidator>(fn: { args: Args; returns: Returns; handler: (ctx: QueryCtx, actor: Actor, args: ObjectType<Args>) => Promise<Infer<Returns>> }) {
+export function workspaceQuery<Args extends PropertyValidators, Returns extends GenericValidator>(fn: { args: Args; returns: Returns; handler: (ctx: QueryCtx, actor: Actor, args: ObjectType<Args>) => Promise<Infer<Returns>>; signedOut?: Infer<Returns> }) {
   const built = query<Args & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
+    args: { ...fn.args, ...workspaceArg },
+    returns: fn.returns,
+    handler: async (ctx, args) => {
+      const { workspaceId, rest } = inWorkspace<Args>(args);
+      // A page that also shows signed out gets `signedOut` then, as `userQuery` gives it.
+      const user = "signedOut" in fn ? await getCurrentUser(ctx) : await requireAuth(ctx);
+      if (!user) return fn.signedOut as Infer<Returns>;
+      return fn.handler(ctx, await actorFor(ctx, user, workspaceId), rest);
+    },
+  });
+  return Object.assign(built, { checksWorkspace: true }) as typeof built;
+}
+
+/** `workspaceQuery`'s mutation: a page's own change to a workspace's records that isn't a user action yet. */
+export function workspaceMutation<Args extends PropertyValidators, Returns extends GenericValidator>(fn: { args: Args; returns: Returns; handler: (ctx: MutationCtx, actor: Actor, args: ObjectType<Args>) => Promise<Infer<Returns>> }) {
+  const built = mutation<Args & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
     args: { ...fn.args, ...workspaceArg },
     returns: fn.returns,
     handler: async (ctx, args) => {

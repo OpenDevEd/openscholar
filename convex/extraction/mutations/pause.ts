@@ -21,7 +21,7 @@ import { mutation } from "../../lib/functions";
 import { v } from "convex/values";
 import { requireAuth } from "../../lib/auth";
 import { createError } from "../../lib/errors";
-import { assertJobOwnership } from "../access";
+import { assertJobAccess } from "../access";
 import {
   assertValidJobTransition,
   type JobStatus,
@@ -39,7 +39,7 @@ export const pauseExtraction = mutation({
     reason?: string;
   }> => {
     const user = await requireAuth(ctx);
-    const job = await assertJobOwnership(ctx, user._id, jobId);
+    const { job } = await assertJobAccess(ctx, user, jobId);
 
     if (!job.status) {
       // Chat rows and freshly-created extraction rows before startJob

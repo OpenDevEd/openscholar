@@ -59,6 +59,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 const sidebarSpring = {
   type: "spring" as const,
@@ -334,6 +335,7 @@ function ScreeningFooterButton({
 }
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
+  const workspaceId = useWorkspace();
   const tc = useTranslations("common");
   const ts = useTranslations("sidebar");
   const pathname = usePathname();
@@ -358,7 +360,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   // Screening job progress for footer button
   const { data: activeJob } = useProtectedQuery(
     api.screening.queries.getActiveScreeningJobProgress,
-    {},
+    inWorkspace(workspaceId, {}),
   );
   const progressPercent = activeJob?.percentComplete ?? null;
 

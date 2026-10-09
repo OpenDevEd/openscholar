@@ -254,7 +254,7 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
   let zoteroUserId: string | null | undefined;
   const expanded = await expandJobSources(own.map((source) => source.item), {
     fetchPapersFromHistory: () => { throw new Error("A search is read a page at a time"); },
-    readLibraryItems: (ids) => readLibraryInBatches(ids, LIBRARY_READ_BATCH, (batch) => ctx.runQuery(internal.extraction.queries.internal.ownedLibraryItems, { userId: job.userId, ids: batch })),
+    readLibraryItems: (ids) => readLibraryInBatches(ids, LIBRARY_READ_BATCH, async (batch) => ctx.runQuery(internal.extraction.queries.internal.ownedLibraryItems, { ...(await jobReader(ctx, job)), ids: batch })),
     resolveZoteroUserId: async () => {
       if (zoteroUserId === undefined) zoteroUserId = (await ctx.runQuery(internal.zotero.queries.getZoteroUserIdInternal, {}).catch(() => null)) ?? null;
       return zoteroUserId ?? undefined;

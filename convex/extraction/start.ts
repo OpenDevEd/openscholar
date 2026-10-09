@@ -16,7 +16,7 @@ import { checkRateLimit } from "../lib/rateLimit";
 import { startHeld } from "../billing/charge";
 import { filtersOf } from "../paperSets/search";
 import { findSearch } from "../research/records";
-import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
+import { isInWorkspace, personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { screeningRevision } from "../screening/accounting";
 import { papersIn } from "../screening/estimate";
 import { paperSetValidator } from "../screening/validators";
@@ -76,7 +76,7 @@ async function checkExtraction(ctx: QueryCtx, { userId, workspaceId }: InWorkspa
   await checkPdfs(ctx, usePdfs);
   checkQuestions(questions);
   if (set.kind === "screening") {
-    await screeningPicked(ctx, userId, set.jobId);
+    await screeningPicked(ctx, workspaceId, set.jobId);
     return void (await checkRequestPapers(ctx, userId, (await papersIn(ctx, { userId, workspaceId }, set)) ?? 0, "extraction"));
   }
   checkRange(set, first, last);
@@ -132,16 +132,17 @@ async function searchFilters(ctx: QueryCtx, workspaceId: Id<"workspaces">, searc
 
 /** A screening as an extraction's source: its included papers as they are now, how many, and what it's called. */
 export const screeningSource = internalQuery({
-  args: { userId: v.id("users"), jobId: v.id("screeningJobs") },
+  // `workspaceId` is optional only for a call from an action already running when this deployed (#650), which reads its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), jobId: v.id("screeningJobs") },
   returns: v.object({ revision: v.string(), count: v.number(), label: v.string() }),
-  handler: (ctx, { userId, jobId }) => screeningPicked(ctx, userId, jobId),
+  handler: async (ctx, { userId, workspaceId, jobId }) => screeningPicked(ctx, workspaceId ?? (await personalWorkspaceOf(ctx, userId)), jobId),
 });
 
-async function screeningPicked(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"screeningJobs">) {
+async function screeningPicked(ctx: QueryCtx, workspaceId: Id<"workspaces">, jobId: Id<"screeningJobs">) {
   const job = await ctx.db.get("screeningJobs", jobId);
-  if (!job || job.userId !== userId) throw createError("NOT_FOUND", "Screening not found");
+  if (!job || !(await isInWorkspace(ctx, job, workspaceId))) throw createError("NOT_FOUND", "Screening not found");
   const revision = await screeningRevision(ctx, job);
-  return { revision, count: await checkScreeningSelection(ctx, userId, jobId, revision), label: job.label ?? "Screening" };
+  return { revision, count: await checkScreeningSelection(ctx, workspaceId, jobId, revision), label: job.label ?? "Screening" };
 }
 
 
@@ -153,7 +154,7 @@ async function screeningPicked(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"sc
  */
 async function sourcesOf(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, { set, first, last }: { set: PaperSet; first: number; last: number }): Promise<Source[]> {
   if (set.kind === "screening") {
-    const picked: { revision: string; count: number; label: string } = await ctx.runQuery(internal.extraction.start.screeningSource, { userId, jobId: set.jobId });
+    const picked: { revision: string; count: number; label: string } = await ctx.runQuery(internal.extraction.start.screeningSource, { userId, workspaceId, jobId: set.jobId });
     return [{ bucketKey: `screening:${set.jobId}`, source: "screening", sourceRefId: set.jobId, title: picked.label, authors: [], screeningSelection: { jobId: set.jobId, revision: picked.revision, count: picked.count } }];
   }
   checkRange(set, first, last);

@@ -34,7 +34,7 @@ import { refillPerson } from "../queue/dispatcher";
 import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
 import { checkScreeningSelection } from "../sources/screening";
 import { bucketItemFromRow } from "../jobSources";
-import { workspaceOf, type InWorkspace } from "../../workspaces/actor";
+import { actorOnRecord, isInWorkspace, requireMakerOrAdmin, workspaceOf, type InWorkspace } from "../../workspaces/actor";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -85,7 +85,7 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
       throw createError("VALIDATION_ERROR", "Select a screening job and its decision revision for extraction.");
     }
     const selection = item.screeningSelection;
-    selection.count = await checkScreeningSelection(ctx, userId, selection.jobId, selection.revision);
+    selection.count = await checkScreeningSelection(ctx, workspaceId, selection.jobId, selection.revision);
     item.sourceRefId = selection.jobId;
   }
   // A range of a collection or the library holds what the server counts in it now, never what it was sent.
@@ -204,7 +204,7 @@ export const duplicateJobAction = defineUserMutation({
 
     const oldJob = await ctx.db.get("extractionJobs", args.jobId);
     // The copy is made in the workspace the call acts in, which the original must be in.
-    if (!oldJob || oldJob.userId !== userId || (await workspaceOf(ctx, oldJob)) !== workspaceId) {
+    if (!oldJob || !(await isInWorkspace(ctx, oldJob, workspaceId))) {
       throw createError("NOT_FOUND", "Job not found");
     }
 
@@ -222,7 +222,7 @@ export const duplicateJobAction = defineUserMutation({
       .take(MAX_JOB_SOURCES);
     const bucketItems = oldSourceRows.map(bucketItemFromRow);
     for (const item of bucketItems) {
-      if (item.source === "screening" && item.screeningSelection) await checkScreeningSelection(ctx, userId, item.screeningSelection.jobId, item.screeningSelection.revision);
+      if (item.source === "screening" && item.screeningSelection) await checkScreeningSelection(ctx, workspaceId, item.screeningSelection.jobId, item.screeningSelection.revision);
     }
     assertBucketWithinLimits(bucketItems, await planLimit(ctx, userId, "request_papers"));
 
@@ -286,10 +286,11 @@ export const cancelExtraction = mutation({
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get("extractionJobs", args.jobId);
-
-    if (!job || job.userId !== user._id) {
+    const actor = job && (await actorOnRecord(ctx, user, job));
+    if (!job || !actor) {
       throw createError("NOT_FOUND", "Job not found");
     }
+    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
 
     if (
       job.status &&
@@ -320,14 +321,16 @@ export const deleteExtraction = mutation({
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get("extractionJobs", args.jobId);
-    if (!job || job.userId !== user._id) {
+    const actor = job && (await actorOnRecord(ctx, user, job));
+    if (!job || !actor) {
       throw createError("NOT_FOUND", "Job not found");
     }
+    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
 
     await ctx.db.delete(args.jobId);
     // Its papers stop holding the person's capacity now, not when the cascade reaches them.
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
-    await refillPerson(ctx, user._id);
+    await refillPerson(ctx, job.userId);
 
     // Schedule the cascade delete as an independent mutation to avoid
     // transaction limits on a large job's child tables.

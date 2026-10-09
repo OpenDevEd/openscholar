@@ -34,7 +34,7 @@ import { applyCommand, findSearch } from "../research/records";
 
 import { availableCredits } from "../billing/accounts";
 import { MAX_AUTHORS } from "../lib/listCaps";
-import { personalWorkspaceOf, workspaceOf, type InWorkspace } from "../workspaces/actor";
+import { actorOnRecord, isInWorkspace, personalWorkspaceOf, requireMakerOrAdmin, workspaceOf, type InWorkspace } from "../workspaces/actor";
 
 /** Where the job's included papers go, as its fields: a collection, or nowhere. */
 async function destination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<typeof saveToValidator> | undefined) {
@@ -97,9 +97,8 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
     screeningId = await ctx.db.insert("screenings", { userId: user._id, workspaceId, version: 0, createdAt: now });
     const collection = set?.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : null;
     const job = set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
-    // A screening is still its person's until the next part of this slice reads jobs by workspace (#650).
     if (set?.kind === "collection" && collection?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
-    if (set?.kind === "screening" && job?.userId !== user._id) throw createError("NOT_FOUND", "Screening not found");
+    if (set?.kind === "screening" && (!job || !(await isInWorkspace(ctx, job, workspaceId)))) throw createError("NOT_FOUND", "Screening not found");
     label = collection?.name ?? job?.label;
   }
 
@@ -320,10 +319,11 @@ export const cancelScreeningJob = mutation({
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get("screeningJobs", args.jobId);
-
-    if (!job || job.userId !== user._id) {
+    const actor = job && (await actorOnRecord(ctx, user, job));
+    if (!job || !actor) {
       throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
     }
+    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
 
     // Terminal states are idempotent no-ops
     if (isTerminalScreeningJobStatus(job.status)) {
