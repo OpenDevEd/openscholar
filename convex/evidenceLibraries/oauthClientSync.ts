@@ -6,8 +6,8 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalAction, type ActionCtx } from "../_generated/server";
 import { encrypt } from "../lib/crypto";
+import { ClerkApiError } from "../lib/clerk";
 import {
-  ClerkApiError,
   type ClerkOAuthApplication,
   createOAuthApplication,
   deleteOAuthApplication,
