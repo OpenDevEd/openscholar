@@ -192,10 +192,11 @@ describe("reading a paper's PDF", () => {
     // 100 OpenAlex credits are $0.01, which a stored copy costs too.
     expect(await pdfCharges(t)).toEqual([STORED_PDF_CREDITS]);
 
-    // A read outside a chat pays each time, and the copy comes from the store.
+    // A read outside a chat pays each time, and the copy comes from the store. It leaves no record behind.
     await asAda.action(api.research.papers.readPdf, { id: "W3" });
     expect(content).toHaveLength(1);
     expect(await pdfCharges(t)).toEqual([STORED_PDF_CREDITS, STORED_PDF_CREDITS]);
+    expect(await t.run((ctx) => ctx.db.query("paperPdfReads").collect())).toEqual([]);
   });
 
   it("has a chat pay once for a stored copy, however often it reads it, and another chat pay again", async () => {
@@ -216,6 +217,13 @@ describe("reading a paper's PDF", () => {
     expect(await pdfCharges(t)).toEqual([STORED_PDF_CREDITS, STORED_PDF_CREDITS]);
     // Every read came from the store.
     expect(publisher).toEqual([]);
+
+    // A deleted chat's record of what it paid for goes with it.
+    const reads = () => t.run(async (ctx) => (await ctx.db.query("paperPdfReads").collect()).map((row) => row.scope));
+    expect(await reads()).toContain(`chat:${threadId}`);
+    await asAda.mutation(api.assistant.threads.remove, { threadId });
+    await waitFor(async () => !(await reads()).includes(`chat:${threadId}`));
+    expect(await reads()).toHaveLength(1);
   });
 
   it("has a chat that fetched a paper by its link read it from the store after for nothing", async () => {

@@ -204,7 +204,7 @@ export const readPdfAction = defineUserAction({
     // A chat pays once for a paper's stored PDF. A read outside one pays each time.
     const step = call?.stepId ?? call?.from;
     const threadId = step ? await ctx.runQuery(internal.assistant.steps.chatOf, { stepId: step }) : null;
-    const scope = threadId ? `chat:${threadId}` : `read:${crypto.randomUUID()}`;
+    const scope = threadId ? `chat:${threadId}` : undefined;
     // The model is sent the stored copy, never the file through here.
     const got = await paperPdf(ctx, { userId, workspaceId, scope, kind: "chat" }, { openalexId, doi: work.doi ?? undefined, url: pdfUrl ?? undefined, hasCopy: work.has_content?.pdf === true }, { maxBytes: PROVIDER_PDF_BYTES, bytes: false, charge: "self", allowHttp: true });
     if ("error" in got) throw createError(got.credits ? "INSUFFICIENT_CREDITS" : "VALIDATION_ERROR", `${got.error} Ask the person to attach its PDF to the chat.`);

@@ -34,8 +34,11 @@ const LINK_SECONDS = 3_600;
 const WAIT_MS = 500;
 const PAYING_FOR_MS = 120_000;
 
-/** Who pays for a paper's PDF, and what it's read for: one charge for a paper in each `scope`, a chat's or an extraction's. */
-export type PdfPayer = { userId: Id<"users">; workspaceId: Id<"workspaces">; scope: string; kind: UsageKind; jobId?: Id<"extractionJobs"> };
+/**
+ * Who pays for a paper's PDF, and what it's read for: one charge for a paper in each `scope`, a chat's (`chat:<id>`)
+ * or an extraction's (`extraction:<id>`), whose records go when it's deleted. A read with no scope pays each time.
+ */
+export type PdfPayer = { userId: Id<"users">; workspaceId: Id<"workspaces">; scope?: string; kind: UsageKind; jobId?: Id<"extractionJobs"> };
 /** A paper by what names it. `hasCopy` is OpenAlex's `has_content.pdf`, where the caller read it: false skips buying a copy OpenAlex doesn't have. */
 export type PaperRef = { openalexId?: string; doi?: string; url?: string; hasCopy?: boolean; zotero?: DownloadPdfOptions["zoteroConnection"] };
 /** How the caller gets a PDF: the most it takes, whether it needs the file or only the copy's key, who charges, and whether plain-HTTP links are fetched. */
@@ -174,14 +177,35 @@ export const unclaim = internalMutation({
   },
 });
 
-/** Claims the scope's payment for `key`, waiting while another read pays for it: true when it's this read's to pay. */
+/** Records per scope one cleanup pass deletes. */
+const FORGET_BATCH = 200;
+
+/** Deletes a deleted chat's or extraction's records, a batch at a time. */
+export const forget = internalMutation({
+  args: { scope: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { scope }) => {
+    const rows = await ctx.db.query("paperPdfReads").withIndex("by_scope_and_key", (q) => q.eq("scope", scope)).take(FORGET_BATCH);
+    for (const row of rows) await ctx.db.delete("paperPdfReads", row._id);
+    if (rows.length === FORGET_BATCH) await ctx.scheduler.runAfter(0, internal.lib.paperPdfs.forget, { scope });
+    return null;
+  },
+});
+
+/** Claims the scope's payment for `key`, waiting while another read pays for it: true when it's this read's to pay, as it always is with no scope. */
 async function claimed(ctx: ActionCtx, payer: PdfPayer, key: string) {
+  const { scope } = payer;
+  if (scope === undefined) return true;
   for (;;) {
-    const state = await ctx.runMutation(internal.lib.paperPdfs.claim, { scope: payer.scope, key });
+    const state = await ctx.runMutation(internal.lib.paperPdfs.claim, { scope, key });
     if (state !== "wait") return state === "pay";
     await new Promise((resolve) => setTimeout(resolve, WAIT_MS));
   }
 }
+
+/** Notes that the scope has `key`, or gives up its payment for it: nothing for a read with no scope. */
+const note = (ctx: ActionCtx, payer: PdfPayer, key: string) => (payer.scope === undefined ? null : ctx.runMutation(internal.lib.paperPdfs.had, { scope: payer.scope, key }));
+const forgo = (ctx: ActionCtx, payer: PdfPayer, key: string) => (payer.scope === undefined ? null : ctx.runMutation(internal.lib.paperPdfs.unclaim, { scope: payer.scope, key }));
 
 const NO_CREDITS = `There aren't enough credits for this paper's PDF (${PAPER_PDF_CREDITS} credits).`;
 
@@ -200,14 +224,14 @@ export async function paperPdf(ctx: ActionCtx, payer: PdfPayer, paper: PaperRef,
     if (options.bytes && !bytes) continue;
     if (!(await claimed(ctx, payer, key))) return { bytes, key, from: "stored", credits: 0 };
     if (options.charge === "self") {
-      const chargeId = `pdf:${payer.scope}:${key}`;
+      const chargeId = `pdf:${payer.scope ?? crypto.randomUUID()}:${key}`;
       if (!(await hold(ctx, payer, chargeId))) {
-        await ctx.runMutation(internal.lib.paperPdfs.unclaim, { scope: payer.scope, key });
+        await forgo(ctx, payer, key);
         return { error: NO_CREDITS, credits: true };
       }
       await charge(ctx, payer, chargeId, PAPER_PDF_USD);
     }
-    await ctx.runMutation(internal.lib.paperPdfs.had, { scope: payer.scope, key });
+    await note(ctx, payer, key);
     return { bytes, key, from: "stored", credits: PAPER_PDF_CREDITS };
   }
 
@@ -223,7 +247,7 @@ export async function paperPdf(ctx: ActionCtx, payer: PdfPayer, paper: PaperRef,
       // A caller that sends the stored copy can't go on without one.
       if (!options.bytes && !kept) return { error: NOT_KEPT };
       // The scope fetched it for nothing, so a later read in it from the store is free too.
-      if (kept) await ctx.runMutation(internal.lib.paperPdfs.had, { scope: payer.scope, key });
+      if (kept) await note(ctx, payer, key);
       return { bytes, key: kept ? key : null, from: "link", credits: 0 };
     }
     failed = bytes ? "The paper's PDF address served something that isn't a PDF." : (error ?? "The paper's PDF couldn't be downloaded.");
@@ -235,9 +259,9 @@ export async function paperPdf(ctx: ActionCtx, payer: PdfPayer, paper: PaperRef,
     const bytes = options.bytes ? await readStored(workKey, options.maxBytes) : null;
     return options.bytes && !bytes ? { error: failed } : { bytes, key: workKey, from: "stored", credits: 0 };
   }
-  const chargeId = `pdf-buy:${payer.scope}:${workKey}`;
+  const chargeId = `pdf-buy:${payer.scope ?? crypto.randomUUID()}:${workKey}`;
   if (options.charge === "self" && !(await hold(ctx, payer, chargeId))) {
-    await ctx.runMutation(internal.lib.paperPdfs.unclaim, { scope: payer.scope, key: workKey });
+    await forgo(ctx, payer, workKey);
     return { error: NO_CREDITS, credits: true };
   }
   const bought = await fromOpenAlex(work, options.maxBytes).catch((error) => {
@@ -245,14 +269,14 @@ export async function paperPdf(ctx: ActionCtx, payer: PdfPayer, paper: PaperRef,
     return null;
   });
   if (!bought) {
-    await Promise.all([options.charge === "self" ? releaseCredits(ctx, { chargeId }) : null, ctx.runMutation(internal.lib.paperPdfs.unclaim, { scope: payer.scope, key: workKey })]);
+    await Promise.all([options.charge === "self" ? releaseCredits(ctx, { chargeId }) : null, forgo(ctx, payer, workKey)]);
     return { error: failed };
   }
   if (!(await keep(workKey, bought.bytes)) && !options.bytes) {
-    await Promise.all([options.charge === "self" ? releaseCredits(ctx, { chargeId }) : null, ctx.runMutation(internal.lib.paperPdfs.unclaim, { scope: payer.scope, key: workKey })]);
+    await Promise.all([options.charge === "self" ? releaseCredits(ctx, { chargeId }) : null, forgo(ctx, payer, workKey)]);
     return { error: NOT_KEPT };
   }
   if (options.charge === "self") await charge(ctx, payer, chargeId, bought.usd);
-  await ctx.runMutation(internal.lib.paperPdfs.had, { scope: payer.scope, key: workKey });
+  await note(ctx, payer, workKey);
   return { bytes: options.bytes ? bought.bytes : null, key: workKey, from: "openalex", credits: convertUsdToCredits({ usd: bought.usd }) };
 }
