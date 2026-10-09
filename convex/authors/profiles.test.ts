@@ -50,6 +50,17 @@ describe("author profiles", () => {
     await expect(as("maker").mutation(api.authors.members.remove, {profileId, userId: adminId})).rejects.toThrow(/owns the profile/);
     // Someone outside the lab can't make one there.
     await expect(as("outsider").mutation(api.authors.profiles.create, {workspaceId: lab, name: "Not mine"})).rejects.toThrow(/Workspace not found/);
+    // An organization without author profiles takes none, whatever another of its members' organizations has.
+    const plain = await t.run(async ctx => {
+      const organizationId = await seedOrganizationFeatures(ctx, ["maker"], {});
+      return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
+    });
+    await expect(as("maker").mutation(api.authors.profiles.create, {workspaceId: plain, name: "Elsewhere"})).rejects.toThrow(/doesn't have author profiles/);
+    // Its maker who leaves the lab no longer owns it.
+    await t.run(async ctx => {
+      for (const row of await ctx.db.query("organizationMemberships").collect()) if (row.clerkUserId === "maker") await ctx.db.patch("organizationMemberships", row._id, {state: "revoked"});
+    });
+    expect(await role("maker")).toBeNull();
   });
 
   it("sends profile invitations with the profile identity and a direct invitation link", async () => {
