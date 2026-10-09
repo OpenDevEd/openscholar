@@ -520,7 +520,7 @@ export const restoreLibraryItemAction = defineUserMutation({
     } else {
       // Back in the workspace Undo runs in, made by whoever first saved it.
       libraryItemId = await countedWrite(ctx, { userId, workspaceId }, 1, () =>
-        ctx.db.insert("libraryItems", { ...item, workspaceId, updatedAt: Date.now() }),
+        ctx.db.insert("libraryItems", { ...item, workspaceId, createdBy: item.createdBy ?? userId, updatedAt: Date.now() }),
       );
       if (item.rating !== undefined) await setResearchRating(ctx, userId, item.openalexId, item.rating);
     }

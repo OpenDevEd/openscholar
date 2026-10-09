@@ -87,5 +87,8 @@ export const libraryItemFields = {
 };
 
 const { userId: _owner, workspaceId: _workspace, ...removedItemFields } = libraryItemFields;
-/** A removed paper as it was, apart from whose and which workspace's it was: the removal keeps those. */
-export const removedItemValidator = v.object(removedItemFields);
+/**
+ * A removed paper as it was, apart from whose and which workspace's it was: the removal keeps those.
+ * Its maker is missing on a removal from before makers were kept, until migrations/narrowLibrary.ts gives it the removal's person.
+ */
+export const removedItemValidator = v.object({ ...removedItemFields, createdBy: v.optional(v.id("users")) });

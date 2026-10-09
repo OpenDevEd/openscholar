@@ -6,7 +6,7 @@ import schema from "../schema";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
 import { personalWorkspaceOf } from "../workspaces/personal";
 
-it("clears the person a paper, collection, place, removal and count named, keeps who made them, and changes nothing run again", async () => {
+it("clears the person a paper, collection, place, removal and count named, keeps who made them, gives an older removed paper its maker, and changes nothing run again", async () => {
   vi.useFakeTimers();
   try {
     const t = convexTest(schema);
@@ -19,10 +19,13 @@ it("clears the person a paper, collection, place, removal and count named, keeps
       await ctx.db.insert("libraryItemCollections", { userId: ada, collectionId, libraryItemId: itemId, assignedAt: 1 });
       const { workspaceId: _workspace, ...item } = paper;
       await ctx.db.insert("libraryRemovals", { userId: ada, workspaceId: own, item, itemId, expiresAt: 2 });
+      // One from before makers were kept.
+      const { createdBy: _maker, ...unmade } = item;
+      await ctx.db.insert("libraryRemovals", { userId: ada, workspaceId: own, item: unmade, itemId, expiresAt: 2 });
       await ctx.db.insert("libraryCounts", { userId: ada, workspaceId: own, count: 1 });
       await ctx.db.insert("collectionCounts", { userId: ada, workspaceId: own, count: 1 });
     });
-    expect(await t.action(internal.migrations.narrowLibrary.verify, {})).toBe(6);
+    expect(await t.action(internal.migrations.narrowLibrary.verify, {})).toBe(7);
     const rows = () => t.run(async (ctx) => ({
       papers: await ctx.db.query("libraryItems").collect(),
       collections: await ctx.db.query("collections").collect(),
@@ -35,7 +38,7 @@ it("clears the person a paper, collection, place, removal and count named, keeps
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     const once = await rows();
     expect(Object.values(once).flat().every((row) => !("userId" in row))).toBe(true);
-    expect([...once.papers, ...once.collections]).toMatchObject([{ createdBy: ada }, { createdBy: ada }]);
+    expect([...once.papers, ...once.collections, ...once.removals.map((removal) => removal.item)]).toMatchObject([{ createdBy: ada }, { createdBy: ada }, { createdBy: ada }, { createdBy: ada }]);
     await t.mutation(internal.migrations.narrowLibrary.run, { reset: true });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await rows()).toEqual(once);
