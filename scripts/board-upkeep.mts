@@ -3,7 +3,7 @@
 // issues are Done, an issue an open pull request closes is In review and goes
 // back to In progress when that pull request closes unmerged, an issue in
 // progress carries the current sprint, every issue is on the board with a
-// status, and a milestone whose issues are all closed is closed. Issues in
+// status, and a milestone is closed while all its issues are. Issues in
 // progress with no activity for a week, and running out of sprints, are
 // reported.
 //
@@ -25,8 +25,8 @@ const DAY = 86_400_000;
 const key = (repo: string, number: number) => `${repo}#${number}`;
 
 type Status = string | null;
-type Item = { itemId: string; repo: string; number: number; state: "OPEN" | "CLOSED"; status: Status; sprintId: string | null; lastActivity: string };
-type Milestone = { repo: string; number: number; title: string; open: number; closed: number };
+type Item = { itemId: string; repo: string; number: number; state: "OPEN" | "CLOSED"; archived: boolean; status: Status; sprintId: string | null; lastActivity: string };
+type Milestone = { repo: string; number: number; title: string; state: "open" | "closed"; open: number; closed: number };
 type Sprint = { id: string; startDate: string; duration: number };
 type Repositories = { issues: { repo: string; number: number; contentId: string; state: Item["state"] }[]; inReview: string[]; milestones: Milestone[] };
 // GitHub's answers are read as untyped JSON.
@@ -44,25 +44,29 @@ export function planChanges({ items, issues, inReview, milestones, iterations, t
     status: [] as { itemId: string; issue: string; to: string }[],
     sprint: [] as { itemId: string; issue: string; iterationId: string }[],
     add: [] as { contentId: string; issue: string; to: string }[],
-    closeMilestones: [] as Omit<Milestone, "open" | "closed">[],
+    milestones: [] as { repo: string; number: number; title: string; to: Milestone["state"] }[],
     stale: [] as string[],
     needsSprints: false,
   };
 
   for (const item of items) {
     const issue = key(item.repo, item.number);
+    // Someone archived it on purpose; it still counts as on the board.
+    if (item.archived) continue;
     if (item.state === "CLOSED") {
       if (item.status !== "Done") plan.status.push({ itemId: item.itemId, issue, to: "Done" });
       continue;
     }
     // An open issue in Done was reopened. One with no status was added without one, or its status write failed.
     const status = item.status === "Done" ? null : item.status;
-    if (status === "In progress" && !item.sprintId && current) plan.sprint.push({ itemId: item.itemId, issue, iterationId: current.id });
-    if (review.has(issue)) {
-      if (BEFORE_REVIEW.has(status)) plan.status.push({ itemId: item.itemId, issue, to: "In review" });
-    } else if (status === "In review") plan.status.push({ itemId: item.itemId, issue, to: "In progress" });
-    else if (status === null) plan.status.push({ itemId: item.itemId, issue, to: "Backlog" });
-    else if (status === "In progress" && now - Date.parse(item.lastActivity) > STALE_DAYS * DAY) plan.stale.push(issue);
+    let to: string | null = null;
+    if (review.has(issue)) to = BEFORE_REVIEW.has(status) ? "In review" : null;
+    else if (status === "In review") to = "In progress";
+    else if (status === null) to = "Backlog";
+    if (to) plan.status.push({ itemId: item.itemId, issue, to });
+    // Work in progress carries the sprint, including work moving into or out of review.
+    if ((status === "In progress" || to === "In progress") && !item.sprintId && current) plan.sprint.push({ itemId: item.itemId, issue, iterationId: current.id });
+    if (!to && status === "In progress" && now - Date.parse(item.lastActivity) > STALE_DAYS * DAY) plan.stale.push(issue);
   }
 
   const onBoard = new Set(items.map((item) => key(item.repo, item.number)));
@@ -71,8 +75,9 @@ export function planChanges({ items, issues, inReview, milestones, iterations, t
     if (!onBoard.has(issue)) plan.add.push({ contentId: missing.contentId, issue, to: missing.state === "CLOSED" ? "Done" : "Backlog" });
   }
 
-  for (const milestone of milestones) {
-    if (milestone.open === 0 && milestone.closed > 0) plan.closeMilestones.push({ repo: milestone.repo, number: milestone.number, title: milestone.title });
+  for (const { repo, number, title, state, open, closed } of milestones) {
+    if (state === "open" && open === 0 && closed > 0) plan.milestones.push({ repo, number, title, to: "closed" });
+    if (state === "closed" && open > 0) plan.milestones.push({ repo, number, title, to: "open" });
   }
 
   plan.needsSprints = !iterations.some((sprint) => Date.parse(`${sprint.startDate}T00:00:00Z`) > now);
@@ -122,8 +127,9 @@ async function readBoard() {
   const status = project.fields.nodes.find((field: Json) => field.name === "Status");
   const sprint = project.fields.nodes.find((field: Json) => field.name === "Sprint");
   const nodes = await allNodes(
-    `query($id: ID!, $after: String) { node(id: $id) { ... on ProjectV2 { items(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes {
-      id
+    `query($id: ID!, $after: String) { node(id: $id) { ... on ProjectV2 { items(first: 100, after: $after, archivedStates: [ARCHIVED, NOT_ARCHIVED]) {
+      pageInfo { hasNextPage endCursor } nodes {
+      id isArchived
       status: fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { name } }
       sprint: fieldValueByName(name: "Sprint") { ... on ProjectV2ItemFieldIterationValue { iterationId } }
       content { ... on Issue { number state updatedAt repository { name }
@@ -141,6 +147,7 @@ async function readBoard() {
       repo: issue.repository.name,
       number: issue.number,
       state: issue.state,
+      archived: node.isArchived,
       status: node.status?.name ?? null,
       sprintId: node.sprint?.iterationId ?? null,
       lastActivity: times.sort().at(-1)!,
@@ -174,9 +181,9 @@ async function readRepositories(): Promise<Repositories> {
       for (const issue of pull.closingIssuesReferences.nodes) inReview.push(key(issue.repository.name, issue.number));
     }
     for (let page = 1; ; page++) {
-      const batch = await github(`/repos/${OWNER}/${repo}/milestones?state=open&per_page=100&page=${page}`);
+      const batch = await github(`/repos/${OWNER}/${repo}/milestones?state=all&per_page=100&page=${page}`);
       for (const milestone of batch) {
-        milestones.push({ repo, number: milestone.number, title: milestone.title, open: milestone.open_issues, closed: milestone.closed_issues });
+        milestones.push({ repo, number: milestone.number, title: milestone.title, state: milestone.state, open: milestone.open_issues, closed: milestone.closed_issues });
       }
       if (batch.length < 100) break;
     }
@@ -228,9 +235,9 @@ async function main() {
     lines.push(`${change.issue}: added to the board as ${change.to}`);
     await setField(item.id, status.id, { singleSelectOptionId: option(change.to) });
   }
-  for (const milestone of plan.closeMilestones) {
-    lines.push(`${milestone.repo} milestone "${milestone.title}": closed, all its issues are closed`);
-    if (!dryRun) await github(`/repos/${OWNER}/${milestone.repo}/milestones/${milestone.number}`, { method: "PATCH", body: { state: "closed" } });
+  for (const milestone of plan.milestones) {
+    lines.push(`${milestone.repo} milestone "${milestone.title}": ${milestone.to === "closed" ? "closed, all its issues are closed" : "reopened, an issue in it is open again"}`);
+    if (!dryRun) await github(`/repos/${OWNER}/${milestone.repo}/milestones/${milestone.number}`, { method: "PATCH", body: { state: milestone.to } });
   }
   notes.push(...plan.stale.map((issue) => `${issue}: In progress with no activity for ${STALE_DAYS} days`));
   if (plan.needsSprints) notes.push("No sprint starts after this one: add weekly sprints to the Sprint field.");

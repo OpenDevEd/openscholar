@@ -15,6 +15,7 @@ const item = (number: number, state: "OPEN" | "CLOSED", status: string | null, e
   repo: "openalex-count",
   number,
   state,
+  archived: false,
   status,
   sprintId: null,
   lastActivity: "2026-10-08T00:00:00Z",
@@ -77,20 +78,35 @@ describe("planChanges", () => {
     ]);
   });
 
-  it("moves an issue back to In progress when no open pull request closes it any more", () => {
+  it("moves an issue back to In progress, with the current sprint, when no open pull request closes it any more", () => {
     const plan = board({ items: [item(18, "OPEN", "In review"), item(19, "OPEN", "In review")], inReview: ["openalex-count#19"] });
     expect(plan.status).toEqual([{ itemId: "item-18", issue: "openalex-count#18", to: "In progress" }]);
+    expect(plan.sprint).toEqual([{ itemId: "item-18", issue: "openalex-count#18", iterationId: "s6" }]);
   });
 
-  it("closes a milestone whose issues are all closed, but not an empty one", () => {
+  it("leaves archived items alone, and doesn't add their issues again", () => {
+    const plan = board({
+      items: [item(20, "CLOSED", "In progress", { archived: true }), item(21, "OPEN", null, { archived: true })],
+      issues: [{ repo: "openalex-count", number: 21, contentId: "I_21", state: "OPEN" }],
+    });
+    expect(plan.status).toEqual([]);
+    expect(plan.add).toEqual([]);
+  });
+
+  it("closes a milestone whose issues are all closed, but not an empty one, and reopens one with an open issue", () => {
     const plan = board({
       milestones: [
-        { repo: "openalex-count", number: 6, title: "OS-06", open: 0, closed: 35 },
-        { repo: "openalex-count", number: 15, title: "OS-15", open: 0, closed: 0 },
-        { repo: "new-el", number: 16, title: "EL-16", open: 8, closed: 22 },
+        { repo: "openalex-count", number: 6, title: "OS-06", state: "open", open: 0, closed: 35 },
+        { repo: "openalex-count", number: 15, title: "OS-15", state: "open", open: 0, closed: 0 },
+        { repo: "new-el", number: 16, title: "EL-16", state: "open", open: 8, closed: 22 },
+        { repo: "new-el", number: 9, title: "EL-09", state: "closed", open: 1, closed: 12 },
+        { repo: "new-el", number: 8, title: "EL-08", state: "closed", open: 0, closed: 10 },
       ],
     });
-    expect(plan.closeMilestones).toEqual([{ repo: "openalex-count", number: 6, title: "OS-06" }]);
+    expect(plan.milestones).toEqual([
+      { repo: "openalex-count", number: 6, title: "OS-06", to: "closed" },
+      { repo: "new-el", number: 9, title: "EL-09", to: "open" },
+    ]);
   });
 
   it("reports issues in progress with no activity for a week, and running out of sprints", () => {
