@@ -3794,6 +3794,75 @@
         "did": "PDF d’un article lu",
         "where": "OpenAlex",
         "ask": "Lire le PDF d’un article"
+      },
+      "workspaces": {
+        "doing": "Consultation de vos espaces de travail",
+        "did": "Espaces de travail consultés",
+        "where": "Espaces de travail"
+      },
+      "orgMembers": {
+        "doing": "Consultation des membres de l'organisation",
+        "did": "Membres de l'organisation consultés",
+        "where": "Membres"
+      },
+      "myInvites": {
+        "doing": "Consultation de vos invitations",
+        "did": "Invitations consultées",
+        "where": "Espaces de travail"
+      },
+      "newOrganization": {
+        "doing": "Création d'une organisation",
+        "did": "Organisation créée",
+        "where": "Espaces de travail",
+        "ask": "Créer une organisation"
+      },
+      "inviteMembers": {
+        "doing": "Envoi d'invitations",
+        "did": "Invitations envoyées",
+        "where": "Membres",
+        "ask": "Inviter des personnes"
+      },
+      "revokeInvite": {
+        "doing": "Annulation d'une invitation",
+        "did": "Invitation annulée",
+        "where": "Membres",
+        "ask": "Annuler une invitation"
+      },
+      "declineInvite": {
+        "doing": "Refus d'une invitation",
+        "did": "Invitation refusée",
+        "where": "Espaces de travail",
+        "ask": "Refuser une invitation"
+      },
+      "memberRole": {
+        "doing": "Modification du rôle d'un membre",
+        "did": "Rôle d'un membre modifié",
+        "where": "Membres",
+        "ask": "Modifier le rôle d'un membre"
+      },
+      "removeMember": {
+        "doing": "Retrait d'un membre",
+        "did": "Membre retiré",
+        "where": "Membres",
+        "ask": "Retirer un membre"
+      },
+      "leaveOrganization": {
+        "doing": "Départ de l'organisation",
+        "did": "Organisation quittée",
+        "where": "Espaces de travail",
+        "ask": "Quitter l'organisation"
+      },
+      "renameOrganization": {
+        "doing": "Renommage de l'organisation",
+        "did": "Organisation renommée",
+        "where": "Paramètres de l'espace de travail",
+        "ask": "Renommer l'organisation"
+      },
+      "deleteOrganization": {
+        "doing": "Suppression de l'organisation",
+        "did": "Organisation supprimée",
+        "where": "Paramètres de l'espace de travail",
+        "ask": "Supprimer l'organisation"
       }
     },
     "asks": {

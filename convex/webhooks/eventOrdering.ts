@@ -33,7 +33,7 @@ export type ClerkEventMetadata = {
   instanceId: string;
   eventId: string;
   eventType: string;
-  entityType: "user" | "organization" | "organizationMembership";
+  entityType: "user" | "organization" | "organizationMembership" | "organizationInvitation";
   entityId: string;
   occurredAt: number;
   payloadSha256: string;

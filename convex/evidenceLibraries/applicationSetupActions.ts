@@ -32,7 +32,7 @@ import {
   fetchRecommendedRuntimeRelease,
   RuntimeReleaseError,
 } from "./runtimeReleases";
-import { ClerkApiError } from "./clerkOAuthApplications";
+import { ClerkApiError } from "../lib/clerk";
 import { OAuthClientBusyError, syncLibrarySignIn } from "./oauthClientSync";
 
 const invalidData = (message: string) => createError("INVALID_DATA", message);

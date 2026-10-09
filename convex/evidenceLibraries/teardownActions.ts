@@ -25,7 +25,7 @@ import {
   ReadinessClientError,
   removeLibraryRuntimeRoute,
 } from "./readinessClient";
-import { ClerkApiError } from "./clerkOAuthApplications";
+import { ClerkApiError } from "../lib/clerk";
 import {
   deleteLibraryOAuthClientFor,
   isRetryableOAuthClientError,
