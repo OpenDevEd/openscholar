@@ -388,7 +388,7 @@ function viewOf(given: ObjectType<typeof narrowing>) {
     ...(given.yearFrom != null ? { yearFrom: given.yearFrom } : {}),
     ...(given.yearTo != null ? { yearTo: given.yearTo } : {}),
   };
-  if (given.rated === false && (view.minRating !== undefined || view.maxRating !== undefined)) throw createError("VALIDATION_ERROR", "A paper they haven't rated has no rating to filter by: give `rated` false or a rating range, not both.");
+  if (given.rated === false && (view.minRating !== undefined || view.maxRating !== undefined)) throw createError("VALIDATION_ERROR", "A paper without a rating has none to filter by: give `rated` false or a rating range, not both.");
   return view;
 }
 
@@ -403,7 +403,7 @@ export const papersAction = defineUserQuery({
     `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, its rating (in their own library theirs, in an organization's its members' average), whether it's in any of their collections, the day they saved it, its paper ID and its library item ID. ` +
     "`total` is how many papers the whole library or one collection has; a narrowed list has none, and library/queries:countPapers counts it. " +
     "With nothing else given it lists the whole library, newest saved first. To narrow it: `search` is words to find in titles, abstracts and authors; `collectionId` is one of their collections (from library/collections:listCollections); " +
-    "`rated` is true for only the papers they rated and false for only those they haven't; `minRating` and `maxRating` are 0 to 5; `yearFrom` and `yearTo` are years published. " +
+    "`rated` is true for only the papers with a rating and false for only those without; `minRating` and `maxRating` are 0 to 5. Both go by the rating listed, which in an organization's library is its members' average. `yearFrom` and `yearTo` are years published. " +
     "`sort` is saved, rating, year, citations or title, and `ascending` turns its order round. `cursor` is `next` from the page before.",
   args: {
     ...narrowing,

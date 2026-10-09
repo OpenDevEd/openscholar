@@ -21,9 +21,12 @@ export function requireRating(rating: number) {
 export const personalRatingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperId: string) =>
   ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", userId).eq("collectionId", undefined).eq("paperId", ratedPaper(paperId))).unique();
 
+const rerateRef = makeFunctionReference<"mutation", { workspaceId: Id<"workspaces">; paperId: string }, null>("library/mutations:rerate");
+
 /**
  * Sets a person's own rating of a paper, or clears it with null, and brings the rating of each
- * copy of the paper saved in their workspaces in step with it.
+ * copy of the paper saved in their workspaces in step with it: their own at once, and each
+ * organization's in a transaction of its own, since one reads all its members' ratings.
  */
 export async function setPersonalRating(ctx: MutationCtx, userId: Id<"users">, paperId: string, rating: number | null) {
   const row = await personalRatingRow(ctx, userId, paperId);
@@ -31,10 +34,16 @@ export async function setPersonalRating(ctx: MutationCtx, userId: Id<"users">, p
   if (rating === null) await ctx.db.delete("ratings", row!._id);
   else if (!row) await ctx.db.insert("ratings", { userId, paperId: ratedPaper(paperId), rating });
   else await ctx.db.patch("ratings", row._id, { rating });
-  for (const workspaceId of await ratingWorkspaces(ctx, userId)) {
-    const item = await findItem(ctx, workspaceId, paperId);
-    if (item) await rateItem(ctx, item);
+  for (const workspace of await ratingWorkspaces(ctx, userId)) {
+    if (workspace.kind === "organization") await ctx.scheduler.runAfter(0, rerateRef, { workspaceId: workspace._id, paperId });
+    else await rerate(ctx, workspace._id, paperId);
   }
+}
+
+/** Brings a workspace's copy of a paper, if it has one, in step with its people's ratings. */
+export async function rerate(ctx: MutationCtx, workspaceId: Id<"workspaces">, paperId: string) {
+  const item = await findItem(ctx, workspaceId, paperId);
+  if (item) await rateItem(ctx, item);
 }
 
 /** The most members of an organization its averages read; Clerk lets a free organization have 5. */
@@ -47,7 +56,7 @@ async function ratingWorkspaces(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) 
   const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
   const memberships = await ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", user.clerkId).eq("state", "active")).take(MAX_ORGANIZATIONS_PER_PERSON);
   const organizations = await Promise.all(memberships.map((membership) => ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", membership.organizationId)).unique()));
-  return [own, ...organizations].flatMap((workspace) => (workspace ? [workspace._id] : []));
+  return [own, ...organizations].flatMap((workspace) => (workspace ? [workspace] : []));
 }
 
 /** The people whose ratings count in an organization's averages: its active members. */
@@ -89,13 +98,10 @@ export async function rerateOnMembership(ctx: MutationCtx, change: Change<DataMo
   if (workspace && user) await ctx.scheduler.runAfter(0, rerateMember, { workspaceId: workspace._id, userId: user._id, cursor: null });
 }
 
-/** Re-rates a step of a workspace's papers this person rated; schedules the next. */
+/** Re-rates, each in a transaction of its own, a step of the workspace's papers this person rated; schedules the next step. */
 export async function rerateMemberStep(ctx: MutationCtx, workspaceId: Id<"workspaces">, userId: Id<"users">, cursor: string | null) {
   const page = await ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", userId).eq("collectionId", undefined)).paginate({ cursor, numItems: RERATE_STEP });
-  for (const row of page.page) {
-    const item = await findItem(ctx, workspaceId, row.paperId);
-    if (item) await rateItem(ctx, item);
-  }
+  for (const row of page.page) await ctx.scheduler.runAfter(0, rerateRef, { workspaceId, paperId: row.paperId });
   if (!page.isDone) await ctx.scheduler.runAfter(0, rerateMember, { workspaceId, userId, cursor: page.continueCursor });
 }
 

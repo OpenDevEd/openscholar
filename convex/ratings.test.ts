@@ -1,9 +1,13 @@
 // A saved paper's rating as its people's average of their own (#655).
 import { convexTest } from "convex-test";
-import { expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
 import { ensureWorkspace } from "./workspaces/create";
+
+// An organization's averages move in transactions of their own, which these tests let finish.
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 
 it("rates an organization's paper with its members' average, and shows each member their own", async () => {
   const t = convexTest(schema);
@@ -19,26 +23,23 @@ it("rates an organization's paper with its members' average, and shows each memb
     const { page } = await as.query(api.library.queries.browseLibrary, { workspaceId: lab, sortBy: "rating", sortOrder: "desc", paginationOpts: { cursor: null, numItems: 10 } });
     return page.map(({ openalexId, rating, myRating }) => [openalexId, rating, myRating]);
   };
+  const settled = () => t.finishAllScheduledFunctions(vi.runAllTimers);
 
   // Alice saves two papers to the lab, rated. Bob rates one of them on a search card, which counts in the lab too.
   await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: lab, openalexId: "https://openalex.org/W1", title: "One", rating: 4 });
   await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: lab, openalexId: "https://openalex.org/W2", title: "Two", rating: 3 });
   await bob.mutation(api.research.records.change, { accountId: "bob", requestId: "rated", command: { kind: "rating", paperId: "https://openalex.org/W1", rating: 1 } });
+  await settled();
   // The lab sorts by the average; each sees their own stars.
   expect(await shown(alice)).toEqual([["https://openalex.org/W2", 3, 3], ["https://openalex.org/W1", 2.5, 4]]);
   expect(await shown(bob)).toEqual([["https://openalex.org/W2", 3, undefined], ["https://openalex.org/W1", 2.5, 1]]);
 
   // Someone who leaves takes their ratings out of the lab's averages, and brings them back on rejoining.
-  vi.useFakeTimers();
-  try {
-    const membership = (state: "active" | "revoked") => t.run((ctx) => ctx.db.patch("organizationMemberships", bobMembership, { state }));
-    await membership("revoked");
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-    expect(await shown(alice)).toEqual([["https://openalex.org/W1", 4, 4], ["https://openalex.org/W2", 3, 3]]);
-    await membership("active");
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-    expect(await shown(alice)).toEqual([["https://openalex.org/W2", 3, 3], ["https://openalex.org/W1", 2.5, 4]]);
-  } finally {
-    vi.useRealTimers();
-  }
+  const membership = (state: "active" | "revoked") => t.run((ctx) => ctx.db.patch("organizationMemberships", bobMembership, { state }));
+  await membership("revoked");
+  await settled();
+  expect(await shown(alice)).toEqual([["https://openalex.org/W1", 4, 4], ["https://openalex.org/W2", 3, 3]]);
+  await membership("active");
+  await settled();
+  expect(await shown(alice)).toEqual([["https://openalex.org/W2", 3, 3], ["https://openalex.org/W1", 2.5, 4]]);
 });
