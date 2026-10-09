@@ -4233,7 +4233,8 @@
       "screenings": "{count, plural, one {# tri} other {# tris}}",
       "extractions": "{count, plural, one {# extraction} other {# extractions}}",
       "collections": "{count, plural, one {# collection} other {# collections}}",
-      "chats": "{count, plural, one {# conversation} other {# conversations}}"
+      "chats": "{count, plural, one {# conversation} other {# conversations}}",
+      "showMore": "Afficher plus de personnes"
     }
   },
   "models": {

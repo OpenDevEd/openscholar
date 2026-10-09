@@ -112,6 +112,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "activity/queries:list": { kind: "other", words: "activity" },
   "activity/queries:startedBy": { kind: "other", words: "activity" },
   "workspaces/makers:counts": { kind: "other", words: "orgMembers" },
+  "workspaces/makers:total": { kind: "other", words: "orgMembers" },
   "organizations/queries:workspaces": { kind: "other", words: "workspaces" },
   "organizations/queries:workspace": { kind: "other", words: "workspaces" },
   "organizations/queries:members": { kind: "other", words: "orgMembers" },

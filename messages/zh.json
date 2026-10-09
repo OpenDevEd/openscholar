@@ -4233,7 +4233,8 @@
       "screenings": "{count} 次筛选",
       "extractions": "{count} 次提取",
       "collections": "{count} 个收藏集",
-      "chats": "{count} 个对话"
+      "chats": "{count} 个对话",
+      "showMore": "显示更多成员"
     }
   },
   "models": {

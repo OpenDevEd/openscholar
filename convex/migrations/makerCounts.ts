@@ -19,7 +19,8 @@ const migrations = new Migrations<DataModel>(components.migrations, { internalMu
 const start = (table: ByMaker) =>
   migrations.define({
     table,
-    batchSize: 200,
+    // A search holds its whole query and history: 25 of the largest stay well within a transaction's reads.
+    batchSize: 25,
     migrateOne: async (ctx, record) => startMakerCount(ctx, table, record),
   });
 
@@ -44,7 +45,7 @@ export const verifyPage = internalQuery({
   args: { table: v.union(...TABLES.map((table) => v.literal(table))), cursor: v.union(v.string(), v.null()) },
   returns: v.object({ wrong: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
   handler: async (ctx, { table, cursor }) => {
-    const page = await ctx.db.query(table).paginate({ cursor, numItems: 200 });
+    const page = await ctx.db.query(table).paginate({ cursor, numItems: 50, maximumBytesRead: 8 * 1024 * 1024 });
     let wrong = 0;
     for (const record of page.page) {
       if ((await ctx.db.get("workspaces", record.workspaceId))?.kind !== "organization") continue;

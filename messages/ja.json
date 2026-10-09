@@ -4233,7 +4233,8 @@
       "screenings": "{count} 件のスクリーニング",
       "extractions": "{count} 件の抽出",
       "collections": "{count} 件のコレクション",
-      "chats": "{count} 件のチャット"
+      "chats": "{count} 件のチャット",
+      "showMore": "さらに表示"
     }
   },
   "models": {

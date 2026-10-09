@@ -18,6 +18,8 @@ interface JobListItemProps {
   viewMode: ViewMode;
   /** Who ran it, inside the ring in place of the extraction icon, in an organization (#656). */
   face?: ReactNode;
+  /** Its papers done so far, which its list reads from the counts its workers keep. */
+  done?: number;
 }
 
 /** The ring's colour for a job's state; a job waiting to start has a dashed one. */
@@ -30,7 +32,7 @@ const RING: Record<string, { color: string; dashed?: boolean }> = {
   creditsExhausted: { color: "var(--warning)" },
 };
 
-export function JobListItem({ job, viewMode, face }: JobListItemProps) {
+export function JobListItem({ job, viewMode, face, done = 0 }: JobListItemProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const tJob = useTranslations("jobStatus");
@@ -54,7 +56,7 @@ export function JobListItem({ job, viewMode, face }: JobListItemProps) {
   // The job at a glance: a ring that fills as its papers are read, around the extraction icon.
   const large = viewMode === "list-detail";
   const ring = RING[status] ?? { color: "var(--primary)" };
-  const progress = status === "completed" ? 1 : job.totalPapers ? (job.processedPapers ?? 0) / job.totalPapers : 0;
+  const progress = status === "completed" ? 1 : job.totalPapers ? Math.min(1, done / job.totalPapers) : 0;
   const kind = (
     <span role="img" aria-label={t("jobBadgeExtraction")} className={cn("relative flex shrink-0 items-center justify-center", large ? "size-11" : "size-8")}>
       <Ring value={progress} color={ring.color} dashed={ring.dashed} />

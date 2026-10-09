@@ -34,7 +34,7 @@ function createExtractionJobListItem(viewMode: ViewMode) {
   return function ExtractionJobListItem({ item }: { item: ExtractionJob }) {
     // In an organization, a member's job shows who ran it in its ring (#656).
     const face = item.by && !item.by.you ? <IdentityAvatar name={item.by.name} imageUrl={item.by.imageUrl} className={viewMode === "list-detail" ? "size-9" : "size-6"} /> : undefined;
-    return <JobListItem job={item} viewMode={viewMode} face={face} />;
+    return <JobListItem job={item} viewMode={viewMode} face={face} done={item.done} />;
   };
 }
 

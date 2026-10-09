@@ -4233,7 +4233,8 @@
       "screenings": "{count, plural, one {# स्क्रीनिंग} other {# स्क्रीनिंग}}",
       "extractions": "{count, plural, one {# निष्कर्षण} other {# निष्कर्षण}}",
       "collections": "{count, plural, one {# संग्रह} other {# संग्रह}}",
-      "chats": "{count, plural, one {# चैट} other {# चैट}}"
+      "chats": "{count, plural, one {# चैट} other {# चैट}}",
+      "showMore": "और लोग दिखाएँ"
     }
   },
   "models": {

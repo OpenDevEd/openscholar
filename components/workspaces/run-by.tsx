@@ -17,7 +17,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useProtectedPaginatedQuery, useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { SHEET_SPRING } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
@@ -29,7 +29,7 @@ type Member = FunctionReturnType<typeof api.workspaces.makers.counts>["page"][nu
 /** The words for a count of each list's items. */
 const NOUN = { searches: "searches", screeningJobs: "screenings", extractionJobs: "extractions", collections: "collections", assistantThreads: "chats" } as const;
 
-/** Members read for the filter. ponytail: one page; an organization past it would need the server to search them. */
+/** Members read for the filter at a time; "+N" reads more. You come first, on the first page. */
 const MEMBERS = 100;
 /** How many a search of everyone lists at once; typing narrows it. */
 const LISTED = 50;
@@ -42,15 +42,19 @@ const LISTED = 50;
 export function useRunBy(table: RunByTable, { label = "runBy", compact = false }: { label?: "runBy" | "startedBy"; compact?: boolean } = {}) {
   const workspaceId = useWorkspace();
   const org = useWorkspaceSlug() !== undefined;
-  const { data } = useProtectedQuery(api.workspaces.makers.counts, inWorkspace(org ? workspaceId : undefined, { table, paginationOpts: { cursor: null, numItems: MEMBERS } }));
+  const members = useProtectedPaginatedQuery(api.workspaces.makers.counts, inWorkspace(org ? workspaceId : undefined, { table }), { initialNumItems: MEMBERS });
+  // Everyone's count is the organization's, those who've left included; chats keep none, so theirs is the members' sum.
+  const { data: total } = useProtectedQuery(api.workspaces.makers.total, inWorkspace(org ? workspaceId : undefined, { table }));
+  const people = members.status === "LoadingFirstPage" ? undefined : members.results;
+  const more = members.status === "CanLoadMore" || members.status === "LoadingMore" ? { loading: members.status === "LoadingMore", load: () => members.loadMore(MEMBERS) } : undefined;
   const [picked, setPicked] = useState<{ workspaceId?: string; by: Id<"users"> | null }>({ by: null });
   const by = workspaceId && picked.workspaceId === workspaceId ? picked.by : null;
-  const control = <RunByFilter people={data?.page} noun={NOUN[table]} label={label} compact={compact} value={by} onChange={(next) => setPicked({ workspaceId, by: next })} />;
+  const control = <RunByFilter people={people} total={total ?? undefined} more={more} noun={NOUN[table]} label={label} compact={compact} value={by} onChange={(next) => setPicked({ workspaceId, by: next })} />;
   return {
     by: by ?? undefined,
     filter: org ? (compact ? control : <RunByRow>{control}</RunByRow>) : null,
     /** How many one member made, once the counts are read. */
-    countOf: (person: Id<"users">) => data?.page.find((member) => member.userId === person)?.count,
+    countOf: (person: Id<"users">) => people?.find((member) => member.userId === person)?.count,
   };
 }
 
@@ -77,11 +81,13 @@ function RunByRow({ children }: { children: React.ReactNode }) {
   return <div className="overflow-x-auto px-4 py-3 [scrollbar-width:none]">{children}</div>;
 }
 
-function RunByFilter({ people, noun, label, compact, value, onChange }: { people: Member[] | undefined; noun: (typeof NOUN)[RunByTable]; label: "runBy" | "startedBy"; compact: boolean; value: Id<"users"> | null; onChange: (person: Id<"users"> | null) => void }) {
+type More = { loading: boolean; load: () => void } | undefined;
+
+function RunByFilter({ people, total: kept, more, noun, label, compact, value, onChange }: { people: Member[] | undefined; total: number | undefined; more: More; noun: (typeof NOUN)[RunByTable]; label: "runBy" | "startedBy"; compact: boolean; value: Id<"users"> | null; onChange: (person: Id<"users"> | null) => void }) {
   const t = useTranslations("workspaces.runBy");
   const reduce = useReducedMotion();
   const members = people ?? [];
-  const total = members.reduce((sum, member) => sum + member.count, 0);
+  const total = kept ?? members.reduce((sum, member) => sum + member.count, 0);
   const chosen = value ? members.find((member) => member.userId === value) : undefined;
   const shown = chosen ? chosen.count : total;
   const fit = compact ? 5 : 6;
@@ -133,7 +139,7 @@ function RunByFilter({ people, noun, label, compact, value, onChange }: { people
             );
           })}
         </AnimatePresence>
-        {others.length ? <Everyone people={others} noun={noun} onPick={onChange} compact={compact} /> : null}
+        {others.length || more ? <Everyone people={others} more={more} noun={noun} onPick={onChange} compact={compact} /> : null}
       </div>
       {/* One readout that changes with the pick, so nothing beside the control moves. */}
       {compact || !people ? null : (
@@ -147,7 +153,7 @@ function RunByFilter({ people, noun, label, compact, value, onChange }: { people
 }
 
 /** "+N": everyone the faces leave out, busiest first, with a search, in a popover. */
-function Everyone({ people, noun, onPick, compact }: { people: Member[]; noun: (typeof NOUN)[RunByTable]; onPick: (person: Id<"users">) => void; compact: boolean }) {
+function Everyone({ people, more: moreToRead, noun, onPick, compact }: { people: Member[]; more: More; noun: (typeof NOUN)[RunByTable]; onPick: (person: Id<"users">) => void; compact: boolean }) {
   const t = useTranslations("workspaces.runBy");
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
@@ -158,7 +164,7 @@ function Everyone({ people, noun, onPick, compact }: { people: Member[]; noun: (
       <TooltipHint label={more}>
         <PopoverTrigger asChild>
           <button type="button" aria-label={more} className={cn("flex shrink-0 items-center justify-center rounded-full px-2 text-2xs font-medium tabular-nums text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground", compact ? "h-8 min-w-8" : "h-9 min-w-9")}>
-            +{people.length}
+            +{people.length || ""}
           </button>
         </PopoverTrigger>
       </TooltipHint>
@@ -193,6 +199,14 @@ function Everyone({ people, noun, onPick, compact }: { people: Member[]; noun: (
           {!matches.length ? <li className="px-2 py-3 text-sm text-muted-foreground">{t("noOne")}</li> : null}
         </ul>
         {matches.length > LISTED ? <p className="border-t border-border/50 px-3 py-2 text-xs text-muted-foreground">{t("busiest", { listed: LISTED, count: matches.length })}</p> : null}
+        {/* An organization past the first page of members reads the rest here. */}
+        {moreToRead ? (
+          <div className="border-t border-border/50 p-1">
+            <button type="button" disabled={moreToRead.loading} onClick={moreToRead.load} className="flex h-8 w-full items-center justify-center rounded-md text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-60">
+              {t("showMore")}
+            </button>
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );

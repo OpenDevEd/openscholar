@@ -2,12 +2,13 @@
 // workspace's items are all yours, so they name no one.
 
 import { v, type Infer } from "convex/values";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { personName } from "../lib/people";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
-import { byMakerValidator, makerCountRow } from "../research/recordCounts";
+import { byMakerValidator, countRow, makerCountRow, type ByMaker } from "../research/recordCounts";
+import { collectionCountRow } from "../library/counter";
 
 export const makerValidator = v.object({ name: v.string(), imageUrl: v.optional(v.string()), you: v.boolean() });
 export type Maker = Infer<typeof makerValidator>;
@@ -36,7 +37,7 @@ export const countsAction = defineUserQuery({
   path: "workspaces/makers:counts",
   description:
     "Lists the members of the organization the person is in, a page at a time, each with how many of one kind of record they made there: searches, screenings, extractions, collections or chats. " +
-    "Their `userId` is what lists take as `by` to show only that member's. In the person's own workspace everything is theirs, so it lists no one.",
+    "Their `userId` is what lists take as `by` to show only that member's. The person themselves comes first, on the first page. In the person's own workspace everything is theirs, so it lists no one.",
   args: { table: byMakerValidator, paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(v.object({ userId: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()), you: v.boolean(), count: v.number() })),
   run: async (ctx, { userId, workspaceId }, { table, paginationOpts }) => {
@@ -46,14 +47,32 @@ export const countsAction = defineUserQuery({
       .query("organizationMemberships")
       .withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("state", "active"))
       .paginate(paginationOpts);
+    const row = async (user: Doc<"users">) => ({ userId: user._id, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), you: user._id === userId, count: (await makerCountRow(ctx, table, workspaceId, user._id))?.count ?? 0 });
     const rows = await Promise.all(page.page.map(async (membership) => {
       const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
-      if (!user || user.state !== "active") return [];
-      const counted = await makerCountRow(ctx, table, workspaceId, user._id);
-      return [{ userId: user._id, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), you: user._id === userId, count: counted?.count ?? 0 }];
+      // The person is on the first page wherever their membership falls, and only there.
+      return user && user.state === "active" && user._id !== userId ? [await row(user)] : [];
     }));
-    return { ...page, page: rows.flat() };
+    const you = paginationOpts.cursor === null ? await ctx.db.get("users", userId) : null;
+    return { ...page, page: [...(you ? [await row(you)] : []), ...rows.flat()] };
   },
 });
 export const counts = userQuery(countsAction);
+
+/** How many of a table an organization has, whoever made them, those who've left included; none kept for chats. */
+async function workspaceTotal(ctx: QueryCtx, table: ByMaker, workspaceId: Id<"workspaces">) {
+  if (table === "assistantThreads") return null;
+  const counted = table === "collections" ? await collectionCountRow(ctx, workspaceId) : await countRow(ctx, table, workspaceId);
+  return counted?.count ?? 0;
+}
+
+export const totalAction = defineUserQuery({
+  path: "workspaces/makers:total",
+  description: "How many of one kind of record the organization has, whoever made them, including members who have left: searches, screenings, extractions or collections. Null for chats, which aren't counted.",
+  args: { table: byMakerValidator },
+  returns: v.union(v.number(), v.null()),
+  run: (ctx, { workspaceId }, { table }) => workspaceTotal(ctx, table, workspaceId),
+});
+export const total = userQuery(totalAction);
+export const totalForAssistant = assistantQuery(totalAction);
 export const countsForAssistant = assistantQuery(countsAction);

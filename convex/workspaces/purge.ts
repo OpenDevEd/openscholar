@@ -4,7 +4,7 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { purgeWorkspaceChats } from "../assistant/access";
 import { readAccount } from "../billing/accounts";
-import { collectionCountRow } from "../library/collections";
+import { collectionCountRow } from "../library/counter";
 import { libraryCountRow } from "../library/counter";
 import { internalMutation } from "../lib/functions";
 import { countRow } from "../research/recordCounts";

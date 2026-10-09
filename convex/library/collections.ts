@@ -1,5 +1,6 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import type { Id } from "../_generated/dataModel";
+import { collectionCountRow } from "./counter";
 import { requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
 import { makersIn, makerValidator } from "../workspaces/makers";
 import { searchTerms } from "../lib/searchText";
@@ -18,10 +19,6 @@ import { collectionSortName } from "./sortName";
 
 /** Most collections one page holds. */
 const COLLECTIONS_PAGE_MAX = 50;
-
-export function collectionCountRow(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) {
-  return ctx.db.query("collectionCounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
-}
 
 export { collectionSortName };
 

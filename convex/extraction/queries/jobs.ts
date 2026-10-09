@@ -26,7 +26,8 @@ import { extractionJobValidator, jobQuestionsValidator } from "../validators";
 import { makersIn, makerValidator } from "../../workspaces/makers";
 
 /** A job as its list shows it: in an organization, with who ran it (#656). */
-const listedJobValidator = v.object({ ...extractionJobValidator.fields, by: v.optional(makerValidator) });
+/** A job as its list shows it: who ran it, in an organization, and its papers done so far, from the counts its workers keep. */
+const listedJobValidator = v.object({ ...extractionJobValidator.fields, by: v.optional(makerValidator), done: v.number() });
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 async function resolveReadableJob(
@@ -63,7 +64,13 @@ export const listJobsAction = defineUserQuery({
     await requireFeature(ctx, "extraction.enabled", userId);
     const read = await jobsPage(ctx, workspaceId, { paginationOpts, sort, text, by });
     const makerOf = await makersIn(ctx, workspaceId, userId);
-    return { ...read, page: await Promise.all(read.page.map(async (job) => { const maker = await makerOf(job.createdBy); return maker ? { ...job, by: maker } : job; })) };
+    return {
+      ...read,
+      page: await Promise.all(read.page.map(async (job) => {
+        const [maker, counts] = await Promise.all([makerOf(job.createdBy), readJobCounters(ctx, job._id)]);
+        return { ...job, done: counts.processed + counts.failed, ...(maker ? { by: maker } : {}) };
+      })),
+    };
   },
 });
 export const listJobs = userQuery(listJobsAction);
