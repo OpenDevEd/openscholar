@@ -6,7 +6,7 @@ import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { billingAccountSnapshotValidator, usageKindValidator } from "./validators";
 import { readCatalog } from "./catalog";
 import { findPlan } from "../../lib/billing/catalog";
-import { jobSpace, spendSpace, usageAgg, userSpace } from "./usageLog";
+import { jobSpace, spendSpace, usageAgg, workspaceSpace } from "./usageLog";
 import { insertUsage } from "./ledger";
 import { availableCredits, readAccount } from "./accounts";
 import { isInWorkspace, type InWorkspace } from "../workspaces/actor";
@@ -73,9 +73,9 @@ const usageRowValidator = v.object({
 /** How many charges a page shows at most. */
 const MAX_PAGE_SIZE = 50;
 
-/** The charges a count or a page is of: a job's, when it's in the workspace the call runs in, or all of the person's. */
-async function chargesOf(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, jobId: Id<"extractionJobs"> | undefined) {
-  if (!jobId) return { namespace: userSpace(userId), rows: ctx.db.query("billingUsage").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)) };
+/** The charges a count or a page is of: a job's, when it's in the workspace the call runs in, or all the workspace paid (#650). */
+async function chargesOf(ctx: QueryCtx, { workspaceId }: InWorkspace, jobId: Id<"extractionJobs"> | undefined) {
+  if (!jobId) return { namespace: workspaceSpace(workspaceId), rows: ctx.db.query("billingUsage").withIndex("by_workspace_and_createdAt", (q) => q.eq("workspaceId", workspaceId)) };
   const job = await ctx.db.get("extractionJobs", jobId);
   if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return null;
   return { namespace: jobSpace(jobId), rows: ctx.db.query("billingUsage").withIndex("by_job_and_createdAt", (q) => q.eq("jobId", jobId)) };
@@ -83,7 +83,7 @@ async function chargesOf(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, jo
 
 export const listChargesAction = defineUserQuery({
   path: "billing/usage:listCharges",
-  description: "Lists the person's credit charges, newest first, a page at a time. Given `jobId`, only that extraction job's charges.",
+  description: "Lists the credit charges the workspace paid, newest first, a page at a time. Given `jobId`, only that extraction job's charges.",
   args: { paginationOpts: paginationOptsValidator, jobId: v.optional(v.id("extractionJobs")) },
   returns: paginationResultValidator(usageRowValidator),
   run: async (ctx, actor, { paginationOpts, jobId }) => {
@@ -98,7 +98,7 @@ export const listChargesForAssistant = assistantQuery(listChargesAction);
 
 export const countChargesAction = defineUserQuery({
   path: "billing/usage:countCharges",
-  description: "Says how many credit charges the person has. Given `jobId`, how many that extraction job has.",
+  description: "Says how many credit charges the workspace paid. Given `jobId`, how many that extraction job has.",
   args: { jobId: v.optional(v.id("extractionJobs")) },
   returns: v.number(),
   run: async (ctx, actor, { jobId }) => {
@@ -117,14 +117,14 @@ const CHART_KINDS = usageKindValidator.members.map((m) => m.value).filter((kind)
 const MAX_SPENDING_DAYS = 90;
 const spendingCellValidator = v.object({ day: v.number(), kind: usageKindValidator, credits: v.number() });
 
-/** Credits `userId` spent per day and kind over `days` days from `since`, oldest day first; days with none are left out. */
-async function spendingOf(ctx: QueryCtx, userId: Id<"users">, since: number, days: number) {
+/** Credits the workspace paid per day and kind over `days` days from `since`, oldest day first; days with none are left out. */
+async function spendingOf(ctx: QueryCtx, workspaceId: Id<"workspaces">, since: number, days: number) {
   const span = Math.min(Math.max(1, Math.floor(days)), MAX_SPENDING_DAYS);
   const cells = CHART_KINDS.flatMap((kind) => Array.from({ length: span }, (_, day) => ({ kind, day })));
   const sums = await usageAgg.sumBatch(
     ctx,
     cells.map(({ kind, day }) => ({
-      namespace: spendSpace(userId, kind),
+      namespace: spendSpace(workspaceId, kind),
       bounds: {
         lower: { key: since + day * DAY, inclusive: true },
         // The last day runs to now, so today's charges always count.
@@ -190,11 +190,11 @@ export const planForAssistant = assistantQuery(planAction);
 export const spendingAction = defineUserQuery({
   path: "billing/usage:spending",
   description:
-    `Totals the credits the person spent per day and kind of work, for up to ${MAX_SPENDING_DAYS} days from the time \`since\` (in milliseconds), as one page. ` +
+    `Totals the credits the workspace paid per day and kind of work, for up to ${MAX_SPENDING_DAYS} days from the time \`since\` (in milliseconds), as one page. ` +
     "`day` counts days from `since`; a day and kind with nothing spent is left out, and refunds aren't counted.",
   args: { since: v.number(), days: v.number() },
   returns: paginationResultValidator(spendingCellValidator),
-  run: async (ctx, { userId }, { since, days }) => ({ page: await spendingOf(ctx, userId, since, days), isDone: true, continueCursor: "" }),
+  run: async (ctx, { workspaceId }, { since, days }) => ({ page: await spendingOf(ctx, workspaceId, since, days), isDone: true, continueCursor: "" }),
 });
 export const spending = userQuery(spendingAction);
 export const spendingForAssistant = assistantQuery(spendingAction);
