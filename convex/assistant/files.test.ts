@@ -12,6 +12,7 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { people } from "./assistant.test-support";
 import { MODEL_READS } from "./steps";
 import { callingDoStream, finishingDoStream, waitFor } from "./turn.test-support";
+import { accountOf } from "../billing/billing.test-support";
 
 const { mockDoStream, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), fetchMock: vi.fn() }));
 vi.stubGlobal("fetch", fetchMock);
@@ -155,7 +156,7 @@ describe("attaching a file", () => {
     const { asAda, ada } = await people(t);
     await t.run(async (ctx) => {
       await seedCreditsForTest(ctx, { userId: ada, free: 10 });
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      const account = await accountOf(ctx, ada);
       await ctx.db.patch("billingAccounts", account!._id, { limits: { uploads_per_hour: 2 } });
     });
     await start(asAda, "a.png");

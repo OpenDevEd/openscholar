@@ -21,6 +21,7 @@ import { people } from "./assistant.test-support";
 import { JOBS_DOCKED } from "./validators";
 import { erroringOnAbortDoStream, finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, waitFor } from "./turn.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
+import { accountOf } from "../billing/billing.test-support";
 
 const { mockDoStream, modelIdsSeen, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), modelIdsSeen: [] as unknown[], fetchMock: vi.fn() }));
 vi.stubGlobal("fetch", fetchMock);
@@ -208,7 +209,7 @@ describe("assistant replies", () => {
     const enough = ASSISTANT_REPLIES_AT_ONCE * estimateCredits({ input: 1_000, output: 2_000 }, CALL_TOKENS.chatRequest);
     await t.run(async (ctx) => {
       fakeAutumn.setBalance(ada, { free: enough });
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      const account = await accountOf(ctx, ada);
       await ctx.db.patch("billingAccounts", account!._id, { balance: enough });
     });
     const others = await Promise.all(Array.from({ length: ASSISTANT_REPLIES_AT_ONCE }, (_, index) => asAda.mutation(api.assistant.threads.create, { title: `Chat ${index + 2}` })));
@@ -238,7 +239,7 @@ describe("assistant replies", () => {
     const t = convexTest(schema);
     const { asAda, ada, threadId } = await sharedChat(t);
     await t.run(async (ctx) => {
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      const account = await accountOf(ctx, ada);
       await ctx.db.patch("billingAccounts", account!._id, { limits: { assistant_replies: 1 } });
     });
     const other = await asAda.mutation(api.assistant.threads.create, { title: "Chat 2" });

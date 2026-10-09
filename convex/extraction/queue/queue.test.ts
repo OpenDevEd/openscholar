@@ -492,7 +492,7 @@ describe("extraction paper queue", () => {
         await ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:second:0", title: "Second 0", status: "pending" as const, processable: true }),
         await ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:second:1", title: "Second 1", status: "pending" as const, processable: true }),
       ];
-      await ctx.db.insert("billingAccounts", { userId, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { concurrency: 3 } });
+      await ctx.db.insert("billingAccounts", { workspaceId: await personalWorkspaceOf(ctx, userId), plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { concurrency: 3 } });
       return { jobId, paperIds };
     });
     const other = await seedEligibleQueueJob(t, 4);
@@ -515,7 +515,7 @@ describe("extraction paper queue", () => {
     const first = await seedEligibleQueueJob(t, 3);
     const userId = await t.run(async (ctx) => (await ctx.db.get(first.jobId))!.createdBy);
     const more = await t.run(async (ctx) => {
-      await ctx.db.insert("billingAccounts", { userId, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { concurrency: 3 } });
+      await ctx.db.insert("billingAccounts", { workspaceId: await personalWorkspaceOf(ctx, userId), plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { concurrency: 3 } });
       const jobs: Array<{ jobId: Id<"extractionJobs">; paperIds: Array<Id<"extractionPapers">> }> = [];
       for (let j = 0; j < 12; j++) {
         const jobId = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 2, name: `Job ${j}`, createdAt: 2 + j, updatedAt: 2 + j });
@@ -556,7 +556,7 @@ describe("extraction paper queue", () => {
     const older = await seedEligibleQueueJob(t, 2);
     const userId = await t.run(async (ctx) => (await ctx.db.get(older.jobId))!.createdBy);
     const newer = await t.run(async (ctx) => {
-      await ctx.db.insert("billingAccounts", { userId, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { concurrency: 2 } });
+      await ctx.db.insert("billingAccounts", { workspaceId: await personalWorkspaceOf(ctx, userId), plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { concurrency: 2 } });
       const jobId = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 4, name: "Newer", createdAt: 9, updatedAt: 9 });
       const paperIds: Array<Id<"extractionPapers">> = [];
       for (let i = 0; i < 4; i++) paperIds.push(await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:newer:${i}`, title: `Newer ${i}`, status: "pending" as const, processable: true }));

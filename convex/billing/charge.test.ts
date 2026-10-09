@@ -551,7 +551,7 @@ describe("the usage ledger", () => {
       for (let i = 0; i < 400; i += 100) {
         await t.run(async (ctx) => {
           for (let k = i; k < i + 100; k++) {
-            await insertUsage(ctx, { userId, jobId, chargeId: `extraction:${k}`, credits: 1, kind: "extraction", description: "Extraction", createdAt: k });
+            await insertUsage(ctx, { userId, workspaceId: await personalWorkspaceOf(ctx, userId), jobId, chargeId: `extraction:${k}`, credits: 1, kind: "extraction", description: "Extraction", createdAt: k });
           }
         });
       }

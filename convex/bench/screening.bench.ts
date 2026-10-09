@@ -34,7 +34,7 @@ describe("screening reads by job size", () => {
       // Resolved before any measured transaction, so its reads aren't counted as the core's.
       const actor = await t.run((ctx) => ownActor(ctx, userId));
       // Credits enough for any size, so only the job's own limits can refuse it.
-      await t.run((ctx) => ctx.db.insert("billingAccounts", { userId, plan: "pro", pastDue: false, balance: 1e9, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: 1 }));
+      await t.run((ctx) => ctx.db.insert("billingAccounts", { workspaceId: actor.workspaceId, plan: "pro", pastDue: false, balance: 1e9, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: 1 }));
       const at = (scenario: string) => ({ area: "screening", scenario, size });
       // Starting a job of this many papers, as screening/start:screen does: it opens the job, then gives it its papers a step at a time.
       // The heaviest of those transactions is what counts against Convex's limits.

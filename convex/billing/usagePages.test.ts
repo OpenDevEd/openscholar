@@ -5,6 +5,7 @@ import schema from "../schema";
 import { seedCreditsForTest } from "./billing.test-support";
 import { insertUsage } from "./ledger";
 import { madeBy } from "../workspaces/actor.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 async function setup() {
   const t = convexTest(schema);
@@ -31,7 +32,7 @@ describe("charge pages", () => {
     await t.run(async (ctx) => {
       for (let i = 1; i <= 11; i++) {
         await insertUsage(ctx, {
-          userId, chargeId: `c${i}`, credits: i, kind: "search", description: `charge ${i}`, createdAt: i * 1000,
+          userId, workspaceId: await personalWorkspaceOf(ctx, userId), chargeId: `c${i}`, credits: i, kind: "search", description: `charge ${i}`, createdAt: i * 1000,
           ...(i % 2 === 0 ? { jobId } : {}),
         });
       }
@@ -63,7 +64,7 @@ describe("charge pages", () => {
       const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: "orgmem_pages", clerkUserId: "clerk_pages", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
       const lab = (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id;
-      await insertUsage(ctx, { userId, chargeId: "own", credits: 3, kind: "search", description: "own", createdAt: 1000 });
+      await insertUsage(ctx, { userId, workspaceId: await personalWorkspaceOf(ctx, userId), chargeId: "own", credits: 3, kind: "search", description: "own", createdAt: 1000 });
       await insertUsage(ctx, { userId, workspaceId: lab, chargeId: "lab", credits: 5, kind: "search", description: "lab", createdAt: 2000 });
       return lab;
     });
@@ -79,27 +80,11 @@ describe("charge pages", () => {
     const { t, userId, jobId, me } = await setup();
     await t.run(async (ctx) => {
       for (const [chargeId, createdAt] of [["late", 2000], ["early", 1000]] as const) {
-        await insertUsage(ctx, { userId, chargeId, credits: 1, kind: "extraction", description: chargeId, createdAt, jobId });
+        await insertUsage(ctx, { userId, workspaceId: await personalWorkspaceOf(ctx, userId), chargeId, credits: 1, kind: "extraction", description: chargeId, createdAt, jobId });
       }
     });
     const page = await me.query(api.billing.usage.listCharges, { jobId, paginationOpts: { cursor: null, numItems: 10 } });
     expect(page.page.map((r) => r.description)).toEqual(["late", "early"]);
-  });
-
-  it("counts charges recorded before the pages existed once the backfill runs", async () => {
-    const { t, userId, me } = await setup();
-    await t.run(async (ctx) => {
-      for (let i = 1; i <= 3; i++) {
-        await ctx.db.insert("billingUsage", { userId, chargeId: `old${i}`, credits: i, kind: "chat", description: "old", createdAt: i });
-      }
-    });
-    expect(await me.query(api.billing.usage.countCharges, {})).toBe(0);
-    await t.mutation(internal.migrations.countBillingUsage.run, {});
-    // Running it again counts nothing twice.
-    await t.mutation(internal.migrations.countBillingUsage.run, {});
-    await counted(t);
-    expect(await me.query(api.billing.usage.countCharges, {})).toBe(3);
-    expect((await me.query(api.billing.usage.listCharges, { paginationOpts: { cursor: null, numItems: 10 } })).page.map((r) => r.credits)).toEqual([3, 2, 1]);
   });
 
   it("says how many credits the person has to spend", async () => {
@@ -122,7 +107,7 @@ describe("charge pages", () => {
         features: [],
         syncedAt: 1,
       });
-      await ctx.db.insert("billingAccounts", { userId, plan: "pro", pastDue: false, balance: 500, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: 1, renewsAt: 2_000, features: ["extraction"], changesAt: 3_000, nextPlan: "free" });
+      await ctx.db.insert("billingAccounts", { workspaceId: await personalWorkspaceOf(ctx, userId), plan: "pro", pastDue: false, balance: 500, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: 1, renewsAt: 2_000, features: ["extraction"], changesAt: 3_000, nextPlan: "free" });
     });
     expect(await me.query(api.billing.usage.plan, {})).toEqual({ name: "Researcher", price: { amount: 19, interval: "month" }, credits: { included: 20_000, interval: "month" }, features: ["extraction"], pastDue: false, renewsAt: 2_000, endsAt: 3_000, nextPlan: "Free" });
     // A plan the catalog no longer lists goes by its ID.
@@ -135,8 +120,9 @@ describe("charge pages", () => {
     const DAY = 86_400_000;
     const since = 10 * DAY;
     await t.run(async (ctx) => {
+      const own = await personalWorkspaceOf(ctx, userId);
       const row = (chargeId: string, kind: "chat" | "search" | "refund", credits: number, createdAt: number) =>
-        insertUsage(ctx, { userId, chargeId, credits, kind, description: chargeId, createdAt });
+        insertUsage(ctx, { userId, workspaceId: own, chargeId, credits, kind, description: chargeId, createdAt });
       await row("a", "chat", 100, since + 1);
       await row("b", "chat", 50, since + DAY - 1);
       await row("c", "search", 7, since + DAY);

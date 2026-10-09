@@ -23,7 +23,7 @@ import {
 import { ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
 import { readCatalog } from "./catalog";
 
-/** A person's own workspace, if they still have one: what their billing rows were paid by before workspaces paid (#650). */
+/** A person's own workspace, if they still have one: whose billing their own billing page shows. */
 export const ownWorkspaceOf = async (ctx: Pick<QueryCtx, "db">, userId: Id<"users">) =>
   (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())?._id;
 
@@ -158,8 +158,6 @@ export const writeSnapshot = internalMutation({
       ...snapshot,
       ...(withCard ? { card: snapshot.card, cardFetchedAt: fetchedAt } : { card: existing?.card, cardFetchedAt: existing?.cardFetchedAt }),
       ...(newer && { balance: existing.balance, purchased: existing.purchased }),
-      // A person's own workspace's account still names them, until slice 8 drops the field.
-      ...(workspace.kind === "personal" ? { userId: workspace.userId } : {}),
       workspaceId,
       refreshedAt: newer ? existing.refreshedAt : fetchedAt,
       fetchedAt,
