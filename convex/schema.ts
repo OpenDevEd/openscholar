@@ -47,6 +47,7 @@ import {
   evidenceLibraryRuntimeReleaseFields,
   organizationFields,
   organizationMembershipFields,
+  organizationInvitationFields,
 } from "./evidenceLibraries/validators";
 import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidators";
 import { evidenceLibraryCollectionSourceFields } from "./evidenceLibraries/collectionSourceValidators";
@@ -196,6 +197,12 @@ export default defineSchema({
     .index("by_clerkOrganizationId", ["clerkOrganizationId"])
     .index("by_slug", ["slug"])
     .index("by_state", ["state"]),
+
+  // Invitations to organizations, as Clerk's webhook and the actions that send them project them (#651).
+  organizationInvitations: defineTable(organizationInvitationFields)
+    .index("by_clerkInvitationId", ["clerkInvitationId"])
+    .index("by_email_and_state", ["email", "state"])
+    .index("by_organizationId_and_state", ["organizationId", "state"]),
 
   // `searchText`: the member's name and email, which a library's team picker searches (convex/lib/searchText.ts).
   organizationMemberships: defineTable({ ...organizationMembershipFields, searchText: v.optional(v.string()) })

@@ -253,7 +253,7 @@ async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">,
   return collection && collection.workspaceId === workspaceId ? cut(collection.name, 200) : undefined;
 }
 
-/** A step that read something ends with its result. A change ends its own (`endStep`). */
+/** A step that read something ends with its result, as does a change an action made outside and kept (organizations/manage.ts). A change written here ends its own (`endStep`). */
 export const read = internalMutation({
   // `result` is what the action returned, as JSON.
   args: { stepId: v.id("assistantSteps"), result: v.string() },

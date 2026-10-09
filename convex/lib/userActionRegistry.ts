@@ -17,6 +17,8 @@ import { undoAction as bulkUndoAction } from "../assistant/batches";
 import { messagesAction as chatMessagesAction, stepsAction as chatStepsAction } from "../assistant/replies";
 import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, removeAction as chatRemoveAction, renameAction as chatRenameAction, setModelAction as chatModelAction } from "../assistant/threads";
 import { countPapersAction as libraryCountPapersAction, papersAction as libraryPapersAction, savedPaperAction } from "../library/queries";
+import { createAction as createOrganizationAction, declineInvitationAction, deleteOrganizationAction, inviteAction, leaveAction, removeMemberAction, renameAction as renameOrganizationAction, revokeInvitationAction, setRoleAction } from "../organizations/manage";
+import { invitationsAction as organizationInvitationsAction, membersAction as organizationMembersAction, myInvitationsAction, workspacesAction } from "../organizations/queries";
 import { addToCollectionAction, countCollectionsAction, createCollectionAction, deleteCollectionAction, getCollectionAction, listCollectionsAction, removeFromCollectionAction, renameCollectionAction, setCollectionRatingAction } from "../library/collections";
 import { estimateAction as screeningEstimateAction, listJobsAction as screeningJobsAction } from "../screening/queries";
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
@@ -113,6 +115,19 @@ export const USER_ACTIONS: readonly UserAction[] = [
   addToCollectionAction,
   removeFromCollectionAction,
   setCollectionRatingAction,
+  workspacesAction,
+  organizationMembersAction,
+  organizationInvitationsAction,
+  myInvitationsAction,
+  createOrganizationAction,
+  inviteAction,
+  revokeInvitationAction,
+  declineInvitationAction,
+  setRoleAction,
+  removeMemberAction,
+  leaveAction,
+  renameOrganizationAction,
+  deleteOrganizationAction,
   listChargesAction,
   countChargesAction,
   spendingAction,
