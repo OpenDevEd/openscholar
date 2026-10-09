@@ -7,6 +7,8 @@ import { stream, type QueryStream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { createError } from "../lib/errors";
 import { findItem } from "./find";
+import { personalRatingRow } from "../ratings";
+import type { InWorkspace } from "../workspaces/actor";
 import { authorDisplay } from "../../lib/library/paper-metadata";
 import { libraryCount } from "./counter";
 import { livePlaces } from "./collectionMembership";
@@ -31,7 +33,8 @@ const FILTERED_COUNT_ROWS = 16_000;
 /** Bytes one filtered page or count reads at most: half a query's 16 MiB. */
 const FILTERED_BYTES = 8 * 1024 * 1024;
 
-export const libraryPageValidator = paginationResultValidator(schema.tables.libraryItems.validator.extend({ _id: v.id("libraryItems"), _creationTime: v.number() }));
+/** A page of the library view, each paper with `myRating`: the person's own rating of it, where `rating` is its people's average (#655). */
+export const libraryPageValidator = paginationResultValidator(schema.tables.libraryItems.validator.extend({ _id: v.id("libraryItems"), _creationTime: v.number(), myRating: v.optional(v.number()) }));
 
 type LibraryItem = Doc<"libraryItems">;
 
@@ -273,6 +276,13 @@ export async function readLibraryPage(ctx: QueryCtx, workspaceId: Id<"workspaces
     .paginate({ ...page, maximumRowsRead: FILTERED_PAGE_ROWS, maximumBytesRead: FILTERED_BYTES })) as LibraryPage;
 }
 
+/** Gives each paper on a page the person's own rating of it, which in their own workspace is the paper's. */
+async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, read: LibraryPage) {
+  const own = (await ctx.db.get("workspaces", workspaceId))?.kind === "personal";
+  const ratings = await Promise.all(read.page.map(async (item) => (own ? item.rating : (await personalRatingRow(ctx, userId, item.openalexId))?.rating)));
+  return { ...read, page: read.page.map((item, at) => (ratings[at] === undefined ? item : { ...item, myRating: ratings[at] })) };
+}
+
 export const browseLibrary = workspaceQuery({
   args: {
     sortBy: librarySortValidator,
@@ -281,7 +291,7 @@ export const browseLibrary = workspaceQuery({
     paginationOpts: paginationOptsValidator,
   },
   returns: libraryPageValidator,
-  handler: (ctx, { workspaceId }, { paginationOpts, ...view }) => readLibraryPage(ctx, workspaceId, view, paginationOpts),
+  handler: async (ctx, actor, { paginationOpts, ...view }) => withOwnRatings(ctx, actor, await readLibraryPage(ctx, actor.workspaceId, view, paginationOpts)),
 });
 
 export const searchLibrary = workspaceQuery({
@@ -293,7 +303,7 @@ export const searchLibrary = workspaceQuery({
     paginationOpts: paginationOptsValidator,
   },
   returns: libraryPageValidator,
-  handler: (ctx, { workspaceId }, { paginationOpts, sortBy = "savedAt", sortOrder = "desc", ...view }) => readLibraryPage(ctx, workspaceId, { ...view, sortBy, sortOrder }, paginationOpts),
+  handler: async (ctx, actor, { paginationOpts, sortBy = "savedAt", sortOrder = "desc", ...view }) => withOwnRatings(ctx, actor, await readLibraryPage(ctx, actor.workspaceId, { ...view, sortBy, sortOrder }, paginationOpts)),
 });
 
 /**
@@ -390,7 +400,7 @@ async function inCollection(ctx: QueryCtx, libraryItemIds: Id<"libraryItems">[])
 export const papersAction = defineUserQuery({
   path: "library/queries:papers",
   description:
-    `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, the rating they gave it, whether it's in any of their collections, the day they saved it, its paper ID and its library item ID. ` +
+    `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, its rating (in their own library theirs, in an organization's its members' average), whether it's in any of their collections, the day they saved it, its paper ID and its library item ID. ` +
     "`total` is how many papers the whole library or one collection has; a narrowed list has none, and library/queries:countPapers counts it. " +
     "With nothing else given it lists the whole library, newest saved first. To narrow it: `search` is words to find in titles, abstracts and authors; `collectionId` is one of their collections (from library/collections:listCollections); " +
     "`rated` is true for only the papers they rated and false for only those they haven't; `minRating` and `maxRating` are 0 to 5; `yearFrom` and `yearTo` are years published. " +

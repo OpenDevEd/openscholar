@@ -202,11 +202,11 @@ export function LibraryPageClient() {
     [pageItems],
   );
 
-  // Server-authoritative ratings for the cards and FocusMode; null marks a paper saved unrated
+  // The person's own ratings, from the server, for the cards and FocusMode; null marks a paper they haven't rated
   const serverRatingsMap = useMemo(
     () =>
       new Map(
-        pageItems.map((item) => [item.openalexId, item.rating ?? null]),
+        pageItems.map((item) => [item.openalexId, item.myRating ?? null]),
       ),
     [pageItems],
   );
