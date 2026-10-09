@@ -136,6 +136,11 @@ workflow.
   the real boundary.
 - Run one final browser, deployment, or live-service gate when the changed
   boundary needs one.
+- A change a person sees is done when `npm run verify -- shift` passes for
+  every route it touched, in a repository that has the command (the `verify`
+  skill says how). On the user's machine a stop hook keeps the session open
+  until it passes, or until `npm run verify -- skip "<reason>"` records why it
+  can't.
 - Documentation-only work needs link checks and `git diff --check`, not the
   application test suite.
 
@@ -157,19 +162,28 @@ Every issue in both repositories belongs to the organisation project
   label that applies (`needs-decision`, `external-blocker`, `documentation`).
 - Work that needs several issues becomes a milestone with issues, not a plan
   document.
-- Keep Status current: `In progress` when you start, `In review` when its PR
-  opens, `Blocker` with a comment naming the blocker.
-- Sprints are weekly, Monday to Sunday. When an issue is picked for this week
-  or moves to `In progress`, set its Sprint to the current week. If no upcoming
-  sprints are left, add more weekly ones to the Sprint field first.
+- Set `In progress` when you start, and `Blocker` with a comment naming the
+  blocker. The board-upkeep workflow in openalex-count does the rest, every
+  four hours and on openalex-count's issue and pull request events: `In review`
+  while an open PR closes the issue and `In progress` again once none does,
+  `Done` when the issue closes, the current Sprint on an issue in progress,
+  missing issues added to the board, and a milestone closed when its last
+  issue closes. Its run summary lists issues in progress with no activity for
+  a week.
+- Sprints are weekly, Monday to Sunday. When an issue is picked for this week,
+  set its Sprint to the current week. If no upcoming sprints are left, add
+  more weekly ones to the Sprint field; the board-upkeep run reports it.
 - When a decision changes an issue's scope, edit its body in the same turn so
   it never contradicts what was agreed. Use comments for progress.
-- Every PR names its issue: `Closes OpenDevEd/<repo>#N` when it finishes the
-  issue, `Part of OpenDevEd/<repo>#N` otherwise.
+- A PR for planned work names its issue: `Closes OpenDevEd/<repo>#N` when it
+  finishes the issue, `Part of OpenDevEd/<repo>#N` otherwise. A small fix with
+  nothing planned behind it (a bug the user just reported, a copy change, a
+  dependency bump) goes straight to a PR whose title is the record; don't open
+  an issue only to close it.
 - `Closes` only works in PRs into the default branch: `dev` in openalex-count,
   `main` in new-el. After merging, check the issue actually closed.
 - Close an issue as soon as its work is merged and verified. If only part is
-  done, comment what remains. Close a milestone when its last issue closes.
+  done, comment what remains.
 
 ## Git and pull requests
 
@@ -191,7 +205,7 @@ service.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
-# This is NOT the Next.js you know
+## This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
