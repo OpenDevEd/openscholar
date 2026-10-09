@@ -16,9 +16,10 @@ export async function profileRole(ctx: QueryCtx | MutationCtx, profile: Doc<"aut
  * that owns it (#650), or edit it when they were invited to.
  */
 export async function profileRoleForUser(ctx: QueryCtx | MutationCtx, profile: Doc<"authorProfiles">, userId: Id<"users">) {
-  if (profile.createdBy === userId) return "owner" as const;
+  // Its maker and the workspace's admins own it while they can act in that workspace; one who left it keeps only an invitation of their own.
   const user = profile.workspaceId ? await ctx.db.get("users", userId) : null;
-  if (user && profile.workspaceId && (await actorIn(ctx, user, profile.workspaceId))?.role === "admin") return "owner" as const;
+  const actor = user && profile.workspaceId ? await actorIn(ctx, user, profile.workspaceId) : null;
+  if (actor && (actor.role === "admin" || profile.createdBy === userId)) return "owner" as const;
   const member = await ctx.db.query("authorProfileMembers")
     .withIndex("by_profileId_and_userId", q => q.eq("profileId", profile._id).eq("userId", userId)).unique();
   return member ? "editor" as const : null;

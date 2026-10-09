@@ -19,7 +19,11 @@ function denyOrganizationAccess(): never {
 export async function libraryOwner(ctx: Pick<QueryCtx, "db">, library: Doc<"evidenceLibraries">) {
   const workspace = library.workspaceId ? await ctx.db.get("workspaces", library.workspaceId) : null;
   if (!workspace) return null;
-  return { workspace, organization: workspace.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null };
+  return {
+    workspace,
+    organization: workspace.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null,
+    person: workspace.kind === "personal" ? await ctx.db.get("users", workspace.userId) : null,
+  };
 }
 export type LibraryOwner = NonNullable<Awaited<ReturnType<typeof libraryOwner>>>;
 
@@ -32,12 +36,12 @@ export function requireLibraryWorkspace(library: Doc<"evidenceLibraries">) {
 /** The name a library's owner goes by: its organization's, or the person's whose own workspace it's in. */
 export async function ownerName(ctx: Pick<QueryCtx, "db">, owner: LibraryOwner) {
   if (owner.organization) return { name: owner.organization.name, imageUrl: owner.organization.imageUrl ?? null };
-  const person = owner.workspace.kind === "personal" ? await ctx.db.get("users", owner.workspace.userId) : null;
+  const person = owner.person;
   return { name: [person?.firstName, person?.lastName].filter(Boolean).join(" ") || (person?.email ?? ""), imageUrl: person?.avatarUrl ?? null };
 }
 
-/** Whether the library's owner is still there: an active organization, or a person's own workspace. */
-export const ownerActive = (owner: LibraryOwner | null) => owner !== null && (owner.workspace.kind === "personal" || owner.organization?.state === "active");
+/** Whether the library's owner is still there: an active organization, or the active account whose own workspace it's in. */
+export const ownerActive = (owner: LibraryOwner | null) => owner !== null && (owner.workspace.kind === "personal" ? owner.person?.state === "active" : owner.organization?.state === "active");
 
 /** Pending invitations open the library list, but do not grant a library role. */
 export async function readPendingLibraryInvitations(
