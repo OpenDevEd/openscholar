@@ -93,13 +93,17 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
   // Read here, where the rail always is, so the card opens with the list in it.
   const workspaces = useWorkspaces();
   // A workspace picked in the card is the rail's from the click on, as the mock switched: its tile
-  // flies back to the rail as the card closes, and stays while its pages load. Until then the page
-  // is still the one it was picked from; once it's the picked one's, that one shows when it loads.
+  // flies back to the rail as the card closes, and stays while its pages load. It's held while the
+  // page is still the one it was picked from, and once the page is the picked one's, until it loads.
+  // Anywhere else, Back to where it was picked included, drops it.
   const slug = useWorkspaceSlug() ?? null;
-  const [picked, setPicked] = useState<{ to: WorkspaceRow; from: string | null } | null>(null);
-  const landed = picked !== null && slug === (picked.to.slug ?? null);
-  if (picked && slug !== picked.from && !(landed && loaded?.workspaceId !== picked.to.workspaceId)) setPicked(null);
-  const current = picked && (slug === picked.from || landed) ? picked.to : loaded;
+  const [picked, setPicked] = useState<{ to: WorkspaceRow; from: string | null; landed?: true } | null>(null);
+  const there = picked !== null && slug === (picked.to.slug ?? null);
+  const waiting = picked !== null && !picked.landed && slug === picked.from;
+  const loading = there && loaded?.workspaceId !== picked.to.workspaceId;
+  if (picked && !waiting && !loading) setPicked(null);
+  else if (picked && there && !picked.landed) setPicked({ ...picked, landed: true });
+  const current = picked && (waiting || loading) ? picked.to : loaded;
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
 
