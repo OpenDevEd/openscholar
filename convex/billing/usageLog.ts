@@ -9,7 +9,6 @@
 import { DirectAggregate } from "@convex-dev/aggregate";
 import { components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
 
 export const usageAgg = new DirectAggregate<{ Namespace: string; Key: number; Id: string }>(components.usageAgg);
 
@@ -31,12 +30,4 @@ export function usageOps(row: Counted) {
       : []),
     ...(row.jobId ? [{ type: "insertIfDoesNotExist" as const, namespace: jobSpace(row.jobId), ...item }] : []),
   ];
-}
-
-/**
- * Counts a charge, queued to the aggregate's own batch worker, so reads use
- * `stale: true`. Safe to call again for the same row.
- */
-export async function countUsage(ctx: MutationCtx, row: Counted) {
-  await usageAgg.enqueueBatch(ctx, usageOps(row));
 }

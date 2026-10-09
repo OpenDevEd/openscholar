@@ -30,20 +30,15 @@ export const page = internalQuery({
   },
 });
 
+/** Provisions one page's organizations, then runs again for the next page, so a run that stops carries on from its page. */
 export const run = internalAction({
-  args: {},
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
   returns: v.number(),
-  handler: async (ctx): Promise<number> => {
-    let scheduled = 0;
-    for (let cursor: string | null = null; ;) {
-      const read: { unprovisioned: Id<"workspaces">[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.organizationCustomers.page, { cursor });
-      for (const workspaceId of read.unprovisioned) {
-        await ctx.scheduler.runAfter(0, internal.billing.accounts.provisionOrganization, { workspaceId });
-        scheduled++;
-      }
-      if (read.isDone) return scheduled;
-      cursor = read.continueCursor;
-    }
+  handler: async (ctx, { cursor }): Promise<number> => {
+    const read: { unprovisioned: Id<"workspaces">[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.organizationCustomers.page, { cursor: cursor ?? null });
+    for (const workspaceId of read.unprovisioned) await ctx.scheduler.runAfter(0, internal.billing.accounts.provisionOrganization, { workspaceId });
+    if (!read.isDone) await ctx.scheduler.runAfter(0, internal.migrations.organizationCustomers.run, { cursor: read.continueCursor });
+    return read.unprovisioned.length;
   },
 });
 
