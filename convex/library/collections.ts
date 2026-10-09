@@ -1,6 +1,6 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import type { Id } from "../_generated/dataModel";
-import type { InWorkspace } from "../workspaces/actor";
+import { requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
 import { searchTerms } from "../lib/searchText";
 import type { QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -17,8 +17,8 @@ import { collectionSortName } from "./sortName";
 /** Most collections one page holds. */
 const COLLECTIONS_PAGE_MAX = 50;
 
-export function collectionCountRow(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) {
-  return ctx.db.query("collectionCounts").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+export function collectionCountRow(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) {
+  return ctx.db.query("collectionCounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
 }
 
 export { collectionSortName };
@@ -27,14 +27,14 @@ export { collectionSortName };
 // COLLECTION CRUD (Plan 01 prerequisites)
 // ═══════════════════════════════════════════════════════════════
 
-/** Whether `userId` can make a collection named `name`: its name trimmed, and their count row, read for the cap. */
-export async function collectionAllowed(ctx: QueryCtx, userId: Id<"users">, name: string) {
+/** Whether `userId` can make a collection named `name` in `workspaceId`: its name trimmed, and the workspace's count row, read for the cap. */
+export async function collectionAllowed(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, name: string) {
   const trimmed = name.trim();
   if (!trimmed) {
     throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
   }
-  // Someone with no count row has never made a collection.
-  const counted = await collectionCountRow(ctx, userId);
+  // A workspace with no count row has never had a collection.
+  const counted = await collectionCountRow(ctx, workspaceId);
   const most = await planLimit(ctx, userId, "collections");
   if (most !== undefined && (counted?.count ?? 0) >= most) {
     throw createError("VALIDATION_ERROR", `Your plan allows ${most.toLocaleString("en")} collections. Delete one to make another, or change plan for more.`);
@@ -44,7 +44,7 @@ export async function collectionAllowed(ctx: QueryCtx, userId: Id<"users">, name
 
 /** Makes an empty collection named `name` in the writer's workspace, and counts it. */
 export async function newCollection(ctx: MutationCtx, { userId, workspaceId }: InWorkspace, name: string) {
-  const { trimmed, counted } = await collectionAllowed(ctx, userId, name);
+  const { trimmed, counted } = await collectionAllowed(ctx, { userId, workspaceId }, name);
   if (counted) await ctx.db.patch("collectionCounts", counted._id, { count: counted.count + 1 });
   else await ctx.db.insert("collectionCounts", { userId, workspaceId, count: 1 });
   return await ctx.db.insert("collections", {
@@ -66,11 +66,11 @@ const ADD = "library/collections:addToCollection" as const;
 const REMOVE = "library/collections:removeFromCollection" as const;
 const RETURNS_UNDO = "A change returns `undo`: the action to run and the arguments to run it with to put things back. It is refused if the collection changed again in between.";
 
-/** The person's collection, or the reason it can't be used. */
-async function ownCollection(ctx: Pick<MutationCtx, "db">, userId: Id<"users">, collectionId: Id<"collections">) {
+/** The workspace's collection, or the reason it can't be used. */
+async function ownCollection(ctx: Pick<MutationCtx, "db">, workspaceId: Id<"workspaces">, collectionId: Id<"collections">) {
   const collection = await ctx.db.get("collections", collectionId);
   if (!collection) throw createError("NOT_FOUND", "Collection not found");
-  if (collection.userId !== userId) throw createError("FORBIDDEN", "Not your collection");
+  if (collection.workspaceId !== workspaceId) throw createError("FORBIDDEN", "Not your collection");
   return collection;
 }
 
@@ -104,8 +104,8 @@ export const renameCollectionAction = defineUserMutation({
   undoable: true,
   // A library that follows the collection shows its name.
   asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
-  run: async (ctx, { userId }, args) => {
-    const collection = await ownCollection(ctx, userId, args.collectionId);
+  run: async (ctx, { workspaceId }, args) => {
+    const collection = await ownCollection(ctx, workspaceId, args.collectionId);
     if (args.expect !== undefined && collection.name !== args.expect) throw createError("CONFLICT", "This collection has been renamed since then, so it was left as it is.");
     const trimmed = args.name.trim();
     if (!trimmed) {
@@ -169,8 +169,9 @@ export const deleteCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: false,
-  run: async (ctx, { userId }, args) => {
-    const collection = await ownCollection(ctx, userId, args.collectionId);
+  run: async (ctx, actor, args) => {
+    const collection = await ownCollection(ctx, actor.workspaceId, args.collectionId);
+    requireMakerOrAdmin(actor, collection.createdBy);
     if (args.expect && (collection.name !== args.expect.name || collection.itemCount !== 0)) {
       throw createError("CONFLICT", "This collection has been renamed or holds papers now, so it was left as it is.");
     }
@@ -179,7 +180,7 @@ export const deleteCollectionAction = defineUserMutation({
       await ctx.scheduler.runAfter(0, internal.library.collections.deleteMemberships, { collectionId: args.collectionId });
     }
     await ctx.db.delete("collections", args.collectionId);
-    const counted = await collectionCountRow(ctx, userId);
+    const counted = await collectionCountRow(ctx, actor.workspaceId);
     if (counted) await ctx.db.patch("collectionCounts", counted._id, { count: Math.max(0, counted.count - 1) });
     return null;
   },
@@ -205,10 +206,10 @@ export const addToCollectionAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
-  run: async (ctx, { userId }, args) => {
-    const collection = await ownCollection(ctx, userId, args.collectionId);
+  run: async (ctx, { userId, workspaceId }, args) => {
+    const collection = await ownCollection(ctx, workspaceId, args.collectionId);
     const item = await ctx.db.get("libraryItems", args.libraryItemId);
-    if (!item || item.userId !== userId) {
+    if (!item || item.workspaceId !== workspaceId) {
       throw createError("FORBIDDEN", "Not your library item");
     }
     const assignedAt = await addCollectionMembership(ctx, { userId, collection, item, assignedAt: args.assignedAt });
@@ -227,8 +228,8 @@ export const removeFromCollectionAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
-  run: async (ctx, { userId }, args) => {
-    await ownCollection(ctx, userId, args.collectionId);
+  run: async (ctx, { workspaceId }, args) => {
+    await ownCollection(ctx, workspaceId, args.collectionId);
     const existing = await ctx.db
       .query("libraryItemCollections")
       .withIndex("by_collection_item", (q) =>
@@ -277,17 +278,16 @@ export const listCollectionsAction = defineUserQuery({
     openalexId: v.optional(v.string()),
   },
   returns: paginationResultValidator(collectionRow),
-  run: async (ctx, { userId }, args) => {
-    const user = { _id: userId };
+  run: async (ctx, { workspaceId }, args) => {
     const paginationOpts = { ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, COLLECTIONS_PAGE_MAX) };
     const search = searchTerms(args.search);
     const page = await (search
-      ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", search).eq("userId", user._id))
-      : ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", user._id))
+      ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", search).eq("workspaceId", workspaceId))
+      : ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId))
     ).paginate(paginationOpts);
     const { openalexId } = args;
     const item = openalexId
-      ? await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", user._id).eq("openalexId", openalexId)).unique()
+      ? await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", openalexId)).unique()
       : null;
     const libraryItemId = item?._id;
     return {
@@ -316,8 +316,8 @@ export const countCollectionsAction = defineUserQuery({
   description: "How many collections the person has.",
   args: {},
   returns: v.number(),
-  // Someone with no count row has never made a collection.
-  run: async (ctx, { userId }) => (await collectionCountRow(ctx, userId))?.count ?? 0,
+  // A workspace with no count row has never had a collection.
+  run: async (ctx, { workspaceId }) => (await collectionCountRow(ctx, workspaceId))?.count ?? 0,
 });
 export const countCollections = userQuery(countCollectionsAction);
 export const countCollectionsForAssistant = assistantQuery(countCollectionsAction);
@@ -327,9 +327,9 @@ export const getCollectionAction = defineUserQuery({
   description: "One of the person's collections by its ID: its name and how many papers it holds. Null when it's gone or someone else's.",
   args: { collectionId: v.id("collections") },
   returns: v.union(v.object({ _id: v.id("collections"), name: v.string(), itemCount: v.number() }), v.null()),
-  run: async (ctx, { userId }, args) => {
+  run: async (ctx, { workspaceId }, args) => {
     const collection = await ctx.db.get("collections", args.collectionId);
-    if (!collection || collection.userId !== userId) return null;
+    if (!collection || collection.workspaceId !== workspaceId) return null;
     return { _id: collection._id, name: collection.name, itemCount: collection.itemCount };
   },
 });

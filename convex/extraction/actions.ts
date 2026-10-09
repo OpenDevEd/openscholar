@@ -206,6 +206,9 @@ const pagedSource = (item: BucketItemInput) => item.source === "screening" || it
  * from its place in its included papers, so neither is ever held whole; the bucket's own
  * papers are read up to the next of those.
  */
+/** Who a job reads its papers as, in the person's own workspace until extraction jobs belong to one (#650). */
+const jobReader = async (ctx: ActionCtx, job: Doc<"extractionJobs">) => ({ userId: job.userId, workspaceId: await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: job.userId }) });
+
 async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: string, place: SetupPlace): Promise<{ papers: SetupPaper[]; next: SetupPlace } | null> {
   // Typed here: the generated API's types depend on this module, so inference would loop.
   const sources: StepSource[] = await ctx.runQuery(internal.extraction.queries.internal.jobSourcesFrom, { jobId: job._id, position: place.position, numItems: SETUP_STEP });
@@ -231,7 +234,7 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
     const last = Math.min(range.first + range.count - 1, first + SETUP_STEP - 1);
     if (last < first) return { papers: [], next: onTo(position + 1) };
     const set = range.collectionId ? { kind: "collection" as const, collectionId: range.collectionId } : { kind: "saved" as const };
-    const { papers: held, resume } = await heldPapers(ctx, job.userId, set, { first, last }, place.resume);
+    const { papers: held, resume } = await heldPapers(ctx, await jobReader(ctx, job), set, { first, last }, place.resume);
     const papers = held.map(({ venue, ...paper }): SetupPaper => ({ ...paper, venueName: venue, sourceType: "manual", sourceId: range.collectionId ?? "library" }));
     const read = place.read + papers.length;
     return { papers, next: resume && read < range.count ? { ...place, read, resume } : onTo(position + 1) };
@@ -239,7 +242,7 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
   if (item.source === "screening") {
     const selection = item.screeningSelection;
     if (!selection) throw createError("VALIDATION_ERROR", "Screening selection is missing.");
-    const { papers: held, resume } = await heldPapers(ctx, job.userId, { kind: "screening", jobId: selection.jobId }, { first: place.read + 1, last: place.read + SETUP_STEP }, place.resume, selection.revision);
+    const { papers: held, resume } = await heldPapers(ctx, await jobReader(ctx, job), { kind: "screening", jobId: selection.jobId }, { first: place.read + 1, last: place.read + SETUP_STEP }, place.resume, selection.revision);
     const papers = held.map(({ venue, ...paper }): SetupPaper => ({ ...paper, venueName: venue, sourceType: "screening", sourceId: selection.jobId, screeningRevision: selection.revision }));
     const read = place.read + papers.length;
     if (resume) return { papers, next: { ...place, read, resume } };

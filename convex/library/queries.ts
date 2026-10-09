@@ -1,11 +1,10 @@
-import { query, type QueryCtx } from "../_generated/server";
+import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { searchTerms } from "../lib/searchText";
 import { paginationOptsValidator, paginationResultValidator, type Cursor, type PaginationOptions } from "convex/server";
 import { v, type ObjectType } from "convex/values";
 import { stream, type QueryStream } from "convex-helpers/server/stream";
 import schema from "../schema";
-import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { findItem } from "./mutations";
 import { authorDisplay } from "../../lib/library/paper-metadata";
@@ -13,7 +12,7 @@ import { libraryCount } from "./counter";
 import { livePlaces } from "./collectionMembership";
 import { JoinStream } from "../lib/joinStream";
 import { countInRange, type CountedField, type Range } from "./facets";
-import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
+import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
 import { LIBRARY_SEARCH_RESULTS_MAX as SEARCH_RESULTS_MAX } from "../../lib/library/limits";
 import { libraryFilterFields, libraryPapersValidator, librarySortOrderValidator, librarySortValidator, PAPERS_PAGE, type LibraryView } from "./validators";
 
@@ -37,11 +36,11 @@ export const libraryPageValidator = paginationResultValidator(schema.tables.libr
 type LibraryItem = Doc<"libraryItems">;
 
 const SORT_INDEX_MAP = {
-  savedAt: "by_user_savedAt",
-  rating: "by_user_rating",
-  publicationYear: "by_user_year",
-  citedByCount: "by_user_citedByCount",
-  title: "by_user_title",
+  savedAt: "by_workspace_savedAt",
+  rating: "by_workspace_rating",
+  publicationYear: "by_workspace_year",
+  citedByCount: "by_workspace_citedByCount",
+  title: "by_workspace_title",
 } as const;
 
 type SharedLibraryFilterArgs = {
@@ -169,7 +168,7 @@ const COLLECTION_SORT_INDEX = {
 } as const;
 
 /** A whole library, or one collection of it. */
-type Scope = { userId: Id<"users"> } | { collectionId: Id<"collections"> };
+type Scope = { workspaceId: Id<"workspaces"> } | { collectionId: Id<"collections"> };
 
 /**
  * A library's papers, or a collection's memberships, in `field`'s index order, narrowed to
@@ -187,14 +186,14 @@ function along(ctx: QueryCtx, scope: Scope, field: LibrarySortBy, order: "asc" |
   };
   const rows = "collectionId" in scope
     ? stream(ctx.db, schema).query("libraryItemCollections").withIndex(COLLECTION_SORT_INDEX[field], (q) => narrow(q.eq("collectionId", scope.collectionId) as unknown as Range) as never)
-    : stream(ctx.db, schema).query("libraryItems").withIndex(SORT_INDEX_MAP[field], (q) => narrow(q.eq("userId", scope.userId) as unknown as Range) as never);
+    : stream(ctx.db, schema).query("libraryItems").withIndex(SORT_INDEX_MAP[field], (q) => narrow(q.eq("workspaceId", scope.workspaceId) as unknown as Range) as never);
   return (rows as typeof rows & { order(o: "asc" | "desc"): typeof rows }).order(order).filterWith(async (row: Filtered) => matchesLibraryFilters(row, args));
 }
 
-/** The person's collection, or null when it's gone or someone else's. */
-async function ownCollection(ctx: QueryCtx, userId: Id<"users">, collectionId: Id<"collections"> | undefined) {
+/** The workspace's collection, or null when it's gone or in another. */
+async function ownCollection(ctx: QueryCtx, workspaceId: Id<"workspaces">, collectionId: Id<"collections"> | undefined) {
   const collection = collectionId ? await ctx.db.get("collections", collectionId) : null;
-  return collection?.userId === userId ? collection : null;
+  return collection?.workspaceId === workspaceId ? collection : null;
 }
 
 /** Which of these papers are in the collection: one point read each. */
@@ -203,11 +202,11 @@ async function inThatCollection(ctx: QueryCtx, collectionId: Id<"collections">, 
   return items.filter((_, at) => kept[at] !== null);
 }
 
-/** The user's papers matching a text search, most relevant first. */
-async function searchLibraryItems(ctx: QueryCtx, userId: Id<"users">, searchText: string): Promise<LibraryItem[]> {
+/** The workspace's papers matching a text search, most relevant first. */
+async function searchLibraryItems(ctx: QueryCtx, workspaceId: Id<"workspaces">, searchText: string): Promise<LibraryItem[]> {
   return await ctx.db
     .query("libraryItems")
-    .withSearchIndex("search_library", (q) => q.search("searchableText", searchTerms(searchText) ?? "").eq("userId", userId))
+    .withSearchIndex("search_library", (q) => q.search("searchableText", searchTerms(searchText) ?? "").eq("workspaceId", workspaceId))
     .take(SEARCH_RESULTS_MAX);
 }
 
@@ -235,19 +234,19 @@ export type LibraryPage = { page: LibraryItem[]; isDone: boolean; continueCursor
 const emptyPage: LibraryPage = { page: [], isDone: true, continueCursor: "" as Cursor };
 
 /**
- * One page of someone's library view. A search reads its every match, the search engine's
+ * One page of a workspace's library view. A search reads its every match, the search engine's
  * limit, and pages them in memory; a browse reads through the sort's index (a collection's
  * own, over its memberships), and a filtered one stops after FILTERED_PAGE_ROWS rows with a
  * cursor to carry on from.
  */
-export async function readLibraryPage(ctx: QueryCtx, userId: Id<"users">, view: LibraryView & { unrated?: boolean }, paginationOpts: PaginationOptions): Promise<LibraryPage> {
-  const collection = await ownCollection(ctx, userId, view.collectionId);
+export async function readLibraryPage(ctx: QueryCtx, workspaceId: Id<"workspaces">, view: LibraryView & { unrated?: boolean }, paginationOpts: PaginationOptions): Promise<LibraryPage> {
+  const collection = await ownCollection(ctx, workspaceId, view.collectionId);
   if (view.collectionId && !collection) return emptyPage;
 
   if (view.searchText !== undefined) {
     const searchText = view.searchText.trim();
     if (!searchText) return emptyPage;
-    const found = (await searchLibraryItems(ctx, userId, searchText)).filter((item) => matchesLibraryFilters(item, view));
+    const found = (await searchLibraryItems(ctx, workspaceId, searchText)).filter((item) => matchesLibraryFilters(item, view));
     const items = collection ? await inThatCollection(ctx, collection._id, found) : found;
     return paginateLibraryItems(
       sortLibraryItems(items, view.sortBy, view.sortOrder),
@@ -266,15 +265,15 @@ export async function readLibraryPage(ctx: QueryCtx, userId: Id<"users">, view: 
   if (!hasNonCollectionLibraryFilters(view)) {
     return await ctx.db
       .query("libraryItems")
-      .withIndex(SORT_INDEX_MAP[view.sortBy], (q) => q.eq("userId", userId))
+      .withIndex(SORT_INDEX_MAP[view.sortBy], (q) => q.eq("workspaceId", workspaceId))
       .order(view.sortOrder)
       .paginate(page);
   }
-  return (await along(ctx, { userId }, view.sortBy, view.sortOrder, view)
+  return (await along(ctx, { workspaceId }, view.sortBy, view.sortOrder, view)
     .paginate({ ...page, maximumRowsRead: FILTERED_PAGE_ROWS, maximumBytesRead: FILTERED_BYTES })) as LibraryPage;
 }
 
-export const browseLibrary = query({
+export const browseLibrary = workspaceQuery({
   args: {
     sortBy: librarySortValidator,
     sortOrder: librarySortOrderValidator,
@@ -282,13 +281,10 @@ export const browseLibrary = query({
     paginationOpts: paginationOptsValidator,
   },
   returns: libraryPageValidator,
-  handler: async (ctx, { paginationOpts, ...view }) => {
-    const user = await requireAuth(ctx);
-    return await readLibraryPage(ctx, user._id, view, paginationOpts);
-  },
+  handler: (ctx, { workspaceId }, { paginationOpts, ...view }) => readLibraryPage(ctx, workspaceId, view, paginationOpts),
 });
 
-export const searchLibrary = query({
+export const searchLibrary = workspaceQuery({
   args: {
     searchText: v.string(),
     sortBy: v.optional(librarySortValidator),
@@ -297,10 +293,7 @@ export const searchLibrary = query({
     paginationOpts: paginationOptsValidator,
   },
   returns: libraryPageValidator,
-  handler: async (ctx, { paginationOpts, sortBy = "savedAt", sortOrder = "desc", ...view }) => {
-    const user = await requireAuth(ctx);
-    return await readLibraryPage(ctx, user._id, { ...view, sortBy, sortOrder }, paginationOpts);
-  },
+  handler: (ctx, { workspaceId }, { paginationOpts, sortBy = "savedAt", sortOrder = "desc", ...view }) => readLibraryPage(ctx, workspaceId, { ...view, sortBy, sortOrder }, paginationOpts),
 });
 
 /**
@@ -309,7 +302,7 @@ export const searchLibrary = query({
  * search engine's limit, and several filters are counted by reading along the narrowest;
  * `capped` says when either stopped short (#353).
  */
-export const getLibraryFilteredCount = query({
+export const getLibraryFilteredCount = workspaceQuery({
   args: {
     sortBy: librarySortValidator,
     sortOrder: librarySortOrderValidator,
@@ -317,7 +310,7 @@ export const getLibraryFilteredCount = query({
     searchText: v.optional(v.string()),
   },
   returns: v.object({ count: v.number(), capped: v.boolean() }),
-  handler: async (ctx, args) => countLibraryView(ctx, (await requireAuth(ctx))._id, args),
+  handler: (ctx, { workspaceId }, args) => countLibraryView(ctx, workspaceId, args),
 });
 
 /** Each filter on a counted field: its range, or null for unrated papers. */
@@ -331,22 +324,22 @@ function filtersOf(args: SharedLibraryFilterArgs): { field: CountedField; range:
 }
 
 /** How many papers a view of someone's library shows, and whether the count stopped short (see getLibraryFilteredCount). */
-async function countLibraryView(ctx: QueryCtx, userId: Id<"users">, args: Omit<LibraryView, "sortBy" | "sortOrder"> & { unrated?: boolean }) {
-  const collection = await ownCollection(ctx, userId, args.collectionId);
+async function countLibraryView(ctx: QueryCtx, workspaceId: Id<"workspaces">, args: Omit<LibraryView, "sortBy" | "sortOrder"> & { unrated?: boolean }) {
+  const collection = await ownCollection(ctx, workspaceId, args.collectionId);
   if (args.collectionId && !collection) return { count: 0, capped: false };
 
   const searchText = args.searchText?.trim();
   if (searchText) {
-    const found = await searchLibraryItems(ctx, userId, searchText);
+    const found = await searchLibraryItems(ctx, workspaceId, searchText);
     const matching = found.filter((item) => matchesLibraryFilters(item, args));
     const count = (collection ? await inThatCollection(ctx, collection._id, matching) : matching).length;
     return { count, capped: found.length === SEARCH_RESULTS_MAX };
   }
 
   const filters = filtersOf(args);
-  if (filters.length === 0) return { count: collection ? collection.itemCount : await libraryCount(ctx, userId), capped: false };
-  const scope: Scope = collection ? { collectionId: collection._id } : { userId };
-  const counts = await Promise.all(filters.map(({ field, range }) => countInRange(ctx, collection?._id ?? userId, field, range)));
+  if (filters.length === 0) return { count: collection ? collection.itemCount : await libraryCount(ctx, workspaceId), capped: false };
+  const scope: Scope = collection ? { collectionId: collection._id } : { workspaceId };
+  const counts = await Promise.all(filters.map(({ field, range }) => countInRange(ctx, collection?._id ?? workspaceId, field, range)));
   if (filters.length === 1) return { count: counts[0], capped: false };
   // Several filters: read the papers the narrowest one matches, applying the rest, to the end
   // or the read budget. The counts only choose the index; they may be a moment behind.
@@ -409,17 +402,17 @@ export const papersAction = defineUserQuery({
     cursor: optional(v.string()),
   },
   returns: libraryPapersValidator,
-  run: async (ctx, { userId }, given) => {
+  run: async (ctx, { userId, workspaceId }, given) => {
     const user = await ctx.db.get("users", userId);
     if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
     const view = viewOf(given);
-    const read = await readLibraryPage(ctx, userId, { ...view, sortBy: SORTS[given.sort ?? "saved"], sortOrder: given.ascending ? "asc" : "desc" }, { cursor: given.cursor || null, numItems: PAPERS_PAGE });
+    const read = await readLibraryPage(ctx, workspaceId, { ...view, sortBy: SORTS[given.sort ?? "saved"], sortOrder: given.ascending ? "asc" : "desc" }, { cursor: given.cursor || null, numItems: PAPERS_PAGE });
     // A narrowed view is counted by reading it, which a page of it leaves no room for in one read: its count is its own action.
     const kept = view.searchText === undefined && !hasNonCollectionLibraryFilters(view);
     // Asked paper by paper, finding the ones in no collection took a library of sixty a hundred reads.
     const collected = await inCollection(ctx, read.page.map((item) => item._id));
     return {
-      ...(kept ? { total: (await countLibraryView(ctx, userId, view)).count } : {}),
+      ...(kept ? { total: (await countLibraryView(ctx, workspaceId, view)).count } : {}),
       papers: read.page.map((item, at) => ({
         libraryItemId: item._id,
         id: item.openalexId,
@@ -446,23 +439,20 @@ export const countPapersAction = defineUserQuery({
     "A count that stopped short of them all comes with `atLeast`.",
   args: narrowing,
   returns: v.object({ count: v.number(), atLeast: v.optional(v.literal(true)) }),
-  run: async (ctx, { userId }, given) => {
+  run: async (ctx, { userId, workspaceId }, given) => {
     const user = await ctx.db.get("users", userId);
     if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
-    const counted = await countLibraryView(ctx, userId, viewOf(given));
+    const counted = await countLibraryView(ctx, workspaceId, viewOf(given));
     return { count: counted.count, ...(counted.capped ? { atLeast: true as const } : {}) };
   },
 });
 export const countPapers = userQuery(countPapersAction);
 export const countPapersForAssistant = assistantQuery(countPapersAction);
 
-export const getLibraryCount = query({
+export const getLibraryCount = workspaceQuery({
   args: {},
   returns: v.number(),
-  handler: async (ctx) => {
-    const user = await requireAuth(ctx);
-    return await libraryCount(ctx, user._id);
-  },
+  handler: (ctx, { workspaceId }) => libraryCount(ctx, workspaceId),
 });
 
 export const savedPaperAction = defineUserQuery({
@@ -470,8 +460,8 @@ export const savedPaperAction = defineUserQuery({
   description: "Whether a paper is in the person's library, and whether it's in any of their collections.",
   args: { openalexId: v.string() },
   returns: v.union(v.object({ libraryItemId: v.id("libraryItems"), inCollection: v.boolean() }), v.null()),
-  run: async (ctx, { userId }, args) => {
-    const item = await findItem(ctx, userId, args.openalexId);
+  run: async (ctx, { workspaceId }, args) => {
+    const item = await findItem(ctx, workspaceId, args.openalexId);
     if (!item) return null;
     return { libraryItemId: item._id, inCollection: (await inCollection(ctx, [item._id]))[0] };
   },

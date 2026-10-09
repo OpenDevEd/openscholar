@@ -28,9 +28,10 @@ const READ_ACTION_MS = 4 * 60_000;
 
 /** How many papers a held set has, as the account counts them: what a job on it can take at most. */
 export const heldCount = internalQuery({
-  args: { userId: v.id("users"), set: paperSetValidator },
+  // `workspaceId` is optional only for a call from an action already running when this deployed (#650); required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), set: paperSetValidator },
   returns: v.union(v.number(), v.null()),
-  handler: (ctx, { userId, set }) => papersIn(ctx, userId, set),
+  handler: async (ctx, { userId, workspaceId, set }) => papersIn(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, set),
 });
 
 /**
@@ -56,7 +57,7 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, autho
     total = await countSearch(snapshot.request, spender(ctx, found.clerkId));
   } else {
     // A set the account doesn't count is read to its end, or to `last`.
-    total = (await ctx.runQuery(internal.screening.start.heldCount, { userId, set })) ?? through;
+    total = (await ctx.runQuery(internal.screening.start.heldCount, { userId, workspaceId, set })) ?? through;
   }
   if (first > total) throw createError("VALIDATION_ERROR", "There are no papers in that range");
   // No further than the set goes: papers past its last are never asked for.
@@ -124,7 +125,8 @@ export const read = internalAction({
           await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read, ...(resume ? { resume } : {}), ended: done });
           if (done) return null;
         } else {
-          const { papers, resume } = await heldPapers(ctx, job.userId, job.set, { first: from, last: to }, job.resume);
+          workspaceId ??= await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: job.userId });
+          const { papers, resume } = await heldPapers(ctx, { userId: job.userId, workspaceId }, job.set, { first: from, last: to }, job.resume);
           const done = !resume || to >= job.last;
           await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: to - from + 1, ...(resume ? { resume } : {}), ended: done });
           if (done) return null;

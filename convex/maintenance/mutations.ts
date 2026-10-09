@@ -99,18 +99,18 @@ export const cleanupDeletedUsers = internalMutation({
           .withIndex("by_user", (q) => q.eq("userId", user._id))
           .unique();
         if (account) await ctx.db.delete("billingAccounts", account._id);
-        // The library count is a cache of the person's saved papers, so it goes with them.
-        const libraryCount = await libraryCountRow(ctx, user._id);
+        // Their own workspace goes with them (#650); an organization's stays the organization's.
+        const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", user._id)).unique();
+        // Its library counts are a cache of its saved papers and collections, so they go with it.
+        const libraryCount = workspace && (await libraryCountRow(ctx, workspace._id));
         if (libraryCount) await ctx.db.delete("libraryCounts", libraryCount._id);
-        const collectionCount = await collectionCountRow(ctx, user._id);
+        const collectionCount = workspace && (await collectionCountRow(ctx, workspace._id));
         if (collectionCount) await ctx.db.delete("collectionCounts", collectionCount._id);
         for (const table of ["searches", "queryShortcuts"] as const) {
           const counted = await countRow(ctx, table, user._id);
           if (counted) await ctx.db.delete("recordCounts", counted._id);
         }
 
-        // Their own workspace goes with them (#650); an organization's stays the organization's.
-        const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", user._id)).unique();
         if (workspace) await ctx.db.delete("workspaces", workspace._id);
 
         // Hard delete the user to prevent re-processing

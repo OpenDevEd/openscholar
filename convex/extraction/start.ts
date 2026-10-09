@@ -77,22 +77,22 @@ async function checkExtraction(ctx: QueryCtx, { userId, workspaceId }: InWorkspa
   checkQuestions(questions);
   if (set.kind === "screening") {
     await screeningPicked(ctx, userId, set.jobId);
-    return void (await checkRequestPapers(ctx, userId, (await papersIn(ctx, userId, set)) ?? 0, "extraction"));
+    return void (await checkRequestPapers(ctx, userId, (await papersIn(ctx, { userId, workspaceId }, set)) ?? 0, "extraction"));
   }
   checkRange(set, first, last);
   if (set.kind === "search") {
     await searchFilters(ctx, workspaceId, set.searchId);
     return void (await checkRequestPapers(ctx, userId, last - first + 1, "extraction"));
   }
-  if (set.kind === "collection" && (await ctx.db.get("collections", set.collectionId))?.userId !== userId) throw createError("NOT_FOUND", "Collection not found");
-  const held = await papersIn(ctx, userId, set);
+  if (set.kind === "collection" && (await ctx.db.get("collections", set.collectionId))?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
+  const held = await papersIn(ctx, { userId, workspaceId }, set);
   if (held !== null && first > held) throw invalid("There are no papers in that range");
   await checkRequestPapers(ctx, userId, Math.min(last, held ?? last) - first + 1, "extraction");
 }
 
 /** How many papers a request is for. A screening is all its included papers; a search is read from its first paper. */
-async function papersOf(ctx: QueryCtx, userId: Id<"users">, { set, first, last }: { set: PaperSet; first: number; last: number }) {
-  const held = await papersIn(ctx, userId, set);
+async function papersOf(ctx: QueryCtx, reader: InWorkspace, { set, first, last }: { set: PaperSet; first: number; last: number }) {
+  const held = await papersIn(ctx, reader, set);
   if (set.kind === "screening") return held ?? 0;
   return Math.max(0, Math.min(last, held ?? last) - first + 1);
 }
@@ -101,7 +101,7 @@ async function papersOf(ctx: QueryCtx, userId: Id<"users">, { set, first, last }
 async function extractionHold(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, { questions, usePdfs, ...range }: { set: PaperSet; first: number; last: number; questions: Array<{ type: string; question: string }>; usePdfs?: boolean }) {
   await checkExtraction(ctx, { userId, workspaceId }, { ...range, questions, usePdfs });
   const pricing = await extractionPricing(ctx, await extractionStamp(ctx, userId));
-  return (await papersOf(ctx, userId, range)) * extractionPaperCredits(pricing, questions, usePdfs === true);
+  return (await papersOf(ctx, { userId, workspaceId }, range)) * extractionPaperCredits(pricing, questions, usePdfs === true);
 }
 
 /** The same figure, for the start to check what was approved against (see `start`). */

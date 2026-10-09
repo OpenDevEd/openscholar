@@ -91,7 +91,7 @@ export function SetupView({
   const searches = useSearchList({ sort: "recent", pageSize: from ? SOURCE_PAGE - 1 : SOURCE_PAGE, excludeId: fromSearchId });
   const collections = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), SOURCE_PAGE);
   const { data: collectionCount } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
-  const { data: savedCount } = useProtectedQuery(api.library.queries.getLibraryCount, {});
+  const { data: savedCount } = useProtectedQuery(api.library.queries.getLibraryCount, inWorkspace(workspaceId, {}));
   const screenings = useCursorPage(api.screening.queries.listUserScreeningJobs, { status: "completed" as const }, SOURCE_PAGE);
   const date = (at: number) => format.dateTime(new Date(at), { dateStyle: "medium" });
   const lists: Record<Kind, { rows: Source[]; pager?: Pick<typeof collections, "page" | "canPrevious" | "canNext" | "previous" | "next" | "hasPages" | "isStale"> & { pageCount?: number } }> = {

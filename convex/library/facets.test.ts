@@ -5,12 +5,13 @@ import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { runUntriggered } from "../../tests/convex-test-with-limits";
+import { runUncapped, runUntriggered } from "../../tests/convex-test-with-limits";
 import { restoreLibraryItemAction } from "./mutations";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { ownActor } from "../workspaces/actor.test-support";
 import { personalWorkspaceOf } from "../workspaces/actor";
 import { countInRange } from "./facets";
+import { ensureWorkspace } from "../workspaces/create";
 
 type Test = ReturnType<typeof convexTest>;
 
@@ -219,11 +220,12 @@ describe("library facets", () => {
     try {
       const t = convexTest(schema);
       const { userId, as } = await setup(t);
-      // As rows saved before: written without the triggers that keep them.
+      // As rows saved before: written without the triggers that keep them, in the person's own workspace as every row now is.
+      const owner = { userId, workspaceId: await t.run((ctx) => personalWorkspaceOf(ctx, userId)), createdBy: userId };
       const collectionId = await runUntriggered(t, async (ctx) => {
-        const id = await ctx.db.insert("collections", { userId, name: "Old", sortName: "old", itemCount: 3, createdAt: 1, updatedAt: 1 });
+        const id = await ctx.db.insert("collections", { ...owner, name: "Old", sortName: "old", itemCount: 3, createdAt: 1, updatedAt: 1 });
         for (const [i, rating] of [5, 5, 2].entries()) {
-          const libraryItemId = await ctx.db.insert("libraryItems", { userId, ...paper(i), rating, searchableText: `Paper ${i}`, savedAt: i, updatedAt: 1 });
+          const libraryItemId = await ctx.db.insert("libraryItems", { ...owner, ...paper(i), rating, searchableText: `Paper ${i}`, savedAt: i, updatedAt: 1 });
           await ctx.db.insert("libraryItemCollections", { userId, collectionId: id, libraryItemId, assignedAt: 1 });
         }
         return id;
@@ -273,6 +275,45 @@ describe("the library in workspaces (#650)", () => {
     expect(await ratingsIn(t, own)).toEqual([0, 0, 1, 0, 1, 0]);
   });
 
+  it("reads an organization's library for each member, apart from their own, and leaves what one made to them and its admins to take away", async () => {
+    const t = convexTest(schema);
+    const { lab, alice, bob, aliceId } = await t.run(async (ctx) => {
+      const ids = await Promise.all(["alice", "bob"].map((clerkId) => ctx.db.insert("users", { clerkId, email: `${clerkId}@test.local`, state: "active", createdAt: 1, updatedAt: 1 })));
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Learning Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      for (const [clerkUserId, role] of [["alice", "org:member"], ["bob", "org:admin"]] as const) {
+        await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role, state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+      }
+      return { lab: await ensureWorkspace(ctx, { kind: "organization", organizationId }), alice: "alice", bob: "bob", aliceId: ids[0] };
+    });
+    const [asAlice, asBob] = [alice, bob].map((subject) => t.withIdentity({ subject }));
+    const inLab = { workspaceId: lab };
+    const { id: alicePaper } = await asAlice.mutation(api.library.mutations.saveToLibrary, { ...inLab, ...paper(1, { rating: 5 }) });
+    await asBob.mutation(api.library.mutations.saveToLibrary, { ...inLab, ...paper(2, { rating: 3 }) });
+    const { id: bobCollection } = await asBob.mutation(api.library.collections.createCollection, { ...inLab, name: "Shared" });
+    await asAlice.mutation(api.library.collections.addToCollection, { ...inLab, collectionId: bobCollection, libraryItemId: alicePaper });
+    await asAlice.mutation(api.library.mutations.saveToLibrary, paper(9));
+    await t.finishAllScheduledFunctions(() => {});
+
+    // Every member reads the organization's library; each person's own is theirs alone.
+    const titles = async (as: typeof asAlice, workspaceId?: Id<"workspaces">) => (await as.query(api.library.queries.papers, { ...(workspaceId ? { workspaceId } : {}), sort: "title", ascending: true })).papers.map((item) => item.title);
+    expect(await titles(asBob, lab)).toEqual(["Paper 1", "Paper 2"]);
+    expect(await titles(asAlice)).toEqual(["Paper 9"]);
+    expect(await asBob.query(api.library.queries.getLibraryCount, inLab)).toBe(2);
+    expect(await asBob.query(api.library.queries.countPapers, { ...inLab, minRating: 5 })).toEqual({ count: 1 });
+    expect(await asAlice.query(api.library.collections.countCollections, inLab)).toBe(1);
+    // A collection outside the workspace a call names isn't there, and no one reads a workspace they're not in.
+    await expect(asAlice.mutation(api.library.collections.addToCollection, { collectionId: bobCollection, libraryItemId: alicePaper })).rejects.toThrow(/Not your collection/);
+    const own = await t.run((ctx) => personalWorkspaceOf(ctx, aliceId));
+    await expect(asBob.query(api.library.queries.getLibraryCount, { workspaceId: own })).rejects.toThrow(/Workspace not found/);
+
+    // A member takes away only what they made; an admin takes away anyone's.
+    await expect(asAlice.mutation(api.library.mutations.removeFromLibrary, { ...inLab, openalexId: paper(2).openalexId })).rejects.toThrow(/admin/);
+    await expect(asAlice.mutation(api.library.collections.deleteCollection, { ...inLab, collectionId: bobCollection })).rejects.toThrow(/admin/);
+    await asBob.mutation(api.library.mutations.removeFromLibrary, { ...inLab, openalexId: paper(1).openalexId });
+    await t.finishAllScheduledFunctions(() => {});
+    expect(await titles(asAlice, lab)).toEqual(["Paper 2"]);
+  });
+
   it("puts library rows from before workspaces in their person's own, counted there, however often the backfill runs", async () => {
     vi.useFakeTimers();
     try {
@@ -280,7 +321,7 @@ describe("the library in workspaces (#650)", () => {
       const userId = await t.run((ctx) => ctx.db.insert("users", { clerkId: "reader", email: "reader@test.local", state: "active", createdAt: 1, updatedAt: 1 }));
       const own = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
       // As they were before workspaces: counted under the person, with no workspace or maker.
-      await t.run(async (ctx) => {
+      await runUncapped(t, async (ctx) => {
         for (const [i, rating] of [5, 5, 1].entries()) await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, rating, searchableText: `Paper ${i}`, savedAt: i, updatedAt: i });
         const item = await ctx.db.insert("libraryItems", { userId, openalexId: "https://openalex.org/W9", title: "Removed", searchableText: "Removed", savedAt: 9, updatedAt: 9 });
         await ctx.db.insert("libraryRemovals", { userId, itemId: item, item: { openalexId: "https://openalex.org/W9", title: "Removed", searchableText: "Removed", savedAt: 9, updatedAt: 9 }, expiresAt: Date.now() + 60_000 });

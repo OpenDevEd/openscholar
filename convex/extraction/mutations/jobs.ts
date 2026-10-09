@@ -34,6 +34,7 @@ import { refillPerson } from "../queue/dispatcher";
 import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
 import { checkScreeningSelection } from "../sources/screening";
 import { bucketItemFromRow } from "../jobSources";
+import { personalWorkspaceOf } from "../../workspaces/actor";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -86,11 +87,13 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
     selection.count = await checkScreeningSelection(ctx, userId, selection.jobId, selection.revision);
     item.sourceRefId = selection.jobId;
   }
-  // A range of a collection or the library holds what the server counts in it now, never what it was sent.
+  // A range of a collection or the library holds what the server counts in it now, never what it was sent,
+  // in the person's own workspace until extraction jobs belong to one (#650).
+  const reader = { userId, workspaceId: await personalWorkspaceOf(ctx, userId) };
   for (const item of deduped) {
     if (!item.librarySet) continue;
     const { collectionId, first, last } = item.librarySet;
-    const held = await papersIn(ctx, userId, collectionId ? { kind: "collection", collectionId } : { kind: "saved" });
+    const held = await papersIn(ctx, reader, collectionId ? { kind: "collection", collectionId } : { kind: "saved" });
     if (held === null) throw createError("NOT_FOUND", "Collection not found");
     if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
     item.librarySet = { ...item.librarySet, count: Math.max(0, Math.min(last, held) - first + 1) };

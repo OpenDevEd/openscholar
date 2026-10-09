@@ -34,10 +34,10 @@ export const findAction = defineUserQuery({
           listedSearchesAction.run(ctx, actor, { paginationOpts: first, sort: "recent", text: needle }).then(({ page }) => page)
         : ctx.db.query("searches").withIndex("by_workspace_and_createdAt", (q) => q.eq("workspaceId", actor.workspaceId)).order("desc").take(EACH).then((rows) => rows.map(({ data }) => data)),
       (needle
-        ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", searchTerms(needle)!).eq("userId", userId))
-        : ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", userId))
+        ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", searchTerms(needle)!).eq("workspaceId", actor.workspaceId))
+        : ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", actor.workspaceId))
       ).take(EACH),
-      readLibraryPage(ctx, userId, { ...(needle ? { searchText: needle } : {}), sortBy: "savedAt", sortOrder: "desc" }, first),
+      readLibraryPage(ctx, actor.workspaceId, { ...(needle ? { searchText: needle } : {}), sortBy: "savedAt", sortOrder: "desc" }, first),
     ]);
     const groups = [
       // A search found by its filters alone has no query: it's named by its question, or left out when it has neither.

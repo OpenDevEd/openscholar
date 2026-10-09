@@ -201,6 +201,23 @@ export function accountWorkspaceMutation<Args extends PropertyValidators, Return
   return Object.assign(built, { checksWorkspace: true }) as typeof built;
 }
 
+/**
+ * A public query that reads a workspace's records but isn't a user action yet, so the assistant
+ * has no tool for it, such as the library page's own reads. It takes the workspace and checks it
+ * for the signed-in person before `handler` runs, and carries the mark `check:user-actions` reads.
+ */
+export function workspaceQuery<Args extends PropertyValidators, Returns extends GenericValidator>(fn: { args: Args; returns: Returns; handler: (ctx: QueryCtx, actor: Actor, args: ObjectType<Args>) => Promise<Infer<Returns>> }) {
+  const built = query<Args & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
+    args: { ...fn.args, ...workspaceArg },
+    returns: fn.returns,
+    handler: async (ctx, args) => {
+      const { workspaceId, rest } = inWorkspace<Args>(args);
+      return fn.handler(ctx, await actorFor(ctx, await requireAuth(ctx), workspaceId), rest);
+    },
+  });
+  return Object.assign(built, { checksWorkspace: true }) as typeof built;
+}
+
 /** The public query the UI calls, for the signed-in user. */
 export function userQuery<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserQuery<Args, Returns>, options?: { signedOut: Infer<Returns> }) {
   return tagged(

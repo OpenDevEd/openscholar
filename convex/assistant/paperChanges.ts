@@ -139,7 +139,7 @@ export async function papersOf(ctx: ActionCtx, { userId, workspaceId }: InWorksp
   } else {
     const held = set.kind === "collection" ? { kind: set.kind, collectionId: set.collectionId as Id<"collections"> } : set.kind === "screening" ? { kind: set.kind, jobId: set.jobId as Id<"screeningJobs"> } : { kind: "saved" as const };
     papers = await readPieces(first, last, enough, async (from, to, resume) => {
-      const read = await heldPapers(ctx, userId, held, { first: from, last: to }, resume);
+      const read = await heldPapers(ctx, { userId, workspaceId }, held, { first: from, last: to }, resume);
       return { papers: read.papers, taken: to - from + 1, ended: !read.resume, ...(read.resume ? { resume: read.resume } : {}) };
     });
   }

@@ -14,7 +14,9 @@
  * as a page does: an identity's, or an assistant twin's `userId`'s. Signed out, it names one
  * that doesn't exist, so the action refuses as it would anyone signed out. A test about
  * another workspace names it. An account a test seeds through `t.run` gets its own workspace
- * with it, as every account the app makes does.
+ * with it, as every account the app makes does, and a record seeded there for an account,
+ * naming no workspace, is in that account's own and made by it, as the app writes one.
+ * `runUncapped` and `runUntriggered` fill in neither, for seeding records from before.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -76,13 +78,36 @@ export function convexTest(schemaOrOptions?: Schema | Options, modules?: Modules
   return inOwnWorkspaces(withTriggersInRun(t));
 }
 
-/** `db`, inserting each account with its own workspace, as `createUserWithDefaults` does. */
-function withOwnWorkspaces<Db extends { insert: (table: any, value: any) => Promise<any> }>(db: Db): Db {
+/**
+ * Records in a workspace (#650), each with whether it also names who made it: the tables whose
+ * reads have moved to the workspace. A later slice adds its own.
+ */
+const IN_WORKSPACE: Record<string, { createdBy: boolean }> = {
+  searches: { createdBy: true },
+  queryShortcuts: { createdBy: true },
+  libraryItems: { createdBy: true },
+  collections: { createdBy: true },
+  libraryRemovals: { createdBy: false },
+  libraryCounts: { createdBy: false },
+  collectionCounts: { createdBy: false },
+};
+
+/**
+ * `db`, inserting each account with its own workspace, as `createUserWithDefaults` does, and,
+ * with `owned`, a record for an account that names no workspace in the account's own, made by it.
+ */
+function withOwnWorkspaces<Db extends { insert: (table: any, value: any) => Promise<any> }>(db: Db, owned = true): Db {
   const insert = db.insert.bind(db);
+  const own = (userId: Id<"users">) => ensureWorkspace({ db } as never, { kind: "personal", userId });
   return Object.assign(Object.create(db), {
     insert: async (table: string, value: Record<string, unknown>) => {
-      const id = await insert(table, value);
-      if (table === "users") await ensureWorkspace({ db } as never, { kind: "personal", userId: id });
+      const kind = owned ? IN_WORKSPACE[table] : undefined;
+      const userId = value.userId as Id<"users"> | undefined;
+      const filled = kind && userId && value.workspaceId === undefined
+        ? { ...value, workspaceId: await own(userId), ...(kind.createdBy && value.createdBy === undefined ? { createdBy: userId } : {}) }
+        : value;
+      const id = await insert(table, filled);
+      if (table === "users") await own(id);
       return id;
     },
   }) as Db;
@@ -184,7 +209,7 @@ function withTriggersInRun<T extends Runner>(target: T): T {
       await flushCountQueue(ctx, countQueue);
       return result;
     });
-  target.runUncapped = (fn) => run((ctx) => fn(triggers.wrapDB({ ...ctx, db: withOwnWorkspaces(ctx.db) })));
+  target.runUncapped = (fn) => run((ctx) => fn(triggers.wrapDB({ ...ctx, db: withOwnWorkspaces(ctx.db, false) })));
   target.runUntriggered = run;
   target.withIdentity = (identity) => withTriggersInRun(withIdentity(identity));
   return target;

@@ -54,6 +54,7 @@ const SIDEBAR_PAGE_SIZE = 20;
 const SIDEBAR_ROW_PX = 34;
 
 export function LibraryTab({ paperLimit }: { paperLimit: number }) {
+  const workspaceId = useWorkspace();
   const [view, setView] = useState<ViewId>("all");
   const [viewName, setViewName] = useState<string | undefined>(undefined);
   const [searchInput, setSearchInput] = useState("");
@@ -66,7 +67,7 @@ export function LibraryTab({ paperLimit }: { paperLimit: number }) {
 
   const list = usePaginatedQuery(
     api.extraction.sources.library.list,
-    { query, collectionId: collectionArg },
+    inWorkspace(workspaceId, { query, collectionId: collectionArg }),
     { initialNumItems: 30 },
   );
 
@@ -130,9 +131,10 @@ export function LibraryTab({ paperLimit }: { paperLimit: number }) {
   };
 
   const selectAllAcross = async () => {
+    if (!workspaceId) return;
     const res = await convex.query(
       api.extraction.sources.library.listAllIds,
-      { query, collectionId: collectionArg },
+      { workspaceId, query, collectionId: collectionArg },
     );
     const result = addMany(
       res.items.map((r) => toBucketItem(r)),

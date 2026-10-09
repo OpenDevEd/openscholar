@@ -41,8 +41,9 @@ async function destination(ctx: MutationCtx, userId: Id<"users">, saveTo: Infer<
   if (!saveTo) return {};
   if (saveTo.kind === "none") return { unsaved: true as const };
   // In the person's own workspace until screening jobs belong to one (#650).
-  if (saveTo.kind === "new") return { targetCollectionId: await newCollection(ctx, { userId, workspaceId: await personalWorkspaceOf(ctx, userId) }, saveTo.name) };
-  if ((await ctx.db.get("collections", saveTo.collectionId))?.userId !== userId) throw createError("NOT_FOUND", "Collection not found");
+  const writer = { userId, workspaceId: await personalWorkspaceOf(ctx, userId) };
+  if (saveTo.kind === "new") return { targetCollectionId: await newCollection(ctx, writer, saveTo.name) };
+  if ((await ctx.db.get("collections", saveTo.collectionId))?.workspaceId !== writer.workspaceId) throw createError("NOT_FOUND", "Collection not found");
   return { targetCollectionId: saveTo.collectionId };
 }
 
@@ -97,9 +98,12 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, sa
     label = search.data.query;
   } else {
     screeningId = await ctx.db.insert("screenings", { userId: user._id, version: 0, createdAt: now });
-    const source = set?.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
-    if (set && set.kind !== "saved" && source?.userId !== user._id) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");
-    label = source ? ("name" in source ? source.name : source.label) : undefined;
+    const collection = set?.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : null;
+    const job = set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
+    // A collection in the person's own workspace until screening jobs belong to one (#650); a screening is still its person's.
+    if (set?.kind === "collection" && collection?.workspaceId !== (await personalWorkspaceOf(ctx, user._id))) throw createError("NOT_FOUND", "Collection not found");
+    if (set?.kind === "screening" && job?.userId !== user._id) throw createError("NOT_FOUND", "Screening not found");
+    label = collection?.name ?? job?.label;
   }
 
   // Stamped with what Screen All runs on (read back at run by screenPaperAction).
