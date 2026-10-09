@@ -7,7 +7,7 @@ const sprints = [
 ];
 
 function board(overrides: Partial<Parameters<typeof planChanges>[0]> = {}) {
-  return planChanges({ items: [], openIssues: [], inReview: [], milestones: [], iterations: sprints, today: "2026-10-09", ...overrides });
+  return planChanges({ items: [], issues: [], inReview: [], milestones: [], iterations: sprints, today: "2026-10-09", ...overrides });
 }
 
 const item = (number: number, state: "OPEN" | "CLOSED", status: string | null, extra: Record<string, unknown> = {}) => ({
@@ -54,15 +54,32 @@ describe("planChanges", () => {
     expect(plan.status).toEqual([{ itemId: "item-14", issue: "openalex-count#14", to: "Backlog" }]);
   });
 
-  it("adds open issues that are missing from the board", () => {
+  it("adds missing issues to the board, a closed one as Done", () => {
     const plan = board({
       items: [item(10, "OPEN", "Ready")],
-      openIssues: [
-        { repo: "openalex-count", number: 10, contentId: "I_10" },
-        { repo: "new-el", number: 10, contentId: "I_el10" },
+      issues: [
+        { repo: "openalex-count", number: 10, contentId: "I_10", state: "OPEN" },
+        { repo: "new-el", number: 10, contentId: "I_el10", state: "OPEN" },
+        { repo: "new-el", number: 11, contentId: "I_el11", state: "CLOSED" },
       ],
     });
-    expect(plan.add).toEqual([{ contentId: "I_el10", issue: "new-el#10" }]);
+    expect(plan.add).toEqual([
+      { contentId: "I_el10", issue: "new-el#10", to: "Backlog" },
+      { contentId: "I_el11", issue: "new-el#11", to: "Done" },
+    ]);
+  });
+
+  it("moves a reopened issue out of Done, to In review when a pull request closes it", () => {
+    const plan = board({ items: [item(16, "OPEN", "Done"), item(17, "OPEN", "Done")], inReview: ["openalex-count#17"] });
+    expect(plan.status).toEqual([
+      { itemId: "item-16", issue: "openalex-count#16", to: "Backlog" },
+      { itemId: "item-17", issue: "openalex-count#17", to: "In review" },
+    ]);
+  });
+
+  it("moves an issue back to In progress when no open pull request closes it any more", () => {
+    const plan = board({ items: [item(18, "OPEN", "In review"), item(19, "OPEN", "In review")], inReview: ["openalex-count#19"] });
+    expect(plan.status).toEqual([{ itemId: "item-18", issue: "openalex-count#18", to: "In progress" }]);
   });
 
   it("closes a milestone whose issues are all closed, but not an empty one", () => {

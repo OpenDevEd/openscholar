@@ -1,8 +1,9 @@
 // Keeps the OpenScholar project board (OpenDevEd project 4) in step with the
 // work in openalex-count and new-el, as the shared AGENTS.md asks: closed
-// issues are Done, an issue an open pull request closes is In review, an issue
-// in progress carries the current sprint, every open issue is on the board with
-// a status, and a milestone whose issues are all closed is closed. Issues in
+// issues are Done, an issue an open pull request closes is In review and goes
+// back to In progress when that pull request closes unmerged, an issue in
+// progress carries the current sprint, every issue is on the board with a
+// status, and a milestone whose issues are all closed is closed. Issues in
 // progress with no activity for a week, and running out of sprints, are
 // reported.
 //
@@ -17,7 +18,7 @@ const OWNER = "OpenDevEd";
 const PROJECT = 4;
 const REPOS = ["openalex-count", "new-el"];
 const STALE_DAYS = 7;
-// An issue moves to In review from these; never out of Done or Blocker.
+// An issue moves to In review from these; never out of Blocker.
 const BEFORE_REVIEW = new Set(["Backlog", "Ready", "In progress", null]);
 
 const DAY = 86_400_000;
@@ -27,12 +28,12 @@ type Status = string | null;
 type Item = { itemId: string; repo: string; number: number; state: "OPEN" | "CLOSED"; status: Status; sprintId: string | null; lastActivity: string };
 type Milestone = { repo: string; number: number; title: string; open: number; closed: number };
 type Sprint = { id: string; startDate: string; duration: number };
-type Repositories = { openIssues: { repo: string; number: number; contentId: string }[]; inReview: string[]; milestones: Milestone[] };
+type Repositories = { issues: { repo: string; number: number; contentId: string; state: Item["state"] }[]; inReview: string[]; milestones: Milestone[] };
 // GitHub's answers are read as untyped JSON.
 type Json = any;
 
 /** What to change on the board, from what the board and the repositories hold now. */
-export function planChanges({ items, openIssues, inReview, milestones, iterations, today }: Repositories & { items: Item[]; iterations: Sprint[]; today: string }) {
+export function planChanges({ items, issues, inReview, milestones, iterations, today }: Repositories & { items: Item[]; iterations: Sprint[]; today: string }) {
   const review = new Set(inReview);
   const now = Date.parse(`${today}T00:00:00Z`);
   const current = iterations.find((sprint) => {
@@ -42,7 +43,7 @@ export function planChanges({ items, openIssues, inReview, milestones, iteration
   const plan = {
     status: [] as { itemId: string; issue: string; to: string }[],
     sprint: [] as { itemId: string; issue: string; iterationId: string }[],
-    add: [] as { contentId: string; issue: string }[],
+    add: [] as { contentId: string; issue: string; to: string }[],
     closeMilestones: [] as Omit<Milestone, "open" | "closed">[],
     stale: [] as string[],
     needsSprints: false,
@@ -54,16 +55,20 @@ export function planChanges({ items, openIssues, inReview, milestones, iteration
       if (item.status !== "Done") plan.status.push({ itemId: item.itemId, issue, to: "Done" });
       continue;
     }
-    if (item.status === "In progress" && !item.sprintId && current) plan.sprint.push({ itemId: item.itemId, issue, iterationId: current.id });
-    if (review.has(issue) && BEFORE_REVIEW.has(item.status)) plan.status.push({ itemId: item.itemId, issue, to: "In review" });
-    // An issue added without a status, including one whose status write failed after it was added.
-    else if (item.status === null) plan.status.push({ itemId: item.itemId, issue, to: "Backlog" });
-    else if (item.status === "In progress" && now - Date.parse(item.lastActivity) > STALE_DAYS * DAY) plan.stale.push(issue);
+    // An open issue in Done was reopened. One with no status was added without one, or its status write failed.
+    const status = item.status === "Done" ? null : item.status;
+    if (status === "In progress" && !item.sprintId && current) plan.sprint.push({ itemId: item.itemId, issue, iterationId: current.id });
+    if (review.has(issue)) {
+      if (BEFORE_REVIEW.has(status)) plan.status.push({ itemId: item.itemId, issue, to: "In review" });
+    } else if (status === "In review") plan.status.push({ itemId: item.itemId, issue, to: "In progress" });
+    else if (status === null) plan.status.push({ itemId: item.itemId, issue, to: "Backlog" });
+    else if (status === "In progress" && now - Date.parse(item.lastActivity) > STALE_DAYS * DAY) plan.stale.push(issue);
   }
 
   const onBoard = new Set(items.map((item) => key(item.repo, item.number)));
-  for (const open of openIssues) {
-    if (!onBoard.has(key(open.repo, open.number))) plan.add.push({ contentId: open.contentId, issue: key(open.repo, open.number) });
+  for (const missing of issues) {
+    const issue = key(missing.repo, missing.number);
+    if (!onBoard.has(issue)) plan.add.push({ contentId: missing.contentId, issue, to: missing.state === "CLOSED" ? "Done" : "Backlog" });
   }
 
   for (const milestone of milestones) {
@@ -145,16 +150,17 @@ async function readBoard() {
 }
 
 async function readRepositories(): Promise<Repositories> {
-  const repositories: Repositories = { openIssues: [], inReview: [], milestones: [] };
-  const { openIssues, inReview, milestones } = repositories;
+  const repositories: Repositories = { issues: [], inReview: [], milestones: [] };
+  const { issues, inReview, milestones } = repositories;
   for (const repo of REPOS) {
-    const issues = await allNodes(
+    // Closed ones too: a new-el issue can open and close between scheduled runs.
+    const all = await allNodes(
       `query($owner: String!, $repo: String!, $after: String) { repository(owner: $owner, name: $repo) {
-        issues(states: OPEN, first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes { id number } } } }`,
+        issues(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes { id number state } } } }`,
       { owner: OWNER, repo },
       (data) => data.repository.issues,
     );
-    for (const issue of issues) openIssues.push({ repo, number: issue.number, contentId: issue.id });
+    for (const issue of all) issues.push({ repo, number: issue.number, contentId: issue.id, state: issue.state });
     // ponytail: reads the first 100 issues each pull request closes; page them too if one ever closes more.
     const pulls = await allNodes(
       `query($owner: String!, $repo: String!, $after: String) { repository(owner: $owner, name: $repo) {
@@ -204,7 +210,7 @@ async function main() {
   const notes: string[] = [];
   for (const change of plan.add) {
     if (dryRun) {
-      lines.push(`${change.issue}: added to the board as Backlog`);
+      lines.push(`${change.issue}: added to the board as ${change.to}`);
       continue;
     }
     const { item } = (
@@ -219,8 +225,8 @@ async function main() {
       notes.push(`${change.issue}: on the board as ${item.status.name} but missing from its item list; remove it from the board and add it again`);
       continue;
     }
-    lines.push(`${change.issue}: added to the board as Backlog`);
-    await setField(item.id, status.id, { singleSelectOptionId: option("Backlog") });
+    lines.push(`${change.issue}: added to the board as ${change.to}`);
+    await setField(item.id, status.id, { singleSelectOptionId: option(change.to) });
   }
   for (const milestone of plan.closeMilestones) {
     lines.push(`${milestone.repo} milestone "${milestone.title}": closed, all its issues are closed`);
