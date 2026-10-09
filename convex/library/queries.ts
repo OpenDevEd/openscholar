@@ -7,7 +7,7 @@ import { stream, type QueryStream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { createError } from "../lib/errors";
 import { findItem } from "./find";
-import { personalRatingRow } from "../ratings";
+import { collectionRaters, collectionRatingRow, personalRatingRow } from "../ratings";
 import type { InWorkspace } from "../workspaces/actor";
 import { authorDisplay } from "../../lib/library/paper-metadata";
 import { libraryCount } from "./counter";
@@ -33,8 +33,20 @@ const FILTERED_COUNT_ROWS = 16_000;
 /** Bytes one filtered page or count reads at most: half a query's 16 MiB. */
 const FILTERED_BYTES = 8 * 1024 * 1024;
 
-/** A page of the library view, each paper with `myRating`: the person's own rating of it, where `rating` is its people's average (#655). */
-export const libraryPageValidator = paginationResultValidator(schema.tables.libraryItems.validator.extend({ _id: v.id("libraryItems"), _creationTime: v.number(), myRating: v.optional(v.number()) }));
+/** People named beside a paper's ratings in an organization's collection; the rest open from them. */
+const RATERS_SHOWN = 3;
+const raterValidator = v.object({ name: v.string(), imageUrl: v.optional(v.string()), you: v.boolean(), rating: v.number() });
+
+/**
+ * A page of the library view, each paper with `myRating`: the person's own rating of it, where `rating` is its people's average (#655).
+ * In an organization's collection, `collection` is how its members rated it there: the person's own, and the first few who did.
+ */
+export const libraryPageValidator = paginationResultValidator(schema.tables.libraryItems.validator.extend({
+  _id: v.id("libraryItems"),
+  _creationTime: v.number(),
+  myRating: v.optional(v.number()),
+  collection: v.optional(v.object({ mine: v.optional(v.number()), raters: v.array(raterValidator), more: v.boolean() })),
+}));
 
 type LibraryItem = Doc<"libraryItems">;
 
@@ -282,11 +294,19 @@ export async function readLibraryPage(ctx: QueryCtx, workspaceId: Id<"workspaces
     .paginate({ ...page, maximumRowsRead: FILTERED_PAGE_ROWS, maximumBytesRead: FILTERED_BYTES })) as LibraryPage;
 }
 
-/** Gives each paper on a page the person's own rating of it, which in their own workspace is the paper's. */
-async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, read: LibraryPage) {
+/**
+ * Gives each paper on a page the person's own rating of it, which in their own workspace is the
+ * paper's, and in an organization's collection how its members rated it there.
+ */
+async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, read: LibraryPage, collectionId?: Id<"collections">) {
   const own = (await ctx.db.get("workspaces", workspaceId))?.kind === "personal";
   const ratings = await Promise.all(read.page.map(async (item) => (own ? item.rating : (await personalRatingRow(ctx, userId, item.openalexId))?.rating)));
-  return { ...read, page: read.page.map((item, at) => (ratings[at] === undefined ? item : { ...item, myRating: ratings[at] })) };
+  const inCollection = !own && collectionId ? await Promise.all(read.page.map(async (item) => {
+    const { raters, more } = await collectionRaters(ctx, collectionId, item.openalexId, userId, RATERS_SHOWN);
+    const mine = (await collectionRatingRow(ctx, userId, collectionId, item.openalexId))?.rating;
+    return { ...(mine === undefined ? {} : { mine }), raters: raters.map(({ userId: _id, ...rater }) => rater), more };
+  })) : null;
+  return { ...read, page: read.page.map((item, at) => ({ ...item, ...(ratings[at] === undefined ? {} : { myRating: ratings[at] }), ...(inCollection ? { collection: inCollection[at] } : {}) })) };
 }
 
 export const browseLibrary = workspaceQuery({
@@ -297,7 +317,7 @@ export const browseLibrary = workspaceQuery({
     paginationOpts: paginationOptsValidator,
   },
   returns: libraryPageValidator,
-  handler: async (ctx, actor, { paginationOpts, ...view }) => withOwnRatings(ctx, actor, await readLibraryPage(ctx, actor.workspaceId, view, paginationOpts)),
+  handler: async (ctx, actor, { paginationOpts, ...view }) => withOwnRatings(ctx, actor, await readLibraryPage(ctx, actor.workspaceId, view, paginationOpts), view.collectionId),
 });
 
 export const searchLibrary = workspaceQuery({
@@ -309,7 +329,7 @@ export const searchLibrary = workspaceQuery({
     paginationOpts: paginationOptsValidator,
   },
   returns: libraryPageValidator,
-  handler: async (ctx, actor, { paginationOpts, sortBy = "savedAt", sortOrder = "desc", ...view }) => withOwnRatings(ctx, actor, await readLibraryPage(ctx, actor.workspaceId, { ...view, sortBy, sortOrder }, paginationOpts)),
+  handler: async (ctx, actor, { paginationOpts, sortBy = "savedAt", sortOrder = "desc", ...view }) => withOwnRatings(ctx, actor, await readLibraryPage(ctx, actor.workspaceId, { ...view, sortBy, sortOrder }, paginationOpts), view.collectionId),
 });
 
 /**

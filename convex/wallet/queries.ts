@@ -1,6 +1,6 @@
 import { query, type QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
-import { personName } from "../assistant/access";
+import { personName } from "../lib/people";
 import { v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { stream } from "convex-helpers/server/stream";

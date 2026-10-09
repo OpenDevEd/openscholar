@@ -4166,7 +4166,15 @@
     "fromCredits": "Sur les crédits de {name}",
     "workspace": "Espace de travail",
     "creditsLeft": "{credits} crédits restants",
-    "drawsOn": "Utilise"
+    "drawsOn": "Utilise",
+    "ratings": {
+      "collection": "Collection",
+      "yours": "Votre note dans cette collection",
+      "everyone": "Les notes de chacun dans cette collection",
+      "heading": "Notes dans cette collection",
+      "none": "Aucune note",
+      "stars": "{value} sur 5"
+    }
   },
   "models": {
     "changeInSettings": "Modifier dans les paramètres IA"

@@ -4,7 +4,7 @@
 import { v, type Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
-import { personName } from "../assistant/access";
+import { personName } from "../lib/people";
 
 export const makerValidator = v.object({ name: v.string(), imageUrl: v.optional(v.string()), you: v.boolean() });
 export type Maker = Infer<typeof makerValidator>;

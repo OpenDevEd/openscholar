@@ -61,8 +61,6 @@ export function accessRows(ctx: QueryCtx | MutationCtx, threadId: Id<"assistantT
 }
 
 /** A person's name as they gave it, or empty when they gave none. */
-export const personName = (person: Doc<"users">) => [person.firstName, person.lastName].filter(Boolean).join(" ");
-
 /** The highest of some roles; at least one is given. */
 export const best = (roles: readonly AssistantRole[]) => roles.reduce((most, role) => (RANK[role] > RANK[most] ? role : most));
 

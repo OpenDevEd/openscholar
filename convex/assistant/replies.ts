@@ -32,7 +32,8 @@ import { hasVariants, variantIn, viewOf as actionView } from "../../lib/assistan
 import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { planLimit } from "../billing/accounts";
-import { personName, replyWorkspace, requireThread, touchThread } from "./access";
+import { replyWorkspace, requireThread, touchThread } from "./access";
+import { personName } from "../lib/people";
 import { actorIn, personalWorkspaceOf } from "../workspaces/actor";
 import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";

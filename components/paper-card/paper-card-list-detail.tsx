@@ -55,6 +55,7 @@ export function PaperCardListDetail({
   onDownloadItem,
   onDownloadEssentialItem,
   hide,
+  extra,
 }: PaperCardProps) {
   const tp = useTranslations("paperCard");
   const tc = useTranslations("common");
@@ -355,10 +356,15 @@ export function PaperCardListDetail({
           /* Mobile Layout */
           <div className="space-y-3 pt-3 border-t border-border-subtle">
             <div className="flex items-center justify-between gap-2">
-              {!hide?.rating && (
-                <div className="flex items-center gap-2">
-                  <RatingSelector paper={result} variant="compact" />
-                  <SaveControl paper={result} compact />
+              {(!hide?.rating || extra) && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {!hide?.rating && (
+                    <>
+                      <RatingSelector paper={result} variant="compact" />
+                      <SaveControl paper={result} compact />
+                    </>
+                  )}
+                  {extra}
                 </div>
               )}
               <div className="flex items-center gap-2">
@@ -438,13 +444,14 @@ export function PaperCardListDetail({
         ) : (
           /* Desktop Layout */
           <div className="flex items-center justify-between gap-4 flex-wrap pt-3 border-t border-border-subtle">
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
               {!hide?.rating && (
                 <>
                   <RatingSelector paper={result} variant="compact" />
                   <SaveControl paper={result} />
                 </>
               )}
+              {extra}
             </div>
 
             <div className="flex items-center gap-2">

@@ -22,7 +22,8 @@ import { requireAvailableModel, requireEffort, requireTaskModel } from "../model
 import schema from "../schema";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { NEW_CHAT_TITLE } from "../../lib/assistant/title";
-import { accessRows, best, deleteThread, personName, principalOf, principalsOf, requireThreadIn, userPrincipal, type AssistantRole } from "./access";
+import { accessRows, best, deleteThread, principalOf, principalsOf, requireThreadIn, userPrincipal, type AssistantRole } from "./access";
+import { personName } from "../lib/people";
 import { viewers } from "./presence";
 import { startWith } from "./spending";
 import { ASSISTANT_MEMBERS_SHOWN, assistantMembersValidator, assistantRoleValidator, JOBS_DOCKED, JOBS_LISTED, listedJobsValidator } from "./validators";

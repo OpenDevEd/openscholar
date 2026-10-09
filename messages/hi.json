@@ -4166,7 +4166,15 @@
     "fromCredits": "{name} के क्रेडिट से",
     "workspace": "वर्कस्पेस",
     "creditsLeft": "{credits} क्रेडिट बचे",
-    "drawsOn": "इससे खर्च"
+    "drawsOn": "इससे खर्च",
+    "ratings": {
+      "collection": "संग्रह",
+      "yours": "इस संग्रह में आपकी रेटिंग",
+      "everyone": "इस संग्रह में सभी की रेटिंग",
+      "heading": "इस संग्रह की रेटिंग",
+      "none": "कोई रेटिंग नहीं",
+      "stars": "5 में से {value}"
+    }
   },
   "models": {
     "changeInSettings": "AI सेटिंग्स में बदलें"

@@ -4166,7 +4166,15 @@
     "fromCredits": "From {name}'s credits",
     "workspace": "Workspace",
     "creditsLeft": "{credits} credits left",
-    "drawsOn": "Draws on"
+    "drawsOn": "Draws on",
+    "ratings": {
+      "collection": "Collection",
+      "yours": "Your rating in this collection",
+      "everyone": "Everyone's ratings in this collection",
+      "heading": "Ratings in this collection",
+      "none": "No ratings",
+      "stars": "{value} of 5"
+    }
   },
   "models": {
     "changeInSettings": "Change in AI settings"

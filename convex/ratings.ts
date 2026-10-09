@@ -7,6 +7,7 @@ import { createError } from "./lib/errors";
 import type { Change } from "convex-helpers/server/triggers";
 import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
+import { personName } from "./lib/people";
 
 /** The ID a rating is kept under: a paper's whole OpenAlex address, however it was given, so every rating of it meets. */
 export const ratedPaper = (paperId: string) => workUrl(paperId) ?? paperId;
@@ -98,6 +99,39 @@ async function isMember(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizat
     .withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organizationId).eq("clerkUserId", user.clerkId).eq("state", "active"))
     .first();
   return membership !== null;
+}
+
+/** Someone's rating of a paper in an organization's collection, with who they are. */
+export type Rater = { userId: Id<"users">; name: string; imageUrl?: string; you: boolean; rating: number };
+
+/**
+ * The ratings a paper has in an organization's collection from its members now, each with
+ * who gave it, the person reading first (#655): up to `max` of them, and whether there are more.
+ * None in a person's own workspace, whose collections have no ratings of their own.
+ */
+export async function collectionRaters(ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, paperId: string, viewer: Id<"users">, max: number): Promise<{ raters: Rater[]; more: boolean }> {
+  const organizationId = await organizationOfCollection(ctx, collectionId);
+  if (!organizationId) return { raters: [], more: false };
+  const raters = await asRaters(ctx, organizationId, await collectionRatingsOf(ctx, collectionId, paperId).take(max + 1), viewer);
+  raters.sort((a, b) => Number(b.you) - Number(a.you));
+  return { raters: raters.slice(0, max), more: raters.length > max };
+}
+
+/** A paper's ratings in a collection, a query to read them from. */
+export const collectionRatingsOf = (ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, paperId: string) =>
+  ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId).eq("paperId", ratedPaper(paperId)));
+
+/** The organization a collection is in, or null for one in a person's own workspace. */
+export async function organizationOfCollection(ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">) {
+  const collection = await ctx.db.get("collections", collectionId);
+  const workspace = collection ? await ctx.db.get("workspaces", collection.workspaceId) : null;
+  return workspace?.kind === "organization" ? workspace.organizationId : null;
+}
+
+/** Ratings with who gave them, those of the organization's members now. */
+export async function asRaters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, rows: Doc<"ratings">[], viewer: Id<"users">): Promise<Rater[]> {
+  const people = await Promise.all(rows.map(async (row) => ((await isMember(ctx, organizationId, row.userId)) ? { row, user: (await ctx.db.get("users", row.userId))! } : null)));
+  return people.flatMap((person) => (person ? [{ userId: person.user._id, name: personName(person.user) || person.user.email, ...(person.user.avatarUrl ? { imageUrl: person.user.avatarUrl } : {}), you: person.user._id === viewer, rating: person.row.rating }] : []));
 }
 
 /**

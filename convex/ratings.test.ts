@@ -98,3 +98,23 @@ it("rates a paper within an organization's collection apart from each member's o
   await alice.mutation(api.library.collections.deleteCollection, { workspaceId, collectionId });
   expect(await t.run(async (ctx) => (await ctx.db.query("ratings").collect()).filter((row) => row.collectionId !== undefined))).toEqual([]);
 });
+
+it("shows each paper in an organization's collection with its members' ratings there, the person's own first", async () => {
+  const { alice, bob, bobIs, workspaceId } = await lab();
+  const { id: one } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "One" });
+  const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Reading" });
+  await alice.mutation(api.library.collections.addToCollection, { workspaceId, collectionId, libraryItemId: one });
+  await bob.mutation(api.library.collections.setCollectionRating, { workspaceId, collectionId, libraryItemId: one, rating: 2 });
+  await alice.mutation(api.library.collections.setCollectionRating, { workspaceId, collectionId, libraryItemId: one, rating: 4 });
+  const shown = async () => (await alice.query(api.library.queries.browseLibrary, { workspaceId, collectionId, sortBy: "savedAt", sortOrder: "desc", paginationOpts: { cursor: null, numItems: 10 } })).page[0]!;
+  const card = await shown();
+  expect(card.rating).toBe(3);
+  expect(card.collection).toMatchObject({ mine: 4, more: false, raters: [{ you: true, rating: 4 }, { you: false, rating: 2 }] });
+  const listed = await alice.query(api.library.collections.raters, { workspaceId, collectionId, libraryItemId: one, paginationOpts: { cursor: null, numItems: 10 } });
+  expect(listed.page.map((rater) => [rater.you, rater.rating]).sort()).toEqual([[false, 2], [true, 4]]);
+  // Someone who left isn't one of them.
+  await bobIs("revoked");
+  expect((await shown()).collection?.raters.map((rater) => rater.rating)).toEqual([4]);
+  // Outside a collection, nothing.
+  expect((await alice.query(api.library.queries.browseLibrary, { workspaceId, sortBy: "savedAt", sortOrder: "desc", paginationOpts: { cursor: null, numItems: 10 } })).page[0]!.collection).toBeUndefined();
+});

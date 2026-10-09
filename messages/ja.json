@@ -4166,7 +4166,15 @@
     "fromCredits": "{name} のクレジットから",
     "workspace": "ワークスペース",
     "creditsLeft": "残り {credits} クレジット",
-    "drawsOn": "使用するワークスペース"
+    "drawsOn": "使用するワークスペース",
+    "ratings": {
+      "collection": "コレクション",
+      "yours": "このコレクションでのあなたの評価",
+      "everyone": "このコレクションでの全員の評価",
+      "heading": "このコレクションでの評価",
+      "none": "評価なし",
+      "stars": "5 段階中 {value}"
+    }
   },
   "models": {
     "changeInSettings": "AI 設定で変更"

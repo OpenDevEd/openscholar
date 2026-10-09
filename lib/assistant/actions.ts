@@ -108,6 +108,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "admins/queries:listAdmins": { kind: "other", words: "admins" },
   "admins/queries:countAdmins": { kind: "other", words: "admins" },
   "admins/queries:listCandidates": { kind: "other", words: "admins" },
+  "library/collections:raters": { kind: "paper", words: "ratings" },
   "organizations/queries:workspaces": { kind: "other", words: "workspaces" },
   "organizations/queries:workspace": { kind: "other", words: "workspaces" },
   "organizations/queries:members": { kind: "other", words: "orgMembers" },
