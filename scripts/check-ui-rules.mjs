@@ -20,17 +20,31 @@ import path from "node:path";
 // TypeScript 7 ships no JavaScript API until 7.1, so this script parses with TypeScript 6.
 import ts from "typescript6";
 
-// Bare `transition` and `transition-all` cover opacity and transform too; an
-// arbitrary list counts when it names either.
-const TRANSITION = /(?:^|[\s"'`])(?:[\w-]+:)*transition(?:-all|-opacity|-transform|-\[[^\]]*(?:opacity|transform|translate|scale|rotate|all)[^\]]*\])?(?=$|[\s"'`])/;
+// The utilities that move opacity or transform. Bare `transition` and
+// `transition-all` cover both; an arbitrary list counts when it names one.
+// Every animation counts, the built-in spin, pulse, ping and bounce too.
 const BROAD_TRANSITION = /(?:^|[\s"'`])(?:[\w-]+:)*transition(?:-all)?(?=$|[\s"'`])/;
-// Every animation counts, the built-in spin, pulse, ping and bounce too: they
-// animate transform or opacity.
-const CSS_ANIMATION = /(?:^|[\s"'`])(?:[\w[\]=-]+:)*(fade-enter|animate-(?!none(?=$|[\s"'`]))[\w[\]-]+)/;
-// Variants that style a pseudo-element, a different box from the element itself.
-const PSEUDO_ELEMENT = /(^|:)(before|after|placeholder|file|marker|selection|first-letter|first-line|backdrop):/;
-/** A class list without the classes that style a pseudo-element. */
-const ownClasses = (classes) => classes.split(/[\s"'`{}]+/).filter((token) => !PSEUDO_ELEMENT.test(token)).join(" ");
+const MOVING = new Set(["opacity", "transform", "translate", "scale", "rotate", "all"]);
+const PSEUDO_ELEMENTS = new Set(["before", "after", "placeholder", "file", "marker", "selection", "first-letter", "first-line", "backdrop"]);
+/** A class without its variants and important mark: `hover:transition-opacity!` is `transition-opacity`. */
+const utility = (token) => (token.split(":").at(-1) ?? "").replace(/^!|!$/g, "");
+/** The box a class styles: the element, or a pseudo-element its variants name (`before:`). */
+const box = (token) => token.split(":").slice(0, -1).find((variant) => PSEUDO_ELEMENTS.has(variant)) ?? "";
+function transitionsMovement(token) {
+  const name = utility(token);
+  const list = name.match(/^transition-\[(.+)\]$/)?.[1];
+  if (list) return list.split(",").some((property) => MOVING.has(property.trim()));
+  return /^transition(-all|-opacity|-transform)?$/.test(name);
+}
+const animates = (token) => /^(fade-enter|animate-[\w[\]-]+)$/.test(utility(token)) && utility(token) !== "animate-none";
+/** The classes of a class list, grouped by the box they style. */
+function boxes(classes) {
+  const groups = new Map();
+  for (const token of classes.split(/[\s"'`{}()]+/).filter(Boolean)) groups.set(box(token), [...(groups.get(box(token)) ?? []), token]);
+  return groups;
+}
+/** Whether one box both animates and transitions opacity or transform; Framer props animate the element itself. */
+const clashes = (classes, framer) => [...boxes(classes)].some(([target, tokens]) => tokens.some(transitionsMovement) && ((framer && target === "") || tokens.some(animates)));
 const FRAMER_PROPS = new Set(["initial", "animate", "exit", "layout", "layoutId", "variants", "whileHover", "whileTap", "whileInView", "whileFocus", "whileDrag"]);
 // The `uppercase` utility with variants or the important mark (`sm:uppercase`,
 // `uppercase!`), looked for only where classes are written so prose that says
@@ -135,8 +149,7 @@ function check(file) {
         if (name === "title") title = attribute;
         if (tag === "AvatarFallback" && name === "children" && attribute.initializer && rendersText(attribute.initializer)) report(attribute, "initials");
       }
-      const own = ownClasses(className);
-      if (TRANSITION.test(own) && (framer || CSS_ANIMATION.test(own))) report(node, "animation-clash");
+      if (clashes(className, framer)) report(node, "animation-clash");
       // Built-in elements only; an iframe's title is its accessible name, and
       // the hidden Z3988 spans carry citation data for Zotero.
       const coins = tag === "span" && /(?:^|[\s"'`])Z3988(?=$|[\s"'`])/.test(className) && /display:\s*["']none["']/.test(style);
