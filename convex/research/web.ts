@@ -75,17 +75,17 @@ export const searchAction = defineUserAction({
     if (!query.trim()) throw createError("VALIDATION_ERROR", "A web search needs a query.");
     if (query.length > QUERY_MAX) throw createError("VALIDATION_ERROR", `A web search query can be up to ${QUERY_MAX} characters.`);
   },
-  run: async (ctx, { userId }, { query }, call): Promise<{ query: string; results: Result[] }> => {
+  run: async (ctx, { userId, workspaceId }, { query }, call): Promise<{ query: string; results: Result[] }> => {
     const chargeId = `web:${call?.stepId ?? call?.from ?? crypto.randomUUID()}`;
     const held = convertUsdToCredits({ usd: WEB_SEARCH_HOLD_USD });
-    if (!(await reserveCredits(ctx, { userId, chargeId, credits: held }))) throw createError("INSUFFICIENT_CREDITS", "There aren't enough credits for a web search.");
+    if (!(await reserveCredits(ctx, { userId, workspaceId, chargeId, credits: held }))) throw createError("INSUFFICIENT_CREDITS", "There aren't enough credits for a web search.");
     try {
       const { results, usd } = await searchWeb(query.trim());
       const spent = usd ?? WEB_SEARCH_HOLD_USD;
-      await settleCredits(ctx, { userId, chargeId, credits: convertUsdToCredits({ usd: spent }), usage: { kind: "search", description: "Web search", model: WEB_SEARCH_MODEL, costUsd: spent } });
+      await settleCredits(ctx, { userId, workspaceId, chargeId, credits: convertUsdToCredits({ usd: spent }), usage: { kind: "search", description: "Web search", model: WEB_SEARCH_MODEL, costUsd: spent } });
       return { query: query.trim(), results };
     } catch (error) {
-      await releaseCredits(ctx, { userId, chargeId }).catch(() => {});
+      await releaseCredits(ctx, { chargeId }).catch(() => {});
       throw error;
     }
   },

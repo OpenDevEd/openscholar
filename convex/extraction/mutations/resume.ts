@@ -51,6 +51,7 @@ import {
 } from "../../../lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { availableCredits as readAvailableCredits } from "../../billing/accounts";
+import { workspaceOf } from "../../workspaces/actor";
 import { getFlag } from "../../featureFlags/guard";
 import {
   dispatchPaperQueueWindowTx,
@@ -140,8 +141,8 @@ export const resumeExtraction = mutation({
     let remainingEstimateHigh = 0;
 
     if (job.status === "creditsExhausted") {
-      // Its starter pays for it, as the worker charges them, until billing is by workspace (#650).
-      availableCredits = await readAvailableCredits(ctx, job.userId);
+      // Its workspace pays for it (#650).
+      availableCredits = await readAvailableCredits(ctx, await workspaceOf(ctx, job));
       const questions = await ctx.db
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", jobId))

@@ -83,7 +83,8 @@ export const record = internalMutation({
         await recordJobCredits(ctx, { jobId: row.jobId, chargeId: row.chargeId, credits: row.credits });
       }
     }
-    for (const userId of new Set<Id<"users">>(rows.map((row) => row.userId))) await requestRefresh(ctx, userId);
+    // Each workspace that paid re-reads its account once.
+    for (const workspaceId of new Set(rows.flatMap((row) => (row.workspaceId ? [row.workspaceId] : [])))) await requestRefresh(ctx, workspaceId);
     // Counted: out of the queue.
     for (const row of rows) await ctx.db.patch("billingUsage", row._id, { queuedAt: undefined });
     return null;

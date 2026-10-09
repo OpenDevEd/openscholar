@@ -76,7 +76,7 @@ export const reply = internalAction({
     let history = { messages: 0, bytes: 0 };
     // Whether the request sends a paper's PDF by its address.
     let linked = false;
-    const turn = { agentThreadId, senderId, modelId, effort };
+    const turn = { agentThreadId, senderId, workspaceId, modelId, effort };
     const shouldStop = async () => (await state()) !== "writing";
     let read = await compactedOf(ctx, threadId);
     // A compaction that was due and didn't finish is written now, before the request reads the conversation:
@@ -99,11 +99,11 @@ export const reply = internalAction({
     // What this request holds, on the model it runs on: the most a request costs, or what the person
     // has when that's less, down to the least a reply starts on. It settles to what it cost, and the
     // next request holds again, so what a reply may cost in all is the person's credits and nothing else.
-    let balance = (await ctx.runQuery(internal.billing.accounts.forUser, { userId: senderId }))?.balance;
+    let balance = (await ctx.runQuery(internal.billing.accounts.forWorkspace, { workspaceId }))?.balance;
     const cap = async (pricing: Pricing) => {
       const most = estimateCredits(pricing, CALL_TOKENS.chatRequest);
       // The account's copy of the balance can be behind a top-up. When it says the request can't hold the most, it's read again from Autumn.
-      if (balance !== undefined && balance < most) balance = (await refreshAccount(ctx, senderId).catch(() => null))?.balance ?? balance;
+      if (balance !== undefined && balance < most) balance = (await refreshAccount(ctx, workspaceId).catch(() => null))?.balance ?? balance;
       // A reply that is under way holds whatever the person has left: its first request settled to what
       // it cost, and the least a reply starts on, asked for again, could stop one the balance still covers.
       const least = used.rounds === 0 ? estimateCredits(pricing, CALL_TOKENS.chatMessage) : 1;
@@ -144,9 +144,9 @@ export const reply = internalAction({
       // Each request holds and settles its own credits, and so does each try of one made again.
       attemptId: `${attemptId}:${used.rounds}${used.retries ? `:${used.retries}` : ""}`,
       replyId: attemptId,
-      replyWorkspace: workspaceId,
+      workspaceId,
       credits: cap,
-      lesser: async () => (await refreshAccount(ctx, senderId).catch(() => null))?.balance,
+      lesser: async () => (await refreshAccount(ctx, workspaceId).catch(() => null))?.balance,
       tools,
       approval,
       answer,
@@ -236,14 +236,15 @@ export const compact = internalAction({
     resume: v.optional(v.object({ ...turnArgs, promptMessageId: v.string(), used: usedValidator })),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, through, resume, ...turn }) => {
+  handler: async (ctx, { threadId, attemptId, through, resume, workspaceId: given, ...turn }) => {
     const lock = { threadId, attemptId };
+    const workspaceId: Id<"workspaces"> = given ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: turn.senderId }));
     let written: { summary: string; credits: number } | undefined;
     const shouldStop = async () => (await ctx.runQuery(internal.assistant.replies.lockState, lock)) !== "writing";
     try {
       if (!(await shouldStop())) {
         // A reply can be summarized more than once as it goes, and one that couldn't be written is tried again after its next request: each try is a charge of its own.
-        written = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, midReply: resume !== undefined, chargeId: `chat:${attemptId}:through:${through}:${resume?.used.rounds ?? "end"}:summary`, shouldStop });
+        written = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, workspaceId, through, midReply: resume !== undefined, chargeId: `chat:${attemptId}:through:${through}:${resume?.used.rounds ?? "end"}:summary`, shouldStop });
       }
     } catch (error) {
       console.error("[assistant] compaction failed", { threadId, error: errorToLogString(error) });

@@ -3,10 +3,12 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useAction, useQuery } from 'convex/react'
 import type { FunctionReference } from 'convex/server'
+import type { Id } from '@/convex/_generated/dataModel'
 import { api } from '@/convex/_generated/api'
 import { useAuthReadiness } from '@/components/providers/convex-provider'
 import { useOptionalAuthQuery } from '@/lib/auth/use-auth-query'
 import { useAIConfigStore } from '@/lib/store'
+import { useWorkspace } from '@/lib/workspaces/url'
 import { useFeatureFlag } from '@/lib/feature-flags/hook'
 import {
   AIApiKeyRequiredError,
@@ -83,12 +85,14 @@ function useKeyConfigs(isAuthenticated: boolean, creditsEnabled: boolean) {
   }, [provider, apiKey, providerApiKeys, settings.data, settings.settlement, presets, isAuthenticated, creditsEnabled])
 }
 
-export function createAIHook<TParams extends Record<string, unknown>, TResult>(
-  actionRef: FunctionReference<'action', 'public', TParams, TResult>,
-  executorFn: (params: TParams, config: AIConfig) => Promise<TResult>,
-  transformCreditsResult: ((result: TResult, params: TParams) => TResult) | undefined,
-  options: AIHookOptions<TParams>,
-): () => AIHookResult<TParams, TResult> {
+export function createAIHook<TArgs extends Record<string, unknown>, TResult>(
+  // The hook adds the page's workspace, which pays (#650).
+  actionRef: FunctionReference<'action', 'public', TArgs, TResult>,
+  executorFn: (params: Omit<TArgs, 'workspaceId'>, config: AIConfig) => Promise<TResult>,
+  transformCreditsResult: ((result: TResult, params: Omit<TArgs, 'workspaceId'>) => TResult) | undefined,
+  options: AIHookOptions<Omit<TArgs, 'workspaceId'>>,
+): () => AIHookResult<Omit<TArgs, 'workspaceId'>, TResult> {
+  type TParams = Omit<TArgs, 'workspaceId'>
   return function useAIOperation() {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<Error | null>(null)
@@ -115,6 +119,8 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
       [apiKeyMode, creditsEnabled, configFor, defaultTask, isAuthenticated]
     )
     const convexAction = useAction(actionRef)
+    // Work on credits is paid by the page's workspace (#650).
+    const workspaceId = useWorkspace()
 
     const execute = useCallback(
       async (params: TParams) => {
@@ -156,7 +162,8 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
           }
 
           const runCredits = async () => {
-            const result = await convexAction(params as never) as TResult
+            if (!workspaceId) throw new Error("The workspace hasn't loaded yet. Try again in a moment.")
+            const result = await convexAction({ ...params, workspaceId } as never) as TResult
             return transformCreditsResult
               ? transformCreditsResult(result, params)
               : result
@@ -193,6 +200,7 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
       [
         apiKeyMode,
         convexAction,
+        workspaceId,
         creditsEnabled,
         creditsQuery.data?.balance,
         creditsQuery.settlement,

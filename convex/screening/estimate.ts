@@ -83,14 +83,14 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
     // The search's page takes on the questions it doesn't ask yet (./mutations.ts `insertJob`), and holds MAX_QUESTIONS.
     const asked = new Set([...row.data.screeningQuestions.map(({ question }) => question), ...questions.map(({ question }) => question)]);
     if (asked.size > MAX_QUESTIONS) throw createError("VALIDATION_ERROR", `This search's page already asks ${row.data.screeningQuestions.length} screening questions, and holds up to ${MAX_QUESTIONS}: ask fewer new ones, or ask the ones it has.`);
-    await checkRequestPapers(ctx, userId, last - first + 1, "screening");
+    await checkRequestPapers(ctx, workspaceId, last - first + 1, "screening");
   } else {
     const source = set.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : set.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
     const mine = set.kind !== "collection" && set.kind !== "screening" ? true : source !== null && (await isInWorkspace(ctx, source, workspaceId));
     if (!mine) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");
     const held = await papersIn(ctx, { userId, workspaceId }, set);
     if (held !== null && first > held) throw createError("VALIDATION_ERROR", "There are no papers in that range");
-    await checkRequestPapers(ctx, userId, Math.min(last, held ?? last) - first + 1, "screening");
+    await checkRequestPapers(ctx, workspaceId, Math.min(last, held ?? last) - first + 1, "screening");
   }
   if (saveTo?.kind === "new") await collectionAllowed(ctx, { userId, workspaceId }, saveTo.name);
   if (saveTo?.kind === "collection" && (await ctx.db.get("collections", saveTo.collectionId))?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");

@@ -3,6 +3,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import schema from "../schema";
+import { personalWorkspaceOf } from "../workspaces/personal";
 import { internal } from "../_generated/api";
 import { checkRequestPapers, planLimit, snapshotFromCustomer } from "./accounts";
 import type { AutumnCustomer } from "./autumn";
@@ -47,7 +48,7 @@ describe("plan limits", () => {
       await ctx.db.insert("billingAccounts", { ...account, userId: archived, plan: "legacy_pro" });
       return { fresh, onGo, cached, archived };
     });
-    const limits = (userId: typeof fresh) => t.run(async (ctx) => Promise.all((["collections", "concurrency", "request_papers"] as const).map(async (limit) => (await planLimit(ctx, userId, limit)) ?? "none")));
+    const limits = (userId: typeof fresh) => t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return Promise.all((["collections", "concurrency", "request_papers"] as const).map(async (limit) => (await planLimit(ctx, workspaceId, limit)) ?? "none")); });
     expect(await limits(fresh)).toEqual([20, "none", 1_000]);
     expect(await limits(onGo)).toEqual([200, "none", "none"]);
     expect(await limits(cached)).toEqual([50, "none", "none"]);
@@ -55,9 +56,9 @@ describe("plan limits", () => {
     expect(await limits(archived)).toEqual(["none", "none", "none"]);
 
     await t.run(async (ctx) => {
-      await checkRequestPapers(ctx, fresh, 1_000, "screening");
-      await expect(checkRequestPapers(ctx, fresh, 1_001, "screening")).rejects.toThrow(/plan takes up to 1,000 papers in one screening/);
-      await checkRequestPapers(ctx, onGo, 1_000_000, "extraction");
+      await checkRequestPapers(ctx, await personalWorkspaceOf(ctx, fresh), 1_000, "screening");
+      await expect(checkRequestPapers(ctx, await personalWorkspaceOf(ctx, fresh), 1_001, "screening")).rejects.toThrow(/plan takes up to 1,000 papers in one screening/);
+      await checkRequestPapers(ctx, await personalWorkspaceOf(ctx, onGo), 1_000_000, "extraction");
     });
   });
 });
@@ -67,14 +68,15 @@ describe("plan limits over time", () => {
     const t = convexTest(schema);
     const userId = await t.run((ctx) => ctx.db.insert("users", { clerkId: "late", email: "late@test.local", state: "active", createdAt: 1, updatedAt: 1 }));
     const snapshot = (plan: string, collections: number) => ({ plan, pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, limits: { collections } });
-    await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot: snapshot("go", 200), withCard: false, fetchedAt: 2_000 });
-    await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot: snapshot("pro", 1_000), withCard: false, fetchedAt: 1_000 });
-    expect(await t.run((ctx) => planLimit(ctx, userId, "collections"))).toBe(200);
+    const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
+    await t.mutation(internal.billing.accounts.writeSnapshot, { workspaceId, snapshot: snapshot("go", 200), withCard: false, fetchedAt: 2_000 });
+    await t.mutation(internal.billing.accounts.writeSnapshot, { workspaceId, snapshot: snapshot("pro", 1_000), withCard: false, fetchedAt: 1_000 });
+    expect(await t.run((ctx) => planLimit(ctx, workspaceId, "collections"))).toBe(200);
     // One that read the card brings it, though its plan is older.
-    await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot: { ...snapshot("pro", 1_000), card: { brand: "visa", last4: "4242" } }, withCard: true, fetchedAt: 1_500 });
+    await t.mutation(internal.billing.accounts.writeSnapshot, { workspaceId, snapshot: { ...snapshot("pro", 1_000), card: { brand: "visa", last4: "4242" } }, withCard: true, fetchedAt: 1_500 });
     expect(await t.run((ctx) => ctx.db.query("billingAccounts").unique())).toMatchObject({ plan: "go", card: { last4: "4242" } });
     // And a card read before that one doesn't replace it.
-    await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot: { ...snapshot("pro", 1_000), card: { brand: "visa", last4: "1111" } }, withCard: true, fetchedAt: 1_200 });
+    await t.mutation(internal.billing.accounts.writeSnapshot, { workspaceId, snapshot: { ...snapshot("pro", 1_000), card: { brand: "visa", last4: "1111" } }, withCard: true, fetchedAt: 1_200 });
     expect((await t.run((ctx) => ctx.db.query("billingAccounts").unique()))?.card?.last4).toBe("4242");
   });
 

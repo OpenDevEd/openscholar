@@ -489,6 +489,8 @@ export const paperContext = internalQuery({
     v.object({
       job: v.object({
         userId: v.id("users"),
+        // The workspace it's in, which pays for its papers (#650).
+        workspaceId: v.id("workspaces"),
         status: screeningJobStatusValidator,
         totalPapers: v.number(),
         questions: screeningQuestionsValidator,
@@ -511,15 +513,17 @@ export const paperContext = internalQuery({
   handler: async (ctx, { jobId, resultId }) => {
     const [job, paper] = await Promise.all([ctx.db.get("screeningJobs", jobId), ctx.db.get("screeningResults", resultId)]);
     if (!job || !paper) return null;
+    const workspaceId = await workspaceOf(ctx, job);
     const [user, balance, model] = await Promise.all([
       ctx.db.get("users", job.userId),
-      availableCredits(ctx, job.userId),
+      availableCredits(ctx, workspaceId),
       job.serverModelId ? ctx.db.get("models", job.serverModelId) : null,
     ]);
     if (!user) return null;
     return {
       job: {
         userId: job.userId,
+        workspaceId,
         status: job.status,
         totalPapers: job.totalPapers,
         questions: job.questions,
@@ -545,10 +549,10 @@ export const paperContext = internalQuery({
 
 export const estimateAction = defineUserQuery({
   path: "screening/queries:estimate",
-  description: "Estimates the credits screening a number of papers holds, against the person's balance, and how many papers that balance covers.",
+  description: "Estimates the credits screening a number of papers holds, against the workspace's balance, and how many papers that balance covers.",
   args: { papers: v.number() },
   returns: v.object({ credits: v.number(), available: v.number(), affordablePapers: v.number() }),
-  run: async (ctx, { userId }, args) => estimateScreening(args.papers, await availableCredits(ctx, userId), await screeningPaperCreditsFor(ctx, userId)),
+  run: async (ctx, { userId, workspaceId }, args) => estimateScreening(args.papers, await availableCredits(ctx, workspaceId), await screeningPaperCreditsFor(ctx, userId)),
 });
 export const estimate = userQuery(estimateAction);
 export const estimateForAssistant = assistantQuery(estimateAction);

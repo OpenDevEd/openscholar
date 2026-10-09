@@ -13,6 +13,9 @@ export const SIGNUP_PLAN = "signup_credits";
 /** Add-on sold in bundles; its credits never expire. */
 export const TOPUP_PLAN = "top_up";
 
+/** The plan an organization's customer starts on (#650): its own credits, shared by its members, and Free's limits. */
+export const ORGANIZATION_PLAN = "free_organization";
+
 /**
  * What a plan allows, each a metered feature in Autumn that is never used up: its amount on
  * the plan is the limit, and an unlimited one sets none (#632).

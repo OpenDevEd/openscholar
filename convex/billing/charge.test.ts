@@ -6,6 +6,7 @@ import schema from "../schema";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "./billing.test-support";
 import { insertUsage } from "./ledger";
 import { requestRefresh } from "./accounts";
+import { personalWorkspaceOf } from "../workspaces/personal";
 import { creditsAgg } from "../extraction/aggregates";
 import { convertUsdToCredits } from "../../lib/pricing";
 
@@ -305,14 +306,15 @@ describe("holding and charging", () => {
       await ctx.db.patch("billingAccounts", account!._id, { purchased: 5 });
     });
     const fetchedAt = Date.now();
-    await t.mutation(internal.billing.accounts.zeroBalance, { userId });
+    const workspaceId = await t.run(async (ctx) => personalWorkspaceOf(ctx, userId));
+    await t.mutation(internal.billing.accounts.zeroBalance, { workspaceId });
     expect(await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())?.purchased)).toBe(0);
     const snapshot = await t.run(async (ctx) => {
       const { _id, _creationTime, userId: _user, workspaceId: _workspace, refreshedAt, refreshQueuedAt, ...rest } = (await ctx.db.query("billingAccounts").first())!;
       return { ...rest, balance: 10 };
     });
 
-    await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot, withCard: false, fetchedAt: fetchedAt - 1 });
+    await t.mutation(internal.billing.accounts.writeSnapshot, { workspaceId, snapshot, withCard: false, fetchedAt: fetchedAt - 1 });
 
     expect(await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())?.balance)).toBe(0);
   });
@@ -374,7 +376,7 @@ describe("holding and charging", () => {
     const t = convexTest(schema);
     const { userId } = await seedChat(t, 1_000);
     const user = await t.run(async (ctx) => {
-      await requestRefresh(ctx, userId);
+      await requestRefresh(ctx, await personalWorkspaceOf(ctx, userId));
       return await ctx.db.get(userId);
     });
 

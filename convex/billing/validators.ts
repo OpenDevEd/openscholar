@@ -38,7 +38,8 @@ export type BillingAccountSnapshot = Infer<typeof billingAccountSnapshotValidato
 
 export const billingAccountFields = {
   ...billingAccountSnapshotValidator.fields,
-  userId: v.id("users"),
+  /** A person's own workspace's account names them; an organization's names nobody. Slice 8 drops it. */
+  userId: v.optional(v.id("users")),
   /** The workspace whose Autumn customer it caches (#650); slice 8 makes it required. */
   workspaceId: v.optional(v.id("workspaces")),
   refreshedAt: v.number(),

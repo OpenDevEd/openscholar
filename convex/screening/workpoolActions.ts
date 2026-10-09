@@ -123,6 +123,7 @@ export const screenPaperAction = internalAction({
         ctx,
         {
           userId: job.userId as Id<"users">,
+          workspaceId: job.workspaceId,
           chargeId: `screening:${args.resultId}:${crypto.randomUUID()}`,
           estimate: screeningPaperCredits(serverPricing),
           hold: false,

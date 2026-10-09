@@ -163,12 +163,15 @@ async function fetchOpenRouterGeneration(
 
 export const settleArgs = {
   userId: v.id("users"),
+  /** The workspace that pays (#650); absent on a settlement scheduled before charges named their payer, until slice 8. */
+  workspaceId: v.optional(v.id("workspaces")),
   chargeId: v.string(),
   generationId: v.string(),
   /** Cost already known outside this generation: its earlier steps. */
   extraUsd: v.number(),
-  /** The assistant reply the request was part of, whose cost its sender's record in the workspace it acted in keeps (convex/assistant/spending.ts). */
+  /** The assistant reply the request was part of, whose cost its sender's record in the paying workspace keeps (convex/assistant/spending.ts). */
   reply: v.optional(v.string()),
+  // Named the paying workspace before `workspaceId` did; slice 8 drops it.
   replyWorkspace: v.optional(v.id("workspaces")),
   /** Token details of the steps that finished before this one; absent on retries scheduled before it existed. */
   earlierTokens: v.optional(v.object({ cacheReadTokens: v.number(), cacheWriteTokens: v.number(), reasoningTokens: v.number() })),
@@ -198,8 +201,10 @@ export async function settle(ctx: ActionCtx, args: ObjectType<typeof settleArgs>
   const usd = (result.kind === "ok" ? result.generation.totalCostUsd : 0) + args.extraUsd;
   // The request's event goes with the call that settles its charge, once, and says what that charge took.
   const settledBefore = args.analytics !== undefined && (await ctx.runQuery(internal.billing.charge.charged, { chargeId: args.chargeId })) !== null;
+  const workspaceId = args.workspaceId ?? args.replyWorkspace;
   const settled = await settleCredits(ctx, {
     userId: args.userId,
+    ...(workspaceId ? { workspaceId } : {}),
     chargeId: args.chargeId,
     credits: convertUsdToCredits({ usd }),
     usage: {
@@ -215,7 +220,7 @@ export async function settle(ctx: ActionCtx, args: ObjectType<typeof settleArgs>
   });
   // The reply reported what its finished steps cost when it ended. The rest of this charge is added to it now.
   const late = convertUsdToCredits({ usd }) - convertUsdToCredits({ usd: args.extraUsd });
-  if (args.reply && late > 0) await ctx.runMutation(internal.assistant.spending.settledLate, { userId: args.userId, ...(args.replyWorkspace ? { workspaceId: args.replyWorkspace } : {}), reply: args.reply, credits: late });
+  if (args.reply && late > 0) await ctx.runMutation(internal.assistant.spending.settledLate, { userId: args.userId, ...(workspaceId ? { workspaceId } : {}), reply: args.reply, credits: late });
   if (args.analytics && settled && !settledBefore) {
     const params = JSON.parse(args.analytics) as AIGenerationParams;
     const credits = await ctx.runQuery(internal.billing.charge.charged, { chargeId: args.chargeId });

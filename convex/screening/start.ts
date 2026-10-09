@@ -67,7 +67,7 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, autho
   const open = (spend: { spendCap?: number; spendHold?: string }) =>
     ctx.runMutation(internal.screening.mutations.openScreeningJob, { userId, workspaceId, author, set, first, last, ...(snapshot ? { snapshot } : {}), ...config, papers: last - first + 1, ...step, ...spend });
   // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
-  return spendCap === undefined ? await open({}) : await startHeld(ctx, { userId, credits: spendCap, kind: "screening" }, (spendHold) => open({ spendCap, spendHold }));
+  return spendCap === undefined ? await open({}) : await startHeld(ctx, { userId, workspaceId, credits: spendCap, kind: "screening" }, (spendHold) => open({ spendCap, spendHold }));
 }
 
 /** How often an ended job is looked at again while a paper of it is still being read, and for how long at most: longer than a paper's worker can run. */

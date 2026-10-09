@@ -10,6 +10,7 @@ import { createJob, insertJob } from "./createJob.test-support";
 import { screeningPaperCreditsFor } from "./estimate";
 import { SCREENING_POOL_SIZE } from "../workpool";
 import { personalWorkspaceOf } from "../workspaces/actor";
+import { ensureWorkspace } from "../workspaces/create";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
 
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
@@ -678,7 +679,9 @@ describe("jobs in workspaces (#650)", () => {
     await seedCredits(t, user._id, 100, 0);
     const lab = await t.run(async (ctx) => {
       const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
-      return ctx.db.insert("workspaces", { kind: "organization", organizationId });
+      const lab = await ensureWorkspace(ctx, { kind: "organization", organizationId });
+      await seedCreditsForTest(ctx, { workspaceId: lab, free: 100 });
+      return lab;
     });
     const { jobId } = await createJob(t.withIdentity({ subject: "clerk_test" }), { workspaceId: lab, papers: makePapers(2), questions: [{ key: "q1", question: "Relevant?" }], scoringConfig: rules });
     const { job, screening } = await t.run(async (ctx) => {
@@ -700,7 +703,10 @@ describe("jobs in workspaces (#650)", () => {
       for (const [clerkUserId, role] of [["alice", "org:member"], ["bob", "org:admin"]] as const) {
         await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role, state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
       }
-      return ctx.db.insert("workspaces", { kind: "organization", organizationId });
+      const lab = await ensureWorkspace(ctx, { kind: "organization", organizationId });
+      // The lab pays for its own papers (#650).
+      await seedCreditsForTest(ctx, { workspaceId: lab, free: 100 });
+      return lab;
     });
     const [asAlice, asBob, asCarol] = ["alice", "bob", "carol"].map((subject) => t.withIdentity({ subject }));
     const job = (as: typeof asAlice, workspaceId?: Id<"workspaces">) => createJob(as, { ...(workspaceId ? { workspaceId } : {}), papers: makePapers(2), questions: [{ key: "q1", question: "Relevant?" }], scoringConfig: rules });

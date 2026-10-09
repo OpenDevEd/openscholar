@@ -53,7 +53,9 @@ async function upsertOrganizationSnapshot(
       createdAt: processedAt,
       updatedAt: processedAt,
     });
-    await ensureWorkspace(ctx, { kind: "organization", organizationId });
+    const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId });
+    // Its own Autumn customer, on the free organization plan (#650).
+    await ctx.scheduler.runAfter(0, internal.billing.accounts.provisionOrganization, { workspaceId });
     return organizationId;
   }
   if (

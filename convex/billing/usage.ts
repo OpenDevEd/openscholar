@@ -139,10 +139,10 @@ async function spendingOf(ctx: QueryCtx, userId: Id<"users">, since: number, day
 export const balanceAction = defineUserQuery({
   path: "billing/usage:balance",
   description:
-    "Says how many credits the person has, as last read from the billing service. It can be a little behind: a reply being written holds credits until it ends, and a charge shows once it's settled.",
+    "Says how many credits the workspace has, as last read from the billing service. It can be a little behind: a reply being written holds credits until it ends, and a charge shows once it's settled.",
   args: {},
   returns: v.object({ credits: v.number() }),
-  run: async (ctx, { userId }) => ({ credits: await availableCredits(ctx, userId) }),
+  run: async (ctx, { workspaceId }) => ({ credits: await availableCredits(ctx, workspaceId) }),
 });
 export const balance = userQuery(balanceAction);
 export const balanceForAssistant = assistantQuery(balanceAction);
@@ -150,7 +150,7 @@ export const balanceForAssistant = assistantQuery(balanceAction);
 export const planAction = defineUserQuery({
   path: "billing/usage:plan",
   description:
-    "Says which plan the person is on, as last read from the billing service: its name, what it costs, the credits it includes each period, the features it grants, whether a payment is past due, and when it renews or ends (times in milliseconds), with the plan that follows it. Null when they have no plan.",
+    "Says which plan the workspace is on, as last read from the billing service: its name, what it costs, the credits it includes each period, the features it grants, whether a payment is past due, and when it renews or ends (times in milliseconds), with the plan that follows it. Null when they have no plan.",
   args: {},
   returns: v.union(
     v.null(),
@@ -165,8 +165,8 @@ export const planAction = defineUserQuery({
       nextPlan: v.optional(v.string()),
     }),
   ),
-  run: async (ctx, { userId }) => {
-    const account = await readAccount(ctx, userId);
+  run: async (ctx, { workspaceId }) => {
+    const account = await readAccount(ctx, workspaceId);
     if (!account?.plan) return null;
     const catalog = await readCatalog(ctx);
     // A plan the catalog no longer lists is still the person's: it goes by its ID.

@@ -17,8 +17,8 @@ import { internalMutation } from "../lib/functions";
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
 const own = async (ctx: MutationCtx, userId: Id<"users">) => (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())?._id;
-const placed = async (ctx: MutationCtx, row: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }) => {
-  if (row.workspaceId) return undefined;
+const placed = async (ctx: MutationCtx, row: { userId?: Id<"users">; workspaceId?: Id<"workspaces"> }) => {
+  if (row.workspaceId || !row.userId) return undefined;
   const workspaceId = await own(ctx, row.userId);
   return workspaceId ? { workspaceId } : undefined;
 };
@@ -40,7 +40,8 @@ export const verifyPage = internalQuery({
     const page = await ctx.db.query(table).paginate({ cursor, numItems: 500, maximumBytesRead: 4 * 1024 * 1024 });
     let missing = 0;
     for (const row of page.page) {
-      if (!row.workspaceId && (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", row.userId)).unique())) missing++;
+      const userId = row.userId;
+      if (!row.workspaceId && userId && (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())) missing++;
     }
     return { missing, isDone: page.isDone, continueCursor: page.continueCursor };
   },

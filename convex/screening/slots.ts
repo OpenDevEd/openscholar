@@ -8,7 +8,7 @@
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { workspacePlanLimit } from "../billing/accounts";
+import { planLimit } from "../billing/accounts";
 import { pricingOf } from "../ai/serverModel";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { SCREENING_POOL_SIZE, screeningPool } from "../workpool";
@@ -23,7 +23,7 @@ const DEFAULT_PAPER_CONCURRENCY = SCREENING_POOL_SIZE;
 
 /** How many papers a workspace may have running at once, never more than the pool. */
 export async function paperLimit(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
-  const concurrency = (await workspacePlanLimit(ctx, workspaceId, "concurrency")) ?? DEFAULT_PAPER_CONCURRENCY;
+  const concurrency = (await planLimit(ctx, workspaceId, "concurrency")) ?? DEFAULT_PAPER_CONCURRENCY;
   return Math.max(1, Math.min(SCREENING_POOL_SIZE, concurrency));
 }
 

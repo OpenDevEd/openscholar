@@ -197,16 +197,17 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     ) +
     (searches ? convertUsdToCredits({ usd: WEB_SEARCH_USD, markup: walletModel.costMarkup }) : 0);
   const chargeId = `wallet:${crypto.randomUUID()}`;
+  // A connected app spends its owner's own workspace's credits, until each key names the workspace it draws on (#651).
+  const workspaceId: Id<"workspaces"> = await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: keyResult.userId });
   if (
     !(await reserveCredits(ctx, {
       userId: keyResult.userId,
+      workspaceId,
       chargeId,
       credits: requiredCredits,
     }))
   ) {
-    const account = await ctx.runQuery(internal.billing.accounts.forUser, {
-      userId: keyResult.userId,
-    });
+    const account = await ctx.runQuery(internal.billing.accounts.forWorkspace, { workspaceId });
     return openAIError(
       `Insufficient credits — need at least ${requiredCredits}, have ${account?.balance ?? 0}.`,
       "insufficient_quota",
@@ -237,7 +238,7 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
   const responseId = generateResponseId();
   const shouldStream = req.stream !== false; // default true
   const callOptions = buildCallOptions(model, aiSdkParams, providerOptions);
-  const charge = makeChargeFn(ctx, walletModel, keyResult, chargeId, webSearch);
+  const charge = makeChargeFn(ctx, walletModel, keyResult, workspaceId, chargeId, webSearch);
 
   try {
     if (shouldStream) {
@@ -313,6 +314,7 @@ function makeChargeFn(
   ctx: Parameters<Parameters<typeof httpAction>[0]>[0],
   walletModel: Doc<"models">,
   keyResult: { userId: Id<"users">; appName: string },
+  workspaceId: Id<"workspaces">,
   chargeId: string,
   webSearch: boolean,
 ): ChargeFn {
@@ -323,6 +325,7 @@ function makeChargeFn(
         reportedUsd ?? calculateEnhancedModelCost(usage, walletModel) + (webSearch ? WEB_SEARCH_USD : 0);
       await settleCredits(ctx, {
         userId: keyResult.userId,
+        workspaceId,
         chargeId,
         credits: Math.max(1, convertUsdToCredits({ usd: costUsd, markup: walletModel.costMarkup })),
         usage: {
@@ -336,7 +339,7 @@ function makeChargeFn(
         },
       });
     },
-    release: () => releaseCredits(ctx, { userId: keyResult.userId, chargeId }),
+    release: () => releaseCredits(ctx, { chargeId }),
   };
 }
 
