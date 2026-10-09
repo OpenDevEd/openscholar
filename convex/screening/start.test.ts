@@ -16,6 +16,7 @@ import { setupScreeningWorkpool } from "./workpool.test-support";
 import type { SavedSearch } from "../../lib/research/records";
 import { exportParts } from "../exports.test-support";
 import { createJob } from "./createJob.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 const questions = [{ key: "q1", question: "Randomized?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 };
@@ -177,7 +178,7 @@ describe("where a job's papers go", () => {
     const { t, screen, userId, collectionId, answerAll, inCollectionNow } = await setup({ saved: 0, inCollection: 0 });
     // Papers from a job, which aren't saved yet.
     const source = await t.run(async (ctx) => {
-      const screeningId = await ctx.db.insert("screenings", { userId, version: 0, createdAt: 1 });
+      const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), version: 0, createdAt: 1 });
       const jobId = await ctx.db.insert("screeningJobs", { userId, status: "completed", totalPapers: 2, questions, scoringConfig, screeningId, createdAt: 1, updatedAt: 1 });
       for (const i of [1, 2]) await ctx.db.insert("screeningResults", { jobId, openalexId: W(i), title: `Paper ${i}`, status: "completed", outcome: "included", createdAt: 1 });
       return jobId;
@@ -258,8 +259,9 @@ describe("a job on a search whose page already answered some papers", () => {
     await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: [{ search }], shortcuts: [], ratings: [] });
     const papers = Array.from({ length: 400 }, (_, i) => ({ openalexId: W(i + 1), title: `Paper ${i + 1}` }));
     await t.run(async (ctx) => {
-      const row = (await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", search.id)).unique())!;
-      const screeningId = await ctx.db.insert("screenings", { userId, searchId: row._id, version: 0, createdAt: 1 });
+      const rowWorkspace = await personalWorkspaceOf(ctx, userId);
+      const row = (await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", rowWorkspace).eq("localId", search.id)).unique())!;
+      const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), searchId: row._id, version: 0, createdAt: 1 });
       for (const paper of papers) await answerPaper(ctx, screeningId, paper.openalexId, [{ question: "Randomized?", response: true }], "model", 1);
     });
 
@@ -279,8 +281,9 @@ describe("a job on a search whose page already answered some papers", () => {
     const papers = [1, 2, 3].map((i) => ({ openalexId: W(i), title: `Paper ${i}` }));
     // The search's page answered W1 (by a person) and W2 (by the model); W3 is new.
     await t.run(async (ctx) => {
-      const row = (await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", search.id)).unique())!;
-      const screeningId = await ctx.db.insert("screenings", { userId, searchId: row._id, version: 0, createdAt: 1 });
+      const rowWorkspace = await personalWorkspaceOf(ctx, userId);
+      const row = (await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", rowWorkspace).eq("localId", search.id)).unique())!;
+      const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), searchId: row._id, version: 0, createdAt: 1 });
       await answerPaper(ctx, screeningId, W(1), [{ question: "Randomized?", response: true }], "person", 1);
       await answerPaper(ctx, screeningId, W(2), [{ question: "Randomized?", response: false }], "model", 1);
     });

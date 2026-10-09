@@ -63,26 +63,22 @@ import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValid
 
 export default defineSchema({
   // `searchText`: what its list's search matches, kept by a trigger (convex/lib/searchText.ts); missing until migrations/searchText reaches a row from before.
-  // The workspace a search is in and who made it (#650): set on every new one, and backfilled
-  // (convex/migrations/researchWorkspaces.ts) before reads move off `userId`.
-  searches: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), createdBy: v.optional(v.id("users")), localId: v.string(), revision: v.number(), data: storedSearchValidator, searchText: v.optional(v.string()) })
-    .index("by_user", ["userId"])
-    .index("by_user_and_createdAt", ["userId", "data.createdAt"])
-    .index("by_user_and_count", ["userId", "data.count"])
-    .index("by_user_and_localId", ["userId", "localId"])
+  // The workspace a search is in and who made it (#650). `userId` is the person it belonged to
+  // before workspaces, which migrations/narrowResearch.ts clears before it goes.
+  searches: defineTable({ userId: v.optional(v.id("users")), workspaceId: v.id("workspaces"), createdBy: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator, searchText: v.optional(v.string()) })
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_and_createdAt", ["workspaceId", "data.createdAt"])
     .index("by_workspace_and_count", ["workspaceId", "data.count"])
     .index("by_workspace_and_localId", ["workspaceId", "localId"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId", "workspaceId"] }),
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["workspaceId"] }),
   // How many saved searches, shortcuts and screening jobs a person has, kept by the triggers on those tables
   // (research/recordCounts.ts), for page totals. While a first count is being taken,
   // `countedTo` is the creation time it has reached.
-  recordCounts: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), count: v.number(), countedTo: v.optional(v.number()) })
-    .index("by_user_and_table", ["userId", "table"])
+  recordCounts: defineTable({ userId: v.optional(v.id("users")), workspaceId: v.id("workspaces"), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), count: v.number(), countedTo: v.optional(v.number()) })
     .index("by_workspace_and_table", ["workspaceId", "table"]),
+  // `createdBy`: who made the revision; `userId`, from before, goes once migrations/narrowResearch.ts has copied it.
   searchRevisions: defineTable({
-    userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
+    userId: v.optional(v.id("users")), createdBy: v.optional(v.id("users")), searchId: v.id("searches"), revision: v.number(),
     author: v.union(v.literal("user"), v.literal("assistant")),
     data: storedSearchValidator, deleted: v.boolean(), createdAt: v.number(),
     // The screening version this revision saw; its answers are the history up to it.
@@ -90,7 +86,7 @@ export default defineSchema({
   }).index("by_search_and_revision", ["searchId", "revision"]),
   // A search's earlier queries and research questions, in the order they were made (#354).
   searchHistory: defineTable({
-    userId: v.id("users"), searchId: v.id("searches"), kind: v.union(v.literal("query"), v.literal("question")),
+    userId: v.optional(v.id("users")), searchId: v.id("searches"), kind: v.union(v.literal("query"), v.literal("question")),
     text: v.string(), field: v.optional(fieldValidator), timestamp: v.string(), position: v.number(),
   }).index("by_search_and_kind_and_position", ["searchId", "kind", "position"])
     .index("by_search_and_kind_and_timestamp", ["searchId", "kind", "timestamp"]),
@@ -99,7 +95,7 @@ export default defineSchema({
   // page and its Screen all jobs both answer into; a Screen all job run before #334 has its
   // own, with no search. `version` counts the writes to its answers, so a revision finds its
   // answers exactly.
-  screenings: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number(), removals: removalsValidator })
+  screenings: defineTable({ userId: v.optional(v.id("users")), workspaceId: v.id("workspaces"), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number(), removals: removalsValidator })
     .index("by_search", ["searchId"]),
   // `version`: the screening's when the row was last written; a row from before this was kept owes every removal.
   screeningAnswers: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.optional(v.number()) })
@@ -111,16 +107,12 @@ export default defineSchema({
     .index("by_screening_and_paper_and_version", ["screeningId", "paperId", "version"]),
   // `sortName` is the name as the Bookmarks page orders it (lower case); optional until migrations/pagedRecords has run.
   // Bookmarks, by workspace from #650 as searches are.
-  queryShortcuts: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), createdBy: v.optional(v.id("users")), data: shortcutValidator, sortName: v.optional(v.string()), searchText: v.optional(v.string()) })
-    .index("by_user_and_createdAt", ["userId", "data.createdAt"])
-    .index("by_user_and_sortName", ["userId", "sortName"])
-    .index("by_user", ["userId"])
-    .index("by_user_and_shorthand", ["userId", "data.shorthand"])
+  queryShortcuts: defineTable({ userId: v.optional(v.id("users")), workspaceId: v.id("workspaces"), createdBy: v.id("users"), data: shortcutValidator, sortName: v.optional(v.string()), searchText: v.optional(v.string()) })
     .index("by_workspace_and_createdAt", ["workspaceId", "data.createdAt"])
     .index("by_workspace_and_sortName", ["workspaceId", "sortName"])
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_and_shorthand", ["workspaceId", "data.shorthand"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId", "workspaceId"] }),
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["workspaceId"] }),
   paperRatings: defineTable({ userId: v.id("users"), data: ratingValidator })
     .index("by_user", ["userId"])
     .index("by_user_and_paperId", ["userId", "data.paperId"]),

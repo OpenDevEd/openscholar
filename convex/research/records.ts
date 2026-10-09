@@ -74,12 +74,10 @@ export const countSearchesForAssistant = assistantQuery(countSearchesAction);
 
 /** One step of a workspace's first count of its searches, shortcuts or screening or extraction jobs (./recordCounts.ts). */
 export const countRecordsPage = internalMutation({
-  // `userId` alone only for a step scheduled before counts were kept by workspace (#650), which counts its person's own; slice 8 drops it.
-  args: { table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), workspaceId: v.optional(v.id("workspaces")), userId: v.optional(v.id("users")) },
+  args: { table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), workspaceId: v.id("workspaces") },
   returns: v.null(),
-  handler: async (ctx, { table, workspaceId, userId }) => {
-    const counted = workspaceId ?? (userId ? await personalWorkspaceOf(ctx, userId) : undefined);
-    if (counted) await countRecordPage(ctx, table, counted);
+  handler: async (ctx, { table, workspaceId }) => {
+    await countRecordPage(ctx, table, workspaceId);
     return null;
   },
 });
@@ -296,11 +294,11 @@ const HISTORY_PAGE_MAX = 100;
  * ponytail: one transaction writes at most 16,000 rows, so a search with more entries than
  * that can't move or be imported; none on shared dev comes near.
  */
-async function addHistory(ctx: MutationCtx, search: Pick<Doc<"searches">, "_id" | "userId">, kind: "query" | "question", entries: Array<{ text: string; field?: SavedSearch["field"]; timestamp: string }>) {
+async function addHistory(ctx: MutationCtx, search: Pick<Doc<"searches">, "_id">, kind: "query" | "question", entries: Array<{ text: string; field?: SavedSearch["field"]; timestamp: string }>) {
   if (!entries.length) return;
   const last = await ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_position", q => q.eq("searchId", search._id).eq("kind", kind)).order("desc").first();
   let position = last?.position ?? -1;
-  for (const entry of entries) await ctx.db.insert("searchHistory", { userId: search.userId, searchId: search._id, kind, ...entry, position: ++position });
+  for (const entry of entries) await ctx.db.insert("searchHistory", { searchId: search._id, kind, ...entry, position: ++position });
 }
 
 const queryEntry = (entry: { query: string; field?: SavedSearch["field"]; timestamp: string }) => ({ text: entry.query, ...(entry.field ? { field: entry.field } : {}), timestamp: entry.timestamp });
@@ -350,7 +348,7 @@ async function copyHistory(ctx: MutationCtx, { userId, workspaceId }: InWorkspac
     if (replaced.length > COPY_HISTORY_MAX) throw new Error(`This search has more than ${COPY_HISTORY_MAX} ${kind} history entries to replace.`);
     if (rows.length > COPY_HISTORY_MAX) throw new Error(`Search ${fromId} has more than ${COPY_HISTORY_MAX} ${kind} history entries to copy.`);
     for (const row of replaced) await ctx.db.delete("searchHistory", row._id);
-    for (const { text, field, timestamp, position } of rows) await ctx.db.insert("searchHistory", { userId, searchId: search._id, kind, text, ...(field ? { field } : {}), timestamp, position });
+    for (const { text, field, timestamp, position } of rows) await ctx.db.insert("searchHistory", { searchId: search._id, kind, text, ...(field ? { field } : {}), timestamp, position });
   }
   return { queryHistoryCount, questionCount, latestQuestion, questionText };
 }
@@ -372,10 +370,10 @@ function validateSearch(search: SavedSearch) {
   }
 }
 
-/** A revision stores the search's fields, and the screening version its answers are rebuilt from. */
-async function revision(ctx: MutationCtx, search: Doc<"searches">, author: Author, deleted = false) {
+/** A revision stores the search's fields, who made it, and the screening version its answers are rebuilt from. */
+async function revision(ctx: MutationCtx, search: Doc<"searches">, author: Author, by: Id<"users">, deleted = false) {
   const answersVersion = (await screeningFor(ctx, search._id))?.version;
-  await ctx.db.insert("searchRevisions", { userId: search.userId, searchId: search._id, revision: search.revision, author, data: search.data, ...(answersVersion === undefined ? {} : { answersVersion }), deleted, createdAt: Date.now() });
+  await ctx.db.insert("searchRevisions", { createdBy: by, searchId: search._id, revision: search.revision, author, data: search.data, ...(answersVersion === undefined ? {} : { answersVersion }), deleted, createdAt: Date.now() });
 }
 
 /** One revision of a search, if it was kept. */
@@ -421,13 +419,13 @@ export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: In
       const queries = command.history?.queryHistory.length ? command.history.queryHistory : [{ query: command.search.query, field: command.search.field, timestamp: command.search.createdAt }];
       const questions = command.history?.questionHistory ?? [];
       const stored = { ...command.search, ...historySummary(queries, questions), screeningResponses: [] };
-      const id = await ctx.db.insert("searches", withText({ userId, workspaceId, createdBy: userId, localId: command.search.id, data: stored, revision: FIRST_REVISION }, searchText(stored)));
-      await addHistory(ctx, { _id: id, userId }, "query", queries.map(queryEntry));
-      await addHistory(ctx, { _id: id, userId }, "question", questions.map(questionEntry));
+      const id = await ctx.db.insert("searches", withText({ workspaceId, createdBy: userId, localId: command.search.id, data: stored, revision: FIRST_REVISION }, searchText(stored)));
+      await addHistory(ctx, { _id: id }, "query", queries.map(queryEntry));
+      await addHistory(ctx, { _id: id }, "question", questions.map(questionEntry));
       // Answers carried in a new search come from an import or the assistant; neither says who gave them.
       await seedAnswers(ctx, userId, id, command.search.screeningResponses, author === "assistant" ? "assistant" : "unrecorded", Date.now());
       const made = (await ctx.db.get("searches", id))!;
-      await revision(ctx, made, author);
+      await revision(ctx, made, author, userId);
       return { kind: "deleteSearch", id: command.search.id, expect: await asMade(ctx, made) };
     }
     case "editSearch": {
@@ -486,7 +484,7 @@ export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: In
         if (!entry) throw new Error("History entry not found.");
         await ctx.db.delete("searchHistory", entry._id);
       }
-      await revision(ctx, next, author);
+      await revision(ctx, next, author, userId);
       // A change to the query or the filters is reversed by restoring the revision before it,
       // when that revision was kept and restoring it would bring something back.
       const reversible = (edit.kind === "patch" || edit.kind === "query" || edit.kind === "restore") && restoreReverses(previous, data);
@@ -509,7 +507,7 @@ export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: In
       }
       // Its history stays in its rows, with the revisions, after the search is gone.
       const search = (await moveSearchHistory(ctx, found._id)) ? (await ctx.db.get("searches", found._id))! : found;
-      await revision(ctx, { ...search, revision: search.revision + 1 }, author, true);
+      await revision(ctx, { ...search, revision: search.revision + 1 }, author, userId, true);
       await ctx.db.delete("searches", search._id);
       return;
     }
@@ -529,7 +527,7 @@ export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: In
       if (command.value === null) { if (row) await ctx.db.delete("queryShortcuts", row._id); return undo; }
       const data = { shorthand: command.shorthand, ...command.value };
       if (row) await ctx.db.patch("queryShortcuts", row._id, { data, searchText: withText({ ...row, data }, shortcutText(data)).searchText });
-      else await ctx.db.insert("queryShortcuts", withText({ userId, workspaceId, createdBy: userId, data, sortName: shortcutSortName(command.shorthand) }, shortcutText(data)));
+      else await ctx.db.insert("queryShortcuts", withText({ workspaceId, createdBy: userId, data, sortName: shortcutSortName(command.shorthand) }, shortcutText(data)));
       return undo;
     }
     // A clear takes the rows up to the newest there is now. A clock can't draw that line:
@@ -698,21 +696,19 @@ async function clearShortcutBatch(ctx: MutationCtx, writer: InWorkspace, before:
 }
 
 export const clearShortcutsBatch = internalMutation({
-  // Optional only for batches scheduled before the workspace was passed (#650), which clear their maker's own; required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), before: v.number() },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), before: v.number() },
   returns: v.null(),
   handler: async (ctx, { userId, workspaceId, before }) => {
-    await clearShortcutBatch(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, before);
+    await clearShortcutBatch(ctx, { userId, workspaceId }, before);
     return null;
   },
 });
 
 export const clearSearchesBatch = internalMutation({
-  // Optional only for batches scheduled before the workspace was passed (#650), which clear their maker's own; required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), author: v.union(v.literal("user"), v.literal("assistant")), before: v.number() },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), author: v.union(v.literal("user"), v.literal("assistant")), before: v.number() },
   returns: v.null(),
   handler: async (ctx, { userId, workspaceId, author, before }) => {
-    await clearBatch(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, author, before);
+    await clearBatch(ctx, { userId, workspaceId }, author, before);
     return null;
   },
 });

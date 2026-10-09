@@ -1,3 +1,4 @@
+import { workspaceOf } from "../workspaces/personal";
 import type { TestConvexForDataModel } from "convex-test";
 import type { FunctionArgs } from "convex/server";
 import { internal } from "../_generated/api";
@@ -25,7 +26,7 @@ type JobFields = Omit<Doc<"screeningJobs">, "_id" | "_creationTime" | "screening
 
 /** A job as rows, for a test that seeds one without starting it: its screening and its progress row with it. */
 export async function insertJob(ctx: MutationCtx, fields: JobFields) {
-  const screeningId = fields.screeningId ?? (await ctx.db.insert("screenings", { userId: fields.userId, version: 0, createdAt: fields.createdAt }));
+  const screeningId = fields.screeningId ?? (await ctx.db.insert("screenings", { workspaceId: await workspaceOf(ctx, fields), version: 0, createdAt: fields.createdAt }));
   const jobId = await ctx.db.insert("screeningJobs", { ...fields, screeningId });
   await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0 });
   return jobId;

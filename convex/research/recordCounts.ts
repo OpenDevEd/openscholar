@@ -27,10 +27,10 @@ export function countRow(ctx: Pick<QueryCtx, "db">, table: Counted, workspaceId:
 }
 
 /** Starts the first count of `table` in the workspace `record` is in; does nothing once it has one. */
-export async function startCount(ctx: Pick<MutationCtx, "db" | "scheduler">, table: Counted, record: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }) {
+export async function startCount(ctx: Pick<MutationCtx, "db" | "scheduler">, table: Counted, record: Parameters<typeof workspaceOf>[1]) {
   const workspaceId = await workspaceOf(ctx, record);
   if (await countRow(ctx, table, workspaceId)) return;
-  await ctx.db.insert("recordCounts", { userId: record.userId, workspaceId, table, count: 0, countedTo: 0 });
+  await ctx.db.insert("recordCounts", { workspaceId, table, count: 0, countedTo: 0 });
   await ctx.scheduler.runAfter(0, internal.research.records.countRecordsPage, { table, workspaceId });
 }
 

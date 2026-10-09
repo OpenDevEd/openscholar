@@ -44,13 +44,11 @@ const fromResult = (paper: Doc<"screeningResults">): SearchPaper => ({
 
 /** One page of a held set's papers, in its order. Another workspace's collection or another person's job reads as not found. */
 export const page = internalQuery({
-  // `workspaceId` is optional only for a call from an action already running when this deployed (#650), which reads its person's own; required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), set: paperSetValidator, cursor: v.union(v.string(), v.null()), numItems: v.number(), revision: v.optional(v.string()) },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), set: paperSetValidator, cursor: v.union(v.string(), v.null()), numItems: v.number(), revision: v.optional(v.string()) },
   returns: v.object({ page: v.array(screeningPaperInputValidator), isDone: v.boolean(), continueCursor: v.string() }),
-  handler: async (ctx, { userId, workspaceId: given, set, cursor, numItems, revision }) => {
+  handler: async (ctx, { workspaceId, set, cursor, numItems, revision }) => {
     if (set.kind === "search") throw new Error("A search's papers are read from OpenAlex (./search.ts)");
     const opts = { cursor, numItems: Math.min(numItems, PAGE), maximumBytesRead: PAGE_BYTES };
-    const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
     if (set.kind === "screening") {
       const job = await ctx.db.get("screeningJobs", set.jobId);
       if (!job || !(await isInWorkspace(ctx, job, workspaceId))) throw createError("NOT_FOUND", "Screening not found");

@@ -412,8 +412,9 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
       await as.mutation(api.research.records.change, { accountId: clerkId, requestId: "create", command: { kind: "createSearch", search } });
       // Seeded as rows: one import of this many answers wouldn't fit a transaction.
       const screeningId = await t.run(async (ctx) => {
-        const search = (await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", "answered")).unique())!;
-        return ctx.db.insert("screenings", { userId, searchId: search._id, version: 1, createdAt: 1 });
+        const searchWorkspace = await personalWorkspaceOf(ctx, userId);
+        const search = (await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", searchWorkspace).eq("localId", "answered")).unique())!;
+        return ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), searchId: search._id, version: 1, createdAt: 1 });
       });
       const answers = questions.map((question, q) => ({ question, answer: q % 2 === 0, setBy: "model" as const, updatedAt: 1, model: { answer: q % 2 === 0, confidence: 0.9, at: 1 } }));
       await insertMany(t, "screeningAnswers", papers.map((paperId) => ({ screeningId, paperId, answers })), 100);
@@ -445,7 +446,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     const { userId, as } = await seedAccount(t, "max_outcomes_user");
     const questions = Array.from({ length: MAX_SIZE.questionsPerJob }, (_, i) => ({ key: `q${i}`, question: `${text(180, i)}?` }));
     const { jobId, screeningId } = await t.run(async (ctx) => {
-      const screeningId = await ctx.db.insert("screenings", { userId, version: 1, createdAt: 1 });
+      const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), version: 1, createdAt: 1 });
       const jobId = await ctx.db.insert("screeningJobs", {
         userId, status: "completed", totalPapers: 120, questions, screeningId,
         scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 },
@@ -512,8 +513,9 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
       const search = { id: "reused", query: "tutoring", field: "title" as const, count: ids.length, queryHistoryCount: 0, questionCount: 0, questionText: "", screeningQuestions: asked.map((question) => ({ question })), screeningResponses: [], createdAt: at, updatedAt: at };
       await as.mutation(api.research.records.change, { accountId: clerkId, requestId: "create", command: { kind: "createSearch", search } });
       const screeningId = await t.run(async (ctx) => {
-        const row = (await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", "reused")).unique())!;
-        return ctx.db.insert("screenings", { userId, searchId: row._id, version: 1, createdAt: 1 });
+        const rowWorkspace = await personalWorkspaceOf(ctx, userId);
+        const row = (await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", rowWorkspace).eq("localId", "reused")).unique())!;
+        return ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), searchId: row._id, version: 1, createdAt: 1 });
       });
       const answers = asked.map((question) => ({ question, answer: true, setBy: "model" as const, updatedAt: 1, model: { answer: true, confidence: 0.9, at: 1 } }));
       await insertMany(t, "screeningAnswers", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1 })), 100);
