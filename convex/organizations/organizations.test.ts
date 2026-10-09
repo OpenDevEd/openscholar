@@ -160,6 +160,8 @@ describe("an organization", () => {
     await expect(aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: alice, role: "member" })).rejects.toThrow(/only admin/);
     const { undo } = await aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: bob, role: "admin" });
     expect(undo).toEqual({ path: "organizations/manage:setRole", args: { userId: bob, role: "member" } });
+    // Making herself a member has no undo: she couldn't make anyone an admin after it.
+    expect((await aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: alice, role: "member" })).undo).toBeUndefined();
     await aliceAs.action(api.organizations.manage.leave, inLab);
     expect((await aliceAs.query(api.organizations.queries.workspaces, page)).page.map(({ name }) => name)).toEqual(["Alice"]);
     // What she left is no longer hers to act in.
@@ -195,6 +197,13 @@ describe("an organization", () => {
     const { t, aliceAs } = await people();
     const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
     const inLab = { workspaceId: lab.workspaceId };
+    // A plan that renews is cancelled first.
+    const accountId = await t.run(async (ctx) => (await ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", lab.workspaceId)).unique())?._id);
+    const renewing = { plan: "team", renewsAt: Date.now() + 86_400_000 };
+    const account = accountId ?? (await t.run((ctx) => ctx.db.insert("billingAccounts", { workspaceId: lab.workspaceId, pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: 1, ...renewing })));
+    if (accountId) await t.run((ctx) => ctx.db.patch("billingAccounts", accountId, renewing));
+    await expect(aliceAs.action(api.organizations.manage.deleteOrganization, inLab)).rejects.toThrow(/plan that renews/);
+    await t.run((ctx) => ctx.db.patch("billingAccounts", account, { renewsAt: undefined }));
     // While a deletion runs, nobody acts in it: no Evidence Library can be made to strand.
     const deletingAt = await t.mutation(internal.organizations.read.beginDeletion, inLab);
     await expect(aliceAs.mutation(api.library.collections.createCollection, { ...inLab, name: "Late" })).rejects.toThrow(/Workspace not found/);

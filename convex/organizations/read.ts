@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import { internalQuery, type QueryCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
+import { readAccount } from "../billing/accounts";
 
 /** The organization a workspace is, or why it's refused: a person's own workspace is no organization. */
 export async function organizationOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">): Promise<Doc<"organizations">> {
@@ -87,6 +88,8 @@ export const beginDeletion = internalMutation({
     if (organization.deletingAt !== undefined) throw createError("CONFLICT", "This organization is being deleted already.");
     const library = await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).first();
     if (library) throw createError("VALIDATION_ERROR", `This organization has an Evidence Library, ${library.name}. Move or delete it first.`);
+    // ponytail: refused, until #652 cancels a Team plan as a step of the deletion.
+    if ((await readAccount(ctx, workspaceId))?.renewsAt !== undefined) throw createError("VALIDATION_ERROR", "This organization pays for a plan that renews. Cancel it in its billing settings first.");
     const deletingAt = Date.now();
     await ctx.db.patch("organizations", organization._id, { deletingAt });
     await ctx.scheduler.runAfter(DELETION_HOLD_MS, internal.organizations.read.endDeletion, { organizationId: organization._id, deletingAt });

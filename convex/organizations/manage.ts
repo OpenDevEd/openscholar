@@ -21,8 +21,8 @@ const ROLE = v.union(v.literal("admin"), v.literal("member"));
 type Role = "admin" | "member";
 const clerkRole = (role: Role) => (role === "admin" ? "org:admin" : "org:member");
 
-/** The most people one call invites. */
-const INVITES_AT_ONCE = 20;
+/** The most people one call invites: Clerk's bulk invitation takes 10. */
+const INVITES_AT_ONCE = 10;
 
 let instanceId: string | undefined;
 /** The Clerk instance whose events these are, as the webhook names it. */
@@ -108,10 +108,15 @@ export const createAction = defineUserAction({
     const organization = await clerk(key, "POST", "/organizations", { name: requireName(name), created_by: clerkUserId });
     if (!isRecord(organization) || typeof organization.id !== "string") throw new Error("Clerk answered without the organization");
     await keep(ctx, key, "organization.created", organization);
-    // Clerk makes its creator an admin; keep that membership too.
-    const memberships = await clerk(key, "GET", `/organizations/${organization.id}/memberships?user_id=${encodeURIComponent(clerkUserId)}&limit=1`);
-    const mine = isRecord(memberships) && Array.isArray(memberships.data) ? memberships.data[0] : undefined;
-    if (mine) await keep(ctx, key, "organizationMembership.created", mine);
+    // Clerk makes its creator an admin; keep that membership too. Clerk's webhook brings it if this
+    // read fails, and failing here would leave an organization made that the person retries.
+    try {
+      const memberships = await clerk(key, "GET", `/organizations/${organization.id}/memberships?user_id=${encodeURIComponent(clerkUserId)}&limit=1`);
+      const mine = isRecord(memberships) && Array.isArray(memberships.data) ? memberships.data[0] : undefined;
+      if (mine) await keep(ctx, key, "organizationMembership.created", mine);
+    } catch (error) {
+      console.error("[organizations] couldn't keep the new organization's admin; its webhook will", { clerkOrganizationId: organization.id, error: String(error) });
+    }
     const made: { workspaceId: Id<"workspaces">; slug: string } | null = await ctx.runQuery(internal.organizations.read.workspaceOf, { clerkOrganizationId: organization.id });
     if (!made) throw new Error("The organization Clerk made isn't kept");
     return made;
@@ -202,11 +207,12 @@ export const setRoleAction = defineUserAction({
   path: SET_ROLE,
   description:
     "Makes a member of the organization the person is in an admin or a member; an admin of it does this. Admins invite and remove members, change roles, and change the organization's settings. " +
-    "An organization always keeps one admin. Returns `undo`, which puts the role back.",
+    "An organization always keeps one admin. Returns `undo`, which puts the role back, unless the person made themselves a member, after which they can't change roles.",
   args: { userId: v.id("users"), role: ROLE },
   returns: v.object({ undo: reversedBy(SET_ROLE, { userId: v.id("users"), role: ROLE }) }),
   spendsCredits: false,
-  outsideEffect: false,
+  // It changes what another person can do.
+  outsideEffect: true,
   undoable: true,
   run: async (ctx, actor, { userId, role }) => {
     const key = clerkSecretKey();
@@ -216,7 +222,8 @@ export const setRoleAction = defineUserAction({
     const target: string = await ctx.runQuery(internal.organizations.read.checkMemberChange, { workspaceId: actor.workspaceId, actorClerkUserId: clerkUserId, actorIsAdmin: true, userId, becomes: clerkRole(role) });
     const membership = await clerk(key, "PATCH", `/organizations/${organization.clerkOrganizationId}/memberships/${target}`, { role: clerkRole(role) });
     await keep(ctx, key, "organizationMembership.updated", membership);
-    return { undo: { path: SET_ROLE, args: { userId, role: was } } };
+    // An admin who made themselves a member can't make anyone an admin again, themselves included.
+    return target === clerkUserId ? {} : { undo: { path: SET_ROLE, args: { userId, role: was } } };
   },
 });
 export const setRole = userAction(setRoleAction);
@@ -280,7 +287,8 @@ export const renameAction = defineUserAction({
   args: { name: nameArg },
   returns: v.object({ undo: reversedBy("organizations/manage:rename", { name: nameArg }) }),
   spendsCredits: false,
-  outsideEffect: false,
+  // Every member sees the new name.
+  outsideEffect: true,
   undoable: true,
   run: async (ctx, actor, { name }) => {
     const key = clerkSecretKey();
@@ -299,7 +307,7 @@ export const deleteOrganizationAction = defineUserAction({
   path: "organizations/manage:deleteOrganization",
   description:
     "Deletes the organization the person is in, and with it every member's access to its workspace; an admin of it does this, and it can't be undone. " +
-    "It's refused while the organization has an Evidence Library, which has to be moved or deleted first.",
+    "It's refused while the organization has an Evidence Library, which has to be moved or deleted first, or a paid plan that renews, which has to be cancelled first.",
   args: {},
   returns: v.null(),
   spendsCredits: false,
