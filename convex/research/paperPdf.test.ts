@@ -5,14 +5,17 @@
 import { APICallError } from "@ai-sdk/provider";
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
+import type { ActionCtx } from "../_generated/server";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
 import { people } from "../assistant/assistant.test-support";
 import { callingDoStream, finishingDoStream, waitFor } from "../assistant/turn.test-support";
 import { COMPACT_AT_TOKENS } from "../assistant/context";
-import { paperKey, STORED_PDF_CREDITS } from "../lib/paperPdfs";
+import { paperKeys, paperPdf, type PdfOptions } from "../lib/paperPdfs";
+import { MAX_PDF_BYTES } from "../../lib/files/limits";
+import { PAPER_PDF_CREDITS as STORED_PDF_CREDITS } from "../../lib/pricing";
 import { fakeStore, storeAnswer, storedAddress, stubPaperStore } from "../lib/paperPdfs.test-support";
 
 const { mockDoStream, mockDoGenerate, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), mockDoGenerate: vi.fn(), fetchMock: vi.fn() }));
@@ -29,7 +32,12 @@ const WORKS: Record<string, object> = {
   W1: { id: "https://openalex.org/W1", display_name: "Loot boxes and problem gambling", best_oa_location: { pdf_url: PDF }, has_content: { pdf: true } },
   W2: { id: "https://openalex.org/W2", display_name: "A closed paper", best_oa_location: null, has_content: { pdf: false } },
   W3: { id: "https://openalex.org/W3", display_name: "A landing page", best_oa_location: { pdf_url: "https://example.org/landing" }, has_content: { pdf: true } },
+  W7: { id: "https://openalex.org/W7", display_name: "Listed", doi: "https://doi.org/10.7/listed", locations: [{ pdf_url: PDF, landing_page_url: "https://example.org/landing" }] },
 };
+/** Extraction's way of getting a PDF: the file, charged with the paper (convex/extraction/workpoolActions.ts). */
+const EXTRACTION: PdfOptions = { maxBytes: MAX_PDF_BYTES, bytes: true, charge: "report", allowHttp: false };
+/** In report mode the store only runs its own mutations, which the test backend runs for it. */
+const actionsOf = (t: ReturnType<typeof convexTest>) => ({ runMutation: (fn: Parameters<typeof t.mutation>[0], args: Record<string, unknown>) => t.mutation(fn, args as never) }) as unknown as ActionCtx;
 /** Requests to the publisher's host and to OpenAlex's content API. */
 let publisher: string[] = [];
 let content: string[] = [];
@@ -99,12 +107,63 @@ type Prompt = Array<{ role: string; content: Array<{ type: string; output?: { ty
 const resultIn = (prompt: Prompt) => prompt.filter((message) => message.role === "tool").flatMap((message) => message.content).find((part) => part.type === "tool-result")?.output;
 
 describe("the paper PDF store", () => {
-  it("keys a copy by OpenAlex ID, else DOI, else link, and never keeps a file from a person's Zotero library", async () => {
-    expect(await paperKey({ openalexId: "https://openalex.org/w12", doi: "10.1/x" })).toBe("openalex/W12.pdf");
+  it("looks for a copy by OpenAlex ID, then by link, and never for a file from a person's Zotero library", async () => {
+    const [byWork, byLink] = await paperKeys({ openalexId: "https://openalex.org/w12", url: PDF });
+    expect(byWork).toBe("openalex/W12.pdf");
+    expect(byLink).toMatch(/^url\/[0-9a-f]{64}\.pdf$/);
     // Extraction names papers from elsewhere by IDs of its own.
-    expect(await paperKey({ openalexId: "zotero:ABCD", doi: "https://doi.org/10.1/X" })).toBe(`doi/${encodeURIComponent("10.1/x")}.pdf`);
-    expect(await paperKey({ url: PDF })).toMatch(/^url\/[0-9a-f]{64}\.pdf$/);
-    expect(await paperKey({ openalexId: "W12", url: "zotero://select/users/1/items/ABCD" })).toBeNull();
+    expect(await paperKeys({ openalexId: "zotero:ABCD", doi: "10.1/x" })).toEqual([]);
+    expect(await paperKeys({ openalexId: "W12", url: "zotero://select/users/1/items/ABCD" })).toEqual([]);
+  });
+});
+
+describe("extraction's PDFs from the store", () => {
+  const payer = (jobId: string) => ({ userId: "u" as Id<"users">, workspaceId: "w" as Id<"workspaces">, scope: `extraction:${jobId}`, kind: "extraction" as const });
+
+  it("keeps a copy from a link OpenAlex doesn't list for the paper under its link alone, so nobody's file stands in for a paper", async () => {
+    const t = convexTest(schema);
+    const listed = await paperPdf(actionsOf(t), payer("j1"), { openalexId: "W7", url: PDF }, EXTRACTION);
+    expect(listed).toMatchObject({ key: "openalex/W7.pdf", from: "link", credits: 0 });
+
+    const other = "https://example.org/someone-elses.pdf";
+    WORKS.W8 = { id: "https://openalex.org/W8", display_name: "Unlisted", locations: [{ pdf_url: PDF }] };
+    const answer = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => ((input instanceof Request ? input.url : String(input)) === other ? new Response(PDF_BYTES, { status: 200, headers: { "content-type": "application/pdf" } }) : answer(input, init)));
+    const unlisted = await paperPdf(actionsOf(t), payer("j1"), { openalexId: "W8", url: other }, EXTRACTION);
+    expect(unlisted).toMatchObject({ from: "link" });
+    expect("key" in unlisted && unlisted.key).toMatch(/^url\//);
+    expect(fakeStore.kept).not.toContain("openalex/W8.pdf");
+  });
+
+  it("charges an extraction once for a stored copy, with the paper's own charge", async () => {
+    const t = convexTest(schema);
+    keep("openalex/W1.pdf");
+    expect(await paperPdf(actionsOf(t), payer("j2"), { openalexId: "W1" }, EXTRACTION)).toMatchObject({ from: "stored", credits: STORED_PDF_CREDITS });
+    expect(await paperPdf(actionsOf(t), payer("j2"), { openalexId: "W1" }, EXTRACTION)).toMatchObject({ from: "stored", credits: 0 });
+    expect(await paperPdf(actionsOf(t), payer("j3"), { openalexId: "W1" }, EXTRACTION)).toMatchObject({ credits: STORED_PDF_CREDITS });
+    // The paper's charge carries it: the store charges nothing itself.
+    expect(await pdfCharges(t)).toEqual([]);
+  });
+
+  it("doesn't fetch a plain-HTTP link for extraction", async () => {
+    const t = convexTest(schema);
+    const got = await paperPdf(actionsOf(t), payer("j4"), { url: "http://example.org/loot-boxes.pdf" }, EXTRACTION);
+    expect(got).toMatchObject({ error: expect.any(String) });
+    expect(publisher).toEqual([]);
+  });
+
+  it("has a second read wait while the first pays, read for nothing once it has, and take over a payment that never finished", async () => {
+    const t = convexTest(schema);
+    const claim = () => t.mutation(internal.lib.paperPdfs.claim, { scope: "chat:x", key: "openalex/W1.pdf" });
+    expect(await claim()).toBe("pay");
+    expect(await claim()).toBe("wait");
+    await t.mutation(internal.lib.paperPdfs.unclaim, { scope: "chat:x", key: "openalex/W1.pdf" });
+    expect(await claim()).toBe("pay");
+    await t.mutation(internal.lib.paperPdfs.had, { scope: "chat:x", key: "openalex/W1.pdf" });
+    expect(await claim()).toBe("had");
+    // A payment begun long ago and never finished is this read's.
+    await t.run(async (ctx) => ctx.db.insert("paperPdfReads", { scope: "chat:y", key: "openalex/W1.pdf", had: false, at: Date.now() - 10 * 60_000 }));
+    expect(await t.mutation(internal.lib.paperPdfs.claim, { scope: "chat:y", key: "openalex/W1.pdf" })).toBe("pay");
   });
 });
 

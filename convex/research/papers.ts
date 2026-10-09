@@ -15,9 +15,9 @@ import { workUrl } from "../../lib/openalex/work-id";
 import { AUTHORS_LISTED, countValidator, FUNDERS_LISTED, GROUPINGS, GROUPS_MAX, INSTITUTIONS_LISTED, pageValidator, paperPdfValidator, paperRecordValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS, type Grouping } from "./searchValidators";
 import { assistantPick, chatModel } from "../assistant/threads";
 import { pricingOf } from "../ai/serverModel";
-import { convertUsdToCredits } from "../../lib/pricing";
+import { convertUsdToCredits, PAPER_PDF_CREDITS } from "../../lib/pricing";
 import { PDF_PAGE_TOKENS } from "../../lib/assistant/files";
-import { paperPdf, STORED_PDF_CREDITS } from "../lib/paperPdfs";
+import { paperPdf } from "../lib/paperPdfs";
 import { requirePdfModel } from "../assistant/files";
 
 export const searchAction = defineUserAction({
@@ -160,6 +160,8 @@ export const getForAssistant = assistantAction(getAction);
 
 /** Pages a paper's PDF is taken to have, for what reading it may cost. */
 const PAPER_PAGES = 30;
+/** The largest PDF a model's provider takes in a request: Claude's 32 MB, and no read holds more in memory. */
+const PROVIDER_PDF_BYTES = 32 * 1024 * 1024;
 /** Whether two titles name the same paper: the same words, or one the other's start, as a title with its subtitle is. */
 function sameTitle(a: string, b: string) {
   const words = (title: string) => title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -188,7 +190,7 @@ export const readPdfAction = defineUserAction({
     const { modelId } = thread ? await chatModel(ctx, thread, userId) : { modelId: (await assistantPick(ctx, userId))?.modelId ?? null };
     await requirePdfModel(ctx, modelId);
     const price = (await pricingOf(ctx, modelId)).input;
-    return convertUsdToCredits({ usd: (PAPER_PAGES * PDF_PAGE_TOKENS * price) / 1_000_000 }) + STORED_PDF_CREDITS;
+    return convertUsdToCredits({ usd: (PAPER_PAGES * PDF_PAGE_TOKENS * price) / 1_000_000 }) + PAPER_PDF_CREDITS;
   },
   run: async (ctx, { userId, workspaceId }, { id, title: asked }, call): Promise<Infer<typeof paperPdfValidator>> => {
     const path = workPath(id);
@@ -203,7 +205,8 @@ export const readPdfAction = defineUserAction({
     const step = call?.stepId ?? call?.from;
     const threadId = step ? await ctx.runQuery(internal.assistant.steps.chatOf, { stepId: step }) : null;
     const scope = threadId ? `chat:${threadId}` : `read:${crypto.randomUUID()}`;
-    const got = await paperPdf(ctx, { userId, workspaceId, scope, kind: "chat" }, { openalexId, doi: work.doi ?? undefined, url: pdfUrl ?? undefined, hasCopy: work.has_content?.pdf === true });
+    // The link is OpenAlex's own for the paper. The model is sent the stored copy, never the file through here.
+    const got = await paperPdf(ctx, { userId, workspaceId, scope, kind: "chat" }, { openalexId, doi: work.doi ?? undefined, url: pdfUrl ?? undefined, hasCopy: work.has_content?.pdf === true, trusted: true }, { maxBytes: PROVIDER_PDF_BYTES, bytes: false, charge: "self", allowHttp: true });
     if ("error" in got) throw createError(got.credits ? "INSUFFICIENT_CREDITS" : "VALIDATION_ERROR", `${got.error} Ask the person to attach its PDF to the chat.`);
     // A paper read from OpenAlex's copy alone is cited by its record, the only address of it a person can open.
     if (!got.key) throw createError("VALIDATION_ERROR", "This paper's PDF can't be kept to send. Ask the person to attach its PDF to the chat.");

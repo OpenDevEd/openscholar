@@ -20,6 +20,7 @@ import type { AITrackingEntry } from "../../lib/posthog-ai-shared";
 import type { AIProvider } from "../../lib/types";
 import { createError } from "../lib/errors";
 import { paperPdf } from "../lib/paperPdfs";
+import { MAX_PDF_BYTES } from "../../lib/files/limits";
 import { decryptApiKey } from "../lib/crypto";
 import {
   classifyUnknownError,
@@ -463,7 +464,8 @@ async function buildEvidenceUnitsFromPdf(pdfBuffer: ArrayBuffer) {
 
 /**
  * A paper's PDF: the one the person uploaded, or this job fetched already, as it is; otherwise from the paper PDF
- * store, the paper's own links or OpenAlex (convex/lib/paperPdfs.ts), the job paying once for a stored copy.
+ * store, the paper's own links or OpenAlex (convex/lib/paperPdfs.ts). `pdfCredits` is what a copy cost the job,
+ * once for each paper, which the paper's own charge carries (./paperWorker.ts).
  */
 async function resolvePdfBlob(
   ctx: ActionCtx,
@@ -478,12 +480,13 @@ async function resolvePdfBlob(
 ): Promise<{
   pdfBlob: Blob | null;
   storageId?: Id<"_storage">;
+  pdfCredits: number;
   error?: string;
 }> {
   if (args.storageId) {
     const stored = await ctx.storage.get(args.storageId);
     if (stored) {
-      return { pdfBlob: stored, storageId: args.storageId };
+      return { pdfBlob: stored, storageId: args.storageId, pdfCredits: 0 };
     }
   }
 
@@ -524,9 +527,11 @@ async function resolvePdfBlob(
       url: args.pdfUrl || undefined,
       zotero: zoteroApiKey && zoteroConnection ? { apiKey: zoteroApiKey, userId: zoteroConnection.zoteroUserId } : undefined,
     },
+    // Extraction reads HTTPS links only: an address it was given isn't checked for where it resolves.
+    { maxBytes: MAX_PDF_BYTES, bytes: true, charge: "report", allowHttp: false },
   );
-  if ("error" in got) return { pdfBlob: null, error: got.error };
-  return { pdfBlob: new Blob([got.bytes.slice()], { type: "application/pdf" }) };
+  if ("error" in got || !got.bytes) return { pdfBlob: null, pdfCredits: 0, error: "error" in got ? got.error : "PDF download failed" };
+  return { pdfBlob: new Blob([got.bytes.slice()], { type: "application/pdf" }), pdfCredits: got.credits };
 }
 
 export type JobWorkerSkipReason =
@@ -572,6 +577,8 @@ export type IndexResult =
       chunksCount?: number;
       /** Credits the embedding cost; 0 when nothing was embedded. */
       embeddingCredits: number;
+      /** Credits the paper's PDF cost the job: a copy from the paper PDF store or from OpenAlex. */
+      pdfCredits: number;
     }
   | {
       status: "skipped";
@@ -639,6 +646,7 @@ export async function runDownloadAndIndexPdf(
         chunksCount: 0,
         storageId: existingPaper.storageId ?? undefined,
         embeddingCredits,
+        pdfCredits: 0,
       };
     }
     if (!pdfEnabled) {
@@ -658,6 +666,7 @@ export async function runDownloadAndIndexPdf(
           status: "completed",
           chunksCount: 0,
           embeddingCredits,
+          pdfCredits: 0,
         };
       }
       return {
@@ -704,6 +713,7 @@ export async function runDownloadAndIndexPdf(
           chunksCount: 0,
           storageId: resolved.storageId,
           embeddingCredits,
+          pdfCredits: 0,
         };
       }
       return {
@@ -836,6 +846,7 @@ export async function runDownloadAndIndexPdf(
       chunksCount: units.length,
       storageId: storedId,
       embeddingCredits,
+      pdfCredits: resolved.pdfCredits,
     };
   } catch (error) {
     return {

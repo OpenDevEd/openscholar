@@ -1,4 +1,5 @@
 export { AI_COST_MARKUP, CREDITS_PER_USD } from "./constants";
+export { PAPER_PDF_CREDITS, PAPER_PDF_USD } from "./paper-pdf";
 export {
   convertUsdToCredits,
   creditsForUsage,

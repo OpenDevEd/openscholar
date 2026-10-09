@@ -400,7 +400,7 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
                 paperPdfs.linked?.();
                 return { ...part, output: { type: "content", value: [{ type: "text", text: said }, { type: "file", mediaType: "application/pdf", data: { type: "url", url: new URL(await storedLink(paper.stored)) }, filename: "paper.pdf" }] } };
               }
-              const bytes = await readStored(paper.stored);
+              const bytes = await readStored(paper.stored, room);
               // The reads run together: one that finishes after the room has gone is left out too.
               if (!bytes || bytes.length > room) return { ...part, output: { type: "text", value: `${said}\n[This paper's PDF is too large to send with the others. Tell the person, and read it again on its own if they want it.]` } };
               room -= bytes.length;

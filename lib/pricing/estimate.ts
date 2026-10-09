@@ -1,4 +1,5 @@
 import { creditsForUsage } from "./convert";
+import { PAPER_PDF_CREDITS } from "./paper-pdf";
 
 /** A model's price in USD per million tokens. */
 export type Pricing = { input: number; output: number };
@@ -46,15 +47,16 @@ export type ExtractionPricing = { model: Pricing; decision?: Pricing };
 
 /**
  * What one paper of an extraction costs at most: each question on the job's model, its yes/no
- * questions in one call to Jev when it has one, and indexing the paper's PDF when it reads one and
- * hasn't yet (a retry asks again of a paper already read).
+ * questions in one call to Jev when it has one, and getting and indexing the paper's PDF when it reads
+ * one and hasn't yet (a retry asks again of a paper already read): a copy from the store or OpenAlex costs
+ * PAPER_PDF_CREDITS.
  */
 export function extractionPaperCredits(pricing: ExtractionPricing, questions: ReadonlyArray<{ type: string }>, pdf: boolean, index = pdf): number {
   const yesNo = pricing.decision ? questions.filter((asked) => asked.type === "boolean").length : 0;
   return (
     estimateCredits(pricing.model, pdf ? CALL_TOKENS.pdfQuestion : CALL_TOKENS.paper, questions.length - yesNo) +
     (yesNo && pricing.decision ? estimateCredits(pricing.decision, pdf ? CALL_TOKENS.pdfDecision : CALL_TOKENS.paper) : 0) +
-    (index ? estimateCredits(EMBEDDING_PRICING, CALL_TOKENS.pdfIndex) : 0)
+    (index ? estimateCredits(EMBEDDING_PRICING, CALL_TOKENS.pdfIndex) + PAPER_PDF_CREDITS : 0)
   );
 }
 

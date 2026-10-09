@@ -2,40 +2,51 @@
  * Every paper PDF the assistant and extraction download is kept in Cloudflare R2 (bucket `openscholar-paper-pdfs`),
  * never deleted, and read from there first. `paperPdf` gets one, in this order:
  *
- *   1. the copy in R2: billed STORED_PDF_CREDITS, once per chat or per extraction (`PdfPayer.scope`)
- *   2. the paper's own links (lib/pdf/download.ts): free, and the file is kept in R2
- *   3. OpenAlex's cached copy (content.openalex.org): billed what OpenAlex charged, and kept in R2
+ *   1. the copy in R2: PAPER_PDF_CREDITS, once per chat or per extraction (`PdfPayer.scope`)
+ *   2. the paper's own link, and the free copies its DOI leads to (lib/pdf/download.ts): free, and kept in R2
+ *   3. OpenAlex's cached copy (content.openalex.org): what OpenAlex charged, and kept in R2
  *
- * A copy is keyed by the paper's OpenAlex ID, else its DOI, else its link. A file from a person's own Zotero
- * library is theirs alone: it never goes into the store, and the store is never read for it.
+ * A copy is kept under the paper's OpenAlex ID only when it came from OpenAlex itself or from a link OpenAlex lists
+ * for the paper, so nobody can put their own file in place of a paper's. Anything else is kept under its link alone.
+ * A file from a person's own Zotero library is theirs: it never goes into the store, and the store is never read for it.
+ *
+ * The assistant pays for a copy here (`charge: "self"`). Extraction adds what a copy costs to the paper's own charge
+ * (`charge: "report"`), under the job's hold when it was approved up to a figure.
  */
 import { AwsClient } from "aws4fetch";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import type { ActionCtx } from "../_generated/server";
+import type { ActionCtx, MutationCtx } from "../_generated/server";
 import { releaseCredits, reserveCredits, settleCredits } from "../billing/charge";
 import type { UsageKind } from "../billing/validators";
+import { readWork } from "../paperSets/openalex";
 import { internalMutation } from "./functions";
 import { downloadPdf, type DownloadPdfOptions } from "../../lib/pdf/download";
-import { MAX_PDF_BYTES } from "../../lib/files/limits";
-import { convertUsdToCredits } from "../../lib/pricing";
+import { convertUsdToCredits, PAPER_PDF_CREDITS, PAPER_PDF_USD } from "../../lib/pricing";
 
-/** What OpenAlex charges for one cached PDF: $10 per 1,000 downloads (help.openalex.org/access/example-costs). */
-const OPENALEX_PDF_USD = 0.01;
 /** What one OpenAlex credit costs, as its responses report a request's cost in credits. */
 const OPENALEX_CREDIT_USD = 0.0001;
-/** A copy read from the store costs what OpenAlex charges for one. */
-export const STORED_PDF_CREDITS = convertUsdToCredits({ usd: OPENALEX_PDF_USD });
 /** How long a link to a stored copy, given to a model's provider to fetch, lasts. */
 const LINK_SECONDS = 3_600;
+/** How often a read checks on another read in its chat or job paying for the same paper, and when a payment that never finished is taken over. */
+const WAIT_MS = 500;
+const PAYING_FOR_MS = 120_000;
 
-/** Who pays for a paper's PDF, and what it is read for: one charge for a paper in each `scope`, a chat's or an extraction's. */
+/** Who pays for a paper's PDF, and what it's read for: one charge for a paper in each `scope`, a chat's or an extraction's. */
 export type PdfPayer = { userId: Id<"users">; workspaceId: Id<"workspaces">; scope: string; kind: UsageKind; jobId?: Id<"extractionJobs"> };
-/** A paper by what names it. `hasCopy` is OpenAlex's `has_content.pdf`, where the caller read it: false skips buying a copy OpenAlex doesn't have. */
-export type PaperRef = { openalexId?: string; doi?: string; url?: string; hasCopy?: boolean; zotero?: DownloadPdfOptions["zoteroConnection"] };
-/** The PDF and where it came from, or why there's none: `credits` when the person can't pay for it. */
-export type PaperPdf = { bytes: Uint8Array; key: string | null; from: "stored" | "link" | "openalex" } | { error: string; credits?: true };
+/**
+ * A paper by what names it. `hasCopy` is OpenAlex's `has_content.pdf`, where the caller read it: false skips buying a
+ * copy OpenAlex doesn't have. `trusted` says `url` is OpenAlex's own link for the paper; otherwise OpenAlex is asked.
+ */
+export type PaperRef = { openalexId?: string; doi?: string; url?: string; hasCopy?: boolean; trusted?: boolean; zotero?: DownloadPdfOptions["zoteroConnection"] };
+/** How the caller gets a PDF: the most it takes, whether it needs the file or only the copy's key, who charges, and whether plain-HTTP links are fetched. */
+export type PdfOptions = { maxBytes: number; bytes: boolean; charge: "self" | "report"; allowHttp: boolean };
+/**
+ * The PDF and where it came from, with the credits it cost the scope (charged already, or for the caller to charge),
+ * or why there's none: `credits` when the person can't pay for it.
+ */
+export type PaperPdf = { bytes: Uint8Array | null; key: string | null; from: "stored" | "link" | "openalex"; credits: number } | { error: string; credits?: true };
 
 function store() {
   const { PAPER_PDFS_ENDPOINT: endpoint, PAPER_PDFS_BUCKET: bucket, PAPER_PDFS_ACCESS_KEY_ID: accessKeyId, PAPER_PDFS_SECRET_ACCESS_KEY: secretAccessKey } = process.env;
@@ -45,35 +56,62 @@ function store() {
 
 /** The OpenAlex work ID in an ID or address, such as W2741809807; extraction gives papers from elsewhere IDs of their own. */
 const workOf = (id: string | undefined) => id?.match(/(?:^|\/)(W\d+)$/i)?.[1]?.toUpperCase();
-
+const doiOf = (doi: string | null | undefined) => doi?.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "").trim().toLowerCase() || undefined;
 const isPdf = (bytes: Uint8Array) => new TextDecoder().decode(bytes.subarray(0, 1024)).includes("%PDF");
+const isZotero = (paper: PaperRef) => paper.url?.startsWith("zotero://") === true;
 
-/** Where a paper's copy is kept, or null for one that never is: a file from a person's Zotero library, or a paper with nothing to name it by. */
-export async function paperKey({ openalexId, doi, url }: PaperRef): Promise<string | null> {
-  if (url?.startsWith("zotero://")) return null;
-  const work = workOf(openalexId);
-  if (work) return `openalex/${work}.pdf`;
-  const id = doi?.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "").trim().toLowerCase();
-  if (id) return `doi/${encodeURIComponent(id)}.pdf`;
+/** Where a copy of a paper fetched by its link alone is kept. */
+async function linkKey(url: string | undefined) {
   if (!url || !/^https?:\/\//i.test(url)) return null;
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(url)));
   return `url/${Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("")}.pdf`;
 }
 
-/** The stored copy, or null when there is none. */
-export async function readStored(key: string): Promise<Uint8Array | null> {
-  const { client, url } = store();
-  const response = await client.fetch(url(key));
-  if (response.status === 404) return null;
-  if (!response.ok) throw new Error(`The paper PDF store answered ${response.status} reading ${key}.`);
-  return new Uint8Array(await response.arrayBuffer());
+/** The keys a paper's copy may be kept under, the paper's own first. None for a file from a person's Zotero library. */
+export async function paperKeys(paper: PaperRef): Promise<string[]> {
+  if (isZotero(paper)) return [];
+  const work = workOf(paper.openalexId);
+  const link = await linkKey(paper.url);
+  return [...(work ? [`openalex/${work}.pdf`] : []), ...(link ? [link] : [])];
 }
 
+/** The size of the stored copy, or null when there's none, or the store can't be read just now: then the paper is fetched as if it had none. */
+async function storedSize(key: string): Promise<number | null> {
+  const { client, url } = store();
+  try {
+    const response = await client.fetch(url(key), { method: "HEAD" });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`answered ${response.status}`);
+    return Number(response.headers.get("content-length") ?? 0);
+  } catch (error) {
+    console.error("[paper pdfs] the store couldn't be read", { key, error: String(error) });
+    return null;
+  }
+}
+
+/** The stored copy, or null when it's gone or larger than `maxBytes`. */
+export async function readStored(key: string, maxBytes: number): Promise<Uint8Array | null> {
+  const size = await storedSize(key);
+  if (size === null || size > maxBytes) return null;
+  const { client, url } = store();
+  const response = await client.fetch(url(key));
+  return response.ok ? new Uint8Array(await response.arrayBuffer()) : null;
+}
+
+/** Keeps a copy: false when it couldn't be, and it's fetched again next time. A caller that has the file goes on with it. */
 async function keep(key: string, bytes: Uint8Array) {
   const { client, url } = store();
-  const response = await client.fetch(url(key), { method: "PUT", body: new Blob([bytes.slice()]), headers: { "Content-Type": "application/pdf" } });
-  if (!response.ok) throw new Error(`The paper PDF store answered ${response.status} keeping ${key}.`);
+  try {
+    const response = await client.fetch(url(key), { method: "PUT", body: new Blob([bytes.slice()]), headers: { "Content-Type": "application/pdf" } });
+    if (!response.ok) throw new Error(`answered ${response.status}`);
+    return true;
+  } catch (error) {
+    console.error("[paper pdfs] a copy couldn't be kept", { key, error: String(error) });
+    return false;
+  }
 }
+
+const NOT_KEPT = "This paper's PDF couldn't be kept to send. Try again in a moment.";
 
 /** A link a model's provider can fetch the stored copy from, for an hour. */
 export async function storedLink(key: string) {
@@ -81,93 +119,154 @@ export async function storedLink(key: string) {
   return (await client.sign(`${url(key)}?X-Amz-Expires=${LINK_SECONDS}`, { method: "GET", aws: { signQuery: true } })).url;
 }
 
-/** OpenAlex's cached copy of a work, with what it cost in dollars as OpenAlex reports it, or null when it has none. */
-async function fromOpenAlex(work: string): Promise<{ bytes: Uint8Array; usd: number } | null> {
+/** Whether a copy fetched by link may be kept under the paper's OpenAlex ID: its link, or its DOI, is the one OpenAlex lists for the paper. */
+async function isPapers(paper: PaperRef, work: string) {
+  if (paper.trusted) return true;
+  type Location = { pdf_url?: string | null; landing_page_url?: string | null } | null;
+  const record = await readWork<{ doi?: string | null; locations?: Location[] | null }>(work, "doi,locations", async () => true).catch(() => null);
+  if (!record) return false;
+  const links = (record.locations ?? []).flatMap((location) => [location?.pdf_url, location?.landing_page_url]);
+  return paper.url ? links.includes(paper.url) : doiOf(paper.doi) !== undefined && doiOf(paper.doi) === doiOf(record.doi);
+}
+
+/** OpenAlex's cached copy of a work, with what it cost in dollars as OpenAlex reports it, or null when it has none or it's larger than `maxBytes`. */
+async function fromOpenAlex(work: string, maxBytes: number): Promise<{ bytes: Uint8Array; usd: number } | null> {
   const apiKey = process.env.OPENALEX_API_KEY;
   if (!apiKey) throw new Error("OPENALEX_API_KEY must be set to buy OpenAlex's copy of a paper.");
   const response = await fetch(`https://content.openalex.org/works/${work}.pdf?api_key=${encodeURIComponent(apiKey)}`, { headers: { "User-Agent": "OpenScholar (https://openscholar.ai)" } });
-  const bytes = response.ok ? new Uint8Array(await response.arrayBuffer()) : null;
-  if (!bytes || bytes.length > MAX_PDF_BYTES || !isPdf(bytes)) {
-    console.warn("[paper pdfs] OpenAlex has no copy to download", { work, status: response.status });
+  const declared = Number(response.headers.get("content-length") ?? 0);
+  const bytes = response.ok && declared <= maxBytes ? new Uint8Array(await response.arrayBuffer()) : null;
+  if (!bytes || bytes.length > maxBytes || !isPdf(bytes)) {
+    await response.body?.cancel().catch(() => {});
+    console.warn("[paper pdfs] OpenAlex has no copy to download", { work, status: response.status, bytes: declared });
     return null;
   }
   const credits = Number(response.headers.get("x-ratelimit-credits-used"));
-  return { bytes, usd: Number.isFinite(credits) && credits > 0 ? credits * OPENALEX_CREDIT_USD : OPENALEX_PDF_USD };
+  return { bytes, usd: Number.isFinite(credits) && credits > 0 ? credits * OPENALEX_CREDIT_USD : PAPER_PDF_USD };
 }
 
-/** Notes that `scope` has had `key`: true the first time, when it's the scope's to pay for. */
+const readOf = (ctx: Pick<MutationCtx, "db">, scope: string, key: string) =>
+  ctx.db.query("paperPdfReads").withIndex("by_scope_and_key", (q) => q.eq("scope", scope).eq("key", key)).unique();
+
+/**
+ * Starts the scope's payment for `key`: `pay` when it's this read's to make, `had` when the scope has it already,
+ * `wait` while another read in the scope is paying for it. A payment that never finished is taken over.
+ */
 export const claim = internalMutation({
   args: { scope: v.string(), key: v.string() },
-  returns: v.boolean(),
+  returns: v.union(v.literal("pay"), v.literal("had"), v.literal("wait")),
   handler: async (ctx, { scope, key }) => {
-    if (await ctx.db.query("paperPdfReads").withIndex("by_scope_and_key", (q) => q.eq("scope", scope).eq("key", key)).unique()) return false;
-    await ctx.db.insert("paperPdfReads", { scope, key });
-    return true;
+    const row = await readOf(ctx, scope, key);
+    if (row?.had) return "had" as const;
+    if (row && row.at > Date.now() - PAYING_FOR_MS) return "wait" as const;
+    if (row) await ctx.db.patch("paperPdfReads", row._id, { at: Date.now() });
+    else await ctx.db.insert("paperPdfReads", { scope, key, had: false, at: Date.now() });
+    return "pay" as const;
   },
 });
 
-/** Takes back a claim whose charge didn't go through, so the next read pays. */
+/** The scope has `key` now: paid for, or fetched for nothing. */
+export const had = internalMutation({
+  args: { scope: v.string(), key: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { scope, key }) => {
+    const row = await readOf(ctx, scope, key);
+    if (row) await ctx.db.patch("paperPdfReads", row._id, { had: true, at: Date.now() });
+    else await ctx.db.insert("paperPdfReads", { scope, key, had: true, at: Date.now() });
+    return null;
+  },
+});
+
+/** Gives up a payment that didn't go through, so the next read pays. */
 export const unclaim = internalMutation({
   args: { scope: v.string(), key: v.string() },
   returns: v.null(),
   handler: async (ctx, { scope, key }) => {
-    const row = await ctx.db.query("paperPdfReads").withIndex("by_scope_and_key", (q) => q.eq("scope", scope).eq("key", key)).unique();
-    if (row) await ctx.db.delete("paperPdfReads", row._id);
+    const row = await readOf(ctx, scope, key);
+    if (row && !row.had) await ctx.db.delete("paperPdfReads", row._id);
     return null;
   },
 });
 
-/** Holds `usd` worth of credits for the scope's first read of `key`. False when the person can't cover it; null when the scope has paid for it already. */
-async function holdFirst(ctx: ActionCtx, payer: PdfPayer, key: string, chargeId: string, usd: number) {
-  if (!(await ctx.runMutation(internal.lib.paperPdfs.claim, { scope: payer.scope, key }))) return null;
-  if (await reserveCredits(ctx, { userId: payer.userId, workspaceId: payer.workspaceId, chargeId, credits: convertUsdToCredits({ usd }) })) return true;
-  await ctx.runMutation(internal.lib.paperPdfs.unclaim, { scope: payer.scope, key });
-  return false;
+/** Claims the scope's payment for `key`, waiting while another read pays for it: true when it's this read's to pay. */
+async function claimed(ctx: ActionCtx, payer: PdfPayer, key: string) {
+  for (;;) {
+    const state = await ctx.runMutation(internal.lib.paperPdfs.claim, { scope: payer.scope, key });
+    if (state !== "wait") return state === "pay";
+    await new Promise((resolve) => setTimeout(resolve, WAIT_MS));
+  }
 }
 
-const settle = (ctx: ActionCtx, payer: PdfPayer, chargeId: string, usd: number) =>
+const NO_CREDITS = `There aren't enough credits for this paper's PDF (${PAPER_PDF_CREDITS} credits).`;
+
+const hold = (ctx: ActionCtx, payer: PdfPayer, chargeId: string) => reserveCredits(ctx, { userId: payer.userId, workspaceId: payer.workspaceId, chargeId, credits: PAPER_PDF_CREDITS });
+
+const charge = (ctx: ActionCtx, payer: PdfPayer, chargeId: string, usd: number) =>
   settleCredits(ctx, { userId: payer.userId, workspaceId: payer.workspaceId, chargeId, credits: convertUsdToCredits({ usd }), usage: { kind: payer.kind, description: "Paper PDF", costUsd: usd, ...(payer.jobId ? { jobId: payer.jobId } : {}) } });
 
-const NO_CREDITS = `There aren't enough credits for this paper's PDF (${STORED_PDF_CREDITS} credits).`;
-
 /** A paper's PDF, from the store, its own links or OpenAlex, in that order (see the top of this file). */
-export async function paperPdf(ctx: ActionCtx, payer: PdfPayer, paper: PaperRef): Promise<PaperPdf> {
-  const key = await paperKey(paper);
-  if (key) {
-    const stored = await readStored(key);
-    if (stored) {
+export async function paperPdf(ctx: ActionCtx, payer: PdfPayer, paper: PaperRef, options: PdfOptions): Promise<PaperPdf> {
+  for (const key of await paperKeys(paper)) {
+    const size = await storedSize(key);
+    if (size === null) continue;
+    if (size > options.maxBytes) return { error: `This paper's PDF is too large to read here (${Math.ceil(size / 1_048_576)} MB).` };
+    const bytes = options.bytes ? await readStored(key, options.maxBytes) : null;
+    if (options.bytes && !bytes) continue;
+    if (!(await claimed(ctx, payer, key))) return { bytes, key, from: "stored", credits: 0 };
+    if (options.charge === "self") {
       const chargeId = `pdf:${payer.scope}:${key}`;
-      const held = await holdFirst(ctx, payer, key, chargeId, OPENALEX_PDF_USD);
-      if (held === false) return { error: NO_CREDITS, credits: true };
-      if (held) await settle(ctx, payer, chargeId, OPENALEX_PDF_USD);
-      return { bytes: stored, key, from: "stored" };
+      if (!(await hold(ctx, payer, chargeId))) {
+        await ctx.runMutation(internal.lib.paperPdfs.unclaim, { scope: payer.scope, key });
+        return { error: NO_CREDITS, credits: true };
+      }
+      await charge(ctx, payer, chargeId, PAPER_PDF_USD);
     }
+    await ctx.runMutation(internal.lib.paperPdfs.had, { scope: payer.scope, key });
+    return { bytes, key, from: "stored", credits: PAPER_PDF_CREDITS };
   }
+
+  const work = workOf(paper.openalexId);
+  const workKey = work && !isZotero(paper) ? `openalex/${work}.pdf` : null;
   let failed = "This paper has no PDF address.";
-  if (paper.url) {
-    const { pdfBlob, error } = await downloadPdf(paper.url, { doi: paper.doi, zoteroConnection: paper.zotero, allowHttp: true, maxRetries: 1 });
+  if (paper.url || paper.doi) {
+    const { pdfBlob, error } = await downloadPdf(paper.url ?? "", { doi: paper.doi, zoteroConnection: paper.zotero, allowHttp: options.allowHttp, maxBytes: options.maxBytes, maxRetries: 1 });
     const bytes = pdfBlob ? new Uint8Array(await pdfBlob.arrayBuffer()) : null;
     if (bytes && isPdf(bytes)) {
+      const key = isZotero(paper) ? null : work && workKey && (await isPapers(paper, work)) ? workKey : await linkKey(paper.url);
+      const kept = key !== null && (await keep(key, bytes));
+      // A caller that sends the stored copy can't go on without one.
+      if (!options.bytes && !kept) return { error: NOT_KEPT };
       // The scope fetched it for nothing, so a later read in it from the store is free too.
-      if (key) await Promise.all([keep(key, bytes), ctx.runMutation(internal.lib.paperPdfs.claim, { scope: payer.scope, key })]);
-      return { bytes, key, from: "link" };
+      if (kept) await ctx.runMutation(internal.lib.paperPdfs.had, { scope: payer.scope, key });
+      return { bytes, key: kept ? key : null, from: "link", credits: 0 };
     }
     failed = bytes ? "The paper's PDF address served something that isn't a PDF." : (error ?? "The paper's PDF couldn't be downloaded.");
   }
-  const work = workOf(paper.openalexId);
-  if (!key || !work || paper.hasCopy === false) return { error: failed };
-  const chargeId = `pdf-buy:${payer.scope}:${key}`;
-  const held = await holdFirst(ctx, payer, key, chargeId, OPENALEX_PDF_USD);
-  if (held === false) return { error: NO_CREDITS, credits: true };
-  const bought = await fromOpenAlex(work).catch((error) => {
+
+  if (!work || !workKey || paper.hasCopy === false) return { error: failed };
+  if (!(await claimed(ctx, payer, workKey))) {
+    // Another read in the scope bought it meanwhile, and kept it.
+    const bytes = options.bytes ? await readStored(workKey, options.maxBytes) : null;
+    return options.bytes && !bytes ? { error: failed } : { bytes, key: workKey, from: "stored", credits: 0 };
+  }
+  const chargeId = `pdf-buy:${payer.scope}:${workKey}`;
+  if (options.charge === "self" && !(await hold(ctx, payer, chargeId))) {
+    await ctx.runMutation(internal.lib.paperPdfs.unclaim, { scope: payer.scope, key: workKey });
+    return { error: NO_CREDITS, credits: true };
+  }
+  const bought = await fromOpenAlex(work, options.maxBytes).catch((error) => {
     console.error("[paper pdfs] buying OpenAlex's copy failed", { work, error: String(error) });
     return null;
   });
   if (!bought) {
-    if (held) await Promise.all([releaseCredits(ctx, { chargeId }), ctx.runMutation(internal.lib.paperPdfs.unclaim, { scope: payer.scope, key })]);
+    await Promise.all([options.charge === "self" ? releaseCredits(ctx, { chargeId }) : null, ctx.runMutation(internal.lib.paperPdfs.unclaim, { scope: payer.scope, key: workKey })]);
     return { error: failed };
   }
-  await keep(key, bought.bytes);
-  if (held) await settle(ctx, payer, chargeId, bought.usd);
-  return { bytes: bought.bytes, key, from: "openalex" };
+  if (!(await keep(workKey, bought.bytes)) && !options.bytes) {
+    await Promise.all([options.charge === "self" ? releaseCredits(ctx, { chargeId }) : null, ctx.runMutation(internal.lib.paperPdfs.unclaim, { scope: payer.scope, key: workKey })]);
+    return { error: NOT_KEPT };
+  }
+  if (options.charge === "self") await charge(ctx, payer, chargeId, bought.usd);
+  await ctx.runMutation(internal.lib.paperPdfs.had, { scope: payer.scope, key: workKey });
+  return { bytes: options.bytes ? bought.bytes : null, key: workKey, from: "openalex", credits: convertUsdToCredits({ usd: bought.usd }) };
 }
