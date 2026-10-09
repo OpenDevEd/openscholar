@@ -6,7 +6,7 @@ vi.mock("@/lib/openalex/spend-requests", () => ({ spendOpenAlexRequests: async (
 // keeps the test off the network.
 vi.mock("@/lib/openalex", () => ({ default: { works: () => Promise.reject(new Error("the SDK was asked")) } }));
 
-import { getSearchResults } from "@/app/actions/openalex";
+import { getSearchResults, getSimilarWorks } from "@/app/actions/openalex";
 import type { SearchFilters } from "@/lib/types";
 
 const filters: SearchFilters = {
@@ -78,3 +78,22 @@ describe("getSearchResults", () => {
     expect(await getSearchResults("x", filters)).toEqual({ ok: false, status: null, message: "Search request failed" });
   });
 });
+
+describe("getSimilarWorks", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it("asks the OpenScholar API for the works nearest a paper, as many as asked, without retracted works", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "https://search-api.example.org");
+    const fetchMock = answering(200, { meta: { count: 8, searched_count: 91_058_841 }, results: [{ id: "https://openscholar.ai/OS1" }] });
+    const answer = await getSimilarWorks("https://openscholar.ai/OS64233829", 8);
+    const url = new URL(String(fetchMock.mock.calls[0]?.[0]));
+    expect(url.searchParams.get("similar_to")).toBe("https://openscholar.ai/OS64233829");
+    expect(url.searchParams.get("per-page") ?? url.searchParams.get("per_page")).toBe("8");
+    expect(url.searchParams.get("filter")).toBe("is_retracted:false");
+    expect(answer.ok && answer.data.results.map((work) => work.id)).toEqual(["https://openscholar.ai/OS1"]);
+  });
+});
+

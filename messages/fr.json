@@ -1699,6 +1699,12 @@
     "credits": "Crédits"
   },
   "focusMode": {
+    "similarPapers": "Articles similaires",
+    "similarSeeAll": "Tout voir",
+    "similarLoading": "Recherche d'articles similaires…",
+    "similarNone": "Aucun article similaire trouvé.",
+    "similarFailed": "Les articles similaires n'ont pas pu être chargés.",
+    "similarCitations": "{count} citations",
     "settingsTitle": "Paramètres du mode focus",
     "settingsSubtitle": "Personnalisez votre expérience de lecture",
     "typography": "Typographie",

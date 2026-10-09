@@ -1,3 +1,4 @@
+import { SimilarPapers } from "./similar-papers";
 import { TopicLink } from "@/components/topics/topic-link";
 import React from "react";
 import { BookOpen, Award, ExternalLink, FileText } from "@/components/icons";
@@ -311,6 +312,8 @@ export function PaperContent({
           </div>
         </div>
       )}
+
+      {!isPreview && <SimilarPapers paperId={paper.id} />}
     </div>
   );
 }

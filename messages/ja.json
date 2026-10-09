@@ -1699,6 +1699,12 @@
     "credits": "クレジット"
   },
   "focusMode": {
+    "similarPapers": "類似の論文",
+    "similarSeeAll": "すべて表示",
+    "similarLoading": "類似の論文を検索中…",
+    "similarNone": "類似の論文は見つかりませんでした。",
+    "similarFailed": "類似の論文を読み込めませんでした。",
+    "similarCitations": "被引用 {count}",
     "settingsTitle": "フォーカスモード設定",
     "settingsSubtitle": "読書体験をカスタマイズ",
     "typography": "タイポグラフィ",

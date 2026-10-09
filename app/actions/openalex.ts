@@ -39,3 +39,13 @@ export async function getSearchResults(
   }
   return fetchWorksPage(searchParams);
 }
+
+/**
+ * The works nearest a paper by meaning, closest first, as many as `perPage`: the OpenScholar API's
+ * similar_to, without retracted works, as the results page lists them. Counted as one request.
+ */
+export async function getSimilarWorks(paperId: string, perPage: number): Promise<SearchActionResult> {
+  const limited = await spendOne();
+  if (limited) return limited;
+  return fetchWorksPage({ perPage, similar: paperId, filter: { is_retracted: false }, AbstractArrayToString: true });
+}

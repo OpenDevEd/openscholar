@@ -1699,6 +1699,12 @@
     "credits": "致谢"
   },
   "focusMode": {
+    "similarPapers": "相似论文",
+    "similarSeeAll": "查看全部",
+    "similarLoading": "正在查找相似论文…",
+    "similarNone": "未找到相似论文。",
+    "similarFailed": "无法加载相似论文。",
+    "similarCitations": "{count} 次引用",
     "settingsTitle": "专注模式设置",
     "settingsSubtitle": "自定义您的阅读体验",
     "typography": "排版",

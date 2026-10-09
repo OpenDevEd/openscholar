@@ -1689,6 +1689,12 @@
     "credits": "Credits"
   },
   "focusMode": {
+    "similarPapers": "Similar papers",
+    "similarSeeAll": "See all",
+    "similarLoading": "Finding similar papers…",
+    "similarNone": "No similar papers found.",
+    "similarFailed": "Similar papers couldn't be loaded.",
+    "similarCitations": "{count} citations",
     "settingsTitle": "Focus Mode Settings",
     "settingsSubtitle": "Customize your reading experience",
     "typography": "Typography",

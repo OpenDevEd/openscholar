@@ -1699,6 +1699,12 @@
     "credits": "क्रेडिट"
   },
   "focusMode": {
+    "similarPapers": "समान शोधपत्र",
+    "similarSeeAll": "सभी देखें",
+    "similarLoading": "समान शोधपत्र खोजे जा रहे हैं…",
+    "similarNone": "कोई समान शोधपत्र नहीं मिला।",
+    "similarFailed": "समान शोधपत्र लोड नहीं हो सके।",
+    "similarCitations": "{count} उद्धरण",
     "settingsTitle": "फोकस मोड सेटिंग्स",
     "settingsSubtitle": "अपना पढ़ने का अनुभव अनुकूलित करें",
     "typography": "टाइपोग्राफी",
