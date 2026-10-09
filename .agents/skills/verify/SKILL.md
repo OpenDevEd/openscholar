@@ -24,7 +24,7 @@ npm run verify -- skip "<reason>"    # record why a change needs no browser chec
 ## How to prove a change
 
 1. `up --prod`. Use plain `up` (next dev) only while iterating; `shift` compares with the production build on dev.openscholar.ai, and dev mode's slower hydration shows problems production doesn't have. After you change code, `up --prod` again rebuilds; `shift` refuses a production build older than the code.
-2. Run `shift` on every route your change affects. Add a `--do` step for each interaction you changed: the dialog you made, the tab you restyled, the filter you added. Steps are `click`, `hover`, `fill <selector> <text>`, `press <key>`, `wait <ms>`, `goto <path>`, with Playwright selectors (`text=Save`, `role=button[name="Save"]`, CSS). Steps run in each browser and again on dev.openscholar.ai, so give `shift` interactions that save nothing (open, type, switch, navigate). Check a flow that creates or deletes once, with `--browser chromium --base none`.
+2. Run `shift` on every route your change affects. Add a `--do` step for each interaction you changed: the dialog you made, the tab you restyled, the filter you added. Steps are `click`, `hover`, `fill <selector> => <text>`, `press <key>`, `wait <ms>`, `goto <path>`, with Playwright selectors (`text=Save`, `role=button[name="Save"]`, CSS). Steps run in each browser and again on dev.openscholar.ai, so give `shift` interactions that save nothing (open, type, switch, navigate). Check a flow that creates or deletes once, with `--browser chromium --base none`.
 3. Fix every problem listed under `Fail`, then `up --prod` and `shift` again.
 4. Look at the screenshots it lists. `shift` proves the page holds still, not that it looks right.
 5. `down` when you are done, unless the user wants to look at it. Then give them the link from `status`; `up --open` opens it in their browser once.
@@ -33,12 +33,12 @@ npm run verify -- skip "<reason>"    # record why a change needs no browser chec
 
 `shift` loads the page with every server message delayed by 600 ms, records each animation frame, and reports:
 
-- **layout shift**: an element moved or resized after the page settled. Transforms and opacity never count, so fades and slides are fine. A wrapper growing around new content only counts when it draws a background, border or shadow.
+- **layout shift**: an element moved or resized after the page settled, measured within its container: content carried along by a moving container is reported once, as the container. Transforms and opacity never count, so fades and slides are fine, and neither does an element moving through its own CSS transition (a switch's thumb). An element that draws no background, border or shadow counts only when it moves, never when it resizes: a wrapper growing around new content is seen through the content and the elements it pushes.
 - **text disappeared and came back** or **showed for only N ms**: a flash.
 - **element showed for only N ms**: a blink. A placeholder replaced in the same place and size is fine.
 - **uncaught error** and **never settled**.
 
-Then it runs the same steps on dev.openscholar.ai, with the same Convex data and Clerk instance. Only problems dev doesn't have fail the run. The ones dev also has are listed as not from this branch: leave them unless the user asked for them, and mention them in your report.
+Then it runs the same steps on dev.openscholar.ai, with the same Convex data and Clerk instance. A problem fails the run only when dev doesn't have it and it shows again on a second run of this branch: a race during loading comes and goes, and is printed as a note instead. The ones dev also has are listed as not from this branch: leave them unless the user asked for them, and mention them in your report.
 
 If a step can't run on dev (it clicks something your branch adds), everything after it counts as new. If you're sure an element's movement is intended (a panel that expands when clicked), pass `--allow <selector>` and say so in your report.
 
@@ -48,10 +48,10 @@ If a step can't run on dev (it clicks something your branch adds), everything af
 
 ## The stop hook
 
-A stop hook runs `npm run verify -- hook stop` when an agent tries to finish. It lives on the user's machine, not in this repository: `~/.agents/hooks/verify-stop.sh`, registered for Stop in `~/.claude/settings.json`, `~/.claudeekitabu/settings.json` and `~/.codex/hooks.json` (trusted through Codex's `/hooks`). If files under `app/` or `components/` (`.tsx`, `.css`) changed in this session and no `shift` has passed since, it sends the agent back with the files to check. If nothing a person sees changed, or the user said not to test, run `skip "<reason>"` and give the same reason in your reply.
+A stop hook runs `npm run verify -- hook stop` when an agent tries to finish. It lives on the user's machine, not in this repository: `~/.agents/hooks/verify-stop.sh`, registered for Stop in `~/.claude/settings.json`, `~/.claudeekitabu/settings.json` and `~/.codex/hooks.json` (trusted through Codex's `/hooks`). If files under `app/` or `components/` changed (`.tsx` and `.css`, and `.ts` beside components) in this session and no `shift` has passed since, it sends the agent back with the files to check. If nothing a person sees changed, or the user said not to test, run `skip "<reason>"` and give the same reason in your reply.
 
 ## Files
 
-- `scripts/verify/cli.ts`: the commands and the in-page recorder.
-- `scripts/verify/analysis.ts`: what counts as a problem (tested in `tests/verify.test.ts`).
+- `scripts/verify/cli.ts`: the commands. This one is OpenScholar's own.
+- `scripts/verify/analysis.ts`, `recorder.ts`, `browser.ts`, `compare.ts`, `hook.ts` and `util.ts`: the same files as the Evidence Library's `tools/verify` (OpenDevEd/new-el); keep the two in step. `analysis.ts` decides what counts as a problem (tested in `tests/verify.test.ts`); `recorder.ts` runs in the page.
 - `.verify/` (ignored): the server's pid and log, run reports and screenshots, and the last pass.
