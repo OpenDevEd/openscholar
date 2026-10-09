@@ -54,17 +54,19 @@ const narrowed = (search: Partial<SavedSearch>) => Boolean(search.query?.trim())
 /**
  * The results page a query and settings open as a new search: a link with no search ID, which
  * the page makes a search of, as a shared link does. None for settings that make no search.
+ * `year` is the year the search ran, where a span of years left open ends: a link to a lookup
+ * made last year still opens what that lookup searched. This year when it's left out.
  */
-export function searchHref(query: string | undefined, settings: Settings): string | undefined {
+export function searchHref(query: string | undefined, settings: Settings, year?: number): string | undefined {
   try {
-    return buildShareableUrl("", searchResultToParams(restoreSearch(newSearch("link", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings))));
+    return buildShareableUrl("", searchResultToParams(restoreSearch(newSearch("link", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings, year))));
   } catch {
     return undefined;
   }
 }
 
 /** A search from a query and settings, as one is first saved. */
-function newSearch(id: string, query: string | undefined, settings: Settings): SavedSearch {
+function newSearch(id: string, query: string | undefined, settings: Settings, year?: number): SavedSearch {
   const now = new Date().toISOString();
   const search: SavedSearch = {
     id,
@@ -77,7 +79,7 @@ function newSearch(id: string, query: string | undefined, settings: Settings): S
     questionText: "",
     screeningQuestions: [],
     screeningResponses: [],
-    ...savedFields(settings).fields,
+    ...savedFields(settings, undefined, year).fields,
     createdAt: now,
     updatedAt: now,
   };
@@ -194,10 +196,9 @@ const LISTS = [
  * Plain settings as the saved search's own fields: what to set, and what to take off.
  * `current` is the search being changed, whose year range fills in a year left out.
  */
-function savedFields(settings: Settings, current?: SavedSearch) {
+function savedFields(settings: Settings, current?: SavedSearch, thisYear = new Date().getFullYear()) {
   const fields: Partial<SavedSearch> = {};
   const clear: string[] = [];
-  const thisYear = new Date().getFullYear();
   if (settings.field !== undefined) fields.field = settings.field;
   // Exact days and whole years are the page's two ways of giving a time span: it filters by the one last set.
   // A call gives one of them. The other's ends, taken off or left out, go with it, so the search moves across whole.

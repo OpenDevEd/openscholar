@@ -928,7 +928,7 @@ function hrefOf(step: Doc<"assistantSteps">) {
   try {
     const { query, ...rest } = JSON.parse(step.input) as Record<string, unknown>;
     const settings = Object.fromEntries(Object.entries(rest).filter(([key]) => key in searchSettings)) as Parameters<typeof searchHref>[1];
-    const href = searchHref(typeof query === "string" ? query : undefined, settings);
+    const href = searchHref(typeof query === "string" ? query : undefined, settings, new Date(step.startedAt).getFullYear());
     return href ? { href } : {};
   } catch {
     // Arguments too long to keep whole were cut, and don't parse.

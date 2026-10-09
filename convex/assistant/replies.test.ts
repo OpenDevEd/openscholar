@@ -672,6 +672,8 @@ describe("assistant replies", () => {
       // On a filter alone, with no query: nothing names it, and it still leads to its results.
       const related = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "related", path: "research/papers:search", input: JSON.stringify({ relatedTo: "W3120515101" }) });
       await endStep(ctx, related, { total: 9, page: 1, pages: 1, papers: [] });
+      // Years left open at one end, in a lookup of an earlier year: its link ends at that year, not at this one.
+      await ctx.db.insert("assistantSteps", { ...step, status: "done", startedAt: Date.UTC(2025, 5, 1), endedAt: Date.UTC(2025, 5, 1), toolCallId: "since", path: "research/papers:search", input: JSON.stringify({ query: "coaching", fromYear: 2024 }), subject: "coaching" });
     });
 
     const all = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
@@ -681,9 +683,10 @@ describe("assistant replies", () => {
       '"machine learning"': "/results?q=%22machine+learning%22&yf=2020&yt=2024&mincite=11",
       tutoring: "/results?q=tutoring",
       phonics: "/results?q=phonics&rated=true",
+      coaching: "/results?q=coaching&yf=2024&yt=2025",
       Trials: null,
     });
-    expect(Object.fromEntries(steps.map((step) => [step.subject, step.count ?? null]))).toEqual({ '"machine learning"': 260, tutoring: 1840, phonics: null, Trials: null });
+    expect(Object.fromEntries(steps.map((step) => [step.subject, step.count ?? null]))).toEqual({ '"machine learning"': 260, tutoring: 1840, phonics: null, coaching: null, Trials: null });
   });
 });
 
