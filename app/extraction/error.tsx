@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { AlertTriangle } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 

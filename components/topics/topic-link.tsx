@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { FocusModeClose } from "@/components/focus-mode/close-context";
 import { topicHref } from "@/lib/topics/links";
 import { useUIStore } from "@/lib/store";

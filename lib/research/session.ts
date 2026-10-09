@@ -53,6 +53,8 @@ export class ResearchSession {
   private imported = false;
   private enabled = false;
   private settledListeners = new Set<() => void>();
+  /** Whether the page wants the session reading, which it does once its workspace is known too. */
+  private wanted = false;
   private snapshot = { ready: false, error: null as Error | null, pending: 0 };
 
   /**
@@ -64,8 +66,17 @@ export class ResearchSession {
   private scoped: Promise<{ accountId: string; workspaceId: Id<"workspaces"> }>;
   private resolveScope!: (scope: { accountId: string; workspaceId: Id<"workspaces"> }) => void;
 
-  constructor(private client: ConvexReactClient, readonly accountId: string, private onError: (error: Error, retry: () => void) => void = () => {}) {
+  /**
+   * `workspace`: the workspace whose records it reads (#651), and whether it's the person's own,
+   * which alone takes in the records this browser kept before they signed in. A session made
+   * before the page's workspace has loaded has none, and its reads wait.
+   */
+  constructor(private client: ConvexReactClient, readonly accountId: string, private workspace?: { workspaceId: Id<"workspaces">; own: boolean }, private onError: (error: Error, retry: () => void) => void = () => {}) {
     this.scoped = new Promise((resolve) => { this.resolveScope = resolve; });
+    if (workspace) {
+      this.scope = { accountId, workspaceId: workspace.workspaceId };
+      this.resolveScope(this.scope);
+    }
     const edit = (id: string, value: SearchEdit) => this.dispatch({ kind: "editSearch", id, edit: value });
     const current = (id: string) => this.stores.history.getState().searchHistory.find(row => row.id === id);
     const replaceQuestion = (id: string, index: number, replacement: string | null) => {
@@ -179,13 +190,8 @@ export class ResearchSession {
 
   getSnapshot = () => this.snapshot;
   getServerSnapshot = () => this.snapshot;
-  subscribe = (listener: () => void, enabled = true, onError = this.onError, workspaceId?: Id<"workspaces">) => {
-    if (workspaceId && !this.scope) {
-      this.scope = { accountId: this.accountId, workspaceId };
-      this.resolveScope(this.scope);
-      // The reads pages asked for meanwhile open now.
-      for (const entry of this.watches()) if (!entry.live) this.read(entry);
-    }
+  subscribe = (listener: () => void, enabled = true, onError = this.onError) => {
+    this.wanted = enabled;
     this.enabled = enabled && this.scope !== undefined;
     this.onError = onError;
     this.listeners.add(listener);
@@ -228,6 +234,23 @@ export class ResearchSession {
     }
     if (this.enabled) { void this.import(this.epoch); void this.pump(); }
   };
+  /**
+   * Gives a session made before the page's workspace loaded its workspace, once (#651): the
+   * reads and changes asked for meanwhile start then, so nothing done while it loaded is lost.
+   */
+  bind(workspace: { workspaceId: Id<"workspaces">; own: boolean }) {
+    if (this.workspace) return;
+    this.workspace = workspace;
+    this.scope = { accountId: this.accountId, workspaceId: workspace.workspaceId };
+    this.resolveScope(this.scope);
+    // It's bound while the page renders: what it starts tells the page, so it starts after.
+    queueMicrotask(() => {
+      if (!this.listeners.size) return;
+      this.enabled = this.wanted;
+      for (const entry of this.watches()) if (!entry.live && entry.readers.size) this.read(entry);
+      if (this.enabled) void this.import(this.epoch);
+    });
+  }
   private start() {
     const epoch = ++this.epoch;
     this.stops.push(activateResearch(this.stores));
@@ -365,6 +388,11 @@ export class ResearchSession {
   };
   private async import(epoch: number) {
     if (!this.accountId) return;
+    // An organization's records never take in what this browser kept: those are the person's own.
+    if (!this.workspace?.own) {
+      if (this.workspace) { this.imported = true; this.notify(); void this.pump(); }
+      return;
+    }
     try {
       const failures = await migrateLocalResearch(this.client, this.accountId, (await this.scoped).workspaceId, () => this.epoch === epoch);
       if (this.epoch !== epoch) return;

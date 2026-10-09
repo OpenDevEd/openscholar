@@ -41,6 +41,7 @@ const {
 });
 
 vi.mock("next/navigation", () => ({
+  useParams: () => ({}),
   useRouter: () => ({ push: pushMock }),
 }));
 

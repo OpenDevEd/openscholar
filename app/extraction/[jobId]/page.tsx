@@ -3,7 +3,7 @@
 import { useConvex, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useTranslations, useFormatter, useNow } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,6 +86,7 @@ import {
 } from "@/lib/extraction/filtering";
 import { getAuthSensitiveListRenderState } from "@/lib/auth/list-render-state";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 
 export default function JobDetailPage() {
   const toast = useAppToast();
@@ -100,7 +101,7 @@ export default function JobDetailPage() {
   const now = useNow();
   
   const params = useParams();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const isMobile = useIsMobile();
   const jobId = params.jobId as Id<"extractionJobs">;
 

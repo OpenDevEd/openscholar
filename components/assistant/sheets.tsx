@@ -5,15 +5,15 @@
 // edge peeks out, and dims. Each layer is its own card; nothing sits behind them.
 
 import { useDeferredValue, useRef, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Link2, Loader2, Lock, Radio, Search, Share2, SquarePen, UserPlus, X } from "@/components/icons";
+import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Link2, Loader2, Lock, Radio, Search, Share2, ShieldCheck, SquarePen, UserPlus, X } from "@/components/icons";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { EASE } from "@/components/settings/model-map";
+import { SHEET_SPRING } from "@/lib/motion";
 import { AnimatedNumber } from "@/components/screening/parts";
 import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -31,7 +31,9 @@ import { cn } from "@/lib/utils";
 import { OrbitMark } from "./orbit-mark";
 import { IconButton, WorkingText } from "./parts";
 import { KIND, KindTile, type Waiting } from "./steps";
-import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace, useWorkspaceMutation, useWorkspaceScope } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 
 /** A sheet open over the panel. */
 export type OpenSheet =
@@ -41,7 +43,6 @@ export type OpenSheet =
   | { kind: "topUp"; waiting: Waiting };
 type Role = "owner" | "write" | "read";
 
-export const SHEET_SPRING = { type: "spring" as const, stiffness: 300, damping: 32, mass: 0.9 };
 
 /** Where a card sits with `depth` cards on top of it: smaller, and nudged left so its edge shows. */
 export const stackedUnder = (depth: number) => ({ scale: 1 - depth * 0.07, x: depth * -22 });
@@ -697,7 +698,7 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
   const cap = allowance ? allowance.cap : kept;
   // The chat's calls that held credits, the largest first, more of them when the person asks.
   const jobs = usePaginatedQuery(api.assistant.spending.jobs, { threadId }, { initialNumItems: JOBS_FIRST });
-  const account = useQuery(api.billing.accounts.mine, {});
+  const account = useQuery(api.billing.accounts.mine, useWorkspaceScope());
   // The server's rule (convex/assistant/spending.ts): allowed, within what one may hold, and covered by the balance.
   const runs = (credits: number) => allowance !== null && (allowance.cap === null || credits <= allowance.cap) && credits <= Math.floor(account?.balance ?? 0);
   const ta = useTranslations("assistant");
@@ -876,8 +877,11 @@ export type Purchase = { buying: number | null; bought: number | null; buy: (cre
 export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /** The purchase under way and the last one made, which the panel keeps: a sheet closed and opened again finds a purchase still on its way, and can't start a second. */ purchase: Purchase; onBack: () => void }) {
   const t = useTranslations("assistant.topUp");
   const format = useFormatter();
-  const router = useRouter();
-  const account = useQuery(api.billing.accounts.mine, {});
+  const router = useWorkspaceRouter();
+  const account = useQuery(api.billing.accounts.mine, useWorkspaceScope());
+  // In an organization only its admins add credits; a member asks one of them.
+  const current = useCurrentWorkspace();
+  const askAdmin = current?.kind === "organization" && current.role !== "admin" ? current.name : null;
   const topUps = useFeatureFlag("credits.topups");
   const catalog = useBillingCatalog();
   const bundles = catalog && topUps ? topUpBundles(catalog) : [];
@@ -917,7 +921,12 @@ export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /*
             </span>
             <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{t("upTo", { credits: waiting.credits })}</span>
           </div>
-          {bundles.length ? (
+          {askAdmin ? (
+            <p className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-sm">
+              <ShieldCheck className="size-4 shrink-0 text-muted-foreground" />
+              {t("askAdmin", { organization: askAdmin })}
+            </p>
+          ) : bundles.length ? (
             <div className="rounded-2xl border border-border/60 bg-muted/20 p-1.5">
               {bundles.map((bundle, i) => (
                 <motion.button

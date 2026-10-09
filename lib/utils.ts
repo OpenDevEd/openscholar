@@ -1,4 +1,5 @@
 import { type ClassValue, clsx } from "clsx"
+import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { extendTailwindMerge } from "tailwind-merge"
 import { Work } from "@sickrin/openalex-sdk/dist/src/types/work";
 import type { SortByWork } from "@sickrin/openalex-sdk/dist/src/types/work";
@@ -703,9 +704,10 @@ export function getEffectiveSearchId(pathname: string | null, currentSearchId?: 
     return currentSearchId;
   }
   
-  // Second priority: extract from route if on results page
-  if (pathname?.startsWith('/results')) {
-    const match = pathname.match(/^\/results\/([^\/]+)/);
+  // Second priority: extract from route if on results page, in any workspace
+  const path = pathname ? bareWorkspacePath(pathname) : null;
+  if (path?.startsWith('/results')) {
+    const match = path.match(/^\/results\/([^\/]+)/);
     if (!match) return undefined;
     try { return decodeURIComponent(match[1]); } catch { return undefined; }
   }

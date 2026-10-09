@@ -43,6 +43,7 @@ const toastMock = vi.hoisted(() => {
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({
+  useParams: () => ({}),
   useRouter: () => ({ push: pushMock }),
 }));
 

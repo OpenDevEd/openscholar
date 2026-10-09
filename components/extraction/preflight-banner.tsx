@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useTranslations } from "next-intl";
 import { Coins } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ export function ExtractionPreflightBanner({
 }: ExtractionPreflightBannerProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
-  const router = useRouter();
+  const router = useWorkspaceRouter();
 
   // No questions or no papers, or the figure still loading: nothing to say.
   if (!credits) return null;

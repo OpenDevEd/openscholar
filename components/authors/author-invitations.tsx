@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAction } from "convex/react";
-import { useRouter } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { Check, Mail, X } from "@/components/icons";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 
 export function AuthorInvitations({profileId, showEmpty = false}: {profileId?: Id<"authorProfiles">; showEmpty?: boolean}) {
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const [pending, setPending] = useState(false);
   const respond = useAction(api.authors.invitationActions.respond);
   const invitations = useProtectedQuery(api.authors.invitations.listInvitations, profileId ? {profileId} : {}).data?.page;

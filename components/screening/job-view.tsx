@@ -50,8 +50,9 @@ const TONE: Record<Exclude<Phase, "processing">, StatusTone> = {
 
 type Translate = ReturnType<typeof useTranslations<"screeningPage">>;
 
-/** What a job is called: its papers' set, as it was named when the job started. */
-export function jobName(t: Translate, job: Pick<JobRow, "createdAt"> & Partial<Pick<JobRow, "set" | "label">>, date: (at: number) => string) {
+/** What a job is called: the name it was given as it started, else its papers' set, as it was named then. */
+export function jobName(t: Translate, job: Pick<JobRow, "createdAt"> & Partial<Pick<JobRow, "name" | "set" | "label">>, date: (at: number) => string) {
+  if (job.name) return job.name;
   if (job.set?.kind === "saved") return t("savedPapers");
   if (!job.label) return t("jobOn", { date: date(job.createdAt) });
   const name = job.label.charAt(0).toUpperCase() + job.label.slice(1);

@@ -13,7 +13,7 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import {
   CommandCenterList,
   CommandCenterPagination,

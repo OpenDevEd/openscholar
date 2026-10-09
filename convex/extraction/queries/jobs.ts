@@ -9,6 +9,7 @@
  */
 
 import { query, type QueryCtx } from "../../_generated/server";
+import { countsRow } from "../counts";
 import { getDocumentSize, v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { mergedStream, stream } from "convex-helpers/server/stream";
@@ -18,7 +19,7 @@ import type { Doc, Id } from "../../_generated/dataModel";
 import { noAccess, ok, statusResultValidator, unauthenticated } from "../../lib/query_states";
 import { ownJob, resolveOwnedJob, type OwnedJobResolution } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
-import { assistantQuery, defineUserQuery, userQuery } from "../../lib/userActions";
+import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../../lib/userActions";
 import { countRow } from "../../research/recordCounts";
 import { readJobCounters } from "../jobCounters";
 import { extractionJobValidator, jobQuestionsValidator } from "../validators";
@@ -168,3 +169,21 @@ export const subscribeToJobProgress = query({
   },
 });
 
+
+/** The statuses of an extraction that's running, which the rail shows as a ring. */
+const RUNNING = ["pending", "downloading_pdfs", "indexing", "extracting"] as const;
+
+/** The workspace's newest running extraction, for the rail's ring around Extract (#651): its name and how many of its papers are done. */
+export const runningJob = workspaceQuery({
+  args: {},
+  returns: v.union(v.null(), v.object({ jobId: v.id("extractionJobs"), name: v.string(), done: v.number(), total: v.number() })),
+  signedOut: null,
+  handler: async (ctx, { workspaceId }) => {
+    const newest = await Promise.all(RUNNING.map((status) => ctx.db.query("extractionJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status)).order("desc").first()));
+    const job = newest.filter((row) => row !== null).sort((a, b) => b._creationTime - a._creationTime)[0];
+    if (!job) return null;
+    const counts = (await countsRow(ctx, job._id))?.counts;
+    const done = counts ? (counts.processed ?? 0) + (counts.failed ?? 0) : (job.processedPapers ?? 0) + (job.failedPapers ?? 0);
+    return { jobId: job._id, name: job.name, done, total: job.totalPapers ?? 0 };
+  },
+});

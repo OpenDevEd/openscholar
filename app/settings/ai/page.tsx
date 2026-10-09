@@ -25,6 +25,7 @@ import {
 } from "@/components/settings/model-map";
 import { ModelPicker } from "@/components/models/model-picker";
 import { useModelPicks } from "@/lib/ai/use-model-picks";
+import { useWorkspaceScope } from "@/lib/workspaces/url";
 
 const PROVIDERS: Array<{ id: KeyProvider; icon: Ico }> = [
   { id: "openai", icon: OpenAIIcon },
@@ -43,7 +44,8 @@ export default function AISettingsPage() {
   const { signedIn, goToSignIn, creditsEnabled, presetModel, settings, choose, choice, modelsOf, modelOf, fail, requireSignIn, pickAll, presetPicks } = useModelPicks();
   const [hover, setHover] = useState<Hover>(null);
 
-  const account = useOptionalAuthQuery(api.billing.accounts.mine, creditsEnabled ? {} : "skip");
+  const scope = useWorkspaceScope();
+  const account = useOptionalAuthQuery(api.billing.accounts.mine, creditsEnabled && scope !== "skip" ? scope : "skip");
   const figures = useOptionalAuthQuery(api.ai.estimates.mine, creditsEnabled ? {} : "skip");
   const isCustom = choice === "custom";
   // Signed-out users can only run on a key: the default preset's picks, on theirs.

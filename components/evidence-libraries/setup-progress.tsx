@@ -3,7 +3,7 @@
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { ExternalLink, Settings , CircleDashed } from "@/components/icons";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";

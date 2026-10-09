@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { AlertTriangle } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";

@@ -153,11 +153,11 @@ export const invitationFor = internalQuery({
 /** A pending invitation of the organization, for an admin to take back. */
 export const pendingInvitation = internalQuery({
   args: { invitationId: v.id("organizationInvitations"), organizationId: v.id("organizations") },
-  returns: v.string(),
+  returns: v.object({ clerkInvitationId: v.string(), email: v.string(), role: v.union(v.literal("org:admin"), v.literal("org:member")) }),
   handler: async (ctx, { invitationId, organizationId }) => {
     const invitation = await ctx.db.get("organizationInvitations", invitationId);
     if (!invitation || invitation.organizationId !== organizationId || invitation.state !== "pending") throw createError("NOT_FOUND", "This invitation is no longer open.");
-    return invitation.clerkInvitationId;
+    return { clerkInvitationId: invitation.clerkInvitationId, email: invitation.email, role: invitation.role };
   },
 });
 
@@ -171,3 +171,15 @@ export const workspaceOf = internalQuery({
     return organization && workspace ? { workspaceId: workspace._id, slug: organization.slug } : null;
   },
 });
+
+/** The organization at an address, or null: a deleted one's address can be another's since. */
+export const organizationAt = (ctx: QueryCtx, slug: string) =>
+  ctx.db.query("organizations").withIndex("by_slug_and_state", (q) => q.eq("slug", slug).eq("state", "active")).first();
+
+/** The Clerk ID of the organization at an address, or null. */
+export const clerkIdOf = internalQuery({
+  args: { slug: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { slug }) => (await organizationAt(ctx, slug))?.clerkOrganizationId ?? null,
+});
+

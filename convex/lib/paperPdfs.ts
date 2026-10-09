@@ -102,7 +102,8 @@ export async function readStored(key: string, maxBytes: number): Promise<Uint8Ar
 async function keep(key: string, bytes: Uint8Array) {
   const { client, url } = store();
   try {
-    const response = await client.fetch(url(key), { method: "PUT", body: new Blob([bytes.slice()]), headers: { "Content-Type": "application/pdf" } });
+    // R2 refuses a write without its length (411), and Convex's fetch streams a Blob body without one.
+    const response = await client.fetch(url(key), { method: "PUT", body: bytes.slice().buffer, headers: { "Content-Type": "application/pdf", "Content-Length": String(bytes.length) } });
     if (!response.ok) throw new Error(`answered ${response.status}`);
     return true;
   } catch (error) {

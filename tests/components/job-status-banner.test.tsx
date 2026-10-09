@@ -7,6 +7,7 @@ import { JobStatusBanner } from "@/components/extraction/job-status-banner";
 
 const pushMock = vi.fn();
 vi.mock("next/navigation", () => ({
+  useParams: () => ({}),
   useRouter: () => ({ push: pushMock }),
 }));
 

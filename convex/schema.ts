@@ -195,7 +195,8 @@ export default defineSchema({
 
   organizations: defineTable(organizationFields)
     .index("by_clerkOrganizationId", ["clerkOrganizationId"])
-    .index("by_slug", ["slug"])
+    // A deleted organization keeps its row, and Clerk lets another take its address: one at an address is its active one.
+    .index("by_slug_and_state", ["slug", "state"])
     .index("by_state", ["state"]),
 
   // Invitations to organizations, as Clerk's webhook and the actions that send them project them (#651).
@@ -1024,6 +1025,8 @@ export default defineSchema({
     // Where its papers came from (#341), as the screening page shows it: the set, the set's
     // name when it started (a search's query, a collection's or a job's name), and which of
     // its papers, counting from 1. Jobs from before the page have none.
+    // The name it was given as it started (#696); without one it goes by `label`.
+    name: v.optional(v.string()),
     set: v.optional(paperSetValidator),
     label: v.optional(v.string()),
     first: v.optional(v.number()),

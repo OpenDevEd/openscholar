@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useFormatter, useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import type { ComponentType, SVGProps } from "react";

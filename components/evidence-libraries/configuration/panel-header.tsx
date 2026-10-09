@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, type AppIcon } from "@/components/icons";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";

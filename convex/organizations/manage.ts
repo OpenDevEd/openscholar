@@ -6,15 +6,16 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import type { ActionCtx } from "../_generated/server";
+import { action, type ActionCtx } from "../_generated/server";
 import { ClerkApiError, clerkRequest, clerkSecretKey, isRecord } from "../lib/clerk";
 import { requireAppUrl } from "../lib/env";
 import { createError } from "../lib/errors";
 import type { GenericValidator, PropertyValidators } from "convex/values";
 import { DONE } from "../assistant/steps";
-import { assistantAction, defineUserAction, reversedBy, userAction, type Acting, type UserActionEntry } from "../lib/userActions";
+import { assistantAction, assistantMutation, defineUserAction, defineUserMutation, reversedBy, userAction, userMutation, type Acting, type UserActionEntry } from "../lib/userActions";
 import { processClerkWebhookEvent } from "../webhooks/clerk";
-import { deletable } from "./read";
+import { ORGANIZATION_COLOURS, type OrganizationColour } from "../../lib/workspaces/colours";
+import { deletable, organizationOf } from "./read";
 import type { Actor } from "../workspaces/actor";
 
 /** What a change to an organization's people starts from (./read.ts `context`). */
@@ -22,6 +23,7 @@ type Context = { clerkUserId: string; email: string; organization: { clerkOrgani
 
 const ROLE = v.union(v.literal("admin"), v.literal("member"));
 type Role = "admin" | "member";
+type Pending = { clerkInvitationId: string; email: string; role: "org:admin" | "org:member" };
 /**
  * An action that changes the organization in Clerk and keeps the change here: the assistant's
  * step for it ends once the change is kept, with what the action returned, or that it was made.
@@ -87,7 +89,7 @@ function refused(error: unknown): never {
   throw error;
 }
 
-async function clerk(key: string, method: "GET" | "POST" | "PATCH" | "DELETE", path: string, body?: unknown) {
+async function clerk(key: string, method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE", path: string, body?: unknown) {
   try {
     return (await clerkRequest(key, method, path, body)).body;
   } catch (error) {
@@ -123,7 +125,7 @@ export const createAction = changing({
   run: async (ctx, { userId, workspaceId }, { name }): Promise<{ workspaceId: Id<"workspaces">; slug: string }> => {
     const key = clerkSecretKey();
     const { clerkUserId }: Context = await ctx.runQuery(internal.organizations.read.context, { userId, workspaceId });
-    const organization = await clerk(key, "POST", "/organizations", { name: requireName(name), created_by: clerkUserId });
+    const organization = await createInClerk(key, requireName(name), clerkUserId);
     if (!isRecord(organization) || typeof organization.id !== "string") throw new Error("Clerk answered without the organization");
     await keep(ctx, key, "organization.created", organization);
     // Clerk makes its creator an admin; keep that membership too. Clerk's webhook brings it if this
@@ -141,6 +143,23 @@ export const createAction = changing({
   },
 });
 export const create = userAction(createAction);
+
+/** The address an organization's name gives it: its letters and digits, lowercase, in words joined by hyphens. */
+const slugOf = (name: string) =>
+  name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40).replace(/^-+|-+$/g, "") || "organization";
+
+/** Makes the organization in Clerk at the address its name gives it, or, when another has that, the same with a few letters after it. */
+async function createInClerk(key: string, name: string, clerkUserId: string) {
+  const slug = slugOf(name);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return (await clerkRequest(key, "POST", "/organizations", { name, slug: attempt ? `${slug}-${crypto.randomUUID().slice(0, 4)}` : slug, created_by: clerkUserId })).body;
+    } catch (error) {
+      if (attempt < 3 && error instanceof ClerkApiError && error.code === "form_identifier_exists") continue;
+      refused(error);
+    }
+  }
+}
 export const createForAssistant = assistantAction(createAction);
 
 export const inviteAction = changing({
@@ -159,23 +178,28 @@ export const inviteAction = changing({
     if (wanted.some((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw createError("VALIDATION_ERROR", "One of these isn't an email address.");
     const key = clerkSecretKey();
     const { clerkUserId, organization } = await inOrganization(ctx, actor, { adminOnly: true });
-    const sent = await clerk(
-      key,
-      "POST",
-      `/organizations/${organization.clerkOrganizationId}/invitations/bulk`,
-      wanted.map((email) => ({
-        email_address: email,
-        role: clerkRole(role),
-        inviter_user_id: clerkUserId,
-        redirect_url: `${requireAppUrl()}/join/${organization.slug}`,
-        public_metadata: { inviterClerkUserId: clerkUserId },
-      })),
-    );
-    const invitations = Array.isArray(sent) ? sent : isRecord(sent) && Array.isArray(sent.data) ? sent.data : [];
-    for (const invitation of invitations) await keep(ctx, key, "organizationInvitation.created", invitation);
-    return { invited: invitations.length };
+    return { invited: await sendInvitations(ctx, key, clerkUserId, organization, wanted, clerkRole(role)) };
   },
 });
+
+/** Has Clerk email each address a link to the organization's join page, and keeps the invitations. Returns how many went out. */
+async function sendInvitations(ctx: ActionCtx, key: string, clerkUserId: string, organization: { clerkOrganizationId: string; slug: string }, emails: string[], role: "org:admin" | "org:member") {
+  const sent = await clerk(
+    key,
+    "POST",
+    `/organizations/${organization.clerkOrganizationId}/invitations/bulk`,
+    emails.map((email) => ({
+      email_address: email,
+      role,
+      inviter_user_id: clerkUserId,
+      redirect_url: `${requireAppUrl()}/join/${organization.slug}`,
+      public_metadata: { inviterClerkUserId: clerkUserId },
+    })),
+  );
+  const invitations = Array.isArray(sent) ? sent : isRecord(sent) && Array.isArray(sent.data) ? sent.data : [];
+  for (const invitation of invitations) await keep(ctx, key, "organizationInvitation.created", invitation);
+  return invitations.length;
+}
 export const invite = userAction(inviteAction);
 export const inviteForAssistant = assistantAction(inviteAction);
 
@@ -190,7 +214,7 @@ export const revokeInvitationAction = changing({
   run: async (ctx, actor, { invitationId }) => {
     const key = clerkSecretKey();
     const { clerkUserId, organization } = await inOrganization(ctx, actor, { adminOnly: true });
-    const clerkInvitationId: string = await ctx.runQuery(internal.organizations.read.pendingInvitation, { invitationId, organizationId: organization.organizationId });
+    const { clerkInvitationId }: Pending = await ctx.runQuery(internal.organizations.read.pendingInvitation, { invitationId, organizationId: organization.organizationId });
     const revoked = await clerk(key, "POST", `/organizations/${organization.clerkOrganizationId}/invitations/${clerkInvitationId}/revoke`, { requesting_user_id: clerkUserId });
     await keep(ctx, key, "organizationInvitation.revoked", revoked);
     return null;
@@ -359,3 +383,97 @@ export const deleteOrganizationAction = changing({
 });
 export const deleteOrganization = userAction(deleteOrganizationAction);
 export const deleteOrganizationForAssistant = assistantAction(deleteOrganizationAction);
+
+/**
+ * Keeps the membership Clerk made when the person accepted an invitation in Clerk's own client
+ * (#651), so the organization's pages open at once instead of after Clerk's webhook. Null when
+ * Clerk has no membership of theirs there.
+ */
+export const confirmJoin = action({
+  args: { slug: v.string() },
+  returns: v.union(v.null(), v.object({ workspaceId: v.id("workspaces"), slug: v.string() })),
+  handler: async (ctx, { slug }): Promise<{ workspaceId: Id<"workspaces">; slug: string } | null> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw createError("UNAUTHENTICATED", "Sign in to join an organization");
+    const clerkOrganizationId: string | null = await ctx.runQuery(internal.organizations.read.clerkIdOf, { slug });
+    if (!clerkOrganizationId) return null;
+    const key = clerkSecretKey();
+    const memberships = await clerk(key, "GET", `/organizations/${clerkOrganizationId}/memberships?user_id=${encodeURIComponent(identity.subject)}&limit=1`);
+    const mine = isRecord(memberships) && Array.isArray(memberships.data) ? memberships.data[0] : undefined;
+    if (!mine) return null;
+    await keep(ctx, key, "organizationMembership.created", mine);
+    return await ctx.runQuery(internal.organizations.read.workspaceOf, { clerkOrganizationId });
+  },
+});
+
+const SET_COLOUR = "organizations/manage:setColour" as const;
+const colourArg = v.union(...ORGANIZATION_COLOURS.map((colour) => v.literal(colour)));
+
+export const setColourAction = defineUserMutation({
+  path: SET_COLOUR,
+  description: `Sets the colour of the organization the person is in, which tints the sidebar for everyone while they're in it; an admin of it does this. One of ${ORGANIZATION_COLOURS.join(", ")}; without \`colour\`, it goes back to the one it started with. Returns \`undo\`, which puts the colour back.`,
+  args: { colour: v.optional(colourArg) },
+  returns: v.object({ undo: v.optional(reversedBy(SET_COLOUR, { colour: v.optional(colourArg) })) }),
+  spendsCredits: false,
+  outsideEffect: true,
+  undoable: true,
+  run: async (ctx, { workspaceId, role }, { colour }) => {
+    if (role !== "admin") throw createError("FORBIDDEN", "Only an admin of the organization changes its colour.");
+    const organization = await organizationOf(ctx, workspaceId);
+    const was = organization.colour as OrganizationColour | undefined;
+    if (was === colour) return {};
+    await ctx.db.patch("organizations", organization._id, { colour });
+    return { undo: { path: SET_COLOUR, args: was ? { colour: was } : {} } };
+  },
+});
+export const setColour = userMutation(setColourAction);
+export const setColourForAssistant = assistantMutation(setColourAction);
+
+const RESEND = "organizations/manage:resendInvitation" as const;
+
+export const resendInvitationAction = changing({
+  path: RESEND,
+  description: "Sends an invitation to the organization the person is in again, as a new email with a new link; an admin of it does this. The one before stops working.",
+  args: { invitationId: v.id("organizationInvitations") },
+  returns: v.null(),
+  spendsCredits: false,
+  outsideEffect: true,
+  undoable: false,
+  run: async (ctx, actor, { invitationId }) => {
+    const key = clerkSecretKey();
+    const { clerkUserId, organization } = await inOrganization(ctx, actor, { adminOnly: true });
+    const invitation: Pending = await ctx.runQuery(internal.organizations.read.pendingInvitation, { invitationId, organizationId: organization.organizationId });
+    // Clerk can't send one again: it's taken back, which frees its seat, and a new one goes out to the same address.
+    const revoked = await clerk(key, "POST", `/organizations/${organization.clerkOrganizationId}/invitations/${invitation.clerkInvitationId}/revoke`, { requesting_user_id: clerkUserId });
+    await keep(ctx, key, "organizationInvitation.revoked", revoked);
+    await sendInvitations(ctx, key, clerkUserId, organization, [invitation.email], invitation.role);
+    return null;
+  },
+});
+export const resendInvitation = userAction(resendInvitationAction);
+export const resendInvitationForAssistant = assistantAction(resendInvitationAction);
+
+/** The most a logo may weigh. */
+const LOGO_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Sets the logo of the organization the person is in, from an image they picked in their
+ * browser; an admin of it does this. Clerk keeps it and serves it to everyone.
+ */
+export const setLogo = action({
+  args: { workspaceId: v.id("workspaces"), image: v.bytes(), contentType: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, image, contentType }) => {
+    if (!contentType.startsWith("image/")) throw createError("VALIDATION_ERROR", "A logo is an image.");
+    if (image.byteLength > LOGO_BYTES) throw createError("VALIDATION_ERROR", "A logo is at most 5 MB.");
+    const actor: Actor = await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId });
+    const key = clerkSecretKey();
+    const { clerkUserId, organization } = await inOrganization(ctx, { ...actor, author: "user" }, { adminOnly: true });
+    const form = new FormData();
+    form.append("file", new Blob([image], { type: contentType }), "logo");
+    form.append("uploader_user_id", clerkUserId);
+    const body = await clerk(key, "PUT", `/organizations/${organization.clerkOrganizationId}/logo`, form);
+    await keep(ctx, key, "organization.updated", body);
+    return null;
+  },
+});

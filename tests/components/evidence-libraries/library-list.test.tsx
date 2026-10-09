@@ -5,17 +5,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import type { ReactElement } from "react";
 import { renderWithTooltip } from "../../helpers/render-with-tooltip";
-const mocks = vi.hoisted(() => ({ query: vi.fn(), respond: vi.fn(), restart: vi.fn() }));
+const mocks = vi.hoisted(() => ({ query: vi.fn(), respond: vi.fn(), restart: vi.fn(), workspace: { kind: "personal" } as { kind: string; name?: string; organizationId?: string } }));
+vi.mock("@/components/workspaces/parts", () => ({ useCurrentWorkspace: () => mocks.workspace }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("convex/react", () => ({ useMutation: () => mocks.restart, useAction: () => mocks.respond }));
 vi.mock("@/convex/_generated/api", () => ({ api: { organizationFeatures: {listLibraryOrganizations: "organizations"}, evidenceLibraries: {
   teardown: { restartDevelopmentTeardown: "restart" },
-  queries: { listLibraries: "libraries", countLibraries: "count", listLibraryOwners: "owners" },
+  queries: { listLibraries: "libraries" },
   invitations: { listInvitations: "invitations" }, invitationActions: { respond: "respond" },
 } } }));
 // Organizations and invitations arrive as one page each; the tests give their rows.
 vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: (name: string) => {
-  if (name === "count") return { isReady: true, data: mocks.query("libraries").data.length };
   const result = mocks.query(name);
   return !result?.data ? result : { ...result, data: { page: result.data, isDone: true, continueCursor: "" } };
 } }));
@@ -28,6 +28,7 @@ const render = (ui: ReactElement, searchParams = "") => renderWithTooltip(<NuqsT
 const libraries = ["owner", "editor", "creator"].map(role => ({ _id: role, name: `${role} library`, role, status: "active", publicAddress: `https://${role}.example.org`, organization: { name: `${role} organization` } }));
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.workspace = { kind: "personal" };
   mocks.query.mockImplementation((name: string) => ({ isReady: true, data: name === "libraries" ? libraries : name === "organizations" ? [{id: "org_1", name: "Research team"}] : [] }));
 });
 describe("Library access list", () => {
@@ -54,6 +55,17 @@ describe("Library access list", () => {
     expect(screen.getByRole("link", {name: "View setup"})).toHaveAttribute("href", "/evidence-libraries/setup/setup");
     await userEvent.setup().click(screen.getByRole("button", {name: "Retry deletion"}));
     expect(mocks.restart).toHaveBeenCalledWith({libraryId: "delete"});
+  });
+  it("in an organization, lists its libraries without invitations, and makes new ones only where you may", () => {
+    mocks.workspace = { kind: "organization", name: "Research team", organizationId: "org_1" };
+    render(<LibraryList />, "?view=invitations");
+    // Invitations are yours, in your own workspace: an organization shows its libraries.
+    expect(screen.queryByRole("tab", { name: /Invitations/ })).not.toBeInTheDocument();
+    expect(screen.getByText("owner library")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "New library" })).toHaveAttribute("href", "/evidence-libraries/new");
+    mocks.workspace = { kind: "organization", name: "Partner", organizationId: "org_2" };
+    render(<LibraryList />);
+    expect(screen.getAllByRole("link", { name: "New library" })).toHaveLength(1);
   });
   it("opens pending invitations from the invitation email link", () => {
     mocks.query.mockImplementation((name: string) => ({isReady: true, data: name === "libraries" ? libraries : name === "invitations" ? [{invitationId: "invite_1", libraryId: "invited", name: "Invited library", role: "editor", organization: {name: "Partner organization", imageUrl: null}}] : []}));

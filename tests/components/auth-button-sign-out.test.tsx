@@ -24,6 +24,7 @@ vi.mock("@clerk/nextjs", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
+  useParams: () => ({}),
   usePathname: () => mocks.pathname,
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => mocks.searchParams,
@@ -39,6 +40,7 @@ vi.mock("@/components/providers/convex-provider", () => ({
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useOptionalAuthQuery: () => ({ data: undefined, settlement: "ready" }),
+  useProtectedQuery: () => ({ data: undefined }),
 }));
 
 vi.mock("@/lib/auth/use-subscription-state", () => ({
@@ -58,7 +60,7 @@ vi.mock("@/lib/feature-flags/hook", () => ({
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
-  api: { billing: { accounts: { mine: "getMyBalance" } } },
+  api: { billing: { accounts: { mine: "getMyBalance" } }, workspaces: { queries: { personal: "personal", bySlug: "bySlug" } } },
 }));
 
 vi.mock("@/components/ui/button", () => ({
