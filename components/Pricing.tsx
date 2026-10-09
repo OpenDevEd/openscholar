@@ -545,7 +545,7 @@ export function Pricing() {
               {/* Current Plan Badge */}
               {isCurrent && (
                 <div className="bg-success/10 border-b border-success/20 px-4 py-2 flex items-center justify-center">
-                  <span data-testid="pricing-current-badge" className="text-xs font-semibold ink-success uppercase tracking-wider">
+                  <span data-testid="pricing-current-badge" className="text-xs font-semibold ink-success">
                     {tc("currentPlan")}
                   </span>
                 </div>
@@ -554,7 +554,7 @@ export function Pricing() {
               {/* Popular Badge */}
               {plan.popular && !isCurrent && (
                 <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 flex items-center justify-center">
-                  <span className="text-xs font-semibold text-primary uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-primary">
                     {tc("mostPopular")}
                   </span>
                 </div>
@@ -562,7 +562,7 @@ export function Pricing() {
 
               {isScheduledTarget && !isCurrent && (
                 <div className="bg-info/10 border-b border-info/20 px-4 py-2 flex items-center justify-center">
-                  <span data-testid="pricing-scheduled-badge" className="text-xs font-semibold ink-info uppercase tracking-wider">
+                  <span data-testid="pricing-scheduled-badge" className="text-xs font-semibold ink-info">
                     Scheduled
                   </span>
                 </div>
