@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isDateFilterActive,
   isRatingFilterActive,
+  ratingFilterKeeps,
   isCountryFilterActive,
   isCountryFocusActive,
   isCitesFilterActive,
@@ -50,6 +51,20 @@ describe("isDateFilterActive", () => {
     expect(
       isDateFilterActive(undefined, undefined, undefined, undefined)
     ).toBe(false);
+  });
+});
+
+describe("ratingFilterKeeps", () => {
+  it("keeps every paper while the filter is off, rated or not", () => {
+    expect(ratingFilterKeeps(undefined, [0, 5], false)).toBe(true);
+    expect(ratingFilterKeeps(1, [4, 5], false)).toBe(true);
+  });
+
+  it("keeps a paper rated within the range while the filter is on, and hides one unrated", () => {
+    expect(ratingFilterKeeps(4, [4, 5], true)).toBe(true);
+    expect(ratingFilterKeeps(5, [4, 5], true)).toBe(true);
+    expect(ratingFilterKeeps(3, [4, 5], true)).toBe(false);
+    expect(ratingFilterKeeps(undefined, [0, 5], true)).toBe(false);
   });
 });
 

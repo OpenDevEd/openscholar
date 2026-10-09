@@ -139,6 +139,10 @@ export const isRatingFilterActive = (range?: [number, number], onlyRated?: boole
   return !isFilterAtDefault.onlyRatedPapers(onlyRated) || !isFilterAtDefault.ratingRange(range);
 };
 
+/** Whether the rating filter keeps a paper of this rating: while it is on, an unrated paper is hidden. */
+export const ratingFilterKeeps = (rating: number | undefined, range: [number, number], onlyRated: boolean) =>
+  !isRatingFilterActive(range, onlyRated) || (rating !== undefined && rating >= range[0] && rating <= range[1]);
+
 // Helper to check if any date/year filter is active based on current filter type
 export const isDateFilterActive = (dateRange?: DateRange, yearRange?: [number, number], filterType?: "date" | "year", isYearRangeEnabled?: boolean) => {
   if (filterType === "date") {

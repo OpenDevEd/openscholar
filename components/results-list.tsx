@@ -17,7 +17,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { cn, isRatingFilterActive, getEffectiveSearchId } from "@/lib/utils";
+import { cn, ratingFilterKeeps, getEffectiveSearchId } from "@/lib/utils";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
 import {
   useRatingsStore,
@@ -341,22 +341,7 @@ export function ResultsList({
   const urlQuery = search.params.q;
 
   // Filter results based on rating filter
-  const filteredResults = results.filter((result) => {
-    // Rating filter
-    if (!preview && isRatingFilterActive(ratingRange, onlyRatedPapers)) {
-      const paperRating = ratings[result.id];
-
-      if (paperRating === undefined) {
-        return false;
-      }
-
-      if (paperRating < ratingRange[0] || paperRating > ratingRange[1]) {
-        return false;
-      }
-    }
-
-    return true;
-  });
+  const filteredResults = results.filter((result) => preview || ratingFilterKeeps(ratings[result.id], ratingRange, onlyRatedPapers));
 
   const totalPages = useMemo(
     () => Math.ceil(filteredResults.length / ITEMS_PER_PAGE),
