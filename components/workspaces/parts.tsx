@@ -66,8 +66,29 @@ export function WorkspaceTile({ workspace, size = "md", home = false }: { worksp
     );
   }
   if (workspace.kind === "personal") return <IdentityAvatar name={workspace.name} imageUrl={workspace.imageUrl} className={TILE_BOX[size]} />;
-  // Clerk gives every organization a logo: its own, or one it makes.
-  return <IdentityAvatar name={workspace.name} imageUrl={workspace.imageUrl} kind="organization" className={cn(TILE_BOX[size], TILE_CORNER[size])} />;
+  if (workspace.imageUrl) return <IdentityAvatar name={workspace.name} imageUrl={workspace.imageUrl} kind="organization" className={cn(TILE_BOX[size], TILE_CORNER[size])} />;
+  // One whose admins uploaded no logo has one made for it, in its colour.
+  return <GeneratedLogo seed={workspace.workspaceId ?? workspace.name} tint={tint} className={cn("shrink-0", TILE_BOX[size], TILE_CORNER[size])} />;
+}
+
+/** A seeded number from 0 to 1, the same for the same seed and step. */
+const seeded = (seed: string, step: number) => {
+  let hash = 2166136261 + step * 16777619;
+  for (const char of seed) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  return ((hash >>> 0) % 1000) / 1000;
+};
+
+/** An organization's made logo: its colour, with three shapes placed by its seed. */
+function GeneratedLogo({ seed, tint, className }: { seed: string; tint: string; className?: string }) {
+  const at = (step: number, from: number, span: number) => from + seeded(seed, step) * span;
+  return (
+    <svg aria-hidden viewBox="0 0 40 40" className={cn("overflow-hidden", className)}>
+      <rect width="40" height="40" fill={tint} />
+      <circle cx={at(1, 8, 24)} cy={at(2, 8, 24)} r={at(3, 9, 7)} fill="white" fillOpacity="0.55" />
+      <rect x={at(4, 6, 18)} y={at(5, 14, 16)} width="16" height="16" rx="4" fill="black" fillOpacity="0.28" transform={`rotate(${at(6, 0, 90)} 20 20)`} />
+      <circle cx={at(7, 10, 20)} cy={at(8, 10, 20)} r={at(9, 3, 3)} fill="white" fillOpacity="0.85" />
+    </svg>
+  );
 }
 
 /** A chip led by a workspace's tile and named for it; a long name is cut. */

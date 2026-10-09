@@ -6,6 +6,7 @@ const organization = {
   name: "Evidence Team",
   slug: "evidence-team",
   image_url: "https://img.example/org.png",
+  has_image: true,
   created_at: 1_700_000_000_000,
   updated_at: 1_700_000_001_000,
 };
@@ -20,6 +21,11 @@ const membership = {
 };
 
 describe("parseClerkProjectionEvent", () => {
+  it("keeps an organization's logo only when its admins uploaded one, not the one Clerk makes", () => {
+    const made = parseClerkProjectionEvent("organization.updated", { ...organization, has_image: false });
+    expect(made).toMatchObject({ kind: "organization", organization: { imageUrl: undefined } });
+  });
+
   it.each(["organization.created", "organization.updated"] as const)(
     "maps %s to an active organization snapshot",
     (eventType) => {

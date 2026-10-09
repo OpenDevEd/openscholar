@@ -116,8 +116,9 @@ function mapOrganizationSnapshot(value: unknown): ClerkOrganizationSnapshot | nu
     clerkOrganizationId: organization.id,
     name: organization.name,
     slug: organization.slug,
+    // Only a logo its admins uploaded: the one Clerk makes for every other is drawn here instead, in the organization's colour (#651).
     imageUrl:
-      typeof organization.image_url === "string"
+      organization.has_image === true && typeof organization.image_url === "string"
         ? organization.image_url
         : undefined,
     evidenceLibrariesEnabled: features?.evidenceLibraries === true,
