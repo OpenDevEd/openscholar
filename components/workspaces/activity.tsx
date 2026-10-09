@@ -7,7 +7,7 @@ import { useState } from "react";
 import { usePaginatedQuery } from "convex/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { motion } from "motion/react";
-import { AiIcon, FileSearch, FolderPlus, History, ListChecks, PenLine, Plus, Star, Trash2, type AppIcon } from "@/components/icons";
+import { AiIcon, FileSearch, FolderPlus, History, ListChecks, Pause, PenLine, Play, Plus, RotateCcw, Square, Star, Trash2, type AppIcon } from "@/components/icons";
 import { EASE } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -34,6 +34,10 @@ const LOOK: Record<Happened, { icon: AppIcon; tint: string; counted: boolean }> 
   answered: { icon: ListChecks, tint: "#2dd4bf", counted: true },
   screened: { icon: ListChecks, tint: "#2dd4bf", counted: true },
   extracted: { icon: FileSearch, tint: "#818cf8", counted: true },
+  paused: { icon: Pause, tint: "#fbbf24", counted: false },
+  resumed: { icon: Play, tint: "#34d399", counted: false },
+  retried: { icon: RotateCcw, tint: "#60a5fa", counted: true },
+  stopped: { icon: Square, tint: "#f87171", counted: false },
 };
 
 /** Changes one page of Activity shows, and each page more. */
@@ -51,10 +55,10 @@ export function ItemBar({ kind, id, name, started, className }: { kind: ItemKind
   // Null in your own workspace, where everything is yours.
   const { data: by } = useProtectedQuery(api.activity.queries.startedBy, inWorkspace(workspaceId, { kind, id }));
   return (
-    <div className={cn("flex min-h-13 flex-wrap items-center gap-2 border-b border-border-subtle px-4 py-2.5", className)}>
+    <div className={cn("flex min-h-13 min-w-0 items-center gap-2 border-b border-border-subtle px-4 py-2.5", className)}>
       {by ? <PersonTag name={by.name} imageUrl={by.imageUrl} you={by.you} before={t(started)} /> : null}
       <span className="flex-1" />
-      <Button variant="ghost" size="sm" className="h-8" onClick={() => setOpen(true)}>
+      <Button variant="ghost" size="sm" className="h-8 shrink-0" onClick={() => setOpen(true)}>
         <History />
         {t("title")}
       </Button>

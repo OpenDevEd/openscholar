@@ -280,7 +280,8 @@ export const addToCollectionForAssistant = assistantMutation(addToCollectionActi
 
 export const removeFromCollectionAction = defineUserMutation({
   path: REMOVE,
-  activity: (args) => ({ kind: "collection", id: args.collectionId, happened: "removed", count: 1 }),
+  // Only a paper that was in it is taken out; its undo says so.
+  activity: (args, { undo }) => (undo ? { kind: "collection", id: args.collectionId, happened: "removed", count: 1 } : null),
   description: "Takes a paper, by its library item ID, out of one of the person's collections. It stays in the library. Returns `undo`, which puts it back, unless it wasn't there.",
   args: membership,
   returns: v.object({ undo: reversedBy(ADD, undone) }),

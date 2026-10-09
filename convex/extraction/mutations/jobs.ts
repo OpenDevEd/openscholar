@@ -15,6 +15,7 @@ import { requireFeature } from "../../featureFlags/guard";
 import { extractionPricing, extractionStamp } from "../../ai/serverModel";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
+import { noteActivity } from "../../activity/notes";
 import { assertBucketWithinLimits } from "../bucket/limits";
 import { availableCredits as readAvailableCredits, planLimit } from "../../billing/accounts";
 import { papersIn } from "../../screening/estimate";
@@ -307,6 +308,7 @@ export const cancelExtraction = mutation({
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
     // Its papers no longer count against the person's limit; their other jobs start in it.
     await refillWorkspace(ctx, job.workspaceId);
+    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "extraction", id: args.jobId, happened: "stopped" });
 
     // Any in-flight paper action sees the cancelled job on its next
     // status check and returns without persisting.

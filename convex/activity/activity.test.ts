@@ -6,7 +6,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { ensureWorkspace } from "../workspaces/create";
 import { searchNote } from "../research/records";
-import type { SearchEdit } from "../../lib/research/records";
+import type { SavedSearch, SearchEdit } from "../../lib/research/records";
 
 /** Alice and Bob in a lab, and Carol, who isn't. */
 async function lab() {
@@ -35,6 +35,19 @@ it("lists what changed on a collection, newest first, by whom, and what the assi
     { by: "Bob", you: false, happened: "added", count: 1, detail: "Coaching at scale", viaAssistant: undefined },
     { by: "Alice", you: true, happened: "renamed", count: undefined, detail: "Trials", viaAssistant: undefined },
     { by: "Alice", you: true, happened: "created", count: undefined, detail: "Trials", viaAssistant: undefined },
+  ]);
+});
+
+it("notes a paper leaving a collection with the library, and coming back with Undo", async () => {
+  const { alice, bob, workspaceId } = await lab();
+  const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Trials" });
+  await bob.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "Coaching at scale", collectionId });
+  const { undo } = await bob.mutation(api.library.mutations.removeFromLibrary, { workspaceId, openalexId: "https://openalex.org/W1" });
+  await bob.mutation(api.library.mutations.restoreLibraryItem, { workspaceId, ...undo.args });
+  const rows = (await alice.query(api.activity.queries.list, { workspaceId, kind: "collection", id: collectionId, paginationOpts: { cursor: null, numItems: 10 } })).page;
+  expect(rows.slice(0, 2).map(({ by, happened, count, detail }) => ({ by: by.name, happened, count, detail }))).toEqual([
+    { by: "Bob", happened: "added", count: 1, detail: "Coaching at scale" },
+    { by: "Bob", happened: "removed", count: 1, detail: "Coaching at scale" },
   ]);
 });
 
@@ -71,4 +84,42 @@ it("notes a search's own edits, not the count and page its page keeps current", 
   // The model's answers aren't anyone's change; a person's are.
   expect(edit({ kind: "responses", paperId: "W1", by: "model", responses: [] })).toBeNull();
   expect(edit({ kind: "responses", paperId: "W1", by: "person", responses: [] })).toMatchObject({ happened: "answered", count: 1 });
+});
+
+it("keeps each workspace's activity to itself, even for searches sharing an ID", async () => {
+  const { alice, carol, workspaceId, carolOwn } = await lab();
+  const search = (id: string, query: string) => ({ kind: "createSearch" as const, search: { ...SEARCH, id, query } });
+  // A search's ID is the browser's, unique only within a workspace: Carol makes one with the lab's.
+  await alice.mutation(api.research.records.change, { accountId: "alice", workspaceId, requestId: "lab", command: search("same", "lab query") });
+  await carol.mutation(api.research.records.change, { accountId: "carol", workspaceId: carolOwn, requestId: "own", command: search("same", "her query") });
+  const listed = async (as: typeof alice, where: Id<"workspaces">) => (await as.query(api.activity.queries.list, { workspaceId: where, kind: "search", id: "same", paginationOpts: { cursor: null, numItems: 10 } })).page.map((row) => row.detail);
+  expect(await listed(carol, carolOwn)).toEqual(["her query"]);
+  expect(await listed(alice, workspaceId)).toEqual(["lab query"]);
+});
+
+const SEARCH: SavedSearch = {
+  id: "s", query: "q", field: "title_and_abstract", count: 0,
+  queryHistoryCount: 0, questionCount: 0, latestQuestion: "", questionText: "",
+  screeningQuestions: [], screeningResponses: [],
+  createdAt: "2026-10-01T00:00:00Z", updatedAt: "2026-10-01T00:00:00Z",
+  dateRange: { from: "2020-01-01T00:00:00Z", to: "2025-12-31T00:00:00Z" }, yearRange: [2020, 2025], filterType: "year", isYearRangeEnabled: false,
+  sortBy: "relevance_score:desc", selectedRegions: [], selectedCountryFocus: [], ratingRange: [0, 5], onlyRatedPapers: false,
+  citesItemId: "", citedByItemId: "", relatedToItemId: "", reviewFilter: false, researchAreas: [], sdgs: [],
+  openAccessOnly: false, workTypes: [], workLanguages: [], institutionTypes: [], funders: [], authors: [],
+  minCitations: 0, hasAbstract: false, includeRetracted: false, language: "en", page: 1,
+};
+
+it("notes a search change once, and not one that left the search as it was", async () => {
+  const { alice, workspaceId } = await lab();
+  const change = (requestId: string, command: Parameters<typeof searchNote>[0]) => alice.mutation(api.research.records.change, { accountId: "alice", workspaceId, requestId, command });
+  const created = { kind: "createSearch" as const, search: { ...SEARCH, id: "s1", query: "tutoring" } };
+  await change("make", created);
+  // A retried request applies once.
+  await change("make", created);
+  // Making it again, keeping the one there, changes nothing.
+  await change("again", { ...created, ifExists: "keep" });
+  await change("query", { kind: "editSearch", id: "s1", edit: { kind: "query", query: "tutoring AND rct", field: "title_and_abstract" } });
+  await change("same", { kind: "editSearch", id: "s1", edit: { kind: "query", query: "tutoring AND rct", field: "title_and_abstract" } });
+  const rows = (await alice.query(api.activity.queries.list, { workspaceId, kind: "search", id: "s1", paginationOpts: { cursor: null, numItems: 10 } })).page;
+  expect(rows.map((row) => [row.happened, row.detail])).toEqual([["edited", "tutoring AND rct"], ["created", "tutoring"]]);
 });

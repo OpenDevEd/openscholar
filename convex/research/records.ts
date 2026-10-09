@@ -1,5 +1,6 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import type { Note } from "../activity/validators";
+import { noteActivity } from "../activity/notes";
 import { v, type Infer } from "convex/values";
 import { mutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -362,6 +363,14 @@ async function copyHistory(ctx: MutationCtx, { userId, workspaceId }: InWorkspac
 
 /** Fields the page writes itself as it shows a search. */
 const KEPT_BY_THE_PAGE = new Set(["count", "page", "updatedAt"]);
+/** And what a search keeps of its own history, which a query run again adds to without changing it. */
+const HISTORY = new Set(["queryHistoryCount", "questionCount", "latestQuestion", "questionText"]);
+
+/** Whether a change left the search different, apart from what the page and its history keep. */
+function changedSearch(before: Doc<"searches">["data"], after: Doc<"searches">["data"]) {
+  const kept = (data: Doc<"searches">["data"]) => JSON.stringify(Object.entries(currentSearch(data)).filter(([field]) => !KEPT_BY_THE_PAGE.has(field) && !HISTORY.has(field)).sort(([a], [b]) => a.localeCompare(b)));
+  return kept(before) !== kept(after);
+}
 
 /** What a change from a search's page did to it, for its Activity (#656); a change to no one search, such as a shortcut, notes nothing. */
 export function searchNote(command: Infer<typeof commandValidator>): Note | null {
@@ -603,7 +612,6 @@ async function received(ctx: MutationCtx, userId: Id<"users">, key: string) {
 
 export const changeAction = defineUserMutation({
   path: "research/records:change",
-  activity: ({ command }) => searchNote(command),
   description:
     "Changes the person's research records: create, edit or delete a saved search, set or remove a query shortcut, rate a paper, or clear every saved search or every shortcut they have (a batch at a time; searches keep their revisions). Edits to a search show live on the person's open page and are kept as revisions. " +
     "A change that can be reversed returns `undo`: the action to run and the arguments to run it with to put things back. It is refused if the record changed again in between. Making a search, changing its query or filters, a shortcut and a rating can be reversed; deleting, clearing, and changes to questions and answers can't.",
@@ -660,8 +668,19 @@ export const changeAction = defineUserMutation({
     const key = `change:${args.requestId}`;
     const receipt = await received(ctx, userId, key);
     if (!receipt) await checkRemoval(ctx, actor, args.command);
+    // What the change did to its search, for its Activity (#656): noted here, not declared, so a
+    // retried request or a change that left the search as it was notes nothing.
+    const note = receipt ? null : searchNote(args.command);
+    const before = note ? await findSearch(ctx, workspaceId, note.id) : null;
     const undo = receipt ? receipt.undo : await applyCommand(ctx, { userId, workspaceId }, args.command, author);
     if (!receipt) await ctx.db.insert("researchReceipts", { userId, key, ...(undo ? { undo } : {}) });
+    if (note) {
+      const after = await findSearch(ctx, workspaceId, note.id);
+      // Answers are kept apart from the search, so its revision doesn't move with them.
+      if (after && (note.happened === "answered" || !before || changedSearch(before.data, after.data))) {
+        await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, note);
+      }
+    }
     return undo ? { undo: { path: "research/records:change" as const, args: { command: undo } } } : {};
   },
 });

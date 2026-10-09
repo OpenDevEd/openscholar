@@ -13,6 +13,7 @@ import {
 } from "./validators";
 import { requireActiveUser, requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
+import { noteActivity } from "../activity/notes";
 import { pricingOf, resolveTaskPick, serverStamp } from "../ai/serverModel";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { screeningPool } from "../workpool";
@@ -27,7 +28,7 @@ import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec"
 import { answeredFully, ensureScreening } from "../research/answers";
 import { newCollection } from "../library/collections";
 import { searchSnapshotValidator } from "../paperSets/openalex";
-import { bookkeepLater, finishIfDone } from "./bookkeeping";
+import { bookkeepLater, finishIfDone, noteShelved } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { applyCommand, findSearch } from "../research/records";
@@ -341,6 +342,8 @@ export const cancelScreeningJob = mutation({
     // Its papers' queued work is dropped in batches afterwards, as Firecrawl drops a cancelled
     // crawl's queue, so the pool's slots free up sooner.
     await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId: args.jobId, cursor: null });
+    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "screening", id: args.jobId, happened: "stopped" });
+    await noteShelved(ctx, job);
 
     return null;
   },

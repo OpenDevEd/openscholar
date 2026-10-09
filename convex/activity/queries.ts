@@ -40,7 +40,7 @@ export const listAction = defineUserQuery({
   run: async (ctx, { userId, workspaceId }, { kind, id, paginationOpts }) => {
     // Nothing for an item elsewhere, or a new search the server hasn't saved yet.
     if (!(await itemIn(ctx, workspaceId, kind, id))) return { page: [], isDone: true, continueCursor: "" };
-    const page = await ctx.db.query("activity").withIndex("by_item", (q) => q.eq("item", itemKey(kind, id))).order("desc").paginate(paginationOpts);
+    const page = await ctx.db.query("activity").withIndex("by_workspace_and_item", (q) => q.eq("workspaceId", workspaceId).eq("item", itemKey(kind, id))).order("desc").paginate(paginationOpts);
     // Each person read once a page.
     const people = new Map<Id<"users">, Promise<{ name: string; imageUrl?: string; you: boolean }>>();
     const person = (by: Id<"users">) => {

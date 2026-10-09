@@ -40,7 +40,7 @@ export const heldCount = internalQuery({
  * counted first, so a query OpenAlex won't take, or a range past the search's last paper, is
  * refused here; a held set's count is the account's.
  */
-async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, author: "user" | "assistant", { set, first, last: through, name, ...config }: Config & { set: PaperSet; first: number; last: number }, call?: ChangeCall): Promise<{ jobId: Id<"screeningJobs"> }> {
+async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, author: "user" | "assistant", { set, first, last: through, name, ...config }: Config & { set: PaperSet; first: number; last: number }, call?: ChangeCall): Promise<{ jobId: Id<"screeningJobs">; papers: number }> {
   const spendCap = call?.credits;
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(through) || first < 1 || through < first) {
     throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
@@ -67,7 +67,8 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, autho
   const open = (spend: { spendCap?: number; spendHold?: string }) =>
     ctx.runMutation(internal.screening.mutations.openScreeningJob, { userId, workspaceId, author, set, first, last, ...(snapshot ? { snapshot } : {}), ...config, ...(name ? { name } : {}), papers: last - first + 1, ...step, ...spend });
   // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
-  return spendCap === undefined ? await open({}) : await startHeld(ctx, { userId, workspaceId, credits: spendCap, kind: "screening" }, (spendHold) => open({ spendCap, spendHold }));
+  const { jobId } = spendCap === undefined ? await open({}) : await startHeld(ctx, { userId, workspaceId, credits: spendCap, kind: "screening" }, (spendHold) => open({ spendCap, spendHold }));
+  return { jobId, papers: last - first + 1 };
 }
 
 /** How often an ended job is looked at again while a paper of it is still being read, and for how long at most: longer than a paper's worker can run. */
@@ -149,8 +150,8 @@ export const check = internalQuery({
 
 export const screenAction = defineUserAction({
   path: "screening/start:screen",
-  activity: ({ set, first, last, name }, { jobId }) => {
-    const screened = { happened: "screened" as const, count: last - first + 1, ...(name?.trim() ? { detail: name.trim() } : {}) };
+  activity: ({ set, name }, { jobId, papers }) => {
+    const screened = { happened: "screened" as const, count: papers, ...(name?.trim() ? { detail: name.trim() } : {}) };
     // The search or collection it read keeps it too.
     const from = set.kind === "search" ? { kind: "search" as const, id: set.searchId } : set.kind === "collection" ? { kind: "collection" as const, id: set.collectionId } : null;
     return [{ kind: "screening", id: jobId, ...screened }, ...(from ? [{ ...from, ...screened }] : [])];
@@ -161,7 +162,8 @@ export const screenAction = defineUserAction({
     "The job is made at once and its papers are read after, a step at a time, however many: until then the job is `reading`, and one whose papers can't be read ends `failed`, with why in its `failure`. " +
     "Included papers go to `saveTo`. With `prune`, papers of a collection that end excluded or failed leave it. Give it a `name` when the person names it; without one it goes by its papers' set. Spends credits.",
   args: { set: paperSetValidator, first: v.number(), last: v.number(), ...jobArgs, saveTo: saveToValidator, prune: v.optional(v.boolean()), name: v.optional(v.string()) },
-  returns: v.object({ jobId: v.id("screeningJobs") }),
+  // `papers`: how many it takes, no more than the set has from `first`.
+  returns: v.object({ jobId: v.id("screeningJobs"), papers: v.number() }),
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
@@ -177,7 +179,7 @@ export const screenAction = defineUserAction({
     ...(prune ? { prune } : {}),
   }),
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  run: (ctx, { userId, workspaceId, author }, args, call): Promise<{ jobId: Id<"screeningJobs"> }> => start(ctx, { userId, workspaceId }, author, args, call),
+  run: (ctx, { userId, workspaceId, author }, args, call): Promise<{ jobId: Id<"screeningJobs">; papers: number }> => start(ctx, { userId, workspaceId }, author, args, call),
 });
 export const screen = userAction(screenAction);
 export const screenForAssistant = assistantAction(screenAction);

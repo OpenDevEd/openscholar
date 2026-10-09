@@ -9,6 +9,7 @@ import { createError } from "../lib/errors";
 import { ASKS_FIRST, actingAs, assistantMutation, defineUserMutation, reversal, reversedBy, userMutation, type Acting, type Author } from "../lib/userActions";
 import { requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
 import { endStep } from "../assistant/steps";
+import { noteActivity } from "../activity/notes";
 import { undoCommandValidator } from "../../lib/research/records";
 import { canonical, findItem } from "./find";
 import { libraryCountRow } from "./counter";
@@ -285,6 +286,11 @@ export const setLibraryRatingAction = defineUserMutation({
 export const setLibraryRating = userMutation(setLibraryRatingAction);
 export const setLibraryRatingForAssistant = assistantMutation(setLibraryRatingAction);
 
+/** The collections a removal or its undo notes in their Activity at most: a paper in more notes the first of them. */
+const PLACES_NOTED = 20;
+
+const placeNote = (id: Id<"collections">, happened: "added" | "removed", title: string) => ({ kind: "collection" as const, id, happened, count: 1, detail: title });
+
 /** How long a removed paper is kept for Undo. */
 const REMOVAL_KEPT_MS = 24 * 60 * 60_000;
 
@@ -362,12 +368,15 @@ export const removeFromLibraryAction = defineUserMutation({
     }
     const { _id, _creationTime, workspaceId: _workspace, ...kept } = item;
     const expiresAt = Date.now() + REMOVAL_KEPT_MS;
+    // The collections it leaves note it in their Activity (#656), read before its places move.
+    const left = await livePlaces(ctx, item._id).take(PLACES_NOTED);
     const removalId = await ctx.db.insert("libraryRemovals", { workspaceId, item: kept, itemId: item._id, expiresAt });
     // Its places in collections: this batch now, the rest in the batches it schedules.
     if (await movePlaces(ctx, removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.movePlacesLater, { removalId });
     await countedWrite(ctx, { userId, workspaceId }, -1, () => ctx.db.delete("libraryItems", item._id));
     if (args.rating !== undefined) await setPersonalRating(ctx, userId, item.openalexId, args.rating);
     await ctx.scheduler.runAt(expiresAt, internal.library.mutations.forgetRemoval, { removalId });
+    await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, left.map(({ collectionId }) => placeNote(collectionId, "removed", item.title)));
     return { undo: { path: RESTORE, args: { removalId } } };
   },
 });
@@ -490,8 +499,12 @@ export const restoreLibraryItemAction = defineUserMutation({
     }
     // Kept until its day is over, so places still being moved off the removed paper come back too.
     await ctx.db.patch("libraryRemovals", removalId, { restoredAs: libraryItemId });
+    // The collections it goes back into note it in their Activity (#656), read before its places do.
+    const back = await ctx.db.query("removedPlaces").withIndex("by_removal", (q) => q.eq("removalId", removalId)).take(PLACES_NOTED);
     // Its places: this batch now, the rest in the batches it schedules.
     if (await restorePlaces(ctx, removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.restorePlacesLater, { removalId });
+    const kept = await Promise.all(back.map(async ({ collectionId }) => ((await ctx.db.get("collections", collectionId))?.workspaceId === workspaceId ? collectionId : null)));
+    await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, kept.filter((id) => id !== null).map((id) => placeNote(id, "added", item.title)));
     return { id: libraryItemId };
   },
 });

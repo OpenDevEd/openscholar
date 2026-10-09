@@ -24,6 +24,7 @@ import { moveResultAnswers } from "./drain";
 import { account, FAILED, standing, withDeltas, type Delta, type Move } from "./accounting";
 import { startWaitingPapers } from "./slots";
 import { captureLater } from "../lib/analyticsEvents";
+import { noteActivity } from "../activity/notes";
 
 /** Papers per batch: each moves its answers and may save a library item, a few dozen reads. */
 const BATCH = 50;
@@ -182,6 +183,21 @@ export const withMoved = (progress: Pick<Doc<"screeningJobProgress">, "saved" | 
   ...(moved.removed ? { removed: Math.max(0, (progress.removed ?? 0) + moved.removed) } : {}),
 });
 
+/**
+ * Notes in their Activity (#656) what an ended job did to collections, as whoever ran it: the papers
+ * it saved to its collection, and those it took out of the collection it read. A paper an answer
+ * changed after the job ended moves without a note; the screening's own Activity has the answer.
+ */
+export async function noteShelved(ctx: MutationCtx, job: Doc<"screeningJobs">, progress?: Doc<"screeningJobProgress"> | null) {
+  const { saved, removed } = progress ?? (await progressRow(ctx, job._id)) ?? {};
+  const pruned = job.prune && job.set?.kind === "collection" ? job.set.collectionId : undefined;
+  const detail = job.name ?? job.label;
+  await noteActivity(ctx, { workspaceId: job.workspaceId, by: job.createdBy, viaAssistant: job.chatStep !== undefined }, [
+    ...(job.targetCollectionId && saved ? [{ kind: "collection" as const, id: job.targetCollectionId, happened: "added" as const, count: saved, ...(detail ? { detail } : {}) }] : []),
+    ...(pruned && removed ? [{ kind: "collection" as const, id: pruned, happened: "removed" as const, count: removed, ...(detail ? { detail } : {}) }] : []),
+  ]);
+}
+
 /** Finishes a processing job once it has read its papers and its progress counts every one. */
 export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
   const job = await ctx.db.get("screeningJobs", jobId);
@@ -191,6 +207,7 @@ export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">)
   const now = Date.now();
   // One that stopped at the most it may spend, or when the person's credits ran out, has papers it never read: it ends as stopped, not as done.
   await ctx.db.patch("screeningJobs", jobId, { status: job.capped || job.outOfCredits ? "creditsExhausted" : "completed", completedAt: now, updatedAt: now });
+  await noteShelved(ctx, job, progress);
   const user = await ctx.db.get("users", job.createdBy);
   if (user?.clerkId) {
     await captureLater(ctx, [{

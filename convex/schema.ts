@@ -1247,7 +1247,8 @@ export default defineSchema({
   // COLLECTIONS - Named groups for organizing library items
   // ═══════════════════════════════════════════════════════════════
   // What changed on each item and who changed it (#656), newest first by item.
-  activity: defineTable(activityFields).index("by_item", ["item"]).index("by_workspace", ["workspaceId"]),
+  // By workspace first: a search's ID is only unique within its workspace.
+  activity: defineTable(activityFields).index("by_workspace_and_item", ["workspaceId", "item"]),
 
   collections: defineTable({
     workspaceId: v.id("workspaces"),
