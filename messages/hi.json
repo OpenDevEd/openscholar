@@ -4154,6 +4154,8 @@
       "included": "शामिल"
     },
     "couldntInvite": "संगठन बन गया, पर आमंत्रण नहीं भेजे जा सके। उन्हें इसकी सदस्य सेटिंग्स से भेजें।",
-    "fromCredits": "{name} के क्रेडिट से"
+    "fromCredits": "{name} के क्रेडिट से",
+    "workspace": "वर्कस्पेस",
+    "creditsLeft": "{credits} क्रेडिट बचे"
   }
 }

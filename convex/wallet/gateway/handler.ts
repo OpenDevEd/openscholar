@@ -83,6 +83,7 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
 
   const keyResult: {
     userId: Id<"users">;
+    workspaceId: Id<"workspaces">;
     walletKeyId: Id<"walletKeys">;
     appName: string;
     redirectOrigin: string;
@@ -197,8 +198,13 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     ) +
     (searches ? convertUsdToCredits({ usd: WEB_SEARCH_USD, markup: walletModel.costMarkup }) : 0);
   const chargeId = `wallet:${crypto.randomUUID()}`;
-  // A connected app spends its owner's own workspace's credits, until each key names the workspace it draws on (#651).
-  const workspaceId: Id<"workspaces"> = await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: keyResult.userId });
+  // A connected app spends the credits of the workspace it was connected to (#651), while its person is still in it.
+  const workspaceId = keyResult.workspaceId;
+  try {
+    await ctx.runQuery(internal.workspaces.actor.activeActor, { userId: keyResult.userId, workspaceId });
+  } catch {
+    return openAIError("This key's workspace is no longer one you're in. Connect the app again.", "invalid_request_error", 403, allowedOrigin);
+  }
   if (
     !(await reserveCredits(ctx, {
       userId: keyResult.userId,
@@ -537,6 +543,7 @@ export const handleBalance = httpAction(async (ctx, request) => {
 
   const keyResult: {
     userId: Id<"users">;
+    workspaceId: Id<"workspaces">;
     walletKeyId: Id<"walletKeys">;
     appName: string;
     redirectOrigin: string;

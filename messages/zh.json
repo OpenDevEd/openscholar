@@ -4154,6 +4154,8 @@
       "included": "包含"
     },
     "couldntInvite": "组织已创建，但邀请未能发出。请在其成员设置中发送。",
-    "fromCredits": "使用 {name} 的积分"
+    "fromCredits": "使用 {name} 的积分",
+    "workspace": "工作区",
+    "creditsLeft": "剩余 {credits} 积分"
   }
 }

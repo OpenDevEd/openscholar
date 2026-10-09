@@ -70,6 +70,16 @@ export function WorkspaceTile({ workspace, size = "md", home = false }: { worksp
   return <IdentityAvatar name={workspace.name} imageUrl={workspace.imageUrl} kind="organization" className={cn(TILE_BOX[size], TILE_CORNER[size])} />;
 }
 
+/** A chip led by a workspace's tile and named for it; a long name is cut. */
+export function WorkspaceTag({ workspace, size = "md" }: { workspace: WorkspaceLook; size?: "sm" | "md" }) {
+  return (
+    <span className={cn("inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-muted pr-2.5 text-xs", size === "sm" ? "h-6 pl-0.5" : "h-7 pl-1")}>
+      <WorkspaceTile workspace={workspace} size="xs" />
+      <span className="min-w-0 truncate">{workspace.name}</span>
+    </span>
+  );
+}
+
 /** A workspace's tile with the hairline the switcher gives it. */
 export function Framed({ children }: { children: React.ReactNode }) {
   return <span className="flex shrink-0 rounded-lg shadow-[0_1px_2px_rgb(0_0_0/0.08),inset_0_0_0_1px_rgb(0_0_0/0.06)]">{children}</span>;

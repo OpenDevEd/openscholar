@@ -7,6 +7,9 @@ import { api } from "@/convex/_generated/api";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { SignIn } from "@clerk/nextjs";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useWorkspaces } from "@/components/workspaces/parts";
+import { WorkspacePicker } from "@/components/workspaces/workspace-picker";
 
 type ConnectState = "consent" | "creating" | "show_key" | "done" | "error";
 
@@ -24,6 +27,10 @@ export default function ConnectPage() {
   const [error, setError] = useState<string | null>(null);
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // The app draws on one workspace's credits (#651): your own unless you pick another.
+  const workspaces = useWorkspaces();
+  const [workspace, setWorkspace] = useState<Id<"workspaces"> | null>(null);
+  const picked = workspace ?? workspaces?.[0]?.workspaceId;
 
   const redirectOrigin = (() => {
     try {
@@ -51,11 +58,13 @@ export default function ConnectPage() {
       return;
     }
 
+    if (!picked) return;
     setState("creating");
     try {
       const walletKeyId = await approveConnection({
         appName,
         redirectOrigin: redirectOrigin || "manual",
+        workspaceId: picked,
       });
 
       const { rawKey } = await finalizeConnection({ walletKeyId });
@@ -76,7 +85,7 @@ export default function ConnectPage() {
       setError(e instanceof Error ? e.message : "Failed to create connection");
       setState("error");
     }
-  }, [redirectUri, redirectOrigin, appName, isManualMode, isOriginAllowed, approveConnection, finalizeConnection]);
+  }, [redirectUri, redirectOrigin, appName, isManualMode, isOriginAllowed, approveConnection, finalizeConnection, picked]);
 
   const handleReject = useCallback(() => {
     if (isManualMode || isOriginAllowed !== true) {
@@ -126,7 +135,7 @@ export default function ConnectPage() {
         <div className="max-w-md w-full space-y-6">
           <div className="text-center space-y-2">
             <div className="text-3xl">&#x2713;</div>
-            <h1 className="text-2xl font-semibold">Connection Created</h1>
+            <h1 className="text-2xl font-semibold">Connection created</h1>
             <p className="text-muted-foreground">
               Copy this API key and paste it into <strong>{appName}</strong>.
               It will only be shown once.
@@ -175,7 +184,7 @@ export default function ConnectPage() {
             <span className="text-2xl">&#x26D4;</span>
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">Origin Not Registered</h1>
+            <h1 className="text-2xl font-semibold">Origin not registered</h1>
             <p className="text-muted-foreground">
               The application at <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{redirectOrigin}</code> is
               not registered to connect to OpenScholar.
@@ -229,6 +238,11 @@ export default function ConnectPage() {
           </div>
         </div>
 
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Draws on</p>
+          <WorkspacePicker value={picked} onChange={setWorkspace} disabled={state === "creating" || state === "done"} />
+        </div>
+
         {state === "error" && (
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
             {error}
@@ -245,7 +259,7 @@ export default function ConnectPage() {
           </button>
           <button
             onClick={handleApprove}
-            disabled={state === "creating" || state === "done" || !canRunProtectedQueries || (!isManualMode && isOriginAllowed !== true)}
+            disabled={state === "creating" || state === "done" || !canRunProtectedQueries || !picked || (!isManualMode && isOriginAllowed !== true)}
             className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {state === "creating"

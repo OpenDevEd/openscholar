@@ -4154,6 +4154,8 @@
       "included": "含まれるもの"
     },
     "couldntInvite": "組織は作成されましたが、招待を送れませんでした。メンバー設定から送ってください。",
-    "fromCredits": "{name} のクレジットから"
+    "fromCredits": "{name} のクレジットから",
+    "workspace": "ワークスペース",
+    "creditsLeft": "残り {credits} クレジット"
   }
 }

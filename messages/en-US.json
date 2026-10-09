@@ -4154,6 +4154,8 @@
       "included": "Included"
     },
     "couldntInvite": "The organization was made, but the invitations didn't go out. Send them from its Members settings.",
-    "fromCredits": "From {name}'s credits"
+    "fromCredits": "From {name}'s credits",
+    "workspace": "Workspace",
+    "creditsLeft": "{credits} credits left"
   }
 }
