@@ -213,14 +213,14 @@ test("rail links keep their names, mark the page they open and take one keyboard
   await page.keyboard.press("Tab");
   await expect(rail.getByRole("link", { name: "History", exact: true })).toBeFocused();
   await expect(rail.getByRole("link", { name: "Screen", exact: true })).toBeVisible();
-  // The account card opens from the rail, and Escape closes it and gives the keyboard back.
-  const account = page.getByRole("button", { name: "Account", exact: true });
-  await account.focus();
+  // Signed out, the rail ends in More: it opens from the keyboard, and Escape closes it and gives the keyboard back.
+  const more = page.getByRole("button", { name: "More", exact: true });
+  await more.focus();
   await page.keyboard.press("Enter");
-  await expect(account).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("menu")).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(account).toHaveAttribute("aria-expanded", "false");
-  await expect(account).toBeFocused();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(more).toBeFocused();
 });
 
 test("choosing History dismisses the mobile navigation", async ({ page }) => {
