@@ -47,7 +47,11 @@ export const create = workspaceMutation({
   args: {name: v.string()},
   returns: v.id("authorProfiles"),
   handler: async (ctx, {userId, workspaceId}, args) => {
-    await requireOrganizationFeature(ctx, "authors");
+    // In an organization, its own switch; in a person's own workspace, any of their organizations', until plans give features (#652).
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
+    if (workspace?.kind === "organization" ? organization?.authorsEnabled !== true : false) throw createError("FORBIDDEN", "This organization doesn't have author profiles enabled.");
+    if (workspace?.kind !== "organization") await requireOrganizationFeature(ctx, "authors");
     return await createProfile(ctx, userId, workspaceId, args.name);
   },
 });
