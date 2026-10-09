@@ -387,6 +387,19 @@ describe("holding and charging", () => {
 });
 
 describe("an approved job's hold", () => {
+  it("names the hold's workspace as payer of every item under it, whichever workspace the item says", async () => {
+    const t = convexTest(schema);
+    const { userId, own, lab } = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", { clerkId: "clerk_payer", email: "payer@test.local", state: "active", createdAt: 1, updatedAt: 1 });
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_payer", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      return { userId, own: await personalWorkspaceOf(ctx, userId), lab: (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id };
+    });
+    // A job's hold taken on her own workspace, as one started before charges named their payer was.
+    await t.mutation(internal.billing.charge.hold, { userId, workspaceId: own, chargeId: "job-hold", credits: 50, expiresAt: Date.now() + 60_000, spend: true });
+    await t.mutation(internal.billing.charge.recordUnder, { userId, workspaceId: lab, under: "job-hold", chargeId: "item-1", credits: 5, kind: "extraction", description: "item", createdAt: 1 });
+    expect(await t.run(async (ctx) => (await ctx.db.query("billingUsage").collect()).map((row) => [row.chargeId, row.workspaceId]))).toEqual([["item-1", own]]);
+  });
+
   beforeEach(() => {
     fakeAutumn.reset();
     vi.stubGlobal("fetch", fakeAutumnFetch());

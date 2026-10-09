@@ -67,11 +67,12 @@ function isInsufficientBalance(error: unknown): boolean {
 }
 
 /**
- * Who pays a charge: the workspace it names, or, for one started before charges named their
- * payer (#650), the hold's, or else the spender's own. Slice 8 drops the fallbacks.
+ * Who pays a charge: the workspace its hold was taken on, when it has one, since that's whose
+ * credits are held; else the workspace it names; else, for one started before charges named
+ * their payer (#650), the spender's own. Slice 8 drops that fallback.
  */
-async function payerOf(ctx: MutationCtx, args: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }, hold?: { workspaceId?: Id<"workspaces"> } | null) {
-  const workspaceId = args.workspaceId ?? hold?.workspaceId ?? (await ownWorkspaceOf(ctx, args.userId));
+async function payerOf(ctx: MutationCtx, args: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }, hold?: { userId: Id<"users">; workspaceId?: Id<"workspaces"> } | null) {
+  const workspaceId = hold ? (hold.workspaceId ?? (await ownWorkspaceOf(ctx, hold.userId))) : (args.workspaceId ?? (await ownWorkspaceOf(ctx, args.userId)));
   if (!workspaceId) throw createError("NOT_FOUND", "Workspace not found");
   return { workspaceId, customerId: await customerOf(ctx, workspaceId) };
 }
