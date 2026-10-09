@@ -46,7 +46,7 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { Button } from "@/components/ui/button";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { cn } from "@/lib/utils";
-import { ManageCollectionsDialog, NewCollectionDialog } from "./collection-dialogs";
+import { ManageCollectionsDialog, NewCollectionDialog, useCollectionDialogsReady, useManageCollections } from "./collection-dialogs";
 import { ActivityButton } from "@/components/workspaces/activity";
 import { LibraryCommandCenter } from "./library-command-center";
 import { LibraryEmptyState } from "./library-empty-state";
@@ -99,10 +99,15 @@ export function LibraryPageClient() {
   }, [setParams]);
 
   const [collectionDialog, setCollectionDialog] = useState<"new" | "manage" | null>(null);
+  // The dialogs open with what they show already read: New collection's counts, and Manage's list, which this page holds.
+  useCollectionDialogsReady();
+  const manage = useManageCollections();
   // The sidebar control that opened a collection dialog, which focus goes back to.
   const dialogOpener = useRef<HTMLElement | null>(null);
   const openCollectionDialog = (which: "new" | "manage") => {
     dialogOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // Manage opens on the whole list.
+    if (which === "manage") manage.setQuery("");
     setCollectionDialog(which);
   };
 
@@ -618,7 +623,7 @@ export function LibraryPageClient() {
         </SidebarLayout>
         {/* Outside the layout, whose phone tabs show the sidebar or the results, never both: the sidebar opens them. A collection made here opens, as a new folder does. */}
         <NewCollectionDialog open={collectionDialog === "new"} onOpenChange={(open) => setCollectionDialog(open ? "new" : null)} onCreated={(id) => setParams({ col: id })} returnFocus={() => dialogOpener.current} />
-        <ManageCollectionsDialog open={collectionDialog === "manage"} onOpenChange={(open) => setCollectionDialog(open ? "manage" : null)} onNew={() => setCollectionDialog("new")} returnFocus={() => dialogOpener.current} />
+        <ManageCollectionsDialog manage={manage} open={collectionDialog === "manage"} onOpenChange={(open) => setCollectionDialog(open ? "manage" : null)} onNew={() => setCollectionDialog("new")} returnFocus={() => dialogOpener.current} />
         </ServerRatingsContext.Provider>
       </ScreeningContext.Provider>
     </TranslationContext.Provider>

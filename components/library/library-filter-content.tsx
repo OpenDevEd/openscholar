@@ -26,6 +26,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 /**
@@ -345,78 +346,81 @@ function CollectionFilterSection({
         </>
       }
     >
-      <div className="space-y-2">
-        {/* Inline search (only when 8+ collections) */}
-        {showSearch && (
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t("searchCollections")}
-              className="h-8 pl-8 text-sm"
-            />
-          </div>
-        )}
+      {/* The list arrives after the page: it slides what's below into place rather than moving it in one frame. */}
+      <AutoHeight>
+        <div className="space-y-2">
+          {/* Inline search (only when 8+ collections) */}
+          {showSearch && (
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t("searchCollections")}
+                className="h-8 pl-8 text-sm"
+              />
+            </div>
+          )}
 
-        {/* Vertical list */}
-        <div
-          className={cn("space-y-0.5", collections.isStale && "pointer-events-none opacity-60")}
-          // A full page's height while there are pages; while the first loads, the rows the count says it will have.
-          style={showPagination ? { minHeight: FULL_PAGE_PX } : collections.isLoading && totalCollections ? { minHeight: (Math.min(totalCollections, PAGE_SIZE) + 1) * ROW_PX - 2 } : undefined}
-        >
-          {/* "All" row — first on page 1, hidden when searching */}
-          {!hasSearch && collections.page === 1 && (
-            <CollectionRow
-              name={t("allCollections")}
-              isActive={collectionId === null}
-              onClick={() => onCollectionChange(null)}
+          {/* Vertical list */}
+          <div
+            className={cn("space-y-0.5", collections.isStale && "pointer-events-none opacity-60")}
+            // A full page's height while there are pages; while the first loads, the rows the count says it will have.
+            style={showPagination ? { minHeight: FULL_PAGE_PX } : collections.isLoading && totalCollections ? { minHeight: (Math.min(totalCollections, PAGE_SIZE) + 1) * ROW_PX - 2 } : undefined}
+          >
+            {/* "All" row — first on page 1, hidden when searching */}
+            {!hasSearch && collections.page === 1 && (
+              <CollectionRow
+                name={t("allCollections")}
+                isActive={collectionId === null}
+                onClick={() => onCollectionChange(null)}
+              />
+            )}
+
+            {collections.items.map((collection) => (
+              <CollectionRow
+                key={collection._id}
+                name={collection.name}
+                count={collection.itemCount}
+                isActive={collectionId === collection._id}
+                onClick={() => onCollectionChange(collection._id)}
+              />
+            ))}
+
+            {/* No search results */}
+            {hasSearch && !collections.isLoading && collections.items.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-3">
+                {t("noCollections")}
+              </p>
+            )}
+          </div>
+
+          {showPagination && (
+            <PageStepper
+              className="pt-1"
+              page={collections.page}
+              pageCount={hasSearch || totalCollections === undefined ? undefined : Math.ceil(totalCollections / PAGE_SIZE)}
+              canPrevious={collections.canPrevious}
+              canNext={collections.canNext}
+              onPrevious={collections.previous}
+              onNext={collections.next}
             />
           )}
 
-          {collections.items.map((collection) => (
-            <CollectionRow
-              key={collection._id}
-              name={collection.name}
-              count={collection.itemCount}
-              isActive={collectionId === collection._id}
-              onClick={() => onCollectionChange(collection._id)}
-            />
-          ))}
-
-          {/* No search results */}
-          {hasSearch && !collections.isLoading && collections.items.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-3">
-              {t("noCollections")}
-            </p>
+          {/* Empty state */}
+          {totalCollections === 0 && (
+            <div className="text-center py-3">
+              <Folder className="h-5 w-5 mx-auto mb-1.5 text-muted-foreground/50" />
+              <p className="text-xs text-muted-foreground">
+                {t("noCollections")}
+              </p>
+              <Button type="button" variant="outline" size="sm" className="mt-2.5 h-8 rounded-lg" onClick={onNewCollection}>
+                <Plus /> {ts("newCollection")}
+              </Button>
+            </div>
           )}
         </div>
-
-        {showPagination && (
-          <PageStepper
-            className="pt-1"
-            page={collections.page}
-            pageCount={hasSearch || totalCollections === undefined ? undefined : Math.ceil(totalCollections / PAGE_SIZE)}
-            canPrevious={collections.canPrevious}
-            canNext={collections.canNext}
-            onPrevious={collections.previous}
-            onNext={collections.next}
-          />
-        )}
-
-        {/* Empty state */}
-        {totalCollections === 0 && (
-          <div className="text-center py-3">
-            <Folder className="h-5 w-5 mx-auto mb-1.5 text-muted-foreground/50" />
-            <p className="text-xs text-muted-foreground">
-              {t("noCollections")}
-            </p>
-            <Button type="button" variant="outline" size="sm" className="mt-2.5 h-8 rounded-lg" onClick={onNewCollection}>
-              <Plus /> {ts("newCollection")}
-            </Button>
-          </div>
-        )}
-      </div>
+      </AutoHeight>
     </FilterSection>
   );
 }

@@ -225,6 +225,8 @@ vi.mock("@/components/command-center/command-center-container", () => ({
 vi.mock("@/components/library/collection-dialogs", () => ({
   NewCollectionDialog: () => null,
   ManageCollectionsDialog: () => null,
+  useCollectionDialogsReady: () => undefined,
+  useManageCollections: () => ({ setQuery: () => undefined }),
 }));
 
 vi.mock("@/components/library/library-command-center", () => ({

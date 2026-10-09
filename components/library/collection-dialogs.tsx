@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { MemberFaces, useCurrentWorkspace, usePlanOf, WorkspaceTag } from "@/components/workspaces/parts";
+import { MemberFaces, useCurrentWorkspace, useMemberFaces, usePlanOf, WorkspaceTag } from "@/components/workspaces/parts";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -72,10 +72,7 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
   const workspace = useCurrentWorkspace();
   const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
   const createCollection = useWorkspaceMutation(api.library.collections.createCollection);
-  const { data: count } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
-  // The workspace's plan's most collections, as the server holds it to them; null for no limit.
-  const { data: limits } = useProtectedQuery(api.billing.accounts.myLimits, inWorkspace(workspaceId, {}));
-  const limit = limits === undefined ? undefined : (limits?.collections ?? null);
+  const { count, limit } = useCollectionCount();
   const [name, setName] = useState("");
   const [withPaper, setWithPaper] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -116,7 +113,7 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
       </div>
       <ScrollArea shades className="min-h-0 flex-1">
         <form
-          className="space-y-5 p-4"
+          className="flex flex-col gap-5 p-4"
           onSubmit={(e) => {
             e.preventDefault();
             make();
@@ -149,20 +146,27 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
 
           <section className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">{t("whoSeesIt")}</p>
-            <div className="flex min-h-10 flex-wrap items-center gap-2 rounded-xl bg-inset p-2.5">
-              {workspace ? <WorkspaceTag workspace={workspace} strong /> : null}
-              {org ? (
-                <>
-                  <MemberFaces workspaceId={workspaceId} label={t("everyoneIn", { workspace: workspace.name })} ring="ring-(--color-inset)" />
-                  <span className="ml-auto flex items-center gap-1.5 pr-1 text-xs text-muted-foreground">
-                    <PenLine className="size-3.5" /> {t("everyMemberEdits")}
-                  </span>
-                </>
-              ) : workspace ? (
-                <span className="ml-auto flex items-center gap-1.5 pr-1 text-xs text-muted-foreground">
-                  <Lock className="size-3.5" /> {t("onlyYou")}
-                </span>
+            {/* The workspace on its own line, then who's in it and what they can do, so a long name never moves them. */}
+            <div className="space-y-2.5 rounded-xl border border-border-subtle p-3">
+              {workspace ? (
+                <div className="flex min-w-0">
+                  <WorkspaceTag workspace={workspace} strong />
+                </div>
               ) : null}
+              <div className="flex min-h-5 items-center gap-2 text-xs text-muted-foreground">
+                {org ? (
+                  <>
+                    <MemberFaces workspaceId={workspaceId} label={t("everyoneIn", { workspace: workspace.name })} ring="ring-background" />
+                    <span className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                      <PenLine className="size-3.5" /> {t("everyMemberEdits")}
+                    </span>
+                  </>
+                ) : workspace ? (
+                  <span className="flex items-center gap-1.5 whitespace-nowrap">
+                    <Lock className="size-3.5" /> {t("onlyYou")}
+                  </span>
+                ) : null}
+              </div>
             </div>
           </section>
 
@@ -182,7 +186,16 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
       </ScrollArea>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-border/50 p-4">
-        {count !== undefined && limit !== undefined ? <CollectionMeter count={count} limit={limit} plan={plan.name} /> : null}
+        {/* Its place is kept: from a paper's Save menu the dialog can open before its count is read, and the meter fades in. */}
+        <div className="flex min-h-9 min-w-44 items-center">
+          <AnimatePresence initial={false}>
+            {count !== undefined && limit !== undefined ? (
+              <motion.div key="meter" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25, ease: EASE }}>
+                <CollectionMeter count={count} limit={limit} plan={plan.name} />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="ghost" onClick={close}>
             {tc("cancel")}
@@ -249,17 +262,49 @@ const MANAGE_PAGE = 8;
 const MANAGE_ROW_PX = 57;
 
 /** Your collections a page at a time: rename, delete with Undo, and a new one through the dialog. */
-export function ManageCollectionsDialog({ open, onOpenChange, onNew, returnFocus }: { open: boolean; onOpenChange: (open: boolean) => void; onNew: () => void; returnFocus?: ReturnFocus }) {
+/** The workspace's count of collections and its plan's most, as the server holds it to them; null for no limit. */
+function useCollectionCount() {
+  const workspaceId = useWorkspace();
+  const { data: count } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
+  const { data: limits } = useProtectedQuery(api.billing.accounts.myLimits, inWorkspace(workspaceId, {}));
+  return { count, limit: limits === undefined ? undefined : (limits?.collections ?? null) };
+}
+
+/**
+ * Keeps New collection's reads up while it's shut, so it opens with them: its count, its limit and an
+ * organization's member faces. Identical reads share one subscription.
+ */
+export function useCollectionDialogsReady() {
+  const workspace = useCurrentWorkspace();
+  useCollectionCount();
+  useMemberFaces(workspace?.kind === "organization" ? workspace.workspaceId : undefined);
+}
+
+/**
+ * Manage collections' list, its search and its count. The library page holds it, so the dialog
+ * opens on a list already read: one pager, which the dialog borrows.
+ */
+export function useManageCollections() {
+  const workspaceId = useWorkspace();
+  const [query, setQuery] = useState("");
+  const search = useDebouncedValue(query.trim(), 300);
+  const { count: total } = useCollectionCount();
+  const list = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, { search: search || undefined }), MANAGE_PAGE);
+  return { query, setQuery, search, total, list };
+}
+type Manage = ReturnType<typeof useManageCollections>;
+
+export function ManageCollectionsDialog({ manage, open, onOpenChange, onNew, returnFocus }: { manage: Manage; open: boolean; onOpenChange: (open: boolean) => void; onNew: () => void; returnFocus?: ReturnFocus }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className={DIALOG} onCloseAutoFocus={restoreFocus(returnFocus)}>
-        <ManageCollections close={() => onOpenChange(false)} onNew={onNew} />
+        <ManageCollections manage={manage} close={() => onOpenChange(false)} onNew={onNew} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function ManageCollections({ close, onNew }: { close: () => void; onNew: () => void }) {
+function ManageCollections({ manage, close, onNew }: { manage: Manage; close: () => void; onNew: () => void }) {
   const t = useTranslations("libraryPage");
   const ts = useTranslations("saveToLibrary");
   const tc = useTranslations("common");
@@ -267,10 +312,7 @@ function ManageCollections({ close, onNew }: { close: () => void; onNew: () => v
   const workspace = useCurrentWorkspace();
   const renameCollection = useWorkspaceMutation(api.library.collections.renameCollection);
   const deleteCollection = useWorkspaceMutation(api.library.collections.deleteCollection);
-  const [query, setQuery] = useState("");
-  const search = useDebouncedValue(query.trim(), 300);
-  const { data: total } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
-  const list = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, { search: search || undefined }), MANAGE_PAGE);
+  const { query, setQuery, search, total, list } = manage;
   const deleting = useDeleting((s) => s.ids);
   const shown = list.items.filter((c) => !deleting.includes(c._id));
   const [editing, setEditing] = useState<Id<"collections"> | null>(null);
