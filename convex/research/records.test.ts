@@ -404,7 +404,7 @@ describe("account research records", () => {
     await expect(alice.query(api.research.records.ratingsOf, { accountId: "alice", paperIds: Array.from({ length: 201 }, (_, i) => `W${i}`) })).rejects.toThrow("200 papers at a time");
     // Each is kept in the ratings table too, as its person's own (#655).
     const kept = await t.run(async (ctx) => (await ctx.db.query("ratings").collect()).map(({ paperId, rating, collectionId }) => `${paperId}:${rating}:${collectionId ?? "own"}`));
-    expect(kept.sort()).toEqual(["W1:1:own", "W1:4:own", "W2:0:own", "W3:5:own"]);
+    expect(kept.sort()).toEqual(["https://openalex.org/W1:1:own", "https://openalex.org/W1:4:own", "https://openalex.org/W2:0:own", "https://openalex.org/W3:5:own"]);
   });
 
   it("lists, finds, counts, reads by name and clears the person's shortcuts, and no one else's", async () => {

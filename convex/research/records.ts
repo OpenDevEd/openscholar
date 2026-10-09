@@ -163,7 +163,8 @@ export const ratingsForAssistant = assistantQuery(ratingsAction);
 /** The person's ratings among `paperIds`. */
 export async function ratingsAmong(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperIds: string[]) {
   const rows = await Promise.all(paperIds.map(paperId => personalRatingRow(ctx, userId, paperId)));
-  return rows.flatMap(row => (row ? [{ paperId: row.paperId, rating: row.rating }] : []));
+  // Each under the ID it was asked for: a rating is kept under the paper's whole address.
+  return paperIds.flatMap((paperId, at) => (rows[at] ? [{ paperId, rating: rows[at].rating }] : []));
 }
 
 export const ratingsOfAction = defineUserQuery({
