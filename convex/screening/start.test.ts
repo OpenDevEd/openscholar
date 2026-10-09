@@ -17,6 +17,7 @@ import type { SavedSearch } from "../../lib/research/records";
 import { exportParts } from "../exports.test-support";
 import { createJob } from "./createJob.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
+import { madeBy } from "../workspaces/actor.test-support";
 
 const questions = [{ key: "q1", question: "Randomized?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 };
@@ -42,11 +43,11 @@ async function setup({ saved = 6, inCollection = 4, credits = 100_000 } = {}) {
     const userId = await ctx.db.insert("users", { clerkId: "alice", email: "alice@example.com", state: "active", createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("users", { clerkId: "bob", email: "bob@example.com", state: "active", createdAt: 1, updatedAt: 1 });
     await seedCreditsForTest(ctx, { userId, free: credits });
-    await ctx.db.insert("libraryCounts", { userId, count: saved });
+    await ctx.db.insert("libraryCounts", { workspaceId: await personalWorkspaceOf(ctx, userId), count: saved });
     await ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: PRICE.input, outputPricePerMillion: PRICE.output, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: [], syncedAt: 1, createdAt: 1, updatedAt: 1 });
-    const collectionId = await ctx.db.insert("collections", { userId, name: "Reading trials", sortName: collectionSortName("Reading trials"), itemCount: inCollection, createdAt: 1, updatedAt: 1 });
+    const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Reading trials", sortName: collectionSortName("Reading trials"), itemCount: inCollection, createdAt: 1, updatedAt: 1 });
     for (let i = 1; i <= saved; i++) {
-      const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: W(i), title: `Paper ${i}`, authors: ["Ada Lovelace", "Alan Turing"], abstract: "Tutoring works", journal: "A journal", citedByCount: i, publicationYear: 2020, searchableText: `Paper ${i}`, savedAt: i, updatedAt: i });
+      const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: W(i), title: `Paper ${i}`, authors: ["Ada Lovelace", "Alan Turing"], abstract: "Tutoring works", journal: "A journal", citedByCount: i, publicationYear: 2020, searchableText: `Paper ${i}`, savedAt: i, updatedAt: i });
       if (i <= inCollection) await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: i });
     }
     return { userId, collectionId };
@@ -124,7 +125,7 @@ describe("where a job's papers go", () => {
     const { jobId } = await screen({ set: { kind: "collection", collectionId }, first: 1, last: 4, ...job, saveTo: { kind: "new", name: " Included trials " }, prune: true });
     await answerAll(jobId, [4, 1], 3);
 
-    const made = await t.run((ctx) => ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", userId).eq("sortName", "included trials")).unique());
+    const made = await t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId).eq("sortName", "included trials")).unique(); });
     expect(await read(jobId)).toMatchObject({ status: "completed", targetCollectionName: "Included trials", prune: true, outcomes: { included: 2, excluded: 2 }, credits: { spent: 12, estimate: 4 * PER_PAPER }, saved: 2, removed: 2 });
     expect(await inCollectionNow(made!._id)).toEqual([W(1), W(4)]);
     expect(await inCollectionNow(collectionId)).toEqual([W(1), W(4)]);
@@ -187,7 +188,7 @@ describe("where a job's papers go", () => {
     const { jobId } = await screen({ set: { kind: "screening", jobId: source }, first: 1, last: 2, ...job, saveTo: { kind: "none" } });
     await answerAll(jobId, [1, 2]);
 
-    expect(await t.run((ctx) => ctx.db.query("libraryItems").withIndex("by_user", (q) => q.eq("userId", userId)).take(5))).toEqual([]);
+    expect(await t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return ctx.db.query("libraryItems").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(5); })).toEqual([]);
     expect(await inCollectionNow(collectionId)).toEqual([]);
   });
 });

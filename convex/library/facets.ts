@@ -84,7 +84,7 @@ async function recount(ctx: QueueingCtx, id: string, before: Counted | null, aft
   await queueCounts(ctx, facetCounts, operations);
 }
 
-export const countedItem = (item: Doc<"libraryItems">): Counted => ({ ...item, scopes: item.workspaceId ? [item.userId, item.workspaceId] : [item.userId] });
+export const countedItem = (item: Doc<"libraryItems">): Counted => ({ ...item, scopes: [item.workspaceId] });
 export const countedMembership = (membership: Doc<"libraryItemCollections">): Counted => ({ ...membership, scopes: [membership.collectionId] });
 
 export const countItemChange = (ctx: MutationCtx, change: Change<DataModel, "libraryItems">) =>

@@ -4,6 +4,7 @@ import { api, internal } from "../_generated/api";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
 
 // Each paper answered for 1 credit's worth of tokens.
 vi.mock("../../lib/ai/core/batch", () => ({
@@ -29,9 +30,9 @@ it("runs a request as one job under the one figure the person approved: one hold
   const { userId, collectionId, threadId, stepId } = await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { clerkId: "clerk_one_approval", email: "one@test.local", state: "active", createdAt: 1, updatedAt: 1 });
     await seedCreditsForTest(ctx, { userId, free: 100 });
-    const collectionId = await ctx.db.insert("collections", { userId, name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
+    const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
     for (const n of [1, 2]) {
-      const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
+      const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
       await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: n });
     }
     // The chat and the step of its reply that started the screening.

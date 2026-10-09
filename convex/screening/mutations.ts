@@ -443,7 +443,7 @@ export const addToCollectionInternal = internalMutation({
   handler: async (ctx, args) => {
     const collection = await ctx.db.get("collections", args.collectionId);
     const item = await ctx.db.get("libraryItems", args.libraryItemId);
-    if (collection && item) await addCollectionMembership(ctx, { userId: args.userId, collection, item });
+    if (collection && item) await addCollectionMembership(ctx, { collection, item });
     return null;
   },
 });

@@ -28,7 +28,6 @@ async function touchCollection(
 export async function addCollectionMembership(
   ctx: MutationCtx,
   args: {
-    userId: Id<"users">;
     collection: Doc<"collections">;
     item: Doc<"libraryItems">;
     assignedAt?: number;
@@ -45,7 +44,6 @@ export async function addCollectionMembership(
   if (existing) return null;
   const assignedAt = args.assignedAt ?? Date.now();
   await ctx.db.insert("libraryItemCollections", {
-    userId: args.userId,
     collectionId: args.collection._id,
     libraryItemId: args.item._id,
     assignedAt,

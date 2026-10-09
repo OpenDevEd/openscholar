@@ -12,13 +12,14 @@ import { ownActor } from "../workspaces/actor.test-support";
 import { personalWorkspaceOf } from "../workspaces/actor";
 import { countInRange } from "./facets";
 import { ensureWorkspace } from "../workspaces/create";
+import { madeBy } from "../workspaces/actor.test-support";
 
 type Test = ReturnType<typeof convexTest>;
 
 async function setup(t: Test) {
   const userId = await t.run(async (ctx) => {
     const id = await ctx.db.insert("users", { clerkId: "reader", email: "reader@test.local", state: "active", createdAt: 1, updatedAt: 1 });
-    await ctx.db.insert("libraryCounts", { userId: id, count: 0 });
+    await ctx.db.insert("libraryCounts", { workspaceId: await personalWorkspaceOf(ctx, id), count: 0 });
     return id;
   });
   return { userId, as: t.withIdentity({ subject: "reader" }) };
@@ -77,7 +78,7 @@ describe("library facets", () => {
       for (let start = 0; start < places; start += 350) {
         await t.run(async (ctx) => {
           for (let i = start; i < Math.min(places, start + 350); i++) {
-            const collectionId = await ctx.db.insert("collections", { userId, name: `c${i}`, sortName: `c${i}`, itemCount: 1, createdAt: 1, updatedAt: 1 });
+            const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: `c${i}`, sortName: `c${i}`, itemCount: 1, createdAt: 1, updatedAt: 1 });
             await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId: id, assignedAt: i });
           }
         });
@@ -127,8 +128,8 @@ describe("library facets", () => {
     const { userId, as } = await setup(t);
     // Many rated papers with no year, which sort before every year; one rated and dated.
     await t.run(async (ctx) => {
-      for (let i = 0; i < 300; i++) await ctx.db.insert("libraryItems", { userId, ...paper(i), rating: 5, searchableText: "x", savedAt: i, updatedAt: 1 });
-      await ctx.db.insert("libraryItems", { userId, ...paper(1_000), rating: 5, publicationYear: 2010, searchableText: "x", savedAt: 1_000, updatedAt: 1 });
+      for (let i = 0; i < 300; i++) await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paper(i), rating: 5, searchableText: "x", savedAt: i, updatedAt: 1 });
+      await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paper(1_000), rating: 5, publicationYear: 2010, searchableText: "x", savedAt: 1_000, updatedAt: 1 });
     });
     await t.finishAllScheduledFunctions(() => {});
     expect(await as.query(api.library.queries.countPapers, { minRating: 4, yearTo: 2020 })).toEqual({ count: 1 });
@@ -144,7 +145,7 @@ describe("library facets", () => {
       await t.run(async (ctx) => {
         const collection = (await ctx.db.get("collections", collectionId))!;
         for (let i = start; i < start + 10; i++) {
-          const id = await ctx.db.insert("libraryItems", { userId, ...paper(i), abstract: "x".repeat(400_000), searchableText: "x", savedAt: i, updatedAt: 1 });
+          const id = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paper(i), abstract: "x".repeat(400_000), searchableText: "x", savedAt: i, updatedAt: 1 });
           await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId: id, assignedAt: i });
           await ctx.db.patch("collections", collectionId, { itemCount: collection.itemCount + i - start + 1 });
         }
@@ -175,7 +176,7 @@ describe("library facets", () => {
       for (let start = 0; start < places; start += 150) {
         await t.run(async (ctx) => {
           for (let i = start; i < start + 150; i++) {
-            const collectionId = await ctx.db.insert("collections", { userId, name: `c${i}`, sortName: `c${i}`, itemCount: 1, createdAt: 1, updatedAt: 1 });
+            const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: `c${i}`, sortName: `c${i}`, itemCount: 1, createdAt: 1, updatedAt: 1 });
             await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId: id, assignedAt: i });
             collections.push(collectionId);
           }
@@ -314,33 +315,4 @@ describe("the library in workspaces (#650)", () => {
     expect(await titles(asAlice, lab)).toEqual(["Paper 2"]);
   });
 
-  it("puts library rows from before workspaces in their person's own, counted there, however often the backfill runs", async () => {
-    vi.useFakeTimers();
-    try {
-      const t = convexTest(schema);
-      const userId = await t.run((ctx) => ctx.db.insert("users", { clerkId: "reader", email: "reader@test.local", state: "active", createdAt: 1, updatedAt: 1 }));
-      const own = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
-      // As they were before workspaces: counted under the person, with no workspace or maker.
-      await runUncapped(t, async (ctx) => {
-        for (const [i, rating] of [5, 5, 1].entries()) await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, rating, searchableText: `Paper ${i}`, savedAt: i, updatedAt: i });
-        const item = await ctx.db.insert("libraryItems", { userId, openalexId: "https://openalex.org/W9", title: "Removed", searchableText: "Removed", savedAt: 9, updatedAt: 9 });
-        await ctx.db.insert("libraryRemovals", { userId, itemId: item, item: { openalexId: "https://openalex.org/W9", title: "Removed", searchableText: "Removed", savedAt: 9, updatedAt: 9 }, expiresAt: Date.now() + 60_000 });
-        await ctx.db.delete("libraryItems", item);
-        await ctx.db.insert("collections", { userId, name: "Old", sortName: "old", itemCount: 0, createdAt: 1, updatedAt: 1 });
-        await ctx.db.insert("libraryCounts", { userId, count: 3 });
-        await ctx.db.insert("collectionCounts", { userId, count: 1 });
-      });
-      // Their counts applied, three papers and four other rows have no workspace.
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-      expect(await t.action(internal.migrations.libraryWorkspaces.verify, {})).toBe(7);
-      for (let runs = 0; runs < 2; runs++) {
-        await t.mutation(internal.migrations.libraryWorkspaces.run, {});
-        await t.finishAllScheduledFunctions(vi.runAllTimers);
-      }
-      expect(await t.action(internal.migrations.libraryWorkspaces.verify, {})).toBe(0);
-      expect(await ratingsIn(t, own)).toEqual([0, 1, 0, 0, 0, 2]);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 });

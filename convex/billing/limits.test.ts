@@ -84,7 +84,7 @@ describe("plan limits over time", () => {
     const t = convexTest(schema);
     const userId = await t.run(async (ctx) => {
       const id = await ctx.db.insert("users", { clerkId: "small", email: "small@test.local", state: "active", createdAt: 1, updatedAt: 1 });
-      await ctx.db.insert("libraryCounts", { userId: id, count: 5_000 });
+      await ctx.db.insert("libraryCounts", { workspaceId: await personalWorkspaceOf(ctx, id), count: 5_000 });
       await ctx.db.insert("billingAccounts", { userId: id, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { request_papers: 1_000 } });
       return id;
     });

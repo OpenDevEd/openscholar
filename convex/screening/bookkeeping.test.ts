@@ -7,6 +7,7 @@ import type { MutationCtx } from "../_generated/server";
 import schema from "../schema";
 import { bookkeepLater, progressRow } from "./bookkeeping";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 const questions = [{ key: "q1", question: "Is this relevant?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }], minimumScore: 1 };
@@ -78,7 +79,7 @@ describe("Screen all bookkeeping", () => {
 
     expect(await counts(t, jobId)).toEqual({ completed: 2, skipped: 1, failed: 1, qualified: 1 });
     expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("completed");
-    const library = await t.run((ctx) => ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId)).collect());
+    const library = await t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId)).collect(); });
     expect(library.map((item) => item.openalexId)).toEqual(["https://openalex.org/W1"]);
     const answers = await t.run((ctx) => ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId)).collect());
     expect(answers).toHaveLength(2);

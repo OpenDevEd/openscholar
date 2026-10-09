@@ -59,9 +59,10 @@ export const libraryPapersValidator = v.object({
 
 /** What the library keeps of a saved paper. */
 export const libraryItemFields = {
-    userId: v.id("users"),
-    workspaceId: v.optional(v.id("workspaces")),
-    createdBy: v.optional(v.id("users")),
+    // The person it belonged to before workspaces, which migrations/narrowLibrary.ts clears before it goes (#650).
+    userId: v.optional(v.id("users")),
+    workspaceId: v.id("workspaces"),
+    createdBy: v.id("users"),
     openalexId: v.string(), // e.g. "https://openalex.org/W1234567890"
     rating: v.optional(v.number()), // 0-5; unset when the paper was saved without rating it
     title: v.string(),

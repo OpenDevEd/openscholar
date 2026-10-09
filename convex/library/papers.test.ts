@@ -2,6 +2,8 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { madeBy } from "../workspaces/actor.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 let requests: URL[] = [];
 /** OpenAlex, answering for one work as its API does: the abstract as an index of words, and nothing for a work it doesn't have. */
@@ -87,10 +89,11 @@ describe("saving a paper by its ID", () => {
     await expect(ada.mutation(api.library.mutations.removeFromLibrary, taken.undo!.args as never)).rejects.toThrow(/changed since/);
     // A rating that would change only what the paper has on search cards is a second change too.
     await t.run(async (ctx) => ctx.db.insert("paperRatings", { userId, data: { paperId: "https://openalex.org/W7", rating: 3 } }));
-    await t.run(async (ctx) => ctx.db.patch("libraryItems", (await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", "https://openalex.org/W7")).unique())!._id, { rating: 5 }));
+    const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
+    await t.run(async (ctx) => ctx.db.patch("libraryItems", (await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W7")).unique())!._id, { rating: 5 }));
     await expect(ada.action(save, { id: "W7", rating: 5, collectionId: other })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
     await t.run(async (ctx) => { for (const row of await ctx.db.query("paperRatings").take(10)) if (row.data.paperId === "https://openalex.org/W7") await ctx.db.delete("paperRatings", row._id); });
-    await t.run(async (ctx) => ctx.db.patch("libraryItems", (await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", "https://openalex.org/W7")).unique())!._id, { rating: undefined }));
+    await t.run(async (ctx) => ctx.db.patch("libraryItems", (await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W7")).unique())!._id, { rating: undefined }));
 
     // Put somewhere else since it was saved, the paper has changed: the save's undo leaves it.
     await ada.mutation(api.library.mutations.removeFromLibrary, { openalexId: "W7" });
@@ -115,7 +118,7 @@ describe("saving a paper by its ID", () => {
     expect(requests[0].pathname).toMatch(/\/works\/W7$/);
     const [item] = await items();
     // What the page saves from a results card: the trimmed fields, the abstract as text, and the whole record for the card.
-    expect(item).toMatchObject({ userId, openalexId: "https://openalex.org/W7", title: "Tutoring at scale", authors: ["Ada Okafor", "Ben Mwangi"], doi: "https://doi.org/10.1234/tutoring", abstract: "Tutoring works", publicationYear: 2021, journal: "Journal of Trials", citedByCount: 40, workType: "article", isOpenAccess: true, oaStatus: "gold" });
+    expect(item).toMatchObject({ createdBy: userId, openalexId: "https://openalex.org/W7", title: "Tutoring at scale", authors: ["Ada Okafor", "Ben Mwangi"], doi: "https://doi.org/10.1234/tutoring", abstract: "Tutoring works", publicationYear: 2021, journal: "Journal of Trials", citedByCount: 40, workType: "article", isOpenAccess: true, oaStatus: "gold" });
     expect(item.rating).toBeUndefined();
     expect(JSON.parse(item.paperData!)).toMatchObject({ id: "https://openalex.org/W7", abstract: "Tutoring works", authorships: [{ author: { display_name: "Ada Okafor" } }, { author: { display_name: "Ben Mwangi" } }] });
     expect(JSON.parse(item.paperData!).abstract_inverted_index).toBeUndefined();
@@ -129,7 +132,7 @@ describe("saving a paper by its ID", () => {
     expect(await ada.query(api.library.queries.savedPaper, { openalexId: "W7" })).toMatchObject({ libraryItemId: saved.libraryItemId });
 
     // Into a collection by the same bare ID, and a whole paper put in one under a bare ID is saved under the form the library keeps.
-    const collectionId = await t.run(async (ctx) => ctx.db.insert("collections", { userId, name: "Chapter 2", sortName: ("Chapter 2").toLowerCase(), itemCount: 0, createdAt: 1, updatedAt: 1 }));
+    const collectionId = await t.run(async (ctx) => ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Chapter 2", sortName: ("Chapter 2").toLowerCase(), itemCount: 0, createdAt: 1, updatedAt: 1 }));
     const { setPaperInCollection, removeFromLibrary } = api.library.mutations;
     expect((await ada.mutation(setPaperInCollection, { paper: { openalexId: "W7" }, collectionId, inCollection: true })).undo).toMatchObject({ args: { collectionId, inCollection: false } });
     await ada.mutation(setPaperInCollection, { paper: { openalexId: "W8", title: "Another paper" }, collectionId, inCollection: true });
@@ -145,7 +148,7 @@ describe("saving a paper by its ID", () => {
     await expect(ada.mutation(collect, { id: "W99", collectionId, inCollection: true })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
 
     // A paper saved under its bare ID, before the library kept one form, is still found by it, and can still be removed.
-    await t.run(async (ctx) => ctx.db.insert("libraryItems", { userId, openalexId: "W5", title: "Saved bare", searchableText: "Saved bare", savedAt: 1, updatedAt: 1 }));
+    await t.run(async (ctx) => ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: "W5", title: "Saved bare", searchableText: "Saved bare", savedAt: 1, updatedAt: 1 }));
     expect(await ada.query(api.library.queries.savedPaper, { openalexId: "W5" })).not.toBeNull();
     await ada.mutation(collect, { id: "W5", collectionId, inCollection: true });
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").take(5)).length)).toBe(3);

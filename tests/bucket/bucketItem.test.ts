@@ -25,7 +25,8 @@ function libraryDoc(overrides: {
   return {
     _id: (overrides._id ?? "lib_1") as Id<"libraryItems">,
     _creationTime: 0,
-    userId: "user_1" as Id<"users">,
+    workspaceId: "workspace_1" as Id<"workspaces">,
+    createdBy: "user_1" as Id<"users">,
     openalexId: overrides.openalexId ?? "https://openalex.org/W999",
     rating: 0,
     title: overrides.title ?? "A Library Item",

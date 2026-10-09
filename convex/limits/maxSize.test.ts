@@ -90,7 +90,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
       const name = `Reading list ${i}: ${text(200, i)}`;
       return { userId, name, sortName: collectionSortName(name), itemCount: 0, createdAt: 1, updatedAt: 1 };
     }));
-    await t.run((ctx) => ctx.db.insert("collectionCounts", { userId, count: COLLECTIONS }));
+    await t.run(async (ctx) => ctx.db.insert("collectionCounts", { workspaceId: await personalWorkspaceOf(ctx, userId), count: COLLECTIONS }));
     expect(await as.query(api.library.collections.countCollections, {})).toBe(COLLECTIONS);
     // Asking for more than the largest page gets the largest page.
     const page = await as.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: COLLECTIONS }, openalexId: "https://openalex.org/W0" });
