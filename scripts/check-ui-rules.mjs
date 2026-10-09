@@ -73,19 +73,20 @@ function cascade(declarations, properties) {
 }
 /** A comma-separated CSS list; functions go first, so the commas inside cubic-bezier() don't split it. */
 const cssList = (value) => value.replace(/[\w-]+\([^)]*\)/g, " ").split(",").map((item) => item.trim());
-/** Whether one CSS rule both animates and transitions opacity or transform. */
+/** Whether a CSS animation or transition declaration animates, or moves opacity or transform. */
+const cssAnimates = (animation) => !!animation && cssList(animation[1]).some((item) => item !== "" && !/(^|\s)none(\s|$)/i.test(item));
+const cssMoves = (transition) => !!transition && cssList(transition[1]).some((item) => (transition[0] === "transition" ? cssItemMoves(item) : MOVING.has(item)));
+/** Whether one CSS rule both animates and transitions opacity or transform, through declarations or Tailwind's `@apply`. */
 function cssClashes(body) {
-  const declarations = body
-    .split(";")
+  const parts = body.split(";").map((part) => part.trim());
+  const declarations = parts
     .map((declaration) => declaration.split(":"))
-    .filter((parts) => parts.length > 1)
+    .filter((pieces) => pieces.length > 1)
     .map(([name, ...value]) => [name.trim().toLowerCase(), value.join(":").trim()]);
-  const animation = cascade(declarations, ["animation", "animation-name"]);
-  const transition = cascade(declarations, ["transition", "transition-property"]);
-  if (!animation || !transition) return false;
-  const animates = cssList(animation[1]).some((item) => item !== "" && !/(^|\s)none(\s|$)/i.test(item));
-  const moves = cssList(transition[1]).some((item) => (transition[0] === "transition" ? cssItemMoves(item) : MOVING.has(item)));
-  return animates && moves;
+  // The rule's own box: `before:` utilities style a pseudo-element.
+  const applied = parts.filter((part) => part.startsWith("@apply ")).flatMap((part) => part.slice(7).split(/\s+/)).filter((token) => box(token) === "");
+  const animated = cssAnimates(cascade(declarations, ["animation", "animation-name"])) || applied.some(animates);
+  return animated && (cssMoves(cascade(declarations, ["transition", "transition-property"])) || applied.some(transitionsMovement));
 }
 /** Each CSS rule's own declarations, without the rules nested in it, and where its brace opens. */
 function cssRules(text) {
@@ -133,6 +134,8 @@ const capped = (lists) => {
   const unique = [...new Set(lists)];
   return unique.length > MAX_LISTS ? [[...new Set(unique.join(" ").split(/\s+/))].join(" ")] : unique;
 };
+// `motion.div`, or `m.div` inside LazyMotion.
+const MOTION_TAG = /^(motion|m)\./;
 const FRAMER_PROPS = new Set(["initial", "animate", "exit", "layout", "layoutId", "variants", "whileHover", "whileTap", "whileInView", "whileFocus", "whileDrag"]);
 // The `uppercase` utility with variants or the important mark (`sm:uppercase`,
 // `uppercase!`), looked for only where classes are written so prose that says
@@ -307,7 +310,7 @@ function check(file) {
         const name = attribute.name.getText(source);
         if (name === "className") classes = classLists(attribute.initializer);
         if (name === "style" && attribute.initializer) style = attribute.initializer.getText(source);
-        if (FRAMER_PROPS.has(name) && tag.startsWith("motion.")) framer = true;
+        if (FRAMER_PROPS.has(name) && MOTION_TAG.test(tag)) framer = true;
         if (name === "title") title = attribute;
         if (tag === "AvatarFallback" && name === "children" && attribute.initializer && rendersText(attribute.initializer)) report(attribute, "initials");
       }
