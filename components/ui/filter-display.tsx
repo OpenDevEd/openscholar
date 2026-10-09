@@ -73,6 +73,9 @@ export function FilterChips({
   );
 }
 
+/** Filters whose value is a paper's ID. The ID alone says nothing, so these keep their name beside it. */
+const NAMED_BY_ID = new Set<FilterItem["type"]>(["cites", "citedBy", "relatedTo"]);
+
 function FilterChip({ item, compact, singleLine, valuesOnly }: { item: FilterItem; compact: boolean; singleLine: boolean; valuesOnly: boolean }) {
   const Icon = item.icon;
   return (
@@ -86,7 +89,7 @@ function FilterChip({ item, compact, singleLine, valuesOnly }: { item: FilterIte
     >
       <Icon className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
       <span className="min-w-0 [overflow-wrap:anywhere]">
-        {item.label !== item.displayValue ? <span className={valuesOnly ? "sr-only" : "text-muted-foreground"}>{item.label} </span> : null}
+        {item.label !== item.displayValue ? <span className={valuesOnly && !NAMED_BY_ID.has(item.type) ? "sr-only" : "text-muted-foreground"}>{item.label} </span> : null}
         {item.ratingRange ? <RatingStars range={item.ratingRange} label={item.displayValue} /> : item.displayValue}
       </span>
       {item.countryCodes?.length ? (
