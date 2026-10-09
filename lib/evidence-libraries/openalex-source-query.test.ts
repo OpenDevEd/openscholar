@@ -86,5 +86,8 @@ describe("saved source search", () => {
     expect(isSearchByMeaning(byMeaning)).toBe(true);
     expect(buildOpenAlexSourceQuery(byMeaning)).toBeNull();
     expect(isSearchByMeaning({...byMeaning, field: "title_and_abstract"})).toBe(false);
+    // Nor the works nearest given papers.
+    const similar = {...DEFAULT_SEARCH_PARAMS, like: ["OS64233829"]};
+    expect([isSearchByMeaning(similar), buildOpenAlexSourceQuery(similar)]).toEqual([true, null]);
   });
 });

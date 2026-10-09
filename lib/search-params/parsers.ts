@@ -93,6 +93,8 @@ export const searchParamsParsers = {
   cites: parseAsString.withDefault(''),
   citedBy: parseAsString.withDefault(''),
   rel: parseAsString.withDefault(''), // relatedTo
+  // The papers a search finds the works nearest by meaning (the OpenScholar API's similar_to)
+  like: parseAsArrayOf(parseAsString).withDefault([]),
   
   // Content filters
   review: parseAsBoolean.withDefault(false),
@@ -133,6 +135,7 @@ export type ParsedSearchParams = {
   cites: string;
   citedBy: string;
   rel: string;
+  like: string[];
   review: boolean;
   area: string[];
   sdg: string[];
@@ -202,6 +205,7 @@ export function parseSearchParamsFromUrl(
     cites: searchParams.get('cites') ?? DEFAULT_SEARCH_PARAMS.cites,
     citedBy: searchParams.get('citedBy') ?? DEFAULT_SEARCH_PARAMS.citedBy,
     rel: searchParams.get('rel') ?? DEFAULT_SEARCH_PARAMS.rel,
+    like: parseListParam(searchParams, 'like'),
     review: searchParams.get('review') === 'true',
     area: parseListParam(searchParams, 'area'),
     sdg: parseListParam(searchParams, 'sdg'),
@@ -254,6 +258,7 @@ export const DEFAULT_SEARCH_PARAMS: ParsedSearchParams = {
   cites: '',
   citedBy: '',
   rel: '',
+  like: [],
   review: false,
   area: [],
   sdg: [],

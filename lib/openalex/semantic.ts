@@ -11,6 +11,9 @@ export const SEMANTIC_FIELD = "semantic";
 /** The works parameter that carries the question. */
 export const SEMANTIC_PARAMETER = "search.semantic";
 
+/** The works parameter that carries the papers whose nearest works by meaning are asked, joined by |. */
+export const SIMILAR_PARAMETER = "similar_to";
+
 /** The one order a search by meaning lists its works in. */
 export const SEMANTIC_SORT = "relevance_score:desc";
 

@@ -51,6 +51,7 @@ export const searchFields = {
   citesItemId: v.optional(v.string()),
   citedByItemId: v.optional(v.string()),
   relatedToItemId: v.optional(v.string()),
+  similarTo: filterValues(),
   reviewFilter: v.optional(v.boolean()),
   researchAreas: filterValues(),
   sdgs: filterValues(),

@@ -196,6 +196,7 @@ export const searchFiltersValidator = v.object({
     oql: v.optional(v.string()),
     /** A question asked by meaning, sent as `search.semantic` (lib/openalex/semantic.ts). */
     semantic: v.optional(v.string()),
+    similar: v.optional(v.string()),
     sort: v.string(),
   }),
   limit: v.optional(v.number()),

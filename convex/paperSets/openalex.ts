@@ -9,7 +9,7 @@ import { createError } from "../lib/errors";
 import { openAlexFetch, openAlexReason } from "../../lib/openalex/fetch";
 import { openAlexInit, openAlexUrl, worksAskOpenAlex } from "../../lib/openalex/request-url";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
-import { SEMANTIC_PARAMETER } from "../../lib/openalex/semantic";
+import { SEMANTIC_PARAMETER, SIMILAR_PARAMETER } from "../../lib/openalex/semantic";
 
 /** OpenAlex's largest page. */
 export const PAGE_SIZE = 200;
@@ -41,6 +41,8 @@ export const searchRequestValidator = v.object({
   oql: v.optional(v.string()),
   /** A question asked by meaning (lib/openalex/semantic.ts), in place of a search by words. */
   semantic: v.optional(v.string()),
+  /** The papers whose nearest works by meaning are asked, joined by |, sent as similar_to. */
+  similar: v.optional(v.string()),
   sort: v.string(),
 });
 export type SearchRequest = Infer<typeof searchRequestValidator>;
@@ -55,7 +57,7 @@ export type SearchSnapshot = Infer<typeof searchSnapshotValidator>;
 type Page = { page: number } | { cursor: string };
 
 /** How many of a character the search's text holds, outside its quoted phrases. */
-const countOf = (request: SearchRequest, character: string) => `${request.search ?? ""}${request.semantic ?? ""}${request.filter ?? ""}${request.oql ?? ""}`.replace(/"[^"]*"/g, "").split(character).length;
+const countOf = (request: SearchRequest, character: string) => `${request.search ?? ""}${request.semantic ?? ""}${request.similar ?? ""}${request.filter ?? ""}${request.oql ?? ""}`.replace(/"[^"]*"/g, "").split(character).length;
 
 /**
  * The error for an answer that isn't the papers. A 400 is a search OpenAlex won't take, and it
@@ -86,7 +88,7 @@ async function readPage<Work>(request: SearchRequest, at: Page, select: string, 
   };
   const url = request.oql
     ? openAlexUrl("", parameters)
-    : openAlexUrl("works", { ...parameters, search: request.search, [SEMANTIC_PARAMETER]: request.semantic, filter: request.filter });
+    : openAlexUrl("works", { ...parameters, search: request.search, [SEMANTIC_PARAMETER]: request.semantic, [SIMILAR_PARAMETER]: request.similar, filter: request.filter });
   let response: Response;
   try {
     response = await openAlexFetch(url, {
@@ -269,7 +271,7 @@ export async function readWork<Work>(id: string, select: string, spend: (pages: 
 export async function groupSearch(request: SearchRequest, by: string, spend: (pages: number) => Promise<boolean>): Promise<{ total: number; groups: Array<{ key: string; name: string; count: number }> }> {
   contact();
   if (request.oql) throw createError("VALIDATION_ERROR", "A search written in OQL can't be counted by group.");
-  if (request.semantic) throw createError("VALIDATION_ERROR", "A search by meaning can't be counted by group.");
+  if (request.semantic || request.similar) throw createError("VALIDATION_ERROR", "A search by meaning can't be counted by group.");
   if (!(await spend(1))) throw limited();
   let response: Response;
   try {

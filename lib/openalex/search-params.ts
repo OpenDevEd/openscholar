@@ -16,6 +16,8 @@ export type OpenAlexWorksQuery = {
   oql?: string;
   /** A question asked by meaning, sent as `search.semantic` (lib/openalex/semantic.ts). */
   semantic?: string;
+  /** The papers whose nearest works by meaning are asked, joined by |, sent as `similar_to`. */
+  similar?: string;
 };
 
 /**

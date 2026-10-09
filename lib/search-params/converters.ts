@@ -36,6 +36,7 @@ export type NewSearchResultData = {
   citesItemId?: string;
   citedByItemId?: string;
   relatedToItemId?: string;
+  similarTo?: string[];
   reviewFilter?: boolean;
   researchAreas?: string[];
   sdgs?: string[];
@@ -93,6 +94,7 @@ export function paramsToSearchResult(params: ParsedSearchParams): NewSearchResul
     citesItemId: params.cites,
     citedByItemId: params.citedBy,
     relatedToItemId: params.rel,
+    similarTo: params.like,
     
     // Content
     reviewFilter: params.review,
@@ -173,6 +175,9 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
   if (result.relatedToItemId) {
     params.rel = result.relatedToItemId;
   }
+  if (result.similarTo?.length) {
+    params.like = result.similarTo;
+  }
   
   // Content
   if (result.reviewFilter) {
@@ -209,10 +214,10 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
  * country focus and the review filter add one.
  */
 export function effectiveSort(
-  params: Pick<ParsedSearchParams, 'q' | 'sort' | 'field' | 'review' | 'focus'>,
+  params: Pick<ParsedSearchParams, 'q' | 'sort' | 'field' | 'review' | 'focus' | 'like'>,
 ): string {
-  // A question asked by meaning lists its works by relevance alone.
-  if (asksByMeaning(params.field, params.q)) return SEMANTIC_SORT;
+  // A question asked by meaning, or the works nearest given papers, are listed by relevance alone.
+  if (asksByMeaning(params.field, params.q) || params.like.length > 0) return SEMANTIC_SORT;
   const searchesText = params.field === OQL_FIELD
     ? /\b(has|is similar to)\b/i.test(params.q) || params.review || params.focus.length > 0
     : Boolean(params.q.trim());
@@ -245,6 +250,7 @@ export function paramsToFilters(params: ParsedSearchParams): SearchFilters {
     citesItemId: params.cites,
     citedByItemId: params.citedBy,
     relatedToItemId: params.rel,
+    similarTo: params.like,
     
     reviewFilter: params.review,
     researchAreas: params.area,
@@ -316,6 +322,7 @@ export function paramsMatchState(params: ParsedSearchParams, state: SearchResult
   if (params.cites !== (state.citesItemId || '')) return false;
   if (params.citedBy !== (state.citedByItemId || '')) return false;
   if (params.rel !== (state.relatedToItemId || '')) return false;
+  if (!arraysEqual(params.like, state.similarTo ?? [])) return false;
   
   // Content
   if (params.review !== (state.reviewFilter ?? false)) return false;
@@ -354,6 +361,7 @@ export function hasActiveFilters(params: ParsedSearchParams): boolean {
     params.cites !== '' ||
     params.citedBy !== '' ||
     params.rel !== '' ||
+    params.like.length > 0 ||
     params.review !== false ||
     params.area.length > 0 ||
     params.sdg.length > 0 ||

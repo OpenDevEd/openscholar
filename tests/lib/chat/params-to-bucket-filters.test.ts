@@ -41,6 +41,15 @@ describe("paramsToBucketSearchFilters", () => {
   });
 });
 
+describe("paramsToBucketSearchFilters, the works nearest given papers", () => {
+  it("keeps the papers in the request chat and extraction run, by relevance", () => {
+    const params = { ...DEFAULT_SEARCH_PARAMS, like: ["OS64233829"], oa: true, sort: "cited_by_count:desc" };
+    const stored = paramsToBucketSearchFilters(params, { expand: noShortcuts });
+    expect(stored?.openAlexQuery).toMatchObject({ similar: "OS64233829", sort: "relevance_score:desc" });
+    expect(stored?.openAlexQuery.filter).toContain("open_access.is_oa:true");
+  });
+});
+
 describe("paramsToBucketSearchFilters, a search by meaning", () => {
   it("keeps the question as typed, by relevance, with country focus and reviews as a filter beside it", () => {
     const params = {

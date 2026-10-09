@@ -155,6 +155,16 @@ describe("account research records", () => {
     expect(queries[0]).toMatchObject({ text: question, field: "semantic" });
   });
 
+  it("keeps the papers a search finds the works nearest, through an import and an edit", async () => {
+    const { alice } = await setup();
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported({ ...record, similarTo: ["OS64233829"] })] });
+    const search = () => alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id });
+    expect((await search())?.similarTo).toEqual(["OS64233829"]);
+    const edit: SearchEdit = { kind: "patch", fields: { similarTo: ["OS64233829", "OS14687712"] }, clear: [] };
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "like-two", command: { kind: "editSearch", id: record.id, edit } });
+    expect((await search())?.similarTo).toEqual(["OS64233829", "OS14687712"]);
+  });
+
   it("keeps each search's history in rows that its counts match, newest first a page at a time", async () => {
     const { alice } = await setup();
     await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported(record), imported({ ...record, id: "other" })] });

@@ -325,6 +325,8 @@ export function createSearchParameters(
     search?: string;
     /** A question asked by meaning (`search.semantic`), in place of a search by words. */
     semantic?: string;
+    /** The papers whose nearest works by meaning are asked (`similar_to`), joined by |. */
+    similar?: string;
     filter?: Record<string, unknown>;
     sortBy?: SortByWork;
   }
@@ -370,6 +372,9 @@ export function createSearchParameters(
       searchParams.search = query;
     }
   }
+
+  // The works nearest these papers by meaning, ranked by closeness (the OpenScholar API's similar_to).
+  if (filters.similarTo?.length) searchParams.similar = filters.similarTo.join('|');
 
   // Add cites, cited_by and related_to filtering
   if (filters.citesItemId) apiFilters.cites = relationFilterId(filters.citesItemId);
@@ -452,7 +457,7 @@ export function createSearchParameters(
   }
 
   // Add sorting: a question asked by meaning lists its works by relevance alone.
-  const sortBy = searchParams.semantic ? SEMANTIC_SORT : filters.sortBy;
+  const sortBy = searchParams.semantic || searchParams.similar ? SEMANTIC_SORT : filters.sortBy;
   if (sortBy) {
     const [field, order] = sortBy.split(':');
     searchParams.sortBy = {

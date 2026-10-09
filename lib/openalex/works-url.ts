@@ -1,7 +1,7 @@
 import { buildUrl } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
 import type { SearchParameters } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { openAlexUrl } from "./request-url";
-import { SEMANTIC_PARAMETER } from "./semantic";
+import { SEMANTIC_PARAMETER, SIMILAR_PARAMETER } from "./semantic";
 
 const encoded = (value: unknown): unknown =>
   typeof value === "string" ? encodeURIComponent(value)
@@ -22,8 +22,8 @@ export function withEncodedValues<T extends { search?: string; filter?: object }
  * A works search URL with OpenScholar's key, from the SDK's search parameters, and a question asked
  * by meaning, which the SDK does not know, as `search.semantic`.
  */
-export function worksUrl(parameters: SearchParameters & { semantic?: string }, extra: Record<string, string | undefined> = {}) {
+export function worksUrl(parameters: SearchParameters & { semantic?: string; similar?: string }, extra: Record<string, string | undefined> = {}) {
   const { search, searchField, filter, groupBy, sortBy } = withEncodedValues(parameters);
-  const asked = { ...extra, [SEMANTIC_PARAMETER]: parameters.semantic };
+  const asked = { ...extra, [SEMANTIC_PARAMETER]: parameters.semantic, [SIMILAR_PARAMETER]: parameters.similar };
   return openAlexUrl(buildUrl("", "works", search, searchField, filter, groupBy, sortBy), asked);
 }

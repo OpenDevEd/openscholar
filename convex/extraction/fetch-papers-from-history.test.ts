@@ -86,3 +86,14 @@ it("reads a search by meaning's papers with its question as search.semantic", as
   expect(requests).toHaveLength(2);
   expect(requests.every((url) => url.searchParams.get("search.semantic") === question && !url.searchParams.has("search"))).toBe(true);
 });
+
+// The works nearest given papers go to the OpenScholar API as similar_to on every page read.
+it("reads the papers nearest given papers with them as similar_to", async () => {
+  const { t, userId } = await setup();
+  const papers = await t.action(internal.extraction.actions.fetchPapersFromHistory, {
+    userId,
+    searchFilters: { query: "", openAlexQuery: { similar: "OS64233829|OS14687712", sort: "relevance_score:desc" }, limit: 300 },
+  });
+  expect(papers).toHaveLength(300);
+  expect(requests.every((url) => url.searchParams.get("similar_to") === "OS64233829|OS14687712")).toBe(true);
+});

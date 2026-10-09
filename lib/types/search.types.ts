@@ -129,6 +129,8 @@ export interface SearchFilters {
   citesItemId: string;
   citedByItemId: string;
   relatedToItemId: string;
+  /** The papers whose nearest works by meaning are asked (the OpenScholar API's similar_to); none for another search. */
+  similarTo?: string[];
   
   // Content type filters
   reviewFilter: boolean;
@@ -181,6 +183,7 @@ export interface SearchResult {
   citesItemId?: string;
   citedByItemId?: string;
   relatedToItemId?: string;
+  similarTo?: string[];
   reviewFilter?: boolean;
   researchAreas?: string[];
   sdgs?: string[];

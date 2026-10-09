@@ -32,6 +32,7 @@ export interface SearchParams {
   cites: string;
   citedBy: string;
   rel: string;            // relatedTo
+  like: string[];         // similar_to: the papers whose nearest works by meaning are asked
   review: boolean;        // reviewOnly
   area: string[];         // research area catalog ids
   sdg: string[];          // sustainable development goals

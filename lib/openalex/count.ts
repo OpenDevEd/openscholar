@@ -21,7 +21,7 @@ import { fetchOqlWorks } from "./oql-works";
 import { openAlexUrl } from "./request-url";
 import { fetchWorksPage } from "./works-page";
 import type { OpenAlexWorksQuery } from "./search-params";
-import { SEMANTIC_PARAMETER } from "./semantic";
+import { SEMANTIC_PARAMETER, SIMILAR_PARAMETER } from "./semantic";
 
 export async function fetchOpenAlexCount(
   query: string,
@@ -52,7 +52,7 @@ async function fetchOpenAlexQueryCount(
     if (!result.ok) throw new Error(`OpenAlex API error: ${result.message}`);
     return { count: result.data.meta.count };
   }
-  const asked = { filter: query.filter || undefined, search: query.search || undefined, [SEMANTIC_PARAMETER]: query.semantic || undefined };
+  const asked = { filter: query.filter || undefined, search: query.search || undefined, [SEMANTIC_PARAMETER]: query.semantic || undefined, [SIMILAR_PARAMETER]: query.similar || undefined };
   const response = await openAlexFetch(openAlexUrl("works", { ...asked, "per-page": "1", select: "id" }), { timeoutMs: OPENALEX_TIMEOUT_MS });
   if (!response.ok) throw new Error(`OpenAlex API error: ${response.status}`);
   const body = (await response.json()) as { meta: { count: number } };

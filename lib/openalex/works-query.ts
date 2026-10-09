@@ -29,6 +29,7 @@ export function buildOpenAlexWorksQuery(
   return {
     ...(request.search ? { search: request.search } : {}),
     ...(request.semantic ? { semantic: request.semantic } : {}),
+    ...(request.similar ? { similar: request.similar } : {}),
     ...(filter ? { filter } : {}),
   };
 }

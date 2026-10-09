@@ -30,9 +30,9 @@ function narrowsOql(oql: string | undefined): boolean {
   );
 }
 
-/** Whether the search asks a question by meaning, which can't be a library source yet. */
+/** Whether the search asks a question by meaning, or for the works nearest given papers, which can't be a library source yet. */
 export function isSearchByMeaning(params: SearchParams): boolean {
-  return params.field === SEMANTIC_FIELD;
+  return params.field === SEMANTIC_FIELD || params.like.length > 0;
 }
 
 /**

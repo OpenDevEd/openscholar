@@ -38,6 +38,12 @@ describe("effectiveSort", () => {
     expect(effectiveSort(params({ field: "semantic", q: "  ", sort: "relevance_score:desc" }))).toBe("publication_date:desc");
   });
 
+  it("sorts the works nearest given papers by relevance alone, and keeps them in a saved search", () => {
+    expect(effectiveSort(params({ like: ["OS1"], sort: "cited_by_count:desc" }))).toBe("relevance_score:desc");
+    expect(searchResultToParams({ similarTo: ["OS1", "OS2"] }).like).toEqual(["OS1", "OS2"]);
+    expect(searchResultToParams({ similarTo: [] }).like).toBeUndefined();
+  });
+
   // OpenAlex rejects relevance order without a text search (relevance_sort_requires_search).
   it("sorts an OQL query without a text clause newest first", () => {
     expect(effectiveSort(params({ field: "oql", q: "year is (2020) and type is (article)" }))).toBe("publication_date:desc");

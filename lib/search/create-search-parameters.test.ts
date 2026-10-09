@@ -148,6 +148,19 @@ describe("createSearchParameters — search by meaning", () => {
     expect([spaces.semantic, spaces.filter?.title_and_abstract]).toEqual([undefined, { search: '("Kenya")' }]);
   });
 
+  it("asks for the works nearest given papers, beside every filter, by relevance alone", () => {
+    const params = createSearchParameters("", {
+      ...baseFilters,
+      similarTo: ["OS64233829", "OS14687712"],
+      sortBy: "publication_date:desc",
+      openAccessOnly: true,
+    });
+    expect([params.similar, params.semantic, params.search]).toEqual(["OS64233829|OS14687712", undefined, undefined]);
+    expect(params.filter).toEqual(createSearchParameters("", { ...baseFilters, openAccessOnly: true }).filter);
+    expect(params.sortBy).toEqual({ field: "relevance_score", order: "desc" });
+    expect(createSearchParameters("", { ...baseFilters, similarTo: [] }).similar).toBeUndefined();
+  });
+
   it("asks nothing by meaning without a question, and keeps the sort chosen", () => {
     const params = createSearchParameters("", { ...baseFilters, searchField: "semantic", sortBy: "publication_date:desc" });
     expect(params.semantic).toBeUndefined();

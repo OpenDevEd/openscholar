@@ -178,6 +178,7 @@ vi.mock("@/lib/search", () => ({
       cites: "",
       citedBy: "",
       rel: "",
+      like: [],
       review: false,
       area: [],
       sdg: [],

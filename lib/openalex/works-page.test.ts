@@ -54,6 +54,16 @@ describe("fetchWorksPage", () => {
     vi.unstubAllEnvs();
   });
 
+  it("asks for the works nearest given papers as similar_to", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "https://search-api.example.org");
+    const fetchMock = answering({ status: 200, body: { meta: { count: 0 }, results: [] } });
+    await fetchWorksPage({ perPage: 25, similar: "OS64233829|OS14687712" });
+    const [url] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect(url.searchParams.get("similar_to")).toBe("OS64233829|OS14687712");
+    expect(url.searchParams.has("search.semantic")).toBe(false);
+    vi.unstubAllEnvs();
+  });
+
   it("stops after five tries with the last answer's reason, and never asks again after a refusal", async () => {
     vi.useFakeTimers();
     const busy = answering(...Array.from({ length: 5 }, () => ({ status: 503, body: { message: "busy" } })));
