@@ -322,13 +322,8 @@ export function VersionsSection({
 
       <FieldGroup title={t("versions.historyHeading")}>
         {versions.isInitialLoading || versionCount.data === undefined ? (
-          <Panel
-            tone="muted"
-            role="status"
-            className="flex items-center gap-2 text-sm text-muted-foreground"
-          >
-            <Spinner className="h-4 w-4" />
-            {t("versions.loading")}
+          <Panel tone="muted" className="flex items-center">
+            <Spinner className="my-0.5 h-4 w-4" aria-label={t("versions.loading")} />
           </Panel>
         ) : (
           <VersionHistory

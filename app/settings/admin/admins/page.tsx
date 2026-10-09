@@ -20,6 +20,7 @@ import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { Enter, LIST, Paged, Segmented, Zone } from "@/components/settings/parts";
+import { Spinner } from "@/components/ui/spinner";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 const PER_PAGE = 8;
@@ -239,7 +240,7 @@ function AddAdmin() {
                 <Command shouldFilter={false}>
                   <CommandInput placeholder={t("searchEmail")} value={search} onValueChange={setSearch} />
                   <CommandList onScroll={loadOnScroll}>
-                    <CommandEmpty>{candidates.isInitialLoading ? tc("loading") : t("noUsers")}</CommandEmpty>
+                    <CommandEmpty>{candidates.isInitialLoading ? <Spinner className="mx-auto my-0.5" aria-label={tc("loading")} /> : t("noUsers")}</CommandEmpty>
                     <CommandGroup>
                       {candidates.results.map((u) => (
                         <CommandItem
