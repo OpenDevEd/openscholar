@@ -98,6 +98,7 @@ const IN_WORKSPACE: Record<string, { createdBy: boolean; by?: string }> = {
   recordCounts: { createdBy: false },
   assistantThreads: { createdBy: true, by: "ownerId" },
   assistantSpenders: { createdBy: false },
+  authorProfiles: { createdBy: true, by: "ownerId" },
 };
 
 /**

@@ -1,6 +1,7 @@
 import { hasPublicationProviderChanges } from "./publicationProviders";
 import { readTopicsEnabled } from "./activeTopics";
 import { requireLibraryOrganization } from "../organizationFeatures";
+import { ensureWorkspace } from "../workspaces/create";
 import {
   internalMutation,
   mutation,
@@ -154,10 +155,13 @@ export async function createEvidenceLibrarySetup(
   }
 
   const now = Date.now();
+  const creator = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", access.clerkUserId)).unique();
   const libraryId = await ctx.db.insert("evidenceLibraries", {
     // No revisions yet, so every version it publishes is recorded as it's saved.
     approvedQueriesRecorded: true,
     organizationId: access.organization._id,
+    workspaceId: await ensureWorkspace(ctx, { kind: "organization", organizationId: access.organization._id }),
+    ...(creator ? { createdBy: creator._id } : {}),
     name,
     slug,
     state: "provisioning",

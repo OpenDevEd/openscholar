@@ -204,6 +204,12 @@ export const evidenceLibraryFields = {
   // evidenceLibraryApprovedQueries; until then a sources save reads the revisions (#357).
   approvedQueriesRecorded: v.optional(v.literal(true)),
   organizationId: v.id("organizations"),
+  /**
+   * The workspace it belongs to (#650), which slice 8 makes required, dropping `organizationId`,
+   * and the account that made it, absent for one whose creator's account is gone.
+   */
+  workspaceId: v.optional(v.id("workspaces")),
+  createdBy: v.optional(v.id("users")),
   name: v.string(),
   slug: v.string(),
   state: evidenceLibraryStateValidator,

@@ -167,10 +167,15 @@ export default defineSchema({
   authorProfiles: defineTable({
     ...authorContentFields,
     ownerId: v.id("users"),
+    // The workspace that owns it, and who made it (#650). A profile whose owner's account was purged
+    // before workspaces has neither: it stays in the directory, owned by nobody.
+    workspaceId: v.optional(v.id("workspaces")),
+    createdBy: v.optional(v.id("users")),
     photoId: v.optional(v.id("_storage")),
     revision: v.number(),
     updatedAt: v.number(),
   }).index("by_ownerId", ["ownerId"])
+    .index("by_workspace", ["workspaceId"])
     .searchIndex("search_name", {searchField: "name"}),
 
   authorProfileMembers: defineTable({
@@ -262,6 +267,9 @@ export default defineSchema({
   evidenceLibraryApprovedQueries: defineTable({ libraryId: v.id("evidenceLibraries"), version: v.string(), fingerprint: v.string() })
     .index("by_libraryId_and_version", ["libraryId", "version"]),
   evidenceLibraries: defineTable(evidenceLibraryFields)
+    .index("by_workspace_and_state", ["workspaceId", "state"])
+    .index("by_workspace_and_name_and_state", ["workspaceId", "name", "state"])
+    .index("by_workspace_and_slug", ["workspaceId", "slug"])
     .index("by_organizationId", ["organizationId"])
     .index("by_organizationId_and_name_and_state", [
       "organizationId",
