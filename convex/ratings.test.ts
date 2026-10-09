@@ -109,12 +109,12 @@ it("shows each paper in an organization's collection with its members' ratings t
   const shown = async () => (await alice.query(api.library.queries.browseLibrary, { workspaceId, collectionId, sortBy: "savedAt", sortOrder: "desc", paginationOpts: { cursor: null, numItems: 10 } })).page[0]!;
   const card = await shown();
   expect(card.rating).toBe(3);
-  expect(card.collection).toMatchObject({ mine: 4, more: false, raters: [{ you: true, rating: 4 }, { you: false, rating: 2 }] });
+  expect(card.collection).toMatchObject({ mine: 4, count: 2, raters: [{ you: true, rating: 4 }, { you: false, rating: 2 }] });
   const listed = await alice.query(api.library.collections.raters, { workspaceId, collectionId, libraryItemId: one, paginationOpts: { cursor: null, numItems: 10 } });
   expect(listed.page.map((rater) => [rater.you, rater.rating]).sort()).toEqual([[false, 2], [true, 4]]);
   // Someone who left isn't one of them.
   await bobIs("revoked");
-  expect((await shown()).collection?.raters.map((rater) => rater.rating)).toEqual([4]);
+  expect((await shown()).collection).toMatchObject({ count: 1, raters: [{ rating: 4 }] });
   // Outside a collection, nothing.
   expect((await alice.query(api.library.queries.browseLibrary, { workspaceId, sortBy: "savedAt", sortOrder: "desc", paginationOpts: { cursor: null, numItems: 10 } })).page[0]!.collection).toBeUndefined();
 });

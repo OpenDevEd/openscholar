@@ -5,6 +5,7 @@
 // your rating there, the average with the first few who rated, and everyone's when opened.
 
 import { useState } from "react";
+import { usePaginatedQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { Star } from "@/components/icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -13,17 +14,19 @@ import { PersonName } from "@/components/ui/identity";
 import { showStyledToast } from "@/components/ui/sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 
-type Rater = { name: string; imageUrl?: string; you: boolean; rating: number };
-/** How a paper was rated in a collection, as a page of the library gives it. */
-export type CollectionRatingsOf = { mine?: number; raters: Rater[]; more: boolean };
+type Rater = { id: string; name: string; imageUrl?: string; you: boolean; rating: number };
+/** How a paper was rated in a collection, as a page of the library gives it: yours, the first few, and how many rated it. */
+export type CollectionRatingsOf = { mine?: number; raters: Rater[]; count: number };
 
-/** The most raters the open list reads at once. ponytail: one page; page on when a collection has more people rating one paper. */
-const RATERS_LISTED = 100;
+/** Raters the open list reads at a time. */
+const RATERS_LISTED = 25;
+/** Rows the open list shows before it scrolls, and one row's height with the gap under it. */
+const ROWS_SHOWN = 7;
+const ROW_PX = 38;
 
 export function CollectionRatings({ collectionId, libraryItemId, average, ratings, compact = false }: { collectionId: Id<"collections">; libraryItemId: Id<"libraryItems">; average: number | undefined; ratings: CollectionRatingsOf; compact?: boolean }) {
   const t = useTranslations("workspaces.ratings");
@@ -49,10 +52,13 @@ export function CollectionRatings({ collectionId, libraryItemId, average, rating
 function Raters({ collectionId, libraryItemId, average, ratings }: { collectionId: Id<"collections">; libraryItemId: Id<"libraryItems">; average: number | undefined; ratings: CollectionRatingsOf }) {
   const t = useTranslations("workspaces.ratings");
   const [open, setOpen] = useState(false);
+  const tc = useTranslations("common");
   const workspaceId = useWorkspace();
-  // The page gave the first few; more are read when the list opens.
-  const { data } = useProtectedQuery(api.library.collections.raters, inWorkspace(workspaceId, open && ratings.more ? { collectionId, libraryItemId, paginationOpts: { cursor: null, numItems: RATERS_LISTED } } : "skip"));
-  const listed = data?.page ?? ratings.raters;
+  // The page gave the first few; the rest are read when the list opens, a page at a time.
+  const more = ratings.count > ratings.raters.length;
+  const all = usePaginatedQuery(api.library.collections.raters, inWorkspace(workspaceId, open && more ? { collectionId, libraryItemId } : "skip"), { initialNumItems: RATERS_LISTED });
+  const loaded = all.status !== "LoadingFirstPage" && all.results.length > 0;
+  const listed = loaded ? all.results : ratings.raters;
   if (!ratings.raters.length) return <span className="px-2 text-xs text-muted-foreground">{t("none")}</span>;
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -64,25 +70,35 @@ function Raters({ collectionId, libraryItemId, average, ratings }: { collectionI
           </span>
           <span className="flex -space-x-1.5">
             {ratings.raters.map((rater) => (
-              <span key={`${rater.name}:${rater.you}`} className="flex rounded-full ring-2 ring-(--color-inset)">
+              <span key={rater.id} className="flex rounded-full ring-2 ring-(--color-inset)">
                 <IdentityAvatar name={rater.name} imageUrl={rater.imageUrl} className="size-5" />
               </span>
             ))}
           </span>
-          {ratings.more ? <span className="text-2xs text-muted-foreground">+</span> : null}
+          {more ? <span className="text-2xs tabular-nums text-muted-foreground">+{ratings.count - ratings.raters.length}</span> : null}
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 rounded-2xl p-2">
         <p className="px-2 pb-2 pt-1 text-xs font-medium text-muted-foreground">{t("heading")}</p>
-        <ul className={cn("space-y-0.5", ratings.more && !data && "opacity-60")}>
-          {[...listed].sort((a, b) => b.rating - a.rating).map((rater) => (
-            <li key={`${rater.name}:${rater.you}`} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
-              <IdentityAvatar name={rater.name} imageUrl={rater.imageUrl} className="size-6" />
-              <PersonName name={rater.name} you={rater.you} className="flex-1 text-sm" />
-              <Stars value={rater.rating} />
-            </li>
-          ))}
-        </ul>
+        {/* As tall as everyone's ratings from the first frame, up to a few rows and then it scrolls, so the list doesn't grow as it arrives. */}
+        <div className="overflow-y-auto" style={{ height: Math.min(ratings.count, ROWS_SHOWN) * ROW_PX - 2 }}>
+          <ul className={cn("space-y-0.5", more && !loaded && "opacity-60")}>
+            {[...listed].sort((a, b) => b.rating - a.rating).map((rater) => (
+              <li key={rater.id} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
+                <IdentityAvatar name={rater.name} imageUrl={rater.imageUrl} className="size-6" />
+                <PersonName name={rater.name} you={rater.you} className="flex-1 text-sm" />
+                <Stars value={rater.rating} />
+              </li>
+            ))}
+            {loaded && (all.status === "CanLoadMore" || all.status === "LoadingMore") ? (
+              <li>
+                <button type="button" disabled={all.status === "LoadingMore"} onClick={() => all.loadMore(RATERS_LISTED)} className="flex h-9 w-full items-center justify-center rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-60">
+                  {tc("showMore")}
+                </button>
+              </li>
+            ) : null}
+          </ul>
+        </div>
       </PopoverContent>
     </Popover>
   );

@@ -64,6 +64,7 @@
       "RECOVERY_LIMIT": "reads one past it and stops the recovery as unsafe, naming why"
     },
     "windows": {
+      "PREVIEW_READ": "the first ratings of a paper a collection preview reads for the few raters it names; the count and the full list come from elsewhere",
       "JOBS_DOCKED": "the few jobs a chat docks at once; older ones are on the jobs page",
       "STEPS_SHOWN": "the newest steps a reply shows; the rest are paged in the chat",
       "JOBS_TOLD_AT_ONCE": "the job ends one reply tells its model; the rest are told on the next",

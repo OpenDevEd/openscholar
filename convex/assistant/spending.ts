@@ -158,6 +158,8 @@ export async function noteReply(ctx: MutationCtx, userId: Id<"users">, given: Id
   if (credits <= 0 || !(await ctx.db.get("users", userId))) return;
   // One from before replies named their workspace ran in its sender's own (#650); slice 8 makes it required.
   const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
+  // Nor for a workspace purged since: a deleted organization's (../workspaces/purge.ts).
+  if (!(await ctx.db.get("workspaces", workspaceId))) return;
   const spender = await spenderOf(ctx, workspaceId, userId);
   const kept = spender?.recent ?? [];
   const recent = kept.some((entry) => entry.reply === reply)

@@ -7,7 +7,7 @@ import { stream, type QueryStream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { createError } from "../lib/errors";
 import { findItem } from "./find";
-import { collectionRaters, collectionRatingRow, personalRatingRow } from "../ratings";
+import { collectionRaters, personalRatingRow, placeOf, raterValidator, shownRater } from "../ratings";
 import type { InWorkspace } from "../workspaces/actor";
 import { authorDisplay } from "../../lib/library/paper-metadata";
 import { libraryCount } from "./counter";
@@ -35,17 +35,16 @@ const FILTERED_BYTES = 8 * 1024 * 1024;
 
 /** People named beside a paper's ratings in an organization's collection; the rest open from them. */
 const RATERS_SHOWN = 3;
-const raterValidator = v.object({ name: v.string(), imageUrl: v.optional(v.string()), you: v.boolean(), rating: v.number() });
 
 /**
  * A page of the library view, each paper with `myRating`: the person's own rating of it, where `rating` is its people's average (#655).
- * In an organization's collection, `collection` is how its members rated it there: the person's own, and the first few who did.
+ * In an organization's collection, `collection` is how its members rated it there: the person's own, the first few who did, and how many did.
  */
 export const libraryPageValidator = paginationResultValidator(schema.tables.libraryItems.validator.extend({
   _id: v.id("libraryItems"),
   _creationTime: v.number(),
   myRating: v.optional(v.number()),
-  collection: v.optional(v.object({ mine: v.optional(v.number()), raters: v.array(raterValidator), more: v.boolean() })),
+  collection: v.optional(v.object({ mine: v.optional(v.number()), raters: v.array(raterValidator), count: v.number() })),
 }));
 
 type LibraryItem = Doc<"libraryItems">;
@@ -302,9 +301,9 @@ async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspac
   const own = (await ctx.db.get("workspaces", workspaceId))?.kind === "personal";
   const ratings = await Promise.all(read.page.map(async (item) => (own ? item.rating : (await personalRatingRow(ctx, userId, item.openalexId))?.rating)));
   const inCollection = !own && collectionId ? await Promise.all(read.page.map(async (item) => {
-    const { raters, more } = await collectionRaters(ctx, collectionId, item.openalexId, userId, RATERS_SHOWN);
-    const mine = (await collectionRatingRow(ctx, userId, collectionId, item.openalexId))?.rating;
-    return { ...(mine === undefined ? {} : { mine }), raters: raters.map(({ userId: _id, ...rater }) => rater), more };
+    const [raters, place] = await Promise.all([collectionRaters(ctx, collectionId, item.openalexId, userId, RATERS_SHOWN), placeOf(ctx, collectionId, item._id)]);
+    const mine = raters.find((rater) => rater.you)?.rating;
+    return { ...(mine === undefined ? {} : { mine }), raters: raters.map(shownRater), count: place?.ratingCount ?? raters.length };
   })) : null;
   return { ...read, page: read.page.map((item, at) => ({ ...item, ...(ratings[at] === undefined ? {} : { myRating: ratings[at] }), ...(inCollection ? { collection: inCollection[at] } : {}) })) };
 }

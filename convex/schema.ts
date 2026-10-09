@@ -1291,6 +1291,8 @@ export default defineSchema({
     assignedAt: v.number(),
     savedAt: v.optional(v.number()),
     rating: v.optional(v.number()),
+    // In an organization's collection, how many of its members gave `rating`, their average (#655); none in a person's own.
+    ratingCount: v.optional(v.number()),
     publicationYear: v.optional(v.number()),
     citedByCount: v.optional(v.number()),
     title: v.optional(v.string()),

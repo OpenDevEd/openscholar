@@ -85,12 +85,14 @@ async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizat
   const page = await ctx.db.query("evidenceLibraryMembers")
     .withIndex("by_clerkUserId", q => q.eq("clerkUserId", clerkUserId))
     .paginate({ cursor, numItems: MAX_LIBRARY_GRANTS_PER_PERSON });
-  const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId });
+  // A purged organization's workspace held no library (deleting one with a library is refused), so there's nothing to revoke.
+  const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique();
+  if (!workspace) return;
   for (const assignment of page.page) {
     // A grant made since they left, by a later invitation, is theirs to keep.
     if (assignment._creationTime > before) continue;
     const library = await ctx.db.get("evidenceLibraries", assignment.libraryId);
-    if (library?.workspaceId === workspaceId) {
+    if (library?.workspaceId === workspace._id) {
       await ctx.db.delete("evidenceLibraryMembers", assignment._id);
     }
   }
@@ -252,13 +254,14 @@ export async function applyMembershipProjection(
           .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.membership.clerkUserId)).order("desc").first();
         if (newest) await revokeGrantsPage(ctx, args.membership.clerkUserId, organizationId, null, newest._creationTime);
         const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.membership.clerkUserId)).unique();
-        if (user) {
+        // Read, not made: a deleted organization's workspace is purged, and a late event mustn't bring it back.
+        const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique();
+        if (user && workspace) {
           const invitations = await ctx.db.query("evidenceLibraryInvitations")
             .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_EMAIL);
-          const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId });
           for (const invitation of invitations) {
             const library = await ctx.db.get("evidenceLibraries", invitation.libraryId);
-            if (library?.workspaceId === workspaceId) await ctx.db.patch("evidenceLibraryInvitations", invitation._id, { state: "cancelled" });
+            if (library?.workspaceId === workspace._id) await ctx.db.patch("evidenceLibraryInvitations", invitation._id, { state: "cancelled" });
           }
         }
       }

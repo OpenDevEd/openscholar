@@ -33,14 +33,14 @@ const walletKeyValidator = v.object({
   lastUsedAt: v.optional(v.number()),
   createdAt: v.number(),
   /** The workspace the app draws on (#651): the person's own, or an organization. */
-  workspace: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), name: v.string(), imageUrl: v.optional(v.string()) }),
+  workspace: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), name: v.string(), imageUrl: v.optional(v.string()), workspaceId: v.optional(v.id("workspaces")), colour: v.optional(v.string()) }),
 });
 
-/** A workspace as a connected app's tag names it: its person's for their own, an organization's otherwise. */
+/** A workspace as a connected app's tag names it: its person's for their own, an organization's otherwise, with what its logo is drawn from. */
 async function workspaceTag(ctx: QueryCtx, userId: Id<"users">, workspaceId: Id<"workspaces"> | undefined) {
   const workspace = workspaceId ? await ctx.db.get("workspaces", workspaceId) : null;
   const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
-  if (organization) return { kind: "organization" as const, name: organization.name, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}) };
+  if (organization) return { kind: "organization" as const, name: organization.name, workspaceId: workspace!._id, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}), ...(organization.colour ? { colour: organization.colour } : {}) };
   const user = await ctx.db.get("users", userId);
   return { kind: "personal" as const, name: user ? personName(user) || user.email : "", ...(user?.avatarUrl ? { imageUrl: user.avatarUrl } : {}) };
 }
