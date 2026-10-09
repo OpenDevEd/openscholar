@@ -222,8 +222,6 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   assistantThreads: defineTable(assistantThreadFields)
     .index("by_agentThreadId", ["agentThreadId"])
-    // An account's chats, for deleting them with it.
-    .index("by_owner", ["ownerId"])
     // A workspace's chats, newest first.
     .index("by_workspace_and_lastMessageAt", ["workspaceId", "lastMessageAt"])
     // The replies being written in a workspace, which are limited.

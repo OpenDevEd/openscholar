@@ -21,7 +21,7 @@ import { requireAvailableModel, requireEffort, requireTaskModel } from "../model
 import schema from "../schema";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { NEW_CHAT_TITLE } from "../../lib/assistant/title";
-import { accessRows, best, deleteThread, personName, principalOf, principalsOf, requireThread, userPrincipal, type AssistantRole } from "./access";
+import { accessRows, best, deleteThread, personName, principalOf, principalsOf, requireThreadIn, userPrincipal, type AssistantRole } from "./access";
 import { viewers } from "./presence";
 import { startWith } from "./spending";
 import { ASSISTANT_MEMBERS_SHOWN, assistantMembersValidator, assistantRoleValidator, JOBS_DOCKED, JOBS_LISTED, listedJobsValidator } from "./validators";
@@ -321,9 +321,10 @@ export const getAction = defineUserQuery({
   description: "Reads one assistant chat the person can open: its title, when it was last written in, the model and reasoning effort its replies run on, and what they may do in it.",
   args: { threadId: v.id("assistantThreads") },
   returns: v.object({ ...threadValidator.fields, model: v.union(modelSummaryValidator, v.null()), effort: v.optional(effortValidator) }),
-  run: async (ctx, { userId }, { threadId }) => {
+  run: async (ctx, actor, { threadId }) => {
+    const { userId } = actor;
     await requireFeature(ctx, FLAG, userId);
-    const { thread, role } = await requireThread(ctx, userId, threadId);
+    const { thread, role } = await requireThreadIn(ctx, actor, threadId);
     const { modelId, effort } = await chatModel(ctx, thread, userId);
     return { ...shown(thread, role), model: await modelSummary(ctx, modelId), ...(effort ? { effort } : {}) };
   },
@@ -351,9 +352,9 @@ export const renameAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: false,
-  run: async (ctx, { userId }, { threadId, title }) => {
-    await requireFeature(ctx, FLAG, userId);
-    await requireThread(ctx, userId, threadId, "owner");
+  run: async (ctx, actor, { threadId, title }) => {
+    await requireFeature(ctx, FLAG, actor.userId);
+    await requireThreadIn(ctx, actor, threadId, "owner");
     const clean = titled(title);
     if (!clean) throw createError("VALIDATION_ERROR", "A chat needs a title.");
     await ctx.db.patch("assistantThreads", threadId, { title: clean, updatedAt: Date.now() });
@@ -373,9 +374,9 @@ export const setModelAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: false,
-  run: async (ctx, { userId }, { threadId, modelId, effort }) => {
-    await requireFeature(ctx, FLAG, userId);
-    await requireThread(ctx, userId, threadId, "write");
+  run: async (ctx, actor, { threadId, modelId, effort }) => {
+    await requireFeature(ctx, FLAG, actor.userId);
+    await requireThreadIn(ctx, actor, threadId, "write");
     await pickable(ctx, modelId, effort);
     await ctx.db.patch("assistantThreads", threadId, { modelId, effort, updatedAt: Date.now() });
     return null;
@@ -393,9 +394,9 @@ export const removeAction = defineUserMutation({
   // Everyone the chat was shared with loses it.
   outsideEffect: true,
   undoable: false,
-  run: async (ctx, { userId }, { threadId }) => {
-    await requireFeature(ctx, FLAG, userId);
-    const { thread } = await requireThread(ctx, userId, threadId, "owner");
+  run: async (ctx, actor, { threadId }) => {
+    await requireFeature(ctx, FLAG, actor.userId);
+    const { thread } = await requireThreadIn(ctx, actor, threadId, "owner");
     await deleteThread(ctx, thread);
     return null;
   },

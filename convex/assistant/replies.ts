@@ -33,7 +33,7 @@ import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { workspacePlanLimit } from "../billing/accounts";
 import { personName, replyWorkspace, requireThread, touchThread } from "./access";
-import { personalWorkspaceOf } from "../workspaces/actor";
+import { actorIn, personalWorkspaceOf } from "../workspaces/actor";
 import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
 import { JOB_ENDED } from "./jobEnds";
@@ -816,10 +816,11 @@ export const messagesAction = defineUserQuery({
     // What each call that waits for this person would do.
     const reader = thread.asking?.senderId === userId ? await ctx.db.get("users", userId) : null;
     const mine = reader ? await stepsAt(ctx, threadId, "asking") : [];
-    // They're named as the workspace the reply acts in calls them.
-    const workspaceId = thread.asking ? await actingIn(ctx, thread.asking) : null;
+    // They're named as the workspace the reply acts in calls them, while the reader can still act there.
+    const acting = thread.asking && reader ? await actingIn(ctx, thread.asking) : null;
+    const workspaceId = acting && reader && (await actorIn(ctx, reader, acting)) ? acting : null;
     const details = new Map(
-      await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: withoutVariant(await detailsOf(ctx, reader!, workspaceId!, step.shown ?? step.input), step) } : bulkWithoutVariant(await bulkOf(ctx, reader!, workspaceId!, step), step)] as const)),
+      await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: withoutVariant(await detailsOf(ctx, reader!, workspaceId, step.shown ?? step.input), step) } : bulkWithoutVariant(await bulkOf(ctx, reader!, workspaceId, step), step)] as const)),
     );
     // What each person's message carried: images as parts of it, PDFs as notes the model reads them by.
     const attached = new Map(

@@ -39,8 +39,12 @@ function plain(value: unknown, path: string[] = []): Leaf[] {
   return Object.entries(value).flatMap(([key, inner]) => plain(inner, Array.isArray(value) ? path : [...path, key]));
 }
 
-/** What a call would be given, for `reader`, its records named as they're called in `workspaceId`, the one the reply acts in. */
-export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId: Id<"workspaces">, input: string): Promise<Array<{ name: string; value: string }>> {
+/**
+ * What a call would be given, for `reader`, its records named as they're called in
+ * `workspaceId`, the one the reply acts in. With none, the reader can't act there any more,
+ * and that workspace's records stay IDs.
+ */
+export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId: Id<"workspaces"> | null, input: string): Promise<Array<{ name: string; value: string }>> {
   let args: unknown;
   try {
     args = JSON.parse(input);
@@ -58,6 +62,7 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
   const named = async (id: string, key: string): Promise<string | null> => {
     // A saved search has the ID its page gave it, not a document's. It is the workspace's or it isn't found.
     if (SEARCH_ID.test(id)) {
+      if (!workspaceId) return null;
       const search = await findSearch(ctx, workspaceId, id);
       // One saved with filters alone has no query to show: it is named as such, never by its ID.
       return search ? currentSearch(search.data).query : null;
@@ -66,6 +71,7 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
     // argument is a paper's ID: a name or a title that reads like one is shown as it was typed.
     const work = PAPER_KEYS.has(key) ? workUrl(id) : null;
     if (work) {
+      if (!workspaceId) return null;
       return (await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", work)).first())?.title ?? null;
     }
     const threadId = ctx.db.normalizeId("assistantThreads", id);
@@ -101,12 +107,12 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
     const screeningId = ctx.db.normalizeId("screeningJobs", id);
     if (screeningId) {
       const job = await ctx.db.get("screeningJobs", screeningId);
-      return job && (await isInWorkspace(ctx, job, workspaceId)) ? job.label || null : null;
+      return job && workspaceId && (await isInWorkspace(ctx, job, workspaceId)) ? job.label || null : null;
     }
     const extractionId = ctx.db.normalizeId("extractionJobs", id);
     if (extractionId) {
       const job = await ctx.db.get("extractionJobs", extractionId);
-      return job && (await isInWorkspace(ctx, job, workspaceId)) ? job.name || null : null;
+      return job && workspaceId && (await isInWorkspace(ctx, job, workspaceId)) ? job.name || null : null;
     }
     const organizationId = ctx.db.normalizeId("organizations", id);
     if (organizationId) return mine.find(({ organization }) => organization._id === organizationId)?.organization.name ?? null;
@@ -149,7 +155,7 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
  * its changes is given alike, as `detailsOf` says it, then the first of its changes, each as
  * what it alone is given: the record it's made to, and what it gives that record.
  */
-export async function bulkOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId: Id<"workspaces">, { input, shown }: { input: string; shown?: string }) {
+export async function bulkOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId: Id<"workspaces"> | null, { input, shown }: { input: string; shown?: string }) {
   let each: Record<string, unknown>[];
   try {
     // One over a set of papers says what it shows: what its changes share, and the first papers by title, which the reader may not have saved yet.
