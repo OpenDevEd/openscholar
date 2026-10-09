@@ -5,6 +5,7 @@
 
 import type { ComponentProps, ComponentType, ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { motion, useReducedMotion } from "motion/react";
 import { Crown, Eye, Mail, MessageSquare, PenLine, ShieldCheck, UserRound } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { IdentityAvatar } from "./identity-avatar";
@@ -83,5 +84,30 @@ export function IdentityRow({ avatar, name, you = false, detail, className, chil
       </div>
       {children}
     </div>
+  );
+}
+
+/**
+ * A person's photo in a stack; someone who has the item open right now (`here`) gets a ring in
+ * their colour that ripples outward. A chat's members and an item's presence show people this way.
+ */
+export function PresentAvatar({ member }: { member: { userId: string; name: string; here?: boolean; imageUrl?: string | null } }) {
+  const reduceMotion = useReducedMotion();
+  const tint = tintOf(member.userId);
+  return (
+    <span className="relative flex size-6 shrink-0">
+      {member.here && !reduceMotion ? (
+        <motion.span
+          aria-hidden
+          className="absolute inset-0 rounded-full"
+          style={{ boxShadow: `0 0 0 1.5px ${tint}` }}
+          animate={{ scale: [1.15, 1.7], opacity: [0.6, 0] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+        />
+      ) : null}
+      <span className="relative flex rounded-full ring-2 ring-card" style={{ boxShadow: member.here ? `0 0 0 2px var(--card), 0 0 0 3.5px ${tint}` : undefined }}>
+        <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-6" />
+      </span>
+    </span>
   );
 }

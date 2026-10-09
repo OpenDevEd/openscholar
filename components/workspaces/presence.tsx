@@ -8,8 +8,8 @@
 import { useMutation } from "convex/react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { Avatar } from "@/components/assistant/sheets";
 import { EASE } from "@/components/settings/model-map";
+import { PresentAvatar } from "@/components/ui/identity";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -27,10 +27,10 @@ export function ItemPresence({ kind, id, join = true }: { kind: ItemKind; id: st
   const format = useFormatter();
   const workspaceId = useWorkspace();
   const org = useWorkspaceSlug() !== undefined;
-  const heartbeat = useWorkspaceMutation(api.presence.items.heartbeat);
-  const leave = useMutation(api.presence.items.leave);
+  const heartbeat = useWorkspaceMutation(api.presence.heartbeat);
+  const leave = useMutation(api.presence.leave);
   useRoomHeartbeat(join && org && workspaceId ? `${workspaceId}|${kind}:${id}` : null, (sessionId) => heartbeat({ kind, id, sessionId }), (sessionToken) => leave({ sessionToken }));
-  const { data: here } = useProtectedQuery(api.presence.items.here, inWorkspace(org ? workspaceId : undefined, { kind, id }));
+  const { data: here } = useProtectedQuery(api.presence.here, inWorkspace(org ? workspaceId : undefined, { kind, id }));
   const people = here ?? [];
   const label = t("hasOpen", { count: people.length, names: format.list(people.map((person) => person.name), { type: "conjunction" }) });
   // Each person arriving or leaving fades on their own. It sits where growing moves nothing else:
@@ -40,7 +40,7 @@ export function ItemPresence({ kind, id, join = true }: { kind: ItemKind; id: st
       <AnimatePresence initial={false}>
         {people.slice(0, SHOWN).map((person) => (
           <motion.span key={person.userId} className="flex" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.3, ease: EASE }}>
-            <Avatar member={{ ...person, here: true }} />
+            <PresentAvatar member={{ ...person, here: true }} />
           </motion.span>
         ))}
       </AnimatePresence>

@@ -129,7 +129,7 @@ export async function touchThread(ctx: MutationCtx, threadId: Id<"assistantThrea
 export async function deleteThread(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
   for (const row of await accessRows(ctx, thread._id)) await ctx.db.delete("assistantThreadAccess", row._id);
   await ctx.db.delete("assistantThreads", thread._id);
-  await ctx.scheduler.runAfter(0, internal.assistant.presence.forgetRoom, { threadId: thread._id });
+  await ctx.scheduler.runAfter(0, internal.presence.forgetChatRoom, { threadId: thread._id });
   await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId: thread._id });
   await ctx.scheduler.runAfter(0, internal.assistant.files.forget, { threadId: thread._id });
   await ctx.scheduler.runAfter(0, internal.lib.paperPdfs.forget, { scope: `chat:${thread._id}` });

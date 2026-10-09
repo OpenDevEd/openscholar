@@ -392,8 +392,8 @@ function Overlay({
 
 /** Keeps the person in the chat's room while the panel has it open, so the others in it see they're there. */
 function Here({ threadId }: { threadId: ThreadId }) {
-  const heartbeat = useMutation(api.assistant.presence.heartbeat);
-  const leave = useMutation(api.assistant.presence.leave);
+  const heartbeat = useMutation(api.presence.chatHeartbeat);
+  const leave = useMutation(api.presence.leave);
   useRoomHeartbeat(threadId, (sessionId) => heartbeat({ threadId, sessionId }), (sessionToken) => leave({ sessionToken }));
   return null;
 }
