@@ -6,7 +6,7 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import type { ActionCtx } from "../_generated/server";
+import { action, type ActionCtx } from "../_generated/server";
 import { ClerkApiError, clerkRequest, clerkSecretKey, isRecord } from "../lib/clerk";
 import { requireAppUrl } from "../lib/env";
 import { createError } from "../lib/errors";
@@ -330,3 +330,25 @@ export const deleteOrganizationAction = defineUserAction({
 });
 export const deleteOrganization = userAction(deleteOrganizationAction);
 export const deleteOrganizationForAssistant = assistantAction(deleteOrganizationAction);
+
+/**
+ * Keeps the membership Clerk made when the person accepted an invitation in Clerk's own client
+ * (#651), so the organization's pages open at once instead of after Clerk's webhook. Null when
+ * Clerk has no membership of theirs there.
+ */
+export const confirmJoin = action({
+  args: { slug: v.string() },
+  returns: v.union(v.null(), v.object({ workspaceId: v.id("workspaces"), slug: v.string() })),
+  handler: async (ctx, { slug }): Promise<{ workspaceId: Id<"workspaces">; slug: string } | null> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw createError("UNAUTHENTICATED", "Sign in to join an organization");
+    const clerkOrganizationId: string | null = await ctx.runQuery(internal.organizations.read.clerkIdOf, { slug });
+    if (!clerkOrganizationId) return null;
+    const key = clerkSecretKey();
+    const memberships = await clerk(key, "GET", `/organizations/${clerkOrganizationId}/memberships?user_id=${encodeURIComponent(identity.subject)}&limit=1`);
+    const mine = isRecord(memberships) && Array.isArray(memberships.data) ? memberships.data[0] : undefined;
+    if (!mine) return null;
+    await keep(ctx, key, "organizationMembership.created", mine);
+    return await ctx.runQuery(internal.organizations.read.workspaceOf, { clerkOrganizationId });
+  },
+});

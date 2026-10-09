@@ -13,6 +13,7 @@ import {
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
+import { actorIn } from "../workspaces/actor";
 import { createError } from "../lib/errors";
 import { autumn, type AutumnCustomer } from "./autumn";
 import {
@@ -336,14 +337,23 @@ const { stripeCustomerId: _stripeCustomerId, ...myAccountFields } =
   billingAccountSnapshotValidator.fields;
 const myAccountKeys = Object.keys(myAccountFields) as (keyof typeof myAccountFields)[];
 
+/**
+ * The workspace a page reads its plan and credits for (#651): `workspaceId` when the person acts
+ * in it, their own when it's left out (a page outside /o/<slug>, or one rendered on the server).
+ */
+async function pageWorkspace(ctx: QueryCtx, workspaceId: Id<"workspaces"> | undefined) {
+  const user = await getCurrentUser(ctx);
+  if (!user) return undefined;
+  if (!workspaceId) return await ownWorkspaceOf(ctx, user._id);
+  return (await actorIn(ctx, user, workspaceId)) ? workspaceId : undefined;
+}
+
 export const mine = query({
-  args: {},
+  args: { workspaceId: v.optional(v.id("workspaces")) },
   returns: v.union(v.object(myAccountFields), v.null()),
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    const workspaceId = user ? await ownWorkspaceOf(ctx, user._id) : undefined;
+  handler: async (ctx, args) => {
+    const workspaceId = await pageWorkspace(ctx, args.workspaceId);
     if (!workspaceId) return null;
-    // The person's own workspace's, until organizations have billing pages (#651, #652).
     const row = await readAccount(ctx, workspaceId);
     if (!row) return null;
     // Copy only the fields the validator declares, so internal columns stay private.
@@ -353,11 +363,10 @@ export const mine = query({
 
 /** What the signed-in person's plan allows of each limit (#632): a number, or null for none. Null when signed out. */
 export const myLimits = query({
-  args: {},
+  args: { workspaceId: v.optional(v.id("workspaces")) },
   returns: v.union(v.object({ collections: v.union(v.number(), v.null()), concurrency: v.union(v.number(), v.null()), assistant_replies: v.union(v.number(), v.null()), request_papers: v.union(v.number(), v.null()) }), v.null()),
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    const workspaceId = user ? await ownWorkspaceOf(ctx, user._id) : undefined;
+  handler: async (ctx, args) => {
+    const workspaceId = await pageWorkspace(ctx, args.workspaceId);
     if (!workspaceId) return null;
     const limit = async (name: PlanLimit) => (await planLimit(ctx, workspaceId, name)) ?? null;
     return { collections: await limit("collections"), concurrency: await limit("concurrency"), assistant_replies: await limit("assistant_replies"), request_papers: await limit("request_papers") };

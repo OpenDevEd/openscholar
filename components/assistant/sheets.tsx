@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { OrbitMark } from "./orbit-mark";
 import { IconButton, WorkingText } from "./parts";
 import { KIND, KindTile, type Waiting } from "./steps";
-import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace, useWorkspaceMutation, useWorkspaceScope } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 
 /** A sheet open over the panel. */
@@ -701,7 +701,7 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
   const cap = allowance ? allowance.cap : kept;
   // The chat's calls that held credits, the largest first, more of them when the person asks.
   const jobs = usePaginatedQuery(api.assistant.spending.jobs, { threadId }, { initialNumItems: JOBS_FIRST });
-  const account = useQuery(api.billing.accounts.mine, {});
+  const account = useQuery(api.billing.accounts.mine, useWorkspaceScope());
   // The server's rule (convex/assistant/spending.ts): allowed, within what one may hold, and covered by the balance.
   const runs = (credits: number) => allowance !== null && (allowance.cap === null || credits <= allowance.cap) && credits <= Math.floor(account?.balance ?? 0);
   const ta = useTranslations("assistant");
@@ -881,7 +881,7 @@ export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /*
   const t = useTranslations("assistant.topUp");
   const format = useFormatter();
   const router = useWorkspaceRouter();
-  const account = useQuery(api.billing.accounts.mine, {});
+  const account = useQuery(api.billing.accounts.mine, useWorkspaceScope());
   const topUps = useFeatureFlag("credits.topups");
   const catalog = useBillingCatalog();
   const bundles = catalog && topUps ? topUpBundles(catalog) : [];

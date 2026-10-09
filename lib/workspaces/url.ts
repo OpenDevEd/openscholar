@@ -27,6 +27,18 @@ export function useWorkspace(): WorkspaceId | undefined {
   return (slug ? organization : personal) ?? undefined;
 }
 
+/**
+ * The workspace argument of a read that also answers signed out or before the workspace loads:
+ * none in the person's own workspace, where the server takes theirs; the organization's once it
+ * has loaded, and "skip" until then, so an organization's page never shows the person's own.
+ */
+export function useWorkspaceScope(): { workspaceId?: WorkspaceId } | "skip" {
+  const slug = useWorkspaceSlug();
+  const workspaceId = useWorkspace();
+  if (!slug) return {};
+  return workspaceId ? { workspaceId } : "skip";
+}
+
 /** A read's arguments in `workspaceId`, or "skip" until the workspace is known. */
 export function inWorkspace<Args extends object>(workspaceId: WorkspaceId | undefined, args: Args | "skip"): (Args & { workspaceId: WorkspaceId }) | "skip" {
   return args === "skip" || !workspaceId ? "skip" : { ...args, workspaceId };

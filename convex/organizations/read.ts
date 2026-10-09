@@ -152,3 +152,13 @@ export const workspaceOf = internalQuery({
     return organization && workspace ? { workspaceId: workspace._id, slug: organization.slug } : null;
   },
 });
+
+/** The Clerk ID of the organization at an address, or null. */
+export const clerkIdOf = internalQuery({
+  args: { slug: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { slug }) => {
+    const organization = await ctx.db.query("organizations").withIndex("by_slug", (q) => q.eq("slug", slug)).first();
+    return organization?.state === "active" ? organization.clerkOrganizationId : null;
+  },
+});

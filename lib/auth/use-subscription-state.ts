@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { defaultPlanId } from "@/lib/billing/catalog";
 import { useBillingCatalog } from "@/lib/billing/catalog-provider";
+import { useWorkspaceScope } from "@/lib/workspaces/url";
 
 type SubscriptionState = ReturnType<typeof useOwnedSubscriptionState>;
 
@@ -17,7 +18,7 @@ const SubscriptionStateContext = createContext<SubscriptionState | null>(null);
  * billing snapshot, and Autumn's catalog to describe them.
  */
 function useOwnedSubscriptionState() {
-  const query = useOptionalAuthQuery(api.billing.accounts.mine, {});
+  const query = useOptionalAuthQuery(api.billing.accounts.mine, useWorkspaceScope());
   const catalog = useBillingCatalog();
   const account = query.data ?? null;
 

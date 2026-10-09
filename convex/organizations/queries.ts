@@ -5,6 +5,9 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { personName } from "../assistant/access";
+import { readAccount } from "../billing/accounts";
+import { query } from "../lib/functions";
+import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { organizationOf } from "./read";
 
@@ -26,6 +29,8 @@ const workspaceValidator = v.object({
   role: ROLE,
   /** An organization's active members, up to one past MEMBERS_COUNTED. */
   members: v.optional(v.number()),
+  /** Its plan's ID in Autumn, which the catalog names; absent until its account is read. */
+  plan: v.optional(v.string()),
 });
 
 export const workspacesAction = defineUserQuery({
@@ -46,11 +51,13 @@ export const workspacesAction = defineUserQuery({
         const workspace = organization?.state === "active" ? await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organization._id)).unique() : null;
         if (!organization || !workspace) return [];
         const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).take(MEMBERS_COUNTED + 1);
-        return [{ workspaceId: workspace._id, kind: "organization" as const, name: organization.name, slug: organization.slug, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}), role: roleOf(membership.role), members: members.length }];
+        const plan = (await readAccount(ctx, workspace._id))?.plan;
+        return [{ workspaceId: workspace._id, kind: "organization" as const, name: organization.name, slug: organization.slug, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}), role: roleOf(membership.role), members: members.length, ...(plan ? { plan } : {}) }];
       }),
     );
     // The person's own workspace heads the first page.
-    const mine = paginationOpts.cursor ? [] : [{ workspaceId: own._id, kind: "personal" as const, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), role: "admin" as const }];
+    const ownPlan = paginationOpts.cursor ? undefined : (await readAccount(ctx, own._id))?.plan;
+    const mine = paginationOpts.cursor ? [] : [{ workspaceId: own._id, kind: "personal" as const, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), role: "admin" as const, ...(ownPlan ? { plan: ownPlan } : {}) }];
     return { ...page, page: [...mine, ...organizations.flat()] };
   },
 });
@@ -123,8 +130,13 @@ const myInvitationValidator = v.object({
 /** A page of the person's pending invitations, newest first, each with what the switcher and the join page show. */
 async function invitationsTo(ctx: QueryCtx, user: Doc<"users">, paginationOpts: PaginationOptions) {
   const page = await ctx.db.query("organizationInvitations").withIndex("by_email_and_state", (q) => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).order("desc").paginate(paginationOpts);
+  return { ...page, page: await shownInvitations(ctx, page.page) };
+}
+
+/** Invitations as the switcher and the join page show them: the organization, the role and who sent it. */
+async function shownInvitations(ctx: QueryCtx, invitations: Doc<"organizationInvitations">[]) {
   const shown = await Promise.all(
-    page.page.map(async (invitation) => {
+    invitations.map(async (invitation) => {
       const organization = await ctx.db.get("organizations", invitation.organizationId);
       if (organization?.state !== "active") return [];
       const inviter = invitation.inviterClerkUserId ? await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", invitation.inviterClerkUserId!)).unique() : null;
@@ -138,7 +150,7 @@ async function invitationsTo(ctx: QueryCtx, user: Doc<"users">, paginationOpts: 
       }];
     }),
   );
-  return { ...page, page: shown.flat() };
+  return shown.flat();
 }
 
 export const myInvitationsAction = defineUserQuery({
@@ -155,3 +167,37 @@ export const myInvitationsAction = defineUserQuery({
 });
 export const myInvitations = userQuery(myInvitationsAction, { signedOut: { page: [], isDone: true, continueCursor: "" } });
 export const myInvitationsForAssistant = assistantQuery(myInvitationsAction);
+
+/**
+ * What the join page shows for an organization's address (/join/<slug>, #651): the person's open
+ * invitation to it, or that they're a member already; null when there's neither.
+ */
+export const invitationTo = query({
+  args: { slug: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({ joined: v.literal(true), name: v.string(), imageUrl: v.optional(v.string()) }),
+    v.object({ joined: v.literal(false), invitation: myInvitationValidator, members: v.number(), plan: v.optional(v.string()) }),
+  ),
+  handler: async (ctx, { slug }) => {
+    const user = await getCurrentUser(ctx);
+    const organization = await ctx.db.query("organizations").withIndex("by_slug", (q) => q.eq("slug", slug)).first();
+    if (!user || organization?.state !== "active") return null;
+    const membership = await ctx.db
+      .query("organizationMemberships")
+      .withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organization._id).eq("clerkUserId", user.clerkId).eq("state", "active"))
+      .first();
+    if (membership) return { joined: true as const, name: organization.name, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}) };
+    const invitation = await ctx.db
+      .query("organizationInvitations")
+      .withIndex("by_email_and_state", (q) => q.eq("email", user.email.toLowerCase()).eq("state", "pending"))
+      .filter((q) => q.eq(q.field("organizationId"), organization._id))
+      .first();
+    if (!invitation) return null;
+    const [shown] = await shownInvitations(ctx, [invitation]);
+    const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).take(MEMBERS_COUNTED + 1);
+    const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organization._id)).unique();
+    const plan = workspace ? (await readAccount(ctx, workspace._id))?.plan : undefined;
+    return shown ? { joined: false as const, invitation: shown, members: members.length, ...(plan ? { plan } : {}) } : null;
+  },
+});

@@ -32,7 +32,7 @@ import type { SearchResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { jobName } from "./job-view";
 import { ANSWER, AnimatedNumber, Chip, ClippedChip, Meter, SOURCE_ICON } from "./parts";
-import { inWorkspace, useWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceScope } from "@/lib/workspaces/url";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
 const TINT = {
@@ -162,7 +162,7 @@ export function SetupView({
 
   const models = useModelPicks();
   const model = models.modelOf("screenAll");
-  const { data: account } = useProtectedQuery(api.billing.accounts.mine, {});
+  const { data: account } = useProtectedQuery(api.billing.accounts.mine, useWorkspaceScope());
   const { data: slots } = useProtectedQuery(api.screening.queries.slots, inWorkspace(workspaceId, {}));
   const balance = account?.balance ?? 0;
   // The most these papers cost on the model Screen all runs on: what the job holds when it starts.

@@ -39,6 +39,7 @@ import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { findPlan, isUpgrade, mainPlans } from "@/lib/billing/catalog";
 import { useTranslations } from "next-intl";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { useWorkspaceScope } from "@/lib/workspaces/url";
 
 interface AuthButtonProps {
   isCollapsed?: boolean;
@@ -63,7 +64,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
   const hasResolvedSubscription = subscriptionState.isReady;
   const resolvedPlan = subscriptionState.resolvedPlan;
 
-  const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, {});
+  const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, useWorkspaceScope());
   const credits = creditsQuery.data;
 
   const creditsEnabled = useFeatureFlag("credits.enabled");
