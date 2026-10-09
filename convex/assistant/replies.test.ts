@@ -658,8 +658,10 @@ describe("assistant replies", () => {
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Look these up" });
     await ended(t, threadId);
     const order = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.at(-1)!.order;
+    // The steps ran in 2025: a year a lookup names is checked against the year it ran.
+    const ran = Date.UTC(2025, 5, 1);
     await t.run(async (ctx) => {
-      const step = { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order, userId: ada, status: "running" as const, startedAt: 1 };
+      const step = { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order, userId: ada, status: "running" as const, startedAt: ran };
       // A page of a search, and a count by year: each matched more papers than it returned.
       const search = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "search", path: "research/papers:search", input: JSON.stringify({ query: '"machine learning"', minCitations: 11, fromYear: 2020, toYear: 2024, page: 2 }), subject: '"machine learning"' });
       await endStep(ctx, search, { total: 260, page: 2, pages: 13, papers: [] });
@@ -672,8 +674,8 @@ describe("assistant replies", () => {
       // On a filter alone, with no query: nothing names it, and it still leads to its results.
       const related = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "related", path: "research/papers:search", input: JSON.stringify({ relatedTo: "W3120515101" }) });
       await endStep(ctx, related, { total: 9, page: 1, pages: 1, papers: [] });
-      // Years left open at one end, in a lookup of an earlier year: its link ends at that year, not at this one.
-      await ctx.db.insert("assistantSteps", { ...step, status: "done", startedAt: Date.UTC(2025, 5, 1), endedAt: Date.UTC(2025, 5, 1), toolCallId: "since", path: "research/papers:search", input: JSON.stringify({ query: "coaching", fromYear: 2024 }), subject: "coaching" });
+      // Years left open at one end: its link ends at the year the lookup ran, not at this one.
+      await ctx.db.insert("assistantSteps", { ...step, status: "done", endedAt: ran, toolCallId: "since", path: "research/papers:search", input: JSON.stringify({ query: "coaching", fromYear: 2024 }), subject: "coaching" });
     });
 
     const all = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
