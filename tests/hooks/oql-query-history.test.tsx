@@ -40,7 +40,9 @@ const OQL = 'title has (chatgpt) and title has (education or student)';
 // The full suite runs many workers at once, so URL updates can take longer than waitFor's default second.
 const SETTLE = { timeout: 5000 };
 
-type Entry = { query: string; field: "oql" | "title_and_abstract" };
+const QUESTION = "Does tutoring help pupils who fall behind in maths...?";
+
+type Entry = { query: string; field: "oql" | "title_and_abstract" | "semantic" };
 
 function seed(history: Entry[]) {
   searchId = crypto.randomUUID();
@@ -117,6 +119,17 @@ describe("query history arrows across keyword and OQL scopes", () => {
     await waitFor(() => expect(result.current.search.params.field).toBe("title_and_abstract"), SETTLE);
     expect(onUrlUpdate.mock.calls.at(-1)![0].searchParams.get("q")).toBe("tutor");
     expect(useSearchHistoryStore.getState().searchHistory[0].query).toBe("tutor");
+  });
+
+  it("brings the keyword scope back when stepping off a question asked by meaning", async () => {
+    seed([{ query: "tutor", field: "title_and_abstract" }, { query: QUESTION, field: "semantic" }]);
+    const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>();
+    const { result } = renderSearch(`?field=semantic&q=${encodeURIComponent(QUESTION)}`, onUrlUpdate);
+
+    act(() => result.current.history.goToPrevious());
+
+    await waitFor(() => expect(result.current.search.params.field).toBe("title_and_abstract"), SETTLE);
+    expect(onUrlUpdate.mock.calls.at(-1)![0].searchParams.get("q")).toBe("tutor");
   });
 });
 
