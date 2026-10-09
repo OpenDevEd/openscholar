@@ -24,6 +24,15 @@ import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 import { sidebarSpring } from "@/lib/ui/sidebar-motion";
 import { isCitedByFilterActive, isCitesFilterActive, isRelatedToFilterActive } from "@/lib/utils";
 
+/**
+ * Keeps the running search's saved field when the dialog sets its search itself, as the provider does
+ * for its own changes: an AI rewrite that comes back reads it to tell whether the search changed kind
+ * meanwhile (lib/search/scope-now.ts).
+ */
+function keepSavedField(searchId: string, params: SearchParams) {
+  useSearchHistoryStore.getState().updateSearchResult(searchId, { field: paramsToSearchResult(params).field });
+}
+
 /** Everything inside the provider: it reads the running search. */
 function SearchWorkspace({
   name,
@@ -58,8 +67,10 @@ function SearchWorkspace({
   const nameRef = useRef<HTMLInputElement>(null);
   const [choosingFromHistory, setChoosingFromHistory] = useState(false);
   const reducedMotion = useReducedMotion();
-  const clearAll = () =>
+  const clearAll = () => {
     setParams((value) => ({ ...DEFAULT_SEARCH_PARAMS, q: value.q, lang: value.lang }));
+    keepSavedField(search.searchId, DEFAULT_SEARCH_PARAMS);
+  };
   const busy = search.isLoading || search.isValidating;
 
   // Sort and ratings do not change what a source imports, so they are not counted.
@@ -309,7 +320,7 @@ export function OpenAlexSearchDialog({
         }}>
           <SearchWorkspace name={name} setName={setName} params={params} setParams={setParams}
             changed={changed} queryUnchanged={queryUnchanged} downloadPdfs={downloadPdfs} setDownloadPdfs={setDownloadPdfs}
-            onReset={() => {setName(startingName); setParams(startingParams); setDownloadPdfs(initial?.settings.downloadPdfs ?? false);}}
+            onReset={() => {setName(startingName); setParams(startingParams); keepSavedField(searchId, startingParams); setDownloadPdfs(initial?.settings.downloadPdfs ?? false);}}
             onClose={onClose} onSave={save}
           />
         </SearchProvider>
