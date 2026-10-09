@@ -3,25 +3,29 @@
 import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Share2, Check, Download } from "@/components/icons";
+import { Share2, Check, Download, MoreHorizontal } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
+  TooltipHint,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { toast as sonnerToast } from "sonner";
 import { useAppToast } from "@/lib/toast";
 import { useSearchOptional } from "@/lib/search";
 import { ModeTabs } from "./components/mode-tabs";
 import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import { useUIStore } from "@/lib/store";
-import { useIsTablet } from "@/lib/hooks";
+import { useIsMobile, useIsTablet } from "@/lib/hooks";
 import type { CommandCenterMode } from "./types";
 import { cn } from "@/lib/utils";
 
@@ -55,12 +59,14 @@ export function SearchCommandHeader({
   const getShareableUrl = search?.getShareableUrl ?? (() => "");
   const isMobile = useIsTablet();
   const { viewMode, setViewMode } = useUIStore();
-
-  const hasDownloadHandlers =
-    onDownloadAllJSON ||
-    onDownloadAllCSV ||
-    onDownloadAllEssentialJSON ||
-    onDownloadAllEssentialCSV;
+  // A phone has no room for the bar's icons: downloading and sharing share one menu.
+  const isPhone = useIsMobile();
+  const downloads = [
+    { run: onDownloadAllJSON, label: tc("downloadAsJson") },
+    { run: onDownloadAllCSV, label: tc("downloadAsCsv") },
+    { run: onDownloadAllEssentialJSON, label: td("downloadEssentialJSON") },
+    { run: onDownloadAllEssentialCSV, label: td("downloadEssentialCSV") },
+  ].filter((item): item is { run: () => void; label: string } => item.run !== undefined);
 
   const handleCopyShareLink = async () => {
     try {
@@ -70,6 +76,8 @@ export function SearchCommandHeader({
       await navigator.clipboard.writeText(shareableUrl);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
+      // On a phone it's picked from a menu that closes, so the copy is confirmed apart.
+      if (isPhone) sonnerToast.success(tsc("copied"));
     } catch {
       toast.clipboard.copyFailed(tsc("link"));
     }
@@ -90,8 +98,39 @@ export function SearchCommandHeader({
         {/* View mode toggle - desktop only */}
         {!isMobile && <ViewModeSwitch value={viewMode} onChange={setViewMode} />}
 
+        {/* On a phone: one menu with the downloads and the share link */}
+        {isPhone && !queryOnly ? (
+          <DropdownMenu>
+            <TooltipHint label={tc("more")}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label={tc("more")} className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipHint>
+            <DropdownMenuContent align="end" className="min-w-52">
+              {downloads.length ? (
+                <>
+                  <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">{tc("download")}</DropdownMenuLabel>
+                  {downloads.map((item) => (
+                    <DropdownMenuItem key={item.label} onSelect={item.run}>
+                      <Download className="size-4" />
+                      {item.label}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
+              <DropdownMenuItem onSelect={handleCopyShareLink}>
+                <Share2 className="size-4" />
+                {tsc("copyShareLink")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+
         {/* Download dropdown */}
-        {hasDownloadHandlers && !queryOnly && (
+        {downloads.length > 0 && !queryOnly && !isPhone && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -128,7 +167,7 @@ export function SearchCommandHeader({
         )}
 
         {/* Share button */}
-        {!queryOnly && (
+        {!queryOnly && !isPhone && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

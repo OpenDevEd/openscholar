@@ -248,12 +248,13 @@ Return a more targeted version of this query.`;
         </div>
       </div>
 
-      <div className="self-end sm:self-auto">
+      {/* On a phone the strip spans the card, its buttons spread across it, so none falls off its edge. */}
+      <div className="w-full sm:w-auto">
         <motion.div
           layout
           transition={contextualTransition}
           className={cn(
-            "inline-flex items-center rounded-2xl border border-border bg-field p-1 shadow-sm"
+            "flex w-full items-center justify-between rounded-2xl border border-border bg-field p-1 shadow-sm sm:inline-flex sm:w-auto sm:justify-start"
           )}
         >
           <AnimatePresence initial={false} mode="popLayout">
@@ -291,7 +292,7 @@ Return a more targeted version of this query.`;
                       : tsc("makeSpecific")
                   }
                   className={cn(
-                    "h-9 gap-1.5 rounded-xl border border-transparent px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground",
+                    "h-9 gap-1.5 rounded-xl border border-transparent px-2 text-muted-foreground hover:bg-muted hover:text-foreground sm:px-2.5",
                     isContextualActionLoading && "text-foreground"
                   )}
                 >
@@ -308,7 +309,7 @@ Return a more targeted version of this query.`;
                       : tsc("makeSpecific")}
                   </span>
                 </Button>
-                {!queryOnly && <div className="mx-1 h-6 w-px bg-border/70" />}
+                {!queryOnly && <div className="mx-0.5 h-6 w-px bg-border/70 sm:mx-1" />}
               </motion.div>
             )}
           </AnimatePresence>
@@ -320,10 +321,10 @@ Return a more targeted version of this query.`;
                 disabled={isLoading}
                 triggerVariant="ghost"
                 compactTrigger
-                triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2 text-muted-foreground hover:bg-muted hover:text-foreground sm:px-2.5"
               />
 
-              <div className="mx-1 h-6 w-px bg-border/70" />
+              <div className="mx-0.5 h-6 w-px bg-border/70 sm:mx-1" />
 
               {/* AI-actions sub-group: Start Chat + Screen All grouped together; trailing coin glyph signals credit-bearing actions */}
               <div
@@ -337,7 +338,7 @@ Return a more targeted version of this query.`;
                     type="button"
                     onClick={handleStartChat}
                     aria-label={tsc("startChat")}
-                    className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="h-9 gap-1.5 rounded-lg border border-transparent px-2 sm:px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <MessageSquare className="h-3.5 w-3.5" />
                     <span className="hidden text-sm font-medium sm:inline">{tsc("startChat")}</span>
@@ -351,7 +352,7 @@ Return a more targeted version of this query.`;
                   onClick={() => phase === "authenticated" ? router.push(`/screening?search=${encodeURIComponent(searchId)}`) : goToSignIn()}
                   disabled={Boolean(isLoading)}
                   aria-label={tsc("screenAll")}
-                  className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="h-9 gap-1.5 rounded-lg border border-transparent px-2 sm:px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <ListChecks className="h-3.5 w-3.5" />
                   <span className="hidden text-sm font-medium sm:inline">
@@ -376,7 +377,7 @@ Return a more targeted version of this query.`;
                 </Tooltip>
               </div>
 
-              <div className="mx-1 h-6 w-px bg-border/70" />
+              <div className="mx-0.5 h-6 w-px bg-border/70 sm:mx-1" />
 
               {/* Right: Screen toggle */}
               <Button
@@ -384,10 +385,11 @@ Return a more targeted version of this query.`;
                 size="sm"
                 type="button"
                 onClick={handleScreeningToggle}
+                aria-label={t("common.screen")}
                 aria-expanded={isScreeningOpen}
                 aria-controls={screeningPanelId}
                 className={cn(
-                  "h-9 min-w-[130px] justify-between gap-2 rounded-xl border border-transparent px-2.5",
+                  "h-9 justify-between gap-2 rounded-xl border border-transparent px-2 sm:min-w-[130px] sm:px-2.5",
                   "text-muted-foreground hover:bg-muted hover:text-foreground",
                   isScreeningOpen &&
                     "border-border bg-card text-foreground shadow-[0_10px_22px_-18px_var(--color-primary)]"
@@ -395,7 +397,7 @@ Return a more targeted version of this query.`;
               >
                 <span className="inline-flex items-center gap-1.5">
                   <Eye className="h-4 w-4" />
-                  <span className="text-sm font-medium">{t("common.screen")}</span>
+                  <span className="hidden text-sm font-medium sm:inline">{t("common.screen")}</span>
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <Badge
