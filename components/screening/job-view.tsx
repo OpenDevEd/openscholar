@@ -104,7 +104,8 @@ export function JobView({
     try {
       // The server writes CSV and JSON a page of results at a time; a workbook is built here.
       if (kind === "xlsx") await exportScreeningToXLSX(convex, job._id, workspaceId);
-      else await downloadExport(convex, { kind: "screening", jobId: job._id }, kind);
+      else if (!workspaceId) throw new Error("The workspace hasn't loaded yet. Try again in a moment.");
+      else await downloadExport(convex, workspaceId, { kind: "screening", jobId: job._id }, kind);
     } catch (error) {
       console.error("[screening] export failed", error);
       toast.error(t("exportFailed"), getErrorMessage(error, t("exportFailed")));

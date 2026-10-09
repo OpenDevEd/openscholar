@@ -173,7 +173,8 @@ export function LibraryPageClient() {
       if (isExporting) return;
       setIsExporting(true);
       try {
-        await downloadExport(convex, { kind: "library", view: { ...libraryFilters, searchText: queryText || undefined } }, format);
+        if (!workspaceId) throw new Error("The workspace hasn't loaded yet. Try again in a moment.");
+        await downloadExport(convex, workspaceId, { kind: "library", view: { ...libraryFilters, searchText: queryText || undefined } }, format);
       } catch (error) {
         console.error(`[Library] Failed to start the ${format} export:`, error);
         toast.error(t("exportError"));

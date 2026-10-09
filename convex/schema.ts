@@ -1276,6 +1276,8 @@ export default defineSchema({
   // the next part to serve and where it starts, whether a part failed, and when the link expires.
   exports: defineTable({
     userId: v.id("users"),
+    // The workspace it reads (#650); the export itself is the person's.
+    workspaceId: v.optional(v.id("workspaces")),
     digest: v.string(),
     format: exportFormatValidator,
     source: exportSourceValidator,
