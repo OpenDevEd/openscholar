@@ -580,12 +580,6 @@
       "failedCount": "{count, plural, one {# failed} other {# failed}}",
       "retryingCount": "{count, plural, one {# retrying} other {# retrying}}"
     },
-    "errorHistory": {
-      "trigger": "Error history · {count, plural, one {# attempt} other {# attempts}}",
-      "triggerLabel": "Show error history ({count, plural, one {# attempt} other {# attempts}})",
-      "attempt": "Attempt {n}",
-      "loadMore": "Show older attempts"
-    },
     "mixedSuccess": {
       "title": "Completed with partial success",
       "answeredOverTotal": "{papers, plural, one {# paper} other {# papers}} read, {answered} of {total} questions checked",

@@ -579,12 +579,6 @@
       "failedCount": "{count, plural, one {# échec} other {# échecs}}",
       "retryingCount": "{count, plural, one {# nouvelle tentative} other {# nouvelles tentatives}}"
     },
-    "errorHistory": {
-      "trigger": "Historique des erreurs · {count, plural, one {# tentative} other {# tentatives}}",
-      "triggerLabel": "Afficher l'historique des erreurs ({count, plural, one {# tentative} other {# tentatives}})",
-      "attempt": "Tentative {n}",
-      "loadMore": "Afficher les tentatives plus anciennes"
-    },
     "mixedSuccess": {
       "title": "Terminé avec succès partiel",
       "answeredOverTotal": "{papers, plural, one {# article lu} other {# articles lus}}, {answered} questions vérifiées sur {total}",
