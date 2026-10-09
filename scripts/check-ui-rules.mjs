@@ -86,33 +86,47 @@ function appliedValue(token) {
   if (TRANSITION_UTILITY.test(name)) return ["transition-property", transitionsMovement(token) ? "all" : "color"];
   return APPLIED_NONE[name];
 }
-/** What one `@apply` utility declares, !important when it carries Tailwind's `!` mark. */
-function appliedDeclaration(token) {
+/** What one `@apply` utility declares, !important when it or the whole directive carries the mark. */
+function appliedDeclaration(token, directiveImportant) {
   const declaration = appliedValue(token);
-  const important = /^!|!$/.test(token.split(":").at(-1) ?? "");
+  const important = directiveImportant || /^!|!$/.test(token.split(":").at(-1) ?? "");
   return declaration && important ? [declaration[0], `${declaration[1]} !important`] : declaration;
 }
-/** The declarations an `@apply` list makes, each with the box it styles. */
-const applyList = (list) =>
-  list.split(/\s+/).flatMap((token) => {
-    const declaration = appliedDeclaration(token);
-    return declaration ? [[box(token), declaration]] : [];
+/** The state or screen variants a utility applies under (`hover:`, `md:`); pseudo-elements are its box instead. */
+const scope = (token) =>
+  token
+    .split(":")
+    .slice(0, -1)
+    .filter((variant) => !PSEUDO_ELEMENTS.has(variant))
+    .join(":");
+/** The declarations an `@apply` list makes, each keyed by the box it styles and the variants it applies under. */
+function applyList(list) {
+  const tokens = list.split(/\s+/).filter(Boolean);
+  // `@apply a b !important` makes every utility in it important.
+  const important = tokens.includes("!important");
+  return tokens.flatMap((token) => {
+    const declaration = token === "!important" ? undefined : appliedDeclaration(token, important);
+    return declaration ? [[`${box(token)}|${scope(token)}`, declaration]] : [];
   });
-/** One rule's declarations by the box they style, in source order; `@apply` utilities join where they're written, and `before:` ones style a pseudo-element. */
+}
+// One rule's declarations, in source order, for each box and variant they
+// apply under; `@apply` utilities join where they're written. A variant
+// (`hover:animate-none`) adds to its box's own declarations, never replaces
+// them outside that state.
 function ruleDeclarations(body) {
-  const boxes = new Map([["", []]]);
-  const add = (target, declaration) => boxes.set(target, [...(boxes.get(target) ?? []), declaration]);
+  const scopes = new Map([["|", []]]);
+  const add = (key, declaration) => scopes.set(key, [...(scopes.get(key) ?? []), declaration]);
   for (const part of body.split(";").map((piece) => piece.trim())) {
     const applied = part.match(/^@apply\s+([\s\S]+)$/)?.[1];
     const [name, ...value] = part.split(":");
-    if (applied) for (const [target, declaration] of applyList(applied)) add(target, declaration);
-    else if (value.length) add("", [name.trim().toLowerCase(), value.join(":").trim()]);
+    if (applied) for (const [key, declaration] of applyList(applied)) add(key, declaration);
+    else if (value.length) add("|", [name.trim().toLowerCase(), value.join(":").trim()]);
   }
-  return boxes;
+  return [...scopes].map(([key, declarations]) => (key.endsWith("|") ? declarations : [...(scopes.get(`${key.split("|")[0]}|`) ?? []), ...declarations]));
 }
-/** Whether one box of a CSS rule both animates and transitions opacity or transform. */
+/** Whether one box of a CSS rule, in any state, both animates and transitions opacity or transform. */
 const cssClashes = (body) =>
-  [...ruleDeclarations(body).values()].some(
+  ruleDeclarations(body).some(
     (declarations) => cssAnimates(cascade(declarations, ["animation", "animation-name"])) && cssMoves(cascade(declarations, ["transition", "transition-property"])),
   );
 /** Each CSS rule's own declarations, without the rules nested in it, and where its brace opens. */
@@ -337,7 +351,9 @@ function check(file) {
         const name = attribute.name.getText(source);
         if (name === "className") classes = classLists(attribute.initializer);
         if (name === "style" && attribute.initializer) style = attribute.initializer.getText(source);
-        if (FRAMER_PROPS.has(name) && MOTION_TAG.test(tag)) framer = true;
+        // A prop set to a literal false (`layout={false}`) turns its animation off.
+        const switchedOff = attribute.initializer && ts.isJsxExpression(attribute.initializer) && attribute.initializer.expression?.kind === ts.SyntaxKind.FalseKeyword;
+        if (FRAMER_PROPS.has(name) && MOTION_TAG.test(tag) && !switchedOff) framer = true;
         if (name === "title") title = attribute;
         if (tag === "AvatarFallback" && name === "children" && attribute.initializer && rendersText(attribute.initializer)) report(attribute, "initials");
       }
