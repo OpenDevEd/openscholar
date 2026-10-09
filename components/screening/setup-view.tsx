@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { AiIcon, Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
+import { AiIcon, Ban, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import type { SearchResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { jobName } from "./job-view";
 import { ANSWER, AnimatedNumber, Chip, ClippedChip, Meter, SOURCE_ICON } from "./parts";
+import { PaperScope, PickMark, SourceRow } from "./source-row";
 import { inWorkspace, useWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
@@ -106,10 +107,10 @@ export function SetupView({
   };
 
   const [kind, setKind] = useState<Kind>(again?.set?.kind ?? "search");
-  // The set picked stays picked whatever page its list shows; until one is, a job run again starts on its own set, and otherwise the first listed.
+  // The set picked stays picked whatever page its list shows; until one is, a job run again starts on its own set, and otherwise the first listed that has papers.
   const [picked, setPicked] = useState<Source | null>(null);
   const againId = again?.set && (again.set.kind === "search" ? again.set.searchId : again.set.kind === "collection" ? again.set.collectionId : again.set.kind === "screening" ? again.set.jobId : "saved");
-  const source = picked?.kind === kind ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : (lists[kind].rows.find((row) => row.id === againId) ?? lists[kind].rows[0]);
+  const source = picked?.kind === kind ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : (lists[kind].rows.find((row) => row.id === againId) ?? lists[kind].rows.find((row) => row.count > 0));
   // Opened from a results page, it starts on the page the person was reading; run again, on the job's own papers.
   const [scope, setScope] = useState<"all" | "page" | "range">(again?.first ? "range" : fromSearchId && !again ? "page" : again?.set && again.set.kind !== "search" ? "all" : "range");
   const [range, setRange] = useState<[number, number]>(again?.first && again.last ? [again.first, again.through ?? again.last] : [1, 300]);
@@ -184,7 +185,7 @@ export function SetupView({
   };
   const pick = (next: Kind) => {
     setKind(next);
-    const firstOf = lists[next].rows[0];
+    const firstOf = lists[next].rows.find((row) => row.count > 0);
     if (firstOf) choose(firstOf);
     setScope(next === "search" ? "range" : "all");
   };
@@ -266,88 +267,41 @@ export function SetupView({
               <div className={cn(LIST, list.pager?.isStale && "pointer-events-none opacity-60")} role="radiogroup" aria-label={t("papersToScreen")}>
                 {list.rows.map((s) => {
                   const on = s.id === source?.id;
-                  const Icon = SOURCE_ICON[s.kind];
                   return (
-                    <div key={s.id} className={cn("transition-colors", on && "bg-primary/5")}>
-                      <button type="button" role="radio" aria-checked={on} onClick={() => choose(s)} className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors", !on && "hover:bg-muted")}>
-                        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset", on ? "text-primary" : "text-muted-foreground")}>
-                          <Icon className="size-4" />
-                        </span>
-                        <span className="min-w-0 flex-1 space-y-1.5">
-                          <span className="block truncate text-sm font-medium">{s.label}</span>
-                          {/* As on a search's history card: one row that scrolls sideways under a fading edge. */}
-                          {s.kind === "search" ? (
-                            <span className="block min-w-0 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
-                              <FilterChips filters={{ ...s.search, field: undefined, sortBy: undefined }} size="compact" singleLine />
-                            </span>
-                          ) : null}
-                        </span>
-                        <Chip>{t("paperCount", { count: s.count })}</Chip>
-                        <PickMark on={on} />
-                      </button>
-                      <AnimatePresence initial={false}>
-                        {/* Every set is picked from the same way: a range of its papers, or all of them; a search also has the page being read. */}
-                        {on ? (
-                          <motion.div key="scope" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }} className="overflow-hidden">
-                            <div className="space-y-4 pb-4 pl-15 pr-4">
-                              <Segmented
-                                label={t("whichPapers")}
-                                value={scope}
-                                onChange={setScope}
-                                options={[
-                                  { id: "range" as const, label: t("scope.range") },
-                                  ...(s.kind === "search" ? [{ id: "page" as const, label: t("scope.page") }] : []),
-                                  { id: "all" as const, label: s.kind === "search" ? t("scope.allResults") : t("scope.allPapers") },
-                                ]}
-                              />
-                              {scope === "range" ? (
-                                <div className="space-y-3">
-                                  <Slider min={1} max={Math.max(1, top)} step={1} value={[first, last]} onValueChange={(v) => setRange([v[0]!, v[1]!])} aria-label={t("papersToScreen")} />
-                                  <div className="flex flex-wrap items-center justify-between gap-2">
-                                    {/* Typeable ends: over thousands of results a drag can't land on one paper. */}
-                                    <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                                      {t("rangeFrom")}
-                                      <Input
-                                        type="number"
-                                        min={1}
-                                        max={last}
-                                        value={first}
-                                        onChange={(e) => setRange([Math.min(last, Math.max(1, Math.round(Number(e.target.value)) || 1)), last])}
-                                        onFocus={(e) => e.target.select()}
-                                        aria-label={t("firstPaper")}
-                                        className="h-7 w-20 px-1 text-center text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                                      />
-                                      {t("rangeTo")}
-                                      <Input
-                                        type="number"
-                                        min={first}
-                                        max={top}
-                                        value={last}
-                                        onChange={(e) => setRange([first, Math.min(top, Math.max(first, Math.round(Number(e.target.value)) || first))])}
-                                        onFocus={(e) => e.target.select()}
-                                        aria-label={t("lastPaper")}
-                                        className="h-7 w-20 px-1 text-center text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                                      />
-                                      {t("rangeOf", { total: top })}
-                                    </span>
-                                  </div>
-                                </div>
-                              ) : scope === "all" ? (
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <Chip className="text-foreground"><span>{t.rich("papersBold", { count: papers, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span></Chip>
-                                  <Chip>{t("oneJob")}</Chip>
-                                </div>
-                              ) : (
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <Chip className="text-foreground"><span>{t.rich("papersBold", { count: papers, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span></Chip>
-                                  <Chip>{t("resultsPage", { page })}</Chip>
-                                </div>
-                              )}
-                            </div>
-                          </motion.div>
-                        ) : null}
-                      </AnimatePresence>
-                    </div>
+                    <SourceRow
+                      key={s.id}
+                      on={on}
+                      onToggle={() => choose(s)}
+                      disabled={s.count === 0}
+                      icon={SOURCE_ICON[s.kind]}
+                      label={s.label}
+                      detail={
+                        // As on a search's history card: one row that scrolls sideways under a fading edge.
+                        s.kind === "search" ? (
+                          <span className="block min-w-0 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
+                            <FilterChips filters={{ ...s.search, field: undefined, sortBy: undefined }} size="compact" singleLine />
+                          </span>
+                        ) : null
+                      }
+                      count={<Chip>{t("paperCount", { count: s.count })}</Chip>}
+                    >
+                      {/* Every set is picked from the same way: a range of its papers, or all of them; a search also has the page being read. */}
+                      <PaperScope
+                        search={s.kind === "search"}
+                        scope={scope}
+                        onScope={setScope}
+                        range={[first, last]}
+                        onRange={setRange}
+                        total={top}
+                        label={t("papersToScreen")}
+                        summary={
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Chip className="text-foreground"><span>{t.rich("papersBold", { count: papers, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span></Chip>
+                            <Chip>{scope === "all" ? t("oneJob") : t("resultsPage", { page })}</Chip>
+                          </div>
+                        }
+                      />
+                    </SourceRow>
                   );
                 })}
               </div>
@@ -614,17 +568,3 @@ function DestinationRow({ on, onPick, icon: Icon, name, facts, children }: { on:
   );
 }
 
-/** The picked row's check, springing in as the chat's answer checks do. */
-function PickMark({ on }: { on: boolean }) {
-  return (
-    <span className="flex size-4 shrink-0 items-center justify-center">
-      <AnimatePresence initial={false}>
-        {on ? (
-          <motion.span key="on" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.4, opacity: 0, transition: { duration: 0.12 } }} transition={{ type: "spring", stiffness: 500, damping: 28 }}>
-            <Check className="size-4 text-primary" />
-          </motion.span>
-        ) : null}
-      </AnimatePresence>
-    </span>
-  );
-}
