@@ -55,25 +55,84 @@ const joins = (node) => ts.isCallExpression(node) && ts.isIdentifier(node.expres
 const classValue = (node) => ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node) || joins(node);
 // The words of a CSS transition that name no property.
 const TIMING = /^(ease(-in|-out|-in-out)?|linear|step-start|step-end|allow-discrete|normal|-?[\d.]+m?s)$/;
-/** Whether one item of a CSS transition list moves opacity or transform; an item that names no property transitions all. */
+/** Whether one item of a `transition` shorthand moves opacity or transform; an item that names no property transitions all. */
 function cssItemMoves(item) {
   const words = item.split(/\s+/).filter((word) => word && !TIMING.test(word));
   return words.length === 0 || words.some((word) => MOVING.has(word));
 }
-/** Whether one CSS rule both animates and transitions opacity or transform. */
-function cssClashes(declarations) {
-  const values = new Map(
-    declarations
-      .split(";")
-      .map((declaration) => declaration.split(":"))
-      .filter((parts) => parts.length > 1)
-      .map(([name, ...value]) => [name.trim().toLowerCase(), value.join(":").trim()]),
-  );
-  const animation = values.get("animation") ?? values.get("animation-name") ?? "none";
-  const transition = values.get("transition") ?? values.get("transition-property") ?? "none";
-  // Functions go first: the commas inside cubic-bezier() don't separate transitions.
-  return !/^none\b/i.test(animation) && transition.replace(/[\w-]+\([^)]*\)/g, " ").split(",").some(cssItemMoves);
+/** The declaration of these properties that applies: a later one wins unless an earlier one is !important. Its value comes without the !important. */
+function cascade(declarations, properties) {
+  let applied;
+  let important = false;
+  for (const [property, value] of declarations.filter(([name]) => properties.includes(name))) {
+    const strong = /!important\s*$/i.test(value);
+    if (strong || !important) applied = [property, value.replace(/!important\s*$/i, "").trim()];
+    important ||= strong;
+  }
+  return applied;
 }
+/** A comma-separated CSS list; functions go first, so the commas inside cubic-bezier() don't split it. */
+const cssList = (value) => value.replace(/[\w-]+\([^)]*\)/g, " ").split(",").map((item) => item.trim());
+/** Whether one CSS rule both animates and transitions opacity or transform. */
+function cssClashes(body) {
+  const declarations = body
+    .split(";")
+    .map((declaration) => declaration.split(":"))
+    .filter((parts) => parts.length > 1)
+    .map(([name, ...value]) => [name.trim().toLowerCase(), value.join(":").trim()]);
+  const animation = cascade(declarations, ["animation", "animation-name"]);
+  const transition = cascade(declarations, ["transition", "transition-property"]);
+  if (!animation || !transition) return false;
+  const animates = cssList(animation[1]).some((item) => item !== "" && !/(^|\s)none(\s|$)/i.test(item));
+  const moves = cssList(transition[1]).some((item) => (transition[0] === "transition" ? cssItemMoves(item) : MOVING.has(item)));
+  return animates && moves;
+}
+/** Each CSS rule's own declarations, without the rules nested in it, and where its brace opens. */
+function cssRules(text) {
+  const rules = [];
+  const open = [];
+  for (let index = 0; index < text.length; index++) {
+    const parent = open.at(-1);
+    if (text[index] === "{") {
+      // The text since the parent's last declaration is the nested rule's selector.
+      if (parent) parent.body = parent.body.replace(/[^;]*$/, "");
+      open.push({ start: index, body: "" });
+    } else if (text[index] === "}") {
+      rules.push(...open.splice(-1));
+      if (open.length) open[open.length - 1].body += ";";
+    } else if (parent) parent.body += text[index];
+  }
+  return rules;
+}
+/** The names a declaration or parameter binds, through destructuring. */
+const boundNames = (name) => (ts.isIdentifier(name) ? [name.text] : name.elements.flatMap((element) => (ts.isOmittedExpression(element) ? [] : boundNames(element.name))));
+/** The variable a block declares under this name, if any. */
+const declares = (block, name) =>
+  block.statements.flatMap((statement) => (ts.isVariableStatement(statement) ? [...statement.declarationList.declarations] : [])).find((declaration) => boundNames(declaration.name).includes(name));
+/** The value an identifier's variable starts with, found as scopes resolve it; a parameter or a destructured name has none. */
+function declaredValue(node) {
+  for (let scope = node.parent; scope; scope = scope.parent) {
+    if (ts.isFunctionLike(scope) && scope.parameters.some((parameter) => boundNames(parameter.name).includes(node.text))) return undefined;
+    const declaration = ts.isBlock(scope) || ts.isSourceFile(scope) ? declares(scope, node.text) : undefined;
+    if (declaration) return ts.isIdentifier(declaration.name) ? declaration.initializer : undefined;
+  }
+  return undefined;
+}
+/** An expression without `( )`, `as`, `satisfies` or `!` around it. */
+const unwrap = (node) => (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isNonNullExpression(node) ? unwrap(node.expression) : node);
+/** The value of the same-file constant an identifier reads, when it can hold classes. */
+function constantValue(node) {
+  const readsVariable = ts.isIdentifier(node) && !((ts.isPropertyAccessExpression(node.parent) || ts.isPropertyAssignment(node.parent)) && node.parent.name === node);
+  const initializer = readsVariable ? declaredValue(node) : undefined;
+  const value = initializer && unwrap(initializer);
+  return value && (classValue(value) || ts.isConditionalExpression(value) || ts.isBinaryExpression(value) || ts.isIdentifier(value)) ? value : undefined;
+}
+// ponytail: past 64 combinations the lists merge into one, which can report a clash between exclusive branches.
+const MAX_LISTS = 64;
+const capped = (lists) => {
+  const unique = [...new Set(lists)];
+  return unique.length > MAX_LISTS ? [[...new Set(unique.join(" ").split(/\s+/))].join(" ")] : unique;
+};
 const FRAMER_PROPS = new Set(["initial", "animate", "exit", "layout", "layoutId", "variants", "whileHover", "whileTap", "whileInView", "whileFocus", "whileDrag"]);
 // The `uppercase` utility with variants or the important mark (`sm:uppercase`,
 // `uppercase!`), looked for only where classes are written so prose that says
@@ -110,36 +169,42 @@ function check(file) {
   const lines = text.split("\n");
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const found = [];
-  // Every variable in the file with the value it starts with.
-  const constants = new Map();
-  const collect = (node) => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) constants.set(node.name.text, node.initializer);
-    ts.forEachChild(node, collect);
+  // The class lists each constant adds, read once.
+  const constantLists = new Map();
+  // What a logical operator can give: `a && b` gives b or nothing, `a || b` and `a ?? b` give one side.
+  const logicalLists = (node, seen) => {
+    const kind = node.operatorToken.kind;
+    if (kind === ts.SyntaxKind.AmpersandAmpersandToken) return capped([...classLists(node.right, seen), ""]);
+    if (kind !== ts.SyntaxKind.BarBarToken && kind !== ts.SyntaxKind.QuestionQuestionToken) return undefined;
+    return capped([...classLists(node.left, seen), ...classLists(node.right, seen)]);
   };
-  collect(source);
-  // The value of a same-file variable an identifier reads, when it holds classes.
-  const constantValue = (node) => {
-    if (!ts.isIdentifier(node) || (ts.isPropertyAccessExpression(node.parent) && node.parent.name === node)) return undefined;
-    const value = constants.get(node.text);
-    return value && (classValue(value) || ts.isConditionalExpression(value)) ? value : undefined;
+  // The class lists a constant adds. One that clashes by itself is reported where it is written, so it adds none here.
+  const listsOfConstant = (value, seen) => {
+    if (seen.has(value)) return [""];
+    if (!constantLists.has(value)) {
+      const lists = classLists(value, new Set([...seen, value]));
+      constantLists.set(value, classValue(value) && lists.some((list) => clashes(list, false)) ? [""] : lists);
+    }
+    return constantLists.get(value);
   };
   // Every class list a className can produce: the two sides of `a ? b : c`
   // never apply together, and a same-file constant adds the classes it holds.
   const classLists = (node, seen = new Set()) => {
     if (!node) return [""];
-    if (ts.isConditionalExpression(node)) return [...classLists(node.whenTrue, seen), ...classLists(node.whenFalse, seen)];
+    if (ts.isConditionalExpression(node)) return capped([...classLists(node.whenTrue, seen), ...classLists(node.whenFalse, seen)]);
+    const logical = ts.isBinaryExpression(node) ? logicalLists(node, seen) : undefined;
+    if (logical) return logical;
     const value = constantValue(node);
-    // A constant that clashes by itself is reported where it is written.
-    if (value) return seen.has(value) || clashesAlone(value, seen) ? [""] : classLists(value, new Set([...seen, value]));
+    if (value) return listsOfConstant(value, seen);
     const children = node.getChildren(source);
     if (children.length === 0) return [node.getText(source)];
     return children.reduce((lists, child) => {
       const texts = classLists(child, seen);
-      return lists.flatMap((list) => texts.map((text) => `${list} ${text}`));
+      return capped(lists.flatMap((list) => texts.map((text) => `${list} ${text}`)));
     }, [""]);
   };
   // Whether a class value clashes by itself, wherever it is used.
-  const clashesAlone = (node, seen = new Set()) => classValue(node) && classLists(node, new Set([...seen, node])).some((list) => clashes(list, false));
+  const clashesAlone = (node) => classValue(node) && classLists(node, new Set([node])).some((list) => clashes(list, false));
   // Whether a node is part of a larger class list: an element's className, a joining call, or a template.
   const insideClassList = (node) => {
     for (let parent = node.parent; parent && !ts.isSourceFile(parent); parent = parent.parent) {
@@ -242,9 +307,10 @@ const stylesheetClashes = cssFiles.flatMap((file) => {
   const lines = text.split("\n");
   // Comments blanked with their newlines kept, so a brace in one can't open a rule.
   const plain = text.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, " "));
-  return [...plain.matchAll(/\{([^{}]*)\}/g)]
-    .filter((rule) => cssClashes(rule[1]))
-    .map((rule) => plain.slice(0, rule.index).split("\n").length)
+  return cssRules(plain)
+    .filter((rule) => cssClashes(rule.body))
+    .map((rule) => plain.slice(0, rule.start).split("\n").length)
+    .sort((a, b) => a - b)
     .filter((line) => !allowed(lines[line - 2], "animation-clash"))
     .map((line) => `${file}:${line} animation-clash: ${FIX["animation-clash"]}`);
 });
