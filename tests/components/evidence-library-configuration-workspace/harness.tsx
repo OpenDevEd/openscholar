@@ -59,9 +59,10 @@ vi.mock("next-intl", () => ({
 
 vi.mock("sonner", () => ({ toast: toastMock }));
 
-// The Team section opens Clerk's organisation modal from its manage button.
+// The Team section opens Clerk's organisation modal from its manage button, and marks you in its list.
 vi.mock("@clerk/nextjs", () => ({
   useClerk: () => ({ openOrganizationProfile: vi.fn() }),
+  useUser: () => ({ user: { id: "user_me" } }),
 }));
 
 vi.mock("@/convex/_generated/api", () => ({

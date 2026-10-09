@@ -651,15 +651,17 @@ describe("assistant replies", () => {
     await expect(asAda.query(api.assistant.replies.live, { threadId })).rejects.toThrow(/disabled/);
   });
 
-  it("link a query the reply looked up to its results, with its filters, as a new search, and say how many papers it matched", async () => {
+  it("link what the reply looked up to its results, by a query or by filters alone, as a new search, and say how many papers it matched", async () => {
     const t = convexTest(schema);
     const { asAda, ada, threadId } = await sharedChat(t);
     mockDoStream.mockImplementation(finishingDoStream(["Found some"]));
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Look these up" });
     await ended(t, threadId);
     const order = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.at(-1)!.order;
+    // The steps ran in 2025: a year a lookup names is checked against the year it ran.
+    const ran = Date.UTC(2025, 5, 1);
     await t.run(async (ctx) => {
-      const step = { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order, userId: ada, status: "running" as const, startedAt: 1 };
+      const step = { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order, userId: ada, status: "running" as const, startedAt: ran };
       // A page of a search, and a count by year: each matched more papers than it returned.
       const search = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "search", path: "research/papers:search", input: JSON.stringify({ query: '"machine learning"', minCitations: 11, fromYear: 2020, toYear: 2024, page: 2 }), subject: '"machine learning"' });
       await endStep(ctx, search, { total: 260, page: 2, pages: 13, papers: [] });
@@ -669,16 +671,24 @@ describe("assistant replies", () => {
       const rated = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "rated", path: "research/papers:search", input: JSON.stringify({ query: "phonics", ratedOnly: true }), subject: "phonics" });
       await endStep(ctx, rated, { total: 3, totalIgnoresRatings: true, page: 1, pages: 1, papers: [] });
       await ctx.db.insert("assistantSteps", { ...step, status: "done", endedAt: 1, toolCallId: "collection", path: "library/collections:create", input: JSON.stringify({ name: "Trials" }), subject: "Trials" });
+      // On a filter alone, with no query: nothing names it, and it still leads to its results.
+      const related = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "related", path: "research/papers:search", input: JSON.stringify({ relatedTo: "W3120515101" }) });
+      await endStep(ctx, related, { total: 9, page: 1, pages: 1, papers: [] });
+      // Years left open at one end: its link ends at the year the lookup ran, not at this one.
+      await ctx.db.insert("assistantSteps", { ...step, status: "done", endedAt: ran, toolCallId: "since", path: "research/papers:search", input: JSON.stringify({ query: "coaching", fromYear: 2024 }), subject: "coaching" });
     });
 
-    const steps = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
+    const all = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
+    expect(all.find((step) => step.subject === undefined)).toMatchObject({ href: "/results?rel=W3120515101", count: 9 });
+    const steps = all.filter((step) => step.subject !== undefined);
     expect(Object.fromEntries(steps.map((step) => [step.subject, "href" in step ? step.href : null]))).toEqual({
       '"machine learning"': "/results?q=%22machine+learning%22&yf=2020&yt=2024&mincite=11",
       tutoring: "/results?q=tutoring",
       phonics: "/results?q=phonics&rated=true",
+      coaching: "/results?q=coaching&yf=2024&yt=2025",
       Trials: null,
     });
-    expect(Object.fromEntries(steps.map((step) => [step.subject, step.count ?? null]))).toEqual({ '"machine learning"': 260, tutoring: 1840, phonics: null, Trials: null });
+    expect(Object.fromEntries(steps.map((step) => [step.subject, step.count ?? null]))).toEqual({ '"machine learning"': 260, tutoring: 1840, phonics: null, coaching: null, Trials: null });
   });
 });
 

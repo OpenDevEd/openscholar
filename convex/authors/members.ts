@@ -13,7 +13,7 @@ export const list = query({
     invitations: profileInvitationsValidator,
   }),
   handler: async (ctx, {profileId}) => {
-    const {profile, role} = await requireProfileAccess(ctx, profileId);
+    const {profile, user: reader, role} = await requireProfileAccess(ctx, profileId);
     // Its owners through the workspace that owns it (#650), then the people invited to edit it.
     const owners = await profileOwners(ctx, profile);
     const ownerIds = new Set(owners.map(owner => owner._id));
@@ -25,7 +25,7 @@ export const list = query({
       role,
       members: [...owners, ...editors].filter(user => user?.state === "active").map(user => ({
         userId: user!._id, name: [user!.firstName, user!.lastName].filter(Boolean).join(" ") || user!.email,
-        email: user!.email, imageUrl: user!.avatarUrl, role: ownerIds.has(user!._id) ? "owner" as const : "editor" as const,
+        email: user!.email, imageUrl: user!.avatarUrl, role: ownerIds.has(user!._id) ? "owner" as const : "editor" as const, you: user!._id === reader._id,
       })),
       invitations,
     };
