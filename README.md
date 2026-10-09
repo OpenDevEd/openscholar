@@ -107,7 +107,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
    - Autumn sends its webhooks through the Svix server beside it. Add an
      endpoint for `POST /webhooks/autumn` on the Convex HTTP URL in Autumn's
      dashboard under Developer, Webhooks, and set `AUTUMN_WEBHOOK_SECRET` to its
-     signing secret. Each event refreshes that user's cached copy, so plan
+     signing secret. Each event refreshes that workspace's cached copy, so plan
      changes made in the dashboard reach the app in seconds. Autumn sends no
      event for a balance edit; the billing page refreshes the copy when it
      opens.
@@ -118,8 +118,8 @@ It's designed for systematic reviews and complex queries, not just keyword match
      `payment_method.detached`, `charge.refunded`.
    - `STRIPE_WEBHOOK_SECRET` is that endpoint's signing secret.
    - The billing page pages through charges using a count kept in the
-     `usageAgg` aggregate. After deploying it to a deployment that already has
-     charges, count them once: `npx convex run migrations/countBillingUsage:run`.
+     `usageAgg` aggregate, under the workspace that paid. Each charge is
+     counted as it's recorded.
 
    Admin notes for this repo:
    - Admins see an Admin group in settings: feature switches, which models
