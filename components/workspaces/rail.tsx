@@ -50,8 +50,9 @@ import { useCurrentQueryStore, useKeywordExpansionStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { CreateOrganization, WorkspaceMenu } from "./switcher";
-import { Framed, settingsHref, usePlanOf, useCurrentWorkspace, workspaceTint, WorkspaceTile, type WorkspaceRow } from "./parts";
+import { Framed, settingsHref, usePlanOf, useCurrentWorkspace, useWorkspaces, workspaceTint, WorkspaceTile, type WorkspaceRow } from "./parts";
 
 /** How far the rail steps back while a card is up. */
 const RECEDE = 0.9;
@@ -88,7 +89,17 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
   const path = bareWorkspacePath(usePathname());
   const searchParams = useSearchParams();
   const here = useWorkspace();
-  const current = useCurrentWorkspace();
+  const loaded = useCurrentWorkspace();
+  // Read here, where the rail always is, so the card opens with the list in it.
+  const workspaces = useWorkspaces();
+  // A workspace picked in the card is the rail's from the click on, as the mock switched: its tile
+  // flies back to the rail as the card closes, and stays while its pages load. Until then the page
+  // is still the one it was picked from; once it's the picked one's, that one shows when it loads.
+  const slug = useWorkspaceSlug() ?? null;
+  const [picked, setPicked] = useState<{ to: WorkspaceRow; from: string | null } | null>(null);
+  const landed = picked !== null && slug === (picked.to.slug ?? null);
+  if (picked && slug !== picked.from && !(landed && loaded?.workspaceId !== picked.to.workspaceId)) setPicked(null);
+  const current = picked && (slug === picked.from || landed) ? picked.to : loaded;
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
 
@@ -122,7 +133,7 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
   };
 
   return (
-    <>
+    <ShownWorkspace.Provider value={current}>
       <div className="relative h-full w-20">
         {/* While a card is up the rail steps back, the way iOS sets back the screen under a sheet. Its
             origin never changes, and the two buttons the cards grow from aren't in it, so whatever flies
@@ -209,15 +220,15 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
         head={
           current ? (
             <motion.span layoutId="rail-workspace-tile" layoutDependency={card === "workspace"} transition={CARD_SPRING} className="flex">
-              <Framed>
-                <WorkspaceTile workspace={current} size="lg" home />
-              </Framed>
+              <CardTile />
             </motion.span>
           ) : null
         }
       >
         <WorkspaceMenu
+          all={workspaces}
           onDone={close}
+          onPick={(to) => setPicked({ to, from: slug })}
           onCreate={() => {
             setCard(null);
             setCreating(true);
@@ -244,8 +255,25 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
         />
       </RailCard>
       <CreateOrganization open={creating} onOpenChange={setCreating} />
-    </>
+    </ShownWorkspace.Provider>
   );
+}
+
+/** The workspace the rail shows, for the workspace card's head. */
+const ShownWorkspace = React.createContext<WorkspaceRow | undefined>(undefined);
+
+/**
+ * The tile at the head of the workspace card. A closing card keeps what it last rendered, but this
+ * reads the rail's workspace as it changes, so the tile that flies back from a card closed by a
+ * pick is the picked workspace's, and the one the rail shows from then on.
+ */
+function CardTile() {
+  const workspace = React.useContext(ShownWorkspace);
+  return workspace ? (
+    <Framed>
+      <WorkspaceTile workspace={workspace} size="lg" home />
+    </Framed>
+  ) : null;
 }
 
 /**
