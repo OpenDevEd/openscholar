@@ -80,9 +80,10 @@ export default function BillingPage() {
   const [hover, setHover] = useState<Kind | null>(null);
   const [day, setDay] = useState<number | null>(null);
 
-  // The chart's window starts at midnight 29 days ago, so its query only changes once a day.
+  // The chart's window starts at midnight 29 days ago, so its query only changes once a day. UTC midnight:
+  // the app shows dates in UTC, so each bar's day is the date it's labelled with.
   const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
   const start = today.getTime() - (DAYS - 1) * DAY;
   const { data: spending } = useProtectedQuery(api.billing.usage.spending, inWorkspace(workspaceId, { since: start, days: DAYS }));
   // Charges are read a page at a time, newest first; the count totals the pages.
@@ -441,7 +442,8 @@ export default function BillingPage() {
                         <p className="text-xs text-muted-foreground">{tu(`kinds.${c.kind}`)}</p>
                       </div>
                       <time dateTime={new Date(c.createdAt).toISOString()} className="text-xs tabular-nums text-muted-foreground">
-                        {format.relativeTime(c.createdAt, now)}
+                        {/* `now` ticks once a minute: a charge made since is just now, not in the future. */}
+                        {format.relativeTime(c.createdAt, Math.max(now.getTime(), c.createdAt))}
                       </time>
                       <span className="w-20 text-right font-mono text-sm tabular-nums">
                         −{format.number(c.credits)}
