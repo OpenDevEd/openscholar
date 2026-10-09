@@ -3,12 +3,12 @@ import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import { findMatchingLibraryServiceCredential } from "./credentials";
-import { readLibraryRole } from "./access";
+import { libraryOwner, ownerName, readLibraryRole } from "./access";
 import { evidenceLibraryAdminRoleValidator } from "./validators";
 
 /**
- * A refusal names the organisation that runs the library, so the library can
- * tell the person whom to ask for access.
+ * A refusal names who runs the library, its organization or the person whose own workspace
+ * it's in, so the library can tell the person whom to ask for access.
  */
 export const readSessionAccess = internalQuery({
   args: { libraryId: v.string(), clerkUserId: v.string(), credentialDigest: v.string() },
@@ -22,8 +22,8 @@ export const readSessionAccess = internalQuery({
     // The credential check above already proved the id names this library.
     const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
     const library = libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
-    const organization = library ? await ctx.db.get("organizations", library.organizationId) : null;
-    return { denied: true as const, organisationName: organization?.name ?? null };
+    const owner = library ? await libraryOwner(ctx, library) : null;
+    return { denied: true as const, organisationName: owner ? (await ownerName(ctx, owner)).name || null : null };
   },
 });
 

@@ -11,6 +11,34 @@ function denyOrganizationAccess(): never {
   throw createError("FORBIDDEN", "Evidence Library access denied");
 }
 
+/**
+ * Who a library belongs to (#650): its workspace, and the organization behind it when that's
+ * an organization's. Null for a library its workspace's backfill hasn't reached, which no one
+ * opens until it has.
+ */
+export async function libraryOwner(ctx: Pick<QueryCtx, "db">, library: Doc<"evidenceLibraries">) {
+  const workspace = library.workspaceId ? await ctx.db.get("workspaces", library.workspaceId) : null;
+  if (!workspace) return null;
+  return { workspace, organization: workspace.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null };
+}
+export type LibraryOwner = NonNullable<Awaited<ReturnType<typeof libraryOwner>>>;
+
+/** The workspace a library is in, which every one has once its backfill has run. */
+export function requireLibraryWorkspace(library: Doc<"evidenceLibraries">) {
+  if (!library.workspaceId) throw createError("CONFLICT", "This library isn't in a workspace yet. Try again in a moment.");
+  return library.workspaceId;
+}
+
+/** The name a library's owner goes by: its organization's, or the person's whose own workspace it's in. */
+export async function ownerName(ctx: Pick<QueryCtx, "db">, owner: LibraryOwner) {
+  if (owner.organization) return { name: owner.organization.name, imageUrl: owner.organization.imageUrl ?? null };
+  const person = owner.workspace.kind === "personal" ? await ctx.db.get("users", owner.workspace.userId) : null;
+  return { name: [person?.firstName, person?.lastName].filter(Boolean).join(" ") || (person?.email ?? ""), imageUrl: person?.avatarUrl ?? null };
+}
+
+/** Whether the library's owner is still there: an active organization, or a person's own workspace. */
+export const ownerActive = (owner: LibraryOwner | null) => owner !== null && (owner.workspace.kind === "personal" || owner.organization?.state === "active");
+
 /** Pending invitations open the library list, but do not grant a library role. */
 export async function readPendingLibraryInvitations(
   ctx: Pick<QueryCtx | MutationCtx, "db">,
@@ -22,9 +50,9 @@ export async function readPendingLibraryInvitations(
   const rows = await Promise.all(invitations.map(async invitation => {
     const library = await ctx.db.get("evidenceLibraries", invitation.libraryId);
     if (!library || library.state === "disabled") return null;
-    const organization = await ctx.db.get("organizations", library.organizationId);
-    if (organization?.state !== "active") return null;
-    return { invitationId: invitation._id, libraryId: library._id, name: library.name, role: invitation.role, organization: { id: organization._id, name: organization.name, imageUrl: organization.imageUrl ?? null } };
+    const owner = await libraryOwner(ctx, library);
+    if (!owner || !ownerActive(owner)) return null;
+    return { invitationId: invitation._id, libraryId: library._id, name: library.name, role: invitation.role, organization: { id: owner.organization?._id ?? null, ...(await ownerName(ctx, owner)) } };
   }));
   return rows.filter(row => row !== null);
 }
@@ -63,30 +91,29 @@ export async function readLibraryRole(
 ): Promise<EvidenceLibraryAdminRole | null> {
   const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
   if (user?.state === "deleted") return null;
-  const organization = await ctx.db.get("organizations", library.organizationId);
-  if (!organization || organization.state !== "active") return null;
-  const membership = await readActiveOrganizationMembership(ctx, library.organizationId, clerkUserId);
-  if (membership?.role === "org:admin") return "owner";
-  if (library.state === "disabled") return null;
+  const owner = await libraryOwner(ctx, library);
+  if (!owner || !ownerActive(owner)) return null;
+  const membership = owner.organization ? await readActiveOrganizationMembership(ctx, owner.organization._id, clerkUserId) : null;
   const assignment = await ctx.db.query("evidenceLibraryMembers")
     .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id).eq("clerkUserId", clerkUserId))
     .unique();
-  return libraryRoleFrom(library, organization, { user, membership, assignment });
+  return libraryRoleFrom(library, owner, { user, membership, assignment });
 }
 
 /**
  * A person's role from rows already read: their user, active organization membership and
  * library grant. readLibraryRole reads them for one person; the team page reads them for
- * everyone at once (#357).
+ * everyone at once (#357). A library's owners are its organization's admins, or the person
+ * whose own workspace it's in (#650).
  */
 export function libraryRoleFrom(
   library: Doc<"evidenceLibraries">,
-  organization: Doc<"organizations"> | null,
+  owner: LibraryOwner | null,
   rows: { user: Doc<"users"> | null; membership: Pick<Doc<"organizationMemberships">, "role"> | null; assignment: Pick<Doc<"evidenceLibraryMembers">, "role"> | null },
 ): EvidenceLibraryAdminRole | null {
   if (rows.user?.state === "deleted") return null;
-  if (!organization || organization.state !== "active") return null;
-  if (rows.membership?.role === "org:admin") return "owner";
+  if (!owner || !ownerActive(owner)) return null;
+  if (owner.organization ? rows.membership?.role === "org:admin" : owner.workspace.kind === "personal" && rows.user?._id === owner.workspace.userId) return "owner";
   if (library.state === "disabled") return null;
   return rows.assignment?.role ?? null;
 }
@@ -102,10 +129,11 @@ export async function readEvidenceLibraryAccess(
   if (!library) return null;
   const role = await readLibraryRole(ctx, library, identity.subject);
   if (!role || (action === "manage" && role !== "owner")) return null;
-  const organization = await ctx.db.get("organizations", library.organizationId);
-  if (!organization) return null;
-  if (action === "manage" && organization.evidenceLibrariesEnabled !== true) return null;
-  return { clerkUserId: identity.subject, organization, role, library };
+  const owner = await libraryOwner(ctx, library);
+  if (!owner) return null;
+  // Managing takes the feature, which only an organization's switch turns on until plans do (#652).
+  if (action === "manage" && owner.organization?.evidenceLibrariesEnabled !== true) return null;
+  return { clerkUserId: identity.subject, owner, organization: owner.organization, role, library };
 }
 
 export async function requireEvidenceLibraryAccess(ctx: OrganizationAccessCtx, libraryId: Id<"evidenceLibraries">, action: OrganizationAction) {

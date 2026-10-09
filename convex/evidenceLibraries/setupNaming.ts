@@ -83,7 +83,7 @@ export const MAX_OFFERED_EVIDENCE_LIBRARY_ADDRESSES = 8;
 export async function isEvidenceLibraryAddressFree(
   ctx: SetupNamingCtx,
   args: {
-    organizationId: Id<"organizations">;
+    workspaceId: Id<"workspaces">;
     publicAddress: string;
     slug: string;
   },
@@ -91,8 +91,8 @@ export async function isEvidenceLibraryAddressFree(
   const [library, runtimeBinding] = await Promise.all([
     ctx.db
       .query("evidenceLibraries")
-      .withIndex("by_organizationId_and_slug", (query) =>
-        query.eq("organizationId", args.organizationId).eq("slug", args.slug),
+      .withIndex("by_workspace_and_slug", (query) =>
+        query.eq("workspaceId", args.workspaceId).eq("slug", args.slug),
       )
       .unique(),
     ctx.db
@@ -105,18 +105,18 @@ export async function isEvidenceLibraryAddressFree(
   return !library && !runtimeBinding;
 }
 
-// The library this organisation already has under this name. A disabled
+// The library this workspace already has under this name. A disabled
 // library does not hold its name.
 export async function readEvidenceLibraryByName(
   ctx: SetupNamingCtx,
-  args: { organizationId: Id<"organizations">; name: string },
+  args: { workspaceId: Id<"workspaces">; name: string },
 ) {
   for (const state of ["provisioning", "active"] as const) {
     const library = await ctx.db
       .query("evidenceLibraries")
-      .withIndex("by_organizationId_and_name_and_state", (query) =>
+      .withIndex("by_workspace_and_name_and_state", (query) =>
         query
-          .eq("organizationId", args.organizationId)
+          .eq("workspaceId", args.workspaceId)
           .eq("name", args.name)
           .eq("state", state),
       )
@@ -132,7 +132,7 @@ export async function readEvidenceLibraryAddressCandidates(
   ctx: SetupNamingCtx,
   args: {
     limit?: number;
-    organizationId: Id<"organizations">;
+    workspaceId: Id<"workspaces">;
     name: string;
   },
 ): Promise<{
@@ -161,7 +161,7 @@ export async function readEvidenceLibraryAddressCandidates(
     );
     if (
       await isEvidenceLibraryAddressFree(ctx, {
-        organizationId: args.organizationId,
+        workspaceId: args.workspaceId,
         publicAddress,
         slug,
       })

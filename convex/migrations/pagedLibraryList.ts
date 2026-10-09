@@ -4,15 +4,16 @@ import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
-import { listCounts, organizationLibrariesOf, uncounted } from "../lib/listCounts";
+import { listCounts, organizationLibrariesOf, uncounted, workspaceLibrariesOf } from "../lib/listCounts";
 
 /**
- * Counts the libraries each organization had before the library list paged (#423), so the
- * list totals from a kept count (lib/listCounts.ts). A library made or deleted since is
- * counted by its trigger, and one is counted once however often this runs.
+ * Counts the libraries each workspace has (#423; by workspace since #650, where the count
+ * by organization is taken off), so the list totals from a kept count (lib/listCounts.ts). A
+ * library made or deleted since is counted by its trigger, and one is counted once however
+ * often this runs. A deployment that counted by organization runs it again from the start.
  *
  *   npx convex run migrations/pagedLibraryList:run '{"dryRun": true}'
- *   npx convex run migrations/pagedLibraryList:run
+ *   npx convex run migrations/pagedLibraryList:run '{"reset": true}'
  *   npx convex run migrations/pagedLibraryList:verify
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
@@ -21,23 +22,25 @@ export const libraries = migrations.define({
   table: "evidenceLibraries",
   batchSize: 50,
   migrateOne: async (ctx, library) => {
-    await listCounts.insertIfDoesNotExist(ctx, { namespace: organizationLibrariesOf(library.organizationId), key: null, id: library._id });
+    await listCounts.deleteIfExists(ctx, { namespace: organizationLibrariesOf(library.organizationId), key: null, id: library._id });
+    if (library.workspaceId) await listCounts.insertIfDoesNotExist(ctx, { namespace: workspaceLibrariesOf(library.workspaceId), key: null, id: library._id });
   },
 });
 
 export const run = migrations.runner(internal.migrations.pagedLibraryList.libraries);
 
-/** Libraries on one page that their organization's count leaves out. */
+/** Libraries on one page that their workspace's count leaves out, or that have no workspace yet. */
 export const verifyPage = internalQuery({
   args: { cursor: v.union(v.string(), v.null()) },
   returns: v.object({ wrong: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
   handler: async (ctx, { cursor }) => {
     const page = await ctx.db.query("evidenceLibraries").paginate({ cursor, numItems: 100 });
-    return { wrong: await uncounted(ctx, page.page, (library) => organizationLibrariesOf(library.organizationId)), isDone: page.isDone, continueCursor: page.continueCursor };
+    const placed = page.page.filter((library) => library.workspaceId);
+    return { wrong: page.page.length - placed.length + (await uncounted(ctx, placed, (library) => workspaceLibrariesOf(library.workspaceId!))), isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });
 
-/** How many libraries their organization's count leaves out, a page at a time; 0 when done. */
+/** How many libraries their workspace's count leaves out, a page at a time; 0 when done. */
 export const verify = internalAction({
   args: {},
   returns: v.number(),
@@ -63,7 +66,7 @@ export const resetPage = internalMutation({
   returns: v.object({ isDone: v.boolean(), cursor: v.string() }),
   handler: async (ctx, { cursor }) => {
     const page = await listCounts.paginateNamespaces(ctx, cursor, 100);
-    const kept = page.page.filter((namespace) => namespace?.startsWith("organizationLibraries:") || namespace?.startsWith("libraryVersions:"));
+    const kept = page.page.filter((namespace) => namespace?.startsWith("workspaceLibraries:") || namespace?.startsWith("organizationLibraries:") || namespace?.startsWith("libraryVersions:"));
     const counts = await listCounts.countBatch(ctx, kept.map((namespace) => ({ namespace })));
     for (const [at, namespace] of kept.entries()) if (counts[at] > 0) await listCounts.clear(ctx, { namespace });
     return { isDone: page.isDone, cursor: page.cursor };

@@ -12,7 +12,8 @@ import { type Infer, v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { stream } from "convex-helpers/server/stream";
 import schema from "../schema";
-import { listCounts, organizationLibrariesOf } from "../lib/listCounts";
+import { listCounts, workspaceLibrariesOf } from "../lib/listCounts";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 import { normalizeEvidenceLibraryName } from "../../lib/evidence-libraries/setup/naming";
 import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
@@ -30,7 +31,9 @@ import {
 } from "./validators";
 import {
   readLibraryRole,
+  libraryOwner,
   libraryRoleFrom,
+  ownerName,
   requireEvidenceLibraryAccess,
   readEvidenceLibraryAccess,
 } from "./access";
@@ -334,27 +337,28 @@ const LIBRARY_ROWS_READ = 1_000;
 /** Where the granted libraries sit in the list: after every organization the person owns. */
 const GRANTED = "granted";
 
-/** The organizations a person owns, by name, then by ID so two of one name keep their order. */
+/** The organizations a person owns, each with its workspace (#650), by name, then by ID so two of one name keep their order. */
 async function ownedOrganizations(ctx: QueryCtx) {
-  return (await readMemberOrganizations(ctx))
+  const owned = (await readMemberOrganizations(ctx))
     .filter(({ membership }) => membership.role === "org:admin")
     .map(({ organization }) => organization)
     .sort((a, b) => a.name.localeCompare(b.name) || (a._id < b._id ? -1 : 1));
+  return await Promise.all(owned.map(async (organization) => ({ ...organization, workspaceId: await organizationWorkspaceOf(ctx, organization._id) })));
 }
 
-/** A library a person was granted, with their role, unless they own its organization, where it is listed already. */
-async function grantedLibrary(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<"organizations">>, libraryId: Id<"evidenceLibraries">) {
+/** A library a person was granted, with their role and who it belongs to, unless it's in a workspace they own, where it is listed already. */
+async function grantedLibrary(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<"workspaces">>, libraryId: Id<"evidenceLibraries">) {
   const library = await ctx.db.get("evidenceLibraries", libraryId);
-  if (!library || owned.has(library.organizationId)) return null;
+  if (!library?.workspaceId || owned.has(library.workspaceId)) return null;
   const role = await readLibraryRole(ctx, library, clerkUserId);
-  const organization = role ? await ctx.db.get("organizations", library.organizationId) : null;
-  return role && organization ? { library, role, organization } : null;
+  const owner = role ? await libraryOwner(ctx, library) : null;
+  return role && owner ? { library, role, owner, shown: await ownerName(ctx, owner) } : null;
 }
 
-const overviewRow = async (ctx: QueryCtx, library: Doc<"evidenceLibraries">, role: Infer<typeof evidenceLibraryAdminRoleValidator>, organization: Doc<"organizations">) => ({
+const overviewRow = async (ctx: QueryCtx, library: Doc<"evidenceLibraries">, role: Infer<typeof evidenceLibraryAdminRoleValidator>, owner: { name: string; imageUrl: string | null }) => ({
   ...(await readLibraryOverview(ctx, library)),
   role,
-  organization: { name: organization.name, imageUrl: organization.imageUrl ?? null },
+  organization: owner,
 });
 
 /**
@@ -371,7 +375,7 @@ export const listLibraries = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return { page: [], isDone: true, continueCursor: "" };
     const owned = await ownedOrganizations(ctx);
-    const ownedIds = new Set(owned.map((entry) => entry._id));
+    const ownedIds = new Set(owned.map((entry) => entry.workspaceId));
     const needle = search?.trim().toLowerCase();
     const numItems = Math.min(paginationOpts.numItems, LIBRARIES_PAGE_MAX);
     // What the page has read so far: every organization of one page shares one allowance of rows.
@@ -389,10 +393,11 @@ export const listLibraries = query({
           read: async (cursor: string | null, room: number) => {
             const read = await stream(ctx.db, schema)
               .query("evidenceLibraries")
-              .withIndex("by_organizationId", (index) => index.eq("organizationId", entry._id))
+              .withIndex("by_workspace", (index) => index.eq("workspaceId", entry.workspaceId))
               .filterWith(async (library) => within(library.name, entry.name))
               .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
-            return { page: await Promise.all(read.page.map((library) => overviewRow(ctx, library, "owner", entry))), after: read.isDone ? null : read.continueCursor };
+            const shown = { name: entry.name, imageUrl: entry.imageUrl ?? null };
+            return { page: await Promise.all(read.page.map((library) => overviewRow(ctx, library, "owner", shown))), after: read.isDone ? null : read.continueCursor };
           },
         })),
       {
@@ -403,9 +408,9 @@ export const listLibraries = query({
             .query("evidenceLibraryMembers")
             .withIndex("by_clerkUserId", (index) => index.eq("clerkUserId", identity.subject))
             .map(async (grant) => grantedLibrary(ctx, identity.subject, ownedIds, grant.libraryId))
-            .filterWith(async (granted) => granted !== null && (!organization || granted.organization._id === organization) && within(granted.library.name, granted.organization.name))
+            .filterWith(async (granted) => granted !== null && (!organization || granted.owner.organization?._id === organization) && within(granted.library.name, granted.shown.name))
             .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
-          return { page: await Promise.all(read.page.map((granted) => overviewRow(ctx, granted!.library, granted!.role, granted!.organization))), after: read.isDone ? null : read.continueCursor };
+          return { page: await Promise.all(read.page.map((granted) => overviewRow(ctx, granted!.library, granted!.role, granted!.shown))), after: read.isDone ? null : read.continueCursor };
         },
       },
     ];
@@ -425,13 +430,13 @@ export const listLibraries = query({
   },
 });
 
-/** The libraries a person was granted outside the organizations they own: at most MAX_LIBRARY_GRANTS_PER_PERSON grants (./members.ts). */
-async function grantedLibraries(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<"organizations">>) {
+/** The libraries a person was granted outside the workspaces they own: at most MAX_LIBRARY_GRANTS_PER_PERSON grants (./members.ts). */
+async function grantedLibraries(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<"workspaces">>) {
   const grants = await ctx.db.query("evidenceLibraryMembers").withIndex("by_clerkUserId", (index) => index.eq("clerkUserId", clerkUserId)).take(MAX_LIBRARY_GRANTS_PER_PERSON);
   return (await Promise.all(grants.map((grant) => grantedLibrary(ctx, clerkUserId, owned, grant.libraryId)))).flatMap((granted) => (granted ? [granted] : []));
 }
 
-/** How many libraries a person can open: each owned organization's kept count (lib/listCounts.ts), and the libraries they were granted. */
+/** How many libraries a person can open: each owned organization's workspace's kept count (lib/listCounts.ts), and the libraries they were granted. */
 export const countLibraries = query({
   args: {},
   returns: v.number(),
@@ -439,8 +444,8 @@ export const countLibraries = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return 0;
     const owned = await ownedOrganizations(ctx);
-    const counts = await listCounts.countBatch(ctx, owned.map((entry) => ({ namespace: organizationLibrariesOf(entry._id) })));
-    const granted = await grantedLibraries(ctx, identity.subject, new Set(owned.map((entry) => entry._id)));
+    const counts = await listCounts.countBatch(ctx, owned.map((entry) => ({ namespace: workspaceLibrariesOf(entry.workspaceId) })));
+    const granted = await grantedLibraries(ctx, identity.subject, new Set(owned.map((entry) => entry.workspaceId)));
     return counts.reduce((sum, count) => sum + count, 0) + granted.length;
   },
 });
@@ -457,9 +462,10 @@ export const listLibraryOwners = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return { page: [], isDone: true, continueCursor: "" };
     const owned = await ownedOrganizations(ctx);
-    const withLibraries = await Promise.all(owned.map(async (entry) => ((await ctx.db.query("evidenceLibraries").withIndex("by_organizationId", (index) => index.eq("organizationId", entry._id)).first()) ? entry : null)));
-    const granted = await grantedLibraries(ctx, identity.subject, new Set(owned.map((entry) => entry._id)));
-    const owners = new Map([...withLibraries.flatMap((entry) => (entry ? [entry] : [])), ...granted.map((entry) => entry.organization)].map((entry) => [entry._id, entry]));
+    const withLibraries = await Promise.all(owned.map(async (entry) => ((await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (index) => index.eq("workspaceId", entry.workspaceId)).first()) ? entry : null)));
+    const granted = await grantedLibraries(ctx, identity.subject, new Set(owned.map((entry) => entry.workspaceId)));
+    // The filter names organizations: a library in a person's own workspace is listed without one.
+    const owners = new Map([...withLibraries.flatMap((entry) => (entry ? [entry] : [])), ...granted.flatMap((entry) => (entry.owner.organization ? [entry.owner.organization] : []))].map((entry) => [entry._id, entry]));
     const page = [...owners.values()].sort((a, b) => a.name.localeCompare(b.name)).map((entry) => ({ id: entry._id, name: entry.name, imageUrl: entry.imageUrl ?? null }));
     return { page, isDone: true, continueCursor: "" };
   },
@@ -489,8 +495,9 @@ export const readAddressCandidates = internalQuery({
   ),
   handler: async (ctx, args) => {
     const access = await requireLibraryOrganization(ctx, args.organizationId);
+    const workspaceId = await organizationWorkspaceOf(ctx, access.organization._id);
     const named = await readEvidenceLibraryByName(ctx, {
-      organizationId: access.organization._id,
+      workspaceId,
       name: normalizeEvidenceLibraryName(args.name),
     });
     if (named) {
@@ -499,7 +506,7 @@ export const readAddressCandidates = internalQuery({
     return {
       status: "candidates" as const,
       ...(await readEvidenceLibraryAddressCandidates(ctx, {
-        organizationId: access.organization._id,
+        workspaceId,
         name: args.name,
       })),
     };
@@ -842,22 +849,27 @@ const userOf = (ctx: QueryCtx, clerkUserId: string) => ctx.db.query("users").wit
  * team picker searches them a page at a time (`listOrganizationPeople`).
  */
 async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
+  const owner = await libraryOwner(ctx, library);
+  const organization = owner?.organization;
+  const person = owner?.workspace.kind === "personal" ? await ctx.db.get("users", owner.workspace.userId) : null;
   const [owners, assignments] = await Promise.all([
     // ponytail: an organization's owners are a handful; past MAX_LIBRARY_MEMBERS the page lists the first.
-    ctx.db.query("organizationMemberships")
-      .withIndex("by_organizationId_and_state_and_role", q => q.eq("organizationId", library.organizationId).eq("state", "active").eq("role", "org:admin")).take(MAX_LIBRARY_MEMBERS),
+    organization
+      ? ctx.db.query("organizationMemberships")
+        .withIndex("by_organizationId_and_state_and_role", q => q.eq("organizationId", organization._id).eq("state", "active").eq("role", "org:admin")).take(MAX_LIBRARY_MEMBERS)
+      : [],
     // A library grants at most MAX_LIBRARY_MEMBERS people (./members.ts).
     ctx.db.query("evidenceLibraryMembers")
       .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id)).take(MAX_LIBRARY_MEMBERS),
   ]);
-  const ownerOf = new Map(owners.map(m => [m.clerkUserId, m]));
-  const organization = await ctx.db.get("organizations", library.organizationId);
-  const people = [...new Set([...ownerOf.keys(), ...assignments.map(a => a.clerkUserId)])];
+  const ownerOf = new Map<string, Pick<Doc<"organizationMemberships">, "role">>(owners.map(m => [m.clerkUserId, m]));
+  // A library in a person's own workspace is theirs.
+  const people = [...new Set([...(person ? [person.clerkId] : []), ...ownerOf.keys(), ...assignments.map(a => a.clerkUserId)])];
   return await Promise.all(people.map(async clerkUserId => {
     const assignment = assignments.find(a => a.clerkUserId === clerkUserId) ?? null;
     // Only an owner's membership changes their role; a grant holder's role is their grant's, in the organization or not.
     const user = await userOf(ctx, clerkUserId);
-    return { role: libraryRoleFrom(library, organization, { user, membership: ownerOf.get(clerkUserId) ?? null, assignment }), person: personOf(clerkUserId, user) };
+    return { role: libraryRoleFrom(library, owner, { user, membership: ownerOf.get(clerkUserId) ?? null, assignment }), person: personOf(clerkUserId, user) };
   }));
 }
 
@@ -876,13 +888,14 @@ export const listOrganizationPeople = query({
   args: { libraryId: v.id("evidenceLibraries"), search: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(teamPersonValidator),
   handler: async (ctx, { libraryId, search, paginationOpts }) => {
-    const { library } = await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
-    if (library.state === "disabled") return { page: [], isDone: true, continueCursor: "" };
+    const { library, organization } = await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
+    // A library in a person's own workspace has no organization to add people from.
+    if (library.state === "disabled" || !organization) return { page: [], isDone: true, continueCursor: "" };
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PEOPLE_PAGE_MAX) };
     const terms = searchTerms(search);
     const read = await (terms
-      ? ctx.db.query("organizationMemberships").withSearchIndex("search_member_text", q => q.search("searchText", terms).eq("organizationId", library.organizationId).eq("state", "active"))
-      : ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", q => q.eq("organizationId", library.organizationId).eq("state", "active"))
+      ? ctx.db.query("organizationMemberships").withSearchIndex("search_member_text", q => q.search("searchText", terms).eq("organizationId", organization._id).eq("state", "active"))
+      : ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", q => q.eq("organizationId", organization._id).eq("state", "active"))
     ).paginate(opts);
     const page = await Promise.all(read.page.map(async membership => {
       if (membership.role === "org:admin") return [];
@@ -900,12 +913,12 @@ export const isOrganizationPerson = query({
   args: { libraryId: v.id("evidenceLibraries"), email: v.string() },
   returns: v.boolean(),
   handler: async (ctx, { libraryId, email }) => {
-    const { library } = await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
+    const { organization } = await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
     // Clerk keeps an email in the case it was given: the organization's members are searched by its words, and compared whatever the case.
     const wanted = email.trim().toLowerCase();
     const terms = searchTerms(wanted);
-    if (!terms) return false;
-    const found = await ctx.db.query("organizationMemberships").withSearchIndex("search_member_text", q => q.search("searchText", terms).eq("organizationId", library.organizationId).eq("state", "active")).take(MEMBERS_MATCHED);
+    if (!terms || !organization) return false;
+    const found = await ctx.db.query("organizationMemberships").withSearchIndex("search_member_text", q => q.search("searchText", terms).eq("organizationId", organization._id).eq("state", "active")).take(MEMBERS_MATCHED);
     for (const membership of found) {
       const user = await userOf(ctx, membership.clerkUserId);
       if (user && user.state !== "deleted" && user.email.toLowerCase() === wanted) return true;
@@ -931,7 +944,7 @@ export const listTeam = query({
     return {
       invitations: (await ctx.db.query("evidenceLibraryInvitations").withIndex("by_libraryId_and_state", q => q.eq("libraryId", args.libraryId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_LIBRARY))
         .map(i => ({ invitationId: i._id, email: i.email, role: i.role, delivery: i.delivery })),
-      organizationName: access.organization.name,
+      organizationName: (await ownerName(ctx, access.owner)).name,
       owners: people.filter(p => p.role === "owner").map(p => p.person),
       editors: people.filter(p => p.role === "editor").map(p => p.person),
       creators: people.filter(p => p.role === "creator").map(p => p.person),

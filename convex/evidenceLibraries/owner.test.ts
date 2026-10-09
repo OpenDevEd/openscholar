@@ -1,0 +1,29 @@
+// Who owns an Evidence Library once libraries belong to a workspace (#650): an organization's admins, or the person whose own workspace it's in.
+import { convexTest } from "convex-test";
+import { expect, it } from "vitest";
+import schema from "../schema";
+import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
+import { readLibraryRole } from "./access";
+
+const modules = import.meta.glob("/convex/**/*.ts");
+
+it("makes the person whose own workspace a library is in its owner, and an organization's admins the owners of its libraries", async () => {
+  const t = convexTest(schema, modules);
+  const roles = await t.run(async (ctx) => {
+    const fields = { state: "active" as const, createdAt: 1, updatedAt: 1 };
+    const ada = await ctx.db.insert("users", { ...fields, clerkId: "ada", email: "ada@example.org" });
+    await ctx.db.insert("users", { ...fields, clerkId: "ben", email: "ben@example.org" });
+    const team = await seedOrganizationFeatures(ctx, ["ada", "ben"], { evidenceLibraries: true });
+    const admin = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", team).eq("clerkUserId", "ada").eq("state", "active")).unique();
+    await ctx.db.patch("organizationMemberships", admin!._id, { role: "org:admin" });
+    const base = { organizationId: team, state: "active" as const, createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 };
+    const mine = (await ctx.db.get("evidenceLibraries", await ctx.db.insert("evidenceLibraries", { ...base, name: "Mine", slug: "mine", workspaceId: await personalWorkspaceOf(ctx, ada) })))!;
+    const theirs = (await ctx.db.get("evidenceLibraries", await ctx.db.insert("evidenceLibraries", { ...base, name: "Team", slug: "team" })))!;
+    return {
+      mine: [await readLibraryRole(ctx, mine, "ada"), await readLibraryRole(ctx, mine, "ben")],
+      team: [await readLibraryRole(ctx, theirs, "ada"), await readLibraryRole(ctx, theirs, "ben")],
+    };
+  });
+  expect(roles).toEqual({ mine: ["owner", null], team: ["owner", null] });
+});
