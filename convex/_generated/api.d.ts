@@ -310,6 +310,7 @@ import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtract
 import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryList.js";
 import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
 import type * as migrations_paperMetadata from "../migrations/paperMetadata.js";
+import type * as migrations_placeRatings from "../migrations/placeRatings.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_removeOrphanLibraryAccess from "../migrations/removeOrphanLibraryAccess.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
@@ -711,6 +712,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedLibraryList": typeof migrations_pagedLibraryList;
   "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
   "migrations/paperMetadata": typeof migrations_paperMetadata;
+  "migrations/placeRatings": typeof migrations_placeRatings;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/removeOrphanLibraryAccess": typeof migrations_removeOrphanLibraryAccess;
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;

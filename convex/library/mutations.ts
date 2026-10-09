@@ -16,7 +16,7 @@ import { addCollectionMembership, livePlaces, removeCollectionMembership } from 
 import { followed, inFollowedCollection } from "./followed";
 import { authorDisplay, mergePaperMetadata } from "../../lib/library/paper-metadata";
 import { MAX_AUTHORS } from "../lib/listCaps";
-import { personalRatingRow, rateItem, requireRating, rerateMemberStep, setPersonalRating } from "../ratings";
+import { personalRatingRow, rateItem, ratingOrNone, requireRating, rerateMemberStep, setPersonalRating } from "../ratings";
 
 /** What the library keeps about a paper, apart from its rating. */
 export const libraryPaper = v.object({
@@ -38,7 +38,6 @@ export const libraryPaper = v.object({
 });
 
 const ratingArg = v.number();
-const ratingOrNone = v.union(ratingArg, v.null());
 /** A paper already in the library, named by its ID alone. `savedAt` says which save it should be: a paper removed and saved afresh has a later one. */
 const savedPaper = v.object({ openalexId: v.string(), savedAt: v.optional(v.number()) });
 /**

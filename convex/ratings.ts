@@ -6,9 +6,13 @@ import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
 import { createError } from "./lib/errors";
 import type { Change } from "convex-helpers/server/triggers";
 import { makeFunctionReference } from "convex/server";
+import { v } from "convex/values";
 
 /** The ID a rating is kept under: a paper's whole OpenAlex address, however it was given, so every rating of it meets. */
 export const ratedPaper = (paperId: string) => workUrl(paperId) ?? paperId;
+
+/** A rating, or null for none. */
+export const ratingOrNone = v.union(v.number(), v.null());
 
 /** Refuses a rating that isn't a whole number from 0 to 5. */
 export function requireRating(rating: number) {
@@ -17,9 +21,11 @@ export function requireRating(rating: number) {
   }
 }
 
-/** A person's own rating of a paper, the same everywhere (#655). */
-export const personalRatingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperId: string) =>
-  ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", userId).eq("collectionId", undefined).eq("paperId", ratedPaper(paperId))).unique();
+/** A person's rating of a paper within a collection, which the collection's people see, or with no collection their own, the same everywhere (#655). */
+const ratingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users">, collectionId: Id<"collections"> | undefined, paperId: string) =>
+  ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", userId).eq("collectionId", collectionId).eq("paperId", ratedPaper(paperId))).unique();
+/** A person's own rating of a paper, the same everywhere. */
+export const personalRatingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperId: string) => ratingRow(ctx, userId, undefined, paperId);
 
 /**
  * Sets a person's own rating of a paper, or clears it with null, and brings the rating of each
@@ -65,9 +71,54 @@ export async function workspaceRating(ctx: Pick<QueryCtx, "db">, workspaceId: Id
   const workspace = await ctx.db.get("workspaces", workspaceId);
   if (!workspace) return undefined;
   if (workspace.kind === "personal") return (await personalRatingRow(ctx, workspace.userId, paperId))?.rating;
-  const rows = await Promise.all((await raters(ctx, workspace.organizationId)).map((userId) => personalRatingRow(ctx, userId, paperId)));
+  return await membersAverage(ctx, workspace.organizationId, undefined, paperId);
+}
+
+/** An organization's members' average of their ratings of a paper, their own or within a collection, or none when none of them rated it. */
+async function membersAverage(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, collectionId: Id<"collections"> | undefined, paperId: string) {
+  const rows = await Promise.all((await raters(ctx, organizationId)).map((userId) => ratingRow(ctx, userId, collectionId, paperId)));
   const counted = rows.flatMap((row) => (row ? [row.rating] : []));
   return counted.length ? counted.reduce((total, rating) => total + rating, 0) / counted.length : undefined;
+}
+
+/**
+ * What a paper sorts and filters by in a collection. In an organization, the collection rates
+ * its papers itself: its members' average of their ratings there. In a person's own workspace,
+ * the paper's rating, which is theirs.
+ */
+export async function placeRating(ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, item: Doc<"libraryItems">) {
+  const workspace = await ctx.db.get("workspaces", item.workspaceId);
+  return workspace?.kind === "organization" ? await membersAverage(ctx, workspace.organizationId, collectionId, item.openalexId) : item.rating;
+}
+
+/** Brings a paper's place in a collection in step with the rating it has there. */
+async function ratePlace(ctx: MutationCtx, place: Doc<"libraryItemCollections">, item: Doc<"libraryItems">) {
+  const rating = await placeRating(ctx, place.collectionId, item);
+  if (rating !== place.rating) await ctx.db.patch("libraryItemCollections", place._id, { rating });
+}
+
+/** A paper's place in a collection. */
+export const placeOf = (ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, libraryItemId: Id<"libraryItems">) =>
+  ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", collectionId).eq("libraryItemId", libraryItemId)).unique();
+
+/** A person's rating of a paper within an organization's collection, which its members see. */
+export const collectionRatingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users">, collectionId: Id<"collections">, paperId: string) => ratingRow(ctx, userId, collectionId, paperId);
+
+/** Sets a person's rating of a paper in a collection, or clears it with null, and the collection's average of it. */
+export async function setCollectionRating(ctx: MutationCtx, userId: Id<"users">, place: Doc<"libraryItemCollections">, item: Doc<"libraryItems">, rating: number | null) {
+  const row = await collectionRatingRow(ctx, userId, place.collectionId, item.openalexId);
+  if ((row?.rating ?? null) === rating) return;
+  if (rating === null) await ctx.db.delete("ratings", row!._id);
+  else if (!row) await ctx.db.insert("ratings", { userId, paperId: ratedPaper(item.openalexId), collectionId: place.collectionId, rating });
+  else await ctx.db.patch("ratings", row._id, { rating });
+  await ratePlace(ctx, place, item);
+}
+
+/** Deletes a step of a deleted collection's ratings. Returns whether all are gone. */
+export async function purgeCollectionRatings(ctx: MutationCtx, collectionId: Id<"collections">, step: number) {
+  const rows = await ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId)).take(step);
+  for (const row of rows) await ctx.db.delete("ratings", row._id);
+  return rows.length < step;
 }
 
 /** Brings a saved paper's rating in step with its workspace's people's ratings of it. */
@@ -89,12 +140,19 @@ export async function rerateOnMembership(ctx: MutationCtx, change: Change<DataMo
   if (workspace && user) await ctx.scheduler.runAfter(0, rerateMember, { workspaceId: workspace._id, userId: user._id, cursor: null });
 }
 
-/** Re-rates a step of a workspace's papers this person rated; schedules the next. */
+/** Re-rates a step of a workspace's papers this person rated, and their places in its collections; schedules the next. */
 export async function rerateMemberStep(ctx: MutationCtx, workspaceId: Id<"workspaces">, userId: Id<"users">, cursor: string | null) {
-  const page = await ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", userId).eq("collectionId", undefined)).paginate({ cursor, numItems: RERATE_STEP });
+  const page = await ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", userId)).paginate({ cursor, numItems: RERATE_STEP });
   for (const row of page.page) {
+    // Their ratings in another workspace's collections don't count here.
+    if (row.collectionId && (await ctx.db.get("collections", row.collectionId))?.workspaceId !== workspaceId) continue;
     const item = await findItem(ctx, workspaceId, row.paperId);
-    if (item) await rateItem(ctx, item);
+    if (!item) continue;
+    if (!row.collectionId) await rateItem(ctx, item);
+    else {
+      const place = await placeOf(ctx, row.collectionId, item._id);
+      if (place) await ratePlace(ctx, place, item);
+    }
   }
   if (!page.isDone) await ctx.scheduler.runAfter(0, rerateMember, { workspaceId, userId, cursor: page.continueCursor });
 }

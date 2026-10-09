@@ -2,7 +2,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { stream } from "convex-helpers/server/stream";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import schema from "../schema";
-import { facetsOf } from "./facets";
+import { placeFacets } from "./facets";
 
 /**
  * Every change to a collection's items goes through here, so its item count
@@ -47,7 +47,7 @@ export async function addCollectionMembership(
     collectionId: args.collection._id,
     libraryItemId: args.item._id,
     assignedAt,
-    ...facetsOf(args.item),
+    ...(await placeFacets(ctx, args.collection._id, args.item)),
   });
   await touchCollection(ctx, args.collection, 1);
   return assignedAt;
