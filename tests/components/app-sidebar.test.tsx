@@ -48,7 +48,7 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
 }));
 vi.mock("@/lib/auth/use-subscription-state", () => ({ useSubscriptionState: () => ({ account: null, catalog: null, resolvedPlan: null }) }));
 vi.mock("@/lib/auth/use-organization-features", () => ({ useOrganizationFeatures: () => ({ data: reads.features }) }));
-vi.mock("@/lib/feature-flags/hook", () => ({ useFeatureFlag: () => true }));
+vi.mock("@/lib/feature-flags/hook", () => ({ useFeatureFlag: () => true, useFeatureFlagForPlan: () => true }));
 vi.mock("@/lib/billing/catalog-provider", () => ({ useBillingCatalog: () => null }));
 vi.mock("@/components/providers/convex-provider", () => ({ useAuthReadiness: () => ({ phase: "authenticated" }) }));
 vi.mock("@/lib/research/reads", () => ({ useQueryShortcuts: () => undefined }));

@@ -9,7 +9,7 @@ const ada = { name: "Ada", imageUrl: "https://img.clerk.com/ada", features: { ex
 
 describe("the rail's cookie", () => {
   it("reads back what it keeps, for the account it was kept for only", () => {
-    const cookie = writeCache({ looks: {} }, "user_ada", "lab-1", lab(1), ada);
+    const cookie = writeCache({ looks: {} }, "user_ada", "lab-1", lab(1), ada)!;
     expect(readCache(cookie, "user_ada")).toEqual({ me: ada, looks: { "lab-1": lab(1) } });
     expect(readCache(cookie, "user_bob")).toEqual({ looks: {} });
     expect(readCache(cookie, null)).toEqual({ looks: {} });
@@ -27,9 +27,22 @@ describe("the rail's cookie", () => {
   });
 
   it("keeps the person's own workspace and the latest few organizations, so the cookie stays small", () => {
-    let cache = readCache(writeCache({ looks: {} }, "user_ada", "~", own, ada), "user_ada");
-    for (let n = 1; n <= 9; n++) cache = readCache(writeCache(cache, "user_ada", `lab-${n}`, lab(n), undefined), "user_ada");
+    let cache = readCache(writeCache({ looks: {} }, "user_ada", "~", own, ada)!, "user_ada");
+    for (let n = 1; n <= 9; n++) cache = readCache(writeCache(cache, "user_ada", `lab-${n}`, lab(n), undefined)!, "user_ada");
     expect(Object.keys(cache.looks)).toEqual(["~", "lab-4", "lab-5", "lab-6", "lab-7", "lab-8", "lab-9"]);
     expect(cache.me).toEqual(ada);
+  });
+
+  it("drops the oldest organizations until it fits under browsers' 4,096 bytes", () => {
+    // Clerk's logo addresses run to several hundred characters.
+    const logo = (n: number): CachedLook => ({ ...lab(n), imageUrl: `https://img.clerk.com/${"x".repeat(600)}${n}` });
+    let cache = readCache(writeCache({ looks: {} }, "user_ada", "~", own, ada)!, "user_ada");
+    for (let n = 1; n <= 7; n++) {
+      const value = writeCache(cache, "user_ada", `lab-${n}`, logo(n), undefined)!;
+      expect(value.length).toBeLessThanOrEqual(3_800);
+      cache = readCache(value, "user_ada");
+    }
+    expect(cache.looks["lab-7"]).toEqual(logo(7));
+    expect(Object.keys(cache.looks).length).toBeLessThan(7);
   });
 });

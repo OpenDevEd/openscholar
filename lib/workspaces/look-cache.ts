@@ -12,7 +12,8 @@ export const WORKSPACE_HEADER = "x-workspace-slug";
 
 /** The sections the person's features open in the rail: theirs, whichever workspace they're in. */
 export type CachedFeatures = { extraction?: boolean; evidenceLibraries?: boolean; authors?: boolean };
-export type CachedLook = { kind: "personal" | "organization"; workspaceId: string; name: string; imageUrl?: string; colour?: string };
+/** A workspace as the rail drew it; `extract`: it showed Extract, which waits on the workspace's plan as well as the person's features. */
+export type CachedLook = { kind: "personal" | "organization"; workspaceId: string; name: string; imageUrl?: string; colour?: string; extract?: true };
 /** The signed-in person, as the rail's account button shows them, and their features. */
 export type CachedMe = { name: string; imageUrl?: string; features?: CachedFeatures };
 export type LookCache = { me?: CachedMe; looks: Record<string, CachedLook> };
@@ -22,6 +23,8 @@ export type FirstWorkspace = { slug: string | null; user?: string; me?: CachedMe
 
 /** Organizations kept besides the person's own: a cookie is sent with every request, so only the latest few. */
 const KEPT = 6;
+/** The longest value written: browsers drop a cookie whose name and value pass 4,096 bytes. */
+const MAX_VALUE = 3_800;
 
 /** The person's own workspace's key; an organization's is its slug. */
 const OWN = "~";
@@ -49,6 +52,7 @@ export function readCache(raw: string | undefined, user: string | null | undefin
         name: value.name,
         ...photo(value.imageUrl),
         ...(typeof value.colour === "string" && COLOUR.test(value.colour) ? { colour: value.colour } : {}),
+        ...(value.extract === true ? { extract: true as const } : {}),
       };
     }
     const given = parsed.me?.features;
@@ -60,14 +64,23 @@ export function readCache(raw: string | undefined, user: string | null | undefin
   }
 }
 
-/** The cookie's value for `user`, with `me` and the look kept under `key` newest, and the oldest organizations dropped. */
+/**
+ * The cookie's value for `user`, with `me` and the look kept under `key` newest, and the oldest
+ * organizations dropped, past KEPT or until it fits. Null when even that doesn't fit.
+ */
 export function writeCache(cache: LookCache, user: string, key: string, look: CachedLook | undefined, me: CachedMe | undefined) {
   const { [key]: was, ...rest } = cache.looks;
-  const organizations = Object.keys(rest).filter((other) => other !== OWN);
-  for (const old of organizations.slice(0, Math.max(0, organizations.length - (KEPT - 1)))) delete rest[old];
   const kept = look ?? was;
   const keptMe = me ?? cache.me;
-  return encodeURIComponent(JSON.stringify({ user, ...(keptMe ? { me: keptMe } : {}), looks: { ...rest, ...(kept ? { [key]: kept } : {}) } }));
+  const oldest = Object.keys(rest).filter((other) => other !== OWN);
+  for (const old of oldest.splice(0, Math.max(0, oldest.length - (KEPT - 1)))) delete rest[old];
+  const encode = () => encodeURIComponent(JSON.stringify({ user, ...(keptMe ? { me: keptMe } : {}), looks: { ...rest, ...(kept ? { [key]: kept } : {}) } }));
+  let value = encode();
+  while (value.length > MAX_VALUE && oldest.length) {
+    delete rest[oldest.shift()!];
+    value = encode();
+  }
+  return value.length > MAX_VALUE ? null : value;
 }
 
 /** The cookie's raw value in a `document.cookie` string. */

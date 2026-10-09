@@ -7,37 +7,28 @@ import { cn } from "@/lib/utils"
 // A picture with its fallback under it. The picture is a plain <img>, so the server sends it and
 // the browser paints it with the page, from its cache, on the first frame. Radix's Avatar draws
 // nothing until the browser has loaded the picture again after the page hydrates, which blanked
-// every photo and logo on each load. The fallback steps aside once the picture has loaded, and
-// takes its place if it fails.
-
-type Status = { src: string; status: "loaded" | "error" } | null
-const AvatarContext = React.createContext<{ status: Status; setStatus: (status: Status) => void } | null>(null)
+// every photo and logo on each load. While a picture is there the fallback keeps its icon to
+// itself, and once it has loaded the fallback steps aside; one that fails is dropped, and the
+// fallback shows again.
 
 function Avatar({
   className,
   size = "default",
-  children,
   ...props
 }: React.ComponentProps<"span"> & {
   size?: "default" | "sm" | "lg"
 }) {
-  const [status, setStatus] = React.useState<Status>(null)
-  const value = React.useMemo(() => ({ status, setStatus }), [status])
   return (
-    <AvatarContext.Provider value={value}>
-      <span
-        data-slot="avatar"
-        data-size={size}
-        className={cn(
-          // While its picture is on the way, the fallback keeps its icon to itself: a frame of a plain circle, then the picture.
-          "group/avatar relative flex size-8 shrink-0 overflow-hidden rounded-full select-none data-[size=lg]:size-10 data-[size=sm]:size-6 [&:has(>img)>[data-slot=avatar-fallback]>*]:invisible",
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </span>
-    </AvatarContext.Provider>
+    <span
+      data-slot="avatar"
+      data-size={size}
+      className={cn(
+        "group/avatar relative flex size-8 shrink-0 overflow-hidden rounded-full select-none data-[size=lg]:size-10 data-[size=sm]:size-6",
+        "[&:has(>img)>[data-slot=avatar-fallback]>*]:invisible [&:has(>img[data-loaded])>[data-slot=avatar-fallback]]:hidden",
+        className
+      )}
+      {...props}
+    />
   )
 }
 
@@ -47,27 +38,29 @@ function AvatarImage({
   alt = "",
   ...props
 }: Omit<React.ComponentProps<"img">, "src"> & { src?: string }) {
-  const avatar = React.useContext(AvatarContext)
-  const setStatus = avatar?.setStatus
+  // Settled for this picture only: another src starts again.
+  const [settled, setSettled] = React.useState<{ src: string; loaded: boolean } | null>(null)
   // A picture the browser finished before the page hydrated fired its load event unheard: read it as it mounts.
-  const settled = React.useCallback(
+  const mounted = React.useCallback(
     (img: HTMLImageElement | null) => {
-      if (img?.complete && src) setStatus?.({ src, status: img.naturalWidth > 0 ? "loaded" : "error" })
+      if (img?.complete && src) setSettled({ src, loaded: img.naturalWidth > 0 })
     },
-    [src, setStatus]
+    [src]
   )
-  if (!src || (avatar?.status?.src === src && avatar.status.status === "error")) return null
+  const state = settled?.src === src ? settled : null
+  if (!src || state?.loaded === false) return null
   return (
     // eslint-disable-next-line @next/next/no-img-element -- photos and logos come from Clerk and OpenAlex at their own sizes
     <img
       data-slot="avatar-image"
+      data-loaded={state?.loaded ? "" : undefined}
       src={src}
       alt={alt}
       // Decoded with the page and shown with it: a small picture is quicker than a frame of its icon.
       decoding="sync"
-      ref={settled}
-      onLoad={() => setStatus?.({ src, status: "loaded" })}
-      onError={() => setStatus?.({ src, status: "error" })}
+      ref={mounted}
+      onLoad={() => setSettled({ src, loaded: true })}
+      onError={() => setSettled({ src, loaded: false })}
       className={cn("absolute inset-0 aspect-square size-full", className)}
       {...props}
     />
@@ -78,8 +71,6 @@ function AvatarFallback({
   className,
   ...props
 }: React.ComponentProps<"span">) {
-  const avatar = React.useContext(AvatarContext)
-  if (avatar?.status?.status === "loaded") return null
   return (
     <span
       data-slot="avatar-fallback"
