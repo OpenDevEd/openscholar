@@ -175,6 +175,15 @@ describe("the assistant's search tools", () => {
     expect(await search(id)).toMatchObject({ query: "", openAccessOnly: true });
   });
 
+  it("change a search that the papers it is like narrow by themselves", async () => {
+    const { make, edit, change, search } = await setup();
+    const { id } = await make({ openAccessOnly: true });
+    await change({ kind: "editSearch", id, edit: { kind: "patch", fields: { similarTo: ["OS64233829"] }, clear: [] } });
+    // With no query, the papers it finds the works nearest still narrow it once its last other filter goes.
+    await edit({ id, openAccessOnly: false });
+    expect(await search(id)).toMatchObject({ query: "", openAccessOnly: false, similarTo: ["OS64233829"] });
+  });
+
   it("read a page of a search's results, ten papers at a time, where the person sees them, with how many it has in all", async () => {
     const { alice, bob, make, results, change } = await setup();
     const { id } = await make({ query: "tutoring" });
