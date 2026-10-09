@@ -123,7 +123,7 @@ function ruleDeclarations(body) {
     else if (value.length) add("|", [name.trim().toLowerCase(), value.join(":").trim()]);
   }
   // A state applies on top of every less specific state of its box: `dark:hover:` adds to `dark:` and to the base.
-  // Each box is also checked with all its variants at once, as when it is hovered in dark mode.
+  // Each box is also checked with each pair of its states together, unless they can never hold at once.
   const variantsOf = (key) => key.split("|")[1].split(":").filter(Boolean);
   const boxOf = (key) => key.split("|")[0];
   const within = (key, variants) =>
@@ -131,9 +131,20 @@ function ruleDeclarations(body) {
       .filter(([other]) => boxOf(other) === boxOf(key) && variantsOf(other).every((variant) => variants.includes(variant)))
       .sort(([a], [b]) => variantsOf(a).length - variantsOf(b).length)
       .flatMap(([, declarations]) => declarations);
-  const everything = (key) => [...scopes.keys()].filter((other) => boxOf(other) === boxOf(key)).flatMap(variantsOf);
-  return [...scopes.keys()].flatMap((key) => [within(key, variantsOf(key)), within(key, everything(key))]);
+  const keys = [...scopes.keys()];
+  return keys.flatMap((key) =>
+    keys
+      .filter((other) => boxOf(other) === boxOf(key))
+      .map((other) => [...new Set([...variantsOf(key), ...variantsOf(other)])])
+      .filter(compatible)
+      .map((variants) => within(key, variants)),
+  );
 }
+// Variants that never hold at once; a breakpoint never holds with its `max-` form either.
+const EXCLUSIVE = [["motion-safe", "motion-reduce"], ["portrait", "landscape"], ["ltr", "rtl"], ["dark", "light"]];
+/** Whether variants can all hold at once, as `dark:` and `hover:` do when the page is dark and hovered. */
+const compatible = (variants) =>
+  !EXCLUSIVE.some(([a, b]) => variants.includes(a) && variants.includes(b)) && !variants.some((variant) => variants.includes(`max-${variant}`));
 /** Whether one box of a CSS rule, in any state, both animates and transitions opacity or transform. */
 const cssClashes = (body) =>
   ruleDeclarations(body).some(
@@ -162,13 +173,18 @@ const boundNames = (name) => (ts.isIdentifier(name) ? [name.text] : name.element
 const declares = (block, name) =>
   block.statements.flatMap((statement) => (ts.isVariableStatement(statement) ? [...statement.declarationList.declarations] : [])).find((declaration) => boundNames(declaration.name).includes(name));
 /** The value an identifier's variable starts with, found as scopes resolve it; a parameter or a destructured name has none. */
-function declaredValue(node) {
+function declarationOf(node) {
   for (let scope = node.parent; scope; scope = scope.parent) {
     if (ts.isFunctionLike(scope) && scope.parameters.some((parameter) => boundNames(parameter.name).includes(node.text))) return undefined;
     const declaration = ts.isBlock(scope) || ts.isSourceFile(scope) ? declares(scope, node.text) : undefined;
-    if (declaration) return ts.isIdentifier(declaration.name) ? declaration.initializer : undefined;
+    if (declaration) return declaration;
   }
   return undefined;
+}
+/** The value an identifier's variable starts with; a parameter or a destructured name has none. */
+function declaredValue(node) {
+  const declaration = declarationOf(node);
+  return declaration && ts.isIdentifier(declaration.name) ? declaration.initializer : undefined;
 }
 /** An expression without `( )`, `as`, `satisfies` or `!` around it. */
 const unwrap = (node) => (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isNonNullExpression(node) ? unwrap(node.expression) : node);
@@ -202,13 +218,16 @@ const LOADING = /^loading\b[^.!?]{0,40}(…|\.\.\.)?$/i;
 // The translation functions: `t`, and `tc` or `tUI` for a second namespace.
 const TRANSLATE = /^t([a-z]|[A-Z]\w*)?$/;
 const TRANSLATION_APIS = new Set(["useTranslations", "getTranslations"]);
-/** Whether a called name translates: named like `t`, `tc` or `tUI`, or bound to useTranslations() or getTranslations(). */
-function translates(callee) {
-  if (!ts.isIdentifier(callee)) return false;
-  if (TRANSLATE.test(callee.text)) return true;
-  const value = declaredValue(callee);
-  const call = value && (ts.isAwaitExpression(value) ? value.expression : value);
+/** Whether an expression makes a translator: `useTranslations(...)`, or `await getTranslations(...)`. */
+function translationFactory(node) {
+  const value = node && unwrap(node);
+  const call = value && (ts.isAwaitExpression(value) ? unwrap(value.expression) : value);
   return !!call && ts.isCallExpression(call) && ts.isIdentifier(call.expression) && TRANSLATION_APIS.has(call.expression.text);
+}
+/** Whether a called expression translates: named like `t`, `tc` or `tUI`, bound to a translation factory, or one called directly. */
+function translates(callee) {
+  if (!ts.isIdentifier(callee)) return translationFactory(callee);
+  return TRANSLATE.test(callee.text) || translationFactory(declaredValue(callee));
 }
 const SR_ONLY = /(?:^|[\s"'`])sr-only(?=$|[\s"'`])/;
 const allowed = (line, rule) => new RegExp(`ui-rules-allow:\\s*${rule}\\s+--\\s*\\S`).test(line ?? "");
@@ -305,16 +324,19 @@ function check(file) {
     }
     return false;
   };
-  // The node a value lands in once it passes through parentheses and conditions.
+  // Whether a value passes through this parent on its way to being rendered: `a && b` shows only b, a is its condition.
+  const passesThrough = (parent, child) => {
+    if (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) || ts.isSatisfiesExpression(parent) || ts.isNonNullExpression(parent)) return true;
+    if (ts.isConditionalExpression(parent)) return parent.condition !== child;
+    if (!ts.isBinaryExpression(parent)) return false;
+    if (parent.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) return parent.right === child;
+    return [ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(parent.operatorToken.kind);
+  };
+  // The node a value lands in once it passes through parentheses, type assertions and conditions.
   const destination = (node) => {
     let child = node;
     let parent = node.parent;
-    while (
-      parent &&
-      (ts.isParenthesizedExpression(parent) ||
-        (ts.isConditionalExpression(parent) && parent.condition !== child) ||
-        (ts.isBinaryExpression(parent) && [ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(parent.operatorToken.kind)))
-    ) {
+    while (parent && passesThrough(parent, child)) {
       child = parent;
       parent = parent.parent;
     }
@@ -325,22 +347,41 @@ function check(file) {
     const target = destination(node);
     return !!target && ts.isJsxExpression(target) && !ts.isJsxAttribute(target.parent);
   };
-  // The variables and properties this file renders as JSX children, by name: `{statusText}`, `{config.label}`.
-  const renderedNames = new Set();
-  const collectRendered = (node) => {
-    if (ts.isIdentifier(node) && !ts.isPropertyAccessExpression(node.parent) && renderedInJsx(node)) renderedNames.add(node.text);
-    if (ts.isPropertyAccessExpression(node) && renderedInJsx(node)) renderedNames.add(`.${node.name.text}`);
-    ts.forEachChild(node, collectRendered);
+  // The statement directly in the file that holds a node: properties are matched by name only within it.
+  const topLevel = (node) => {
+    let current = node;
+    while (current.parent && !ts.isSourceFile(current.parent)) current = current.parent;
+    return current;
   };
-  collectRendered(source);
+  // What the file renders as text: `{status}` marks the variable `status` (and any it was copied from),
+  // `{config.label}` the property `label` in that top-level declaration. Screen-reader-only text marks nothing.
+  let rendered;
+  const renderedValues = () => {
+    if (rendered) return rendered;
+    rendered = { variables: new Set(), properties: new Set() };
+    const markVariable = (identifier) => {
+      for (let declaration = declarationOf(identifier); declaration && !rendered.variables.has(declaration); ) {
+        rendered.variables.add(declaration);
+        const value = declaration.initializer && unwrap(declaration.initializer);
+        declaration = value && ts.isIdentifier(value) ? declarationOf(value) : undefined;
+      }
+    };
+    const collect = (node) => {
+      const visible = (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node)) && renderedInJsx(node) && !screenReaderOnly(node);
+      if (visible && ts.isIdentifier(node) && !ts.isPropertyAccessExpression(node.parent)) markVariable(node);
+      if (visible && ts.isPropertyAccessExpression(node)) rendered.properties.add(`${topLevel(node).pos}:${node.name.text}`);
+      ts.forEachChild(node, collect);
+    };
+    collect(source);
+    return rendered;
+  };
   // Whether a value is shown as text: rendered as a JSX child, or held in a variable or property the file renders.
   const shown = (node) => {
     const target = destination(node);
     if (!target) return false;
     if (ts.isJsxExpression(target)) return !ts.isJsxAttribute(target.parent);
-    if (ts.isVariableDeclaration(target) && ts.isIdentifier(target.name)) return renderedNames.has(target.name.text);
-    if (ts.isPropertyAssignment(target)) return renderedNames.has(`.${target.name.getText(source)}`);
-    return false;
+    if (ts.isVariableDeclaration(target)) return renderedValues().variables.has(target);
+    return ts.isPropertyAssignment(target) && renderedValues().properties.has(`${topLevel(target).pos}:${target.name.getText(source)}`);
   };
   // Whether a string is the key of a translation call, `t("loading")`, whose message is a Loading label.
   const translatedLoading = (node) => {
