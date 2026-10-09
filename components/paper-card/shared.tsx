@@ -15,6 +15,7 @@ import {
   Users,
   BookOpen,
   Table,
+  type AppIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { authorValue, useScreening } from "./hooks";
@@ -430,12 +431,15 @@ export function CitationBadge({
   color,
   onClick,
   compact = false,
+  icon,
 }: {
-  count: number;
+  /** How many works the action finds; none when it isn't known, as for similar papers. */
+  count?: number;
   label: string;
   color: "orange" | "green" | "blue";
   onClick?: () => void;
   compact?: boolean;
+  icon?: AppIcon;
 }) {
   const format = useFormatter();
   const colorClasses = {
@@ -444,7 +448,7 @@ export function CitationBadge({
     blue: "ink-related hover:bg-related/10",
   };
 
-  const Icon = color === "blue" ? Network : Quote;
+  const Icon = icon ?? (color === "blue" ? Network : Quote);
 
   if (compact) {
     return (
@@ -457,7 +461,7 @@ export function CitationBadge({
           )}
         >
           <Icon className="h-3 w-3" />
-          <span>{format.number(count)}</span>
+          {count !== undefined && <span>{format.number(count)}</span>}
         </button>
       </TooltipHint>
     );
@@ -471,7 +475,7 @@ export function CitationBadge({
       className={cn("flex items-center gap-2 flex-shrink-0", colorClasses[color])}
     >
       <Icon className="h-4 w-4" />
-      <span className="text-sm">{label}: {format.number(count)}</span>
+      <span className="text-sm">{count === undefined ? label : `${label}: ${format.number(count)}`}</span>
     </Button>
   );
 }

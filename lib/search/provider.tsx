@@ -724,6 +724,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     if ('cites' in updates) storeUpdates.citesItemId = updates.cites;
     if ('citedBy' in updates) storeUpdates.citedByItemId = updates.citedBy;
     if ('rel' in updates) storeUpdates.relatedToItemId = updates.rel;
+    if ('like' in updates) storeUpdates.similarTo = updates.like;
     if ('review' in updates) storeUpdates.reviewFilter = updates.review;
     if ('area' in updates) storeUpdates.researchAreas = updates.area;
     if ('sdg' in updates) storeUpdates.sdgs = updates.sdg;

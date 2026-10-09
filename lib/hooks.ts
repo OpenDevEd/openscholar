@@ -221,6 +221,7 @@ function formStateOf(params: NonNullable<ReturnType<typeof useSearchOptional>>["
     citesItemId: params.cites,
     citedByItemId: params.citedBy,
     relatedToItemId: params.rel,
+    similarTo: params.like,
     reviewFilter: params.review,
     researchAreas: params.area,
     sdgs: params.sdg,
@@ -264,6 +265,7 @@ function useCurrentSearchFormStateFromStore() {
     citesItemId: searchResult?.citesItemId || '',
     citedByItemId: searchResult?.citedByItemId || '',
     relatedToItemId: searchResult?.relatedToItemId || '',
+    similarTo: searchResult?.similarTo ?? [],
     reviewFilter: searchResult?.reviewFilter || false,
     researchAreas: searchResult?.researchAreas ?? [],
     sdgs: searchResult?.sdgs ?? [],
@@ -377,6 +379,10 @@ function useUpdateSearchFilterFromUrl() {
     }
     if ('relatedToItemId' in updates) {
       batchUpdates.rel = updates.relatedToItemId as string;
+      shouldResetPage = true;
+    }
+    if ('similarTo' in updates) {
+      batchUpdates.like = updates.similarTo as string[];
       shouldResetPage = true;
     }
     if ('reviewFilter' in updates) {

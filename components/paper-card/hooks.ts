@@ -145,7 +145,7 @@ export function useCitationHandlers(paperId: string) {
   const router = useRouter();
 
   const handleFilteredSearch = useCallback(
-    (filterType: "cites" | "citedBy" | "related") => {
+    (filterType: "cites" | "citedBy" | "related" | "similar") => {
       const { url } = createCitationSearch(paperId, filterType);
       router.push(url);
     },
@@ -156,6 +156,7 @@ export function useCitationHandlers(paperId: string) {
     handleCitesSearch: () => handleFilteredSearch("cites"),
     handleCitedBySearch: () => handleFilteredSearch("citedBy"),
     handleRelatedSearch: () => handleFilteredSearch("related"),
+    handleSimilarSearch: () => handleFilteredSearch("similar"),
   };
 }
 

@@ -160,6 +160,15 @@ describe("buildFilterData", () => {
       });
     });
 
+    it("names the papers a search finds the works nearest", () => {
+      const sections = buildFilterData({ similarTo: ["OS64233829", "OS14687712"] });
+      expect(sections.find((s) => s.id === "citations")?.items[0]).toMatchObject({
+        key: "similarTo",
+        displayValue: "OS64233829, OS14687712",
+      });
+      expect(buildFilterData({ similarTo: [] }).find((s) => s.id === "citations")).toBeUndefined();
+    });
+
     it("creates citations section for relatedTo", () => {
       const sections = buildFilterData({ relatedToItemId: "W789" });
       const citationsSection = sections.find((s) => s.id === "citations");

@@ -498,6 +498,16 @@ export function buildFilterData(
       )
     );
   }
+  if (params.similarTo?.length) {
+    citationItems.push(
+      createFilterItem(
+        "similarTo",
+        "similarTo",
+        params.similarTo.join(", "),
+        t ? t("filterSimilarTo") : "Similar to"
+      )
+    );
+  }
   if (citationItems.length > 0) {
     sections.push(createSection("citations", citationItems, t));
   }

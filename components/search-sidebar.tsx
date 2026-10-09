@@ -19,6 +19,7 @@ import {
   HandCoins,
   Award,
   UserRound,
+  Sparkles,
 } from "@/components/icons";
 import {
   cn,
@@ -248,14 +249,37 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
   );
 });
 
+// The papers a search finds the works nearest by meaning: shown first while they decide the search.
+const SimilarToPanel = React.memo(function SimilarToPanel() {
+  const tf = useTranslations("searchFilters");
+  const { similarTo } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const handleClear = React.useCallback(() => {
+    updateFilter({ similarTo: [] });
+  }, [updateFilter]);
+  if (!similarTo?.length) return null;
+  return (
+    <FilterSection title={tf("similarWorksFilter")} icon={Sparkles} isActive onClear={handleClear}>
+      <p className="text-xs text-muted-foreground">{tf("similarToDescription")}</p>
+      <ul className="mt-2 flex flex-wrap gap-1.5">
+        {similarTo.map((id) => (
+          <li key={id}>
+            <code className="rounded bg-related/15 px-1.5 py-0.5 text-xs ink-related">{id}</code>
+          </li>
+        ))}
+      </ul>
+    </FilterSection>
+  );
+});
+
 // Sort Options Component - now a dropdown select
 const SortOptionsPanel = React.memo(function SortOptionsPanel() {
   const tf = useTranslations("searchFilters");
   const ta = useTranslations("accessibility");
-  const { sortBy: chosenSort, currentSearchField, currentQuery } = useCurrentSearchFormState();
+  const { sortBy: chosenSort, currentSearchField, currentQuery, similarTo } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
-  // A question asked by meaning is listed by relevance alone, whatever sort was chosen.
-  const byMeaning = asksByMeaning(currentSearchField, currentQuery);
+  // A question asked by meaning, or the works nearest given papers, are listed by relevance alone, whatever sort was chosen.
+  const byMeaning = asksByMeaning(currentSearchField, currentQuery) || (similarTo?.length ?? 0) > 0;
   const sortBy = byMeaning ? SEMANTIC_SORT : chosenSort;
 
   const handleSortChange = React.useCallback(
@@ -714,7 +738,8 @@ export const SidebarContent = React.memo(function SidebarContent({
         </div>
       )}
 
-      {/* ID Filters - Show at top when active */}
+      {/* The papers a search is like, and ID filters - shown at top when active */}
+      <SimilarToPanel />
       {isCitesActive && <CitesFilterPanel />}
       {isCitedByActive && <CitedByFilterPanel />}
       {isRelatedToActive && <RelatedToFilterPanel />}

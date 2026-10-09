@@ -29,6 +29,7 @@ import {
   Quote,
   Network,
   BookOpen,
+  Sparkles,
 } from "@/components/icons";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useAuthorFilter, useTranslate } from "./hooks";
@@ -67,7 +68,7 @@ export function PaperCardListDetail({
   const authorFilter = useAuthorFilter();
 
   const handleFilteredSearch = (
-    filterType: "cites" | "citedBy" | "related",
+    filterType: "cites" | "citedBy" | "related" | "similar",
   ) => {
     const { url } = createCitationSearch(result.id, filterType);
 
@@ -88,6 +89,9 @@ export function PaperCardListDetail({
   const handleCitesSearch = () => handleFilteredSearch("cites");
   const handleCitedBySearch = () => handleFilteredSearch("citedBy");
   const handleRelatedSearch = () => handleFilteredSearch("related");
+  const handleSimilarSearch = () => handleFilteredSearch("similar");
+  // The OpenScholar API names no related works on a work, so a count of none says nothing.
+  const relatedCount = result.related_works?.length || undefined;
 
   // Handle paper opened
   const handlePaperOpened = () => {
@@ -385,7 +389,7 @@ export function PaperCardListDetail({
             )}
 
             {/* Citation cards */}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={handleCitesSearch}
                 className="bg-cites/10 hover:bg-cites/15 border border-cites/30 rounded-xl p-3 text-left transition-all group/cite relative"
@@ -422,8 +426,19 @@ export function PaperCardListDetail({
                   <Network className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium">{tc("related")}</span>
                 </div>
-                <div className="text-lg font-bold ink-related">
-                  {format.number(result.related_works?.length ?? 0)}
+                {relatedCount !== undefined && (
+                  <div className="text-lg font-bold ink-related">{format.number(relatedCount)}</div>
+                )}
+                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-related opacity-50 group-hover/cite:opacity-100 transition-opacity" />
+              </button>
+
+              <button
+                onClick={handleSimilarSearch}
+                className="bg-related/10 hover:bg-related/15 border border-related/30 rounded-xl p-3 text-left transition-all group/cite relative"
+              >
+                <div className="flex items-center gap-1.5 ink-related mb-1">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium">{tc("similar")}</span>
                 </div>
                 <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-related opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
@@ -478,10 +493,16 @@ export function PaperCardListDetail({
                 onClick={handleCitedBySearch}
               />
               <CitationBadge
-                count={result.related_works?.length ?? 0}
+                count={relatedCount}
                 label={tc("related")}
                 color="blue"
                 onClick={handleRelatedSearch}
+              />
+              <CitationBadge
+                label={tc("similar")}
+                color="blue"
+                icon={Sparkles}
+                onClick={handleSimilarSearch}
               />
             </div>
           </div>

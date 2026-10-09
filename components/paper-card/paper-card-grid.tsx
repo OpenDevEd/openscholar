@@ -12,7 +12,7 @@ import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { Quote, Network, Users, BookOpen } from "@/components/icons";
+import { Quote, Network, Users, BookOpen, Sparkles } from "@/components/icons";
 import { useAuthorFilter, useTranslate, useScreening, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
@@ -37,11 +37,14 @@ export function PaperCardGrid({
 }: PaperCardProps) {
   const pathname = usePathname();
   const tp = useTranslations("paperCard");
+  const tc = useTranslations("common");
   const format = useFormatter();
   const { isFocusModeOpen } = useUIStore();
   const isMobile = useIsTablet();
 
-  const { handleCitesSearch, handleRelatedSearch } = useCitationHandlers(result.id);
+  const { handleCitesSearch, handleRelatedSearch, handleSimilarSearch } = useCitationHandlers(result.id);
+  // The OpenScholar API names no related works on a work, so a count of none says nothing.
+  const relatedCount = result.related_works?.length || undefined;
 
   const { 
     translatedContent, 
@@ -239,7 +242,7 @@ export function PaperCardGrid({
 
               {/* Related count - hidden in compact */}
               {!isCompact && (
-                <TooltipHint label={tp("relatedCount", { count: format.number(result.related_works?.length ?? 0) })}>
+                <TooltipHint label={relatedCount === undefined ? tc("related") : tp("relatedCount", { count: format.number(relatedCount) })}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -248,7 +251,21 @@ export function PaperCardGrid({
                     className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium ink-related hover:bg-related/10 transition-colors"
                   >
                     <Network className="h-3.5 w-3.5" />
-                    <span>{format.number(result.related_works?.length ?? 0)}</span>
+                    {relatedCount !== undefined && <span>{format.number(relatedCount)}</span>}
+                  </button>
+                </TooltipHint>
+              )}
+              {!isCompact && (
+                <TooltipHint label={tc("similar")}>
+                  <button
+                    aria-label={tc("similar")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSimilarSearch();
+                    }}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium ink-related hover:bg-related/10 transition-colors"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
                   </button>
                 </TooltipHint>
               )}

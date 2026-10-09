@@ -27,6 +27,7 @@ import {
   FileX,
   UserRound,
   AppIcon,
+  Sparkles,
 } from "@/components/icons";
 import { FilterSectionType, FilterType } from "./filter-types";
 
@@ -53,6 +54,7 @@ export const FILTER_ICONS: Record<FilterType, AppIcon> = {
   cites: ArrowDownRight,
   citedBy: ArrowUpRight,
   relatedTo: GitCompare,
+  similarTo: Sparkles,
   workType: Library,
   researchArea: Shapes,
   sdg: Globe2,

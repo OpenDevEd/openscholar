@@ -24,6 +24,7 @@ export type FilterType =
   | "cites"
   | "citedBy"
   | "relatedTo"
+  | "similarTo"
   | "workType"
   | "researchArea"
   | "sdg"

@@ -5,6 +5,7 @@
  * These are the only places that write to the history store.
  */
 
+import { shortWorkId } from '../openalex/work-id';
 import { useSearchHistoryStore } from '../store';
 import type { SearchFilters, SearchField, SearchResult, QuestionHistoryEntry } from '../types';
 import { searchResultToParams } from '../search-params/converters';
@@ -83,7 +84,7 @@ export function restoreFromHistory(entry: SearchResult): string {
  */
 export function createCitationSearch(
   paperId: string,
-  type: 'cites' | 'citedBy' | 'related',
+  type: 'cites' | 'citedBy' | 'related' | 'similar',
   currentSearchField?: SearchField
 ): SubmitSearchResult {
   const { addSearchResult } = useSearchHistoryStore.getState();
@@ -101,6 +102,10 @@ export function createCitationSearch(
     citedByItemId: type === 'citedBy' ? paperId : '',
     relatedToItemId: type === 'related' ? paperId : '',
     reviewFilter: false,
+    // The works nearest the paper by meaning, closest first (the OpenScholar API's similar_to).
+    ...(type === 'similar'
+      ? { field: 'title_and_abstract' as SearchField, similarTo: [shortWorkId(paperId) ?? paperId], sortBy: 'relevance_score:desc' }
+      : {}),
   };
   
   const id = addSearchResult(entry);
