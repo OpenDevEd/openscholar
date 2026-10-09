@@ -339,7 +339,9 @@ export function createSearchParameters(
 
   // Handle search based on field type
   if (filters.searchField === SEMANTIC_FIELD) {
-    if (query) searchParams.semantic = query;
+    // The question as asked, without the spaces around it: one of spaces alone asks nothing.
+    const question = query.trim();
+    if (question) searchParams.semantic = question;
     // Country focus and the review filter look in the title and abstract, beside the question as typed.
     const terms = semanticTextFilter(filters);
     if (terms) apiFilters.title_and_abstract = buildSearchSubfilter(terms);

@@ -140,6 +140,14 @@ describe("createSearchParameters — search by meaning", () => {
     expect([listed.semantic, listed.filter?.title_and_abstract]).toEqual([undefined, { search: '("Kenya")' }]);
   });
 
+  it("asks the question without the spaces around it, and nothing for spaces alone", () => {
+    const semantic = { ...baseFilters, searchField: "semantic" as const };
+    expect(createSearchParameters("  Does tutoring help?  ", semantic).semantic).toBe("Does tutoring help?");
+    // As the results page reads it: a list of what country focus keeps, not a question the API refuses.
+    const spaces = createSearchParameters("   ", { ...semantic, selectedCountryFocus: ["KE"] });
+    expect([spaces.semantic, spaces.filter?.title_and_abstract]).toEqual([undefined, { search: '("Kenya")' }]);
+  });
+
   it("asks nothing by meaning without a question, and keeps the sort chosen", () => {
     const params = createSearchParameters("", { ...baseFilters, searchField: "semantic", sortBy: "publication_date:desc" });
     expect(params.semantic).toBeUndefined();
