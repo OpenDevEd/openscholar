@@ -579,12 +579,6 @@
       "failedCount": "{count, plural, one {# 个失败} other {# 个失败}}",
       "retryingCount": "{count, plural, one {# 个重试中} other {# 个重试中}}"
     },
-    "errorHistory": {
-      "trigger": "错误历史 · {count, plural, one {# 次尝试} other {# 次尝试}}",
-      "triggerLabel": "显示错误历史（{count, plural, one {# 次尝试} other {# 次尝试}}）",
-      "attempt": "第 {n} 次尝试",
-      "loadMore": "显示更早的尝试"
-    },
     "mixedSuccess": {
       "title": "部分成功完成",
       "answeredOverTotal": "已读取 {papers} 篇论文，已检查 {total} 个问题中的 {answered} 个",
