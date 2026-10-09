@@ -28,9 +28,10 @@ export const extractionJobs = migrations.define({ table: "extractionJobs", batch
 export const queue = migrations.define({ table: "extractionPaperQueue", batchSize: 200, migrateOne: (_ctx, row) => cleared(row) });
 export const slots = migrations.define({ table: "screeningSlots", migrateOne: (_ctx, row) => cleared(row) });
 // Only the papers that still name a person, by the index on it, of a table too big to read whole.
+// A paper keeps its abstract, with no byte cap of its own: ten at a time.
 export const waiting = migrations.define({
   table: "screeningResults",
-  batchSize: 100,
+  batchSize: 10,
   customRange: (q) => q.withIndex("by_waitingUser_and_waitingSince", (r) => r.gte("waitingUser", NO_ID)),
   migrateOne: () => ({ waitingUser: undefined }),
 });
@@ -55,11 +56,14 @@ export const verifyPage = internalQuery({
   },
 });
 
-/** Papers still waiting under a person's slots, up to 1,000. */
-export const waitingLeft = internalQuery({
-  args: {},
-  returns: v.number(),
-  handler: async (ctx) => (await ctx.db.query("screeningResults").withIndex("by_waitingUser_and_waitingSince", (q) => q.gte("waitingUser", NO_ID)).take(1000)).length,
+/** Papers on one page still waiting under a person's slots. */
+export const waitingPage = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()) },
+  returns: v.object({ missing: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
+  handler: async (ctx, { cursor }) => {
+    const page = await ctx.db.query("screeningResults").withIndex("by_waitingUser_and_waitingSince", (q) => q.gte("waitingUser", NO_ID)).paginate({ cursor, numItems: 100, maximumBytesRead: 4 * 1024 * 1024 });
+    return { missing: page.page.length, isDone: page.isDone, continueCursor: page.continueCursor };
+  },
 });
 
 /** How many job rows still name a person; 0 when done. */
@@ -67,7 +71,13 @@ export const verify = internalAction({
   args: {},
   returns: v.number(),
   handler: async (ctx): Promise<number> => {
-    let missing = await ctx.runQuery(internal.migrations.narrowJobs.waitingLeft, {});
+    let missing = 0;
+    for (let cursor: string | null = null; ;) {
+      const page: { missing: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.narrowJobs.waitingPage, { cursor });
+      missing += page.missing;
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
     for (const table of TABLES) {
       for (let cursor: string | null = null; ;) {
         const page: { missing: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.narrowJobs.verifyPage, { table, cursor });
