@@ -76,7 +76,7 @@ function searchOf(href: string) {
  * results in this tab, as a new search, and the panel stays up with its chat. Hovered, it
  * shows the search's card out to the left, over the page, as the sidebar's history does.
  */
-function Subject({ text, step, chips, className = "truncate" }: { text: string; step: Pick<StepItem, "id" | "href" | "count" | "at">; /** The settings that tell this search from the others on its card, as chips after its query. */ chips?: FilterParams; className?: string }) {
+function Subject({ text, step, chips, unqueried = false, className = "truncate" }: { text: string; step: Pick<StepItem, "id" | "href" | "count" | "at">; /** The settings that tell this search from the others on its card, as chips after its query. */ chips?: FilterParams; /** `text` stands in for a query the search didn't have: written as the search history writes it, and never cut to make room for its chips. */ unqueried?: boolean; className?: string }) {
   if (!step.href) return <span className={className}>{text}</span>;
   const search = searchOf(step.href);
   const at = new Date(step.at).toISOString();
@@ -85,9 +85,9 @@ function Subject({ text, step, chips, className = "truncate" }: { text: string; 
     <SearchHoverCard side="left" delay={300} id={step.id} query={search.query} count={step.count} filters={search} createdAt={at} updatedAt={at}>
       {chips ? (
         <Link href={step.href} className={cn(className, "group flex items-center gap-1.5")}>
-          {text ? <span className={cn("min-w-0 truncate", underlined)}>{text}</span> : null}
+          {text ? <span className={unqueried ? "shrink-0 italic" : cn("min-w-0 truncate", underlined)}>{text}</span> : null}
           {/* One row, faded where it runs on: the search's card shows them all. Beside a query it takes at most part of the line. */}
-          <FadeRow className={cn("shrink-0 transition-colors group-hover:[&_[data-slot=badge]]:text-foreground", text ? "max-w-[60%]" : "max-w-full")}>
+          <FadeRow className={cn("transition-colors group-hover:[&_[data-slot=badge]]:text-foreground", unqueried ? "max-w-full" : "shrink-0", !unqueried && (text ? "max-w-[60%]" : "max-w-full"))}>
             <FilterChips filters={chips} size="compact" singleLine valuesOnly />
           </FadeRow>
         </Link>
@@ -103,7 +103,7 @@ function Subject({ text, step, chips, className = "truncate" }: { text: string; 
 /** A search that ran on filters alone, with no query: it says so, and shows those filters. */
 function Unqueried({ step, chips, className }: { step: StepItem & { href: string }; /** Its filters the others on its card don't share; all of its own when it's alone. */ chips?: FilterParams; className?: string }) {
   const tc = useTranslations("common");
-  return <Subject text={tc("noQuery")} chips={chips ?? searchOf(step.href)} step={step} className={className} />;
+  return <Subject unqueried text={tc("noQuery")} chips={chips ?? searchOf(step.href)} step={step} className={className} />;
 }
 
 /** Whether a step is a search that ran with no query. */
