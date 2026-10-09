@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import {
   Users,
   Plus,
@@ -10,9 +11,6 @@ import {
   RotateCcw,
   X,
   MoreHorizontal,
-  ShieldCheck,
-  Crown,
-  PenLine,
   Clock3,
   ChevronsUpDown,
   ChevronLeft,
@@ -20,6 +18,7 @@ import {
   Check,
 } from "@/components/icons";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { EmailAvatar, PersonName, ROLE_ICONS, RoleLabel } from "@/components/ui/identity";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -151,6 +150,7 @@ export function TeamAccess({
   onResend: (member: AccessMember) => Promise<void>;
 }) {
   const isProfile = scope === "profile";
+  const { user } = useUser();
   const [pending, setPending] = useState(false);
   const pendingRef = useRef(false);
   async function runChange(action: () => Promise<void>) {
@@ -199,24 +199,18 @@ export function TeamAccess({
         {list.map((member) => (
           <li key={member.id} className="px-4 py-4 hover:bg-muted">
             <div className="flex flex-wrap items-center gap-3">
-              <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-10 rounded-xl" />
+              {member.invited ? <EmailAvatar /> : <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-9" />}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{member.name}</p>
+                <PersonName name={member.name} you={!member.invited && member.id === user?.id} className="text-sm font-medium" />
                 <p className="truncate text-xs text-muted-foreground">
                   {member.email}
                 </p>
                 {member.invited && member.delivery === "failed" && <p className="text-xs text-destructive">Invitation not delivered</p>}
               </div>
-              {isProfile && member.role === "Editor" ? (
-                <span className="flex w-36 items-center gap-2 px-3 text-xs text-muted-foreground">
-                  <ShieldCheck className="size-3.5" />
-                  Editor
-                </span>
-              ) : member.role === "Owner" ? (
-                <span className="flex w-36 items-center gap-2 px-3 text-xs text-muted-foreground">
-                  <Crown className="size-3.5" />
-                  Owner
-                </span>
+              {(isProfile && member.role === "Editor") || member.role === "Owner" ? (
+                <RoleLabel role={member.role === "Owner" ? "owner" : "editor"} className="w-36 gap-2 px-3">
+                  {member.role}
+                </RoleLabel>
               ) : (
                 <RoleSelect
                   disabled={pending}
@@ -651,15 +645,10 @@ export function TeamAccess({
             <dl className="grid gap-3 pb-1 pt-3 sm:grid-cols-3">
               {(["Owner", "Editor", "Creator"] as const).map((role) => (
                 <div key={role}>
-                  <dt className="mb-1 flex items-center gap-1.5 font-medium text-foreground">
-                    {role === "Owner" ? (
-                      <Crown className="size-3.5" />
-                    ) : role === "Creator" ? (
-                      <PenLine className="size-3.5" />
-                    ) : (
-                      <ShieldCheck className="size-3.5" />
-                    )}
-                    {role}
+                  <dt className="mb-1">
+                    <RoleLabel role={role === "Owner" ? "owner" : role === "Creator" ? "creator" : "editor"} className="font-medium text-foreground">
+                      {role}
+                    </RoleLabel>
                   </dt>
                   <dd className="leading-relaxed">{roleHint[role]}</dd>
                 </div>
@@ -698,11 +687,7 @@ function RoleSelect({
           className,
         )}
       >
-        {value === "Editor" ? (
-          <ShieldCheck className="size-3.5 text-muted-foreground" />
-        ) : (
-          <PenLine className="size-3.5 text-muted-foreground" />
-        )}
+        {value === "Editor" ? <ROLE_ICONS.editor className="size-3.5 text-muted-foreground" /> : <ROLE_ICONS.creator className="size-3.5 text-muted-foreground" />}
         <SelectValue className="shrink-0">{value}</SelectValue>
       </SelectTrigger>
       <SelectContent className="w-72" position="popper">

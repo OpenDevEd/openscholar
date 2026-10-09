@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Eye, Link2, Loader2, Lock, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, X } from "@/components/icons";
+import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Link2, Loader2, Lock, Radio, Search, Share2, SquarePen, UserPlus, X } from "@/components/icons";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -19,6 +19,7 @@ import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { IdentityRow, ROLE_ICONS, RoleLabel } from "@/components/ui/identity";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ASSISTANT_JOB_CAPS } from "@/convex/lib/constants";
 import { viewOf } from "@/lib/assistant/actions";
@@ -363,8 +364,7 @@ const keyOf = (principal: Principal) => (principal.kind === "user" ? principal.u
 
 /** A person's photo or an organization's logo, with an icon while it loads or when there's none. */
 function Tile({ principal, name, imageUrl }: { principal: Principal; name: string; imageUrl?: string }) {
-  const organization = principal.kind === "organization";
-  return <IdentityAvatar name={name} imageUrl={imageUrl} kind={organization ? "organization" : "person"} className={cn("size-9", organization && "rounded-lg")} />;
+  return <IdentityAvatar name={name} imageUrl={imageUrl} kind={principal.kind === "organization" ? "organization" : "person"} className="size-9" />;
 }
 
 export function ShareSheet({ threadId, title, role, onBack }: { threadId: ThreadId; title: string; role: Role; onBack: () => void }) {
@@ -491,7 +491,7 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
           ) : null}
           <ul className="space-y-1">
             {people.map((person, i) => {
-              const name = person.role === "owner" && owner ? t("you") : shownName(person);
+              const name = shownName(person);
               const detail =
                 person.role === "owner"
                   ? t("owner")
@@ -508,15 +508,10 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.35, ease: EASE, delay: 0.12 + Math.min(i, 8) * 0.05 }}
-                  className="flex items-center gap-3 rounded-xl px-2 py-2"
                 >
-                  <Tile principal={person.principal} name={person.name} imageUrl={person.imageUrl} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{detail}</p>
-                  </div>
+                  <IdentityRow className="rounded-xl px-2 py-2" avatar={<Tile principal={person.principal} name={person.name} imageUrl={person.imageUrl} />} name={name} you={person.role === "owner" && owner} detail={detail}>
                   {person.role === "owner" ? (
-                    <span className="px-2 text-xs text-muted-foreground">{t("canChat")}</span>
+                    <RoleLabel role="chat" className="px-2">{t("canChat")}</RoleLabel>
                   ) : owner ? (
                     <>
                       <Segmented
@@ -524,15 +519,16 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
                         value={person.role}
                         onChange={(role) => grant({ threadId, principal: person.principal, role }).catch(failed)}
                         options={[
-                          { id: "read", label: t("view"), icon: Eye },
-                          { id: "write", label: t("chat"), icon: MessageSquare },
+                          { id: "read", label: t("view"), icon: ROLE_ICONS.view },
+                          { id: "write", label: t("chat"), icon: ROLE_ICONS.chat },
                         ]}
                       />
                       <IconButton small label={t("remove")} icon={<X className="size-3.5" />} onClick={() => revoke({ threadId, principal: person.principal }).catch(failed)} />
                     </>
                   ) : (
-                    <span className="px-2 text-xs text-muted-foreground">{person.role === "write" ? t("canChat") : t("canView")}</span>
+                    <RoleLabel role={person.role === "write" ? "chat" : "view"} className="px-2">{person.role === "write" ? t("canChat") : t("canView")}</RoleLabel>
                   )}
+                  </IdentityRow>
                 </motion.li>
               );
             })}

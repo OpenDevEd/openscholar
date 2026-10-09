@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
 import type { Id } from "@/convex/_generated/dataModel";
 const mocks = vi.hoisted(() => ({ mutate: vi.fn(), invite: vi.fn() }));
+vi.mock("@clerk/nextjs", () => ({ useUser: () => ({ user: { id: "user_me" } }) }));
 vi.mock("convex/react", () => ({ useMutation: () => mocks.mutate, useAction: () => mocks.invite, useConvex: () => ({ query: vi.fn() }) }));
 vi.mock("@/lib/hooks/use-cursor-page", () => ({ useCursorPage: () => ({ items: [], isLoading: false }) }));
 vi.mock("@/convex/_generated/api", () => ({ api: { evidenceLibraries: {
