@@ -203,8 +203,6 @@ export const evidenceLibraryFields = {
   // Set once every approved OpenAlex query version in the library's revisions is in
   // evidenceLibraryApprovedQueries; until then a sources save reads the revisions (#357).
   approvedQueriesRecorded: v.optional(v.literal(true)),
-  // The organization it belonged to before workspaces; migrations/narrowLibraries.ts clears it before it goes (#650).
-  organizationId: v.optional(v.id("organizations")),
   /** The workspace it belongs to (#650), and the account that made it, absent for one whose creator's account is gone. */
   workspaceId: v.id("workspaces"),
   createdBy: v.optional(v.id("users")),

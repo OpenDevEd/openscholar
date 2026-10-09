@@ -25,6 +25,7 @@ import { register as registerAggregate } from "@convex-dev/aggregate/test";
 import { register as registerBatchWorker } from "@convex-dev/batch-worker/test";
 import { register as registerMigrations } from "@convex-dev/migrations/test";
 import { convexTest as baseConvexTest, type TestConvexForDataModel as BaseForDataModel, type TestConvexRoot as BaseRoot } from "convex-test/dist/index.js";
+import appSchema from "../convex/schema";
 import { capWrites } from "../convex/lib/capWrites";
 import { triggers } from "../convex/lib/triggers";
 import { flushCountQueue, type CountQueue } from "../convex/lib/countQueue";
@@ -106,6 +107,31 @@ const IN_WORKSPACE: Record<string, { createdBy: boolean; by?: string; organizati
   billingHolds: { createdBy: false },
 };
 
+/** Who a seeded row was, before workspaces, which its table no longer has (#650). */
+const GONE = ["userId", "ownerId", "organizationId"] as const;
+const tableFields = (table: string) => (appSchema.tables as unknown as Record<string, { validator: { fields: Record<string, unknown> } } | undefined>)[table]?.validator.fields;
+
+/**
+ * A seeded row as its table takes it: a test may still say whose it is with `userId` (or a chat's or
+ * profile's `ownerId`, a library's `organizationId`) where the table now has only the workspace and,
+ * where it has one, the maker. The workspace is filled in first; the maker is that person.
+ */
+function withoutGoneFields(table: string, value: Record<string, unknown>) {
+  const fields = tableFields(table);
+  if (!fields) return value;
+  const gone = GONE.filter((field) => field in value && !(field in fields));
+  if (!gone.length) return value;
+  const person = (value.userId ?? value.ownerId) as Id<"users"> | undefined;
+  const kept = Object.fromEntries(Object.entries(value).filter(([field]) => !(gone as readonly string[]).includes(field)));
+  return "createdBy" in fields && kept.createdBy === undefined && person ? { ...kept, createdBy: person } : kept;
+}
+
+/** `db`, inserting a seeded row as its table takes it (`withoutGoneFields`), and nothing else. */
+function withoutGoneFieldsDb<Db extends { insert: (table: any, value: any) => Promise<any> }>(db: Db): Db {
+  const insert = db.insert.bind(db);
+  return Object.assign(Object.create(db), { insert: (table: string, value: Record<string, unknown>) => insert(table, withoutGoneFields(table, value)) }) as Db;
+}
+
 /**
  * `db`, inserting each account and organization with its own workspace, as
  * `createUserWithDefaults` and the Clerk webhook do, and, with `owned`, a record that names no
@@ -124,7 +150,7 @@ function withOwnWorkspaces<Db extends { insert: (table: any, value: any) => Prom
         : kind && userId && value.workspaceId === undefined
           ? { ...value, workspaceId: await own(userId), ...(kind.createdBy && value.createdBy === undefined ? { createdBy: userId } : {}) }
           : value;
-      const id = await insert(table, filled);
+      const id = await insert(table, withoutGoneFields(table, filled));
       if (table === "users") await own(id);
       // The Clerk webhook makes an organization's workspace with it (convex/webhooks/projections.ts).
       if (table === "organizations") await ensureWorkspace({ db } as never, { kind: "organization", organizationId: id });
@@ -230,7 +256,7 @@ function withTriggersInRun<T extends Runner>(target: T): T {
       return result;
     });
   target.runUncapped = (fn) => run((ctx) => fn(triggers.wrapDB({ ...ctx, db: withOwnWorkspaces(ctx.db, false) })));
-  target.runUntriggered = run;
+  target.runUntriggered = (fn) => run((ctx) => fn({ ...ctx, db: withoutGoneFieldsDb(ctx.db) }));
   target.withIdentity = (identity) => withTriggersInRun(withIdentity(identity));
   return target;
 }

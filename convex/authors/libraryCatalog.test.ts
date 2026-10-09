@@ -75,10 +75,10 @@ it("resolves current public profile metadata without a reader account or profile
 it("paginates indexed library search beyond a thousand authors without omitting or repeating profiles", async () => {
   const {t, request, otherProfile} = await setupCatalog();
   const inserted = await t.run(async ctx => {
-    const owner = (await ctx.db.get("authorProfiles", otherProfile))!.ownerId;
+    const { workspaceId, createdBy } = (await ctx.db.get("authorProfiles", otherProfile))!;
     const ids = [];
     for (let i = 0; i < 1003; i++) ids.push(await ctx.db.insert("authorProfiles", {
-      ownerId: owner, name: `Catalogpagination Researcher ${String(i).padStart(4, "0")}`,
+      workspaceId, createdBy, name: `Catalogpagination Researcher ${String(i).padStart(4, "0")}`,
       headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: "", revision: 1, updatedAt: 1,
     }));
     return ids;

@@ -16,7 +16,7 @@ import { checkRateLimit } from "../lib/rateLimit";
 import { startHeld } from "../billing/charge";
 import { filtersOf } from "../paperSets/search";
 import { findSearch } from "../research/records";
-import { isInWorkspace, personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
+import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { screeningRevision } from "../screening/accounting";
 import { papersIn } from "../screening/estimate";
 import { paperSetValidator } from "../screening/validators";
@@ -140,11 +140,10 @@ export const screeningSource = internalQuery({
 
 async function screeningPicked(ctx: QueryCtx, workspaceId: Id<"workspaces">, jobId: Id<"screeningJobs">) {
   const job = await ctx.db.get("screeningJobs", jobId);
-  if (!job || !(await isInWorkspace(ctx, job, workspaceId))) throw createError("NOT_FOUND", "Screening not found");
+  if (!job || !(job.workspaceId === workspaceId)) throw createError("NOT_FOUND", "Screening not found");
   const revision = await screeningRevision(ctx, job);
   return { revision, count: await checkScreeningSelection(ctx, workspaceId, jobId, revision), label: job.label ?? "Screening" };
 }
-
 
 /**
  * The set as the sources an extraction starts from (./expandSources.ts), which the job reads

@@ -54,8 +54,8 @@ export const RECENT_REQUESTS = 6;
  */
 export const assistantAskingValidator = v.object({
   senderId: v.id("users"),
-  /** The workspace the reply acts in, which it carries on in. Absent on one that waited from before replies named theirs, which acts in its sender's own, until migrations/narrowAssistant.ts gives it that (#650). */
-  workspaceId: v.optional(v.id("workspaces")),
+  /** The workspace the reply acts in, which it carries on in (#650). */
+  workspaceId: v.id("workspaces"),
   order: v.number(),
   promptMessageId: v.string(),
   modelId: v.union(v.id("models"), v.null()),
@@ -116,8 +116,6 @@ export const recentCostsValidator = capped(v.array(v.number()), RECENT_REPLIES);
 /** Undone changes a chat keeps to tell the model of: the latest. A bulk change is one of them, however many it made. */
 export const UNDONE_TOLD = 20;
 export const assistantThreadFields = {
-  /** Who made it, before workspaces; migrations/narrowAssistant.ts clears it before it goes (#650). */
-  ownerId: v.optional(v.id("users")),
   /** The workspace it's in, and who made it (#650). */
   workspaceId: v.id("workspaces"),
   createdBy: v.id("users"),
@@ -173,8 +171,8 @@ export const assistantStepFields = {
   order: v.number(),
   /** Who it ran as: the person whose message was being answered. Only they can undo it. */
   userId: v.id("users"),
-  /** The workspace it ran in, which its undo acts in. Absent on one from before replies named theirs, which ran in its person's own, until migrations/narrowAssistant.ts gives it that (#650). */
-  workspaceId: v.optional(v.id("workspaces")),
+  /** The workspace it ran in, which its undo acts in (#650). */
+  workspaceId: v.id("workspaces"),
   /** On a web search (#648): what it found, for the reply's citations and its list of sources. */
   sources: webSourcesValidator,
   /** The model's ID for the call. Models reuse these, so nothing is looked up by it. */

@@ -306,12 +306,6 @@ import type * as migrations_pagedAccountLists from "../migrations/pagedAccountLi
 import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
 import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryList.js";
 import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
-import type * as migrations_narrowAssistant from "../migrations/narrowAssistant.js";
-import type * as migrations_narrowBilling from "../migrations/narrowBilling.js";
-import type * as migrations_narrowJobs from "../migrations/narrowJobs.js";
-import type * as migrations_narrowLibrary from "../migrations/narrowLibrary.js";
-import type * as migrations_narrowLibraries from "../migrations/narrowLibraries.js";
-import type * as migrations_narrowResearch from "../migrations/narrowResearch.js";
 import type * as migrations_paperMetadata from "../migrations/paperMetadata.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_removeOrphanLibraryAccess from "../migrations/removeOrphanLibraryAccess.js";
@@ -708,12 +702,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
   "migrations/pagedLibraryList": typeof migrations_pagedLibraryList;
   "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
-  "migrations/narrowAssistant": typeof migrations_narrowAssistant;
-  "migrations/narrowBilling": typeof migrations_narrowBilling;
-  "migrations/narrowJobs": typeof migrations_narrowJobs;
-  "migrations/narrowLibrary": typeof migrations_narrowLibrary;
-  "migrations/narrowLibraries": typeof migrations_narrowLibraries;
-  "migrations/narrowResearch": typeof migrations_narrowResearch;
   "migrations/paperMetadata": typeof migrations_paperMetadata;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/removeOrphanLibraryAccess": typeof migrations_removeOrphanLibraryAccess;

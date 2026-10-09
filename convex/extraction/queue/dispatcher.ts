@@ -20,7 +20,7 @@ import {
 import { extractionQueueStatusValidator } from "../validators";
 import { dispatchPaperQueueWindowTx } from "./mutations";
 import { release } from "./release";
-import { personalWorkspaceOf, workspaceOf } from "../../workspaces/personal";
+import { personalWorkspaceOf } from "../../workspaces/personal";
 
 /** Released rows per batch; each job in a batch is refilled once. */
 const BATCH = 50;

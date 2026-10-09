@@ -220,8 +220,7 @@ export const begin = internalMutation({
 /** What a call given these arguments is about (`aboutOf`), for a tool that names its step before it has one. */
 export const about = internalQuery({
   // `input` is the arguments, as JSON.
-  // `userId` is what a reply started before this deploy still sends; it's ignored, and goes with the fields slice 8 drops last.
-  args: { workspaceId: v.id("workspaces"), input: v.string(), userId: v.optional(v.id("users")) },
+  args: { workspaceId: v.id("workspaces"), input: v.string() },
   returns: v.union(v.string(), v.null()),
   handler: async (ctx, { workspaceId, input }) => (await aboutOf(ctx, workspaceId, input)) ?? null,
 });

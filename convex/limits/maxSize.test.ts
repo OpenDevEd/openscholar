@@ -231,8 +231,8 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     // Each revision then held the whole history: the 44th, 44 copies of the query.
     const queryHistory = Array.from({ length: 44 }, (_, i) => ({ query: `${i} ${text(MAX_SIZE.oqlQueryChars - 6, i)}`, field: "oql" as const, timestamp: "2026-09-01T00:00:00.000Z" }));
     const data = (revision: number) => ({ id: "legacy", query: queryHistory[revision - 1].query, field: "oql" as const, count: 1, queryHistory: queryHistory.slice(0, revision), questionHistory: [], screeningQuestions: [], screeningResponses: [], createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" });
-    const searchId = await t.run(async (ctx) => ctx.db.insert("searches", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, localId: "legacy", data: data(44), revision: 44 }));
-    for (let revision = 1; revision <= 44; revision++) await t.run((ctx) => ctx.db.insert("searchRevisions", { userId, searchId, revision, author: "user", data: data(revision), deleted: false, createdAt: revision }));
+    const searchId = await t.run(async (ctx) => ctx.db.insert("searches", { workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, localId: "legacy", data: data(44), revision: 44 }));
+    for (let revision = 1; revision <= 44; revision++) await t.run((ctx) => ctx.db.insert("searchRevisions", { createdBy: userId, searchId, revision, author: "user", data: data(revision), deleted: false, createdAt: revision }));
     const revisions: number[] = [];
     for (let cursor: string | null = null, isDone = false; !isDone;) {
       const page: { page: Array<{ revision: number }>; isDone: boolean; continueCursor: string } = await as.query(api.research.records.revisions, { accountId: clerkId, id: "legacy", paginationOpts: { cursor, numItems: 25 } });
@@ -246,7 +246,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     const t = convexTest({ schema, transactionLimits: true });
     const clerkId = "max_size_user";
     const { userId, as } = await seedAccount(t, clerkId);
-    const searchId = await t.run(async (ctx) => ctx.db.insert("searches", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, localId: "long", data: { id: "long", query: "q", field: "oql", count: 1, queryHistoryCount: 450, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" }, revision: 1 }));
+    const searchId = await t.run(async (ctx) => ctx.db.insert("searches", { workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, localId: "long", data: { id: "long", query: "q", field: "oql", count: 1, queryHistoryCount: 450, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" }, revision: 1 }));
     await insertMany(t, "searchHistory", Array.from({ length: 450 }, (_, position) => ({ userId, searchId, kind: "query", text: `${position} ${text(MAX_SIZE.oqlQueryChars - 6, position)}`, field: "oql", timestamp: "2026-09-01T00:00:00.000Z", position })), 25);
     let reads = 0;
     let result: { entry: { text: string } | null } | { skipped: number; cursor: string };

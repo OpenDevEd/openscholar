@@ -48,7 +48,7 @@ async function setup({ saved = 6, inCollection = 4, credits = 100_000 } = {}) {
     const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Reading trials", sortName: collectionSortName("Reading trials"), itemCount: inCollection, createdAt: 1, updatedAt: 1 });
     for (let i = 1; i <= saved; i++) {
       const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: W(i), title: `Paper ${i}`, authors: ["Ada Lovelace", "Alan Turing"], abstract: "Tutoring works", journal: "A journal", citedByCount: i, publicationYear: 2020, searchableText: `Paper ${i}`, savedAt: i, updatedAt: i });
-      if (i <= inCollection) await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: i });
+      if (i <= inCollection) await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: i });
     }
     return { userId, collectionId };
   });

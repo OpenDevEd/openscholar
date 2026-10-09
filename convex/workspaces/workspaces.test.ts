@@ -77,12 +77,12 @@ describe("workspaces", () => {
       const mine = (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())!._id;
       // A bookmark, a saved paper in a collection and a finished screening job in each workspace.
       const records = async (workspaceId: typeof mine) => {
-        await ctx.db.insert("queryShortcuts", { userId, workspaceId, createdBy: userId, data: { shorthand: "rct", expansion: "randomized", createdAt: 1 } });
-        const libraryItemId = await ctx.db.insert("libraryItems", { userId, workspaceId, createdBy: userId, openalexId: "https://openalex.org/W1", title: "Trial", searchableText: "Trial", savedAt: 1, updatedAt: 1 });
-        const collectionId = await ctx.db.insert("collections", { userId, workspaceId, createdBy: userId, name: "Trials", sortName: "trials", itemCount: 1, createdAt: 1, updatedAt: 1 });
-        await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: 1 });
-        const screeningId = await ctx.db.insert("screenings", { userId, workspaceId, version: 0, createdAt: 1 });
-        const jobId = await ctx.db.insert("screeningJobs", { userId, workspaceId, createdBy: userId, screeningId, status: "completed", totalPapers: 1, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
+        await ctx.db.insert("queryShortcuts", { workspaceId, createdBy: userId, data: { shorthand: "rct", expansion: "randomized", createdAt: 1 } });
+        const libraryItemId = await ctx.db.insert("libraryItems", { workspaceId, createdBy: userId, openalexId: "https://openalex.org/W1", title: "Trial", searchableText: "Trial", savedAt: 1, updatedAt: 1 });
+        const collectionId = await ctx.db.insert("collections", { workspaceId, createdBy: userId, name: "Trials", sortName: "trials", itemCount: 1, createdAt: 1, updatedAt: 1 });
+        await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: 1 });
+        const screeningId = await ctx.db.insert("screenings", { workspaceId, version: 0, createdAt: 1 });
+        const jobId = await ctx.db.insert("screeningJobs", { workspaceId, createdBy: userId, screeningId, status: "completed", totalPapers: 1, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
         await ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", title: "Trial", status: "completed", createdAt: 1 });
       };
       await records(mine);

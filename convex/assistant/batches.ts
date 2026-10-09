@@ -8,7 +8,6 @@ import { createError } from "../lib/errors";
 import { assistantMutation, defineUserMutation, userMutation } from "../lib/userActions";
 import { UNDO_BULK, settleAsked } from "./steps";
 import { writing } from "./threads";
-import { actingIn } from "./replies";
 
 export const undoAction = defineUserMutation({
   path: UNDO_BULK,
@@ -24,7 +23,7 @@ export const undoAction = defineUserMutation({
   run: async (ctx, { userId, workspaceId }, { change }) => {
     let step = await ctx.db.get("assistantSteps", change);
     // It changed that person's records, and the undo would act on whoever runs it, in the workspace it was made in.
-    if (!step || step.userId !== userId || step.batch === undefined || (await actingIn(ctx, { senderId: step.userId, workspaceId: step.workspaceId })) !== workspaceId) {
+    if (!step || step.userId !== userId || step.batch === undefined || (step.workspaceId) !== workspaceId) {
       throw createError("NOT_FOUND", "That bulk change isn't one of yours.");
     }
     if (step.status === "running") {

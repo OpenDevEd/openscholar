@@ -34,7 +34,7 @@ import { applyCommand, findSearch } from "../research/records";
 
 import { availableCredits } from "../billing/accounts";
 import { MAX_AUTHORS } from "../lib/listCaps";
-import { actorIn, isInWorkspace, personalWorkspaceOf, requireMakerOrAdmin, workspaceOf, type InWorkspace } from "../workspaces/actor";
+import { actorIn, personalWorkspaceOf, requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
 
 /** Where the job's included papers go, as its fields: a collection, or nowhere. */
 async function destination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<typeof saveToValidator> | undefined) {
@@ -98,7 +98,7 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
     const collection = set?.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : null;
     const job = set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
     if (set?.kind === "collection" && collection?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
-    if (set?.kind === "screening" && (!job || !(await isInWorkspace(ctx, job, workspaceId)))) throw createError("NOT_FOUND", "Screening not found");
+    if (set?.kind === "screening" && (!job || !(job.workspaceId === workspaceId))) throw createError("NOT_FOUND", "Screening not found");
     label = collection?.name ?? job?.label;
   }
 
@@ -364,7 +364,7 @@ export const endScreeningWork = internalMutation({
     for (const result of page.page) {
       if (result.waitingSince === undefined) continue;
       // Never started: counted as skipped by the bookkeeping worker.
-      await ctx.db.patch("screeningResults", result._id, { status: "skipped", waitingUser: undefined, waitingWorkspace: undefined, waitingSince: undefined, completedAt: Date.now(), doneAt: ctx.db.vars.commitTs });
+      await ctx.db.patch("screeningResults", result._id, { status: "skipped", waitingWorkspace: undefined, waitingSince: undefined, completedAt: Date.now(), doneAt: ctx.db.vars.commitTs });
       skipped++;
     }
     if (skipped) await bookkeepLater(ctx);

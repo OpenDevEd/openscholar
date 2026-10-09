@@ -21,7 +21,7 @@ describe("moveSearchHistory", () => {
       const t = convexTest(schema);
       await t.run(async (ctx) => {
         const userId = await ctx.db.insert("users", { clerkId: "alice", email: "a@test", state: "active", createdAt: 1, updatedAt: 1 });
-        for (const id of ["edited", "untouched"]) await ctx.db.insert("searches", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, localId: id, data: legacy(id), revision: 1 });
+        for (const id of ["edited", "untouched"]) await ctx.db.insert("searches", { workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, localId: id, data: legacy(id), revision: 1 });
       });
       const alice = t.withIdentity({ subject: "alice" });
       const entries = async (id: string, kind: "query" | "question") => (await alice.query(api.research.records.searchHistory, { accountId: "alice", id, kind, paginationOpts: { cursor: null, numItems: 25 } })).page.map((entry) => entry.text);
@@ -53,7 +53,7 @@ describe("moveSearchHistory", () => {
       // Saved before list caps (#426): a legacy search may hold more than the cap.
       await runUncapped(t, async (ctx) => {
         const userId = await ctx.db.insert("users", { clerkId: "alice", email: "a@test", state: "active", createdAt: 1, updatedAt: 1 });
-        await ctx.db.insert("searches", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, localId: "many", data: { ...legacy("many"), queryHistory: many }, revision: 1 });
+        await ctx.db.insert("searches", { workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, localId: "many", data: { ...legacy("many"), queryHistory: many }, revision: 1 });
       });
       await t.mutation(internal.migrations.moveSearchHistory.run, {});
       await t.finishAllScheduledFunctions(vi.runAllTimers);

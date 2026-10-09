@@ -15,7 +15,7 @@ import { paperSetValidator, screeningPaperInputValidator } from "../screening/va
 import { checkRange, type SearchPaper } from "./search";
 import { authorMetadata, sourceMetadata } from "../../lib/library/paper-metadata";
 import { screeningRevision } from "../screening/accounting";
-import { isInWorkspace, personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
+import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 
 type PaperSet = Infer<typeof paperSetValidator>;
 export type HeldSet = Exclude<PaperSet, { kind: "search" }>;
@@ -51,7 +51,7 @@ export const page = internalQuery({
     const opts = { cursor, numItems: Math.min(numItems, PAGE), maximumBytesRead: PAGE_BYTES };
     if (set.kind === "screening") {
       const job = await ctx.db.get("screeningJobs", set.jobId);
-      if (!job || !(await isInWorkspace(ctx, job, workspaceId))) throw createError("NOT_FOUND", "Screening not found");
+      if (!job || !(job.workspaceId === workspaceId)) throw createError("NOT_FOUND", "Screening not found");
       if (revision !== undefined && revision !== await screeningRevision(ctx, job)) {
         throw createError("CONFLICT", "Screening decisions changed. Remove this source and select it again to review the current Included papers.");
       }

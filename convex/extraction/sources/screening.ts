@@ -4,12 +4,12 @@ import { internalQuery, type QueryCtx } from "../../lib/functions";
 import { createError } from "../../lib/errors";
 import { screeningRevision } from "../../screening/accounting";
 import { readScreeningProgressCounts } from "../../screening/progress";
-import { isInWorkspace, personalWorkspaceOf } from "../../workspaces/personal";
+import { personalWorkspaceOf } from "../../workspaces/personal";
 
 /** Counts come from the workspace's own job, never from the browser's bucket. */
 export async function checkScreeningSelection(ctx: QueryCtx, workspaceId: Id<"workspaces">, jobId: Id<"screeningJobs">, revision: string) {
   const job = await ctx.db.get("screeningJobs", jobId);
-  if (!job || !(await isInWorkspace(ctx, job, workspaceId))) throw createError("NOT_FOUND", "Screening not found");
+  if (!job || !(job.workspaceId === workspaceId)) throw createError("NOT_FOUND", "Screening not found");
   if (job.status === "processing") throw createError("VALIDATION_ERROR", "This screening is still processing. Wait for it to finish before starting extraction.");
   if (revision !== await screeningRevision(ctx, job)) {
     throw createError("CONFLICT", "Screening decisions changed. Remove this source and select it again to review the current Included papers.");
