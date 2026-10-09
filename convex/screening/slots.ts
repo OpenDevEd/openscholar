@@ -8,7 +8,7 @@
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { planLimit } from "../billing/accounts";
+import { workspacePlanLimit } from "../billing/accounts";
 import { pricingOf } from "../ai/serverModel";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { SCREENING_POOL_SIZE, screeningPool } from "../workpool";
@@ -21,9 +21,9 @@ import type { InWorkspace } from "../workspaces/actor";
  */
 const DEFAULT_PAPER_CONCURRENCY = SCREENING_POOL_SIZE;
 
-/** How many papers the person may have running at once, never more than the pool. */
-export async function paperLimit(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
-  const concurrency = (await planLimit(ctx, userId, "concurrency")) ?? DEFAULT_PAPER_CONCURRENCY;
+/** How many papers a workspace may have running at once, never more than the pool. */
+export async function paperLimit(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
+  const concurrency = (await workspacePlanLimit(ctx, workspaceId, "concurrency")) ?? DEFAULT_PAPER_CONCURRENCY;
   return Math.max(1, Math.min(SCREENING_POOL_SIZE, concurrency));
 }
 
@@ -56,15 +56,14 @@ async function budgetOf(ctx: MutationCtx, jobId: Id<"screeningJobs">): Promise<B
 
 /**
  * Starts a workspace's waiting papers while it's under its limit, first counting off
- * `finished` papers of its that stopped running. Firecrawl's `concurrentJobDone`. The limit is
- * `pool.userId`'s plan's, the person whose job freed or made the papers, until plans are a
- * workspace's (#650, slice 7).
+ * `finished` papers of its that stopped running. Firecrawl's `concurrentJobDone`. `userId` is
+ * the person whose job freed or made the papers, kept on a new slots row.
  */
 export async function startWaitingPapers(ctx: MutationCtx, pool: InWorkspace, finished = 0) {
   const { userId, workspaceId } = pool;
   const slots = await ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
   let running = Math.max(0, (slots?.running ?? 0) - finished);
-  const limit = await paperLimit(ctx, userId);
+  const limit = await paperLimit(ctx, workspaceId);
   if (running < limit) {
     // The workspace's waiting papers, oldest job first, then in each job's order. A paper of a
     // job cancelled a moment ago may start before the job's sweep skips it; it sees the job

@@ -85,6 +85,16 @@ export async function planLimit(ctx: QueryCtx | MutationCtx, userId: Id<"users">
   return plan?.limits?.[limit] ?? undefined;
 }
 
+/**
+ * A workspace's limit, for what its members share, such as its pool of papers running at once
+ * (#650): a person's own workspace has their plan's, and an organization none yet, which leaves
+ * the shared default, until plans are a workspace's (slice 7).
+ */
+export async function workspacePlanLimit(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">, limit: PlanLimit): Promise<number | undefined> {
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  return workspace?.kind === "personal" ? await planLimit(ctx, workspace.userId, limit) : undefined;
+}
+
 /** Refuses a request for more papers than the person's plan takes in one (#632). */
 export async function checkRequestPapers(ctx: QueryCtx | MutationCtx, userId: Id<"users">, papers: number, what: "screening" | "extraction") {
   const most = await planLimit(ctx, userId, "request_papers");

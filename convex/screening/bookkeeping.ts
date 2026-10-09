@@ -221,7 +221,7 @@ export const bookkeep = internalMutation({
     for (const result of results) byJob.set(result.jobId, [...(byJob.get(result.jobId) ?? []), result]);
     // Papers of each person's that stopped running. A paper skipped before it started held no slot, but its
     // person is still listed: with it out of the queue, the papers that waited behind it can start.
-    // Papers freed in each workspace's pool, with the person whose plan sets its limit until plans are a workspace's.
+    // Papers freed in each workspace's pool, with a person whose job freed them for a new slots row.
     const freed = new Map<Id<"workspaces">, { userId: Id<"users">; finished: number }>();
     for (const [jobId, jobResults] of byJob) {
       const job = await ctx.db.get("screeningJobs", jobId);

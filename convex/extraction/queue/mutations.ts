@@ -11,7 +11,7 @@ import {
   shouldClearQueueLease,
   type ExtractionQueueStatus,
 } from "./status";
-import { planLimit } from "../../billing/accounts";
+import { workspacePlanLimit } from "../../billing/accounts";
 import { workspaceOf } from "../../workspaces/personal";
 
 type QueueKind = Doc<"extractionPaperQueue">["kind"];
@@ -343,19 +343,18 @@ export const leaseNextPaperQueueRows = internalMutation({
 
 /**
  * How many more papers a workspace may start across its extraction jobs (#335; one pool per
- * workspace since #650): the plan's `concurrency`, or the whole window when it sets none, less
+ * workspace since #650): its plan's `concurrency`, or the whole window when it sets none, less
  * the papers it holds leased or running in any job. Firecrawl's per-team limit
- * (`apps/api/src/lib/concurrency-limit.ts`). The plan is `pool.userId`'s, the job's starter,
- * until plans are a workspace's (slice 7).
+ * (`apps/api/src/lib/concurrency-limit.ts`).
  */
-async function poolCapacity(ctx: MutationCtx, pool: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, window: number) {
-  const limit = Math.max(1, Math.min(window, (await planLimit(ctx, pool.userId, "concurrency")) ?? window));
+async function poolCapacity(ctx: MutationCtx, workspaceId: Id<"workspaces">, window: number) {
+  const limit = Math.max(1, Math.min(window, (await workspacePlanLimit(ctx, workspaceId, "concurrency")) ?? window));
   let held = 0;
   for (const status of ["leased", "running"] as const) {
     if (held >= limit) break;
     held += (await ctx.db
       .query("extractionPaperQueue")
-      .withIndex("by_workspace_and_status", (q) => q.eq("workspaceId", pool.workspaceId).eq("status", status))
+      .withIndex("by_workspace_and_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status))
       .take(limit - held)).length;
   }
   return Math.max(0, limit - held);
@@ -366,7 +365,7 @@ async function leaseNextPaperQueueRowsTx(
   args: LeaseRowsArgs,
 ): Promise<LeaseRowsResult> {
   const job = await ctx.db.get(args.jobId);
-  const personFree = job ? await poolCapacity(ctx, { userId: job.userId, workspaceId: await workspaceOf(ctx, job) }, args.paperConcurrency) : 0;
+  const personFree = job ? await poolCapacity(ctx, await workspaceOf(ctx, job), args.paperConcurrency) : 0;
   const activeReadLimit = Math.max(0, Math.floor(args.paperConcurrency));
   const [leasedRows, runningRows] = await Promise.all([
     loadQueueRowsByStatus(ctx, {
