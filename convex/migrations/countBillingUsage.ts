@@ -4,8 +4,9 @@ import { internal } from "../_generated/api";
 import { countUsage } from "../billing/usageLog";
 
 /**
- * Backfill: counts charges recorded before `usageAgg` existed, so the billing
- * page's charge pages cover them. Run once per deployment:
+ * Backfill: counts charges recorded before `usageAgg` existed, or before it counted them by
+ * the workspace that paid (#650), so the billing page's charge pages cover them. Run once per
+ * deployment, after `migrations/billingWorkspaces`:
  *   npx convex run migrations/countBillingUsage:run
  * Idempotent; each batch schedules the next.
  */

@@ -84,7 +84,7 @@ export const startUpload = mutation({
     }
     const perHour = await planLimit(ctx, workspaceId, "uploads_per_hour");
     if (perHour !== undefined) {
-      const { ok, retryAt } = await rateLimit(ctx, { name: "assistant-upload", key: userId, config: { kind: "token bucket", rate: perHour, period: HOUR, capacity: perHour } });
+      const { ok, retryAt } = await rateLimit(ctx, { name: "assistant-upload", key: `${userId}:${workspaceId}`, config: { kind: "token bucket", rate: perHour, period: HOUR, capacity: perHour } });
       if (!ok) {
         const minutes = Math.max(1, Math.ceil(((retryAt ?? Date.now()) - Date.now()) / 60_000));
         throw createError("VALIDATION_ERROR", `Your plan lets you attach ${perHour} files an hour. You can attach more in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`);
