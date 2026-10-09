@@ -319,6 +319,7 @@ import type * as migrations_screeningSearch from "../migrations/screeningSearch.
 import type * as migrations_searchText from "../migrations/searchText.js";
 import type * as migrations_teamLists from "../migrations/teamLists.js";
 import type * as migrations_versionChangedSections from "../migrations/versionChangedSections.js";
+import type * as migrations_walletKeyWorkspaces from "../migrations/walletKeyWorkspaces.js";
 import type * as migrations_workspaces from "../migrations/workspaces.js";
 import type * as models_admin from "../models/admin.js";
 import type * as models_catalog from "../models/catalog.js";
@@ -725,6 +726,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/searchText": typeof migrations_searchText;
   "migrations/teamLists": typeof migrations_teamLists;
   "migrations/versionChangedSections": typeof migrations_versionChangedSections;
+  "migrations/walletKeyWorkspaces": typeof migrations_walletKeyWorkspaces;
   "migrations/workspaces": typeof migrations_workspaces;
   "models/admin": typeof models_admin;
   "models/catalog": typeof models_catalog;
