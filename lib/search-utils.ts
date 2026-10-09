@@ -1,4 +1,5 @@
 import { OQL_FIELD, joinOql } from './openalex/oql';
+import { SEMANTIC_FIELD } from './openalex/semantic';
 import { isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive } from './utils';
 import { getCountryCodesForRegions, COUNTRIES, COUNTRY_NAME_CHANGES } from './constants';
 import { validateAndExpandKeywords, type ExpandShortcuts } from './keyword-validation';
@@ -89,6 +90,19 @@ export function prepareOpenAlexSearch(
     
     return countryNames;
   };
+
+  // A question by meaning goes as typed: keyword expansion, country focus and review terms are a keyword search's.
+  if (filters.searchField === SEMANTIC_FIELD) {
+    const question = query.trim();
+    return {
+      validation: { isValid: true, expandedQuery: question, warnings: [] },
+      countryNames: [],
+      finalApiQuery: question,
+      effectiveFilters,
+      effectiveCitesItemId,
+      effectiveRelatedToItemId,
+    };
+  }
 
   const countryNames = getCountryNames();
 

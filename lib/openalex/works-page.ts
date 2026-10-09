@@ -70,7 +70,7 @@ function reasonOf(body: unknown, status: number) {
  * against the caller's allowance, as the SDK's were not; unlike it, it gives up after
  * WORKS_TIME_LIMIT_MS in all. Server side only: it reads the key.
  */
-export async function fetchWorksPage(parameters: SearchParameters & { perPage: number }): Promise<WorksPageResult> {
+export async function fetchWorksPage(parameters: SearchParameters & { perPage: number; semantic?: string }): Promise<WorksPageResult> {
   return withinTimeLimit((signal) => readPage(worksUrl(parameters, { per_page: String(parameters.perPage), cursor: "*" }), signal));
 }
 

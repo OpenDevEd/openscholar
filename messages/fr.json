@@ -1072,6 +1072,7 @@
     "searchFieldFulltext": "Texte complet",
     "searchFieldDisplayName": "Nom d'affichage",
     "searchFieldOql": "Requête OQL",
+    "searchFieldSemantic": "Par le sens (sémantique)",
     "sortRelevance": "Pertinence (plus pertinent)",
     "sortCitationsDesc": "Citations (plus cité)",
     "sortCitationsAsc": "Citations (moins cité)",

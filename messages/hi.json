@@ -1072,6 +1072,7 @@
     "searchFieldFulltext": "पूर्ण पाठ",
     "searchFieldDisplayName": "प्रदर्शन नाम",
     "searchFieldOql": "OQL क्वेरी",
+    "searchFieldSemantic": "अर्थ से (सिमैंटिक)",
     "sortRelevance": "प्रासंगिकता (सबसे प्रासंगिक)",
     "sortCitationsDesc": "उद्धरण (सबसे अधिक उद्धृत)",
     "sortCitationsAsc": "उद्धरण (कम उद्धृत)",

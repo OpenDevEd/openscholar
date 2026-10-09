@@ -26,5 +26,9 @@ export function buildOpenAlexWorksQuery(
   const filter = Object.entries(filterPaths(request.filter ?? {}))
     .map(([key, values]) => `${key}:${values.join("|")}`)
     .join(",");
-  return { ...(request.search ? { search: request.search } : {}), ...(filter ? { filter } : {}) };
+  return {
+    ...(request.search ? { search: request.search } : {}),
+    ...(request.semantic ? { semantic: request.semantic } : {}),
+    ...(filter ? { filter } : {}),
+  };
 }

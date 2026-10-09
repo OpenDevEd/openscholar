@@ -1072,6 +1072,7 @@
     "searchFieldFulltext": "全文",
     "searchFieldDisplayName": "显示名称",
     "searchFieldOql": "OQL 查询",
+    "searchFieldSemantic": "按语义（语义搜索）",
     "sortRelevance": "相关性（最相关）",
     "sortCitationsDesc": "引用（最多引用）",
     "sortCitationsAsc": "引用（最少引用）",

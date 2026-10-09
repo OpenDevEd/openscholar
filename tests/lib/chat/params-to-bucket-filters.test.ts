@@ -40,3 +40,26 @@ describe("paramsToBucketSearchFilters", () => {
     expect(onWarning).toHaveBeenCalledWith(expect.stringContaining("Single character"));
   });
 });
+
+describe("paramsToBucketSearchFilters, a search by meaning", () => {
+  it("keeps the question as typed, by relevance, without expanded keywords or added terms", () => {
+    const params = {
+      ...DEFAULT_SEARCH_PARAMS,
+      q: "  What helps teachers stay in rural schools?  ",
+      field: "semantic",
+      focus: ["KE"],
+      review: true,
+      oa: true,
+      sort: "cited_by_count:desc",
+    };
+    const stored = paramsToBucketSearchFilters(params, { expand: noShortcuts });
+    expect(stored?.query).toBe(params.q);
+    expect(stored?.openAlexQuery.semantic).toBe("What helps teachers stay in rural schools?");
+    expect(stored?.openAlexQuery.search).toBeUndefined();
+    expect(stored?.openAlexQuery.sort).toBe("relevance_score:desc");
+    // Country focus and reviews add words to a keyword search; a question by meaning is asked as it is.
+    expect(stored?.openAlexQuery.filter ?? "").not.toContain("Kenya");
+    expect(stored?.openAlexQuery.filter ?? "").not.toContain("synthesis");
+    expect(stored?.openAlexQuery.filter).toContain("open_access.is_oa:true");
+  });
+});

@@ -31,6 +31,13 @@ describe("searchResultToParams — selection sanitization", () => {
 describe("effectiveSort", () => {
   const params = (o: Partial<ParsedSearchParams>) => ({ ...DEFAULT_SEARCH_PARAMS, ...o });
 
+  it("sorts a search by meaning by relevance alone, whatever sort is chosen", () => {
+    expect(effectiveSort(params({ field: "semantic", q: "rural teachers", sort: "cited_by_count:desc" }))).toBe("relevance_score:desc");
+    expect(effectiveSort(params({ field: "semantic", q: "rural teachers", sort: "relevance_score:desc" }))).toBe("relevance_score:desc");
+    // With no question there is nothing to rank: the list sorts as any list without a query does.
+    expect(effectiveSort(params({ field: "semantic", q: "  ", sort: "relevance_score:desc" }))).toBe("publication_date:desc");
+  });
+
   // OpenAlex rejects relevance order without a text search (relevance_sort_requires_search).
   it("sorts an OQL query without a text clause newest first", () => {
     expect(effectiveSort(params({ field: "oql", q: "year is (2020) and type is (article)" }))).toBe("publication_date:desc");

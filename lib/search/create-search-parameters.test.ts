@@ -112,3 +112,25 @@ describe("createSearchParameters research, goal, access and type filters", () =>
     expect(params.search).toBeUndefined();
   });
 });
+
+describe("createSearchParameters — search by meaning", () => {
+  it("asks the question by meaning, keeps the filters, and sorts by relevance alone", () => {
+    const params = createSearchParameters("Does exercise help with depression?", {
+      ...baseFilters,
+      searchField: "semantic",
+      sortBy: "cited_by_count:desc",
+      openAccessOnly: true,
+    });
+    expect(params.semantic).toBe("Does exercise help with depression?");
+    expect(params.search).toBeUndefined();
+    expect(Object.keys(params.filter ?? {}).filter((key) => key.includes("search") || key === "title_and_abstract")).toEqual([]);
+    expect(params.filter).toEqual(createSearchParameters("", { ...baseFilters, openAccessOnly: true }).filter);
+    expect(params.sortBy).toEqual({ field: "relevance_score", order: "desc" });
+  });
+
+  it("asks nothing by meaning without a question, and keeps the sort chosen", () => {
+    const params = createSearchParameters("", { ...baseFilters, searchField: "semantic", sortBy: "publication_date:desc" });
+    expect(params.semantic).toBeUndefined();
+    expect(params.sortBy).toEqual({ field: "publication_date", order: "desc" });
+  });
+});

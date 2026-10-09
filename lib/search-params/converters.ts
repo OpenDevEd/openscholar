@@ -11,6 +11,7 @@ import { format, parseISO } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import type { SearchResult, SearchFilters, SearchField } from '../types';
 import { OQL_FIELD } from '../openalex/oql';
+import { SEMANTIC_FIELD, SEMANTIC_SORT } from '../openalex/semantic';
 import type { ParsedSearchParams } from './parsers';
 import { DEFAULT_SEARCH_PARAMS } from './parsers';
 import { sanitizeSelection } from './sanitize';
@@ -210,6 +211,8 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
 export function effectiveSort(
   params: Pick<ParsedSearchParams, 'q' | 'sort' | 'field' | 'review' | 'focus'>,
 ): string {
+  // A question asked by meaning lists its works by relevance alone.
+  if (params.field === SEMANTIC_FIELD && params.q.trim()) return SEMANTIC_SORT;
   const searchesText = params.field === OQL_FIELD
     ? /\b(has|is similar to)\b/i.test(params.q) || params.review || params.focus.length > 0
     : Boolean(params.q.trim());

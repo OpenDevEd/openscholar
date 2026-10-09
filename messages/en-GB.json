@@ -1062,6 +1062,7 @@
     "searchFieldFulltext": "Fulltext",
     "searchFieldDisplayName": "Display name",
     "searchFieldOql": "OQL query",
+    "searchFieldSemantic": "By meaning (semantic)",
     "sortRelevance": "Relevance (Most Relevant)",
     "sortCitationsDesc": "Citations (Most Cited)",
     "sortCitationsAsc": "Citations (Least Cited)",

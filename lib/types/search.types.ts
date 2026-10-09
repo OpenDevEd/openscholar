@@ -42,7 +42,7 @@ export type PaperResult = Omit<Work, 'sustainable_development_goals' | 'open_acc
 /**
  * Search field options
  */
-export type SearchField = 'title_and_abstract' | 'default' | 'title' | 'abstract' | 'fulltext' | 'display_name' | 'oql';
+export type SearchField = 'title_and_abstract' | 'default' | 'title' | 'abstract' | 'fulltext' | 'display_name' | 'oql' | 'semantic';
 
 /**
  * Available search fields with labels
@@ -55,6 +55,7 @@ export const SEARCH_FIELDS = [
   { value: 'fulltext', label: 'Fulltext' },
   { value: 'display_name', label: 'Display name' },
   { value: 'oql', label: 'OQL query' },
+  { value: 'semantic', label: 'By meaning (semantic)' },
 ] as const;
 
 /**

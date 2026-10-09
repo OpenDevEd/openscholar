@@ -1072,6 +1072,7 @@
     "searchFieldFulltext": "全文",
     "searchFieldDisplayName": "表示名",
     "searchFieldOql": "OQL クエリ",
+    "searchFieldSemantic": "意味で（セマンティック）",
     "sortRelevance": "関連性（最も関連）",
     "sortCitationsDesc": "引用（最も引用）",
     "sortCitationsAsc": "引用（最も少ない）",

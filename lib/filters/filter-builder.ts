@@ -39,6 +39,7 @@ const FIELD_KEY_MAP: Record<string, string> = {
   fulltext: "searchFieldFulltext",
   display_name: "searchFieldDisplayName",
   oql: "searchFieldOql",
+  semantic: "searchFieldSemantic",
 };
 
 /** Maps sortBy values (e.g. relevance_score:desc) to searchFilters translation keys */

@@ -11,6 +11,7 @@ import { researchAreaFilter, sdgFilterValue } from './openalex/vocabulary'
 import { authorFilterValue, isAuthorId } from './openalex/author-filter'
 import { parseImportFile } from './import'
 import { shortWorkId } from './openalex/work-id'
+import { SEMANTIC_FIELD, SEMANTIC_SORT } from './openalex/semantic'
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {
@@ -321,6 +322,8 @@ export function createSearchParameters(
     perPage: number;
     AbstractArrayToString: boolean;
     search?: string;
+    /** A question asked by meaning (`search.semantic`), in place of a search by words. */
+    semantic?: string;
     filter?: Record<string, unknown>;
     sortBy?: SortByWork;
   }
@@ -334,7 +337,9 @@ export function createSearchParameters(
   const apiFilters: Record<string, unknown> = {};
 
   // Handle search based on field type
-  if (query) {
+  if (query && filters.searchField === SEMANTIC_FIELD) {
+    searchParams.semantic = query;
+  } else if (query) {
     // Map search fields to SDK filter format
     const searchFilterMap = {
       'title_and_abstract': 'title_and_abstract',
@@ -440,9 +445,10 @@ export function createSearchParameters(
     searchParams.filter = apiFilters;
   }
 
-  // Add sorting
-  if (filters.sortBy) {
-    const [field, order] = filters.sortBy.split(':');
+  // Add sorting: a question asked by meaning lists its works by relevance alone.
+  const sortBy = searchParams.semantic ? SEMANTIC_SORT : filters.sortBy;
+  if (sortBy) {
+    const [field, order] = sortBy.split(':');
     searchParams.sortBy = {
       field: field as SortByWork['field'],
       order: order as 'asc' | 'desc'
