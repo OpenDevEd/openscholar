@@ -427,7 +427,7 @@ function Workspace({
           ? t("updatingSoftware", {
               rev: shortCommit(operation.runtimeUpdate.to),
             })
-          : t("applying")} · ${t(`stages.${operation.stage}`)}`
+          : t("applying")}, ${t(`stages.${operation.stage}`)}`
       : null;
   const operationFlowLabel =
     operationRunning && operation

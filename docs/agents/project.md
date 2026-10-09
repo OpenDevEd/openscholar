@@ -47,10 +47,22 @@ supported process changed. Read the page back before claiming success.
   `transition-opacity`, or `transition-transform` on it. Put the animation on a
   wrapper, or transition only colors, borders, and shadows. Shared
   `components/ui` parts name the properties they transition.
-  `npm run check:animation-clash` enforces both, in CI.
 - The shared tooltip is `TooltipHint` or `Tooltip` from
   `components/ui/tooltip`. The only native `title` left is on the hidden
   `Z3988` spans, which carry citation data for Zotero.
+- `npm run check:ui-rules` runs in CI and enforces the UI rules agents kept
+  breaking. Each error names the fix. A line that needs an exception says why
+  on the line before it: `// ui-rules-allow: <rule> -- <reason>`.
+
+  | Rule | Enforced by |
+  |---|---|
+  | No animation that also transitions opacity or transform | `check:ui-rules` (`animation-clash`) |
+  | No uppercase labels | `check:ui-rules` (`uppercase`) |
+  | No native `title` tooltips | `check:ui-rules` (`native-title`) |
+  | No dot separators, in code or in `messages/` | `check:ui-rules` (`dot-separator`) |
+  | An avatar without a photo shows an icon, never initials | `check:ui-rules` (`initials`) |
+  | No "Loading" text; the shared Spinner or the final size | `check:ui-rules` (`loading-text`) |
+  | Nothing moves or flashes as data arrives | `npm run verify -- shift` |
 
 ## Research assistant
 
@@ -81,7 +93,8 @@ checkout. It is the only checkout allowed to upload to the shared self-hosted
 development Convex service.
 
 - `npm run dev:web` runs the Next.js app only. Use it for `app/` and
-  `components/` work.
+  `components/` work, or `npm run verify -- up`, which also gives the
+  worktree its environment and its own port.
 - `npm run dev` also watches `convex/` and keeps pushing functions to the
   shared development backend. Run it only from `dev-self` when that upload is
   intended.
@@ -140,8 +153,11 @@ settings, so every change to its shape ships a migration.
 - For Convex work, upload from the correct checkout, require
   `Convex functions ready!`, run the changed function or browser flow, and
   confirm the matching remote logs are clean.
-- For `app/` or `components/` work, run `npm run dev:web`, open the
-  changed page, and check the browser plus terminal.
+- For `app/` or `components/` work, prove the change with `npm run verify`
+  (the `verify` skill): `up --prod`, `shift <route>` with a `--do` step for
+  each changed interaction, look at the screenshots, then `down`. A stop hook
+  on the user's machine sends an agent back while a changed page has no
+  passing `shift`.
 - GitHub CI runs the pre-merge suite. Tests tagged `size` run nightly.
 - Convex and plain test files share modules within a Vitest worker, so a test
   can't count on a fresh module. A file that calls `vi.mock`, itself or through

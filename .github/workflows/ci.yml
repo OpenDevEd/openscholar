@@ -170,8 +170,8 @@ jobs:
         if: always()
         run: rm -rf .email-source
 
-      - name: Check animation and transition clashes
-        run: npm run check:animation-clash
+      - name: Check UI rules
+        run: npm run check:ui-rules
 
       - name: Check every OpenAlex request carries the key
         run: npm run check:openalex-key

@@ -45,7 +45,7 @@ export function LanguageSelector({ value, onValueChange, disabled = false, worki
         <SearchLanguageIcon working={working} size={12} className="h-3 w-3" />
         <span className="hidden whitespace-nowrap text-xs font-medium sm:inline">{label}</span>
         {selectedLanguage ? (
-          <span className="text-2xs font-medium uppercase leading-none sm:hidden">{selectedLanguage.code}</span>
+          <span className="text-2xs font-medium leading-none sm:hidden">{selectedLanguage.code.toUpperCase()}</span>
         ) : null}
         {/* Radix still needs its value slot; the label above says what it holds. */}
         <span hidden>

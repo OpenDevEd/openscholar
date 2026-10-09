@@ -242,12 +242,12 @@ describe("<ConfigurationWorkspace>", () => {
     );
     await renderWorkspace();
     const activate = screen.getByRole("button", {
-      name: /applying · stages\.deployment/,
+      name: /applying, stages\.deployment/,
     });
     expect(activate).toBeDisabled();
     expect(within(activate).getByRole("status", { name: "Loading" })).toBeInTheDocument();
     expect(
-      screen.getByRole("status", { name: "applying · stages.deployment" }),
+      screen.getByRole("status", { name: "applying, stages.deployment" }),
     ).toHaveAttribute("data-operation-stage", "deployment");
   });
 
