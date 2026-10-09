@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Ubuntu } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -6,7 +7,6 @@ import { QuerySyncProvider } from "@/components/query-sync-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmationHost } from "@/lib/confirmation";
 import { AppSidebar } from "@/components/app-sidebar";
-import { sidebarWidthScript } from "@/lib/sidebar-width";
 import { MobileNavbar } from "@/components/mobile-navbar";
 import { cn } from "@/lib/utils";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -20,6 +20,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { preloadQuery } from "convex/nextjs";
 import { AssistantPanel } from "@/components/assistant/panel";
+import { ItemHome } from "@/components/workspaces/item-home";
 import { api } from "@/convex/_generated/api";
 
 // The brand typeface. To change it, swap the family here; --font-app feeds
@@ -79,9 +80,6 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning className={cn(appFont.variable, "antialiased")}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: sidebarWidthScript }} />
-      </head>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
@@ -104,6 +102,10 @@ export default async function RootLayout({
                       </div>
                       <Toaster />
                       <ConfirmationHost />
+                      {/* A link to an item in another of the person's workspaces opens there (#651). */}
+                      <Suspense fallback={null}>
+                        <ItemHome />
+                      </Suspense>
                       <AssistantPanel />
                       <CookieConsentBanner />
                       <ConsentAwareGoogleAnalytics />

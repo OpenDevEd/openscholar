@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { AnimatePresence, motion, useReducedMotion, type Variants } from "motion/react";
 import { LogIn, RefreshCw, ShieldAlert } from "@/components/icons";
 import { Spinner } from "@/components/ui/spinner";

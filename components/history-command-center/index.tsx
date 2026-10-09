@@ -2,10 +2,9 @@
 "use no memo"; // Date.now in posthog handler
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useConvex } from "convex/react";
 import { Clock, Search, ArrowRight, HistoryIcon } from "@/components/icons";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { localSearchHistoryStore, useSearchHistoryStore, useUIStore } from "@/lib/store";
@@ -39,6 +38,7 @@ import { ResearchAccountChangedError } from "@/lib/research/binding";
 import { usePreloadSearch, useResearchSession } from "@/lib/research/reads";
 import { useSearchList } from "@/lib/research/search-list";
 import { useWorkspace } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
 import posthog from "posthog-js";
@@ -67,7 +67,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     { value: "most", label: th("mostResults") },
     { value: "least", label: th("leastResults") },
   ];
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const convex = useConvex();
   const account = useResearchSession();
   const preloadSearch = usePreloadSearch();

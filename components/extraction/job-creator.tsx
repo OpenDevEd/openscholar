@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useMemo, useTransition } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { useRouter } from "next/navigation";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
@@ -38,7 +37,8 @@ import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { useIsMobile } from "@/lib/hooks";
 import { readyBucketPaperCount } from "@/lib/bucket/paper-count";
-import { useWorkspaceMutation } from "@/lib/workspaces/url";
+import { useWorkspaceMutation, useWorkspaceScope } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 
 const stepVariants = {
   enter: (direction: number) => ({
@@ -59,7 +59,7 @@ const stepVariants = {
 };
 
 export function JobCreator({ paperLimit }: { paperLimit: number }) {
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const toast = useAppToast();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
@@ -132,6 +132,8 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
 
   // The most the job costs, on the models the person's extractions run on, against their balance: the figure its start checks.
   const paperCount = readyBucketPaperCount(readyBucketItems);
+  // The page's workspace pays (#651).
+  const scope = useWorkspaceScope();
   const { data: preflightCredits } = useProtectedQuery(
     api.extraction.queries.costs.estimateJob,
     paperCount > 0 && draftJob.questions.length > 0
@@ -140,7 +142,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
   );
   const { data: preflightBalance } = useProtectedQuery(
     api.billing.accounts.checkBalance,
-    preflightCredits ? { requiredAmount: preflightCredits } : "skip",
+    preflightCredits && scope !== "skip" ? { ...scope, requiredAmount: preflightCredits } : "skip",
   );
   const preflightBlocked =
     !!preflightCredits &&

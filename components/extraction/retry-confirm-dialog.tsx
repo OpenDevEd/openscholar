@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
+import { useWorkspaceScope } from "@/lib/workspaces/url";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ExtractionPreflightBanner } from "@/components/extraction/preflight-banner";
 
@@ -48,9 +49,11 @@ export function RetryConfirmDialog({
 
   // The most the retry costs, on the job's model: the figure the retry checks the balance against.
   const { data: credits } = useProtectedQuery(api.extraction.queries.costs.estimateRetry, open ? { jobId } : "skip");
+  // The page's workspace pays (#651).
+  const balanceScope = useWorkspaceScope();
   const { data: balance } = useProtectedQuery(
     api.billing.accounts.checkBalance,
-    open && credits ? { requiredAmount: credits } : "skip",
+    open && credits && balanceScope !== "skip" ? { ...balanceScope, requiredAmount: credits } : "skip",
   );
 
   const [submitting, setSubmitting] = useState(false);

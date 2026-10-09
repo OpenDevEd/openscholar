@@ -30,8 +30,9 @@ function fakeClerk() {
     let match: RegExpMatchArray | null;
     if (path === "/instance") return json({ id: "ins_test" });
     if (path === "/organizations" && method === "POST") {
+      if ([...organizations.values()].some((one) => one.slug === body.slug)) return json({ errors: [{ code: "form_identifier_exists", meta: { param_name: "slug" } }] }, 422);
       const id = `org_${++ids}`;
-      organizations.set(id, { id, name: body.name, slug: `${body.name.toLowerCase()}-${ids}`, created_at: now(), updated_at: clock, public_metadata: {} });
+      organizations.set(id, { id, name: body.name, slug: body.slug, created_at: now(), updated_at: clock, public_metadata: {} });
       membership(id, body.created_by, "org:admin");
       return json(organizations.get(id));
     }
@@ -126,7 +127,7 @@ describe("an organization", () => {
     const { t, bob, aliceAs, bobAs, webhook } = await people();
     // Made at once: no waiting for Clerk's webhook before switching to it.
     const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
-    expect(lab.slug).toMatch(/^lab-/);
+    expect(lab.slug).toBe("lab");
     expect((await aliceAs.query(api.organizations.queries.workspaces, page)).page.map(({ kind, name, role, members }) => ({ kind, name, role, members }))).toEqual([
       { kind: "personal", name: "Alice", role: "admin", members: undefined },
       { kind: "organization", name: "Lab", role: "admin", members: 1 },
@@ -135,7 +136,7 @@ describe("an organization", () => {
 
     // Alice invites Bob; he sees it, with who sent it, and Clerk's link brings him to the join page.
     expect(await aliceAs.action(api.organizations.manage.invite, { ...inLab, emails: ["Bob@Example.org", "carol@example.org"], role: "member" })).toEqual({ invited: 2 });
-    expect(clerk.fetch.mock.calls.some(([, init]) => String(init?.body).includes("https://dev.openscholar.ai/join/lab-"))).toBe(true);
+    expect(clerk.fetch.mock.calls.some(([, init]) => String(init?.body).includes("https://dev.openscholar.ai/join/lab\""))).toBe(true);
     const [invited] = (await bobAs.query(api.organizations.queries.myInvitations, page)).page;
     expect(invited).toMatchObject({ organization: { name: "Lab" }, role: "member", invitedBy: { name: "Alice" } });
     // Only an organization's admins invite, and a member can't answer another's invitation.
@@ -174,6 +175,77 @@ describe("an organization", () => {
     await t.run((ctx) => ctx.db.delete("evidenceLibraries", libraryId));
     await bobAs.action(api.organizations.manage.deleteOrganization, inLab);
     expect((await bobAs.query(api.organizations.queries.workspaces, page)).page.map(({ name }) => name)).toEqual(["Bob"]);
+  });
+
+  it("sends an invitation again as a new one, and takes the colour its admins pick, with an undo", async () => {
+    const { aliceAs } = await people();
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    const inLab = { workspaceId: lab.workspaceId };
+    await aliceAs.action(api.organizations.manage.invite, { ...inLab, emails: ["carol@example.org"], role: "admin" });
+    const [first] = (await aliceAs.query(api.organizations.queries.invitations, { ...inLab, ...page })).page;
+    await aliceAs.action(api.organizations.manage.resendInvitation, { ...inLab, invitationId: first.invitationId });
+    const [again, ...more] = (await aliceAs.query(api.organizations.queries.invitations, { ...inLab, ...page })).page;
+    expect(more).toEqual([]);
+    expect(again).toMatchObject({ email: "carol@example.org", role: "admin" });
+    expect(again.invitationId).not.toBe(first.invitationId);
+
+    const colourOf = async () => (await aliceAs.query(api.organizations.queries.workspaces, page)).page.find((one) => one.kind === "organization")?.colour;
+    const { undo } = await aliceAs.mutation(api.organizations.manage.setColour, { ...inLab, colour: "#0d9488" });
+    expect(await colourOf()).toBe("#0d9488");
+    await aliceAs.mutation(api.organizations.manage.setColour, { ...inLab, ...undo!.args });
+    expect(await colourOf()).toBeUndefined();
+  });
+
+  it("closes someone's invitation once they're a member, before Clerk says they accepted it", async () => {
+    const { aliceAs, bobAs, webhook } = await people();
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    const inLab = { workspaceId: lab.workspaceId };
+    await aliceAs.action(api.organizations.manage.invite, { ...inLab, emails: ["bob@example.org"], role: "member" });
+    const [invited] = (await bobAs.query(api.organizations.queries.myInvitations, page)).page;
+    const sent = clerk.invitations.get(invited.clerkInvitationId)!;
+    const before = { ...sent };
+    const accepted = clerk.accept(invited.clerkInvitationId, "bob");
+    await webhook("organizationMembership.created", accepted.membership, "msg_1");
+    expect((await aliceAs.query(api.organizations.queries.invitations, { ...inLab, ...page })).page).toEqual([]);
+    expect((await bobAs.query(api.organizations.queries.myInvitations, page)).page).toEqual([]);
+    // Clerk's event from when it was sent, arriving late, doesn't open it again.
+    await webhook("organizationInvitation.created", before, "msg_0");
+    expect((await aliceAs.query(api.organizations.queries.invitations, { ...inLab, ...page })).page).toEqual([]);
+  });
+
+  it("takes the address its name gives, or that with a few letters after it when another has it", async () => {
+    const { aliceAs } = await people();
+    expect((await aliceAs.action(api.organizations.manage.create, { name: "Évidence Lab!" })).slug).toBe("evidence-lab");
+    expect((await aliceAs.action(api.organizations.manage.create, { name: "Evidence lab" })).slug).toMatch(/^evidence-lab-[0-9a-f]{4}$/);
+    expect((await aliceAs.action(api.organizations.manage.create, { name: "研究室" })).slug).toBe("organization");
+  });
+
+  it("takes credits bought in it from its admins, charged to it, and refuses its members", async () => {
+    const { t, aliceAs, bobAs, webhook } = await people();
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    const inLab = { workspaceId: lab.workspaceId };
+    await t.run((ctx) => ctx.db.insert("billingCatalog", { plans: [{ id: "top_up", name: "Credit top-up", addOn: true, autoEnable: false, credits: { included: 0, interval: "one_off", unitPrice: { amount: 1, billingUnits: 10_000 } }, features: [], popular: false }], features: [], syncedAt: Date.now() }));
+    await aliceAs.action(api.organizations.manage.invite, { ...inLab, emails: ["bob@example.org"], role: "member" });
+    const [invited] = (await bobAs.query(api.organizations.queries.myInvitations, page)).page;
+    await webhook("organizationMembership.created", clerk.accept(invited.clerkInvitationId, "bob").membership, "msg_1");
+    const attached: Array<Record<string, unknown>> = [];
+    const through = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: string | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/v1/billing.attach")) attached.push(JSON.parse(String(init?.body)));
+      return through(input, init);
+    });
+    await expect(bobAs.action(api.billing.actions.buyCredits, { ...inLab, credits: 10_000 })).rejects.toThrow(/Only an admin/);
+    await aliceAs.action(api.billing.actions.buyCredits, { ...inLab, credits: 10_000 });
+    expect(attached).toEqual([expect.objectContaining({ customer_id: lab.workspaceId, plan_id: "top_up" })]);
+  });
+
+  it("gives a deleted organization's address to the next one that takes it", async () => {
+    const { aliceAs } = await people();
+    const first = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    await aliceAs.action(api.organizations.manage.deleteOrganization, { workspaceId: first.workspaceId });
+    const second = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    expect(second.slug).toBe("lab");
+    expect(await aliceAs.query(api.workspaces.queries.bySlug, { slug: "lab" })).toBe(second.workspaceId);
   });
 
   it("tells the assistant what refuses deleting it before the person is asked", async () => {

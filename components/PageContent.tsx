@@ -1,7 +1,7 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
-import { useRouter } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import dynamic from "next/dynamic";
 import { useUIStore, useCurrentQueryStore } from "@/lib/store";
 import { useAppToast } from "@/lib/toast";
@@ -32,7 +32,7 @@ function PageContent() {
   const tToast = useTranslations("toast");
   const locale = useLocale();
   const toast = useAppToast();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
 
   const { loadingResultIndex, setLoadingResultIndex } = useUIStore();
 

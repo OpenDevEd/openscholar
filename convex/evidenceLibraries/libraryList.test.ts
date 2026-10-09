@@ -1,6 +1,6 @@
-// The Evidence Library list, read a page at a time on the server (#423): the libraries of each
-// organization a person owns, then the ones they were granted, with its filters, its count,
-// the organizations its filter offers, and the backfill of the count.
+// The Evidence Library list, read a page at a time on the server (#423), for the workspace a page
+// is in (#651): an organization's own libraries and those of it granted, or the person's own and
+// the ones shared with them; its search, and the backfill of the count.
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
@@ -50,52 +50,37 @@ async function names(me: Me, filters: { search?: string; organization?: Id<"orga
 }
 
 describe("the library list", () => {
-  it("steps through each owned organization by name, then the granted libraries, without repeating one", async () => {
-    const { me } = await setup();
-    expect((await names(me)).flat()).toEqual(["Alpha one (owner)", "Alpha two (owner)", "Alpha three (owner)", "Beta one (owner)", "Shared reading (editor)"]);
-    // A page fills from the next organization when one runs out.
-    expect((await names(me, {}, 4))[0]).toEqual(["Alpha one (owner)", "Alpha two (owner)", "Alpha three (owner)", "Beta one (owner)"]);
+  it("lists the libraries of the workspace it's in, a page at a time, without repeating one", async () => {
+    const { me, alpha, partner } = await setup();
+    // An organization the person owns: its own libraries. Their grant to one of them lists it once, as its owner.
+    expect(await names(me, { organization: alpha })).toEqual([["Alpha one (owner)", "Alpha two (owner)"], ["Alpha three (owner)"]]);
+    // One they're given a role in a library of: that library.
+    expect((await names(me, { organization: partner })).flat()).toEqual(["Shared reading (editor)"]);
+    // Their own workspace: theirs, and what was shared with them from organizations they don't own.
+    expect((await names(me)).flat()).toEqual(["Shared reading (editor)"]);
   });
 
-  it("goes on from the next organization when the one a page stopped in is no longer the person's", async () => {
+  it("goes on to the granted libraries when the organization a page stopped in is no longer the person's", async () => {
     const { t, me, alpha } = await setup();
-    const first = await me.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 2 } });
+    const first = await me.query(api.evidenceLibraries.queries.listLibraries, { organization: alpha, paginationOpts: { cursor: null, numItems: 2 } });
     expect(first.page.map((library) => library.name)).toEqual(["Alpha one", "Alpha two"]);
     await t.run(async (ctx) => {
       const membership = (await ctx.db.query("organizationMemberships").collect()).find((row) => row.organizationId === alpha)!;
       await ctx.db.delete(membership._id);
     });
-    const rest = await me.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: first.continueCursor, numItems: 10 } });
+    const rest = await me.query(api.evidenceLibraries.queries.listLibraries, { organization: alpha, paginationOpts: { cursor: first.continueCursor, numItems: 10 } });
     // Alpha one stays: the person holds a grant to it, so it now lists with the granted libraries.
-    expect(rest.page.map((library) => `${library.name} (${library.role})`)).toEqual(["Beta one (owner)", "Shared reading (editor)", "Alpha one (creator)"]);
+    expect(rest.page.map((library) => `${library.name} (${library.role})`)).toEqual(["Alpha one (creator)"]);
     expect(rest.isDone).toBe(true);
   });
 
-  it("keeps one organization's libraries, or those whose name or organization contains the search", async () => {
-    const { me, alpha, partner } = await setup();
-    expect((await names(me, { organization: alpha }, 10)).flat()).toEqual(["Alpha one (owner)", "Alpha two (owner)", "Alpha three (owner)"]);
-    expect((await names(me, { organization: partner }, 10)).flat()).toEqual(["Shared reading (editor)"]);
-    expect((await names(me, { search: " TWO" }, 10)).flat()).toEqual(["Alpha two (owner)"]);
-    expect((await names(me, { search: "partner" }, 10)).flat()).toEqual(["Shared reading (editor)"]);
+  it("keeps those whose name or organization contains the search", async () => {
+    const { t, me, alpha, partner } = await setup();
+    expect((await names(me, { organization: alpha, search: " TWO" }, 10)).flat()).toEqual(["Alpha two (owner)"]);
+    expect((await names(me, { organization: partner, search: "partner" }, 10)).flat()).toEqual(["Shared reading (editor)"]);
     expect((await names(me, { search: "nothing like it" }, 10)).flat()).toEqual([]);
-  });
-
-  it("counts the libraries a person can open, and names the organizations they belong to", async () => {
-    const { t, me, beta } = await setup();
-    expect(await me.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(5);
-    expect((await me.query(api.evidenceLibraries.queries.listLibraryOwners, {})).page.map((owner) => owner.name)).toEqual(["Alpha", "Beta", "Partner"]);
-
-    await t.run(async (ctx) => {
-      const betaWorkspace = await organizationWorkspaceOf(ctx, beta);
-      const library = (await ctx.db.query("evidenceLibraries").collect()).find((row) => row.workspaceId === betaWorkspace)!;
-      await ctx.db.delete(library._id);
-    });
-    expect(await me.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(4);
-    // An organization left with no library leaves the filter.
-    expect((await me.query(api.evidenceLibraries.queries.listLibraryOwners, {})).page.map((owner) => owner.name)).toEqual(["Alpha", "Partner"]);
     // Someone signed out, or with no library, reads an empty list.
     const stranger = t.withIdentity({ subject: "someone" });
-    expect(await stranger.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(0);
     expect((await stranger.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 10 } })).page).toEqual([]);
   });
 

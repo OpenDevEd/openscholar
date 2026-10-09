@@ -5,7 +5,7 @@ import {
   OrcidIcon,
 } from "@/components/icons/author-service-icons";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { AuthorSettingsNavigation } from "./author-settings-navigation";
 import { BAR_ACTION, BAR_LABEL, PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";

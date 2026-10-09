@@ -17,7 +17,8 @@
  */
 
 import { useState, useEffect, type ReactNode } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { getEffectiveSearchId } from '../utils';
 import { useSearchHistoryStore } from '../store';
 import { searchResultToParams } from '../search-params/converters';
@@ -31,7 +32,7 @@ interface SearchInitializerProps {
 }
 
 export function SearchInitializer({ children }: SearchInitializerProps) {
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchId = getEffectiveSearchId(pathname) ?? '';

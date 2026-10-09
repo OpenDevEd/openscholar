@@ -1,7 +1,7 @@
 "use client";
 
 import { useRatedPapers } from "@/lib/research/reads";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";

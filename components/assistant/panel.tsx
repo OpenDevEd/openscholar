@@ -5,12 +5,13 @@
 // This is the chat itself. The run map, the cards, the sheets and the spending controls
 // arrive with the issues that build what they show; the @ picker is ./mentions.tsx.
 
+import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { Component, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
-import { insertAtTop, useAction, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { insertAtTop, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { usePathname } from "next/navigation";
 import { ArrowUp, ChevronDown, CircleAlert, CirclePause, CircleStop, Coins, ExternalLink, Eye, FileSearch, Gauge, Globe, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus, X } from "@/components/icons";
 import { useTranslations } from "next-intl";
@@ -59,8 +60,9 @@ import { panelPlace, panelSeed } from "@/lib/assistant/place";
 import { AddCredits, KIND, KindTile, Steps, type StepItem } from "./steps";
 import { DockedJobs, JobDock, JobFlight, type Flight } from "./job-cards";
 import { IconButton, WorkingText } from "./parts";
-import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
-import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { Dim, HistorySheet, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
+import { SHEET_SPRING } from "@/lib/motion";
+import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 type ThreadId = Id<"assistantThreads">;
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -233,7 +235,8 @@ function Overlay({
   }
   // A purchase of credits belongs to the panel, not to the sheet that started it: the sheet can be closed and opened
   // again while the purchase is on its way, and a second one started then would charge the card twice.
-  const buyCredits = useAction(api.billing.actions.buyCredits);
+  // Bought for the workspace the panel is in: an organization's admins buy its credits.
+  const buyCredits = useWorkspaceAction(api.billing.actions.buyCredits);
   const toast = useAppToast();
   const [buying, setBuying] = useState<number | null>(null);
   const [bought, setBought] = useState<number | null>(null);
@@ -612,7 +615,7 @@ function Chat({
       going.current = up.done.length ? up.done.map((file) => file.shown) : undefined;
       setFirst((now) => (now && now.text === text ? { ...now, files: up.done.map((file) => file.shown) } : now));
       // Where it's sent from goes with it, so "this" and "here" mean the page the person is on.
-      await sendMessage({ threadId: id, text, view: window.location.pathname + window.location.search, ...(fileIds.length ? { files: fileIds } : {}) });
+      await sendMessage({ threadId: id, text, view: bareWorkspacePath(window.location.pathname) + window.location.search, ...(fileIds.length ? { files: fileIds } : {}) });
       return id;
     })();
     outgoing.current = sent.catch(() => null);
@@ -1276,7 +1279,7 @@ function ModelPill({
 
 /** The page the person is on, as the composer names it. Each message carries its address (`send`). */
 function useViewName() {
-  const pathname = usePathname();
+  const pathname = bareWorkspacePath(usePathname());
   const t = useTranslations("assistant.views");
   const common = useTranslations("common");
   const topics = useTranslations("topics");

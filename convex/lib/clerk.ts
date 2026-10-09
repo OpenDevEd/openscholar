@@ -27,19 +27,21 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 
 export async function clerkRequest(
   secretKey: string,
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<{ status: number; body: unknown }> {
+  // A form (a file upload) sets its own content type.
+  const form = body instanceof FormData;
   let response: Response;
   try {
     response = await fetch(`${CLERK_API}${path}`, {
       method,
       headers: {
         Authorization: `Bearer ${secretKey}`,
-        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+        ...(body === undefined || form ? {} : { "Content-Type": "application/json" }),
       },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(body === undefined ? {} : { body: form ? body : JSON.stringify(body) }),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
   } catch (error) {

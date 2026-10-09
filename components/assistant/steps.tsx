@@ -5,7 +5,7 @@
 // asks the person about first shows under the map as the mock's approval card.
 
 import { createContext, useContext, useState, type ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { SearchHoverCard } from "@/components/search-tooltip-content";
 import { FilterChips } from "@/components/ui/filter-display";
 import type { FilterParams } from "@/lib/filters";
@@ -33,7 +33,7 @@ import { runsOf, shownSteps } from "@/lib/assistant/step-cards";
 import { OrbitMark } from "./orbit-mark";
 import { CARD_SPRING, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
 import { FadeRow, WorkingText } from "./parts";
-import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace, useWorkspaceScope } from "@/lib/workspaces/url";
 
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
 export type StepItem = Extract<Item, { role: "step" }>;
@@ -330,7 +330,7 @@ const TYPICAL_COST = new Set(["research/papers:readPdf"]);
  */
 function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddCredits }: { credits: number; typical: boolean; sent: boolean; onAllow: () => void; onAlways: () => void; onDecline: () => void; onAddCredits: () => void }) {
   const t = useTranslations("assistant.asks");
-  const account = useQuery(api.billing.accounts.mine, {});
+  const account = useQuery(api.billing.accounts.mine, useWorkspaceScope());
   // Until the balance is read, nothing is said about it, and the row keeps its room.
   const known = account !== undefined;
   const balance = Math.floor(account?.balance ?? 0);

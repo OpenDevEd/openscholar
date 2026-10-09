@@ -5,6 +5,7 @@ import { useAction, useQuery } from 'convex/react'
 import type { FunctionReference } from 'convex/server'
 import type { Id } from '@/convex/_generated/dataModel'
 import { api } from '@/convex/_generated/api'
+import { useWorkspaceScope } from '@/lib/workspaces/url'
 import { useAuthReadiness } from '@/components/providers/convex-provider'
 import { useOptionalAuthQuery } from '@/lib/auth/use-auth-query'
 import { useAIConfigStore } from '@/lib/store'
@@ -106,7 +107,7 @@ export function createAIHook<TArgs extends Record<string, unknown>, TResult>(
     const defaultTask = typeof options.task === 'function' ? options.task({} as TParams) : options.task
     // Presets run on credits; paying with your own key is part of Custom.
     const apiKeyMode = onCredits ? 'credits' : chosenMode
-    const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, {})
+    const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, useWorkspaceScope())
     const figures = useOptionalAuthQuery(api.ai.estimates.mine, {})
     const isConfigured = useMemo(
       () =>
