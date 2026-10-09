@@ -33,20 +33,18 @@ export function ItemPresence({ kind, id, join = true }: { kind: ItemKind; id: st
   const { data: here } = useProtectedQuery(api.presence.items.here, inWorkspace(org ? workspaceId : undefined, { kind, id }));
   const people = here ?? [];
   const label = t("hasOpen", { count: people.length, names: format.list(people.map((person) => person.name), { type: "conjunction" }) });
-  // Someone arriving or leaving fades, beside whatever else the row holds.
-  return (
-    <AnimatePresence initial={false}>
-      {people.length ? (
-        <motion.span key="here" className="flex shrink-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: EASE }}>
-          <TooltipHint label={label}>
-            <span role="img" aria-label={label} className="flex items-center -space-x-1.5">
-              {people.slice(0, SHOWN).map((person) => (
-                <Avatar key={person.userId} member={{ ...person, here: true }} />
-              ))}
-            </span>
-          </TooltipHint>
-        </motion.span>
-      ) : null}
-    </AnimatePresence>
+  // Each person arriving or leaving fades on their own. It sits where growing moves nothing else:
+  // after a row's spacer, or first in a right-aligned group.
+  const faces = (
+    <span role="img" aria-label={people.length ? label : undefined} className="flex shrink-0 items-center -space-x-1.5">
+      <AnimatePresence initial={false}>
+        {people.slice(0, SHOWN).map((person) => (
+          <motion.span key={person.userId} className="flex" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.3, ease: EASE }}>
+            <Avatar member={{ ...person, here: true }} />
+          </motion.span>
+        ))}
+      </AnimatePresence>
+    </span>
   );
+  return people.length ? <TooltipHint label={label}>{faces}</TooltipHint> : faces;
 }

@@ -19,7 +19,7 @@ async function lab() {
     return { workspaceId: await ensureWorkspace(ctx, { kind: "organization", organizationId }), carolOwn: await ensureWorkspace(ctx, { kind: "personal", userId: users.carol }) };
   });
   const [alice, bob, carol] = ["alice", "bob", "carol"].map((subject) => t.withIdentity({ subject }));
-  return { alice, bob, carol, ...seeded };
+  return { t, alice, bob, carol, ...seeded };
 }
 
 it("shows the others in an item's room, never yourself", async () => {
@@ -39,4 +39,14 @@ it("lets no one in who can't open the item", async () => {
   await expect(carol.query(api.presence.items.here, { workspaceId, kind: "collection", id })).rejects.toThrow();
   // An item named from another workspace has no room there.
   await expect(carol.mutation(api.presence.items.heartbeat, { workspaceId: carolOwn, kind: "collection", id, sessionId: "carol-tab" })).rejects.toThrow(/isn't in this workspace/);
+});
+
+it("keeps an extraction's room shut to someone without the extraction feature", async () => {
+  const { t, alice, bob, workspaceId } = await lab();
+  const users = await t.run(async (ctx) => ({ alice: (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "alice")).unique())!._id }));
+  // A job in the lab; no extraction feature is switched on anywhere.
+  const id = await t.run((ctx) => ctx.db.insert("extractionJobs", { workspaceId, createdBy: users.alice, name: "Sample sizes", searchText: "sample sizes", sourceType: "history", status: "pending", totalPapers: 0, runEpoch: 0, createdAt: 1, updatedAt: 1 }));
+  const item = { workspaceId, kind: "extraction" as const, id };
+  await expect(alice.mutation(api.presence.items.heartbeat, { ...item, sessionId: "alice-tab" })).rejects.toThrow(/isn't in this workspace/);
+  expect(await bob.query(api.presence.items.here, item)).toEqual([]);
 });

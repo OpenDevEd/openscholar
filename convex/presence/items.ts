@@ -8,7 +8,9 @@ import { Presence } from "@convex-dev/presence";
 import { v } from "convex/values";
 import { components } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
+import { requireFeature } from "../featureFlags/guard";
 import { mutation } from "../lib/functions";
 import { personName } from "../lib/people";
 import { workspaceMutation, workspaceQuery } from "../lib/userActions";
@@ -26,12 +28,23 @@ const HERE_READ = 8;
 
 const itemArgs = { kind: itemKindValidator, id: v.string() };
 
+/** Whether the person can open an item of this kind at all: extractions sit behind their feature, as their pages do. */
+async function opens(ctx: QueryCtx, userId: Id<"users">, kind: ItemKind) {
+  if (kind !== "extraction") return true;
+  try {
+    await requireFeature(ctx, "extraction.enabled", userId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Puts the person in the item's room, or keeps them there. Returns what `leave` takes. */
 export const heartbeat = workspaceMutation({
   args: { ...itemArgs, sessionId: v.string() },
   returns: v.string(),
   handler: async (ctx, { userId, workspaceId }, { kind, id, sessionId }) => {
-    if (!(await itemIn(ctx, workspaceId, kind, id))) throw createError("NOT_FOUND", "That item isn't in this workspace.");
+    if (!(await opens(ctx, userId, kind)) || !(await itemIn(ctx, workspaceId, kind, id))) throw createError("NOT_FOUND", "That item isn't in this workspace.");
     return (await presence.heartbeat(ctx, roomOf(workspaceId, kind, id), userId, sessionId, PRESENCE_HEARTBEAT_MS)).sessionToken;
   },
 });
@@ -48,7 +61,7 @@ export const here = workspaceQuery({
   args: itemArgs,
   returns: v.array(v.object({ userId: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) })),
   handler: async (ctx, { userId, workspaceId }, { kind, id }) => {
-    if (!(await itemIn(ctx, workspaceId, kind, id))) return [];
+    if (!(await opens(ctx, userId, kind)) || !(await itemIn(ctx, workspaceId, kind, id))) return [];
     const people = await presence.listRoom(ctx, roomOf(workspaceId, kind, id), true, HERE_READ + 1);
     const others = people.filter((person) => person.userId !== userId).slice(0, HERE_READ);
     const users = await Promise.all(others.map((person) => ctx.db.get("users", person.userId)));
