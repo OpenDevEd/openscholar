@@ -85,6 +85,7 @@
       "BATCH": "a worker's batch; it pings itself for the next",
       "BATCH_SIZE": "a cascade's batch; it reschedules itself until nothing is left",
       "CANCEL_BATCH": "a cancel's batch; it reschedules itself",
+      "JOBS_A_STEP": "a deleted organization's purge step; it schedules the next until its workspace is empty",
       "FORGET_BATCH": "a cleanup's batch; it reschedules itself",
       "FORGET_LIMITS": "a cleanup's batch; it reschedules itself",
       "FORGET_RESULTS": "a cleanup's batch; it reschedules itself",
