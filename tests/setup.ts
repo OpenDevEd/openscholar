@@ -22,6 +22,8 @@ vi.mock("@/lib/workspaces/url", async (importOriginal) => {
   return {
     ...real,
     useWorkspace: () => workspaceId,
+    // The person's own workspace, which a read names by leaving it out.
+    useWorkspaceScope: () => ({}),
     useWorkspaceMutation: (mutation: Parameters<typeof react.useMutation>[0]) => {
       const run = react.useMutation(mutation);
       return (args: Record<string, unknown>) => run({ ...args, workspaceId });

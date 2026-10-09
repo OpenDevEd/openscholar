@@ -22,6 +22,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
+import { useWorkspaceScope } from "@/lib/workspaces/url";
 
 type CommonProps = {
   onResume?: () => void;
@@ -51,10 +52,12 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
   // Skip the balance query on paused-variant renders — paused is not a
   // credit state, so displaying balance would be misleading and the
   // query cost is wasted.
+  // The page's workspace pays (#651).
+  const balanceScope = useWorkspaceScope();
   const { data: balance } = useProtectedQuery(
     api.billing.accounts.checkBalance,
-    props.variant === "creditsExhausted"
-      ? { requiredAmount: props.minCreditsToResume ?? 1 }
+    props.variant === "creditsExhausted" && balanceScope !== "skip"
+      ? { ...balanceScope, requiredAmount: props.minCreditsToResume ?? 1 }
       : "skip",
   );
 

@@ -42,6 +42,8 @@ const HEAD = 40;
  */
 function switchTarget(slug: string | undefined, pathname: string, search: string) {
   const path = bareWorkspacePath(pathname);
+  // An organization's own settings have no page in your own workspace: its settings start there.
+  if (!slug && (path === "/settings/workspace" || path.startsWith("/settings/workspace/"))) return "/settings";
   const params = new URLSearchParams(search);
   const item = pageItem(path, params);
   if (!item) return workspaceHref(slug, path) + (search ? `?${params.toString()}` : "");

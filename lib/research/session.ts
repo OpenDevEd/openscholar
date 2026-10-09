@@ -53,6 +53,8 @@ export class ResearchSession {
   private imported = false;
   private enabled = false;
   private settledListeners = new Set<() => void>();
+  /** Whether the page wants the session reading, which it does once its workspace is known too. */
+  private wanted = false;
   private snapshot = { ready: false, error: null as Error | null, pending: 0 };
 
   /**
@@ -189,6 +191,7 @@ export class ResearchSession {
   getSnapshot = () => this.snapshot;
   getServerSnapshot = () => this.snapshot;
   subscribe = (listener: () => void, enabled = true, onError = this.onError) => {
+    this.wanted = enabled;
     this.enabled = enabled && this.scope !== undefined;
     this.onError = onError;
     this.listeners.add(listener);
@@ -231,6 +234,20 @@ export class ResearchSession {
     }
     if (this.enabled) { void this.import(this.epoch); void this.pump(); }
   };
+  /**
+   * Gives a session made before the page's workspace loaded its workspace, once (#651): the
+   * reads and changes asked for meanwhile start then, so nothing done while it loaded is lost.
+   */
+  bind(workspace: { workspaceId: Id<"workspaces">; own: boolean }) {
+    if (this.workspace) return;
+    this.workspace = workspace;
+    this.scope = { accountId: this.accountId, workspaceId: workspace.workspaceId };
+    this.resolveScope(this.scope);
+    if (!this.listeners.size) return;
+    this.enabled = this.wanted;
+    for (const entry of this.watches()) if (!entry.live && entry.readers.size) this.read(entry);
+    if (this.enabled) void this.import(this.epoch);
+  }
   private start() {
     const epoch = ++this.epoch;
     this.stops.push(activateResearch(this.stores));
