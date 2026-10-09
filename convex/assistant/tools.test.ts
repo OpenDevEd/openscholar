@@ -1438,7 +1438,7 @@ describe("the assistant's tools", () => {
     expect(await saved()).toEqual([["https://openalex.org/W1", lab]]);
 
     // Shared with Ben, who isn't in the lab, what his reply saves is his own.
-    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: ben }, role: "write" });
+    await asAda.mutation(api.assistant.sharing.grant, { workspaceId: lab, threadId, principal: { kind: "user", userId: ben }, role: "write" });
     mockDoStream.mockImplementationOnce(calling({ id: "save2", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W2", title: "His paper" } } })).mockImplementationOnce(finishingDoStream(["Saved."]));
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Save W2" });
     await finishReply(t, threadId);
@@ -1461,6 +1461,17 @@ describe("the assistant's tools", () => {
     expect((await chat())?.reply?.workspaceId).toBe(theirs);
     await finishReply(t, threadId);
     expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", his))).toBeNull();
+
+    // A member now, his next reply acts in the lab. He leaves before it runs: no request goes to the model for him.
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "One more" });
+    expect((await chat())?.reply?.workspaceId).toBe(lab);
+    const before = requests.length;
+    await t.run(async (ctx) => {
+      const membership = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", labOrganization).eq("clerkUserId", "ben").eq("state", "active")).unique();
+      await ctx.db.patch("organizationMemberships", membership!._id, { state: "revoked" });
+    });
+    await finishReply(t, threadId);
+    expect(requests.length).toBe(before);
   });
 
   it.each([true, false])("hold a reply that asked with its limit already reached until it's carried on, when the answer is %s", async (allow) => {
