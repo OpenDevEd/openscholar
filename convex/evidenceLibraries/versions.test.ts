@@ -9,6 +9,7 @@ import {
   TEST_RUNTIME_IMAGE,
   toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 const RUNTIME_COMMIT = "a".repeat(40);
 const NEWER_COMMIT = "b".repeat(40);
@@ -284,7 +285,7 @@ describe("Evidence Library versions", () => {
     const fixture = await createReadySetupFixture("restore-refused");
     const foreignRevisionId = await fixture.t.run(async (ctx) => {
       const libraryId = await ctx.db.insert("evidenceLibraries", {
-        organizationId: fixture.organizationId,
+        workspaceId: await organizationWorkspaceOf(ctx, fixture.organizationId),
         name: "Other library",
         slug: "other-library",
         state: "active",
@@ -919,7 +920,7 @@ describe("Evidence Library address move", () => {
     stubAddressChecks(fixture.created.publicAddress);
     await fixture.t.run(async (ctx) => {
       const other = await ctx.db.insert("evidenceLibraries", {
-        organizationId: fixture.organizationId,
+        workspaceId: await organizationWorkspaceOf(ctx, fixture.organizationId),
         name: "Other library",
         slug: "other-library",
         state: "active",

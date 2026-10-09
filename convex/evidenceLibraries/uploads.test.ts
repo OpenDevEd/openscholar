@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import schema from "../schema";
 import { api } from "../_generated/api";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const STORAGE_ORIGIN = "https://storage.example.test";
@@ -34,7 +35,7 @@ async function seedLibrary(role: "org:admin" | "org:member") {
       updatedAt: 1,
     });
     return await ctx.db.insert("evidenceLibraries", {
-      organizationId,
+      workspaceId: await organizationWorkspaceOf(ctx, organizationId),
       name: "Uploads Library",
       slug: "uploads-library",
       state: "provisioning",

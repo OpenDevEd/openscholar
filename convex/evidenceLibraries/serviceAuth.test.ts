@@ -6,6 +6,7 @@ import { api } from "../_generated/api";
 import { decrypt } from "../lib/crypto";
 import schema from "../schema";
 import { authenticateLibraryServiceCredential } from "./credentials";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const encryptionKey = "ab".repeat(32);
@@ -36,7 +37,7 @@ async function seedLibrary() {
       updatedAt: 1,
     });
     const libraryId = await ctx.db.insert("evidenceLibraries", {
-      organizationId,
+      workspaceId: await organizationWorkspaceOf(ctx, organizationId),
       name: "Service Auth Library",
       slug: "service-auth-library",
       state: "active",
@@ -46,7 +47,7 @@ async function seedLibrary() {
       updatedAt: 1,
     });
     const secondLibraryId = await ctx.db.insert("evidenceLibraries", {
-      organizationId,
+      workspaceId: await organizationWorkspaceOf(ctx, organizationId),
       name: "Second Service Auth Library",
       slug: "second-service-auth-library",
       state: "active",

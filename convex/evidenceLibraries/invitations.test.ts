@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import { organizationOfLibrary } from "../../tests/helpers/evidence-library-setup-fixture";
 
 const mail = vi.hoisted(() => ({ sendMail: vi.fn(), close: vi.fn() }));
 vi.mock("nodemailer", () => ({ default: { createTransport: () => mail } }));
@@ -60,8 +61,7 @@ describe("library invitations", () => {
       if (reason === "cancelled") await ctx.db.patch("evidenceLibraryInvitations", invitation.invitationId, { state: "cancelled" });
       if (reason === "disabled-library") await ctx.db.patch("evidenceLibraries", fixture.libraryId, { state: "disabled" });
       if (reason === "deleted-organization") {
-        const library = await ctx.db.get("evidenceLibraries", fixture.libraryId);
-        await ctx.db.patch("organizations", library!.organizationId, { state: "deleted" });
+        await ctx.db.patch("organizations", await organizationOfLibrary(ctx, fixture.libraryId), { state: "deleted" });
       }
       if (reason === "suspended-account") {
         const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", "outside")).unique();

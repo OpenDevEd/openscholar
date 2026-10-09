@@ -114,7 +114,7 @@ export const respondVerified = internalMutation({
     if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
     const profile = await ctx.db.get("authorProfiles", invitation.profileId);
     if (!profile) throw createError("NOT_FOUND", "Author profile not found");
-    if (args.accept && profile.ownerId !== user._id) {
+    if (args.accept && profile.createdBy !== user._id) {
       const member = await ctx.db.query("authorProfileMembers")
         .withIndex("by_profileId_and_userId", q => q.eq("profileId", profile._id).eq("userId", user._id)).unique();
       if (!member) {

@@ -15,6 +15,7 @@ import {
   createDraftSetupFixture,
   toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -166,7 +167,7 @@ describe("Evidence Library draft storage", () => {
         evidenceLibrariesEnabled: true,
       });
       const libraryId = await ctx.db.insert("evidenceLibraries", {
-        organizationId,
+        workspaceId: await organizationWorkspaceOf(ctx, organizationId),
         name: "Climate Evidence",
         slug: "climate-evidence",
         state: "active",

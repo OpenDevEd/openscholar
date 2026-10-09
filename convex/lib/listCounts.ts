@@ -26,8 +26,6 @@ export const walletKeyList = (key: Pick<Doc<"walletKeys">, "userId" | "isActive"
 export const ADMIN_LIST = "admins";
 /** The libraries a workspace has, for the total of the library list. */
 export const workspaceLibrariesOf = (workspaceId: Id<"workspaces">) => `workspaceLibraries:${workspaceId}`;
-/** Where they were counted by organization before workspaces (#650), until migrations/pagedLibraryList.ts moves them. */
-export const organizationLibrariesOf = (organizationId: Id<"organizations">) => `organizationLibraries:${organizationId}`;
 export const libraryVersionsOf = (libraryId: Id<"evidenceLibraries">) => `libraryVersions:${libraryId}`;
 /** The people a library grants a role to directly, and the libraries a person is granted one in. */
 export const libraryMembersOf = (libraryId: Id<"evidenceLibraries">) => `libraryMembers:${libraryId}`;

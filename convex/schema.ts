@@ -158,7 +158,8 @@ export default defineSchema({
 
   authorProfiles: defineTable({
     ...authorContentFields,
-    ownerId: v.id("users"),
+    // Who owned it before workspaces; migrations/narrowLibraries.ts clears it before it goes (#650).
+    ownerId: v.optional(v.id("users")),
     // The workspace that owns it, and who made it (#650). A profile whose owner's account was purged
     // before workspaces has neither: it stays in the directory, owned by nobody.
     workspaceId: v.optional(v.id("workspaces")),
@@ -166,8 +167,7 @@ export default defineSchema({
     photoId: v.optional(v.id("_storage")),
     revision: v.number(),
     updatedAt: v.number(),
-  }).index("by_ownerId", ["ownerId"])
-    .index("by_workspace", ["workspaceId"])
+  }).index("by_workspace", ["workspaceId"])
     .searchIndex("search_name", {searchField: "name"}),
 
   authorProfileMembers: defineTable({

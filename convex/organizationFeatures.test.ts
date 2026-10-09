@@ -6,6 +6,7 @@ import { api, internal } from "./_generated/api";
 import { seedFeatureUser, seedOrganizationFeatures } from "./organizationFeatures.test-support";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
 import { MEMBERSHIP_REVOKE_BATCH } from "./webhooks/projections";
+import { organizationWorkspaceOf } from "./workspaces/personal";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const denied = { authors: false, extraction: false, evidenceLibraries: false };
@@ -170,7 +171,7 @@ test("the creation picker and authorization use the same eligible organizations"
   );
   expect(
     await t.run((ctx) => ctx.db.get("evidenceLibraries", created.libraryId)),
-  ).toMatchObject({ organizationId: second });
+  ).toMatchObject({ workspaceId: await t.run((ctx) => organizationWorkspaceOf(ctx, second!)) });
   for (const id of [memberOnly, disabled, foreign])
     await expect(
       owner.run((ctx) => requireLibraryOrganization(ctx, id!)),

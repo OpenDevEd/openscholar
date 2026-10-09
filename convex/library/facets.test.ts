@@ -13,6 +13,7 @@ import { personalWorkspaceOf } from "../workspaces/actor";
 import { countInRange } from "./facets";
 import { ensureWorkspace } from "../workspaces/create";
 import { madeBy } from "../workspaces/actor.test-support";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 type Test = ReturnType<typeof convexTest>;
 
@@ -185,7 +186,7 @@ describe("library facets", () => {
       // A library follows a collection whose place is in the second batch.
       await t.run(async (ctx) => {
         const organizationId = await seedOrganizationFeatures(ctx, ["reader"], { evidenceLibraries: true });
-        const libraryId = await ctx.db.insert("evidenceLibraries", { organizationId: organizationId as never, name: "Library", slug: "library", state: "active", createdByClerkUserId: "reader", updatedByClerkUserId: "reader", createdAt: 1, updatedAt: 1 });
+        const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Library", slug: "library", state: "active", createdByClerkUserId: "reader", updatedByClerkUserId: "reader", createdAt: 1, updatedAt: 1 });
         const lastPlaced = (await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", id)).take(places)).at(-1)!;
         await ctx.db.insert("evidenceLibraryCollectionSources", { libraryId, collectionId: lastPlaced.collectionId, connectedByClerkUserId: "reader", connectedAt: 1 });
       });
