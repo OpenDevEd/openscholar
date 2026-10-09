@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { expandShortcuts, type ShortcutExpansions } from './query-shortcuts'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { SIDEBAR_STORAGE_KEY, SIDEBAR_WIDTH_COLLAPSED, SIDEBAR_WIDTH_EXPANDED } from './sidebar-width'
 import type {
   SearchField,
   QueryHistoryEntry,
@@ -1066,52 +1065,11 @@ export const useResultsTranslationSettingsStore = create<ResultsTranslationSetti
   )
 );
 
-// Sidebar Store - Main navigation sidebar
-
-interface SidebarState {
-  isOpen: boolean;
-  isCollapsed: boolean;
-  _hasHydrated: boolean;
-  setOpen: (open: boolean) => void;
-  setCollapsed: (collapsed: boolean) => void;
-  toggle: (isMobile: boolean) => void;
-  setHasHydrated: (state: boolean) => void;
-}
-
-export const useSidebarStore = create<SidebarState>()(
-  persist(
-    (set, get) => ({
-      isOpen: false,
-      isCollapsed: true,
-      _hasHydrated: false,
-      setOpen: (open) => set({ isOpen: open }),
-      setCollapsed: (collapsed) => set({ isCollapsed: collapsed }),
-      toggle: (isMobile) => {
-        if (isMobile) {
-          set((state) => ({ isOpen: !state.isOpen }));
-        } else {
-          set((state) => ({ isCollapsed: !state.isCollapsed }));
-        }
-      },
-      setHasHydrated: (state) => set({ _hasHydrated: state }),
-    }),
-    {
-      name: SIDEBAR_STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ isCollapsed: state.isCollapsed }),
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true);
-      },
-    }
-  )
-);
-
-// Derived values for sidebar dimensions
-export const getSidebarDimensions = (isCollapsed: boolean) => ({
-  expandedWidth: SIDEBAR_WIDTH_EXPANDED,
-  collapsedWidth: SIDEBAR_WIDTH_COLLAPSED,
-  currentWidth: isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
-});
+// The mobile navigation sheet. On wider screens the rail is always there.
+export const useSidebarStore = create<{ isOpen: boolean; setOpen: (open: boolean) => void }>((set) => ({
+  isOpen: false,
+  setOpen: (open) => set({ isOpen: open }),
+}));
 
 // Filter Sidebar Store - Search filters sidebar
 const FILTER_SIDEBAR_WIDTH_EXPANDED = 320;

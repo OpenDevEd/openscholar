@@ -60,7 +60,8 @@ import { panelPlace, panelSeed } from "@/lib/assistant/place";
 import { AddCredits, KIND, KindTile, Steps, type StepItem } from "./steps";
 import { DockedJobs, JobDock, JobFlight, type Flight } from "./job-cards";
 import { IconButton, WorkingText } from "./parts";
-import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
+import { Dim, HistorySheet, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
+import { SHEET_SPRING } from "@/lib/motion";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 type ThreadId = Id<"assistantThreads">;

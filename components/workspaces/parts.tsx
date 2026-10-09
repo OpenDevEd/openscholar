@@ -12,7 +12,7 @@ import { defaultPlanId, findPlan } from "@/lib/billing/catalog";
 import { useBillingCatalog } from "@/lib/billing/catalog-provider";
 import { ORGANIZATION_PLAN } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
-import { useWorkspace } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 export type WorkspaceRow = FunctionReturnType<typeof api.organizations.queries.workspaces>["page"][number];
 /** Enough of a workspace to draw it, which an invitation has before it's one of yours. */
@@ -24,7 +24,7 @@ const LISTED = 20;
 /** The workspaces the person can switch to, their own first, and the one the page is in; undefined while they load. */
 export function useWorkspaces() {
   const here = useWorkspace();
-  const { data } = useProtectedQuery(api.organizations.queries.workspaces, { paginationOpts: { cursor: null, numItems: LISTED } });
+  const { data } = useProtectedQuery(api.organizations.queries.workspaces, inWorkspace(here, { paginationOpts: { cursor: null, numItems: LISTED } }));
   const all = data?.page;
   return { all, current: all?.find((workspace) => workspace.workspaceId === here) };
 }
@@ -81,3 +81,7 @@ export function PlanChip({ workspace, className }: { workspace: WorkspaceLook; c
   const { name, paid } = usePlanOf(workspace);
   return <span className={cn("inline-flex h-5 shrink-0 items-center rounded-full px-2 text-2xs font-medium", paid ? "bg-primary/12 text-primary" : "bg-muted text-muted-foreground", className)}>{name}</span>;
 }
+
+/** Where a workspace's settings and billing are: an organization's under its address, your own's at /settings. */
+export const settingsHref = (workspace: Pick<WorkspaceRow, "kind" | "slug"> | undefined, page = "") =>
+  workspace?.kind === "organization" && workspace.slug ? `/o/${workspace.slug}/settings/workspace${page}` : page === "/billing" ? "/settings/billing" : `/settings/workspace${page}`;

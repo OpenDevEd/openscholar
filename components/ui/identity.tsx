@@ -5,14 +5,16 @@
 
 import type { ComponentProps, ComponentType, ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { Crown, Eye, Mail, MessageSquare, PenLine, ShieldCheck } from "@/components/icons";
+import { Crown, Eye, Mail, MessageSquare, PenLine, ShieldCheck, UserRound } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 /** Each role's icon, the same in every list and every picker. */
 export const ROLE_ICONS = {
   owner: Crown,
+  admin: ShieldCheck,
   editor: ShieldCheck,
   creator: PenLine,
+  member: UserRound,
   view: Eye,
   chat: MessageSquare,
 } satisfies Record<string, ComponentType<{ className?: string }>>;

@@ -1,0 +1,508 @@
+"use client";
+
+// The app sidebar (#651): one slim rail that holds only what no page shows. Where you are (the
+// workspace, tinting the rail), the way between sections, and what's happening elsewhere: a
+// running screening or extraction fills a ring around its icon and its label becomes the
+// progress, so it's visible from any page. Everything a page already lists stays on that page.
+
+import React, { useRef, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useClerk, useUser } from "@clerk/nextjs";
+import { useTheme } from "next-themes";
+import { useFormatter, useTranslations } from "next-intl";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import {
+  BillingIcon,
+  BookmarksIcon,
+  EvidenceLibrariesIcon,
+  ExtractionIcon,
+  HistoryIcon,
+  LibraryIcon,
+  ListChecks,
+  LogOut,
+  Monitor,
+  Moon,
+  Search,
+  SettingsIcon,
+  Sun,
+  TopicsIcon,
+  type AppIcon,
+} from "@/components/icons";
+import { SHEET_SPRING as CARD_SPRING } from "@/lib/motion";
+import { AuthButton } from "@/components/auth-button";
+import { KeywordExpansionPreview } from "@/components/keyword-expansion-preview";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { LogoMark } from "@/components/logo";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
+import { EASE } from "@/components/settings/model-map";
+import { Segmented } from "@/components/settings/parts";
+import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import Link from "@/components/workspace-link";
+import { api } from "@/convex/_generated/api";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
+import { findPlan } from "@/lib/billing/catalog";
+import { useQueryShortcuts } from "@/lib/research/reads";
+import { useCurrentQueryStore, useKeywordExpansionStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
+import { bareWorkspacePath } from "@/lib/workspaces/paths";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { CreateOrganization, WorkspaceMenu } from "./switcher";
+import { Framed, settingsHref, usePlanOf, useWorkspaces, workspaceTint, WorkspaceTile, type WorkspaceRow } from "./parts";
+
+/** How far the rail steps back while a card is up. */
+const RECEDE = 0.9;
+const SLIDE = { type: "spring" as const, stiffness: 520, damping: 42, mass: 0.7 };
+
+/** The raised surface of the section you're on. */
+const RAISED = "bg-card shadow-[0_1px_2px_rgb(0_0_0/0.06),0_0_0_1px_rgb(0_0_0/0.05)] dark:shadow-[0_0_0_1px_rgb(255_255_255/0.06)]";
+
+/** A ring around a section's icon for its running job: a faint track and the done share in primary. */
+function ProgressRing({ value }: { value: number }) {
+  const circumference = 2 * Math.PI * 10;
+  return (
+    <svg viewBox="0 0 24 24" className="pointer-events-none absolute inset-0 size-full" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="10.5" stroke="currentColor" strokeWidth="1" opacity="0.12" />
+      <circle
+        cx="12"
+        cy="12"
+        r="10.5"
+        stroke="var(--primary)"
+        strokeWidth="1.25"
+        strokeDasharray={circumference}
+        strokeDashoffset={circumference - (circumference * value) / 100}
+        strokeLinecap="round"
+        transform="rotate(-90 12 12)"
+        className="transition-[stroke-dashoffset] duration-500 ease-out"
+      />
+    </svg>
+  );
+}
+
+export function SidebarContent({ onClose }: { onClose?: () => void }) {
+  const t = useTranslations("workspaces");
+  const tc = useTranslations("common");
+  const path = bareWorkspacePath(usePathname());
+  const searchParams = useSearchParams();
+  const here = useWorkspace();
+  const { current } = useWorkspaces();
+  const { currentQuery } = useCurrentQueryStore();
+  const { keywords } = useKeywordExpansionStore();
+
+  // Bookmarks' keyword shortcuts, as before: the count is the ones the current query can expand.
+  const activeQuery = currentQuery || searchParams.get("q") || "";
+  useQueryShortcuts(activeQuery);
+  const expandable = [...activeQuery.matchAll(/(\w[\w-]*)\.\.\./g)].filter((m) => keywords[m[1]!]).length;
+  const hasBookmarkSyntax = /(\w[\w-]*)\.\.\./g.test(activeQuery);
+
+  const is = (p: string) => (p === "/" ? path === "/" || path.startsWith("/results") : path === p || path.startsWith(`${p}/`));
+  // Sections a workspace's features open, until plans hold them (#652): extraction, and Evidence Libraries or author profiles behind Publish.
+  const extractionOn = useFeatureFlag("extraction.enabled");
+  const extractionStarts = useFeatureFlag("extraction.start");
+  const { data: features } = useOrganizationFeatures();
+  const extracts = !!features?.extraction && extractionOn && extractionStarts;
+  const publishes = features?.evidenceLibraries ? "/evidence-libraries" : features?.authors ? "/authors" : null;
+  const { data: screening } = useProtectedQuery(api.screening.queries.getActiveScreeningJobProgress, inWorkspace(here, {}));
+  const { data: extraction } = useProtectedQuery(api.extraction.queries.jobs.runningJob, inWorkspace(here, {}));
+  const tint = current ? workspaceTint(current) : undefined;
+  const item = (props: Omit<React.ComponentProps<typeof RailItem>, "onClick">) => <RailItem {...props} onClick={onClose} />;
+  const { user } = useUser();
+  const [card, setCard] = useState<"workspace" | "account" | null>(null);
+  const [creating, setCreating] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const workspaceTrigger = useRef<HTMLButtonElement>(null);
+  const accountTrigger = useRef<HTMLButtonElement>(null);
+  const close = () => {
+    const back = card === "workspace" ? workspaceTrigger.current : accountTrigger.current;
+    setCard(null);
+    back?.focus();
+  };
+
+  return (
+    <>
+      <div className="relative h-full w-20">
+        {/* While a card is up the rail steps back, the way iOS sets back the screen under a sheet. Its
+            origin never changes, and the two buttons the cards grow from aren't in it, so whatever flies
+            back to them lands on a spot that isn't moving. */}
+        <motion.div
+          className="flex h-full w-20 flex-col items-center py-3"
+          initial={false}
+          animate={card && !reduceMotion ? { scale: RECEDE, borderRadius: 22 } : { scale: 1, borderRadius: 0 }}
+          transition={CARD_SPRING}
+          style={{ backgroundColor: tint ? `color-mix(in oklab, ${tint} 7%, var(--sidebar))` : undefined, transformOrigin: "50% 50%" }}
+        >
+          <Link href="/" onClick={onClose} aria-label="OpenScholar" className="mb-2 flex size-10 items-center justify-center rounded-xl transition-colors hover:bg-foreground/[0.06]">
+            <LogoMark className="size-7" />
+          </Link>
+          {/* The workspace button's place. */}
+          <div aria-hidden className="size-11 shrink-0" />
+          <div className="my-2 h-px w-8 bg-foreground/10" />
+
+          <nav aria-label={t("main")} className="flex w-full flex-1 flex-col items-center gap-0.5 overflow-y-auto px-2 [scrollbar-width:none]">
+            {item({ href: "/", icon: Search, label: tc("search"), active: is("/") })}
+            {item({ href: "/library", icon: LibraryIcon, label: tc("library"), active: is("/library") })}
+            {item({ href: "/history", icon: HistoryIcon, label: tc("history"), active: is("/history") })}
+            {item({
+              href: "/bookmarks",
+              icon: BookmarksIcon,
+              label: tc("bookmarks"),
+              active: is("/bookmarks"),
+              badge: expandable || undefined,
+              tooltip: hasBookmarkSyntax ? <KeywordExpansionPreview query={activeQuery} /> : undefined,
+            })}
+            {item({
+              href: "/screening",
+              icon: ListChecks,
+              label: t("screen"),
+              active: is("/screening"),
+              running: screening ? { done: screening.processedPapers + screening.failedPapers, total: screening.totalPapers, what: tc("screening"), percent: screening.percentComplete } : undefined,
+            })}
+            {extracts
+              ? item({
+                  href: "/extraction",
+                  icon: ExtractionIcon,
+                  label: t("extract"),
+                  active: is("/extraction"),
+                  running: extraction ? { done: extraction.done, total: extraction.total, what: extraction.name } : undefined,
+                })
+              : null}
+            {publishes ? item({ href: publishes, icon: EvidenceLibrariesIcon, label: t("publish"), active: is("/evidence-libraries") || is("/authors") }) : null}
+
+            <div className="my-1.5 h-px w-8 bg-foreground/10" />
+            {item({ href: "/topics", icon: TopicsIcon, label: t("explore"), active: is("/topics") })}
+          </nav>
+
+          {/* Your photo's place. */}
+          <div aria-hidden className="mt-2 size-11 shrink-0" />
+        </motion.div>
+
+        {/* Each button steps back with the rail, about the rail's centre, while the other card is up,
+            and stays still while its own is, so what flies back to it lands on a spot that isn't moving. */}
+        <motion.div
+          className="absolute inset-x-0 top-[60px] flex justify-center"
+          initial={false}
+          animate={{ scale: card === "account" && !reduceMotion ? RECEDE : 1 }}
+          transition={CARD_SPRING}
+          style={{ transformOrigin: "50% calc(50vh - 60px)" }}
+        >
+          <WorkspaceButton ref={workspaceTrigger} workspace={current} open={card === "workspace"} onOpen={() => setCard("workspace")} />
+        </motion.div>
+        <motion.div
+          className="absolute inset-x-0 bottom-3 flex justify-center"
+          initial={false}
+          animate={{ scale: card === "workspace" && !reduceMotion ? RECEDE : 1 }}
+          transition={CARD_SPRING}
+          style={{ transformOrigin: "50% calc(56px - 50vh)" }}
+        >
+          <AccountButton ref={accountTrigger} open={card === "account"} onOpen={() => setCard("account")} />
+        </motion.div>
+      </div>
+
+      <RailCard
+        open={card === "workspace" && !!current}
+        from="top"
+        label={t("workspacesCard")}
+        onClose={close}
+        head={
+          current ? (
+            <motion.span layoutId="rail-workspace-tile" layoutDependency={card === "workspace"} transition={CARD_SPRING} className="flex">
+              <Framed>
+                <WorkspaceTile workspace={current} size="lg" home />
+              </Framed>
+            </motion.span>
+          ) : null
+        }
+      >
+        <WorkspaceMenu
+          onDone={close}
+          onCreate={() => {
+            setCard(null);
+            setCreating(true);
+          }}
+        />
+      </RailCard>
+      <RailCard
+        open={card === "account"}
+        from="bottom"
+        label={t("account")}
+        onClose={close}
+        head={
+          <motion.span layoutId="rail-account-avatar" layoutDependency={card === "account"} transition={CARD_SPRING} className="flex rounded-full">
+            <IdentityAvatar name={user?.fullName || ""} imageUrl={user?.imageUrl} className="size-10" />
+          </motion.span>
+        }
+      >
+        <AccountCard
+          workspace={current}
+          onNavigate={() => {
+            setCard(null);
+            onClose?.();
+          }}
+        />
+      </RailCard>
+      <CreateOrganization open={creating} onOpenChange={setCreating} />
+    </>
+  );
+}
+
+/**
+ * A card that rises from the foot of the rail, or drops from its head, over the rail and the
+ * page. The page dims behind it; a click outside or Escape sends it back.
+ */
+function RailCard({ open, from, label, onClose, head, children }: { open: boolean; from: "top" | "bottom"; label: string; onClose: () => void; head: React.ReactNode; children: React.ReactNode }) {
+  const t = useTranslations("workspaces");
+  const reduceMotion = useReducedMotion();
+  const enter = from === "bottom" ? 36 : -36;
+  return (
+    <AnimatePresence>
+      {open ? (
+        <>
+          <motion.button
+            key="scrim"
+            type="button"
+            aria-label={t("close")}
+            tabIndex={-1}
+            onClick={onClose}
+            className="fixed inset-0 z-[60] cursor-default bg-black/25 dark:bg-black/55"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: EASE }}
+          />
+          {/* The frame never moves: the tile or photo flying in lands on a fixed spot in it, while
+              the card's surface slides and scales into place underneath. */}
+          <div key="frame" className={cn("pointer-events-none fixed left-2 z-[61] w-[19rem]", from === "bottom" ? "bottom-2" : "top-2")}>
+            <motion.div
+              role="dialog"
+              aria-label={label}
+              tabIndex={-1}
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- a card takes focus as it opens, like a dialog
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.stopPropagation();
+                  onClose();
+                }
+              }}
+              className={cn(
+                "pointer-events-auto overflow-hidden rounded-[22px] border border-border/60 bg-popover p-1.5 text-popover-foreground outline-none dark:border-white/[0.06]",
+                "shadow-[0_24px_64px_-16px_rgb(0_0_0/0.35),0_8px_24px_-12px_rgb(0_0_0/0.2)] dark:shadow-[0_24px_64px_-12px_rgb(0_0_0/0.8)]",
+              )}
+              style={{ transformOrigin: from === "bottom" ? "2.25rem 100%" : "2.25rem 0%" }}
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: enter, scale: 0.88 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: enter * 0.6, scale: 0.92, transition: { duration: 0.24, ease: EASE } }}
+              transition={CARD_SPRING}
+            >
+              {children}
+            </motion.div>
+            <div className="pointer-events-none absolute left-4 top-4">{head}</div>
+          </div>
+        </>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+/** The workspace's tile at the head of the rail. While its card is up, the tile is in the card. */
+const WorkspaceButton = React.forwardRef<HTMLButtonElement, { workspace: WorkspaceRow | undefined; open: boolean; onOpen: () => void }>(function WorkspaceButton({ workspace, open, onOpen }, ref) {
+  const t = useTranslations("workspaces");
+  const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(workspace?.workspaceId, { paginationOpts: { cursor: null, numItems: 10 } }));
+  if (!workspace) return <div className="size-11" />;
+  const waiting = invitations?.page.length ?? 0;
+  return (
+    <Tooltip delayDuration={0} open={open ? false : undefined}>
+      <TooltipTrigger asChild>
+        <button ref={ref} type="button" aria-label={t("switchFrom", { name: workspace.name })} aria-expanded={open} onClick={onOpen} className="relative flex size-11 items-center justify-center rounded-xl transition-colors hover:bg-foreground/[0.06]">
+          {open ? null : (
+            <motion.span layoutId="rail-workspace-tile" layoutDependency={open} transition={CARD_SPRING} className="flex">
+              <Framed>
+                <WorkspaceTile workspace={workspace} size="md" home />
+              </Framed>
+            </motion.span>
+          )}
+          {waiting > 0 ? (
+            <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground ring-2 ring-sidebar">{waiting}</span>
+          ) : null}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right">{workspace.name}</TooltipContent>
+    </Tooltip>
+  );
+});
+
+function RailItem({
+  href,
+  icon: Icon,
+  label,
+  active,
+  onClick,
+  running,
+  badge,
+  tooltip,
+}: {
+  href: string;
+  icon: AppIcon;
+  label: string;
+  active: boolean;
+  onClick?: () => void;
+  /** A job running here: the ring fills, and the label becomes its progress, a percent when one is given. */
+  running?: { done: number; total: number; what: string; percent?: number };
+  badge?: number;
+  tooltip?: React.ReactNode;
+}) {
+  const t = useTranslations("workspaces");
+  const format = useFormatter();
+  const share = running ? (running.percent !== undefined ? running.percent / 100 : running.total ? Math.min(1, running.done / running.total) : 0) : 0;
+  const link = (
+    <Link
+      href={href}
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      aria-label={running ? t("runningLabel", { label, what: running.what, done: running.done, total: running.total }) : label}
+      className="group flex w-full flex-col items-center gap-1 rounded-xl py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
+      <span className={cn("relative flex size-10 items-center justify-center rounded-xl transition-colors", active ? "text-foreground" : "text-muted-foreground group-hover:bg-foreground/[0.06] group-hover:text-foreground")}>
+        {active ? <motion.span layoutId="rail-active" transition={SLIDE} className={cn("absolute inset-0 rounded-xl", RAISED)} /> : null}
+        <Icon className="relative size-[18px]" />
+        {running ? <ProgressRing value={share * 100} /> : null}
+        {badge ? (
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground ring-2 ring-sidebar">{badge > 9 ? "9+" : badge}</span>
+        ) : null}
+      </span>
+      <span className={cn("text-[10px] font-medium leading-none tracking-tight tabular-nums transition-colors", running ? "text-primary" : active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>
+        {running ? (running.percent !== undefined ? format.number(share, { style: "percent" }) : `${format.number(running.done)}/${format.number(running.total)}`) : label}
+      </span>
+    </Link>
+  );
+  if (!running && !tooltip) return link;
+  return (
+    <Tooltip delayDuration={0}>
+      <TooltipTrigger asChild>{link}</TooltipTrigger>
+      {tooltip ? (
+        <TooltipContent side="right" className="w-80 max-w-xs border bg-background p-3 text-foreground shadow-lg" arrowClassName="bg-background fill-background">
+          {tooltip}
+        </TooltipContent>
+      ) : (
+        <TooltipContent side="right" className="flex items-center gap-2">
+          <span className="font-medium">{running!.what}</span>
+          <span className="tabular-nums opacity-70">{t("doneOf", { done: running!.done, total: running!.total })}</span>
+        </TooltipContent>
+      )}
+    </Tooltip>
+  );
+}
+
+/** You, at the foot of the rail. While the account card is up, your photo is in the card. */
+const AccountButton = React.forwardRef<HTMLButtonElement, { open: boolean; onOpen: () => void }>(function AccountButton({ open, onOpen }, ref) {
+  const t = useTranslations("workspaces");
+  const { phase } = useAuthReadiness();
+  const { user } = useUser();
+  if (phase !== "authenticated") {
+    return (
+      <div className="pt-2">
+        <AuthButton isCollapsed />
+      </div>
+    );
+  }
+  const name = user?.fullName || user?.primaryEmailAddress?.emailAddress || "";
+  return (
+    <Tooltip delayDuration={0} open={open ? false : undefined}>
+      <TooltipTrigger asChild>
+        <button ref={ref} type="button" aria-label={t("account")} aria-expanded={open} onClick={onOpen} className="mt-2 flex size-11 items-center justify-center rounded-xl transition-colors hover:bg-foreground/[0.06]">
+          {open ? null : (
+            <motion.span layoutId="rail-account-avatar" layoutDependency={open} transition={CARD_SPRING} className="flex rounded-full">
+              <IdentityAvatar name={name} imageUrl={user?.imageUrl} className="size-8" />
+            </motion.span>
+          )}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right">{name}</TooltipContent>
+    </Tooltip>
+  );
+});
+
+/** The account card: you, the workspace's credits, settings, theme, language and sign out. */
+function AccountCard({ workspace, onNavigate }: { workspace: WorkspaceRow | undefined; onNavigate: () => void }) {
+  const t = useTranslations("workspaces");
+  const tc = useTranslations("common");
+  const format = useFormatter();
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const { theme, setTheme } = useTheme();
+  const { account, catalog, resolvedPlan } = useSubscriptionState();
+  const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
+  const name = user?.fullName || user?.primaryEmailAddress?.emailAddress || "";
+  const billing = settingsHref(workspace, "/billing");
+  const catalogPlan = catalog && resolvedPlan ? findPlan(catalog, resolvedPlan) : undefined;
+  const monthly = catalogPlan?.credits?.interval === "month" ? catalogPlan.credits.included : undefined;
+  const credits = account?.balance;
+  const share = monthly && credits !== undefined ? Math.min(1, credits / monthly) : null;
+  return (
+    <>
+      <div className="flex items-center gap-3 px-2.5 pb-2.5 pt-2.5">
+        <span aria-hidden className="size-10 shrink-0 rounded-full" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-semibold leading-tight tracking-tight">{name}</span>
+          <span className="mt-0.5 block truncate text-xs text-muted-foreground">{user?.primaryEmailAddress?.emailAddress}</span>
+        </span>
+      </div>
+      {workspace && credits !== undefined ? (
+        <Link href={billing} onClick={onNavigate} className="mx-1 mb-1 block space-y-2 rounded-2xl bg-foreground/[0.04] px-3 pb-3 pt-2.5 transition-colors hover:bg-foreground/[0.07]">
+          <span className="flex items-baseline justify-between gap-2">
+            <span className="text-xl font-semibold tabular-nums tracking-tight">{format.number(credits)}</span>
+            <span className="truncate text-xs text-muted-foreground">{t("planFor", { plan: plan.name, workspace: workspace.name })}</span>
+          </span>
+          {/* Against the month's credits, on a plan that grants them each month. */}
+          {share !== null ? (
+            <span className="block h-1 overflow-hidden rounded-full bg-foreground/[0.08]">
+              <motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${share * 100}%` }} transition={{ duration: 0.7, ease: EASE, delay: 0.15 }} />
+            </span>
+          ) : null}
+        </Link>
+      ) : null}
+      <div className="space-y-px pt-1">
+        <MenuLink href="/settings" icon={SettingsIcon} onClick={onNavigate}>
+          {tc("settings")}
+        </MenuLink>
+        <MenuLink href={billing} icon={BillingIcon} onClick={onNavigate}>
+          {t("planAndCredits")}
+        </MenuLink>
+      </div>
+      <div className="space-y-2 border-t border-border/60 px-1 pb-1 pt-2">
+        <Segmented
+          label={t("theme")}
+          fill
+          value={(theme ?? "system") as "light" | "dark" | "system"}
+          onChange={setTheme}
+          options={[
+            { id: "light", label: t("light"), icon: Sun },
+            { id: "dark", label: t("dark"), icon: Moon },
+            { id: "system", label: t("auto"), icon: Monitor },
+          ]}
+        />
+        <div className="flex items-center justify-between gap-2 pl-1.5">
+          <span className="text-xs text-muted-foreground">{tc("language")}</span>
+          <LanguageSwitcher isCollapsed={false} />
+        </div>
+      </div>
+      <div className="border-t border-border/60 pt-1">
+        <button type="button" onClick={() => signOut()} className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          <LogOut className="size-4" /> {t("signOut")}
+        </button>
+      </div>
+    </>
+  );
+}
+
+function MenuLink({ href, icon: Icon, onClick, children }: { href: string; icon: React.ElementType; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <Link href={href} onClick={onClick} className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors hover:bg-muted">
+      <Icon className="size-4 text-muted-foreground" />
+      {children}
+    </Link>
+  );
+}

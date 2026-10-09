@@ -19,14 +19,16 @@ import { RoleLabel } from "@/components/ui/identity";
 import { Input } from "@/components/ui/input";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
+import { getErrorMessage } from "@/lib/toast/use-app-toast";
+import { showStyledToast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { workspaceHref } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
-import { useWorkspaceAction } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import { pageItem } from "./item-home";
-import { Framed, PlanChip, usePlanOf, useWorkspaces, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
+import { Framed, PlanChip, settingsHref, usePlanOf, useWorkspaces, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
 
 const ROW = "flex w-full items-center gap-2.5 rounded-lg px-2 text-left transition-colors hover:bg-foreground/[0.045]";
 
@@ -67,36 +69,61 @@ function RoleOf({ workspace }: { workspace: WorkspaceRow }) {
   );
 }
 
+/**
+ * Answers an invitation: joining is Clerk's own, whose client turns the invitation into a
+ * membership, which is kept at once; declining takes it back. `answering` is the one being answered.
+ */
+export function useAnswerInvitation() {
+  const t = useTranslations("workspaces");
+  const { userInvitations } = useOrganizationList({ userInvitations: { infinite: true } });
+  const decline = useWorkspaceAction(api.organizations.manage.declineInvitation);
+  const confirmJoin = useAction(api.organizations.manage.confirmJoin);
+  const [answering, setAnswering] = useState<string | null>(null);
+  return {
+    answering,
+    /** Joins, and says whether it did. */
+    join: async (invitation: { clerkInvitationId: string; organization: { slug: string } }) => {
+      setAnswering(invitation.clerkInvitationId);
+      try {
+        const clerkInvitation = userInvitations.data?.find((one) => one.id === invitation.clerkInvitationId);
+        if (!clerkInvitation) throw new Error(t("invitationGone"));
+        await clerkInvitation.accept();
+        await confirmJoin({ slug: invitation.organization.slug });
+        return true;
+      } catch (error) {
+        showStyledToast("error", getErrorMessage(error, t("couldntJoin")));
+        return false;
+      } finally {
+        setAnswering(null);
+      }
+    },
+    /** Declines, and says whether it did. */
+    decline: async (invitation: { invitationId: Id<"organizationInvitations">; clerkInvitationId: string }) => {
+      setAnswering(invitation.clerkInvitationId);
+      try {
+        await decline({ invitationId: invitation.invitationId });
+        return true;
+      } catch (error) {
+        showStyledToast("error", getErrorMessage(error, t("couldntDecline")));
+        return false;
+      } finally {
+        setAnswering(null);
+      }
+    },
+  };
+}
+
 /** The workspace card: the one you're in, the others, invitations, and making one. */
 export function WorkspaceMenu({ onDone, onCreate }: { onDone: () => void; onCreate: () => void }) {
   const t = useTranslations("workspaces");
   const router = useRouter();
   const { all, current } = useWorkspaces();
-  const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, { paginationOpts: { cursor: null, numItems: 10 } });
-  const { userInvitations } = useOrganizationList({ userInvitations: { infinite: true } });
-  const decline = useWorkspaceAction(api.organizations.manage.declineInvitation);
-  const confirmJoin = useAction(api.organizations.manage.confirmJoin);
-  const toast = useAppToast();
-  const [answering, setAnswering] = useState<string | null>(null);
+  const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(current?.workspaceId, { paginationOpts: { cursor: null, numItems: 10 } }));
+  const { answering, join, decline } = useAnswerInvitation();
   const others = (all ?? []).filter((workspace) => workspace.workspaceId !== current?.workspaceId);
   const go = (slug: string | undefined) => {
     onDone();
     router.push(switchTarget(slug, window.location.pathname, window.location.search.slice(1)));
-  };
-  const join = async (invitation: { clerkInvitationId: string; organization: { slug: string } }) => {
-    setAnswering(invitation.clerkInvitationId);
-    try {
-      // Accepting is Clerk's own: its client turns the invitation into a membership.
-      const clerkInvitation = userInvitations.data?.find((one) => one.id === invitation.clerkInvitationId);
-      if (!clerkInvitation) throw new Error(t("invitationGone"));
-      await clerkInvitation.accept();
-      await confirmJoin({ slug: invitation.organization.slug });
-      go(invitation.organization.slug);
-    } catch (error) {
-      toast.error(getErrorMessage(error, t("couldntJoin")));
-    } finally {
-      setAnswering(null);
-    }
   };
   return (
     <div>
@@ -168,11 +195,11 @@ export function WorkspaceMenu({ onDone, onCreate }: { onDone: () => void; onCrea
                   variant="ghost"
                   className="h-7 text-xs"
                   disabled={answering !== null}
-                  onClick={() => decline({ invitationId: invitation.invitationId }).catch((error) => toast.error(getErrorMessage(error, t("couldntDecline"))))}
+                  onClick={() => void decline(invitation)}
                 >
                   {t("decline")}
                 </Button>
-                <Button size="sm" className="h-7 text-xs" disabled={answering !== null} onClick={() => void join(invitation)}>
+                <Button size="sm" className="h-7 text-xs" disabled={answering !== null} onClick={() => void join(invitation).then((joined) => joined && go(invitation.organization.slug))}>
                   {answering === invitation.clerkInvitationId ? <Loader2 className="size-3.5 animate-spin" /> : null}
                   {t("join")}
                 </Button>
@@ -191,7 +218,7 @@ export function WorkspaceMenu({ onDone, onCreate }: { onDone: () => void; onCrea
           type="button"
           onClick={() => {
             onDone();
-            router.push(workspaceHref(current?.slug, "/settings/workspace"));
+            router.push(settingsHref(current));
           }}
           className={cn(ROW, "h-8 text-[13px]")}
         >
@@ -228,7 +255,6 @@ function NewOrganization({ close }: { close: () => void }) {
   const create = useWorkspaceAction(api.organizations.manage.create);
   // The invitations go out from the organization just made, not the workspace the page is in.
   const inviteThere = useAction(api.organizations.manage.invite);
-  const toast = useAppToast();
   const { name: freePlan } = usePlanOf({ kind: "organization", name: "" });
   const [name, setName] = useState("");
   const [draft, setDraft] = useState("");
@@ -250,7 +276,7 @@ function NewOrganization({ close }: { close: () => void }) {
       close();
       router.push(workspaceHref(made.slug, "/library"));
     } catch (error) {
-      toast.error(getErrorMessage(error, t("couldntCreate")));
+      showStyledToast("error", getErrorMessage(error, t("couldntCreate")));
       setBusy(false);
     }
   };

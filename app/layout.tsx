@@ -7,7 +7,6 @@ import { QuerySyncProvider } from "@/components/query-sync-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmationHost } from "@/lib/confirmation";
 import { AppSidebar } from "@/components/app-sidebar";
-import { sidebarWidthScript } from "@/lib/sidebar-width";
 import { MobileNavbar } from "@/components/mobile-navbar";
 import { cn } from "@/lib/utils";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -81,9 +80,6 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning className={cn(appFont.variable, "antialiased")}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: sidebarWidthScript }} />
-      </head>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>

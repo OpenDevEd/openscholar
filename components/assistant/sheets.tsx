@@ -13,6 +13,7 @@ import { useFormatter, useNow, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { EASE } from "@/components/settings/model-map";
+import { SHEET_SPRING } from "@/lib/motion";
 import { AnimatedNumber } from "@/components/screening/parts";
 import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -41,7 +42,6 @@ export type OpenSheet =
   | { kind: "topUp"; waiting: Waiting };
 type Role = "owner" | "write" | "read";
 
-export const SHEET_SPRING = { type: "spring" as const, stiffness: 300, damping: 32, mass: 0.9 };
 
 /** Where a card sits with `depth` cards on top of it: smaller, and nudged left so its edge shows. */
 export const stackedUnder = (depth: number) => ({ scale: 1 - depth * 0.07, x: depth * -22 });
