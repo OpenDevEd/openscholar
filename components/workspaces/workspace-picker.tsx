@@ -12,11 +12,12 @@ import { useWorkspaces, WorkspaceTile } from "./parts";
 
 export function WorkspacePicker({ value, onChange, disabled = false }: { value: Id<"workspaces"> | undefined; onChange: (workspaceId: Id<"workspaces">) => void; disabled?: boolean }) {
   const t = useTranslations("workspaces");
+  const tc = useTranslations("common");
   const format = useFormatter();
   const workspaces = useWorkspaces();
   return (
     <div role="radiogroup" aria-label={t("workspace")} className={LIST}>
-      {(workspaces ?? []).map((workspace) => {
+      {(workspaces.list ?? []).map((workspace) => {
         const on = workspace.workspaceId === value;
         return (
           <button
@@ -39,6 +40,11 @@ export function WorkspacePicker({ value, onChange, disabled = false }: { value: 
           </button>
         );
       })}
+      {workspaces.more ? (
+        <button type="button" disabled={workspaces.loading} onClick={workspaces.loadMore} className="flex w-full items-center justify-center px-3 py-2.5 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground disabled:opacity-60">
+          {tc("showMore")}
+        </button>
+      ) : null}
     </div>
   );
 }

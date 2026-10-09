@@ -32,7 +32,7 @@ export default function ConnectPage() {
   const workspaces = useWorkspaces();
   const tw = useTranslations("workspaces");
   const [workspace, setWorkspace] = useState<Id<"workspaces"> | null>(null);
-  const picked = workspace ?? workspaces?.[0]?.workspaceId;
+  const picked = workspace ?? workspaces.list?.[0]?.workspaceId;
 
   const redirectOrigin = (() => {
     try {
@@ -108,7 +108,7 @@ export default function ConnectPage() {
 
   // ── Not authenticated ──────────────────────────────────────
   // The consent form shows once the workspaces to pick from have loaded, so it never grows under the pointer.
-  const waiting = phase === "initializing" || (phase === "authenticated" && workspaces === undefined);
+  const waiting = phase === "initializing" || (phase === "authenticated" && workspaces.list === undefined);
   if (phase === "anonymous" || waiting) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">

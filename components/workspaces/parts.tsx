@@ -7,7 +7,7 @@ import type { FunctionReturnType } from "convex/server";
 import { Home } from "@/components/icons";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { api } from "@/convex/_generated/api";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useProtectedPaginatedQuery, useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { defaultPlanId, findPlan } from "@/lib/billing/catalog";
 import { useBillingCatalog } from "@/lib/billing/catalog-provider";
 import { ORGANIZATION_PLAN } from "@/lib/billing/plans";
@@ -22,13 +22,21 @@ export type WorkspaceLook = Pick<WorkspaceRow, "kind" | "name" | "imageUrl"> & {
 /** Clerk's limit on a free organization's members, invitations included. */
 export const FREE_MEMBERS = 5;
 
-/** The most workspaces the switcher lists. ponytail: one page, with the one you're in read apart; page on if people join more than 20 organizations. */
+/** Workspaces a list of them reads at a time; the one you're in is read apart. */
 const LISTED = 20;
 
-/** The workspaces the person can switch to, their own first; undefined while they load. */
+/**
+ * The workspaces the person can switch to, their own first, a page at a time: `list` is
+ * undefined while the first page loads, and `more` says there are more for `loadMore` to read.
+ */
 export function useWorkspaces() {
-  const here = useWorkspace();
-  return useProtectedQuery(api.organizations.queries.workspaces, inWorkspace(here, { paginationOpts: { cursor: null, numItems: LISTED } })).data?.page;
+  const read = useProtectedPaginatedQuery(api.organizations.queries.workspaces, inWorkspace(useWorkspace(), {}), { initialNumItems: LISTED });
+  return {
+    list: read.status === "LoadingFirstPage" ? undefined : read.results,
+    more: read.status === "CanLoadMore" || read.status === "LoadingMore",
+    loading: read.status === "LoadingMore",
+    loadMore: () => read.loadMore(LISTED),
+  };
 }
 
 /** The workspace the page is in, read on its own: it may not be on the switcher's first page. Undefined while it loads. */
