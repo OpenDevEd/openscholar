@@ -78,8 +78,9 @@ export default defineSchema({
   // How many saved searches, shortcuts and screening jobs a person has, kept by the triggers on those tables
   // (research/recordCounts.ts), for page totals. While a first count is being taken,
   // `countedTo` is the creation time it has reached.
-  recordCounts: defineTable({ userId: v.id("users"), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), count: v.number(), countedTo: v.optional(v.number()) })
-    .index("by_user_and_table", ["userId", "table"]),
+  recordCounts: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), count: v.number(), countedTo: v.optional(v.number()) })
+    .index("by_user_and_table", ["userId", "table"])
+    .index("by_workspace_and_table", ["workspaceId", "table"]),
   searchRevisions: defineTable({
     userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
     author: v.union(v.literal("user"), v.literal("assistant")),
@@ -98,7 +99,7 @@ export default defineSchema({
   // page and its Screen all jobs both answer into; a Screen all job run before #334 has its
   // own, with no search. `version` counts the writes to its answers, so a revision finds its
   // answers exactly.
-  screenings: defineTable({ userId: v.id("users"), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number(), removals: removalsValidator })
+  screenings: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number(), removals: removalsValidator })
     .index("by_search", ["searchId"]),
   // `version`: the screening's when the row was last written; a row from before this was kept owes every removal.
   screeningAnswers: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.optional(v.number()) })
@@ -796,7 +797,10 @@ export default defineSchema({
     .index("by_user_status", ["userId", "status"])
     // The job list ordered by name.
     .index("by_user_and_sortName", ["userId", "sortName"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId"] }),
+    .index("by_workspace", ["workspaceId"])
+    .index("by_workspace_status", ["workspaceId", "status"])
+    .index("by_workspace_and_sortName", ["workspaceId", "sortName"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId", "workspaceId"] }),
 
   // ═══════════════════════════════════════════════════════════════
   // CHAT GENERATION USAGE - Provider-authoritative chat billing ledger
@@ -917,6 +921,7 @@ export default defineSchema({
     .index("by_job_and_status", ["jobId", "status"])
     .index("by_job_and_epoch_and_status", ["jobId", "runEpoch", "status"])
     .index("by_user_and_status", ["userId", "status"])
+    .index("by_workspace_and_status", ["workspaceId", "status"])
     .index("by_job_and_epoch_and_status_and_priority_and_createdAt", [
       "jobId",
       "runEpoch",
@@ -1004,6 +1009,8 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   screeningJobs: defineTable({
     userId: v.id("users"),
+    workspaceId: v.optional(v.id("workspaces")),
+    createdBy: v.optional(v.id("users")),
     status: v.union(
       v.literal("processing"),
       v.literal("completed"),
@@ -1064,7 +1071,9 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
-    .index("by_user_status", ["userId", "status"]),
+    .index("by_user_status", ["userId", "status"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_workspace_status", ["workspaceId", "status"]),
 
   // ═══════════════════════════════════════════════════════════════
   // SCREENING RESULTS - individual paper screening outcomes
@@ -1155,7 +1164,7 @@ export default defineSchema({
   // How many of a person's Screen all papers are running (#335). Written by job creation and
   // the bookkeeping worker, which start a person's waiting papers while this is under their
   // plan's limit, as Firecrawl's per-team semaphore does.
-  screeningSlots: defineTable({ userId: v.id("users"), running: v.number() }).index("by_user", ["userId"]),
+  screeningSlots: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), running: v.number() }).index("by_user", ["userId"]).index("by_workspace", ["workspaceId"]),
   // A Screen all job's finished papers, counted by the bookkeeping worker alone.
   screeningJobProgress: defineTable({
     jobId: v.id("screeningJobs"),

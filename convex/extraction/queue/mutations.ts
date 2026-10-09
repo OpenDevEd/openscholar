@@ -12,6 +12,7 @@ import {
   type ExtractionQueueStatus,
 } from "./status";
 import { planLimit } from "../../billing/accounts";
+import { workspaceOf } from "../../workspaces/personal";
 
 type QueueKind = Doc<"extractionPaperQueue">["kind"];
 
@@ -123,6 +124,7 @@ async function insertPendingQueueRow(
   {
     jobId,
     userId,
+    workspaceId,
     paperId,
     runEpoch,
     kind,
@@ -133,6 +135,7 @@ async function insertPendingQueueRow(
   }: {
     jobId: Id<"extractionJobs">;
     userId: Id<"users">;
+    workspaceId: Id<"workspaces">;
     paperId: Id<"extractionPapers">;
     runEpoch: number;
     kind: QueueKind;
@@ -145,6 +148,7 @@ async function insertPendingQueueRow(
   const queueRow: Omit<Doc<"extractionPaperQueue">, "_id" | "_creationTime"> = {
     jobId,
     userId,
+    workspaceId,
     paperId,
     runEpoch,
     kind,
@@ -192,6 +196,8 @@ async function enqueuePaperQueueRows(
     skipped: 0,
   };
 
+  // The job's workspace, read once for every row this queues.
+  let workspaceId: Id<"workspaces"> | undefined;
   for (const candidate of candidates) {
     const paper = await ctx.db.get(candidate.paperId);
     const questionKeys =
@@ -222,6 +228,7 @@ async function enqueuePaperQueueRows(
     await insertPendingQueueRow(ctx, {
       jobId,
       userId: job.userId,
+      workspaceId: (workspaceId ??= await workspaceOf(ctx, job)),
       paperId: candidate.paperId,
       runEpoch: expectedEpoch,
       kind,

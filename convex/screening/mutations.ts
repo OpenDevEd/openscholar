@@ -34,14 +34,12 @@ import { applyCommand, findSearch } from "../research/records";
 
 import { availableCredits } from "../billing/accounts";
 import { MAX_AUTHORS } from "../lib/listCaps";
-import { personalWorkspaceOf } from "../workspaces/actor";
+import { personalWorkspaceOf, workspaceOf, type InWorkspace } from "../workspaces/actor";
 
 /** Where the job's included papers go, as its fields: a collection, or nowhere. */
-async function destination(ctx: MutationCtx, userId: Id<"users">, saveTo: Infer<typeof saveToValidator> | undefined) {
+async function destination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<typeof saveToValidator> | undefined) {
   if (!saveTo) return {};
   if (saveTo.kind === "none") return { unsaved: true as const };
-  // In the person's own workspace until screening jobs belong to one (#650).
-  const writer = { userId, workspaceId: await personalWorkspaceOf(ctx, userId) };
   if (saveTo.kind === "new") return { targetCollectionId: await newCollection(ctx, writer, saveTo.name) };
   if ((await ctx.db.get("collections", saveTo.collectionId))?.workspaceId !== writer.workspaceId) throw createError("NOT_FOUND", "Collection not found");
   return { targetCollectionId: saveTo.collectionId };
@@ -73,18 +71,17 @@ type JobSetup = ObjectType<typeof jobSetup>;
  * Makes a job's row for `user`, with its progress row: finds the screening its answers go to,
  * names it after its set, and stamps it with the model Screen all runs on.
  */
-async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, saveTo, prune, ...args }: JobSetup, state: Pick<Doc<"screeningJobs">, "status" | "totalPapers" | "reading" | "newCollection">) {
+async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"workspaces">, { author, set, saveTo, prune, ...args }: JobSetup, state: Pick<Doc<"screeningJobs">, "status" | "totalPapers" | "reading" | "newCollection">) {
   if (prune && set?.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
 
+  const writer = { userId: user._id, workspaceId };
   // The screening its answers go to, and the set's name as the page shows it.
   const now = Date.now();
   let screeningId: Id<"screenings">;
   let label: string | undefined;
   if (set?.kind === "search") {
     const localId = set.searchId;
-    // In the person's own workspace until screening jobs belong to one (#650).
-    const writer = { userId: user._id, workspaceId: await personalWorkspaceOf(ctx, user._id) };
-    const search = await findSearch(ctx, writer.workspaceId, localId);
+    const search = await findSearch(ctx, workspaceId, localId);
     if (!search) throw createError("NOT_FOUND", "Search not found");
     // The search's page shows answers to its own questions, so it takes on the job's it
     // lacks, all in one edit with one revision.
@@ -97,11 +94,11 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, sa
     screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
     label = search.data.query;
   } else {
-    screeningId = await ctx.db.insert("screenings", { userId: user._id, version: 0, createdAt: now });
+    screeningId = await ctx.db.insert("screenings", { userId: user._id, workspaceId, version: 0, createdAt: now });
     const collection = set?.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : null;
     const job = set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
-    // A collection in the person's own workspace until screening jobs belong to one (#650); a screening is still its person's.
-    if (set?.kind === "collection" && collection?.workspaceId !== (await personalWorkspaceOf(ctx, user._id))) throw createError("NOT_FOUND", "Collection not found");
+    // A screening is still its person's until the next part of this slice reads jobs by workspace (#650).
+    if (set?.kind === "collection" && collection?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
     if (set?.kind === "screening" && job?.userId !== user._id) throw createError("NOT_FOUND", "Screening not found");
     label = collection?.name ?? job?.label;
   }
@@ -110,12 +107,14 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, sa
   const serverPick = await resolveTaskPick(ctx, user._id, "screenAll");
   const jobId = await ctx.db.insert("screeningJobs", {
     userId: user._id,
+    workspaceId,
+    createdBy: user._id,
     ...state,
     screeningId,
     ...args,
     ...(set ? { set } : {}),
     ...(label ? { label } : {}),
-    ...(await destination(ctx, user._id, saveTo)),
+    ...(await destination(ctx, writer, saveTo)),
     ...(prune ? { prune: true as const } : {}),
     ...serverStamp(serverPick),
     createdAt: now,
@@ -149,14 +148,15 @@ const READ_LIMIT_MS = 15 * 60_000;
  * it may get. They follow (`screening/start:read`), and the job is `reading` until they do.
  */
 export const openScreeningJob = internalMutation({
-  args: { userId: v.id("users"), papers: v.number(), ...jobSetup, first: v.number(), last: v.number() },
+  // `workspaceId` is optional only for a call from an action already running when this deployed (#650), which makes the job in its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), papers: v.number(), ...jobSetup, first: v.number(), last: v.number() },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, { userId, papers, saveTo, ...setup }) => {
+  handler: async (ctx, { userId, workspaceId, papers, saveTo, ...setup }) => {
     const user = await requireActiveUser(ctx, userId);
     // A new collection is made with the papers, so a job that never gets any leaves none behind.
     const later = saveTo?.kind === "new" ? saveTo.name.trim() : undefined;
     if (later === "") throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
-    const jobId = await insertJob(ctx, user, { ...setup, ...(later ? {} : { saveTo }) }, { status: "processing", totalPapers: papers, reading: true, ...(later ? { newCollection: later } : {}) });
+    const jobId = await insertJob(ctx, user, workspaceId ?? (await personalWorkspaceOf(ctx, userId)), { ...setup, ...(later ? {} : { saveTo }) }, { status: "processing", totalPapers: papers, reading: true, ...(later ? { newCollection: later } : {}) });
     await ctx.db.patch("screeningJobs", jobId, { readPlace: { read: 0, papers: 0 } });
     await ctx.scheduler.runAfter(0, internal.screening.start.read, { jobId });
     await ctx.scheduler.runAfter(READ_LIMIT_MS, internal.screening.mutations.failScreeningRead, { jobId, reason: "Its papers took too long to read. Run it again.", stalled: true });
@@ -202,7 +202,7 @@ export const fillScreeningJob = internalMutation({
     const now = Date.now();
     const taken = { read: place.read + read, papers: place.papers + (affordable ? papers.length : 0) };
     const over = ended || !affordable;
-    const made = affordable && papers.length && reading.newCollection ? { targetCollectionId: await newCollection(ctx, { userId: reading.userId, workspaceId: await personalWorkspaceOf(ctx, reading.userId) }, reading.newCollection), newCollection: undefined } : {};
+    const made = affordable && papers.length && reading.newCollection ? { targetCollectionId: await newCollection(ctx, { userId: reading.userId, workspaceId: await workspaceOf(ctx, reading) }, reading.newCollection), newCollection: undefined } : {};
     await ctx.db.patch("screeningJobs", jobId, {
       readPlace: taken,
       resume,

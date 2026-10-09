@@ -10,6 +10,7 @@ import {
 } from "../billing/billing.test-support";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { extractionPaperCredits } from "../../lib/pricing";
+import { personalWorkspaceOf } from "../workspaces/actor";
 
 /**
  * The credit check on startJob: the most the job costs on the model its extractions run on
@@ -147,6 +148,8 @@ describe("startJob — pre-flight credit check", () => {
 
     const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.status).toBe("pending");
+    // In the workspace it was started in, as its starter's (#650).
+    expect(job).toMatchObject({ workspaceId: await t.run((ctx) => personalWorkspaceOf(ctx, job!.userId)), createdBy: job!.userId });
     await expectQueueSetupScheduled(t);
   });
 

@@ -18,7 +18,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { upsertLibraryItem } from "../library/mutations";
-import { personalWorkspaceOf } from "../workspaces/actor";
+import { workspaceOf } from "../workspaces/personal";
 import { addCollectionMembership, removeCollectionMembership } from "../library/collectionMembership";
 import { moveResultAnswers } from "./drain";
 import { account, FAILED, standing, withDeltas, type Delta, type Move } from "./accounting";
@@ -116,8 +116,7 @@ async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, result
 export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">) {
   const libraryItemId = await upsertLibraryItem(
     ctx,
-    // In the person's own workspace until screening jobs belong to one (#650).
-    { userId: job.userId, workspaceId: await personalWorkspaceOf(ctx, job.userId) },
+    { userId: job.userId, workspaceId: await workspaceOf(ctx, job) },
     {
       openalexId: result.openalexId,
       title: result.title,

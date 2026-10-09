@@ -65,7 +65,7 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, autho
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
   const step = call?.from ? { chatStep: call.from } : {};
   const open = (spend: { spendCap?: number; spendHold?: string }) =>
-    ctx.runMutation(internal.screening.mutations.openScreeningJob, { userId, author, set, first, last, ...(snapshot ? { snapshot } : {}), ...config, papers: last - first + 1, ...step, ...spend });
+    ctx.runMutation(internal.screening.mutations.openScreeningJob, { userId, workspaceId, author, set, first, last, ...(snapshot ? { snapshot } : {}), ...config, papers: last - first + 1, ...step, ...spend });
   // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
   return spendCap === undefined ? await open({}) : await startHeld(ctx, { userId, credits: spendCap, kind: "screening" }, (spendHold) => open({ spendCap, spendHold }));
 }

@@ -13,6 +13,7 @@ import { pricingOf } from "../ai/serverModel";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { SCREENING_POOL_SIZE, screeningPool } from "../workpool";
 import { progressOf } from "./bookkeeping";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 /**
  * Papers a person may have running when their plan sets no `concurrency` in Autumn: the
@@ -87,6 +88,6 @@ export async function startWaitingPapers(ctx: MutationCtx, userId: Id<"users">, 
       else if (!budget.progress.running && !budget.job.capped) await ctx.scheduler.runAfter(0, internal.screening.mutations.capScreeningJob, { jobId: budget.job._id });
     }
   }
-  if (!slots) await ctx.db.insert("screeningSlots", { userId, running });
+  if (!slots) await ctx.db.insert("screeningSlots", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), running });
   else if (slots.running !== running) await ctx.db.patch("screeningSlots", slots._id, { running });
 }
