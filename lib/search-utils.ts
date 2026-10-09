@@ -1,7 +1,7 @@
 import { OQL_FIELD, joinOql } from './openalex/oql';
 import { SEMANTIC_FIELD } from './openalex/semantic';
-import { isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive } from './utils';
-import { getCountryCodesForRegions, COUNTRIES, COUNTRY_NAME_CHANGES } from './constants';
+import { isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive } from './utils';
+import { countryFocusNames, OQL_REVIEW_TERMS, REVIEW_TERMS } from './search/focus-terms';
 import { validateAndExpandKeywords, type ExpandShortcuts } from './keyword-validation';
 import type { SearchFilters, SearchField } from './types';
 
@@ -17,16 +17,6 @@ export interface GetSearchResultsWithFiltersOptions {
   onWarning?: (message: string) => void;
 }
 
-/**
- * Clean country names for use in OpenAlex API queries
- * Replace commas with spaces and handle other problematic characters
- */
-function cleanCountryNameForAPI(countryName: string): string {
-  return countryName
-    .replace(/,/g, '') // Remove commas entirely
-    .replace(/\s+/g, ' ') // Normalize whitespace
-    .trim();
-}
 
 export interface PreparedOpenAlexSearch {
   validation: { isValid: boolean; expandedQuery: string; warnings: string[] };
@@ -73,24 +63,6 @@ export function prepareOpenAlexSearch(
   // Get effective related_to item ID
   const effectiveRelatedToItemId = isRelatedToFilterActive(filters.relatedToItemId) ? filters.relatedToItemId : undefined;
 
-  // Get country names for query enhancement if Country focus is active
-  const getCountryNames = (): string[] => {
-    if (!isCountryFocusActive(filters.selectedCountryFocus)) return [];
-    const countryNames: string[] = [];
-    const countryData = getCountryCodesForRegions(filters.selectedCountryFocus, true); // Bypass limit for Country focus
-    
-    countryData.countries.forEach(code => {
-      if (COUNTRIES[code]) {
-        for (const name of COUNTRY_NAME_CHANGES[code] ?? [COUNTRIES[code]]) {
-          const cleanedName = cleanCountryNameForAPI(name);
-          if (!countryNames.includes(cleanedName)) countryNames.push(cleanedName);
-        }
-      }
-    });
-    
-    return countryNames;
-  };
-
   // A question by meaning goes as typed: keyword expansion, country focus and review terms are a keyword search's.
   if (filters.searchField === SEMANTIC_FIELD) {
     const question = query.trim();
@@ -104,7 +76,7 @@ export function prepareOpenAlexSearch(
     };
   }
 
-  const countryNames = getCountryNames();
+  const countryNames = countryFocusNames(filters.selectedCountryFocus);
 
   // Validate and expand keywords on the original query first
   const validation = validateAndExpandKeywords(query, options.expand, {
@@ -132,7 +104,7 @@ export function prepareOpenAlexSearch(
   if (filters.reviewFilter) {
     finalApiQuery = appendTerms(
       finalApiQuery,
-      oql ? '(review or synthesis or stemmed "meta-analysis")' : '(review OR synthesis OR "meta-analysis")',
+      oql ? OQL_REVIEW_TERMS : REVIEW_TERMS,
     );
   }
 
