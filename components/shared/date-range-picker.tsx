@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import type { DateRange } from "react-day-picker";
 import { isSameDay, startOfDay } from "date-fns";
 import { motion, useReducedMotion } from "motion/react";
-import { SHEET_SPRING } from "@/components/assistant/sheets";
+import { SHEET_SPRING } from "@/lib/motion";
 import { useFormatter, useTranslations } from "next-intl";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";

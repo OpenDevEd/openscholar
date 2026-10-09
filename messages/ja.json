@@ -441,6 +441,9 @@
     "downloadEssentialCSV": "基本情報をCSVでダウンロード"
   },
   "extraction": {
+    "searchJobs": "ジョブを検索...",
+    "noExtractionJobs": "抽出ジョブがありません",
+    "createJobToStart": "ジョブを作成して開始してください。",
     "extractDescription": "研究論文から構造化データを抽出",
     "noSearchHistoryFound": "検索履歴が見つかりません",
     "performSearchesFirst": "抽出ジョブを作成するには、まず検索を実行してください。",

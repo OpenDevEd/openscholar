@@ -441,6 +441,9 @@
     "downloadEssentialCSV": "将基本信息下载为 CSV"
   },
   "extraction": {
+    "searchJobs": "搜索任务...",
+    "noExtractionJobs": "无提取任务",
+    "createJobToStart": "创建任务以开始。",
     "extractDescription": "从研究论文中提取结构化数据",
     "noSearchHistoryFound": "未找到搜索历史",
     "performSearchesFirst": "请先执行一些搜索以创建提取任务。",

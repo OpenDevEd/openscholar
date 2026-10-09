@@ -441,6 +441,9 @@
     "downloadEssentialCSV": "Télécharger les infos essentielles en CSV"
   },
   "extraction": {
+    "searchJobs": "Rechercher des tâches...",
+    "noExtractionJobs": "Aucune tâche d'extraction",
+    "createJobToStart": "Créez une tâche pour commencer.",
     "extractDescription": "Extraire des données structurées des articles de recherche",
     "noSearchHistoryFound": "Aucun historique de recherche trouvé",
     "performSearchesFirst": "Effectuez d'abord des recherches pour créer une tâche d'extraction.",

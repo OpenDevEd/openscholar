@@ -441,6 +441,9 @@
     "downloadEssentialCSV": "ज़रूरी जानकारी CSV के रूप में डाउनलोड करें"
   },
   "extraction": {
+    "searchJobs": "जॉब खोजें...",
+    "noExtractionJobs": "कोई एक्सट्रैक्शन जॉब नहीं",
+    "createJobToStart": "शुरू करने के लिए एक जॉब बनाएं।",
     "extractDescription": "शोध पेपर से स्ट्रक्चर्ड डेटा निकालें",
     "noSearchHistoryFound": "कोई खोज इतिहास नहीं मिला",
     "performSearchesFirst": "एक्सट्रैक्शन जॉब बनाने के लिए पहले कुछ खोजें करें।",

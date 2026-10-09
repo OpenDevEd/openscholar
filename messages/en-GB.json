@@ -441,6 +441,9 @@
     "downloadEssentialCSV": "Download essential info as CSV"
   },
   "extraction": {
+    "searchJobs": "Search jobs...",
+    "noExtractionJobs": "No extraction jobs",
+    "createJobToStart": "Create a job to get started.",
     "extractDescription": "Extract structured data from research papers",
     "noSearchHistoryFound": "No search history found",
     "performSearchesFirst": "Perform some searches first to create an extraction job.",
