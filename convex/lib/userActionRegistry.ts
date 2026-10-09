@@ -17,7 +17,7 @@ import { undoAction as bulkUndoAction } from "../assistant/batches";
 import { messagesAction as chatMessagesAction, stepsAction as chatStepsAction } from "../assistant/replies";
 import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, removeAction as chatRemoveAction, renameAction as chatRenameAction, setModelAction as chatModelAction } from "../assistant/threads";
 import { countPapersAction as libraryCountPapersAction, papersAction as libraryPapersAction, savedPaperAction } from "../library/queries";
-import { addToCollectionAction, countCollectionsAction, createCollectionAction, deleteCollectionAction, getCollectionAction, listCollectionsAction, removeFromCollectionAction, renameCollectionAction } from "../library/collections";
+import { addToCollectionAction, countCollectionsAction, createCollectionAction, deleteCollectionAction, getCollectionAction, listCollectionsAction, removeFromCollectionAction, renameCollectionAction, setCollectionRatingAction } from "../library/collections";
 import { estimateAction as screeningEstimateAction, listJobsAction as screeningJobsAction } from "../screening/queries";
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
 import { slotsAction as screeningSlotsAction, getScreeningJobAction, listScreeningResultsAction } from "../screening/queries";
@@ -112,6 +112,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   deleteCollectionAction,
   addToCollectionAction,
   removeFromCollectionAction,
+  setCollectionRatingAction,
   listChargesAction,
   countChargesAction,
   spendingAction,

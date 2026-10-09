@@ -6,8 +6,8 @@ const STEP = 100;
 
 /**
  * Deletes a step's worth of what's in a purged person's own workspace (#650): their screening
- * jobs, searches with their revisions, history and answers, bookmarks, collections and saved
- * papers with their places, and their screening slots. An author profile stays in the directory,
+ * jobs, searches with their revisions, history and answers, bookmarks, collections with their
+ * ratings, saved papers with their places, and their screening slots. An author profile stays in the directory,
  * owned by nobody, as one whose owner was purged before workspaces is. Chats, extraction jobs and
  * counts have their own purges. Returns whether the workspace is empty of them.
  * ponytail: one step per cleanup run, so a large library takes a run a minute; schedule steps back to back if that's too slow.
@@ -54,6 +54,7 @@ export async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspac
   for (const collection of await ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId)).take(take())) {
     if (!(await drain((n) => ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collection._id)).take(n), "libraryItemCollections"))) return false;
     if (!(await drain((n) => ctx.db.query("evidenceLibraryCollectionSources").withIndex("by_collectionId", (q) => q.eq("collectionId", collection._id)).take(n), "evidenceLibraryCollectionSources"))) return false;
+    if (!(await drain((n) => ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collection._id)).take(n), "ratings"))) return false;
     if (!(await gone([collection], "collections"))) return false;
   }
 

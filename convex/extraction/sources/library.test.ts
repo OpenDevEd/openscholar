@@ -315,8 +315,9 @@ describe("extraction.sources.library.listAllIds with collectionId", () => {
     const t = convexTest(schema);
     const { userId, collectionId } = await seed(t);
     await t.run(async (ctx) => {
+      const made = await madeBy(ctx, userId);
       for (let i = 0; i < MAX_SELECTED_PAPERS + 5; i++) {
-        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/Wmany${i}`, rating: 3, title: `Many ${i}`, searchableText: "many papers", savedAt: i, updatedAt: i });
+        const libraryItemId = await ctx.db.insert("libraryItems", { ...made, openalexId: `https://openalex.org/Wmany${i}`, rating: 3, title: `Many ${i}`, searchableText: "many papers", savedAt: i, updatedAt: i });
         if (i % 2 === 0) await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: i });
       }
     });

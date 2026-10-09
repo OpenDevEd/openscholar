@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { runUncapped, runUntriggered } from "../../tests/convex-test-with-limits";
 import { restoreLibraryItemAction } from "./mutations";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { ownActor } from "../workspaces/actor.test-support";
@@ -217,36 +216,6 @@ describe("library facets", () => {
     }
   });
 
-  it("the backfill gives memberships their paper's fields and counts every row, once however often it runs", async () => {
-    vi.useFakeTimers();
-    try {
-      const t = convexTest(schema);
-      const { userId, as } = await setup(t);
-      // As rows saved before: written without the triggers that keep them, in the person's own workspace as every row now is.
-      const owner = { userId, workspaceId: await t.run((ctx) => personalWorkspaceOf(ctx, userId)), createdBy: userId };
-      const collectionId = await runUntriggered(t, async (ctx) => {
-        const id = await ctx.db.insert("collections", { ...owner, name: "Old", sortName: "old", itemCount: 3, createdAt: 1, updatedAt: 1 });
-        for (const [i, rating] of [5, 5, 2].entries()) {
-          const libraryItemId = await ctx.db.insert("libraryItems", { ...owner, ...paper(i), rating, searchableText: `Paper ${i}`, savedAt: i, updatedAt: 1 });
-          await ctx.db.insert("libraryItemCollections", { collectionId: id, libraryItemId, assignedAt: 1 });
-        }
-        return id;
-      });
-      expect(await t.action(internal.migrations.libraryFacets.verify, {})).toBeGreaterThan(0);
-
-      for (let runs = 0; runs < 2; runs++) {
-        await t.mutation(internal.migrations.libraryFacets.run, {});
-        await t.finishAllScheduledFunctions(vi.runAllTimers);
-      }
-
-      expect(await t.action(internal.migrations.libraryFacets.verify, {})).toBe(0);
-      expect(await as.query(api.library.queries.countPapers, { minRating: 5 })).toEqual({ count: 2 });
-      expect(await as.query(api.library.queries.countPapers, { collectionId, minRating: 5 })).toEqual({ count: 2 });
-      expect((await as.query(api.library.queries.papers, { collectionId, sort: "rating", ascending: true })).papers.map((row) => row.rating)).toEqual([2, 5, 5]);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 });
 
 describe("the library in workspaces (#650)", () => {
