@@ -145,6 +145,9 @@ const CLASS_NAMES = /(class(name)?(es|s)?|styles?|variants?|texttransform)$/i;
 const DOT = /[·•]|&(?:middot|bull|#183|#x0*b7|#8226|#x2022);/i;
 // A short status label ("Loading", "Loading author profile..."), not a sentence that mentions loading.
 const LOADING = /^loading\b[^.!?]{0,40}(…|\.\.\.)?$/i;
+// The translation functions: `t`, and `tc` or `tUI` for a second namespace.
+const TRANSLATE = /^t([a-z]|[A-Z]\w*)?$/;
+const SR_ONLY = /(?:^|[\s"'`])sr-only(?=$|[\s"'`])/;
 const allowed = (line, rule) => new RegExp(`ui-rules-allow:\\s*${rule}\\s+--\\s*\\S`).test(line ?? "");
 
 const FIX = {
@@ -155,6 +158,18 @@ const FIX = {
   initials: "AvatarFallback shows an icon when there is no photo, never initials or text (see IdentityAvatar and AuthorAvatar).",
   "loading-text": "no \"Loading\" text; show the shared Spinner, or hold the final size until the data is there.",
 };
+
+/** Every string in a messages file, with the key that holds it. */
+const strings = (value, key) =>
+  typeof value === "string" ? [[key, value]] : value && typeof value === "object" ? Object.entries(value).flatMap(([inner, child]) => strings(child, inner)) : [];
+
+// The message keys that are Loading labels, so a translated label is caught
+// where it is rendered. A key counts only when every message of that name is
+// one, since the namespace a call reads from isn't known here.
+const english = strings(JSON.parse(readFileSync("messages/en-US.json", "utf8")), "");
+const loadingMessage = ([, value]) => LOADING.test(value.trim());
+const otherKeys = new Set(english.filter((message) => !loadingMessage(message)).map(([key]) => key));
+const loadingKeys = new Set(english.filter((message) => loadingMessage(message) && !otherKeys.has(message[0])).map(([key]) => key));
 
 function files(dir, extensions) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -239,6 +254,21 @@ function check(file) {
     }
     return false;
   };
+  // Whether a string is the key of a translation call, `t("loading")`, whose message is a Loading label.
+  const translatedLoading = (node) => {
+    const call = node.parent;
+    if (!ts.isStringLiteral(node) || !ts.isCallExpression(call) || call.arguments[0] !== node) return false;
+    return ts.isIdentifier(call.expression) && TRANSLATE.test(call.expression.text) && loadingKeys.has(node.text.split(".").at(-1)) && renderedInJsx(call);
+  };
+  // Whether a node sits in an element only screen readers get, where a Loading label names a spinner.
+  const screenReaderOnly = (node) => {
+    for (let parent = node.parent; parent && !ts.isSourceFile(parent); parent = parent.parent) {
+      if (!ts.isJsxElement(parent)) continue;
+      const className = parent.openingElement.attributes.properties.find((attribute) => ts.isJsxAttribute(attribute) && attribute.name.getText(source) === "className");
+      return SR_ONLY.test(className?.initializer?.getText(source) ?? "");
+    }
+    return false;
+  };
   // Whether what a node renders can hold text: words, or a value that isn't JSX.
   const rendersText = (node) => {
     if (ts.isJsxText(node)) return node.text.trim() !== "";
@@ -257,11 +287,11 @@ function check(file) {
       if (UPPERCASE_CSS.test(node.text) || (UPPERCASE_CLASS.test(node.text) && classContext(node))) report(node, "uppercase");
       if (DOT.test(node.text)) report(node, "dot-separator");
       const whole = ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node);
-      if (whole && LOADING.test(node.text.trim()) && renderedInJsx(node)) report(node, "loading-text");
+      if (((whole && LOADING.test(node.text.trim()) && renderedInJsx(node)) || translatedLoading(node)) && !screenReaderOnly(node)) report(node, "loading-text");
     }
     if (ts.isJsxText(node)) {
       if (DOT.test(node.text)) report(node, "dot-separator");
-      if (LOADING.test(node.text.trim())) report(node, "loading-text");
+      if (LOADING.test(node.text.trim()) && !screenReaderOnly(node)) report(node, "loading-text");
     }
     if (ts.isJsxElement(node) && node.openingElement.tagName.getText(source) === "AvatarFallback") {
       if (node.children.some(rendersText)) report(node, "initials");
@@ -320,18 +350,9 @@ const stylesheetClashes = cssFiles.flatMap((file) => {
 const copy = files("messages", [".json"]).flatMap((file) => {
   const text = readFileSync(file, "utf8");
   const lines = text.split("\n");
-  const found = [];
-  const walk = (value, name) => {
-    if (typeof value === "string") {
-      if (!DOT.test(value)) return;
-      const line = lines.findIndex((entry) => entry.includes(`"${name}"`));
-      found.push(`${file}:${line + 1} dot-separator: ${FIX["dot-separator"]}`);
-    } else if (value && typeof value === "object") {
-      for (const [key, inner] of Object.entries(value)) walk(inner, key);
-    }
-  };
-  walk(JSON.parse(text), "");
-  return found;
+  return strings(JSON.parse(text), "")
+    .filter(([, value]) => DOT.test(value))
+    .map(([key]) => `${file}:${lines.findIndex((line) => line.includes(`"${key}"`)) + 1} dot-separator: ${FIX["dot-separator"]}`);
 });
 
 const problems = [...files("components", [".ts", ".tsx"]), ...files("app", [".ts", ".tsx"])].flatMap(check).concat(broad, stylesheets, stylesheetClashes, copy);
