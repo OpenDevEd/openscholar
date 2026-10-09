@@ -742,14 +742,16 @@ function typed(row: MessageDoc) {
   return first?.type === "text" ? first.text : "";
 }
 
-/** Who sent a message, for the people a page of messages names. */
+/** Who sent a message, for the people a page of messages names: someone whose account is gone by the name their tombstone keeps. */
 async function senders(ctx: QueryCtx, rows: MessageDoc[]) {
   const ids = [...new Set(rows.flatMap((row) => (row.message?.role === "user" && row.userId ? [row.userId] : [])))];
   const people = await Promise.all(
     ids.map(async (id) => {
       const userId = ctx.db.normalizeId("users", id);
       const person = userId && (await ctx.db.get("users", userId));
-      return person ? [[id, { userId: person._id, name: personName(person), ...(person.avatarUrl ? { imageUrl: person.avatarUrl } : {}) }] as const] : [];
+      if (person) return [[id, { userId: person._id, name: personName(person), ...(person.avatarUrl ? { imageUrl: person.avatarUrl } : {}) }] as const];
+      const gone = userId && (await ctx.db.query("clerkDeletedUsers").withIndex("by_userId", (q) => q.eq("userId", userId)).unique());
+      return userId && gone?.name ? [[id, { userId, name: gone.name }] as const] : [];
     }),
   );
   return new Map(people.flat());

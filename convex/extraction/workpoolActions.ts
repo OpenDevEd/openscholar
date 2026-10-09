@@ -1232,13 +1232,6 @@ export async function runExtractQuestionWithContext({
       reason: skipReason,
     };
   }
-  if (!context.user) {
-    throw createError(
-      "AI_UNAUTHENTICATED",
-      "Authentication required to use AI features",
-    );
-  }
-
   const units = toEvidenceUnitDocs(context.evidenceUnits);
   const abstractPresent = isUsableAbstract(context.paper.abstract);
   const abstractText = abstractPresent
@@ -1302,7 +1295,6 @@ export async function runDecisionQuestions({
     else asked.push(question);
   }
   if (asked.length === 0) return outcomes;
-  if (!context.user) throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
 
   const prompts = asked.map((q) => (q.description ? `${q.question} (${q.description})` : q.question));
   const state = paperState(

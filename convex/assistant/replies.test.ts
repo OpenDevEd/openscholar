@@ -103,6 +103,10 @@ describe("assistant replies", () => {
       { role: "user", text: "Hi there", status: "done", sender: { userId: ben }, mine: false },
     ]);
     expect((await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[1]).toMatchObject({ mine: true });
+    // Once Ben's account is gone, his message still says who sent it.
+    await t.run((ctx) => ctx.db.patch("users", ben, { firstName: "Ben", lastName: "Mwangi", state: "deleted", updatedAt: 1 }));
+    await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
+    expect((await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[1]).toMatchObject({ sender: { userId: ben, name: "Ben Mwangi" } });
     expect(page[0].order).toBe(page[1].order);
     expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
     expect(await asAda.query(api.assistant.replies.outcome, { threadId })).toEqual({ phase: "complete", order: page[0].order });
