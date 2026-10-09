@@ -19,7 +19,8 @@ import { downloadExport, exportFiles } from "@/lib/export";
 import { serializeSearch } from "@/lib/research/records";
 import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
+import { browserExpand } from "@/lib/keyword-validation-browser";
+import { resolvedSearchQuery } from "@/lib/keyword-validation";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { SearchResult, HistorySortBy } from "@/lib/types";
 import {
@@ -115,10 +116,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   const download = async (format: "json" | "csv") => {
     try {
       if (account) return await downloadExport(convex, { kind: "history" }, format);
-      const data = localSearchHistoryStore.getState().searchHistory.map((item) => {
-        const { expandedQuery } = validateAndExpandKeywordsSilently(item.query);
-        return { ...serializeSearch(item), resolvedQuery: expandedQuery };
-      });
+      const data = localSearchHistoryStore.getState().searchHistory.map((item) => ({ ...serializeSearch(item), resolvedQuery: resolvedSearchQuery(item, browserExpand) }));
       const file = exportFiles.history[format];
       downloadAsFile(file.start(new Date()) + data.map(file.item).join('') + file.end(), `search_history.${format}`, format);
     } catch (error) {

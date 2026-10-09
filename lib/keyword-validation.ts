@@ -1,4 +1,5 @@
 import type { expandShortcuts } from './query-shortcuts';
+import { SEMANTIC_FIELD } from './openalex/semantic';
 
 /** Expands a query's shortcuts: from the browser's store, or the account's records on the server. */
 export type ExpandShortcuts = (query: string) => ReturnType<typeof expandShortcuts>;
@@ -110,4 +111,12 @@ export function validateAndExpandKeywordsSilently(query: string, expand: ExpandS
     expandedQuery: warnings.length === 0 ? expandedQuery : query,
     warnings: resolvedWarnings,
   };
+}
+
+/**
+ * A search's query as it runs, which an export records: a question asked by meaning as it is
+ * written, any other query with its shortcuts expanded.
+ */
+export function resolvedSearchQuery(search: { query: string; field?: string }, expand: ExpandShortcuts): string {
+  return search.field === SEMANTIC_FIELD ? search.query : validateAndExpandKeywordsSilently(search.query, expand).expandedQuery;
 }

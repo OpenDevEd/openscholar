@@ -72,13 +72,13 @@ describe("library export", () => {
 });
 
 describe("search history export", () => {
-  async function seedSearches(t: ReturnType<typeof convexTest>, clerkId: string, queries: string[]) {
+  async function seedSearches(t: ReturnType<typeof convexTest>, clerkId: string, queries: string[], field: "title" | "semantic" = "title") {
     await t.run(async (ctx) => {
       const userId = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("queryShortcuts", { userId, data: { shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1 } });
       for (const [i, query] of queries.entries()) {
         const at = `2026-09-0${i + 1}T00:00:00.000Z`;
-        const data = { id: `${clerkId}-${i}`, query, field: "title" as const, count: 10 + i, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: at, updatedAt: at, dateRange: { from: "2020-01-01", to: "2025-12-31" }, yearRange: [2020, 2025], workTypes: ["article", "preprint"], openAccessOnly: true, sortBy: "cited_by_count:desc", chatJobIdsByAccountId: { owner: "private-chat" } };
+        const data = { id: `${clerkId}-${i}`, query, field, count: 10 + i, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: at, updatedAt: at, dateRange: { from: "2020-01-01", to: "2025-12-31" }, yearRange: [2020, 2025], workTypes: ["article", "preprint"], openAccessOnly: true, sortBy: "cited_by_count:desc", chatJobIdsByAccountId: { owner: "private-chat" } };
         await ctx.db.insert("searches", { userId, localId: data.id, revision: 1, data });
       }
     });
@@ -105,6 +105,17 @@ describe("search history export", () => {
       expect(rows[1].screeningResponses).toEqual([]);
     }
     expect(JSON.parse(json.text)).toMatchObject({ format: "openscholar.searches", version: 1, scope: "current search specifications" });
+  });
+
+  it("writes a question asked by meaning as it was asked, without expanding a shortcut in it", async () => {
+    const t = convexTest(schema);
+    await seedSearches(t, "owner", ["Does rct... tutoring help pupils read?"], "semantic");
+    const as = t.withIdentity({ subject: "owner" });
+
+    const { text } = await exportParts(t, as, { kind: "history" });
+
+    const [row] = parseImportFile(text, "json").map(row => serializeSearch(importSearchRecord(row)));
+    expect(row).toMatchObject({ query: "Does rct... tutoring help pupils read?", field: "semantic" });
   });
 });
 

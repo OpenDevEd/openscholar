@@ -6,7 +6,7 @@ import { createError, readConvexErrorData } from "./lib/errors";
 import { internalMutation, mutation } from "./lib/functions";
 import { digestOpaqueToken } from "./lib/opaqueTokenDigest";
 import { EXPORT_LINK_MS, exportFilename, exportFiles } from "../lib/export";
-import { validateAndExpandKeywordsSilently } from "../lib/keyword-validation";
+import { resolvedSearchQuery } from "../lib/keyword-validation";
 import { LIBRARY_SEARCH_RESULTS_MAX } from "../lib/library/limits";
 import { expandShortcuts, shortcutNames } from "../lib/query-shortcuts";
 import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
@@ -155,13 +155,14 @@ export const page = internalQuery({
       return write({ ...read, page: read.page.map((row) => row.data) }, exportFiles.shortcuts[format].item);
     }
     const read = await ctx.db.query("searches").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)).order("desc").paginate({ cursor, numItems: EXPORT_PAGE_SIZE, maximumBytesRead: HISTORY_PAGE_BYTES });
-    // Each query with the person's shortcuts expanded, as the history page shows it.
+    // Each query with the person's shortcuts expanded, as the history page shows it; a question
+    // asked by meaning as it was asked.
     // ponytail: one lookup per shortcut name the page uses; a page naming more than a
     // function's 4,096 lookups fails the export by name, and would need the names read in chunks.
     const expansions = await shortcutExpansions(ctx, userId, shortcutNames(read.page.map((row) => row.data.query).join("\n")));
     const searches = read.page.map(({ data }) => ({
       ...currentSearch(data),
-      resolvedQuery: validateAndExpandKeywordsSilently(data.query, (text) => expandShortcuts(text, expansions)).expandedQuery,
+      resolvedQuery: resolvedSearchQuery(data, (text) => expandShortcuts(text, expansions)),
     }));
     return write({ ...read, page: searches }, exportFiles.history[format].item);
   },

@@ -6,6 +6,7 @@ import { expandShortcuts } from "../lib/query-shortcuts";
 const expand = (query: string) => expandShortcuts(query, { ml: "(machine learning OR ML)", ai: "(artificial intelligence OR AI)" });
 
 import {
+  resolvedSearchQuery,
   validateAndExpandKeywords,
   validateAndExpandKeywordsSilently,
 } from "../lib/keyword-validation";
@@ -82,6 +83,14 @@ describe("validateAndExpandKeywords", () => {
     const onWarning = vi.fn();
     validateAndExpandKeywords("x", expand, { onWarning });
     expect(onWarning).toHaveBeenCalledOnce();
+  });
+});
+
+describe("resolvedSearchQuery", () => {
+  it("expands a keyword query's shortcuts, and leaves a question asked by meaning as it was asked", () => {
+    expect(resolvedSearchQuery({ query: "ml... AND tutoring", field: "title" }, expand)).toBe("(machine learning OR ML) AND tutoring");
+    expect(resolvedSearchQuery({ query: "ml... AND tutoring" }, expand)).toBe("(machine learning OR ML) AND tutoring");
+    expect(resolvedSearchQuery({ query: "Can ml... help tutors?", field: "semantic" }, expand)).toBe("Can ml... help tutors?");
   });
 });
 
