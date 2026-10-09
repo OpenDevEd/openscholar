@@ -13,7 +13,10 @@
 // covers opacity and transform too, so only explicit property lists are safe
 // on animated elements. Shared `components/ui` parts name the properties they
 // transition, so animating one is safe. A `before:` or `after:` class styles
-// another box. new-el runs the same rules (tools/uiRules.ts); keep them in step.
+// another box. A class string or `cn(...)` call that clashes by itself is
+// reported where it is written; a constant from the same file is read where
+// className uses it; and each stylesheet rule is checked the same way. new-el
+// runs the same rules (tools/uiRules.ts); keep them in step.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -43,19 +46,34 @@ function boxes(classes) {
   for (const token of classes.split(/[\s"'`{}()]+/).filter(Boolean)) groups.set(box(token), [...(groups.get(box(token)) ?? []), token]);
   return groups;
 }
-/** Every class list a className can produce: the two sides of `a ? b : c` never apply together. */
-function classLists(node, source) {
-  if (!node) return [""];
-  if (ts.isConditionalExpression(node)) return [...classLists(node.whenTrue, source), ...classLists(node.whenFalse, source)];
-  const children = node.getChildren(source);
-  if (children.length === 0) return [node.getText(source)];
-  return children.reduce((lists, child) => {
-    const texts = classLists(child, source);
-    return lists.flatMap((list) => texts.map((text) => `${list} ${text}`));
-  }, [""]);
-}
 /** Whether one box both animates and transitions opacity or transform; Framer props animate the element itself. */
 const clashes = (classes, framer) => [...boxes(classes)].some(([target, tokens]) => tokens.some(transitionsMovement) && ((framer && target === "") || tokens.some(animates)));
+// The helpers that join their arguments into one class list; cva and tv take alternatives instead.
+const JOINERS = new Set(["cn", "clsx", "cx", "twMerge", "classNames"]);
+const joins = (node) => ts.isCallExpression(node) && ts.isIdentifier(node.expression) && JOINERS.has(node.expression.text);
+/** A class list written as one value: a string, a template, or a call joining classes. */
+const classValue = (node) => ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node) || joins(node);
+// The words of a CSS transition that name no property.
+const TIMING = /^(ease(-in|-out|-in-out)?|linear|step-start|step-end|allow-discrete|normal|-?[\d.]+m?s)$/;
+/** Whether one item of a CSS transition list moves opacity or transform; an item that names no property transitions all. */
+function cssItemMoves(item) {
+  const words = item.split(/\s+/).filter((word) => word && !TIMING.test(word));
+  return words.length === 0 || words.some((word) => MOVING.has(word));
+}
+/** Whether one CSS rule both animates and transitions opacity or transform. */
+function cssClashes(declarations) {
+  const values = new Map(
+    declarations
+      .split(";")
+      .map((declaration) => declaration.split(":"))
+      .filter((parts) => parts.length > 1)
+      .map(([name, ...value]) => [name.trim().toLowerCase(), value.join(":").trim()]),
+  );
+  const animation = values.get("animation") ?? values.get("animation-name") ?? "none";
+  const transition = values.get("transition") ?? values.get("transition-property") ?? "none";
+  // Functions go first: the commas inside cubic-bezier() don't separate transitions.
+  return !/^none\b/i.test(animation) && transition.replace(/[\w-]+\([^)]*\)/g, " ").split(",").some(cssItemMoves);
+}
 const FRAMER_PROPS = new Set(["initial", "animate", "exit", "layout", "layoutId", "variants", "whileHover", "whileTap", "whileInView", "whileFocus", "whileDrag"]);
 // The `uppercase` utility with variants or the important mark (`sm:uppercase`,
 // `uppercase!`), looked for only where classes are written so prose that says
@@ -92,6 +110,43 @@ function check(file) {
   const lines = text.split("\n");
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const found = [];
+  // Every variable in the file with the value it starts with.
+  const constants = new Map();
+  const collect = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) constants.set(node.name.text, node.initializer);
+    ts.forEachChild(node, collect);
+  };
+  collect(source);
+  // The value of a same-file variable an identifier reads, when it holds classes.
+  const constantValue = (node) => {
+    if (!ts.isIdentifier(node) || (ts.isPropertyAccessExpression(node.parent) && node.parent.name === node)) return undefined;
+    const value = constants.get(node.text);
+    return value && (classValue(value) || ts.isConditionalExpression(value)) ? value : undefined;
+  };
+  // Every class list a className can produce: the two sides of `a ? b : c`
+  // never apply together, and a same-file constant adds the classes it holds.
+  const classLists = (node, seen = new Set()) => {
+    if (!node) return [""];
+    if (ts.isConditionalExpression(node)) return [...classLists(node.whenTrue, seen), ...classLists(node.whenFalse, seen)];
+    const value = constantValue(node);
+    // A constant that clashes by itself is reported where it is written.
+    if (value) return seen.has(value) || clashesAlone(value, seen) ? [""] : classLists(value, new Set([...seen, value]));
+    const children = node.getChildren(source);
+    if (children.length === 0) return [node.getText(source)];
+    return children.reduce((lists, child) => {
+      const texts = classLists(child, seen);
+      return lists.flatMap((list) => texts.map((text) => `${list} ${text}`));
+    }, [""]);
+  };
+  // Whether a class value clashes by itself, wherever it is used.
+  const clashesAlone = (node, seen = new Set()) => classValue(node) && classLists(node, new Set([...seen, node])).some((list) => clashes(list, false));
+  // Whether a node is part of a larger class list: an element's className, a joining call, or a template.
+  const insideClassList = (node) => {
+    for (let parent = node.parent; parent && !ts.isSourceFile(parent); parent = parent.parent) {
+      if (joins(parent) || ts.isTemplateExpression(parent) || (ts.isJsxAttribute(parent) && parent.name.getText(source) === "className")) return true;
+    }
+    return false;
+  };
   const report = (node, rule) => {
     const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line;
     if (allowed(lines[line - 1], rule)) return;
@@ -132,6 +187,7 @@ function check(file) {
     return !(node.kind === ts.SyntaxKind.NullKeyword || node.kind === ts.SyntaxKind.FalseKeyword || (ts.isIdentifier(node) && node.text === "undefined"));
   };
   const visit = (node) => {
+    if (classValue(node) && !insideClassList(node) && clashesAlone(node)) report(node, "animation-clash");
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
       if (UPPERCASE_CSS.test(node.text) || (UPPERCASE_CLASS.test(node.text) && classContext(node))) report(node, "uppercase");
       if (DOT.test(node.text)) report(node, "dot-separator");
@@ -154,7 +210,7 @@ function check(file) {
       for (const attribute of node.attributes.properties) {
         if (!ts.isJsxAttribute(attribute)) continue;
         const name = attribute.name.getText(source);
-        if (name === "className") classes = classLists(attribute.initializer, source);
+        if (name === "className") classes = classLists(attribute.initializer);
         if (name === "style" && attribute.initializer) style = attribute.initializer.getText(source);
         if (FRAMER_PROPS.has(name) && tag.startsWith("motion.")) framer = true;
         if (name === "title") title = attribute;
@@ -179,7 +235,19 @@ const scanLines = (paths, pattern, rule, fix) =>
   });
 // Shared parts name what they transition, so animating any of them is safe.
 const broad = scanLines(files("components/ui", [".tsx"]), BROAD_TRANSITION, "animation-clash", "a shared part uses transition or transition-all; name the properties it transitions.");
-const stylesheets = scanLines([...files("app", [".css"]), ...files("components", [".css"])], UPPERCASE_CSS, "uppercase", FIX.uppercase);
+const cssFiles = [...files("app", [".css"]), ...files("components", [".css"])];
+const stylesheets = scanLines(cssFiles, UPPERCASE_CSS, "uppercase", FIX.uppercase);
+const stylesheetClashes = cssFiles.flatMap((file) => {
+  const text = readFileSync(file, "utf8");
+  const lines = text.split("\n");
+  // Comments blanked with their newlines kept, so a brace in one can't open a rule.
+  const plain = text.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, " "));
+  return [...plain.matchAll(/\{([^{}]*)\}/g)]
+    .filter((rule) => cssClashes(rule[1]))
+    .map((rule) => plain.slice(0, rule.index).split("\n").length)
+    .filter((line) => !allowed(lines[line - 2], "animation-clash"))
+    .map((line) => `${file}:${line} animation-clash: ${FIX["animation-clash"]}`);
+});
 
 // Copy shown in the app lives in messages/. Values are read decoded, so an
 // escaped \u00b7 counts too; the line is the one that holds the key.
@@ -200,7 +268,7 @@ const copy = files("messages", [".json"]).flatMap((file) => {
   return found;
 });
 
-const problems = [...files("components", [".ts", ".tsx"]), ...files("app", [".ts", ".tsx"])].flatMap(check).concat(broad, stylesheets, copy);
+const problems = [...files("components", [".ts", ".tsx"]), ...files("app", [".ts", ".tsx"])].flatMap(check).concat(broad, stylesheets, stylesheetClashes, copy);
 if (problems.length) {
   console.error(problems.join("\n"));
   process.exit(1);
