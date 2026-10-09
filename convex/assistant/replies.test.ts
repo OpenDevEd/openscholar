@@ -216,7 +216,7 @@ describe("assistant replies", () => {
     await t.run(async (ctx) => {
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
       await ctx.scheduler.cancel(scheduledId);
-      await ctx.db.patch("assistantThreads", dead, { reply: { attemptId: "dead", senderId: ada, order: 0, startedAt: 1, scheduledId } });
+      await ctx.db.patch("assistantThreads", dead, { reply: { attemptId: "dead", senderId: ada, workspaceId: (await ctx.db.get("assistantThreads", dead))!.workspaceId, order: 0, startedAt: 1, scheduledId } });
     });
     for (const id of writing) await asAda.mutation(api.assistant.replies.send, { threadId: id, text: "Go" });
     await expect(asAda.mutation(api.assistant.replies.send, { threadId: others.at(-1)!, text: "Go" })).rejects.toThrow(new RegExp(`already writing ${ASSISTANT_REPLIES_AT_ONCE} replies`));
@@ -397,7 +397,7 @@ describe("assistant replies", () => {
       const { messageId, message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: "Hi", skipEmbeddings: true });
       await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, promptMessageId: messageId, message: { role: "assistant", content: "" }, metadata: { status: "pending" }, skipEmbeddings: true });
       const waiting = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "waiting", senderId: ada, order: message.order, startedAt: Date.now() - 6 * 60 * 1000, scheduledId: waiting } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "waiting", senderId: ada, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: message.order, startedAt: Date.now() - 6 * 60 * 1000, scheduledId: waiting } });
       return waiting;
     });
     const newest = async () => (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[0];
@@ -465,7 +465,7 @@ describe("assistant replies", () => {
       const thread = (await ctx.db.get("assistantThreads", threadId))!;
       const { message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: "Hi", skipEmbeddings: true });
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "early-failure", senderId: ada, order: message.order, startedAt: 1, scheduledId } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "early-failure", senderId: ada, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: message.order, startedAt: 1, scheduledId } });
       return { scheduledId, order: message.order };
     });
     expect((await asAda.query(api.assistant.replies.live, { threadId }))!.activity).toEqual({ phase: "thinking", order });
@@ -483,7 +483,7 @@ describe("assistant replies", () => {
       const thread = (await ctx.db.get("assistantThreads", threadId))!;
       const { messageId, message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: "Hi", skipEmbeddings: true });
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "early", senderId: ada, order: message.order, startedAt: Date.now(), scheduledId, stop: true } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "early", senderId: ada, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: message.order, startedAt: Date.now(), scheduledId, stop: true } });
       return { agentThreadId: thread.agentThreadId, promptMessageId: messageId };
     });
 
@@ -817,7 +817,7 @@ describe("a job a reply started", () => {
         createdAt: 1, updatedAt: 1,
       });
       // The chat is busy, so the end waits.
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "busy", senderId: ada, order: 0, startedAt: 1, scheduledId: await ctx.scheduler.runAfter(60_000, internal.assistant.jobs.deliver, { threadId }), spent: 0 } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "busy", senderId: ada, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, startedAt: 1, scheduledId: await ctx.scheduler.runAfter(60_000, internal.assistant.jobs.deliver, { threadId }), spent: 0 } });
       return { jobId, stepId };
     });
     await t.mutation(internal.screening.mutations.markScreeningJobCreditsExhausted, { jobId });

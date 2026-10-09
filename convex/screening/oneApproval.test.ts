@@ -37,7 +37,7 @@ it("runs a request as one job under the one figure the person approved: one hold
       await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: n });
     }
     // The chat and the step of its reply that started the screening.
-    const threadId = await ctx.db.insert("assistantThreads", { ownerId: userId, title: "Screening", agentThreadId: "agent", lastMessageAt: 1, createdAt: 1, updatedAt: 1 });
+    const threadId = await ctx.db.insert("assistantThreads", { ...(await madeBy(ctx, userId)), title: "Screening", agentThreadId: "agent", lastMessageAt: 1, createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("assistantThreadAccess", { threadId, principal: `user:${userId}`, role: "owner", lastMessageAt: 1, createdAt: 1 });
     await ctx.db.insert("featureFlags", { key: "assistant.enabled", enabled: true, updatedAt: 1 });
     const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "running", startedAt: 1 });
