@@ -203,6 +203,7 @@ export const duplicateJobAction = defineUserMutation({
     await requireFeature(ctx, "extraction.enabled", userId);
 
     const oldJob = await ctx.db.get("extractionJobs", args.jobId);
+    // The copy is made in the workspace the call acts in, which the original must be in.
     if (!oldJob || !(await isInWorkspace(ctx, oldJob, workspaceId))) {
       throw createError("NOT_FOUND", "Job not found");
     }
@@ -236,8 +237,7 @@ export const duplicateJobAction = defineUserMutation({
     const dupStamp = await extractionStamp(ctx, userId);
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId,
-      // The copy is made where the job is, by whoever copies it.
-      workspaceId: await workspaceOf(ctx, oldJob),
+      workspaceId,
       createdBy: userId,
       name: `${oldJob.name} (Copy)`,
       searchText: jobText({ name: `${oldJob.name} (Copy)` }),
