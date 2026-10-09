@@ -3795,6 +3795,75 @@
         "did": "Read a paper’s PDF",
         "where": "OpenAlex",
         "ask": "Read a paper’s PDF"
+      },
+      "workspaces": {
+        "doing": "Looking at your workspaces",
+        "did": "Looked at your workspaces",
+        "where": "Workspaces"
+      },
+      "orgMembers": {
+        "doing": "Looking at the organization's people",
+        "did": "Looked at the organization's people",
+        "where": "Members"
+      },
+      "myInvites": {
+        "doing": "Looking at your invitations",
+        "did": "Looked at your invitations",
+        "where": "Workspaces"
+      },
+      "newOrganization": {
+        "doing": "Making an organization",
+        "did": "Made an organization",
+        "where": "Workspaces",
+        "ask": "Make an organization"
+      },
+      "inviteMembers": {
+        "doing": "Inviting people",
+        "did": "Invited people",
+        "where": "Members",
+        "ask": "Invite people"
+      },
+      "revokeInvite": {
+        "doing": "Taking back an invitation",
+        "did": "Took back an invitation",
+        "where": "Members",
+        "ask": "Take back an invitation"
+      },
+      "declineInvite": {
+        "doing": "Declining an invitation",
+        "did": "Declined an invitation",
+        "where": "Workspaces",
+        "ask": "Decline an invitation"
+      },
+      "memberRole": {
+        "doing": "Changing a member's role",
+        "did": "Changed a member's role",
+        "where": "Members",
+        "ask": "Change a member's role"
+      },
+      "removeMember": {
+        "doing": "Removing a member",
+        "did": "Removed a member",
+        "where": "Members",
+        "ask": "Remove a member"
+      },
+      "leaveOrganization": {
+        "doing": "Leaving the organization",
+        "did": "Left the organization",
+        "where": "Workspaces",
+        "ask": "Leave the organization"
+      },
+      "renameOrganization": {
+        "doing": "Renaming the organization",
+        "did": "Renamed the organization",
+        "where": "Workspace settings",
+        "ask": "Rename the organization"
+      },
+      "deleteOrganization": {
+        "doing": "Deleting the organization",
+        "did": "Deleted the organization",
+        "where": "Workspace settings",
+        "ask": "Delete the organization"
       }
     },
     "asks": {

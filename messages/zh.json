@@ -3795,6 +3795,75 @@
         "did": "已阅读论文 PDF",
         "where": "OpenAlex",
         "ask": "阅读论文 PDF"
+      },
+      "workspaces": {
+        "doing": "正在查看工作区",
+        "did": "已查看工作区",
+        "where": "工作区"
+      },
+      "orgMembers": {
+        "doing": "正在查看组织成员",
+        "did": "已查看组织成员",
+        "where": "成员"
+      },
+      "myInvites": {
+        "doing": "正在查看邀请",
+        "did": "已查看邀请",
+        "where": "工作区"
+      },
+      "newOrganization": {
+        "doing": "正在创建组织",
+        "did": "已创建组织",
+        "where": "工作区",
+        "ask": "创建组织"
+      },
+      "inviteMembers": {
+        "doing": "正在邀请成员",
+        "did": "已邀请成员",
+        "where": "成员",
+        "ask": "邀请成员"
+      },
+      "revokeInvite": {
+        "doing": "正在撤回邀请",
+        "did": "已撤回邀请",
+        "where": "成员",
+        "ask": "撤回邀请"
+      },
+      "declineInvite": {
+        "doing": "正在拒绝邀请",
+        "did": "已拒绝邀请",
+        "where": "工作区",
+        "ask": "拒绝邀请"
+      },
+      "memberRole": {
+        "doing": "正在更改成员角色",
+        "did": "已更改成员角色",
+        "where": "成员",
+        "ask": "更改成员角色"
+      },
+      "removeMember": {
+        "doing": "正在移除成员",
+        "did": "已移除成员",
+        "where": "成员",
+        "ask": "移除成员"
+      },
+      "leaveOrganization": {
+        "doing": "正在退出组织",
+        "did": "已退出组织",
+        "where": "工作区",
+        "ask": "退出组织"
+      },
+      "renameOrganization": {
+        "doing": "正在重命名组织",
+        "did": "已重命名组织",
+        "where": "工作区设置",
+        "ask": "重命名组织"
+      },
+      "deleteOrganization": {
+        "doing": "正在删除组织",
+        "did": "已删除组织",
+        "where": "工作区设置",
+        "ask": "删除组织"
       }
     },
     "asks": {

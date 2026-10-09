@@ -55,7 +55,7 @@ import {
   StorageSetupError,
 } from "./storageSetupClient";
 import type { RuntimeImageReference } from "./runtimeImageRegistry";
-import { ClerkApiError } from "./clerkOAuthApplications";
+import { ClerkApiError } from "../lib/clerk";
 import {
   isRetryableOAuthClientError,
   OAuthClientBusyError,

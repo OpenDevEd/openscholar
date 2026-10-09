@@ -6,10 +6,12 @@ import { ensureWorkspace } from "../workspaces/create";
 import { v } from "convex/values";
 import {
   clerkEventOutcomeValidator,
+  clerkInvitationSnapshotFields,
   clerkMembershipSnapshotFields,
   clerkOrganizationSnapshotFields,
 } from "../evidenceLibraries/validators";
 import type {
+  ClerkInvitationSnapshot,
   ClerkMembershipSnapshot,
   ClerkOrganizationSnapshot,
 } from "./clerk_mappers";
@@ -269,6 +271,37 @@ export async function applyMembershipProjection(
     },
   );
 }
+
+/**
+ * Keeps an invitation to an organization as Clerk has it (#651): sent, accepted, revoked or
+ * expired. One for an organization not projected yet waits for Clerk to send it again.
+ */
+export async function applyInvitationProjection(
+  ctx: MutationCtx,
+  args: MembershipProjectionMetadata & { invitation: ClerkInvitationSnapshot },
+): Promise<ClerkEventOutcome> {
+  return await applyOrderedClerkEvent(
+    ctx,
+    { ...args, entityType: "organizationInvitation", entityId: args.invitation.clerkInvitationId },
+    async () => {
+      const { clerkOrganizationId, ...invitation } = args.invitation;
+      const organization = await ctx.db.query("organizations").withIndex("by_clerkOrganizationId", (q) => q.eq("clerkOrganizationId", clerkOrganizationId)).unique();
+      if (!organization) throw new Error("Invitation to an organization not projected yet");
+      const existing = await ctx.db.query("organizationInvitations").withIndex("by_clerkInvitationId", (q) => q.eq("clerkInvitationId", invitation.clerkInvitationId)).unique();
+      if (!existing) {
+        await ctx.db.insert("organizationInvitations", { ...invitation, organizationId: organization._id, createdAt: args.processedAt, updatedAt: args.processedAt });
+      } else if (invitation.clerkUpdatedAt >= existing.clerkUpdatedAt) {
+        await ctx.db.patch("organizationInvitations", existing._id, { ...invitation, updatedAt: args.processedAt });
+      }
+    },
+  );
+}
+
+export const applyOrganizationInvitationEvent = internalMutation({
+  args: { ...eventMetadataFields, invitation: v.object(clerkInvitationSnapshotFields) },
+  returns: clerkEventOutcomeValidator,
+  handler: async (ctx, args) => await applyInvitationProjection(ctx, { ...args, processedAt: Date.now() }),
+});
 
 export const applyOrganizationEvent = internalMutation({
   args: {
