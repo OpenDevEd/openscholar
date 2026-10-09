@@ -268,6 +268,7 @@ import type * as lib_memberText from "../lib/memberText.js";
 import type * as lib_opaqueToken from "../lib/opaqueToken.js";
 import type * as lib_opaqueTokenDigest from "../lib/opaqueTokenDigest.js";
 import type * as lib_paperMetadata from "../lib/paperMetadata.js";
+import type * as lib_paperPdfs from "../lib/paperPdfs.js";
 import type * as lib_queryBounds from "../lib/queryBounds.js";
 import type * as lib_query_states from "../lib/query_states.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
@@ -673,6 +674,7 @@ declare const fullApi: ApiFromModules<{
   "lib/opaqueToken": typeof lib_opaqueToken;
   "lib/opaqueTokenDigest": typeof lib_opaqueTokenDigest;
   "lib/paperMetadata": typeof lib_paperMetadata;
+  "lib/paperPdfs": typeof lib_paperPdfs;
   "lib/queryBounds": typeof lib_queryBounds;
   "lib/query_states": typeof lib_query_states;
   "lib/rateLimit": typeof lib_rateLimit;

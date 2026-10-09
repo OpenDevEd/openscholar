@@ -84,6 +84,8 @@ export const createPaperRecords = internalMutation({
         oaUrl: paper.oaUrl,
         storageId: sanitizedStorageId,
         abstract: paper.abstract,
+        openalexId: paper.openalexId,
+        doi: paper.doi,
         pdfEnabled,
       });
       // Without full texts, a paper with nothing to read isn't saved at all.
@@ -241,6 +243,8 @@ export const setPaperStorage = internalMutation({
       oaUrl: paper.oaUrl,
       storageId: args.storageId,
       abstract: paper.abstract,
+      openalexId: paper.openalexId,
+      doi: paper.doi,
       pdfEnabled,
     });
     await ctx.db.patch("extractionPapers", args.paperId, {

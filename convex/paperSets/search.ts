@@ -121,6 +121,7 @@ export type Work = {
   language?: string | null;
   open_access?: { is_oa?: boolean | null; oa_url?: string | null; oa_status?: string | null } | null;
   funders?: Array<{ id?: string | null; display_name?: string | null }> | null;
+  has_content?: { pdf?: boolean | null } | null;
 };
 
 export function toPaper(work: Work): SearchPaper {

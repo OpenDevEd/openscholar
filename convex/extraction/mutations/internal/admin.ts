@@ -106,6 +106,8 @@ export const deleteExtractionInternal = internalMutation({
       );
       if (deleted > 0) return reschedule();
     }
+    // What the job paid for of the paper PDF store (../../../lib/paperPdfs.ts).
+    if ((await batchDeleteByIndex(ctx, "paperPdfReads", "by_scope_and_key", "scope", `extraction:${jobId}`, BATCH_SIZE)) > 0) return reschedule();
 
     return null;
   },
