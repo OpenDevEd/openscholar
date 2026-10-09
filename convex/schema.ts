@@ -113,11 +113,12 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_and_shorthand", ["workspaceId", "data.shorthand"])
     .searchIndex("search_text", { searchField: "searchText", filterFields: ["workspaceId"] }),
+  // Ratings from before `ratings`, which nothing reads or writes now (#655): emptied by migrations/clearPaperRatings, then dropped.
   paperRatings: defineTable({ userId: v.id("users"), data: ratingValidator })
     .index("by_user", ["userId"])
     .index("by_user_and_paperId", ["userId", "data.paperId"]),
   // A person's rating of a paper, from 0 to 5 (#655): their own, the same everywhere, or theirs within a
-  // collection, which its people see. Personal ones are written beside `paperRatings` until reads move here.
+  // collection, which its people see.
   ratings: defineTable({ userId: v.id("users"), paperId: v.string(), collectionId: v.optional(v.id("collections")), rating: v.number() })
     .index("by_user_and_collection_and_paper", ["userId", "collectionId", "paperId"])
     .index("by_collection_and_paper", ["collectionId", "paperId"]),

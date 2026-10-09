@@ -546,7 +546,7 @@ describe("undoing a change to research records (#342)", () => {
     expect((await edit({ kind: "patch", fields: { minCitations: record.minCitations }, clear: [] })).undo).toBeUndefined();
     // A change that also touches what a restore leaves alone would only be half undone, so it has none either.
     expect((await edit({ kind: "patch", fields: { minCitations: 50, screeningQuestions: [{ question: "Children?" }] }, clear: [] })).undo).toBeUndefined();
-    expect((await change({ kind: "rating", paperId: "W1", rating: null })).undo).toBeUndefined();
+    expect((await change({ kind: "rating", paperId: "W404", rating: null })).undo).toBeUndefined();
     expect((await change({ kind: "shortcut", shorthand: "none", value: null })).undo).toBeUndefined();
     expect((await change({ kind: "deleteSearch", id: record.id })).undo).toBeUndefined();
   });
