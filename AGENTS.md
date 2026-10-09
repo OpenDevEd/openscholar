@@ -4,9 +4,10 @@ Keep this file byte-for-byte identical in `OpenDevEd/openalex-count` and
 `OpenDevEd/new-el`. Repository-specific rules belong in
 `docs/agents/project.md`.
 
-For any non-trivial task, read `docs/agents/project.md` in the repository the
-task is about before acting. Read a named plan or specification when the
-request points to one. Do not load every plan or document by default.
+Read `docs/agents/project.md` in the repository the task is about before
+acting on any non-trivial task, and before every push: it names the checks to
+run first. Read a named plan or specification when the request points to one.
+Do not load every plan or document by default.
 
 For product, architecture, roadmap, or cross-repository work, check that the
 Outline MCP server works, then read Outline in the order that
