@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import { AiIcon, Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
@@ -59,7 +59,8 @@ type Source =
   | { kind: "search"; id: string; label: string; count: number; search: SearchResult }
   | { kind: "collection"; id: Id<"collections">; label: string; count: number }
   | { kind: "saved"; id: "saved"; label: string; count: number }
-  | { kind: "screening"; id: Id<"screeningJobs">; label: string; count: number };
+  // `called`: what the server names a screening of its included papers after (`insertJob`).
+  | { kind: "screening"; id: Id<"screeningJobs">; label: string; count: number; called?: string };
 
 const setOf = (source: Source): PaperSet =>
   source.kind === "search" ? { kind: "search", searchId: source.id } : source.kind === "collection" ? { kind: "collection", collectionId: source.id } : source.kind === "saved" ? { kind: "saved" } : { kind: "screening", jobId: source.id };
@@ -83,6 +84,7 @@ export function SetupView({
   const t = useTranslations("screeningPage");
   const tc = useTranslations("common");
   const format = useFormatter();
+  const now = useNow();
   const locale = useLocale();
   const toast = useAppToast();
 
@@ -103,7 +105,7 @@ export function SetupView({
       pager: { ...collections, pageCount: collectionCount === undefined ? undefined : Math.max(1, Math.ceil(collectionCount / SOURCE_PAGE)) },
     },
     saved: { rows: [{ kind: "saved", id: "saved", label: t("allSavedPapers"), count: savedCount ?? 0 }] },
-    screening: { rows: screenings.items.map((job: JobRow) => ({ kind: "screening", id: job._id, label: jobName(t, job, date), count: job.qualifiedPapers })), pager: screenings },
+    screening: { rows: screenings.items.map((job: JobRow) => ({ kind: "screening", id: job._id, label: jobName(t, job, date), count: job.qualifiedPapers, called: job.name ?? job.label })), pager: screenings },
   };
 
   const [kind, setKind] = useState<Kind>(again?.set?.kind ?? "search");
@@ -158,8 +160,8 @@ export function SetupView({
   const { data: earlier } = useProtectedQuery(api.screening.queries.getScreeningJob, inWorkspace(workspaceId, source?.kind === "screening" ? { jobId: source.id } : "skip"));
   const fresh = earlier ? questionsOf(earlier).filter((q) => !questions.some((x) => x.text.toLowerCase() === q.text.toLowerCase())) : [];
   const defaultName = !source ? "" : source.kind === "screening" ? source.label : t("includedIn", { name: source.label });
-  // What it's called left unnamed: its papers, as the rail names a screening.
-  const unnamed = source ? jobName(t, { createdAt: 0, set: setOf(source), label: source.label || tc("noQuery") }, date) : t("newScreening");
+  // What it's called left unnamed: its papers, named from what the server keeps of them, as the rail names a screening.
+  const unnamed = source ? jobName(t, { createdAt: now.getTime(), set: setOf(source), label: source.kind === "screening" ? source.called : source.label }, date) : t("newScreening");
 
   const destinations = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
   // A collection can't be its own destination; picking it as the source moves the pick to a new one.
