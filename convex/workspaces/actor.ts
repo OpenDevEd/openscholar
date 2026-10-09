@@ -46,7 +46,9 @@ export async function actorIn(ctx: Pick<QueryCtx, "db">, user: Doc<"users">, wor
 }
 
 async function organizationRole(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, clerkUserId: string) {
-  if ((await ctx.db.get("organizations", organizationId))?.state !== "active") return null;
+  const organization = await ctx.db.get("organizations", organizationId);
+  // One being deleted takes no more work: nothing new can stop its deletion.
+  if (organization?.state !== "active" || organization.deletingAt !== undefined) return null;
   const membership = await ctx.db
     .query("organizationMemberships")
     .withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organizationId).eq("clerkUserId", clerkUserId).eq("state", "active"))

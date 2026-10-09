@@ -8,18 +8,20 @@ import { fakeAutumnFetch } from "../billing/billing.test-support";
 
 /** Clerk's Backend API for organizations, as far as these actions use it, kept in memory. */
 function fakeClerk() {
-  // Clerk's times are milliseconds, as its webhooks' are.
+  // Clerk's times are real milliseconds, as its webhooks' are.
   let clock = Date.now();
+  const now = () => (clock = Math.max(clock + 1, Date.now()));
   let ids = 0;
   const organizations = new Map<string, Record<string, unknown>>();
   const memberships = new Map<string, Record<string, unknown>>();
   const invitations = new Map<string, Record<string, unknown>>();
   const membership = (orgId: string, userId: string, role: string) => {
-    const row = { id: `orgmem_${++ids}`, role, created_at: ++clock, updated_at: clock, public_user_data: { user_id: userId }, organization: organizations.get(orgId) };
+    const row = { id: `orgmem_${++ids}`, role, created_at: now(), updated_at: clock, public_user_data: { user_id: userId }, organization: organizations.get(orgId) };
     memberships.set(`${orgId}/${userId}`, row);
     return row;
   };
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+  let failDeletion = false;
   const fetch = vi.fn(async (input: string | URL, init?: RequestInit) => {
     const url = new URL(String(input));
     const path = url.pathname.replace(/^\/v1/, "");
@@ -29,15 +31,16 @@ function fakeClerk() {
     if (path === "/instance") return json({ id: "ins_test" });
     if (path === "/organizations" && method === "POST") {
       const id = `org_${++ids}`;
-      organizations.set(id, { id, name: body.name, slug: `${body.name.toLowerCase()}-${ids}`, created_at: ++clock, updated_at: clock, public_metadata: {} });
+      organizations.set(id, { id, name: body.name, slug: `${body.name.toLowerCase()}-${ids}`, created_at: now(), updated_at: clock, public_metadata: {} });
       membership(id, body.created_by, "org:admin");
       return json(organizations.get(id));
     }
     if ((match = path.match(/^\/organizations\/([^/]+)$/))) {
       const organization = organizations.get(match[1]);
       if (!organization) return json({ errors: [{ code: "resource_not_found" }] }, 404);
-      if (method === "PATCH") Object.assign(organization, { ...body, updated_at: ++clock });
+      if (method === "PATCH") Object.assign(organization, { ...body, updated_at: now() });
       if (method === "DELETE") {
+        if (failDeletion) return json({ errors: [{ code: "internal" }] }, 500);
         organizations.delete(match[1]);
         return json({ id: match[1], object: "organization", deleted: true });
       }
@@ -51,7 +54,7 @@ function fakeClerk() {
       const key = `${match[1]}/${match[2]}`;
       const row = memberships.get(key);
       if (!row) return json({ errors: [{ code: "resource_not_found" }] }, 404);
-      if (method === "PATCH") Object.assign(row, { role: body.role, updated_at: ++clock });
+      if (method === "PATCH") Object.assign(row, { role: body.role, updated_at: now() });
       if (method === "DELETE") memberships.delete(key);
       return json(row);
     }
@@ -59,7 +62,8 @@ function fakeClerk() {
       if ([...memberships.keys()].filter((key) => key.startsWith(`${match![1]}/`)).length + body.length > 5) return json({ errors: [{ code: "organization_membership_quota_exceeded" }] }, 403);
       return json(
         body.map((one: { email_address: string; role: string; public_metadata: unknown }) => {
-          const row = { id: `orginv_${++ids}`, organization_id: match![1], email_address: one.email_address, role: one.role, status: "pending", public_metadata: one.public_metadata, created_at: ++clock, updated_at: clock };
+          // Expires in a week: a Node timer past about 24.8 days fires at once, as a far later expiry would here.
+          const row = { id: `orginv_${++ids}`, organization_id: match![1], email_address: one.email_address, role: one.role, status: "pending", public_metadata: one.public_metadata, created_at: now(), updated_at: clock, expires_at: clock + 7 * 86_400_000 };
           invitations.set(row.id, row);
           return row;
         }),
@@ -67,7 +71,7 @@ function fakeClerk() {
     }
     if ((match = path.match(/^\/organizations\/([^/]+)\/invitations\/([^/]+)\/revoke$/))) {
       const row = invitations.get(match[2])!;
-      Object.assign(row, { status: "revoked", updated_at: ++clock });
+      Object.assign(row, { status: "revoked", updated_at: now() });
       return json(row);
     }
     throw new Error(`Clerk has no ${method} ${path} here`);
@@ -75,10 +79,10 @@ function fakeClerk() {
   /** Someone accepts an invitation in Clerk's own client; Clerk's webhooks tell OpenScholar. */
   const accept = (invitationId: string, userId: string) => {
     const invitation = invitations.get(invitationId)!;
-    Object.assign(invitation, { status: "accepted", updated_at: ++clock });
+    Object.assign(invitation, { status: "accepted", updated_at: now() });
     return { invitation, membership: membership(String(invitation.organization_id), userId, String(invitation.role)) };
   };
-  return { fetch, accept };
+  return { fetch, accept, failDeletions: (fail: boolean) => (failDeletion = fail), invitations };
 }
 
 let clerk: ReturnType<typeof fakeClerk>;
@@ -185,5 +189,57 @@ describe("an organization", () => {
     expect(invited.role).toBe("admin");
     await bobAs.action(api.organizations.manage.declineInvitation, { invitationId: invited.invitationId as Id<"organizationInvitations"> });
     expect((await bobAs.query(api.organizations.queries.myInvitations, page)).page).toEqual([]);
+  });
+
+  it("takes no new work while it's being deleted, and is worked in again if the deletion fails", async () => {
+    const { t, aliceAs } = await people();
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    const inLab = { workspaceId: lab.workspaceId };
+    // While a deletion runs, nobody acts in it: no Evidence Library can be made to strand.
+    const deletingAt = await t.mutation(internal.organizations.read.beginDeletion, inLab);
+    await expect(aliceAs.mutation(api.library.collections.createCollection, { ...inLab, name: "Late" })).rejects.toThrow(/Workspace not found/);
+    const organizationId = await t.run(async (ctx) => (await ctx.db.query("organizations").first())!._id);
+    await t.mutation(internal.organizations.read.endDeletion, { organizationId, deletingAt });
+    clerk.failDeletions(true);
+    await expect(aliceAs.action(api.organizations.manage.deleteOrganization, inLab)).rejects.toThrow();
+    // Clerk didn't delete it, so it's hers to work in again.
+    expect((await aliceAs.query(api.organizations.queries.members, { ...inLab, ...page })).page).toHaveLength(1);
+  });
+
+  it("keeps someone who is invited back at once after being removed", async () => {
+    const { bob, aliceAs, bobAs, webhook } = await people();
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    const inLab = { workspaceId: lab.workspaceId };
+    await aliceAs.action(api.organizations.manage.invite, { ...inLab, emails: ["bob@example.org"], role: "member" });
+    const join = async (eventId: string) => {
+      const [invited] = (await bobAs.query(api.organizations.queries.myInvitations, page)).page;
+      const accepted = clerk.accept(invited.clerkInvitationId, "bob");
+      await webhook("organizationInvitation.accepted", accepted.invitation, `${eventId}_invitation`);
+      await webhook("organizationMembership.created", accepted.membership, eventId);
+    };
+    await join("msg_first");
+    // Some time passes before she removes him, as it does.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await aliceAs.action(api.organizations.manage.removeMember, { ...inLab, userId: bob });
+    expect((await bobAs.query(api.organizations.queries.workspaces, page)).page.map(({ name }) => name)).toEqual(["Bob"]);
+    // Invited back and joined again: the earlier removal is older than the new membership.
+    await aliceAs.action(api.organizations.manage.invite, { ...inLab, emails: ["bob@example.org"], role: "member" });
+    await join("msg_second");
+    expect((await bobAs.query(api.organizations.queries.workspaces, page)).page.map(({ name }) => name)).toEqual(["Bob", "Lab"]);
+  });
+
+  it("drops an invitation from the lists once its link expires", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { t, aliceAs, bobAs } = await people();
+      const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+      await aliceAs.action(api.organizations.manage.invite, { workspaceId: lab.workspaceId, emails: ["bob@example.org"], role: "member" });
+      expect((await bobAs.query(api.organizations.queries.myInvitations, page)).page).toHaveLength(1);
+      vi.advanceTimersByTime(8 * 86_400_000);
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect((await bobAs.query(api.organizations.queries.myInvitations, page)).page).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

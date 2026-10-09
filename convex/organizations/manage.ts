@@ -37,15 +37,18 @@ async function clerkInstanceId(key: string) {
 
 const hex = (buffer: ArrayBuffer) => [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 
-/** Keeps a Clerk object as the webhook would for `eventType`. */
-async function keep(ctx: ActionCtx, key: string, eventType: string, data: unknown) {
+/**
+ * Keeps a Clerk object as the webhook would for `eventType`. A deletion answers with no time of
+ * its own, so it's ordered at `sentAt`, just before the request: a change after it, such as
+ * someone removed and invited back at once, is then newer, whenever the answer arrives.
+ */
+async function keep(ctx: ActionCtx, key: string, eventType: string, data: unknown, sentAt?: number) {
   const digest = hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(eventType + JSON.stringify(data))));
   const outcome = await processClerkWebhookEvent({
     eventId: `api_${digest.slice(0, 32)}`,
     eventType,
     instanceId: await clerkInstanceId(key),
-    // A deletion answers with no time of its own.
-    occurredAt: isRecord(data) && typeof data.updated_at === "number" && !eventType.endsWith(".deleted") ? data.updated_at : Date.now(),
+    occurredAt: eventType.endsWith(".deleted") ? (sentAt ?? Date.now()) : isRecord(data) && typeof data.updated_at === "number" ? data.updated_at : Date.now(),
     payloadSha256: digest,
     data,
     runMutation: (mutation, args) => ctx.runMutation(mutation as never, args as never),
@@ -231,8 +234,9 @@ async function endMembership(ctx: ActionCtx, actor: Acting, userId: Id<"users">)
   const key = clerkSecretKey();
   const { clerkUserId, organization } = await inOrganization(ctx, actor, { adminOnly: false });
   const target: string = await ctx.runQuery(internal.organizations.read.checkMemberChange, { workspaceId: actor.workspaceId, actorClerkUserId: clerkUserId, actorIsAdmin: actor.role === "admin", userId, becomes: "gone" });
+  const sentAt = Date.now();
   const membership = await clerk(key, "DELETE", `/organizations/${organization.clerkOrganizationId}/memberships/${target}`);
-  await keep(ctx, key, "organizationMembership.deleted", membership);
+  await keep(ctx, key, "organizationMembership.deleted", membership, sentAt);
 }
 
 export const removeMemberAction = defineUserAction({
@@ -304,9 +308,15 @@ export const deleteOrganizationAction = defineUserAction({
   run: async (ctx, actor) => {
     const key = clerkSecretKey();
     const { organization } = await inOrganization(ctx, actor, { adminOnly: true });
-    await ctx.runQuery(internal.organizations.read.checkDeletion, { workspaceId: actor.workspaceId });
-    const deleted = await clerk(key, "DELETE", `/organizations/${organization.clerkOrganizationId}`);
-    await keep(ctx, key, "organization.deleted", isRecord(deleted) ? deleted : { id: organization.clerkOrganizationId });
+    const deletingAt: number = await ctx.runMutation(internal.organizations.read.beginDeletion, { workspaceId: actor.workspaceId });
+    const sentAt = Date.now();
+    try {
+      await clerk(key, "DELETE", `/organizations/${organization.clerkOrganizationId}`);
+    } catch (error) {
+      await ctx.runMutation(internal.organizations.read.endDeletion, { organizationId: organization.organizationId, deletingAt });
+      throw error;
+    }
+    await keep(ctx, key, "organization.deleted", { id: organization.clerkOrganizationId }, sentAt);
     return null;
   },
 });

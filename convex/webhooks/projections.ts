@@ -289,7 +289,9 @@ export async function applyInvitationProjection(
       if (!organization) throw new Error("Invitation to an organization not projected yet");
       const existing = await ctx.db.query("organizationInvitations").withIndex("by_clerkInvitationId", (q) => q.eq("clerkInvitationId", invitation.clerkInvitationId)).unique();
       if (!existing) {
-        await ctx.db.insert("organizationInvitations", { ...invitation, organizationId: organization._id, createdAt: args.processedAt, updatedAt: args.processedAt });
+        const invitationId = await ctx.db.insert("organizationInvitations", { ...invitation, organizationId: organization._id, createdAt: args.processedAt, updatedAt: args.processedAt });
+        // Clerk sends nothing when its link expires.
+        if (invitation.state === "pending" && invitation.expiresAt) await ctx.scheduler.runAt(invitation.expiresAt, internal.organizations.read.expireInvitation, { invitationId });
       } else if (invitation.clerkUpdatedAt >= existing.clerkUpdatedAt) {
         await ctx.db.patch("organizationInvitations", existing._id, { ...invitation, updatedAt: args.processedAt });
       }
