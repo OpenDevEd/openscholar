@@ -11,7 +11,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { MAX_ASSISTANT_THREAD_GRANTS } from "../lib/queryBounds";
 import { readMemberOrganizations } from "../organizationFeatures";
-import { actorIn, personalWorkspaceOf, workspaceOf } from "../workspaces/actor";
+import { actorIn, personalWorkspaceOf, workspaceOf, type InWorkspace } from "../workspaces/actor";
 import type { assistantPrincipalValidator, assistantRoleValidator } from "./validators";
 
 export type AssistantRole = Infer<typeof assistantRoleValidator>;
@@ -113,6 +113,17 @@ export async function replyWorkspace(ctx: Pick<QueryCtx, "db">, userId: Id<"user
   return user && (await actorIn(ctx, user, workspaceId)) ? workspaceId : await personalWorkspaceOf(ctx, userId);
 }
 
+/**
+ * `requireThread`, for a registered action run in a page's workspace or by a reply: the chat
+ * must be one it acts on there (#650), which is the chat's own workspace for its members, and
+ * the person's own for someone it's shared with. Any other fails as not found.
+ */
+export async function requireThreadIn(ctx: QueryCtx | MutationCtx, { userId, workspaceId }: InWorkspace, threadId: Id<"assistantThreads">, atLeast: AssistantRole = "read") {
+  const found = await requireThread(ctx, userId, threadId, atLeast);
+  if ((await replyWorkspace(ctx, userId, found.thread)) !== workspaceId) throw createError("NOT_FOUND", "Chat not found");
+  return found;
+}
+
 /** Moves the chat to the top of every list it shows in: its own row and each access row take the new time. */
 export async function touchThread(ctx: MutationCtx, threadId: Id<"assistantThreads">, at: number) {
   await ctx.db.patch("assistantThreads", threadId, { lastMessageAt: at, updatedAt: at });
@@ -133,11 +144,13 @@ export async function deleteThread(ctx: MutationCtx, thread: Doc<"assistantThrea
 const PURGE_BATCH = 20;
 
 /**
- * Deletes a purged account's chats, and its access to other people's, a batch at a time.
- * Returns whether everything is gone; the cleanup runs again until it is.
+ * Deletes the chats in a purged account's own workspace, and its access to other people's, a
+ * batch at a time. Chats it made in an organization stay the organization's (#650). Returns
+ * whether everything is gone; the cleanup runs again until it is.
  */
 export async function purgeAccountChats(ctx: MutationCtx, userId: Id<"users">) {
-  const owned = await ctx.db.query("assistantThreads").withIndex("by_owner", (q) => q.eq("ownerId", userId)).take(PURGE_BATCH);
+  const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
+  const owned = workspace ? await ctx.db.query("assistantThreads").withIndex("by_workspace_and_lastMessageAt", (q) => q.eq("workspaceId", workspace._id)).take(PURGE_BATCH) : [];
   for (const thread of owned) await deleteThread(ctx, thread);
   const shared = await ctx.db
     .query("assistantThreadAccess")
