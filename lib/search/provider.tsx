@@ -122,6 +122,7 @@ function cloneSearchParams(params: SearchParams): SearchParams {
     itype: [...params.itype],
     funder: [...params.funder],
     author: [...params.author],
+    like: [...params.like],
   };
 }
 
@@ -259,6 +260,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       cites: urlParams.cites,
       citedBy: urlParams.citedBy,
       rel: urlParams.rel,
+      like: urlParams.like,
       review: urlParams.review,
       area: urlParams.area,
       sdg: urlParams.sdg,
@@ -298,6 +300,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     urlParams.cites,
     urlParams.citedBy,
     urlParams.rel,
+    urlParams.like,
     urlParams.review,
     urlParams.area,
     urlParams.sdg,
@@ -399,6 +402,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       citesItemId: params.cites || '',
       citedByItemId: params.citedBy || '',
       relatedToItemId: params.rel || '',
+      similarTo: params.like,
       reviewFilter: params.review || false,
       researchAreas: params.area,
       sdgs: params.sdg,
@@ -831,6 +835,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     citesItemId: urlParams.cites,
     citedByItemId: urlParams.citedBy,
     relatedToItemId: urlParams.rel,
+    similarTo: urlParams.like,
     reviewFilter: urlParams.review,
     researchAreas: urlParams.area,
     sdgs: urlParams.sdg,
