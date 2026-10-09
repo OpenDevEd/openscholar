@@ -243,10 +243,13 @@ export class ResearchSession {
     this.workspace = workspace;
     this.scope = { accountId: this.accountId, workspaceId: workspace.workspaceId };
     this.resolveScope(this.scope);
-    if (!this.listeners.size) return;
-    this.enabled = this.wanted;
-    for (const entry of this.watches()) if (!entry.live && entry.readers.size) this.read(entry);
-    if (this.enabled) void this.import(this.epoch);
+    // It's bound while the page renders: what it starts tells the page, so it starts after.
+    queueMicrotask(() => {
+      if (!this.listeners.size) return;
+      this.enabled = this.wanted;
+      for (const entry of this.watches()) if (!entry.live && entry.readers.size) this.read(entry);
+      if (this.enabled) void this.import(this.epoch);
+    });
   }
   private start() {
     const epoch = ++this.epoch;
