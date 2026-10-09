@@ -19,10 +19,14 @@ it("puts each library in its organization's workspace, made by its creator, and 
       profile: await ctx.db.insert("authorProfiles", { ownerId: ada, name: "Ada", headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: "", revision: 1, updatedAt: 1 }),
     }));
     expect(await t.action(internal.migrations.evidenceLibraryWorkspaces.verify, {})).toBe(3);
-    for (let runs = 0; runs < 2; runs++) {
-      await t.mutation(internal.migrations.evidenceLibraryWorkspaces.run, {});
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-    }
+    const stored = () => t.run(async (ctx) => ({ libraries: await ctx.db.query("evidenceLibraries").collect(), profiles: await ctx.db.query("authorProfiles").collect() }));
+    await t.mutation(internal.migrations.evidenceLibraryWorkspaces.run, {});
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const once = await stored();
+    // Run again from the start, it changes nothing.
+    await t.mutation(internal.migrations.evidenceLibraryWorkspaces.run, { reset: true });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await stored()).toEqual(once);
     expect(await t.action(internal.migrations.evidenceLibraryWorkspaces.verify, {})).toBe(0);
     const rows = await t.run(async (ctx) => {
       const workspaces = await ctx.db.query("workspaces").collect();
