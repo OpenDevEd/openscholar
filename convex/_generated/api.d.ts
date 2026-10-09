@@ -389,6 +389,7 @@ import type * as webhooks_projections from "../webhooks/projections.js";
 import type * as workpool from "../workpool.js";
 import type * as workspaces_actor from "../workspaces/actor.js";
 import type * as workspaces_create from "../workspaces/create.js";
+import type * as workspaces_makers from "../workspaces/makers.js";
 import type * as workspaces_personal from "../workspaces/personal.js";
 import type * as workspaces_purge from "../workspaces/purge.js";
 import type * as workspaces_queries from "../workspaces/queries.js";
@@ -794,6 +795,7 @@ declare const fullApi: ApiFromModules<{
   workpool: typeof workpool;
   "workspaces/actor": typeof workspaces_actor;
   "workspaces/create": typeof workspaces_create;
+  "workspaces/makers": typeof workspaces_makers;
   "workspaces/personal": typeof workspaces_personal;
   "workspaces/purge": typeof workspaces_purge;
   "workspaces/queries": typeof workspaces_queries;
