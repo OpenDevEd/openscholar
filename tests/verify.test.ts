@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzePhase, knownAfterLooks, matchKnown, stopDecision, type Frame, type Item } from "../scripts/verify/analysis.ts";
+import { parseStep } from "../scripts/verify/browser.ts";
 
 function frame(t: number, change: Partial<Frame> = {}): Frame {
   return { t, moved: [], added: [], removed: [], textAdded: [], textRemoved: [], ...change };
@@ -117,7 +118,13 @@ describe("analyzePhase after an action", () => {
 
 describe("stopDecision", () => {
   const sessionStartMs = 1_000;
-  const userFacing = /^(app|components)\/.+\.(tsx|css)$/;
+  const userFacing = /^((app|components)\/.+\.(tsx|css)|components\/.+\.ts)$/;
+
+  it("counts .ts modules beside components, such as shared field styles", () => {
+    expect(
+      stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: null, changed: [{ path: "components/ui/field-styles.ts", mtimeMs: 5_000 }] }),
+    ).toEqual({ block: true, files: ["components/ui/field-styles.ts"] });
+  });
 
   it("lets the agent stop when no user-facing file changed", () => {
     expect(
@@ -226,6 +233,21 @@ describe("matchKnown", () => {
     expect(matchKnown([{ ...item("shift", ["card", "card"]), deltas: [move(4), move(4)] }], base)).toEqual([false]);
   });
 
+  it("lets one movement there vouch for one element of a problem here, not for two that add up to it", () => {
+    const move = (dy: number) => ({ dx: 0, dy, dw: 0, dh: 0 });
+    const base = [{ ...item("shift", ["card"]), deltas: [move(100)] }];
+    expect(matchKnown([{ ...item("shift", ["card", "card"]), deltas: [move(80), move(20)] }], base)).toEqual([false]);
+    expect(matchKnown([{ ...item("shift", ["card"]), deltas: [move(96)] }], base)).toEqual([true]);
+  });
+
+  it("matches repeated elements by their closest fit, whichever order they moved in here", () => {
+    const base = [{ ...item("shift", ["row", "row"]), deltas: [{ dx: 0, dy: 10, dw: 0, dh: 10 }, { dx: 0, dy: 10, dw: 0, dh: 0 }] }];
+    const local = [{ ...item("shift", ["row", "row"]), deltas: [{ dx: 0, dy: 10, dw: 0, dh: 0 }, { dx: 0, dy: 10, dw: 0, dh: 10 }] }];
+    expect(matchKnown(local, base)).toEqual([true]);
+    const split = [{ ...item("shift", ["row", "row"]), deltas: [{ dx: 0, dy: 10, dw: 0, dh: 0 }, { dx: 0, dy: 0, dw: 0, dh: 10 }] }];
+    expect(matchKnown(split, [{ ...item("shift", ["row"]), deltas: [{ dx: 0, dy: 10, dw: 0, dh: 10 }] }])).toEqual([false]);
+  });
+
   it("matches flashes and errors only by the same kind and text", () => {
     const local = [item("text-flash", ["12 papers"]), item("error", ["boom"]), item("brief-text", ["12 papers"])];
     const base = [item("text-flash", ["12 papers"]), item("error", ["other"])];
@@ -245,5 +267,13 @@ describe("knownAfterLooks", () => {
   it("takes the look that saw the problem when the other one missed it", () => {
     const local = [item("shift", ["filter", "footer"])];
     expect(knownAfterLooks(local, [[], [item("shift", ["filter", "footer"])]])).toEqual([true]);
+  });
+});
+
+describe("parseStep", () => {
+  it("types the text after => into a selector that holds spaces", () => {
+    expect(parseStep('fill role=textbox[name="Search terms"] => climate evidence')).toMatchObject({ verb: "fill", target: 'role=textbox[name="Search terms"]', text: "climate evidence" });
+    expect(parseStep("fill #search climate evidence")).toMatchObject({ target: "#search", text: "climate evidence" });
+    expect(() => parseStep("tap #search")).toThrow("Unknown step");
   });
 });

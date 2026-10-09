@@ -17,12 +17,24 @@ export type Step = { verb: string; target: string; text: string; label: string }
 
 const STEP_VERBS = ["click", "hover", "fill", "press", "wait", "goto"];
 
+/**
+ * fill <selector> => <text> types the text after `=>` into the selector before
+ * it, so the selector can hold spaces (role=textbox[name="Search terms"]).
+ * Without `=>`, the selector is the first word and the rest is typed.
+ */
+function fillParts(rest: string): [string, string] {
+  const arrow = rest.indexOf(" => ");
+  if (arrow >= 0) return [rest.slice(0, arrow), rest.slice(arrow + 4)];
+  const [target = "", ...text] = rest.split(" ");
+  return [target, text.join(" ")];
+}
+
 export function parseStep(raw: string): Step {
   const [verb, ...rest] = raw.trim().split(/\s+/);
   if (!STEP_VERBS.includes(verb)) throw new Error(`Unknown step "${raw}". Steps start with one of: ${STEP_VERBS.join(", ")}.`);
-  // fill <selector> <text>: the selector is the first token, the rest is typed.
-  if (verb === "fill") return { verb, target: rest[0] ?? "", text: rest.slice(1).join(" "), label: raw };
-  return { verb, target: rest.join(" "), text: "", label: raw };
+  if (verb !== "fill") return { verb, target: rest.join(" "), text: "", label: raw };
+  const [target, text] = fillParts(rest.join(" "));
+  return { verb, target, text, label: raw };
 }
 
 export type RunOptions = {
@@ -35,6 +47,8 @@ export type RunOptions = {
   analyze: boolean;
   /** Gets the page ready before recording starts: signs in, answers a consent dialog. */
   prepare: (context: BrowserContext, page: Page, origin: string) => Promise<void>;
+  /** Cleans up after the run, such as signing out, so sessions don't pile up. */
+  finish?: (page: Page) => Promise<void>;
 };
 
 export type PhaseResult = { name: string; items: Item[] };
@@ -326,6 +340,8 @@ async function work(browser: Browser, session: Omit<Session, "page">): Promise<v
     // control the branch adds, ends the run there.
     if (!session.tolerant) throw error;
     session.run.stopped = `${session.run.stopped} (${(error as Error).message.split("\n")[0]})`;
+  } finally {
+    await session.options.finish?.(page).catch(() => {});
   }
 }
 

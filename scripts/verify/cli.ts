@@ -25,8 +25,9 @@ const LAST_PASS = path.join(STATE, "last-pass.json");
 const CONVEX_URL = "https://convex.opendev.space";
 const DEV_SITE = "https://dev.openscholar.ai";
 const VERIFY_USER = "verify-agent+clerk_test@example.com";
-// Files a person sees. Route handlers and other .ts files under app/ are not.
-const USER_FACING = /^(app|components)\/.+\.(tsx|css)$/;
+// Files a person sees: pages, components and styles, and the .ts modules
+// beside components. Route handlers and other .ts files under app/ are not.
+const USER_FACING = /^((app|components)\/.+\.(tsx|css)|components\/.+\.ts)$/;
 // Elements whose movement is their job: progress bars, Next's dev badge, and
 // anything a page marks with data-verify-ignore.
 const ALWAYS_ALLOWED = ["[role=progressbar]", "[data-verify-ignore]", "nextjs-portal"];
@@ -262,6 +263,10 @@ async function prepareFor(values: Values): Promise<RunOptions["prepare"]> {
 const number = (value: unknown, fallback: number) => Number(value ?? fallback);
 const list = (value: unknown) => (value as string[] | undefined) ?? [];
 
+// Closing the browser drops the session cookie but leaves the session open in
+// Clerk; signing out ends it, so runs don't pile up sessions for the account.
+const signOut = (page: Page) => page.evaluate("window.Clerk && window.Clerk.signOut()").then(() => undefined);
+
 async function optionsFor(values: Values, mode: string): Promise<RunOptions> {
   const shift = mode === "shift";
   return {
@@ -273,6 +278,7 @@ async function optionsFor(values: Values, mode: string): Promise<RunOptions> {
     full: values.full === true,
     analyze: shift,
     prepare: await prepareFor(values),
+    finish: values.anon === true ? undefined : signOut,
   };
 }
 
@@ -342,7 +348,7 @@ const HELP = `Usage: npm run verify -- <command>
 
 Options for shift and shot:
   --do "<step>"            Repeat for each action: click <selector>, hover <selector>,
-                           fill <selector> <text>, press <key>, wait <ms>, goto <path>.
+                           fill <selector> => <text>, press <key>, wait <ms>, goto <path>.
                            Selectors are Playwright selectors: css, text=..., role=button[name="Save"].
                            Steps run in each browser and again on the comparison site: keep them
                            to interactions that save nothing.

@@ -93,7 +93,8 @@ const anyNew = (local: SiteRun, onBase: boolean[][]) => local.phases.some((phase
  */
 async function again(comparison: Comparison, browser: string, local: SiteRun, onBase: boolean[][]): Promise<boolean[][]> {
   const all = local.phases.map((phase) => phase.items.map(() => true));
-  if (!anyNew(local, onBase)) return all;
+  // Without a comparison, a second run would only replay steps that may save data.
+  if (!comparison.base || !anyNew(local, onBase)) return all;
   const second = await runSite(browser, comparison.local, comparison.target, comparison.options, null, true);
   // A second run that stopped short shows nothing about the phases it missed.
   if (second.stopped) return all;

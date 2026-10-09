@@ -194,16 +194,33 @@ function take(entry: Vouch, delta: Sides | null): () => void {
   return () => Object.assign(entry, before);
 }
 
-/** Whether every element or text this problem names is vouched for there; uses the entries only when all are. */
+// How many sides an entry moved that this move here didn't: the closest fit
+// leaves the entries that also moved other sides for the moves that need them.
+const extraSides = (entry: Vouch, delta: Sides | null) => (entry.left && delta ? entry.left.filter((value, index) => moved(value) && !moved(delta[index])).length : 0);
+
+/** Of the entries that fit, the one that fits most closely, whatever order the moves came in. */
+function closest(pool: Vouch[], taken: Set<Vouch>, item: Item, key: string, delta: Sides | null): Vouch | undefined {
+  const fitting = pool.filter((candidate) => !taken.has(candidate) && fits(candidate, item.kind, key, delta));
+  return fitting.sort((a, b) => extraSides(a, delta) - extraSides(b, delta))[0];
+}
+
+/**
+ * Whether every element or text this problem names is vouched for there;
+ * uses the entries only when all are. Within one problem an entry vouches for
+ * one element: two cards moving 80px and 20px here are not one card moving
+ * 100px there.
+ */
 function vouchedFor(pool: Vouch[], item: Item): boolean {
   const undo: (() => void)[] = [];
+  const taken = new Set<Vouch>();
   for (const [index, key] of item.keys.entries()) {
     const delta = item.deltas?.[index] ? sides(item.deltas[index]) : null;
-    const entry = pool.find((candidate) => fits(candidate, item.kind, key, delta));
+    const entry = closest(pool, taken, item, key, delta);
     if (!entry) {
       for (const giveBack of undo) giveBack();
       return false;
     }
+    taken.add(entry);
     undo.push(take(entry, delta));
   }
   return true;

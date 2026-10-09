@@ -148,9 +148,10 @@ export function recorder(config: { allow: string }) {
   }
 
   const still = (delta: number[]) => delta.every((value) => Math.abs(value) < 1);
-  // A wrapper that only grew around new content shows nothing.
-  const unseenResize = (element: HTMLElement, delta: number[]) => delta[0] === 0 && delta[1] === 0 && !drawsBox(element);
-  const quiet = (element: HTMLElement, own: number[]) => still(own) || unseenResize(element, own) || animating(element);
+  // An element that draws no box shows nothing when it resizes, only when it
+  // moves: a wrapper growing around new content is seen through the content
+  // and the elements it pushes, whichever frame the resize lands in.
+  const visible = (element: HTMLElement, own: number[]) => (drawsBox(element) ? own : [own[0], own[1], 0, 0]);
 
   /** Whether the element was or is on screen, updating what was shown. */
   function seenNow(element: HTMLElement, id: number): boolean {
@@ -161,8 +162,8 @@ export function recorder(config: { allow: string }) {
 
   function measureMoved(frame: Frame, element: HTMLElement, id: number, delta: number[]) {
     frame.deltas.set(id, delta);
-    const own = ownDelta(frame, element, delta);
-    if (seenNow(element, id) && !quiet(element, own)) frame.moved.push({ id, dx: own[0], dy: own[1], dw: own[2], dh: own[3] });
+    const own = visible(element, ownDelta(frame, element, delta));
+    if (seenNow(element, id) && !still(own) && !animating(element)) frame.moved.push({ id, dx: own[0], dy: own[1], dw: own[2], dh: own[3] });
   }
 
   function measure(frame: Frame, element: HTMLElement, seen: Set<number>) {
