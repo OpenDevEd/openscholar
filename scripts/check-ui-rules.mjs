@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-// The UI rules agents kept breaking, checked on every .ts and .tsx file under
-// app/ and components/ and on the copy in messages/. Each problem names the
+// The UI rules agents kept breaking, checked on every .ts, .tsx and .css file
+// under app/ and components/ and on the copy in messages/. Each problem names the
 // fix. A line that needs an exception says why on the line before it:
 //
 //   // ui-rules-allow: <rule> -- <reason>
@@ -30,7 +30,10 @@ const UPPERCASE_CLASS = /(?:^|[\s:!])!?uppercase!?(?=$|[\s"'`])/;
 const UPPERCASE_CSS = /text-transform\s*:\s*uppercase/i;
 const CLASS_HELPERS = new Set(["cn", "cva", "clsx", "cx", "twMerge", "tv", "classNames"]);
 const CLASS_NAMES = /(class(name)?(es|s)?|styles?|variants?|texttransform)$/i;
-const DOT = /[·•]/;
+// The characters, and the entities JSX text keeps undecoded.
+const DOT = /[·•]|&(?:middot|bull|#183|#x0*b7|#8226|#x2022);/i;
+// A short status label ("Loading", "Loading author profile..."), not a sentence that mentions loading.
+const LOADING = /^loading\b[^.!?]{0,40}(…|\.\.\.)?$/i;
 const allowed = (line, rule) => new RegExp(`ui-rules-allow:\\s*${rule}\\s+--\\s*\\S`).test(line ?? "");
 
 const FIX = {
@@ -70,6 +73,18 @@ function check(file) {
     }
     return false;
   };
+  // Whether a string is rendered as a JSX child, directly or through a condition.
+  const renderedInJsx = (node) => {
+    for (let child = node, parent = node.parent; parent; child = parent, parent = parent.parent) {
+      if (ts.isJsxExpression(parent)) return !ts.isJsxAttribute(parent.parent);
+      const passesThrough =
+        ts.isParenthesizedExpression(parent) ||
+        (ts.isConditionalExpression(parent) && parent.condition !== child) ||
+        (ts.isBinaryExpression(parent) && [ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(parent.operatorToken.kind));
+      if (!passesThrough) return false;
+    }
+    return false;
+  };
   // Whether what a node renders can hold text: words, or a value that isn't JSX.
   const rendersText = (node) => {
     if (ts.isJsxText(node)) return node.text.trim() !== "";
@@ -86,11 +101,11 @@ function check(file) {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
       if (UPPERCASE_CSS.test(node.text) || (UPPERCASE_CLASS.test(node.text) && classContext(node))) report(node, "uppercase");
       if (DOT.test(node.text)) report(node, "dot-separator");
+      if (ts.isStringLiteral(node) && LOADING.test(node.text.trim()) && renderedInJsx(node)) report(node, "loading-text");
     }
     if (ts.isJsxText(node)) {
       if (DOT.test(node.text)) report(node, "dot-separator");
-      // A short status label ("Loading", "Loading author profile..."), not a sentence that mentions loading.
-      if (/^loading\b[^.!?]{0,40}(…|\.\.\.)?$/i.test(node.text.trim())) report(node, "loading-text");
+      if (LOADING.test(node.text.trim())) report(node, "loading-text");
     }
     if (ts.isJsxElement(node) && node.openingElement.tagName.getText(source) === "AvatarFallback") {
       if (node.children.some(rendersText)) report(node, "initials");
@@ -99,18 +114,22 @@ function check(file) {
       const tag = node.tagName.getText(source);
       let className = "";
       let framer = false;
+      let style = "";
       let title = null;
       for (const attribute of node.attributes.properties) {
         if (!ts.isJsxAttribute(attribute)) continue;
         const name = attribute.name.getText(source);
         if (name === "className" && attribute.initializer) className = attribute.initializer.getText(source);
+        if (name === "style" && attribute.initializer) style = attribute.initializer.getText(source);
         if (FRAMER_PROPS.has(name) && tag.startsWith("motion.")) framer = true;
         if (name === "title") title = attribute;
+        if (tag === "AvatarFallback" && name === "children" && attribute.initializer && rendersText(attribute.initializer)) report(attribute, "initials");
       }
       if (TRANSITION.test(className) && (framer || CSS_ANIMATION.test(className))) report(node, "animation-clash");
       // Built-in elements only; an iframe's title is its accessible name, and
       // the hidden Z3988 spans carry citation data for Zotero.
-      if (title && /^[a-z]/.test(tag) && tag !== "iframe" && !className.includes("Z3988")) report(title, "native-title");
+      const coins = tag === "span" && /(?:^|[\s"'`])Z3988(?=$|[\s"'`])/.test(className) && /display:\s*["']none["']/.test(style);
+      if (title && /^[a-z]/.test(tag) && tag !== "iframe" && !coins) report(title, "native-title");
     }
     ts.forEachChild(node, visit);
   };
@@ -118,14 +137,14 @@ function check(file) {
   return found;
 }
 
+const scanLines = (paths, pattern, rule, fix) =>
+  paths.flatMap((file) => {
+    const lines = readFileSync(file, "utf8").split("\n");
+    return lines.flatMap((line, index) => (pattern.test(line) && !allowed(lines[index - 1], rule) ? [`${file}:${index + 1} ${rule}: ${fix}`] : []));
+  });
 // Shared parts name what they transition, so animating any of them is safe.
-const broad = files("components/ui", [".tsx"]).flatMap((file) => {
-  const lines = readFileSync(file, "utf8").split("\n");
-  return lines.flatMap((line, index) =>
-    BROAD_TRANSITION.test(line) && !allowed(lines[index - 1], "animation-clash")
-      ? [`${file}:${index + 1} animation-clash: a shared part uses transition or transition-all; name the properties it transitions.`]
-      : []);
-});
+const broad = scanLines(files("components/ui", [".tsx"]), BROAD_TRANSITION, "animation-clash", "a shared part uses transition or transition-all; name the properties it transitions.");
+const stylesheets = scanLines([...files("app", [".css"]), ...files("components", [".css"])], UPPERCASE_CSS, "uppercase", FIX.uppercase);
 
 // Copy shown in the app lives in messages/. Values are read decoded, so an
 // escaped \u00b7 counts too; the line is the one that holds the key.
@@ -146,7 +165,7 @@ const copy = files("messages", [".json"]).flatMap((file) => {
   return found;
 });
 
-const problems = [...files("components", [".ts", ".tsx"]), ...files("app", [".ts", ".tsx"])].flatMap(check).concat(broad, copy);
+const problems = [...files("components", [".ts", ".tsx"]), ...files("app", [".ts", ".tsx"])].flatMap(check).concat(broad, stylesheets, copy);
 if (problems.length) {
   console.error(problems.join("\n"));
   process.exit(1);
