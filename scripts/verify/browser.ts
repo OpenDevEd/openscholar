@@ -341,7 +341,8 @@ async function work(browser: Browser, session: Omit<Session, "page">): Promise<v
     if (!session.tolerant) throw error;
     session.run.stopped = `${session.run.stopped} (${(error as Error).message.split("\n")[0]})`;
   } finally {
-    await session.options.finish?.(page).catch(() => {});
+    // Signing out can navigate the page, and a page that navigates away can leave the call waiting.
+    if (session.options.finish) await withTimeout(session.options.finish(page), 10_000, "Cleaning up after the run").catch(() => {});
   }
 }
 
