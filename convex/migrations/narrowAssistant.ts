@@ -20,10 +20,10 @@ const migrations = new Migrations<DataModel>(components.migrations, { internalMu
 
 const own = (ctx: MutationCtx, userId: Id<"users">) => ensureWorkspace(ctx, { kind: "personal", userId });
 
-// A chat keeps its summary and its reply's state: ten at a time.
+// A chat keeps its summary and its reply's state: five at a time.
 export const threads = migrations.define({
   table: "assistantThreads",
-  batchSize: 10,
+  batchSize: 5,
   migrateOne: async (ctx, thread) => {
     const patch = {
       ...(thread.ownerId === undefined ? {} : { ownerId: undefined }),
@@ -33,10 +33,10 @@ export const threads = migrations.define({
   },
 });
 
-// A step keeps what its call was given and what came of it.
+// A step keeps what its call was given and what came of it, with no byte cap of their own: five at a time.
 export const steps = migrations.define({
   table: "assistantSteps",
-  batchSize: 25,
+  batchSize: 5,
   migrateOne: async (ctx, step) => (step.workspaceId ? undefined : { workspaceId: await own(ctx, step.userId) }),
 });
 
