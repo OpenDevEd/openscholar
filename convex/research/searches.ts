@@ -24,6 +24,7 @@ import { applyCommand, checkRemoval, findSearch, revisionRow } from "./records";
 import { AUTHORS_SHOWN, changesValidator, COUNTRIES_SHOWN, LAST_PAGE, LAST_PAGE_FROM_START, pageValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 import type { Id } from "../_generated/dataModel";
 import { personalWorkspaceOf } from "../workspaces/actor";
+import { noteActivity } from "../activity/notes";
 
 const CREATE = "research/searches:create" as const;
 const UPDATE = "research/searches:update" as const;
@@ -371,7 +372,6 @@ function settingsOf(changes: Infer<typeof changesValidator>) {
 
 export const updateAction = defineUserMutation({
   path: UPDATE,
-  activity: ({ id }) => ({ kind: "search", id, happened: "edited" }),
   description:
     "Changes a saved search: its query, its filters, or both. Give only what changes, as a list: each change names one setting and its new value, and a value of null takes a filter off. Every setting left out of the list stays as it is. " +
     "The person's open page follows, from its first page of results. `query` is the search's words, which a search with a filter can do without. " +
@@ -402,6 +402,7 @@ export const updateAction = defineUserMutation({
     const kept = (value: unknown) => (value === undefined || value === false || value === "" || (Array.isArray(value) && !value.length) ? "off" : JSON.stringify(value));
     const refiltered = Object.entries(filters).some(([key, value]) => kept(current[key as keyof SavedSearch]) !== kept(value)) || clear.some((key) => current[key as keyof SavedSearch] !== undefined);
     if (!requeried && !refiltered) return {};
+    await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, { kind: "search", id, happened: "edited", ...(requeried && asked ? { detail: asked } : {}) });
     const edits: Array<UndoCommand | undefined> = [];
     if (requeried) edits.push(await applyCommand(ctx, { userId, workspaceId }, { kind: "editSearch", id, edit: { kind: "query", query: asked, field } }, author));
     // Its results start again from their first page, as they do when the person changes the search on its page.

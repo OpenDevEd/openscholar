@@ -1,10 +1,12 @@
 // An item's Activity (#656): the user action wrappers write what each change did and who made it.
 import { convexTest } from "convex-test";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { ensureWorkspace } from "../workspaces/create";
+import { bookkeepLater } from "../screening/bookkeeping";
+import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { searchNote } from "../research/records";
 import type { SavedSearch, SearchEdit } from "../../lib/research/records";
 
@@ -43,12 +45,43 @@ it("notes a paper leaving a collection with the library, and coming back with Un
   const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Trials" });
   await bob.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "Coaching at scale", collectionId });
   const { undo } = await bob.mutation(api.library.mutations.removeFromLibrary, { workspaceId, openalexId: "https://openalex.org/W1" });
-  await bob.mutation(api.library.mutations.restoreLibraryItem, { workspaceId, ...undo.args });
+  await bob.mutation(api.library.mutations.restoreLibraryItem, { workspaceId, ...undo!.args });
   const rows = (await alice.query(api.activity.queries.list, { workspaceId, kind: "collection", id: collectionId, paginationOpts: { cursor: null, numItems: 10 } })).page;
   expect(rows.slice(0, 2).map(({ by, happened, count, detail }) => ({ by: by.name, happened, count, detail }))).toEqual([
     { by: "Bob", happened: "added", count: 1, detail: "Coaching at scale" },
     { by: "Bob", happened: "removed", count: 1, detail: "Coaching at scale" },
   ]);
+});
+
+it("notes what a screening did once it ends: the papers it answered, on it and on what it read, and those it saved", async () => {
+  vi.useFakeTimers();
+  try {
+    const { t, alice, users, workspaceId } = await lab();
+    setupScreeningWorkpool(t);
+    const { id: read } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Trials" });
+    const { id: saveTo } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Included" });
+    const questions = [{ key: "q1", question: "Is it a trial?" }];
+    const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }], minimumScore: 1 };
+    // A job whose two papers were read and answered, one included.
+    const jobId = await t.run(async (ctx) => {
+      const screeningId = await ctx.db.insert("screenings", { workspaceId, version: 0, createdAt: 1 });
+      const jobId = await ctx.db.insert("screeningJobs", { workspaceId, createdBy: users.alice, status: "processing", totalPapers: 2, questions, scoringConfig, screeningId, set: { kind: "collection", collectionId: read }, targetCollectionId: saveTo, name: "First pass", createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0 });
+      for (const [i, qualified] of [[1, true], [2, false]] as const) {
+        await ctx.db.insert("screeningResults", { jobId, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, status: "completed", createdAt: 1, completedAt: 2, qualified, score: qualified ? 1 : 0, stars: 1, answers: { q1: qualified }, confidences: { q1: 0.9 }, pendingAnswers: true, doneAt: ctx.db.vars.commitTs });
+      }
+      await bookkeepLater(ctx);
+      return jobId;
+    });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const listed = async (kind: "screening" | "collection", id: string) =>
+      (await alice.query(api.activity.queries.list, { workspaceId, kind, id, paginationOpts: { cursor: null, numItems: 10 } })).page.map(({ by, happened, count, detail }) => ({ by: by.name, happened, count, detail }));
+    expect(await listed("screening", jobId)).toEqual([{ by: "Alice", happened: "screened", count: 2, detail: undefined }]);
+    expect((await listed("collection", read))[0]).toEqual({ by: "Alice", happened: "screened", count: 2, detail: "First pass" });
+    expect((await listed("collection", saveTo))[0]).toEqual({ by: "Alice", happened: "added", count: 1, detail: "First pass" });
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it("says when the assistant made a change, as the person who asked", async () => {

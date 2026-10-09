@@ -6,9 +6,7 @@
 import { useState } from "react";
 import { usePaginatedQuery } from "convex/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { motion } from "motion/react";
 import { AiIcon, FileSearch, FolderPlus, History, ListChecks, Pause, PenLine, Play, Plus, RotateCcw, Square, Star, Trash2, type AppIcon } from "@/components/icons";
-import { EASE } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { PersonTag, YouTag } from "@/components/ui/identity";
@@ -88,10 +86,9 @@ function ActivityRows({ kind, id }: { kind: ItemKind; id: string }) {
   const workspaceId = useWorkspace();
   const now = useNow();
   const { results, status, loadMore } = usePaginatedQuery(api.activity.queries.list, inWorkspace(workspaceId, { kind, id }), { initialNumItems: PAGE });
-  const dayOf = (at: number) => {
-    const ago = now.getTime() - at;
-    return ago < DAY ? "today" : ago < 2 * DAY ? "yesterday" : ago < 7 * DAY ? "thisWeek" : "earlier";
-  };
+  // Calendar days, from this morning's midnight: 23:00 last night is yesterday at 01:00.
+  const midnight = new Date(now).setHours(0, 0, 0, 0);
+  const dayOf = (at: number) => (at >= midnight ? "today" : at >= midnight - DAY ? "yesterday" : at >= midnight - 6 * DAY ? "thisWeek" : "earlier");
   const groups = results.reduce<Array<{ day: ReturnType<typeof dayOf>; rows: Row[] }>>((all, row) => {
     const day = dayOf(row.at);
     const last = all.at(-1);
@@ -105,14 +102,14 @@ function ActivityRows({ kind, id }: { kind: ItemKind; id: string }) {
       <ScrollArea shades className="min-h-0 flex-1">
         {results.length ? (
           <div className="space-y-5 px-3 py-4">
-            {groups.map((group, g) => (
+            {groups.map((group) => (
               <section key={group.day} className="space-y-1">
                 <h3 className="px-2 text-xs font-medium text-muted-foreground">{t(group.day)}</h3>
                 <ul>
-                  {group.rows.map((row, i) => (
-                    <motion.li key={row._id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE, delay: 0.05 + Math.min(g * 3 + i, 10) * 0.03 }}>
+                  {group.rows.map((row) => (
+                    <li key={row._id}>
                       <ActivityRow row={row} now={now} />
-                    </motion.li>
+                    </li>
                   ))}
                 </ul>
               </section>

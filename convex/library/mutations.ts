@@ -224,6 +224,8 @@ export const saveRead = internalMutation({
     // Only the assistant asks: a person saving a paper themselves has decided. A collection a library follows shows the paper outside the account.
     if (author === "assistant" && !approved && collectionId !== undefined && (await followed(ctx, collectionId))) throw createError("FORBIDDEN", ASKS_FIRST);
     const { id, undo } = await saveInto(ctx, actor, { paper, rating, collectionId });
+    // Noted here, with the save: library/papers:save is an action, whose writes are this mutation's.
+    if (collectionId && undo) await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, { kind: "collection", id: collectionId, happened: "added", count: 1, detail: paper.title });
     const result = { libraryItemId: id, title: paper.title, ...(undo ? { undo } : {}) };
     if (stepId) await endStep(ctx, stepId, result);
     return result;

@@ -97,9 +97,10 @@ type Checks<Args extends PropertyValidators> = { check?(ctx: QueryCtx, actor: Ac
 type Shows<Args extends PropertyValidators> = { shown?(args: ObjectType<Args>): Record<string, unknown> };
 
 /**
- * What a change did to an item, for its Activity (#656): the wrappers write it, as the person
- * or as the assistant for them, from what the change was given and what it returned. A change
- * that left things as they were declares nothing.
+ * What a change did to an item, for its Activity (#656): the wrapper writes it in the change's
+ * own transaction, as the person or as the assistant for them, from what the change was given
+ * and what it returned. A change that left things as they were declares nothing. An action
+ * notes what it did in the mutation that writes it (../activity/notes.ts).
  */
 type Records<Args extends PropertyValidators, Returns extends GenericValidator> = { activity?(args: ObjectType<Args>, result: Infer<Returns>): Note | Note[] | null | undefined };
 
@@ -134,8 +135,7 @@ export type UserActionEntry<Args extends PropertyValidators, Returns extends Gen
   AsksFirst<Args> &
   Estimates<Args> &
   Checks<Args> &
-  Shows<Args> &
-  Records<Args, Returns> & {
+  Shows<Args> & {
     kind: "action";
     /** It writes, after reading from outside: its write ends the step and rechecks approval (see ChangeCall). One without this only reads. */
     changes?: true;
@@ -304,14 +304,6 @@ async function changed<Args extends PropertyValidators, Returns extends GenericV
   return result;
 }
 
-/** Runs an action and writes what it did to its items' Activity once it has done it. */
-async function acted<Args extends PropertyValidators, Returns extends GenericValidator>(ctx: ActionCtx, entry: UserActionEntry<Args, Returns>, actor: Acting, args: ObjectType<Args>, call?: ChangeCall) {
-  const result = await entry.run(ctx, actor, args, call);
-  const notes = [entry.activity?.(args, result) ?? []].flat();
-  if (notes.length) await ctx.runMutation(internal.activity.notes.write, { workspaceId: actor.workspaceId, by: actor.userId, viaAssistant: actor.author === "assistant", notes });
-  return result;
-}
-
 /** The public mutation the UI calls, for the signed-in user. */
 export function userMutation<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserMutation<Args, Returns>) {
   return tagged(
@@ -376,7 +368,7 @@ export function userAction<Args extends PropertyValidators, Returns extends Gene
         const { workspaceId, rest } = inWorkspace<Args>(args);
         // Typed here: the generated API's types depend on every module built with this, so inference would loop.
         const actor: Actor = await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId });
-        return acted(ctx, entry, { ...actor, author: "user" }, rest);
+        return entry.run(ctx, { ...actor, author: "user" }, rest);
       },
     }),
     entry.path,
@@ -394,7 +386,7 @@ export function assistantAction<Args extends PropertyValidators, Returns extends
         // The sender may have been suspended or deleted since the turn began.
         const actor: Actor = await ctx.runQuery(internal.workspaces.actor.activeActor, { userId, workspaceId });
         const from = stepId ?? fromStep;
-        return acted(ctx, entry, { ...actor, author: "assistant" }, own as ObjectType<Args>, { ...(stepId ? { stepId } : {}), ...(from ? { from } : {}), approved: approved === true, ...(approvedCredits === undefined ? {} : { credits: approvedCredits }) });
+        return entry.run(ctx, { ...actor, author: "assistant" }, own as ObjectType<Args>, { ...(stepId ? { stepId } : {}), ...(from ? { from } : {}), approved: approved === true, ...(approvedCredits === undefined ? {} : { credits: approvedCredits }) });
       },
     }),
     entry.path,
