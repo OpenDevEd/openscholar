@@ -106,8 +106,8 @@ export const cleanupDeletedUsers = internalMutation({
         if (libraryCount) await ctx.db.delete("libraryCounts", libraryCount._id);
         const collectionCount = workspace && (await collectionCountRow(ctx, workspace._id));
         if (collectionCount) await ctx.db.delete("collectionCounts", collectionCount._id);
-        for (const table of ["searches", "queryShortcuts"] as const) {
-          const counted = await countRow(ctx, table, user._id);
+        for (const table of ["searches", "queryShortcuts", "screeningJobs", "extractionJobs"] as const) {
+          const counted = workspace && (await countRow(ctx, table, workspace._id));
           if (counted) await ctx.db.delete("recordCounts", counted._id);
         }
 

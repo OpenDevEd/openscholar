@@ -1,19 +1,19 @@
 /**
- * Each person's Screen all papers run under a limit, and the rest wait their turn (#335),
- * copied from Firecrawl's per-team concurrency (`apps/api/src/lib/concurrency-limit.ts`):
- * jobs are never refused, a job's papers wait in their person's queue, oldest job first,
- * and every paper that finishes lets the next one start. One person's 1,000 papers no
- * longer hold the whole pool while another person's job waits behind them.
+ * Each workspace's Screen all papers run under a limit, and the rest wait their turn (#335,
+ * one pool per workspace since #650), copied from Firecrawl's per-team concurrency
+ * (`apps/api/src/lib/concurrency-limit.ts`): jobs are never refused, a job's papers wait in
+ * their workspace's queue, oldest job first, and every paper that finishes lets the next one
+ * start. One workspace's 1,000 papers no longer hold the whole pool while another's job waits.
  */
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { planLimit } from "../billing/accounts";
+import { workspacePlanLimit } from "../billing/accounts";
 import { pricingOf } from "../ai/serverModel";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { SCREENING_POOL_SIZE, screeningPool } from "../workpool";
 import { progressOf } from "./bookkeeping";
-import { personalWorkspaceOf } from "../workspaces/personal";
+import type { InWorkspace } from "../workspaces/actor";
 
 /**
  * Papers a person may have running when their plan sets no `concurrency` in Autumn: the
@@ -21,9 +21,9 @@ import { personalWorkspaceOf } from "../workspaces/personal";
  */
 const DEFAULT_PAPER_CONCURRENCY = SCREENING_POOL_SIZE;
 
-/** How many papers the person may have running at once, never more than the pool. */
-export async function paperLimit(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
-  const concurrency = (await planLimit(ctx, userId, "concurrency")) ?? DEFAULT_PAPER_CONCURRENCY;
+/** How many papers a workspace may have running at once, never more than the pool. */
+export async function paperLimit(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
+  const concurrency = (await workspacePlanLimit(ctx, workspaceId, "concurrency")) ?? DEFAULT_PAPER_CONCURRENCY;
   return Math.max(1, Math.min(SCREENING_POOL_SIZE, concurrency));
 }
 
@@ -35,7 +35,7 @@ async function startPaper(ctx: MutationCtx, result: Doc<"screeningResults">) {
     { resultId: result._id, jobId: result.jobId },
     { onComplete: internal.screening.mutations.handleScreeningComplete, context: { resultId: result._id, jobId: result.jobId } },
   );
-  await ctx.db.patch("screeningResults", result._id, { workId, waitingUser: undefined, waitingSince: undefined });
+  await ctx.db.patch("screeningResults", result._id, { workId, waitingUser: undefined, waitingWorkspace: undefined, waitingSince: undefined });
 }
 
 /**
@@ -55,20 +55,22 @@ async function budgetOf(ctx: MutationCtx, jobId: Id<"screeningJobs">): Promise<B
 }
 
 /**
- * Starts the person's waiting papers while they're under their limit, first counting off
- * `finished` papers of theirs that stopped running. Firecrawl's `concurrentJobDone`.
+ * Starts a workspace's waiting papers while it's under its limit, first counting off
+ * `finished` papers of its that stopped running. Firecrawl's `concurrentJobDone`. `userId` is
+ * the person whose job freed or made the papers, kept on a new slots row.
  */
-export async function startWaitingPapers(ctx: MutationCtx, userId: Id<"users">, finished = 0) {
-  const slots = await ctx.db.query("screeningSlots").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+export async function startWaitingPapers(ctx: MutationCtx, pool: InWorkspace, finished = 0) {
+  const { userId, workspaceId } = pool;
+  const slots = await ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
   let running = Math.max(0, (slots?.running ?? 0) - finished);
-  const limit = await paperLimit(ctx, userId);
+  const limit = await paperLimit(ctx, workspaceId);
   if (running < limit) {
-    // The person's waiting papers, oldest job first, then in each job's order. A paper of a
+    // The workspace's waiting papers, oldest job first, then in each job's order. A paper of a
     // job cancelled a moment ago may start before the job's sweep skips it; it sees the job
     // and stops before asking the model.
     const waiting = await ctx.db
       .query("screeningResults")
-      .withIndex("by_waitingUser_and_waitingSince", (q) => q.eq("waitingUser", userId).gte("waitingSince", 0))
+      .withIndex("by_waitingWorkspace_and_waitingSince", (q) => q.eq("waitingWorkspace", workspaceId).gte("waitingSince", 0))
       .take(limit - running);
     // A paper of a job with a spending limit starts only while the job has room for it, and waits otherwise.
     // ponytail: such a job's waiting papers still fill this pass, so with 20 of them at the head a later job's wait a pass longer.
@@ -88,6 +90,6 @@ export async function startWaitingPapers(ctx: MutationCtx, userId: Id<"users">, 
       else if (!budget.progress.running && !budget.job.capped) await ctx.scheduler.runAfter(0, internal.screening.mutations.capScreeningJob, { jobId: budget.job._id });
     }
   }
-  if (!slots) await ctx.db.insert("screeningSlots", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), running });
+  if (!slots) await ctx.db.insert("screeningSlots", { userId, workspaceId, running });
   else if (slots.running !== running) await ctx.db.patch("screeningSlots", slots._id, { running });
 }

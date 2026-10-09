@@ -77,7 +77,7 @@ async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
     job.status === "processing"
       ? ctx.db
           .query("screeningResults")
-          .withIndex("by_job_and_status_and_waitingUser", (q) => q.eq("jobId", job._id).eq("status", "processing").eq("waitingUser", undefined))
+          .withIndex("by_job_and_status_and_waitingWorkspace", (q) => q.eq("jobId", job._id).eq("status", "processing").eq("waitingWorkspace", undefined))
           .take(SCREENING_POOL_SIZE)
       : [],
   ]);
@@ -103,12 +103,12 @@ async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
  */
 export const slotsAction = defineUserQuery({
   path: "screening/queries:slots",
-  description: "The person's paper slots for screening: how many papers they may have running at once across their screening jobs, and how many are running now.",
+  description: "The workspace's paper slots for screening: how many papers it may have running at once across its screening jobs, and how many are running now.",
   args: {},
   returns: v.object({ limit: v.number(), running: v.number() }),
-  run: async (ctx, { userId }) => {
-    const row = await ctx.db.query("screeningSlots").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
-    return { limit: await paperLimit(ctx, userId), running: row?.running ?? 0 };
+  run: async (ctx, { workspaceId }) => {
+    const row = await ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
+    return { limit: await paperLimit(ctx, workspaceId), running: row?.running ?? 0 };
   },
 });
 export const slots = userQuery(slotsAction);
@@ -389,7 +389,7 @@ export const countUserScreeningJobs = workspaceQuery({
   returns: v.number(),
   signedOut: 0,
   // Someone with no job has no count; one from before counts were kept gets theirs from migrations/countScreeningJobs.
-  handler: async (ctx, { userId }) => (await countRow(ctx, "screeningJobs", userId))?.count ?? 0,
+  handler: async (ctx, { workspaceId }) => (await countRow(ctx, "screeningJobs", workspaceId))?.count ?? 0,
 });
 
 const screeningResultRowValidator = v.object({

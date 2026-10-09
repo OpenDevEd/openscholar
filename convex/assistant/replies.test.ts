@@ -11,6 +11,7 @@ import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/bill
 import { CALL_TOKENS, estimateCredits } from "../../lib/pricing";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import schema from "../schema";
+import { personalWorkspaceOf } from "../workspaces/actor";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { endStep } from "./steps";
 import { insertJob } from "../screening/createJob.test-support";
@@ -860,7 +861,7 @@ describe("a job a reply started", () => {
     expect(await asAda.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ mine: true });
     // Starting, it isn't waiting; a paper of it in Ada's queue, behind her other papers, is.
     expect((await asAda.query(api.assistant.jobs.card, { threadId, stepId }))!.card).not.toHaveProperty("waiting");
-    const queued = await t.run((ctx) => ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", title: "Trial 1", status: "processing", waitingUser: ada, createdAt: 1 }));
+    const queued = await t.run(async (ctx) => ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", title: "Trial 1", status: "processing", waitingWorkspace: await personalWorkspaceOf(ctx, ada), createdAt: 1 }));
     expect((await asAda.query(api.assistant.jobs.card, { threadId, stepId }))!.card).toMatchObject({ waiting: { done: 0, total: 0 } });
     await t.run((ctx) => ctx.db.delete("screeningResults", queued));
 

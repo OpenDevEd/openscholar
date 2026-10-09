@@ -6,6 +6,7 @@ import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { collectionSortName } from "../library/sortName";
 import { countRow, startCount } from "../research/recordCounts";
+import { workspaceOf } from "../workspaces/personal";
 
 /**
  * Gets extraction jobs from before their list paged ready for it (#422): each job gets the
@@ -27,7 +28,7 @@ export const jobs = migrations.define({
   table: "extractionJobs",
   batchSize: 5,
   migrateOne: async (ctx, job) => {
-    await startCount(ctx, "extractionJobs", job.userId);
+    await startCount(ctx, "extractionJobs", job);
     const sortName = collectionSortName(job.name);
     if (job.sortName !== sortName) return { sortName };
   },
@@ -42,8 +43,8 @@ export const verifyPage = internalQuery({
   handler: async (ctx, { cursor }) => {
     const page = await ctx.db.query("extractionJobs").paginate({ cursor, numItems: 50, maximumBytesRead: 4 * 1024 * 1024 });
     let wrong = page.page.filter((job) => job.sortName !== collectionSortName(job.name)).length;
-    for (const userId of new Set(page.page.map((job) => job.userId))) {
-      const row = await countRow(ctx, "extractionJobs", userId);
+    for (const workspaceId of new Set(await Promise.all(page.page.map((job) => workspaceOf(ctx, job))))) {
+      const row = await countRow(ctx, "extractionJobs", workspaceId);
       if (!row || row.countedTo !== undefined) wrong++;
     }
     return { wrong, isDone: page.isDone, continueCursor: page.continueCursor };

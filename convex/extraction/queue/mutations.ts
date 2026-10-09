@@ -11,7 +11,7 @@ import {
   shouldClearQueueLease,
   type ExtractionQueueStatus,
 } from "./status";
-import { planLimit } from "../../billing/accounts";
+import { workspacePlanLimit } from "../../billing/accounts";
 import { workspaceOf } from "../../workspaces/personal";
 
 type QueueKind = Doc<"extractionPaperQueue">["kind"];
@@ -50,8 +50,8 @@ type DispatchWindowResult = {
 type CancelQueueRowsResult = {
   cancelled: number;
   cancelRequested: number;
-  /** Whose rows they were, when any were cancelled. */
-  userId?: Id<"users">;
+  /** Whose pool the rows were in, when any were cancelled. */
+  workspaceId?: Id<"workspaces">;
 };
 
 async function loadQueueRowsByStatus(
@@ -342,18 +342,19 @@ export const leaseNextPaperQueueRows = internalMutation({
 });
 
 /**
- * How many more papers the person may start across their extraction jobs (#335): their
- * plan's `concurrency`, or the whole window when it sets none, less the papers they hold
- * leased or running in any job. Firecrawl's per-team limit (`apps/api/src/lib/concurrency-limit.ts`).
+ * How many more papers a workspace may start across its extraction jobs (#335; one pool per
+ * workspace since #650): its plan's `concurrency`, or the whole window when it sets none, less
+ * the papers it holds leased or running in any job. Firecrawl's per-team limit
+ * (`apps/api/src/lib/concurrency-limit.ts`).
  */
-async function personCapacity(ctx: MutationCtx, userId: Id<"users">, window: number) {
-  const limit = Math.max(1, Math.min(window, (await planLimit(ctx, userId, "concurrency")) ?? window));
+async function poolCapacity(ctx: MutationCtx, workspaceId: Id<"workspaces">, window: number) {
+  const limit = Math.max(1, Math.min(window, (await workspacePlanLimit(ctx, workspaceId, "concurrency")) ?? window));
   let held = 0;
   for (const status of ["leased", "running"] as const) {
     if (held >= limit) break;
     held += (await ctx.db
       .query("extractionPaperQueue")
-      .withIndex("by_user_and_status", (q) => q.eq("userId", userId).eq("status", status))
+      .withIndex("by_workspace_and_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status))
       .take(limit - held)).length;
   }
   return Math.max(0, limit - held);
@@ -364,7 +365,7 @@ async function leaseNextPaperQueueRowsTx(
   args: LeaseRowsArgs,
 ): Promise<LeaseRowsResult> {
   const job = await ctx.db.get(args.jobId);
-  const personFree = job ? await personCapacity(ctx, job.userId, args.paperConcurrency) : 0;
+  const personFree = job ? await poolCapacity(ctx, await workspaceOf(ctx, job), args.paperConcurrency) : 0;
   const activeReadLimit = Math.max(0, Math.floor(args.paperConcurrency));
   const [leasedRows, runningRows] = await Promise.all([
     loadQueueRowsByStatus(ctx, {
@@ -537,7 +538,7 @@ export async function cancelPaperQueueRowsForJobTx(
   if (batches.some((batch) => batch.length === CANCEL_BATCH)) {
     await ctx.scheduler.runAfter(0, internal.extraction.queue.mutations.cancelPaperQueueRowsForJob, { jobId: args.jobId });
   }
-  return { cancelled: rows.length, cancelRequested, userId: rows[0]?.userId };
+  return { cancelled: rows.length, cancelRequested, workspaceId: rows[0] ? await workspaceOf(ctx, rows[0]) : undefined };
 }
 
 export const cancelPaperQueueRowsForJob = internalMutation({
@@ -547,9 +548,9 @@ export const cancelPaperQueueRowsForJob = internalMutation({
     cancelRequested: v.number(),
   }),
   handler: async (ctx, args) => {
-    const { userId, ...result } = await cancelPaperQueueRowsForJobTx(ctx, args);
+    const { workspaceId, ...result } = await cancelPaperQueueRowsForJobTx(ctx, args);
     // The rows a later batch cancels stop holding the person's capacity; their other jobs start in it.
-    if (userId) await ctx.scheduler.runAfter(0, internal.extraction.queue.dispatcher.wakePerson, { userId });
+    if (workspaceId) await ctx.scheduler.runAfter(0, internal.extraction.queue.dispatcher.wakePerson, { workspaceId });
     return result;
   },
 });
@@ -571,7 +572,7 @@ export const updatePaperQueueStatus = internalMutation({
     // A row that held its person's capacity and stops without a release (a stale run parking)
     // frees it; their held-back jobs have no other event to start them.
     if ((row.status === "leased" || row.status === "running") && args.status !== "leased" && args.status !== "running") {
-      await ctx.scheduler.runAfter(0, internal.extraction.queue.dispatcher.wakePerson, { userId: row.userId });
+      await ctx.scheduler.runAfter(0, internal.extraction.queue.dispatcher.wakePerson, { workspaceId: await workspaceOf(ctx, row) });
     }
     await ctx.db.patch(args.queueId, {
       status: args.status,

@@ -221,7 +221,8 @@ export const bookkeep = internalMutation({
     for (const result of results) byJob.set(result.jobId, [...(byJob.get(result.jobId) ?? []), result]);
     // Papers of each person's that stopped running. A paper skipped before it started held no slot, but its
     // person is still listed: with it out of the queue, the papers that waited behind it can start.
-    const freed = new Map<Id<"users">, number>();
+    // Papers freed in each workspace's pool, with a person whose job freed them for a new slots row.
+    const freed = new Map<Id<"workspaces">, { userId: Id<"users">; finished: number }>();
     for (const [jobId, jobResults] of byJob) {
       const job = await ctx.db.get("screeningJobs", jobId);
       if (job) {
@@ -251,12 +252,13 @@ export const bookkeep = internalMutation({
         }
         await countFinished(ctx, current, jobResults, deltas, moved);
         await finishIfDone(ctx, jobId);
-        freed.set(job.userId, (freed.get(job.userId) ?? 0) + jobResults.filter((result) => result.workId !== undefined).length);
+        const workspaceId = await workspaceOf(ctx, job);
+        freed.set(workspaceId, { userId: job.userId, finished: (freed.get(workspaceId)?.finished ?? 0) + jobResults.filter((result) => result.workId !== undefined).length });
       }
       // Bookkept, or its job is gone: out of the queue.
       for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
     }
-    for (const [userId, finished] of freed) await startWaitingPapers(ctx, userId, finished);
+    for (const [workspaceId, { userId, finished }] of freed) await startWaitingPapers(ctx, { userId, workspaceId }, finished);
     return null;
   },
 });
