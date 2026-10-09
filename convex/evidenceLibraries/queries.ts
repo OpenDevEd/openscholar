@@ -19,6 +19,7 @@ import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
+import { getCurrentUser } from "../lib/auth";
 import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
 import { searchTerms } from "../lib/searchText";
 import {
@@ -346,6 +347,13 @@ async function ownedOrganizations(ctx: QueryCtx) {
   return await Promise.all(owned.map(async (organization) => ({ ...organization, workspaceId: await organizationWorkspaceOf(ctx, organization._id) })));
 }
 
+/** The person's own workspace, where their own libraries are (#650), with the name it goes by. */
+async function ownWorkspace(ctx: QueryCtx) {
+  const user = await getCurrentUser(ctx);
+  const workspace = user ? await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", user._id)).unique() : null;
+  return workspace ? { workspaceId: workspace._id, shown: await ownerName(ctx, { workspace, organization: null }) } : null;
+}
+
 /** A library a person was granted, with their role and who it belongs to, unless it's in a workspace they own, where it is listed already. */
 async function grantedLibrary(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<"workspaces">>, libraryId: Id<"evidenceLibraries">) {
   const library = await ctx.db.get("evidenceLibraries", libraryId);
@@ -362,9 +370,9 @@ const overviewRow = async (ctx: QueryCtx, library: Doc<"evidenceLibraries">, rol
 });
 
 /**
- * One page of the libraries a person can open: those of each organization they own, one
- * organization after another by name and each in the order they were made, then the libraries
- * they were granted. Given `organization`, only that organization's; given `search`, only
+ * One page of the libraries a person can open: those in their own workspace, then those of
+ * each organization they own, one organization after another by name and each in the order
+ * they were made, then the libraries they were granted. Given `organization`, only that organization's; given `search`, only
  * those whose name, or whose organization's name, contains it. The cursor names the
  * organization the page stopped in and where.
  */
@@ -374,8 +382,8 @@ export const listLibraries = query({
   handler: async (ctx, { paginationOpts, search, organization }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return { page: [], isDone: true, continueCursor: "" };
-    const owned = await ownedOrganizations(ctx);
-    const ownedIds = new Set(owned.map((entry) => entry.workspaceId));
+    const [owned, own] = await Promise.all([ownedOrganizations(ctx), ownWorkspace(ctx)]);
+    const ownedIds = new Set([...owned.map((entry) => entry.workspaceId), ...(own ? [own.workspaceId] : [])]);
     const needle = search?.trim().toLowerCase();
     const numItems = Math.min(paginationOpts.numItems, LIBRARIES_PAGE_MAX);
     // What the page has read so far: every organization of one page shares one allowance of rows.
@@ -385,6 +393,21 @@ export const listLibraries = query({
       return !needle || name.toLowerCase().includes(needle) || organizationName.toLowerCase().includes(needle);
     };
     const sources: Array<{ key: string; name: string; read: (cursor: string | null, room: number) => Promise<{ page: Infer<typeof libraryOverviewValidator>[]; after: string | null }> }> = [
+      // Their own workspace's come first; the filter names organizations, so it leaves them out.
+      ...(own && !organization
+        ? [{
+            key: own.workspaceId as string,
+            name: "",
+            read: async (cursor: string | null, room: number) => {
+              const read = await stream(ctx.db, schema)
+                .query("evidenceLibraries")
+                .withIndex("by_workspace", (index) => index.eq("workspaceId", own.workspaceId))
+                .filterWith(async (library) => within(library.name, own.shown.name))
+                .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
+              return { page: await Promise.all(read.page.map((library) => overviewRow(ctx, library, "owner", own.shown))), after: read.isDone ? null : read.continueCursor };
+            },
+          }]
+        : []),
       ...owned
         .filter((entry) => !organization || entry._id === organization)
         .map((entry) => ({
@@ -436,16 +459,17 @@ async function grantedLibraries(ctx: QueryCtx, clerkUserId: string, owned: Set<I
   return (await Promise.all(grants.map((grant) => grantedLibrary(ctx, clerkUserId, owned, grant.libraryId)))).flatMap((granted) => (granted ? [granted] : []));
 }
 
-/** How many libraries a person can open: each owned organization's workspace's kept count (lib/listCounts.ts), and the libraries they were granted. */
+/** How many libraries a person can open: the kept count (lib/listCounts.ts) of their own workspace and each organization they own, and the libraries they were granted. */
 export const countLibraries = query({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return 0;
-    const owned = await ownedOrganizations(ctx);
-    const counts = await listCounts.countBatch(ctx, owned.map((entry) => ({ namespace: workspaceLibrariesOf(entry.workspaceId) })));
-    const granted = await grantedLibraries(ctx, identity.subject, new Set(owned.map((entry) => entry.workspaceId)));
+    const [owned, own] = await Promise.all([ownedOrganizations(ctx), ownWorkspace(ctx)]);
+    const workspaces = [...owned.map((entry) => entry.workspaceId), ...(own ? [own.workspaceId] : [])];
+    const counts = await listCounts.countBatch(ctx, workspaces.map((workspaceId) => ({ namespace: workspaceLibrariesOf(workspaceId) })));
+    const granted = await grantedLibraries(ctx, identity.subject, new Set(workspaces));
     return counts.reduce((sum, count) => sum + count, 0) + granted.length;
   },
 });

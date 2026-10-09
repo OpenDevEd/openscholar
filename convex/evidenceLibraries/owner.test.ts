@@ -1,6 +1,7 @@
 // Who owns an Evidence Library once libraries belong to a workspace (#650): an organization's admins, or the person whose own workspace it's in.
 import { convexTest } from "convex-test";
 import { expect, it } from "vitest";
+import { api } from "../_generated/api";
 import schema from "../schema";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
@@ -26,4 +27,9 @@ it("makes the person whose own workspace a library is in its owner, and an organ
     };
   });
   expect(roles).toEqual({ mine: ["owner", null], team: ["owner", null] });
+  // Her own library lists and counts first, with her name on it, then her organization's.
+  const ada = t.withIdentity({ subject: "ada" });
+  const listed = await ada.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 10 } });
+  expect(listed.page.map((library) => [library.name, library.role, library.organization.name])).toEqual([["Mine", "owner", "ada@example.org"], ["Team", "owner", "Feature test"]]);
+  expect(await ada.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(2);
 });
