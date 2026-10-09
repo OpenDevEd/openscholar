@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
+import { Spinner } from "@/components/ui/spinner";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useTranslations, useFormatter } from "next-intl";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
@@ -332,7 +333,7 @@ export function Pricing() {
     if (isAuthLoading || isSubscriptionLoading) {
       return {
         disabled: true,
-        label: tc("loading"),
+        label: null,
         variant: "outline" as const,
         onClick: () => {},
       };
@@ -350,7 +351,7 @@ export function Pricing() {
     if (!hasResolvedSubscription || !resolvedPlan || !catalog) {
       return {
         disabled: true,
-        label: tc("loading"),
+        label: null,
         variant: "outline" as const,
         onClick: () => {},
       };
@@ -625,7 +626,7 @@ export function Pricing() {
                   loadingPlanId === "keep-current" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    buttonConfig.label
+                    (buttonConfig.label ?? <Spinner aria-label={tc("loading")} />)
                   )}
                 </Button>
               </div>

@@ -10,6 +10,7 @@ import {
 } from "./lib/listCaps";
 import { screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
+import { activityFields } from "./activity/validators";
 import {
   errorCodeValidator,
   extractionEvidenceUnitFields,
@@ -1245,6 +1246,10 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // COLLECTIONS - Named groups for organizing library items
   // ═══════════════════════════════════════════════════════════════
+  // What changed on each item and who changed it (#656), newest first by item.
+  // By workspace first: a search's ID is only unique within its workspace.
+  activity: defineTable(activityFields).index("by_workspace_and_item", ["workspaceId", "item"]),
+
   collections: defineTable({
     workspaceId: v.id("workspaces"),
     createdBy: v.id("users"),

@@ -27,6 +27,7 @@ import { startJobFor } from "./mutations/jobs";
 import { checkScreeningSelection } from "./sources/screening";
 import { MAX_QUESTIONS_PER_JOB, MAX_QUESTION_TEXT_LENGTH, bucketItemInputValidator, questionInputValidator, questionTypeValidator, searchFiltersValidator } from "./validators";
 import { checkRequestPapers } from "../billing/accounts";
+import { noteActivity } from "../activity/notes";
 
 type PaperSet = Infer<typeof paperSetValidator>;
 /** A source as a start is given it. */
@@ -169,11 +170,15 @@ async function sourcesOf(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, {
 /** Starts the job from the sources the action read, as the page's start does, with the hold it's charged under when it has one. */
 export const begin = internalMutation({
   // `workspaceId` is optional only for a call from an action already running when this deployed (#650), which starts the job in its person's own; required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), name: v.string(), bucketItems: v.array(bucketItemInputValidator), questions: v.array(questionInputValidator), usePdfs: v.boolean(), spend: v.optional(v.object({ hold: v.string(), cap: v.number() })), chatStep: v.optional(v.id("assistantSteps")) },
+  // `author` is optional only for a call from an action already running when this deployed.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), author: v.optional(v.union(v.literal("user"), v.literal("assistant"))), name: v.string(), bucketItems: v.array(bucketItemInputValidator), questions: v.array(questionInputValidator), usePdfs: v.boolean(), spend: v.optional(v.object({ hold: v.string(), cap: v.number() })), chatStep: v.optional(v.id("assistantSteps")) },
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  handler: async (ctx, { userId, workspaceId, spend, chatStep, ...args }) => {
+  handler: async (ctx, { userId, workspaceId: given, author, spend, chatStep, ...args }) => {
     await checkPdfs(ctx, args.usePdfs);
-    return await startJobFor(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, args, spend, chatStep);
+    const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
+    const started = await startJobFor(ctx, { userId, workspaceId }, args, spend, chatStep);
+    await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, { kind: "extraction", id: started.jobId, happened: "created", detail: args.name });
+    return started;
   },
 });
 
@@ -199,11 +204,11 @@ export const settleHold = internalMutation({
  * Reads the set's sources and starts the job. With the figure the person approved, it is
  * held first (billing/charge.ts `startHeld`).
  */
-async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, { name, questions, usePdfs, ...range }: { name: string; set: PaperSet; first: number; last: number; questions: Array<Infer<typeof askedValidator>>; usePdfs?: boolean }, call?: ChangeCall): Promise<{ jobId: Id<"extractionJobs"> }> {
+async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, author: "user" | "assistant", { name, questions, usePdfs, ...range }: { name: string; set: PaperSet; first: number; last: number; questions: Array<Infer<typeof askedValidator>>; usePdfs?: boolean }, call?: ChangeCall): Promise<{ jobId: Id<"extractionJobs"> }> {
   const cap = call?.credits;
   checkQuestions(questions);
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
-  const job = { userId, workspaceId, name, bucketItems: await sourcesOf(ctx, { userId, workspaceId }, range), questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true, ...(call?.from ? { chatStep: call.from } : {}) };
+  const job = { userId, workspaceId, author, name, bucketItems: await sourcesOf(ctx, { userId, workspaceId }, range), questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true, ...(call?.from ? { chatStep: call.from } : {}) };
   if (cap === undefined) return await ctx.runMutation(internal.extraction.start.begin, job);
   // What was approved is what the job holds now, or more: the papers or the model may have changed since the person was asked, and a job that holds more than they said yes to is asked about again.
   const now: number = await ctx.runQuery(internal.extraction.start.figure, { userId, workspaceId, name, questions, ...(usePdfs === undefined ? {} : { usePdfs }), ...range });
@@ -232,7 +237,7 @@ export const extractAction = defineUserAction({
     ...(usePdfs ? { usePdfs } : {}),
   }),
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  run: (ctx, { userId, workspaceId }, args, call): Promise<{ jobId: Id<"extractionJobs"> }> => start(ctx, { userId, workspaceId }, args, call),
+  run: (ctx, { userId, workspaceId, author }, args, call): Promise<{ jobId: Id<"extractionJobs"> }> => start(ctx, { userId, workspaceId }, author, args, call),
 });
 export const extract = userAction(extractAction);
 export const extractForAssistant = assistantAction(extractAction);

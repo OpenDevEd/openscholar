@@ -3,7 +3,8 @@
 import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Share2, Check, Download, MoreHorizontal } from "@/components/icons";
+import { Share2, Check, Download, History, MoreHorizontal } from "@/components/icons";
+import { ActivitySheet } from "@/components/workspaces/activity";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -38,6 +39,8 @@ interface SearchCommandHeaderProps {
   onDownloadAllEssentialCSV?: () => void;
   isLoading?: boolean;
   queryOnly?: boolean;
+  /** The search shown, whose Activity the bar opens. */
+  searchId?: string;
 }
 
 export function SearchCommandHeader({
@@ -49,12 +52,17 @@ export function SearchCommandHeader({
   onDownloadAllEssentialCSV,
   isLoading,
   queryOnly = false,
+  searchId,
 }: SearchCommandHeaderProps) {
   const tc = useTranslations("common");
   const td = useTranslations("downloads");
   const toast = useAppToast();
   const tsc = useTranslations("searchCommand");
   const [isCopied, setIsCopied] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const ta = useTranslations("workspaces.activity");
+  // A search's Activity (#656), where the bar shows one.
+  const hasActivity = !queryOnly && Boolean(searchId);
   const search = useSearchOptional();
   const getShareableUrl = search?.getShareableUrl ?? (() => "");
   const isMobile = useIsTablet();
@@ -120,6 +128,12 @@ export function SearchCommandHeader({
                   <DropdownMenuSeparator />
                 </>
               ) : null}
+              {hasActivity ? (
+                <DropdownMenuItem onSelect={() => setActivityOpen(true)}>
+                  <History className="size-4" />
+                  {ta("title")}
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem onSelect={() => handleCopyShareLink({ fromMenu: true })}>
                 <Share2 className="size-4" />
                 {tsc("copyShareLink")}
@@ -164,6 +178,15 @@ export function SearchCommandHeader({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+
+        {hasActivity ? (
+          <TooltipHint label={ta("title")}>
+            <Button variant="ghost" size="icon" aria-label={ta("title")} onClick={() => setActivityOpen(true)} className="hidden h-8 w-8 text-muted-foreground hover:text-foreground md:inline-flex">
+              <History className="h-4 w-4" />
+            </Button>
+          </TooltipHint>
+        ) : null}
+        {hasActivity && searchId ? <ActivitySheet open={activityOpen} onOpenChange={setActivityOpen} kind="search" id={searchId} name={search?.params.q || tsc("currentQuery")} /> : null}
 
         {/* Share button */}
         {!queryOnly && (

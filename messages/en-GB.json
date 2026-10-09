@@ -3906,6 +3906,11 @@
         "did": "Changed the organisation's AI preset",
         "where": "AI settings",
         "ask": "Change the organisation's AI preset"
+      },
+      "activity": {
+        "doing": "Reading what changed",
+        "did": "Read what changed",
+        "where": "Activity"
       }
     },
     "asks": {
@@ -4192,6 +4197,31 @@
       "heading": "Ratings in this collection",
       "none": "No ratings",
       "stars": "{value} of 5"
+    },
+    "activity": {
+      "title": "Activity",
+      "runBy": "Run by",
+      "madeBy": "Made by",
+      "created": "created it",
+      "renamed": "renamed it from",
+      "edited": "changed it",
+      "added": "added {count, plural, one {# paper} other {# papers}}",
+      "removed": "removed {count, plural, one {# paper} other {# papers}}",
+      "rated": "rated {count, plural, one {# paper} other {# papers}}",
+      "answered": "changed {count, plural, one {# answer} other {# answers}}",
+      "screened": "screened {count, plural, one {# paper} other {# papers}}",
+      "extracted": "extracted from {count, plural, one {# paper} other {# papers}}",
+      "paused": "paused it",
+      "resumed": "resumed it",
+      "retried": "retried {count, plural, one {# failed answer} other {# failed answers}}",
+      "stopped": "stopped it",
+      "viaAssistant": "Through the assistant",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "thisWeek": "This week",
+      "earlier": "Earlier",
+      "showEarlier": "Show earlier activity",
+      "none": "Changes show here from now on."
     }
   },
   "models": {

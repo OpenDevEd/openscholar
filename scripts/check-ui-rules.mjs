@@ -73,20 +73,93 @@ function cascade(declarations, properties) {
 }
 /** A comma-separated CSS list; functions go first, so the commas inside cubic-bezier() don't split it. */
 const cssList = (value) => value.replace(/[\w-]+\([^)]*\)/g, " ").split(",").map((item) => item.trim());
-/** Whether one CSS rule both animates and transitions opacity or transform. */
-function cssClashes(body) {
-  const declarations = body
-    .split(";")
-    .map((declaration) => declaration.split(":"))
-    .filter((parts) => parts.length > 1)
-    .map(([name, ...value]) => [name.trim().toLowerCase(), value.join(":").trim()]);
-  const animation = cascade(declarations, ["animation", "animation-name"]);
-  const transition = cascade(declarations, ["transition", "transition-property"]);
-  if (!animation || !transition) return false;
-  const animates = cssList(animation[1]).some((item) => item !== "" && !/(^|\s)none(\s|$)/i.test(item));
-  const moves = cssList(transition[1]).some((item) => (transition[0] === "transition" ? cssItemMoves(item) : MOVING.has(item)));
-  return animates && moves;
+/** Whether a CSS animation or transition declaration animates, or moves opacity or transform. */
+const cssAnimates = (animation) => !!animation && cssList(animation[1]).some((item) => item !== "" && !/(^|\s)none(\s|$)/i.test(item));
+const cssMoves = (transition) => !!transition && cssList(transition[1]).some((item) => (transition[0] === "transition" ? cssItemMoves(item) : MOVING.has(item)));
+// `transition`, `transition-colors` or `transition-[opacity]`; `transition-discrete` and `transition-normal` set behaviour, not properties.
+const TRANSITION_UTILITY = /^transition(?!-(none|discrete|normal)$)(-|$)/;
+const APPLIED_NONE = { "animate-none": ["animation", "none"], "transition-none": ["transition-property", "none"] };
+/** What one `@apply` utility sets, as the cascade sees it: an animation, or the properties a transition covers. */
+function appliedValue(token) {
+  const name = utility(token);
+  if (animates(token)) return ["animation", name];
+  if (TRANSITION_UTILITY.test(name)) return ["transition-property", transitionsMovement(token) ? "all" : "color"];
+  return APPLIED_NONE[name];
 }
+/** What one `@apply` utility declares, !important when it or the whole directive carries the mark. */
+function appliedDeclaration(token, directiveImportant) {
+  const declaration = appliedValue(token);
+  const important = directiveImportant || /^!|!$/.test(token.split(":").at(-1) ?? "");
+  return declaration && important ? [declaration[0], `${declaration[1]} !important`] : declaration;
+}
+/** The state or screen variants a utility applies under (`hover:`, `md:`); pseudo-elements are its box instead. */
+const scope = (token) =>
+  token
+    .split(":")
+    .slice(0, -1)
+    .filter((variant) => !PSEUDO_ELEMENTS.has(variant))
+    .join(":");
+/** The declarations an `@apply` list makes, each keyed by the box it styles and the variants it applies under. */
+function applyList(list) {
+  const tokens = list.split(/\s+/).filter(Boolean);
+  // `@apply a b !important` makes every utility in it important.
+  const important = tokens.includes("!important");
+  return tokens.flatMap((token) => {
+    const declaration = token === "!important" ? undefined : appliedDeclaration(token, important);
+    return declaration ? [[`${box(token)}|${scope(token)}`, declaration]] : [];
+  });
+}
+// One rule's declarations, in source order, for each box and variant they
+// apply under; `@apply` utilities join where they're written. A variant
+// (`hover:animate-none`) adds to its box's own declarations, never replaces
+// them outside that state.
+function ruleDeclarations(body) {
+  const scopes = new Map([["|", []]]);
+  const add = (key, declaration) => scopes.set(key, [...(scopes.get(key) ?? []), declaration]);
+  for (const part of body.split(";").map((piece) => piece.trim())) {
+    const applied = part.match(/^@apply\s+([\s\S]+)$/)?.[1];
+    const [name, ...value] = part.split(":");
+    if (applied) for (const [key, declaration] of applyList(applied)) add(key, declaration);
+    else if (value.length) add("|", [name.trim().toLowerCase(), value.join(":").trim()]);
+  }
+  // A state applies on top of every less specific state of its box: `dark:hover:` adds to `dark:` and to the base.
+  // Each box is also checked with each pair of its states together, unless they can never hold at once.
+  const variantsOf = (key) => key.split("|")[1].split(":").filter(Boolean);
+  const boxOf = (key) => key.split("|")[0];
+  const within = (key, variants) =>
+    [...scopes]
+      .filter(([other]) => boxOf(other) === boxOf(key) && variantsOf(other).every((variant) => variants.includes(variant)))
+      .sort(([a], [b]) => variantsOf(a).length - variantsOf(b).length)
+      .flatMap(([, declarations]) => declarations);
+  const keys = [...scopes.keys()];
+  return keys.flatMap((key) =>
+    keys
+      .filter((other) => boxOf(other) === boxOf(key))
+      .map((other) => [...new Set([...variantsOf(key), ...variantsOf(other)])])
+      .filter(compatible)
+      .map((variants) => within(key, variants)),
+  );
+}
+// Variants that never hold at once; a breakpoint never holds with its `max-` form either.
+const EXCLUSIVE = [
+  ["motion-safe", "motion-reduce"],
+  ["portrait", "landscape"],
+  ["ltr", "rtl"],
+  ["dark", "light"],
+  ["enabled", "disabled"],
+  ["required", "optional"],
+  ["valid", "invalid"],
+  ["user-valid", "user-invalid"],
+  ["in-range", "out-of-range"],
+];
+/** Whether variants can all hold at once, as `dark:` and `hover:` do when the page is dark and hovered. */
+const compatible = (variants) =>
+  !EXCLUSIVE.some(([a, b]) => variants.includes(a) && variants.includes(b)) && !variants.some((variant) => variants.includes(`max-${variant}`));
+/** Whether one box of a CSS rule, in any state, both animates and transitions opacity or transform. */
+const cssClashes = (body) =>
+  ruleDeclarations(body).some(
+    (declarations) => cssAnimates(cascade(declarations, ["animation", "animation-name"])) && cssMoves(cascade(declarations, ["transition", "transition-property"])),
+  );
 /** Each CSS rule's own declarations, without the rules nested in it, and where its brace opens. */
 function cssRules(text) {
   const rules = [];
@@ -110,13 +183,18 @@ const boundNames = (name) => (ts.isIdentifier(name) ? [name.text] : name.element
 const declares = (block, name) =>
   block.statements.flatMap((statement) => (ts.isVariableStatement(statement) ? [...statement.declarationList.declarations] : [])).find((declaration) => boundNames(declaration.name).includes(name));
 /** The value an identifier's variable starts with, found as scopes resolve it; a parameter or a destructured name has none. */
-function declaredValue(node) {
+function declarationOf(node) {
   for (let scope = node.parent; scope; scope = scope.parent) {
     if (ts.isFunctionLike(scope) && scope.parameters.some((parameter) => boundNames(parameter.name).includes(node.text))) return undefined;
     const declaration = ts.isBlock(scope) || ts.isSourceFile(scope) ? declares(scope, node.text) : undefined;
-    if (declaration) return ts.isIdentifier(declaration.name) ? declaration.initializer : undefined;
+    if (declaration) return declaration;
   }
   return undefined;
+}
+/** The value an identifier's variable starts with; a parameter or a destructured name has none. */
+function declaredValue(node) {
+  const declaration = declarationOf(node);
+  return declaration && ts.isIdentifier(declaration.name) ? declaration.initializer : undefined;
 }
 /** An expression without `( )`, `as`, `satisfies` or `!` around it. */
 const unwrap = (node) => (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isNonNullExpression(node) ? unwrap(node.expression) : node);
@@ -133,6 +211,8 @@ const capped = (lists) => {
   const unique = [...new Set(lists)];
   return unique.length > MAX_LISTS ? [[...new Set(unique.join(" ").split(/\s+/))].join(" ")] : unique;
 };
+// `motion.div`, or `m.div` inside LazyMotion.
+const MOTION_TAG = /^(motion|m)\./;
 const FRAMER_PROPS = new Set(["initial", "animate", "exit", "layout", "layoutId", "variants", "whileHover", "whileTap", "whileInView", "whileFocus", "whileDrag"]);
 // The `uppercase` utility with variants or the important mark (`sm:uppercase`,
 // `uppercase!`), looked for only where classes are written so prose that says
@@ -145,6 +225,24 @@ const CLASS_NAMES = /(class(name)?(es|s)?|styles?|variants?|texttransform)$/i;
 const DOT = /[·•]|&(?:middot|bull|#183|#x0*b7|#8226|#x2022);/i;
 // A short status label ("Loading", "Loading author profile..."), not a sentence that mentions loading.
 const LOADING = /^loading\b[^.!?]{0,40}(…|\.\.\.)?$/i;
+// The translation functions: `t`, and `tc` or `tUI` for a second namespace.
+const TRANSLATE = /^t([a-z]|[A-Z]\w*)?$/;
+const TRANSLATION_APIS = new Set(["useTranslations", "getTranslations"]);
+/** Whether an expression makes a translator: `useTranslations(...)`, or `await getTranslations(...)`. */
+function translationFactory(node) {
+  const value = node && unwrap(node);
+  const call = value && (ts.isAwaitExpression(value) ? unwrap(value.expression) : value);
+  return !!call && ts.isCallExpression(call) && ts.isIdentifier(call.expression) && TRANSLATION_APIS.has(call.expression.text);
+}
+// next-intl's ways to read a message besides calling the translator: `t.rich("key")`, `t.markup("key")`, `t.raw("key")`.
+const TRANSLATION_METHODS = new Set(["rich", "markup", "raw"]);
+/** Whether a called expression translates: named like `t`, `tc` or `tUI`, bound to a translation factory, one called directly, or one of its message methods. */
+function translates(callee) {
+  if (ts.isPropertyAccessExpression(callee)) return TRANSLATION_METHODS.has(callee.name.text) && translates(callee.expression);
+  if (!ts.isIdentifier(callee)) return translationFactory(callee);
+  return TRANSLATE.test(callee.text) || translationFactory(declaredValue(callee));
+}
+const SR_ONLY = /(?:^|[\s"'`])sr-only(?=$|[\s"'`])/;
 const allowed = (line, rule) => new RegExp(`ui-rules-allow:\\s*${rule}\\s+--\\s*\\S`).test(line ?? "");
 
 const FIX = {
@@ -155,6 +253,18 @@ const FIX = {
   initials: "AvatarFallback shows an icon when there is no photo, never initials or text (see IdentityAvatar and AuthorAvatar).",
   "loading-text": "no \"Loading\" text; show the shared Spinner, or hold the final size until the data is there.",
 };
+
+/** Every string in a messages file, with the key that holds it. */
+const strings = (value, key) =>
+  typeof value === "string" ? [[key, value]] : value && typeof value === "object" ? Object.entries(value).flatMap(([inner, child]) => strings(child, inner)) : [];
+
+// The message keys that are Loading labels, so a translated label is caught
+// where it is rendered. A key counts only when every message of that name is
+// one, since the namespace a call reads from isn't known here.
+const english = strings(JSON.parse(readFileSync("messages/en-US.json", "utf8")), "");
+const loadingMessage = ([, value]) => LOADING.test(value.trim());
+const otherKeys = new Set(english.filter((message) => !loadingMessage(message)).map(([key]) => key));
+const loadingKeys = new Set(english.filter((message) => loadingMessage(message) && !otherKeys.has(message[0])).map(([key]) => key));
 
 function files(dir, extensions) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -227,15 +337,103 @@ function check(file) {
     }
     return false;
   };
-  // Whether a string is rendered as a JSX child, directly or through a condition.
+  // Whether a value passes through this parent on its way to being rendered: `a && b` shows only b, a is its condition.
+  const passesThrough = (parent, child) => {
+    if (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) || ts.isSatisfiesExpression(parent) || ts.isNonNullExpression(parent)) return true;
+    if (ts.isConditionalExpression(parent)) return parent.condition !== child;
+    if (!ts.isBinaryExpression(parent)) return false;
+    if (parent.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) return parent.right === child;
+    return [ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(parent.operatorToken.kind);
+  };
+  // The node a value lands in once it passes through parentheses, type assertions and conditions.
+  const destination = (node) => {
+    let child = node;
+    let parent = node.parent;
+    while (parent && passesThrough(parent, child)) {
+      child = parent;
+      parent = parent.parent;
+    }
+    return parent;
+  };
+  // Whether a value is rendered as a JSX child, directly or through a condition.
   const renderedInJsx = (node) => {
-    for (let child = node, parent = node.parent; parent; child = parent, parent = parent.parent) {
-      if (ts.isJsxExpression(parent)) return !ts.isJsxAttribute(parent.parent);
-      const passesThrough =
-        ts.isParenthesizedExpression(parent) ||
-        (ts.isConditionalExpression(parent) && parent.condition !== child) ||
-        (ts.isBinaryExpression(parent) && [ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(parent.operatorToken.kind));
-      if (!passesThrough) return false;
+    const target = destination(node);
+    return !!target && ts.isJsxExpression(target) && !ts.isJsxAttribute(target.parent);
+  };
+  // The statement directly in the file that holds a node: properties are matched by name only within it.
+  const topLevel = (node) => {
+    let current = node;
+    while (current.parent && !ts.isSourceFile(current.parent)) current = current.parent;
+    return current;
+  };
+  // The key a rendered property is matched by: its object's variable when the object is written into one
+  // (`const config = { label }`), otherwise its name within the top-level declaration, for an object a function returns.
+  const propertyKey = (holder, name) => (ts.isVariableDeclaration(holder) ? `variable ${holder.pos}:${name}` : `top ${topLevel(holder).pos}:${name}`);
+  const objectHolder = (object) => {
+    const target = destination(object);
+    return target && ts.isVariableDeclaration(target) ? target : object;
+  };
+  const readObjectHolder = (access) => {
+    const base = unwrap(access.expression);
+    const declaration = ts.isIdentifier(base) ? declarationOf(base) : undefined;
+    const value = declaration?.initializer && unwrap(declaration.initializer);
+    return declaration && value && ts.isObjectLiteralExpression(value) ? declaration : access;
+  };
+  // What the file renders as text: `{status}` marks the variable `status` (and any it was copied from),
+  // `{config.label}` the property `label` in that top-level declaration. Screen-reader-only text marks nothing.
+  let rendered;
+  const renderedValues = () => {
+    if (rendered) return rendered;
+    rendered = { variables: new Set(), properties: new Set() };
+    const markVariable = (identifier) => {
+      for (let declaration = declarationOf(identifier); declaration && !rendered.variables.has(declaration); ) {
+        rendered.variables.add(declaration);
+        const value = declaration.initializer && unwrap(declaration.initializer);
+        declaration = value && ts.isIdentifier(value) ? declarationOf(value) : undefined;
+      }
+    };
+    const collect = (node) => {
+      const visible = (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node)) && renderedInJsx(node) && !screenReaderOnly(node);
+      if (visible && ts.isIdentifier(node) && !ts.isPropertyAccessExpression(node.parent)) markVariable(node);
+      if (visible && ts.isPropertyAccessExpression(node)) rendered.properties.add(propertyKey(readObjectHolder(node), node.name.text));
+      ts.forEachChild(node, collect);
+    };
+    collect(source);
+    return rendered;
+  };
+  // The variable or property a value is assigned to after its declaration: `status = value`, `config.label = value`.
+  const assignedTo = (target, node) => {
+    if (!ts.isBinaryExpression(target) || target.operatorToken.kind !== ts.SyntaxKind.EqualsToken) return undefined;
+    let child = node;
+    while (child.parent && child.parent !== target) child = child.parent;
+    if (target.right !== child) return undefined;
+    const left = unwrap(target.left);
+    if (ts.isIdentifier(left)) return declarationOf(left);
+    return ts.isPropertyAccessExpression(left) ? propertyKey(readObjectHolder(left), left.name.text) : undefined;
+  };
+  // Whether a value is shown as text: rendered as a JSX child, or held in a variable or property the file renders.
+  const shown = (node) => {
+    const target = destination(node);
+    if (!target) return false;
+    if (ts.isJsxExpression(target)) return !ts.isJsxAttribute(target.parent);
+    if (ts.isVariableDeclaration(target)) return renderedValues().variables.has(target);
+    if (ts.isPropertyAssignment(target)) return renderedValues().properties.has(propertyKey(objectHolder(target.parent), target.name.getText(source)));
+    const assigned = assignedTo(target, node);
+    return typeof assigned === "string" ? renderedValues().properties.has(assigned) : !!assigned && renderedValues().variables.has(assigned);
+  };
+  // Whether a string is the key of a translation call, `t("loading")`, whose message is a Loading label.
+  const translatedLoading = (node) => {
+    const call = node.parent;
+    if (!ts.isStringLiteral(node) || !ts.isCallExpression(call) || call.arguments[0] !== node) return false;
+    return translates(call.expression) && loadingKeys.has(node.text.split(".").at(-1)) && shown(call);
+  };
+  // Whether a node sits in an element only screen readers get, in every class its condition can give, where a Loading label names a spinner.
+  const screenReaderOnly = (node) => {
+    for (let parent = node.parent; parent && !ts.isSourceFile(parent); parent = parent.parent) {
+      if (!ts.isJsxElement(parent)) continue;
+      const className = parent.openingElement.attributes.properties.find((attribute) => ts.isJsxAttribute(attribute) && attribute.name.getText(source) === "className");
+      // `not-sr-only` under any variant shows the text again, as `sr-only md:not-sr-only` does on wide screens.
+      return classLists(className?.initializer).every((list) => SR_ONLY.test(list) && !/not-sr-only/.test(list));
     }
     return false;
   };
@@ -257,11 +455,11 @@ function check(file) {
       if (UPPERCASE_CSS.test(node.text) || (UPPERCASE_CLASS.test(node.text) && classContext(node))) report(node, "uppercase");
       if (DOT.test(node.text)) report(node, "dot-separator");
       const whole = ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node);
-      if (whole && LOADING.test(node.text.trim()) && renderedInJsx(node)) report(node, "loading-text");
+      if (((whole && LOADING.test(node.text.trim()) && shown(node)) || translatedLoading(node)) && !screenReaderOnly(node)) report(node, "loading-text");
     }
     if (ts.isJsxText(node)) {
       if (DOT.test(node.text)) report(node, "dot-separator");
-      if (LOADING.test(node.text.trim())) report(node, "loading-text");
+      if (LOADING.test(node.text.trim()) && !screenReaderOnly(node)) report(node, "loading-text");
     }
     if (ts.isJsxElement(node) && node.openingElement.tagName.getText(source) === "AvatarFallback") {
       if (node.children.some(rendersText)) report(node, "initials");
@@ -277,7 +475,9 @@ function check(file) {
         const name = attribute.name.getText(source);
         if (name === "className") classes = classLists(attribute.initializer);
         if (name === "style" && attribute.initializer) style = attribute.initializer.getText(source);
-        if (FRAMER_PROPS.has(name) && tag.startsWith("motion.")) framer = true;
+        // A prop set to a literal false (`layout={false}`) turns its animation off.
+        const switchedOff = attribute.initializer && ts.isJsxExpression(attribute.initializer) && attribute.initializer.expression?.kind === ts.SyntaxKind.FalseKeyword;
+        if (FRAMER_PROPS.has(name) && MOTION_TAG.test(tag) && !switchedOff) framer = true;
         if (name === "title") title = attribute;
         if (tag === "AvatarFallback" && name === "children" && attribute.initializer && rendersText(attribute.initializer)) report(attribute, "initials");
       }
@@ -320,18 +520,9 @@ const stylesheetClashes = cssFiles.flatMap((file) => {
 const copy = files("messages", [".json"]).flatMap((file) => {
   const text = readFileSync(file, "utf8");
   const lines = text.split("\n");
-  const found = [];
-  const walk = (value, name) => {
-    if (typeof value === "string") {
-      if (!DOT.test(value)) return;
-      const line = lines.findIndex((entry) => entry.includes(`"${name}"`));
-      found.push(`${file}:${line + 1} dot-separator: ${FIX["dot-separator"]}`);
-    } else if (value && typeof value === "object") {
-      for (const [key, inner] of Object.entries(value)) walk(inner, key);
-    }
-  };
-  walk(JSON.parse(text), "");
-  return found;
+  return strings(JSON.parse(text), "")
+    .filter(([, value]) => DOT.test(value))
+    .map(([key]) => `${file}:${lines.findIndex((line) => line.includes(`"${key}"`)) + 1} dot-separator: ${FIX["dot-separator"]}`);
 });
 
 const problems = [...files("components", [".ts", ".tsx"]), ...files("app", [".ts", ".tsx"])].flatMap(check).concat(broad, stylesheets, stylesheetClashes, copy);

@@ -19,6 +19,9 @@ import { ConsentAwareGoogleAnalytics } from "@/components/google-analytics";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { preloadQuery } from "convex/nextjs";
+import { cookies, headers } from "next/headers";
+import { auth } from "@clerk/nextjs/server";
+import { LOOK_COOKIE, lookKey, readCache, WORKSPACE_HEADER } from "@/lib/workspaces/look-cache";
 import { AssistantPanel } from "@/components/assistant/panel";
 import { ItemHome } from "@/components/workspaces/item-home";
 import { api } from "@/convex/_generated/api";
@@ -71,12 +74,19 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [locale, messages, preloadedFlags, preloadedCatalog] = await Promise.all([
+  const [locale, messages, preloadedFlags, preloadedCatalog, { userId }, requestHeaders, requestCookies] = await Promise.all([
     getLocale(),
     getMessages(),
     preloadQuery(api.featureFlags.queries.list),
     preloadQuery(api.billing.catalog.get),
+    auth(),
+    headers(),
+    cookies(),
   ]);
+  // The rail as this browser last saw it, drawn from the first frame: the person and the address's workspace. None signed out.
+  const slug = requestHeaders.get(WORKSPACE_HEADER) || null;
+  const { me, looks } = readCache(requestCookies.get(LOOK_COOKIE)?.value, userId);
+  const look = looks[lookKey(slug)];
 
   return (
     <html lang={locale} suppressHydrationWarning className={cn(appFont.variable, "antialiased")}>
@@ -90,7 +100,7 @@ export default async function RootLayout({
                     <TooltipProvider>
                       <div className="flex min-h-screen">
                         {/* Sidebar */}
-                        <AppSidebar />
+                        <AppSidebar firstWorkspace={{ slug, ...(userId ? { user: userId } : {}), ...(me ? { me } : {}), ...(look ? { look } : {}) }} />
 
                         {/* Main Content Area */}
                         <div className="flex-1 flex flex-col min-w-0 min-h-0 [--app-navbar-height:3.5rem] md:[--app-navbar-height:0px]">

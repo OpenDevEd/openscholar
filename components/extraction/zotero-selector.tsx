@@ -10,7 +10,7 @@ import { api } from "@/convex/_generated/api";
 import { collectAllPages } from "@/lib/zotero/collect-all-pages";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, Database, Library, Loader2, Paperclip } from "@/components/icons";
+import { AlertCircle, Database, Library, Paperclip } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Cascader, type CascaderOption } from "@/components/ui/cascader";
 import { useAppToast } from "@/lib/toast";
@@ -23,6 +23,8 @@ import {
 } from "@/lib/toast/error-resolver";
 import { SelectableList } from "./bucket/selectable-list";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 import { useBucketStore } from "@/lib/store/bucket";
 import {
   fromZoteroItem,
@@ -405,8 +407,8 @@ export function ZoteroSelector({ paperLimit }: { paperLimit: number }) {
       </div>
 
       {isLoading && (
-        <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingItems')}
+        <div className="rounded-xl border border-border bg-muted p-6 flex items-center justify-center">
+          <Spinner className="my-0.5" aria-label={t('loadingItems')} />
         </div>
       )}
 
@@ -478,10 +480,12 @@ export function ZoteroSelector({ paperLimit }: { paperLimit: number }) {
           <Button
             variant="outline"
             size="sm"
+            className="grid"
             onClick={() => items.setSize(items.size + 1)}
             disabled={items.isValidating}
           >
-            {items.isValidating ? t('loadingItems') : t('loadMore')}
+            <span className={cn("col-start-1 row-start-1", items.isValidating && "invisible")}>{t('loadMore')}</span>
+            {items.isValidating && <Spinner className="col-start-1 row-start-1 place-self-center" aria-label={t('loadingItems')} />}
           </Button>
         </div>
       )}

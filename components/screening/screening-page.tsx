@@ -24,7 +24,11 @@ import { doneOf, phaseOf, type Job, type JobRow, type Phase } from "@/lib/screen
 import { cn } from "@/lib/utils";
 import { JobView, jobName } from "./job-view";
 import { SetupView } from "./setup-view";
+import { ItemBar } from "@/components/workspaces/activity";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+
+/** Who ran a screening and its Activity head the pane, edge to edge, as its first row (#656). */
+const PANE_HEADER = "-mx-4 -mt-4 mb-4 @min-[42rem]/configuration:-mx-6 @min-[42rem]/configuration:-mt-6 @min-[42rem]/configuration:mb-6 @min-[42rem]/configuration:px-6";
 
 /** Screenings one page of the rail lists. */
 const RAIL_PAGE = 12;
@@ -147,14 +151,17 @@ export function ScreeningPage() {
             {/* Nothing stands in while a screening is read. An empty block has no height, so it could not be
                 lifted out of the flow as it left, and held the next one a gap lower until it was gone. */}
             {job || showsForm ? (
-              <motion.div key={job?._id ?? "new"} initial={{ opacity: 0, y: begun ? 8 : 0 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }} onAnimationStart={() => setBegun(true)} className={cn(stale && "pointer-events-none opacity-60")} aria-busy={stale}>
+              <motion.div key={job?._id ?? "new"} initial={{ opacity: 0, y: begun ? 8 : 0 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }} onAnimationStart={() => setBegun(true)} className={cn("flow-root", stale && "pointer-events-none opacity-60")} aria-busy={stale}>
                 {job ? (
-                  <JobView
-                    job={job}
-                    phase={phaseOf(job, active)}
-                    blocker={blockerOf(reading(job._id))}
-                    onRunAgain={() => openForm(job)}
-                  />
+                  <>
+                    <ItemBar kind="screening" id={job._id} name={jobName(t, job, date)} started="runBy" className={PANE_HEADER} />
+                    <JobView
+                      job={job}
+                      phase={phaseOf(job, active)}
+                      blocker={blockerOf(reading(job._id))}
+                      onRunAgain={() => openForm(job)}
+                    />
+                  </>
                 ) : (
                   <SetupView
                     key={again?._id ?? searchId ?? "new"}

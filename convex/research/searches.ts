@@ -24,6 +24,7 @@ import { applyCommand, checkRemoval, findSearch, revisionRow } from "./records";
 import { AUTHORS_SHOWN, changesValidator, COUNTRIES_SHOWN, LAST_PAGE, LAST_PAGE_FROM_START, pageValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 import type { Id } from "../_generated/dataModel";
 import { personalWorkspaceOf } from "../workspaces/actor";
+import { noteActivity } from "../activity/notes";
 
 const CREATE = "research/searches:create" as const;
 const UPDATE = "research/searches:update" as const;
@@ -286,6 +287,7 @@ const madeHere = v.object({ created: v.number(), revision: v.number() });
 
 export const createAction = defineUserMutation({
   path: CREATE,
+  activity: (args, { id }) => ({ kind: "search", id, happened: "created", ...(args.query ? { detail: args.query } : {}) }),
   description:
     "Makes a saved search in the person's account from a query, filters, or both, which shows in their search history at once. For when they ask for a search to keep: to look papers up, use research/papers:search, which saves nothing. " +
     "It doesn't run the search: read its results with research/searches:results. The query is keywords, with AND, OR, NOT and quoted phrases. " +
@@ -400,6 +402,7 @@ export const updateAction = defineUserMutation({
     const kept = (value: unknown) => (value === undefined || value === false || value === "" || (Array.isArray(value) && !value.length) ? "off" : JSON.stringify(value));
     const refiltered = Object.entries(filters).some(([key, value]) => kept(current[key as keyof SavedSearch]) !== kept(value)) || clear.some((key) => current[key as keyof SavedSearch] !== undefined);
     if (!requeried && !refiltered) return {};
+    await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, { kind: "search", id, happened: "edited", ...(requeried && asked ? { detail: asked } : {}) });
     const edits: Array<UndoCommand | undefined> = [];
     if (requeried) edits.push(await applyCommand(ctx, { userId, workspaceId }, { kind: "editSearch", id, edit: { kind: "query", query: asked, field } }, author));
     // Its results start again from their first page, as they do when the person changes the search on its page.
@@ -419,6 +422,7 @@ export const updateForAssistant = assistantMutation(updateAction);
 
 export const restoreAction = defineUserMutation({
   path: RESTORE,
+  activity: ({ id }) => ({ kind: "search", id, happened: "edited" }),
   description:
     "Puts a saved search's query and filters back as they were at one of its revisions, as a new revision. With `expect`, the revision whose query and filters the search should hold now, it is refused if the search changed since. " +
     "Returns `undo`, which puts back what this replaced.",

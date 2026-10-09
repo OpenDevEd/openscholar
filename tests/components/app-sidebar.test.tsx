@@ -22,6 +22,7 @@ vi.mock("next-themes", () => ({ useTheme: () => ({ theme: "system", setTheme: vi
 vi.mock("@clerk/nextjs", () => ({
   useUser: () => ({ user: { fullName: "Ada", imageUrl: undefined, primaryEmailAddress: { emailAddress: "ada@example.org" } } }),
   useClerk: () => ({ signOut: vi.fn() }),
+  useAuth: () => ({ isLoaded: true, userId: "user_ada" }),
 }));
 vi.mock("convex/react", () => ({ useAction: () => vi.fn(), useMutation: () => vi.fn() }));
 vi.mock("@/convex/_generated/api", () => ({
@@ -42,10 +43,12 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
     if (ref === "organizations:myInvitations") return { data: { page: [], isDone: true, continueCursor: "" } };
     return { data: null };
   },
+  // The rail reads the workspace list for its card, which these tests don't open.
+  useProtectedPaginatedQuery: () => ({ results: [], status: "Exhausted", loadMore: vi.fn() }),
 }));
 vi.mock("@/lib/auth/use-subscription-state", () => ({ useSubscriptionState: () => ({ account: null, catalog: null, resolvedPlan: null }) }));
 vi.mock("@/lib/auth/use-organization-features", () => ({ useOrganizationFeatures: () => ({ data: reads.features }) }));
-vi.mock("@/lib/feature-flags/hook", () => ({ useFeatureFlag: () => true }));
+vi.mock("@/lib/feature-flags/hook", () => ({ useFeatureFlag: () => true, useFeatureFlagForPlan: () => true }));
 vi.mock("@/lib/billing/catalog-provider", () => ({ useBillingCatalog: () => null }));
 vi.mock("@/components/providers/convex-provider", () => ({ useAuthReadiness: () => ({ phase: "authenticated" }) }));
 vi.mock("@/lib/research/reads", () => ({ useQueryShortcuts: () => undefined }));
@@ -80,21 +83,21 @@ describe("<AppSidebar>", () => {
 
   it("rings Screen with the percent the active screening's query gives", () => {
     reads.screening = { jobId: "job_1", status: "processing", totalPapers: 100, processedPapers: 100, failedPapers: 0, qualifiedPapers: 80, percentComplete: 99 };
-    render(<AppSidebar />);
+    render(<AppSidebar firstWorkspace={{ slug: null }} />);
     expect(reads.mounted).toContain("screening:getActiveScreeningJobProgress");
     expect(screen.getByText("99%")).toBeInTheDocument();
     expect(screen.queryByText("100%")).not.toBeInTheDocument();
   });
 
   it("opens Extract and Publish only where the workspace has them", () => {
-    render(<AppSidebar />);
+    render(<AppSidebar firstWorkspace={{ slug: null }} />);
     expect(screen.getByRole("link", { name: "extract" })).toHaveAttribute("href", "/extraction");
     expect(screen.getByRole("link", { name: "publish" })).toHaveAttribute("href", "/evidence-libraries");
   });
 
   it("hides Extract and Publish in a workspace without them", () => {
     reads.features = {};
-    render(<AppSidebar />);
+    render(<AppSidebar firstWorkspace={{ slug: null }} />);
     expect(screen.queryByRole("link", { name: "extract" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "publish" })).not.toBeInTheDocument();
   });

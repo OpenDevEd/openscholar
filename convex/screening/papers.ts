@@ -93,6 +93,7 @@ const answerAsLeft = v.object({ answer: v.union(v.boolean(), v.null()), by: answ
 
 export const answerAction = defineUserMutation({
   path: "screening/papers:answer",
+  activity: ({ jobId }) => ({ kind: "screening", id: jobId, happened: "answered", count: 1 }),
   description:
     "Changes one answer of a screened paper in one of the person's screening jobs: yes (true), no (false) or unclear (null), \"model\" to put back the model's own answer, or { asOf } to put it back as it was at that version of the screening's answers, with who set it. " +
     "The paper's score, stars and outcome follow, and a paper that becomes included is saved the way the job saves included papers. " +

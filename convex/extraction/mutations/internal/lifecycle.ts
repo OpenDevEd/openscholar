@@ -28,6 +28,7 @@ import { readJobCounters } from "../../jobCounters";
 import { hasWaitingChanges } from "../../counts";
 import { jobText } from "../../../lib/searchText";
 import { personalWorkspaceOf } from "../../../workspaces/personal";
+import { noteActivity } from "../../../activity/notes";
 
 export const maybeFinalizeJob = internalMutation({
   args: {
@@ -99,6 +100,8 @@ export const maybeFinalizeJob = internalMutation({
       completedAt: now,
       updatedAt: now,
     });
+    // Its Activity (#656): the papers it extracted from, as whoever ran it.
+    if (status === "completed" && job.workspaceId) await noteActivity(ctx, { workspaceId: job.workspaceId, by: job.createdBy, viaAssistant: false }, { kind: "extraction", id: args.jobId, happened: "extracted", count: processed });
     return null;
   },
 });

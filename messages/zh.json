@@ -3904,6 +3904,11 @@
         "did": "已更改组织的 AI 预设",
         "where": "AI 设置",
         "ask": "更改组织的 AI 预设"
+      },
+      "activity": {
+        "doing": "正在查看变更",
+        "did": "已查看变更",
+        "where": "动态"
       }
     },
     "asks": {
@@ -4190,6 +4195,31 @@
       "heading": "此收藏集中的评分",
       "none": "暂无评分",
       "stars": "{value}/5"
+    },
+    "activity": {
+      "title": "动态",
+      "runBy": "运行者",
+      "madeBy": "创建者",
+      "created": "创建了它",
+      "renamed": "重命名了它，原名",
+      "edited": "修改了它",
+      "added": "添加了 {count} 篇论文",
+      "removed": "移除了 {count} 篇论文",
+      "rated": "评分了 {count} 篇论文",
+      "answered": "修改了 {count} 个回答",
+      "screened": "筛选了 {count} 篇论文",
+      "extracted": "从 {count} 篇论文中提取",
+      "paused": "暂停了它",
+      "resumed": "恢复了它",
+      "retried": "重试了 {count} 个失败的回答",
+      "stopped": "停止了它",
+      "viaAssistant": "通过助手",
+      "today": "今天",
+      "yesterday": "昨天",
+      "thisWeek": "本周",
+      "earlier": "更早",
+      "showEarlier": "显示更早的动态",
+      "none": "此后的变更会显示在这里。"
     }
   },
   "models": {

@@ -47,6 +47,7 @@ import { Button } from "@/components/ui/button";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { cn } from "@/lib/utils";
 import { ManageCollectionsDialog, NewCollectionDialog, useCollectionDialogsReady, useManageCollections } from "./collection-dialogs";
+import { ActivityButton } from "@/components/workspaces/activity";
 import { LibraryCommandCenter } from "./library-command-center";
 import { LibraryEmptyState } from "./library-empty-state";
 import { LibraryFilterSidebar } from "./library-filter-sidebar";
@@ -492,6 +493,8 @@ export function LibraryPageClient() {
                 <LibraryCommandCenter
                   // An open collection heads the command center; its name is no longer a filter chip.
                   title={heading}
+                  // An open collection's Activity (#656), at the end of its heading.
+                  actions={selectedCollection ? <ActivityButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} /> : undefined}
                   rawSearch={rawSearch}
                   onSearchChange={setRawSearch}
                   totalCount={totalCount}

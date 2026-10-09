@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FileSpreadsheet, FileJson, Loader2 } from "@/components/icons";
+import { FileSpreadsheet, FileJson } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +14,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Spinner } from "@/components/ui/spinner";
 import { ExtractionExportError, exportToCSV, exportToJSON, exportToExcel } from "@/lib/extraction/export";
 import type { ExtractionExport } from "@/lib/extraction/export";
 import { useTranslations } from "next-intl";
@@ -225,8 +226,7 @@ export function ExportDialog({
             </span>
             {isLoading && (
               <span className="col-start-1 row-start-1 flex items-center justify-center">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {tc("loading")}
+                <Spinner aria-label={tc("loading")} />
               </span>
             )}
           </Button>

@@ -15,6 +15,7 @@ import { requireFeature } from "../../featureFlags/guard";
 import { extractionPricing, extractionStamp } from "../../ai/serverModel";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
+import { noteActivity } from "../../activity/notes";
 import { assertBucketWithinLimits } from "../bucket/limits";
 import { availableCredits as readAvailableCredits, planLimit } from "../../billing/accounts";
 import { papersIn } from "../../screening/estimate";
@@ -178,6 +179,7 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
 
 export const startJobAction = defineUserMutation({
   path: "extraction/mutations:startJob",
+  activity: ({ name }, { jobId }) => ({ kind: "extraction", id: jobId, happened: "created", detail: name }),
   description: "Start an extraction from the sources picked on the extraction page. From a chat, an extraction over a collection, saved papers, a search or a screening is extraction/start:extract. Screening sources use the owned job's current Included papers and require its decision revision. Extraction saves those papers unchanged by later screening edits. The person's plan sets how many papers one job takes.",
   spendsCredits: true,
   outsideEffect: false,
@@ -192,6 +194,7 @@ export const startJobForAssistant = assistantMutation(startJobAction);
 
 export const duplicateJobAction = defineUserMutation({
   path: "extraction/mutations:duplicateJob",
+  activity: (_args, { jobId }) => ({ kind: "extraction", id: jobId, happened: "created" }),
   description: "Duplicate a job's questions and sources. Screening sources must still have the saved decision revision; if decisions changed, select the screening again in a new extraction.",
   spendsCredits: true,
   outsideEffect: false,
@@ -305,6 +308,7 @@ export const cancelExtraction = mutation({
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
     // Its papers no longer count against the person's limit; their other jobs start in it.
     await refillWorkspace(ctx, job.workspaceId);
+    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "extraction", id: args.jobId, happened: "stopped" });
 
     // Any in-flight paper action sees the cancelled job on its next
     // status check and returns without persisting.

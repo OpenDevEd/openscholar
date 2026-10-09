@@ -101,9 +101,8 @@ export function PublicationSection({
           disabled={operationRunning}
         />
       ) : (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Spinner className="size-4" />
-          {t("loading")}
+        <div className="flex h-5 items-center">
+          <Spinner className="size-4" aria-label={t("loading")} />
         </div>
       )}
     </SectionCard>

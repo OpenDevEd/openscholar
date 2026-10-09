@@ -1,5 +1,7 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
-import { v } from "convex/values";
+import type { Note } from "../activity/validators";
+import { noteActivity } from "../activity/notes";
+import { v, type Infer } from "convex/values";
 import { mutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
@@ -359,6 +361,30 @@ async function copyHistory(ctx: MutationCtx, { userId, workspaceId }: InWorkspac
   return { queryHistoryCount, questionCount, latestQuestion, questionText };
 }
 
+/** Fields the page writes itself as it shows a search. */
+const KEPT_BY_THE_PAGE = new Set(["count", "page", "updatedAt"]);
+/** And what a search keeps of its own history, which a query run again adds to without changing it. */
+const HISTORY = new Set(["queryHistoryCount", "questionCount", "latestQuestion", "questionText"]);
+
+/** Whether a change left the search different, apart from what the page and its history keep. */
+function changedSearch(before: Doc<"searches">["data"], after: Doc<"searches">["data"]) {
+  const kept = (data: Doc<"searches">["data"]) => JSON.stringify(Object.entries(currentSearch(data)).filter(([field]) => !KEPT_BY_THE_PAGE.has(field) && !HISTORY.has(field)).sort(([a], [b]) => a.localeCompare(b)));
+  return kept(before) !== kept(after);
+}
+
+/** What a change from a search's page did to it, for its Activity (#656); a change to no one search, such as a shortcut, notes nothing. */
+export function searchNote(command: Infer<typeof commandValidator>): Note | null {
+  if (command.kind === "createSearch") return { kind: "search", id: command.search.id, happened: "created", ...(command.search.query ? { detail: command.search.query } : {}) };
+  if (command.kind !== "editSearch") return null;
+  const { id, edit } = command;
+  // The model's answers, which the page saves as they come, aren't a change anyone made.
+  if (edit.kind === "responses") return edit.by === "model" ? null : { kind: "search", id, happened: "answered", count: 1 };
+  if (edit.kind === "removeQueryHistoryEntry") return null;
+  // The page keeps a search's result count and page current as it shows it; that's not a change anyone made.
+  if (edit.kind === "patch" && [...Object.keys(edit.fields), ...edit.clear].every((field) => KEPT_BY_THE_PAGE.has(field))) return null;
+  return { kind: "search", id, happened: "edited", ...(edit.kind === "query" && edit.query ? { detail: edit.query } : {}) };
+}
+
 export function findSearch(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, localId: string) {
   return ctx.db.query("searches").withIndex("by_workspace_and_localId", q => q.eq("workspaceId", workspaceId).eq("localId", localId)).unique();
 }
@@ -642,8 +668,19 @@ export const changeAction = defineUserMutation({
     const key = `change:${args.requestId}`;
     const receipt = await received(ctx, userId, key);
     if (!receipt) await checkRemoval(ctx, actor, args.command);
+    // What the change did to its search, for its Activity (#656): noted here, not declared, so a
+    // retried request or a change that left the search as it was notes nothing.
+    const note = receipt ? null : searchNote(args.command);
+    const before = note ? await findSearch(ctx, workspaceId, note.id) : null;
     const undo = receipt ? receipt.undo : await applyCommand(ctx, { userId, workspaceId }, args.command, author);
     if (!receipt) await ctx.db.insert("researchReceipts", { userId, key, ...(undo ? { undo } : {}) });
+    if (note) {
+      const after = await findSearch(ctx, workspaceId, note.id);
+      // Answers are kept apart from the search, so its revision doesn't move with them.
+      if (after && (note.happened === "answered" || !before || changedSearch(before.data, after.data))) {
+        await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, note);
+      }
+    }
     return undo ? { undo: { path: "research/records:change" as const, args: { command: undo } } } : {};
   },
 });
