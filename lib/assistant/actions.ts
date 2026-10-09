@@ -109,6 +109,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "admins/queries:countAdmins": { kind: "other", words: "admins" },
   "admins/queries:listCandidates": { kind: "other", words: "admins" },
   "organizations/queries:workspaces": { kind: "other", words: "workspaces" },
+  "organizations/queries:workspace": { kind: "other", words: "workspaces" },
   "organizations/queries:members": { kind: "other", words: "orgMembers" },
   "organizations/queries:invitations": { kind: "other", words: "orgMembers" },
   "organizations/queries:myInvitations": { kind: "other", words: "myInvites" },

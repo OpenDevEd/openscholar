@@ -338,7 +338,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     expect(await fixture.admin.query(api.evidenceLibraries.versions.countVersions, { libraryId })).toBeGreaterThanOrEqual(1_000);
   }, 300_000);
 
-  it("a person who owns 200 organizations of ten libraries each reads, searches and counts the library list (#423)", async () => {
+  it("a person who owns 200 organizations of ten libraries each reads and searches the library list (#423)", async () => {
     const t = convexTest(schema);
     const { as } = await seedAccount(t);
     const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
@@ -347,11 +347,10 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     await insertMany(t, "organizationMemberships", organizations.slice(0, 199).map((organizationId, i) => ({ organizationId, clerkMembershipId: `orgmem_max_owner_${i}`, clerkUserId: "max_size_user", role: "org:admin", state: "active", ...stamp })));
     await insertMany(t, "evidenceLibraries", organizations.slice(0, 199).flatMap((organizationId, i) => Array.from({ length: 10 }, (_, n) => ({ organizationId, name: `Library ${i}-${n}`, slug: `library-${i}-${n}`, state: "active", createdByClerkUserId: "max_size_user", updatedByClerkUserId: "max_size_user", createdAt: 1, updatedAt: 1 }))), 200);
 
-    const first = await as.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 12 } });
-    expect(first.page).toHaveLength(12);
+    // One organization's list, as its pages read it (#651).
+    const first = await as.query(api.evidenceLibraries.queries.listLibraries, { organization: organizations[0], paginationOpts: { cursor: null, numItems: 8 } });
+    expect(first.page).toHaveLength(8);
     expect(first.isDone).toBe(false);
-    expect(await as.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(1_990);
-    expect((await as.query(api.evidenceLibraries.queries.listLibraryOwners, {})).page).toHaveLength(199);
     // A search that matches nothing reads its allowance of libraries a step, and ends.
     let cursor: string | null = null;
     let reads = 0;

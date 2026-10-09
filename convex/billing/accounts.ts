@@ -284,11 +284,11 @@ export const provisionOrganization = internalAction({
 /** The organization a workspace is, if it's one. */
 export const organizationOf = internalQuery({
   args: { workspaceId: v.id("workspaces") },
-  returns: v.union(v.object({ name: v.string() }), v.null()),
+  returns: v.union(v.object({ name: v.string(), slug: v.string() }), v.null()),
   handler: async (ctx, { workspaceId }) => {
     const workspace = await ctx.db.get("workspaces", workspaceId);
     const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
-    return organization ? { name: organization.name } : null;
+    return organization ? { name: organization.name, slug: organization.slug } : null;
   },
 });
 

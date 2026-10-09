@@ -3934,7 +3934,8 @@
       "buy": "{price} で {credits, number} クレジットを追加",
       "plans": "プランを見る",
       "note": "アシスタントは使用前に引き続き確認します。",
-      "failed": "クレジットを追加できませんでした"
+      "failed": "クレジットを追加できませんでした",
+      "askAdmin": "{organization} にクレジットを追加できるのは管理者だけです。管理者に依頼してください。"
     },
     "allowance": {
       "any": "クレジット使用を許可中",
@@ -4151,6 +4152,7 @@
       "refillOn": "{date}に {amount}",
       "upToMembers": "最大 {count, number} 人",
       "included": "含まれるもの"
-    }
+    },
+    "couldntInvite": "組織は作成されましたが、招待を送れませんでした。メンバー設定から送ってください。"
   }
 }

@@ -41,7 +41,7 @@ import { SubscriptionStateProvider, useSharedSubscriptionState } from "@/lib/aut
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { findPlan } from "@/lib/billing/catalog";
 import { useAppToast } from "@/lib/toast";
-import { useWorkspaces } from "@/components/workspaces/parts";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 
@@ -73,7 +73,7 @@ function Shell({ children }: { children: ReactNode }) {
   // An organization's settings sit under its address; the rail names them by the path they share with your own.
   const path = bareWorkspacePath(usePathname());
   const inOrganization = useWorkspaceSlug() !== undefined;
-  const { current } = useWorkspaces();
+  const current = useCurrentWorkspace();
   const router = useWorkspaceRouter();
   const { user } = useUser();
   const { phase, canRunProtectedQueries } = useAuthReadiness();

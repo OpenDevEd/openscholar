@@ -39,7 +39,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { ORGANIZATION_COLOURS } from "@/lib/workspaces/colours";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { FREE_MEMBERS, PlanChip, usePlanOf, useWorkspaces, WorkspaceTile, workspaceTint } from "./parts";
+import { FREE_MEMBERS, PlanChip, usePlanOf, useCurrentWorkspace, WorkspaceTile, workspaceTint } from "./parts";
 
 /** Rows a page of members holds. */
 const PER_PAGE = 10;
@@ -51,7 +51,7 @@ type Role = "admin" | "member";
 /** The organization the page is in, once the switcher's list has it. */
 function useOrganization() {
   const workspaceId = useWorkspace();
-  const { current } = useWorkspaces();
+  const current = useCurrentWorkspace();
   const organization = current?.kind === "organization" ? current : undefined;
   return { workspaceId, organization, admin: organization?.role === "admin" };
 }

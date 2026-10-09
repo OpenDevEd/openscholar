@@ -5,6 +5,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "../lib/queryBounds";
 import { actorIn, personalWorkspaceOf } from "./actor";
+import { organizationAt } from "../organizations/read";
 
 /** The signed-in person's own workspace, which a page outside /o/<slug> is in; null when signed out. */
 export const personal = query({
@@ -25,8 +26,8 @@ export const bySlug = query({
   returns: v.union(v.id("workspaces"), v.null()),
   handler: async (ctx, { slug }) => {
     const user = await getCurrentUser(ctx);
-    const organization = user ? await ctx.db.query("organizations").withIndex("by_slug", (q) => q.eq("slug", slug)).first() : null;
-    if (!user || organization?.state !== "active") return null;
+    const organization = user ? await organizationAt(ctx, slug) : null;
+    if (!user || !organization) return null;
     const membership = await ctx.db
       .query("organizationMemberships")
       .withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organization._id).eq("clerkUserId", user.clerkId).eq("state", "active"))

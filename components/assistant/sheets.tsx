@@ -8,7 +8,7 @@ import { useDeferredValue, useRef, useState, type ReactNode } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Link2, Loader2, Lock, Radio, Search, Share2, SquarePen, UserPlus, X } from "@/components/icons";
+import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Link2, Loader2, Lock, Radio, Search, Share2, ShieldCheck, SquarePen, UserPlus, X } from "@/components/icons";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -33,6 +33,7 @@ import { IconButton, WorkingText } from "./parts";
 import { KIND, KindTile, type Waiting } from "./steps";
 import { inWorkspace, useWorkspace, useWorkspaceMutation, useWorkspaceScope } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 
 /** A sheet open over the panel. */
 export type OpenSheet =
@@ -878,6 +879,9 @@ export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /*
   const format = useFormatter();
   const router = useWorkspaceRouter();
   const account = useQuery(api.billing.accounts.mine, useWorkspaceScope());
+  // In an organization only its admins add credits; a member asks one of them.
+  const current = useCurrentWorkspace();
+  const askAdmin = current?.kind === "organization" && current.role !== "admin" ? current.name : null;
   const topUps = useFeatureFlag("credits.topups");
   const catalog = useBillingCatalog();
   const bundles = catalog && topUps ? topUpBundles(catalog) : [];
@@ -917,7 +921,12 @@ export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /*
             </span>
             <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{t("upTo", { credits: waiting.credits })}</span>
           </div>
-          {bundles.length ? (
+          {askAdmin ? (
+            <p className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-sm">
+              <ShieldCheck className="size-4 shrink-0 text-muted-foreground" />
+              {t("askAdmin", { organization: askAdmin })}
+            </p>
+          ) : bundles.length ? (
             <div className="rounded-2xl border border-border/60 bg-muted/20 p-1.5">
               {bundles.map((bundle, i) => (
                 <motion.button
