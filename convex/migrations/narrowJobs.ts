@@ -28,10 +28,10 @@ export const extractionJobs = migrations.define({ table: "extractionJobs", batch
 export const queue = migrations.define({ table: "extractionPaperQueue", batchSize: 200, migrateOne: (_ctx, row) => cleared(row) });
 export const slots = migrations.define({ table: "screeningSlots", migrateOne: (_ctx, row) => cleared(row) });
 // Only the papers that still name a person, by the index on it, of a table too big to read whole.
-// A paper keeps its abstract, with no byte cap of its own: ten at a time.
+// A paper keeps its abstract, with no byte cap of its own: five at a time.
 export const waiting = migrations.define({
   table: "screeningResults",
-  batchSize: 10,
+  batchSize: 5,
   customRange: (q) => q.withIndex("by_waitingUser_and_waitingSince", (r) => r.gte("waitingUser", NO_ID)),
   migrateOne: () => ({ waitingUser: undefined }),
 });
