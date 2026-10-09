@@ -338,7 +338,7 @@ export function ScreeningResponses({
                       : isQuestionAnswered === false
                       ? tc("no")
                       : isQuestionLoading
-                      ? tc("loading")
+                      ? null
                       : tc("unknown");
 
                   return (
@@ -370,7 +370,12 @@ export function ScreeningResponses({
                           {displayState === "checked" && <Check className="h-3 w-3" />}
                           {displayState === "crossed" && <X className="h-3 w-3" />}
                           {displayState === "unchecked" && <Minus className="h-3 w-3" />}
-                          {displayState === "loading" && <AiIcon working size={12} className="h-3 w-3" />}
+                          {displayState === "loading" && (
+                            <>
+                              <AiIcon working size={12} className="h-3 w-3" />
+                              <span className="sr-only">{tc("loading")}</span>
+                            </>
+                          )}
                           {statusText}
                         </div>
                       </td>

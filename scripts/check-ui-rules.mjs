@@ -122,7 +122,17 @@ function ruleDeclarations(body) {
     if (applied) for (const [key, declaration] of applyList(applied)) add(key, declaration);
     else if (value.length) add("|", [name.trim().toLowerCase(), value.join(":").trim()]);
   }
-  return [...scopes].map(([key, declarations]) => (key.endsWith("|") ? declarations : [...(scopes.get(`${key.split("|")[0]}|`) ?? []), ...declarations]));
+  // A state applies on top of every less specific state of its box: `dark:hover:` adds to `dark:` and to the base.
+  // Each box is also checked with all its variants at once, as when it is hovered in dark mode.
+  const variantsOf = (key) => key.split("|")[1].split(":").filter(Boolean);
+  const boxOf = (key) => key.split("|")[0];
+  const within = (key, variants) =>
+    [...scopes]
+      .filter(([other]) => boxOf(other) === boxOf(key) && variantsOf(other).every((variant) => variants.includes(variant)))
+      .sort(([a], [b]) => variantsOf(a).length - variantsOf(b).length)
+      .flatMap(([, declarations]) => declarations);
+  const everything = (key) => [...scopes.keys()].filter((other) => boxOf(other) === boxOf(key)).flatMap(variantsOf);
+  return [...scopes.keys()].flatMap((key) => [within(key, variantsOf(key)), within(key, everything(key))]);
 }
 /** Whether one box of a CSS rule, in any state, both animates and transitions opacity or transform. */
 const cssClashes = (body) =>
@@ -191,6 +201,15 @@ const DOT = /[·•]|&(?:middot|bull|#183|#x0*b7|#8226|#x2022);/i;
 const LOADING = /^loading\b[^.!?]{0,40}(…|\.\.\.)?$/i;
 // The translation functions: `t`, and `tc` or `tUI` for a second namespace.
 const TRANSLATE = /^t([a-z]|[A-Z]\w*)?$/;
+const TRANSLATION_APIS = new Set(["useTranslations", "getTranslations"]);
+/** Whether a called name translates: named like `t`, `tc` or `tUI`, or bound to useTranslations() or getTranslations(). */
+function translates(callee) {
+  if (!ts.isIdentifier(callee)) return false;
+  if (TRANSLATE.test(callee.text)) return true;
+  const value = declaredValue(callee);
+  const call = value && (ts.isAwaitExpression(value) ? value.expression : value);
+  return !!call && ts.isCallExpression(call) && ts.isIdentifier(call.expression) && TRANSLATION_APIS.has(call.expression.text);
+}
 const SR_ONLY = /(?:^|[\s"'`])sr-only(?=$|[\s"'`])/;
 const allowed = (line, rule) => new RegExp(`ui-rules-allow:\\s*${rule}\\s+--\\s*\\S`).test(line ?? "");
 
@@ -286,30 +305,55 @@ function check(file) {
     }
     return false;
   };
-  // Whether a string is rendered as a JSX child, directly or through a condition.
-  const renderedInJsx = (node) => {
-    for (let child = node, parent = node.parent; parent; child = parent, parent = parent.parent) {
-      if (ts.isJsxExpression(parent)) return !ts.isJsxAttribute(parent.parent);
-      const passesThrough =
-        ts.isParenthesizedExpression(parent) ||
+  // The node a value lands in once it passes through parentheses and conditions.
+  const destination = (node) => {
+    let child = node;
+    let parent = node.parent;
+    while (
+      parent &&
+      (ts.isParenthesizedExpression(parent) ||
         (ts.isConditionalExpression(parent) && parent.condition !== child) ||
-        (ts.isBinaryExpression(parent) && [ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(parent.operatorToken.kind));
-      if (!passesThrough) return false;
+        (ts.isBinaryExpression(parent) && [ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(parent.operatorToken.kind)))
+    ) {
+      child = parent;
+      parent = parent.parent;
     }
+    return parent;
+  };
+  // Whether a value is rendered as a JSX child, directly or through a condition.
+  const renderedInJsx = (node) => {
+    const target = destination(node);
+    return !!target && ts.isJsxExpression(target) && !ts.isJsxAttribute(target.parent);
+  };
+  // The variables and properties this file renders as JSX children, by name: `{statusText}`, `{config.label}`.
+  const renderedNames = new Set();
+  const collectRendered = (node) => {
+    if (ts.isIdentifier(node) && !ts.isPropertyAccessExpression(node.parent) && renderedInJsx(node)) renderedNames.add(node.text);
+    if (ts.isPropertyAccessExpression(node) && renderedInJsx(node)) renderedNames.add(`.${node.name.text}`);
+    ts.forEachChild(node, collectRendered);
+  };
+  collectRendered(source);
+  // Whether a value is shown as text: rendered as a JSX child, or held in a variable or property the file renders.
+  const shown = (node) => {
+    const target = destination(node);
+    if (!target) return false;
+    if (ts.isJsxExpression(target)) return !ts.isJsxAttribute(target.parent);
+    if (ts.isVariableDeclaration(target) && ts.isIdentifier(target.name)) return renderedNames.has(target.name.text);
+    if (ts.isPropertyAssignment(target)) return renderedNames.has(`.${target.name.getText(source)}`);
     return false;
   };
   // Whether a string is the key of a translation call, `t("loading")`, whose message is a Loading label.
   const translatedLoading = (node) => {
     const call = node.parent;
     if (!ts.isStringLiteral(node) || !ts.isCallExpression(call) || call.arguments[0] !== node) return false;
-    return ts.isIdentifier(call.expression) && TRANSLATE.test(call.expression.text) && loadingKeys.has(node.text.split(".").at(-1)) && renderedInJsx(call);
+    return translates(call.expression) && loadingKeys.has(node.text.split(".").at(-1)) && shown(call);
   };
-  // Whether a node sits in an element only screen readers get, where a Loading label names a spinner.
+  // Whether a node sits in an element only screen readers get, in every class its condition can give, where a Loading label names a spinner.
   const screenReaderOnly = (node) => {
     for (let parent = node.parent; parent && !ts.isSourceFile(parent); parent = parent.parent) {
       if (!ts.isJsxElement(parent)) continue;
       const className = parent.openingElement.attributes.properties.find((attribute) => ts.isJsxAttribute(attribute) && attribute.name.getText(source) === "className");
-      return SR_ONLY.test(className?.initializer?.getText(source) ?? "");
+      return classLists(className?.initializer).every((list) => SR_ONLY.test(list));
     }
     return false;
   };
@@ -331,7 +375,7 @@ function check(file) {
       if (UPPERCASE_CSS.test(node.text) || (UPPERCASE_CLASS.test(node.text) && classContext(node))) report(node, "uppercase");
       if (DOT.test(node.text)) report(node, "dot-separator");
       const whole = ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node);
-      if (((whole && LOADING.test(node.text.trim()) && renderedInJsx(node)) || translatedLoading(node)) && !screenReaderOnly(node)) report(node, "loading-text");
+      if (((whole && LOADING.test(node.text.trim()) && shown(node)) || translatedLoading(node)) && !screenReaderOnly(node)) report(node, "loading-text");
     }
     if (ts.isJsxText(node)) {
       if (DOT.test(node.text)) report(node, "dot-separator");
