@@ -1772,6 +1772,8 @@
     "paymentMethod": "भुगतान का तरीका"
   },
   "libraryPage": {
+    "suggestLikeCollection": "इस संग्रह जैसे शोधपत्र",
+    "suggestLikeLibrary": "आपकी लाइब्रेरी जैसे शोधपत्र",
     "title": "आपकी लाइब्रेरी",
     "paperCount": "{count, plural, =0 {कोई शोधपत्र नहीं} one {1 शोधपत्र} other {# शोधपत्र}} आपकी लाइब्रेरी में",
     "searchPlaceholder": "शीर्षक, लेखक या सार से खोजें...",

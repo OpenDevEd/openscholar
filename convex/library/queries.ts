@@ -496,3 +496,37 @@ export const savedPaperAction = defineUserQuery({
 });
 export const savedPaper = userQuery(savedPaperAction);
 export const savedPaperForAssistant = assistantQuery(savedPaperAction);
+
+/**
+ * The papers a library's suggestions start from, a page of them: a collection's newest, or the whole
+ * library's, by the id each was saved with, at most SUGGESTION_SEEDS a page. Suggestions are the
+ * works nearest them by meaning (the OpenScholar API's similar_to), which leaves them out.
+ */
+export const SUGGESTION_SEEDS = 100;
+
+export const suggestionSeeds = query({
+  args: { collectionId: v.optional(v.id("collections")), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(v.string()),
+  handler: async (ctx, { collectionId, paginationOpts }) => {
+    const user = await requireAuth(ctx);
+    const page = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SUGGESTION_SEEDS) };
+    if (!collectionId) {
+      const read = await ctx.db
+        .query("libraryItems")
+        .withIndex("by_user_savedAt", (q) => q.eq("userId", user._id))
+        .order("desc")
+        .paginate(page);
+      return { ...read, page: read.page.map((item) => item.openalexId) };
+    }
+    const collection = await ctx.db.get("collections", collectionId);
+    if (!collection || collection.userId !== user._id) return { page: [], isDone: true, continueCursor: "" };
+    // The newest members first: a membership's creation is when the paper was put in the collection.
+    const read = await ctx.db
+      .query("libraryItemCollections")
+      .withIndex("by_collection", (q) => q.eq("collectionId", collectionId))
+      .order("desc")
+      .paginate(page);
+    const items = await Promise.all(read.page.map((membership) => ctx.db.get("libraryItems", membership.libraryItemId)));
+    return { ...read, page: items.flatMap((item) => (item && item.userId === user._id ? [item.openalexId] : [])) };
+  },
+});

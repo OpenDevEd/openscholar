@@ -1772,6 +1772,8 @@
     "paymentMethod": "支付方式"
   },
   "libraryPage": {
+    "suggestLikeCollection": "与此收藏相似的论文",
+    "suggestLikeLibrary": "与您的文库相似的论文",
     "title": "我的文献库",
     "paperCount": "{count, plural, =0 {暂无论文} other {# 篇论文}}在您的文献库中",
     "searchPlaceholder": "按标题、作者或摘要搜索...",

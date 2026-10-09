@@ -29,6 +29,7 @@ vi.mock("@/convex/_generated/api", () => ({
         getLibraryFilteredCount: "library:getLibraryFilteredCount",
         browseLibrary: "library:browseLibrary",
         searchLibrary: "library:searchLibrary",
+        suggestionSeeds: "library:suggestionSeeds",
       },
       mutations: {
         removeFromLibrary: "library:removeFromLibrary",
@@ -41,6 +42,8 @@ const {
   protectedQueryMock,
   pageReadsMock,
   startExportMock,
+  seedsQueryMock,
+  pushMock,
   queryStateStore,
   queryFixtureStore,
   setQueryStateSpy,
@@ -48,6 +51,8 @@ const {
   protectedQueryMock: vi.fn(),
   pageReadsMock: vi.fn(),
   startExportMock: vi.fn(),
+  seedsQueryMock: vi.fn(),
+  pushMock: vi.fn(),
   queryStateStore: {
     value: {
       q: "",
@@ -72,12 +77,16 @@ const {
   setQueryStateSpy: vi.fn(),
 }));
 
-vi.mock("nuqs", async () => {
+// The page opens a search for papers like its own.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock, replace: vi.fn() }) }));
+vi.mock("nuqs", async (importOriginal) => {
   const React = await import("react");
   const parser = {
     withDefault: <T,>(value: T) => ({ defaultValue: value }),
   };
   return {
+    // The search's own parsers, which the page's links to searches load, are nuqs's.
+    ...(await importOriginal<typeof import("nuqs")>()),
     parseAsString: parser,
     parseAsInteger: parser,
     parseAsStringLiteral: () => parser,
@@ -121,6 +130,7 @@ vi.mock("next-intl", () => ({
 vi.mock("convex/react", () => ({
   useConvex: () => ({
     mutation: startExportMock,
+    query: seedsQueryMock,
     watchQuery: () => ({ onUpdate: () => () => {}, localQueryResult: () => ({ part: 1, serving: false, failed: false }) }),
   }),
   useQueries: (requests: Record<string, { query: unknown; args: { paginationOpts: { cursor: string | null; numItems: number } } }>) =>
@@ -149,6 +159,8 @@ vi.mock("@/lib/confirmation", () => ({
 
 vi.mock("@/lib/store", () => ({
   useRatingsStore: () => ({ setRating: vi.fn() }),
+  // Where a search for papers like the library's is kept before it opens.
+  useSearchHistoryStore: { getState: () => ({ addSearchResult: () => "papers-like-these" }) },
   useUIStore: Object.assign(
     () => ({ isFocusModeOpen: false }),
     {
@@ -235,6 +247,8 @@ vi.mock("@/components/library/library-command-center", () => ({
     onExportCSV,
     onExportJSON,
     hasExportableResults,
+    onSuggest,
+    suggestLabel,
   }: {
     rawSearch: string;
     onSearchChange: (value: string) => void;
@@ -243,6 +257,8 @@ vi.mock("@/components/library/library-command-center", () => ({
     onExportCSV: () => void;
     onExportJSON: () => void;
     hasExportableResults: boolean;
+    onSuggest?: () => void;
+    suggestLabel?: string;
   }) => (
     <div
       data-testid="library-command-center"
@@ -257,6 +273,11 @@ vi.mock("@/components/library/library-command-center", () => ({
           ? `${filteredCount} / ${totalCount} results`
           : `${totalCount ?? 0} results`}
       </p>
+      {onSuggest && (
+        <button type="button" onClick={onSuggest}>
+          {suggestLabel}
+        </button>
+      )}
       <label htmlFor="library-search-input">Library search</label>
       <input
         id="library-search-input"
@@ -452,6 +473,25 @@ describe("LibraryPageClient", () => {
     resetQueryFixtures();
     configureProtectedQueryMocks();
     startExportMock.mockResolvedValue(null);
+  });
+
+  it("finds papers like the library's newest, as a search for the works nearest them", async () => {
+    seedsQueryMock.mockResolvedValue({ page: ["https://openscholar.ai/OS1", "https://openscholar.ai/OS2"], isDone: true, continueCursor: "" });
+    render(<LibraryPageClient />);
+    screen.getByRole("button", { name: "suggestLikeLibrary" }).click();
+    await waitFor(() => expect(pushMock).toHaveBeenCalled());
+    expect(seedsQueryMock).toHaveBeenCalledWith("library:suggestionSeeds", { paginationOpts: { numItems: 100, cursor: null } });
+    expect(new URL(String(pushMock.mock.calls[0]?.[0]), "https://openscholar.test").searchParams.get("like")).toBe("OS1,OS2");
+  });
+
+  it("finds papers like the collection shown, from its own newest papers", async () => {
+    queryStateStore.value.col = "collection_1";
+    seedCollectionScopedCounts();
+    seedsQueryMock.mockResolvedValue({ page: ["https://openscholar.ai/OS7"], isDone: true, continueCursor: "" });
+    render(<LibraryPageClient />);
+    screen.getByRole("button", { name: "suggestLikeCollection" }).click();
+    await waitFor(() => expect(pushMock).toHaveBeenCalled());
+    expect(seedsQueryMock).toHaveBeenCalledWith("library:suggestionSeeds", { collectionId: "collection_1", paginationOpts: { numItems: 100, cursor: null } });
   });
 
   it("reads one page of the view through browseLibrary, not the search", () => {

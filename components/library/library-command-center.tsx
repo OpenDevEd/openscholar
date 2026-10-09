@@ -1,8 +1,7 @@
 "use client";
 
 import {
-  Download,
-} from "@/components/icons";
+  Download, Sparkles } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { AnimatedCount } from "@/components/search-command-center/components/animated-count";
@@ -31,6 +30,9 @@ interface LibraryCommandCenterProps {
   onExportCSV: () => void;
   onExportJSON: () => void;
   hasExportableResults: boolean;
+  /** Finds papers like the library's or the collection's, which `suggestLabel` names; none to offer nothing. */
+  onSuggest?: () => void;
+  suggestLabel?: string;
 }
 
 export function LibraryCommandCenter({
@@ -45,6 +47,8 @@ export function LibraryCommandCenter({
   onExportCSV,
   onExportJSON,
   hasExportableResults,
+  onSuggest,
+  suggestLabel,
 }: LibraryCommandCenterProps) {
   const t = useTranslations("libraryPage");
   const tc = useTranslations("common");
@@ -87,6 +91,12 @@ export function LibraryCommandCenter({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {onSuggest && suggestLabel && (
+              <Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-muted-foreground hover:text-foreground" onClick={onSuggest}>
+                <Sparkles className="h-3.5 w-3.5" />
+                {suggestLabel}
+              </Button>
+            )}
             <ViewModeSwitch value={viewMode} onChange={onViewModeChange} />
 
             {hasExportableResults && (

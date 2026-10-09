@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { createSimilarSearch, MAX_SIMILAR_PAPERS } from "@/lib/search/actions";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
@@ -276,6 +278,18 @@ export function LibraryPageClient() {
     window.scrollTo({ top: 0 });
   }, []);
 
+  // Papers like the collection shown, or the whole library: the works nearest its newest papers by meaning.
+  const router = useRouter();
+  const suggestPapers = async () => {
+    // As many as a search for the works nearest them takes, the newest first.
+    const first = { numItems: MAX_SIMILAR_PAPERS, cursor: null };
+    const { page } = await convex.query(api.library.queries.suggestionSeeds, {
+      ...(params.col ? { collectionId: params.col as Id<"collections"> } : {}),
+      paginationOpts: first,
+    });
+    if (page.length > 0) router.push(createSimilarSearch(page).url);
+  };
+
   const { data: selectedCollection } = useProtectedQuery(
     api.library.collections.getCollection,
     params.col ? { collectionId: params.col as Id<"collections"> } : "skip",
@@ -485,6 +499,8 @@ export function LibraryPageClient() {
                     !isNoResults &&
                     (filteredTotal ?? filteredAtLeast ?? 0) !== 0
                   }
+                  onSuggest={isEmptyLibrary ? undefined : () => void suggestPapers()}
+                  suggestLabel={t(params.col ? "suggestLikeCollection" : "suggestLikeLibrary")}
                 />
 
                 {isLoading && (
