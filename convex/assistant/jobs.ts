@@ -15,7 +15,7 @@ import { internalMutation, query } from "../lib/functions";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { getScreeningJobAction } from "../screening/queries";
 import type { Acting } from "../lib/userActions";
-import { personalWorkspaceOf } from "../workspaces/actor";
+import { workspaceOf } from "../workspaces/actor";
 import { readJobCounters } from "../extraction/jobCounters";
 import { readScreeningProgressCounts } from "../screening/progress";
 import { requireThread } from "./access";
@@ -56,17 +56,19 @@ async function jobOf(ctx: QueryCtx, step: Doc<"assistantSteps">) {
 }
 
 /**
- * The person who started a job, reading it in their own workspace (#650; the job's own once jobs
- * belong to one). The card has already checked who may see it: the starter's account needn't
- * still be active for the others in a shared chat to see their job.
+ * The person who started a job, reading it in the job's workspace (#650). The card has already
+ * checked who may see it: the starter's account needn't still be active for the others in a shared chat to see their job.
  */
-async function starter(ctx: QueryCtx, userId: Id<"users">): Promise<Acting> {
-  return { userId, workspaceId: await personalWorkspaceOf(ctx, userId), role: "admin", author: "user" };
+async function starter(ctx: QueryCtx, job: Doc<"screeningJobs">): Promise<Acting> {
+  return { userId: job.userId, workspaceId: await workspaceOf(ctx, job), role: "admin", author: "user" };
 }
 
 /** What a screening has come to, as its card and its readout say it. */
 async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"screeningJobs">): Promise<Infer<typeof screeningCardValidator> | null> {
-  const job = await getScreeningJobAction.run(ctx, await starter(ctx, userId), { jobId });
+  const row = await ctx.db.get("screeningJobs", jobId);
+  if (!row || row.userId !== userId) return null;
+  const actor = await starter(ctx, row);
+  const job = await getScreeningJobAction.run(ctx, actor, { jobId });
   if (!job) return null;
   const jobs = [job];
   const sum = (of: (one: NonNullable<typeof job>) => number) => of(job);
@@ -75,9 +77,9 @@ async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"scr
   // ahead of it, when one is being read, names what it waits for. Nothing read and nothing queued is a job starting.
   const queued =
     job.status === "processing" && done === 0 && job.running === 0
-      ? (await ctx.db.query("screeningResults").withIndex("by_job_and_status_and_waitingUser", (q) => q.eq("jobId", job._id).eq("status", "processing").eq("waitingUser", userId)).first()) !== null
+      ? (await ctx.db.query("screeningResults").withIndex("by_job_and_status_and_waitingWorkspace", (q) => q.eq("jobId", job._id).eq("status", "processing").eq("waitingWorkspace", actor.workspaceId)).first()) !== null
       : false;
-  const ahead = queued ? ((await screeningAhead(ctx, userId, job._id)) ?? { done: 0, total: 0 }) : null;
+  const ahead = queued ? ((await screeningAhead(ctx, actor.workspaceId, job._id)) ?? { done: 0, total: 0 }) : null;
   return {
     kind: "screening",
     jobId: job._id,
@@ -97,12 +99,12 @@ async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"scr
   };
 }
 
-/** The person's screening that's being read while one of theirs waits, and how far it has got. */
-async function screeningAhead(ctx: QueryCtx, userId: Id<"users">, waiting: Id<"screeningJobs">) {
-  const running = await ctx.db.query("screeningJobs").withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", "processing")).take(5);
+/** The workspace's screening that's being read while one of its waits in the same pool, and how far it has got. */
+async function screeningAhead(ctx: QueryCtx, workspaceId: Id<"workspaces">, waiting: Id<"screeningJobs">) {
+  const running = await ctx.db.query("screeningJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", "processing")).take(5);
   for (const other of running) {
     if (other._id === waiting) continue;
-    const job = await getScreeningJobAction.run(ctx, await starter(ctx, userId), { jobId: other._id });
+    const job = await getScreeningJobAction.run(ctx, await starter(ctx, other), { jobId: other._id });
     if (!job?.running) continue;
     return { ...(job.label ? { label: job.label } : {}), done: job.outcomes.included + job.outcomes.unclear + job.outcomes.excluded + job.outcomes.failed, total: job.totalPapers };
   }

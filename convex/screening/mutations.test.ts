@@ -711,6 +711,9 @@ describe("jobs in workspaces (#650)", () => {
     const listed = async (as: typeof asAlice, workspaceId?: Id<"workspaces">) => (await as.query(api.screening.queries.listUserScreeningJobs, { ...(workspaceId ? { workspaceId } : {}), paginationOpts: { cursor: null, numItems: 10 } })).page.map((row) => row._id).sort();
     expect(await listed(asAlice, lab)).toEqual([bobs, alicesInLab].sort());
     expect(await listed(asAlice)).toEqual([alicesOwn]);
+    // Both members' papers run in the organization's one pool; Alice's own job holds her own workspace's.
+    expect(await asAlice.query(api.screening.queries.slots, { workspaceId: lab })).toMatchObject({ running: 4 });
+    expect(await asAlice.query(api.screening.queries.slots, {})).toMatchObject({ running: 2 });
     // A job opened by its ID is open to anyone in its workspace, and to no one else.
     expect(await asAlice.query(api.screening.queries.getScreeningProgress, { jobId: bobs })).not.toBeNull();
     expect(await asCarol.query(api.screening.queries.getScreeningProgress, { jobId: bobs })).toBeNull();

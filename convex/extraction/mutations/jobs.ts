@@ -30,7 +30,7 @@ import { MAX_JOB_SOURCES, writeJobSources, type BucketItemInput } from "../jobSo
 import { extractionPaperCredits } from "../../../lib/pricing";
 import { jobText } from "../../lib/searchText";
 import { cancelPaperQueueRowsForJobTx } from "../queue/mutations";
-import { refillPerson } from "../queue/dispatcher";
+import { refillWorkspace } from "../queue/dispatcher";
 import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
 import { checkScreeningSelection } from "../sources/screening";
 import { bucketItemFromRow } from "../jobSources";
@@ -306,7 +306,7 @@ export const cancelExtraction = mutation({
     });
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
     // Its papers no longer count against the person's limit; their other jobs start in it.
-    await refillPerson(ctx, job.userId);
+    await refillWorkspace(ctx, await workspaceOf(ctx, job));
 
     // Any in-flight paper action sees the cancelled job on its next
     // status check and returns without persisting.
@@ -330,7 +330,7 @@ export const deleteExtraction = mutation({
     await ctx.db.delete(args.jobId);
     // Its papers stop holding the person's capacity now, not when the cascade reaches them.
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
-    await refillPerson(ctx, job.userId);
+    await refillWorkspace(ctx, await workspaceOf(ctx, job));
 
     // Schedule the cascade delete as an independent mutation to avoid
     // transaction limits on a large job's child tables.

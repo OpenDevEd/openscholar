@@ -256,6 +256,7 @@ type PaperInput = Infer<typeof screeningPaperInputValidator>;
  */
 async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers: PaperInput[], createdAt: number, answered?: Set<string>) {
   const batch = papers.slice(0, CREATE_BATCH);
+  const pool = { userId: job.userId, workspaceId: await workspaceOf(ctx, job) };
   const screening = (await ctx.db.get("screenings", job.screeningId))!;
   const ids = batch.map((paper) => paper.openalexId);
   // Given which papers are answered already, as their step found them; a later batch looks for itself.
@@ -280,12 +281,12 @@ async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers
         : job.capped
           ? // The job reached the most it may spend while its papers were still being made: the rest are never read.
             { status: "skipped" as const, completedAt: createdAt, doneAt: ctx.db.vars.commitTs }
-          : { status: "processing" as const, waitingUser: job.userId, waitingSince: createdAt }),
+          : { status: "processing" as const, waitingWorkspace: pool.workspaceId, waitingSince: createdAt }),
     });
   }
   if (reused.size) await ctx.db.patch("screeningJobs", job._id, { reused: (job.reused ?? 0) + reused.size });
   if (reused.size || job.capped) await bookkeepLater(ctx);
-  await startWaitingPapers(ctx, job.userId);
+  await startWaitingPapers(ctx, pool);
   if (papers.length > CREATE_BATCH) {
     await ctx.scheduler.runAfter(0, internal.screening.mutations.createScreeningResults, { jobId: job._id, papers: papers.slice(CREATE_BATCH), createdAt });
   }
@@ -365,7 +366,7 @@ export const endScreeningWork = internalMutation({
     for (const result of page.page) {
       if (result.waitingSince === undefined) continue;
       // Never started: counted as skipped by the bookkeeping worker.
-      await ctx.db.patch("screeningResults", result._id, { status: "skipped", waitingUser: undefined, waitingSince: undefined, completedAt: Date.now(), doneAt: ctx.db.vars.commitTs });
+      await ctx.db.patch("screeningResults", result._id, { status: "skipped", waitingUser: undefined, waitingWorkspace: undefined, waitingSince: undefined, completedAt: Date.now(), doneAt: ctx.db.vars.commitTs });
       skipped++;
     }
     if (skipped) await bookkeepLater(ctx);

@@ -20,6 +20,7 @@ import {
 import { extractionQueueStatusValidator } from "../validators";
 import { dispatchPaperQueueWindowTx } from "./mutations";
 import { release } from "./release";
+import { personalWorkspaceOf, workspaceOf } from "../../workspaces/personal";
 
 /** Released rows per batch; each job in a batch is refilled once. */
 const BATCH = 50;
@@ -93,16 +94,16 @@ async function refillJob(ctx: MutationCtx, job: Doc<"extractionJobs">, pdfFlag: 
 }
 
 /**
- * Starts the person's running jobs' papers in their free capacity, oldest job first, as
+ * Starts a workspace's running jobs' papers in its free capacity, oldest job first, as
  * Firecrawl's `concurrentJobDone` promotes a team's queued work: a job held back by the
- * person's limit has no papers of its own finishing to wake it. Returns what each job got.
+ * workspace's limit has no papers of its own finishing to wake it. Returns what each job got.
  */
-export async function refillPerson(ctx: MutationCtx, userId: Id<"users">) {
+export async function refillWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
   const pdfFlag = await getFlag(ctx, "extraction.pdf");
   const jobs = (
     await Promise.all(
       RUNNING_JOB_STATUSES.map((status) =>
-        ctx.db.query("extractionJobs").withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", status)).take(JOBS_WOKEN),
+        ctx.db.query("extractionJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status)).take(JOBS_WOKEN),
       ),
     )
   ).flat().sort((a, b) => a._creationTime - b._creationTime);
@@ -115,12 +116,14 @@ export async function refillPerson(ctx: MutationCtx, userId: Id<"users">) {
   return dispatched;
 }
 
-/** Wakes the person's held-back jobs after papers stopped holding capacity without a release. */
+/** Wakes a workspace's held-back jobs after papers stopped holding capacity without a release. */
 export const wakePerson = internalMutation({
-  args: { userId: v.id("users") },
+  // `userId` alone only for a wake scheduled before pools were a workspace's (#650), which wakes its person's own; slice 8 drops it.
+  args: { workspaceId: v.optional(v.id("workspaces")), userId: v.optional(v.id("users")) },
   returns: v.null(),
-  handler: async (ctx, { userId }) => {
-    await refillPerson(ctx, userId);
+  handler: async (ctx, { workspaceId, userId }) => {
+    const pool = workspaceId ?? (userId ? await personalWorkspaceOf(ctx, userId) : undefined);
+    if (pool) await refillWorkspace(ctx, pool);
     return null;
   },
 });
@@ -135,15 +138,16 @@ export const refill = internalMutation({
     );
     const runs = new Map<string, { jobId: Id<"extractionJobs">; epoch: number }>();
     for (const row of rows) runs.set(`${row.jobId}:${row.runEpoch}`, { jobId: row.jobId, epoch: row.runEpoch });
-    const people = new Map<Id<"users">, Array<{ jobId: Id<"extractionJobs">; epoch: number }>>();
+    const pools = new Map<Id<"workspaces">, Array<{ jobId: Id<"extractionJobs">; epoch: number }>>();
     for (const run of runs.values()) {
       const job = await ctx.db.get(run.jobId);
       if (!job || (job.runEpoch ?? 0) !== run.epoch) continue;
-      people.set(job.userId, [...(people.get(job.userId) ?? []), run]);
+      const workspaceId = await workspaceOf(ctx, job);
+      pools.set(workspaceId, [...(pools.get(workspaceId) ?? []), run]);
     }
-    for (const [userId, released] of people) {
-      // Freed capacity goes to the person's oldest job first, not back to the job that freed it.
-      const dispatched = await refillPerson(ctx, userId);
+    for (const [workspaceId, released] of pools) {
+      // Freed capacity goes to the workspace's oldest job first, not back to the job that freed it.
+      const dispatched = await refillWorkspace(ctx, workspaceId);
       for (const { jobId, epoch } of released) {
         // Nothing left to start: whether the job is done is its counters' call, so a row whose
         // run stopped without releasing it can't hold the job open.

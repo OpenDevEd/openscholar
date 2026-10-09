@@ -765,6 +765,31 @@ describe("research records in workspaces (#650)", () => {
     expect(left).toEqual({ searches: ["bob-search"], bookmarks: ["bob-bookmark"] });
   });
 
+  it("counts an organization's searches together, whoever made them, and each person's own apart", async () => {
+    vi.useFakeTimers();
+    try {
+      const { t, alice, bob } = await setup();
+      const lab = await t.run(async ctx => {
+        const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Learning Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+        for (const clerkUserId of ["alice", "bob"]) {
+          await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+        }
+        return ensureWorkspace(ctx, { kind: "organization", organizationId });
+      });
+      let request = 0;
+      const make = (as: Signed, accountId: string, id: string, workspaceId?: Id<"workspaces">) => as.mutation(api.research.records.change, { accountId, ...(workspaceId ? { workspaceId } : {}), requestId: `r${request++}`, command: { kind: "createSearch", search: { ...record, id, screeningResponses: [] } } });
+      await make(alice, "alice", "a-lab", lab);
+      await make(bob, "bob", "b-lab", lab);
+      await make(alice, "alice", "a-own");
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await alice.query(api.research.records.countSearches, { accountId: "alice", workspaceId: lab })).toBe(2);
+      expect(await alice.query(api.research.records.countSearches, { accountId: "alice" })).toBe(1);
+      expect(await bob.query(api.research.records.countSearches, { accountId: "bob" })).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("puts searches and bookmarks from before workspaces in their maker's own, however often the backfill runs", async () => {
     vi.useFakeTimers();
     try {

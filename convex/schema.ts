@@ -1143,6 +1143,8 @@ export default defineSchema({
     // Set while the paper waits for one of its person's paper slots (#335), whose papers
     // start oldest first across their jobs; cleared when it starts and gets its `workId`.
     waitingUser: v.optional(v.id("users")),
+    // The workspace whose slots it waits for (#650): a workspace's papers share one pool. Replaces `waitingUser`, which slice 8 drops.
+    waitingWorkspace: v.optional(v.id("workspaces")),
     waitingSince: v.optional(v.number()),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
@@ -1159,6 +1161,8 @@ export default defineSchema({
     // A job's papers the model is reading: processing, and no longer waiting for a slot.
     .index("by_job_and_status_and_waitingUser", ["jobId", "status", "waitingUser"])
     .index("by_waitingUser_and_waitingSince", ["waitingUser", "waitingSince"])
+    .index("by_job_and_status_and_waitingWorkspace", ["jobId", "status", "waitingWorkspace"])
+    .index("by_waitingWorkspace_and_waitingSince", ["waitingWorkspace", "waitingSince"])
     .index("by_doneAt", ["doneAt"])
     .searchIndex("search_text", { searchField: "searchText", filterFields: ["jobId", "outcome"] }),
   // How many of a person's Screen all papers are running (#335). Written by job creation and

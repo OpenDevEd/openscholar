@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
+import { personalWorkspaceOf } from "../../workspaces/actor";
 import { setupExtractionPaperWorkpool } from "./workpool.test-support";
 
 async function seedQueueJob(t: ReturnType<typeof convexTest>) {
@@ -572,8 +573,10 @@ describe("extraction paper queue", () => {
     await t.mutation(internal.extraction.queue.mutations.updatePaperQueueStatus, { queueId: parked!._id, expectedEpoch: 0, status: "parked" });
     const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
     const wake = scheduled.find((fn) => fn.name === "extraction/queue/dispatcher:wakePerson");
-    expect(wake?.args[0]).toEqual({ userId });
-    await t.mutation(internal.extraction.queue.dispatcher.wakePerson, { userId });
+    // The wake names the pool the rows freed: the workspace's (#650).
+    const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
+    expect(wake?.args[0]).toEqual({ workspaceId });
+    await t.mutation(internal.extraction.queue.dispatcher.wakePerson, { workspaceId });
     expect(await leased(older.jobId)).toHaveLength(1);
 
     // Its other paper finishes: the freed slot goes to the older job, not back to the newer one.
