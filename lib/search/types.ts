@@ -84,6 +84,8 @@ export interface SearchContextValue {
   // Results from SWR
   results: PaperResult[];
   totalCount: number;
+  /** A search by meaning's alone: how many works it looked among, of which `totalCount` are the closest. */
+  searchedCount: number | null;
   apiUrl: string;
   /** An OQL search's full request, filters included. OQL cannot be written as `apiUrl`. */
   oql: string | null;

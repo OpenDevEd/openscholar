@@ -190,3 +190,14 @@ export const worksPageSchema = z.object({
   meta: z.looseObject({ count: z.number().int().nonnegative() }),
   results: z.array(workSchema),
 });
+
+const searchedMetaSchema = z.object({ searched_count: z.number().int().nonnegative().nullable().optional() });
+
+/**
+ * How many works a search by meaning looked among, as the OpenScholar API's meta says beside the
+ * works it gives (`searched_count`); null when the meta doesn't say, as for any other search.
+ */
+export function searchedCountOf(meta: unknown): number | null {
+  const parsed = searchedMetaSchema.safeParse(meta);
+  return parsed.success ? (parsed.data.searched_count ?? null) : null;
+}

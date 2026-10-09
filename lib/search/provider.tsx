@@ -28,6 +28,7 @@ import { getSearchResultsWithFilters } from './search-results';
 import { SearchError, rejectedQuery } from './search-error';
 import { OQL_FIELD } from '../openalex/oql';
 import { queryScope } from './query-scope';
+import { searchedCountOf } from '../openalex/work-schema';
 import { buildOpenAlexWorksQuery } from '../openalex/works-query';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
 import { ResearchContext } from '../research/binding';
@@ -862,6 +863,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     // A rejected query ran nothing, so the last search's results are not shown as its own.
     results: (rejected ? [] : data?.results?.results || []) as PaperResult[],
     totalCount: rejected ? 0 : data?.results?.meta?.count || 0,
+    searchedCount: rejected ? null : searchedCountOf(data?.results?.meta),
     apiUrl: data?.results?.meta?.url || '',
     oql,
     originalQuery: data?.originalQuery || '',

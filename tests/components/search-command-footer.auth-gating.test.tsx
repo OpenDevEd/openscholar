@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import React from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { SearchCommandFooter } from "@/components/search-command-center/search-command-footer";
 
@@ -14,6 +14,7 @@ const {
   enhanceMock,
   ensureShortcutsMock,
   savedFieldRef,
+  searchedCountRef,
   searchFieldRef,
   searchHistoryRef,
   setQueryMock,
@@ -39,6 +40,8 @@ const {
     ensureShortcutsMock: vi.fn(async () => {}),
     // The search's field as its saved state has it, which a switch in the sidebar changes at once.
     savedFieldRef: { current: "title_and_abstract" },
+    // How many works a search by meaning looked among, as the API's meta says; null for any other search.
+    searchedCountRef: { current: null as number | null },
     searchFieldRef: { current: "title_and_abstract" },
     setQueryMock: vi.fn(),
     searchHistoryRef: { current: [] as unknown[] },
@@ -56,7 +59,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: () => (key: string, values?: Record<string, unknown>) =>
+    values ? `${key}:${JSON.stringify(values)}` : key,
   useLocale: () => "en-US",
   useFormatter: () => ({
     number: (value: number) => String(value),
@@ -189,6 +193,7 @@ vi.mock("@/lib/search", () => ({
       lang: "en",
     },
     setQuery: setQueryMock,
+    searchedCount: searchedCountRef.current,
   }),
 }));
 
@@ -428,6 +433,16 @@ describe("<SearchCommandFooter> with a question asked by meaning", () => {
       />,
     );
   }
+
+  it("counts the closest works of all a search by meaning looked among", () => {
+    searchedCountRef.current = 25_513_923;
+    onTestFinished(() => {
+      searchedCountRef.current = null;
+    });
+    showFooter("semantic", 300);
+    expect(screen.getByText('searchCommand.closestOf:{"total":25513923}')).toBeInTheDocument();
+    expect(screen.queryByText("common.results")).not.toBeInTheDocument();
+  });
 
   it("offers no broader query for a question asked by meaning", () => {
     showFooter("semantic", 3);

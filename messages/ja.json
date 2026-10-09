@@ -1396,6 +1396,7 @@
     "questionByMeaning": "質問（意味で検索）",
     "oqlReference": "OQL リファレンス",
     "byMeaningNoAI": "意味による質問は書いたとおりに検索されるため、キーワードを書き換え・翻訳する AI はオフです。",
+    "closestOf": "件が最も近い（全 {total, number} 件中）",
     "askAI": "AIに聞く",
     "translate": "翻訳",
     "clearLanguage": "言語をクリア",

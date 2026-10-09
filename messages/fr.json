@@ -1396,6 +1396,7 @@
     "questionByMeaning": "Question (par le sens)",
     "oqlReference": "Référence OQL",
     "byMeaningNoAI": "Une question par le sens est cherchée telle que vous l'écrivez : l'IA qui réécrit et traduit les mots-clés est désactivée.",
+    "closestOf": "les plus proches sur {total, number}",
     "askAI": "Demander à l'IA",
     "translate": "Traduire",
     "clearLanguage": "Effacer la langue",

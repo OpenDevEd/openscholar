@@ -127,6 +127,7 @@ export function SearchCommandFooter({
   // Show buttons conditionally. A question asked by meaning is searched as it is written, so AI
   // doesn't rewrite it broader or narrower.
   const byMeaning = search?.params?.field === SEMANTIC_FIELD;
+  const searchedCount = search?.searchedCount ?? null;
   const showBroadenButton = !byMeaning && totalCount < 10 && totalCount >= 0 && effectiveQuery.trim();
   const showNarrowButton = !byMeaning && totalCount > 1000 && effectiveQuery.trim();
   const contextualAction = showBroadenButton
@@ -374,7 +375,10 @@ Return a more targeted version of this query.`;
             value={totalCount}
             className="text-lg font-semibold text-foreground"
           />
-          <span className="text-muted-foreground">{t("common.results")}</span>
+          {/* A search by meaning gives the closest works of all those it looked among. */}
+          <span className="text-muted-foreground">
+            {searchedCount === null ? t("common.results") : t("searchCommand.closestOf", { total: searchedCount })}
+          </span>
         </div>
       </div>
 

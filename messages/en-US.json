@@ -1386,6 +1386,7 @@
     "questionByMeaning": "Question (by meaning)",
     "oqlReference": "OQL reference",
     "byMeaningNoAI": "A question by meaning is searched as you write it, so the AI that rewrites and translates keywords is off.",
+    "closestOf": "closest of {total, number}",
     "askAI": "Ask AI",
     "translate": "Translate",
     "clearLanguage": "Clear language",

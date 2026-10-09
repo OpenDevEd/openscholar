@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { workSchema } from "./work-schema";
+import { searchedCountOf, workSchema } from "./work-schema";
 
 /** Two Works as OpenAlex sent them on 1 October 2026: one with an SDG, one without an abstract. */
 const samples = JSON.parse(readFileSync(new URL("./work-schema.samples.json", import.meta.url), "utf8")) as Record<string, unknown>[];
@@ -37,5 +37,15 @@ describe("workSchema", () => {
       { ...work, primary_location: { source: { display_name: 7 } } },
     ];
     expect(broken.map((sample) => workSchema.safeParse(sample).success)).toEqual(broken.map(() => false));
+  });
+});
+
+describe("searchedCountOf", () => {
+  it("reads how many works a search by meaning looked among, and none for any other meta", () => {
+    expect(searchedCountOf({ count: 300, searched_count: 25_513_923 })).toBe(25_513_923);
+    expect(searchedCountOf({ count: 300, searched_count: null })).toBeNull();
+    expect(searchedCountOf({ count: 42 })).toBeNull();
+    expect(searchedCountOf({ count: 42, searched_count: -1 })).toBeNull();
+    expect(searchedCountOf(undefined)).toBeNull();
   });
 });
