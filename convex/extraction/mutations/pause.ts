@@ -27,6 +27,7 @@ import {
   type JobStatus,
 } from "../stateMachine";
 import { validatePauseTransition } from "../../../lib/extraction/transitions";
+import { noteActivity } from "../../activity/notes";
 
 export const pauseExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
@@ -60,6 +61,7 @@ export const pauseExtraction = mutation({
       pausedFromStatus: decision.pausedFrom,
       updatedAt: Date.now(),
     });
+    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "extraction", id: jobId, happened: "paused" });
 
     return { paused: true };
   },

@@ -15,6 +15,8 @@ import { getCurrentUser, requireActiveUser, requireAuth } from "./auth";
 import { createError } from "./errors";
 import { DONE, endStep } from "../assistant/steps";
 import { actorFor, type Actor } from "../workspaces/actor";
+import { noteActivity } from "../activity/notes";
+import type { Note } from "../activity/validators";
 
 /** Who made a change: the person themselves, or the assistant acting for them. */
 export type Author = "user" | "assistant";
@@ -94,11 +96,20 @@ type Checks<Args extends PropertyValidators> = { check?(ctx: QueryCtx, actor: Ac
  */
 type Shows<Args extends PropertyValidators> = { shown?(args: ObjectType<Args>): Record<string, unknown> };
 
+/**
+ * What a change did to an item, for its Activity (#656): the wrapper writes it in the change's
+ * own transaction, as the person or as the assistant for them, from what the change was given
+ * and what it returned. A change that left things as they were declares nothing. An action
+ * notes what it did in the mutation that writes it (../activity/notes.ts).
+ */
+type Records<Args extends PropertyValidators, Returns extends GenericValidator> = { activity?(args: ObjectType<Args>, result: Infer<Returns>): Note | Note[] | null | undefined };
+
 export type UserMutation<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
   Labels<keyof Args & string> &
   AsksFirst<Args> &
   Estimates<Args> &
-  Shows<Args> & {
+  Shows<Args> &
+  Records<Args, Returns> & {
     kind: "mutation";
     run: (ctx: MutationCtx, actor: Acting, args: ObjectType<Args>) => Promise<Infer<Returns>>;
   };
@@ -286,6 +297,13 @@ export function assistantQuery<Args extends PropertyValidators, Returns extends 
   );
 }
 
+/** Runs a change and writes what it did to its items' Activity, in the change's own transaction. */
+async function changed<Args extends PropertyValidators, Returns extends GenericValidator>(ctx: MutationCtx, entry: UserMutation<Args, Returns>, actor: Acting, args: ObjectType<Args>) {
+  const result = await entry.run(ctx, actor, args);
+  if (entry.activity) await noteActivity(ctx, { workspaceId: actor.workspaceId, by: actor.userId, viaAssistant: actor.author === "assistant" }, entry.activity(args, result));
+  return result;
+}
+
 /** The public mutation the UI calls, for the signed-in user. */
 export function userMutation<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserMutation<Args, Returns>) {
   return tagged(
@@ -294,7 +312,7 @@ export function userMutation<Args extends PropertyValidators, Returns extends Ge
       returns: entry.returns,
       handler: async (ctx, args) => {
         const { workspaceId, rest } = inWorkspace<Args>(args);
-        return entry.run(ctx, { ...(await actorFor(ctx, await requireAuth(ctx), workspaceId)), author: "user" }, rest);
+        return changed(ctx, entry, { ...(await actorFor(ctx, await requireAuth(ctx), workspaceId)), author: "user" }, rest);
       },
     }),
     entry.path,
@@ -310,7 +328,7 @@ export function accountMutation<Args extends PropertyValidators, Returns extends
       handler: async (ctx, args) => {
         const { accountId, workspaceId, ...rest } = args as unknown as ObjectType<typeof accountArg & typeof workspaceArg> & Record<string, unknown>;
         const actor = await actorFor(ctx, await accountUser(ctx, accountId), workspaceId);
-        return entry.run(ctx, { ...actor, author: "user" }, rest as ObjectType<Args>);
+        return changed(ctx, entry, { ...actor, author: "user" }, rest as ObjectType<Args>);
       },
     }),
     entry.path,
@@ -330,7 +348,7 @@ export function assistantMutation<Args extends PropertyValidators, Returns exten
         const actor = await actingAs(ctx, userId, workspaceId, "assistant");
         // Read here, in the change's own transaction: what was true before the call may not be now.
         if (!approved && entry.asksFirst && (await entry.asksFirst(ctx, actor, rest))) throw createError("FORBIDDEN", ASKS_FIRST);
-        const result = await entry.run(ctx, actor, rest);
+        const result = await changed(ctx, entry, actor, rest);
         // The step, and through it the model, is told a change that returns nothing was made.
         if (stepId) await endStep(ctx, stepId, result ?? DONE);
         return result;

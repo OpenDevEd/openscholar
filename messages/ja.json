@@ -3904,6 +3904,11 @@
         "did": "組織の AI プリセットを変更しました",
         "where": "AI 設定",
         "ask": "組織の AI プリセットを変更"
+      },
+      "activity": {
+        "doing": "変更履歴を確認中",
+        "did": "変更履歴を確認しました",
+        "where": "アクティビティ"
       }
     },
     "asks": {
@@ -4190,6 +4195,31 @@
       "heading": "このコレクションでの評価",
       "none": "評価なし",
       "stars": "5 段階中 {value}"
+    },
+    "activity": {
+      "title": "アクティビティ",
+      "runBy": "実行者",
+      "madeBy": "作成者",
+      "created": "が作成しました",
+      "renamed": "が名前を変更しました。旧名",
+      "edited": "が変更しました",
+      "added": "が {count} 件の論文を追加しました",
+      "removed": "が {count} 件の論文を削除しました",
+      "rated": "が {count} 件の論文を評価しました",
+      "answered": "が {count} 件の回答を変更しました",
+      "screened": "が {count} 件の論文をスクリーニングしました",
+      "extracted": "が {count} 件の論文から抽出しました",
+      "paused": "が一時停止しました",
+      "resumed": "が再開しました",
+      "retried": "が失敗した {count} 件の回答を再実行しました",
+      "stopped": "が停止しました",
+      "viaAssistant": "アシスタント経由",
+      "today": "今日",
+      "yesterday": "昨日",
+      "thisWeek": "今週",
+      "earlier": "それ以前",
+      "showEarlier": "以前のアクティビティを表示",
+      "none": "今後の変更はここに表示されます。"
     }
   },
   "models": {

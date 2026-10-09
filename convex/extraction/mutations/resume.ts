@@ -36,6 +36,7 @@ import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import { requireAuth } from "../../lib/auth";
 import { createError } from "../../lib/errors";
+import { noteActivity } from "../../activity/notes";
 import { assertJobAccess } from "../access";
 import {
   assertValidJobTransition,
@@ -182,6 +183,7 @@ export const resumeExtraction = mutation({
       ...(await approvalLeft(ctx, job)),
       updatedAt: Date.now(),
     });
+    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "extraction", id: jobId, happened: "resumed" });
 
     // Effective pdfEnabled = admin flag × per-job opt-in (mirrors
     // `getJobAndFlagsInternal`). Question concurrency mirrors the

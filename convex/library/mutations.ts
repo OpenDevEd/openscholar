@@ -9,6 +9,7 @@ import { createError } from "../lib/errors";
 import { ASKS_FIRST, actingAs, assistantMutation, defineUserMutation, reversal, reversedBy, userMutation, type Acting, type Author } from "../lib/userActions";
 import { requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
 import { endStep } from "../assistant/steps";
+import { noteActivity } from "../activity/notes";
 import { undoCommandValidator } from "../../lib/research/records";
 import { canonical, findItem } from "./find";
 import { libraryCountRow } from "./counter";
@@ -223,6 +224,8 @@ export const saveRead = internalMutation({
     // Only the assistant asks: a person saving a paper themselves has decided. A collection a library follows shows the paper outside the account.
     if (author === "assistant" && !approved && collectionId !== undefined && (await followed(ctx, collectionId))) throw createError("FORBIDDEN", ASKS_FIRST);
     const { id, undo } = await saveInto(ctx, actor, { paper, rating, collectionId });
+    // Noted here, with the save: library/papers:save is an action, whose writes are this mutation's.
+    if (collectionId && undo) await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, { kind: "collection", id: collectionId, happened: "added", count: 1, detail: paper.title });
     const result = { libraryItemId: id, title: paper.title, ...(undo ? { undo } : {}) };
     if (stepId) await endStep(ctx, stepId, result);
     return result;
@@ -231,6 +234,7 @@ export const saveRead = internalMutation({
 
 export const saveToLibraryAction = defineUserMutation({
   path: "library/mutations:saveToLibrary",
+  activity: ({ collectionId, title }, { undo }) => (collectionId && undo ? { kind: "collection", id: collectionId, happened: "added", count: 1, detail: title } : null),
   description:
     "Saves a paper to the library from its whole record, as a results card has it, with or without the person's own rating of it from 0 to 5, and with `collectionId` into that collection in the same write. To save a paper by its ID alone, use library/papers:save. " +
     "A person's rating of a paper is the same everywhere; a saved paper's rating is its people's average. " +
@@ -283,6 +287,11 @@ export const setLibraryRatingAction = defineUserMutation({
 });
 export const setLibraryRating = userMutation(setLibraryRatingAction);
 export const setLibraryRatingForAssistant = assistantMutation(setLibraryRatingAction);
+
+/** The collections a removal or its undo notes in their Activity at most: a paper in more notes the first of them. */
+const PLACES_NOTED = 20;
+
+const placeNote = (id: Id<"collections">, happened: "added" | "removed", title: string) => ({ kind: "collection" as const, id, happened, count: 1, detail: title });
 
 /** How long a removed paper is kept for Undo. */
 const REMOVAL_KEPT_MS = 24 * 60 * 60_000;
@@ -361,12 +370,15 @@ export const removeFromLibraryAction = defineUserMutation({
     }
     const { _id, _creationTime, workspaceId: _workspace, ...kept } = item;
     const expiresAt = Date.now() + REMOVAL_KEPT_MS;
+    // The collections it leaves note it in their Activity (#656), read before its places move.
+    const left = await livePlaces(ctx, item._id).take(PLACES_NOTED);
     const removalId = await ctx.db.insert("libraryRemovals", { workspaceId, item: kept, itemId: item._id, expiresAt });
     // Its places in collections: this batch now, the rest in the batches it schedules.
     if (await movePlaces(ctx, removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.movePlacesLater, { removalId });
     await countedWrite(ctx, { userId, workspaceId }, -1, () => ctx.db.delete("libraryItems", item._id));
     if (args.rating !== undefined) await setPersonalRating(ctx, userId, item.openalexId, args.rating);
     await ctx.scheduler.runAt(expiresAt, internal.library.mutations.forgetRemoval, { removalId });
+    await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, left.map(({ collectionId }) => placeNote(collectionId, "removed", item.title)));
     return { undo: { path: RESTORE, args: { removalId } } };
   },
 });
@@ -489,8 +501,12 @@ export const restoreLibraryItemAction = defineUserMutation({
     }
     // Kept until its day is over, so places still being moved off the removed paper come back too.
     await ctx.db.patch("libraryRemovals", removalId, { restoredAs: libraryItemId });
+    // The collections it goes back into note it in their Activity (#656), read before its places do.
+    const back = await ctx.db.query("removedPlaces").withIndex("by_removal", (q) => q.eq("removalId", removalId)).take(PLACES_NOTED);
     // Its places: this batch now, the rest in the batches it schedules.
     if (await restorePlaces(ctx, removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.restorePlacesLater, { removalId });
+    const kept = await Promise.all(back.map(async ({ collectionId }) => ((await ctx.db.get("collections", collectionId))?.workspaceId === workspaceId ? collectionId : null)));
+    await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, kept.filter((id) => id !== null).map((id) => placeNote(id, "added", item.title)));
     return { id: libraryItemId };
   },
 });
@@ -499,6 +515,7 @@ export const restoreLibraryItemForAssistant = assistantMutation(restoreLibraryIt
 
 export const setPaperInCollectionAction = defineUserMutation({
   path: "library/mutations:setPaperInCollection",
+  activity: ({ paper, collectionId, inCollection }, { undo }) => (undo ? { kind: "collection", id: collectionId, happened: inCollection ? "added" : "removed", count: 1, ...("title" in paper ? { detail: paper.title } : {}) } : null),
   description:
     "Adds a paper to one of the person's collections, saving it to their library first if needed, or takes it out of the collection. Taking it out keeps it in the library. " +
     "The paper is given whole, or by its ID alone when it's already in the library. " +

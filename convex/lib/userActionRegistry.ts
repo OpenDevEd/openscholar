@@ -7,6 +7,7 @@ import { answersOfAction, changeAction, countSearchesAction, getSearchAction, li
 import { createAction as searchCreateAction, deleteAction as searchDeleteAction, removeAction as searchRemoveAction, restoreAction as searchRestoreAction, resultsAction as searchResultsAction, updateAction as searchUpdateAction } from "../research/searches";
 import { countAction as paperCountAction, getAction as paperGetAction, readPdfAction as paperPdfAction, searchAction as paperSearchAction } from "../research/papers";
 import { findAction as lookupFindAction } from "../research/lookup";
+import { listAction as activityListAction, startedByAction as activityStartedByAction } from "../activity/queries";
 import { setLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAction, saveToLibraryAction, setPaperInCollectionAction } from "../library/mutations";
 import { collectAction as libraryCollectAction, saveAction as librarySaveAction } from "../library/papers";
 import { countJobsAction as extractionJobCountAction, getJobDetailsAction as extractionJobAction, listJobsAction as extractionJobsAction } from "../extraction/queries/jobs";
@@ -116,6 +117,8 @@ export const USER_ACTIONS: readonly UserAction[] = [
   removeFromCollectionAction,
   setCollectionRatingAction,
   collectionRatersAction,
+  activityListAction,
+  activityStartedByAction,
   workspacesAction,
   workspaceAction,
   organizationMembersAction,

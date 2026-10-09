@@ -24,6 +24,7 @@ import { moveResultAnswers } from "./drain";
 import { account, FAILED, standing, withDeltas, type Delta, type Move } from "./accounting";
 import { startWaitingPapers } from "./slots";
 import { captureLater } from "../lib/analyticsEvents";
+import { noteActivity } from "../activity/notes";
 
 /** Papers per batch: each moves its answers and may save a library item, a few dozen reads. */
 const BATCH = 50;
@@ -182,6 +183,25 @@ export const withMoved = (progress: Pick<Doc<"screeningJobProgress">, "saved" | 
   ...(moved.removed ? { removed: Math.max(0, (progress.removed ?? 0) + moved.removed) } : {}),
 });
 
+/**
+ * Notes in their Activity (#656) what a job did once it ends or is stopped, as whoever ran it: the
+ * papers it screened, on it and on the search or collection it read; those it saved to its
+ * collection; and those it took out of the collection it read. A failed job screened none. A paper
+ * an answer moves after the job ended moves without a note; the screening's own Activity has the answer.
+ */
+export async function noteEnded(ctx: MutationCtx, job: Doc<"screeningJobs">, progress?: Doc<"screeningJobProgress"> | null) {
+  const { completed, saved, removed } = progress ?? (await progressRow(ctx, job._id)) ?? {};
+  const pruned = job.prune && job.set?.kind === "collection" ? job.set.collectionId : undefined;
+  const read = job.set?.kind === "search" ? { kind: "search" as const, id: job.set.searchId } : job.set?.kind === "collection" ? { kind: "collection" as const, id: job.set.collectionId } : null;
+  const detail = job.name ?? job.label;
+  const about = detail ? { detail } : {};
+  await noteActivity(ctx, { workspaceId: job.workspaceId, by: job.createdBy, viaAssistant: false }, [
+    ...(completed ? [{ kind: "screening" as const, id: job._id, happened: "screened" as const, count: completed }, ...(read ? [{ ...read, happened: "screened" as const, count: completed, ...about }] : [])] : []),
+    ...(job.targetCollectionId && saved ? [{ kind: "collection" as const, id: job.targetCollectionId, happened: "added" as const, count: saved, ...about }] : []),
+    ...(pruned && removed ? [{ kind: "collection" as const, id: pruned, happened: "removed" as const, count: removed, ...about }] : []),
+  ]);
+}
+
 /** Finishes a processing job once it has read its papers and its progress counts every one. */
 export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
   const job = await ctx.db.get("screeningJobs", jobId);
@@ -191,6 +211,7 @@ export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">)
   const now = Date.now();
   // One that stopped at the most it may spend, or when the person's credits ran out, has papers it never read: it ends as stopped, not as done.
   await ctx.db.patch("screeningJobs", jobId, { status: job.capped || job.outOfCredits ? "creditsExhausted" : "completed", completedAt: now, updatedAt: now });
+  await noteEnded(ctx, job, progress);
   const user = await ctx.db.get("users", job.createdBy);
   if (user?.clerkId) {
     await captureLater(ctx, [{

@@ -64,6 +64,7 @@ export const saveForAssistant = assistantAction(saveAction);
  */
 export const collectAction = defineUserMutation({
   path: "library/papers:collect",
+  activity: ({ collectionId, inCollection }, { undo }) => (undo ? { kind: "collection", id: collectionId, happened: inCollection ? "added" : "removed", count: 1 } : null),
   description:
     "Puts a paper that's in the person's library into one of their collections, or takes it out, by the paper's ID alone, as results give it. `inCollection` is true to put it in and false to take it out. " +
     "It takes a paper already in the library: to save one and put it in a collection, call library/papers:save with `collectionId` instead. Taking it out keeps it in the library. " +

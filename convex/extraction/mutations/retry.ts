@@ -34,6 +34,7 @@ import { requireAuth } from "../../lib/auth";
 import { getFlag, requireFeature } from "../../featureFlags/guard";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
+import { noteActivity } from "../../activity/notes";
 import { assertJobAccess } from "../access";
 import {
   assertValidJobTransition,
@@ -202,6 +203,7 @@ export const retryFailedQuestions = mutation({
       updatedAt: Date.now(),
     });
     await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch });
+    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "extraction", id: jobId, happened: "retried", count: retryableCount });
 
     return { jobId, retryableCount };
   },
