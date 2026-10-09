@@ -172,7 +172,6 @@ export const createAction = defineUserMutation({
     const now = Date.now();
     const agentThreadId = await createThread(ctx, components.agent, { userId, title });
     const threadId = await ctx.db.insert("assistantThreads", {
-      ownerId: userId,
       workspaceId,
       createdBy: userId,
       title,

@@ -342,7 +342,7 @@ describe("what the assistant's model is sent", () => {
     await t.run(async (ctx) => {
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
       const row = (await ctx.db.get("assistantThreads", threadId))!;
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "summary", senderId: row.ownerId, order: 0, startedAt: Date.now(), scheduledId, compacting: true, stop: true } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "summary", senderId: row.createdBy, workspaceId: row.workspaceId, order: 0, startedAt: Date.now(), scheduledId, compacting: true, stop: true } });
     });
     await t.mutation(internal.assistant.replies.release, { threadId, attemptId: "summary", summarized: { summary: "Too late", through: 0 } });
 
@@ -354,7 +354,7 @@ describe("what the assistant's model is sent", () => {
     await t.run(async (ctx) => {
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
       const row = (await ctx.db.get("assistantThreads", threadId))!;
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "owed", senderId: row.ownerId, order: 1, startedAt: Date.now(), scheduledId, stop: true } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "owed", senderId: row.createdBy, workspaceId: row.workspaceId, order: 1, startedAt: Date.now(), scheduledId, stop: true } });
     });
     await t.mutation(internal.assistant.replies.summarized, { threadId, attemptId: "owed", summary: "Too late", through: 0 });
     expect(await thread()).toMatchObject({ compactionOwed: true });
@@ -370,11 +370,11 @@ describe("what the assistant's model is sent", () => {
     const row = (await thread())!;
     await t.run(async (ctx) => {
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "long", senderId: row.ownerId, order: 0, startedAt: Date.now(), scheduledId } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "long", senderId: row.createdBy, workspaceId: row.workspaceId, order: 0, startedAt: Date.now(), scheduledId } });
     });
     await t.mutation(internal.assistant.replies.release, {
       threadId, attemptId: "long",
-      ended: { agentThreadId: row.agentThreadId, senderId: row.ownerId, modelId: null, lastInputTokens: COMPACT_AT_TOKENS + 1, messages: 2, bytes: 100 },
+      ended: { agentThreadId: row.agentThreadId, senderId: row.createdBy, modelId: null, lastInputTokens: COMPACT_AT_TOKENS + 1, messages: 2, bytes: 100 },
     });
     expect(await thread()).toMatchObject({ compactionOwed: true, reply: { compacting: true } });
     // The compaction's action never runs, and the sweep clears its dead lock: the summary is still owed.

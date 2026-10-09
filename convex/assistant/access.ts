@@ -11,7 +11,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { MAX_ASSISTANT_THREAD_GRANTS } from "../lib/queryBounds";
 import { readMemberOrganizations } from "../organizationFeatures";
-import { actorIn, personalWorkspaceOf, workspaceOf, type InWorkspace } from "../workspaces/actor";
+import { actorIn, personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import type { assistantPrincipalValidator, assistantRoleValidator } from "./validators";
 
 export type AssistantRole = Infer<typeof assistantRoleValidator>;
@@ -73,9 +73,6 @@ export async function roleAmong(ctx: QueryCtx | MutationCtx, threadId: Id<"assis
   return roles.length ? best(roles) : null;
 }
 
-/** The workspace a chat is in. */
-export const chatWorkspace = (ctx: Pick<QueryCtx, "db">, thread: Doc<"assistantThreads">) => workspaceOf(ctx, { userId: thread.ownerId, workspaceId: thread.workspaceId });
-
 /**
  * The most this person may do in the chat, or null when they can't open it: through its
  * access rows, and as someone who can act in its workspace, where a chat is its maker's
@@ -84,7 +81,7 @@ export const chatWorkspace = (ctx: Pick<QueryCtx, "db">, thread: Doc<"assistantT
 export async function roleIn(ctx: QueryCtx | MutationCtx, user: Doc<"users">, thread: Doc<"assistantThreads">): Promise<AssistantRole | null> {
   const granted = await roleAmong(ctx, thread._id, await principalsOf(ctx, user));
   if (granted === "owner") return granted;
-  const actor = await actorIn(ctx, user, await chatWorkspace(ctx, thread));
+  const actor = await actorIn(ctx, user, thread.workspaceId);
   const member: AssistantRole | null = !actor ? null : actor.role === "admin" || thread.createdBy === user._id ? "owner" : "write";
   return granted && member ? best([granted, member]) : (granted ?? member);
 }
@@ -109,8 +106,8 @@ export async function requireThread(ctx: QueryCtx | MutationCtx, userId: Id<"use
  * in it is theirs (#650).
  */
 export async function replyWorkspace(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, thread: Doc<"assistantThreads">): Promise<Id<"workspaces">> {
-  const [workspaceId, user] = await Promise.all([chatWorkspace(ctx, thread), ctx.db.get("users", userId)]);
-  return user && (await actorIn(ctx, user, workspaceId)) ? workspaceId : await personalWorkspaceOf(ctx, userId);
+  const user = await ctx.db.get("users", userId);
+  return user && (await actorIn(ctx, user, thread.workspaceId)) ? thread.workspaceId : await personalWorkspaceOf(ctx, userId);
 }
 
 /**

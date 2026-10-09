@@ -931,7 +931,7 @@ describe("the assistant's tools", () => {
     // "Always" keeps a limit of hers that already covers the job, her own number included, raises one that doesn't to the smallest listed that does, and past the largest listed there is none.
     const always = (cap: number, credits: number) =>
       t.run(async (ctx) => {
-        const userId = (await ctx.db.get("assistantThreads", threadId))!.ownerId;
+        const userId = (await ctx.db.get("assistantThreads", threadId))!.createdBy;
         await ctx.db.patch("assistantLimits", (await ctx.db.query("assistantLimits").withIndex("by_thread_and_user", (q) => q.eq("threadId", threadId).eq("userId", userId)).unique())!._id, { jobs: { cap } });
         return allowAlways(ctx, threadId, userId, credits);
       });
@@ -941,12 +941,12 @@ describe("the assistant's tools", () => {
     expect(await always(300, 5_000)).toEqual({});
     // A search's papers are OpenAlex's to count, so its hold is for the whole range asked for, whatever count the account last saw.
     await asAda.mutation(api.research.records.importBatch, { accountId: "ada", searches: [{ search: { id: "not-counted-yet", query: "tutoring", field: "title_and_abstract", count: 0, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z" } }], shortcuts: [], ratings: [] });
-    expect(await t.run(async (ctx) => screeningHold(ctx, await ownActor(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId), { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } }))).toBe(100 * perPaper);
+    expect(await t.run(async (ctx) => screeningHold(ctx, await ownActor(ctx, (await ctx.db.get("assistantThreads", threadId))!.createdBy), { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } }))).toBe(100 * perPaper);
     // Rules with no least score include every paper whatever it's answered: refused before anyone is asked to pay for it.
-    await expect(t.run(async (ctx) => screeningHold(ctx, await ownActor(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId), { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [] } }))).rejects.toThrow(/minimumScore/);
+    await expect(t.run(async (ctx) => screeningHold(ctx, await ownActor(ctx, (await ctx.db.get("assistantThreads", threadId))!.createdBy), { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [] } }))).rejects.toThrow(/minimumScore/);
     // A collection's hold covers the papers its count says it has, not the whole range asked for.
     const uncounted = await t.run(async (ctx) => {
-      const userId = (await ctx.db.get("assistantThreads", threadId))!.ownerId;
+      const userId = (await ctx.db.get("assistantThreads", threadId))!.createdBy;
       const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Three papers", sortName: "three papers", itemCount: 3, createdAt: 1, updatedAt: 1 });
       for (const openalexId of ["W91", "W92", "W93"]) {
         const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId, title: openalexId, searchableText: openalexId, rating: 0, savedAt: 1, updatedAt: 1 });
@@ -1042,7 +1042,7 @@ describe("the assistant's tools", () => {
     const { ada, threadId } = await chatOf(t);
     const { stepId, reply } = await t.run(async (ctx) => {
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
-      const reply = { attemptId: "carrying-on", senderId: ada, order: 0, startedAt: 1, scheduledId };
+      const reply = { attemptId: "carrying-on", senderId: ada, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, startedAt: 1, scheduledId };
       await ctx.db.patch("assistantThreads", threadId, { reply });
       return { reply, stepId: await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "call", tool: "run_action", prompt: "message", path: "assistant/threads:remove", input: "{}", status: "allowed", startedAt: 1 }) };
     });
@@ -1426,7 +1426,7 @@ describe("the assistant's tools", () => {
     await t.run(async (ctx) => {
       for (let n = 0; n < ASSISTANT_REPLIES_AT_ONCE; n++) {
         const scheduledId = await ctx.scheduler.runAfter(60_000, internal.assistant.replies.sweep, {});
-        await ctx.db.insert("assistantThreads", { ownerId: ada, workspaceId: lab, title: "Busy", agentThreadId: `busy${n}`, lastMessageAt: 1, createdAt: 1, updatedAt: 1, reply: { attemptId: `busy${n}`, senderId: ada, workspaceId: lab, order: 0, startedAt: 1, scheduledId } });
+        await ctx.db.insert("assistantThreads", { workspaceId: lab, createdBy: ada, title: "Busy", agentThreadId: `busy${n}`, lastMessageAt: 1, createdAt: 1, updatedAt: 1, reply: { attemptId: `busy${n}`, senderId: ada, workspaceId: lab, order: 0, startedAt: 1, scheduledId } });
       }
     });
     await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "Save W1" })).rejects.toThrow(/already writing/);
@@ -1501,7 +1501,7 @@ describe("the assistant's tools", () => {
       const workspaceId = await personalWorkspaceOf(ctx, ada);
       for (let n = 0; n < ASSISTANT_REPLIES_AT_ONCE; n++) {
         const scheduledId = await ctx.scheduler.runAfter(60_000, internal.assistant.replies.sweep, {});
-        await ctx.db.insert("assistantThreads", { ownerId: ada, title: "Busy", agentThreadId: `busy${n}`, lastMessageAt: 1, createdAt: 1, updatedAt: 1, reply: { attemptId: `busy${n}`, senderId: ada, workspaceId, order: 0, startedAt: 1, scheduledId } });
+        await ctx.db.insert("assistantThreads", { workspaceId, createdBy: ada, title: "Busy", agentThreadId: `busy${n}`, lastMessageAt: 1, createdAt: 1, updatedAt: 1, reply: { attemptId: `busy${n}`, senderId: ada, workspaceId, order: 0, startedAt: 1, scheduledId } });
       }
     });
     // Answering the question isn't agreeing to more credits: the reply waits to be carried on, with the answer kept.

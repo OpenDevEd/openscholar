@@ -96,7 +96,10 @@ export async function admit(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
   }
 }
 
-/** The workspace a reply, or one that waits, acts in. One from before replies named theirs ran in its sender's own (#650); slice 8 makes it required. */
+/**
+ * The workspace a reply that waits, or a step, acts in. One from before replies named theirs ran in its
+ * sender's own (#650), until migrations/narrowAssistant.ts gives it that; then this goes.
+ */
 export const actingIn = async (ctx: Pick<QueryCtx, "db">, reply: { senderId: Id<"users">; workspaceId?: Id<"workspaces"> }) => reply.workspaceId ?? (await personalWorkspaceOf(ctx, reply.senderId));
 
 /** Clears the lock of a reply whose action died. What it had cost by then is still one of its sender's last replies. */
@@ -483,7 +486,7 @@ export const release = internalMutation({
     /** Schedules the reply's next request, under the same lock. One stopped meanwhile finds that out there, and shows as stopped. */
     const goOn = async ({ used, ...from }: Infer<typeof resumeValidator>, wait = 0) => {
       const { compacting: _compacting, ...lock } = current;
-      const workspaceId = await actingIn(ctx, current);
+      const workspaceId = current.workspaceId;
       const scheduledId = await ctx.scheduler.runAfter(wait, internal.assistant.run.reply, { threadId, attemptId, ...from, workspaceId, used });
       const { cap: _cap, ...held } = lock;
       return { ...held, workspaceId, scheduledId, spent: used.credits, ...(used.cap === undefined ? {} : { cap: used.cap }) };
@@ -586,7 +589,7 @@ export const release = internalMutation({
       // is asked about once the summary is written.
       // A request made again after failing added nothing to summarize, and keeps its wait: the next one that answers is summarized after.
       if (!current.stop && !next.retries && compactionDue({ ...ended, window })) {
-        const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: await actingIn(ctx, current), through: current.order, lastInputTokens, resume: from });
+        const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: current.workspaceId, through: current.order, lastInputTokens, resume: from });
         // Owed from here until a summary is kept, so one that is stopped, or whose action dies, is written by the next reply.
         // The lock holds what the reply has cost so far, for its sender's record if the compaction's action dies.
         await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true, spent: next.spent } });
@@ -609,7 +612,7 @@ export const release = internalMutation({
     // A stopped reply is left alone: whoever stopped it is waiting to write.
     if (ended && !current.stop && compactionDue({ ...ended, window })) {
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
-      const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: await actingIn(ctx, current), through: current.order, lastInputTokens });
+      const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: current.workspaceId, through: current.order, lastInputTokens });
       // Owed from here until a summary is kept, so one whose action dies is written by the next reply.
       // The reply's cost is recorded above: the lock holds none of it, so it isn't recorded again if this action dies.
       await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true, spent: 0 } });
