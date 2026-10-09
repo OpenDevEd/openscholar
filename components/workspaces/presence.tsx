@@ -34,7 +34,8 @@ export function ItemPresence({ kind, id, join = true }: { kind: ItemKind; id: st
   useRoomHeartbeat(join && org && workspaceId ? `${workspaceId}|${kind}:${id}` : null, (sessionId) => heartbeat({ kind, id, sessionId }), (sessionToken) => leave({ sessionToken }));
   const { data: here } = useProtectedQuery(api.presence.here, inWorkspace(org ? workspaceId : undefined, { kind, id, paginationOpts: { cursor: null, numItems: NAMED } }));
   const people = here?.page ?? [];
-  const label = t("hasOpen", { count: people.length, names: format.list(people.map((person) => person.name), { type: "conjunction" }) });
+  // Named only when someone is there.
+  const label = people.length ? t("hasOpen", { count: people.length, names: format.list(people.map((person) => person.name), { type: "conjunction" }) }) : "";
   // Each person arriving or leaving fades on their own. It sits where growing moves nothing else:
   // after a row's spacer, or first in a right-aligned group.
   const faces = (
