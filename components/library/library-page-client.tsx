@@ -46,7 +46,7 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { Button } from "@/components/ui/button";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { cn } from "@/lib/utils";
-import { CollectionManager } from "./collection-manager";
+import { ManageCollectionsDialog, NewCollectionDialog } from "./collection-dialogs";
 import { LibraryCommandCenter } from "./library-command-center";
 import { LibraryEmptyState } from "./library-empty-state";
 import { LibraryFilterSidebar } from "./library-filter-sidebar";
@@ -97,7 +97,7 @@ export function LibraryPageClient() {
     }
   }, [setParams]);
 
-  const [collectionManagerOpen, setCollectionManagerOpen] = useState(false);
+  const [collectionDialog, setCollectionDialog] = useState<"new" | "manage" | null>(null);
 
   const { data: totalCount } = useProtectedQuery(
     api.library.queries.getLibraryCount,
@@ -354,10 +354,6 @@ export function LibraryPageClient() {
       );
     }
 
-    if (selectedCollection) {
-      labels.push(`${t("filterCollection")}: ${selectedCollection.name}`);
-    }
-
     if (params.sort !== "savedAt:desc") {
       labels.push(`${t("sortBy")}: ${sortLabelMap[params.sort]}`);
     }
@@ -465,7 +461,8 @@ export function LibraryPageClient() {
               isPublicationDateActive={publicationDateRange !== undefined && (publicationDateRange.from !== undefined || publicationDateRange.to !== undefined)}
               collectionId={params.col}
               onCollectionChange={(id) => setParams({ col: id })}
-              onManageCollections={() => setCollectionManagerOpen(true)}
+              onManageCollections={() => setCollectionDialog("manage")}
+              onNewCollection={() => setCollectionDialog("new")}
               sort={params.sort}
               onSortChange={(value) => setParams({ sort: value })}
               activeFilterCount={activeFilterCount}
@@ -477,6 +474,8 @@ export function LibraryPageClient() {
             <div className="container mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
               <div className="space-y-6">
                 <LibraryCommandCenter
+                  // An open collection heads the command center; its name is no longer a filter chip.
+                  title={selectedCollection?.name ?? t("title")}
                   rawSearch={rawSearch}
                   onSearchChange={setRawSearch}
                   totalCount={totalCount}
@@ -601,10 +600,9 @@ export function LibraryPageClient() {
                 )}
               </div>
 
-              <CollectionManager
-                open={collectionManagerOpen}
-                onOpenChange={setCollectionManagerOpen}
-              />
+              {/* A collection made here opens, as a new folder does. */}
+              <NewCollectionDialog open={collectionDialog === "new"} onOpenChange={(open) => setCollectionDialog(open ? "new" : null)} onCreated={(id) => setParams({ col: id })} />
+              <ManageCollectionsDialog open={collectionDialog === "manage"} onOpenChange={(open) => setCollectionDialog(open ? "manage" : null)} onNew={() => setCollectionDialog("new")} />
 
             </div>
           </PageWrapper>

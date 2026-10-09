@@ -26,6 +26,8 @@ import {
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useCollectionPicker } from "./use-collection-picker";
+import { NewCollectionDialog } from "./collection-dialogs";
+import { useCurrentWorkspace, WorkspaceTag } from "@/components/workspaces/parts";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 /** A removal's ID: the server keeps what was removed for a day, for Undo. */
@@ -201,6 +203,9 @@ export function SaveControl({
 }) {
   const t = useTranslations("saveToLibrary");
   const { ready, isSignedIn, openSignIn, saved, isSaved, toggle } = useSavePaper(paper);
+  const setIn = useSetInCollection(paper);
+  const [picking, setPicking] = useState(false);
+  const [making, setMaking] = useState(false);
   const pendingCollections =
     usePending((state) => state.collections[paper.id]) ?? NO_PENDING_COLLECTIONS;
   const inCollection =
@@ -257,14 +262,20 @@ export function SaveControl({
         </Button>
       </TooltipHint>
       {ready ? (
-        <Popover>
+        <Popover open={picking} onOpenChange={setPicking}>
           <TooltipHint label={t("addToCollection")}>
             <PopoverTrigger asChild>{folderButton}</PopoverTrigger>
           </TooltipHint>
-          <PopoverContent align="start" className="w-72 p-2">
+          {/* Focus goes to the new collection's name, not back to the folder, when the list makes way for it. */}
+          <PopoverContent align="start" className="w-72 p-2" onCloseAutoFocus={(event) => making && event.preventDefault()}>
             <CollectionsPanel
-              paper={paper}
+              paperId={paper.id}
               pending={pendingCollections}
+              onToggle={setIn}
+              onNew={() => {
+                setPicking(false);
+                setMaking(true);
+              }}
             />
           </PopoverContent>
         </Popover>
@@ -274,34 +285,18 @@ export function SaveControl({
           {cloneElement(folderButton, { onClick: isSignedIn ? undefined : () => openSignIn() })}
         </TooltipHint>
       )}
+      {/* In the group, whose handlers keep the dialog's clicks and keys from reaching the card. */}
+      <NewCollectionDialog open={making} onOpenChange={setMaking} paper={{ title: paper.title || paper.display_name || "", add: (id) => setIn(id, true) }} />
     </ButtonGroup>
   );
 }
 
-/** The popover's checklist of collections, with a field to make a new one. */
-function CollectionsPanel({
-  paper,
-  pending,
-}: {
-  paper: WorkInput;
-  pending: Record<string, Pending>;
-}) {
+/** Adds a paper to a collection or takes it out, showing the change at once wherever the paper is. */
+function useSetInCollection(paper: WorkInput) {
   const t = useTranslations("saveToLibrary");
-  const tl = useTranslations("libraryPage");
   const { userId } = useAuth();
-  const [newName, setNewName] = useState("");
-  const picker = useCollectionPicker({ openalexId: paper.id });
   const setInCollection = useWorkspaceMutation(api.library.mutations.setPaperInCollection);
-  const createCollection = useWorkspaceMutation(api.library.collections.createCollection);
-
-  const loadingMembers = picker.isLoading;
-  const checkedIds = new Set<string>(picker.collections.filter((collection) => collection.containsItem).map((collection) => collection._id));
-  for (const [collectionId, { value: checked }] of Object.entries(pending)) {
-    if (checked) checkedIds.add(collectionId);
-    else checkedIds.delete(collectionId);
-  }
-
-  const toggle = (collectionId: Id<"collections">, add: boolean) => {
+  return (collectionId: Id<"collections">, add: boolean) => {
     const { setCollection, settleCollection, setSaved, settleSaved } = usePending.getState();
     const token = setCollection(paper.id, collectionId, add);
     const savedToken = add ? setSaved(paper.id, true) : undefined;
@@ -317,22 +312,38 @@ function CollectionsPanel({
         if (savedToken !== undefined) settleSaved(paper.id, savedToken);
       });
   };
+}
 
-  const create = () => {
-    const name = newName.trim();
-    if (!name) return;
-    setNewName("");
-    createCollection({ name })
-      .then(({ id }) => toggle(id, true))
-      .catch((error) => {
-        console.error("[Library] Failed to create collection:", error);
-        toast.error(t("collectionError"));
-      });
-  };
+/** The popover's checklist of the workspace's collections, and a new one made with the paper. */
+function CollectionsPanel({
+  paperId,
+  pending,
+  onToggle,
+  onNew,
+}: {
+  paperId: string;
+  pending: Record<string, Pending>;
+  onToggle: (collectionId: Id<"collections">, add: boolean) => void;
+  onNew: () => void;
+}) {
+  const t = useTranslations("saveToLibrary");
+  const tl = useTranslations("libraryPage");
+  const workspace = useCurrentWorkspace();
+  const picker = useCollectionPicker({ openalexId: paperId });
+
+  const loadingMembers = picker.isLoading;
+  const checkedIds = new Set<string>(picker.collections.filter((collection) => collection.containsItem).map((collection) => collection._id));
+  for (const [collectionId, { value: checked }] of Object.entries(pending)) {
+    if (checked) checkedIds.add(collectionId);
+    else checkedIds.delete(collectionId);
+  }
 
   return (
     <>
-      <p className="px-3 pt-1 pb-2 text-sm font-medium">{t("addToCollection")}</p>
+      <div className="flex items-center gap-2 px-2 pt-1 pb-2">
+        <p className="flex-1 shrink-0 text-sm font-medium">{t("addToCollection")}</p>
+        {workspace ? <WorkspaceTag workspace={workspace} size="sm" /> : null}
+      </div>
       <div className="relative mb-1">
         <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -348,38 +359,17 @@ function CollectionsPanel({
         searching={picker.search.length > 0}
         onScroll={picker.onScroll}
         checkedIds={checkedIds}
-        onToggle={(collectionId, checked) => toggle(collectionId, !checked)}
+        onToggle={(collectionId, checked) => onToggle(collectionId, !checked)}
         // Kept still until the paper's collections arrive, so a tick can't land on stale state.
         className={cn(loadingMembers && "pointer-events-none opacity-50")}
       />
-      <form
-        className="mt-2 flex items-center gap-2 border-t pt-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          create();
-        }}
+      <button
+        type="button"
+        onClick={onNew}
+        className="mt-1 flex h-10 w-full items-center gap-2.5 rounded-lg border-t border-border/60 px-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/5"
       >
-        <Input
-          value={newName}
-          onChange={(event) => setNewName(event.target.value)}
-          placeholder={t("newCollection")}
-          aria-label={t("newCollection")}
-          className="h-8"
-        />
-        <TooltipHint label={t("createAndAdd")}>
-          <span tabIndex={newName.trim() ? undefined : 0}>
-            <Button
-              type="submit"
-              size="icon-sm"
-              variant="outline"
-              aria-label={t("createAndAdd")}
-              disabled={!newName.trim()}
-            >
-              <Plus />
-            </Button>
-          </span>
-        </TooltipHint>
-      </form>
+        <Plus className="size-4" /> {t("newCollectionWithPaper")}
+      </button>
     </>
   );
 }

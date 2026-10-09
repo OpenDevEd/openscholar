@@ -39,7 +39,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { ORGANIZATION_COLOURS } from "@/lib/workspaces/colours";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { FREE_MEMBERS, PlanChip, usePlanOf, useCurrentWorkspace, WorkspaceTile, workspaceTint } from "./parts";
+import { FREE_MEMBERS, MemberFaces, PlanChip, usePlanOf, useCurrentWorkspace, WorkspaceTile, workspaceTint } from "./parts";
 
 /** Rows a page of members holds. */
 const PER_PAGE = 10;
@@ -73,20 +73,6 @@ function useAttempt() {
     }
   };
   return { busy, attempt };
-}
-
-/** The first members' faces, which open the member list. */
-function MemberFaces({ workspaceId, label }: { workspaceId: Id<"workspaces"> | undefined; label: string }) {
-  const { data } = useProtectedQuery(api.organizations.queries.members, inWorkspace(workspaceId, { paginationOpts: { cursor: null, numItems: 4 } }));
-  return (
-    <span className="flex -space-x-1.5" aria-label={label}>
-      {(data?.page ?? []).map((member) => (
-        <span key={member.userId} className="flex rounded-full ring-2 ring-card">
-          <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-5" />
-        </span>
-      ))}
-    </span>
-  );
 }
 
 // ─── General ─────────────────────────────────────────────────────────────
