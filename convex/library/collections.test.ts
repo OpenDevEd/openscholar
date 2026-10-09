@@ -5,6 +5,7 @@ import { api } from "../_generated/api";
 import schema from "../schema";
 import { collectionSortName } from "./collections";
 import type { Doc, Id } from "../_generated/dataModel";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 // Helper: create a user directly in the mock DB, return user doc
 async function seedUser(
@@ -159,7 +160,7 @@ describe("createCollection", () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
-    const account = await t.run((ctx) => ctx.db.insert("billingAccounts", { userId: user!._id, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { collections: 2 } }));
+    const account = await t.run(async (ctx) => ctx.db.insert("billingAccounts", { workspaceId: await personalWorkspaceOf(ctx, user!._id), plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { collections: 2 } }));
     await asUser.mutation(api.library.collections.createCollection, { name: "One" });
     await asUser.mutation(api.library.collections.createCollection, { name: "Two" });
     await expect(asUser.mutation(api.library.collections.createCollection, { name: "Three" })).rejects.toThrow(/plan allows 2 collections/);

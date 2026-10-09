@@ -292,10 +292,8 @@ import type * as library_sortName from "../library/sortName.js";
 import type * as library_validators from "../library/validators.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_assistantJobs from "../migrations/assistantJobs.js";
-import type * as migrations_billingWorkspaces from "../migrations/billingWorkspaces.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
-import type * as migrations_countBillingUsage from "../migrations/countBillingUsage.js";
 import type * as migrations_expireInvitations from "../migrations/expireInvitations.js";
 import type * as migrations_extractionAnswers from "../migrations/extractionAnswers.js";
 import type * as migrations_extractionEvidence from "../migrations/extractionEvidence.js";
@@ -309,6 +307,7 @@ import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtract
 import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryList.js";
 import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
 import type * as migrations_narrowAssistant from "../migrations/narrowAssistant.js";
+import type * as migrations_narrowBilling from "../migrations/narrowBilling.js";
 import type * as migrations_narrowJobs from "../migrations/narrowJobs.js";
 import type * as migrations_narrowLibrary from "../migrations/narrowLibrary.js";
 import type * as migrations_narrowLibraries from "../migrations/narrowLibraries.js";
@@ -695,10 +694,8 @@ declare const fullApi: ApiFromModules<{
   "library/validators": typeof library_validators;
   "maintenance/mutations": typeof maintenance_mutations;
   "migrations/assistantJobs": typeof migrations_assistantJobs;
-  "migrations/billingWorkspaces": typeof migrations_billingWorkspaces;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
-  "migrations/countBillingUsage": typeof migrations_countBillingUsage;
   "migrations/expireInvitations": typeof migrations_expireInvitations;
   "migrations/extractionAnswers": typeof migrations_extractionAnswers;
   "migrations/extractionEvidence": typeof migrations_extractionEvidence;
@@ -712,6 +709,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedLibraryList": typeof migrations_pagedLibraryList;
   "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
   "migrations/narrowAssistant": typeof migrations_narrowAssistant;
+  "migrations/narrowBilling": typeof migrations_narrowBilling;
   "migrations/narrowJobs": typeof migrations_narrowJobs;
   "migrations/narrowLibrary": typeof migrations_narrowLibrary;
   "migrations/narrowLibraries": typeof migrations_narrowLibraries;

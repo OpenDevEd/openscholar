@@ -42,10 +42,10 @@ describe("plan limits", () => {
       const account = { pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1 };
       const [fresh, onGo, cached, archived] = [await user("fresh"), await user("go"), await user("cached"), await user("archived")];
       // Their plan's version predates the limits: the snapshot has none.
-      await ctx.db.insert("billingAccounts", { ...account, userId: onGo, plan: "go" });
-      await ctx.db.insert("billingAccounts", { ...account, userId: cached, plan: "go", limits: { collections: 50 } });
+      await ctx.db.insert("billingAccounts", { ...account, workspaceId: await personalWorkspaceOf(ctx, onGo), plan: "go" });
+      await ctx.db.insert("billingAccounts", { ...account, workspaceId: await personalWorkspaceOf(ctx, cached), plan: "go", limits: { collections: 50 } });
       // A plan taken off the catalog, its snapshot from before the limits.
-      await ctx.db.insert("billingAccounts", { ...account, userId: archived, plan: "legacy_pro" });
+      await ctx.db.insert("billingAccounts", { ...account, workspaceId: await personalWorkspaceOf(ctx, archived), plan: "legacy_pro" });
       return { fresh, onGo, cached, archived };
     });
     const limits = (userId: typeof fresh) => t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return Promise.all((["collections", "concurrency", "request_papers"] as const).map(async (limit) => (await planLimit(ctx, workspaceId, limit)) ?? "none")); });
@@ -85,7 +85,7 @@ describe("plan limits over time", () => {
     const userId = await t.run(async (ctx) => {
       const id = await ctx.db.insert("users", { clerkId: "small", email: "small@test.local", state: "active", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("libraryCounts", { workspaceId: await personalWorkspaceOf(ctx, id), count: 5_000 });
-      await ctx.db.insert("billingAccounts", { userId: id, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { request_papers: 1_000 } });
+      await ctx.db.insert("billingAccounts", { workspaceId: await personalWorkspaceOf(ctx, id), plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { request_papers: 1_000 } });
       return id;
     });
     const request = { userId, set: { kind: "saved" as const }, questions: [{ key: "q1", question: "Is it a trial?" }], scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [] } };

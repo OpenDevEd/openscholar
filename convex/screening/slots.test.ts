@@ -10,6 +10,7 @@ import { createJob } from "./createJob.test-support";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
+import { accountOf } from "../billing/billing.test-support";
 
 const questions = [{ key: "q1", question: "Is this relevant?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] };
@@ -96,7 +97,7 @@ describe("each person's paper slots", () => {
     const { t, person } = await setup();
     const ada = await person("ada");
     await t.run(async (ctx) => {
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada.userId)).unique();
+      const account = await accountOf(ctx, ada.userId);
       await ctx.db.patch("billingAccounts", account!._id, { limits: { concurrency: 5 } });
     });
 

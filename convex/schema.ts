@@ -577,7 +577,6 @@ export default defineSchema({
   // locks still held, with the release scheduled for each one's expiry.
   // ═══════════════════════════════════════════════════════════════
   billingAccounts: defineTable(billingAccountFields)
-    .index("by_user", ["userId"])
     .index("by_workspace", ["workspaceId"])
     .index("by_stripe_customer", ["stripeCustomerId"]),
   billingCatalog: defineTable({ ...billingCatalogValidator.fields, syncedAt: v.number() }),
@@ -595,8 +594,8 @@ export default defineSchema({
     .index("by_stripe_charge", ["stripeChargeId"]),
   billingHolds: defineTable({
     userId: v.id("users"),
-    // The workspace whose customer the hold is on (#650); slice 8 makes it required.
-    workspaceId: v.optional(v.id("workspaces")),
+    // The workspace whose customer the hold is on (#650).
+    workspaceId: v.id("workspaces"),
     chargeId: v.string(),
     credits: v.number(),
     release: v.id("_scheduled_functions"),

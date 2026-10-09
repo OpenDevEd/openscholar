@@ -10,6 +10,7 @@
 import { vi } from "vitest";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 const AUTUMN_URL = "https://autumn.test";
 
@@ -203,8 +204,7 @@ export async function seedCreditsForTest(
   const customerId = workspace ? (workspace.kind === "personal" ? workspace.userId : workspace._id) : args.userId!;
   fakeAutumn.setBalance(customerId, { free, paid });
   await ctx.db.insert("billingAccounts", {
-    ...(args.userId ? { userId: args.userId } : workspace?.kind === "personal" ? { userId: workspace.userId } : {}),
-    ...(args.workspaceId ? { workspaceId: args.workspaceId } : {}),
+    workspaceId: args.workspaceId ?? (await personalWorkspaceOf(ctx, args.userId!)),
     plan: "free",
     pastDue: false,
     balance: free + paid,
@@ -213,4 +213,10 @@ export async function seedCreditsForTest(
     hasPaid: paid > 0,
     refreshedAt: args.now ?? Date.now(),
   });
+}
+
+/** The cached billing account of a person's own workspace. */
+export async function accountOf(ctx: Pick<MutationCtx, "db">, userId: Id<"users">) {
+  const workspaceId = await personalWorkspaceOf(ctx, userId);
+  return await ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
 }

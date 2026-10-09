@@ -9,6 +9,7 @@ import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/bill
 import schema from "../schema";
 import { people } from "../assistant/assistant.test-support";
 import { callingDoStream, finishingDoStream, waitFor } from "../assistant/turn.test-support";
+import { accountOf } from "../billing/billing.test-support";
 
 const { mockDoStream, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), fetchMock: vi.fn() }));
 vi.stubGlobal("fetch", fetchMock);
@@ -95,7 +96,7 @@ describe("web search", () => {
     expect(asking).toHaveLength(2);
     // Enough for one search's hold, not two.
     await t.run(async (ctx) => {
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      const account = await accountOf(ctx, ada);
       await ctx.db.patch("billingAccounts", account!._id, { balance: Math.floor(asking[0].credits! * 1.5) });
     });
 

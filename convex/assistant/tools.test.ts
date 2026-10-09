@@ -31,6 +31,7 @@ import { ensureWorkspace } from "../workspaces/create";
 import { ownActor } from "../workspaces/actor.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
 import { organizationWorkspaceOf } from "../workspaces/personal";
+import { accountOf } from "../billing/billing.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
 type Sent = Array<{ role: string; content: string | Part[] }>;
@@ -835,7 +836,7 @@ describe("the assistant's tools", () => {
     await t.run(async (ctx) => {
       await ctx.db.patch("collections", collectionId, { itemCount: 1500 });
       const userId = (await ctx.db.get("collections", collectionId))!.createdBy;
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+      const account = await accountOf(ctx, userId);
       await ctx.db.patch("billingAccounts", account!._id, { limits: { request_papers: 1000 } });
     });
     const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [{ minScore: 0, stars: 1 }] };
@@ -1110,7 +1111,7 @@ describe("the assistant's tools", () => {
     const list = (id: string, read?: number) => ({ id, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } }, ...(read ? { read } : {}) });
     const chat = async (free: number) => {
       await t.run(async (ctx) => {
-        const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ben)).unique();
+        const account = await accountOf(ctx, ben);
         if (account) await ctx.db.delete("billingAccounts", account._id);
         await seedCreditsForTest(ctx, { userId: ben, free });
       });
@@ -1702,7 +1703,7 @@ describe("the assistant's tools", () => {
     const most = estimateCredits({ input: 1, output: 2 }, CALL_TOKENS.chatRequest);
     await t.run(async (ctx) => {
       fakeAutumn.setBalance(ada, { free: most - 100, paid: 0 });
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      const account = await accountOf(ctx, ada);
       await ctx.db.patch("billingAccounts", account!._id, { balance: most + 500 });
     });
     let held: number[] = [];
