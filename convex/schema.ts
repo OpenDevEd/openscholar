@@ -1024,6 +1024,8 @@ export default defineSchema({
     // Where its papers came from (#341), as the screening page shows it: the set, the set's
     // name when it started (a search's query, a collection's or a job's name), and which of
     // its papers, counting from 1. Jobs from before the page have none.
+    // The name it was given as it started (#696); without one it goes by `label`.
+    name: v.optional(v.string()),
     set: v.optional(paperSetValidator),
     label: v.optional(v.string()),
     first: v.optional(v.number()),

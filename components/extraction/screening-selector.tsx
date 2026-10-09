@@ -33,10 +33,10 @@ export function ScreeningSelector({ paperLimit }: { paperLimit: number }) {
         const bucketKey = key(job);
         if (!next) { removeMany([bucketKey]); return; }
         if (job.status === "processing" || !job.qualifiedPapers || job.qualifiedPapers > paperLimit) return;
-        bucketAdded(addMany([{ bucketKey, source: "screening", sourceRefId: job._id, title: job.label ?? job.questions[0]?.question ?? "Screening", authors: [], screeningSelection: { jobId: job._id, revision: job.revision, count: job.qualifiedPapers }, paperCount: job.qualifiedPapers, status: "ready", addedAt: Date.now() }], paperLimit));
+        bucketAdded(addMany([{ bucketKey, source: "screening", sourceRefId: job._id, title: job.name ?? job.label ?? job.questions[0]?.question ?? "Screening", authors: [], screeningSelection: { jobId: job._id, revision: job.revision, count: job.qualifiedPapers }, paperCount: job.qualifiedPapers, status: "ready", addedAt: Date.now() }], paperLimit));
       }}
       renderRow={job => <div className="min-w-0">
-        <div className="flex items-center gap-2"><ListChecks className="size-4 shrink-0 text-muted-foreground" /><span className="font-medium text-foreground break-words">{job.label ?? job.questions[0]?.question ?? "Screening"}</span></div>
+        <div className="flex items-center gap-2"><ListChecks className="size-4 shrink-0 text-muted-foreground" /><span className="font-medium text-foreground break-words">{job.name ?? job.label ?? job.questions[0]?.question ?? "Screening"}</span></div>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground"><span>{format.number(job.qualifiedPapers)} Included</span><span>{format.number(Math.max(0, job.processedPapers - job.skippedPapers))} screened</span><span className="capitalize">{job.status}</span><span>{format.dateTime(job.createdAt, { year: "numeric", month: "short", day: "numeric" })}</span></div>
         {job.qualifiedPapers === 0 && <p className="mt-1 text-sm text-muted-foreground">No Included papers</p>}
         {job.status === "processing" && <p className="mt-1 text-sm text-muted-foreground">Wait for screening to finish.</p>}

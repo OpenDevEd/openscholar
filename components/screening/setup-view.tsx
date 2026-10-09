@@ -81,6 +81,7 @@ export function SetupView({
 }) {
   const workspaceId = useWorkspace();
   const t = useTranslations("screeningPage");
+  const tc = useTranslations("common");
   const format = useFormatter();
   const locale = useLocale();
   const toast = useAppToast();
@@ -128,6 +129,8 @@ export function SetupView({
   const [starsSet, setStars] = useState<number[] | null>(again?.scoringConfig.starThresholds.length === 5 ? [...again.scoringConfig.starThresholds].sort((a, b) => a.stars - b.stars).map((threshold) => threshold.minScore) : null);
   // A job run again keeps its destination while that collection exists.
   const [dest, setDest] = useState<"none" | "new" | Id<"collections">>(again?.unsaved ? "none" : again?.targetCollectionId && again.targetCollectionName ? again.targetCollectionId : "new");
+  // Its own name; left empty, it's named after its papers. Run again, it keeps the one it had.
+  const [title, setTitle] = useState(again?.name ?? "");
   const [newName, setNewName] = useState<string | null>(null);
   const [prune, setPrune] = useState(again?.prune ?? false);
   const [busy, setBusy] = useState(false);
@@ -155,6 +158,8 @@ export function SetupView({
   const { data: earlier } = useProtectedQuery(api.screening.queries.getScreeningJob, inWorkspace(workspaceId, source?.kind === "screening" ? { jobId: source.id } : "skip"));
   const fresh = earlier ? questionsOf(earlier).filter((q) => !questions.some((x) => x.text.toLowerCase() === q.text.toLowerCase())) : [];
   const defaultName = !source ? "" : source.kind === "screening" ? source.label : t("includedIn", { name: source.label });
+  // What it's called left unnamed: its papers, as the rail names a screening.
+  const unnamed = source ? jobName(t, { createdAt: 0, set: setOf(source), label: source.label || tc("noQuery") }, date) : t("newScreening");
 
   const destinations = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
   // A collection can't be its own destination; picking it as the source moves the pick to a new one.
@@ -236,6 +241,7 @@ export function SetupView({
         ...scoringOf(questions, threshold, stars),
         saveTo: target === "none" ? { kind: "none" } : target === "new" ? { kind: "new", name } : { kind: "collection", collectionId: target },
         ...(source.kind === "collection" && prune ? { prune: true } : {}),
+        ...(title.trim() ? { name: title.trim() } : {}),
       });
       onStarted(jobId);
     } catch (error) {
@@ -251,8 +257,9 @@ export function SetupView({
   return (
     <Enter ready={ready}>
       <div className="space-y-8 pb-24">
+        {/* Its name heads the page, written where it shows. */}
         <div className="space-y-1">
-          <h2 className="text-xl font-semibold tracking-tight">{t("newScreening")}</h2>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={unnamed} aria-label={tc("name")} maxLength={200} className="w-full rounded-lg bg-transparent text-xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/40" />
           <p className="text-sm text-muted-foreground">{t("newScreeningHint")}</p>
         </div>
 

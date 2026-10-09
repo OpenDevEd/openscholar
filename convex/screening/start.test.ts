@@ -105,6 +105,19 @@ describe("Screen all on papers the account holds", () => {
     expect(await read(second.jobId)).toMatchObject({ set: { kind: "screening", jobId: first.jobId }, totalPapers: 2 });
   });
 
+  it("keeps the name it was given, which a screening of its papers goes by (#696)", async () => {
+    const { screen, collectionId, answerAll, read } = await setup();
+
+    const named = await screen({ set: { kind: "collection", collectionId }, first: 1, last: 2, ...job, saveTo: { kind: "none" }, name: "  Pilot  " });
+    expect(await read(named.jobId)).toMatchObject({ name: "Pilot", label: "Reading trials" });
+    await answerAll(named.jobId, [4]);
+
+    const again = await screen({ set: { kind: "screening", jobId: named.jobId }, first: 1, last: 1, ...job, saveTo: { kind: "none" }, name: " " });
+    const ofIt = await read(again.jobId);
+    expect(ofIt).toMatchObject({ label: "Pilot" });
+    expect(ofIt).not.toHaveProperty("name");
+  });
+
   it("refuses another person's collection or job, and a range with no papers", async () => {
     const { t, alice, screen, collectionId } = await setup();
     const bob = t.withIdentity({ subject: "bob" });

@@ -55,6 +55,12 @@ async function jobOf(ctx: QueryCtx, step: Doc<"assistantSteps">) {
   }
 }
 
+/** What a screening is called on its card: the name it was given, or its set's. */
+const calledBy = (job: { name?: string; label?: string }) => {
+  const label = job.name ?? job.label;
+  return label ? { label } : {};
+};
+
 /**
  * The person who started a job, reading it in the job's workspace (#650). The card has already
  * checked who may see it: the starter's account needn't still be active for the others in a shared chat to see their job.
@@ -84,7 +90,7 @@ async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"scr
     kind: "screening",
     jobId: job._id,
     status: job.status,
-    ...(job.label ? { label: job.label } : {}),
+    ...calledBy(job),
     total: sum((one) => one.totalPapers),
     included: sum((one) => one.outcomes.included),
     unclear: sum((one) => one.outcomes.unclear),
@@ -106,7 +112,7 @@ async function screeningAhead(ctx: QueryCtx, workspaceId: Id<"workspaces">, wait
     if (other._id === waiting) continue;
     const job = await getScreeningJobAction.run(ctx, starter(other), { jobId: other._id });
     if (!job?.running) continue;
-    return { ...(job.label ? { label: job.label } : {}), done: job.outcomes.included + job.outcomes.unclear + job.outcomes.excluded + job.outcomes.failed, total: job.totalPapers };
+    return { ...calledBy(job), done: job.outcomes.included + job.outcomes.unclear + job.outcomes.excluded + job.outcomes.failed, total: job.totalPapers };
   }
   return null;
 }

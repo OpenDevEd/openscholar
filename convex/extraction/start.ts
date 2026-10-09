@@ -142,7 +142,7 @@ async function screeningPicked(ctx: QueryCtx, workspaceId: Id<"workspaces">, job
   const job = await ctx.db.get("screeningJobs", jobId);
   if (!job || !(job.workspaceId === workspaceId)) throw createError("NOT_FOUND", "Screening not found");
   const revision = await screeningRevision(ctx, job);
-  return { revision, count: await checkScreeningSelection(ctx, workspaceId, jobId, revision), label: job.label ?? "Screening" };
+  return { revision, count: await checkScreeningSelection(ctx, workspaceId, jobId, revision), label: job.name ?? job.label ?? "Screening" };
 }
 
 /**
