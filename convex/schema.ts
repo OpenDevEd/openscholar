@@ -167,7 +167,8 @@ export default defineSchema({
   authorProfiles: defineTable({
     ...authorContentFields,
     ownerId: v.id("users"),
-    // The workspace that owns it, and who made it (#650); slice 8 makes them required and drops `ownerId`.
+    // The workspace that owns it, and who made it (#650). A profile whose owner's account was purged
+    // before workspaces has neither: it stays in the directory, owned by nobody.
     workspaceId: v.optional(v.id("workspaces")),
     createdBy: v.optional(v.id("users")),
     photoId: v.optional(v.id("_storage")),
