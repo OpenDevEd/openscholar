@@ -72,7 +72,7 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
   const workspace = useCurrentWorkspace();
   const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
   const createCollection = useWorkspaceMutation(api.library.collections.createCollection);
-  const { count, limit } = useCollectionReads();
+  const { count, limit } = useCollectionCount();
   const [name, setName] = useState("");
   const [withPaper, setWithPaper] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -186,7 +186,16 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
       </ScrollArea>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-border/50 p-4">
-        {count !== undefined && limit !== undefined ? <CollectionMeter count={count} limit={limit} plan={plan.name} /> : null}
+        {/* Its place is kept: from a paper's Save menu the dialog can open before its count is read, and the meter fades in. */}
+        <div className="flex min-h-9 min-w-44 items-center">
+          <AnimatePresence initial={false}>
+            {count !== undefined && limit !== undefined ? (
+              <motion.div key="meter" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25, ease: EASE }}>
+                <CollectionMeter count={count} limit={limit} plan={plan.name} />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="ghost" onClick={close}>
             {tc("cancel")}
@@ -253,38 +262,49 @@ const MANAGE_PAGE = 8;
 const MANAGE_ROW_PX = 57;
 
 /** Your collections a page at a time: rename, delete with Undo, and a new one through the dialog. */
-/**
- * What the two collection dialogs read. The library page reads it too while they're shut, so each
- * opens with its count, limit and list in place instead of filling in as it opens: identical reads
- * share one subscription.
- */
-function useCollectionReads(search = "") {
+/** The workspace's count of collections and its plan's most, as the server holds it to them; null for no limit. */
+function useCollectionCount() {
   const workspaceId = useWorkspace();
   const { data: count } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
-  // The workspace's plan's most collections, as the server holds it to them; null for no limit.
   const { data: limits } = useProtectedQuery(api.billing.accounts.myLimits, inWorkspace(workspaceId, {}));
-  const list = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, { search: search || undefined }), MANAGE_PAGE);
-  return { count, limit: limits === undefined ? undefined : (limits?.collections ?? null), list };
+  return { count, limit: limits === undefined ? undefined : (limits?.collections ?? null) };
 }
 
-/** Keeps what the collection dialogs show read while they're shut: their counts, limit and list, and an organization's member faces. */
+/**
+ * Keeps New collection's reads up while it's shut, so it opens with them: its count, its limit and an
+ * organization's member faces. Identical reads share one subscription.
+ */
 export function useCollectionDialogsReady() {
   const workspace = useCurrentWorkspace();
-  useCollectionReads();
+  useCollectionCount();
   useMemberFaces(workspace?.kind === "organization" ? workspace.workspaceId : undefined);
 }
 
-export function ManageCollectionsDialog({ open, onOpenChange, onNew, returnFocus }: { open: boolean; onOpenChange: (open: boolean) => void; onNew: () => void; returnFocus?: ReturnFocus }) {
+/**
+ * Manage collections' list, its search and its count. The library page holds it, so the dialog
+ * opens on a list already read: one pager, which the dialog borrows.
+ */
+export function useManageCollections() {
+  const workspaceId = useWorkspace();
+  const [query, setQuery] = useState("");
+  const search = useDebouncedValue(query.trim(), 300);
+  const { count: total } = useCollectionCount();
+  const list = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, { search: search || undefined }), MANAGE_PAGE);
+  return { query, setQuery, search, total, list };
+}
+type Manage = ReturnType<typeof useManageCollections>;
+
+export function ManageCollectionsDialog({ manage, open, onOpenChange, onNew, returnFocus }: { manage: Manage; open: boolean; onOpenChange: (open: boolean) => void; onNew: () => void; returnFocus?: ReturnFocus }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className={DIALOG} onCloseAutoFocus={restoreFocus(returnFocus)}>
-        <ManageCollections close={() => onOpenChange(false)} onNew={onNew} />
+        <ManageCollections manage={manage} close={() => onOpenChange(false)} onNew={onNew} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function ManageCollections({ close, onNew }: { close: () => void; onNew: () => void }) {
+function ManageCollections({ manage, close, onNew }: { manage: Manage; close: () => void; onNew: () => void }) {
   const t = useTranslations("libraryPage");
   const ts = useTranslations("saveToLibrary");
   const tc = useTranslations("common");
@@ -292,9 +312,7 @@ function ManageCollections({ close, onNew }: { close: () => void; onNew: () => v
   const workspace = useCurrentWorkspace();
   const renameCollection = useWorkspaceMutation(api.library.collections.renameCollection);
   const deleteCollection = useWorkspaceMutation(api.library.collections.deleteCollection);
-  const [query, setQuery] = useState("");
-  const search = useDebouncedValue(query.trim(), 300);
-  const { count: total, list } = useCollectionReads(search);
+  const { query, setQuery, search, total, list } = manage;
   const deleting = useDeleting((s) => s.ids);
   const shown = list.items.filter((c) => !deleting.includes(c._id));
   const [editing, setEditing] = useState<Id<"collections"> | null>(null);
