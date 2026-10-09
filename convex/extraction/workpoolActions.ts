@@ -19,7 +19,7 @@ import type { Usage } from "../../lib/ai/core/types";
 import type { AITrackingEntry } from "../../lib/posthog-ai-shared";
 import type { AIProvider } from "../../lib/types";
 import { createError } from "../lib/errors";
-import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
+import { paperPdf } from "../lib/paperPdfs";
 import { decryptApiKey } from "../lib/crypto";
 import {
   classifyUnknownError,
@@ -461,15 +461,19 @@ async function buildEvidenceUnitsFromPdf(pdfBuffer: ArrayBuffer) {
   return units;
 }
 
+/**
+ * A paper's PDF: the one the person uploaded, or this job fetched already, as it is; otherwise from the paper PDF
+ * store, the paper's own links or OpenAlex (convex/lib/paperPdfs.ts), the job paying once for a stored copy.
+ */
 async function resolvePdfBlob(
   ctx: ActionCtx,
-  job: { createdBy: Id<"users"> } | null,
+  job: { _id: Id<"extractionJobs">; createdBy: Id<"users">; workspaceId: Id<"workspaces"> },
   args: {
     paperId: Id<"extractionPapers">;
-    jobId: Id<"extractionJobs">;
     pdfUrl: string;
     storageId?: Id<"_storage">;
     doi?: string;
+    openalexId: string;
   },
 ): Promise<{
   pdfBlob: Blob | null;
@@ -483,11 +487,7 @@ async function resolvePdfBlob(
     }
   }
 
-  if (!args.pdfUrl) {
-    return { pdfBlob: null, error: "No PDF URL provided" };
-  }
-
-  const zoteroConnection = job
+  const zoteroConnection = args.pdfUrl.startsWith("zotero://")
     ? await ctx.runQuery(internal.zotero.internal.getConnection, {
         userId: job.createdBy,
       })
@@ -504,31 +504,29 @@ async function resolvePdfBlob(
       zoteroConnection.encryptedApiKey,
       encryptionKey,
       {
-        userId: job?.createdBy ? String(job.createdBy) : "system",
+        userId: String(job.createdBy),
         purpose: "zotero-pdf-download",
       },
     );
     await ctx.runMutation(internal.lib.audit.writeAuditLog, {
       action: "KEY_DECRYPT",
-      userId: job?.createdBy ? String(job.createdBy) : "system",
+      userId: String(job.createdBy),
       metadata: { purpose: "extraction-api-key-decrypt" },
     });
   }
 
-  const downloaded: DownloadPdfResult = await downloadPdf(args.pdfUrl, {
-    doi: args.doi,
-    zoteroConnection: zoteroApiKey
-      ? { apiKey: zoteroApiKey, userId: zoteroConnection!.zoteroUserId }
-      : undefined,
-  });
-
-  if (!downloaded.success || !downloaded.pdfBlob) {
-    return {
-      pdfBlob: null,
-      error: downloaded.error || "PDF download failed",
-    };
-  }
-  return { pdfBlob: downloaded.pdfBlob };
+  const got = await paperPdf(
+    ctx,
+    { userId: job.createdBy, workspaceId: job.workspaceId, scope: `extraction:${job._id}`, kind: "extraction", jobId: job._id },
+    {
+      openalexId: args.openalexId,
+      doi: args.doi,
+      url: args.pdfUrl || undefined,
+      zotero: zoteroApiKey && zoteroConnection ? { apiKey: zoteroApiKey, userId: zoteroConnection.zoteroUserId } : undefined,
+    },
+  );
+  if ("error" in got) return { pdfBlob: null, error: got.error };
+  return { pdfBlob: new Blob([got.bytes.slice()], { type: "application/pdf" }) };
 }
 
 export type JobWorkerSkipReason =
@@ -673,10 +671,10 @@ export async function runDownloadAndIndexPdf(
 
     const resolved = await resolvePdfBlob(ctx, job, {
       paperId: args.paperId,
-      jobId: args.jobId,
       pdfUrl: existingPaper.pdfUrl || existingPaper.oaUrl || "",
       storageId: existingPaper.storageId,
       doi: existingPaper.doi,
+      openalexId: existingPaper.openalexId,
     });
 
     // Keep pipeline alive for abstract-only papers by leaving evidence empty.

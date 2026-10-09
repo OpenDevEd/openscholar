@@ -152,7 +152,8 @@ const paperValidator = v.object({
 });
 
 /** A paper's PDF as a read gives it to the model: by its address, which the model's provider fetches (./papers.ts `readPdf`). */
-export const paperPdfValidator = v.object({ id: v.string(), title: v.string(), paperPdf: v.string() });
+/** A paper's PDF a read got: `paperPdf` is the address it's cited by, `stored` its copy in the paper PDF store (convex/lib/paperPdfs.ts), which the model is sent. */
+export const paperPdfValidator = v.object({ id: v.string(), title: v.string(), paperPdf: v.string(), stored: v.string() });
 
 /** Authors of one paper its record lists, institutions named for each, and its funders. */
 export const AUTHORS_LISTED = 20;

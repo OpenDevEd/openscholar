@@ -1312,4 +1312,7 @@ export default defineSchema({
   })
     .index("by_user_kind", ["userId", "kind"])
     .index("by_user_kind_expires", ["userId", "kind", "expiresAt"]),
+
+  // The papers whose stored PDF each chat or extraction (`scope`) has had, so it pays once for each (convex/lib/paperPdfs.ts).
+  paperPdfReads: defineTable({ scope: v.string(), key: v.string() }).index("by_scope_and_key", ["scope", "key"]),
 });

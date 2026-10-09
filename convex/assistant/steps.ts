@@ -217,6 +217,13 @@ export const begin = internalMutation({
   },
 });
 
+/** The chat a step belongs to, for a tool that charges once a chat. */
+export const chatOf = internalQuery({
+  args: { stepId: v.id("assistantSteps") },
+  returns: v.union(v.id("assistantThreads"), v.null()),
+  handler: async (ctx, { stepId }) => (await ctx.db.get("assistantSteps", stepId))?.threadId ?? null,
+});
+
 /** What a call given these arguments is about (`aboutOf`), for a tool that names its step before it has one. */
 export const about = internalQuery({
   // `input` is the arguments, as JSON.

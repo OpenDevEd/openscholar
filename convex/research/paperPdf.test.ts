@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
-// Reading a paper's open-access PDF: by the address OpenAlex gives, checked to serve a PDF,
-// and sent to the model by that address in the reply that read it, never in a later one.
+// Reading a paper's PDF: from the paper PDF store first (a chat pays once for a stored copy), else its own link
+// (free) or OpenAlex's copy (paid), each kept in the store, and sent to the model as a link to the stored copy
+// in the reply that read it, never in a later one.
 import { APICallError } from "@ai-sdk/provider";
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +12,8 @@ import schema from "../schema";
 import { people } from "../assistant/assistant.test-support";
 import { callingDoStream, finishingDoStream, waitFor } from "../assistant/turn.test-support";
 import { COMPACT_AT_TOKENS } from "../assistant/context";
+import { paperKey, STORED_PDF_CREDITS } from "../lib/paperPdfs";
+import { fakeStore, storeAnswer, storedAddress, stubPaperStore } from "../lib/paperPdfs.test-support";
 
 const { mockDoStream, mockDoGenerate, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), mockDoGenerate: vi.fn(), fetchMock: vi.fn() }));
 vi.mock("../ai/provider", async () => {
@@ -20,33 +23,46 @@ vi.mock("../ai/provider", async () => {
 });
 
 const PDF = "https://example.org/loot-boxes.pdf";
-/** OpenAlex's works: one with an open-access PDF, one with none, one whose address serves a page. */
+const PDF_BYTES = "%PDF-1.7\n%âãÏÓ\n1 0 obj";
+/** OpenAlex's works: one with an open-access PDF, one with none and no copy, one whose link serves a page but that OpenAlex has a copy of. */
 const WORKS: Record<string, object> = {
-  W1: { id: "https://openalex.org/W1", display_name: "Loot boxes and problem gambling", best_oa_location: { pdf_url: PDF } },
-  W2: { id: "https://openalex.org/W2", display_name: "A closed paper", best_oa_location: null },
-  W3: { id: "https://openalex.org/W3", display_name: "A landing page", best_oa_location: { pdf_url: "https://example.org/landing" } },
+  W1: { id: "https://openalex.org/W1", display_name: "Loot boxes and problem gambling", best_oa_location: { pdf_url: PDF }, has_content: { pdf: true } },
+  W2: { id: "https://openalex.org/W2", display_name: "A closed paper", best_oa_location: null, has_content: { pdf: false } },
+  W3: { id: "https://openalex.org/W3", display_name: "A landing page", best_oa_location: { pdf_url: "https://example.org/landing" }, has_content: { pdf: true } },
 };
-const pdfChecks: Array<string | null> = [];
+/** Requests to the publisher's host and to OpenAlex's content API. */
+let publisher: string[] = [];
+let content: string[] = [];
 
 beforeEach(() => {
   mockDoStream.mockReset();
   mockDoGenerate.mockReset();
   fakeAutumn.reset();
-  pdfChecks.length = 0;
+  fakeStore.reset();
+  publisher = [];
+  content = [];
+  stubPaperStore();
   vi.stubEnv("OPENALEX_API_KEY", "platform-key");
   vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
   const autumn = fakeAutumnFetch();
   fetchMock.mockReset();
   fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = new URL(String(input));
+    const stored = await storeAnswer(input, init);
+    if (stored) return stored;
+    const url = new URL(input instanceof Request ? input.url : String(input));
     if (url.hostname === "api.openalex.org") {
       const work = WORKS[url.pathname.split("/").at(-1)!];
       return work ? new Response(JSON.stringify(work), { status: 200 }) : new Response("{}", { status: 404 });
     }
+    if (url.hostname === "content.openalex.org") {
+      content.push(url.href);
+      // OpenAlex reports a download's cost in credits of $0.0001.
+      return url.pathname === "/works/W3.pdf" ? new Response(PDF_BYTES, { status: 200, headers: { "content-type": "application/pdf", "x-ratelimit-credits-used": "100" } }) : new Response("Not found", { status: 404 });
+    }
     if (url.hostname === "example.org") {
-      pdfChecks.push(new Headers(init?.headers).get("range"));
+      publisher.push(url.href);
       if (url.href !== PDF) return new Response("<!doctype html><title>Article</title>", { status: 200, headers: { "content-type": "text/html" } });
-      return new Response("%PDF-1.7\n%âãÏÓ\n1 0 obj", { status: new Headers(init?.headers).has("range") ? 206 : 200, headers: { "content-type": "application/pdf" } });
+      return new Response(PDF_BYTES, { status: 200, headers: { "content-type": "application/pdf" } });
     }
     return autumn(input, init);
   });
@@ -59,6 +75,9 @@ afterEach(() => {
 
 type Test = ReturnType<typeof convexTest>;
 const replied = (t: Test, threadId: Id<"assistantThreads">) => waitFor(async () => !(await t.run((ctx) => ctx.db.get("assistantThreads", threadId)))?.reply);
+/** What each paper PDF charge came to, in the order they landed. */
+const pdfCharges = (t: Test) => t.run(async (ctx) => (await ctx.db.query("billingUsage").collect()).filter((row) => row.description === "Paper PDF").map((row) => row.credits));
+const keep = (key: string) => fakeStore.objects.set(key, new TextEncoder().encode(PDF_BYTES));
 
 /** A chat on a model that reads PDFs, with reading files allowed in it, so a read runs without asking. */
 async function chat(t: Test, free = 100_000, inputs = ["text", "image", "file"]) {
@@ -67,57 +86,120 @@ async function chat(t: Test, free = 100_000, inputs = ["text", "image", "file"])
   const modelId = await t.run((ctx) =>
     ctx.db.insert("models", { modelId: "mock/model", name: "Mock", provider: "openrouter", inputPricePerMillion: 1, outputPricePerMillion: 2, costMarkup: 1, contextLength: 200_000, supportedParameters: ["tools"], inputModalities: inputs, isServed: true, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1 }),
   );
-  const threadId = await who.asAda.mutation(api.assistant.threads.create, { title: "Methods", modelId });
-  await who.asAda.mutation(api.assistant.spending.setTool, { threadId, tool: "files", allowed: true });
-  return { ...who, threadId };
+  const open = async (title: string) => {
+    const threadId = await who.asAda.mutation(api.assistant.threads.create, { title, modelId });
+    await who.asAda.mutation(api.assistant.spending.setTool, { threadId, tool: "files", allowed: true });
+    return threadId;
+  };
+  return { ...who, threadId: await open("Methods"), open };
 }
 
 type Prompt = Array<{ role: string; content: Array<{ type: string; output?: { type: string; value: unknown } }> }>;
 /** The tool result a request read for the call with this ID. */
 const resultIn = (prompt: Prompt) => prompt.filter((message) => message.role === "tool").flatMap((message) => message.content).find((part) => part.type === "tool-result")?.output;
 
-describe("reading a paper's PDF", () => {
-  it("gives the PDF's address once it answers with a PDF, and refuses a paper with none or an address that serves a page", async () => {
-    const t = convexTest(schema);
-    const { asAda } = await people(t);
+describe("the paper PDF store", () => {
+  it("keys a copy by OpenAlex ID, else DOI, else link, and never keeps a file from a person's Zotero library", async () => {
+    expect(await paperKey({ openalexId: "https://openalex.org/w12", doi: "10.1/x" })).toBe("openalex/W12.pdf");
+    // Extraction names papers from elsewhere by IDs of its own.
+    expect(await paperKey({ openalexId: "zotero:ABCD", doi: "https://doi.org/10.1/X" })).toBe(`doi/${encodeURIComponent("10.1/x")}.pdf`);
+    expect(await paperKey({ url: PDF })).toMatch(/^url\/[0-9a-f]{64}\.pdf$/);
+    expect(await paperKey({ openalexId: "W12", url: "zotero://select/users/1/items/ABCD" })).toBeNull();
+  });
+});
 
-    expect(await asAda.action(api.research.papers.readPdf, { id: "W1" })).toMatchObject({ title: "Loot boxes and problem gambling", paperPdf: PDF });
-    // Only its first bytes were read to check it, not the file.
-    expect(pdfChecks).toEqual(["bytes=0-1023"]);
-    await expect(asAda.action(api.research.papers.readPdf, { id: "W2" })).rejects.toThrow(/no open-access PDF/);
-    await expect(asAda.action(api.research.papers.readPdf, { id: "W3" })).rejects.toThrow(/couldn't be opened/);
+describe("reading a paper's PDF", () => {
+  it("keeps a PDF fetched by its own link in the store, for nothing, and refuses a paper with no PDF and no copy", async () => {
+    const t = convexTest(schema);
+    const { asAda } = await chat(t);
+
+    expect(await asAda.action(api.research.papers.readPdf, { id: "W1" })).toMatchObject({ title: "Loot boxes and problem gambling", paperPdf: PDF, stored: "openalex/W1.pdf" });
+    expect(fakeStore.kept).toEqual(["openalex/W1.pdf"]);
+    expect(await pdfCharges(t)).toEqual([]);
+    await expect(asAda.action(api.research.papers.readPdf, { id: "W2" })).rejects.toThrow(/attach its PDF/);
+    // OpenAlex said it has no copy, so none was bought.
+    expect(content).toEqual([]);
+  });
+
+  it("buys OpenAlex's copy when the paper's own link fails, charging what OpenAlex reports, and serves it from the store after", async () => {
+    const t = convexTest(schema);
+    const { asAda } = await chat(t);
+
+    expect(await asAda.action(api.research.papers.readPdf, { id: "W3" })).toMatchObject({ stored: "openalex/W3.pdf" });
+    expect(content).toEqual(["https://content.openalex.org/works/W3.pdf?api_key=platform-key"]);
+    expect(fakeStore.kept).toEqual(["openalex/W3.pdf"]);
+    // 100 OpenAlex credits are $0.01, which a stored copy costs too.
+    expect(await pdfCharges(t)).toEqual([STORED_PDF_CREDITS]);
+
+    // A read outside a chat pays each time, and the copy comes from the store.
+    await asAda.action(api.research.papers.readPdf, { id: "W3" });
+    expect(content).toHaveLength(1);
+    expect(await pdfCharges(t)).toEqual([STORED_PDF_CREDITS, STORED_PDF_CREDITS]);
+  });
+
+  it("has a chat pay once for a stored copy, however often it reads it, and another chat pay again", async () => {
+    const t = convexTest(schema);
+    // A reply holds what its request may cost, at the mock's high price, beside what the read charges.
+    keep("openalex/W1.pdf");
+    const { asAda, threadId, open } = await chat(t, 100_000_000);
+    const read = async (thread: Id<"assistantThreads">) => {
+      mockDoStream.mockImplementationOnce(callingDoStream({ id: `pdf-${mockDoStream.mock.calls.length}`, name: "research_papers_readPdf", input: { id: "W1" } })).mockImplementationOnce(finishingDoStream(["It reports a link (p. 5)."]));
+      await asAda.mutation(api.assistant.replies.send, { threadId: thread, text: "What are this paper's methods?" });
+      await replied(t, thread);
+    };
+
+    await read(threadId);
+    await read(threadId);
+    expect(await pdfCharges(t)).toEqual([STORED_PDF_CREDITS]);
+    await read(await open("Another"));
+    expect(await pdfCharges(t)).toEqual([STORED_PDF_CREDITS, STORED_PDF_CREDITS]);
+    // Every read came from the store.
+    expect(publisher).toEqual([]);
+  });
+
+  it("has a chat that fetched a paper by its link read it from the store after for nothing", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await chat(t, 100_000_000);
+    for (const id of ["pdf-1", "pdf-2"]) {
+      mockDoStream.mockImplementationOnce(callingDoStream({ id, name: "research_papers_readPdf", input: { id: "W1" } })).mockImplementationOnce(finishingDoStream(["It reports a link (p. 5)."]));
+      await asAda.mutation(api.assistant.replies.send, { threadId, text: "What are this paper's methods?" });
+      await replied(t, threadId);
+    }
+    // The first read fetched it by its link, and the second found it in the store.
+    expect(publisher).toEqual([PDF]);
+    expect(await pdfCharges(t)).toEqual([]);
   });
 
   it("never fetches a private address, at first or after a redirect, and takes a signature split across chunks", async () => {
     const t = convexTest(schema);
-    const { asAda } = await people(t);
-    WORKS.W4 = { id: "https://openalex.org/W4", display_name: "Internal", best_oa_location: { pdf_url: "http://127.0.0.1/paper.pdf" } };
-    WORKS.W5 = { id: "https://openalex.org/W5", display_name: "Redirected", best_oa_location: { pdf_url: "https://example.org/moved.pdf" } };
+    const { asAda } = await chat(t);
+    WORKS.W4 = { id: "https://openalex.org/W4", display_name: "Internal", best_oa_location: { pdf_url: "http://127.0.0.1/paper.pdf" }, has_content: { pdf: false } };
+    WORKS.W5 = { id: "https://openalex.org/W5", display_name: "Redirected", best_oa_location: { pdf_url: "https://example.org/moved.pdf" }, has_content: { pdf: false } };
     WORKS.W6 = { id: "https://openalex.org/W6", display_name: "Chunked", best_oa_location: { pdf_url: "https://example.org/chunked.pdf" } };
     const fetched: string[] = [];
     const answer = fetchMock.getMockImplementation()!;
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
+      const url = input instanceof Request ? input.url : String(input);
       fetched.push(url);
       if (url === "https://example.org/moved.pdf") return new Response(null, { status: 302, headers: { location: "http://169.254.169.254/latest/meta-data/" } });
       if (url === "https://example.org/chunked.pdf") {
         const parts = ["%P", "DF-1.7\n", "1 0 obj"].map((part) => new TextEncoder().encode(part));
-        return new Response(new ReadableStream({ pull: (controller) => (parts.length ? controller.enqueue(parts.shift()!) : controller.close()) }), { status: 200 });
+        return new Response(new ReadableStream({ pull: (controller) => (parts.length ? controller.enqueue(parts.shift()!) : controller.close()) }), { status: 200, headers: { "content-type": "application/pdf" } });
       }
       return answer(input, init);
     });
 
-    await expect(asAda.action(api.research.papers.readPdf, { id: "W4" })).rejects.toThrow(/couldn't be opened/);
-    await expect(asAda.action(api.research.papers.readPdf, { id: "W5" })).rejects.toThrow(/couldn't be opened/);
+    await expect(asAda.action(api.research.papers.readPdf, { id: "W4" })).rejects.toThrow(/attach its PDF/);
+    await expect(asAda.action(api.research.papers.readPdf, { id: "W5" })).rejects.toThrow(/attach its PDF/);
     expect(fetched.some((url) => url.includes("127.0.0.1") || url.includes("169.254.169.254"))).toBe(false);
-    expect(await asAda.action(api.research.papers.readPdf, { id: "W6" })).toMatchObject({ paperPdf: "https://example.org/chunked.pdf" });
+    expect(await asAda.action(api.research.papers.readPdf, { id: "W6" })).toMatchObject({ paperPdf: "https://example.org/chunked.pdf", stored: "openalex/W6.pdf" });
   });
 
   it("reads nothing when the title it was asked about isn't the ID's paper", async () => {
     const t = convexTest(schema);
-    const { asAda } = await people(t);
+    const { asAda } = await chat(t);
     await expect(asAda.action(api.research.papers.readPdf, { id: "W1", title: "Video games and wellbeing" })).rejects.toThrow(/Loot boxes and problem gambling.{0,4} in OpenAlex/);
-    expect(pdfChecks).toEqual([]);
+    expect(publisher).toEqual([]);
     // A title without its subtitle is the same paper.
     expect(await asAda.action(api.research.papers.readPdf, { id: "W1", title: "Loot boxes" })).toMatchObject({ paperPdf: PDF });
   });
@@ -137,7 +219,7 @@ describe("reading a paper's PDF", () => {
     expect(JSON.stringify(mockDoStream.mock.lastCall![0].prompt)).toContain("can't read PDFs");
   });
 
-  it("asks first, and once allowed, the reply goes on with the PDF in view", async () => {
+  it("asks first, with what a stored copy may cost, and once allowed, the reply goes on with the PDF in view", async () => {
     const t = convexTest(schema);
     const { asAda, threadId } = await chat(t);
     await asAda.mutation(api.assistant.spending.setTool, { threadId, tool: "files", allowed: false });
@@ -148,14 +230,14 @@ describe("reading a paper's PDF", () => {
     await replied(t, threadId);
     const asking = await t.run((ctx) => ctx.db.query("assistantSteps").withIndex("by_thread_and_status", (q) => q.eq("threadId", threadId).eq("status", "asking")).collect());
     expect(asking).toMatchObject([{ path: "research/papers:readPdf" }]);
-    expect(asking[0].credits).toBeGreaterThan(0);
+    expect(asking[0].credits).toBeGreaterThan(STORED_PDF_CREDITS);
 
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking[0]._id, allow: true });
     await replied(t, threadId);
-    expect(JSON.stringify(resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt))).toContain(`"url":"${PDF}"`);
+    expect(JSON.stringify(resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt))).toContain(`"url":"${storedAddress("openalex/W1.pdf")}?`);
   });
 
-  it("sends the model the PDF by its address in the reply that read it, and only a note in later replies", async () => {
+  it("sends the model a link to the stored copy in the reply that read it, and only a note in later replies", async () => {
     const t = convexTest(schema);
     const { asAda, threadId } = await chat(t);
     mockDoStream
@@ -164,12 +246,14 @@ describe("reading a paper's PDF", () => {
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "What are this paper's methods?" });
     await replied(t, threadId);
 
-    const read = resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt);
-    // The model gets the PDF by its address, and none of its bytes: "JVBERi0" is how "%PDF-" starts in base64.
-    expect(read?.type).toBe("content");
-    expect(JSON.stringify(read)).toContain(`"url":"${PDF}"`);
-    expect(JSON.stringify(read)).not.toContain("JVBERi0");
-    // The step keeps the address, which the reply's page citations open.
+    const read = JSON.stringify(resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt));
+    // A signed link to the copy, and none of its bytes: "JVBERi0" is how "%PDF-" starts in base64.
+    expect(read).toContain(`"url":"${storedAddress("openalex/W1.pdf")}?`);
+    expect(read).toContain("X-Amz-Signature");
+    expect(read).not.toContain("JVBERi0");
+    // The model reads the address it cites, not where the copy is kept.
+    expect(read).not.toContain('\\"stored\\"');
+    // The step keeps the paper's own address, which the reply's page citations open.
     const steps = await t.run((ctx) => ctx.db.query("assistantSteps").collect());
     expect(steps).toMatchObject([{ path: "research/papers:readPdf", status: "done", sources: [{ url: PDF }] }]);
 
@@ -182,10 +266,9 @@ describe("reading a paper's PDF", () => {
     expect(JSON.stringify(mockDoStream.mock.lastCall![0].prompt)).not.toContain('"type":"file"');
   });
 
-  it("makes a request a provider refused for a PDF's address again, with the PDF downloaded here, and the reply goes on", async () => {
+  it("sends the stored file itself when the provider refuses the request with its link, and the reply goes on", async () => {
     const t = convexTest(schema);
     const { asAda, threadId } = await chat(t);
-    // Some publishers turn the provider's fetcher away and serve us: the provider refuses the request it can't fetch for.
     mockDoStream
       .mockImplementationOnce(callingDoStream({ id: "pdf-1", name: "research_papers_readPdf", input: { id: "W1" } }))
       .mockImplementationOnce(async () => {
@@ -198,39 +281,9 @@ describe("reading a paper's PDF", () => {
     expect(mockDoStream).toHaveBeenCalledTimes(3);
     const read = JSON.stringify(resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt));
     expect(read).toContain("JVBERi0");
-    expect(read).not.toContain(`"url":"${PDF}"`);
+    expect(read).not.toContain(storedAddress("openalex/W1.pdf"));
     const replies = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: { numItems: 20, cursor: null } })).page.filter((item) => item.role === "assistant");
     expect(replies).toMatchObject([{ status: "done", text: "It reports a link (p. 5)." }]);
-  });
-
-  it("tells the model when the PDF can't be downloaded here either, and the reply goes on, whatever error the provider gave", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    const t = convexTest(schema);
-    const { asAda, threadId } = await chat(t);
-    const answer = fetchMock.getMockImplementation()!;
-    // The address answers the check for its first bytes, and then stops serving the file.
-    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => (String(input) === PDF && !new Headers(init?.headers).has("range") ? new Response("Forbidden", { status: 403 }) : answer(input, init)));
-    mockDoStream
-      .mockImplementationOnce(callingDoStream({ id: "pdf-1", name: "research_papers_readPdf", input: { id: "W1" } }))
-      .mockImplementationOnce(async () => {
-        // A provider can report an address it couldn't fetch as a passing error.
-        throw new APICallError({ message: "Provider returned error", url: "https://openrouter.ai", requestBodyValues: {}, statusCode: 503 });
-      })
-      .mockImplementation(finishingDoStream(["I couldn't open it. Could you attach the PDF?"]));
-    try {
-      await asAda.mutation(api.assistant.replies.send, { threadId, text: "What are this paper's methods?" });
-      await waitFor(() => mockDoStream.mock.calls.length === 2);
-      await vi.advanceTimersByTimeAsync(2_000);
-      await replied(t, threadId);
-    } finally {
-      vi.useRealTimers();
-    }
-
-    const read = resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt);
-    expect(read?.type).toBe("text");
-    expect(String(read?.value)).toMatch(/couldn't be downloaded/);
-    const replies = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: { numItems: 20, cursor: null } })).page.filter((item) => item.role === "assistant");
-    expect(replies).toMatchObject([{ status: "done" }]);
   });
 
   it("lets a summary written partway read the PDF the reply read, so what it says isn't lost", async () => {
@@ -246,6 +299,6 @@ describe("reading a paper's PDF", () => {
     await replied(t, threadId);
 
     expect(mockDoGenerate).toHaveBeenCalled();
-    expect(JSON.stringify(mockDoGenerate.mock.lastCall![0].prompt)).toContain(`"url":"${PDF}"`);
+    expect(JSON.stringify(mockDoGenerate.mock.lastCall![0].prompt)).toContain(`"url":"${storedAddress("openalex/W1.pdf")}?`);
   });
 });

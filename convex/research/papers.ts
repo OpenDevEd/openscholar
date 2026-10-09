@@ -17,7 +17,7 @@ import { assistantPick, chatModel } from "../assistant/threads";
 import { pricingOf } from "../ai/serverModel";
 import { convertUsdToCredits } from "../../lib/pricing";
 import { PDF_PAGE_TOKENS } from "../../lib/assistant/files";
-import { safeFetchPdf } from "../../lib/pdf/url-allowlist";
+import { paperPdf, STORED_PDF_CREDITS } from "../lib/paperPdfs";
 import { requirePdfModel } from "../assistant/files";
 
 export const searchAction = defineUserAction({
@@ -160,24 +160,6 @@ export const getForAssistant = assistantAction(getAction);
 
 /** Pages a paper's PDF is taken to have, for what reading it may cost. */
 const PAPER_PAGES = 30;
-/** How long a PDF's address has to answer before it counts as not serving one. */
-const PDF_CHECK_MS = 15_000;
-
-/**
- * Whether an address answers with a PDF, by its first bytes, not the file: one that answers
- * with a page or an error would fail the model's whole request when its provider fetches it.
- * Fetched as any untrusted address is (lib/pdf/url-allowlist.ts): no private or internal
- * address, at the first request or after a redirect.
- */
-async function servesPdf(url: string) {
-  try {
-    const { response, body } = await safeFetchPdf(url, { allowHttp: true, firstBytes: 1024, timeoutMs: PDF_CHECK_MS, headers: { Range: "bytes=0-1023", "User-Agent": "OpenScholar (https://openscholar.ai)" } });
-    return response.ok && new TextDecoder().decode(await body.arrayBuffer()).includes("%PDF");
-  } catch {
-    return false;
-  }
-}
-
 /** Whether two titles name the same paper: the same words, or one the other's start, as a title with its subtitle is. */
 function sameTitle(a: string, b: string) {
   const words = (title: string) => title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -189,7 +171,7 @@ export const readPdfAction = defineUserAction({
   path: "research/papers:readPdf",
   description:
     "Reads a paper's open-access PDF, by its ID as results give it (such as W2741809807) or its DOI, with its `title` as they give it, which the person is shown when asked: you get the PDF itself, its text, tables and figures, for the rest of this reply. " +
-    "Search results, a paper's record and the person's saved papers say `pdf` when OpenAlex knows of one. For a paper without one, ask the person to attach its PDF to the chat. " +
+    "Search results, a paper's record and the person's saved papers say `pdf` when OpenAlex knows of one; OpenAlex may still hold a copy of one without. When none can be got, ask the person to attach its PDF to the chat. " +
     "OpenAlex sometimes links the wrong file: check the PDF is the paper you asked for, and if it isn't, say so and use nothing from it. " +
     "Cite what you take from it by page, as a link to its address with the page: [p. 7](PDF_ADDRESS#page=7). A later reply that needs it again reads it again. " +
     "The person is asked first, with what the read may cost. One request against the person's OpenAlex allowance.",
@@ -200,26 +182,32 @@ export const readPdfAction = defineUserAction({
   undoable: false,
   // The paper by its title where the model gave one: the person can't tell a paper by its ID.
   shown: ({ id, title }) => (title ? { title } : { id }),
-  // What a paper of typical length costs to read on the chat's model, which is all of what the read spends: its tokens in the reply.
+  // What a paper of typical length costs to read on the chat's model, its tokens in the reply, with the most its PDF may cost: a copy from the store or from OpenAlex.
   estimate: async (ctx, { userId }, _args, chat) => {
     const thread = chat ? await ctx.db.get("assistantThreads", chat.threadId) : null;
     const { modelId } = thread ? await chatModel(ctx, thread, userId) : { modelId: (await assistantPick(ctx, userId))?.modelId ?? null };
     await requirePdfModel(ctx, modelId);
     const price = (await pricingOf(ctx, modelId)).input;
-    return convertUsdToCredits({ usd: (PAPER_PAGES * PDF_PAGE_TOKENS * price) / 1_000_000 });
+    return convertUsdToCredits({ usd: (PAPER_PAGES * PDF_PAGE_TOKENS * price) / 1_000_000 }) + STORED_PDF_CREDITS;
   },
-  run: async (ctx, { userId }, { id, title: asked }): Promise<Infer<typeof paperPdfValidator>> => {
+  run: async (ctx, { userId, workspaceId }, { id, title: asked }, call): Promise<Infer<typeof paperPdfValidator>> => {
     const path = workPath(id);
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
-    const work = await readWork<Work>(path, "id,display_name,title,best_oa_location,primary_location", spender(ctx, person.clerkId));
+    const work = await readWork<Work>(path, "id,display_name,title,doi,best_oa_location,primary_location,has_content", spender(ctx, person.clerkId));
     if (!work) throw createError("NOT_FOUND", "OpenAlex has no paper by that ID.");
     const { openalexId, title, pdfUrl } = toPaper(work);
     // The person was asked about the paper by the title the model gave: one that isn't this ID's reads nothing.
     if (asked && !sameTitle(asked, title)) throw createError("VALIDATION_ERROR", `${id} is "${title}" in OpenAlex, not "${asked}". Check the paper's ID, and read it again.`);
-    if (!pdfUrl) throw createError("VALIDATION_ERROR", "OpenAlex knows of no open-access PDF of this paper. Ask the person to attach its PDF to the chat.");
-    if (!(await servesPdf(pdfUrl))) throw createError("VALIDATION_ERROR", `This paper's open-access PDF couldn't be opened from its address (${pdfUrl}). Ask the person to attach its PDF to the chat.`);
-    return { id: openalexId, title, paperPdf: pdfUrl };
+    // A chat pays once for a paper's stored PDF. A read outside one pays each time.
+    const step = call?.stepId ?? call?.from;
+    const threadId = step ? await ctx.runQuery(internal.assistant.steps.chatOf, { stepId: step }) : null;
+    const scope = threadId ? `chat:${threadId}` : `read:${crypto.randomUUID()}`;
+    const got = await paperPdf(ctx, { userId, workspaceId, scope, kind: "chat" }, { openalexId, doi: work.doi ?? undefined, url: pdfUrl ?? undefined, hasCopy: work.has_content?.pdf === true });
+    if ("error" in got) throw createError(got.credits ? "INSUFFICIENT_CREDITS" : "VALIDATION_ERROR", `${got.error} Ask the person to attach its PDF to the chat.`);
+    // A paper read from OpenAlex's copy alone is cited by its record, the only address of it a person can open.
+    if (!got.key) throw createError("VALIDATION_ERROR", "This paper's PDF can't be kept to send. Ask the person to attach its PDF to the chat.");
+    return { id: openalexId, title, paperPdf: pdfUrl ?? workUrl(openalexId) ?? openalexId, stored: got.key };
   },
 });
 export const readPdf = userAction(readPdfAction);
