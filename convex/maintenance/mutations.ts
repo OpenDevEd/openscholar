@@ -10,6 +10,7 @@ import { collectionCountRow } from "../library/collections";
 import { countRow } from "../research/recordCounts";
 import { libraryCountRow } from "../library/counter";
 import { readAccount } from "../billing/accounts";
+import { purgeWorkspace } from "../workspaces/purge";
 
 // Retention period for deleted users (30 days)
 const DELETED_USER_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -91,6 +92,11 @@ export const cleanupDeletedUsers = internalMutation({
         }
         // The files they attached go too, from their own chats and other people's.
         if (!(await purgeFiles(ctx, user._id))) {
+          deferred = true;
+          continue; // Skip user delete, process on next run
+        }
+        // Everything else in their own workspace: searches, screenings, bookmarks, library and collections.
+        if (workspace && !(await purgeWorkspace(ctx, workspace._id))) {
           deferred = true;
           continue; // Skip user delete, process on next run
         }
