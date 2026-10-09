@@ -20,6 +20,8 @@ export const assistantReplyValidator = v.object({
   attemptId: v.string(),
   /** Who sent the message it answers. It runs with their access, on their credits. */
   senderId: v.id("users"),
+  /** The workspace it acts in (./access.ts `replyWorkspace`), whose replies at once it counts against. Absent on a reply started before chats were in workspaces (#650). */
+  workspaceId: v.optional(v.id("workspaces")),
   /** The exchange it belongs to: the agent component's order of the message it answers. */
   order: v.number(),
   startedAt: v.number(),
@@ -52,6 +54,8 @@ export const RECENT_REQUESTS = 6;
  */
 export const assistantAskingValidator = v.object({
   senderId: v.id("users"),
+  /** The workspace the reply acts in, which it carries on in. Absent on one that waited from before replies named theirs, which acts in its sender's own (#650). */
+  workspaceId: v.optional(v.id("workspaces")),
   order: v.number(),
   promptMessageId: v.string(),
   modelId: v.union(v.id("models"), v.null()),
@@ -93,9 +97,11 @@ export const assistantLimitFields = {
   files: v.optional(v.literal(true)),
 };
 
-/** A person's own record with the assistant: what the chats they start take, and what their last replies cost. */
+/** A person's own record with the assistant in a workspace: what the chats they start there take, and what their last replies there cost. */
 export const assistantSpenderFields = {
   userId: v.id("users"),
+  /** The workspace it's their record in (#650); slice 8 makes it required. */
+  workspaceId: v.optional(v.id("workspaces")),
   /** Set while "Use these for my new chats" is on: the limits a chat they start begins with. */
   newChats: v.optional(v.object({ replyLimit: v.optional(v.number()), jobs: v.optional(assistantAllowanceValidator) })),
   /**
@@ -111,6 +117,9 @@ export const recentCostsValidator = capped(v.array(v.number()), RECENT_REPLIES);
 export const UNDONE_TOLD = 20;
 export const assistantThreadFields = {
   ownerId: v.id("users"),
+  /** The workspace it's in, and who made it (#650); slice 8 makes them required. */
+  workspaceId: v.optional(v.id("workspaces")),
+  createdBy: v.optional(v.id("users")),
   title: v.string(),
   agentThreadId: v.string(),
   /** When its newest message was sent; a chat with none yet has when it was made. */
@@ -163,6 +172,8 @@ export const assistantStepFields = {
   order: v.number(),
   /** Who it ran as: the person whose message was being answered. Only they can undo it. */
   userId: v.id("users"),
+  /** The workspace it ran in, which its undo acts in. Absent on one from before replies named theirs, which ran in its person's own (#650). */
+  workspaceId: v.optional(v.id("workspaces")),
   /** On a web search (#648): what it found, for the reply's citations and its list of sources. */
   sources: webSourcesValidator,
   /** The model's ID for the call. Models reuse these, so nothing is looked up by it. */

@@ -18,7 +18,7 @@ import type { Acting } from "../lib/userActions";
 import { workspaceOf } from "../workspaces/actor";
 import { readJobCounters } from "../extraction/jobCounters";
 import { readScreeningProgressCounts } from "../screening/progress";
-import { requireThread } from "./access";
+import { replyWorkspace, requireThread } from "./access";
 import { extractionCardValidator, JOBS_DOCKED, JOBS_TOLD_AT_ONCE, runningJobsValidator, screeningCardValidator } from "./validators";
 import { hasEnded, JOB_ENDED, STARTS } from "./jobEnds";
 import { admit, startReply } from "./replies";
@@ -242,8 +242,9 @@ export const deliver = internalMutation({
       await ctx.scheduler.runAfter(0, internal.assistant.jobs.deliver, { threadId });
       return null;
     }
+    const workspaceId = await replyWorkspace(ctx, userId, thread);
     try {
-      await admit(ctx, userId);
+      await admit(ctx, workspaceId);
     } catch {
       // As many replies going for them as they may have: told once one of those ends.
       await ctx.scheduler.runAfter(BUSY_RETRY_MS, internal.assistant.jobs.deliver, { threadId });
@@ -255,7 +256,7 @@ export const deliver = internalMutation({
     const [message] = (await saveMessages(ctx, components.agent, { threadId: thread.agentThreadId, userId, agentName: JOB_ENDED, messages: [{ role: "user", content: note }] })).messages;
     for (const end of ends) await ctx.db.patch("assistantJobEnds", end._id, { pending: undefined, order: message.order });
     try {
-      await startReply(ctx, thread, userId, { messageId: message._id, order: message.order });
+      await startReply(ctx, thread, userId, workspaceId, { messageId: message._id, order: message.order });
     } catch (error) {
       // Their chat model was retired, say: the chat shows the end, and the next reply reads its note.
       console.error(`[assistant] the readout of ${ends.map((end) => end.jobId).join(", ")} in ${threadId} couldn't start`, error);

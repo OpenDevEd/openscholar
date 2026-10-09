@@ -82,7 +82,7 @@ export function convexTest(schemaOrOptions?: Schema | Options, modules?: Modules
  * Records in a workspace (#650), each with whether it also names who made it: the tables whose
  * reads have moved to the workspace. A later slice adds its own.
  */
-const IN_WORKSPACE: Record<string, { createdBy: boolean }> = {
+const IN_WORKSPACE: Record<string, { createdBy: boolean; by?: string }> = {
   searches: { createdBy: true },
   queryShortcuts: { createdBy: true },
   libraryItems: { createdBy: true },
@@ -96,6 +96,8 @@ const IN_WORKSPACE: Record<string, { createdBy: boolean }> = {
   screeningSlots: { createdBy: false },
   extractionPaperQueue: { createdBy: false },
   recordCounts: { createdBy: false },
+  assistantThreads: { createdBy: true, by: "ownerId" },
+  assistantSpenders: { createdBy: false },
 };
 
 /**
@@ -108,7 +110,7 @@ function withOwnWorkspaces<Db extends { insert: (table: any, value: any) => Prom
   return Object.assign(Object.create(db), {
     insert: async (table: string, value: Record<string, unknown>) => {
       const kind = owned ? IN_WORKSPACE[table] : undefined;
-      const userId = value.userId as Id<"users"> | undefined;
+      const userId = value[kind?.by ?? "userId"] as Id<"users"> | undefined;
       const filled = kind && userId && value.workspaceId === undefined
         ? { ...value, workspaceId: await own(userId), ...(kind.createdBy && value.createdBy === undefined ? { createdBy: userId } : {}) }
         : value;

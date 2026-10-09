@@ -167,8 +167,9 @@ export const settleArgs = {
   generationId: v.string(),
   /** Cost already known outside this generation: its earlier steps. */
   extraUsd: v.number(),
-  /** The assistant reply the request was part of, whose cost its sender's record keeps (convex/assistant/spending.ts). */
+  /** The assistant reply the request was part of, whose cost its sender's record in the workspace it acted in keeps (convex/assistant/spending.ts). */
   reply: v.optional(v.string()),
+  replyWorkspace: v.optional(v.id("workspaces")),
   /** Token details of the steps that finished before this one; absent on retries scheduled before it existed. */
   earlierTokens: v.optional(v.object({ cacheReadTokens: v.number(), cacheWriteTokens: v.number(), reasoningTokens: v.number() })),
   /** The request's `$ai_generation` (AIGenerationParams as JSON), sent with its real tokens and cost once they're known. */
@@ -214,7 +215,7 @@ export async function settle(ctx: ActionCtx, args: ObjectType<typeof settleArgs>
   });
   // The reply reported what its finished steps cost when it ended. The rest of this charge is added to it now.
   const late = convertUsdToCredits({ usd }) - convertUsdToCredits({ usd: args.extraUsd });
-  if (args.reply && late > 0) await ctx.runMutation(internal.assistant.spending.settledLate, { userId: args.userId, reply: args.reply, credits: late });
+  if (args.reply && late > 0) await ctx.runMutation(internal.assistant.spending.settledLate, { userId: args.userId, ...(args.replyWorkspace ? { workspaceId: args.replyWorkspace } : {}), reply: args.reply, credits: late });
   if (args.analytics && settled && !settledBefore) {
     const params = JSON.parse(args.analytics) as AIGenerationParams;
     const credits = await ctx.runQuery(internal.billing.charge.charged, { chargeId: args.chargeId });

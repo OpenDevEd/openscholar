@@ -6,8 +6,9 @@ import { createError } from "../lib/errors";
 // without the modules that load the triggers themselves.
 
 /**
- * A person's own workspace. The assistant acts in its sender's until chats belong to a
- * workspace (#650, the assistant's slice), and the browser names it until pages carry theirs.
+ * A person's own workspace: where a reply of theirs in a chat shared with them from outside
+ * acts (convex/assistant/access.ts `replyWorkspace`), and the one the browser names until
+ * pages carry theirs (#651).
  */
 export async function personalWorkspaceOf(ctx: Pick<QueryCtx, "db">, userId: Id<"users">): Promise<Id<"workspaces">> {
   const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();

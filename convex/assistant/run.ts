@@ -41,13 +41,15 @@ export const reply = internalAction({
     agentThreadId: v.string(),
     promptMessageId: v.string(),
     senderId: v.id("users"),
+    // The workspace it acts in (./access.ts `replyWorkspace`). One scheduled before replies named theirs (#650) acts in the sender's own, until slice 8.
+    workspaceId: v.optional(v.id("workspaces")),
     modelId: v.union(v.id("models"), v.null()),
     effort: v.optional(effortValidator),
     // Where the reply stands after its requests before this one.
     used: v.optional(usedValidator),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort, used = { credits: 0, rounds: 0, calls: 0 } }) => {
+  handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, workspaceId: given, modelId, effort, used = { credits: 0, rounds: 0, calls: 0 } }) => {
     const lock = { threadId, attemptId };
     const state = () => ctx.runQuery(internal.assistant.replies.lockState, lock);
     // Ends a reply stopped before the model is called: no credits are held, and the chat shows a stopped reply.
@@ -66,6 +68,10 @@ export const reply = internalAction({
     // A reply whose chat was deleted, or whose lock is another reply's, never starts.
     if (atStart === "gone") return null;
     if (atStart === "stop") return stopHere();
+    const workspaceId: Id<"workspaces"> = given ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: senderId }));
+    // Each request acts as its sender in the workspace the reply runs in: one who has left it, or whose account
+    // is no longer active, gets no request at all, so nothing of the conversation goes to the model for them.
+    if (!(await ctx.runQuery(internal.workspaces.actor.activeActor, { userId: senderId, workspaceId }).then(() => true, () => false))) return stopHere();
     // How much history the reply's request read, which decides whether a compaction follows it.
     let history = { messages: 0, bytes: 0 };
     // Whether the request sends a paper's PDF by its address.
@@ -111,8 +117,6 @@ export const reply = internalAction({
     const why = used.told ?? ((used.failed ?? 0) >= MAX_FAILED_ROUNDS ? TOO_MANY_FAILED : circling(used.recent ?? []) ? CIRCLING : null);
     const answer = used.told !== undefined;
     const stopped = () => why;
-    // Its actions run in the sender's own workspace until chats belong to one (#650).
-    const workspaceId: Id<"workspaces"> = await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: senderId });
     // Each action it runs is kept as a step of the exchange it's answering.
     const { tools, approval, resume, planned, made, changes, digest, held } = toolsFor(ctx, { userId: senderId, workspaceId, threadId, order: read.answering ?? 0, attemptId, stopped, halted: shouldStop, made: used.calls, changed: used.changes });
     // A reply that waited for an answer carries on here: what the person allowed runs first,
@@ -140,6 +144,7 @@ export const reply = internalAction({
       // Each request holds and settles its own credits, and so does each try of one made again.
       attemptId: `${attemptId}:${used.rounds}${used.retries ? `:${used.retries}` : ""}`,
       replyId: attemptId,
+      replyWorkspace: workspaceId,
       credits: cap,
       lesser: async () => (await refreshAccount(ctx, senderId).catch(() => null))?.balance,
       tools,
