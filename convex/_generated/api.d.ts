@@ -300,6 +300,7 @@ import type * as migrations_extractionEvidence from "../migrations/extractionEvi
 import type * as migrations_extractionFacets from "../migrations/extractionFacets.js";
 import type * as migrations_extractionSearch from "../migrations/extractionSearch.js";
 import type * as migrations_libraryFacets from "../migrations/libraryFacets.js";
+import type * as migrations_copyRatings from "../migrations/copyRatings.js";
 import type * as migrations_forgetPersonCounts from "../migrations/forgetPersonCounts.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
 import type * as migrations_organizationCustomers from "../migrations/organizationCustomers.js";
@@ -327,6 +328,7 @@ import type * as organizationFeatures from "../organizationFeatures.js";
 import type * as paperSets_held from "../paperSets/held.js";
 import type * as paperSets_openalex from "../paperSets/openalex.js";
 import type * as paperSets_search from "../paperSets/search.js";
+import type * as ratings from "../ratings.js";
 import type * as research_answers from "../research/answers.js";
 import type * as research_lookup from "../research/lookup.js";
 import type * as research_papers from "../research/papers.js";
@@ -697,6 +699,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/extractionFacets": typeof migrations_extractionFacets;
   "migrations/extractionSearch": typeof migrations_extractionSearch;
   "migrations/libraryFacets": typeof migrations_libraryFacets;
+  "migrations/copyRatings": typeof migrations_copyRatings;
   "migrations/forgetPersonCounts": typeof migrations_forgetPersonCounts;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
   "migrations/organizationCustomers": typeof migrations_organizationCustomers;
@@ -724,6 +727,7 @@ declare const fullApi: ApiFromModules<{
   "paperSets/held": typeof paperSets_held;
   "paperSets/openalex": typeof paperSets_openalex;
   "paperSets/search": typeof paperSets_search;
+  ratings: typeof ratings;
   "research/answers": typeof research_answers;
   "research/lookup": typeof research_lookup;
   "research/papers": typeof research_papers;

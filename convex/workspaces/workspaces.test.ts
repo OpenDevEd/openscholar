@@ -87,6 +87,9 @@ describe("workspaces", () => {
       };
       await records(mine);
       await records(lab);
+      // Their ratings: their own, and one they gave in a collection.
+      await ctx.db.insert("ratings", { userId, paperId: "https://openalex.org/W1", rating: 4 });
+      await ctx.db.insert("ratings", { userId, paperId: "https://openalex.org/W1", collectionId: (await ctx.db.query("collections").first())!._id, rating: 5 });
       return {
         lab,
         own: await ctx.db.insert("extractionJobs", { ...job, workspaceId: mine, name: "Mine" }),
@@ -104,6 +107,7 @@ describe("workspaces", () => {
     expect(await workspacesOf({ userId })).toEqual([]);
     expect(await t.run((ctx) => ctx.db.get("extractionJobs", own))).toBeNull();
     expect(await t.run((ctx) => ctx.db.get("extractionJobs", theirs))).toMatchObject({ name: "The lab's", createdBy: userId });
+    expect(await t.run((ctx) => ctx.db.query("ratings").collect())).toEqual([]);
     // What was in their own workspace is gone; the organization's copies stay.
     expect(Object.values(await counts())).toEqual(tables.map(() => 1));
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map((item) => item.workspaceId))).toEqual([lab]);

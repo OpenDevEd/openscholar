@@ -98,7 +98,8 @@
       "SPENT_PAGE": "a hold cleanup's batch; it reschedules itself",
       "FACET_COPY_INLINE": "the memberships a paper's change copies inline; more are copied by a scheduled batch",
       "MEMBERSHIPS_INLINE": "the memberships a user's change updates inline; more are updated by a scheduled page at a time",
-      "FORGET_FILES": "a cleanup batch of attached files; it reschedules itself until nothing is left"
+      "FORGET_FILES": "a cleanup batch of attached files; it reschedules itself until nothing is left",
+      "PURGE_RATINGS": "a cleanup batch of a deleted account's ratings; the account waits for the next run until none are left"
     }
   }
 }
