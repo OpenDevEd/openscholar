@@ -199,11 +199,12 @@ export const duplicateJobAction = defineUserMutation({
   undoable: false,
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  run: async (ctx, { userId }, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
+  run: async (ctx, { userId, workspaceId }, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
     await requireFeature(ctx, "extraction.enabled", userId);
 
     const oldJob = await ctx.db.get("extractionJobs", args.jobId);
-    if (!oldJob || oldJob.userId !== userId) {
+    // The copy is made in the workspace the call acts in, which the original must be in.
+    if (!oldJob || oldJob.userId !== userId || (await workspaceOf(ctx, oldJob)) !== workspaceId) {
       throw createError("NOT_FOUND", "Job not found");
     }
 
@@ -236,8 +237,7 @@ export const duplicateJobAction = defineUserMutation({
     const dupStamp = await extractionStamp(ctx, userId);
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId,
-      // The copy is made where the job is, by whoever copies it.
-      workspaceId: await workspaceOf(ctx, oldJob),
+      workspaceId,
       createdBy: userId,
       name: `${oldJob.name} (Copy)`,
       searchText: jobText({ name: `${oldJob.name} (Copy)` }),

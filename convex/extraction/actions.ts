@@ -206,8 +206,8 @@ const pagedSource = (item: BucketItemInput) => item.source === "screening" || it
  * from its place in its included papers, so neither is ever held whole; the bucket's own
  * papers are read up to the next of those.
  */
-/** Who a job reads its papers as, in the person's own workspace until extraction jobs belong to one (#650). */
-const jobReader = async (ctx: ActionCtx, job: Doc<"extractionJobs">) => ({ userId: job.userId, workspaceId: await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: job.userId }) });
+/** Who a job reads its papers as: its person, in its workspace (or theirs, for a job its backfill hasn't reached). */
+const jobReader = async (ctx: ActionCtx, job: Doc<"extractionJobs">) => ({ userId: job.userId, workspaceId: job.workspaceId ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: job.userId })) });
 
 async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: string, place: SetupPlace): Promise<{ papers: SetupPaper[]; next: SetupPlace } | null> {
   // Typed here: the generated API's types depend on this module, so inference would loop.

@@ -105,12 +105,10 @@ export const read = internalAction({
   returns: v.null(),
   handler: async (ctx, { jobId }) => {
     const started = Date.now();
-    // The person's own workspace until screening jobs belong to one (#650).
-    let workspaceId: Id<"workspaces"> | undefined;
     try {
       for (;;) {
         // Typed here: the generated API's types depend on this module, so inference would loop.
-        const job: { userId: Id<"users">; set: PaperSet; first: number; last: number; read: number; resume?: string; snapshot?: SearchSnapshot } | null = await ctx.runQuery(internal.screening.queries.readingJob, { jobId });
+        const job: { userId: Id<"users">; workspaceId: Id<"workspaces">; set: PaperSet; first: number; last: number; read: number; resume?: string; snapshot?: SearchSnapshot } | null = await ctx.runQuery(internal.screening.queries.readingJob, { jobId });
         if (!job) return null;
         if (Date.now() - started > READ_ACTION_MS) return void (await ctx.scheduler.runAfter(0, internal.screening.start.read, { jobId }));
         const from = job.first + job.read;
@@ -118,15 +116,13 @@ export const read = internalAction({
         if (job.set.kind === "search") {
           // Numbered pages when the search's order has them as far as the job goes, each step its own; otherwise one cursor page a step, carrying on from where the last stopped.
           const paged = job.snapshot !== undefined && numbered(job.snapshot.request, job.last);
-          workspaceId ??= await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: job.userId });
-          const { papers, ended, resume, taken } = await searchPapers(ctx, { userId: job.userId, workspaceId }, { searchId: job.set.searchId, first: from, last: to }, job.snapshot, paged ? { goesOn: false } : { resume: job.resume, goesOn: true });
+          const { papers, ended, resume, taken } = await searchPapers(ctx, { userId: job.userId, workspaceId: job.workspaceId }, { searchId: job.set.searchId, first: from, last: to }, job.snapshot, paged ? { goesOn: false } : { resume: job.resume, goesOn: true });
           const read = paged ? to - from + 1 : taken;
           const done = ended || from + read > job.last;
           await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read, ...(resume ? { resume } : {}), ended: done });
           if (done) return null;
         } else {
-          workspaceId ??= await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: job.userId });
-          const { papers, resume } = await heldPapers(ctx, { userId: job.userId, workspaceId }, job.set, { first: from, last: to }, job.resume);
+          const { papers, resume } = await heldPapers(ctx, { userId: job.userId, workspaceId: job.workspaceId }, job.set, { first: from, last: to }, job.resume);
           const done = !resume || to >= job.last;
           await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: to - from + 1, ...(resume ? { resume } : {}), ended: done });
           if (done) return null;
