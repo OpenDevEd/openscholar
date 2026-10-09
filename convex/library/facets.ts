@@ -84,7 +84,8 @@ async function recount(ctx: QueueingCtx, id: string, before: Counted | null, aft
   await queueCounts(ctx, facetCounts, operations);
 }
 
-export const countedItem = (item: Doc<"libraryItems">): Counted => ({ ...item, scopes: [item.workspaceId] });
+// A paper from before workspaces was also counted under its person: kept until migrations/narrowLibrary.ts clears `userId`, which takes those entries away.
+export const countedItem = (item: Doc<"libraryItems">): Counted => ({ ...item, scopes: item.userId ? [item.userId, item.workspaceId] : [item.workspaceId] });
 export const countedMembership = (membership: Doc<"libraryItemCollections">): Counted => ({ ...membership, scopes: [membership.collectionId] });
 
 export const countItemChange = (ctx: MutationCtx, change: Change<DataModel, "libraryItems">) =>
