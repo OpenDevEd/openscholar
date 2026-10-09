@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import { AiIcon, Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
@@ -59,7 +59,8 @@ type Source =
   | { kind: "search"; id: string; label: string; count: number; search: SearchResult }
   | { kind: "collection"; id: Id<"collections">; label: string; count: number }
   | { kind: "saved"; id: "saved"; label: string; count: number }
-  | { kind: "screening"; id: Id<"screeningJobs">; label: string; count: number };
+  // `called`: what the server names a screening of its included papers after (`insertJob`).
+  | { kind: "screening"; id: Id<"screeningJobs">; label: string; count: number; called?: string };
 
 const setOf = (source: Source): PaperSet =>
   source.kind === "search" ? { kind: "search", searchId: source.id } : source.kind === "collection" ? { kind: "collection", collectionId: source.id } : source.kind === "saved" ? { kind: "saved" } : { kind: "screening", jobId: source.id };
@@ -81,7 +82,9 @@ export function SetupView({
 }) {
   const workspaceId = useWorkspace();
   const t = useTranslations("screeningPage");
+  const tc = useTranslations("common");
   const format = useFormatter();
+  const now = useNow();
   const locale = useLocale();
   const toast = useAppToast();
 
@@ -102,7 +105,7 @@ export function SetupView({
       pager: { ...collections, pageCount: collectionCount === undefined ? undefined : Math.max(1, Math.ceil(collectionCount / SOURCE_PAGE)) },
     },
     saved: { rows: [{ kind: "saved", id: "saved", label: t("allSavedPapers"), count: savedCount ?? 0 }] },
-    screening: { rows: screenings.items.map((job: JobRow) => ({ kind: "screening", id: job._id, label: jobName(t, job, date), count: job.qualifiedPapers })), pager: screenings },
+    screening: { rows: screenings.items.map((job: JobRow) => ({ kind: "screening", id: job._id, label: jobName(t, job, date), count: job.qualifiedPapers, called: job.name ?? job.label })), pager: screenings },
   };
 
   const [kind, setKind] = useState<Kind>(again?.set?.kind ?? "search");
@@ -128,6 +131,8 @@ export function SetupView({
   const [starsSet, setStars] = useState<number[] | null>(again?.scoringConfig.starThresholds.length === 5 ? [...again.scoringConfig.starThresholds].sort((a, b) => a.stars - b.stars).map((threshold) => threshold.minScore) : null);
   // A job run again keeps its destination while that collection exists.
   const [dest, setDest] = useState<"none" | "new" | Id<"collections">>(again?.unsaved ? "none" : again?.targetCollectionId && again.targetCollectionName ? again.targetCollectionId : "new");
+  // Its own name; left empty, it's named after its papers. Run again, it keeps the one it had.
+  const [title, setTitle] = useState(again?.name ?? "");
   const [newName, setNewName] = useState<string | null>(null);
   const [prune, setPrune] = useState(again?.prune ?? false);
   const [busy, setBusy] = useState(false);
@@ -155,6 +160,8 @@ export function SetupView({
   const { data: earlier } = useProtectedQuery(api.screening.queries.getScreeningJob, inWorkspace(workspaceId, source?.kind === "screening" ? { jobId: source.id } : "skip"));
   const fresh = earlier ? questionsOf(earlier).filter((q) => !questions.some((x) => x.text.toLowerCase() === q.text.toLowerCase())) : [];
   const defaultName = !source ? "" : source.kind === "screening" ? source.label : t("includedIn", { name: source.label });
+  // What it's called left unnamed: its papers, named from what the server keeps of them, as the rail names a screening.
+  const unnamed = source ? jobName(t, { createdAt: now.getTime(), set: setOf(source), label: source.kind === "screening" ? source.called : source.label }, date) : t("newScreening");
 
   const destinations = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
   // A collection can't be its own destination; picking it as the source moves the pick to a new one.
@@ -236,6 +243,7 @@ export function SetupView({
         ...scoringOf(questions, threshold, stars),
         saveTo: target === "none" ? { kind: "none" } : target === "new" ? { kind: "new", name } : { kind: "collection", collectionId: target },
         ...(source.kind === "collection" && prune ? { prune: true } : {}),
+        ...(title.trim() ? { name: title.trim() } : {}),
       });
       onStarted(jobId);
     } catch (error) {
@@ -251,8 +259,9 @@ export function SetupView({
   return (
     <Enter ready={ready}>
       <div className="space-y-8 pb-24">
+        {/* Its name heads the page, written where it shows. */}
         <div className="space-y-1">
-          <h2 className="text-xl font-semibold tracking-tight">{t("newScreening")}</h2>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={unnamed} aria-label={tc("name")} maxLength={200} className="w-full rounded-lg bg-transparent text-xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/40" />
           <p className="text-sm text-muted-foreground">{t("newScreeningHint")}</p>
         </div>
 

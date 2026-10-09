@@ -51,6 +51,8 @@ async function readJobProgressSnapshot(
 
 /** What the screening page shows of a job beside its progress, in its list and on its own view. */
 const jobFacts = {
+  // Its own name, given as it started; without one the page names it after `label`.
+  name: v.optional(v.string()),
   // Where its papers came from, the set's name when it started, and which of its papers.
   set: v.optional(paperSetValidator),
   label: v.optional(v.string()),
@@ -83,6 +85,7 @@ async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
   ]);
   return {
     set: job.set,
+    ...(job.name ? { name: job.name } : {}),
     label: job.label,
     first: job.first,
     last: job.last,

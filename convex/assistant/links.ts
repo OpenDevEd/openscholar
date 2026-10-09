@@ -23,7 +23,7 @@ const KINDS = {
   search: { href: (row: Row) => text(row.id) && searchUrl(row.id as string), name: (row: Row) => text(row.query) ?? row.questionText },
   collection: { href: (row: Row) => text(row._id) && `/library?col=${row._id}`, name: (row: Row) => row.name },
   extraction: { href: (row: Row) => text(row._id) && `/extraction/${row._id}`, name: (row: Row) => row.name },
-  screening: { href: (row: Row) => text(row._id) && `/screening?job=${row._id}`, name: (row: Row) => row.label ?? "Screening" },
+  screening: { href: (row: Row) => text(row._id) && `/screening?job=${row._id}`, name: (row: Row) => row.name ?? row.label ?? "Screening" },
   chat: { href: (row: Row) => text(row._id) && `/?chat=${row._id}`, name: (row: Row) => row.title },
   // A library paper's row has its paper ID in `id`; other reads call it `openalexId`.
   paper: { href: (row: Row) => paperUrl(row.openalexId ?? row.id), name: (row: Row) => row.title },

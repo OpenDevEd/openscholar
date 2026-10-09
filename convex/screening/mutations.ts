@@ -51,6 +51,8 @@ const jobSetup = {
   author: v.union(v.literal("user"), v.literal("assistant")),
   questions: v.array(screeningQuestionValidator),
   scoringConfig: screeningScoringConfigValidator,
+  // Its own name; without one it goes by its set's.
+  name: v.optional(v.string()),
   // Where the papers come from and which of them the job takes (from 1). A search's page shows the answers.
   set: v.optional(paperSetValidator),
   first: v.optional(v.number()),
@@ -71,7 +73,7 @@ type JobSetup = ObjectType<typeof jobSetup>;
  * Makes a job's row for `user`, with its progress row: finds the screening its answers go to,
  * names it after its set, and stamps it with the model Screen all runs on.
  */
-async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"workspaces">, { author, set, saveTo, prune, ...args }: JobSetup, state: Pick<Doc<"screeningJobs">, "status" | "totalPapers" | "reading" | "newCollection">) {
+async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"workspaces">, { author, set, saveTo, prune, name, ...args }: JobSetup, state: Pick<Doc<"screeningJobs">, "status" | "totalPapers" | "reading" | "newCollection">) {
   if (prune && set?.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
 
   const writer = { userId: user._id, workspaceId };
@@ -99,7 +101,7 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
     const job = set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
     if (set?.kind === "collection" && collection?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
     if (set?.kind === "screening" && (!job || !(job.workspaceId === workspaceId))) throw createError("NOT_FOUND", "Screening not found");
-    label = collection?.name ?? job?.label;
+    label = collection?.name ?? job?.name ?? job?.label;
   }
 
   // Stamped with what Screen All runs on (read back at run by screenPaperAction).
@@ -110,6 +112,7 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
     ...state,
     screeningId,
     ...args,
+    ...(name?.trim() ? { name: name.trim() } : {}),
     ...(set ? { set } : {}),
     ...(label ? { label } : {}),
     ...(await destination(ctx, writer, saveTo)),

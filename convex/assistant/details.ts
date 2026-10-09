@@ -107,7 +107,7 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
     const screeningId = ctx.db.normalizeId("screeningJobs", id);
     if (screeningId) {
       const job = await ctx.db.get("screeningJobs", screeningId);
-      return job && workspaceId && (job.workspaceId === workspaceId) ? job.label || null : null;
+      return job && workspaceId && (job.workspaceId === workspaceId) ? job.name || job.label || null : null;
     }
     const extractionId = ctx.db.normalizeId("extractionJobs", id);
     if (extractionId) {
