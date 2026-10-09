@@ -46,7 +46,7 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { Button } from "@/components/ui/button";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { cn } from "@/lib/utils";
-import { ManageCollectionsDialog, NewCollectionDialog } from "./collection-dialogs";
+import { ManageCollectionsDialog, NewCollectionDialog, useCollectionDialogsReady } from "./collection-dialogs";
 import { LibraryCommandCenter } from "./library-command-center";
 import { LibraryEmptyState } from "./library-empty-state";
 import { LibraryFilterSidebar } from "./library-filter-sidebar";
@@ -98,6 +98,8 @@ export function LibraryPageClient() {
   }, [setParams]);
 
   const [collectionDialog, setCollectionDialog] = useState<"new" | "manage" | null>(null);
+  // The dialogs open with what they show already read.
+  useCollectionDialogsReady();
   // The sidebar control that opened a collection dialog, which focus goes back to.
   const dialogOpener = useRef<HTMLElement | null>(null);
   const openCollectionDialog = (which: "new" | "manage") => {

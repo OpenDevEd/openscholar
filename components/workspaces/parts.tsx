@@ -112,7 +112,7 @@ export function WorkspaceTag({ workspace, size = "md", strong = false }: { works
 
 /** An organization's first members' faces; `ring` is the colour behind them, which each face is cut from. */
 export function MemberFaces({ workspaceId, label, ring = "ring-card" }: { workspaceId: Id<"workspaces"> | undefined; label: string; ring?: string }) {
-  const { data } = useProtectedQuery(api.organizations.queries.members, inWorkspace(workspaceId, { paginationOpts: { cursor: null, numItems: 4 } }));
+  const { data } = useMemberFaces(workspaceId);
   return (
     <span className="flex -space-x-1.5" aria-label={label}>
       {(data?.page ?? []).map((member) => (
@@ -123,6 +123,9 @@ export function MemberFaces({ workspaceId, label, ring = "ring-card" }: { worksp
     </span>
   );
 }
+
+/** The members MemberFaces shows: a page can read them before it shows them, to have them in place. */
+export const useMemberFaces = (workspaceId: Id<"workspaces"> | undefined) => useProtectedQuery(api.organizations.queries.members, inWorkspace(workspaceId, { paginationOpts: { cursor: null, numItems: 4 } }));
 
 /** A workspace's tile with the hairline the switcher gives it. */
 export function Framed({ children }: { children: React.ReactNode }) {
