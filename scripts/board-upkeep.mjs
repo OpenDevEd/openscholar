@@ -188,23 +188,33 @@ async function main() {
     lines.push(`${change.issue}: Sprint -> current`);
     if (!dryRun) await setField(change.itemId, sprint.id, { iterationId: change.iterationId });
   }
+  const notes = [];
   for (const change of plan.add) {
+    if (dryRun) {
+      lines.push(`${change.issue}: added to the board as Backlog`);
+      continue;
+    }
+    const { item } = (
+      await graphql(
+        `mutation($project: ID!, $content: ID!) { addProjectV2ItemById(input: { projectId: $project, contentId: $content }) { item { id
+          status: fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { name } } } } }`,
+        { project: project.id, content: change.contentId },
+      )
+    ).addProjectV2ItemById;
+    // GitHub can keep an item that its issue links to but the board's item list leaves out; adding returns that item.
+    if (item.status) {
+      notes.push(`${change.issue}: on the board as ${item.status.name} but missing from its item list; remove it from the board and add it again`);
+      continue;
+    }
     lines.push(`${change.issue}: added to the board as Backlog`);
-    if (dryRun) continue;
-    const added = await graphql(
-      `mutation($project: ID!, $content: ID!) { addProjectV2ItemById(input: { projectId: $project, contentId: $content }) { item { id } } }`,
-      { project: project.id, content: change.contentId },
-    );
-    await setField(added.addProjectV2ItemById.item.id, status.id, { singleSelectOptionId: option("Backlog") });
+    await setField(item.id, status.id, { singleSelectOptionId: option("Backlog") });
   }
   for (const milestone of plan.closeMilestones) {
     lines.push(`${milestone.repo} milestone "${milestone.title}": closed, all its issues are closed`);
     if (!dryRun) await github(`/repos/${OWNER}/${milestone.repo}/milestones/${milestone.number}`, { method: "PATCH", body: { state: "closed" } });
   }
-  const notes = [
-    ...plan.stale.map((issue) => `${issue}: In progress with no activity for ${STALE_DAYS} days`),
-    ...(plan.needsSprints ? ["No sprint starts after this one: add weekly sprints to the Sprint field."] : []),
-  ];
+  notes.push(...plan.stale.map((issue) => `${issue}: In progress with no activity for ${STALE_DAYS} days`));
+  if (plan.needsSprints) notes.push("No sprint starts after this one: add weekly sprints to the Sprint field.");
 
   const report = [
     `Board upkeep${dryRun ? " (dry run)" : ""}: ${lines.length} change${lines.length === 1 ? "" : "s"}, ${items.length} issues on the board.`,
