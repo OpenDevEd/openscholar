@@ -67,17 +67,19 @@ export const countSearchesAction = defineUserQuery({
   args: {},
   returns: v.number(),
   // Someone who has saved nothing has no count; one from before counts were kept gets theirs from migrations/pagedRecords.
-  run: async (ctx, { userId }) => (await countRow(ctx, "searches", userId))?.count ?? 0,
+  run: async (ctx, { workspaceId }) => (await countRow(ctx, "searches", workspaceId))?.count ?? 0,
 });
 export const countSearches = accountQuery(countSearchesAction);
 export const countSearchesForAssistant = assistantQuery(countSearchesAction);
 
-/** One step of a person's first count of their searches, shortcuts or screening jobs (./recordCounts.ts). */
+/** One step of a workspace's first count of its searches, shortcuts or screening or extraction jobs (./recordCounts.ts). */
 export const countRecordsPage = internalMutation({
-  args: { table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), userId: v.id("users") },
+  // `userId` alone only for a step scheduled before counts were kept by workspace (#650), which counts its person's own; slice 8 drops it.
+  args: { table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), workspaceId: v.optional(v.id("workspaces")), userId: v.optional(v.id("users")) },
   returns: v.null(),
-  handler: async (ctx, { table, userId }) => {
-    await countRecordPage(ctx, table, userId);
+  handler: async (ctx, { table, workspaceId, userId }) => {
+    const counted = workspaceId ?? (userId ? await personalWorkspaceOf(ctx, userId) : undefined);
+    if (counted) await countRecordPage(ctx, table, counted);
     return null;
   },
 });
@@ -110,7 +112,7 @@ export const countShortcutsAction = defineUserQuery({
   description: "Says how many query shortcuts the person has.",
   args: {},
   returns: v.number(),
-  run: async (ctx, { userId }) => (await countRow(ctx, "queryShortcuts", userId))?.count ?? 0,
+  run: async (ctx, { workspaceId }) => (await countRow(ctx, "queryShortcuts", workspaceId))?.count ?? 0,
 });
 export const countShortcuts = accountQuery(countShortcutsAction);
 export const countShortcutsForAssistant = assistantQuery(countShortcutsAction);

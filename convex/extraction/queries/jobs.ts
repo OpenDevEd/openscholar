@@ -101,7 +101,7 @@ export const countJobsAction = defineUserQuery({
   args: {},
   returns: v.number(),
   // Someone with no job has no count; one from before counts were kept gets theirs from migrations/pagedExtractionJobs.
-  run: async (ctx, { userId }) => (await countRow(ctx, "extractionJobs", userId))?.count ?? 0,
+  run: async (ctx, { workspaceId }) => (await countRow(ctx, "extractionJobs", workspaceId))?.count ?? 0,
 });
 export const countJobs = userQuery(countJobsAction);
 export const countJobsForAssistant = assistantQuery(countJobsAction);

@@ -389,7 +389,7 @@ export const countUserScreeningJobs = workspaceQuery({
   returns: v.number(),
   signedOut: 0,
   // Someone with no job has no count; one from before counts were kept gets theirs from migrations/countScreeningJobs.
-  handler: async (ctx, { userId }) => (await countRow(ctx, "screeningJobs", userId))?.count ?? 0,
+  handler: async (ctx, { workspaceId }) => (await countRow(ctx, "screeningJobs", workspaceId))?.count ?? 0,
 });
 
 const screeningResultRowValidator = v.object({
