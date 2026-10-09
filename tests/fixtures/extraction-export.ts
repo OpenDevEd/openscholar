@@ -3,7 +3,7 @@ import type { PaperWithResults, Question } from "../../lib/extraction/filtering"
 import { mockId } from "../factories";
 
 export const exportJob: Doc<"extractionJobs"> = {
-  _id: mockId("extractionJobs", "export"), _creationTime: 1, userId: mockId("users", "export"),
+  _id: mockId("extractionJobs", "export"), _creationTime: 1, workspaceId: mockId("workspaces", "export"), createdBy: mockId("users", "export"),
   name: "Research QA", sourceType: "manual", status: "completed", usePdfs: false, runEpoch: 2, createdAt: 1, updatedAt: 2,
 };
 export const exportQuestions: Question[] = [

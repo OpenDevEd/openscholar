@@ -310,6 +310,7 @@ import type * as migrations_pagedAccountLists from "../migrations/pagedAccountLi
 import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
 import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryList.js";
 import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
+import type * as migrations_narrowJobs from "../migrations/narrowJobs.js";
 import type * as migrations_narrowLibrary from "../migrations/narrowLibrary.js";
 import type * as migrations_narrowResearch from "../migrations/narrowResearch.js";
 import type * as migrations_paperMetadata from "../migrations/paperMetadata.js";
@@ -712,6 +713,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
   "migrations/pagedLibraryList": typeof migrations_pagedLibraryList;
   "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
+  "migrations/narrowJobs": typeof migrations_narrowJobs;
   "migrations/narrowLibrary": typeof migrations_narrowLibrary;
   "migrations/narrowResearch": typeof migrations_narrowResearch;
   "migrations/paperMetadata": typeof migrations_paperMetadata;

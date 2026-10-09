@@ -463,7 +463,7 @@ async function buildEvidenceUnitsFromPdf(pdfBuffer: ArrayBuffer) {
 
 async function resolvePdfBlob(
   ctx: ActionCtx,
-  job: { userId: Id<"users"> } | null,
+  job: { createdBy: Id<"users"> } | null,
   args: {
     paperId: Id<"extractionPapers">;
     jobId: Id<"extractionJobs">;
@@ -489,7 +489,7 @@ async function resolvePdfBlob(
 
   const zoteroConnection = job
     ? await ctx.runQuery(internal.zotero.internal.getConnection, {
-        userId: job.userId,
+        userId: job.createdBy,
       })
     : null;
 
@@ -504,13 +504,13 @@ async function resolvePdfBlob(
       zoteroConnection.encryptedApiKey,
       encryptionKey,
       {
-        userId: job?.userId ? String(job.userId) : "system",
+        userId: job?.createdBy ? String(job.createdBy) : "system",
         purpose: "zotero-pdf-download",
       },
     );
     await ctx.runMutation(internal.lib.audit.writeAuditLog, {
       action: "KEY_DECRYPT",
-      userId: job?.userId ? String(job.userId) : "system",
+      userId: job?.createdBy ? String(job.createdBy) : "system",
       metadata: { purpose: "extraction-api-key-decrypt" },
     });
   }

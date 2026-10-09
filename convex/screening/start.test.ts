@@ -180,7 +180,7 @@ describe("where a job's papers go", () => {
     // Papers from a job, which aren't saved yet.
     const source = await t.run(async (ctx) => {
       const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), version: 0, createdAt: 1 });
-      const jobId = await ctx.db.insert("screeningJobs", { userId, status: "completed", totalPapers: 2, questions, scoringConfig, screeningId, createdAt: 1, updatedAt: 1 });
+      const jobId = await ctx.db.insert("screeningJobs", { ...(await madeBy(ctx, userId)), status: "completed", totalPapers: 2, questions, scoringConfig, screeningId, createdAt: 1, updatedAt: 1 });
       for (const i of [1, 2]) await ctx.db.insert("screeningResults", { jobId, openalexId: W(i), title: `Paper ${i}`, status: "completed", outcome: "included", createdAt: 1 });
       return jobId;
     });

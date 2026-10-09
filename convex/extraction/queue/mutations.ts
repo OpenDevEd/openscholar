@@ -123,7 +123,6 @@ async function insertPendingQueueRow(
   ctx: MutationCtx,
   {
     jobId,
-    userId,
     workspaceId,
     paperId,
     runEpoch,
@@ -134,7 +133,6 @@ async function insertPendingQueueRow(
     now,
   }: {
     jobId: Id<"extractionJobs">;
-    userId: Id<"users">;
     workspaceId: Id<"workspaces">;
     paperId: Id<"extractionPapers">;
     runEpoch: number;
@@ -147,7 +145,6 @@ async function insertPendingQueueRow(
 ): Promise<Id<"extractionPaperQueue">> {
   const queueRow: Omit<Doc<"extractionPaperQueue">, "_id" | "_creationTime"> = {
     jobId,
-    userId,
     workspaceId,
     paperId,
     runEpoch,
@@ -227,8 +224,7 @@ async function enqueuePaperQueueRows(
 
     await insertPendingQueueRow(ctx, {
       jobId,
-      userId: job.userId,
-      workspaceId: (workspaceId ??= await workspaceOf(ctx, job)),
+      workspaceId: (workspaceId ??= job.workspaceId),
       paperId: candidate.paperId,
       runEpoch: expectedEpoch,
       kind,
@@ -365,7 +361,7 @@ async function leaseNextPaperQueueRowsTx(
   args: LeaseRowsArgs,
 ): Promise<LeaseRowsResult> {
   const job = await ctx.db.get(args.jobId);
-  const personFree = job ? await poolCapacity(ctx, await workspaceOf(ctx, job), args.paperConcurrency) : 0;
+  const personFree = job ? await poolCapacity(ctx, job.workspaceId, args.paperConcurrency) : 0;
   const activeReadLimit = Math.max(0, Math.floor(args.paperConcurrency));
   const [leasedRows, runningRows] = await Promise.all([
     loadQueueRowsByStatus(ctx, {

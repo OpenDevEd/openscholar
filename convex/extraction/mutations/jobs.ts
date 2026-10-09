@@ -34,7 +34,7 @@ import { refillWorkspace } from "../queue/dispatcher";
 import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
 import { checkScreeningSelection } from "../sources/screening";
 import { bucketItemFromRow } from "../jobSources";
-import { actorOnRecord, isInWorkspace, requireMakerOrAdmin, workspaceOf, type InWorkspace } from "../../workspaces/actor";
+import { actorIn, isInWorkspace, requireMakerOrAdmin, workspaceOf, type InWorkspace } from "../../workspaces/actor";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -135,7 +135,6 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
 
   const now = Date.now();
   const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
-    userId,
     workspaceId,
     createdBy: userId,
     name: args.name,
@@ -236,7 +235,6 @@ export const duplicateJobAction = defineUserMutation({
 
     const dupStamp = await extractionStamp(ctx, userId);
     const newJobId = await ctx.db.insert("extractionJobs", {
-      userId,
       workspaceId,
       createdBy: userId,
       name: `${oldJob.name} (Copy)`,
@@ -286,11 +284,11 @@ export const cancelExtraction = mutation({
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get("extractionJobs", args.jobId);
-    const actor = job && (await actorOnRecord(ctx, user, job));
+    const actor = job && (await actorIn(ctx, user, job.workspaceId));
     if (!job || !actor) {
       throw createError("NOT_FOUND", "Job not found");
     }
-    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
+    requireMakerOrAdmin(actor, job.createdBy);
 
     if (
       job.status &&
@@ -306,7 +304,7 @@ export const cancelExtraction = mutation({
     });
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
     // Its papers no longer count against the person's limit; their other jobs start in it.
-    await refillWorkspace(ctx, await workspaceOf(ctx, job));
+    await refillWorkspace(ctx, job.workspaceId);
 
     // Any in-flight paper action sees the cancelled job on its next
     // status check and returns without persisting.
@@ -321,16 +319,16 @@ export const deleteExtraction = mutation({
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get("extractionJobs", args.jobId);
-    const actor = job && (await actorOnRecord(ctx, user, job));
+    const actor = job && (await actorIn(ctx, user, job.workspaceId));
     if (!job || !actor) {
       throw createError("NOT_FOUND", "Job not found");
     }
-    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
+    requireMakerOrAdmin(actor, job.createdBy);
 
     await ctx.db.delete(args.jobId);
     // Its papers stop holding the person's capacity now, not when the cascade reaches them.
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
-    await refillWorkspace(ctx, await workspaceOf(ctx, job));
+    await refillWorkspace(ctx, job.workspaceId);
 
     // Schedule the cascade delete as an independent mutation to avoid
     // transaction limits on a large job's child tables.

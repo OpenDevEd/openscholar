@@ -26,7 +26,7 @@ import { SCREENING_POOL_SIZE } from "../workpool";
 import { jobModel, screeningRevision } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
-import { actorOnRecord, isInWorkspace, workspaceOf } from "../workspaces/actor";
+import { actorIn, isInWorkspace, workspaceOf } from "../workspaces/actor";
 import { availableCredits } from "../billing/accounts";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { pricingOf } from "../ai/serverModel";
@@ -134,7 +134,7 @@ export const readingJob = internalQuery({
     const job = await ctx.db.get("screeningJobs", jobId);
     if (!job?.reading || job.status !== "processing" || !job.set || job.first === undefined || job.last === undefined) return null;
     return {
-      userId: job.userId, workspaceId: await workspaceOf(ctx, job), set: job.set, first: job.first, last: job.last, read: job.readPlace?.read ?? 0,
+      userId: job.createdBy, workspaceId: job.workspaceId, set: job.set, first: job.first, last: job.last, read: job.readPlace?.read ?? 0,
       ...(job.resume ? { resume: job.resume } : {}),
       ...(job.snapshot ? { snapshot: job.snapshot } : {}),
     };
@@ -167,7 +167,7 @@ export const getScreeningProgress = query({
     if (!user) return null;
 
     const job = await ctx.db.get("screeningJobs", args.jobId);
-    if (!job || !(await actorOnRecord(ctx, user, job))) return null;
+    if (!job || !(await actorIn(ctx, user, job.workspaceId))) return null;
     return await readJobProgressSnapshot(ctx, job);
   },
 });
@@ -242,7 +242,7 @@ export const getScreeningJobAction = defineUserQuery({
       revision: await screeningRevision(ctx, job),
       snapshot: job.snapshot,
       serverEffort: job.serverEffort,
-      userId: job.userId,
+      userId: job.createdBy,
       status: job.status,
       totalPapers: job.totalPapers,
       processedPapers: progress.processedPapers,
@@ -513,16 +513,16 @@ export const paperContext = internalQuery({
   handler: async (ctx, { jobId, resultId }) => {
     const [job, paper] = await Promise.all([ctx.db.get("screeningJobs", jobId), ctx.db.get("screeningResults", resultId)]);
     if (!job || !paper) return null;
-    const workspaceId = await workspaceOf(ctx, job);
+    const workspaceId = job.workspaceId;
     const [user, balance, model] = await Promise.all([
-      ctx.db.get("users", job.userId),
+      ctx.db.get("users", job.createdBy),
       availableCredits(ctx, workspaceId),
       job.serverModelId ? ctx.db.get("models", job.serverModelId) : null,
     ]);
     if (!user) return null;
     return {
       job: {
-        userId: job.userId,
+        userId: job.createdBy,
         workspaceId,
         status: job.status,
         totalPapers: job.totalPapers,

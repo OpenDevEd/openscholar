@@ -114,7 +114,6 @@ export const createJobDirect = internalMutation({
   handler: async (ctx, args) => {
 
     const jobId = await ctx.db.insert("extractionJobs", {
-      userId: args.userId,
       workspaceId: await personalWorkspaceOf(ctx, args.userId),
       createdBy: args.userId,
       name: args.name,

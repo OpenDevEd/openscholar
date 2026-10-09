@@ -260,7 +260,7 @@ describe("createScreeningJob", () => {
     });
 
     expect(job).not.toBeNull();
-    expect(job!.userId).toBe(user._id);
+    expect(job!.createdBy).toBe(user._id);
     expect(job!.status).toBe("processing");
     expect(job!.totalPapers).toBe(10);
     expect(job!.questions).toEqual(questions);

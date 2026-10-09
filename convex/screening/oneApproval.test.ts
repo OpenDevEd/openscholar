@@ -5,6 +5,7 @@ import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/bill
 import schema from "../schema";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 // Each paper answered for 1 credit's worth of tokens.
 vi.mock("../../lib/ai/core/batch", () => ({
@@ -62,7 +63,7 @@ it("runs a request as one job under the one figure the person approved: one hold
     await t.finishInProgressScheduledFunctions();
   }
 
-  const jobs = await t.run((ctx) => ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", userId)).order("asc").take(5));
+  const jobs = await t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return ctx.db.query("screeningJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).order("asc").take(5); });
   // One job for the whole request, done.
   expect(jobs.map(({ status, first, last, totalPapers }) => ({ status, first, last, totalPapers }))).toEqual([{ status: "completed", first: 1, last: 2, totalPapers: 2 }]);
   expect(jobs[0]).toMatchObject({ spendCap: 10, chatStep: stepId });

@@ -8,6 +8,8 @@ import schema from "../../schema";
 import { jobText } from "../../lib/searchText";
 import { seedAccount } from "../../lib/maxSize.test-support";
 import { runUntriggered } from "../../../tests/convex-test-with-limits";
+import { madeBy } from "../../workspaces/actor.test-support";
+import { personalWorkspaceOf } from "../../workspaces/personal";
 
 type Test = ReturnType<typeof convexTest>;
 type Status = "pending" | "indexing" | "extracting" | "completed" | "failed" | "cancelled" | "paused";
@@ -18,7 +20,7 @@ afterEach(() => vi.useRealTimers());
 /** Jobs made one after another, so the order they were made in is the order they list in. */
 async function seedJobs(t: Test, userId: Id<"users">, jobs: Array<{ name: string; status?: Status; description?: string }>) {
   for (const [i, job] of jobs.entries()) {
-    await t.run((ctx) => ctx.db.insert("extractionJobs", { userId, totalPapers: 1, createdAt: i + 1, updatedAt: i + 1, ...job }));
+    await t.run(async (ctx) => ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), totalPapers: 1, createdAt: i + 1, updatedAt: i + 1, ...job }));
   }
   await t.finishAllScheduledFunctions(vi.runAllTimers);
 }
@@ -110,7 +112,7 @@ describe("the extraction job list", () => {
         for (let i = from; i < from + 460; i++) {
           const name = i === 0 ? "needle" : `job ${i}`;
           // With its search text, as starting a job writes it.
-          await ctx.db.insert("extractionJobs", { userId, totalPapers: 1, createdAt: i, updatedAt: i, name, searchText: jobText({ name }), status: i % 2 ? "pending" : "completed" });
+          await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), totalPapers: 1, createdAt: i, updatedAt: i, name, searchText: jobText({ name }), status: i % 2 ? "pending" : "completed" });
         }
       });
     }
@@ -135,7 +137,8 @@ describe("the extraction job list", () => {
     await seedJobs(t, userId, JOBS);
     expect(await as.query(api.extraction.queries.countJobs, {})).toBe(6);
 
-    await t.run(async (ctx) => ctx.db.delete((await ctx.db.query("extractionJobs").withIndex("by_user", (q) => q.eq("userId", userId)).first())!._id));
+    const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
+    await t.run(async (ctx) => ctx.db.delete((await ctx.db.query("extractionJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).first())!._id));
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await as.query(api.extraction.queries.countJobs, {})).toBe(5);
   });
@@ -145,7 +148,8 @@ describe("the extraction job list", () => {
     const { userId, as } = await seedAccount(t);
     await seedJobs(t, userId, JOBS);
     await t.run(async (ctx) => {
-      const job = (await ctx.db.query("extractionJobs").withIndex("by_user", (q) => q.eq("userId", userId)).take(10)).find((row) => row.name === "zeta notes")!;
+      const workspaceId = await personalWorkspaceOf(ctx, userId);
+      const job = (await ctx.db.query("extractionJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(10)).find((row) => row.name === "zeta notes")!;
       await ctx.db.patch(job._id, { name: "Aardvark notes" });
     });
     const page = await as.query(api.extraction.queries.listJobs, { sort: "name", paginationOpts: { cursor: null, numItems: 2 } });

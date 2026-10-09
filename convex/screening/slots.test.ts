@@ -9,6 +9,7 @@ import { SCREENING_POOL_SIZE } from "../workpool";
 import { createJob } from "./createJob.test-support";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 const questions = [{ key: "q1", question: "Is this relevant?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] };
@@ -40,7 +41,7 @@ const papersOf = (t: T, jobId: Id<"screeningJobs">) =>
     return { rows, started: rows.filter((row) => row.workId !== undefined), waiting: rows.filter((row) => row.waitingSince !== undefined) };
   });
 const running = (t: T, userId: Id<"users">) =>
-  t.run(async (ctx) => (await ctx.db.query("screeningSlots").withIndex("by_user", (q) => q.eq("userId", userId)).unique())?.running);
+  t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return (await ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())?.running; });
 
 /** Papers finishing as their work completes them, then one batch of the bookkeeping worker. */
 async function finishAndBookkeep(t: T, ids: Id<"screeningResults">[]) {

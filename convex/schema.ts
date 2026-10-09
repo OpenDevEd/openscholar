@@ -791,14 +791,11 @@ export default defineSchema({
   // `AssertExactDoc<"extractionJobs", ...>`.
   // ═══════════════════════════════════════════════════════════════
   extractionJobs: defineTable(extractionJobFields)
-    .index("by_user", ["userId"])
-    .index("by_user_status", ["userId", "status"])
-    // The job list ordered by name.
-    .index("by_user_and_sortName", ["userId", "sortName"])
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_status", ["workspaceId", "status"])
+    // The job list ordered by name.
     .index("by_workspace_and_sortName", ["workspaceId", "sortName"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId", "workspaceId"] }),
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["workspaceId"] }),
 
   // ═══════════════════════════════════════════════════════════════
   // CHAT GENERATION USAGE - Provider-authoritative chat billing ledger
@@ -918,7 +915,6 @@ export default defineSchema({
   extractionPaperQueue: defineTable(extractionPaperQueueFields)
     .index("by_job_and_status", ["jobId", "status"])
     .index("by_job_and_epoch_and_status", ["jobId", "runEpoch", "status"])
-    .index("by_user_and_status", ["userId", "status"])
     .index("by_workspace_and_status", ["workspaceId", "status"])
     .index("by_job_and_epoch_and_status_and_priority_and_createdAt", [
       "jobId",
@@ -1006,9 +1002,10 @@ export default defineSchema({
   // SCREENING JOBS - bulk screening job records
   // ═══════════════════════════════════════════════════════════════
   screeningJobs: defineTable({
-    userId: v.id("users"),
-    workspaceId: v.optional(v.id("workspaces")),
-    createdBy: v.optional(v.id("users")),
+    // The person it belonged to before workspaces, which migrations/narrowJobs.ts clears before it goes (#650).
+    userId: v.optional(v.id("users")),
+    workspaceId: v.id("workspaces"),
+    createdBy: v.id("users"),
     status: v.union(
       v.literal("processing"),
       v.literal("completed"),
@@ -1068,8 +1065,6 @@ export default defineSchema({
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),
   })
-    .index("by_user", ["userId"])
-    .index("by_user_status", ["userId", "status"])
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_status", ["workspaceId", "status"]),
 
@@ -1138,10 +1133,10 @@ export default defineSchema({
     pruned: v.optional(v.literal(true)),
     libraryItemId: v.optional(v.id("libraryItems")),
     workId: v.optional(v.string()),
-    // Set while the paper waits for one of its person's paper slots (#335), whose papers
-    // start oldest first across their jobs; cleared when it starts and gets its `workId`.
+    // Before workspaces, the person whose slots it waited for; migrations/narrowJobs.ts clears it before it goes (#650).
     waitingUser: v.optional(v.id("users")),
-    // The workspace whose slots it waits for (#650): a workspace's papers share one pool. Replaces `waitingUser`, which slice 8 drops.
+    // Set while the paper waits for one of its workspace's paper slots (#335, #650), whose papers
+    // start oldest first across their jobs; cleared when it starts and gets its `workId`.
     waitingWorkspace: v.optional(v.id("workspaces")),
     waitingSince: v.optional(v.number()),
     createdAt: v.number(),
@@ -1157,7 +1152,6 @@ export default defineSchema({
     // A job's papers of one outcome, in the order the job took them.
     .index("by_job_and_outcome", ["jobId", "outcome"])
     // A job's papers the model is reading: processing, and no longer waiting for a slot.
-    .index("by_job_and_status_and_waitingUser", ["jobId", "status", "waitingUser"])
     .index("by_waitingUser_and_waitingSince", ["waitingUser", "waitingSince"])
     .index("by_job_and_status_and_waitingWorkspace", ["jobId", "status", "waitingWorkspace"])
     .index("by_waitingWorkspace_and_waitingSince", ["waitingWorkspace", "waitingSince"])
@@ -1166,7 +1160,7 @@ export default defineSchema({
   // How many of a person's Screen all papers are running (#335). Written by job creation and
   // the bookkeeping worker, which start a person's waiting papers while this is under their
   // plan's limit, as Firecrawl's per-team semaphore does.
-  screeningSlots: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), running: v.number() }).index("by_user", ["userId"]).index("by_workspace", ["workspaceId"]),
+  screeningSlots: defineTable({ userId: v.optional(v.id("users")), workspaceId: v.id("workspaces"), running: v.number() }).index("by_workspace", ["workspaceId"]),
   // A Screen all job's finished papers, counted by the bookkeeping worker alone.
   screeningJobProgress: defineTable({
     jobId: v.id("screeningJobs"),

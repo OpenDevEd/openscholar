@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, it, expect, vi } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
+import { madeBy } from "../workspaces/actor.test-support";
 
 describe("cleanupOldPdfs", () => {
   it("deletes storage and clears storageId for completed papers older than maxAgeHours", async () => {
@@ -22,7 +23,7 @@ describe("cleanupOldPdfs", () => {
         lastLoginAt: old,
       });
       const jobId = await ctx.db.insert("extractionJobs", {
-        userId,
+        ...(await madeBy(ctx, userId)),
         sourceType: "history" as const,
         status: "completed" as const,
         totalPapers: 10,
@@ -106,7 +107,7 @@ describe("cleanupOldPdfs", () => {
         lastLoginAt: old,
       });
       const jobId = await ctx.db.insert("extractionJobs", {
-        userId,
+        ...(await madeBy(ctx, userId)),
         sourceType: "history" as const,
         status: "completed" as const,
         totalPapers: 501,
