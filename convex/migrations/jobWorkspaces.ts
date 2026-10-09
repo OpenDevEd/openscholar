@@ -20,21 +20,24 @@ const migrations = new Migrations<DataModel>(components.migrations, { internalMu
 
 const own = (ctx: MutationCtx, userId: Id<"users">) => ensureWorkspace(ctx, { kind: "personal", userId });
 
-// A job holds its questions and the search it read, and its triggers read it again on a patch.
+// A job can be near a document's 1 MiB with its questions and the search it read, and a patch reads it
+// again with its triggers: five at a time, as migrations/researchWorkspaces.ts does.
 export const screeningJobs = migrations.define({
   table: "screeningJobs",
-  batchSize: 25,
+  batchSize: 5,
   migrateOne: async (ctx, job) => (job.workspaceId ? undefined : { workspaceId: await own(ctx, job.userId), createdBy: job.userId }),
 });
 
 export const extractionJobs = migrations.define({
   table: "extractionJobs",
-  batchSize: 25,
+  batchSize: 5,
   migrateOne: async (ctx, job) => (job.workspaceId ? undefined : { workspaceId: await own(ctx, job.userId), createdBy: job.userId }),
 });
 
 export const screenings = migrations.define({
   table: "screenings",
+  // Each reads its search, which can be near 1 MiB.
+  batchSize: 5,
   migrateOne: async (ctx, screening) => {
     if (screening.workspaceId) return;
     const search = screening.searchId ? await ctx.db.get("searches", screening.searchId) : null;
@@ -49,7 +52,8 @@ export const screeningSlots = migrations.define({
 
 export const extractionQueue = migrations.define({
   table: "extractionPaperQueue",
-  batchSize: 200,
+  // Each reads its job.
+  batchSize: 25,
   migrateOne: async (ctx, row) => {
     if (row.workspaceId) return;
     const job = await ctx.db.get("extractionJobs", row.jobId);
