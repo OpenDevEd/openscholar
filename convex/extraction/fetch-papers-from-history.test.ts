@@ -73,3 +73,16 @@ it("spends one request per cursor page actually read, so a search that runs out 
   const day = await t.run(async (ctx) => (await ctx.db.query("rateLimits").collect()).find((row) => row.name === "openalex-day"));
   expect(day?.value).toBe(20_000 - 1);
 });
+
+// A question asked by meaning goes to the OpenScholar API as search.semantic, never as words to search for.
+it("reads a search by meaning's papers with its question as search.semantic", async () => {
+  const { t, userId } = await setup();
+  const question = "Does tutoring help pupils who fall behind?";
+  const papers = await t.action(internal.extraction.actions.fetchPapersFromHistory, {
+    userId,
+    searchFilters: { query: question, openAlexQuery: { semantic: question, filter: "publication_year:2015-2024", sort: "relevance_score:desc" }, limit: 300 },
+  });
+  expect(papers).toHaveLength(300);
+  expect(requests).toHaveLength(2);
+  expect(requests.every((url) => url.searchParams.get("search.semantic") === question && !url.searchParams.has("search"))).toBe(true);
+});
