@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createCitationSearch, createSimilarSearch, MAX_SIMILAR_PAPERS } from "./actions";
 import { localSearchHistoryStore } from "../store";
+import { clearedFilterUpdates } from "../utils";
 
 describe("a paper's similar papers", () => {
   beforeEach(() => {
@@ -21,6 +22,10 @@ describe("a paper's similar papers", () => {
     const { id } = createSimilarSearch(many);
     const saved = localSearchHistoryStore.getState().searchHistory.find((search) => search.id === id);
     expect(saved?.similarTo).toHaveLength(MAX_SIMILAR_PAPERS);
+  });
+
+  it("are cleared with every other filter", () => {
+    expect(clearedFilterUpdates()).toMatchObject({ similarTo: [] });
   });
 });
 

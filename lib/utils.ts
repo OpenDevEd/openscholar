@@ -58,6 +58,7 @@ export function clearedFilterUpdates() {
     citesItemId: DEFAULT_FILTERS.citesItemId,
     citedByItemId: DEFAULT_FILTERS.citedByItemId,
     relatedToItemId: DEFAULT_FILTERS.relatedToItemId,
+    similarTo: [],
     reviewFilter: DEFAULT_FILTERS.reviewFilter,
     researchAreas: [],
     sdgs: [],
