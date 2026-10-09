@@ -5,9 +5,9 @@
 // running screening or extraction fills a ring around its icon and its label becomes the
 // progress, so it's visible from any page. Everything a page already lists stays on that page.
 
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useClerk, useUser } from "@clerk/nextjs";
+import { useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -51,8 +51,9 @@ import { cn } from "@/lib/utils";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
+import { LOOK_COOKIE, lookCookieIn, lookKey, readCache, writeCache, type CachedLook, type CachedMe, type FirstWorkspace } from "@/lib/workspaces/look-cache";
 import { CreateOrganization, WorkspaceMenu } from "./switcher";
-import { Framed, settingsHref, usePlanOf, useCurrentWorkspace, useWorkspaces, workspaceTint, WorkspaceTile, type WorkspaceRow } from "./parts";
+import { Framed, settingsHref, usePlanOf, useCurrentWorkspace, useWorkspaces, workspaceTint, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
 
 /** How far the rail steps back while a card is up. */
 const RECEDE = 0.9;
@@ -83,7 +84,26 @@ function ProgressRing({ value }: { value: number }) {
   );
 }
 
-export function SidebarContent({ onClose }: { onClose?: () => void }) {
+/** A year: how long the browser keeps the rail's looks. */
+const LOOK_KEPT_S = 365 * 24 * 60 * 60;
+
+/**
+ * How the rail looked last time in this browser, for the person and the address's workspace:
+ * what the server drew the page with (`first`), then the cookie as the address changes. Nothing
+ * once Clerk says no one's signed in. Clerk loads in the browser, after the server and the first
+ * frame; until then the server's word on who's signed in stands.
+ */
+function cachedRail(first: FirstWorkspace, slug: string | null, auth: { isLoaded: boolean; userId: string | null | undefined }): { me?: CachedMe; look?: CachedLook } {
+  const user = auth.isLoaded ? auth.userId : first.user;
+  if (!user) return {};
+  // On the server, and as the page hydrates, the cookie is the request's, which `first` already read.
+  if (slug === first.slug && (first.look || typeof document === "undefined")) return first;
+  if (typeof document === "undefined") return {};
+  const { me, looks } = readCache(lookCookieIn(document.cookie), user);
+  return { ...(me ? { me } : {}), ...(looks[lookKey(slug)] ? { look: looks[lookKey(slug)] } : {}) };
+}
+
+export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: FirstWorkspace; onClose?: () => void }) {
   const t = useTranslations("workspaces");
   const tc = useTranslations("common");
   const path = bareWorkspacePath(usePathname());
@@ -103,7 +123,31 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
   const loading = there && loaded?.workspaceId !== picked.to.workspaceId;
   if (picked && !waiting && !loading) setPicked(null);
   else if (picked && there && !picked.landed) setPicked({ ...picked, landed: true });
-  const current = picked && (waiting || loading) ? picked.to : loaded;
+  // Until the address's workspace is read, it's drawn as it looked last time; one never seen fades in once read.
+  const auth = useAuth();
+  const { userId } = auth;
+  const cached = cachedRail(firstWorkspace, slug, auth);
+  const current: WorkspaceLook | undefined = picked && (waiting || loading) ? picked.to : (loaded ?? cached.look);
+  // The person as the account button shows them, and the sections their features open: as last time until Clerk and Convex load.
+  const { user } = useUser();
+  const { phase } = useAuthReadiness();
+  const { data: features } = useOrganizationFeatures();
+  const live: CachedMe | undefined = user ? { name: user.fullName || user.primaryEmailAddress?.emailAddress || "", ...(user.imageUrl ? { imageUrl: user.imageUrl } : {}) } : undefined;
+  const me = live ?? cached.me;
+  const shownFeatures = features ?? cached.me?.features;
+  const signedIn = phase === "authenticated" || (phase === "initializing" && !!(auth.isLoaded ? userId : firstWorkspace.user));
+  // The browser's cookies are the outside system: the server draws the rail from them next time.
+  useEffect(() => {
+    if (!userId) return;
+    const raw = lookCookieIn(document.cookie);
+    const cache = readCache(raw, userId);
+    const look: CachedLook | undefined = loaded && (loaded.slug ?? null) === slug ? { kind: loaded.kind, workspaceId: loaded.workspaceId, name: loaded.name, ...(loaded.imageUrl ? { imageUrl: loaded.imageUrl } : {}), ...(loaded.colour ? { colour: loaded.colour } : {}) } : undefined;
+    const on = features ? Object.fromEntries(Object.entries(features).filter(([, enabled]) => enabled)) : cache.me?.features;
+    const person = live ? { ...live, ...(on ? { features: on } : {}) } : undefined;
+    if (!look && !person) return;
+    const next = writeCache(cache, userId, lookKey(slug), look, person);
+    if (next !== raw) document.cookie = `${LOOK_COOKIE}=${next}; Path=/; Max-Age=${LOOK_KEPT_S}; SameSite=Lax`;
+  }, [userId, slug, loaded, live?.name, live?.imageUrl, features]);
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
 
@@ -117,14 +161,12 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
   // Sections a workspace's features open, until plans hold them (#652): extraction, and Evidence Libraries or author profiles behind Publish.
   const extractionOn = useFeatureFlag("extraction.enabled");
   const extractionStarts = useFeatureFlag("extraction.start");
-  const { data: features } = useOrganizationFeatures();
-  const extracts = !!features?.extraction && extractionOn && extractionStarts;
-  const publishes = features?.evidenceLibraries ? "/evidence-libraries" : features?.authors ? "/authors" : null;
+  const extracts = !!shownFeatures?.extraction && extractionOn && extractionStarts;
+  const publishes = shownFeatures?.evidenceLibraries ? "/evidence-libraries" : shownFeatures?.authors ? "/authors" : null;
   const { data: screening } = useProtectedQuery(api.screening.queries.getActiveScreeningJobProgress, inWorkspace(here, {}));
   const { data: extraction } = useProtectedQuery(api.extraction.queries.jobs.runningJob, inWorkspace(here, {}));
   const tint = current ? workspaceTint(current) : undefined;
   const item = (props: Omit<React.ComponentProps<typeof RailItem>, "onClick">) => <RailItem {...props} onClick={onClose} />;
-  const { user } = useUser();
   const [card, setCard] = useState<"workspace" | "account" | null>(null);
   const [creating, setCreating] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -143,7 +185,8 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
             origin never changes, and the two buttons the cards grow from aren't in it, so whatever flies
             back to them lands on a spot that isn't moving. */}
         <motion.div
-          className="flex h-full w-20 flex-col items-center py-3"
+          // Its colour changes as a fade, never a cut.
+          className="flex h-full w-20 flex-col items-center py-3 transition-[background-color] duration-500 ease-out motion-reduce:transition-none"
           initial={false}
           animate={card && !reduceMotion ? { scale: RECEDE, borderRadius: 22 } : { scale: 1, borderRadius: 0 }}
           transition={CARD_SPRING}
@@ -175,16 +218,21 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
               active: is("/screening"),
               running: screening ? { done: screening.processedPapers + screening.failedPapers, total: screening.totalPapers, what: tc("screening"), percent: screening.percentComplete } : undefined,
             })}
-            {extracts
-              ? item({
-                  href: "/extraction",
-                  icon: ExtractionIcon,
-                  label: t("extract"),
-                  active: is("/extraction"),
-                  running: extraction ? { done: extraction.done, total: extraction.total, what: extraction.name } : undefined,
-                })
-              : null}
-            {publishes ? item({ href: publishes, icon: EvidenceLibrariesIcon, label: t("publish"), active: is("/evidence-libraries") || is("/authors") }) : null}
+            {/* Drawn from the first frame when the person's features are known from last time; ones read after open their place. */}
+            <AnimatePresence initial={false}>
+              {extracts ? (
+                <Opening key="extract">
+                  {item({
+                    href: "/extraction",
+                    icon: ExtractionIcon,
+                    label: t("extract"),
+                    active: is("/extraction"),
+                    running: extraction ? { done: extraction.done, total: extraction.total, what: extraction.name } : undefined,
+                  })}
+                </Opening>
+              ) : null}
+              {publishes ? <Opening key="publish">{item({ href: publishes, icon: EvidenceLibrariesIcon, label: t("publish"), active: is("/evidence-libraries") || is("/authors") })}</Opening> : null}
+            </AnimatePresence>
 
             <div className="my-1.5 h-px w-8 bg-foreground/10" />
             {item({ href: "/topics", icon: TopicsIcon, label: t("explore"), active: is("/topics") })}
@@ -212,7 +260,7 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
           transition={CARD_SPRING}
           style={{ transformOrigin: "50% calc(56px - 50vh)" }}
         >
-          <AccountButton ref={accountTrigger} open={card === "account"} onOpen={() => setCard("account")} />
+          <AccountButton ref={accountTrigger} me={me} signedIn={signedIn} open={card === "account"} onOpen={() => setCard("account")} />
         </motion.div>
       </div>
 
@@ -246,12 +294,12 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
         onClose={close}
         head={
           <motion.span layoutId="rail-account-avatar" layoutDependency={card === "account"} transition={CARD_SPRING} className="flex rounded-full">
-            <IdentityAvatar name={user?.fullName || ""} imageUrl={user?.imageUrl} className="size-10" />
+            <IdentityAvatar name={me?.name ?? ""} imageUrl={me?.imageUrl} className="size-10" />
           </motion.span>
         }
       >
         <AccountCard
-          workspace={current}
+          workspace={loaded}
           onNavigate={() => {
             setCard(null);
             onClose?.();
@@ -263,8 +311,24 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
   );
 }
 
+/** A rail section that opens its place as it comes, and closes it as it goes. */
+function Opening({ children }: { children: React.ReactNode }) {
+  const reduceMotion = useReducedMotion();
+  return (
+    <motion.div
+      className="w-full overflow-hidden"
+      initial={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+      animate={{ height: "auto", opacity: 1 }}
+      exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+      transition={{ duration: 0.3, ease: EASE }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 /** The workspace the rail shows, for the workspace card's head. */
-const ShownWorkspace = React.createContext<WorkspaceRow | undefined>(undefined);
+const ShownWorkspace = React.createContext<WorkspaceLook | undefined>(undefined);
 
 /**
  * The tile at the head of the workspace card. A closing card keeps what it last rendered, but this
@@ -343,10 +407,23 @@ function RailCard({ open, from, label, onClose, head, children }: { open: boolea
 }
 
 /** The workspace's tile at the head of the rail. While its card is up, the tile is in the card. */
-const WorkspaceButton = React.forwardRef<HTMLButtonElement, { workspace: WorkspaceRow | undefined; open: boolean; onOpen: () => void }>(function WorkspaceButton({ workspace, open, onOpen }, ref) {
+const WorkspaceButton = React.forwardRef<HTMLButtonElement, { workspace: WorkspaceLook | undefined; open: boolean; onOpen: () => void }>(function WorkspaceButton({ workspace, open, onOpen }, ref) {
+  const reduceMotion = useReducedMotion();
+  // Drawn from the page's first frame when the page came with the workspace's look; one it waited for fades in.
+  return (
+    <AnimatePresence initial={false}>
+      {workspace ? (
+        <motion.div key="workspace" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={CARD_SPRING}>
+          <WorkspaceButtonFace ref={ref} workspace={workspace} open={open} onOpen={onOpen} />
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+});
+
+const WorkspaceButtonFace = React.forwardRef<HTMLButtonElement, { workspace: WorkspaceLook; open: boolean; onOpen: () => void }>(function WorkspaceButtonFace({ workspace, open, onOpen }, ref) {
   const t = useTranslations("workspaces");
-  const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(workspace?.workspaceId, { paginationOpts: { cursor: null, numItems: 10 } }));
-  if (!workspace) return <div className="size-11" />;
+  const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(useWorkspace(), { paginationOpts: { cursor: null, numItems: 10 } }));
   const waiting = invitations?.page.length ?? 0;
   return (
     <Tooltip delayDuration={0} open={open ? false : undefined}>
@@ -432,25 +509,24 @@ function RailItem({
 }
 
 /** You, at the foot of the rail. While the account card is up, your photo is in the card. */
-const AccountButton = React.forwardRef<HTMLButtonElement, { open: boolean; onOpen: () => void }>(function AccountButton({ open, onOpen }, ref) {
+/** The person's photo at the foot of the rail, or Sign in. `signedIn` and `me` hold from the first frame, as the server knew them, until Clerk loads. */
+const AccountButton = React.forwardRef<HTMLButtonElement, { me: CachedMe | undefined; signedIn: boolean; open: boolean; onOpen: () => void }>(function AccountButton({ me, signedIn, open, onOpen }, ref) {
   const t = useTranslations("workspaces");
-  const { phase } = useAuthReadiness();
-  const { user } = useUser();
-  if (phase !== "authenticated") {
+  if (!signedIn) {
     return (
       <div className="pt-2">
         <AuthButton isCollapsed />
       </div>
     );
   }
-  const name = user?.fullName || user?.primaryEmailAddress?.emailAddress || "";
+  const name = me?.name ?? "";
   return (
     <Tooltip delayDuration={0} open={open ? false : undefined}>
       <TooltipTrigger asChild>
         <button ref={ref} type="button" aria-label={t("account")} aria-expanded={open} onClick={onOpen} className="mt-2 flex size-11 items-center justify-center rounded-xl transition-colors hover:bg-foreground/[0.06]">
           {open ? null : (
             <motion.span layoutId="rail-account-avatar" layoutDependency={open} transition={CARD_SPRING} className="flex rounded-full">
-              <IdentityAvatar name={name} imageUrl={user?.imageUrl} className="size-8" />
+              <IdentityAvatar name={name} imageUrl={me?.imageUrl} className="size-8" />
             </motion.span>
           )}
         </button>

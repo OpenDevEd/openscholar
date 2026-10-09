@@ -29,7 +29,7 @@ export function IdentityAvatar({
           className={kind === "organization" ? "object-contain" : "object-cover"}
         />
       ) : null}
-      <AvatarFallback className="rounded-[inherit]" delayMs={imageUrl ? 150 : 0}>
+      <AvatarFallback className="rounded-[inherit]">
         <Icon className="size-1/2" />
       </AvatarFallback>
     </Avatar>

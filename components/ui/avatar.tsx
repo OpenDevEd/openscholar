@@ -1,38 +1,74 @@
 "use client"
 
 import * as React from "react"
-import { Avatar as AvatarPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
+
+// A picture with its fallback under it. The picture is a plain <img>, so the server sends it and
+// the browser paints it with the page, from its cache, on the first frame. Radix's Avatar draws
+// nothing until the browser has loaded the picture again after the page hydrates, which blanked
+// every photo and logo on each load. The fallback steps aside once the picture has loaded, and
+// takes its place if it fails.
+
+type Status = { src: string; status: "loaded" | "error" } | null
+const AvatarContext = React.createContext<{ status: Status; setStatus: (status: Status) => void } | null>(null)
 
 function Avatar({
   className,
   size = "default",
+  children,
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Root> & {
+}: React.ComponentProps<"span"> & {
   size?: "default" | "sm" | "lg"
 }) {
+  const [status, setStatus] = React.useState<Status>(null)
+  const value = React.useMemo(() => ({ status, setStatus }), [status])
   return (
-    <AvatarPrimitive.Root
-      data-slot="avatar"
-      data-size={size}
-      className={cn(
-        "group/avatar relative flex size-8 shrink-0 overflow-hidden rounded-full select-none data-[size=lg]:size-10 data-[size=sm]:size-6",
-        className
-      )}
-      {...props}
-    />
+    <AvatarContext.Provider value={value}>
+      <span
+        data-slot="avatar"
+        data-size={size}
+        className={cn(
+          // While its picture is on the way, the fallback keeps its icon to itself: a frame of a plain circle, then the picture.
+          "group/avatar relative flex size-8 shrink-0 overflow-hidden rounded-full select-none data-[size=lg]:size-10 data-[size=sm]:size-6 [&:has(>img)>[data-slot=avatar-fallback]>*]:invisible",
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </span>
+    </AvatarContext.Provider>
   )
 }
 
 function AvatarImage({
   className,
+  src,
+  alt = "",
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+}: Omit<React.ComponentProps<"img">, "src"> & { src?: string }) {
+  const avatar = React.useContext(AvatarContext)
+  const setStatus = avatar?.setStatus
+  // A picture the browser finished before the page hydrated fired its load event unheard: read it as it mounts.
+  const settled = React.useCallback(
+    (img: HTMLImageElement | null) => {
+      if (img?.complete && src) setStatus?.({ src, status: img.naturalWidth > 0 ? "loaded" : "error" })
+    },
+    [src, setStatus]
+  )
+  if (!src || (avatar?.status?.src === src && avatar.status.status === "error")) return null
   return (
-    <AvatarPrimitive.Image
+    // eslint-disable-next-line @next/next/no-img-element -- photos and logos come from Clerk and OpenAlex at their own sizes
+    <img
       data-slot="avatar-image"
-      className={cn("aspect-square size-full", className)}
+      src={src}
+      alt={alt}
+      // Decoded with the page and shown with it: a small picture is quicker than a frame of its icon.
+      decoding="sync"
+      ref={settled}
+      onLoad={() => setStatus?.({ src, status: "loaded" })}
+      onError={() => setStatus?.({ src, status: "error" })}
+      className={cn("absolute inset-0 aspect-square size-full", className)}
       {...props}
     />
   )
@@ -41,9 +77,11 @@ function AvatarImage({
 function AvatarFallback({
   className,
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
+}: React.ComponentProps<"span">) {
+  const avatar = React.useContext(AvatarContext)
+  if (avatar?.status?.status === "loaded") return null
   return (
-    <AvatarPrimitive.Fallback
+    <span
       data-slot="avatar-fallback"
       className={cn(
         "bg-muted text-muted-foreground flex size-full items-center justify-center rounded-full text-sm group-data-[size=sm]/avatar:text-xs",
