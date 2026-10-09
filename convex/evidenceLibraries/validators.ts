@@ -90,6 +90,8 @@ export const clerkInvitationSnapshotFields = {
   state: organizationInvitationStateValidator,
   /** Who sent it, kept in the invitation's public metadata by convex/organizations/manage.ts. */
   inviterClerkUserId: v.optional(v.string()),
+  /** When its link stops working; Clerk sends no event then (./read.ts in organizations marks it expired). */
+  expiresAt: v.optional(v.number()),
   clerkCreatedAt: v.number(),
   clerkUpdatedAt: v.number(),
 };
@@ -101,6 +103,7 @@ export const organizationInvitationFields = {
   role: organizationRoleValidator,
   state: organizationInvitationStateValidator,
   inviterClerkUserId: v.optional(v.string()),
+  expiresAt: v.optional(v.number()),
   clerkCreatedAt: v.number(),
   clerkUpdatedAt: v.number(),
   createdAt: v.number(),
@@ -142,6 +145,8 @@ export const organizationFields = {
   authorsEnabled: v.optional(v.boolean()),
   extractionEnabled: v.optional(v.boolean()),
   state: organizationStateValidator,
+  /** Set while an admin's deletion runs (convex/organizations/manage.ts): nobody acts in its workspace meanwhile. */
+  deletingAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };

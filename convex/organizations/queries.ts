@@ -10,6 +10,8 @@ import { organizationOf } from "./read";
 
 /** An organization's members are counted up to one past this; past it they show as more than it. */
 const MEMBERS_COUNTED = 100;
+/** The most organizations one page of the switcher's list reads, each with its members counted. */
+const WORKSPACES_PAGE = 20;
 
 const roleOf = (role: Doc<"organizationMemberships">["role"]) => (role === "org:admin" ? ("admin" as const) : ("member" as const));
 const ROLE = v.union(v.literal("admin"), v.literal("member"));
@@ -37,7 +39,7 @@ export const workspacesAction = defineUserQuery({
     const user = await ctx.db.get("users", userId);
     const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
     if (!user || !own) return { page: [], isDone: true, continueCursor: "" };
-    const page = await ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", user.clerkId).eq("state", "active")).paginate(paginationOpts);
+    const page = await ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", user.clerkId).eq("state", "active")).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, WORKSPACES_PAGE) });
     const organizations = await Promise.all(
       page.page.map(async (membership) => {
         const organization = await ctx.db.get("organizations", membership.organizationId);

@@ -59,6 +59,7 @@ export type ClerkInvitationSnapshot = {
   role: "org:admin" | "org:member";
   state: "pending" | "accepted" | "revoked" | "expired";
   inviterClerkUserId?: string;
+  expiresAt?: number;
   clerkCreatedAt: number;
   clerkUpdatedAt: number;
 };
@@ -184,6 +185,7 @@ function mapInvitationSnapshot(value: unknown): ClerkInvitationSnapshot | null {
     role: invitation.role,
     state: invitation.status as ClerkInvitationSnapshot["state"],
     ...(typeof metadata?.inviterClerkUserId === "string" ? { inviterClerkUserId: metadata.inviterClerkUserId } : {}),
+    ...(typeof invitation.expires_at === "number" ? { expiresAt: invitation.expires_at } : {}),
     clerkCreatedAt: invitation.created_at,
     clerkUpdatedAt: invitation.updated_at,
   };

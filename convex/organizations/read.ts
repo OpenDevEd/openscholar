@@ -1,7 +1,10 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
+import { internal } from "../_generated/api";
 import { internalQuery, type QueryCtx } from "../_generated/server";
+import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
+import { readAccount } from "../billing/accounts";
 
 /** The organization a workspace is, or why it's refused: a person's own workspace is no organization. */
 export async function organizationOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">): Promise<Doc<"organizations">> {
@@ -69,13 +72,49 @@ export const checkMemberChange = internalQuery({
   },
 });
 
-/** Refuses deleting an organization that still has an Evidence Library, which has to be moved or deleted first. */
-export const checkDeletion = internalQuery({
+/** How long a deletion holds its organization, at most, should the action that started it never finish. */
+const DELETION_HOLD_MS = 5 * 60_000;
+
+/**
+ * Starts deleting an organization, refused while it has an Evidence Library, which has to be
+ * moved or deleted first. From here nobody acts in its workspace (../workspaces/actor.ts), so no
+ * library can be made before Clerk deletes it.
+ */
+export const beginDeletion = internalMutation({
   args: { workspaceId: v.id("workspaces") },
-  returns: v.null(),
+  returns: v.number(),
   handler: async (ctx, { workspaceId }) => {
+    const organization = await organizationOf(ctx, workspaceId);
+    if (organization.deletingAt !== undefined) throw createError("CONFLICT", "This organization is being deleted already.");
     const library = await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).first();
     if (library) throw createError("VALIDATION_ERROR", `This organization has an Evidence Library, ${library.name}. Move or delete it first.`);
+    // ponytail: refused, until #652 cancels a Team plan as a step of the deletion.
+    if ((await readAccount(ctx, workspaceId))?.renewsAt !== undefined) throw createError("VALIDATION_ERROR", "This organization pays for a plan that renews. Cancel it in its billing settings first.");
+    const deletingAt = Date.now();
+    await ctx.db.patch("organizations", organization._id, { deletingAt });
+    await ctx.scheduler.runAfter(DELETION_HOLD_MS, internal.organizations.read.endDeletion, { organizationId: organization._id, deletingAt });
+    return deletingAt;
+  },
+});
+
+/** Lets an organization whose deletion didn't go through be worked in again. */
+export const endDeletion = internalMutation({
+  args: { organizationId: v.id("organizations"), deletingAt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { organizationId, deletingAt }) => {
+    const organization = await ctx.db.get("organizations", organizationId);
+    if (organization?.state === "active" && organization.deletingAt === deletingAt) await ctx.db.patch("organizations", organizationId, { deletingAt: undefined });
+    return null;
+  },
+});
+
+/** Marks an invitation expired once its link has, unless it was answered first. */
+export const expireInvitation = internalMutation({
+  args: { invitationId: v.id("organizationInvitations") },
+  returns: v.null(),
+  handler: async (ctx, { invitationId }) => {
+    const invitation = await ctx.db.get("organizationInvitations", invitationId);
+    if (invitation?.state === "pending") await ctx.db.patch("organizationInvitations", invitationId, { state: "expired", updatedAt: Date.now() });
     return null;
   },
 });
