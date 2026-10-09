@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation } from "../lib/functions";
 import { internal } from "../_generated/api";
-import { countUsage } from "../billing/usageLog";
+import { usageAgg, usageOps } from "../billing/usageLog";
 
 /**
  * Backfill: counts charges recorded before `usageAgg` existed, or before it counted them by
@@ -15,7 +15,8 @@ export const run = internalMutation({
   returns: v.object({ counted: v.number(), isDone: v.boolean() }),
   handler: async (ctx, { cursor }) => {
     const page = await ctx.db.query("billingUsage").paginate({ numItems: 200, cursor: cursor ?? null });
-    for (const row of page.page) await countUsage(ctx, row);
+    // One batch for the page, as the ledger does: queued one charge at a time, each reads the queue again.
+    await usageAgg.enqueueBatch(ctx, page.page.flatMap(usageOps));
     if (!page.isDone) {
       await ctx.scheduler.runAfter(0, internal.migrations.countBillingUsage.run, { cursor: page.continueCursor });
     }
