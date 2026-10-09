@@ -20,6 +20,8 @@ export const assistantReplyValidator = v.object({
   attemptId: v.string(),
   /** Who sent the message it answers. It runs with their access, on their credits. */
   senderId: v.id("users"),
+  /** The workspace it acts in (./access.ts `replyWorkspace`), whose replies at once it counts against. Absent on a reply started before chats were in workspaces (#650). */
+  workspaceId: v.optional(v.id("workspaces")),
   /** The exchange it belongs to: the agent component's order of the message it answers. */
   order: v.number(),
   startedAt: v.number(),
@@ -93,9 +95,11 @@ export const assistantLimitFields = {
   files: v.optional(v.literal(true)),
 };
 
-/** A person's own record with the assistant: what the chats they start take, and what their last replies cost. */
+/** A person's own record with the assistant in a workspace: what the chats they start there take, and what their last replies there cost. */
 export const assistantSpenderFields = {
   userId: v.id("users"),
+  /** The workspace it's their record in (#650); slice 8 makes it required. */
+  workspaceId: v.optional(v.id("workspaces")),
   /** Set while "Use these for my new chats" is on: the limits a chat they start begins with. */
   newChats: v.optional(v.object({ replyLimit: v.optional(v.number()), jobs: v.optional(assistantAllowanceValidator) })),
   /**
@@ -111,6 +115,9 @@ export const recentCostsValidator = capped(v.array(v.number()), RECENT_REPLIES);
 export const UNDONE_TOLD = 20;
 export const assistantThreadFields = {
   ownerId: v.id("users"),
+  /** The workspace it's in, and who made it (#650); slice 8 makes them required. */
+  workspaceId: v.optional(v.id("workspaces")),
+  createdBy: v.optional(v.id("users")),
   title: v.string(),
   agentThreadId: v.string(),
   /** When its newest message was sent; a chat with none yet has when it was made. */

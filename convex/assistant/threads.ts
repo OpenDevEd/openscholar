@@ -158,13 +158,13 @@ function titled(title: string | undefined) {
 
 export const createAction = defineUserMutation({
   path: "assistant/threads:create",
-  description: "Starts a new assistant chat that belongs to the person, on a model and reasoning effort if given. Returns its ID.",
+  description: "Starts a new assistant chat in the workspace, made by the person, on a model and reasoning effort if given. Returns its ID.",
   args: { title: v.optional(v.string()), modelId: v.optional(v.id("models")), effort: v.optional(effortValidator) },
   returns: v.id("assistantThreads"),
   spendsCredits: false,
   outsideEffect: false,
   undoable: false,
-  run: async (ctx, { userId }, args) => {
+  run: async (ctx, { userId, workspaceId }, args) => {
     await requireFeature(ctx, FLAG, userId);
     const title = titled(args.title) || NEW_CHAT_TITLE;
     if (args.modelId) await pickable(ctx, args.modelId, args.effort);
@@ -173,6 +173,8 @@ export const createAction = defineUserMutation({
     const agentThreadId = await createThread(ctx, components.agent, { userId, title });
     const threadId = await ctx.db.insert("assistantThreads", {
       ownerId: userId,
+      workspaceId,
+      createdBy: userId,
       title,
       agentThreadId,
       lastMessageAt: now,
@@ -180,8 +182,11 @@ export const createAction = defineUserMutation({
       createdAt: now,
       updatedAt: now,
     });
-    await ctx.db.insert("assistantThreadAccess", { threadId, principal: userPrincipal(userId), role: "owner", lastMessageAt: now, createdAt: now });
-    await startWith(ctx, threadId, userId);
+    // A chat in your own workspace lists through your own principal; one in an organization through the organization's workspace.
+    if ((await ctx.db.get("workspaces", workspaceId))?.kind === "personal") {
+      await ctx.db.insert("assistantThreadAccess", { threadId, principal: userPrincipal(userId), role: "owner", lastMessageAt: now, createdAt: now });
+    }
+    await startWith(ctx, threadId, userId, workspaceId);
     return threadId;
   },
 });
@@ -191,49 +196,66 @@ export const createForAssistant = assistantMutation(createAction);
 export const listAction = defineUserQuery({
   path: "assistant/threads:list",
   description:
-    "Lists the assistant chats the person can open, newest first, a page at a time: all of them, only their own, or only the ones shared with them. " +
+    "Lists the assistant chats in the workspace the person can open, newest first, a page at a time: all of them, only the ones they made, or only the ones shared with them. " +
     "Given `text`, only chats whose title, or the start of whose newest message, contains it. Each comes with the start of its newest message, whether a reply is being written in it, " +
     "the first few people in it and who of them has it open now.",
   args: { scope: v.union(v.literal("all"), v.literal("mine"), v.literal("shared")), text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(listedValidator),
-  run: async (ctx, { userId }, { scope, text, paginationOpts }) => {
+  run: async (ctx, { userId, workspaceId, role }, { scope, text, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const user = await ctx.db.get("users", userId);
     if (!user) return { page: [], isDone: true, continueCursor: "" };
-    const principals = await principalsOf(ctx, user);
-    const mine = new Set(principals);
     const needle = text?.trim().toLowerCase();
-    // Their own chats are all under their own principal.
-    const through = scope === "mine" ? principals.slice(0, 1) : principals;
-    const rows = mergedStream(
-      through.map((principal) =>
-        stream(ctx.db, schema).query("assistantThreadAccess").withIndex("by_principal_and_lastMessageAt", (q) => q.eq("principal", principal)).order("desc"),
-      ),
-      ["lastMessageAt"],
-    );
+    const matches = (thread: Doc<"assistantThreads"> | null) => !!thread && (!needle || `${thread.title}\n${thread.preview ?? ""}`.toLowerCase().includes(needle));
+    const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LIST_PAGE_MAX), maximumRowsRead: LIST_FILTER_ROWS, maximumBytesRead: LIST_PAGE_BYTES };
     // Each chat the filter keeps: its access rows and what they let the person do, for the page built below.
     const kept = new Map<string, { role: AssistantRole; access: Doc<"assistantThreadAccess">[] }>();
-    const read = await rows
-      .filterWith(async (row) => {
-        if (scope !== "all" && (row.role === "owner") !== (scope === "mine")) return false;
-        // One read of the chat's access rows says both which of the person's principals reach
-        // it and the most they may do. A chat that reaches them several ways lists once,
-        // through the first of those principals.
-        const access = await accessRows(ctx, row.threadId);
-        const reaching = access.filter((other) => mine.has(other.principal));
-        if (principals.find((principal) => reaching.some((other) => other.principal === principal)) !== row.principal) return false;
-        if (needle) {
-          const thread = await ctx.db.get("assistantThreads", row.threadId);
-          if (!thread || !`${thread.title}\n${thread.preview ?? ""}`.toLowerCase().includes(needle)) return false;
-        }
-        kept.set(row.threadId, { role: best(reaching.map((other) => other.role)), access });
-        return true;
-      })
-      .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LIST_PAGE_MAX), maximumRowsRead: LIST_FILTER_ROWS, maximumBytesRead: LIST_PAGE_BYTES });
+    let read: { page: Id<"assistantThreads">[]; isDone: boolean; continueCursor: string };
+    if ((await ctx.db.get("workspaces", workspaceId))?.kind === "organization") {
+      // An organization's chats are all its members' (#650): none of them are shared with them, and each is its maker's and its admins' to manage.
+      if (scope === "shared") return { page: [], isDone: true, continueCursor: "" };
+      const chats = await stream(ctx.db, schema)
+        .query("assistantThreads")
+        .withIndex("by_workspace_and_lastMessageAt", (q) => q.eq("workspaceId", workspaceId))
+        .order("desc")
+        .filterWith(async (thread) => {
+          if ((scope === "mine" && thread.createdBy !== userId) || !matches(thread)) return false;
+          kept.set(thread._id, { role: role === "admin" || thread.createdBy === userId ? "owner" : "write", access: await accessRows(ctx, thread._id) });
+          return true;
+        })
+        .paginate(opts);
+      read = { ...chats, page: chats.page.map((thread) => thread._id) };
+    } else {
+      const principals = await principalsOf(ctx, user);
+      const mine = new Set(principals);
+      // Their own chats are all under their own principal.
+      const through = scope === "mine" ? principals.slice(0, 1) : principals;
+      const rows = mergedStream(
+        through.map((principal) =>
+          stream(ctx.db, schema).query("assistantThreadAccess").withIndex("by_principal_and_lastMessageAt", (q) => q.eq("principal", principal)).order("desc"),
+        ),
+        ["lastMessageAt"],
+      );
+      const access = await rows
+        .filterWith(async (row) => {
+          if (scope !== "all" && (row.role === "owner") !== (scope === "mine")) return false;
+          // One read of the chat's access rows says both which of the person's principals reach
+          // it and the most they may do. A chat that reaches them several ways lists once,
+          // through the first of those principals.
+          const rowsOf = await accessRows(ctx, row.threadId);
+          const reaching = rowsOf.filter((other) => mine.has(other.principal));
+          if (principals.find((principal) => reaching.some((other) => other.principal === principal)) !== row.principal) return false;
+          if (needle && !matches(await ctx.db.get("assistantThreads", row.threadId))) return false;
+          kept.set(row.threadId, { role: best(reaching.map((other) => other.role)), access: rowsOf });
+          return true;
+        })
+        .paginate(opts);
+      read = { ...access, page: access.page.map((row) => row.threadId) };
+    }
     const page = await Promise.all(
-      read.page.map(async (row) => {
-        const thread = await ctx.db.get("assistantThreads", row.threadId);
-        const found = kept.get(row.threadId);
+      read.page.map(async (threadId) => {
+        const thread = await ctx.db.get("assistantThreads", threadId);
+        const found = kept.get(threadId);
         if (!thread || !found) return [];
         // One more than the row shows, since the reader may be among them. Anyone in the room
         // could open the chat when they joined it, through a grant of their own or an organization's.

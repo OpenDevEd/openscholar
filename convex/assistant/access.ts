@@ -1,8 +1,8 @@
 /**
- * Who can open an assistant chat (#324). A chat's access rows name its principals: its
- * owner, the people it is shared with, and the organizations whose every member it is
- * shared with. Nothing here is a Convex function, so queries, mutations and triggers can
- * all import it.
+ * Who can open an assistant chat (#324). Anyone who can act in its workspace can (#650),
+ * and so can the principals its access rows name: the owner of a chat in their own
+ * workspace, the people it is shared with, and the organizations whose every member it is
+ * shared with. Nothing here is a Convex function, so queries and mutations can import it.
  */
 import type { Infer } from "convex/values";
 import { components, internal } from "../_generated/api";
@@ -11,6 +11,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { MAX_ASSISTANT_THREAD_GRANTS } from "../lib/queryBounds";
 import { readMemberOrganizations } from "../organizationFeatures";
+import { actorIn, personalWorkspaceOf, workspaceOf } from "../workspaces/actor";
 import type { assistantPrincipalValidator, assistantRoleValidator } from "./validators";
 
 export type AssistantRole = Infer<typeof assistantRoleValidator>;
@@ -72,18 +73,44 @@ export async function roleAmong(ctx: QueryCtx | MutationCtx, threadId: Id<"assis
   return roles.length ? best(roles) : null;
 }
 
+/** The workspace a chat is in. */
+export const chatWorkspace = (ctx: Pick<QueryCtx, "db">, thread: Doc<"assistantThreads">) => workspaceOf(ctx, { userId: thread.ownerId, workspaceId: thread.workspaceId });
+
+/**
+ * The most this person may do in the chat, or null when they can't open it: through its
+ * access rows, and as someone who can act in its workspace, where a chat is its maker's
+ * and its admins' to rename, share and delete, and every member's to write in.
+ */
+export async function roleIn(ctx: QueryCtx | MutationCtx, user: Doc<"users">, thread: Doc<"assistantThreads">): Promise<AssistantRole | null> {
+  const granted = await roleAmong(ctx, thread._id, await principalsOf(ctx, user));
+  if (granted === "owner") return granted;
+  const actor = await actorIn(ctx, user, await chatWorkspace(ctx, thread));
+  const member: AssistantRole | null = !actor ? null : actor.role === "admin" || thread.createdBy === user._id ? "owner" : "write";
+  return granted && member ? best([granted, member]) : (granted ?? member);
+}
+
 /**
  * The chat and what this person may do in it. A chat that doesn't exist and one that isn't
  * shared with them fail the same way, so its ID tells a stranger nothing.
  */
 export async function requireThread(ctx: QueryCtx | MutationCtx, userId: Id<"users">, threadId: Id<"assistantThreads">, atLeast: AssistantRole = "read") {
   const [thread, user] = await Promise.all([ctx.db.get("assistantThreads", threadId), ctx.db.get("users", userId)]);
-  const role = thread && user ? await roleAmong(ctx, threadId, await principalsOf(ctx, user)) : null;
+  const role = thread && user ? await roleIn(ctx, user, thread) : null;
   if (!thread || !role) throw createError("NOT_FOUND", "Chat not found");
   if (RANK[role] < RANK[atLeast]) {
     throw createError("FORBIDDEN", atLeast === "owner" ? "Only the chat's owner can do this." : "You can read this chat, but not write in it.");
   }
   return { thread, role };
+}
+
+/**
+ * The workspace a person's replies in a chat act in, and spend in: the chat's, for anyone
+ * who can act there, and otherwise their own, so what someone a chat is shared with runs
+ * in it is theirs (#650).
+ */
+export async function replyWorkspace(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, thread: Doc<"assistantThreads">): Promise<Id<"workspaces">> {
+  const [workspaceId, user] = await Promise.all([chatWorkspace(ctx, thread), ctx.db.get("users", userId)]);
+  return user && (await actorIn(ctx, user, workspaceId)) ? workspaceId : await personalWorkspaceOf(ctx, userId);
 }
 
 /** Moves the chat to the top of every list it shows in: its own row and each access row take the new time. */

@@ -47,8 +47,9 @@ export type Turn = {
   effort?: Effort;
   /** Names this run of the reply. Its credits are held under it. */
   attemptId?: string;
-  /** The reply this request is part of, for its sender's record of what replies cost, when a charge is settled after it ended. */
+  /** The reply this request is part of, and the workspace it acts in, for its sender's record there of what replies cost, when a charge is settled after it ended. */
   replyId?: string;
+  replyWorkspace?: Id<"workspaces">;
   /** Credits held before the reply starts, worked out at the price of the model it runs on (lib/pricing/estimate.ts). */
   credits: (pricing: Pricing) => number | Promise<number>;
   /** Asked when that hold is refused: what to hold in its place, when the person turns out to have less. */
@@ -476,7 +477,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
         userId,
         chargeId,
         generationId: unfinishedGeneration,
-        ...(turn.replyId ? { reply: turn.replyId } : {}),
+        ...(turn.replyId ? { reply: turn.replyId, ...(turn.replyWorkspace ? { replyWorkspace: turn.replyWorkspace } : {}) } : {}),
         extraUsd: completedUsd,
         earlierTokens: tokenCounts(aggregateUsage(stepUsages)),
         attempt: 0,

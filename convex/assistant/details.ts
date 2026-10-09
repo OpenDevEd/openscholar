@@ -10,9 +10,9 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { readMemberOrganizations } from "../organizationFeatures";
 import { findSearch } from "../research/records";
-import { personalWorkspaceOf } from "../workspaces/actor";
+import { isInWorkspace } from "../workspaces/actor";
 import { currentSearch } from "../../lib/research/records";
-import { personName, principalsOf, roleAmong } from "./access";
+import { personName, roleIn } from "./access";
 import { workUrl } from "../../lib/openalex/work-id";
 import { ASKED_DETAILS_MAX, ASKED_EACH_DETAILS_MAX, ASKED_EACH_MAX } from "./validators";
 
@@ -39,7 +39,8 @@ function plain(value: unknown, path: string[] = []): Leaf[] {
   return Object.entries(value).flatMap(([key, inner]) => plain(inner, Array.isArray(value) ? path : [...path, key]));
 }
 
-export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: string): Promise<Array<{ name: string; value: string }>> {
+/** What a call would be given, for `reader`, its records named as they're called in `workspaceId`, the one the reply acts in. */
+export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId: Id<"workspaces">, input: string): Promise<Array<{ name: string; value: string }>> {
   let args: unknown;
   try {
     args = JSON.parse(input);
@@ -48,14 +49,16 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
     return [];
   }
   const mine = await readMemberOrganizations(ctx, reader);
-  // The reader's own workspace, read once when a search is named, until chats belong to one (#650).
-  let workspace: Promise<Id<"workspaces">> | undefined;
-  const own = () => (workspace ??= personalWorkspaceOf(ctx, reader._id));
+  /** Whether the reader can open a chat. */
+  const opens = async (threadId: Id<"assistantThreads">) => {
+    const thread = await ctx.db.get("assistantThreads", threadId);
+    return thread !== null && (await roleIn(ctx, reader, thread)) !== null;
+  };
   /** The name of the record an ID names, when the reader can already see it. */
   const named = async (id: string, key: string): Promise<string | null> => {
-    // A saved search has the ID its page gave it, not a document's. It is the reader's own or it isn't found.
+    // A saved search has the ID its page gave it, not a document's. It is the workspace's or it isn't found.
     if (SEARCH_ID.test(id)) {
-      const search = await findSearch(ctx, await own(), id);
+      const search = await findSearch(ctx, workspaceId, id);
       // One saved with filters alone has no query to show: it is named as such, never by its ID.
       return search ? currentSearch(search.data).query : null;
     }
@@ -63,48 +66,47 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
     // argument is a paper's ID: a name or a title that reads like one is shown as it was typed.
     const work = PAPER_KEYS.has(key) ? workUrl(id) : null;
     if (work) {
-      const workspaceId = await own();
       return (await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", work)).first())?.title ?? null;
     }
     const threadId = ctx.db.normalizeId("assistantThreads", id);
-    if (threadId) return (await roleAmong(ctx, threadId, await principalsOf(ctx, reader))) ? ((await ctx.db.get("assistantThreads", threadId))?.title ?? null) : null;
+    if (threadId) return (await opens(threadId)) ? ((await ctx.db.get("assistantThreads", threadId))?.title ?? null) : null;
     // A change the assistant made, which undoing one names by its step: how many changes it was and what they were about, to someone who reads its chat.
     // Only where the argument is that change: a title that reads like a step's ID is shown as it was typed.
     const stepId = key === "change" ? ctx.db.normalizeId("assistantSteps", id) : null;
     if (stepId) {
       const step = await ctx.db.get("assistantSteps", stepId);
-      return step && (await roleAmong(ctx, step.threadId, await principalsOf(ctx, reader))) ? [step.count ?? step.batch, step.subject].filter((part) => part !== undefined).join(", ") : null;
+      return step && (await opens(step.threadId)) ? [step.count ?? step.batch, step.subject].filter((part) => part !== undefined).join(", ") : null;
     }
     // A file attached to a chat (#648), to someone who reads the chat.
     const fileId = ctx.db.normalizeId("assistantFiles", id);
     if (fileId) {
       const file = await ctx.db.get("assistantFiles", fileId);
-      return file?.threadId && (await roleAmong(ctx, file.threadId, await principalsOf(ctx, reader))) ? file.name : null;
+      return file?.threadId && (await opens(file.threadId)) ? file.name : null;
     }
     const collectionId = ctx.db.normalizeId("collections", id);
     if (collectionId) {
       const collection = await ctx.db.get("collections", collectionId);
-      return collection && collection.workspaceId === (await own()) ? collection.name : null;
+      return collection && collection.workspaceId === workspaceId ? collection.name : null;
     }
     const itemId = ctx.db.normalizeId("libraryItems", id);
     if (itemId) {
       const item = await ctx.db.get("libraryItems", itemId);
-      return item && item.workspaceId === (await own()) ? item.title : null;
+      return item && item.workspaceId === workspaceId ? item.title : null;
     }
     const removalId = ctx.db.normalizeId("libraryRemovals", id);
     if (removalId) {
       const removal = await ctx.db.get("libraryRemovals", removalId);
-      return removal && removal.workspaceId === (await own()) ? removal.item.title : null;
+      return removal && removal.workspaceId === workspaceId ? removal.item.title : null;
     }
     const screeningId = ctx.db.normalizeId("screeningJobs", id);
     if (screeningId) {
       const job = await ctx.db.get("screeningJobs", screeningId);
-      return job?.userId === reader._id ? job.label || null : null;
+      return job && (await isInWorkspace(ctx, job, workspaceId)) ? job.label || null : null;
     }
     const extractionId = ctx.db.normalizeId("extractionJobs", id);
     if (extractionId) {
       const job = await ctx.db.get("extractionJobs", extractionId);
-      return job?.userId === reader._id ? job.name || null : null;
+      return job && (await isInWorkspace(ctx, job, workspaceId)) ? job.name || null : null;
     }
     const organizationId = ctx.db.normalizeId("organizations", id);
     if (organizationId) return mine.find(({ organization }) => organization._id === organizationId)?.organization.name ?? null;
@@ -147,13 +149,13 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
  * its changes is given alike, as `detailsOf` says it, then the first of its changes, each as
  * what it alone is given: the record it's made to, and what it gives that record.
  */
-export async function bulkOf(ctx: QueryCtx, reader: Doc<"users">, { input, shown }: { input: string; shown?: string }) {
+export async function bulkOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId: Id<"workspaces">, { input, shown }: { input: string; shown?: string }) {
   let each: Record<string, unknown>[];
   try {
     // One over a set of papers says what it shows: what its changes share, and the first papers by title, which the reader may not have saved yet.
     if (shown) {
       const said = JSON.parse(shown) as { shared: Record<string, unknown>; each: string[] };
-      return { details: await detailsOf(ctx, reader, JSON.stringify(said.shared)), each: said.each.slice(0, ASKED_EACH_MAX).map((title) => [{ name: "title", value: title }]) };
+      return { details: await detailsOf(ctx, reader, workspaceId, JSON.stringify(said.shared)), each: said.each.slice(0, ASKED_EACH_MAX).map((title) => [{ name: "title", value: title }]) };
     }
     each = JSON.parse(input) as Record<string, unknown>[];
   } catch {
@@ -163,6 +165,6 @@ export async function bulkOf(ctx: QueryCtx, reader: Doc<"users">, { input, shown
   const [first = {}] = each;
   const shared = Object.fromEntries(Object.entries(first).filter(([key, value]) => each.length > 1 && each.every((item) => JSON.stringify(item[key]) === JSON.stringify(value))));
   const own = (item: Record<string, unknown>) => JSON.stringify(Object.fromEntries(Object.entries(item).filter(([key]) => !(key in shared))));
-  const changes = await Promise.all(each.slice(0, ASKED_EACH_MAX).map(async (item) => (await detailsOf(ctx, reader, own(item))).slice(0, ASKED_EACH_DETAILS_MAX)));
-  return { details: await detailsOf(ctx, reader, JSON.stringify(shared)), each: changes };
+  const changes = await Promise.all(each.slice(0, ASKED_EACH_MAX).map(async (item) => (await detailsOf(ctx, reader, workspaceId, own(item))).slice(0, ASKED_EACH_DETAILS_MAX)));
+  return { details: await detailsOf(ctx, reader, workspaceId, JSON.stringify(shared)), each: changes };
 }

@@ -416,7 +416,7 @@ export function toolsFor(
     const subject = subjectOf(input);
     const stepId =
       allowed ??
-      (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(within ? { credits: within.credits } : {}), ...(onlyReads(entry) ? { reads: true as const, request: made } : {}) }));
+      (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, workspaceId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(within ? { credits: within.credits } : {}), ...(onlyReads(entry) ? { reads: true as const, request: made } : {}) }));
     try {
       // A change ends its step in its own transaction, so the two are saved together. A read's step is ended here.
       const change = changesSomething(entry);
@@ -456,7 +456,7 @@ export function toolsFor(
   /** Why changes would all be refused, from trying them and undoing it (./bulk.ts `tryChanges`). Null when one of them would be made, or trying says nothing. */
   const tried = async (path: string, items: unknown[]): Promise<string | null> => {
     try {
-      await ctx.runMutation(internal.assistant.bulk.tryChanges, { userId, path, items: JSON.stringify(items) });
+      await ctx.runMutation(internal.assistant.bulk.tryChanges, { userId, workspaceId, path, items: JSON.stringify(items) });
     } catch (error) {
       const data = readConvexErrorData(error);
       if (data?.code === TRIED && data.message) {
@@ -497,7 +497,7 @@ export function toolsFor(
         found = { entry, items: change.items, kept, about: change.shared, shown: JSON.stringify({ shared: change.shared, each: papers.slice(0, ASKED_EACH_MAX).map((paper) => cut(paper.title, 200)) }) };
       }
       const about = JSON.stringify(found.about);
-      const subject = await ctx.runQuery(internal.assistant.steps.about, { userId, input: about });
+      const subject = await ctx.runQuery(internal.assistant.steps.about, { userId, workspaceId, input: about });
       const variant = variantIn(found.entry.path, found.items[0]);
       return { tool: toolName, entry: found.entry, items: found.items, kept: found.kept, about, ...(found.shown ? { shown: found.shown } : {}), ...(variant ? { variant } : {}), ...(subject ? { subject } : {}) };
     } catch (error) {
@@ -556,6 +556,7 @@ export function toolsFor(
         threadId,
         order,
         userId,
+        workspaceId,
         toolCallId,
         path: entry.path,
         // The first of them say what kind of change it is; all of them would not fit.
@@ -583,7 +584,7 @@ export function toolsFor(
       }
       try {
         // Typed here: the generated API's types depend on this module, so inference would loop.
-        const done: { took: number; made: number; reversible: number; failed: number; why?: string } = await written(() => ctx.runMutation(internal.assistant.bulk.apply, { userId, stepId, path: entry.path, items: JSON.stringify(chunk), approved: asked !== undefined, key: `${key}:${tried}` }));
+        const done: { took: number; made: number; reversible: number; failed: number; why?: string } = await written(() => ctx.runMutation(internal.assistant.bulk.apply, { userId, workspaceId, stepId, path: entry.path, items: JSON.stringify(chunk), approved: asked !== undefined, key: `${key}:${tried}` }));
         made += done.made;
         reversible += done.reversible;
         failed += done.failed;

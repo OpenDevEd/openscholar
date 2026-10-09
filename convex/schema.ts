@@ -220,8 +220,10 @@ export default defineSchema({
     .index("by_agentThreadId", ["agentThreadId"])
     // An account's chats, for deleting them with it.
     .index("by_owner", ["ownerId"])
-    // The replies being written for a person, which are limited.
-    .index("by_replySender", ["reply.senderId"])
+    // A workspace's chats, newest first.
+    .index("by_workspace_and_lastMessageAt", ["workspaceId", "lastMessageAt"])
+    // The replies being written in a workspace, which are limited.
+    .index("by_replyWorkspace", ["reply.workspaceId"])
     // Every chat writing a reply, oldest first, for releasing the ones whose action died.
     .index("by_replyStartedAt", ["reply.startedAt"]),
   // The actions a chat's replies ran, each found by the model's ID for the call.
@@ -242,7 +244,7 @@ export default defineSchema({
   assistantBulkPapers: defineTable({ userId: v.id("users"), key: v.string(), first: v.number(), items: v.string(), runningSince: v.optional(v.number()) }).index("by_key_and_first", ["key", "first"]),
   // What each person lets the assistant spend in a chat, and each person's own record (convex/assistant/spending.ts).
   assistantLimits: defineTable(assistantLimitFields).index("by_thread_and_user", ["threadId", "userId"]).index("by_user", ["userId"]),
-  assistantSpenders: defineTable(assistantSpenderFields).index("by_user", ["userId"]),
+  assistantSpenders: defineTable(assistantSpenderFields).index("by_user", ["userId"]).index("by_workspace_and_user", ["workspaceId", "userId"]),
   // Files attached to chats (convex/assistant/files.ts): a message's, a chat's and a person's, and the ones due to expire.
   assistantFiles: defineTable(assistantFileFields)
     .index("by_message", ["messageId"])
