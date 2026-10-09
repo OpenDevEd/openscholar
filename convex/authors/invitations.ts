@@ -9,6 +9,7 @@ import { createError } from "../lib/errors";
 import { MAX_PENDING_INVITATIONS_PER_PROFILE, MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL, MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
 import { rateLimit } from "../lib/rateLimit";
 import { requireProfileAccess } from "./access";
+import { profileRoleForUser } from "./access";
 
 export const prepare = internalMutation({
   args: {profileId: v.id("authorProfiles"), email: v.string()},
@@ -114,7 +115,8 @@ export const respondVerified = internalMutation({
     if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
     const profile = await ctx.db.get("authorProfiles", invitation.profileId);
     if (!profile) throw createError("NOT_FOUND", "Author profile not found");
-    if (args.accept && profile.createdBy !== user._id) {
+    // Someone who owns it already needs no place as its editor; its maker who left the workspace does.
+    if (args.accept && (await profileRoleForUser(ctx, profile, user._id)) !== "owner") {
       const member = await ctx.db.query("authorProfileMembers")
         .withIndex("by_profileId_and_userId", q => q.eq("profileId", profile._id).eq("userId", user._id)).unique();
       if (!member) {
