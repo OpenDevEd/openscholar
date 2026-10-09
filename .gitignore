@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# npm run verify: its server, screenshots and last pass
+.verify/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
