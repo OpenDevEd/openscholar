@@ -32,6 +32,7 @@ import {
   paperStatusValidator,
 } from "../validators";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
+import { personalWorkspaceOf } from "../../workspaces/actor";
 import { extractionPricing } from "../../ai/serverModel";
 import { extractionPaperCredits } from "../../../lib/pricing";
 
@@ -269,6 +270,8 @@ export const ownedLibraryItems = internalQuery({
     // A library row holds its paper's full JSON, so a read is bounded by count, well under
     // Convex's 16 MiB a transaction: callers read a job's papers in batches of this size.
     if (ids.length > LIBRARY_READ_BATCH) throw new Error(`Read at most ${LIBRARY_READ_BATCH} library papers at a time`);
+    // Papers in the person's own workspace until extraction jobs belong to one (#650).
+    const workspaceId = await personalWorkspaceOf(ctx, userId);
     const rows = await Promise.all(
       ids.map((id) => {
         const itemId = ctx.db.normalizeId("libraryItems", id);
@@ -276,7 +279,7 @@ export const ownedLibraryItems = internalQuery({
       }),
     );
     return rows.flatMap((row) =>
-      row && row.userId === userId
+      row && row.workspaceId === workspaceId
         ? [{
             _id: row._id, title: row.title, authors: row.authors, doi: row.doi, openalexId: row.openalexId, abstract: row.abstract,
             publicationYear: row.publicationYear, journal: row.journal, citedByCount: row.citedByCount, workType: row.workType,
