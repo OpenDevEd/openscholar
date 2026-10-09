@@ -48,15 +48,8 @@ async function organizationRole(ctx: QueryCtx, organizationId: Id<"organizations
   return !membership ? null : membership.role === "org:admin" ? "admin" : "member";
 }
 
-/**
- * A person's own workspace. The assistant acts in its sender's until chats belong to a
- * workspace (#650, the assistant's slice), and the browser names it until pages carry theirs.
- */
-export async function personalWorkspaceOf(ctx: Pick<QueryCtx, "db">, userId: Id<"users">): Promise<Id<"workspaces">> {
-  const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
-  if (!workspace) throw createError("NOT_FOUND", "Workspace not found");
-  return workspace._id;
-}
+export { personalWorkspaceOf, workspaceOf } from "./personal";
+import { personalWorkspaceOf } from "./personal";
 
 /** `personalWorkspaceOf`, for an action. */
 export const personalOf = internalQuery({

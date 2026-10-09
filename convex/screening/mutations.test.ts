@@ -9,6 +9,8 @@ import { setupScreeningWorkpool } from "./workpool.test-support";
 import { createJob, insertJob } from "./createJob.test-support";
 import { screeningPaperCreditsFor } from "./estimate";
 import { SCREENING_POOL_SIZE } from "../workpool";
+import { personalWorkspaceOf } from "../workspaces/actor";
+import { runUntriggered } from "../../tests/convex-test-with-limits";
 
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 
@@ -664,4 +666,56 @@ describe("handleScreeningComplete", () => {
       }
     },
   );
+});
+
+describe("jobs in workspaces (#650)", () => {
+  const rules = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }], minimumScore: 1 };
+
+  it("makes a screening job, and its screening, in the workspace it was started in, as its starter's", async () => {
+    const t = convexTest(schema);
+    setupScreeningWorkpool(t);
+    const user = await seedUser(t, "clerk_test");
+    await seedCredits(t, user._id, 100, 0);
+    const lab = await t.run(async (ctx) => {
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      return ctx.db.insert("workspaces", { kind: "organization", organizationId });
+    });
+    const { jobId } = await createJob(t.withIdentity({ subject: "clerk_test" }), { workspaceId: lab, papers: makePapers(2), questions: [{ key: "q1", question: "Relevant?" }], scoringConfig: rules });
+    const { job, screening } = await t.run(async (ctx) => {
+      const job = (await ctx.db.get("screeningJobs", jobId))!;
+      return { job, screening: await ctx.db.get("screenings", job.screeningId!) };
+    });
+    expect(job).toMatchObject({ workspaceId: lab, createdBy: user._id });
+    expect(screening).toMatchObject({ workspaceId: lab });
+  });
+
+  it("puts jobs from before workspaces, and what goes with them, in their person's own, however often the backfill runs", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      const user = await seedUser(t, "clerk_test");
+      const own = await t.run((ctx) => personalWorkspaceOf(ctx, user._id));
+      // As they were before workspaces, a screening of a search the search's backfill already reached.
+      await runUntriggered(t, async (ctx) => {
+        const searchId = await ctx.db.insert("searches", { userId: user._id, workspaceId: own, createdBy: user._id, localId: "s", revision: 1, data: { id: "s", query: "q", field: "title_and_abstract", count: 0, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-10-01T00:00:00Z", updatedAt: "2026-10-01T00:00:00Z" } });
+        const screeningId = await ctx.db.insert("screenings", { userId: user._id, searchId, version: 0, createdAt: 1 });
+        await ctx.db.insert("screeningJobs", { userId: user._id, screeningId, status: "completed", totalPapers: 0, questions: [], scoringConfig: rules, createdAt: 1, updatedAt: 1 } as never);
+        const extractionJobId = await ctx.db.insert("extractionJobs", { userId: user._id, name: "Old", status: "completed", createdAt: 1, updatedAt: 1 } as never);
+        const paperId = await ctx.db.insert("extractionPapers", { jobId: extractionJobId, openalexId: "W1", title: "P", status: "completed" } as never);
+        await ctx.db.insert("extractionPaperQueue", { jobId: extractionJobId, userId: user._id, paperId, runEpoch: 0, kind: "initial", status: "completed", priority: 0, attempt: 0, createdAt: 1, updatedAt: 1 });
+        await ctx.db.insert("screeningSlots", { userId: user._id, running: 0 });
+        await ctx.db.insert("recordCounts", { userId: user._id, table: "screeningJobs", count: 1 });
+      });
+      expect(await t.action(internal.migrations.jobWorkspaces.verify, {})).toBe(6);
+      for (let runs = 0; runs < 2; runs++) {
+        await t.mutation(internal.migrations.jobWorkspaces.run, {});
+        await t.finishAllScheduledFunctions(vi.runAllTimers);
+      }
+      expect(await t.action(internal.migrations.jobWorkspaces.verify, {})).toBe(0);
+      const rows = await t.run(async (ctx) => Promise.all((["screeningJobs", "extractionJobs", "screenings", "extractionPaperQueue", "screeningSlots", "recordCounts"] as const).map(async (table) => (await ctx.db.query(table).take(1))[0].workspaceId)));
+      expect(rows).toEqual(Array(6).fill(own));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

@@ -26,6 +26,7 @@ import { SCREENING_POOL_SIZE } from "../workpool";
 import { jobModel, screeningRevision } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
+import { workspaceOf } from "../workspaces/personal";
 import { availableCredits } from "../billing/accounts";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { pricingOf } from "../ai/serverModel";
@@ -120,6 +121,7 @@ export const readingJob = internalQuery({
     v.null(),
     v.object({
       userId: v.id("users"),
+      workspaceId: v.id("workspaces"),
       set: paperSetValidator,
       first: v.number(),
       last: v.number(),
@@ -132,7 +134,7 @@ export const readingJob = internalQuery({
     const job = await ctx.db.get("screeningJobs", jobId);
     if (!job?.reading || job.status !== "processing" || !job.set || job.first === undefined || job.last === undefined) return null;
     return {
-      userId: job.userId, set: job.set, first: job.first, last: job.last, read: job.readPlace?.read ?? 0,
+      userId: job.userId, workspaceId: await workspaceOf(ctx, job), set: job.set, first: job.first, last: job.last, read: job.readPlace?.read ?? 0,
       ...(job.resume ? { resume: job.resume } : {}),
       ...(job.snapshot ? { snapshot: job.snapshot } : {}),
     };

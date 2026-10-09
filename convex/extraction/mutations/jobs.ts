@@ -34,7 +34,7 @@ import { refillPerson } from "../queue/dispatcher";
 import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
 import { checkScreeningSelection } from "../sources/screening";
 import { bucketItemFromRow } from "../jobSources";
-import { personalWorkspaceOf } from "../../workspaces/actor";
+import { workspaceOf, type InWorkspace } from "../../workspaces/actor";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -65,7 +65,8 @@ const startArgs = {
  * figure (#328), and that figure (../start.ts): the hold already has the credits, so the
  * balance isn't checked again, and the job's papers are charged under it.
  */
-export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: ObjectType<typeof startArgs>, spend?: { hold: string; cap: number }, chatStep?: Id<"assistantSteps">): Promise<{ jobId: Id<"extractionJobs"> }> {
+export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: ObjectType<typeof startArgs>, spend?: { hold: string; cap: number }, chatStep?: Id<"assistantSteps">): Promise<{ jobId: Id<"extractionJobs"> }> {
+  const { userId, workspaceId } = writer;
   await requireFeature(ctx, "extraction.enabled", userId);
   await requireFeature(ctx, "extraction.start", userId);
   await rateLimit(ctx, {
@@ -87,13 +88,11 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
     selection.count = await checkScreeningSelection(ctx, userId, selection.jobId, selection.revision);
     item.sourceRefId = selection.jobId;
   }
-  // A range of a collection or the library holds what the server counts in it now, never what it was sent,
-  // in the person's own workspace until extraction jobs belong to one (#650).
-  const reader = { userId, workspaceId: await personalWorkspaceOf(ctx, userId) };
+  // A range of a collection or the library holds what the server counts in it now, never what it was sent.
   for (const item of deduped) {
     if (!item.librarySet) continue;
     const { collectionId, first, last } = item.librarySet;
-    const held = await papersIn(ctx, reader, collectionId ? { kind: "collection", collectionId } : { kind: "saved" });
+    const held = await papersIn(ctx, writer, collectionId ? { kind: "collection", collectionId } : { kind: "saved" });
     if (held === null) throw createError("NOT_FOUND", "Collection not found");
     if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
     item.librarySet = { ...item.librarySet, count: Math.max(0, Math.min(last, held) - first + 1) };
@@ -137,6 +136,8 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
   const now = Date.now();
   const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
     userId,
+    workspaceId,
+    createdBy: userId,
     name: args.name,
     searchText: jobText({ name: args.name }),
     sourceType,
@@ -184,7 +185,7 @@ export const startJobAction = defineUserMutation({
   undoable: false,
   args: startArgs,
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  run: (ctx, { userId }, args) => startJobFor(ctx, userId, args),
+  run: (ctx, { userId, workspaceId }, args) => startJobFor(ctx, { userId, workspaceId }, args),
 });
 
 export const startJob = userMutation(startJobAction);
@@ -198,11 +199,12 @@ export const duplicateJobAction = defineUserMutation({
   undoable: false,
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  run: async (ctx, { userId }, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
+  run: async (ctx, { userId, workspaceId }, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
     await requireFeature(ctx, "extraction.enabled", userId);
 
     const oldJob = await ctx.db.get("extractionJobs", args.jobId);
-    if (!oldJob || oldJob.userId !== userId) {
+    // The copy is made in the workspace the call acts in, which the original must be in.
+    if (!oldJob || oldJob.userId !== userId || (await workspaceOf(ctx, oldJob)) !== workspaceId) {
       throw createError("NOT_FOUND", "Job not found");
     }
 
@@ -235,6 +237,8 @@ export const duplicateJobAction = defineUserMutation({
     const dupStamp = await extractionStamp(ctx, userId);
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId,
+      workspaceId,
+      createdBy: userId,
       name: `${oldJob.name} (Copy)`,
       searchText: jobText({ name: `${oldJob.name} (Copy)` }),
       sourceType: oldJob.sourceType,

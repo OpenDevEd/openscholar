@@ -15,6 +15,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { SavedSearch } from "../../lib/research/records";
 import { MAX_PENDING_REMOVALS } from "../lib/listCaps";
+import { workspaceOf } from "../workspaces/personal";
 
 /** Who set an answer. `unrecorded` is for answers saved before this was recorded. */
 export type AnswerSource = Doc<"screeningAnswers">["answers"][number]["setBy"];
@@ -28,11 +29,13 @@ export function screeningFor(ctx: Read, searchId: Id<"searches">) {
   return ctx.db.query("screenings").withIndex("by_search", (q) => q.eq("searchId", searchId)).unique();
 }
 
-/** The screening a search's page and its Screen all jobs answer into. */
+/** The screening a search's page and its Screen all jobs answer into, in the search's workspace. */
 export async function ensureScreening(ctx: Write, userId: Id<"users">, searchId: Id<"searches">) {
   const existing = await screeningFor(ctx, searchId);
   if (existing) return existing;
-  return (await ctx.db.get("screenings", await ctx.db.insert("screenings", { userId, searchId, version: 0, createdAt: Date.now() })))!;
+  const search = await ctx.db.get("searches", searchId);
+  const workspaceId = search ? await workspaceOf(ctx, search) : undefined;
+  return (await ctx.db.get("screenings", await ctx.db.insert("screenings", { userId, ...(workspaceId ? { workspaceId } : {}), searchId, version: 0, createdAt: Date.now() })))!;
 }
 
 /** Papers and their answers in the shape a saved search carries. */

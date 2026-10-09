@@ -11,6 +11,7 @@
  */
 import type { Change } from "convex-helpers/server/triggers";
 import { internal } from "../_generated/api";
+import { personalWorkspaceOf } from "../workspaces/personal";
 import type { DataModel, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
@@ -28,7 +29,7 @@ export function countRow(ctx: Pick<QueryCtx, "db">, table: Counted, userId: Id<"
 /** Starts a person's first count of `table`; does nothing once they have one. */
 export async function startCount(ctx: Pick<MutationCtx, "db" | "scheduler">, table: Counted, userId: Id<"users">) {
   if (await countRow(ctx, table, userId)) return;
-  await ctx.db.insert("recordCounts", { userId, table, count: 0, countedTo: 0 });
+  await ctx.db.insert("recordCounts", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), table, count: 0, countedTo: 0 });
   await ctx.scheduler.runAfter(0, internal.research.records.countRecordsPage, { table, userId });
 }
 

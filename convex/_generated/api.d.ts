@@ -301,6 +301,7 @@ import type * as migrations_extractionAnswers from "../migrations/extractionAnsw
 import type * as migrations_extractionEvidence from "../migrations/extractionEvidence.js";
 import type * as migrations_extractionFacets from "../migrations/extractionFacets.js";
 import type * as migrations_extractionSearch from "../migrations/extractionSearch.js";
+import type * as migrations_jobWorkspaces from "../migrations/jobWorkspaces.js";
 import type * as migrations_libraryFacets from "../migrations/libraryFacets.js";
 import type * as migrations_libraryWorkspaces from "../migrations/libraryWorkspaces.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
@@ -700,6 +701,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/extractionEvidence": typeof migrations_extractionEvidence;
   "migrations/extractionFacets": typeof migrations_extractionFacets;
   "migrations/extractionSearch": typeof migrations_extractionSearch;
+  "migrations/jobWorkspaces": typeof migrations_jobWorkspaces;
   "migrations/libraryFacets": typeof migrations_libraryFacets;
   "migrations/libraryWorkspaces": typeof migrations_libraryWorkspaces;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
