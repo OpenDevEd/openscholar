@@ -105,7 +105,7 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
   }
 
   // Stamped with what Screen All runs on (read back at run by screenPaperAction).
-  const serverPick = await resolveTaskPick(ctx, user._id, "screenAll");
+  const serverPick = await resolveTaskPick(ctx, { userId: user._id, workspaceId }, "screenAll");
   const jobId = await ctx.db.insert("screeningJobs", {
     workspaceId,
     createdBy: user._id,
@@ -131,7 +131,7 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
  */
 async function affords(ctx: MutationCtx, userId: Id<"users">, workspaceId: Id<"workspaces">, papers: number, job?: Doc<"screeningJobs">) {
   const available = await availableCredits(ctx, workspaceId);
-  const perPaper = job ? screeningPaperCredits(await pricingOf(ctx, job.serverModelId)) : await screeningPaperCreditsFor(ctx, userId);
+  const perPaper = job ? screeningPaperCredits(await pricingOf(ctx, job.serverModelId)) : await screeningPaperCreditsFor(ctx, { userId, workspaceId });
   const estimate = estimateScreening(papers, available, perPaper).credits;
   return { affordable: available >= estimate, estimate, available };
 }

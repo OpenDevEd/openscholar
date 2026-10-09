@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   reserveAddress: vi.fn(),
   workspace: { kind: "organization", name: "Climate Team", organizationId: "org_1" },
 }));
-vi.mock("@/components/workspaces/parts", () => ({ useCurrentWorkspace: () => mocks.workspace, WorkspaceTile: () => null }));
+vi.mock("@/components/workspaces/parts", () => ({ useCurrentWorkspace: () => mocks.workspace, WorkspaceTag: ({ workspace }: { workspace: { name: string } }) => <span>{workspace.name}</span> }));
 
 vi.mock("@clerk/nextjs", () => ({ useOrganization: () => mocks.organization() }));
 vi.mock("convex/react", () => ({

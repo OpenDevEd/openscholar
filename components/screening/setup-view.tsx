@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { AiIcon, Ban, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
+import { AiIcon, Ban, CircleCheck, CircleHelp, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { ModelPicker } from "@/components/models/model-picker";
-import { EASE, NodeCard } from "@/components/settings/model-map";
+import { EASE } from "@/components/settings/model-map";
 import { Enter, LIST, Segmented, Zone } from "@/components/settings/parts";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { useGenerateScreeningQuestions } from "@/lib/ai/client/router";
@@ -31,8 +30,10 @@ import { getErrorMessage, useAppToast } from "@/lib/toast";
 import type { SearchResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { jobName } from "./job-view";
-import { ANSWER, AnimatedNumber, Chip, ClippedChip, Meter, SOURCE_ICON } from "./parts";
+import { ANSWER, Chip, ClippedChip, SOURCE_ICON } from "./parts";
 import { PaperScope, PickMark, SourceRow } from "./source-row";
+import { CreditCheck } from "@/components/workspaces/credit-check";
+import { ModelsInUse } from "@/components/models/models-in-use";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceScope } from "@/lib/workspaces/url";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
@@ -483,11 +484,8 @@ export function SetupView({
           </div>
         </Zone>
 
-        {model ? (
-          <Zone label={t("model")}>
-            <ModelPicker align="start" tasks={["screenAll"]} current={model} onChange={(m, effort) => models.pickAll(["screenAll"], m, effort)} trigger={<NodeCard interactive paidBy="credits" model={model} />} />
-          </Zone>
-        ) : null}
+        {/* What it screens with, as AI settings set it: changed there, not here (#689). */}
+        {model ? <ModelsInUse label={t("model")} uses={[{ label: t("yesOrNo"), model }]} /> : null}
 
         <Zone label={t("collections")}>
           {source?.kind === "collection" ? (
@@ -540,15 +538,7 @@ export function SetupView({
         </Zone>
 
         <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg">
-          <div className="min-w-48 flex-1 space-y-1.5">
-            <p className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 font-medium"><Coins className="size-3.5 text-primary" /><span>{t.rich("upToCredits", { n: () => <AnimatedNumber value={credits} /> })}</span></span>
-              <span className={cn("tabular-nums transition-colors", enough ? "text-muted-foreground" : "text-destructive")}>
-                {t.rich("balanceLeft", { balance: Math.floor(balance), n: () => <AnimatedNumber value={Math.max(0, Math.floor(balance) - credits)} /> })}
-              </span>
-            </p>
-            <Meter value={Math.min(credits, balance)} max={balance} fill={enough ? "bg-primary" : "bg-destructive"} />
-          </div>
+          <CreditCheck credits={credits} balance={balance} enough={enough} />
           <div className="flex flex-wrap items-center gap-1.5">
             {slots ? <Chip icon={Gauge}>{t("atATime", { limit: slots.limit })}</Chip> : null}
             {waitingFor ? (

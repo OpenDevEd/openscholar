@@ -35,6 +35,7 @@ export function PaperCardGrid({
   onDownloadItem,
   onDownloadEssentialItem,
   hide,
+  extra,
   viewMode = "grid-2",
 }: PaperCardProps) {
   const pathname = usePathname();
@@ -220,6 +221,7 @@ export function PaperCardGrid({
                 <SaveControl paper={result} compact />
               </>
             )}
+            {extra ? <div className="basis-full">{extra}</div> : null}
 
             <div className="ml-auto flex items-center gap-2">
               {/* Cited by count */}

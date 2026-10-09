@@ -12,7 +12,8 @@ import { readMemberOrganizations } from "../organizationFeatures";
 import { findSearch } from "../research/records";
 
 import { currentSearch } from "../../lib/research/records";
-import { personName, roleIn } from "./access";
+import { roleIn } from "./access";
+import { personName } from "../lib/people";
 import { workUrl } from "../../lib/openalex/work-id";
 import { ASKED_DETAILS_MAX, ASKED_EACH_DETAILS_MAX, ASKED_EACH_MAX } from "./validators";
 

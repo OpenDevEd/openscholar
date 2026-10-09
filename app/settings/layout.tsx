@@ -101,7 +101,7 @@ function Shell({ children }: { children: ReactNode }) {
   }
 
   // Your account's settings, then those of the organization you're in. Your own workspace is just
-  // you, so its plan and credits sit with your account.
+  // you, so its plan and credits and its AI sit with your account.
   const planItems: Item[] = hideBilling ? [] : [{ href: "/settings/billing", title: tw("planAndCredits"), icon: BillingIcon, aside: planLabel }];
   const aiItem: Item = { href: "/settings/ai", title: tc("ai"), icon: AiIcon };
   const groups: Array<{ label: string; items: Item[] }> = [
@@ -112,8 +112,7 @@ function Shell({ children }: { children: ReactNode }) {
             { href: "/settings", title: t("items.profile"), icon: PersonIcon },
             { href: "/settings/security", title: t("items.security"), icon: SecurityIcon },
             { href: "/settings/connections", title: tc("connections"), icon: ConnectionsIcon },
-            ...(inOrganization ? [] : planItems),
-            aiItem,
+            ...(inOrganization ? [] : [...planItems, aiItem]),
           ]
         : [aiItem],
     },
@@ -126,6 +125,8 @@ function Shell({ children }: { children: ReactNode }) {
               { href: "/settings/workspace", title: tw("settings.general"), icon: SettingsIcon },
               { href: "/settings/workspace/members", title: tw("membersHeading"), icon: TeamIcon, aside: current?.members === undefined ? undefined : String(current.members) },
               ...planItems,
+              // The organization's preset, which its admins pick (#651).
+              aiItem,
             ]
           : [],
     },

@@ -113,8 +113,9 @@ export const createJobDirect = internalMutation({
   returns: v.id("extractionJobs"),
   handler: async (ctx, args) => {
 
+    const workspaceId = await personalWorkspaceOf(ctx, args.userId);
     const jobId = await ctx.db.insert("extractionJobs", {
-      workspaceId: await personalWorkspaceOf(ctx, args.userId),
+      workspaceId,
       createdBy: args.userId,
       name: args.name,
       searchText: jobText({ name: args.name }),
@@ -122,7 +123,7 @@ export const createJobDirect = internalMutation({
       status: "pending",
       totalPapers: 0,
       runEpoch: 0,
-      ...(await extractionStamp(ctx, args.userId)),
+      ...(await extractionStamp(ctx, { userId: args.userId, workspaceId })),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });

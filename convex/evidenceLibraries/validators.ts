@@ -6,6 +6,7 @@ import {
   type SectionKey,
 } from "../../lib/evidence-libraries/configuration/section-registry";
 import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
+import { presetKeyValidator } from "../aiModelConfig/validators";
 import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
 
 export type { SectionKey };
@@ -147,6 +148,8 @@ export const organizationFields = {
   state: organizationStateValidator,
   /** Set while an admin's deletion runs (convex/organizations/manage.ts): nobody acts in its workspace meanwhile. */
   deletingAt: v.optional(v.number()),
+  /** The AI preset its work runs on, which its admins pick (#651); absent, the default preset. */
+  aiPreset: v.optional(presetKeyValidator),
   /** The colour its admins picked (#651), which tints the rail while someone is in it. Clerk doesn't keep it. */
   colour: v.optional(v.string()),
   createdAt: v.number(),

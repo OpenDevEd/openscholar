@@ -34,6 +34,7 @@ export function PaperCardListSimple({
   onDownloadItem,
   onDownloadEssentialItem,
   hide,
+  extra,
 }: PaperCardProps) {
   const pathname = usePathname();
   const tp = useTranslations("paperCard");
@@ -81,7 +82,7 @@ export function PaperCardListSimple({
           {/* Rating - always visible */}
           <div
             role="group"
-            className="flex-shrink-0"
+            className="flex flex-shrink-0 items-center gap-2"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
@@ -91,6 +92,7 @@ export function PaperCardListSimple({
                 <SaveControl paper={result} compact />
               </div>
             )}
+            {extra}
           </div>
 
           {/* Main content area */}

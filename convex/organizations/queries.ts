@@ -4,12 +4,14 @@ import { paginationOptsValidator, paginationResultValidator, type PaginationOpti
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
-import { personName } from "../assistant/access";
+import { personName } from "../lib/people";
 import { readAccount } from "../billing/accounts";
 import { collectionCountRow } from "../library/collections";
 import { countRow } from "../research/recordCounts";
 import { query } from "../lib/functions";
 import { createError } from "../lib/errors";
+import { presetKeyValidator } from "../aiModelConfig/validators";
+import { DEFAULT_PRESET } from "../../lib/ai/tasks";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { organizationAt, organizationOf } from "./read";
@@ -38,19 +40,25 @@ const workspaceValidator = v.object({
   plan: v.optional(v.string()),
   /** The colour an organization's admins picked. */
   colour: v.optional(v.string()),
+  /** Its credits, once its account is read. */
+  credits: v.optional(v.number()),
+  /** An organization's: the AI preset its work runs on. */
+  aiPreset: v.optional(presetKeyValidator),
 });
 
 /** An organization as the switcher lists it, with the person's role there. */
 async function organizationRow(ctx: QueryCtx, organization: Doc<"organizations">, workspaceId: Id<"workspaces">, role: "admin" | "member") {
   const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).take(MEMBERS_COUNTED + 1);
-  const plan = (await readAccount(ctx, workspaceId))?.plan;
-  return { workspaceId, kind: "organization" as const, name: organization.name, slug: organization.slug, organizationId: organization._id, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}), role, members: members.length, ...(plan ? { plan } : {}), ...(organization.colour ? { colour: organization.colour } : {}) };
+  const account = await readAccount(ctx, workspaceId);
+  const plan = account?.plan;
+  return { ...(account ? { credits: account.balance } : {}), workspaceId, kind: "organization" as const, name: organization.name, slug: organization.slug, organizationId: organization._id, aiPreset: organization.aiPreset ?? DEFAULT_PRESET, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}), role, members: members.length, ...(plan ? { plan } : {}), ...(organization.colour ? { colour: organization.colour } : {}) };
 }
 
 /** The person's own workspace as the switcher lists it: named for them, with their photo. */
 async function ownRow(ctx: QueryCtx, user: Doc<"users">, workspaceId: Id<"workspaces">) {
-  const plan = (await readAccount(ctx, workspaceId))?.plan;
-  return { workspaceId, kind: "personal" as const, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), role: "admin" as const, ...(plan ? { plan } : {}) };
+  const account = await readAccount(ctx, workspaceId);
+  const plan = account?.plan;
+  return { ...(account ? { credits: account.balance } : {}), workspaceId, kind: "personal" as const, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), role: "admin" as const, ...(plan ? { plan } : {}) };
 }
 
 export const workspacesAction = defineUserQuery({

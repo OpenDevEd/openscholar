@@ -7,6 +7,7 @@ import type { ComponentProps, ComponentType, ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Crown, Eye, Mail, MessageSquare, PenLine, ShieldCheck, UserRound } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { IdentityAvatar } from "./identity-avatar";
 
 /** Each role's icon, the same in every list and every picker. */
 export const ROLE_ICONS = {
@@ -43,6 +44,16 @@ export function PersonName({ name, you = false, className }: { name: string; you
     <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
       <span className="min-w-0 truncate">{name}</span>
       {you ? <YouTag /> : null}
+    </span>
+  );
+}
+
+/** A chip led by someone's photo and named for them, with You after yours: who made an item in an organization's list. */
+export function PersonTag({ name, imageUrl, you = false }: { name: string; imageUrl?: string; you?: boolean }) {
+  return (
+    <span className="inline-flex h-6 min-w-0 max-w-full shrink items-center gap-1.5 whitespace-nowrap rounded-full bg-muted pl-0.5 pr-2.5 text-xs text-muted-foreground">
+      <IdentityAvatar name={name} imageUrl={imageUrl} className="size-5" />
+      <PersonName name={name} you={you} />
     </span>
   );
 }

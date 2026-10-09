@@ -34,6 +34,7 @@ import { OrbitMark } from "./orbit-mark";
 import { CARD_SPRING, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
 import { FadeRow, WorkingText } from "./parts";
 import { inWorkspace, useWorkspace, useWorkspaceScope } from "@/lib/workspaces/url";
+import { useCurrentWorkspace, WorkspaceTile } from "@/components/workspaces/parts";
 
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
 export type StepItem = Extract<Item, { role: "step" }>;
@@ -331,6 +332,9 @@ const TYPICAL_COST = new Set(["research/papers:readPdf"]);
 function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddCredits }: { credits: number; typical: boolean; sent: boolean; onAllow: () => void; onAlways: () => void; onDecline: () => void; onAddCredits: () => void }) {
   const t = useTranslations("assistant.asks");
   const account = useQuery(api.billing.accounts.mine, useWorkspaceScope());
+  // In an organization, its credits pay: its logo and name sit beside the balance (#651).
+  const workspace = useCurrentWorkspace();
+  const organization = workspace?.kind === "organization" ? workspace : undefined;
   // Until the balance is read, nothing is said about it, and the row keeps its room.
   const known = account !== undefined;
   const balance = Math.floor(account?.balance ?? 0);
@@ -343,7 +347,13 @@ function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddC
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Coins className="size-3.5 text-primary" />
           <span className="font-medium text-foreground">{t(typical ? "about" : "upTo", { credits })}</span>
-          <span className={cn("ml-auto flex items-center gap-1.5 transition-opacity duration-200", !known && "opacity-0")} aria-hidden={!known}>
+          <span className={cn("ml-auto flex min-w-0 items-center gap-1.5 transition-opacity duration-200", !known && "opacity-0")} aria-hidden={!known}>
+            {organization ? (
+              <>
+                <WorkspaceTile workspace={organization} size="xs" />
+                <span className="min-w-0 truncate">{organization.name}</span>
+              </>
+            ) : null}
             <AnimatedNumber value={balance} />
             <ArrowRight className="size-3" />
             {/* Both labels hold their place, so the row never reflows when the balance changes. */}

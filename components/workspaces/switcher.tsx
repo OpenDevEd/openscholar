@@ -129,12 +129,13 @@ export function useAnswerInvitation() {
 /** The workspace card: the one you're in, the others, invitations, and making one. */
 export function WorkspaceMenu({ onDone, onCreate }: { onDone: () => void; onCreate: () => void }) {
   const t = useTranslations("workspaces");
+  const tc = useTranslations("common");
   const router = useRouter();
   const all = useWorkspaces();
   const current = useCurrentWorkspace();
   const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(current?.workspaceId, { paginationOpts: { cursor: null, numItems: 10 } }));
   const { answering, join, decline } = useAnswerInvitation();
-  const others = (all ?? []).filter((workspace) => workspace.workspaceId !== current?.workspaceId);
+  const others = (all.list ?? []).filter((workspace) => workspace.workspaceId !== current?.workspaceId);
   const go = (slug: string | undefined) => {
     onDone();
     router.push(switchTarget(slug, window.location.pathname, window.location.search.slice(1)));
@@ -175,6 +176,13 @@ export function WorkspaceMenu({ onDone, onCreate }: { onDone: () => void; onCrea
                 </button>
               </li>
             ))}
+            {all.more ? (
+              <li>
+                <button type="button" disabled={all.loading} onClick={all.loadMore} className={cn(ROW, "h-9 justify-center text-xs font-medium text-muted-foreground disabled:opacity-60")}>
+                  {tc("showMore")}
+                </button>
+              </li>
+            ) : null}
           </ul>
         </>
       ) : null}
