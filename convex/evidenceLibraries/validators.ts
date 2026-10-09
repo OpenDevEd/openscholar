@@ -1015,6 +1015,12 @@ export const evidenceLibraryOAuthClientFields = {
 export const clerkDeletedUserFields = {
   clerkId: v.string(),
   deletedAt: v.number(),
+  /**
+   * Once the account's row is purged (#650): its ID and the name it went by, so what it made in
+   * an organization, which stays the organization's, still says who made it.
+   */
+  userId: v.optional(v.id("users")),
+  name: v.optional(v.string()),
 };
 
 /** The DNS records one custom domain needs. */

@@ -508,16 +508,15 @@ export const forget = internalMutation({
   },
 });
 
-/** Deletes a batch of a purged account's files, wherever they were sent. Returns whether all are gone. */
+/**
+ * Deletes a batch of a purged account's files that were never sent. What it sent is part of the
+ * chats it went to: those in its own workspace go with their chats, and others keep theirs (#650).
+ * Returns whether all are gone.
+ */
 export async function purgeFiles(ctx: MutationCtx, userId: Id<"users">) {
-  let left = FORGET_FILES;
-  for (const state of ["pending", "sent", "expired"] as const) {
-    const files = await ctx.db.query("assistantFiles").withIndex("by_user_and_state", (q) => q.eq("userId", userId).eq("state", state)).take(left);
-    for (const file of files) await deleteFile(ctx, file);
-    left -= files.length;
-    if (left === 0) return false;
-  }
-  return true;
+  const files = await ctx.db.query("assistantFiles").withIndex("by_user_and_state", (q) => q.eq("userId", userId).eq("state", "pending")).take(FORGET_FILES);
+  for (const file of files) await deleteFile(ctx, file);
+  return files.length < FORGET_FILES;
 }
 
 /**

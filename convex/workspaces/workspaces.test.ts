@@ -67,14 +67,47 @@ describe("workspaces", () => {
     expect(await workspacesOf({ organizationId })).toMatchObject([{ kind: "organization", organizationId }]);
   });
 
-  it("removes an account's workspace with it when the cleanup removes the account", async () => {
+  it("removes an account's workspace with it when the cleanup removes the account, keeps what it made in an organization, and keeps who it was", async () => {
     const { t, workspacesOf } = setup();
-    const userId = await t.run((ctx) => createUserWithDefaults(ctx, { clerkId: "user_leaving", email: "leaving@example.org" }));
-    // Past the retention period, cleanup removes a deleted account and what it held.
+    const userId = await t.run((ctx) => createUserWithDefaults(ctx, { clerkId: "user_leaving", email: "leaving@example.org", firstName: "Lea", lastName: "Ving" }));
+    const { own, theirs, lab } = await t.run(async (ctx) => {
+      const organizationId = await ctx.db.insert("organizations", { ...organization("org_stays", 1), state: "active", createdAt: 1, updatedAt: 1 });
+      const lab = await ensureWorkspace(ctx, { kind: "organization", organizationId });
+      const job = { userId, createdBy: userId, sourceType: "history" as const, createdAt: 1, updatedAt: 1 };
+      const mine = (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())!._id;
+      // A bookmark, a saved paper in a collection and a finished screening job in each workspace.
+      const records = async (workspaceId: typeof mine) => {
+        await ctx.db.insert("queryShortcuts", { userId, workspaceId, createdBy: userId, data: { shorthand: "rct", expansion: "randomized", createdAt: 1 } });
+        const libraryItemId = await ctx.db.insert("libraryItems", { userId, workspaceId, createdBy: userId, openalexId: "https://openalex.org/W1", title: "Trial", searchableText: "Trial", savedAt: 1, updatedAt: 1 });
+        const collectionId = await ctx.db.insert("collections", { userId, workspaceId, createdBy: userId, name: "Trials", sortName: "trials", itemCount: 1, createdAt: 1, updatedAt: 1 });
+        await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: 1 });
+        const screeningId = await ctx.db.insert("screenings", { userId, workspaceId, version: 0, createdAt: 1 });
+        const jobId = await ctx.db.insert("screeningJobs", { userId, workspaceId, createdBy: userId, screeningId, status: "completed", totalPapers: 1, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
+        await ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", title: "Trial", status: "completed", createdAt: 1 });
+      };
+      await records(mine);
+      await records(lab);
+      return {
+        lab,
+        own: await ctx.db.insert("extractionJobs", { ...job, workspaceId: mine, name: "Mine" }),
+        theirs: await ctx.db.insert("extractionJobs", { ...job, workspaceId: lab, name: "The lab's" }),
+      };
+    });
+    const tables = ["queryShortcuts", "libraryItems", "collections", "libraryItemCollections", "screenings", "screeningJobs", "screeningResults"] as const;
+    const counts = () => t.run(async (ctx) => Object.fromEntries(await Promise.all(tables.map(async (table) => [table, (await ctx.db.query(table).collect()).length]))));
+    expect(Object.values(await counts())).toEqual(tables.map(() => 2));
+    // Past the retention period, cleanup removes a deleted account and what it held in its own workspace.
     await t.run((ctx) => ctx.db.patch("users", userId, { state: "deleted", updatedAt: 1 }));
     await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await t.run((ctx) => ctx.db.get("users", userId))).toBeNull();
     expect(await workspacesOf({ userId })).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.get("extractionJobs", own))).toBeNull();
+    expect(await t.run((ctx) => ctx.db.get("extractionJobs", theirs))).toMatchObject({ name: "The lab's", createdBy: userId });
+    // What was in their own workspace is gone; the organization's copies stay.
+    expect(Object.values(await counts())).toEqual(tables.map(() => 1));
+    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map((item) => item.workspaceId))).toEqual([lab]);
+    expect(await t.run((ctx) => ctx.db.query("clerkDeletedUsers").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())).toMatchObject({ clerkId: "user_leaving", name: "Lea Ving" });
   });
 
   it("gives every account and organization from before one workspace, deleted ones too, however often it runs", async () => {
