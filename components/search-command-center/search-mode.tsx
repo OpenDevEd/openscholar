@@ -181,11 +181,12 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         toast.ai.configRequired(tValidation("aiConfigRequired"));
         return;
       }
+      // The search's kind of query before anything is awaited: a switch while shortcuts load counts too.
+      const scope = scopeNow(search.searchId);
       setIsTranslating(true);
       try {
         await ensureQueryShortcuts(localInputValue);
         const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
-        const scope = scopeNow(search.searchId);
         const result = await translateQueryFn({
           query: expandedQuery,
           targetLanguage,

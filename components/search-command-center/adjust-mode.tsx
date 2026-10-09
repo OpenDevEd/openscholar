@@ -78,6 +78,8 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
       return;
     }
 
+    // The search's kind of query before anything is awaited: a switch while shortcuts load counts too.
+    const scope = scopeNow(searchId);
     setIsEnhancing(true);
 
     try {
@@ -95,7 +97,6 @@ Please enhance this academic search query according to the user's specific instr
           : ""
       }`;
 
-      const scope = scopeNow(searchId);
       const response = await enhanceQuery({
         query: enhancedPrompt,
         language: urlLanguage || localeToLanguageCode(locale) || undefined,

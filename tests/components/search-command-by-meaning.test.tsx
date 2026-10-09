@@ -9,7 +9,7 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-const { searchRef, savedField, setQuery, enhance, translate, noop, questionStore, historyStore } = vi.hoisted(() => {
+const { searchRef, savedField, setQuery, enhance, translate, ensureShortcuts, noop, questionStore, historyStore } = vi.hoisted(() => {
   const noop = () => {};
   // The search's field as its saved state has it, which a switch in the sidebar changes at once.
   const savedField = { current: "title_and_abstract" };
@@ -19,6 +19,8 @@ const { searchRef, savedField, setQuery, enhance, translate, noop, questionStore
     setQuery: vi.fn(),
     enhance: vi.fn(),
     translate: vi.fn(),
+    // Reads the shortcuts a query names before it's rewritten; an account's take a moment.
+    ensureShortcuts: vi.fn(async () => {}),
     noop,
     questionStore: { currentQuestion: "What helps teachers stay in rural schools?", setCurrentQuestion: noop },
     historyStore: { addQuestionToHistory: noop, getSearchResult: () => ({ field: savedField.current }) },
@@ -46,7 +48,7 @@ vi.mock("@/lib/store", () => ({
   useAIConfigStore: () => ({ apiKeyMode: "platform" }),
   useCurrentQueryStore: () => ({ setCurrentQuery: noop }),
   useKeywordExpansionDialogStore: (select: (state: { setSuggestedQuery: () => void }) => unknown) => select({ setSuggestedQuery: noop }),
-  useKeywordExpansionStore: { getState: () => ({ ensureShortcuts: async () => {}, expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }) },
+  useKeywordExpansionStore: { getState: () => ({ ensureShortcuts, expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }) },
 }));
 vi.mock("@/lib/hooks", () => ({
   useEffectiveSearchId: () => "search_1",
@@ -117,6 +119,8 @@ describe("an AI rewrite that comes back after the search changed kind", () => {
     searchRef.current = { field: "title_and_abstract", q: "rural teachers" };
     savedField.current = "title_and_abstract";
     setQuery.mockClear();
+    ensureShortcuts.mockReset();
+    ensureShortcuts.mockImplementation(async () => {});
   });
 
   /** Makes the AI call answer only when the returned function is called. */
@@ -128,15 +132,15 @@ describe("an AI rewrite that comes back after the search changed kind", () => {
   }
 
   const rewrites = [
-    { name: "Ask AI", call: enhance, answer: { enhancedQuery: "rural AND teachers", explanation: "" }, start: () => {
+    { name: "Ask AI", readsShortcuts: false, call: enhance, answer: { enhancedQuery: "rural AND teachers", explanation: "" }, start: () => {
       render(<SearchMode />);
       fireEvent.click(screen.getByRole("button", { name: "askAI" }));
     } },
-    { name: "translate", call: translate, answer: { translatedQuery: "rural AND teachers" }, start: () => {
+    { name: "translate", readsShortcuts: true, call: translate, answer: { translatedQuery: "rural AND teachers" }, start: () => {
       render(<SearchMode />);
       fireEvent.click(screen.getByRole("button", { name: "translate" }));
     } },
-    { name: "Enhance with AI", call: enhance, answer: { enhancedQuery: "rural AND teachers", explanation: "" }, start: () => {
+    { name: "Enhance with AI", readsShortcuts: true, call: enhance, answer: { enhancedQuery: "rural AND teachers", explanation: "" }, start: () => {
       render(<AdjustMode searchId="search_1" />);
       fireEvent.change(screen.getByPlaceholderText("searchCommand.placeholder.enhance"), { target: { value: "only trials" } });
       fireEvent.click(screen.getByRole("button", { name: "searchCommand.enhance" }));
@@ -152,6 +156,25 @@ describe("an AI rewrite that comes back after the search changed kind", () => {
       await finish();
       expect(setQuery).not.toHaveBeenCalled();
     });
+
+    if (rewrite.readsShortcuts) {
+      it(`drops ${rewrite.name}'s keywords once the search asks by meaning while its shortcuts load`, async () => {
+        let shortcutsRead = () => {};
+        ensureShortcuts.mockImplementationOnce(() => new Promise<void>((resolve) => { shortcutsRead = resolve; }));
+        rewrite.call.mockReset();
+        rewrite.call.mockResolvedValue(rewrite.answer);
+        rewrite.start();
+        await waitFor(() => expect(ensureShortcuts).toHaveBeenCalled());
+        savedField.current = "semantic";
+        // The shortcuts arrive, the AI answers at once, and the handler runs to its end.
+        await act(async () => {
+          shortcutsRead();
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+        expect(rewrite.call).toHaveBeenCalled();
+        expect(setQuery).not.toHaveBeenCalled();
+      });
+    }
 
     it(`uses ${rewrite.name}'s keywords while the search stays a keyword search`, async () => {
       const finish = answerLater(rewrite.call, rewrite.answer);

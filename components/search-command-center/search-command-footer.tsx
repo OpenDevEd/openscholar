@@ -157,6 +157,8 @@ export function SearchCommandFooter({
       return;
     }
 
+    // The search's kind of query before anything is awaited: a switch while shortcuts load counts too.
+    const scope = scopeNow(searchId);
     await ensureQueryShortcuts(effectiveQuery);
     const { expandedQuery } = validateAndExpandKeywordsSilently(effectiveQuery);
 
@@ -175,7 +177,6 @@ This query is returning fewer than 10 results. Please broaden the search by:
 Return a more inclusive version of this query.`;
 
     try {
-      const scope = scopeNow(searchId);
       const result = await enhanceQuery({
         query: broadenPrompt,
         language: currentLanguage || localeToLanguageCode(locale) || undefined,
@@ -215,6 +216,8 @@ Return a more inclusive version of this query.`;
       return;
     }
 
+    // The search's kind of query before anything is awaited: a switch while shortcuts load counts too.
+    const scope = scopeNow(searchId);
     await ensureQueryShortcuts(effectiveQuery);
     const { expandedQuery } = validateAndExpandKeywordsSilently(effectiveQuery);
 
@@ -234,7 +237,6 @@ This query is returning too many results. Please make it more specific by:
 Return a more targeted version of this query.`;
 
     try {
-      const scope = scopeNow(searchId);
       const result = await enhanceQuery({
         query: narrowPrompt,
         language: currentLanguage || localeToLanguageCode(locale) || undefined,

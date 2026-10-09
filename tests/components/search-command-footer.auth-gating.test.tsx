@@ -12,6 +12,7 @@ const {
   goToSignInMock,
   pushMock,
   enhanceMock,
+  ensureShortcutsMock,
   savedFieldRef,
   searchFieldRef,
   searchHistoryRef,
@@ -34,6 +35,8 @@ const {
     goToSignInMock: vi.fn(),
     pushMock: vi.fn(),
     enhanceMock: vi.fn(),
+    // Reads the shortcuts a query names before it's rewritten; an account's take a moment.
+    ensureShortcutsMock: vi.fn(async () => {}),
     // The search's field as its saved state has it, which a switch in the sidebar changes at once.
     savedFieldRef: { current: "title_and_abstract" },
     searchFieldRef: { current: "title_and_abstract" },
@@ -190,7 +193,7 @@ vi.mock("@/lib/search", () => ({
 }));
 
 vi.mock("@/lib/store", () => ({
-  useKeywordExpansionStore: { getState: () => ({ ensureShortcuts: async () => {}, expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }) },
+  useKeywordExpansionStore: { getState: () => ({ ensureShortcuts: ensureShortcutsMock, expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }) },
   useCurrentQuestionStore: () => ({ currentQuestion: "" }),
   useSearchHistoryStore: Object.assign(
     <T,>(selector: (state: unknown) => T) =>
@@ -454,4 +457,25 @@ describe("<SearchCommandFooter> with a question asked by meaning", () => {
       else expect(setQueryMock).toHaveBeenCalledWith("rural OR remote");
     });
   }
+
+  it("drops a broader query once the search asks by meaning while its shortcuts load", async () => {
+    savedFieldRef.current = "title_and_abstract";
+    setQueryMock.mockClear();
+    let shortcutsRead = () => {};
+    ensureShortcutsMock.mockClear();
+    ensureShortcutsMock.mockImplementationOnce(() => new Promise<void>((resolve) => { shortcutsRead = resolve; }));
+    enhanceMock.mockReset();
+    enhanceMock.mockResolvedValue({ enhancedQuery: "rural OR remote", explanation: "" });
+    showFooter("title_and_abstract", 3);
+    fireEvent.click(screen.getByRole("button", { name: "makeBroader" }));
+    await waitFor(() => expect(ensureShortcutsMock).toHaveBeenCalled());
+    savedFieldRef.current = "semantic";
+    // The shortcuts arrive, the AI answers at once, and the handler runs to its end.
+    await act(async () => {
+      shortcutsRead();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(enhanceMock).toHaveBeenCalled();
+    expect(setQueryMock).not.toHaveBeenCalled();
+  });
 });
