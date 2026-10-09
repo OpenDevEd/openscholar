@@ -13,6 +13,7 @@ import {
   type ResearchCommand, type SavedSearch, type StoredSearch, type UndoCommand,
 } from "../../lib/research/records";
 import { stream } from "convex-helpers/server/stream";
+import { makerValidator, makersIn } from "../workspaces/makers";
 import { internal } from "../_generated/api";
 import { internalMutation } from "../lib/functions";
 import schema from "../schema";
@@ -39,10 +40,10 @@ const LISTED_BYTES = 8 * 1024 * 1024;
 export const listedSearchesAction = defineUserQuery({
   path: "research/records:listedSearches",
   description:
-    "Lists the person's saved searches without their screening answers, a page at a time: newest, oldest, most or fewest results first. Given `text`, those whose query or questions best match its words, best first; given `exclude`, all but the search with that ID. A page can come back short without being the last.",
+    "Lists the saved searches in the workspace without their screening answers, a page at a time: newest, oldest, most or fewest results first. In an organization, each names who ran it (`by`). Given `text`, those whose query or questions best match its words, best first; given `exclude`, all but the search with that ID. A page can come back short without being the last.",
   args: { ...pageArgs, sort: listedSortValidator, text: v.optional(v.string()), exclude: v.optional(v.string()) },
-  returns: paginationResultValidator(listedSearchValidator),
-  run: async (ctx, { workspaceId }, { paginationOpts, sort, text, exclude }) => {
+  returns: paginationResultValidator(v.object({ ...listedSearchValidator.fields, by: v.optional(makerValidator) })),
+  run: async (ctx, { userId, workspaceId }, { paginationOpts, sort, text, exclude }) => {
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LISTED_PAGE_MAX) };
     const index = sort === "most" || sort === "least" ? "by_workspace_and_count" : "by_workspace_and_createdAt";
     const order = sort === "oldest" || sort === "least" ? "asc" : "desc";
@@ -56,7 +57,12 @@ export const listedSearchesAction = defineUserQuery({
         : ctx.db.query("searches").withIndex(index, q => q.eq("workspaceId", workspaceId)).order(order).paginate({ ...opts, maximumBytesRead: LISTED_BYTES }));
     // A search's matches leave the excluded one out of their page.
     const rows = needle && exclude !== undefined ? read.page.filter(row => row.localId !== exclude) : read.page;
-    return { ...read, page: rows.map(row => { const { screeningResponses: _answers, ...listed } = currentSearch(row.data); return listed; }) };
+    const makerOf = await makersIn(ctx, workspaceId, userId);
+    return { ...read, page: await Promise.all(rows.map(async row => {
+      const { screeningResponses: _answers, ...listed } = currentSearch(row.data);
+      const by = await makerOf(row.createdBy);
+      return by ? { ...listed, by } : listed;
+    })) };
   },
 });
 export const listedSearches = accountQuery(listedSearchesAction);

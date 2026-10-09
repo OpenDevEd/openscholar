@@ -61,8 +61,6 @@ export function accessRows(ctx: QueryCtx | MutationCtx, threadId: Id<"assistantT
 }
 
 /** A person's name as they gave it, or empty when they gave none. */
-export const personName = (person: Doc<"users">) => [person.firstName, person.lastName].filter(Boolean).join(" ");
-
 /** The highest of some roles; at least one is given. */
 export const best = (roles: readonly AssistantRole[]) => roles.reduce((most, role) => (RANK[role] > RANK[most] ? role : most));
 
@@ -148,12 +146,18 @@ const PURGE_BATCH = 20;
  */
 export async function purgeAccountChats(ctx: MutationCtx, userId: Id<"users">) {
   const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
-  const owned = workspace ? await ctx.db.query("assistantThreads").withIndex("by_workspace_and_lastMessageAt", (q) => q.eq("workspaceId", workspace._id)).take(PURGE_BATCH) : [];
-  for (const thread of owned) await deleteThread(ctx, thread);
+  const ownGone = workspace ? await purgeWorkspaceChats(ctx, workspace._id) : true;
   const shared = await ctx.db
     .query("assistantThreadAccess")
     .withIndex("by_principal_and_lastMessageAt", (q) => q.eq("principal", userPrincipal(userId)))
     .take(PURGE_BATCH);
   for (const row of shared) await ctx.db.delete("assistantThreadAccess", row._id);
-  return owned.length < PURGE_BATCH && shared.length < PURGE_BATCH;
+  return ownGone && shared.length < PURGE_BATCH;
+}
+
+/** Deletes a batch of a workspace's chats, for everyone; whether none are left. */
+export async function purgeWorkspaceChats(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
+  const chats = await ctx.db.query("assistantThreads").withIndex("by_workspace_and_lastMessageAt", (q) => q.eq("workspaceId", workspaceId)).take(PURGE_BATCH);
+  for (const thread of chats) await deleteThread(ctx, thread);
+  return chats.length < PURGE_BATCH;
 }

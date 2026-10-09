@@ -857,7 +857,7 @@ describe("the assistant's tools", () => {
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
     // Screen all runs on the server's model, at GPT-6 Luna's price: what a paper holds on it.
     await t.run((ctx) => ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: 0.1, outputPricePerMillion: 0.5, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: ["tools", "structured_outputs"], contextLength: 400_000, syncedAt: 1, createdAt: 1, updatedAt: 1 }));
-    const perPaper = await t.run((ctx) => screeningPaperCreditsFor(ctx, ada));
+    const perPaper = await t.run(async (ctx) => screeningPaperCreditsFor(ctx, { userId: ada, workspaceId: await personalWorkspaceOf(ctx, ada) }));
     for (const n of [1, 2, 3]) await asAda.mutation(api.library.mutations.setPaperInCollection, { paper: { openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, abstract: "A trial of tutoring." }, collectionId, inCollection: true });
     const screen = (id: string, last = 3) => ({
       id,

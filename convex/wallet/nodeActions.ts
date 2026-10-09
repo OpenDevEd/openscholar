@@ -20,6 +20,7 @@ function generateRawKey(): string {
 export const createKey = internalAction({
   args: {
     userId: v.id("users"),
+    workspaceId: v.id("workspaces"),
     appName: v.string(),
     redirectOrigin: v.string(),
   },
@@ -35,6 +36,7 @@ export const createKey = internalAction({
 
     const walletKeyId: Id<"walletKeys"> = await ctx.runMutation(internal.wallet.internal.insertKey, {
       userId: args.userId,
+      workspaceId: args.workspaceId,
       hashedKey,
       keyPrefix,
       appName: args.appName,
@@ -55,16 +57,17 @@ export const validateKey = internalAction({
     v.null(),
     v.object({
       userId: v.id("users"),
+      workspaceId: v.id("workspaces"),
       walletKeyId: v.id("walletKeys"),
       appName: v.string(),
       redirectOrigin: v.string(),
     }),
   ),
-  handler: async (ctx, args): Promise<{ userId: Id<"users">; walletKeyId: Id<"walletKeys">; appName: string; redirectOrigin: string } | null> => {
+  handler: async (ctx, args): Promise<{ userId: Id<"users">; workspaceId: Id<"workspaces">; walletKeyId: Id<"walletKeys">; appName: string; redirectOrigin: string } | null> => {
     if (!args.rawKey.startsWith(WALLET_KEY_PREFIX)) return null;
 
     const hashedKey = await digestOpaqueToken(args.rawKey);
-    const result: { userId: Id<"users">; walletKeyId: Id<"walletKeys">; appName: string; redirectOrigin: string } | null = await ctx.runQuery(internal.wallet.internal.lookupKey, { hashedKey });
+    const result: { userId: Id<"users">; workspaceId: Id<"workspaces">; walletKeyId: Id<"walletKeys">; appName: string; redirectOrigin: string } | null = await ctx.runQuery(internal.wallet.internal.lookupKey, { hashedKey });
     if (!result) return null;
 
     // Touch lastUsedAt (fire-and-forget)

@@ -64,6 +64,7 @@
       "RECOVERY_LIMIT": "reads one past it and stops the recovery as unsafe, naming why"
     },
     "windows": {
+      "PREVIEW_READ": "the first ratings of a paper a collection preview reads for the few raters it names; the count and the full list come from elsewhere",
       "JOBS_DOCKED": "the few jobs a chat docks at once; older ones are on the jobs page",
       "STEPS_SHOWN": "the newest steps a reply shows; the rest are paged in the chat",
       "JOBS_TOLD_AT_ONCE": "the job ends one reply tells its model; the rest are told on the next",
@@ -85,6 +86,7 @@
       "BATCH": "a worker's batch; it pings itself for the next",
       "BATCH_SIZE": "a cascade's batch; it reschedules itself until nothing is left",
       "CANCEL_BATCH": "a cancel's batch; it reschedules itself",
+      "JOBS_A_STEP": "a deleted organization's purge step; it schedules the next until its workspace is empty",
       "FORGET_BATCH": "a cleanup's batch; it reschedules itself",
       "FORGET_LIMITS": "a cleanup's batch; it reschedules itself",
       "FORGET_RESULTS": "a cleanup's batch; it reschedules itself",

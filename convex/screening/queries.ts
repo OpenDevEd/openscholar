@@ -51,6 +51,8 @@ async function readJobProgressSnapshot(
 
 /** What the screening page shows of a job beside its progress, in its list and on its own view. */
 const jobFacts = {
+  // Its own name, given as it started; without one the page names it after `label`.
+  name: v.optional(v.string()),
   // Where its papers came from, the set's name when it started, and which of its papers.
   set: v.optional(paperSetValidator),
   label: v.optional(v.string()),
@@ -83,6 +85,7 @@ async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
   ]);
   return {
     set: job.set,
+    ...(job.name ? { name: job.name } : {}),
     label: job.label,
     first: job.first,
     last: job.last,
@@ -552,7 +555,7 @@ export const estimateAction = defineUserQuery({
   description: "Estimates the credits screening a number of papers holds, against the workspace's balance, and how many papers that balance covers.",
   args: { papers: v.number() },
   returns: v.object({ credits: v.number(), available: v.number(), affordablePapers: v.number() }),
-  run: async (ctx, { userId, workspaceId }, args) => estimateScreening(args.papers, await availableCredits(ctx, workspaceId), await screeningPaperCreditsFor(ctx, userId)),
+  run: async (ctx, { userId, workspaceId }, args) => estimateScreening(args.papers, await availableCredits(ctx, workspaceId), await screeningPaperCreditsFor(ctx, { userId, workspaceId })),
 });
 export const estimate = userQuery(estimateAction);
 export const estimateForAssistant = assistantQuery(estimateAction);

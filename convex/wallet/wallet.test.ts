@@ -6,6 +6,8 @@ import type { Id } from "../_generated/dataModel";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
+import { ensureWorkspace } from "../workspaces/create";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 // ─── Seed helpers ────────────────────────────────────────────
 
@@ -139,8 +141,10 @@ describe("wallet internal mutations", () => {
       const t = convexTest(schema);
       const userId = await seedUser(t);
 
+      const workspaceId = await t.run((ctx) => ensureWorkspace(ctx, { kind: "personal", userId }));
       const walletKeyId = await t.mutation(internal.wallet.internal.insertKey, {
         userId,
+        workspaceId,
         hashedKey: "test_insert_hash",
         keyPrefix: "wk_ins...",
         appName: "InsertTest",
@@ -502,5 +506,32 @@ describe("models (unified table)", () => {
       expect(served!.sortOrder).toBe(5);
       expect(served!.category).toBe("flagship");
     });
+  });
+});
+
+describe("a connected app's workspace (#651)", () => {
+  it("draws on the workspace it was connected to, one of the person's, or their own for a key from before", async () => {
+    const t = convexTest(schema);
+    const userId = await seedUser(t, { clerkId: "ada" });
+    const { lab, elsewhere } = await t.run(async (ctx) => {
+      await ensureWorkspace(ctx, { kind: "personal", userId });
+      const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
+      const organization = (name: string) => ctx.db.insert("organizations", { clerkOrganizationId: `org_${name}`, name, slug: name, evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, state: "active", ...stamp });
+      const [lab, other] = [await organization("lab"), await organization("other")];
+      await ctx.db.insert("organizationMemberships", { organizationId: lab, clerkMembershipId: "orgmem_ada", clerkUserId: "ada", role: "org:member", state: "active", ...stamp });
+      return { lab: await ensureWorkspace(ctx, { kind: "organization", organizationId: lab }), elsewhere: await ensureWorkspace(ctx, { kind: "organization", organizationId: other }) };
+    });
+    const ada = t.withIdentity({ subject: "ada" });
+    const walletKeyId = await ada.mutation(api.wallet.mutations.approveConnection, { appName: "Zotero", redirectOrigin: "manual", workspaceId: lab });
+    // The key the app gets in place of the pending one keeps it.
+    await ada.action(api.wallet.actions.finalizeConnection, { walletKeyId });
+    const made = (await t.run((ctx) => ctx.db.query("walletKeys").collect())).filter((key) => key.appName === "Zotero");
+    expect(made.map((key) => key.workspaceId)).toEqual([lab]);
+    // Not one the person isn't in.
+    await expect(ada.mutation(api.wallet.mutations.approveConnection, { appName: "Zotero", redirectOrigin: "manual", workspaceId: elsewhere })).rejects.toThrow();
+    // A key from before keys named a workspace draws on its person's own.
+    await seedWalletKey(t, userId, { hashedKey: "old" });
+    const own = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
+    expect((await t.query(internal.wallet.internal.lookupKey, { hashedKey: "old" }))?.workspaceId).toBe(own);
   });
 });

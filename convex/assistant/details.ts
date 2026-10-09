@@ -12,7 +12,8 @@ import { readMemberOrganizations } from "../organizationFeatures";
 import { findSearch } from "../research/records";
 
 import { currentSearch } from "../../lib/research/records";
-import { personName, roleIn } from "./access";
+import { roleIn } from "./access";
+import { personName } from "../lib/people";
 import { workUrl } from "../../lib/openalex/work-id";
 import { ASKED_DETAILS_MAX, ASKED_EACH_DETAILS_MAX, ASKED_EACH_MAX } from "./validators";
 
@@ -107,7 +108,7 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
     const screeningId = ctx.db.normalizeId("screeningJobs", id);
     if (screeningId) {
       const job = await ctx.db.get("screeningJobs", screeningId);
-      return job && workspaceId && (job.workspaceId === workspaceId) ? job.label || null : null;
+      return job && workspaceId && (job.workspaceId === workspaceId) ? job.name || job.label || null : null;
     }
     const extractionId = ctx.db.normalizeId("extractionJobs", id);
     if (extractionId) {
