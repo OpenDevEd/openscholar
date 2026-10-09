@@ -297,6 +297,11 @@ export function LibraryPageClient() {
     inWorkspace(workspaceId, params.col ? { collectionId: params.col as Id<"collections"> } : "skip"),
   );
 
+  // The heading as last settled: an opened collection's name once it's read, so a switch keeps the last one meanwhile and a cold visit shows none.
+  const settledHeading = params.col ? (selectedCollection === undefined ? undefined : (selectedCollection?.name ?? t("title"))) : t("title");
+  const [heading, setHeading] = useState(settledHeading);
+  if (settledHeading !== undefined && settledHeading !== heading) setHeading(settledHeading);
+
   const sortLabelMap = useMemo<Record<LibrarySortCombined, string>>(
     () => ({
       "savedAt:desc": t("sortSavedAtDesc"),
@@ -481,7 +486,7 @@ export function LibraryPageClient() {
               <div className="space-y-6">
                 <LibraryCommandCenter
                   // An open collection heads the command center; its name is no longer a filter chip.
-                  title={selectedCollection?.name ?? t("title")}
+                  title={heading}
                   rawSearch={rawSearch}
                   onSearchChange={setRawSearch}
                   totalCount={totalCount}
@@ -605,14 +610,12 @@ export function LibraryPageClient() {
                   </>
                 )}
               </div>
-
-              {/* A collection made here opens, as a new folder does. */}
-              <NewCollectionDialog open={collectionDialog === "new"} onOpenChange={(open) => setCollectionDialog(open ? "new" : null)} onCreated={(id) => setParams({ col: id })} returnFocus={() => dialogOpener.current} />
-              <ManageCollectionsDialog open={collectionDialog === "manage"} onOpenChange={(open) => setCollectionDialog(open ? "manage" : null)} onNew={() => setCollectionDialog("new")} returnFocus={() => dialogOpener.current} />
-
             </div>
           </PageWrapper>
         </SidebarLayout>
+        {/* Outside the layout, whose phone tabs show the sidebar or the results, never both: the sidebar opens them. A collection made here opens, as a new folder does. */}
+        <NewCollectionDialog open={collectionDialog === "new"} onOpenChange={(open) => setCollectionDialog(open ? "new" : null)} onCreated={(id) => setParams({ col: id })} returnFocus={() => dialogOpener.current} />
+        <ManageCollectionsDialog open={collectionDialog === "manage"} onOpenChange={(open) => setCollectionDialog(open ? "manage" : null)} onNew={() => setCollectionDialog("new")} returnFocus={() => dialogOpener.current} />
         </ServerRatingsContext.Provider>
       </ScreeningContext.Provider>
     </TranslationContext.Provider>

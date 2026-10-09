@@ -31,8 +31,8 @@ interface LibraryCommandCenterProps {
   onExportCSV: () => void;
   onExportJSON: () => void;
   hasExportableResults: boolean;
-  /** What the library is showing: a collection's name, or the library's. */
-  title: React.ReactNode;
+  /** What the library is showing: a collection's name, or the library's; undefined while an opened collection's name is read. */
+  title: string | undefined;
   /** Beside the count, such as whose collection it is. */
   meta?: React.ReactNode;
   /** At the heading's end, such as sharing a collection. */
@@ -62,32 +62,37 @@ export function LibraryCommandCenter({
   return (
     <CommandCenterContainer className="overflow-hidden">
       <div className="relative space-y-3 p-4">
+        {/* Its height holds while an opened collection's name is read; then the row comes whole, so nothing in it moves. */}
         <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2">
-          <h2 className="min-w-0 max-w-full truncate text-base font-semibold tracking-tight">{title}</h2>
-          {totalCount !== undefined && (
-            <span className="flex shrink-0 items-baseline gap-1 text-sm text-muted-foreground">
-              {filteredCount !== undefined && filteredCount !== totalCount ? (
-                <>
-                  <AnimatedCount value={filteredCount} atLeast={filteredCountIsAtLeast} className="font-semibold tabular-nums text-foreground" />
-                  <span className="tabular-nums">/ {totalCount}</span>
-                </>
-              ) : (
-                <AnimatedCount value={totalCount} className="font-semibold tabular-nums text-foreground" />
-              )}
-              <span>{tc("results").toLowerCase()}</span>
-            </span>
-          )}
-          {meta || activeFilterLabels.length ? (
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              {meta}
-              {activeFilterLabels.map((label) => (
-                <span key={label} className="inline-flex h-6 items-center rounded-full border border-border-subtle bg-inset px-2.5 text-xs text-muted-foreground">
-                  {label}
+          {title === undefined ? null : (
+            <>
+              <h2 className="min-w-0 max-w-full truncate text-base font-semibold tracking-tight">{title}</h2>
+              {totalCount !== undefined && (
+                <span className="flex shrink-0 items-baseline gap-1 text-sm text-muted-foreground">
+                  {filteredCount !== undefined && filteredCount !== totalCount ? (
+                    <>
+                      <AnimatedCount value={filteredCount} atLeast={filteredCountIsAtLeast} className="font-semibold tabular-nums text-foreground" />
+                      <span className="tabular-nums">/ {totalCount}</span>
+                    </>
+                  ) : (
+                    <AnimatedCount value={totalCount} className="font-semibold tabular-nums text-foreground" />
+                  )}
+                  <span>{tc("results").toLowerCase()}</span>
                 </span>
-              ))}
-            </div>
-          ) : null}
-          {actions ? <div className="ml-auto flex items-center gap-1">{actions}</div> : null}
+              )}
+              {meta || activeFilterLabels.length ? (
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  {meta}
+                  {activeFilterLabels.map((label) => (
+                    <span key={label} className="inline-flex h-6 items-center rounded-full border border-border-subtle bg-inset px-2.5 text-xs text-muted-foreground">
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              {actions ? <div className="ml-auto flex items-center gap-1">{actions}</div> : null}
+            </>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

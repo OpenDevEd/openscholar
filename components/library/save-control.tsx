@@ -305,7 +305,8 @@ function useSetInCollection(paper: WorkInput) {
     const savedToken = add ? setSaved(paper.id, true) : undefined;
     // A paper added to a collection is saved again on its own terms, not restored.
     if (add) forgetRemoval(userId, paper.id);
-    setInCollection({ paper: paperArgs(paper), collectionId, inCollection: add })
+    return setInCollection({ paper: paperArgs(paper), collectionId, inCollection: add })
+      .then(() => undefined)
       .catch((error) => {
         console.error("[Library] Failed to change collection:", error);
         toast.error(t("collectionError"));

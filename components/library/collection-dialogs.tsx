@@ -43,7 +43,7 @@ function FolderTile() {
 }
 
 /** A paper a new collection can start with, opened from its Save control. */
-type StartingPaper = { title: string; add: (collectionId: Id<"collections">) => void };
+type StartingPaper = { title: string; add: (collectionId: Id<"collections">) => Promise<void> };
 /** Where focus goes as a dialog closes: these open from controls that aren't their trigger, or are gone by then. */
 type ReturnFocus = () => HTMLElement | null | undefined;
 const restoreFocus = (returnFocus: ReturnFocus | undefined) => (event: Event) => {
@@ -92,8 +92,9 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
     if (reason || creating) return;
     setCreating(true);
     createCollection({ name: trimmed })
-      .then(({ id }) => {
-        if (paper && withPaper) paper.add(id);
+      .then(async ({ id }) => {
+        // The dialog stays until the paper is in it too, or its own error says it isn't.
+        if (paper && withPaper) await paper.add(id);
         close();
         onCreated?.(id);
       })
