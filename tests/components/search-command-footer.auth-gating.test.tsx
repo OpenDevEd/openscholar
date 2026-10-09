@@ -198,6 +198,7 @@ vi.mock("@/lib/search", () => ({
       retracted: false,
       lang: "en",
     },
+    results: [],
     setQuery: setQueryMock,
     searchedCount: searchedCountRef.current,
   }),
