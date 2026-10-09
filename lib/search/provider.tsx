@@ -27,6 +27,7 @@ import type { SearchWithFiltersParams } from '../search-utils';
 import { getSearchResultsWithFilters } from './search-results';
 import { SearchError, rejectedQuery } from './search-error';
 import { OQL_FIELD } from '../openalex/oql';
+import { queryScope } from './query-scope';
 import { buildOpenAlexWorksQuery } from '../openalex/works-query';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
 import { ResearchContext } from '../research/binding';
@@ -573,8 +574,8 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     // Get current query from store to check if it changed
     const existing = getSearchResult(searchId);
     const currentQuery = existing?.query ?? '';
-    // A query-history step onto a query from the other scope (keywords or OQL) brings its scope.
-    const field = options?.field && (options.field === OQL_FIELD) !== (urlParams.field === OQL_FIELD)
+    // A query-history step onto a query of another scope (keywords, OQL or a question by meaning) brings its scope.
+    const field = options?.field && queryScope(options.field) !== queryScope(urlParams.field)
       ? options.field
       : urlParams.field;
     const oqlInvolved = !local && (field === OQL_FIELD || routeIsOql);
