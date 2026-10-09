@@ -38,7 +38,9 @@ import { ResearchAccountChangedError } from "@/lib/research/binding";
 import { usePreloadSearch, useResearchSession } from "@/lib/research/reads";
 import { useSearchList } from "@/lib/research/search-list";
 import { useWorkspace } from "@/lib/workspaces/url";
-import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import { useWorkspaceRouter, useWorkspaceSlug } from "@/lib/workspaces/href";
+import { PersonTag } from "@/components/ui/identity";
+import { useWorkspaces } from "@/components/workspaces/parts";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
 import posthog from "posthog-js";
@@ -55,6 +57,8 @@ interface HistoryCommandCenterProps {
 
 export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   const workspaceId = useWorkspace();
+  const inOrganization = useWorkspaceSlug() !== undefined;
+  const admin = useWorkspaces().current?.role === "admin";
   const toast = useAppToast();
   const th = useTranslations("historyPage");
   const tc = useTranslations("common");
@@ -200,6 +204,8 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
             viewMode={historyViewMode}
             onSearchClick={handleSearchClick}
             choosing={Boolean(pick)}
+            runBy={item.by ? <PersonTag {...item.by} /> : undefined}
+            canDelete={!item.by || item.by.you || admin}
           />
         )}
       />}
@@ -236,7 +242,8 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
       onDownloadCSV={() => download("csv")}
       onUploadJSON={handleUploadJSON}
       onUploadCSV={handleUploadCSV}
-      onClearAll={handleClearAll}
+      // An organization's History has no Clear all: whoever ran a search, or an admin, deletes it (#651).
+      onClearAll={inOrganization ? undefined : handleClearAll}
       clearTooltip={th("clearAllHistory")}
       totalCount={history.count}
     />}

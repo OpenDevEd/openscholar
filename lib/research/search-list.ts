@@ -8,6 +8,7 @@ import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { localSearchHistoryStore } from "@/lib/store";
 import type { SearchResult } from "@/lib/types";
+import type { Maker } from "@/convex/workspaces/makers";
 import type { ListedSort } from "./records";
 import { restoreSearch } from "./records";
 import { useResearchScope, useResearchSession } from "./reads";
@@ -46,12 +47,13 @@ export function useSearchList({ sort, text = "", pageSize, excludeId }: { sort: 
   const { data: count } = useProtectedQuery(api.research.records.countSearches, scope ?? "skip");
 
   const localHistory = useStore(localSearchHistoryStore, (state) => state.searchHistory);
-  const local = useMemo(() => {
+  const local = useMemo((): Array<SearchResult & { by?: Maker }> => {
     if (accountId) return [];
     const needle = text.trim().toLowerCase();
     return localHistory.filter((item) => item.id !== excludeId && (!needle || matchesLocally(item, needle))).sort(LOCAL_ORDER[sort]);
   }, [accountId, localHistory, text, excludeId, sort]);
-  const remoteItems = useMemo(() => remote.items.map((item) => restoreSearch({ ...item, screeningResponses: [] })), [remote.items]);
+  // In an organization, each names who ran it.
+  const remoteItems = useMemo(() => remote.items.map(({ by, ...item }): SearchResult & { by?: Maker } => ({ ...restoreSearch({ ...item, screeningResponses: [] }), ...(by ? { by } : {}) })), [remote.items]);
 
   return usePagedRecords({
     remote: accountId ? { ...remote, items: remoteItems } : null,
