@@ -166,6 +166,8 @@ export async function applyOrganizationProjection(
           updatedAt: args.processedAt,
         });
         await revokeMembershipsPage(ctx, existing._id);
+        // Its workspace and everything in it go (#651).
+        await ctx.scheduler.runAfter(0, internal.workspaces.purge.purgeOrganization, { organizationId: existing._id });
       }
     },
   );

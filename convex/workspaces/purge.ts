@@ -1,5 +1,13 @@
+import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { purgeWorkspaceChats } from "../assistant/access";
+import { readAccount } from "../billing/accounts";
+import { collectionCountRow } from "../library/collections";
+import { libraryCountRow } from "../library/counter";
+import { internalMutation } from "../lib/functions";
+import { countRow } from "../research/recordCounts";
 
 /** How many rows one step deletes: a search or a saved paper can be near a document's 1 MiB. */
 const STEP = 100;
@@ -85,3 +93,48 @@ async function purgeScreening(
   if (!(await drain((n) => ctx.db.query("screeningAnswerHistory").withIndex("by_screening_and_version", (q) => q.eq("screeningId", screeningId)).take(n), "screeningAnswerHistory"))) return false;
   return await gone([{ _id: screeningId }], "screenings");
 }
+
+/**
+ * Deletes an emptied workspace with what it cached: its account snapshot (its billingUsage rows
+ * stay as financial records), its library, collection and record counts, then the workspace.
+ */
+export async function dropWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
+  const account = await readAccount(ctx, workspaceId);
+  if (account) await ctx.db.delete("billingAccounts", account._id);
+  const libraryCount = await libraryCountRow(ctx, workspaceId);
+  if (libraryCount) await ctx.db.delete("libraryCounts", libraryCount._id);
+  const collectionCount = await collectionCountRow(ctx, workspaceId);
+  if (collectionCount) await ctx.db.delete("collectionCounts", collectionCount._id);
+  for (const table of ["searches", "queryShortcuts", "screeningJobs", "extractionJobs"] as const) {
+    const counted = await countRow(ctx, table, workspaceId);
+    if (counted) await ctx.db.delete("recordCounts", counted._id);
+  }
+  await ctx.db.delete("workspaces", workspaceId);
+}
+
+/** Extraction jobs one step schedules the deletion of. */
+const JOBS_A_STEP = 50;
+/** How long a step waits for the extraction jobs it scheduled the deletion of. */
+const JOBS_WAIT_MS = 60_000;
+
+/**
+ * Empties a deleted organization's workspace a step at a time (#651), then deletes it: its
+ * extraction jobs, chats, and everything else in it. What its members made goes with it; their
+ * own ratings of papers are theirs. Each step schedules the next until nothing is left.
+ */
+export const purgeOrganization = internalMutation({
+  args: { organizationId: v.id("organizations") },
+  returns: v.null(),
+  handler: async (ctx, { organizationId }): Promise<null> => {
+    const organization = await ctx.db.get("organizations", organizationId);
+    const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
+    if (organization?.state !== "deleted" || !workspace) return null;
+    const next = (ms: number) => ctx.scheduler.runAfter(ms, internal.workspaces.purge.purgeOrganization, { organizationId });
+    const jobs = await ctx.db.query("extractionJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id)).take(JOBS_A_STEP);
+    for (const job of jobs) await ctx.scheduler.runAfter(0, internal.extraction.mutations.internal.admin.deleteExtractionInternal, { jobId: job._id });
+    if (jobs.length) return (await next(JOBS_WAIT_MS), null);
+    if (!(await purgeWorkspaceChats(ctx, workspace._id)) || !(await purgeWorkspace(ctx, workspace._id))) return (await next(0), null);
+    await dropWorkspace(ctx, workspace._id);
+    return null;
+  },
+});

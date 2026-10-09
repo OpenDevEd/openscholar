@@ -261,6 +261,21 @@ describe("an organization", () => {
     expect(await refusal(alice)).toMatch(/Evidence Library, Library/);
   });
 
+  it("takes its workspace and what's in it with it when it's deleted", async () => {
+    const { t, aliceAs } = await people();
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    const inLab = { workspaceId: lab.workspaceId };
+    await aliceAs.mutation(api.library.collections.createCollection, { ...inLab, name: "Trials" });
+    await aliceAs.action(api.organizations.manage.deleteOrganization, inLab);
+    const organizationId = await t.run(async (ctx) => (await ctx.db.get("workspaces", lab.workspaceId))!.kind === "organization" ? ((await ctx.db.get("workspaces", lab.workspaceId)) as { organizationId: Id<"organizations"> }).organizationId : null);
+    // Keeping Clerk's deletion schedules the purge.
+    const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
+    expect(scheduled.some((call) => call.name.includes("purgeOrganization"))).toBe(true);
+    for (let step = 0; step < 5 && (await t.run((ctx) => ctx.db.get("workspaces", lab.workspaceId))); step++) await t.mutation(internal.workspaces.purge.purgeOrganization, { organizationId: organizationId! });
+    expect(await t.run((ctx) => ctx.db.get("workspaces", lab.workspaceId))).toBeNull();
+    expect(await t.run((ctx) => ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", lab.workspaceId)).collect())).toEqual([]);
+  });
+
   it("says when its plan has room for no more members", async () => {
     const { aliceAs } = await people();
     const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
