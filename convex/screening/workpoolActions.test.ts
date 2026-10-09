@@ -7,6 +7,7 @@ import schema from "../schema";
 import { insertJob } from "./createJob.test-support";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
 
 vi.mock("../../lib/ai/core/batch", () => ({
   processScreeningBatch: async ({ papers }: { papers: Array<{ id: string }> }) => ({
@@ -124,9 +125,9 @@ describe("charging a Screen all paper", () => {
     const { userId, collectionId } = await t.run(async (ctx) => {
       const userId = await ctx.db.insert("users", { clerkId: "clerk_held", email: "held@test.local", state: "active", createdAt: 1, updatedAt: 1 });
       await seedCreditsForTest(ctx, { userId, free: 100 });
-      const collectionId = await ctx.db.insert("collections", { userId, name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
+      const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
       for (const n of [1, 2]) {
-        const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
+        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
         await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: n });
       }
       return { userId, collectionId };

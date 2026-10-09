@@ -492,10 +492,11 @@ describe("handleScreeningComplete", () => {
       await t.run(async (ctx) => {
         const updatedResult = await ctx.db.get("screeningResults", result._id);
         const updatedJob = await ctx.db.get("screeningJobs", job._id);
+        const workspaceId = await personalWorkspaceOf(ctx, user._id);
         const libraryItems = await ctx.db
           .query("libraryItems")
-          .withIndex("by_user_openalexId", (q) =>
-            q.eq("userId", user._id).eq("openalexId", "https://openalex.org/Wsuccess"),
+          .withIndex("by_workspace_openalexId", (q) =>
+            q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/Wsuccess"),
           )
           .collect();
         const scheduledFunctions = await ctx.db.system
@@ -518,10 +519,11 @@ describe("handleScreeningComplete", () => {
       await t.run(async (ctx) => {
         const updatedResult = await ctx.db.get("screeningResults", result._id);
         const updatedJob = await ctx.db.get("screeningJobs", job._id);
+        const workspaceId = await personalWorkspaceOf(ctx, user._id);
         const libraryItems = await ctx.db
           .query("libraryItems")
-          .withIndex("by_user_openalexId", (q) =>
-            q.eq("userId", user._id).eq("openalexId", "https://openalex.org/Wsuccess"),
+          .withIndex("by_workspace_openalexId", (q) =>
+            q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/Wsuccess"),
           )
           .collect();
         const links = await ctx.db
@@ -642,10 +644,11 @@ describe("handleScreeningComplete", () => {
         await t.run(async (ctx) => {
           const updatedResult = await ctx.db.get("screeningResults", result._id);
           const updatedJob = await ctx.db.get("screeningJobs", job._id);
+          const workspaceId = await personalWorkspaceOf(ctx, user._id);
           const libraryItems = await ctx.db
             .query("libraryItems")
-            .withIndex("by_user_openalexId", (q) =>
-              q.eq("userId", user._id).eq("openalexId", `https://openalex.org/W${status}`),
+            .withIndex("by_workspace_openalexId", (q) =>
+              q.eq("workspaceId", workspaceId).eq("openalexId", `https://openalex.org/W${status}`),
             )
             .collect();
           const counts = await readScreeningProgressCounts(ctx, job);

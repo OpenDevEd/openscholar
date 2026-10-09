@@ -124,7 +124,7 @@ async function seedJunctionRow(
 }
 
 describe("createCollection", () => {
-  it("creates a collection with name, verifies it has userId, name, createdAt, updatedAt", async () => {
+  it("creates a collection with name, verifies who made it, name, createdAt, updatedAt", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
@@ -139,7 +139,7 @@ describe("createCollection", () => {
     });
 
     expect(collection).not.toBeNull();
-    expect(collection!.userId).toBe(user!._id);
+    expect(collection!.createdBy).toBe(user!._id);
     expect(collection!.name).toBe("My Papers");
     expect(collection!.createdAt).toBeTypeOf("number");
     expect(collection!.updatedAt).toBeTypeOf("number");
@@ -540,7 +540,6 @@ describe("addToCollection", () => {
     });
 
     expect(junctionRows).toHaveLength(1);
-    expect(junctionRows[0].userId).toBe(user!._id);
     expect(junctionRows[0].collectionId).toBe(collection!._id);
     expect(junctionRows[0].libraryItemId).toBe(item!._id);
     expect(junctionRows[0].assignedAt).toBeGreaterThan(0);

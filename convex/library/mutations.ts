@@ -85,12 +85,12 @@ export async function findItem(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"works
  * Runs a write that adds or removes one paper and keeps the person's library count, in its
  * own row so the user row stays unwritten (#383).
  */
-async function countedWrite<T>(ctx: MutationCtx, { userId, workspaceId }: InWorkspace, change: 1 | -1, write: () => Promise<T>) {
+async function countedWrite<T>(ctx: MutationCtx, { workspaceId }: InWorkspace, change: 1 | -1, write: () => Promise<T>) {
   const row = await libraryCountRow(ctx, workspaceId);
   const result = await write();
   const count = Math.max(0, (row?.count ?? 0) + change);
   if (row) await ctx.db.patch("libraryCounts", row._id, { count });
-  else await ctx.db.insert("libraryCounts", { userId, workspaceId, count });
+  else await ctx.db.insert("libraryCounts", { workspaceId, count });
   return result;
 }
 
@@ -128,7 +128,6 @@ export async function upsertLibraryItem(
   const now = Date.now();
   return await countedWrite(ctx, writer, 1, () =>
     ctx.db.insert("libraryItems", {
-      userId,
       workspaceId,
       createdBy: userId,
       ...paper,
@@ -361,7 +360,7 @@ async function movePlaces(ctx: MutationCtx, removalId: Id<"libraryRemovals">) {
     if (!(await removeCollectionMembership(ctx, membership))) continue;
     const { collectionId, assignedAt } = membership;
     if (!target) await ctx.db.insert("removedPlaces", { removalId, collectionId, assignedAt });
-    else await addCollectionMembership(ctx, { userId: removal.userId, collection: (await ctx.db.get("collections", collectionId))!, item: target, assignedAt });
+    else await addCollectionMembership(ctx, { collection: (await ctx.db.get("collections", collectionId))!, item: target, assignedAt });
   }
   const more = memberships.length === PLACES_BATCH;
   if (more !== (removal.moving === true)) await ctx.db.patch("libraryRemovals", removalId, { moving: more ? true : undefined });
@@ -413,7 +412,7 @@ export const removeFromLibraryAction = defineUserMutation({
     }
     const { _id, _creationTime, userId: _owner, workspaceId: _workspace, ...kept } = item;
     const expiresAt = Date.now() + REMOVAL_KEPT_MS;
-    const removalId = await ctx.db.insert("libraryRemovals", { userId, workspaceId, item: kept, itemId: item._id, expiresAt });
+    const removalId = await ctx.db.insert("libraryRemovals", { workspaceId, item: kept, itemId: item._id, expiresAt });
     // Its places in collections: this batch now, the rest in the batches it schedules.
     if (await movePlaces(ctx, removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.movePlacesLater, { removalId });
     await countedWrite(ctx, { userId, workspaceId }, -1, () => ctx.db.delete("libraryItems", item._id));
@@ -463,7 +462,7 @@ async function restorePlaces(ctx: MutationCtx, removalId: Id<"libraryRemovals">)
   for (const place of places) {
     const collection = await ctx.db.get("collections", place.collectionId);
     // Collections deleted since the removal stay deleted.
-    if (collection !== null && collection.workspaceId === removal.workspaceId) await addCollectionMembership(ctx, { userId: removal.userId, collection, item, assignedAt: place.assignedAt });
+    if (collection !== null && collection.workspaceId === removal.workspaceId) await addCollectionMembership(ctx, { collection, item, assignedAt: place.assignedAt });
     await ctx.db.delete("removedPlaces", place._id);
   }
   const more = places.length === PLACES_BATCH;
@@ -521,7 +520,7 @@ export const restoreLibraryItemAction = defineUserMutation({
     } else {
       // Back in the workspace Undo runs in, made by whoever first saved it.
       libraryItemId = await countedWrite(ctx, { userId, workspaceId }, 1, () =>
-        ctx.db.insert("libraryItems", { ...item, userId, workspaceId, createdBy: item.createdBy ?? userId, updatedAt: Date.now() }),
+        ctx.db.insert("libraryItems", { ...item, workspaceId, createdBy: item.createdBy ?? userId, updatedAt: Date.now() }),
       );
       if (item.rating !== undefined) await setResearchRating(ctx, userId, item.openalexId, item.rating);
     }
@@ -559,7 +558,7 @@ export const setPaperInCollectionAction = defineUserMutation({
     const reverse = (at: number) => ({ undo: { path: IN_COLLECTION, args: { paper: { openalexId: paper.openalexId, savedAt: item!.savedAt }, collectionId, inCollection: !inCollection, assignedAt: at } } });
     if (inCollection) {
       if (!item) throw createError("NOT_FOUND", "This paper is no longer in the library.");
-      const at = await addCollectionMembership(ctx, { userId, collection, item, assignedAt });
+      const at = await addCollectionMembership(ctx, { collection, item, assignedAt });
       return at === null ? {} : reverse(at);
     }
     if (!item) return {};

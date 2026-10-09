@@ -12,7 +12,7 @@ const migrations = new Migrations<DataModel>(components.migrations, { internalMu
 /** A larger history stays unparsed; its incomplete candidate list cannot establish names. */
 const RECOVERY_LIMIT = 20;
 const fields = ["authors", "authorsUnparsed", "journal", "citedByCount", "workType", "isOpenAccess", "oaStatus", "oaUrl", "pdfUrl", "metadataVersion", "metadataRecoveredAt"] as const;
-type Stored = Omit<Doc<"libraryItems">, "_id" | "_creationTime" | "userId">;
+type Stored = Omit<Doc<"libraryItems">, "_id" | "_creationTime" | "userId" | "workspaceId" | "createdBy">;
 type BeforeNarrowing = Omit<Stored, "authors"> & { authors?: string | string[] };
 type Patch = Partial<Pick<Stored, typeof fields[number]>>;
 
@@ -21,7 +21,7 @@ function snapshot(item: Patch): string {
 }
 
 /** Reads only retained snapshots from the same owner; never refetches historical inputs. */
-export async function recoverMetadata(ctx: MutationCtx, userId: Id<"users">, item: Stored): Promise<Patch | undefined> {
+export async function recoverMetadata(ctx: MutationCtx, workspaceId: Id<"workspaces">, item: Stored): Promise<Patch | undefined> {
   if (item.metadataVersion === 2) return;
   const names = authorMetadata(item);
   const canonical = workUrl(item.openalexId);
@@ -32,7 +32,7 @@ export async function recoverMetadata(ctx: MutationCtx, userId: Id<"users">, ite
     const found = await ctx.db.query("screeningResults").withIndex("by_openalexId", (q) => q.eq("openalexId", id)).take(RECOVERY_LIMIT + 1);
     if (found.length > RECOVERY_LIMIT) { complete = false; break; }
     for (const result of found) {
-      if ((await ctx.db.get("screeningJobs", result.jobId))?.userId === userId) candidates.push(result);
+      if ((await ctx.db.get("screeningJobs", result.jobId))?.workspaceId === workspaceId) candidates.push(result);
     }
   }
   const patch: Patch = { authors: names.authors, authorsUnparsed: names.authorsUnparsed, metadataVersion: 2 };
@@ -64,14 +64,14 @@ async function receipt(ctx: MutationCtx, table: "libraryItems" | "libraryRemoval
 
 // One record per transaction bounds its source reads even when every candidate has a long abstract.
 export const papers = migrations.define({ table: "libraryItems", batchSize: 1, migrateOne: async (ctx, item) => {
-  const patch = await recoverMetadata(ctx, item.userId, item);
+  const patch = await recoverMetadata(ctx, item.workspaceId, item);
   if (!patch) return;
   await receipt(ctx, "libraryItems", item._id, item, patch);
   return patch;
 } });
 
 export const removals = migrations.define({ table: "libraryRemovals", batchSize: 1, migrateOne: async (ctx, row) => {
-  const patch = await recoverMetadata(ctx, row.userId, row.item);
+  const patch = await recoverMetadata(ctx, row.workspaceId, row.item);
   if (!patch) return;
   await receipt(ctx, "libraryRemovals", row._id, row.item, patch);
   return { item: { ...row.item, ...patch } };

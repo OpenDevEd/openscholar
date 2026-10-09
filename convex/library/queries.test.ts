@@ -5,6 +5,8 @@ import type { Id } from "../_generated/dataModel";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { exportedTitles } from "../exports.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
+import { madeBy } from "../workspaces/actor.test-support";
 
 // Helper: create a user directly in the mock DB, return user doc
 async function seedUser(
@@ -26,7 +28,7 @@ async function seedUser(
       updatedAt: Date.now(),
       lastLoginAt: Date.now(),
     });
-    await ctx.db.insert("libraryCounts", { userId, count: overrides.libraryItemCount ?? 0 });
+    await ctx.db.insert("libraryCounts", { workspaceId: await personalWorkspaceOf(ctx, userId), count: overrides.libraryItemCount ?? 0 });
     return await ctx.db.get("users", userId);
   });
 }
@@ -1243,11 +1245,12 @@ describe("the library as the assistant reads it", () => {
     const collectionId = await t.run(async (ctx) => {
       // The second paper was saved without a rating.
       await ctx.db.patch("libraryItems", phones!._id, { rating: undefined });
-      const id = await ctx.db.insert("collections", { userId: user!._id, name: "Chapter 2", sortName: ("Chapter 2").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
+      const id = await ctx.db.insert("collections", { ...(await madeBy(ctx, user!._id)), name: "Chapter 2", sortName: ("Chapter 2").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
       for (const item of [tutoring!, phones!]) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: id, libraryItemId: item._id, assignedAt: 1 });
       // A place in a collection deleted since, not yet cleared away, isn't one.
-      const gone = await ctx.db.insert("collections", { userId: user!._id, name: "Deleted", sortName: ("Deleted").toLowerCase(), itemCount: 1, createdAt: 1, updatedAt: 1 });
-      const feeding = await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", user!._id).eq("openalexId", "https://openalex.org/W3")).unique();
+      const gone = await ctx.db.insert("collections", { ...(await madeBy(ctx, user!._id)), name: "Deleted", sortName: ("Deleted").toLowerCase(), itemCount: 1, createdAt: 1, updatedAt: 1 });
+      const workspaceId = await personalWorkspaceOf(ctx, user!._id);
+      const feeding = await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W3")).unique();
       await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: gone, libraryItemId: feeding!._id, assignedAt: 1 });
       await ctx.db.delete("collections", gone);
       return id;
@@ -1284,7 +1287,8 @@ describe("the library as the assistant reads it", () => {
     // More than a page: the next one carries on where this stopped.
     for (let i = 0; i < 22; i++) await seedLibraryItem(t, user!._id, { title: `Paper ${i}`, savedAt: Date.UTC(2026, 9, 1) + i, openalexId: `https://openalex.org/W${100 + i}` });
     await t.run(async (ctx) => {
-      const row = await ctx.db.query("libraryCounts").withIndex("by_user", (q) => q.eq("userId", user!._id)).unique();
+      const workspaceId = await personalWorkspaceOf(ctx, user!._id);
+      const row = await ctx.db.query("libraryCounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
       await ctx.db.patch("libraryCounts", row!._id, { count: 25 });
     });
     const first = await papers();

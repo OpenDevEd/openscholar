@@ -5,6 +5,7 @@ import { api } from "../../_generated/api";
 import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
 import { MAX_SELECTED_PAPERS } from "../../lib/listCaps";
+import { madeBy } from "../../workspaces/actor.test-support";
 
 const identity = {
   subject: "clerk_lib",
@@ -315,7 +316,7 @@ describe("extraction.sources.library.listAllIds with collectionId", () => {
     const { userId, collectionId } = await seed(t);
     await t.run(async (ctx) => {
       for (let i = 0; i < MAX_SELECTED_PAPERS + 5; i++) {
-        const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/Wmany${i}`, rating: 3, title: `Many ${i}`, searchableText: "many papers", savedAt: i, updatedAt: i });
+        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/Wmany${i}`, rating: 3, title: `Many ${i}`, searchableText: "many papers", savedAt: i, updatedAt: i });
         if (i % 2 === 0) await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: i });
       }
     });

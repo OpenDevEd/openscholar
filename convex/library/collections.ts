@@ -46,9 +46,8 @@ export async function collectionAllowed(ctx: QueryCtx, { userId, workspaceId }: 
 export async function newCollection(ctx: MutationCtx, { userId, workspaceId }: InWorkspace, name: string) {
   const { trimmed, counted } = await collectionAllowed(ctx, { userId, workspaceId }, name);
   if (counted) await ctx.db.patch("collectionCounts", counted._id, { count: counted.count + 1 });
-  else await ctx.db.insert("collectionCounts", { userId, workspaceId, count: 1 });
+  else await ctx.db.insert("collectionCounts", { workspaceId, count: 1 });
   return await ctx.db.insert("collections", {
-    userId,
     workspaceId,
     createdBy: userId,
     name: trimmed,
@@ -212,7 +211,7 @@ export const addToCollectionAction = defineUserMutation({
     if (!item || item.workspaceId !== workspaceId) {
       throw createError("FORBIDDEN", "Not your library item");
     }
-    const assignedAt = await addCollectionMembership(ctx, { userId, collection, item, assignedAt: args.assignedAt });
+    const assignedAt = await addCollectionMembership(ctx, { collection, item, assignedAt: args.assignedAt });
     return assignedAt === null ? {} : { undo: { path: REMOVE, args: { collectionId: args.collectionId, libraryItemId: args.libraryItemId, assignedAt } } };
   },
 });

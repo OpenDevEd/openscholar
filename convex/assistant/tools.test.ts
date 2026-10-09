@@ -29,6 +29,7 @@ import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor
 import { personalWorkspaceOf } from "../workspaces/actor";
 import { ensureWorkspace } from "../workspaces/create";
 import { ownActor } from "../workspaces/actor.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
 type Sent = Array<{ role: string; content: string | Part[] }>;
@@ -167,7 +168,7 @@ describe("the assistant's tools", () => {
 
     // The paper is in the sender's library, not anyone else's.
     const [saved] = await t.run(async (ctx) => ctx.db.query("libraryItems").collect());
-    expect(saved).toMatchObject({ userId: ada, openalexId: "https://openalex.org/W1" });
+    expect(saved).toMatchObject({ createdBy: ada, openalexId: "https://openalex.org/W1" });
     expect(await steps()).toMatchObject([{ threadId, order: 0, userId: ada, toolCallId: "save", path: "library/mutations:saveToLibrary", status: "done", input: expect.stringContaining("Tutoring at scale"), subject: "Tutoring at scale", undo: { path: "library/mutations:removeFromLibrary" } }]);
     // The whole result is kept beside the step, and the model's next request holds it.
     expect(await results()).toMatchObject([{ id: saved._id }]);
@@ -192,7 +193,7 @@ describe("the assistant's tools", () => {
     vi.unstubAllEnvs();
 
     const [saved] = await t.run(async (ctx) => ctx.db.query("libraryItems").collect());
-    expect(saved).toMatchObject({ userId: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale" });
+    expect(saved).toMatchObject({ createdBy: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale" });
     // The call named the paper by its ID alone, so the step is about the paper it came back with.
     expect(await steps()).toMatchObject([{ path: "library/papers:save", status: "done", subject: "Tutoring at scale", undo: { path: "library/mutations:removeFromLibrary" } }]);
     // One result beside the step: the write ended it, and nothing ended it again.
@@ -832,7 +833,7 @@ describe("the assistant's tools", () => {
     // A plan that takes 1,000 papers in one extraction, and a collection the account counts at 1,500.
     await t.run(async (ctx) => {
       await ctx.db.patch("collections", collectionId, { itemCount: 1500 });
-      const userId = (await ctx.db.get("collections", collectionId))!.userId;
+      const userId = (await ctx.db.get("collections", collectionId))!.createdBy;
       const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
       await ctx.db.patch("billingAccounts", account!._id, { limits: { request_papers: 1000 } });
     });
@@ -946,9 +947,9 @@ describe("the assistant's tools", () => {
     // A collection's hold covers the papers its count says it has, not the whole range asked for.
     const uncounted = await t.run(async (ctx) => {
       const userId = (await ctx.db.get("assistantThreads", threadId))!.ownerId;
-      const collectionId = await ctx.db.insert("collections", { userId, name: "Three papers", sortName: "three papers", itemCount: 3, createdAt: 1, updatedAt: 1 });
+      const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Three papers", sortName: "three papers", itemCount: 3, createdAt: 1, updatedAt: 1 });
       for (const openalexId of ["W91", "W92", "W93"]) {
-        const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId, title: openalexId, searchableText: openalexId, rating: 0, savedAt: 1, updatedAt: 1 });
+        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId, title: openalexId, searchableText: openalexId, rating: 0, savedAt: 1, updatedAt: 1 });
         await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: 1 });
       }
       return screeningHold(ctx, await ownActor(ctx, userId), { set: { kind: "collection", collectionId }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } });
@@ -1002,7 +1003,7 @@ describe("the assistant's tools", () => {
     const { ada, asAda, say, steps } = await chatOf(t);
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
     await t.run(async (ctx) => {
-      await ctx.db.insert("libraryItems", { userId: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale", paperData: "{}", savedAt: 1, updatedAt: 1, searchableText: "tutoring at scale" });
+      await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, ada)), openalexId: "https://openalex.org/W7", title: "Tutoring at scale", paperData: "{}", savedAt: 1, updatedAt: 1, searchableText: "tutoring at scale" });
     });
     mockDoStream
       // The paper by its short ID, as results give it, and a collection of hers.
