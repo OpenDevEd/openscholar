@@ -25,11 +25,11 @@ export const revisions = migrations.define({
   batchSize: 5,
   migrateOne: (_ctx, row) => (row.userId === undefined ? undefined : { userId: undefined, ...(row.createdBy ? {} : { createdBy: row.userId }) }),
 });
-// A bookmark's expansion and a history entry's text have no byte cap of their own: small batches.
-export const shortcuts = migrations.define({ table: "queryShortcuts", batchSize: 20, migrateOne: (_ctx, row) => cleared(row) });
+// A bookmark's expansion, a history entry's text and a screening's removals have no byte cap of their own: five at a time too.
+export const shortcuts = migrations.define({ table: "queryShortcuts", batchSize: 5, migrateOne: (_ctx, row) => cleared(row) });
 export const counts = migrations.define({ table: "recordCounts", migrateOne: (_ctx, row) => cleared(row) });
-export const screenings = migrations.define({ table: "screenings", batchSize: 25, migrateOne: (_ctx, row) => cleared(row) });
-export const history = migrations.define({ table: "searchHistory", batchSize: 50, migrateOne: (_ctx, row) => cleared(row) });
+export const screenings = migrations.define({ table: "screenings", batchSize: 5, migrateOne: (_ctx, row) => cleared(row) });
+export const history = migrations.define({ table: "searchHistory", batchSize: 5, migrateOne: (_ctx, row) => cleared(row) });
 
 export const run = migrations.runner([
   internal.migrations.narrowResearch.searches,
